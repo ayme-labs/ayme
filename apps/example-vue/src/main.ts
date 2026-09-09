@@ -2,6 +2,17 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import "./style.css";
 
-window.__AYME_VUE_ACTIONS__ = [];
+export function startExampleApp() {
+  const modelContext = (document as Document & { modelContext?: unknown })
+    .modelContext;
+  if (!modelContext) {
+    throw new Error(
+      "The WebMCP polyfill must initialize before the example app starts."
+    );
+  }
 
-createApp(App).mount("#app");
+  window.__AYME_VUE_ACTIONS__ = [];
+  return createApp(App).mount("#app");
+}
+
+startExampleApp();

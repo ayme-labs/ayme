@@ -1,6 +1,6 @@
-# Vue WebMCP POM spike
+# Ayme WebMCP playground
 
-This is a throwaway browser-side experiment for the Ayme WebMCP design. The page is split into a functional list app and an Ayme debug console so the same POM tool can be exercised from either side.
+This browser playground combines a functional list app with an Ayme inspector so the same Page Object behavior can be exercised by a person or an agent. It is published at [ayme-labs.github.io/ayme-webmcp](https://ayme-labs.github.io/ayme-webmcp/).
 
 - The demo app lets you add items and archive them through a confirmation dialog.
 - `ListPage` is a normal TypeScript class using `Page` and `Locator` types from Playwright. Vite bundles that same class for WebMCP and constructs it with the DOM-backed browser implementation.
@@ -14,6 +14,12 @@ This is a throwaway browser-side experiment for the Ayme WebMCP design. The page
 - The in-page inspector separates the App Model view (POM metadata, actions, executions, and traces) from the Page State view, which renders a YAML snapshot of the demo application with capture-scoped refs and POM decorations.
 - The POM inspector probes registered members against the current DOM and refreshes when the demo changes. It does not use framework bindings or element identity.
 - The browser runtime is DOM-backed. It supports the locator operations used by the POM, including role/name lookup, filling, clicking, and visible/hidden waits, without requiring Playwright at runtime.
+
+## Try with your agent
+
+Start with the repository's [Ayme setup skill](../../skills/ayme/SKILL.md), then follow the [browser setup guide](../../skills/ayme/references/browser-setup.md) to connect a local MCP relay. The hosted playground has no hosted agent backend; the relay runs on your machine and discovers the tools exposed by this page. The [playground onboarding guide](./ONBOARDING.md) condenses the hosted flow.
+
+The hosted page loads the pinned WebMCP polyfill before the Vue app starts. Use the setup guide's `webmcp_list_sources`, `webmcp_list_tools`, and tool invocation flow to exercise the list actions.
 
 ## Application setup
 
