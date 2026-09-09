@@ -24,9 +24,14 @@ export type {
 } from "./registry";
 export { synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
 export type { WebMcpDriver, WebMcpRegistration } from "./webMcp";
-export { createRuntimeSession, createServerPageObject } from "./runtime";
+export {
+  createRuntimeSession,
+  createServerPageObject,
+  installRuntimePageInstrumentation,
+} from "./runtime";
 export type {
   RuntimeSession,
   AymePage,
   AymeWebMcpPublicationStatus,
 } from "./runtime";
+export { isPlaywrightLiteLocator as isAymeLocator } from "@ayme-dev/playwright-lite/internal";

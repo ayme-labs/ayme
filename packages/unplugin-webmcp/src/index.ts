@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -14,6 +14,9 @@ const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
 const ACTION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_ACTION_TIMEOUT__";
 const NAVIGATION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__";
 const PUBLISH_DEFINE = "__AYME_WEBMCP_PUBLISH__";
+const INSPECTOR_MODULE_ID = "virtual:ayme-webmcp-inspector";
+const RESOLVED_INSPECTOR_MODULE_ID = `\0${INSPECTOR_MODULE_ID}`;
+const INSPECTOR_PACKAGE_ID = "@ayme-dev/webmcp-inspector";
 const SUPPORTED_PLAYWRIGHT_VERSION = /^1\.62\.\d+(?:[-+].*)?$/;
 
 // Keep published declarations usable without the optional Playwright peer.
@@ -51,6 +54,7 @@ type LoadedPlaywrightConfig = {
 };
 
 export type AymeWebMcpOptions = PomCompilerOptions & {
+  inspector?: boolean;
   playwright?: AymePlaywrightOptions;
   publish?: boolean;
 };
@@ -60,20 +64,55 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
 ) => {
   if (options.publish !== undefined && typeof options.publish !== "boolean")
     throw new TypeError("publish must be a boolean");
+  if (options.inspector !== undefined && typeof options.inspector !== "boolean")
+    throw new TypeError("inspector must be a boolean");
   const transformPom = createPomTransform(options);
+  const viteEntries = new Set<string>();
 
   return {
     name: "ayme-webmcp",
     enforce: "pre",
+    ...(options.inspector
+      ? {
+          resolveId(id) {
+            if (id === INSPECTOR_PACKAGE_ID)
+              return createRequire(import.meta.url).resolve(
+                INSPECTOR_PACKAGE_ID
+              );
+            return id === INSPECTOR_MODULE_ID
+              ? RESOLVED_INSPECTOR_MODULE_ID
+              : null;
+          },
+          load(id) {
+            return id === RESOLVED_INSPECTOR_MODULE_ID
+              ? "import { mountInspector } from '@ayme-dev/webmcp-inspector'; mountInspector();"
+              : null;
+          },
+        }
+      : {}),
     vite: {
       transform: {
-        filter: { id: /\.ts$/ },
+        filter: { id: /\.[cm]?[jt]sx?$/ },
         handler(code, id, transformOptions) {
           if (transformOptions?.ssr) return null;
-          return transformPom(code, id);
+          const fileName = id.split("?")[0];
+          const inspectorStartup =
+            options.inspector && fileName && viteEntries.has(fileName)
+              ? `import '${INSPECTOR_MODULE_ID}';\n`
+              : "";
+          const transformed = transformPom(code, id);
+          if (!inspectorStartup) return transformed;
+          if (!transformed)
+            return { code: `${inspectorStartup}${code}`, map: null };
+          return {
+            ...transformed,
+            code: `${inspectorStartup}${transformed.code}`,
+          };
         },
       },
       async config(config) {
+        if (options.inspector)
+          discoverViteEntries(config.root ?? process.cwd(), viteEntries);
         const exclude = config.optimizeDeps?.exclude ?? [];
         const settings = await resolvePlaywrightSettings(
           options.playwright,
@@ -112,6 +151,27 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
     },
   };
 };
+
+function discoverViteEntries(root: string, entries: Set<string>) {
+  const htmlPath = resolve(root, "index.html");
+  if (!existsSync(htmlPath)) return;
+  const html = readFileSync(htmlPath, "utf8");
+  for (const match of html.matchAll(/<script\b([^>]*)>/gi)) {
+    const attributes = match[1] ?? "";
+    if (!/\btype=["']module["']/i.test(attributes)) continue;
+    const source = attributes
+      .match(/\bsrc=["']([^"']+)["']/i)?.[1]
+      ?.split("?")[0];
+    if (!source || /^[a-z]+:/i.test(source)) continue;
+    try {
+      entries.add(
+        realpathSync(resolve(root, source.replace(/^\//, ""))).split("?")[0]!
+      );
+    } catch {
+      // Vite will report unresolved local HTML entries itself.
+    }
+  }
+}
 
 async function resolvePlaywrightSettings(
   options: AymePlaywrightOptions | undefined,

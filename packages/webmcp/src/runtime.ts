@@ -19,6 +19,7 @@ export type AymeWebMcpPublicationStatus = Readonly<{
   message: string;
 }>;
 export type AymePage = ConstructorParameters<PageObjectConstructor>[0];
+type PageInstrumentation = (page: AymePage) => AymePage;
 type Registration = {
   activate: () => { dispose(): void };
   active?: { dispose(): void };
@@ -31,10 +32,29 @@ export function createServerPageObject<T extends object>(
   return Object.create(prototype) as T;
 }
 
+const pageInstrumentations = new Set<PageInstrumentation>();
+
+export function installRuntimePageInstrumentation(
+  instrumentation: PageInstrumentation
+) {
+  pageInstrumentations.add(instrumentation);
+  return () => {
+    pageInstrumentations.delete(instrumentation);
+  };
+}
+
+function instrumentPage(page: AymePage) {
+  let instrumented = page;
+  for (const instrumentation of pageInstrumentations)
+    instrumented = instrumentation(instrumented);
+  return instrumented;
+}
+
 // Construction is inert. Frameworks start activity only when their owner commits.
-export function createRuntimeSession(page?: AymePage) {
-  let resolvedPage = page;
-  const getPage = () => (resolvedPage ??= createPage());
+export function createRuntimeSession(sourcePage?: AymePage) {
+  let resolvedPage: AymePage | undefined;
+  const getPage = () =>
+    (resolvedPage ??= instrumentPage(sourcePage ?? createPage()));
   const enabled =
     typeof __AYME_WEBMCP_PUBLISH__ !== "undefined" && __AYME_WEBMCP_PUBLISH__;
   const initialStatus: AymeWebMcpPublicationStatus = {

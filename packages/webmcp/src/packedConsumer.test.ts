@@ -3,7 +3,7 @@
  * for @ayme-dev/webmcp.
  *
  * 1. The packed manifest must not expose private workspace packages
- *    (@ayme-dev/playwright-browser, @ayme-dev/structural-observation)
+ *    (@ayme-dev/playwright-lite, @ayme-dev/structural-observation)
  *    as runtime, optional, or peer dependencies.
  * 2. The dist output must not contain unresolved bare imports to them.
  * 3. A temporary consumer project can install the tarball and import
@@ -25,7 +25,6 @@ const webmcpRoot = path.resolve(
 );
 
 const PRIVATE_PACKAGES = [
-  "@ayme-dev/playwright-browser",
   "@ayme-dev/playwright-lite",
   "@ayme-dev/structural-observation",
 ];
@@ -54,7 +53,12 @@ it(
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ayme-peers-"));
     try {
       const tarballs: Record<string, string> = {};
-      for (const name of ["webmcp", "webmcp-vue", "unplugin-webmcp"]) {
+      for (const name of [
+        "webmcp",
+        "webmcp-vue",
+        "webmcp-inspector",
+        "unplugin-webmcp",
+      ]) {
         const root = path.resolve(webmcpRoot, "..", name);
         const staging = path.join(tmp, name);
         fs.mkdirSync(staging);
@@ -71,6 +75,13 @@ it(
         if (manifest.dependencies?.["@ayme-dev/webmcp"])
           manifest.dependencies["@ayme-dev/webmcp"] = JSON.parse(
             fs.readFileSync(path.join(webmcpRoot, "package.json"), "utf8")
+          ).version;
+        if (manifest.dependencies?.["@ayme-dev/webmcp-inspector"])
+          manifest.dependencies["@ayme-dev/webmcp-inspector"] = JSON.parse(
+            fs.readFileSync(
+              path.resolve(webmcpRoot, "../webmcp-inspector/package.json"),
+              "utf8"
+            )
           ).version;
         fs.writeFileSync(
           path.join(staging, "package.json"),
@@ -145,7 +156,8 @@ it(
           path.join(consumer, "consumer.ts"),
           `
 import { ayme, WebMCP } from '@ayme-dev/webmcp';
-void [ayme, WebMCP];
+import { mountInspector } from '@ayme-dev/webmcp-inspector';
+void [ayme, WebMCP, mountInspector];
 ${
   version
     ? `

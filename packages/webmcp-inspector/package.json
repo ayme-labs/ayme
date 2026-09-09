@@ -1,0 +1,56 @@
+{
+  "name": "@ayme-dev/webmcp-inspector",
+  "version": "0.1.0",
+  "description": "Browser Inspector for Ayme Page Object Models.",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./demo": {
+      "types": "./dist/demo.d.mts",
+      "import": "./dist/demo.mjs",
+      "default": "./dist/demo.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "lint": "eslint src --max-warnings 0",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ayme-dev/webmcp": "workspace:*",
+    "vue": "^3.5.42"
+  },
+  "peerDependencies": {
+    "@playwright/test": ">=1.29 <1.63"
+  },
+  "peerDependenciesMeta": {
+    "@playwright/test": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#c68a2f92f96b82946c838bfa92a7841ebb03f8a0",
+    "@ayme-dev/typescript-config": "workspace:*",
+    "@playwright/test": "^1.62.1",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "@vue/test-utils": "^2.4.11",
+    "eslint": "^10.9.1",
+    "jsdom": "^30.0.1",
+    "tsdown": "^0.22.14",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
+  }
+}

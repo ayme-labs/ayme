@@ -8,6 +8,32 @@ test("uses the same POM with real Playwright", async ({ page }) => {
   await expect(page.locator("output")).toHaveText("1");
 });
 
+test("keeps one Inspector and one trace through StrictMode remounts", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const inspectorHost = page.locator("[data-ayme-inspector-host]");
+  await expect(inspectorHost).toHaveCount(1);
+  await expect(
+    page.getByRole("heading", { name: "POM inspector" })
+  ).toBeVisible();
+  await expect(page.locator('[data-pom-class="CounterPage"]')).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Call Page Object" }).click();
+  const latestTrace = page.getByLabel("Latest browser trace");
+  await expect(latestTrace).toContainText("click");
+  expect(
+    (await latestTrace.textContent())?.match(/"operation": "click"/g)
+  ).toHaveLength(1);
+
+  await page.getByRole("button", { name: "Unmount counter" }).click();
+  await expect(page.locator('[data-pom-class="CounterPage"]')).toHaveCount(0);
+  await expect(inspectorHost).toHaveCount(1);
+  await page.getByRole("button", { name: "Mount counter" }).click();
+  await expect(page.locator('[data-pom-class="CounterPage"]')).toHaveCount(1);
+  await expect(inspectorHost).toHaveCount(1);
+});
+
 test("publishes, executes, and removes compiled tools under StrictMode", async ({
   page,
 }) => {

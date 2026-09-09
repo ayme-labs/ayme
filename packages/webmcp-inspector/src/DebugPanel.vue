@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, shallowRef } from "vue";
 
-import type { TraceEntry } from "../ayme/withDemoFeedback";
+import type { TraceEntry } from "./withDemoFeedback";
 import type {
   JsonValue,
   PomMemberManifest,

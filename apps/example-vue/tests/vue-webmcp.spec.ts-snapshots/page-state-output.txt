@@ -1,32 +1,32 @@
-- e1 region "Demo application":
-  - e2:
-    - e3:
-      - e4 paragraph: Demo application
-      - e5 heading "My list" [level=2]
-    - e6: 2 active
-  - e7 form "Add a list item":
-    - e8: New item
-    - e9:
-      - e10 textbox "New item":
+- e51 region "Demo application":
+  - e52:
+    - e53:
+      - e54 paragraph: Demo application
+      - e55 heading "My list" [level=2]
+    - e56: 2 active
+  - e57 form "Add a list item":
+    - e58: New item
+    - e59:
+      - e60 textbox "New item":
         - /placeholder: e.g. Send the project update
-      - e11 button "Add item" [cursor=pointer]
-  - e12 region:
-    - e13:
-      - e14 heading "Active items" [level=3]
-      - e15: 2
-    - e16 list:
-      - e17 ListPage.items[0]:
-        - e18:
-          - e19 button "Prepare launch notes"
-          - e20 code: item-1
-        - e21 button "Archive item-1" [cursor=pointer]: Archive
-      - e22 ListPage.items[1]:
-        - e23:
-          - e24 button "Review onboarding flow"
-          - e25 code: item-2
-        - e26 button "Archive item-2" [cursor=pointer]: Archive
-  - e27 region:
-    - e28:
-      - e29 heading "Archived items" [level=3]
-      - e30: 0
-    - e31 paragraph: Archived items will appear here.
+      - e61 button "Add item" [cursor=pointer]
+  - e62 region:
+    - e63:
+      - e64 heading "Active items" [level=3]
+      - e65: 2
+    - e66 list:
+      - e67 ListPage.items[0]:
+        - e68:
+          - e69 button "Prepare launch notes"
+          - e70 code: item-1
+        - e71 button "Archive item-1" [cursor=pointer]: Archive
+      - e72 ListPage.items[1]:
+        - e73:
+          - e74 button "Review onboarding flow"
+          - e75 code: item-2
+        - e76 button "Archive item-2" [cursor=pointer]: Archive
+  - e77 region:
+    - e78:
+      - e79 heading "Archived items" [level=3]
+      - e80: 0
+    - e81 paragraph: Archived items will appear here.

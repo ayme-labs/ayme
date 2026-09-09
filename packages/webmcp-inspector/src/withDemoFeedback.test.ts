@@ -1,9 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
-import {
-  isPlaywrightLiteLocator,
-  resolveLocatorElements,
-} from "@ayme-dev/playwright-lite/internal";
+import { isAymeLocator } from "@ayme-dev/webmcp/internal";
+import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { withDemoFeedback } from "./withDemoFeedback";
 
 afterEach(() => {
@@ -22,7 +20,7 @@ it("preserves observation and composition through chained and array locators", a
   const button = rows[1]!.getByRole("button").and(page.locator("button"));
 
   expect(button.page()).toBe(page);
-  expect(isPlaywrightLiteLocator(button)).toBe(true);
+  expect(isAymeLocator(button)).toBe(true);
   expect(resolveLocatorElements(button)).toEqual([
     document.querySelectorAll("button")[1],
   ]);
