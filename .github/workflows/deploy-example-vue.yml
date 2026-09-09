@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build the Pages artifact
-        run: pnpm exec turbo run build --filter=@ayme-dev/example-vue...
+        run: pnpm exec turbo run build --filter=@ayme-dev/example-vue... --env-mode=strict
         env:
           VITE_BASE_PATH: /ayme-webmcp/
       - name: Configure Pages
