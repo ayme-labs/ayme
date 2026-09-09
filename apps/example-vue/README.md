@@ -19,7 +19,7 @@ This browser playground combines a functional list app with an Ayme inspector so
 
 Start with the repository's [Ayme setup skill](../../skills/ayme/SKILL.md), then follow the [browser setup guide](../../skills/ayme/references/browser-setup.md) to connect a local MCP relay. The hosted playground has no hosted agent backend; the relay runs on your machine and discovers the tools exposed by this page. The [playground onboarding guide](./ONBOARDING.md) condenses the hosted flow.
 
-The hosted page loads the pinned WebMCP polyfill before the Vue app starts. Use the setup guide's `webmcp_list_sources`, `webmcp_list_tools`, and tool invocation flow to exercise the list actions.
+The hosted bundle initializes the pinned WebMCP polyfill before the Vue app starts. Use the setup guide's `webmcp_list_sources`, `webmcp_list_tools`, and tool invocation flow to exercise the list actions.
 
 ## Application setup
 

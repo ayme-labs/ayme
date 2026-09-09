@@ -1,6 +1,9 @@
 import { createApp } from "vue";
+import { initializeWebMCPPolyfill } from "@mcp-b/webmcp-polyfill";
 import App from "./App.vue";
 import "./style.css";
+
+initializeWebMCPPolyfill();
 
 export function startExampleApp() {
   window.__AYME_VUE_ACTIONS__ = [];

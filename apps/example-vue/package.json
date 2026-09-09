@@ -16,6 +16,7 @@
     "@ayme-dev/webmcp-inspector": "workspace:*",
     "@ayme-dev/webmcp-vue": "workspace:*",
     "vue": "^3.5.42",
+    "@mcp-b/webmcp-polyfill": "5.1.0",
     "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#c68a2f92f96b82946c838bfa92a7841ebb03f8a0"
   },
   "devDependencies": {
