@@ -12,7 +12,7 @@ export type DemoFeedbackOptions = {
 
 type FeedbackContext = {
   listeners: Set<DemoFeedbackOptions["onTrace"]>;
-  options: DemoFeedbackOptions;
+  options: Omit<DemoFeedbackOptions, "onTrace">;
   wrappers: WeakMap<object, object>;
 };
 
@@ -29,12 +29,20 @@ export function withDemoFeedback(
   const existing = wrappedPages.get(page);
   if (existing) {
     existing.context.listeners.add(options.onTrace);
+    existing.context.options.beforeActionMs = Math.max(
+      existing.context.options.beforeActionMs ?? 0,
+      options.beforeActionMs ?? 0
+    );
+    existing.context.options.clickCue ||= options.clickCue;
     return existing.proxy;
   }
 
   const context: FeedbackContext = {
     listeners: new Set([options.onTrace]),
-    options,
+    options: {
+      beforeActionMs: options.beforeActionMs,
+      clickCue: options.clickCue,
+    },
     wrappers: new WeakMap(),
   };
 

@@ -481,17 +481,24 @@ function captureWithoutInspector(root: Element) {
     ...(root.matches("[data-ayme-inspector-host]") ? [root] : []),
     ...root.querySelectorAll("[data-ayme-inspector-host]"),
   ];
-  const previousValues = inspectorHosts.map((host) =>
-    host.getAttribute("aria-hidden")
-  );
-  for (const host of inspectorHosts) host.setAttribute("aria-hidden", "true");
+  const previousValues = inspectorHosts.map((host) => ({
+    display: (host as HTMLElement).style.getPropertyValue("display"),
+    priority: (host as HTMLElement).style.getPropertyPriority("display"),
+  }));
+  for (const host of inspectorHosts)
+    (host as HTMLElement).style.setProperty("display", "none", "important");
   try {
     return captureAriaSnapshot(root);
   } finally {
     inspectorHosts.forEach((host, index) => {
-      const previous = previousValues[index];
-      if (previous === null) host.removeAttribute("aria-hidden");
-      else host.setAttribute("aria-hidden", previous);
+      const previous = previousValues[index]!;
+      if (previous.display)
+        (host as HTMLElement).style.setProperty(
+          "display",
+          previous.display,
+          previous.priority
+        );
+      else (host as HTMLElement).style.removeProperty("display");
     });
   }
 }

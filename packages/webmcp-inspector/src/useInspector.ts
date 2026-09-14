@@ -95,8 +95,10 @@ export function useInspector() {
       records?.length &&
       records.every(
         (record) =>
-          record.type === "attributes" &&
-          record.attributeName === "data-ayme-highlight"
+          (record.type === "attributes" &&
+            record.attributeName === "data-ayme-highlight") ||
+          (record.target instanceof Element &&
+            record.target.matches("[data-ayme-inspector-host]"))
       )
     )
       return;
