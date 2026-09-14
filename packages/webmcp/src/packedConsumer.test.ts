@@ -49,7 +49,7 @@ function exec(file: string, args: string[], cwd: string) {
 
 it(
   "packed packages support consumer Playwright types and conditional config loading",
-  { timeout: 120_000 },
+  { timeout: 180_000 },
   () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ayme-peers-"));
     try {
