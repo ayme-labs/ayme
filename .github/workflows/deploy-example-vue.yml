@@ -30,7 +30,7 @@ jobs:
       - name: Build the Pages artifact
         run: pnpm exec turbo run build --filter=@ayme-dev/example-vue... --env-mode=strict
         env:
-          VITE_BASE_PATH: /ayme-webmcp/
+          VITE_BASE_PATH: /ayme/
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact

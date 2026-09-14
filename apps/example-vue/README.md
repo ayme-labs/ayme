@@ -1,6 +1,6 @@
 # Ayme WebMCP playground
 
-This browser playground combines a functional list app with an Ayme inspector so the same Page Object behavior can be exercised by a person or an agent. It is published at [ayme-labs.github.io/ayme-webmcp](https://ayme-labs.github.io/ayme-webmcp/).
+This browser playground combines a functional list app with an Ayme inspector so the same Page Object behavior can be exercised by a person or an agent. It is published at [ayme-labs.github.io/ayme](https://ayme-labs.github.io/ayme/).
 
 - The demo app lets you add items and archive them through a confirmation dialog.
 - `ListPage` is a normal TypeScript class using `Page` and `Locator` types from Playwright. Vite bundles that same class for WebMCP and constructs it with the DOM-backed browser implementation.
