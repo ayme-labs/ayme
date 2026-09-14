@@ -141,6 +141,35 @@ describe("live Page Object availability", () => {
     expect(names()).toEqual([]);
   });
 
+  it("omits a zero-width sidebar shell with an off-canvas panel", async () => {
+    document.body.style.cssText =
+      "display:flex;min-height:100vh;width:100%;position:relative";
+    document.body.innerHTML = `
+      <div id="sidebar" data-state="collapsed" data-collapsible="offcanvas">
+        <div style="position:relative;width:0"></div>
+        <div style="position:absolute;inset-block:0;left:-256px;width:256px;display:flex">
+          <button>Hidden profile</button>
+        </div>
+      </div>
+      <main style="flex:1">Main content</main>
+    `;
+    class Sidebar {
+      root = page.locator("#sidebar");
+      open() {}
+    }
+    registerCompiledPom(
+      Sidebar,
+      manifest("Sidebar", [root()], [action("open", "Sidebar.open")])
+    );
+    createPageRegistration(Sidebar);
+
+    const state = await ayme.getPageState();
+    expect(state.text).not.toContain("Hidden profile");
+    expect(state.text).not.toContain("Sidebar");
+    expect(state.text).toContain("Main content");
+    expect(names()).toEqual([]);
+  });
+
   it("gates rooted page actions and preserves rootless actions", async () => {
     document.body.innerHTML = '<section id="root">Page</section>';
     class Rooted {

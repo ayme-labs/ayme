@@ -317,10 +317,31 @@ function annotatedComponentDeclarations(
 }
 
 function isEligiblePomMember(member: ts.ClassElement) {
-  if (!isPublicInstanceMember(member)) return false;
+  if (!isPublicInstanceMember(member) && !isNonPublicRootMember(member))
+    return false;
   if (!ts.isMethodDeclaration(member)) return true;
   return (
     member.parameters.length === 0 && toolDescription(member) === undefined
+  );
+}
+
+function isNonPublicRootMember(member: ts.ClassElement) {
+  if (
+    (!ts.isPropertyDeclaration(member) &&
+      !ts.isGetAccessorDeclaration(member)) ||
+    !member.name ||
+    !ts.isIdentifier(member.name) ||
+    member.name.text !== "root"
+  )
+    return false;
+  const modifiers = member.modifiers ?? [];
+  return (
+    modifiers.some(
+      (modifier) =>
+        modifier.kind === ts.SyntaxKind.PrivateKeyword ||
+        modifier.kind === ts.SyntaxKind.ProtectedKeyword
+    ) &&
+    !modifiers.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
   );
 }
 
