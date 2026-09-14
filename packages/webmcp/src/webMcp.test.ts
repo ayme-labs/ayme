@@ -23,10 +23,10 @@ function brandedLocator(overrides: Record<string, unknown> = {}) {
 
 type PublishedTool = { name: string };
 
-vi.mock("./pageState", () => ({
-  getPageStateTool: {
-    name: "get_page_state",
-    description: "Get page state.",
+vi.mock("./pageContext", () => ({
+  getPageContextTool: {
+    name: "get_page_context",
+    description: "Get page context.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -63,6 +63,7 @@ const action = (methodName: string) => ({
     additionalProperties: false,
   },
   parameters: [],
+  returnPoms: [],
 });
 
 async function flushPublisher() {
@@ -134,7 +135,7 @@ describe("WebMCP publisher", () => {
 
     const publication = await synchronizeWebMcpTools({ registerTool });
     expect(registrations.map(({ tool }) => tool.name)).toEqual([
-      "get_page_state",
+      "get_page_context",
       "addItem",
       "ItemsPage.items.archive",
     ]);
@@ -142,7 +143,7 @@ describe("WebMCP publisher", () => {
     await vi.runOnlyPendingTimersAsync();
     await flushPublisher();
     expect(registrations.map(({ tool }) => tool.name)).toEqual([
-      "get_page_state",
+      "get_page_context",
       "addItem",
       "ItemsPage.items.archive",
     ]);
@@ -206,7 +207,7 @@ describe("WebMCP publisher", () => {
     const first = registry.createPageRegistration(SharedPage);
     const publication = await synchronizeWebMcpTools({ registerTool });
     expect(registrations.map(({ tool }) => tool.name)).toEqual([
-      "get_page_state",
+      "get_page_context",
       "run",
     ]);
 

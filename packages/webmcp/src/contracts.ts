@@ -6,7 +6,8 @@ export type JsonValue =
   JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
 export type JsonSchema = {
-  type?: "string" | "number" | "integer" | "boolean" | "object";
+  type?: "string" | "number" | "integer" | "boolean" | "object" | "array";
+  items?: JsonSchema;
   enum?: readonly JsonPrimitive[];
   properties?: Record<string, JsonSchema>;
   required?: readonly string[];
@@ -41,6 +42,7 @@ export type PomMemberManifest =
 
 export type PomComponentManifest = {
   className: string;
+  description?: string;
   members: readonly PomMemberManifest[];
   tools: readonly ToolManifest[];
 };
@@ -57,15 +59,36 @@ export type ToolManifest = {
   methodName: string;
   toolName: string;
   description: string;
+  authoredDescription?: string;
   inputSchema: JsonSchema;
   parameters: readonly ToolParameter[];
+  returnPoms?: readonly string[];
 };
 
 export type PomManifest = {
   className: string;
+  description?: string;
   members: readonly PomMemberManifest[];
   components: readonly PomComponentManifest[];
   tools: readonly ToolManifest[];
+};
+
+export type PomDefinitionAction = {
+  name: string;
+  description?: string;
+  inputSchema: JsonSchema;
+  returnPoms: readonly string[];
+};
+
+export type PomDefinition = {
+  name: string;
+  description?: string;
+  children: readonly PomMemberManifest[];
+  actions: readonly PomDefinitionAction[];
+};
+
+export type PomDefinitionsResult = {
+  definitions: readonly PomDefinition[];
 };
 
 export type RegisteredPomTool = ModelContextTool<

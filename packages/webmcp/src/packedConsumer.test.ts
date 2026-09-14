@@ -209,6 +209,7 @@ assert.deepEqual(manifest.tools, [{
   methodName: 'act',
   toolName: 'Pom.act',
   description: 'Fill and submit the input.',
+  authoredDescription: 'Fill and submit the input.',
   inputSchema: {
     type: 'object', properties: { value: { type: 'string' } },
     required: ['value'], additionalProperties: false,

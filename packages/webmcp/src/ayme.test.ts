@@ -2,10 +2,12 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { captureAriaSnapshot, listRegisteredPomRoots } = vi.hoisted(() => ({
-  captureAriaSnapshot: vi.fn(),
-  listRegisteredPomRoots: vi.fn(),
-}));
+const { captureAriaSnapshot, listRegisteredPomRoots, listRegisteredPoms } =
+  vi.hoisted(() => ({
+    captureAriaSnapshot: vi.fn(),
+    listRegisteredPomRoots: vi.fn(),
+    listRegisteredPoms: vi.fn(),
+  }));
 
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({ captureAriaSnapshot }));
 vi.mock("./registry", () => ({
@@ -13,6 +15,7 @@ vi.mock("./registry", () => ({
     roots: await listRegisteredPomRoots(),
     absentElements: [],
   }),
+  listRegisteredPoms,
 }));
 
 import ayme, { ayme as namedAyme } from "./index";
@@ -34,6 +37,41 @@ describe("the public Ayme page state facade", () => {
 
   it("exports the facade by name as well as by default", () => {
     expect(namedAyme).toBe(ayme);
+  });
+
+  it("combines page state with named POM definitions", async () => {
+    const button = document.querySelector("#save");
+    if (!button) throw new Error("Expected the save button.");
+    captureAriaSnapshot.mockReturnValue({
+      distilledText: '- button "Save changes" [ref=e1]',
+      fullText: '- button "Save changes" [ref=e1]',
+      refsByElement: new Map([[button, "e1"]]),
+    });
+    listRegisteredPomRoots.mockResolvedValue([]);
+    listRegisteredPoms.mockReturnValue([
+      {
+        manifest: {
+          className: "ProfileMenu",
+          members: [],
+          components: [],
+          tools: [],
+        },
+      },
+    ]);
+
+    const context = await ayme.getPageContext("ProfileMenu");
+
+    expect(context.structure).toBe('- e1 button "Save changes"');
+    expect(context.pomDefinitions).toEqual([
+      {
+        name: "ProfileMenu",
+        children: [],
+        actions: [],
+      },
+    ]);
+    expect(ayme.getPomDefinitions("ProfileMenu")).toEqual({
+      definitions: context.pomDefinitions,
+    });
   });
 
   it("captures rendered state and resolves each current requested ref in order", async () => {
