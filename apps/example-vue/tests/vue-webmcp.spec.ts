@@ -24,6 +24,8 @@ type ListActions = {
 
 const initialToolNames = [
   "get_page_context",
+  "click_page_state_ref",
+  "fill_page_state_ref",
   "ListPage.addItem",
   "ListPage.items.archive",
   "ListPage.items.rename",
@@ -426,7 +428,12 @@ test("publishes collection tools only while a component root is live", async ({
   });
   await expect
     .poll(async () => await recordedToolNames(page))
-    .toEqual(["get_page_context", "ListPage.addItem"]);
+    .toEqual([
+      "get_page_context",
+      "click_page_state_ref",
+      "fill_page_state_ref",
+      "ListPage.addItem",
+    ]);
 
   await executePublishedTool(page, "ListPage.addItem", {
     text: "Restore live component tools",
@@ -496,6 +503,28 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
           names: { type: "array", items: { type: "string" } },
         },
         required: [],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "click_page_state_ref",
+      description:
+        "Click a real element ref from get_page_context. The ref is resolved against a fresh capture before the action.",
+      inputSchema: {
+        type: "object",
+        properties: { ref: { type: "string" } },
+        required: ["ref"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "fill_page_state_ref",
+      description:
+        "Fill a real editable element ref from get_page_context with text. The ref is resolved against a fresh capture before the action.",
+      inputSchema: {
+        type: "object",
+        properties: { ref: { type: "string" }, value: { type: "string" } },
+        required: ["ref", "value"],
         additionalProperties: false,
       },
     },
