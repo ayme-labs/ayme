@@ -15,6 +15,26 @@ function manifestForClass(fixture: string, className: string) {
 }
 
 describe("derivePomManifests", () => {
+  it.each(["privateRootPom", "protectedRootPom"])(
+    "includes an inherited non-public root from %s without exposing other non-public members",
+    (fixture) => {
+      const manifest = manifestFor(fixture);
+
+      expect(manifest?.members).toEqual([
+        {
+          memberName: "actionButton",
+          kind: "locator",
+          access: "field",
+        },
+        {
+          memberName: "root",
+          kind: "locator",
+          access: "field",
+        },
+      ]);
+    }
+  );
+
   it("includes inherited public locator members", () => {
     const manifest = manifestFor("inheritedPom");
 
