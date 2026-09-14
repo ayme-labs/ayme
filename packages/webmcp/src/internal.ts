@@ -15,6 +15,7 @@ export {
   probeRegisteredPomMembers,
   registerCompiledPom,
   subscribeToRegisteredPoms,
+  requireAymeRuntimePage,
 } from "./registry";
 export type {
   PageObjectConstructor,
