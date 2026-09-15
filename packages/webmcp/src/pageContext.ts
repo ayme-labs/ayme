@@ -24,7 +24,7 @@ export type PageContextPayload = {
 export const getPageContextTool = {
   name: "get_page_context",
   description:
-    "Return the current structural page state together with compact POM definitions. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include referenced POMs that are not currently visible; registered tool schemas remain authoritative.",
+    "Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.",
   inputSchema: {
     type: "object",
     properties: {

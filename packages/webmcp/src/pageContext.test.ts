@@ -77,6 +77,21 @@ describe("get_page_context", () => {
     expect(getPomDefinitions).toHaveBeenCalledWith("ProfileMenu");
   });
 
+  it("explains live structure, possible POM transitions, and tool availability", () => {
+    expect(getPageContextTool.description).toContain(
+      "current live structural page state"
+    );
+    expect(getPageContextTool.description).toContain(
+      "not currently visible or callable"
+    );
+    expect(getPageContextTool.description).toContain(
+      "possible next surfaces, not guarantees"
+    );
+    expect(getPageContextTool.description).toContain(
+      "currently registered tool schemas remain authoritative"
+    );
+  });
+
   it("renders child members and action signatures without empty sections", async () => {
     getPomDefinitions.mockReturnValue({
       definitions: [
