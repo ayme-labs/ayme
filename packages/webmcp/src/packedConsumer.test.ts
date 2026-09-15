@@ -70,7 +70,7 @@ it(
         );
         expect(
           manifest.peerDependenciesMeta?.["@playwright/test"]?.optional
-        ).toBe(name === "unplugin-webmcp" ? undefined : true);
+        ).toBe(["webmcp", "webmcp-vue"].includes(name) ? true : undefined);
         // Match pnpm pack's workspace:* publication conversion.
         if (manifest.dependencies?.["@ayme-dev/webmcp"])
           manifest.dependencies["@ayme-dev/webmcp"] = JSON.parse(

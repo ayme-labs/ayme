@@ -35,11 +35,6 @@
   "peerDependencies": {
     "@playwright/test": ">=1.29 <1.63"
   },
-  "peerDependenciesMeta": {
-    "@playwright/test": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#c68a2f92f96b82946c838bfa92a7841ebb03f8a0",
