@@ -1,6 +1,9 @@
 import { computed, ref } from "vue";
 import { createRuntimeSession } from "@ayme-dev/webmcp/internal";
-import { withDemoFeedback, type TraceEntry } from "./withDemoFeedback";
+import {
+  withDemoFeedback,
+  type TraceEntry,
+} from "@ayme-dev/webmcp-inspector/demo";
 
 export function useDemoTrace() {
   const revision = ref(0);

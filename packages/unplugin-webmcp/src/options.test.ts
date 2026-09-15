@@ -24,6 +24,11 @@ it("accepts only a boolean publication policy", () => {
   expectTypeOf({ publish: "yes" }).not.toMatchTypeOf<AymeWebMcpOptions>();
 });
 
+it("accepts only a boolean Inspector policy", () => {
+  expectTypeOf({ inspector: true }).toMatchTypeOf<AymeWebMcpOptions>();
+  expectTypeOf({ inspector: "yes" }).not.toMatchTypeOf<AymeWebMcpOptions>();
+});
+
 it(
   "publishes option types that remain strict without Playwright",
   { timeout: 30_000 },

@@ -14,6 +14,9 @@ const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
 const ACTION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_ACTION_TIMEOUT__";
 const NAVIGATION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__";
 const PUBLISH_DEFINE = "__AYME_WEBMCP_PUBLISH__";
+const INSPECTOR_MODULE_ID = "virtual:ayme-webmcp-inspector";
+const RESOLVED_INSPECTOR_MODULE_ID = `\0${INSPECTOR_MODULE_ID}`;
+const INSPECTOR_PACKAGE_ID = "@ayme-dev/webmcp-inspector";
 const SUPPORTED_PLAYWRIGHT_VERSION = /^1\.62\.\d+(?:[-+].*)?$/;
 
 // Keep published declarations usable without the optional Playwright peer.
@@ -51,6 +54,7 @@ type LoadedPlaywrightConfig = {
 };
 
 export type AymeWebMcpOptions = PomCompilerOptions & {
+  inspector?: boolean;
   playwright?: AymePlaywrightOptions;
   publish?: boolean;
 };
@@ -60,17 +64,55 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
 ) => {
   if (options.publish !== undefined && typeof options.publish !== "boolean")
     throw new TypeError("publish must be a boolean");
+  if (options.inspector !== undefined && typeof options.inspector !== "boolean")
+    throw new TypeError("inspector must be a boolean");
   const transformPom = createPomTransform(options);
 
   return {
     name: "ayme-webmcp",
     enforce: "pre",
+    ...(options.inspector
+      ? {
+          resolveId(id) {
+            if (id === INSPECTOR_PACKAGE_ID)
+              return createRequire(import.meta.url).resolve(
+                INSPECTOR_PACKAGE_ID
+              );
+            return id === INSPECTOR_MODULE_ID
+              ? RESOLVED_INSPECTOR_MODULE_ID
+              : null;
+          },
+          load(id) {
+            return id === RESOLVED_INSPECTOR_MODULE_ID
+              ? "import { mountInspector } from '@ayme-dev/webmcp-inspector'; mountInspector();"
+              : null;
+          },
+        }
+      : {}),
     vite: {
+      ...(options.inspector
+        ? {
+            transformIndexHtml: {
+              order: "pre" as const,
+              handler() {
+                return [
+                  {
+                    tag: "script",
+                    attrs: { type: "module" },
+                    children: `import '${INSPECTOR_MODULE_ID}';`,
+                    injectTo: "head-prepend" as const,
+                  },
+                ];
+              },
+            },
+          }
+        : {}),
       transform: {
-        filter: { id: /\.ts$/ },
+        filter: { id: /\.[cm]?[jt]sx?$/ },
         handler(code, id, transformOptions) {
           if (transformOptions?.ssr) return null;
-          return transformPom(code, id);
+          const transformed = transformPom(code, id);
+          return transformed;
         },
       },
       async config(config) {

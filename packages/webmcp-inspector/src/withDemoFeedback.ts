@@ -1,38 +1,62 @@
 import type { Locator, Page } from "@playwright/test";
-import { isPlaywrightLiteLocator } from "@ayme-dev/playwright-lite/internal";
+import { isAymeLocator } from "@ayme-dev/webmcp/internal";
+import type { TraceEntry } from "./trace";
 
-export type TraceEntry = {
-  operation:
-    "click" | "fill" | "press" | "pressSequentially" | "waitFor" | "expect";
-  locator: string;
-  value?: string;
-  state?: string;
-};
+export type { TraceEntry } from "./trace";
 
-type DemoFeedbackOptions = {
+export type DemoFeedbackOptions = {
   beforeActionMs?: number;
   clickCue?: boolean;
   onTrace: (entry: TraceEntry) => void;
 };
 
-// Private demo decoration. The underlying Page and its locator brands stay intact.
+type FeedbackContext = {
+  listeners: Set<DemoFeedbackOptions["onTrace"]>;
+  options: Omit<DemoFeedbackOptions, "onTrace">;
+  wrappers: WeakMap<object, object>;
+};
+
+const wrappedPages = new WeakMap<
+  object,
+  { context: FeedbackContext; proxy: Page }
+>();
+
+// Diagnostic decoration. The underlying Page and its locator brands stay intact.
 export function withDemoFeedback(
   page: Page,
   options: DemoFeedbackOptions
 ): Page {
-  const wrappers = new WeakMap<object, object>();
+  const existing = wrappedPages.get(page);
+  if (existing) {
+    existing.context.listeners.add(options.onTrace);
+    existing.context.options.beforeActionMs = Math.max(
+      existing.context.options.beforeActionMs ?? 0,
+      options.beforeActionMs ?? 0
+    );
+    existing.context.options.clickCue ||= options.clickCue;
+    return existing.proxy;
+  }
+
+  const context: FeedbackContext = {
+    listeners: new Set([options.onTrace]),
+    options: {
+      beforeActionMs: options.beforeActionMs,
+      clickCue: options.clickCue,
+    },
+    wrappers: new WeakMap(),
+  };
 
   function wrapResult(result: unknown): unknown {
     if (result === page) return wrap(page);
-    if (isPlaywrightLiteLocator(result)) return wrap(result as Locator);
+    if (isAymeLocator(result)) return wrap(result as Locator);
     if (Array.isArray(result)) return result.map(wrapResult);
     if (result instanceof Promise) return result.then(wrapResult);
     return result;
   }
 
   function wrap<T extends Page | Locator>(target: T): T {
-    const existing = wrappers.get(target);
-    if (existing) return existing as T;
+    const cached = context.wrappers.get(target);
+    if (cached) return cached as T;
 
     const proxy = new Proxy(target, {
       get(target, property) {
@@ -41,11 +65,11 @@ export function withDemoFeedback(
 
         return (...args: unknown[]) => {
           const operation = traceOperation(property);
-          if (!isPlaywrightLiteLocator(target) || !operation)
+          if (!isAymeLocator(target) || !operation)
             return wrapResult(member.apply(target, args));
 
           const locator = target as Locator;
-          options.onTrace({
+          const entry: TraceEntry = {
             operation,
             locator: locator.toString(),
             ...(typeof args[0] === "string" && operation !== "expect"
@@ -58,16 +82,16 @@ export function withDemoFeedback(
                     "visible",
                 }
               : {}),
-          });
+          };
+          for (const listener of context.listeners) listener(entry);
 
           return (async () => {
-            // Demo waits are outside the delegated Playwright action's timeout.
             if (operation !== "waitFor" && operation !== "expect") {
-              if (options.beforeActionMs)
+              if (context.options.beforeActionMs)
                 await new Promise((resolve) =>
-                  setTimeout(resolve, options.beforeActionMs)
+                  setTimeout(resolve, context.options.beforeActionMs)
                 );
-              if (operation === "click" && options.clickCue)
+              if (operation === "click" && context.options.clickCue)
                 await showClickCue(locator);
             }
             return wrapResult(member.apply(target, args));
@@ -75,14 +99,17 @@ export function withDemoFeedback(
         };
       },
     });
-    wrappers.set(target, proxy);
+    context.wrappers.set(target, proxy);
     return proxy;
   }
 
-  return wrap(page);
+  const proxy = wrap(page);
+  wrappedPages.set(page, { context, proxy });
+  wrappedPages.set(proxy, { context, proxy });
+  return proxy;
 }
 
-// ponytail: only instrument locator operations used by the demo; extend as needed.
+// ponytail: only instrument locator operations used by the Inspector; extend as needed.
 function traceOperation(
   property: string | symbol
 ): TraceEntry["operation"] | undefined {
@@ -99,7 +126,6 @@ function traceOperation(
 }
 
 async function showClickCue(locator: Locator) {
-  // Advisory cue: click() performs its own fresh resolution and actionability checks.
   await locator.evaluate(async (element) => {
     const document = element.ownerDocument;
     const window = document.defaultView;
@@ -131,8 +157,14 @@ async function showClickCue(locator: Locator) {
         reducedMotion
           ? [{ opacity: 0.9 }, { opacity: 0 }]
           : [
-              { opacity: 0.9, transform: "translate(-50%, -50%) scale(0.95)" },
-              { opacity: 0, transform: "translate(-50%, -50%) scale(1.35)" },
+              {
+                opacity: 0.9,
+                transform: "translate(-50%, -50%) scale(0.95)",
+              },
+              {
+                opacity: 0,
+                transform: "translate(-50%, -50%) scale(1.35)",
+              },
             ],
         {
           duration: 160,
