@@ -739,24 +739,6 @@ code {
   color: #8a5a00;
 }
 
-[data-ayme-highlight] {
-  animation: ayme-highlight-pulse 1.6s ease-in-out infinite;
-  outline: 3px solid #d9a441;
-  outline-offset: 3px;
-  position: relative;
-  z-index: 1;
-}
-
-@keyframes ayme-highlight-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgb(217 164 65 / 0%);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgb(217 164 65 / 18%);
-  }
-}
-
 pre {
   background: #172033;
   border-radius: 0.4rem;
@@ -821,9 +803,5 @@ pre {
 @media (prefers-reduced-motion: reduce) {
   .member-card-interactive {
     transition: none;
-  }
-
-  [data-ayme-highlight] {
-    animation: none;
   }
 }

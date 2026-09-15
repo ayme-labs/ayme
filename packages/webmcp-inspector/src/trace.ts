@@ -7,7 +7,12 @@ export type TraceEntry = {
 };
 
 const trace: TraceEntry[] = [];
+const traceDispatchSubscribers = new Set<(entry: TraceEntry) => void>();
 const subscribers = new Set<() => void>();
+
+export function dispatchInspectorTrace(entry: TraceEntry) {
+  for (const subscriber of traceDispatchSubscribers) subscriber(entry);
+}
 
 export function recordInspectorTrace(entry: TraceEntry) {
   trace.push(entry);
@@ -21,6 +26,13 @@ export function getInspectorTrace(): readonly TraceEntry[] {
 export function resetInspectorTrace() {
   trace.splice(0);
   for (const subscriber of subscribers) subscriber();
+}
+
+export function subscribeToInspectorTraceDispatcher(
+  subscriber: (entry: TraceEntry) => void
+) {
+  traceDispatchSubscribers.add(subscriber);
+  return () => traceDispatchSubscribers.delete(subscriber);
 }
 
 export function subscribeToInspectorTrace(subscriber: () => void) {

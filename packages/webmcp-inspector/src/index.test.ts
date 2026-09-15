@@ -100,9 +100,10 @@ it("adds Inspector tracing to an existing feedback Page without double instrumen
   expect(getInspectorTrace()).toHaveLength(1);
 });
 
-it("stops tracing pages that were instrumented before disposal", async () => {
+it("stops tracing during disposal and resumes once after remount", async () => {
   document.body.innerHTML = "<button>Stop</button>";
   const dispose = installInspectorInstrumentation();
+  disposals.push(dispose);
   class DisposableModel {
     constructor(readonly page: AymePage) {}
   }
@@ -120,6 +121,14 @@ it("stops tracing pages that were instrumented before disposal", async () => {
   expect(getInspectorTrace()).toHaveLength(1);
 
   dispose();
+  await instance.page
+    .getByRole("button", { name: "Stop" })
+    .waitFor({ state: "attached" });
+
+  expect(getInspectorTrace()).toHaveLength(1);
+
+  const remountDispose = installInspectorInstrumentation();
+  disposals.push(remountDispose);
   await instance.page
     .getByRole("button", { name: "Stop" })
     .waitFor({ state: "attached" });
@@ -150,6 +159,24 @@ it("mounts one Inspector in an ordinary open Shadow Root and supports disposal a
     document.body.querySelectorAll("[data-ayme-inspector-host]")
   ).toHaveLength(1);
   remounted.dispose();
+});
+
+it("owns consumer highlight styling for the mounted Inspector", () => {
+  const first = mountInspector();
+  const duplicate = mountInspector();
+  const style = document.head.querySelector(
+    "style[data-ayme-inspector-highlight-style]"
+  );
+
+  expect(
+    document.head.querySelectorAll("style[data-ayme-inspector-highlight-style]")
+  ).toHaveLength(1);
+  expect(style?.textContent).toContain("[data-ayme-highlight]");
+
+  duplicate.dispose();
+  expect(style?.isConnected).toBe(true);
+  first.dispose();
+  expect(style?.isConnected).toBe(false);
 });
 
 it("excludes the Inspector UI from structural page-state capture", async () => {

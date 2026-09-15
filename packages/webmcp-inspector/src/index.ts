@@ -3,28 +3,51 @@ import { installRuntimePageInstrumentation } from "@ayme-dev/webmcp/internal";
 import { createApp } from "vue";
 
 import InspectorApp from "./InspectorApp.vue";
-import { recordInspectorTrace, resetInspectorTrace } from "./trace";
 import {
-  removeDemoFeedbackListener,
-  withDemoFeedback,
-} from "./withDemoFeedback";
+  dispatchInspectorTrace,
+  recordInspectorTrace,
+  resetInspectorTrace,
+  subscribeToInspectorTraceDispatcher,
+} from "./trace";
+import { withDemoFeedback } from "./withDemoFeedback";
+
+const highlightStyleText = `
+[data-ayme-highlight] {
+  animation: ayme-highlight-pulse 1.6s ease-in-out infinite;
+  outline: 3px solid #d9a441;
+  outline-offset: 3px;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes ayme-highlight-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(217 164 65 / 0%);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgb(217 164 65 / 18%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ayme-highlight] {
+    animation: none;
+  }
+}
+`;
 
 export function installInspectorInstrumentation() {
   resetInspectorTrace();
-  const instrumentedPages = new Set<Page>();
-  const onTrace = (entry: Parameters<typeof recordInspectorTrace>[0]) =>
-    recordInspectorTrace(entry);
+  const unsubscribeFromTrace =
+    subscribeToInspectorTraceDispatcher(recordInspectorTrace);
   const uninstall = installRuntimePageInstrumentation((page) => {
-    const instrumentedPage = withDemoFeedback(page as Page, { onTrace });
-    instrumentedPages.add(instrumentedPage);
-    return instrumentedPage;
+    return withDemoFeedback(page as Page, { onTrace: dispatchInspectorTrace });
   });
 
   return () => {
     uninstall();
-    for (const page of instrumentedPages)
-      removeDemoFeedbackListener(page, onTrace);
-    instrumentedPages.clear();
+    unsubscribeFromTrace();
   };
 }
 
@@ -39,6 +62,10 @@ let mounted: MountedInspector | undefined;
 export function mountInspector() {
   if (!mounted) {
     const disposeInstrumentation = installInspectorInstrumentation();
+    const highlightStyle = document.createElement("style");
+    highlightStyle.dataset.aymeInspectorHighlightStyle = "";
+    highlightStyle.textContent = highlightStyleText;
+    document.head.append(highlightStyle);
     const host = document.createElement("div");
     host.dataset.aymeInspectorHost = "";
     host.style.pointerEvents = "none";
@@ -54,6 +81,7 @@ export function mountInspector() {
       disposeUi() {
         app.unmount();
         host.remove();
+        highlightStyle.remove();
       },
     };
   }

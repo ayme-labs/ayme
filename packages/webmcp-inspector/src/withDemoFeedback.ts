@@ -109,13 +109,6 @@ export function withDemoFeedback(
   return proxy;
 }
 
-export function removeDemoFeedbackListener(
-  page: Page,
-  listener: DemoFeedbackOptions["onTrace"]
-) {
-  wrappedPages.get(page)?.context.listeners.delete(listener);
-}
-
 // ponytail: only instrument locator operations used by the Inspector; extend as needed.
 function traceOperation(
   property: string | symbol

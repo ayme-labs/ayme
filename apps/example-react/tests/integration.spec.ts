@@ -18,6 +18,18 @@ test("keeps one Inspector and one trace through StrictMode remounts", async ({
     page.getByRole("heading", { name: "POM inspector" })
   ).toBeVisible();
   await expect(page.locator('[data-pom-class="CounterPage"]')).toHaveCount(1);
+  const incrementMember = page.locator(
+    '[data-pom-class="CounterPage"] [data-member-name="incrementButton"]'
+  );
+  await expect(incrementMember).toBeVisible();
+  await incrementMember.hover();
+  const incrementButton = page.getByRole("button", {
+    name: "Increment",
+    exact: true,
+  });
+  await expect(incrementButton).toHaveAttribute("data-ayme-highlight", "");
+  await expect(incrementButton).toHaveCSS("outline-style", "solid");
+  await expect(incrementButton).toHaveCSS("outline-width", "3px");
 
   await page.getByRole("button", { name: "Call Page Object" }).click();
   const latestTrace = page.getByLabel("Latest browser trace");
