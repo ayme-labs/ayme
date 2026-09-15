@@ -12,6 +12,7 @@ dist/
 .turbo/
 coverage/
 test-results/
+codex-token-runs/
 
 # Local Markdown issue tracker
 /.scratch/
