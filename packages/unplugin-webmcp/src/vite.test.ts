@@ -37,39 +37,36 @@ async function applyPluginConfig(
 }
 
 describe("aymeWebMcp Vite integration", () => {
-  it("injects Inspector startup only when explicitly enabled", async () => {
+  it("injects Inspector startup through an ordered HTML transform only when enabled", async () => {
     const disabled = aymeWebMcp({ inspector: false });
     const enabled = aymeWebMcp({ inspector: true });
     if (Array.isArray(disabled) || Array.isArray(enabled))
       throw new Error("Expected single Vite plugins");
 
-    const config = enabled.config;
-    if (typeof config !== "function")
-      throw new Error("Expected an Inspector entry resolver");
-    await Reflect.apply(config, null, [
-      { root: resolve(__dirname, "fixtures/inspector") },
-      { command: "serve", mode: "test" },
-    ]);
-    const enabledTransform = enabled.transform;
+    const enabledTransform = enabled.transformIndexHtml;
     if (!enabledTransform || typeof enabledTransform === "function")
-      throw new Error("Expected a filtered transform");
-    const transformed = await Reflect.apply(enabledTransform.handler, null, [
-      "console.log('app');",
-      resolve(__dirname, "fixtures/inspector/src/main.ts"),
+      throw new Error("Expected an ordered HTML transform");
+    expect(enabledTransform.order).toBe("pre");
+    expect(
+      Reflect.apply(enabledTransform.handler, null, [
+        "<!doctype html><html><head></head><body></body></html>",
+        {
+          path: "/",
+          filename: resolve(__dirname, "fixtures/inspector/index.html"),
+        },
+      ])
+    ).toEqual([
+      {
+        tag: "script",
+        attrs: {
+          type: "module",
+        },
+        children: "import 'virtual:ayme-webmcp-inspector';",
+        injectTo: "head-prepend",
+      },
     ]);
-    expect(transformed).toMatchObject({
-      code: "import 'virtual:ayme-webmcp-inspector';\nconsole.log('app');",
-    });
 
-    const disabledTransformHook = disabled.transform;
-    if (!disabledTransformHook || typeof disabledTransformHook === "function")
-      throw new Error("Expected a filtered transform");
-    const disabledTransform = await Reflect.apply(
-      disabledTransformHook.handler,
-      null,
-      ["console.log('app');", "/src/main.ts"]
-    );
-    expect(disabledTransform).toBeNull();
+    expect(disabled.transformIndexHtml).toBeUndefined();
   });
 
   it("disables publication by default and enables it explicitly", async () => {

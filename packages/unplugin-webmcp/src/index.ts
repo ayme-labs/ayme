@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -67,7 +67,6 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
   if (options.inspector !== undefined && typeof options.inspector !== "boolean")
     throw new TypeError("inspector must be a boolean");
   const transformPom = createPomTransform(options);
-  const viteEntries = new Set<string>();
 
   return {
     name: "ayme-webmcp",
@@ -91,28 +90,32 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
         }
       : {}),
     vite: {
+      ...(options.inspector
+        ? {
+            transformIndexHtml: {
+              order: "pre" as const,
+              handler() {
+                return [
+                  {
+                    tag: "script",
+                    attrs: { type: "module" },
+                    children: `import '${INSPECTOR_MODULE_ID}';`,
+                    injectTo: "head-prepend" as const,
+                  },
+                ];
+              },
+            },
+          }
+        : {}),
       transform: {
         filter: { id: /\.[cm]?[jt]sx?$/ },
         handler(code, id, transformOptions) {
           if (transformOptions?.ssr) return null;
-          const fileName = id.split("?")[0];
-          const inspectorStartup =
-            options.inspector && fileName && viteEntries.has(fileName)
-              ? `import '${INSPECTOR_MODULE_ID}';\n`
-              : "";
           const transformed = transformPom(code, id);
-          if (!inspectorStartup) return transformed;
-          if (!transformed)
-            return { code: `${inspectorStartup}${code}`, map: null };
-          return {
-            ...transformed,
-            code: `${inspectorStartup}${transformed.code}`,
-          };
+          return transformed;
         },
       },
       async config(config) {
-        if (options.inspector)
-          discoverViteEntries(config.root ?? process.cwd(), viteEntries);
         const exclude = config.optimizeDeps?.exclude ?? [];
         const settings = await resolvePlaywrightSettings(
           options.playwright,
@@ -151,27 +154,6 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
     },
   };
 };
-
-function discoverViteEntries(root: string, entries: Set<string>) {
-  const htmlPath = resolve(root, "index.html");
-  if (!existsSync(htmlPath)) return;
-  const html = readFileSync(htmlPath, "utf8");
-  for (const match of html.matchAll(/<script\b([^>]*)>/gi)) {
-    const attributes = match[1] ?? "";
-    if (!/\btype=["']module["']/i.test(attributes)) continue;
-    const source = attributes
-      .match(/\bsrc=["']([^"']+)["']/i)?.[1]
-      ?.split("?")[0];
-    if (!source || /^[a-z]+:/i.test(source)) continue;
-    try {
-      entries.add(
-        realpathSync(resolve(root, source.replace(/^\//, ""))).split("?")[0]!
-      );
-    } catch {
-      // Vite will report unresolved local HTML entries itself.
-    }
-  }
-}
 
 async function resolvePlaywrightSettings(
   options: AymePlaywrightOptions | undefined,
