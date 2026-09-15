@@ -218,6 +218,23 @@ describe("POM definition catalog", () => {
     registrations.forEach((registration) => registration.dispose());
   });
 
+  it("rejects runtime-invalid POM definition names", async () => {
+    const { definitions } = await setup();
+
+    expect(() => definitions.getPomDefinitions(42 as never)).toThrow(
+      "POM definition names must be strings."
+    );
+    expect(() => definitions.getPomDefinitions(null as never)).toThrow(
+      "POM definition names must be strings."
+    );
+    expect(() => definitions.getPomDefinitions({} as never)).toThrow(
+      "POM definition names must be strings."
+    );
+    expect(() => definitions.getPomDefinitions(true as never)).toThrow(
+      "POM definition names must be strings."
+    );
+  });
+
   it("keeps definition action descriptions and schemas equal to callable tools", async () => {
     const { definitions, registry } = await setup();
     class ToolPage {

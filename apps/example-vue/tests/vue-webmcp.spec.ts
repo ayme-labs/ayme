@@ -222,18 +222,21 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   expect(result.hasPomIdentity).toBe(false);
   const context = result.context;
   expect(context).toBeTruthy();
-  if (!context || typeof context !== "object" || Array.isArray(context)) return;
+  if (!context || typeof context !== "object" || Array.isArray(context))
+    throw new Error("Expected get_page_context to return an object payload.");
   const payload = context as {
     pomDefinitions?: unknown;
     structure?: unknown;
   };
   expect(typeof payload.pomDefinitions).toBe("string");
-  if (typeof payload.pomDefinitions !== "string") return;
+  if (typeof payload.pomDefinitions !== "string")
+    throw new Error("Expected page context POM definitions to be a string.");
   expect(payload.pomDefinitions).toContain("POM ListPage");
   expect(payload.pomDefinitions).toContain("newItemInput");
   const snapshot = payload.structure;
   expect(typeof snapshot).toBe("string");
-  if (typeof snapshot !== "string") return;
+  if (typeof snapshot !== "string")
+    throw new Error("Expected page context structure to be a string.");
 
   const archiveRefs = [
     ...snapshot.matchAll(/- (e\d+) button "Archive item-[12]"/g),

@@ -17,6 +17,9 @@ type DefinitionNode = {
 export function getPomDefinitions(
   ...names: readonly string[]
 ): PomDefinitionsResult {
+  if (!names.every((name) => typeof name === "string"))
+    throw new Error("POM definition names must be strings.");
+
   const index = definitionIndex();
   if (names.length > 0)
     return {
