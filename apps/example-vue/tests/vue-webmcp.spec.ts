@@ -23,7 +23,9 @@ type ListActions = {
 };
 
 const initialToolNames = [
-  "get_page_state",
+  "get_page_context",
+  "click_page_state_ref",
+  "fill_page_state_ref",
   "ListPage.addItem",
   "ListPage.items.archive",
   "ListPage.items.rename",
@@ -118,6 +120,7 @@ test("derives nested object input schemas from POM action types", () => {
       methodName: "archive",
       toolName: "ObjectInputPom.archive",
       description: "Archive with structured options.",
+      authoredDescription: "Archive with structured options.",
       inputSchema: {
         type: "object",
         properties: {
@@ -200,25 +203,40 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   await page.goto("/");
   await expect
     .poll(async () =>
-      (await recordedToolNames(page)).includes("get_page_state")
+      (await recordedToolNames(page)).includes("get_page_context")
     )
     .toBe(true);
 
   const result = await page.evaluate(async () => {
     const tool = (
       document.modelContext as unknown as RecordingDriver
-    ).tools.find((candidate) => candidate.name === "get_page_state");
-    if (!tool) throw new Error("get_page_state WebMCP tool was not published.");
+    ).tools.find((candidate) => candidate.name === "get_page_context");
+    if (!tool)
+      throw new Error("get_page_context WebMCP tool was not published.");
     return {
       hasPomIdentity: "pomId" in tool,
-      snapshot: await tool.execute({}),
+      context: await tool.execute({}),
     };
   });
 
   expect(result.hasPomIdentity).toBe(false);
-  const { snapshot } = result;
+  const context = result.context;
+  expect(context).toBeTruthy();
+  if (!context || typeof context !== "object" || Array.isArray(context))
+    throw new Error("Expected get_page_context to return an object payload.");
+  const payload = context as {
+    pomDefinitions?: unknown;
+    structure?: unknown;
+  };
+  expect(typeof payload.pomDefinitions).toBe("string");
+  if (typeof payload.pomDefinitions !== "string")
+    throw new Error("Expected page context POM definitions to be a string.");
+  expect(payload.pomDefinitions).toContain("POM ListPage");
+  expect(payload.pomDefinitions).toContain("newItemInput");
+  const snapshot = payload.structure;
   expect(typeof snapshot).toBe("string");
-  if (typeof snapshot !== "string") return;
+  if (typeof snapshot !== "string")
+    throw new Error("Expected page context structure to be a string.");
 
   const archiveRefs = [
     ...snapshot.matchAll(/- (e\d+) button "Archive item-[12]"/g),
@@ -413,7 +431,12 @@ test("publishes collection tools only while a component root is live", async ({
   });
   await expect
     .poll(async () => await recordedToolNames(page))
-    .toEqual(["get_page_state", "ListPage.addItem"]);
+    .toEqual([
+      "get_page_context",
+      "click_page_state_ref",
+      "fill_page_state_ref",
+      "ListPage.addItem",
+    ]);
 
   await executePublishedTool(page, "ListPage.addItem", {
     text: "Restore live component tools",
@@ -474,13 +497,37 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
 
   expect(tools).toEqual([
     {
-      name: "get_page_state",
+      name: "get_page_context",
       description:
-        "Return the top-level structural page state, decorated with root POM labels. Real nodes use Playwright refs; synthetic POM roots use observation-only synthetic refs. Capture is limited to the top-level document.",
+        "Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.",
       inputSchema: {
         type: "object",
-        properties: {},
+        properties: {
+          names: { type: "array", items: { type: "string" } },
+        },
         required: [],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "click_page_state_ref",
+      description:
+        "Click a real element ref from get_page_context. The ref is resolved against a fresh capture before the action.",
+      inputSchema: {
+        type: "object",
+        properties: { ref: { type: "string" } },
+        required: ["ref"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "fill_page_state_ref",
+      description:
+        "Fill a real editable element ref from get_page_context with text. The ref is resolved against a fresh capture before the action.",
+      inputSchema: {
+        type: "object",
+        properties: { ref: { type: "string" }, value: { type: "string" } },
+        required: ["ref", "value"],
         additionalProperties: false,
       },
     },

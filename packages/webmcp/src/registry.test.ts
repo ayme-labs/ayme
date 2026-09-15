@@ -55,6 +55,7 @@ const action = (methodName: string) => ({
     additionalProperties: false,
   },
   parameters: [],
+  returnPoms: [],
 });
 
 describe("live Page Object registry", () => {

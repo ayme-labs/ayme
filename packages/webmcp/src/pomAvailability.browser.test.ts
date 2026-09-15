@@ -273,7 +273,12 @@ describe("live Page Object availability", () => {
     try {
       await expect
         .poll(() => [...published.keys()])
-        .toEqual(["get_page_state", "Shell.sidebar.close"]);
+        .toEqual([
+          "get_page_context",
+          "click_page_state_ref",
+          "fill_page_state_ref",
+          "Shell.sidebar.close",
+        ]);
       const rule = document.querySelector<HTMLStyleElement>(
         "#availability-style"
       )!.sheet!.cssRules[0] as CSSStyleRule;
@@ -284,12 +289,21 @@ describe("live Page Object availability", () => {
       window.dispatchEvent(new Event("resize"));
       await expect
         .poll(() => [...published.keys()])
-        .toEqual(["get_page_state"]);
+        .toEqual([
+          "get_page_context",
+          "click_page_state_ref",
+          "fill_page_state_ref",
+        ]);
       rule.style.visibility = "visible";
       window.dispatchEvent(new Event("transitionend"));
       await expect
         .poll(() => [...published.keys()])
-        .toEqual(["get_page_state", "Shell.sidebar.close"]);
+        .toEqual([
+          "get_page_context",
+          "click_page_state_ref",
+          "fill_page_state_ref",
+          "Shell.sidebar.close",
+        ]);
     } finally {
       publication.dispose();
     }
@@ -502,7 +516,12 @@ describe("live Page Object availability", () => {
       const [, state] = await result;
       expect(ticks).toBeGreaterThan(0);
       expect(state.text).toContain("SlowShell.panels[0]");
-      expect(published).toEqual(["get_page_state", "SlowShell.panels.close"]);
+      expect(published).toEqual([
+        "get_page_context",
+        "click_page_state_ref",
+        "fill_page_state_ref",
+        "SlowShell.panels.close",
+      ]);
     } finally {
       clearInterval(timer);
       (await result)[0].dispose();

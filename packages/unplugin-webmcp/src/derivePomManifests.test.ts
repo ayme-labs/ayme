@@ -60,6 +60,7 @@ describe("derivePomManifests", () => {
         methodName: "inheritedTool",
         toolName: "InheritedPom.inheritedTool",
         description: "Use the inherited tool.",
+        authoredDescription: "Use the inherited tool.",
         inputSchema: {
           type: "object",
           properties: {
@@ -249,5 +250,37 @@ describe("derivePomManifests", () => {
     expect(() => manifestFor("ambiguousAnnotatedChildrenPom")).toThrow(
       'WebMCP component member "ambiguousChild" is ambiguous: FirstComponent, SecondComponent.'
     );
+  });
+
+  it("captures class descriptions and Promise-union return POMs", () => {
+    const manifest = manifestFor("returningPom");
+    if (!manifest) throw new Error("The POM manifest was not derived.");
+
+    expect(manifest).toMatchObject({
+      className: "ReturningPom",
+      description: "A page that opens related POMs.",
+      tools: [
+        {
+          methodName: "open",
+          returnPoms: ["FirstReturnPom", "SecondReturnPom"],
+          description:
+            "Open a related POM. Potential return POMs: FirstReturnPom, SecondReturnPom.",
+          authoredDescription: "Open a related POM.",
+        },
+        {
+          methodName: "status",
+          description: "Run status.",
+        },
+      ],
+      components: expect.arrayContaining([
+        expect.objectContaining({
+          className: "FirstReturnPom",
+          description: "The first returned POM.",
+        }),
+        expect.objectContaining({ className: "SecondReturnPom" }),
+      ]),
+    });
+    const status = manifest.tools.find((tool) => tool.methodName === "status");
+    expect(status).not.toHaveProperty("authoredDescription");
   });
 });

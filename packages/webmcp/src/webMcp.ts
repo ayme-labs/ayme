@@ -1,12 +1,17 @@
 import type { RegisteredPomTool } from "./contracts";
-import { getPageStateTool } from "./pageState";
+import { getPageContextTool } from "./pageContext";
+import { clickPageStateRefTool, fillPageStateRefTool } from "./refInteractions";
 import {
   listRegisteredPomTools,
   subscribeToRegisteredPoms,
   probeRegisteredPomMembers,
 } from "./registry";
 
-type PublishedTool = RegisteredPomTool | typeof getPageStateTool;
+type PublishedTool =
+  | RegisteredPomTool
+  | typeof getPageContextTool
+  | typeof clickPageStateRefTool
+  | typeof fillPageStateRefTool;
 
 export type WebMcpDriver = Pick<
   NonNullable<typeof document.modelContext>,
@@ -59,7 +64,9 @@ export async function synchronizeWebMcpTools(
       do {
         syncAgain = false;
         const active = new Map<string, PublishedTool>([
-          [getPageStateTool.name, getPageStateTool],
+          [getPageContextTool.name, getPageContextTool],
+          [clickPageStateRefTool.name, clickPageStateRefTool],
+          [fillPageStateRefTool.name, fillPageStateRefTool],
           ...listRegisteredPomTools().map((tool) => [tool.name, tool] as const),
         ]);
 

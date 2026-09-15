@@ -932,7 +932,7 @@ function errorMessage(error: unknown) {
             <p class="section-note">
               Scoped diagnostic snapshot of the demo application. It is separate
               from the document-wide Page State Session used by
-              <code>get_page_state</code> and consumer ref resolution.
+              <code>get_page_context</code> and consumer ref resolution.
             </p>
           </div>
           <button

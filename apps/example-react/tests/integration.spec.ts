@@ -48,7 +48,14 @@ test("publishes, executes, and removes compiled tools under StrictMode", async (
         document.modelContext as unknown as { tools: Map<string, unknown> }
       ).tools.keys(),
     ]);
-  await expect.poll(names).toEqual(["get_page_state", "CounterPage.increment"]);
+  await expect
+    .poll(names)
+    .toEqual([
+      "get_page_context",
+      "click_page_state_ref",
+      "fill_page_state_ref",
+      "CounterPage.increment",
+    ]);
   await page.evaluate(async () => {
     const driver = document.modelContext as unknown as WebMcpDriver & {
       tools: Map<
@@ -62,10 +69,23 @@ test("publishes, executes, and removes compiled tools under StrictMode", async (
   await page.getByRole("button", { name: "Call Page Object" }).click();
   await expect(page.locator("output")).toHaveText("2");
   await page.getByRole("button", { name: "Unmount counter" }).click();
-  await expect.poll(names).toEqual(["get_page_state"]);
+  await expect
+    .poll(names)
+    .toEqual([
+      "get_page_context",
+      "click_page_state_ref",
+      "fill_page_state_ref",
+    ]);
   await page
     .getByRole("button", { name: "Mount counter", exact: true })
     .click();
-  await expect.poll(names).toEqual(["get_page_state", "CounterPage.increment"]);
+  await expect
+    .poll(names)
+    .toEqual([
+      "get_page_context",
+      "click_page_state_ref",
+      "fill_page_state_ref",
+      "CounterPage.increment",
+    ]);
   await expect(page.locator("output")).toHaveText("0");
 });

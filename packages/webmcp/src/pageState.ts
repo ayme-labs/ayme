@@ -78,6 +78,14 @@ export async function getPageStateForDocument(
   return getPageStateSession(currentDocument).getPageState();
 }
 
+/** Resolve refs through the current document's session and a fresh capture. */
+export async function resolvePageStateRefs(
+  currentDocument: Document,
+  ...refs: AriaRef[]
+): Promise<RefResolution[]> {
+  return getPageStateSession(currentDocument).resolveRefs(refs);
+}
+
 export async function resolvePageStateRef(
   element: Element
 ): Promise<AriaRef | undefined> {
@@ -126,13 +134,13 @@ class PageStateSession {
     return {
       state: Object.freeze({
         text: capture.text,
-        resolve: async (...refs: AriaRef[]) => this.resolve(refs),
+        resolve: async (...refs: AriaRef[]) => this.resolveRefs(refs),
       }),
       refs: this.elementRefs(capture, elements),
     };
   }
 
-  private async resolve(refs: readonly AriaRef[]): Promise<RefResolution[]> {
+  async resolveRefs(refs: readonly AriaRef[]): Promise<RefResolution[]> {
     this.advance(
       await captureCurrentPageState(this.currentRoot(), this.refFactory)
     );

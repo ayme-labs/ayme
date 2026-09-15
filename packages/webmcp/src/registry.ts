@@ -81,6 +81,12 @@ export function configureAymeRuntime(page: Page) {
   browserPage = page;
 }
 
+export function requireAymeRuntimePage(): Page {
+  if (!browserPage)
+    throw new Error("Configure the Ayme browser runtime before interacting.");
+  return browserPage;
+}
+
 export function createAymeRuntime(page?: object) {
   if (runtimeOwner)
     throw new Error("The Ayme runtime already has an active owner.");

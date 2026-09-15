@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import ayme from "./index";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import { createPage } from "./browserPage";
+import { createAymeRuntime } from "./registry";
 
 describe("the public Ayme page state facade in Chromium", () => {
   it("resolves live elements and retargets historical refs through replacements", async () => {
@@ -71,12 +73,40 @@ describe("the public Ayme page state facade in Chromium", () => {
       },
     ]);
   });
+
+  it("clicks and fills real elements addressed by page-state refs", async () => {
+    document.body.innerHTML =
+      '<button id="save">Save changes</button><input id="name" aria-label="Name">';
+    const runtime = createAymeRuntime(createPage());
+    try {
+      const state = await ayme.getPageState();
+      const saveRef = structuralRefFor(state.text, "Save changes");
+      const nameRef = structuralRefFor(state.text, "Name", "textbox");
+      const button = document.querySelector("#save");
+      const input = document.querySelector<HTMLInputElement>("#name");
+      if (!button || !input) throw new Error("Expected the form controls.");
+      let clicks = 0;
+      button.addEventListener("click", () => clicks++);
+
+      await ayme.click(saveRef);
+      await ayme.fill(nameRef, "Updated name");
+
+      expect(clicks).toBe(1);
+      expect(input.value).toBe("Updated name");
+    } finally {
+      runtime.dispose();
+    }
+  });
 });
 
-function structuralRefFor(text: string, accessibleName: string) {
+function structuralRefFor(
+  text: string,
+  accessibleName: string,
+  role = "button"
+) {
   const escapedName = accessibleName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const ref = text.match(
-    new RegExp(`(?:^|\\s)(e\\d+) button "${escapedName}"`)
+    new RegExp(`(?:^|\\s)(e\\d+) ${role} "${escapedName}"`)
   )?.[1];
   if (!ref) throw new Error(`Expected a Structural Ref for ${accessibleName}.`);
   return AriaRefSchema.parse(ref);
