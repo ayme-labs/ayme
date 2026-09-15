@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, reactive, ref, shallowRef } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  shallowRef,
+} from "vue";
 
 import type { TraceEntry } from "./withDemoFeedback";
 import type {
@@ -12,6 +20,8 @@ import {
   listRegisteredPomTools,
   type RegisteredPom,
 } from "@ayme-dev/webmcp/internal";
+
+import { AYME_LOGO_FILL, AYME_LOGO_PATH, AYME_LOGO_VIEWBOX } from "./aymeLogo";
 
 type ToolArguments = Record<string, JsonValue>;
 
@@ -60,10 +70,126 @@ const props = defineProps<{
   pinApplicationModelTarget: (path: string) => void;
 }>();
 
+const FAB_SIZE = 48;
+const FAB_MARGIN = 16;
+const DRAG_THRESHOLD = 4;
+
 const activeTab = ref<"app-model" | "page-state">("app-model");
+const isCollapsed = ref(false);
+const fabButton = ref<HTMLButtonElement>();
+const collapseButton = ref<HTMLButtonElement>();
+const fabPosition = ref<{ left: number; top: number }>();
+const fabWasDragged = ref(false);
+const dragState = ref<{
+  pointerId: number;
+  startX: number;
+  startY: number;
+  startLeft: number;
+  startTop: number;
+  dragging: boolean;
+}>();
 const executionHistory = shallowRef<ToolExecution[]>([]);
 const toolInputValues = reactive<Record<string, ToolArguments>>({});
 let nextExecutionId = 1;
+
+const fabStyle = computed(() => {
+  if (!fabPosition.value)
+    return { bottom: `${FAB_MARGIN}px`, right: `${FAB_MARGIN}px` };
+  return {
+    left: `${fabPosition.value.left}px`,
+    top: `${fabPosition.value.top}px`,
+  };
+});
+
+function clampFabPosition(left: number, top: number) {
+  const maxLeft = Math.max(
+    FAB_MARGIN,
+    window.innerWidth - FAB_SIZE - FAB_MARGIN
+  );
+  const maxTop = Math.max(
+    FAB_MARGIN,
+    window.innerHeight - FAB_SIZE - FAB_MARGIN
+  );
+  return {
+    left: Math.min(Math.max(left, FAB_MARGIN), maxLeft),
+    top: Math.min(Math.max(top, FAB_MARGIN), maxTop),
+  };
+}
+
+function clampCurrentFabPosition() {
+  if (fabPosition.value)
+    fabPosition.value = clampFabPosition(
+      fabPosition.value.left,
+      fabPosition.value.top
+    );
+}
+
+function collapseInspector() {
+  isCollapsed.value = true;
+  void nextTick(() => fabButton.value?.focus());
+}
+
+function expandInspector() {
+  if (fabWasDragged.value) {
+    fabWasDragged.value = false;
+    return;
+  }
+  isCollapsed.value = false;
+  void nextTick(() => collapseButton.value?.focus());
+}
+
+function startFabDrag(event: PointerEvent) {
+  const target = event.currentTarget;
+  if (!(target instanceof HTMLElement)) return;
+
+  fabWasDragged.value = false;
+  const rect = target.getBoundingClientRect();
+  fabPosition.value = { left: rect.left, top: rect.top };
+  dragState.value = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    startLeft: rect.left,
+    startTop: rect.top,
+    dragging: false,
+  };
+  target.setPointerCapture(event.pointerId);
+}
+
+function moveFab(event: PointerEvent) {
+  const state = dragState.value;
+  if (!state || event.pointerId !== state.pointerId) return;
+
+  const deltaX = event.clientX - state.startX;
+  const deltaY = event.clientY - state.startY;
+  if (!state.dragging && Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD) return;
+
+  state.dragging = true;
+  fabWasDragged.value = true;
+  event.preventDefault();
+  fabPosition.value = clampFabPosition(
+    state.startLeft + deltaX,
+    state.startTop + deltaY
+  );
+}
+
+function endFabDrag(event: PointerEvent) {
+  const state = dragState.value;
+  if (!state || event.pointerId !== state.pointerId) return;
+
+  const target = event.currentTarget;
+  if (
+    target instanceof HTMLElement &&
+    target.hasPointerCapture(event.pointerId)
+  )
+    target.releasePointerCapture(event.pointerId);
+  dragState.value = undefined;
+}
+
+onMounted(() => window.addEventListener("resize", clampCurrentFabPosition));
+onBeforeUnmount(() =>
+  window.removeEventListener("resize", clampCurrentFabPosition)
+);
 
 const availablePomTools = computed(() => {
   if (!props.registeredPoms.length) return new Map<string, RegisteredPomTool>();
@@ -475,13 +601,49 @@ function errorMessage(error: unknown) {
 </script>
 
 <template>
-  <aside class="debug-panel" aria-label="Ayme debug utilities">
+  <button
+    v-if="isCollapsed"
+    ref="fabButton"
+    class="inspector-fab"
+    type="button"
+    aria-label="Open Ayme POM inspector"
+    aria-expanded="false"
+    :style="fabStyle"
+    @pointerdown="startFabDrag"
+    @pointermove="moveFab"
+    @pointerup="endFabDrag"
+    @pointercancel="endFabDrag"
+    @click="expandInspector"
+  >
+    <svg
+      class="ayme-logo"
+      :viewBox="AYME_LOGO_VIEWBOX"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path :d="AYME_LOGO_PATH" :fill="AYME_LOGO_FILL" />
+    </svg>
+  </button>
+
+  <aside v-else class="debug-panel" aria-label="Ayme debug utilities">
     <div class="panel-heading">
       <div>
         <p class="eyebrow">Ayme debug utilities</p>
         <h2>POM inspector</h2>
       </div>
-      <span class="item-count">{{ registeredPoms.length }} POMs</span>
+      <div class="panel-actions">
+        <span class="item-count">{{ registeredPoms.length }} POMs</span>
+        <button
+          ref="collapseButton"
+          class="collapse-button"
+          type="button"
+          aria-label="Collapse inspector"
+          aria-expanded="true"
+          @click="collapseInspector"
+        >
+          −
+        </button>
+      </div>
     </div>
 
     <div class="panel-tabs" role="tablist" aria-label="Inspector views">

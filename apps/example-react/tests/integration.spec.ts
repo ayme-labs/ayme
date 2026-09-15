@@ -46,6 +46,49 @@ test("keeps one Inspector and one trace through StrictMode remounts", async ({
   await expect(inspectorHost).toHaveCount(1);
 });
 
+test("collapses to a draggable Ayme logo FAB", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Collapse inspector" }).click();
+
+  const fab = page.getByRole("button", {
+    name: "Open Ayme POM inspector",
+  });
+  await expect(fab).toBeVisible();
+  await expect(fab.locator("svg")).toHaveAttribute("viewBox", "0 0 165.84 136");
+  await expect(fab.locator("svg path")).toHaveAttribute("fill", "#6936F1");
+  await expect(fab.locator("svg path")).toHaveAttribute(
+    "d",
+    /M120\.57 131\.59/
+  );
+
+  const before = await fab.boundingBox();
+  expect(before).not.toBeNull();
+  if (!before) return;
+
+  await page.mouse.move(
+    before.x + before.width / 2,
+    before.y + before.height / 2
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    before.x + before.width / 2 - 80,
+    before.y + before.height / 2 - 40,
+    { steps: 6 }
+  );
+  await page.mouse.up();
+
+  const after = await fab.boundingBox();
+  expect(after).not.toBeNull();
+  if (!after) return;
+  expect(after.x).toBeLessThan(before.x - 20);
+  expect(after.y).toBeLessThan(before.y - 10);
+
+  await fab.click();
+  await expect(
+    page.getByRole("heading", { name: "POM inspector" })
+  ).toBeVisible();
+});
+
 test("publishes, executes, and removes compiled tools under StrictMode", async ({
   page,
 }) => {
