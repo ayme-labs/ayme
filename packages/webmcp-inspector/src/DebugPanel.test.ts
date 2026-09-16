@@ -69,4 +69,43 @@ describe("DebugPanel", () => {
     expect(activeExecute).toHaveBeenCalledOnce();
     expect(inactiveExecute).not.toHaveBeenCalled();
   });
+
+  it("collapses to an Ayme logo FAB and restores the panel", async () => {
+    const wrapper = mount(DebugPanel, {
+      props: {
+        pageState: undefined,
+        pageStateCapturedAt: undefined,
+        pageStateError: undefined,
+        pageStateLoading: false,
+        applicationModelSelectionPath: undefined,
+        refreshPageState: async () => {},
+        registeredPoms: [],
+        refreshPomMembers: async () => {},
+        resetTrace: () => {},
+        trace: [],
+        webMcpStatus: "ready",
+        previewApplicationModelTarget: () => {},
+        clearApplicationModelPreview: () => {},
+        pinApplicationModelTarget: () => {},
+      },
+    });
+
+    await wrapper
+      .get('button[aria-label="Collapse inspector"]')
+      .trigger("click");
+
+    expect(
+      wrapper.find('aside[aria-label="Ayme debug utilities"]').exists()
+    ).toBe(false);
+    const fab = wrapper.get('button[aria-label="Open Ayme POM inspector"]');
+    expect(fab.get("svg").attributes("viewBox")).toBe("0 0 165.84 136");
+    expect(fab.get("svg path").attributes("fill")).toBe("#6936F1");
+    expect(fab.get("svg path").attributes("d")).toContain("M120.57 131.59");
+
+    await fab.trigger("click");
+
+    expect(
+      wrapper.get('aside[aria-label="Ayme debug utilities"]')
+    ).toBeTruthy();
+  });
 });

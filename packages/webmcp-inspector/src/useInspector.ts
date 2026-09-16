@@ -10,7 +10,7 @@ import {
   subscribeToRegisteredPoms,
 } from "@ayme-dev/webmcp/internal";
 
-export function useDemoInspector() {
+export function useInspector() {
   const registeredPoms = ref<RegisteredPom[]>([]);
   const pageState = ref<string>();
   const pageStateCapturedAt = ref<string>();
@@ -95,8 +95,10 @@ export function useDemoInspector() {
       records?.length &&
       records.every(
         (record) =>
-          record.type === "attributes" &&
-          record.attributeName === "data-ayme-highlight"
+          (record.type === "attributes" &&
+            record.attributeName === "data-ayme-highlight") ||
+          (record.target instanceof Element &&
+            record.target.matches("[data-ayme-inspector-host]"))
       )
     )
       return;
@@ -119,10 +121,7 @@ export function useDemoInspector() {
     pageStateError.value = undefined;
 
     try {
-      const demoRoot = document.querySelector(
-        '[aria-label="Demo application"]'
-      );
-      const snapshot = await capturePageState(demoRoot ?? document.body);
+      const snapshot = await capturePageState(document.body);
       if (unmounted || requestId !== pageStateRequestId) return;
       pageState.value = snapshot;
       pageStateCapturedAt.value = new Date().toLocaleTimeString([], {

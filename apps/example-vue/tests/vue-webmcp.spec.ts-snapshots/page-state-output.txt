@@ -1,32 +1,40 @@
-- e1 region "Demo application":
-  - e2:
-    - e3:
-      - e4 paragraph: Demo application
-      - e5 heading "My list" [level=2]
-    - e6: 2 active
-  - e7 form "Add a list item":
-    - e8: New item
-    - e9:
-      - e10 textbox "New item":
-        - /placeholder: e.g. Send the project update
-      - e11 button "Add item" [cursor=pointer]
-  - e12 region:
-    - e13:
-      - e14 heading "Active items" [level=3]
-      - e15: 2
-    - e16 list:
-      - e17 ListPage.items[0]:
-        - e18:
-          - e19 button "Prepare launch notes"
-          - e20 code: item-1
-        - e21 button "Archive item-1" [cursor=pointer]: Archive
-      - e22 ListPage.items[1]:
+- e3:
+  - e4 banner:
+    - e5:
+      - e6 paragraph: Ayme browser experiment
+      - e7 heading "List app + WebMCP inspector" [level=1]
+      - e8 paragraph: "Operate the list directly on the left, or invoke the same generated POM tools from the debug console on the right. Hover an application model member to preview its live element, or click to select it."
+    - e9: DOM-backed browser runtime
+  - e10 main:
+    - e11 region "Demo application":
+      - e12:
+        - e13:
+          - e14 paragraph: Demo application
+          - e15 heading "My list" [level=2]
+        - e16: 2 active
+      - e17 form "Add a list item":
+        - e18: New item
+        - e19:
+          - e20 textbox "New item":
+            - /placeholder: e.g. Send the project update
+          - e21 button "Add item" [cursor=pointer]
+      - e22 region:
         - e23:
-          - e24 button "Review onboarding flow"
-          - e25 code: item-2
-        - e26 button "Archive item-2" [cursor=pointer]: Archive
-  - e27 region:
-    - e28:
-      - e29 heading "Archived items" [level=3]
-      - e30: 0
-    - e31 paragraph: Archived items will appear here.
+          - e24 heading "Active items" [level=3]
+          - e25: 2
+        - e26 list:
+          - e27 ListPage.items[0]:
+            - e28:
+              - e29 button "Prepare launch notes"
+              - e30 code: item-1
+            - e31 button "Archive item-1" [cursor=pointer]: Archive
+          - e32 ListPage.items[1]:
+            - e33:
+              - e34 button "Review onboarding flow"
+              - e35 code: item-2
+            - e36 button "Archive item-2" [cursor=pointer]: Archive
+      - e37 region:
+        - e38:
+          - e39 heading "Archived items" [level=3]
+          - e40: 0
+        - e41 paragraph: Archived items will appear here.

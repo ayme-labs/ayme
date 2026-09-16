@@ -342,7 +342,7 @@ async function captureCurrentPageState(
       registration.element.ownerDocument === root.ownerDocument &&
       root.contains(registration.element)
   );
-  const capture = captureAriaSnapshot(root);
+  const capture = captureWithoutInspector(root);
   const absentRoots = new Set(structure.absentElements);
   const presentRoots = new Set(registrations.map(({ element }) => element));
   const excludedRefs = new Set<StructuralAriaRef>();
@@ -474,6 +474,33 @@ async function captureCurrentPageState(
   }
 
   return { text, tree: currentTree, elementsByRef };
+}
+
+function captureWithoutInspector(root: Element) {
+  const inspectorHosts = [
+    ...(root.matches("[data-ayme-inspector-host]") ? [root] : []),
+    ...root.querySelectorAll("[data-ayme-inspector-host]"),
+  ];
+  const previousValues = inspectorHosts.map((host) => ({
+    display: (host as HTMLElement).style.getPropertyValue("display"),
+    priority: (host as HTMLElement).style.getPropertyPriority("display"),
+  }));
+  for (const host of inspectorHosts)
+    (host as HTMLElement).style.setProperty("display", "none", "important");
+  try {
+    return captureAriaSnapshot(root);
+  } finally {
+    inspectorHosts.forEach((host, index) => {
+      const previous = previousValues[index]!;
+      if (previous.display)
+        (host as HTMLElement).style.setProperty(
+          "display",
+          previous.display,
+          previous.priority
+        );
+      else (host as HTMLElement).style.removeProperty("display");
+    });
+  }
 }
 
 function coalesceByElement(

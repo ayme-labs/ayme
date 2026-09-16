@@ -1,237 +1,40 @@
-- e34:
-  - e35 banner:
-    - e36:
-      - e37 paragraph: Ayme browser experiment
-      - e38 heading "List app + WebMCP inspector" [level=1]
-      - e39 paragraph: "Operate the list directly on the left, or invoke the same generated POM tools from the debug console on the right. Hover an application model member to preview its live element, or click to select it."
-    - e40: DOM-backed browser runtime
-  - e41 main:
-    - e1 region "Demo application":
-      - e2:
-        - e3:
-          - e4 paragraph: Demo application
-          - e5 heading "My list" [level=2]
-        - e6: 2 active
-      - e7 form "Add a list item":
-        - e8: New item
-        - e9:
-          - e10 textbox "New item":
-            - /placeholder: e.g. Send the project update
-          - e11 button "Add item" [cursor=pointer]
-      - e12 region:
+- e3:
+  - e4 banner:
+    - e5:
+      - e6 paragraph: Ayme browser experiment
+      - e7 heading "List app + WebMCP inspector" [level=1]
+      - e8 paragraph: "Operate the list directly on the left, or invoke the same generated POM tools from the debug console on the right. Hover an application model member to preview its live element, or click to select it."
+    - e9: DOM-backed browser runtime
+  - e10 main:
+    - e11 region "Demo application":
+      - e12:
         - e13:
-          - e14 heading "Active items" [level=3]
-          - e15: 2
-        - e16 list:
-          - e17 ListPage.items[0]:
-            - e18:
-              - e19 button "Prepare launch notes"
-              - e20 code: item-1
-            - e21 button "Archive item-1" [cursor=pointer]: Archive
-          - e22 ListPage.items[1]:
-            - e23:
-              - e24 button "Review onboarding flow"
-              - e25 code: item-2
-            - e26 button "Archive item-2" [cursor=pointer]: Archive
-      - e27 region:
-        - e28:
-          - e29 heading "Archived items" [level=3]
-          - e30: 0
-        - e31 paragraph: Archived items will appear here.
-    - e42 complementary "Ayme debug utilities":
-      - e43:
-        - e44:
-          - e45 paragraph: Ayme debug utilities
-          - e46 heading "POM inspector" [level=2]
-        - e47: 1 POMs
-      - e48 tablist "Inspector views":
-        - e49 tab "App Model" [selected] [cursor=pointer]
-        - e50 tab "Page State" [cursor=pointer]
-      - e51 tabpanel "App Model":
-        - e52 region:
-          - e53:
-            - e54 heading "Runtime" [level=3]
-            - e55: Ready
-          - e56:
-            - e57:
-              - e58 term: Recognized POMs
-              - e59 definition: 1
-            - e60:
-              - e61 term: Browser runtime
-              - e62 definition: DOM-backed
-          - e63 paragraph: Registered 6 WebMCP tools and watching for changes.
-        - e64 region:
-          - e65:
-            - e66:
-              - e67 heading "Recognized POM classes" [level=3]
-              - e68 paragraph: Hover a member to preview its live element; click to select or toggle it. Runtime instances are available below each card.
-            - e69 button "Refresh probes" [cursor=pointer]
-          - e70 article:
-            - e71:
-              - e72:
-                - e73 code: ListPage
-                - e74 paragraph: Page POM
-              - e75: 4 members · 1 actions
-            - e76:
-              - e77 heading "Members" [level=4]
-              - e78: 4
-            - e79:
-              - e80 button "newItemInput field · locator present 1 match":
-                - e81:
-                  - e82:
-                    - e83 code: newItemInput
-                    - e84 paragraph: field · locator
-                  - e85: present
-                - e86 paragraph: 1 match
-              - e87 button "addItemButton field · locator present 1 match":
-                - e88:
-                  - e89:
-                    - e90 code: addItemButton
-                    - e91 paragraph: field · locator
-                  - e92: present
-                - e93 paragraph: 1 match
-              - e94 button "archiveDialog ArchiveDialog · field absent 0 matches":
-                - e95:
-                  - e96:
-                    - e97 code: archiveDialog
-                    - e98 paragraph: ArchiveDialog · field
-                  - e99: absent
-                - e100 paragraph: 0 matches
-              - e101 button "items ListItem[] · method present 2 components":
-                - e102:
-                  - e103:
-                    - e104 code: items
-                    - e105 paragraph: "ListItem[] · method"
-                  - e106: present
-                - e107 paragraph: 2 components
-            - e108:
-              - e109 heading "Actions" [level=4]
-              - e110: 1
-            - e112:
-              - e113:
-                - e114 code: ListPage.addItem
-                - e115: WebMCP available
-              - e116 paragraph: Add a new item to the list.
-              - e117:
-                - e119:
-                  - e120: text
-                  - e121 textbox "text"
-                - e122 button "Invoke tool" [cursor=pointer]
-            - e123 group:
-              - e124 "Instances 1 instance" [cursor=pointer]:
-                - e125: Instances
-                - e126: 1 instance
-          - e127 article:
-            - e128:
-              - e129:
-                - e130 code: ArchiveDialog
-                - e131 paragraph: Component POM
-              - e132: 2 members · 0 actions
-            - e133:
-              - e134 heading "Members" [level=4]
-              - e135: 2
-            - e136:
-              - e137 button "root field · locator absent 0/1 instances have a match":
-                - e138:
-                  - e139:
-                    - e140 code: root
-                    - e141 paragraph: field · locator
-                  - e142: absent
-                - e143 paragraph: 0/1 instances have a match
-              - e144 button "confirmArchiveButton field · locator absent 0/1 instances have a match":
-                - e145:
-                  - e146:
-                    - e147 code: confirmArchiveButton
-                    - e148 paragraph: field · locator
-                  - e149: absent
-                - e150 paragraph: 0/1 instances have a match
-            - e151:
-              - e152 heading "Actions" [level=4]
-              - e153: 0
-            - e154 paragraph: This POM has no registered actions.
-            - e155 group:
-              - e156 "Instances 1 instance · 0/1 present" [cursor=pointer]:
-                - e157: Instances
-                - e158: 1 instance · 0/1 present
-          - e159 article:
-            - e160:
-              - e161:
-                - e162 code: ListItem
-                - e163 paragraph: Component POM
-              - e164: 4 members · 2 actions
-            - e165:
-              - e166 heading "Members" [level=4]
-              - e167: 4
-            - e168:
-              - e169 button "root field · locator present 2/2 instances have a match":
-                - e170:
-                  - e171:
-                    - e172 code: root
-                    - e173 paragraph: field · locator
-                  - e174: present
-                - e175 paragraph: 2/2 instances have a match
-              - e176 button "archiveButton field · locator present 2/2 instances have a match":
-                - e177:
-                  - e178:
-                    - e179 code: archiveButton
-                    - e180 paragraph: field · locator
-                  - e181: present
-                - e182 paragraph: 2/2 instances have a match
-              - e183 button "nameButton field · locator present 2/2 instances have a match":
-                - e184:
-                  - e185:
-                    - e186 code: nameButton
-                    - e187 paragraph: field · locator
-                  - e188: present
-                - e189 paragraph: 2/2 instances have a match
-              - e190 button "nameInput field · locator absent 0/2 instances have a match":
-                - e191:
-                  - e192:
-                    - e193 code: nameInput
-                    - e194 paragraph: field · locator
-                  - e195: absent
-                - e196 paragraph: 0/2 instances have a match
-            - e197:
-              - e198 heading "Actions" [level=4]
-              - e199: 2
-            - e200:
-              - e201:
-                - e202:
-                  - e203 code: ListPage.items.archive
-                  - e204: WebMCP available
-                - e205 paragraph: Archive this list item.
-                - e206:
-                  - e207:
-                    - e208:
-                      - e209: index
-                      - e210 spinbutton "index": 0
-                    - e211:
-                      - e212: args
-                      - e213 textbox "args": "{}"
-                  - e214 button "Invoke tool" [cursor=pointer]
-              - e215:
-                - e216:
-                  - e217 code: ListPage.items.rename
-                  - e218: WebMCP available
-                - e219 paragraph: Rename this list item.
-                - e220:
-                  - e221:
-                    - e222:
-                      - e223: index
-                      - e224 spinbutton "index": 0
-                    - e225:
-                      - e226: args
-                      - e227 textbox "args": "{}"
-                  - e228 button "Invoke tool" [cursor=pointer]
-            - e229 group:
-              - e230 "Instances 2 instances · 2/2 present" [cursor=pointer]:
-                - e231: Instances
-                - e232: 2 instances · 2/2 present
-        - e233 region:
-          - e234:
-            - e235 heading "Recent executions" [level=3]
-            - e236 button "Clear" [disabled]
-          - e237 paragraph: Invoke a tool to see its execution here.
-        - e238 region:
-          - e240 heading "Latest browser trace" [level=3]
-          - e241 paragraph: No browser POM operations yet.
+          - e14 paragraph: Demo application
+          - e15 heading "My list" [level=2]
+        - e16: 2 active
+      - e17 form "Add a list item":
+        - e18: New item
+        - e19:
+          - e20 textbox "New item":
+            - /placeholder: e.g. Send the project update
+          - e21 button "Add item" [cursor=pointer]
+      - e22 region:
+        - e23:
+          - e24 heading "Active items" [level=3]
+          - e25: 2
+        - e26 list:
+          - e27 ListPage.items[0]:
+            - e28:
+              - e29 button "Prepare launch notes"
+              - e30 code: item-1
+            - e31 button "Archive item-1" [cursor=pointer]: Archive
+          - e32 ListPage.items[1]:
+            - e33:
+              - e34 button "Review onboarding flow"
+              - e35 code: item-2
+            - e36 button "Archive item-2" [cursor=pointer]: Archive
+      - e37 region:
+        - e38:
+          - e39 heading "Archived items" [level=3]
+          - e40: 0
+        - e41 paragraph: Archived items will appear here.
