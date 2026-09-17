@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { useAymeWebMcp, usePageObject } from "@ayme-dev/webmcp-vue";
 import { ListPage } from "../playwright/pom/ListPage";
+import { useDemoRelay } from "./ayme/useDemoRelay";
 import { useDemoTrace } from "./ayme/useDemoTrace";
 import ListDemo from "./demo/ListDemo.vue";
 
 // Ordinary apps call useAymeWebMcp() without options. This demo adds tracing and pacing.
 const { page } = useDemoTrace();
-useAymeWebMcp({ page });
+const { publicationStatus } = useAymeWebMcp({ page });
+useDemoRelay(publicationStatus);
 usePageObject(ListPage);
 </script>
 
