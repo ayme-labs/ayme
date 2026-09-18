@@ -1,4 +1,4 @@
-# ayme-webmcp
+# ayme
 
 ## Framework integrations
 
