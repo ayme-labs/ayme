@@ -1,5 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type ListItem = {
   id: string;
@@ -82,95 +93,106 @@ function confirmArchive() {
 </script>
 
 <template>
-  <section class="demo-panel" aria-label="Demo application">
-    <div class="panel-heading">
-      <div>
-        <p class="eyebrow">Demo application</p>
-        <h2>My list</h2>
-      </div>
-      <span class="item-count">{{ activeItems.length }} active</span>
-    </div>
-
-    <form
-      class="add-item-form"
-      aria-label="Add a list item"
-      @submit.prevent="addItem"
-    >
-      <label for="new-item">New item</label>
-      <div class="form-row">
-        <input
-          id="new-item"
-          v-model="newItemText"
-          autocomplete="off"
-          placeholder="e.g. Send the project update"
-        />
-        <button class="primary-button" type="submit">Add item</button>
-      </div>
-      <p v-if="inputError" class="form-error" role="alert">{{ inputError }}</p>
-    </form>
-
-    <section class="list-card" aria-labelledby="active-items-heading">
-      <div class="section-heading">
-        <h3 id="active-items-heading">Active items</h3>
-        <span>{{ activeItems.length }}</span>
-      </div>
-      <ul v-if="activeItems.length" class="item-list">
-        <li v-for="item in activeItems" :key="item.id" class="item-row">
-          <div>
-            <input
-              v-if="editingItemId === item.id"
-              v-model="editingItemText"
-              aria-label="Item name"
-              @blur="renameItem(item.id)"
-              @keyup.enter="renameItem(item.id)"
-            />
-            <button
-              v-else
-              class="item-name-button"
-              data-action="rename"
-              type="button"
-              @click="startRenaming(item.id)"
-            >
-              {{ item.text }}
-            </button>
-            <code>{{ item.id }}</code>
-          </div>
-          <button
-            data-action="archive"
-            type="button"
-            :aria-label="`Archive ${item.id}`"
-            @click="openArchive(item.id)"
-          >
-            Archive
-          </button>
-        </li>
-      </ul>
-      <p v-else class="empty-state">No active items. Add one above.</p>
-    </section>
-
-    <section
-      class="list-card archived-card"
-      aria-labelledby="archived-items-heading"
-    >
-      <div class="section-heading">
-        <h3 id="archived-items-heading">Archived items</h3>
-        <span>{{ archivedItems.length }}</span>
-      </div>
-      <ul v-if="archivedItems.length" class="item-list">
-        <li
-          v-for="item in archivedItems"
-          :key="item.id"
-          class="item-row archived-row"
+  <section aria-label="Demo application">
+    <Card>
+      <CardHeader>
+        <p
+          class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
         >
-          <div>
-            <strong>{{ item.text }}</strong>
-            <code>{{ item.id }}</code>
+          Demo application
+        </p>
+        <CardTitle as="h2" class="text-xl tracking-tight">My list</CardTitle>
+        <CardAction>
+          <Badge variant="secondary">{{ activeItems.length }} active</Badge>
+        </CardAction>
+      </CardHeader>
+
+      <CardContent>
+        <form aria-label="Add a list item" @submit.prevent="addItem">
+          <Label for="new-item">New item</Label>
+          <div class="mt-2 flex flex-col gap-2 sm:flex-row">
+            <Input
+              id="new-item"
+              v-model="newItemText"
+              autocomplete="off"
+              placeholder="e.g. Send the project update"
+              class="sm:flex-1"
+            />
+            <Button type="submit">Add item</Button>
           </div>
-          <span class="archived-label">Archived</span>
-        </li>
-      </ul>
-      <p v-else class="empty-state">Archived items will appear here.</p>
-    </section>
+          <p
+            v-if="inputError"
+            class="mt-2 text-sm text-destructive"
+            role="alert"
+          >
+            {{ inputError }}
+          </p>
+        </form>
+
+        <section class="list-card" aria-labelledby="active-items-heading">
+          <div class="section-heading">
+            <h3 id="active-items-heading">Active items</h3>
+            <span>{{ activeItems.length }}</span>
+          </div>
+          <ul v-if="activeItems.length" class="item-list">
+            <li v-for="item in activeItems" :key="item.id" class="item-row">
+              <div>
+                <input
+                  v-if="editingItemId === item.id"
+                  v-model="editingItemText"
+                  aria-label="Item name"
+                  @blur="renameItem(item.id)"
+                  @keyup.enter="renameItem(item.id)"
+                />
+                <button
+                  v-else
+                  class="item-name-button"
+                  data-action="rename"
+                  type="button"
+                  @click="startRenaming(item.id)"
+                >
+                  {{ item.text }}
+                </button>
+                <code>{{ item.id }}</code>
+              </div>
+              <button
+                data-action="archive"
+                type="button"
+                :aria-label="`Archive ${item.id}`"
+                @click="openArchive(item.id)"
+              >
+                Archive
+              </button>
+            </li>
+          </ul>
+          <p v-else class="empty-state">No active items. Add one above.</p>
+        </section>
+
+        <section
+          class="list-card archived-card"
+          aria-labelledby="archived-items-heading"
+        >
+          <div class="section-heading">
+            <h3 id="archived-items-heading">Archived items</h3>
+            <span>{{ archivedItems.length }}</span>
+          </div>
+          <ul v-if="archivedItems.length" class="item-list">
+            <li
+              v-for="item in archivedItems"
+              :key="item.id"
+              class="item-row archived-row"
+            >
+              <div>
+                <strong>{{ item.text }}</strong>
+                <code>{{ item.id }}</code>
+              </div>
+              <span class="archived-label">Archived</span>
+            </li>
+          </ul>
+          <p v-else class="empty-state">Archived items will appear here.</p>
+        </section>
+      </CardContent>
+    </Card>
 
     <div v-if="archiveTarget" class="dialog-backdrop">
       <div
