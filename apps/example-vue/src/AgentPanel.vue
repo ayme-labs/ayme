@@ -306,7 +306,7 @@ watch(connected, (isConnected) => {
               Back
             </Button>
             <Button
-              v-if="step < 3"
+              v-if="step < 3 || (step === 3 && connected)"
               data-action="wizard-next"
               type="button"
               @click="step += 1"
@@ -327,7 +327,7 @@ watch(connected, (isConnected) => {
               v-else-if="step === 3"
               data-action="connect-relay"
               type="button"
-              :disabled="status === 'searching' || status === 'found'"
+              :disabled="status === 'searching'"
               @click="connect"
             >
               Relay installed — connect

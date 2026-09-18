@@ -176,4 +176,23 @@ describe("The agent wizard", () => {
     expect(wrapper.text()).toContain("Paste the same prompt");
     expect(relayScript()).toBe(loadedScript);
   });
+
+  it("leads on from the Connect step once the page is connected", async () => {
+    const wrapper = await mountConnecting();
+    relaySays("webmcp.tools.list.request");
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    const connectStep = wrapper
+      .findAll("button")
+      .find((button) => button.text().endsWith("Connect"));
+    // Reka's stepper trigger reacts to mousedown, not click.
+    await connectStep!.trigger("mousedown", { button: 0 });
+
+    expect(wrapper.text()).toContain("Connected to your relay.");
+    expect(wrapper.find('[data-action="connect-relay"]').exists()).toBe(false);
+
+    await wrapper.get('[data-action="wizard-next"]').trigger("click");
+
+    expect(wrapper.text()).toContain("Paste the same prompt");
+  });
 });
