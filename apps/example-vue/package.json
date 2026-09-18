@@ -12,23 +12,29 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#c68a2f92f96b82946c838bfa92a7841ebb03f8a0",
     "@ayme-dev/webmcp": "workspace:*",
     "@ayme-dev/webmcp-inspector": "workspace:*",
     "@ayme-dev/webmcp-vue": "workspace:*",
-    "vue": "^3.5.42",
     "@mcp-b/webmcp-polyfill": "5.1.0",
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#c68a2f92f96b82946c838bfa92a7841ebb03f8a0"
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "reka-ui": "^2.10.4",
+    "tailwind-merge": "^3.7.0",
+    "vue": "^3.5.42"
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@ayme-dev/unplugin-webmcp": "workspace:*",
     "@playwright/test": "^1.62.1",
+    "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/test-utils": "^2.4.11",
     "eslint": "^10.9.1",
     "jsdom": "^30.0.1",
     "playwright": "^1.62.1",
+    "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vite": "^8.2.2",
     "vitest": "^4.1.11",

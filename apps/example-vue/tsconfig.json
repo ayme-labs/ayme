@@ -1,7 +1,10 @@
 {
   "extends": "@ayme-dev/typescript-config/vue.json",
   "compilerOptions": {
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": [
     "src/**/*.ts",
