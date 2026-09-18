@@ -78,7 +78,7 @@ async function runListActions(
   await expect(
     page.getByText("Prepare the launch notes", { exact: true })
   ).toBeVisible();
-  await expect(page.locator(".archived-label")).toHaveCount(1);
+  await expect(page.locator("[data-archived-label]")).toHaveCount(1);
 }
 
 async function executePublishedTool(page: Page, name: string, args: unknown) {
@@ -373,7 +373,9 @@ test("highlights collection and class-level application-model targets", async ({
 
   const pageCard = page.locator('[data-pom-class="ListPage"]');
   const itemsMember = pageCard.locator('[data-member-name="items"]');
-  const itemRoots = page.locator(".item-row");
+  const itemRoots = page
+    .getByRole("list", { name: "Active items" })
+    .getByRole("listitem");
 
   await itemsMember.hover();
   await expect(itemRoots).toHaveCount(2);
@@ -611,7 +613,7 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
   await expect(
     page.getByText("Prepare launch notes", { exact: true })
   ).toBeVisible();
-  await expect(page.locator(".archived-label")).toHaveCount(1);
+  await expect(page.locator("[data-archived-label]")).toHaveCount(1);
 
   const addTool = page.locator('[data-tool-name="ListPage.addItem"]');
   await page.evaluate(() => {
@@ -662,7 +664,7 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
   await archiveTool.getByLabel("index").fill("0");
   await expect(archiveTool.getByLabel("args")).toHaveValue("{}");
   await archiveTool.getByRole("button", { name: "Invoke tool" }).click();
-  await expect(page.locator(".archived-label")).toHaveCount(2);
+  await expect(page.locator("[data-archived-label]")).toHaveCount(2);
 
   await page.getByRole("button", { name: "Archive item-3" }).click();
   await expect(
@@ -675,17 +677,16 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
     archiveDialogCard.locator('[data-member-name="confirmArchiveButton"]')
   ).toContainText("present");
   await expect(addTool).toContainText("WebMCP available");
-  await expect(
-    addTool.getByRole("button", { name: "Invoke tool" })
-  ).toBeEnabled();
+  // While the modal dialog is open, Reka marks everything outside it
+  // aria-hidden, including the inspector host, so role locators cannot reach
+  // the inspector's own controls here. See the inspector's `.invoke-button`.
+  await expect(addTool.locator(".invoke-button")).toBeEnabled();
   for (const tool of [archiveTool, renameTool]) {
     await expect(tool).toContainText("WebMCP unavailable");
-    await expect(
-      tool.getByRole("button", { name: "Invoke tool" })
-    ).toBeDisabled();
+    await expect(tool.locator(".invoke-button")).toBeDisabled();
   }
   await page.getByRole("button", { name: "Confirm archive" }).click();
-  await expect(page.locator(".archived-label")).toHaveCount(3);
+  await expect(page.locator("[data-archived-label]")).toHaveCount(3);
   for (const tool of [archiveTool, renameTool]) {
     await expect(tool).toContainText("WebMCP available");
     await expect(

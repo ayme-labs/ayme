@@ -15,7 +15,9 @@ export class ListPage {
     this.archiveDialog = new ArchiveDialog(
       page.getByRole("dialog", { name: "Archive item" })
     );
-    this.itemRows = page.locator(".list-card:not(.archived-card) .item-row");
+    this.itemRows = page
+      .getByRole("list", { name: "Active items" })
+      .getByRole("listitem");
   }
 
   async items(): Promise<ListItem[]> {
