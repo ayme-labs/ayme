@@ -6,6 +6,7 @@ import {
   ref,
   useTemplateRef,
   watch,
+  type Ref,
 } from "vue";
 import { Check, CircleAlert, LoaderCircle, Plug } from "lucide-vue-next";
 import { ConfigProvider } from "reka-ui";
@@ -47,15 +48,27 @@ and paste this prompt again.
 
 If you do have it: call webmcp_list_sources and webmcp_list_tools, and show me
 the tools that page exposes. Don't invoke any yet; suggest one I can try.
-If the page isn't listed, tell me to click Connect on the page and allow
-Chrome's prompt, and check that the relay's --widget-origin is exactly
-${origin}.`;
+If the page isn't listed, tell me to open "Try with your own coding agent" on
+the page, connect there and allow Chrome's prompt, and check that the relay's
+--widget-origin is exactly ${origin}.`;
+
+// For a relay that answers but refuses this origin.
+const fixPrompt = `The WebMCP local relay refused the page at ${origin}: its --widget-origin
+does not match. Find the webmcp-local-relay MCP server in this client's MCP
+configuration and make its arguments exactly:
+
+  -y ${relayPackage} --widget-origin ${origin}
+
+Change nothing else, then tell me to restart you. If the configuration already
+says exactly that, another program's relay is answering instead, for example a
+second coding agent's: tell me that instead of changing anything.`;
 
 type RelayStatus =
   "idle" | "searching" | "found" | "rejected" | "not-found" | "load-failed";
 
 const status = ref<RelayStatus>("idle");
 const copyLabel = ref("Copy prompt");
+const fixCopyLabel = ref("Copy prompt");
 let settle: ReturnType<typeof setTimeout> | undefined;
 
 function search() {
@@ -101,14 +114,17 @@ function onMessage(event: MessageEvent) {
   }
 }
 
-async function copy() {
+async function copyTo(label: Ref<string>, text: string) {
   try {
-    await navigator.clipboard.writeText(prompt);
-    copyLabel.value = "Copied";
+    await navigator.clipboard.writeText(text);
+    label.value = "Copied";
   } catch {
-    copyLabel.value = "Copying is blocked — select the text";
+    label.value = "Copying is blocked — select the text";
   }
 }
+
+const copy = () => copyTo(copyLabel, prompt);
+const copyFix = () => copyTo(fixCopyLabel, fixPrompt);
 
 onMounted(() => window.addEventListener("message", onMessage));
 onBeforeUnmount(() => {
@@ -246,7 +262,8 @@ watch(connected, (isConnected) => {
           <div v-else-if="step === 2" class="grid gap-3 text-sm">
             <p>
               Paste this prompt to your coding agent. It installs the relay,
-              nothing else, and changes no project files.
+              nothing else, and changes no project files. Restart your agent
+              when it asks you to, then continue here.
             </p>
             <div
               class="max-h-[45svh] overflow-auto rounded-md border bg-muted/50 p-3"
@@ -255,7 +272,7 @@ watch(connected, (isConnected) => {
                 class="font-mono text-xs leading-relaxed whitespace-pre-wrap"
                 >{{ prompt }}</pre>
             </div>
-            <div class="flex items-center gap-3">
+            <div>
               <Button
                 variant="secondary"
                 size="sm"
@@ -265,9 +282,6 @@ watch(connected, (isConnected) => {
               >
                 {{ copyLabel }}
               </Button>
-              <span class="text-muted-foreground"
-                >Then restart your agent.</span
-              >
             </div>
           </div>
 
@@ -295,18 +309,31 @@ watch(connected, (isConnected) => {
                 <Check class="mt-0.5 size-4 shrink-0" />
                 Connected to your relay.
               </p>
-              <p
-                v-else-if="status === 'rejected'"
-                class="flex gap-2 text-destructive"
-                role="alert"
-              >
-                <CircleAlert class="mt-0.5 size-4 shrink-0" />
-                <span>
-                  Your relay refused this page. Restart it with
-                  <code class="font-mono">--widget-origin {{ origin }}</code
-                  >.
-                </span>
-              </p>
+              <template v-else-if="status === 'rejected'">
+                <p class="flex gap-2 text-destructive" role="alert">
+                  <CircleAlert class="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    A relay answered but refused this page: it was started for a
+                    different address. Paste this prompt to your agent, restart
+                    the agent when it asks, then try again.
+                  </span>
+                </p>
+                <pre
+                  data-fix-prompt
+                  class="max-h-[30svh] overflow-auto rounded-md border bg-background p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap"
+                  >{{ fixPrompt }}</pre>
+                <div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    data-action="copy-fix-prompt"
+                    type="button"
+                    @click="copyFix"
+                  >
+                    {{ fixCopyLabel }}
+                  </Button>
+                </div>
+              </template>
               <p v-else-if="status === 'not-found'" class="flex gap-2">
                 <CircleAlert class="mt-0.5 size-4 shrink-0" />
                 <span>

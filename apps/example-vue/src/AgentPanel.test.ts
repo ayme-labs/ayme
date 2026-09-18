@@ -106,7 +106,24 @@ describe("The agent wizard", () => {
     await vi.advanceTimersByTimeAsync(1_000);
 
     expect(status(wrapper)).toBe("rejected");
-    expect(wrapper.get('[role="alert"]').text()).toContain("--widget-origin");
+    expect(wrapper.get('[role="alert"]').text()).toContain("refused");
+  });
+
+  it("offers a prompt that lets the agent repair a refusing relay", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    const wrapper = await mountConnecting();
+
+    relaySays("webmcp.relay.rejected");
+    await wrapper.vm.$nextTick();
+    await wrapper.get('[data-action="copy-fix-prompt"]').trigger("click");
+
+    const fixPrompt = wrapper.get("[data-fix-prompt]").text();
+    expect(fixPrompt).toContain(
+      `@mcp-b/webmcp-local-relay@5.1.0 --widget-origin ${window.location.origin}`
+    );
+    expect(writeText).toHaveBeenCalledWith(fixPrompt);
+    vi.unstubAllGlobals();
   });
 
   it("names the likely causes and rescans when no relay turns up", async () => {
