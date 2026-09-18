@@ -6,7 +6,6 @@ import {
   ref,
   useTemplateRef,
   watch,
-  type Ref,
 } from "vue";
 import { Check, CircleAlert, LoaderCircle, Plug } from "lucide-vue-next";
 import { ConfigProvider } from "reka-ui";
@@ -28,47 +27,17 @@ import {
   StepperTitle,
   StepperTrigger,
 } from "@/components/ui/stepper";
+import { relayPackage, repairPrompt, setupPrompt } from "./agentPrompts";
+import PromptBlock from "./PromptBlock.vue";
 
-// One version for the browser embed and the MCP server the visitor installs.
-const relayPackage = "@mcp-b/webmcp-local-relay@5.1.0";
 const { origin } = window.location;
-const pageUrl = origin + window.location.pathname;
-
-// Self-routing: the visitor pastes it before and after restarting the agent.
-const prompt = `I'm trying the Ayme WebMCP playground at ${pageUrl}.
-
-If you have no webmcp_list_sources tool yet: add the WebMCP local relay as an MCP
-server, using this client's own MCP configuration format, user-level if possible:
-
-  command: npx
-  args:    -y ${relayPackage} --widget-origin ${origin}
-
-Install nothing else and change no project files. Then tell me to restart you
-and paste this prompt again.
-
-If you do have it: call webmcp_list_sources and webmcp_list_tools, and show me
-the tools that page exposes. Don't invoke any yet; suggest one I can try.
-If the page isn't listed, tell me to open "Try with your own coding agent" on
-the page, connect there and allow Chrome's prompt, and check that the relay's
---widget-origin is exactly ${origin}.`;
-
-// For a relay that answers but refuses this origin.
-const fixPrompt = `The WebMCP local relay refused the page at ${origin}: its --widget-origin
-does not match. Find the webmcp-local-relay MCP server in this client's MCP
-configuration and make its arguments exactly:
-
-  -y ${relayPackage} --widget-origin ${origin}
-
-Change nothing else, then tell me to restart you. If the configuration already
-says exactly that, another program's relay is answering instead, for example a
-second coding agent's: tell me that instead of changing anything.`;
+const prompt = setupPrompt(origin + window.location.pathname, origin);
+const fixPrompt = repairPrompt(origin);
 
 type RelayStatus =
   "idle" | "searching" | "found" | "rejected" | "not-found" | "load-failed";
 
 const status = ref<RelayStatus>("idle");
-const copyLabel = ref("Copy prompt");
-const fixCopyLabel = ref("Copy prompt");
 let settle: ReturnType<typeof setTimeout> | undefined;
 
 function search() {
@@ -113,18 +82,6 @@ function onMessage(event: MessageEvent) {
     settle = setTimeout(() => (status.value = "found"), 1_000);
   }
 }
-
-async function copyTo(label: Ref<string>, text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    label.value = "Copied";
-  } catch {
-    label.value = "Copying is blocked — select the text";
-  }
-}
-
-const copy = () => copyTo(copyLabel, prompt);
-const copyFix = () => copyTo(fixCopyLabel, fixPrompt);
 
 onMounted(() => window.addEventListener("message", onMessage));
 onBeforeUnmount(() => {
@@ -262,27 +219,10 @@ watch(connected, (isConnected) => {
           <div v-else-if="step === 2" class="grid gap-3 text-sm">
             <p>
               Paste this prompt to your coding agent. It installs the relay,
-              nothing else, and changes no project files. Restart your agent
-              when it asks you to, then continue here.
+              nothing else, and changes no project files. If the agent says it
+              needs a restart to load the relay, restart it, then continue here.
             </p>
-            <div
-              class="max-h-[45svh] overflow-auto rounded-md border bg-muted/50 p-3"
-            >
-              <pre
-                class="font-mono text-xs leading-relaxed whitespace-pre-wrap"
-                >{{ prompt }}</pre>
-            </div>
-            <div>
-              <Button
-                variant="secondary"
-                size="sm"
-                data-action="copy-prompt"
-                type="button"
-                @click="copy"
-              >
-                {{ copyLabel }}
-              </Button>
-            </div>
+            <PromptBlock name="prompt" :text="prompt" />
           </div>
 
           <!-- 3. Connect this page -->
@@ -314,25 +254,11 @@ watch(connected, (isConnected) => {
                   <CircleAlert class="mt-0.5 size-4 shrink-0" />
                   <span>
                     A relay answered but refused this page: it was started for a
-                    different address. Paste this prompt to your agent, restart
-                    the agent when it asks, then try again.
+                    different address. Paste this prompt to your agent. Once the
+                    relay runs with this page’s address, try again.
                   </span>
                 </p>
-                <pre
-                  data-fix-prompt
-                  class="max-h-[30svh] overflow-auto rounded-md border bg-background p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap"
-                  >{{ fixPrompt }}</pre>
-                <div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    data-action="copy-fix-prompt"
-                    type="button"
-                    @click="copyFix"
-                  >
-                    {{ fixCopyLabel }}
-                  </Button>
-                </div>
+                <PromptBlock name="fix-prompt" :text="fixPrompt" />
               </template>
               <p v-else-if="status === 'not-found'" class="flex gap-2">
                 <CircleAlert class="mt-0.5 size-4 shrink-0" />
@@ -366,17 +292,7 @@ watch(connected, (isConnected) => {
               Close this dialog first: while it is open the page behind it is
               blocked, so a tool call from your agent would time out.
             </p>
-            <div>
-              <Button
-                variant="secondary"
-                size="sm"
-                data-action="copy-prompt"
-                type="button"
-                @click="copy"
-              >
-                {{ copyLabel }}
-              </Button>
-            </div>
+            <PromptBlock name="prompt" :text="prompt" />
           </div>
 
           <DialogFooter>

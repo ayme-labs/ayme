@@ -118,10 +118,8 @@ describe("The agent wizard", () => {
     await wrapper.vm.$nextTick();
     await wrapper.get('[data-action="copy-fix-prompt"]').trigger("click");
 
-    const fixPrompt = wrapper.get("[data-fix-prompt]").text();
-    expect(fixPrompt).toContain(
-      `@mcp-b/webmcp-local-relay@5.1.0 --widget-origin ${window.location.origin}`
-    );
+    const fixPrompt = wrapper.get('[data-prompt="fix-prompt"]').text();
+    expect(fixPrompt).toContain(`--widget-origin to ${window.location.origin}`);
     expect(writeText).toHaveBeenCalledWith(fixPrompt);
     vi.unstubAllGlobals();
   });
