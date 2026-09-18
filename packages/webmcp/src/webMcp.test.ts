@@ -182,6 +182,143 @@ describe("WebMCP publisher", () => {
     replacementPageRegistration.dispose();
   });
 
+  it("settles published tools before a tool call resolves", async () => {
+    type ExecutableTool = PublishedTool & {
+      execute(input: unknown): Promise<unknown>;
+    };
+    const registrations: Array<{ tool: ExecutableTool; signal: AbortSignal }> =
+      [];
+    const registerTool = vi.fn(
+      async (tool: ExecutableTool, options: { signal: AbortSignal }) => {
+        registrations.push({ tool, signal: options.signal });
+      }
+    );
+    vi.stubGlobal("document", { documentElement: {} });
+
+    const registry = await import("./registry");
+    const { synchronizeWebMcpTools } = await import("./webMcp");
+    registry.configureAymeRuntime({} as Page);
+
+    let rootCount = 1;
+    class ItemsPage {
+      readonly items = [
+        {
+          root: brandedLocator({ count: async () => rootCount }),
+          archive: vi.fn(() => {
+            rootCount = 0;
+          }),
+        },
+      ];
+    }
+    registry.registerCompiledPom(ItemsPage, {
+      className: "ItemsPage",
+      tools: [],
+      members: [
+        {
+          memberName: "items",
+          kind: "component",
+          access: "field",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      components: [
+        {
+          className: "Item",
+          members: [{ memberName: "root", kind: "locator", access: "field" }],
+          tools: [action("archive")],
+        },
+      ],
+    });
+    const pageRegistration = registry.createPageRegistration(ItemsPage);
+    const publication = await synchronizeWebMcpTools({ registerTool });
+    const archive = registrations.find(
+      ({ tool }) => tool.name === "ItemsPage.items.archive"
+    );
+
+    const pageContext = registrations.find(
+      ({ tool }) => tool.name === "get_page_context"
+    );
+    rootCount = 0;
+    await pageContext?.tool.execute({});
+    expect(archive?.signal.aborted).toBe(false);
+    rootCount = 1;
+
+    await expect(
+      archive?.tool.execute({ index: 0, args: {} })
+    ).resolves.toEqual({ ok: true });
+    expect(archive?.signal.aborted).toBe(true);
+
+    publication.dispose();
+    pageRegistration.dispose();
+  });
+
+  it("reports a failed re-publication once without failing the tool call", async () => {
+    type ExecutableTool = PublishedTool & {
+      execute(input: unknown): Promise<unknown>;
+    };
+    const tools: ExecutableTool[] = [];
+    const registerTool = vi.fn(async (tool: ExecutableTool) => {
+      if (tool.name === "ItemsPage.items.archive")
+        throw new Error("registration failed");
+      tools.push(tool);
+    });
+    const onError = vi.fn();
+    vi.stubGlobal("document", { documentElement: {} });
+
+    const registry = await import("./registry");
+    const { synchronizeWebMcpTools } = await import("./webMcp");
+    registry.configureAymeRuntime({} as Page);
+
+    let rootCount = 0;
+    class ItemsPage {
+      readonly addItem = vi.fn(() => {
+        rootCount = 1;
+      });
+      readonly items = [
+        {
+          root: brandedLocator({ count: async () => rootCount }),
+          archive: vi.fn(),
+        },
+      ];
+    }
+    registry.registerCompiledPom(ItemsPage, {
+      className: "ItemsPage",
+      tools: [action("addItem")],
+      members: [
+        {
+          memberName: "items",
+          kind: "component",
+          access: "field",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      components: [
+        {
+          className: "Item",
+          members: [{ memberName: "root", kind: "locator", access: "field" }],
+          tools: [action("archive")],
+        },
+      ],
+    });
+    const pageRegistration = registry.createPageRegistration(ItemsPage);
+    await synchronizeWebMcpTools({ registerTool }, { onError });
+    const addItem = tools.find(({ name }) => name === "addItem");
+
+    await expect(addItem?.execute({})).resolves.toEqual({ ok: true });
+    await flushPublisher();
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(new Error("registration failed"));
+    expect(
+      registerTool.mock.calls.filter(
+        ([tool]) => tool.name === "ItemsPage.items.archive"
+      )
+    ).toHaveLength(1);
+
+    pageRegistration.dispose();
+  });
+
   it("keeps the first live registration as the stable owner of duplicate tools", async () => {
     const registrations: Array<{
       tool: PublishedTool;
