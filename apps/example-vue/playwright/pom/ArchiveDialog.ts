@@ -16,6 +16,7 @@ export class ArchiveDialog {
   async confirm() {
     await this.root.waitFor({ state: "visible" });
     await this.confirmArchiveButton.click();
-    await this.root.waitFor({ state: "hidden", timeout: 250 });
+    // The dialog animates out, so allow for the exit transition.
+    await this.root.waitFor({ state: "hidden", timeout: 2_000 });
   }
 }

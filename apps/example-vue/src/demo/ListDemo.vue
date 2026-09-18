@@ -9,6 +9,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -26,6 +34,9 @@ const nextItemNumber = ref(3);
 const newItemText = ref("");
 const inputError = ref("");
 const archiveTargetId = ref<string>();
+// Kept separate from the target so the dialog still reads correctly while it
+// animates out, after the target has been cleared.
+const archiveTargetText = ref("");
 const editingItemId = ref<string>();
 const editingItemText = ref("");
 
@@ -38,6 +49,12 @@ const archivedItems = computed(() =>
 const archiveTarget = computed(() =>
   items.value.find((item) => item.id === archiveTargetId.value)
 );
+const archiveDialogOpen = computed({
+  get: () => archiveTarget.value !== undefined,
+  set: (open: boolean) => {
+    if (!open) archiveTargetId.value = undefined;
+  },
+});
 
 function addItem() {
   const text = newItemText.value.trim();
@@ -60,6 +77,7 @@ function openArchive(itemId: string) {
   const item = items.value.find((candidate) => candidate.id === itemId);
   if (!item || item.archived) return;
   archiveTargetId.value = itemId;
+  archiveTargetText.value = item.text;
 }
 
 function startRenaming(itemId: string) {
@@ -93,7 +111,7 @@ function confirmArchive() {
 </script>
 
 <template>
-  <section aria-label="Demo application">
+  <section aria-label="Demo application" class="grid gap-6">
     <Card>
       <CardHeader>
         <p
@@ -128,92 +146,128 @@ function confirmArchive() {
             {{ inputError }}
           </p>
         </form>
-
-        <section class="list-card" aria-labelledby="active-items-heading">
-          <div class="section-heading">
-            <h3 id="active-items-heading">Active items</h3>
-            <span>{{ activeItems.length }}</span>
-          </div>
-          <ul v-if="activeItems.length" class="item-list">
-            <li v-for="item in activeItems" :key="item.id" class="item-row">
-              <div>
-                <input
-                  v-if="editingItemId === item.id"
-                  v-model="editingItemText"
-                  aria-label="Item name"
-                  @blur="renameItem(item.id)"
-                  @keyup.enter="renameItem(item.id)"
-                />
-                <button
-                  v-else
-                  class="item-name-button"
-                  data-action="rename"
-                  type="button"
-                  @click="startRenaming(item.id)"
-                >
-                  {{ item.text }}
-                </button>
-                <code>{{ item.id }}</code>
-              </div>
-              <button
-                data-action="archive"
-                type="button"
-                :aria-label="`Archive ${item.id}`"
-                @click="openArchive(item.id)"
-              >
-                Archive
-              </button>
-            </li>
-          </ul>
-          <p v-else class="empty-state">No active items. Add one above.</p>
-        </section>
-
-        <section
-          class="list-card archived-card"
-          aria-labelledby="archived-items-heading"
-        >
-          <div class="section-heading">
-            <h3 id="archived-items-heading">Archived items</h3>
-            <span>{{ archivedItems.length }}</span>
-          </div>
-          <ul v-if="archivedItems.length" class="item-list">
-            <li
-              v-for="item in archivedItems"
-              :key="item.id"
-              class="item-row archived-row"
-            >
-              <div>
-                <strong>{{ item.text }}</strong>
-                <code>{{ item.id }}</code>
-              </div>
-              <span class="archived-label">Archived</span>
-            </li>
-          </ul>
-          <p v-else class="empty-state">Archived items will appear here.</p>
-        </section>
       </CardContent>
     </Card>
 
-    <div v-if="archiveTarget" class="dialog-backdrop">
-      <div
-        class="archive-dialog"
-        role="dialog"
-        aria-label="Archive item"
-        aria-modal="true"
-      >
-        <p class="eyebrow">Confirmation</p>
-        <h3>Archive this item?</h3>
-        <p>
-          <strong>{{ archiveTarget.text }}</strong> will move to the archived
-          list.
+    <Card>
+      <CardHeader>
+        <CardTitle id="active-items-heading" as="h3" class="text-base">
+          Active items
+        </CardTitle>
+        <CardAction>
+          <Badge variant="secondary">{{ activeItems.length }}</Badge>
+        </CardAction>
+      </CardHeader>
+
+      <CardContent>
+        <ul
+          v-if="activeItems.length"
+          aria-labelledby="active-items-heading"
+          class="divide-y"
+        >
+          <li
+            v-for="item in activeItems"
+            :key="item.id"
+            class="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+          >
+            <div class="grid min-w-0 flex-1 gap-1">
+              <Input
+                v-if="editingItemId === item.id"
+                v-model="editingItemText"
+                aria-label="Item name"
+                @blur="renameItem(item.id)"
+                @keyup.enter="renameItem(item.id)"
+              />
+              <Button
+                v-else
+                variant="link"
+                data-action="rename"
+                type="button"
+                class="h-auto justify-start p-0 font-medium text-foreground"
+                @click="startRenaming(item.id)"
+              >
+                {{ item.text }}
+              </Button>
+              <code class="text-xs text-muted-foreground">{{ item.id }}</code>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              data-action="archive"
+              type="button"
+              :aria-label="`Archive ${item.id}`"
+              @click="openArchive(item.id)"
+            >
+              Archive
+            </Button>
+          </li>
+        </ul>
+        <p v-else class="text-sm text-muted-foreground">
+          No active items. Add one above.
         </p>
-        <div class="dialog-actions">
-          <button type="button" @click="cancelArchive">Cancel</button>
-          <button class="primary-button" type="button" @click="confirmArchive">
+      </CardContent>
+    </Card>
+
+    <Card class="bg-muted/40">
+      <CardHeader>
+        <CardTitle id="archived-items-heading" as="h3" class="text-base">
+          Archived items
+        </CardTitle>
+        <CardAction>
+          <Badge variant="secondary">{{ archivedItems.length }}</Badge>
+        </CardAction>
+      </CardHeader>
+
+      <CardContent>
+        <ul
+          v-if="archivedItems.length"
+          aria-labelledby="archived-items-heading"
+          class="divide-y"
+        >
+          <li
+            v-for="item in archivedItems"
+            :key="item.id"
+            class="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+          >
+            <div class="grid min-w-0 flex-1 gap-1">
+              <span class="font-medium text-muted-foreground">
+                {{ item.text }}
+              </span>
+              <code class="text-xs text-muted-foreground">{{ item.id }}</code>
+            </div>
+            <Badge variant="secondary" data-archived-label>Archived</Badge>
+          </li>
+        </ul>
+        <p v-else class="text-sm text-muted-foreground">
+          Archived items will appear here.
+        </p>
+      </CardContent>
+    </Card>
+
+    <Dialog v-model:open="archiveDialogOpen">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Archive item</DialogTitle>
+          <DialogDescription>
+            <strong class="font-medium text-foreground">{{
+              archiveTargetText
+            }}</strong>
+            will move to the archived list.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" type="button" @click="cancelArchive">
+            Cancel
+          </Button>
+          <Button
+            data-action="confirm-archive"
+            type="button"
+            @click="confirmArchive"
+          >
             Confirm archive
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </section>
 </template>

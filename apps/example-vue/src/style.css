@@ -1,12 +1,5 @@
-/*
- * Layer order is declared before Tailwind is imported so the not-yet-converted
- * styles in legacy.css keep beating Tailwind's preflight reset while Tailwind
- * utilities still beat legacy.css. Each converted slice shrinks legacy.css.
- */
-@layer theme, base, legacy, components, utilities;
-
 @import "tailwindcss";
-@import "./legacy.css" layer(legacy);
+@import "tw-animate-css";
 
 /* shadcn-vue default theme, Neutral base colour, light only. */
 :root {
