@@ -1,6 +1,6 @@
 # Ayme WebMCP playground
 
-This browser playground combines a functional list app with an Ayme inspector so the same Page Object behavior can be exercised by a person or an agent. It is published at [ayme-labs.github.io/ayme](https://ayme-labs.github.io/ayme/).
+This browser playground combines a functional list app with an Ayme inspector so the same Page Object behavior can be exercised by a person or an agent. It is published at [ayme-labs.github.io/ayme](https://ayme-labs.github.io/ayme/) so developers can try Ayme WebMCP before adding it to their own project. This README is for people reading the repository; visitors follow the instructions on the page itself.
 
 - The demo app lets you add items and archive them through a confirmation dialog.
 - `ListPage` is a normal TypeScript class using `Page` and `Locator` types from Playwright. Vite bundles that same class for WebMCP and constructs it with the DOM-backed browser implementation.
@@ -17,9 +17,9 @@ This browser playground combines a functional list app with an Ayme inspector so
 
 ## Try with your agent
 
-Start with the repository's [Ayme setup skill](../../skills/ayme/SKILL.md), then follow the [browser setup guide](../../skills/ayme/references/browser-setup.md) to connect a local MCP relay. The hosted playground has no hosted agent backend; the relay runs on your machine and discovers the tools exposed by this page. The [playground onboarding guide](./ONBOARDING.md) condenses the hosted flow.
+Open the playground and choose **Try with your own coding agent**. The wizard explains the relay, shows the prompt to paste into the agent, and connects the page with **Relay installed — connect**. The [WebMCP local relay](https://github.com/WebMCP-org/npm-packages/tree/main/packages/webmcp-local-relay) MCP server is the only thing a visitor installs, and the page contacts it only after that click. The [Ayme setup skill](../../skills/ayme/SKILL.md) is for integrating Ayme into your own project, not for trying the playground.
 
-The hosted bundle initializes the pinned WebMCP polyfill before the Vue app starts. Use the setup guide's `webmcp_list_sources`, `webmcp_list_tools`, and tool invocation flow to exercise the list actions.
+The hosted bundle initializes the pinned WebMCP polyfill before the Vue app starts.
 
 ## User interface
 
@@ -39,7 +39,7 @@ usePageObject(ListPage);
 
 Enable publication with `aymeWebMcp({ publish: true })` in Vite configuration. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
 
-This example passes a custom page from `useDemoTrace` to add slow typing, click cues, and trace recording. `useDemoRelay` loads the local relay after publication becomes active. `useDemoInspector` manages the debug panel and DOM highlights. These helpers support the demo and are optional for applications.
+This example passes a custom page from `useDemoTrace` to add slow typing, click cues, and trace recording. `AgentPanel.vue` holds the agent wizard: it loads the local relay embed when the visitor connects, and reports what the embed says about the relay. `useDemoInspector` manages the debug panel and DOM highlights. These helpers support the demo and are optional for applications.
 
 Disabling publication does not remove Ayme or Page Object code from the bundle. Production code removal is tracked separately in issue #39.
 
