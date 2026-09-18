@@ -236,6 +236,14 @@ describe("WebMCP publisher", () => {
       ({ tool }) => tool.name === "ItemsPage.items.archive"
     );
 
+    const pageContext = registrations.find(
+      ({ tool }) => tool.name === "get_page_context"
+    );
+    rootCount = 0;
+    await pageContext?.tool.execute({});
+    expect(archive?.signal.aborted).toBe(false);
+    rootCount = 1;
+
     await expect(
       archive?.tool.execute({ index: 0, args: {} })
     ).resolves.toEqual({ ok: true });
@@ -302,6 +310,11 @@ describe("WebMCP publisher", () => {
     await flushPublisher();
     expect(onError).toHaveBeenCalledTimes(1);
     expect(onError).toHaveBeenCalledWith(new Error("registration failed"));
+    expect(
+      registerTool.mock.calls.filter(
+        ([tool]) => tool.name === "ItemsPage.items.archive"
+      )
+    ).toHaveLength(1);
 
     pageRegistration.dispose();
   });

@@ -74,20 +74,24 @@ export async function synchronizeWebMcpTools(
   };
 
   // A tool call resolves only once the published tools reflect the page it
-  // changed, so an agent's next call sees the tools that are live now.
-  const withSettledPublication = (tool: PublishedTool): PublishedTool => ({
-    ...tool,
-    execute: async (input: unknown) => {
-      try {
-        return await tool.execute(input);
-      } finally {
-        if (!disposed)
-          await probeRegisteredPomMembers()
-            .then(synchronize)
-            .catch(failPublication);
-      }
-    },
-  });
+  // changed, so an agent's next call sees the tools that are live now. A probe
+  // that observes a change starts the publication pass through the subscriber.
+  const withSettledPublication = (tool: PublishedTool): PublishedTool =>
+    tool === getPageContextTool
+      ? tool
+      : {
+          ...tool,
+          execute: async (input: unknown) => {
+            try {
+              return await tool.execute(input);
+            } finally {
+              if (!disposed)
+                await probeRegisteredPomMembers()
+                  .then(() => currentSync)
+                  .catch(failPublication);
+            }
+          },
+        };
 
   const publish = async () => {
     try {
