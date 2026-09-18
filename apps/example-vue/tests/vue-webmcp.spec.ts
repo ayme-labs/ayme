@@ -57,7 +57,6 @@ test.beforeEach(async ({ context }) => {
       configurable: false,
       value: driver,
     });
-    window.__AYME_DISABLE_RELAY__ = true;
   });
 });
 
