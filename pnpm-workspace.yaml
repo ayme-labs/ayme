@@ -5,7 +5,7 @@ allowBuilds:
   "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/8adaf9aac567570423379f87d2d412171baecd98": true
   esbuild: true
   lefthook: true
-  vue-demi: true
+  vue-demi: false
 minimumReleaseAgeExclude:
   - "@vue/compiler-core@3.5.42"
   - "@vue/compiler-dom@3.5.42"
