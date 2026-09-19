@@ -39,6 +39,7 @@ export async function synchronizeWebMcpTools(
   let disposed = false;
   let syncing = false;
   let syncAgain = false;
+  let currentSync = Promise.resolve();
   let unsubscribe = () => {};
 
   const dispose = () => {
@@ -54,12 +55,45 @@ export async function synchronizeWebMcpTools(
   if (options.signal?.aborted) dispose();
   else options.signal?.addEventListener("abort", dispose, { once: true });
 
-  const synchronize = async () => {
+  const synchronize = () => {
+    // publish clears `syncing` in the same step as its last `syncAgain`
+    // check, so a caller never joins a pass that will not run again.
     if (syncing) {
       syncAgain = true;
-      return;
+      return currentSync;
     }
     syncing = true;
+    currentSync = publish();
+    return currentSync;
+  };
+
+  const failPublication = (error: unknown) => {
+    if (disposed) return;
+    dispose();
+    options.onError?.(error);
+  };
+
+  // A tool call resolves only once the published tools reflect the page it
+  // changed, so an agent's next call sees the tools that are live now. A probe
+  // that observes a change starts the publication pass through the subscriber.
+  const withSettledPublication = (tool: PublishedTool): PublishedTool =>
+    tool === getPageContextTool
+      ? tool
+      : {
+          ...tool,
+          execute: async (input: unknown) => {
+            try {
+              return await tool.execute(input);
+            } finally {
+              if (!disposed)
+                await probeRegisteredPomMembers()
+                  .then(() => currentSync)
+                  .catch(failPublication);
+            }
+          },
+        };
+
+  const publish = async () => {
     try {
       do {
         syncAgain = false;
@@ -82,7 +116,7 @@ export async function synchronizeWebMcpTools(
           const controller = new AbortController();
           published.set(name, { tool, controller });
           try {
-            await driver.registerTool(tool, {
+            await driver.registerTool(withSettledPublication(tool), {
               signal: controller.signal,
             });
           } catch (error) {
@@ -102,10 +136,7 @@ export async function synchronizeWebMcpTools(
       await probeRegisteredPomMembers();
       if (!disposed) {
         unsubscribe = subscribeToRegisteredPoms(() => {
-          void synchronize().catch((error) => {
-            dispose();
-            options.onError?.(error);
-          });
+          void synchronize().catch(failPublication);
         });
         await synchronize();
       }

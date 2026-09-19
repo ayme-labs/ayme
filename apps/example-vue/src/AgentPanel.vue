@@ -9,7 +9,7 @@ import {
   useTemplateRef,
   watch,
 } from "vue";
-import { Check, CircleAlert, Copy, LoaderCircle, Plug } from "lucide-vue-next";
+import { Check, CircleAlert, Copy, LoaderCircle, Plug } from "@lucide/vue";
 import { ConfigProvider } from "reka-ui";
 import { toast } from "vue-sonner";
 import { Badge } from "@/components/ui/badge";

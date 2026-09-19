@@ -37,6 +37,11 @@ test("keeps one Inspector and one trace through StrictMode remounts", async ({
   expect(
     (await latestTrace.textContent())?.match(/"operation": "click"/g)
   ).toHaveLength(1);
+  // The trace appears when the click starts. Wait for it to finish: an
+  // in-flight browser click intercepts pointer events aimed elsewhere.
+  await expect(
+    page.getByRole("region", { name: "Counter" }).getByRole("status")
+  ).toHaveText("1");
 
   await page.getByRole("button", { name: "Unmount counter" }).click();
   await expect(page.locator('[data-pom-class="CounterPage"]')).toHaveCount(0);

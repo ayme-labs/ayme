@@ -12,15 +12,15 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#c68a2f92f96b82946c838bfa92a7841ebb03f8a0",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#8adaf9aac567570423379f87d2d412171baecd98",
     "@ayme-dev/webmcp": "workspace:*",
     "@ayme-dev/webmcp-inspector": "workspace:*",
     "@ayme-dev/webmcp-vue": "workspace:*",
+    "@lucide/vue": "^1.47.0",
     "@mcp-b/webmcp-polyfill": "5.1.0",
     "@vueuse/core": "^15.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-vue-next": "^1.0.0",
     "reka-ui": "^2.10.4",
     "tailwind-merge": "^3.7.0",
     "vue": "^3.5.42",

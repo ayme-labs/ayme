@@ -132,6 +132,8 @@ function confirmArchive() {
             <Input
               id="new-item"
               v-model="newItemText"
+              :aria-invalid="Boolean(inputError)"
+              :aria-describedby="inputError ? 'new-item-error' : undefined"
               autocomplete="off"
               placeholder="e.g. Send the project update"
               class="sm:flex-1"
@@ -140,6 +142,7 @@ function confirmArchive() {
           </div>
           <p
             v-if="inputError"
+            id="new-item-error"
             class="mt-2 text-sm text-destructive"
             role="alert"
           >

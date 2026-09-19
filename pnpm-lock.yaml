@@ -185,8 +185,8 @@ importers:
   apps/example-vue:
     dependencies:
       "@ayme-dev/playwright-lite":
-        specifier: github:ayme-labs/playwright-lite#c68a2f92f96b82946c838bfa92a7841ebb03f8a0
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/c68a2f92f96b82946c838bfa92a7841ebb03f8a0(@playwright/test@1.62.1)
+        specifier: github:ayme-labs/playwright-lite#8adaf9aac567570423379f87d2d412171baecd98
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/8adaf9aac567570423379f87d2d412171baecd98(@playwright/test@1.62.1)
       "@ayme-dev/webmcp":
         specifier: workspace:*
         version: link:../../packages/webmcp
@@ -196,6 +196,9 @@ importers:
       "@ayme-dev/webmcp-vue":
         specifier: workspace:*
         version: link:../../packages/webmcp-vue
+      "@lucide/vue":
+        specifier: ^1.47.0
+        version: 1.47.0(vue@3.5.42(typescript@6.0.3))
       "@mcp-b/webmcp-polyfill":
         specifier: 5.1.0
         version: 5.1.0
@@ -208,9 +211,6 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      lucide-vue-next:
-        specifier: ^1.0.0
-        version: 1.0.0(vue@3.5.42(typescript@6.0.3))
       reka-ui:
         specifier: ^2.10.4
         version: 2.10.4(vue@3.5.42(typescript@6.0.3))
@@ -359,8 +359,8 @@ importers:
         specifier: workspace:*
         version: link:../eslint-config
       "@ayme-dev/playwright-lite":
-        specifier: github:ayme-labs/playwright-lite#c68a2f92f96b82946c838bfa92a7841ebb03f8a0
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/c68a2f92f96b82946c838bfa92a7841ebb03f8a0(@playwright/test@1.62.1)
+        specifier: github:ayme-labs/playwright-lite#8adaf9aac567570423379f87d2d412171baecd98
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/8adaf9aac567570423379f87d2d412171baecd98(@playwright/test@1.62.1)
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
@@ -402,8 +402,8 @@ importers:
         specifier: workspace:*
         version: link:../eslint-config
       "@ayme-dev/playwright-lite":
-        specifier: github:ayme-labs/playwright-lite#c68a2f92f96b82946c838bfa92a7841ebb03f8a0
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/c68a2f92f96b82946c838bfa92a7841ebb03f8a0(@playwright/test@1.62.1)
+        specifier: github:ayme-labs/playwright-lite#8adaf9aac567570423379f87d2d412171baecd98
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/8adaf9aac567570423379f87d2d412171baecd98(@playwright/test@1.62.1)
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
@@ -524,17 +524,17 @@ packages:
       }
     engines: { node: ^22.13.0 || >=24.0.0 }
 
-  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/c68a2f92f96b82946c838bfa92a7841ebb03f8a0":
+  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/8adaf9aac567570423379f87d2d412171baecd98":
     resolution:
       {
         gitHosted: true,
-        integrity: sha512-yjaZAI77DQ0bV8qtiBx0Ed4l/QeH452h8vQ2wqZJBH0sVlf8N+QMzAlTPeZJKYp8lpxKxeHAmHT6lVVppEyCsw==,
-        tarball: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/c68a2f92f96b82946c838bfa92a7841ebb03f8a0,
+        integrity: sha512-KaflLYCwWt045IridIsewEBsNCuUwK92OyNCpKOZEKMAjf7KJgDR3wvhnfgq0ppGssdbempQbBFjtlSqaex2Aw==,
+        tarball: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/8adaf9aac567570423379f87d2d412171baecd98,
       }
-    version: 0.1.0
+    version: 0.2.1
     engines: { node: ">=20" }
     peerDependencies:
-      "@playwright/test": ">=1.62.1 <1.63.0"
+      "@playwright/test": ">=1.29 <1.63"
 
   "@babel/code-frame@7.29.7":
     resolution:
@@ -1694,6 +1694,14 @@ packages:
       {
         integrity: sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw==,
       }
+
+  "@lucide/vue@1.47.0":
+    resolution:
+      {
+        integrity: sha512-S0/UX9zra4Z8xmqrA1MH5GiSKA8daAPFwkmORt/u+gUHAkYZoeOcr+DH3scZeyE9bdLWScGK+MJoDYi8rIU5Jg==,
+      }
+    peerDependencies:
+      vue: ">=3.0.1"
 
   "@mapbox/node-pre-gyp@2.0.3":
     resolution:
@@ -5855,15 +5863,6 @@ packages:
         integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==,
       }
 
-  lucide-vue-next@1.0.0:
-    resolution:
-      {
-        integrity: sha512-V6SPvx1IHTj/UY+FrIYWV5faISsPSb8BnWSFDxAtezWKvWc9ZZ40PDrdu1/Qb5vg4lHWr1hs1BAMGVGm6V1Xdg==,
-      }
-    deprecated: Package deprecated. Please use @lucide/vue instead.
-    peerDependencies:
-      vue: ">=3.0.1"
-
   magic-string-ast@1.0.3:
     resolution:
       {
@@ -8456,7 +8455,7 @@ snapshots:
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.5.2
 
-  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/c68a2f92f96b82946c838bfa92a7841ebb03f8a0(@playwright/test@1.62.1)":
+  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/8adaf9aac567570423379f87d2d412171baecd98(@playwright/test@1.62.1)":
     dependencies:
       "@playwright/test": 1.62.1
 
@@ -9140,6 +9139,10 @@ snapshots:
       - supports-color
 
   "@kwsites/promise-deferred@1.1.1": {}
+
+  "@lucide/vue@1.47.0(vue@3.5.42(typescript@6.0.3))":
+    dependencies:
+      vue: 3.5.42(typescript@6.0.3)
 
   "@mapbox/node-pre-gyp@2.0.3(supports-color@10.2.2)":
     dependencies:
@@ -11691,10 +11694,6 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
-
-  lucide-vue-next@1.0.0(vue@3.5.42(typescript@6.0.3)):
-    dependencies:
-      vue: 3.5.42(typescript@6.0.3)
 
   magic-string-ast@1.0.3:
     dependencies:

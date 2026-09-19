@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { Check, Copy } from "lucide-vue-next";
+import { Check, Copy } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 
 // A prompt the visitor reads in full before copying it to their agent.
