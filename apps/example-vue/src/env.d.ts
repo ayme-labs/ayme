@@ -14,7 +14,6 @@ declare module "*.vue" {
 declare global {
   interface Window {
     __AYME_VUE_ACTIONS__: string[];
-    __AYME_DISABLE_RELAY__?: boolean;
   }
 }
 

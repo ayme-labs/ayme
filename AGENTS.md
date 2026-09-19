@@ -1,3 +1,9 @@
+## Repository map
+
+- `packages/`: the Ayme WebMCP product. Each package README owns its API and setup.
+- `skills/`: skills shipped to consumers for integrating Ayme into their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
+- `apps/example-vue/`: the hosted playground where visitors try Ayme before integrating it. A visitor installs only the local relay MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
+
 ## Agent skills
 
 ### Issue tracker

@@ -1,40 +1,36 @@
-- e5:
-  - e6 banner:
-    - e7 paragraph: Ayme browser experiment
-    - e8:
-      - e9 heading "List app + WebMCP inspector" [level=1]
-      - e10: DOM-backed browser runtime
-    - e11 paragraph: "Operate the list directly on the left, or invoke the same generated POM tools from the debug console on the right. Hover an application model member to preview its live element, or click to select it."
-  - e12 main:
-    - e13 region "Demo application":
-      - e14:
-        - e15:
-          - e16 paragraph: Demo application
-          - e17 heading "My list" [level=2]
-          - e18: 2 active
-        - e21 form "Add a list item":
-          - e22: New item
-          - e23:
-            - e24 textbox "New item":
-              - /placeholder: e.g. Send the project update
-            - e25 button "Add item"
-      - e26:
-        - e27:
-          - e28 heading "Active items" [level=3]
-          - e29: 2
-        - e32 list "Active items":
-          - e33 ListPage.items[0]:
-            - e34:
-              - e35 button "Prepare launch notes"
-              - e36 code: item-1
-            - e37 button "Archive item-1": Archive
-          - e38 ListPage.items[1]:
-            - e39:
-              - e40 button "Review onboarding flow"
-              - e41 code: item-2
-            - e42 button "Archive item-2": Archive
-      - e43:
-        - e44:
-          - e45 heading "Archived items" [level=3]
-          - e46: 0
-        - e49 paragraph: Archived items will appear here.
+- e6 main "Playground":
+  - e7:
+    - e8 paragraph: Playground
+    - e9: DOM-backed browser runtime
+  - e10 region "Demo application":
+    - e11:
+      - e12:
+        - e13 paragraph: Demo application
+        - e14 heading "My list" [level=2]
+        - e15: 2 active
+      - e18 form "Add a list item":
+        - e19: New item
+        - e20:
+          - e21 textbox "New item":
+            - /placeholder: e.g. Send the project update
+          - e22 button "Add item"
+    - e23:
+      - e24:
+        - e25 heading "Active items" [level=3]
+        - e26: 2
+      - e29 list "Active items":
+        - e30 ListPage.items[0]:
+          - e31:
+            - e32 button "Prepare launch notes"
+            - e33 code: item-1
+          - e34 button "Archive item-1": Archive
+        - e35 ListPage.items[1]:
+          - e36:
+            - e37 button "Review onboarding flow"
+            - e38 code: item-2
+          - e39 button "Archive item-2": Archive
+    - e40:
+      - e41:
+        - e42 heading "Archived items" [level=3]
+        - e43: 0
+      - e46 paragraph: Archived items will appear here.
