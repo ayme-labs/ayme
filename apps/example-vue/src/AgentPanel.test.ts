@@ -168,6 +168,37 @@ describe("The agent wizard", () => {
     );
   });
 
+  it("keeps recovery visible when copying the connected prompt fails", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("blocked"));
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    await mountConnecting();
+
+    relaySays("webmcp.tools.list.request");
+    await vi.advanceTimersByTimeAsync(1_000);
+    await vi.waitFor(() =>
+      expect(
+        document.querySelector('[data-action="copy-prompt-from-toast"]')
+      ).not.toBeNull()
+    );
+
+    (
+      document.querySelector(
+        '[data-action="copy-prompt-from-toast"]'
+      ) as HTMLButtonElement
+    ).click();
+
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        "Copying is blocked. Reopen the wizard and select the prompt."
+      )
+    );
+    expect(writeText).toHaveBeenCalled();
+    expect(
+      document.querySelector('[data-action="copy-prompt-from-toast"]')
+    ).not.toBeNull();
+    vi.unstubAllGlobals();
+  });
+
   it("reopens on the connection with nothing left to do but Done", async () => {
     const wrapper = await mountConnecting();
     const loadedScript = relayScript();
