@@ -17,7 +17,7 @@ This browser playground combines a functional list app with an Ayme inspector so
 
 ## Try with your agent
 
-Open the playground and choose **Try with your own coding agent**. The wizard explains the relay, shows the prompt to paste into the agent, and connects the page with **Relay installed — connect**. The [WebMCP local relay](https://github.com/WebMCP-org/npm-packages/tree/main/packages/webmcp-local-relay) MCP server is the only thing a visitor installs, and the page contacts it only after that click. The [Ayme setup skill](../../skills/ayme/SKILL.md) is for integrating Ayme into your own project, not for trying the playground.
+Open the playground and choose **Try with your own coding agent**. The wizard explains the relay, shows the prompt to paste into the agent, and connects the page with **Relay installed — connect**. It closes itself once the relay answers, because an open dialog blocks the page for the agent. The prompts are plain copy in `src/agentPrompts.ts`. The [WebMCP local relay](https://github.com/WebMCP-org/npm-packages/tree/main/packages/webmcp-local-relay) MCP server is the only thing a visitor installs, and the page contacts it only after that click. The [Ayme setup skill](../../skills/ayme/SKILL.md) is for integrating Ayme into your own project, not for trying the playground.
 
 The hosted bundle initializes the pinned WebMCP polyfill before the Vue app starts.
 

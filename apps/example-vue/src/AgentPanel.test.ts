@@ -20,15 +20,9 @@ async function openWizard() {
   return wrapper;
 }
 
-async function openAt(step: 2 | 3) {
-  const wrapper = await openWizard();
-  for (let visited = 1; visited < step; visited += 1)
-    await wrapper.get('[data-action="wizard-next"]').trigger("click");
-  return wrapper;
-}
-
 async function mountConnecting() {
-  const wrapper = await openAt(3);
+  const wrapper = await openWizard();
+  await wrapper.get('[data-action="wizard-next"]').trigger("click");
   await wrapper.get('[data-action="connect-relay"]').trigger("click");
   return wrapper;
 }
@@ -54,13 +48,13 @@ describe("The agent wizard", () => {
   it("explains the relay and loads nothing until asked", async () => {
     const wrapper = await openWizard();
 
-    expect(wrapper.text()).toContain("runs on your computer");
+    expect(wrapper.text()).toContain("program on your computer");
     expect(status(wrapper)).toBe("idle");
     expect(relayScript()).toBeNull();
   });
 
   it("pins one relay version and this page's origin in the prompt", async () => {
-    const wrapper = await openAt(2);
+    const wrapper = await openWizard();
 
     expect(wrapper.get("pre").text()).toContain(
       `@mcp-b/webmcp-local-relay@5.1.0 --widget-origin ${window.location.origin}`
@@ -157,42 +151,40 @@ describe("The agent wizard", () => {
     ).toBeUndefined();
   });
 
-  it("closes on Done and keeps the connection when reopened", async () => {
+  it("closes itself and announces the connection, so the agent is not blocked", async () => {
     const wrapper = await mountConnecting();
-    const loadedScript = relayScript();
 
     relaySays("webmcp.tools.list.request");
     await vi.advanceTimersByTimeAsync(1_000);
-    await wrapper.get('[data-action="wizard-done"]').trigger("click");
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        "Ask your agent to list this page’s tools."
+      )
+    );
 
-    expect(wrapper.find("[data-action=wizard-done]").exists()).toBe(false);
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
     expect(wrapper.get('[data-action="open-agent-wizard"]').text()).toContain(
       "Connected"
     );
+  });
+
+  it("reopens on the connection with nothing left to do but Done", async () => {
+    const wrapper = await mountConnecting();
+    const loadedScript = relayScript();
+    relaySays("webmcp.tools.list.request");
+    await vi.advanceTimersByTimeAsync(1_000);
 
     await wrapper.get('[data-action="open-agent-wizard"]').trigger("click");
 
     expect(status(wrapper)).toBe("found");
-    expect(wrapper.text()).toContain("Paste the same prompt");
-    expect(relayScript()).toBe(loadedScript);
-  });
-
-  it("leads on from the Connect step once the page is connected", async () => {
-    const wrapper = await mountConnecting();
-    relaySays("webmcp.tools.list.request");
-    await vi.advanceTimersByTimeAsync(1_000);
-
-    const connectStep = wrapper
-      .findAll("button")
-      .find((button) => button.text().endsWith("Connect"));
-    // Reka's stepper trigger reacts to mousedown, not click.
-    await connectStep!.trigger("mousedown", { button: 0 });
-
-    expect(wrapper.text()).toContain("Connected to your relay.");
+    expect(wrapper.get('[role="dialog"]').text()).toContain(
+      "Connected to your relay."
+    );
     expect(wrapper.find('[data-action="connect-relay"]').exists()).toBe(false);
+    expect(relayScript()).toBe(loadedScript);
 
-    await wrapper.get('[data-action="wizard-next"]').trigger("click");
+    await wrapper.get('[data-action="wizard-done"]').trigger("click");
 
-    expect(wrapper.text()).toContain("Paste the same prompt");
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
   });
 });

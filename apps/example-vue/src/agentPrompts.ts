@@ -15,9 +15,7 @@ If you don't have a webmcp_list_sources tool yet, add the WebMCP local relay as 
   command: npx
   args:    -y ${relayPackage} --widget-origin ${origin}
 
-Install nothing else and change no project files. Tell me if I need to restart you for it to load.
-
-If you already have it, call webmcp_list_sources and webmcp_list_tools and show me the tools the page exposes. Don't invoke any yet; suggest one I can try. If the page isn't listed, I still need to connect it from "Try with your own coding agent" on the page.`;
+If you already have it, call webmcp_list_sources and webmcp_list_tools and show me the tools the page exposes.`;
 
 // For a relay that answers but refuses this origin.
 export const repairPrompt = (origin: string) =>

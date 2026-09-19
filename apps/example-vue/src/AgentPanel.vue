@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import {
   computed,
+  h,
+  markRaw,
   onBeforeUnmount,
   onMounted,
   ref,
   useTemplateRef,
   watch,
 } from "vue";
-import { Check, CircleAlert, LoaderCircle, Plug } from "lucide-vue-next";
+import { Check, CircleAlert, Copy, LoaderCircle, Plug } from "lucide-vue-next";
 import { ConfigProvider } from "reka-ui";
+import { toast } from "vue-sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Toaster } from "@/components/ui/sonner";
 import {
   Stepper,
   StepperIndicator,
@@ -90,10 +94,8 @@ onBeforeUnmount(() => {
 });
 
 const steps = [
-  { step: 1, label: "About", title: "What this is" },
-  { step: 2, label: "Set up", title: "Set up your agent" },
-  { step: 3, label: "Connect", title: "Connect this page" },
-  { step: 4, label: "Done", title: "Connected" },
+  { step: 1, label: "Set up", title: "Set up your agent" },
+  { step: 2, label: "Connect", title: "Connect this page" },
 ] as const;
 
 const open = ref(false);
@@ -107,8 +109,40 @@ const currentStep = computed(
 // is teleported inside this component instead of to <body>. See App.vue.
 const wizardHost = useTemplateRef<HTMLElement>("wizardHost");
 
+function openWizard() {
+  if (connected.value) step.value = 2;
+  open.value = true;
+}
+
+// vue-sonner renders an action's label as plain text only, so the copy button
+// with its icon lives in the toast's description instead.
+let connectedToast: string | number | undefined;
+const ConnectedToastBody = () =>
+  h("div", { class: "grid justify-items-start gap-2" }, [
+    h("p", "Ask your agent to list this page’s tools."),
+    h(
+      Button,
+      {
+        variant: "outline",
+        size: "sm",
+        type: "button",
+        "data-action": "copy-prompt-from-toast",
+        onClick: () => {
+          void navigator.clipboard.writeText(prompt).catch(() => {});
+          toast.dismiss(connectedToast);
+        },
+      },
+      () => [h(Copy), "Copy prompt"]
+    ),
+  ]);
+
+// An open dialog blocks the page for the agent, so a connection closes it.
 watch(connected, (isConnected) => {
-  if (isConnected) step.value = 4;
+  if (!isConnected) return;
+  open.value = false;
+  connectedToast = toast.success("Connected to your relay", {
+    description: markRaw(ConnectedToastBody),
+  });
 });
 </script>
 
@@ -118,7 +152,7 @@ watch(connected, (isConnected) => {
       variant="outline"
       data-action="open-agent-wizard"
       type="button"
-      @click="open = true"
+      @click="openWizard"
     >
       <Plug />
       Try with your own coding agent
@@ -126,6 +160,7 @@ watch(connected, (isConnected) => {
     </Button>
 
     <div ref="wizardHost" />
+    <Toaster position="top-right" rich-colors />
 
     <ConfigProvider :teleport-to="wizardHost ?? undefined">
       <Dialog v-model:open="open">
@@ -146,7 +181,6 @@ watch(connected, (isConnected) => {
               v-for="item in steps"
               :key="item.step"
               :step="item.step"
-              :disabled="item.step === 4 && !connected"
               class="relative w-full flex-col"
             >
               <StepperSeparator
@@ -169,7 +203,7 @@ watch(connected, (isConnected) => {
             </StepperItem>
           </Stepper>
 
-          <!-- 1. What this is -->
+          <!-- 1. Set up your agent -->
           <div v-if="step === 1" class="grid gap-3 text-sm">
             <p>
               Your agent (Claude Code, Codex, …) can’t see browser tabs. The
@@ -180,66 +214,35 @@ watch(connected, (isConnected) => {
                 rel="noreferrer"
                 >WebMCP local relay</a
               >
-              is a small open-source program that runs on your computer and
-              passes messages between this page and your agent.
+              is a small open-source program on your computer that passes
+              messages between this page and your agent.
             </p>
             <p>
-              This page has no server behind it, and nothing leaves your
-              machine.
+              Paste this prompt to your agent to add it. If the agent needs a
+              restart to load the relay, restart it, then continue here.
             </p>
+            <PromptBlock name="prompt" :text="prompt" />
+          </div>
+
+          <!-- 2. Connect this page -->
+          <div v-else class="grid gap-3 text-sm">
             <p class="text-muted-foreground">
-              Learn more:
-              <a
-                class="underline underline-offset-4"
-                href="https://docs.mcp-b.ai"
-                target="_blank"
-                rel="noreferrer"
-                >MCP-B docs</a
-              >
-              ·
-              <a
-                class="underline underline-offset-4"
-                href="https://developer.chrome.com/docs/ai/webmcp"
-                target="_blank"
-                rel="noreferrer"
-                >WebMCP in Chrome</a
-              >
-              ·
+              The relay runs on your computer, so
               <a
                 class="underline underline-offset-4"
                 href="https://developer.chrome.com/blog/local-network-access"
                 target="_blank"
                 rel="noreferrer"
-                >Chrome’s local network access prompt</a
+                >Chrome asks</a
               >
-            </p>
-          </div>
-
-          <!-- 2. Set up your agent -->
-          <div v-else-if="step === 2" class="grid gap-3 text-sm">
-            <p>
-              Paste this prompt to your coding agent. It installs the relay,
-              nothing else, and changes no project files. If the agent says it
-              needs a restart to load the relay, restart it, then continue here.
-            </p>
-            <PromptBlock name="prompt" :text="prompt" />
-          </div>
-
-          <!-- 3. Connect this page -->
-          <div v-else-if="step === 3" class="grid gap-3 text-sm">
-            <p class="text-muted-foreground">
-              The relay runs on your computer, and Chrome asks before it lets
-              any website talk to programs on your device. Allowing it lets this
-              page reach the relay. The permission applies to this site only,
-              and you can revoke it in Chrome’s site settings.
+              whether this site may reach it. Allow it to connect.
             </p>
             <div
               aria-live="polite"
               class="grid gap-2 rounded-md border bg-muted/50 p-3"
             >
               <p v-if="status === 'idle'" class="text-muted-foreground">
-                Nothing is loaded yet. Choose “Relay installed — connect” below
-                and allow Chrome’s prompt.
+                Nothing is loaded yet.
               </p>
               <p v-else-if="status === 'searching'" class="flex gap-2">
                 <LoaderCircle class="mt-0.5 size-4 shrink-0 animate-spin" />
@@ -247,15 +250,16 @@ watch(connected, (isConnected) => {
               </p>
               <p v-else-if="status === 'found'" class="flex gap-2">
                 <Check class="mt-0.5 size-4 shrink-0" />
-                Connected to your relay.
+                Connected to your relay. Ask your agent to list this page’s
+                tools.
               </p>
               <template v-else-if="status === 'rejected'">
                 <p class="flex gap-2 text-destructive" role="alert">
                   <CircleAlert class="mt-0.5 size-4 shrink-0" />
                   <span>
                     A relay answered but refused this page: it was started for a
-                    different address. Paste this prompt to your agent. Once the
-                    relay runs with this page’s address, try again.
+                    different address. Paste this prompt to your agent, then try
+                    again.
                   </span>
                 </p>
                 <PromptBlock name="fix-prompt" :text="fixPrompt" />
@@ -263,9 +267,8 @@ watch(connected, (isConnected) => {
               <p v-else-if="status === 'not-found'" class="flex gap-2">
                 <CircleAlert class="mt-0.5 size-4 shrink-0" />
                 <span>
-                  No relay found yet. Either the agent still needs a restart
-                  after installing it, or Chrome’s permission prompt was denied
-                  or dismissed.
+                  No relay found. Either the agent still needs a restart, or
+                  Chrome’s prompt was denied or dismissed.
                 </span>
               </p>
               <p v-else class="flex gap-2 text-destructive" role="alert">
@@ -278,45 +281,34 @@ watch(connected, (isConnected) => {
             </div>
           </div>
 
-          <!-- 4. Connected -->
-          <div v-else class="grid gap-3 text-sm">
-            <p class="flex gap-2 font-medium">
-              <Check class="mt-0.5 size-4 shrink-0" />
-              This page is connected to the relay.
-            </p>
-            <p>
-              Paste the same prompt to your agent again. It will list this
-              page’s tools and suggest one to try.
-            </p>
-            <p class="text-muted-foreground">
-              Close this dialog first: while it is open the page behind it is
-              blocked, so a tool call from your agent would time out.
-            </p>
-            <PromptBlock name="prompt" :text="prompt" />
-          </div>
-
           <DialogFooter>
             <Button
-              v-if="step > 1 && step < 4"
+              v-if="step === 2 && !connected"
               variant="outline"
               data-action="wizard-back"
               type="button"
-              @click="step -= 1"
+              @click="step = 1"
             >
               Back
             </Button>
             <Button
-              v-if="step < 3 || (step === 3 && connected)"
+              v-if="step === 1"
               data-action="wizard-next"
               type="button"
-              @click="step += 1"
+              @click="step = 2"
             >
               Next
             </Button>
             <Button
-              v-else-if="
-                step === 3 && (status === 'not-found' || status === 'rejected')
-              "
+              v-else-if="connected"
+              data-action="wizard-done"
+              type="button"
+              @click="open = false"
+            >
+              Done
+            </Button>
+            <Button
+              v-else-if="status === 'not-found' || status === 'rejected'"
               data-action="retry-relay"
               type="button"
               @click="retry"
@@ -324,21 +316,13 @@ watch(connected, (isConnected) => {
               Try again
             </Button>
             <Button
-              v-else-if="step === 3"
+              v-else
               data-action="connect-relay"
               type="button"
               :disabled="status === 'searching'"
               @click="connect"
             >
               Relay installed — connect
-            </Button>
-            <Button
-              v-else
-              data-action="wizard-done"
-              type="button"
-              @click="open = false"
-            >
-              Done
             </Button>
           </DialogFooter>
         </DialogContent>
