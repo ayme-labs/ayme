@@ -17,8 +17,10 @@ If you don't have a webmcp_list_sources tool yet, add the WebMCP local relay as 
 
 If you already have it, call webmcp_list_sources and webmcp_list_tools and show me the tools the page exposes.`;
 
-// For a relay that answers but refuses this origin.
+// For a relay that answers but refuses this origin. The relay listens on one
+// local port, first come first served, so the refusing relay may belong to
+// another program even when this agent's configuration is right.
 export const repairPrompt = (origin: string) =>
   `The WebMCP local relay refused the page at ${origin}. It only accepts the origin it was started with.
 
-In your MCP configuration, change the webmcp-local-relay server's --widget-origin to ${origin}.`;
+In your MCP configuration, change the webmcp-local-relay server's --widget-origin to ${origin}. If another process is blocking the relay's port, help me resolve it.`;
