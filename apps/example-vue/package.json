@@ -16,11 +16,11 @@
     "@ayme-dev/webmcp": "workspace:*",
     "@ayme-dev/webmcp-inspector": "workspace:*",
     "@ayme-dev/webmcp-vue": "workspace:*",
+    "@lucide/vue": "^1.47.0",
     "@mcp-b/webmcp-polyfill": "5.1.0",
     "@vueuse/core": "^15.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-vue-next": "^1.0.0",
     "reka-ui": "^2.10.4",
     "tailwind-merge": "^3.7.0",
     "vue": "^3.5.42"
