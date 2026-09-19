@@ -127,9 +127,13 @@ const ConnectedToastBody = () =>
         size: "sm",
         type: "button",
         "data-action": "copy-prompt-from-toast",
-        onClick: () => {
-          void navigator.clipboard.writeText(prompt).catch(() => {});
-          toast.dismiss(connectedToast);
+        onClick: async () => {
+          try {
+            await navigator.clipboard.writeText(prompt);
+            toast.dismiss(connectedToast);
+          } catch {
+            toast.error("Copying is blocked. Reopen the wizard and select the prompt.");
+          }
         },
       },
       () => [h(Copy), "Copy prompt"]
