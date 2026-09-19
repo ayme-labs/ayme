@@ -21,6 +21,10 @@ Start with the repository's [Ayme setup skill](../../skills/ayme/SKILL.md), then
 
 The hosted bundle initializes the pinned WebMCP polyfill before the Vue app starts. Use the setup guide's `webmcp_list_sources`, `webmcp_list_tools`, and tool invocation flow to exercise the list actions.
 
+## User interface
+
+The demo UI is built entirely from [shadcn-vue](https://www.shadcn-vue.com/) components copied into `src/components/ui`, on Tailwind CSS v4 with the default Neutral theme in light mode. The app carries no custom CSS: `src/style.css` holds only the Tailwind import and the theme tokens, and layout is expressed with Tailwind utilities in the templates. Add components with the shadcn-vue CLI or by copying the upstream source; do not hand-write new ones.
+
 ## Application setup
 
 Call the lifecycle API once in the application root, before registering Page Objects:
