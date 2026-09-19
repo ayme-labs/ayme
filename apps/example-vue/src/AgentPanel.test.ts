@@ -115,7 +115,6 @@ describe("The agent wizard", () => {
     const fixPrompt = wrapper.get('[data-prompt="fix-prompt"]').text();
     expect(fixPrompt).toContain(`--widget-origin to ${window.location.origin}`);
     expect(writeText).toHaveBeenCalledWith(fixPrompt);
-    vi.unstubAllGlobals();
   });
 
   it("names the likely causes and rescans when no relay turns up", async () => {
@@ -196,7 +195,6 @@ describe("The agent wizard", () => {
     expect(
       document.querySelector('[data-action="copy-prompt-from-toast"]')
     ).not.toBeNull();
-    vi.unstubAllGlobals();
   });
 
   it("reopens on the connection with nothing left to do but Done", async () => {
