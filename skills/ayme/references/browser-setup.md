@@ -57,7 +57,7 @@ in the app. A direct Ayme call or page-state read alone does not check the relay
 
 If no source appears, check script loading, the relay process, and the allowed
 origin. If the app is served from a non-local origin, such as a deployed
-preview, Chrome 147 and later asks the user to allow local network access before
+preview, Chrome 142 and later asks the user to allow local network access before
 the page can reach the relay. Ask the user to allow it, then reload the app. If
 the source has no tools, check publication status, POM registration,
 and action decorators in the package READMEs. If the driver loaded after Ayme's
