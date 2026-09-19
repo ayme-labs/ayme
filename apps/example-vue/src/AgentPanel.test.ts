@@ -41,6 +41,7 @@ describe("The agent wizard", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     relayScript()?.remove();
     document.querySelector("iframe[data-webmcp-relay]")?.remove();
   });
