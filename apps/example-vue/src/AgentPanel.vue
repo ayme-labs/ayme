@@ -132,7 +132,9 @@ const ConnectedToastBody = () =>
             await navigator.clipboard.writeText(prompt);
             toast.dismiss(connectedToast);
           } catch {
-            toast.error("Copying is blocked. Reopen the wizard and select the prompt.");
+            toast.error(
+              "Copying is blocked. Reopen the wizard and select the prompt."
+            );
           }
         },
       },
