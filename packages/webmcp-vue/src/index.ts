@@ -92,9 +92,9 @@ export function useAymeWebMcp(options: UseAymeWebMcpOptions = {}) {
       "useAymeWebMcp must be called within an active Vue effect scope"
     );
   const inherited = inheritedRuntime();
-  if (inherited && options.page !== undefined)
+  if (inherited && (options.page !== undefined || options.ignore !== undefined))
     throw new Error(
-      "Configure page on the ancestor AymeWebMcpProvider or standalone useAymeWebMcp owner."
+      "Configure page and ignore on the ancestor AymeWebMcpProvider or standalone useAymeWebMcp owner."
     );
   return consumeRuntime(inherited ?? ownRuntime(options));
 }

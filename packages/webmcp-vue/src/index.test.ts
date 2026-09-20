@@ -139,12 +139,18 @@ it.each(["provider", "standalone"])(
   }
 );
 
-it("rejects a child page option and nested providers", () => {
+it("rejects child page and ignore options and nested providers", () => {
   const errors: unknown[] = [];
+  const ignore = (element: Element) => element.matches(".assistant");
   const Child = defineComponent({
     setup() {
       try {
         useAymeWebMcp({ page });
+      } catch (error) {
+        errors.push(error);
+      }
+      try {
+        useAymeWebMcp({ ignore });
       } catch (error) {
         errors.push(error);
       }
@@ -158,7 +164,8 @@ it("rejects a child page option and nested providers", () => {
   apps.push(app);
   app.mount(document.createElement("div"));
   expect(errors.map(String)).toEqual([
-    expect.stringContaining("Configure page on the ancestor"),
+    expect.stringContaining("Configure page and ignore on the ancestor"),
+    expect.stringContaining("Configure page and ignore on the ancestor"),
     expect.stringContaining("cannot be nested"),
   ]);
 });
