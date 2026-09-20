@@ -7,6 +7,18 @@ export type DecisionEndpointOptions = {
   credentials?: RequestCredentials;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isDecisionResponse(value: unknown): value is DecisionResponse {
+  return (
+    isRecord(value) &&
+    typeof value.model === "string" &&
+    isRecord(value.answers)
+  );
+}
+
 async function buildHeaders(
   init?: HeadersInit | (() => HeadersInit | Promise<HeadersInit>)
 ): Promise<Record<string, string>> {
@@ -52,6 +64,14 @@ export function decisionEndpoint(
       throw new Error(`${response.status} ${errorText}`);
     }
 
-    return JSON.parse(text) as DecisionResponse;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new Error("The Decision Endpoint returned an invalid response.");
+    }
+    if (!isDecisionResponse(parsed))
+      throw new Error("The Decision Endpoint returned an invalid response.");
+    return parsed;
   };
 }

@@ -2,6 +2,20 @@ import type { DecisionRequest } from "./decisionTypes";
 
 const upstreamUrl = "https://openrouter.ai/api/v1/systemone";
 const maxBodyBytes = 1024 * 1024;
+const excludedResponseHeaders = new Set([
+  "connection",
+  "content-encoding",
+  "content-length",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "proxy-connection",
+  "set-cookie",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+]);
 
 export type CreateDecisionEndpointOptions = {
   apiKey: string;
@@ -23,12 +37,62 @@ function isDecisionRequest(body: unknown): body is DecisionRequest {
   if (!body || typeof body !== "object") return false;
   const record = body as Record<string, unknown>;
   return (
-    "model" in record &&
-    "state" in record &&
-    "questions" in record &&
+    typeof record.model === "string" &&
+    (typeof record.state === "string" ||
+      (record.state !== null && typeof record.state === "object")) &&
     record.questions !== null &&
-    typeof record.questions === "object"
+    typeof record.questions === "object" &&
+    !Array.isArray(record.questions)
   );
+}
+
+async function readBody(request: Request): Promise<Uint8Array | undefined> {
+  if (!request.body) return new Uint8Array();
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      byteLength += value.byteLength;
+      if (byteLength > maxBodyBytes) {
+        try {
+          await reader.cancel();
+        } catch {
+          // The body is already rejected; cancellation is best effort.
+        }
+        return undefined;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
+}
+
+function responseHeaders(headers: Headers): Headers {
+  const filtered = new Headers(headers);
+  const connectionHeaders =
+    filtered
+      .get("connection")
+      ?.split(",")
+      .map((name) => name.trim()) ?? [];
+  for (const name of [
+    ...excludedResponseHeaders,
+    ...connectionHeaders.filter((name) => /^[!#$%&'*+.^_`|~\w-]+$/.test(name)),
+  ])
+    filtered.delete(name);
+  return filtered;
 }
 
 export function createDecisionEndpoint({
@@ -49,8 +113,8 @@ export function createDecisionEndpoint({
       throw error;
     }
 
-    const bodyBytes = new Uint8Array(await request.arrayBuffer());
-    if (bodyBytes.byteLength > maxBodyBytes)
+    const bodyBytes = await readBody(request);
+    if (!bodyBytes)
       return jsonError(413, "The request body must be at most 1 MB.");
 
     let body: unknown;
@@ -83,7 +147,7 @@ export function createDecisionEndpoint({
       });
       return new Response(await upstream.arrayBuffer(), {
         status: upstream.status,
-        headers: upstream.headers,
+        headers: responseHeaders(upstream.headers),
       });
     } catch (error) {
       console.error("Decision Endpoint upstream request failed.", error);

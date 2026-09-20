@@ -77,4 +77,28 @@ describe("decisionEndpoint", () => {
     const decide = decisionEndpoint("/api/decisions");
     await expect(decide(request)).rejects.toThrow("403 Forbidden.");
   });
+
+  it.each([
+    null,
+    [],
+    { model: 1, answers: {} },
+    { model: "typesafe/jev-1.13", answers: null },
+    { model: "typesafe/jev-1.13", answers: [] },
+  ])("rejects invalid successful response bodies", async (responseBody) => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify(responseBody), { status: 200 })
+    );
+    const decide = decisionEndpoint("/api/decisions");
+    await expect(decide(request)).rejects.toThrow(
+      "The Decision Endpoint returned an invalid response."
+    );
+  });
+
+  it("rejects malformed successful response bodies", async () => {
+    fetchMock.mockResolvedValue(new Response("not json", { status: 200 }));
+    const decide = decisionEndpoint("/api/decisions");
+    await expect(decide(request)).rejects.toThrow(
+      "The Decision Endpoint returned an invalid response."
+    );
+  });
 });

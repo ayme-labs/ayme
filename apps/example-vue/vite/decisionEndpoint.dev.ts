@@ -4,26 +4,42 @@ import { createDecisionEndpoint } from "@ayme-dev/webmcp/server";
 
 import { decisionEndpointPath } from "./decisionEndpointPath";
 
-function readBody(
-  request: Connect.IncomingMessage
-): Promise<Uint8Array | undefined> {
+const maxBodyBytes = 1024 * 1024;
+
+type BodyReadResult =
+  { body: Uint8Array | undefined; tooLarge: false } | { tooLarge: true };
+
+function readBody(request: Connect.IncomingMessage): Promise<BodyReadResult> {
   if (request.method === "GET" || request.method === "HEAD")
-    return Promise.resolve(undefined);
+    return Promise.resolve({ body: undefined, tooLarge: false });
 
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    request.on("data", (chunk: Buffer) => chunks.push(chunk));
-    request.on("end", () => resolve(Buffer.concat(chunks)));
+    let byteLength = 0;
+    let tooLarge = false;
+    request.on("data", (chunk: Buffer) => {
+      if (tooLarge) return;
+      byteLength += chunk.byteLength;
+      if (byteLength > maxBodyBytes) {
+        tooLarge = true;
+        chunks.length = 0;
+        resolve({ tooLarge: true });
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => {
+      if (!tooLarge) resolve({ body: Buffer.concat(chunks), tooLarge: false });
+    });
     request.on("error", reject);
   });
 }
 
-export function decisionEndpointDev(): Plugin {
+export function decisionEndpointDev(apiKey?: string): Plugin {
   return {
     name: "example-vue-decision-endpoint-dev",
     apply: "serve",
     configureServer(server) {
-      const apiKey = process.env.AYME_OPENROUTER_API_KEY;
       if (!apiKey) return;
 
       const handler = createDecisionEndpoint({
@@ -39,11 +55,19 @@ export function decisionEndpointDev(): Plugin {
         }
 
         const host = request.headers.host ?? "127.0.0.1:4190";
-        const body = await readBody(request);
+        const bodyResult = await readBody(request);
+        if (bodyResult.tooLarge) {
+          response.statusCode = 413;
+          response.setHeader("Content-Type", "application/json");
+          response.end(
+            JSON.stringify({ error: "The request body must be at most 1 MB." })
+          );
+          return;
+        }
         const webRequest = new Request(`http://${host}${request.url}`, {
           method: request.method,
           headers: request.headers as HeadersInit,
-          body: body ? new Uint8Array(body) : undefined,
+          body: bodyResult.body ? Uint8Array.from(bodyResult.body) : undefined,
         });
         const webResponse = await handler(webRequest);
         response.statusCode = webResponse.status;

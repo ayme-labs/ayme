@@ -84,6 +84,27 @@ describe("createDecisionEndpoint", () => {
     });
   });
 
+  it("cancels a streaming body as soon as it exceeds 1 MB", async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(1024 * 1024 + 1));
+      },
+      cancel,
+    });
+    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const response = await handler(
+      new Request("http://localhost/decisions", {
+        method: "POST",
+        body,
+        duplex: "half",
+      } as RequestInit)
+    );
+    expect(response.status).toBe(413);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("rejects non-JSON bodies with 400", async () => {
     const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
     const response = await handler(
@@ -105,6 +126,20 @@ describe("createDecisionEndpoint", () => {
     expect(await response.json()).toEqual({
       error: "The request body must include model, state, and questions.",
     });
+  });
+
+  it.each([
+    { ...validBody, model: null },
+    { ...validBody, state: null },
+    { ...validBody, questions: [] },
+  ])("rejects invalid required field types with 400", async (body) => {
+    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const response = await handler(jsonRequest(body));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "The request body must include model, state, and questions.",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("rejects models outside typesafe/jev-* with 400", async () => {
@@ -179,6 +214,37 @@ describe("createDecisionEndpoint", () => {
     const response = await handler(jsonRequest(validBody));
     expect(response.status).toBe(429);
     expect(await response.json()).toEqual({ error: "Rate limited." });
+  });
+
+  it("removes compressed representation and hop-by-hop response headers", async () => {
+    const decodedBody = JSON.stringify({
+      model: "typesafe/jev-1.13",
+      answers: {},
+    });
+    fetchMock.mockResolvedValue(
+      new Response(decodedBody, {
+        status: 200,
+        headers: {
+          Connection: "keep-alive, x-upstream-hop",
+          "Content-Encoding": "gzip",
+          "Content-Length": "20",
+          "Content-Type": "application/json",
+          "Set-Cookie": "session=secret",
+          "X-End-To-End": "preserved",
+          "X-Upstream-Hop": "removed",
+        },
+      })
+    );
+    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const response = await handler(jsonRequest(validBody));
+    expect(await response.text()).toBe(decodedBody);
+    expect(response.headers.get("content-encoding")).toBeNull();
+    expect(response.headers.get("content-length")).toBeNull();
+    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(response.headers.get("connection")).toBeNull();
+    expect(response.headers.get("x-upstream-hop")).toBeNull();
+    expect(response.headers.get("content-type")).toBe("application/json");
+    expect(response.headers.get("x-end-to-end")).toBe("preserved");
   });
 
   it("returns 502 when the upstream cannot be reached", async () => {
