@@ -5,7 +5,7 @@ import {
   projectStructuralNodeForest,
   StructuralTree,
   SyntheticAriaRefFactory,
-  type AriaRef as StructuralAriaRef,
+  type AriaRef,
   type ProjectedStructuralProperty,
 } from "@ayme-dev/core/structural-observation";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
@@ -33,8 +33,7 @@ export const getPageStateTool = {
   execute: async () => (await getPageStateForDocument(document)).text,
 } satisfies ModelContextTool<Record<string, never>, string>;
 
-/** A capture-scoped Structural Ref exposed to Ayme consumers. */
-export type AriaRef = string;
+export type { AriaRef };
 
 export type AymeNode = {
   ref: AriaRef;
@@ -58,6 +57,14 @@ export type PageState = {
   resolve(...refs: AriaRef[]): Promise<RefResolution[]>;
 };
 
+/** Package-internal: typed data from the latest Page State Session capture. */
+export type PageStateCapture = {
+  readonly tree: StructuralTree;
+  readonly elementsByRef: ReadonlyMap<AriaRef, Element>;
+  /** Reconcile between the previous and current capture; null on the first capture. */
+  readonly reconcile: StructuralTree | null;
+};
+
 type CapturedPageState = {
   text: string;
   tree: StructuralTree;
@@ -76,6 +83,13 @@ export async function getPageStateForDocument(
   currentDocument: Document
 ): Promise<PageState> {
   return getPageStateSession(currentDocument).getPageState();
+}
+
+/** Package-internal: capture the current page state and return its typed data. */
+export async function getPageStateCaptureForDocument(
+  currentDocument: Document
+): Promise<PageStateCapture> {
+  return getPageStateSession(currentDocument).getPageStateCapture();
 }
 
 /** Resolve refs through the current document's session and a fresh capture. */
@@ -120,6 +134,14 @@ class PageStateSession {
 
   async getPageState(): Promise<PageState> {
     return (await this.getPageStateForElements([])).state;
+  }
+
+  async getPageStateCapture(): Promise<PageStateCapture> {
+    const capture = await captureCurrentPageState(
+      this.currentRoot(),
+      this.refFactory
+    );
+    return this.advance(capture);
   }
 
   async getPageStateForElements(
@@ -194,11 +216,15 @@ class PageStateSession {
     });
   }
 
-  private advance(capture: CapturedPageState): void {
+  private advance(capture: CapturedPageState): PageStateCapture {
     if (this.baseline === null) {
       this.currentIdentitiesByRef = this.addInitialIdentities(capture);
       this.baseline = capture.tree;
-      return;
+      return {
+        tree: capture.tree,
+        elementsByRef: capture.elementsByRef,
+        reconcile: null,
+      };
     }
 
     const previousIdentitiesByRef = this.currentIdentitiesByRef;
@@ -282,6 +308,11 @@ class PageStateSession {
 
     this.currentIdentitiesByRef = nextIdentitiesByRef;
     this.baseline = capture.tree;
+    return {
+      tree: capture.tree,
+      elementsByRef: capture.elementsByRef,
+      reconcile: reconciled,
+    };
   }
 
   private addInitialIdentities(
@@ -345,7 +376,7 @@ async function captureCurrentPageState(
   const capture = captureWithoutInspector(root);
   const absentRoots = new Set(structure.absentElements);
   const presentRoots = new Set(registrations.map(({ element }) => element));
-  const excludedRefs = new Set<StructuralAriaRef>();
+  const excludedRefs = new Set<AriaRef>();
   for (const [element, ref] of capture.refsByElement) {
     for (let ancestor: Element | null = element; ancestor;) {
       if (presentRoots.has(ancestor)) break;
@@ -402,8 +433,8 @@ async function captureCurrentPageState(
     refFactory
   );
   let currentTree = refPlacement.tree;
-  const labelsByRef = new Map<StructuralAriaRef, string[]>();
-  const elementsBySyntheticRef = new Map<StructuralAriaRef, Element>();
+  const labelsByRef = new Map<AriaRef, string[]>();
+  const elementsBySyntheticRef = new Map<AriaRef, Element>();
 
   for (const [index, ref] of refPlacement.refs.entries()) {
     if (ref === null) continue;
@@ -431,11 +462,8 @@ async function captureCurrentPageState(
     }
   }
 
-  const inlineLabels = new Map<StructuralAriaRef, string>();
-  const properties = new Map<
-    StructuralAriaRef,
-    ProjectedStructuralProperty[]
-  >();
+  const inlineLabels = new Map<AriaRef, string>();
+  const properties = new Map<AriaRef, ProjectedStructuralProperty[]>();
   for (const [ref, labels] of labelsByRef) {
     const sorted = [...labels].sort();
     const value = sorted.length === 1 ? sorted[0]! : sorted;
