@@ -84,11 +84,17 @@ describe("createDecisionEndpoint", () => {
     });
   });
 
-  it("rejects streaming bodies over 1 MB with 413", async () => {
+  it("stops reading streaming bodies once they exceed 1 MB", async () => {
+    let cancelled = false;
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(new Uint8Array(1024 * 1024 + 1));
-        controller.close();
+        setTimeout(() => {
+          if (!cancelled) controller.close();
+        }, 20);
+      },
+      cancel() {
+        cancelled = true;
       },
     });
     const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
@@ -100,6 +106,7 @@ describe("createDecisionEndpoint", () => {
       } as RequestInit)
     );
     expect(response.status).toBe(413);
+    expect(cancelled).toBe(true);
     expect(await response.json()).toEqual({
       error: "The request body must be at most 1 MB.",
     });
