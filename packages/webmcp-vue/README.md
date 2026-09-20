@@ -45,6 +45,15 @@ import App from "./App.vue";
 
 In the browser, the provider creates a Page for the current document. To supply a custom or decorated Page, create it once in the root setup and pass `:page="customPage"`. Keep that Page fixed while mounted; remount the provider and its consumers to change it. Wrappers must preserve the browser adapter's locator metadata for Ayme observation. Playwright `Page` type compatibility alone does not guarantee observation support.
 
+Pass `:ignore="ignorePageState"` to keep matching elements and their descendants out of the Structural Page State:
+
+```ts
+const ignorePageState = (element: Element) =>
+  element.matches("[data-assistant-panel]");
+```
+
+The same option is available to standalone setup as `useAymeWebMcp({ ignore })`. When the predicate returns `true`, the matching subtree is dropped from page state capture. This affects page state only; it does not change which tools are published. Keep the predicate fixed while its runtime owner is mounted.
+
 Hooks in `App` and its descendants consume the provider:
 
 ```ts

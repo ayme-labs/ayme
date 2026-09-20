@@ -11,9 +11,19 @@ import {
 } from "vue";
 import { afterEach, expect, expectTypeOf, it, vi } from "vitest";
 import {
+  createRuntimeSession,
   listRegisteredPoms,
   registerCompiledPom,
 } from "@ayme-dev/webmcp/internal";
+
+vi.mock("@ayme-dev/webmcp/internal", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@ayme-dev/webmcp/internal")>();
+  return {
+    ...original,
+    createRuntimeSession: vi.fn(original.createRuntimeSession),
+  };
+});
 import {
   AymeWebMcpProvider,
   useAymeWebMcp,
@@ -48,7 +58,16 @@ function mount(component: Component) {
 afterEach(() => {
   for (const app of apps.splice(0)) app.unmount();
   for (const scope of scopes.splice(0)) scope.stop();
+  vi.mocked(createRuntimeSession).mockClear();
   vi.unstubAllGlobals();
+});
+
+it("passes ignore to the runtime session", () => {
+  const ignore = (element: Element) => element.matches(".assistant");
+  const scope = effectScope();
+  scopes.push(scope);
+  scope.run(() => useAymeWebMcp({ page, ignore }));
+  expect(createRuntimeSession).toHaveBeenCalledWith(page, { ignore });
 });
 
 it("preserves standalone effectScope setup, direct instance return and disposal", () => {
@@ -120,12 +139,18 @@ it.each(["provider", "standalone"])(
   }
 );
 
-it("rejects a child page option and nested providers", () => {
+it("rejects child page and ignore options and nested providers", () => {
   const errors: unknown[] = [];
+  const ignore = (element: Element) => element.matches(".assistant");
   const Child = defineComponent({
     setup() {
       try {
         useAymeWebMcp({ page });
+      } catch (error) {
+        errors.push(error);
+      }
+      try {
+        useAymeWebMcp({ ignore });
       } catch (error) {
         errors.push(error);
       }
@@ -139,7 +164,8 @@ it("rejects a child page option and nested providers", () => {
   apps.push(app);
   app.mount(document.createElement("div"));
   expect(errors.map(String)).toEqual([
-    expect.stringContaining("Configure page on the ancestor"),
+    expect.stringContaining("Configure page and ignore on the ancestor"),
+    expect.stringContaining("Configure page and ignore on the ancestor"),
     expect.stringContaining("cannot be nested"),
   ]);
 });

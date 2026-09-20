@@ -17,25 +17,31 @@ import {
 } from "@ayme-dev/webmcp/internal";
 
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/webmcp/internal";
-export type AymeWebMcpProviderProps = { page?: AymePage; children?: ReactNode };
+export type AymeWebMcpProviderProps = {
+  page?: AymePage;
+  children?: ReactNode;
+  ignore?: (element: Element) => boolean;
+};
 const RuntimeContext = createContext<RuntimeSession | undefined>(undefined);
 
 export function AymeWebMcpProvider({
   page,
+  ignore,
   children,
 }: AymeWebMcpProviderProps): ReactElement {
   const ancestor = useContext(RuntimeContext);
   const [setup] = useState(() => ({
     page,
-    runtime: createRuntimeSession(page),
+    ignore,
+    runtime: createRuntimeSession(page, { ignore }),
   }));
   if (ancestor)
     throw new Error(
       "AymeWebMcpProvider cannot be nested beneath another Ayme runtime owner."
     );
-  if (page !== setup.page)
+  if (page !== setup.page || ignore !== setup.ignore)
     throw new Error(
-      "The provider page must stay fixed while mounted. Remount the provider to change it."
+      "The provider options must stay fixed while mounted. Remount the provider to change them."
     );
   useEffect(() => setup.runtime.start(), [setup]);
   return createElement(

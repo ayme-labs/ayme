@@ -9,9 +9,19 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, expect, expectTypeOf, it, vi } from "vitest";
 import {
+  createRuntimeSession,
   listRegisteredPoms,
   registerCompiledPom,
 } from "@ayme-dev/webmcp/internal";
+
+vi.mock("@ayme-dev/webmcp/internal", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@ayme-dev/webmcp/internal")>();
+  return {
+    ...original,
+    createRuntimeSession: vi.fn(original.createRuntimeSession),
+  };
+});
 import {
   AymeWebMcpProvider,
   useAymeWebMcp,
@@ -42,7 +52,22 @@ beforeEach(() => vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true));
 afterEach(async () => {
   for (const root of roots.splice(0)) await act(() => root.unmount());
   Reflect.deleteProperty(document, "modelContext");
+  vi.mocked(createRuntimeSession).mockClear();
   vi.unstubAllGlobals();
+});
+
+it("passes ignore to the runtime session", async () => {
+  const ignore = (element: Element) => element.matches(".assistant");
+  await act(() =>
+    root().render(
+      h(
+        AymeWebMcpProvider,
+        { page, ignore },
+        h(() => null)
+      )
+    )
+  );
+  expect(createRuntimeSession).toHaveBeenCalledWith(page, { ignore });
 });
 
 it("server-renders without constructing or registering a Page Object", () => {
@@ -186,7 +211,7 @@ it("rejects changing a mounted provider's Page", async () => {
   await act(() => app.render(h(AymeWebMcpProvider, { page })));
   await expect(
     act(async () => app.render(h(AymeWebMcpProvider, { page: {} as Page })))
-  ).rejects.toThrow("page must stay fixed");
+  ).rejects.toThrow("provider options must stay fixed");
 });
 
 it("requires remounting to change the model class", async () => {

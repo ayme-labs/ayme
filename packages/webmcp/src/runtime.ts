@@ -1,4 +1,5 @@
 import { createPage } from "./browserPage";
+import { configurePageStateIgnore } from "./pageState";
 import {
   constructPageObject,
   createAymeRuntime,
@@ -19,6 +20,9 @@ export type AymeWebMcpPublicationStatus = Readonly<{
   message: string;
 }>;
 export type AymePage = ConstructorParameters<PageObjectConstructor>[0];
+export type AymeRuntimeOptions = {
+  ignore?: (element: Element) => boolean;
+};
 type PageInstrumentation = (page: AymePage) => AymePage;
 type Registration = {
   activate: () => { dispose(): void };
@@ -51,7 +55,10 @@ function instrumentPage(page: AymePage) {
 }
 
 // Construction is inert. Frameworks start activity only when their owner commits.
-export function createRuntimeSession(sourcePage?: AymePage) {
+export function createRuntimeSession(
+  sourcePage?: AymePage,
+  options: AymeRuntimeOptions = {}
+) {
   let resolvedPage: AymePage | undefined;
   const getPage = () =>
     (resolvedPage ??= instrumentPage(sourcePage ?? createPage()));
@@ -136,6 +143,7 @@ export function createRuntimeSession(sourcePage?: AymePage) {
     }
     owner.dispose();
     owner = undefined;
+    configurePageStateIgnore(undefined);
     setStatus({ state: "disposed", message: "The Ayme runtime was disposed." });
   }
 
@@ -169,6 +177,7 @@ export function createRuntimeSession(sourcePage?: AymePage) {
       if (owner)
         throw new Error("The Ayme runtime already has an active owner.");
       owner = createAymeRuntime(getPage());
+      configurePageStateIgnore(options.ignore);
       controller = new AbortController();
       try {
         for (const registration of registrations)
