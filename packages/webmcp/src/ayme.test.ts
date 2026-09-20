@@ -21,6 +21,8 @@ vi.mock("./registry", () => ({
 import ayme, { ayme as namedAyme } from "./index";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
+const ref = AriaRefSchema.parse;
+
 describe("the public Ayme page state facade", () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -231,32 +233,19 @@ describe("the public Ayme page state facade", () => {
     account.remove();
 
     await expect(
-      state.resolve(
-        AriaRefSchema.parse("s_1"),
-        AriaRefSchema.parse("s_2"),
-        AriaRefSchema.parse("s_3"),
-        AriaRefSchema.parse("s_4")
-      )
+      state.resolve(ref("s_1"), ref("s_2"), ref("s_3"), ref("s_4"))
     ).resolves.toEqual([
-      {
-        status: "unresolved",
-        requestedRef: AriaRefSchema.parse("s_1"),
-        reason: "removed",
-      },
+      { status: "unresolved", requestedRef: ref("s_1"), reason: "removed" },
       {
         status: "resolved",
-        requestedRef: AriaRefSchema.parse("s_2"),
-        node: { ref: AriaRefSchema.parse("s_5"), element: billing },
+        requestedRef: ref("s_2"),
+        node: { ref: ref("s_5"), element: billing },
       },
-      {
-        status: "unresolved",
-        requestedRef: AriaRefSchema.parse("s_3"),
-        reason: "removed",
-      },
+      { status: "unresolved", requestedRef: ref("s_3"), reason: "removed" },
       {
         status: "resolved",
-        requestedRef: AriaRefSchema.parse("s_4"),
-        node: { ref: AriaRefSchema.parse("s_5"), element: billing },
+        requestedRef: ref("s_4"),
+        node: { ref: ref("s_5"), element: billing },
       },
     ]);
   });
