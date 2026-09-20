@@ -27,17 +27,14 @@ export function decisionEndpointDev(apiKey?: string): Plugin {
         const host = request.headers.host ?? "127.0.0.1:4190";
         const canHaveBody =
           request.method !== "GET" && request.method !== "HEAD";
-        const webRequest = new Request(
-          `http://${host}${request.url}`,
-          {
-            method: request.method,
-            headers: request.headers as HeadersInit,
-            ...(canHaveBody && {
-              body: Readable.toWeb(request),
-              duplex: "half",
-            }),
-          } as RequestInit
-        );
+        const webRequest = new Request(`http://${host}${request.url}`, {
+          method: request.method,
+          headers: request.headers as HeadersInit,
+          ...(canHaveBody && {
+            body: Readable.toWeb(request),
+            duplex: "half",
+          }),
+        } as RequestInit);
         const webResponse = await handler(webRequest);
         response.statusCode = webResponse.status;
         webResponse.headers.forEach((value, key) => {
