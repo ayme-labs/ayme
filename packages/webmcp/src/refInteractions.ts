@@ -1,3 +1,4 @@
+import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { Page } from "@playwright/test";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { JsonValue } from "./contracts";
@@ -52,7 +53,7 @@ function readRef(input: unknown): AriaRef {
     "ref" in input &&
     typeof input.ref === "string"
   )
-    return input.ref;
+    return AriaRefSchema.parse(input.ref);
   throw new Error("A Structural Ref string is required.");
 }
 
@@ -65,7 +66,7 @@ function readFillInput(input: unknown): FillRefInput {
     "value" in input &&
     typeof input.value === "string"
   )
-    return { ref: input.ref, value: input.value };
+    return { ref: AriaRefSchema.parse(input.ref), value: input.value };
   throw new Error("A Structural Ref and string value are required.");
 }
 

@@ -1,5 +1,6 @@
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
+import type { AriaRef } from "@ayme-dev/webmcp";
 import type { RegisteredPom } from "@ayme-dev/webmcp/internal";
 import {
   capturePageState,
@@ -51,7 +52,9 @@ export function useInspector() {
       );
       const { state, refs: targetRefs } =
         await getPageStateForElements(targetElements);
-      const refs = targetRefs.filter((ref): ref is string => ref !== undefined);
+      const refs = targetRefs.filter(
+        (ref): ref is AriaRef => ref !== undefined
+      );
       const resolutions = await state.resolve(...refs);
       const elements = uniqueElements(
         resolutions.flatMap((resolution) =>

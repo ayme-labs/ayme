@@ -21,12 +21,15 @@ vi.mock("./registry", () => ({
   requireAymeRuntimePage,
 }));
 
+import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { getPageStateForDocument } from "./pageState";
 import {
   clickPageStateRefTool,
   createRefInteractions,
   fillPageStateRefTool,
 } from "./refInteractions";
+
+const ref = AriaRefSchema.parse;
 
 describe("Structural Ref interactions", () => {
   beforeEach(() => {
@@ -57,7 +60,7 @@ describe("Structural Ref interactions", () => {
     const click = vi.fn().mockResolvedValue(undefined);
     const page = fakePage({ ariaSnapshot, click });
 
-    await createRefInteractions(page).click("e2");
+    await createRefInteractions(page).click(ref("e2"));
 
     expect(ariaSnapshot).toHaveBeenCalledWith({ mode: "ai" });
     expect(click).toHaveBeenCalledWith("aria-ref=e2");
@@ -83,7 +86,7 @@ describe("Structural Ref interactions", () => {
       .mockResolvedValue('textbox "Save changes" [ref=e4]');
     const fill = vi.fn().mockResolvedValue(undefined);
     const page = fakePage({ ariaSnapshot, fill });
-    await createRefInteractions(page).fill("e2", "updated");
+    await createRefInteractions(page).fill(ref("e2"), "updated");
 
     expect(ariaSnapshot).toHaveBeenCalledWith({ mode: "ai" });
     expect(fill).toHaveBeenCalledWith("aria-ref=e4", "updated");
@@ -96,9 +99,9 @@ describe("Structural Ref interactions", () => {
     await getPageStateForDocument(document);
 
     const page = fakePage();
-    await expect(createRefInteractions(page).click("e999")).rejects.toThrow(
-      'Cannot click ref "e999": unknown-ref.'
-    );
+    await expect(
+      createRefInteractions(page).click(ref("e999"))
+    ).rejects.toThrow('Cannot click ref "e999": unknown-ref.');
     expect(page.ariaSnapshot).not.toHaveBeenCalled();
     expect(page.click).not.toHaveBeenCalled();
   });
@@ -116,7 +119,7 @@ describe("Structural Ref interactions", () => {
     });
 
     const page = fakePage();
-    await expect(createRefInteractions(page).click("e2")).rejects.toThrow(
+    await expect(createRefInteractions(page).click(ref("e2"))).rejects.toThrow(
       'Cannot click ref "e2": removed.'
     );
     expect(page.ariaSnapshot).not.toHaveBeenCalled();
@@ -147,7 +150,7 @@ describe("Structural Ref interactions", () => {
     );
 
     const page = fakePage();
-    await expect(createRefInteractions(page).click("e2")).rejects.toThrow(
+    await expect(createRefInteractions(page).click(ref("e2"))).rejects.toThrow(
       'Cannot click ref "e2": ambiguous.'
     );
     expect(page.ariaSnapshot).not.toHaveBeenCalled();
@@ -159,7 +162,7 @@ describe("Structural Ref interactions", () => {
     await getPageStateForDocument(document);
 
     const page = fakePage();
-    await expect(createRefInteractions(page).click("e2")).rejects.toThrow(
+    await expect(createRefInteractions(page).click(ref("e2"))).rejects.toThrow(
       'Cannot click ref "e2": no-element.'
     );
     expect(page.ariaSnapshot).not.toHaveBeenCalled();
@@ -180,7 +183,7 @@ describe("Structural Ref interactions", () => {
     await getPageStateForDocument(document);
 
     const page = fakePage();
-    await expect(createRefInteractions(page).click("s_1")).rejects.toThrow(
+    await expect(createRefInteractions(page).click(ref("s_1"))).rejects.toThrow(
       'Cannot click ref "s_1": synthetic observation-only ref.'
     );
     expect(page.ariaSnapshot).not.toHaveBeenCalled();
