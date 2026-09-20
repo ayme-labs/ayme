@@ -1,17 +1,24 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 import { build } from "vite";
 
+import { decisionEndpointPath } from "../vite/decisionEndpointPath.ts";
+
+const openRouterKeyPrefix = "sk-or-v1-";
 const serverOnlyMarkers = [
   "@playwright/test",
   "playwright.config",
   "tests/upstream/",
   ".spec.ts",
   ".test.ts",
-];
+  decisionEndpointPath,
+  openRouterKeyPrefix,
+  process.env.AYME_OPENROUTER_API_KEY,
+].filter(Boolean);
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   ".."
