@@ -230,26 +230,33 @@ describe("the public Ayme page state facade", () => {
     expect(reorderedState.text).toContain("s_4 Billing.root");
     account.remove();
 
-    await expect(state.resolve("s_1", "s_2", "s_3", "s_4")).resolves.toEqual([
+    await expect(
+      state.resolve(
+        AriaRefSchema.parse("s_1"),
+        AriaRefSchema.parse("s_2"),
+        AriaRefSchema.parse("s_3"),
+        AriaRefSchema.parse("s_4")
+      )
+    ).resolves.toEqual([
       {
         status: "unresolved",
-        requestedRef: "s_1",
+        requestedRef: AriaRefSchema.parse("s_1"),
         reason: "removed",
       },
       {
         status: "resolved",
-        requestedRef: "s_2",
-        node: { ref: "s_5", element: billing },
+        requestedRef: AriaRefSchema.parse("s_2"),
+        node: { ref: AriaRefSchema.parse("s_5"), element: billing },
       },
       {
         status: "unresolved",
-        requestedRef: "s_3",
+        requestedRef: AriaRefSchema.parse("s_3"),
         reason: "removed",
       },
       {
         status: "resolved",
-        requestedRef: "s_4",
-        node: { ref: "s_5", element: billing },
+        requestedRef: AriaRefSchema.parse("s_4"),
+        node: { ref: AriaRefSchema.parse("s_5"), element: billing },
       },
     ]);
   });

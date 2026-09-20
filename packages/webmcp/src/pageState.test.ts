@@ -15,8 +15,11 @@ vi.mock("./registry", () => ({
   }),
 }));
 
-import { getPageStateTool } from "./pageState";
+import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import { getPageStateCaptureForDocument, getPageStateTool } from "./pageState";
 import ayme from "./index";
+
+const ref = AriaRefSchema.parse;
 
 describe("get_page_state", () => {
   beforeEach(() => {
@@ -481,12 +484,53 @@ describe("get_page_state", () => {
     });
 
     const state = await ayme.getPageState();
-    await expect(state.resolve("e2")).resolves.toEqual([
+    await expect(state.resolve(ref("e2"))).resolves.toEqual([
       {
         status: "resolved",
-        requestedRef: "e2",
-        node: { ref: "e4", element: replacement },
+        requestedRef: ref("e2"),
+        node: { ref: ref("e4"), element: replacement },
       },
     ]);
+  });
+  it("exposes typed capture data through the package-internal interface", async () => {
+    const original = document.querySelector("#captured");
+    if (!original) throw new Error("Missing test root.");
+
+    captureAriaSnapshot.mockReturnValueOnce({
+      distilledText:
+        '- generic [ref=e1]:\n  - button "Captured omitted" [ref=e2]',
+      fullText: '- generic [ref=e1]:\n  - button "Captured omitted" [ref=e2]',
+      refsByElement: new Map([
+        [document.body, "e1"],
+        [original, "e2"],
+      ]),
+    });
+    listRegisteredPomRoots.mockResolvedValue([]);
+
+    const first = await getPageStateCaptureForDocument(document);
+    expect(first.reconcile).toBeNull();
+    expect(first.tree.getNode(ref("e2"))?.role).toBe("button");
+    expect(first.tree.getNode(ref("e2"))?.name).toBe("Captured omitted");
+    expect(first.elementsByRef.get(ref("e2"))).toBe(original);
+
+    original.outerHTML = '<button id="captured">Captured omitted</button>';
+    const replacement = document.querySelector("#captured");
+    if (!replacement) throw new Error("Missing replacement root.");
+
+    captureAriaSnapshot.mockReturnValue({
+      distilledText:
+        '- generic [ref=e3]:\n  - button "Captured omitted" [ref=e4]',
+      fullText: '- generic [ref=e3]:\n  - button "Captured omitted" [ref=e4]',
+      refsByElement: new Map([
+        [document.body, "e3"],
+        [replacement, "e4"],
+      ]),
+    });
+
+    const second = await getPageStateCaptureForDocument(document);
+    expect(second.reconcile).not.toBeNull();
+    expect(second.tree.getNode(ref("e4"))?.name).toBe("Captured omitted");
+    expect(second.elementsByRef.get(ref("e4"))).toBe(replacement);
+    expect(second.reconcile?.getNode(ref("e4"))?.status?.kind).toBe("updated");
   });
 });
