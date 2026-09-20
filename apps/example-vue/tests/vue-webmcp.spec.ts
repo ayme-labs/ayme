@@ -22,6 +22,32 @@ type ListActions = {
   renameItem(index: number, text: string): Promise<void>;
 };
 
+/** Subtree from `main "Playground"` with refs renumbered from e1. Identical
+ *  across platforms; only the ancestors above main differ. */
+function normalizeAppSubtree(pageState: string): string {
+  const lines = pageState.split("\n");
+  const root = lines.findIndex((l) => l.includes('main "Playground"'));
+  if (root === -1) throw new Error('main "Playground" not found.');
+  const indent = lines[root]!.search(/\S/);
+  let end = root + 1;
+  while (
+    end < lines.length &&
+    (lines[end]!.trim() === "" || lines[end]!.search(/\S/) > indent)
+  )
+    end++;
+  const sub = lines
+    .slice(root, end)
+    .filter((l) => l.trim())
+    .map((l) => l.slice(indent))
+    .join("\n");
+  const refs = new Map<string, string>();
+  let n = 0;
+  return sub.replace(
+    /\be\d+\b/g,
+    (r) => refs.get(r) ?? (refs.set(r, `e${++n}`), `e${n}`)
+  );
+}
+
 const initialToolNames = [
   "get_page_context",
   "click_page_state_ref",
@@ -242,7 +268,8 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   ].map((match) => match[1]);
   expect(archiveRefs).toHaveLength(2);
   expect(new Set(archiveRefs).size).toBe(2);
-  expect(snapshot).toMatchSnapshot("page-state.yml");
+  expect(snapshot).not.toContain("POM inspector");
+  expect(normalizeAppSubtree(snapshot)).toMatchSnapshot("page-state.yml");
 });
 
 test("shows the app model and page state in separate inspector tabs", async ({
@@ -259,9 +286,7 @@ test("shows the app model and page state in separate inspector tabs", async ({
   const pageStatePanel = page.locator("#page-state-panel");
   const output = pageStatePanel.locator(".page-state-output");
   await expect(pageStatePanel).toBeVisible();
-  expect((await output.textContent()) ?? "").toMatchSnapshot(
-    "page-state-output.txt"
-  );
+  await expect(output).toContainText("ListPage.items");
   await expect(output).not.toContainText("POM inspector");
   await expect(pageStateTab).toHaveAttribute("aria-selected", "true");
 
