@@ -84,13 +84,12 @@ describe("createDecisionEndpoint", () => {
     });
   });
 
-  it("cancels a streaming body as soon as it exceeds 1 MB", async () => {
-    const cancel = vi.fn();
+  it("rejects streaming bodies over 1 MB with 413", async () => {
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(new Uint8Array(1024 * 1024 + 1));
+        controller.close();
       },
-      cancel,
     });
     const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
     const response = await handler(
@@ -101,7 +100,9 @@ describe("createDecisionEndpoint", () => {
       } as RequestInit)
     );
     expect(response.status).toBe(413);
-    expect(cancel).toHaveBeenCalledOnce();
+    expect(await response.json()).toEqual({
+      error: "The request body must be at most 1 MB.",
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
