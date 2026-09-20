@@ -72,6 +72,42 @@ type SessionIdentity = {
 
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
 
+const INSPECTOR_HOST_SELECTOR = "[data-ayme-inspector-host]";
+
+type PageStateIgnorePredicate = (element: Element) => boolean;
+
+type PageStateIgnoreStore = { ignore?: PageStateIgnorePredicate };
+
+const pageStateIgnoreStore: PageStateIgnoreStore = ((
+  globalThis as typeof globalThis & {
+    __aymePageStateIgnoreStore?: PageStateIgnoreStore;
+  }
+).__aymePageStateIgnoreStore ??= {});
+
+/** Package-internal: set while a runtime session is active. */
+export function configurePageStateIgnore(
+  ignore: PageStateIgnorePredicate | undefined
+): void {
+  pageStateIgnoreStore.ignore = ignore;
+}
+
+function shouldIgnoreElement(element: Element): boolean {
+  if (element.matches(INSPECTOR_HOST_SELECTOR)) return true;
+  return pageStateIgnoreStore.ignore?.(element) ?? false;
+}
+
+function isWithinIgnoredSubtree(element: Element): boolean {
+  for (let ancestor: Element | null = element; ancestor;) {
+    if (shouldIgnoreElement(ancestor)) return true;
+    ancestor =
+      ancestor.assignedSlot ??
+      ancestor.parentElement ??
+      (ancestor.getRootNode() as ShadowRoot).host ??
+      null;
+  }
+  return false;
+}
+
 export async function getPageStateForDocument(
   currentDocument: Document
 ): Promise<PageState> {
@@ -340,14 +376,19 @@ async function captureCurrentPageState(
   const registrations = structure.roots.filter(
     (registration) =>
       registration.element.ownerDocument === root.ownerDocument &&
-      root.contains(registration.element)
+      root.contains(registration.element) &&
+      !isWithinIgnoredSubtree(registration.element)
   );
-  const capture = captureWithoutInspector(root);
+  const capture = captureAriaSnapshot(root);
   const absentRoots = new Set(structure.absentElements);
   const presentRoots = new Set(registrations.map(({ element }) => element));
   const excludedRefs = new Set<StructuralAriaRef>();
   for (const [element, ref] of capture.refsByElement) {
     for (let ancestor: Element | null = element; ancestor;) {
+      if (shouldIgnoreElement(ancestor)) {
+        excludedRefs.add(AriaRefSchema.parse(ref));
+        break;
+      }
       if (presentRoots.has(ancestor)) break;
       if (absentRoots.has(ancestor)) {
         excludedRefs.add(AriaRefSchema.parse(ref));
@@ -474,33 +515,6 @@ async function captureCurrentPageState(
   }
 
   return { text, tree: currentTree, elementsByRef };
-}
-
-function captureWithoutInspector(root: Element) {
-  const inspectorHosts = [
-    ...(root.matches("[data-ayme-inspector-host]") ? [root] : []),
-    ...root.querySelectorAll("[data-ayme-inspector-host]"),
-  ];
-  const previousValues = inspectorHosts.map((host) => ({
-    display: (host as HTMLElement).style.getPropertyValue("display"),
-    priority: (host as HTMLElement).style.getPropertyPriority("display"),
-  }));
-  for (const host of inspectorHosts)
-    (host as HTMLElement).style.setProperty("display", "none", "important");
-  try {
-    return captureAriaSnapshot(root);
-  } finally {
-    inspectorHosts.forEach((host, index) => {
-      const previous = previousValues[index]!;
-      if (previous.display)
-        (host as HTMLElement).style.setProperty(
-          "display",
-          previous.display,
-          previous.priority
-        );
-      else (host as HTMLElement).style.removeProperty("display");
-    });
-  }
 }
 
 function coalesceByElement(

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import * as pageState from "./pageState";
 import { createRuntimeSession, type AymePage } from "./runtime";
 import { listRegisteredPoms, registerCompiledPom } from "./registry";
 import {
@@ -55,7 +56,23 @@ beforeEach(() => {
 afterEach(() => {
   for (const stop of stops.splice(0)) stop();
   sessions.length = 0;
+  pageState.configurePageStateIgnore(undefined);
   vi.unstubAllGlobals();
+});
+
+it("threads ignore to page state capture for the session lifetime", () => {
+  const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnore");
+  try {
+    const ignore = (element: Element) => element.matches(".assistant");
+    const runtime = createRuntimeSession(page, { ignore });
+    expect(configureIgnore).not.toHaveBeenCalled();
+    const stop = start(runtime);
+    expect(configureIgnore).toHaveBeenLastCalledWith(ignore);
+    stop();
+    expect(configureIgnore).toHaveBeenLastCalledWith(undefined);
+  } finally {
+    configureIgnore.mockRestore();
+  }
 });
 
 it("creates the default browser page lazily", () => {

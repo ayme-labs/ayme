@@ -15,7 +15,7 @@ vi.mock("./registry", () => ({
   }),
 }));
 
-import { getPageStateTool } from "./pageState";
+import { configurePageStateIgnore, getPageStateTool } from "./pageState";
 import ayme from "./index";
 
 describe("get_page_state", () => {
@@ -33,6 +33,7 @@ describe("get_page_state", () => {
   });
 
   afterEach(() => {
+    configurePageStateIgnore(undefined);
     vi.unstubAllGlobals();
   });
 
@@ -488,5 +489,90 @@ describe("get_page_state", () => {
         node: { ref: "e4", element: replacement },
       },
     ]);
+  });
+
+  it("drops ignored elements and their descendants before absent-root exclusion", async () => {
+    document.body.innerHTML = `
+      <div id="assistant">
+        <div id="panel"><button id="panel-action">Panel action</button></div>
+      </div>
+      <button id="main">Main action</button>
+    `;
+    const assistant = document.querySelector("#assistant");
+    const panel = document.querySelector("#panel");
+    const panelAction = document.querySelector("#panel-action");
+    const main = document.querySelector("#main");
+    if (!assistant || !panel || !panelAction || !main)
+      throw new Error("Missing test roots.");
+
+    configurePageStateIgnore((element) => element.id === "assistant");
+    captureAriaSnapshot.mockReturnValue({
+      distilledText: `
+- generic [ref=e1]:
+  - button "Panel action" [ref=e2]
+  - button "Main action" [ref=e3]
+`.trim(),
+      fullText: `
+- generic [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "Panel action" [ref=e2]
+  - button "Main action" [ref=e3]
+`.trim(),
+      refsByElement: new Map([
+        [document.body, "e1"],
+        [assistant, "e4"],
+        [panel, "e5"],
+        [panelAction, "e2"],
+        [main, "e3"],
+      ]),
+    });
+    listRegisteredPomRoots.mockResolvedValue([
+      { label: "Panel.root", element: panel },
+    ]);
+
+    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+      "- e1:
+        - e3 button "Main action""
+    `);
+  });
+
+  it("excludes the inspector host through the built-in ignore predicate", async () => {
+    document.body.innerHTML = `
+      <main><h1 id="app">Consumer application</h1></main>
+      <div data-ayme-inspector-host><span id="inspector">POM inspector controls</span></div>
+    `;
+    const app = document.querySelector("#app");
+    const host = document.querySelector("[data-ayme-inspector-host]");
+    const inspector = document.querySelector("#inspector");
+    if (!app || !host || !inspector) throw new Error("Missing test roots.");
+
+    captureAriaSnapshot.mockReturnValue({
+      distilledText: `
+- generic [ref=e1]:
+  - heading "Consumer application" [ref=e2]
+  - generic "POM inspector controls" [ref=e3]
+`.trim(),
+      fullText: `
+- generic [ref=e1]:
+  - main [ref=e4]:
+    - heading "Consumer application" [ref=e2]
+  - generic [ref=e5]:
+    - generic "POM inspector controls" [ref=e3]
+`.trim(),
+      refsByElement: new Map([
+        [document.body, "e1"],
+        [app, "e2"],
+        [host, "e5"],
+        [inspector, "e3"],
+      ]),
+    });
+    listRegisteredPomRoots.mockResolvedValue([]);
+
+    await expect(getPageStateTool.execute()).resolves.toMatchInlineSnapshot(`
+      "- e1:
+        - e2 heading "Consumer application""
+    `);
+    expect(captureAriaSnapshot).toHaveBeenCalledWith(document.body);
   });
 });

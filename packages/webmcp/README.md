@@ -58,6 +58,19 @@ console.log((await ayme.getPageState()).text);
 Page state works without WebMCP publication. Tool invocation through a browser
 client also requires the driver and publication setup.
 
+Pass `ignore` on the Vue composable or React provider to keep parts of the DOM
+out of the Structural Page State. When the predicate returns `true` for an
+element, that element and everything inside it are dropped from page state
+capture. This affects page state only; it does not change which tools are
+published. Polarity is the opposite of a Ref Tool's `filter`: `ignore` true
+drops, `filter` true keeps.
+
+```ts
+useAymeWebMcp({
+  ignore: (element) => element.matches("[data-assistant-panel]"),
+});
+```
+
 ## Coding agent skill
 
 Copy this request into your coding agent:
