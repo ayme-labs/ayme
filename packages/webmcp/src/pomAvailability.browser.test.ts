@@ -1,3 +1,4 @@
+import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createPage } from "./browserPage";
 import ayme from "./index";
@@ -401,7 +402,9 @@ describe("live Page Object availability", () => {
     expect(hidden.text).not.toContain("Shell.sidebar");
     expect(hidden.text).toContain("MAIN CONTENT");
     expect(names()).toEqual([]);
-    expect((await before.resolve(ref!))[0]?.status).toBe("unresolved");
+    expect((await before.resolve(AriaRefSchema.parse(ref!)))[0]?.status).toBe(
+      "unresolved"
+    );
     sidebar.style.transform = "none";
     const restored = await ayme.getPageState();
     expect(restored.text).toContain("SIDEBAR CONTENT");

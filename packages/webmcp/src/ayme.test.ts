@@ -21,6 +21,8 @@ vi.mock("./registry", () => ({
 import ayme, { ayme as namedAyme } from "./index";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
+const ref = AriaRefSchema.parse;
+
 describe("the public Ayme page state facade", () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -230,26 +232,20 @@ describe("the public Ayme page state facade", () => {
     expect(reorderedState.text).toContain("s_4 Billing.root");
     account.remove();
 
-    await expect(state.resolve("s_1", "s_2", "s_3", "s_4")).resolves.toEqual([
-      {
-        status: "unresolved",
-        requestedRef: "s_1",
-        reason: "removed",
-      },
+    await expect(
+      state.resolve(ref("s_1"), ref("s_2"), ref("s_3"), ref("s_4"))
+    ).resolves.toEqual([
+      { status: "unresolved", requestedRef: ref("s_1"), reason: "removed" },
       {
         status: "resolved",
-        requestedRef: "s_2",
-        node: { ref: "s_5", element: billing },
+        requestedRef: ref("s_2"),
+        node: { ref: ref("s_5"), element: billing },
       },
-      {
-        status: "unresolved",
-        requestedRef: "s_3",
-        reason: "removed",
-      },
+      { status: "unresolved", requestedRef: ref("s_3"), reason: "removed" },
       {
         status: "resolved",
-        requestedRef: "s_4",
-        node: { ref: "s_5", element: billing },
+        requestedRef: ref("s_4"),
+        node: { ref: ref("s_5"), element: billing },
       },
     ]);
   });
