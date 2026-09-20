@@ -129,7 +129,6 @@ class PageStateSession {
   private baseline: StructuralTree | null = null;
   private currentIdentitiesByRef = new Map<AriaRef, SessionIdentity>();
   private readonly identitiesByAlias = new Map<AriaRef, SessionIdentity>();
-  private latestCapture: PageStateCapture | null = null;
 
   constructor(private readonly currentRoot: () => Element) {}
 
@@ -138,10 +137,11 @@ class PageStateSession {
   }
 
   async getPageStateCapture(): Promise<PageStateCapture> {
-    await this.getPageStateForElements([]);
-    if (this.latestCapture === null)
-      throw new Error("Page State capture is unavailable.");
-    return this.latestCapture;
+    const capture = await captureCurrentPageState(
+      this.currentRoot(),
+      this.refFactory
+    );
+    return this.advance(capture);
   }
 
   async getPageStateForElements(
@@ -216,16 +216,15 @@ class PageStateSession {
     });
   }
 
-  private advance(capture: CapturedPageState): void {
+  private advance(capture: CapturedPageState): PageStateCapture {
     if (this.baseline === null) {
       this.currentIdentitiesByRef = this.addInitialIdentities(capture);
       this.baseline = capture.tree;
-      this.latestCapture = {
+      return {
         tree: capture.tree,
         elementsByRef: capture.elementsByRef,
         reconcile: null,
       };
-      return;
     }
 
     const previousIdentitiesByRef = this.currentIdentitiesByRef;
@@ -309,7 +308,7 @@ class PageStateSession {
 
     this.currentIdentitiesByRef = nextIdentitiesByRef;
     this.baseline = capture.tree;
-    this.latestCapture = {
+    return {
       tree: capture.tree,
       elementsByRef: capture.elementsByRef,
       reconcile: reconciled,

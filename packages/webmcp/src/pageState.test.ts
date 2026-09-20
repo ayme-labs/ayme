@@ -533,4 +533,38 @@ describe("get_page_state", () => {
     expect(second.elementsByRef.get(ref("e4"))).toBe(replacement);
     expect(second.reconcile?.getNode(ref("e4"))?.status?.kind).toBe("updated");
   });
+
+  it("keeps concurrent capture results scoped to their own capture", async () => {
+    const captured = document.querySelector("#captured");
+    if (!captured) throw new Error("Missing test root.");
+
+    captureAriaSnapshot
+      .mockReturnValueOnce({
+        distilledText:
+          '- generic [ref=e1]:\n  - button "First capture" [ref=e2]',
+        fullText: '- generic [ref=e1]:\n  - button "First capture" [ref=e2]',
+        refsByElement: new Map([
+          [document.body, "e1"],
+          [captured, "e2"],
+        ]),
+      })
+      .mockReturnValueOnce({
+        distilledText:
+          '- generic [ref=e3]:\n  - button "Second capture" [ref=e4]',
+        fullText: '- generic [ref=e3]:\n  - button "Second capture" [ref=e4]',
+        refsByElement: new Map([
+          [document.body, "e3"],
+          [captured, "e4"],
+        ]),
+      });
+    listRegisteredPomRoots.mockResolvedValue([]);
+
+    const [first, second] = await Promise.all([
+      getPageStateCaptureForDocument(document),
+      getPageStateCaptureForDocument(document),
+    ]);
+
+    expect(first.tree.getNode(ref("e2"))?.name).toBe("First capture");
+    expect(second.tree.getNode(ref("e4"))?.name).toBe("Second capture");
+  });
 });
