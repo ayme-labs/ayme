@@ -3,21 +3,27 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { build } from "vite";
+import { build, loadEnv } from "vite";
 
-const serverOnlyMarkers = [
-  "@playwright/test",
-  "playwright.config",
-  "tests/upstream/",
-  ".spec.ts",
-  ".test.ts",
-];
+import { decisionEndpointPath } from "../vite/decisionEndpointPath.ts";
+
+const openRouterKeyPrefix = "sk-or-v1-";
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   ".."
 );
 
-function verifyBrowserOutput(directory) {
+function verifyBrowserOutput(directory, mode) {
+  const serverOnlyMarkers = [
+    "@playwright/test",
+    "playwright.config",
+    "tests/upstream/",
+    ".spec.ts",
+    ".test.ts",
+    decisionEndpointPath,
+    openRouterKeyPrefix,
+    loadEnv(mode, appRoot, "").AYME_OPENROUTER_API_KEY,
+  ].filter(Boolean);
   const files = fs
     .readdirSync(path.join(directory, "assets"))
     .filter((file) => file.endsWith(".js"));
@@ -40,7 +46,7 @@ function verifyBrowserOutput(directory) {
     );
 }
 
-verifyBrowserOutput(path.join(appRoot, "dist"));
+verifyBrowserOutput(path.join(appRoot, "dist"), "production");
 
 const disabledOutput = fs.mkdtempSync(
   path.join(os.tmpdir(), "ayme-publication-disabled-")
@@ -52,7 +58,7 @@ try {
     build: { outDir: disabledOutput, emptyOutDir: true },
     logLevel: "warn",
   });
-  verifyBrowserOutput(disabledOutput);
+  verifyBrowserOutput(disabledOutput, "publication-disabled");
 } finally {
   fs.rmSync(disabledOutput, { recursive: true, force: true });
 }

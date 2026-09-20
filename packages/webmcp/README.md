@@ -58,6 +58,93 @@ console.log((await ayme.getPageState()).text);
 Page state works without WebMCP publication. Tool invocation through a browser
 client also requires the driver and publication setup.
 
+## Decision Endpoint
+
+The Goal Loop calls a **Decision Endpoint** in your backend. Ayme ships the
+handler and a browser helper; your app mounts the route, holds the model key, and
+gates access.
+
+### Route contract
+
+`POST` with JSON body `{ model, state, questions }`.
+
+- `model`, `state`, and `questions` follow the System One decisions API. The
+  endpoint accepts only `typesafe/jev-*` models.
+- Success and upstream errors: return the upstream status and body unchanged.
+- The endpoint's own rejections return `{ "error": "<one plain sentence>" }`:
+  - `405` when the method is not `POST`
+  - `413` when the body is over 1 MB
+  - `400` when the body is not JSON, a field is missing, or the model is not
+    `typesafe/jev-*`
+  - `502` when the upstream provider cannot be reached
+- Authorization failures return whatever `Response` your `authorize` function
+  throws.
+
+The handler forwards no incoming request headers. It builds the upstream request
+from scratch with your key and `Content-Type: application/json`, posting to
+OpenRouter's System One API at `https://openrouter.ai/api/v1/systemone`.
+
+### Server handler
+
+```ts
+import { createDecisionEndpoint } from "@ayme-dev/webmcp/server";
+
+const handleDecision = createDecisionEndpoint({
+  apiKey: process.env.YOUR_OPENROUTER_KEY!,
+  authorize(request) {
+    // Return nothing when allowed, or throw a Response to reject.
+  },
+});
+```
+
+`createDecisionEndpoint` requires both options and throws when `document` exists.
+
+Mount `handleDecision` on your backend route. In Vite during local development:
+
+```ts
+import { createDecisionEndpoint } from "@ayme-dev/webmcp/server";
+
+const handler = createDecisionEndpoint({
+  apiKey: process.env.YOUR_OPENROUTER_KEY!,
+  authorize() {},
+});
+
+server.middlewares.use("/api/decisions", async (req, res) => {
+  const request = new Request(`http://${req.headers.host}${req.url}`, {
+    method: req.method,
+    headers: req.headers as HeadersInit,
+    body:
+      req.method === "GET" || req.method === "HEAD"
+        ? undefined
+        : await readRequestBody(req),
+  });
+  const response = await handler(request);
+  res.statusCode = response.status;
+  response.headers.forEach((value, key) => res.setHeader(key, value));
+  res.end(Buffer.from(await response.arrayBuffer()));
+});
+```
+
+Keep the key in a server-only environment variable without a `VITE_` prefix.
+
+### Browser helper
+
+```ts
+import { decisionEndpoint } from "@ayme-dev/webmcp";
+
+const decide = decisionEndpoint("/api/decisions", {
+  credentials: "same-origin",
+});
+
+useAymeWebMcp({
+  goalLoop: decide,
+});
+```
+
+`decisionEndpoint` posts the `DecisionRequest`, resolves function `headers`,
+passes `credentials`, and throws on non-2xx responses with the status and error
+text. Use a fake function in deterministic tests.
+
 ## Coding agent skill
 
 Copy this request into your coding agent:
