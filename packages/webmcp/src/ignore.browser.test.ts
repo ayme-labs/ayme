@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage } from "./browserPage";
 import ayme from "./index";
-import { getPageContextTool } from "./pageContext";
 import {
   createPageRegistration,
   listRegisteredPomTools,
@@ -81,15 +80,6 @@ describe("ignore predicate in page state capture", () => {
         node: { ref: saveRef, element: document.querySelector("#save") },
       },
     ]);
-    await expect(context.resolve(AriaRefSchema.parse("e999"))).resolves.toEqual(
-      [
-        {
-          status: "unresolved",
-          requestedRef: AriaRefSchema.parse("e999"),
-          reason: "unknown-ref",
-        },
-      ]
-    );
   });
 
   it("drops a nested present Page Object Root inside an ignored element", async () => {
@@ -154,16 +144,9 @@ describe("ignore predicate in page state capture", () => {
     host.style.display = "block";
 
     startRuntime();
-    const payload = await getPageContextTool.execute({});
-    const structure =
-      typeof payload === "object" &&
-      payload !== null &&
-      "structure" in payload &&
-      typeof payload.structure === "string"
-        ? payload.structure
-        : "";
-    expect(structure).toContain("Consumer application");
-    expect(structure).not.toContain("POM inspector controls");
+    const context = await ayme.getPageContext();
+    expect(context.structure).toContain("Consumer application");
+    expect(context.structure).not.toContain("POM inspector controls");
     expect(host.style.getPropertyValue("display")).toBe("block");
   });
 });

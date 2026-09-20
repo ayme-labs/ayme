@@ -491,7 +491,7 @@ describe("get_page_state", () => {
     ]);
   });
 
-  it("drops ignored elements and their descendants before absent-root exclusion", async () => {
+  it("drops ignored elements even when they contain a present Page Object Root", async () => {
     document.body.innerHTML = `
       <div id="assistant">
         <div id="panel"><button id="panel-action">Panel action</button></div>
