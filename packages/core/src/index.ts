@@ -66,3 +66,11 @@ export type {
   StructuralVisitSnapshot,
   StructuralVisitTimelineEvidence,
 } from "./observation/StructuralTimeline";
+export type { PageActivitySource } from "./observation/PageActivitySource";
+export type { MonotonicClock } from "./observation/MonotonicClock";
+export {
+  waitForSettled,
+  SETTLED_PAGE_QUIET_MS,
+  SETTLED_PAGE_DEADLINE_MS,
+} from "./observation/waitForSettled";
+export { structuralPageChanged } from "./observation/structuralPageChanged";

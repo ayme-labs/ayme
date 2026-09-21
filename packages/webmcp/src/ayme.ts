@@ -6,15 +6,15 @@ import {
   type PageState,
 } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
-import { createRefInteractions } from "./refInteractions";
+import { createRefInteractions, type RefActionResult } from "./refInteractions";
 import { requireAymeRuntimePage } from "./registry";
 
 export type Ayme = {
   getPageContext(...names: readonly string[]): Promise<PageContext>;
   getPageState(): Promise<PageState>;
   getPomDefinitions(...names: readonly string[]): PomDefinitionsResult;
-  click(ref: AriaRef): Promise<void>;
-  fill(ref: AriaRef, value: string): Promise<void>;
+  click(ref: AriaRef): Promise<RefActionResult>;
+  fill(ref: AriaRef, value: string): Promise<RefActionResult>;
 };
 
 export const ayme: Ayme = {

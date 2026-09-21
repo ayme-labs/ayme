@@ -136,6 +136,19 @@ export async function resolvePageStateRefs(
   return getPageStateSession(currentDocument).resolveRefs(refs);
 }
 
+export type PageStateActionResolution = {
+  readonly resolutions: RefResolution[];
+  readonly decisionTree: StructuralTree;
+};
+
+/** Resolve refs for an action and return the Structural Page State they were decided on. */
+export async function resolvePageStateRefsForAction(
+  currentDocument: Document,
+  ...refs: AriaRef[]
+): Promise<PageStateActionResolution> {
+  return getPageStateSession(currentDocument).resolveRefsForAction(refs);
+}
+
 export async function resolvePageStateRef(
   element: Element
 ): Promise<AriaRef | undefined> {
@@ -199,10 +212,21 @@ class PageStateSession {
   }
 
   async resolveRefs(refs: readonly AriaRef[]): Promise<RefResolution[]> {
-    this.advance(
-      await captureCurrentPageState(this.currentRoot(), this.refFactory)
+    return (await this.resolveRefsForAction(refs)).resolutions;
+  }
+
+  async resolveRefsForAction(
+    refs: readonly AriaRef[]
+  ): Promise<PageStateActionResolution> {
+    const capture = await captureCurrentPageState(
+      this.currentRoot(),
+      this.refFactory
     );
-    return refs.map((requestedRef) => this.resolveOne(requestedRef));
+    this.advance(capture);
+    return {
+      decisionTree: capture.tree,
+      resolutions: refs.map((requestedRef) => this.resolveOne(requestedRef)),
+    };
   }
 
   private resolveOne(requestedRef: AriaRef): RefResolution {

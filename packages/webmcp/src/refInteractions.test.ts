@@ -21,6 +21,16 @@ vi.mock("./registry", () => ({
   requireAymeRuntimePage,
 }));
 
+const waitForSettled = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ stable: true })
+);
+vi.mock("@ayme-dev/core/structural-observation", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@ayme-dev/core/structural-observation")
+  >()),
+  waitForSettled,
+}));
+
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { getPageStateForDocument } from "./pageState";
 import {
@@ -42,7 +52,9 @@ describe("Structural Ref interactions", () => {
       roots: [],
       absentElements: [],
     });
+    waitForSettled.mockResolvedValue({ stable: true });
     vi.clearAllMocks();
+    waitForSettled.mockResolvedValue({ stable: true });
   });
 
   afterEach(() => {
@@ -190,7 +202,50 @@ describe("Structural Ref interactions", () => {
     expect(page.click).not.toHaveBeenCalled();
   });
 
-  it("publishes click and fill tool schemas and minimal successful results", async () => {
+  it("reports page_changed and settled after act, wait, capture and reconcile", async () => {
+    const button = document.querySelector("#save");
+    if (!button) throw new Error("Expected the save button.");
+    mockCapture(button, "e2");
+    await getPageStateForDocument(document);
+
+    const ariaSnapshot = vi
+      .fn()
+      .mockResolvedValue('- button "Save changes" [ref=e2]');
+    const click = vi.fn().mockResolvedValue(undefined);
+    const page = fakePage({ ariaSnapshot, click });
+
+    await expect(createRefInteractions(page).click(ref("e2"))).resolves.toEqual(
+      {
+        page_changed: false,
+        settled: true,
+      }
+    );
+    expect(waitForSettled).toHaveBeenCalledOnce();
+  });
+
+  it("reports settled false when the quiet window deadline passes first", async () => {
+    const button = document.querySelector("#save");
+    if (!button) throw new Error("Expected the save button.");
+    mockCapture(button, "e2");
+    await getPageStateForDocument(document);
+    waitForSettled.mockResolvedValueOnce({ stable: false });
+
+    const page = fakePage({
+      ariaSnapshot: vi
+        .fn()
+        .mockResolvedValue('- button "Save changes" [ref=e2]'),
+      click: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await expect(createRefInteractions(page).click(ref("e2"))).resolves.toEqual(
+      {
+        page_changed: false,
+        settled: false,
+      }
+    );
+  });
+
+  it("publishes click and fill tool schemas and action results", async () => {
     const button = document.querySelector("#save");
     if (!button) throw new Error("Expected the save button.");
     mockCapture(button, "e2");
@@ -218,12 +273,13 @@ describe("Structural Ref interactions", () => {
 
     await expect(clickPageStateRefTool.execute({ ref: "e2" })).resolves.toEqual(
       {
-        ok: true,
+        page_changed: false,
+        settled: true,
       }
     );
     await expect(
       fillPageStateRefTool.execute({ ref: "e2", value: "updated" })
-    ).resolves.toEqual({ ok: true });
+    ).resolves.toEqual({ page_changed: false, settled: true });
     expect(click).toHaveBeenCalledWith("aria-ref=e2");
     expect(fill).toHaveBeenCalledWith("aria-ref=e2", "updated");
   });
