@@ -1,4 +1,5 @@
 import type { RegisteredPomTool } from "./contracts";
+import { getPursueGoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
 import { clickPageStateRefTool, fillPageStateRefTool } from "./refInteractions";
 import {
@@ -97,11 +98,15 @@ export async function synchronizeWebMcpTools(
     try {
       do {
         syncAgain = false;
+        const pursueGoal = getPursueGoalTool();
         const active = new Map<string, PublishedTool>([
           [getPageContextTool.name, getPageContextTool],
           [clickPageStateRefTool.name, clickPageStateRefTool],
           [fillPageStateRefTool.name, fillPageStateRefTool],
           ...listRegisteredPomTools().map((tool) => [tool.name, tool] as const),
+          ...(pursueGoal
+            ? ([[pursueGoal.name, pursueGoal]] as [string, PublishedTool][])
+            : []),
         ]);
 
         for (const [name, registration] of published) {

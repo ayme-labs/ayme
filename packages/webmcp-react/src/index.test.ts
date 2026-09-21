@@ -67,7 +67,27 @@ it("passes ignore to the runtime session", async () => {
       )
     )
   );
-  expect(createRuntimeSession).toHaveBeenCalledWith(page, { ignore });
+  expect(createRuntimeSession).toHaveBeenCalledWith(page, {
+    ignore,
+    goalLoop: undefined,
+  });
+});
+
+it("passes goalLoop to the runtime session", async () => {
+  const goalLoop = vi.fn();
+  await act(() =>
+    root().render(
+      h(
+        AymeWebMcpProvider,
+        { page, goalLoop },
+        h(() => null)
+      )
+    )
+  );
+  expect(createRuntimeSession).toHaveBeenCalledWith(page, {
+    ignore: undefined,
+    goalLoop,
+  });
 });
 
 it("server-renders without constructing or registering a Page Object", () => {

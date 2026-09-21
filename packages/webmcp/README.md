@@ -158,6 +158,56 @@ useAymeWebMcp({
 passes `credentials`, and throws on non-2xx responses with the status and error
 text. Use a fake function in deterministic tests.
 
+## Goal Loop
+
+The Goal Loop drives the page toward a natural-language goal in steps. Each
+step is one judgement by a fast System One model, not by the calling agent's LLM.
+The calling agent starts the loop with `pursue_goal` and receives a **Handover**.
+
+### Turning it on
+
+Pass `goalLoop` on the Vue composable or React provider. The `pursue_goal`
+WebMCP tool is published only when `goalLoop` is set.
+
+```ts
+import { decisionEndpoint } from "@ayme-dev/webmcp";
+
+useAymeWebMcp({
+  goalLoop: decisionEndpoint("/api/ayme/decide"),
+});
+```
+
+`goalLoop` accepts any function from `DecisionRequest` to
+`Promise<DecisionResponse>`. Use `decisionEndpoint` for the common HTTP case,
+or pass a fake in tests.
+
+### The Handover
+
+`pursue_goal({ goal, maxSteps })` returns a Handover:
+
+```ts
+{
+  reason:  "done" | "no_fitting_option" | "needs_value"
+         | "action_failed" | "step_budget" | "decide_failed",
+  next:    string,     // plain words: what the calling agent should do now
+  history: { did: string, result: string, page_changed: boolean }[],
+  needs?:  { tool: string, parameters: string[] },  // only with needs_value
+}
+```
+
+| Reason              | Meaning                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `done`              | The model judged the goal achieved (goal_met ≥ 0.5).                                                         |
+| `no_fitting_option` | The model chose "none" — no available operation fits.                                                        |
+| `needs_value`       | The chosen operation needs parameter values the loop cannot fill. `needs` names the tool and its parameters. |
+| `action_failed`     | Two operations failed in a row.                                                                              |
+| `step_budget`       | `maxSteps` exhausted before the goal was achieved.                                                           |
+| `decide_failed`     | The decision function failed (network, rejected, malformed).                                                 |
+
+The `next` field tells the calling agent what to do in plain words. History
+records each operation the loop ran: a readable label in `did`, `"ok"` or an
+error message in `result`, and whether the page changed in `page_changed`.
+
 ## Coding agent skill
 
 Copy this request into your coding agent:

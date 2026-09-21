@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import * as goalLoopModule from "./goalLoop";
 import * as pageState from "./pageState";
 import { createRuntimeSession, type AymePage } from "./runtime";
 import { listRegisteredPoms, registerCompiledPom } from "./registry";
@@ -57,6 +58,7 @@ afterEach(() => {
   for (const stop of stops.splice(0)) stop();
   sessions.length = 0;
   pageState.configurePageStateIgnore(undefined);
+  goalLoopModule.configureGoalLoop(undefined);
   vi.unstubAllGlobals();
 });
 
@@ -72,6 +74,21 @@ it("threads ignore to page state capture for the session lifetime", () => {
     expect(configureIgnore).toHaveBeenLastCalledWith(undefined);
   } finally {
     configureIgnore.mockRestore();
+  }
+});
+
+it("threads goalLoop to the goal loop configuration for the session lifetime", () => {
+  const configureGoalLoop = vi.spyOn(goalLoopModule, "configureGoalLoop");
+  try {
+    const goalLoop = vi.fn();
+    const runtime = createRuntimeSession(page, { goalLoop });
+    expect(configureGoalLoop).not.toHaveBeenCalled();
+    const stop = start(runtime);
+    expect(configureGoalLoop).toHaveBeenLastCalledWith(goalLoop);
+    stop();
+    expect(configureGoalLoop).toHaveBeenLastCalledWith(undefined);
+  } finally {
+    configureGoalLoop.mockRestore();
   }
 });
 
