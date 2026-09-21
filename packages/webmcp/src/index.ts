@@ -9,5 +9,6 @@ export type {
   DecisionResponse,
 } from "./decisionEndpoint";
 export type { ActionResult } from "./actionSequence";
+export type { RefTool } from "./refTools";
 export type { PageContext, PageContextPayload } from "./pageContext";
 export type { AriaRef, AymeNode, PageState, RefResolution } from "./pageState";

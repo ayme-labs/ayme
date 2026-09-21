@@ -1,7 +1,7 @@
 import type { RegisteredPomTool } from "./contracts";
 import { getPursueGoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
-import { clickPageStateRefTool, fillPageStateRefTool } from "./refInteractions";
+import { listRefTools, type PublishedRefTool } from "./refTools";
 import {
   listRegisteredPomTools,
   subscribeToRegisteredPoms,
@@ -9,10 +9,7 @@ import {
 } from "./registry";
 
 type PublishedTool =
-  | RegisteredPomTool
-  | typeof getPageContextTool
-  | typeof clickPageStateRefTool
-  | typeof fillPageStateRefTool;
+  RegisteredPomTool | typeof getPageContextTool | PublishedRefTool;
 
 export type WebMcpDriver = Pick<
   NonNullable<typeof document.modelContext>,
@@ -104,15 +101,24 @@ export async function synchronizeWebMcpTools(
       do {
         syncAgain = false;
         const pursueGoal = getPursueGoalTool();
+        const pomTools = listRegisteredPomTools();
         const active = new Map<string, PublishedTool>([
           [getPageContextTool.name, getPageContextTool],
-          [clickPageStateRefTool.name, clickPageStateRefTool],
-          [fillPageStateRefTool.name, fillPageStateRefTool],
-          ...listRegisteredPomTools().map((tool) => [tool.name, tool] as const),
-          ...(pursueGoal
-            ? ([[pursueGoal.name, pursueGoal]] as [string, PublishedTool][])
-            : []),
         ]);
+        const takenElsewhere = new Set([
+          ...pomTools.map((tool) => tool.name),
+          ...(pursueGoal ? [pursueGoal.name] : []),
+        ]);
+        for (const { tool } of listRefTools()) {
+          if (active.has(tool.name) || takenElsewhere.has(tool.name))
+            throw new Error(
+              `Cannot publish the Ref Tool "${tool.name}": another published tool already uses that name.`
+            );
+          active.set(tool.name, tool);
+        }
+        for (const tool of pomTools) active.set(tool.name, tool);
+        if (pursueGoal)
+          active.set(pursueGoal.name, pursueGoal as PublishedTool);
 
         for (const [name, registration] of published) {
           const tool = active.get(name);

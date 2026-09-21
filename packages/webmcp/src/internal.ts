@@ -35,4 +35,5 @@ export type {
   AymePage,
   AymeWebMcpPublicationStatus,
 } from "./runtime";
+export type { RefTool } from "./refTools";
 export { isPlaywrightLiteLocator as isAymeLocator } from "@ayme-dev/playwright-lite/internal";

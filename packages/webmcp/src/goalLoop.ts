@@ -6,7 +6,7 @@ import type { ActionResult } from "./actionSequence";
 import { getPageStateCaptureForDocument } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
-import { clickPageStateRefTool, fillPageStateRefTool } from "./refInteractions";
+import { listRefTools } from "./refTools";
 import { listRegisteredPomTools, probeRegisteredPomMembers } from "./registry";
 
 export type GoalLoopDecisionFunction = (
@@ -117,10 +117,6 @@ type ToolOption = {
   tool: ExecutableTool;
 };
 
-/**
- * Build the flat list of tool options offered to the model each step.
- * Includes Ref Tools and all registered POM tools.
- */
 function toExecutable(t: {
   name: string;
   description: string;
@@ -135,10 +131,12 @@ function toExecutable(t: {
   };
 }
 
+/**
+ * Build the flat list of tool options offered to the model each step: every
+ * Ref Tool, built in or registered (ADR-0023), and every registered POM tool.
+ */
 function buildToolOptions(): ToolOption[] {
-  const refTools = [clickPageStateRefTool, fillPageStateRefTool].map(
-    toExecutable
-  );
+  const refTools = listRefTools().map(({ tool }) => toExecutable(tool));
   const pomTools: ExecutableTool[] = listRegisteredPomTools().map((t) => ({
     name: t.name,
     description: t.description,

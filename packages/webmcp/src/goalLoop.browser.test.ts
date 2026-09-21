@@ -10,6 +10,7 @@ import {
   getLastGoalLoopRunResult,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
+import type { RefTool } from "./refTools";
 
 // --- Fixtures ---
 
@@ -149,16 +150,20 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     document.body.innerHTML = "";
   });
 
-  function startRuntime(goalLoop: GoalLoopDecisionFunction) {
-    const runtime = createRuntimeSession(page, { goalLoop });
+  function startRuntime(
+    goalLoop: GoalLoopDecisionFunction,
+    refTools?: RefTool[]
+  ) {
+    const runtime = createRuntimeSession(page, { goalLoop, refTools });
     stop = runtime.start();
     return runtime;
   }
 
   async function getPublishedPursueGoal(
-    goalLoop: GoalLoopDecisionFunction
+    goalLoop: GoalLoopDecisionFunction,
+    refTools?: RefTool[]
   ): Promise<PublishedTool> {
-    startRuntime(goalLoop);
+    startRuntime(goalLoop, refTools);
     const { driver, published } = createFakeDriver();
     const publication = await synchronizeWebMcpTools(driver);
     disposePublication = publication.dispose;
@@ -292,6 +297,46 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       next: expect.stringContaining("App.fill"),
       history: [],
       needs: { tool: "App.fill", parameters: ["value"] },
+    });
+  });
+
+  it("offers a registered Ref Tool as an operation and hands over for its ref", async () => {
+    setupDom();
+    const requests: DecisionRequest[] = [];
+    const scripted = scriptedDecisionFn([
+      { operation: "highlight_element", goal_met: 0.1 },
+    ]);
+    const decide: GoalLoopDecisionFunction = async (request) => {
+      requests.push(request);
+      return scripted(request);
+    };
+    const tool = await getPublishedPursueGoal(decide, [
+      {
+        name: "highlight_element",
+        description: "Highlight one element on the page.",
+        execute: async () => null,
+      },
+    ]);
+
+    const result = await tool.execute({
+      goal: "highlight the save button",
+      maxSteps: 5,
+    });
+
+    const criteria = (
+      requests[0]!.questions as Record<
+        string,
+        { criteria?: Record<string, string> }
+      >
+    ).operation?.criteria;
+    expect(criteria?.highlight_element).toBe(
+      "Highlight one element on the page."
+    );
+    expect(result).toEqual({
+      reason: "needs_value",
+      next: expect.stringContaining("highlight_element"),
+      history: [],
+      needs: { tool: "highlight_element", parameters: ["ref"] },
     });
   });
 
