@@ -2,7 +2,7 @@
   "name": "@ayme-dev/unplugin-webmcp",
   "version": "0.1.0",
   "description": "Unplugin integration for WebMCP.",
-  "license": "MIT",
+  "license": "FSL-1.1-ALv2",
   "publishConfig": {
     "access": "public"
   },

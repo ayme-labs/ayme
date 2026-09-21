@@ -2,7 +2,7 @@
   "name": "@ayme-dev/webmcp",
   "version": "0.1.0",
   "description": "WebMCP core library.",
-  "license": "MIT",
+  "license": "FSL-1.1-ALv2",
   "publishConfig": {
     "access": "public"
   },
