@@ -142,12 +142,23 @@ export async function getPageStateCaptureForDocument(
 /**
  * Package-internal: capture the Settled Page after an action and reconcile it
  * against the Structural Page State the caller last received; null while the
- * caller has received none. The capture becomes the caller's current state.
+ * session has no such state. The capture becomes the caller's current state.
  */
 export async function captureChangeRecordForDocument(
   currentDocument: Document
 ): Promise<StructuralTree | null> {
   return getPageStateSession(currentDocument).captureChangeRecord();
+}
+
+/**
+ * Package-internal: before an action that takes no ref, make sure the session
+ * has a state to compare against. Captures only while the caller has received
+ * nothing and no capture stands in for it; an existing caller state is kept.
+ */
+export async function ensureCallerPageState(
+  currentDocument: Document
+): Promise<void> {
+  return getPageStateSession(currentDocument).ensureCallerPageState();
 }
 
 /** Resolve refs through the current document's session and a fresh capture. */
@@ -188,7 +199,8 @@ class PageStateSession {
   private baseline: StructuralTree | null = null;
   /**
    * The Structural Page State the caller last received: the "before" of the
-   * next Change Record. Captures Ayme makes for itself do not move it.
+   * next Change Record. Captures Ayme makes for itself do not move it; until
+   * the caller has received one, the first capture stands in for it.
    */
   private callerPageState: StructuralTree | null = null;
   private currentIdentitiesByRef = new Map<AriaRef, SessionIdentity>();
@@ -206,6 +218,10 @@ class PageStateSession {
     const capture = await this.capture();
     if (forCaller) this.callerPageState = capture.tree;
     return capture;
+  }
+
+  async ensureCallerPageState(): Promise<void> {
+    if (this.callerPageState === null) await this.capture();
   }
 
   async captureChangeRecord(): Promise<StructuralTree | null> {
@@ -233,7 +249,11 @@ class PageStateSession {
       this.currentRoot(),
       this.refFactory
     );
-    return { ...capture, ...this.advance(capture) };
+    const advanced = { ...capture, ...this.advance(capture) };
+    // While the caller has received nothing, the page as Ayme last saw it is
+    // the honest "before" of a Change Record.
+    this.callerPageState ??= capture.tree;
+    return advanced;
   }
 
   private pageStateFor(capture: CapturedPageState): PageState {

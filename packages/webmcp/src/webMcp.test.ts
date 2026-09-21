@@ -20,11 +20,7 @@ vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
 }));
 vi.mock("./pageState", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./pageState")>()),
-  getPageStateCaptureForDocument: vi.fn().mockResolvedValue({
-    tree: null,
-    elementsByRef: new Map(),
-    reconcile: null,
-  }),
+  ensureCallerPageState: vi.fn().mockResolvedValue(undefined),
   resolvePageStateRefs: async (_doc: unknown, ...refs: string[]) =>
     refs.map((ref) => {
       const entry = pageStateResolutions.get(ref);
