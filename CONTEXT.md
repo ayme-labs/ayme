@@ -44,7 +44,7 @@ An operation that applies to one Structural Ref. Click and fill are built in; an
 A page that has shown no activity for a quiet window after an action. A wait for it is bounded by a deadline and reports whether the page became stable.
 
 **Change Record**:
-What an action changed: the difference between the Structural Page State an action was decided on and the Settled Page after it.
+What changed around an action: the difference between the Structural Page State the caller last received and the Settled Page after the action.
 
 **Goal Loop**:
 Drives the page toward a natural-language goal in steps. Each step is one judgement by a System One model (a fast model that picks among given options, currently Jev), not by the calling agent's LLM. The calling agent starts it and receives a Handover.

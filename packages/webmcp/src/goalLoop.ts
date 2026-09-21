@@ -353,9 +353,13 @@ async function pursueGoal(
     // Refresh POM observations so newly revealed/hidden roots are reflected.
     await probeRegisteredPomMembers();
 
-    // Capture the decision-time page state and build tool options.
-    const { tree: decisionTree } =
-      await getPageStateCaptureForDocument(currentDocument);
+    // Capture the page state this step decides on and build tool options. The
+    // model is a caller, so the tree it sees is the "before" of the step's
+    // Change Record: a change made while it decides counts into page_changed.
+    const { tree: decisionTree } = await getPageStateCaptureForDocument(
+      currentDocument,
+      { forCaller: true }
+    );
     const pomDefinitionsText = renderPomDefinitions(
       getPomDefinitions().definitions
     );

@@ -17,11 +17,7 @@ import {
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { Locator, Page } from "@playwright/test";
 import { probePomRootState } from "./pomReachability";
-import {
-  getPageStateCaptureForDocument,
-  resolvePageStateRefs,
-  type AriaRef,
-} from "./pageState";
+import { resolvePageStateRefs, type AriaRef } from "./pageState";
 import { completeAction, type ActionResult } from "./actionSequence";
 
 export type PageObjectConstructor<T extends object = object> = new (
@@ -943,7 +939,6 @@ async function executeTool(
     throw new Error(`POM method ${tool.methodName} is not callable.`);
 
   const currentDocument = requireCurrentDocument();
-  await getPageStateCaptureForDocument(currentDocument);
   const result = await method.apply(instance, validatedArguments(tool, args));
   return completeAction(currentDocument, result);
 }
