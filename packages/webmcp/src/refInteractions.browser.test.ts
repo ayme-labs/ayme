@@ -49,7 +49,8 @@ describe("Structural Ref interactions in Chromium", () => {
   });
 
   it("waits for async attribute-only mutations before reporting settled", async () => {
-    document.body.innerHTML = '<button id="attribute-only">Attribute-only</button>';
+    document.body.innerHTML =
+      '<button id="attribute-only">Attribute-only</button>';
     const button = document.querySelector<HTMLButtonElement>("#attribute-only");
     if (!button) throw new Error("Expected attribute-only button.");
 
