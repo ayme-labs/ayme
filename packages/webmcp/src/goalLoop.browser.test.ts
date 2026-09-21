@@ -4,9 +4,10 @@ import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createRuntimeSession } from "./runtime";
+import { synchronizeWebMcpTools } from "./webMcp";
 import {
   configureGoalLoop,
-  createPursueGoalTool,
+  getLastGoalLoopRunResult,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
 
@@ -71,7 +72,6 @@ function scriptedDecisionFn(
     if (!current) throw new Error(`No scripted answer for step ${step}`);
     step++;
 
-    // Build a valid response
     const operationCriteria =
       (
         request.questions as Record<
@@ -109,11 +109,35 @@ function failingDecisionFn(error: Error): GoalLoopDecisionFunction {
   };
 }
 
+// --- Fake driver that captures published tools ---
+
+type PublishedTool = {
+  name: string;
+  execute(input: unknown): Promise<unknown>;
+};
+
+function createFakeDriver() {
+  const published = new Map<string, PublishedTool>();
+  const driver = {
+    async registerTool(
+      tool: PublishedTool,
+      options?: { signal?: AbortSignal }
+    ) {
+      published.set(tool.name, tool);
+      options?.signal?.addEventListener("abort", () => {
+        if (published.get(tool.name) === tool) published.delete(tool.name);
+      });
+    },
+  };
+  return { driver, published };
+}
+
 // --- Test setup ---
 
 describe("Goal Loop pursue_goal in Chromium", () => {
   let page: ReturnType<typeof createPage>;
   let stop: (() => void) | undefined;
+  let disposePublication: (() => void) | undefined;
   let clickCount: number;
 
   beforeEach(() => {
@@ -123,6 +147,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
   });
 
   afterEach(() => {
+    disposePublication?.();
+    disposePublication = undefined;
     stop?.();
     stop = undefined;
     configureGoalLoop(undefined);
@@ -133,6 +159,18 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const runtime = createRuntimeSession(page, { goalLoop });
     stop = runtime.start();
     return runtime;
+  }
+
+  async function getPublishedPursueGoal(
+    goalLoop: GoalLoopDecisionFunction
+  ): Promise<PublishedTool> {
+    startRuntime(goalLoop);
+    const { driver, published } = createFakeDriver();
+    const publication = await synchronizeWebMcpTools(driver);
+    disposePublication = publication.dispose;
+    const tool = published.get("pursue_goal");
+    if (!tool) throw new Error("pursue_goal not published");
+    return tool;
   }
 
   function setupDom() {
@@ -147,7 +185,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     });
   }
 
-  function registerPom(goalLoop: GoalLoopDecisionFunction) {
+  async function registerPom(goalLoop: GoalLoopDecisionFunction) {
     setupDom();
     class App {
       root = page.locator("main");
@@ -159,12 +197,12 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       App,
       manifest("App", [root()], [action("save", "App.save")])
     );
-    const runtime = startRuntime(goalLoop);
+    const tool = await getPublishedPursueGoal(goalLoop);
     createPageRegistration(App);
-    return runtime;
+    return tool;
   }
 
-  function registerPomWithParam(goalLoop: GoalLoopDecisionFunction) {
+  async function registerPomWithParam(goalLoop: GoalLoopDecisionFunction) {
     setupDom();
     class App {
       root = page.locator("main");
@@ -176,12 +214,12 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       App,
       manifest("App", [root()], [actionWithParam("fill", "App.fill")])
     );
-    const runtime = startRuntime(goalLoop);
+    const tool = await getPublishedPursueGoal(goalLoop);
     createPageRegistration(App);
-    return runtime;
+    return tool;
   }
 
-  function registerFailingPom(goalLoop: GoalLoopDecisionFunction) {
+  async function registerFailingPom(goalLoop: GoalLoopDecisionFunction) {
     setupDom();
     class App {
       root = page.locator("main");
@@ -193,17 +231,16 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       App,
       manifest("App", [root()], [action("fail", "App.fail")])
     );
-    const runtime = startRuntime(goalLoop);
+    const tool = await getPublishedPursueGoal(goalLoop);
     createPageRegistration(App);
-    return runtime;
+    return tool;
   }
 
   // --- Handover reason: done ---
 
   it("returns done when goal_met >= 0.5 on the first step", async () => {
     const decide = scriptedDecisionFn([{ operation: "none", goal_met: 0.8 }]);
-    registerPom(decide);
-    const tool = createPursueGoalTool(decide, document);
+    const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
     expect(result).toEqual({
       reason: "done",
@@ -217,8 +254,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       { operation: "App.save", goal_met: 0.1 },
       { operation: "none", goal_met: 0.9 },
     ]);
-    registerPom(decide);
-    const tool = createPursueGoalTool(decide, document);
+    const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
     expect(result).toMatchObject({
       reason: "done",
@@ -237,8 +273,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
   it("returns no_fitting_option when the model chooses none", async () => {
     const decide = scriptedDecisionFn([{ operation: "none", goal_met: 0.1 }]);
-    registerPom(decide);
-    const tool = createPursueGoalTool(decide, document);
+    const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "impossible", maxSteps: 5 });
     expect(result).toEqual({
       reason: "no_fitting_option",
@@ -253,8 +288,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const decide = scriptedDecisionFn([
       { operation: "App.fill", goal_met: 0.1 },
     ]);
-    registerPomWithParam(decide);
-    const tool = createPursueGoalTool(decide, document);
+    const tool = await registerPomWithParam(decide);
     const result = await tool.execute({
       goal: "fill the name field",
       maxSteps: 5,
@@ -274,8 +308,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       { operation: "App.fail", goal_met: 0.1 },
       { operation: "App.fail", goal_met: 0.1 },
     ]);
-    registerFailingPom(decide);
-    const tool = createPursueGoalTool(decide, document);
+    const tool = await registerFailingPom(decide);
     const result = await tool.execute({ goal: "do the thing", maxSteps: 5 });
     expect(result).toMatchObject({
       reason: "action_failed",
@@ -296,8 +329,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       { operation: "App.save", goal_met: 0.1 },
       { operation: "App.save", goal_met: 0.2 },
     ]);
-    registerPom(decide);
-    const tool = createPursueGoalTool(decide, document);
+    const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "save many times", maxSteps: 2 });
     expect(result).toMatchObject({
       reason: "step_budget",
@@ -313,8 +345,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
   it("returns decide_failed when the decision function throws", async () => {
     const decide = failingDecisionFn(new Error("network error"));
-    registerPom(decide);
-    const tool = createPursueGoalTool(decide, document);
+    const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
     expect(result).toEqual({
       reason: "decide_failed",
@@ -327,17 +358,14 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
   it("checks done before no_fitting_option (goal_met >= 0.5 wins over none)", async () => {
     const decide = scriptedDecisionFn([{ operation: "none", goal_met: 0.5 }]);
-    registerPom(decide);
-    const tool = createPursueGoalTool(decide, document);
+    const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "already done", maxSteps: 5 });
     expect((result as Record<string, unknown>).reason).toBe("done");
   });
 
   it("checks no_fitting_option before needs_value", async () => {
-    // If model chose none AND a tool with params exists, no_fitting_option wins
     const decide = scriptedDecisionFn([{ operation: "none", goal_met: 0.1 }]);
-    registerPomWithParam(decide);
-    const tool = createPursueGoalTool(decide, document);
+    const tool = await registerPomWithParam(decide);
     const result = await tool.execute({ goal: "something", maxSteps: 5 });
     expect((result as Record<string, unknown>).reason).toBe(
       "no_fitting_option"
@@ -345,12 +373,10 @@ describe("Goal Loop pursue_goal in Chromium", () => {
   });
 
   it("checks needs_value before action_failed", async () => {
-    // After one failure, if the model picks a tool needing args, needs_value wins over continuing
     const decide = scriptedDecisionFn([
       { operation: "App.fail", goal_met: 0.1 },
       { operation: "App.fill", goal_met: 0.1 },
     ]);
-    // Register both a failing tool and a param tool
     setupDom();
     class App {
       root = page.locator("main");
@@ -369,9 +395,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
         [action("fail", "App.fail"), actionWithParam("fill", "App.fill")]
       )
     );
-    startRuntime(decide);
+    const tool = await getPublishedPursueGoal(decide);
     createPageRegistration(App);
-    const tool = createPursueGoalTool(decide, document);
     const result = await tool.execute({ goal: "do something", maxSteps: 5 });
     expect((result as Record<string, unknown>).reason).toBe("needs_value");
     expect((result as Record<string, unknown>).needs).toEqual({
@@ -386,7 +411,6 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       { operation: "App.save", goal_met: 0.1 },
       { operation: "App.fail", goal_met: 0.1 },
     ]);
-    // Register both tools
     setupDom();
     class App {
       root = page.locator("main");
@@ -405,14 +429,12 @@ describe("Goal Loop pursue_goal in Chromium", () => {
         [action("fail", "App.fail"), action("save", "App.save")]
       )
     );
-    startRuntime(decide);
+    const tool = await getPublishedPursueGoal(decide);
     createPageRegistration(App);
-    const tool = createPursueGoalTool(decide, document);
     const result = await tool.execute({
       goal: "try hard",
       maxSteps: 3,
     });
-    // After fail, save (resets counter), fail → should be step_budget not action_failed
     expect((result as Record<string, unknown>).reason).toBe("step_budget");
   });
 
@@ -445,9 +467,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       { operation: "App.save", goal_met: 0.1 },
       { operation: "none", goal_met: 0.9 },
     ]);
-    startRuntime(decide);
+    const tool = await getPublishedPursueGoal(decide);
     createPageRegistration(App);
-    const tool = createPursueGoalTool(decide, document);
     const result = (await tool.execute({
       goal: "save",
       maxSteps: 5,
@@ -459,7 +480,6 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       did: "save",
       result: "ok",
     });
-    // page_changed should be true since the result div was unhidden
     expect(history[0]!.page_changed).toBe(true);
   });
 
@@ -486,9 +506,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       { operation: "App.doIt", goal_met: 0.1 },
       { operation: "none", goal_met: 0.9 },
     ]);
-    startRuntime(decide);
+    const tool = await getPublishedPursueGoal(decide);
     createPageRegistration(App);
-    const tool = createPursueGoalTool(decide, document);
     const result = (await tool.execute({
       goal: "do it",
       maxSteps: 5,
@@ -500,11 +519,10 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
   // --- State fields sent to the model ---
 
-  it("sends goal, page, page_objects, and history as state fields", async () => {
+  it("sends goal, page (typed tree), page_objects, and history as state fields", async () => {
     let capturedRequest: DecisionRequest | undefined;
     const decide: GoalLoopDecisionFunction = async (request) => {
       capturedRequest = request;
-      // Return done immediately
       const criteria =
         (
           request.questions as Record<
@@ -529,20 +547,38 @@ describe("Goal Loop pursue_goal in Chromium", () => {
         },
       };
     };
-    registerPom(decide);
-    const tool = createPursueGoalTool(decide, document);
+    const tool = await registerPom(decide);
     await tool.execute({ goal: "test state fields", maxSteps: 5 });
 
     expect(capturedRequest).toBeDefined();
     const state = capturedRequest!.state as Record<string, unknown>;
     expect(state.goal).toBe("test state fields");
-    expect(typeof state.page).toBe("string");
+    // page is the typed structural tree (JSON array), not rendered text
+    expect(Array.isArray(state.page)).toBe(true);
     expect(typeof state.page_objects).toBe("string");
     expect(state.history).toEqual([]);
 
-    // Verify questions
     const questions = capturedRequest!.questions as Record<string, unknown>;
     expect(questions.operation).toMatchObject({ type: "choice" });
     expect(questions.goal_met).toMatchObject({ type: "noul" });
+  });
+
+  // --- Internal run result ---
+
+  it("retains per-step scores in the internal run result", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.save", goal_met: 0.1 },
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await registerPom(decide);
+    await tool.execute({ goal: "save and done", maxSteps: 5 });
+
+    const runResult = getLastGoalLoopRunResult();
+    expect(runResult).toBeDefined();
+    expect(runResult!.stepScores).toHaveLength(2);
+    expect(runResult!.stepScores[0]!.goalMetScore).toBe(0.1);
+    expect(runResult!.stepScores[1]!.goalMetScore).toBe(0.9);
+    expect(runResult!.stepScores[0]!.operationProbabilities).toBeDefined();
+    expect(runResult!.handover.reason).toBe("done");
   });
 });

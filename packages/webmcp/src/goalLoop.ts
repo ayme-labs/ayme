@@ -2,6 +2,7 @@ import {
   SETTLED_PAGE_DEADLINE_MS,
   SETTLED_PAGE_QUIET_MS,
   structuralPageChanged,
+  type StructuralTree,
   waitForSettled,
 } from "@ayme-dev/core/structural-observation";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
@@ -9,8 +10,8 @@ import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { JsonValue } from "./contracts";
 import { browserMonotonicClock } from "./browserMonotonicClock";
 import { getBrowserPageActivitySource } from "./pageActivitySource";
-import { getPageContextForDocument, type PageContext } from "./pageContext";
 import { getPageStateCaptureForDocument } from "./pageState";
+import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { clickPageStateRefTool, fillPageStateRefTool } from "./refInteractions";
 import { listRegisteredPomTools, probeRegisteredPomMembers } from "./registry";
@@ -54,7 +55,30 @@ export function getPursueGoalTool(): ModelContextTool<
   if (typeof document === "undefined") return null;
   return createPursueGoalTool(fn, document);
 }
-const MAX_CHOICE_OPTIONS = 255;
+// --- Internal run result (per-step scores; not part of the Handover) ---
+
+export type GoalLoopStepScore = {
+  operationProbabilities?: Record<string, number>;
+  goalMetScore: number;
+};
+
+export type GoalLoopRunResult = {
+  handover: Handover;
+  stepScores: GoalLoopStepScore[];
+};
+
+type RunResultStore = { last?: GoalLoopRunResult };
+
+const runResultStore: RunResultStore = ((
+  globalThis as typeof globalThis & {
+    __aymeGoalLoopRunResultStore?: RunResultStore;
+  }
+).__aymeGoalLoopRunResultStore ??= {});
+
+/** Package-internal: access the last Goal Loop run result (scores + handover). */
+export function getLastGoalLoopRunResult(): GoalLoopRunResult | undefined {
+  return runResultStore.last;
+}
 
 // --- Public result types (match the fixed Handover interface from #82) ---
 
@@ -143,10 +167,33 @@ function buildToolOptions(): ToolOption[] {
 
 // --- Decision request building (ADR-0022: built in the browser) ---
 
+/** Serialize a StructuralTree to a JSON-safe representation. */
+function serializeTree(tree: StructuralTree): unknown {
+  const serializeNode = (node: {
+    ref: string;
+    role: string;
+    name: string;
+    state: Record<string, unknown>;
+    children: readonly unknown[];
+  }): unknown => ({
+    ref: node.ref,
+    role: node.role,
+    name: node.name,
+    ...(Object.values(node.state).some((v) => v !== undefined)
+      ? { state: node.state }
+      : {}),
+    children: node.children.map((child) =>
+      typeof child === "string" ? child : serializeNode(child as typeof node)
+    ),
+  });
+  return tree.getRootNodes().map(serializeNode);
+}
+
 /** Construct a `DecisionRequest` for one step of the Goal Loop. */
 function buildStepRequest(
   goal: string,
-  pageContext: PageContext,
+  pageTree: StructuralTree,
+  pomDefinitionsText: string,
   history: HandoverHistoryEntry[],
   toolOptions: ToolOption[]
 ): DecisionRequest {
@@ -156,8 +203,8 @@ function buildStepRequest(
 
   const state: Record<string, unknown> = {
     goal,
-    page: pageContext.structure,
-    page_objects: renderPomDefinitions(pageContext.pomDefinitions),
+    page: serializeTree(pageTree),
+    page_objects: pomDefinitionsText,
     history,
   };
 
@@ -220,20 +267,17 @@ function parseGoalMetAnswer(answers: Record<string, unknown>): NoulAnswer {
 
 /**
  * Execute a tool and determine whether the structural page state changed.
- * Uses the same capture → execute → settle → compare sequence as direct
- * tool calls (ADR-0024).
+ * Uses the decision-time tree as the before state (the same tree the model
+ * saw when it chose the operation), matching the shared action sequence
+ * pattern used by direct Ref Tool calls.
  */
 async function executeToolAction(
   tool: ExecutableTool,
+  decisionTree: StructuralTree,
   currentDocument: Document
 ): Promise<{ result: string; page_changed: boolean }> {
-  // Capture the tree before the action (decision tree)
-  const beforeCapture = await getPageStateCaptureForDocument(currentDocument);
-
-  // Execute
   await tool.execute({});
 
-  // Wait for the page to settle
   await waitForSettled({
     activity: getBrowserPageActivitySource(currentDocument),
     clock: browserMonotonicClock,
@@ -241,12 +285,8 @@ async function executeToolAction(
     deadlineMs: SETTLED_PAGE_DEADLINE_MS,
   });
 
-  // Capture after and compare
   const afterCapture = await getPageStateCaptureForDocument(currentDocument);
-  const page_changed = structuralPageChanged(
-    beforeCapture.tree,
-    afterCapture.tree
-  );
+  const page_changed = structuralPageChanged(decisionTree, afterCapture.tree);
 
   return { result: "ok", page_changed };
 }
@@ -273,12 +313,14 @@ export function createPursueGoalTool(
     } as const,
     execute: async (input: unknown): Promise<JsonValue> => {
       const { goal, maxSteps } = readPursueGoalInput(input);
-      return (await pursueGoal(
+      const result = await pursueGoal(
         goal,
         maxSteps,
         decisionFn,
         currentDocument
-      )) as JsonValue;
+      );
+      runResultStore.last = result;
+      return result.handover as unknown as JsonValue;
     },
   };
 }
@@ -307,58 +349,56 @@ function readPursueGoalInput(input: unknown): {
  * Run the Goal Loop: iterate steps, asking the decision model which operation
  * to run and whether the goal is met, until a Handover condition is reached.
  *
- * Per-step scores (operation probabilities and `goal_met` noul) are recorded
- * in `stepScores` but are not part of the returned Handover.
+ * Returns a `GoalLoopRunResult` containing both the public Handover and the
+ * internal per-step scores. The tool exposes only the Handover.
  */
 async function pursueGoal(
   goal: string,
   maxSteps: number,
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document
-): Promise<Handover> {
+): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
-  // Internal run result: scores per step (not exposed in tool result).
-  const _stepScores: Array<{
-    operationProbabilities?: Record<string, number>;
-    goalMetScore: number;
-  }> = [];
-  void _stepScores; // ponytail: stored for future observability; not consumed yet
+  const stepScores: GoalLoopStepScore[] = [];
   let consecutiveFailures = 0;
+
+  const done = (handover: Handover): GoalLoopRunResult => ({
+    handover,
+    stepScores,
+  });
 
   for (let step = 0; step < maxSteps; step++) {
     // Refresh POM observations so newly revealed/hidden roots are reflected.
     await probeRegisteredPomMembers();
 
-    // Fresh page context each step
-    const pageContext = await getPageContextForDocument(currentDocument);
+    // Capture the decision-time tree (the tree the model will see).
+    const capture = await getPageStateCaptureForDocument(currentDocument);
+    const decisionTree = capture.tree;
+    const pomDefinitionsText = renderPomDefinitions(
+      getPomDefinitions().definitions
+    );
 
     // Build tool options from currently available tools
     const toolOptions = buildToolOptions();
 
-    // If total options (tools + none) exceed 255, we can't ask the model
-    if (toolOptions.length + 1 > MAX_CHOICE_OPTIONS) {
-      // needs_value with no specific tool — overflow case
-      // Per ticket: "needs_value is also the result when a ref question would have more than 255 options: no call is made."
-      // This applies to ref questions in stage two, but the same principle applies to operation overflow
-      return {
-        reason: "needs_value",
-        next: "Too many operations are available. Narrow the page state or reduce Page Object registrations, then try again.",
-        history,
-      };
-    }
-
     // Ask the model
     let response: DecisionResponse;
     try {
-      const request = buildStepRequest(goal, pageContext, history, toolOptions);
+      const request = buildStepRequest(
+        goal,
+        decisionTree,
+        pomDefinitionsText,
+        history,
+        toolOptions
+      );
       response = await decisionFn(request);
     } catch (error) {
       const errorText = error instanceof Error ? error.message : String(error);
-      return {
+      return done({
         reason: "decide_failed",
         next: `The decision function failed: ${errorText}. Retry, or handle the goal without the Goal Loop.`,
         history,
-      };
+      });
     }
 
     // Parse answers
@@ -373,15 +413,15 @@ async function pursueGoal(
       );
     } catch (error) {
       const errorText = error instanceof Error ? error.message : String(error);
-      return {
+      return done({
         reason: "decide_failed",
         next: `The decision function returned an invalid response: ${errorText}. Retry, or handle the goal without the Goal Loop.`,
         history,
-      };
+      });
     }
 
     // Record per-step scores internally (not part of the Handover).
-    _stepScores.push({
+    stepScores.push({
       operationProbabilities: operationAnswer.probabilities,
       goalMetScore: goalMetAnswer.noul,
     });
@@ -390,37 +430,37 @@ async function pursueGoal(
 
     // 1. done: goal_met >= 0.5
     if (goalMetAnswer.noul >= 0.5) {
-      return {
+      return done({
         reason: "done",
         next: "The goal has been achieved. Continue with your next task.",
         history,
-      };
+      });
     }
 
     // 2. no_fitting_option: model chose "none"
     const chosenKey = operationAnswer.choice;
     if (chosenKey === "none") {
-      return {
+      return done({
         reason: "no_fitting_option",
         next: "No available operation fits the goal on the current page. Navigate to a different page or try a different approach.",
         history,
-      };
+      });
     }
 
     // Find the chosen tool
     const chosenOption = toolOptions.find((opt) => opt.key === chosenKey);
     if (!chosenOption) {
-      return {
+      return done({
         reason: "decide_failed",
         next: `The model chose an unknown operation "${chosenKey}". Retry, or handle the goal without the Goal Loop.`,
         history,
-      };
+      });
     }
 
     // 3. needs_value: the chosen tool has required parameters (stage one only — no args can be filled)
     if (chosenOption.tool.requiredParams.length > 0) {
       const requiredParams = chosenOption.tool.requiredParams;
-      return {
+      return done({
         reason: "needs_value",
         next: `The operation "${chosenOption.tool.name}" needs values for: ${requiredParams.join(", ")}. Provide them and call the operation directly, or try a different approach.`,
         history,
@@ -428,14 +468,15 @@ async function pursueGoal(
           tool: chosenOption.tool.name,
           parameters: requiredParams,
         },
-      };
+      });
     }
 
-    // Execute the operation (same action sequence as direct tool calls)
+    // Execute the operation through the same action sequence as direct tool calls.
     let actionResult: { result: string; page_changed: boolean };
     try {
       actionResult = await executeToolAction(
         chosenOption.tool,
+        decisionTree,
         currentDocument
       );
       consecutiveFailures = 0;
@@ -454,18 +495,18 @@ async function pursueGoal(
 
     // 4. action_failed: two failed actions in a row
     if (consecutiveFailures >= 2) {
-      return {
+      return done({
         reason: "action_failed",
         next: "Two operations failed in a row. The page may be in an unexpected state. Inspect the page and try a different approach.",
         history,
-      };
+      });
     }
   }
 
   // 5. step_budget
-  return {
+  return done({
     reason: "step_budget",
     next: "The step budget was exhausted before the goal was achieved. Increase the budget or break the goal into smaller steps.",
     history,
-  };
+  });
 }
