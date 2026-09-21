@@ -168,6 +168,7 @@ describe("the public Ayme page state facade", () => {
     ]);
   });
 
+  // Pins #84 Q2 (alias continuity) and Q4 (removed ref → explicit failure, no rebind).
   it("retargets reordered synthetic roots and does not rebind a removed root", async () => {
     document.body.innerHTML = `
       <section id="account"><button id="account-button">Account</button></section>
@@ -246,6 +247,75 @@ describe("the public Ayme page state facade", () => {
         status: "resolved",
         requestedRef: ref("s_4"),
         node: { ref: ref("s_5"), element: billing },
+      },
+    ]);
+  });
+
+  // Pins #84 Q2: alias continuity for synthetic refs survives child re-renders.
+  it("retargets an earlier synthetic ref when the same root element survives a re-render", async () => {
+    document.body.innerHTML = `
+      <div id="account"><button id="save">Save</button></div>
+    `;
+    const account = document.querySelector("#account");
+    const button = document.querySelector("#save");
+    if (!account || !button) throw new Error("Expected the account markup.");
+
+    captureAriaSnapshot.mockReturnValueOnce({
+      distilledText: `
+- generic [ref=e1]:
+  - button "Save" [ref=e2]
+`.trim(),
+      fullText: `
+- generic [ref=e1]:
+  - generic:
+    - button "Save" [ref=e2]
+`.trim(),
+      refsByElement: new Map([
+        [document.body, "e1"],
+        [button, "e2"],
+      ]),
+    });
+    listRegisteredPomRoots.mockResolvedValue([
+      { label: "AccountPage.root", element: account },
+    ]);
+
+    const state = await ayme.getPageState();
+    expect(state.text).toContain("s_1 AccountPage.root");
+
+    account.innerHTML = '<button id="save">Save changes</button>';
+    const replacementButton = document.querySelector("#save");
+    if (!replacementButton) throw new Error("Expected the replacement button.");
+    const rerenderedCapture = {
+      distilledText: `
+- generic [ref=e3]:
+  - button "Save changes" [ref=e4]
+`.trim(),
+      fullText: `
+- generic [ref=e3]:
+  - generic:
+    - button "Save changes" [ref=e4]
+`.trim(),
+      refsByElement: new Map([
+        [document.body, "e3"],
+        [replacementButton, "e4"],
+      ]),
+    };
+    // resolve() triggers a fresh capture internally.
+    captureAriaSnapshot
+      .mockReturnValueOnce(rerenderedCapture)
+      .mockReturnValueOnce(rerenderedCapture);
+    listRegisteredPomRoots.mockResolvedValue([
+      { label: "AccountPage.root", element: account },
+    ]);
+
+    const rerendered = await ayme.getPageState();
+    expect(rerendered.text).toContain("s_2 AccountPage.root");
+
+    await expect(state.resolve(ref("s_1"))).resolves.toEqual([
+      {
+        status: "resolved",
+        requestedRef: ref("s_1"),
+        node: { ref: ref("s_3"), element: account },
       },
     ]);
   });
