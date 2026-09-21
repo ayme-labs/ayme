@@ -33,12 +33,11 @@ function createBrowserPageActivitySource(
   return {
     subscribe(onActivity) {
       const observer = new MutationObserver(() => onActivity());
-      observer.observe(currentDocument.body, {
+      observer.observe(currentDocument, {
         subtree: true,
         childList: true,
-        characterData: true,
         attributes: true,
-        attributeFilter: ["hidden", "aria-hidden", "open", "inert"],
+        characterData: true,
       });
 
       const listener = () => onActivity();

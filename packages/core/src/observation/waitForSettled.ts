@@ -37,6 +37,7 @@ export function waitForSettled(options: {
       }
       quietTimer = setTimeout(() => {
         if (clock.now() - lastActivityAt >= quietMs) finish(true);
+        else scheduleQuietCheck();
       }, remaining);
     };
 

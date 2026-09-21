@@ -84,6 +84,36 @@ describe("waitForSettled", () => {
 
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
+
+  it("reschedules when the timer fires before the clock reaches quietMs", async () => {
+    const listeners = new Set<() => void>();
+    let now = 0;
+    const clock = { now: () => MonotonicTimeMsSchema.parse(now) };
+    const activity: PageActivitySource = {
+      subscribe(onActivity) {
+        listeners.add(onActivity);
+        return () => listeners.delete(onActivity);
+      },
+    };
+
+    const result = waitForSettled({
+      activity,
+      clock,
+      quietMs: 250,
+      deadlineMs: 2_000,
+    });
+
+    // Advance the timer by 250 ms but leave the clock short.
+    now = 249;
+    await vi.advanceTimersByTimeAsync(250);
+
+    // The timer fired but clock.now() - lastActivityAt < quietMs.
+    // Without the reschedule fix this would fall through and only the
+    // deadline timer would remain, resolving { stable: false } at 2 s.
+    now = 500;
+    await vi.advanceTimersByTimeAsync(250);
+    await expect(result).resolves.toEqual({ stable: true });
+  });
 });
 
 function createHarness() {
