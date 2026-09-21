@@ -21,6 +21,11 @@
       "dependsOn": ["build", "^build"],
       "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"],
       "cache": false
+    },
+    "test:goals": {
+      "dependsOn": ["^build"],
+      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH", "AYME_OPENROUTER_API_KEY"],
+      "cache": false
     }
   },
   "boundaries": {

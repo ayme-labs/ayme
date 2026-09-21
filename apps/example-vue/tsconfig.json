@@ -14,6 +14,7 @@
     "vite.config.ts",
     "vite/**/*.ts",
     "playwright.config.ts",
+    "playwright.goals.config.ts",
     "vitest.config.ts"
   ]
 }

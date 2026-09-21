@@ -122,6 +122,44 @@ jobs:
             apps/*/test-results
           if-no-files-found: ignore
 
+  live-goals:
+    name: Live goals
+    needs: changes
+    if: needs.changes.outputs.package_checks == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Cache pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - run: pnpm install --frozen-lockfile
+      # The lane skips itself with a visible message when the secret is absent,
+      # as it is for a pull request from a fork. The key is only ever passed
+      # through the environment, never echoed.
+      - name: Run the live goal lane
+        env:
+          AYME_OPENROUTER_API_KEY: ${{ secrets.AYME_OPENROUTER_API_KEY }}
+        run: pnpm exec turbo run test:goals --filter=@ayme-dev/example-vue
+
   vue-compatibility:
     name: Vue 3.2 compatibility
     needs: changes

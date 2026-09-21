@@ -9,6 +9,7 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "test:e2e": "playwright test --config playwright.config.ts --reporter=list",
+    "test:goals": "playwright test --config playwright.goals.config.ts --reporter=list",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

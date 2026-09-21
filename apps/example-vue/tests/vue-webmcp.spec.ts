@@ -4,17 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { ListPage } from "../playwright/pom/ListPage";
 import { derivePomManifests } from "@ayme-dev/unplugin-webmcp";
-
-type PublishedTool = {
-  name: string;
-  description: string;
-  inputSchema: unknown;
-  execute(args: unknown): Promise<unknown>;
-};
-
-type RecordingDriver = {
-  tools: PublishedTool[];
-};
+import { recordPublishedTools, type RecordingDriver } from "./publishedTools";
 
 type ListActions = {
   addItem(text: string): Promise<void>;
@@ -65,6 +55,8 @@ function normalizeAppSubtree(pageState: string): string {
   );
 }
 
+// The dev server mounts a Decision Endpoint, so the app runs with the Goal
+// Loop on and publishes `pursue_goal` alongside the Page Object tools.
 const initialToolNames = [
   "get_page_context",
   "click_page_state_ref",
@@ -72,36 +64,10 @@ const initialToolNames = [
   "ListPage.addItem",
   "ListPage.items.archive",
   "ListPage.items.rename",
+  "pursue_goal",
 ];
 
-test.beforeEach(async ({ context }) => {
-  await context.addInitScript(() => {
-    const publishedTools: PublishedTool[] = [];
-    const driver: RecordingDriver & {
-      registerTool(
-        tool: PublishedTool,
-        options: { signal: AbortSignal }
-      ): Promise<void>;
-    } = {
-      tools: publishedTools,
-      async registerTool(tool, { signal }) {
-        publishedTools.push(tool);
-        signal.addEventListener(
-          "abort",
-          () => {
-            const index = publishedTools.indexOf(tool);
-            if (index >= 0) publishedTools.splice(index, 1);
-          },
-          { once: true }
-        );
-      },
-    };
-    Object.defineProperty(document, "modelContext", {
-      configurable: false,
-      value: driver,
-    });
-  });
-});
+test.beforeEach(({ context }) => recordPublishedTools(context));
 
 async function runListActions(
   page: Page,
@@ -485,6 +451,7 @@ test("publishes collection tools only while a component root is live", async ({
       "click_page_state_ref",
       "fill_page_state_ref",
       "ListPage.addItem",
+      "pursue_goal",
     ]);
 
   await executePublishedTool(page, "ListPage.addItem", {
@@ -635,6 +602,20 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
           },
         },
         required: ["ref", "args"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "pursue_goal",
+      description:
+        "Drive the page toward a goal in steps. Each step is one fast model judgement. Returns a Handover: why the loop stopped, what it did, and what to do next.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          goal: { type: "string" },
+          maxSteps: { type: "integer" },
+        },
+        required: ["goal", "maxSteps"],
         additionalProperties: false,
       },
     },

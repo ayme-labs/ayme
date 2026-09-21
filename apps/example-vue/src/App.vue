@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { decisionEndpoint } from "@ayme-dev/webmcp";
 import { useAymeWebMcp, usePageObject } from "@ayme-dev/webmcp-vue";
 import { ListPage } from "../playwright/pom/ListPage";
+import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 import { Badge } from "@/components/ui/badge";
 import AgentPanel from "./AgentPanel.vue";
 import { useDemoTrace } from "./ayme/useDemoTrace";
@@ -8,7 +10,14 @@ import ListDemo from "./demo/ListDemo.vue";
 
 // Ordinary apps call useAymeWebMcp() without options. This demo adds tracing and pacing.
 const { page } = useDemoTrace();
-useAymeWebMcp({ page });
+useAymeWebMcp({
+  page,
+  // Only the dev server mounts a Decision Endpoint, so the Goal Loop is a
+  // development feature here and the deployed build publishes no pursue_goal.
+  goalLoop: import.meta.env.DEV
+    ? decisionEndpoint(decisionEndpointPath)
+    : undefined,
+});
 usePageObject(ListPage);
 </script>
 
