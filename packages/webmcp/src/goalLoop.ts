@@ -117,12 +117,9 @@ type ToolOption = {
   tool: ExecutableTool;
 };
 
-const RESERVED_KEYS = new Set(["none"]);
-
 /**
  * Build the flat list of tool options offered to the model each step.
- * Includes Ref Tools, all registered POM tools, and validates that no
- * key collides with another tool or the reserved `"none"` sentinel.
+ * Includes Ref Tools and all registered POM tools.
  */
 function toExecutable(t: {
   name: string;
@@ -149,25 +146,24 @@ function buildToolOptions(): ToolOption[] {
     requiredParams: t.parameters.filter((p) => !p.optional).map((p) => p.name),
   }));
 
-  const seen = new Set<string>();
-  const options: ToolOption[] = [];
-  for (const tool of [...refTools, ...pomTools]) {
-    if (RESERVED_KEYS.has(tool.name) || seen.has(tool.name)) continue;
-    seen.add(tool.name);
-    options.push({ key: tool.name, label: tool.description, tool });
-  }
-  return options;
+  return [...refTools, ...pomTools].map((tool) => ({
+    key: tool.name,
+    label: tool.description,
+    tool,
+  }));
 }
 
 // --- Decision request building (ADR-0022: built in the browser) ---
 
-/** Serialize a StructuralTree to a JSON-safe representation. */
+/** Serialize a StructuralTree to a JSON-safe representation (full typed tree). */
 function serializeTree(tree: StructuralTree): unknown {
   const serializeNode = (node: {
     ref: string;
     role: string;
     name: string;
     state: Record<string, unknown>;
+    cursorPointer: boolean;
+    props: Record<string, string>;
     children: readonly unknown[];
   }): unknown => ({
     ref: node.ref,
@@ -176,6 +172,8 @@ function serializeTree(tree: StructuralTree): unknown {
     ...(Object.values(node.state).some((v) => v !== undefined)
       ? { state: node.state }
       : {}),
+    ...(node.cursorPointer ? { cursorPointer: true } : {}),
+    ...(Object.keys(node.props).length > 0 ? { props: node.props } : {}),
     children: node.children.map((child) =>
       typeof child === "string" ? child : serializeNode(child as typeof node)
     ),
@@ -270,7 +268,7 @@ async function executeToolAction(
   const raw = await tool.execute({});
   const action = raw as ActionResult | undefined;
   return {
-    result: action?.result != null ? String(action.result) : "ok",
+    result: "ok",
     page_changed: action?.page_changed ?? false,
   };
 }
