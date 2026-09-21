@@ -48,6 +48,34 @@ describe("Structural Ref interactions in Chromium", () => {
     }
   });
 
+  it("waits for async attribute-only mutations before reporting settled", async () => {
+    document.body.innerHTML = '<button id="attribute-only">Attribute-only</button>';
+    const button = document.querySelector<HTMLButtonElement>("#attribute-only");
+    if (!button) throw new Error("Expected attribute-only button.");
+
+    button.addEventListener("click", () => {
+      window.setTimeout(() => {
+        button.setAttribute("aria-label", "Phase one");
+      }, 150);
+      window.setTimeout(() => {
+        button.setAttribute("aria-label", "Phase two");
+      }, 300);
+    });
+
+    const runtime = createAymeRuntime(createPage());
+    try {
+      const state = await ayme.getPageState();
+      const buttonRef = structuralRefFor(state.text, "Attribute-only");
+      await expect(ayme.click(buttonRef)).resolves.toEqual({
+        page_changed: true,
+        settled: true,
+      });
+      expect(button.getAttribute("aria-label")).toBe("Phase two");
+    } finally {
+      runtime.dispose();
+    }
+  });
+
   it("reports page_changed false when a click does nothing", async () => {
     document.body.innerHTML = '<button id="noop">No-op</button>';
     const page = createPage();
