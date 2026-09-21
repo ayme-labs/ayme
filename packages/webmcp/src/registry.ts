@@ -18,7 +18,7 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { Locator, Page } from "@playwright/test";
 import { probePomRootState } from "./pomReachability";
 import {
-  getPageStateCaptureForDocument,
+  ensureCallerPageState,
   resolvePageStateRefs,
   type AriaRef,
 } from "./pageState";
@@ -943,7 +943,9 @@ async function executeTool(
     throw new Error(`POM method ${tool.methodName} is not callable.`);
 
   const currentDocument = requireCurrentDocument();
-  await getPageStateCaptureForDocument(currentDocument);
+  // A tool may be called without the caller ever having read the page; the
+  // Change Record then starts from the page right before the action.
+  await ensureCallerPageState(currentDocument);
   const result = await method.apply(instance, validatedArguments(tool, args));
   return completeAction(currentDocument, result);
 }

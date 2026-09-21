@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { JsonValue } from "./contracts";
 import {
-  resolvePageStateRefsForAction,
+  resolvePageStateRefs,
   type AriaRef,
   type RefResolution,
 } from "./pageState";
@@ -95,10 +95,7 @@ async function performAction(
   requestedRef: AriaRef,
   value?: string
 ): Promise<ActionResult> {
-  const { resolutions } = await resolvePageStateRefsForAction(
-    currentDocument,
-    requestedRef
-  );
+  const resolutions = await resolvePageStateRefs(currentDocument, requestedRef);
   const resolution = resolutions[0]!;
 
   if (requestedRef.startsWith("s_"))

@@ -213,6 +213,8 @@ describe("Structural Ref interactions in Chromium", () => {
 
       const tool = listRegisteredPomTools().find((t) => t.name === "getCount");
       if (!tool) throw new Error("Expected the getCount tool.");
+      // The Change Record starts from the page state the caller last received.
+      await ayme.getPageState();
       const result = await tool.execute({});
       expect(result).toMatchObject({
         page_changed: false,
@@ -264,6 +266,8 @@ describe("Structural Ref interactions in Chromium", () => {
         (t) => t.name === "getElement"
       );
       if (!tool) throw new Error("Expected the getElement tool.");
+      // The Change Record starts from the page state the caller last received.
+      await ayme.getPageState();
       const result = (await tool.execute({})) as Record<string, unknown>;
       expect(result.page_changed).toBe(false);
       expect(result.settled).toBe(true);
@@ -313,6 +317,8 @@ describe("Structural Ref interactions in Chromium", () => {
 
       const tool = listRegisteredPomTools().find((t) => t.name === "getChild");
       if (!tool) throw new Error("Expected the getChild tool.");
+      // The Change Record starts from the page state the caller last received.
+      await ayme.getPageState();
       const result = (await tool.execute({})) as Record<string, unknown>;
       expect(result.page_changed).toBe(false);
       expect(result.settled).toBe(true);

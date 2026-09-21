@@ -71,6 +71,10 @@ type CapturedPageState = {
   elementsByRef: ReadonlyMap<AriaRef, Element>;
 };
 
+type AdvancedCapture = CapturedPageState & {
+  readonly reconcile: StructuralTree | null;
+};
+
 type SessionIdentity = {
   currentRef: AriaRef | null;
   currentElement: Element | undefined;
@@ -121,11 +125,40 @@ export async function getPageStateForDocument(
   return getPageStateSession(currentDocument).getPageState();
 }
 
-/** Package-internal: capture the current page state and return its typed data. */
+/**
+ * Package-internal: capture the current page state and return its typed data.
+ * `forCaller` marks the capture as one the caller receives, so it becomes the
+ * "before" of the next Change Record.
+ */
 export async function getPageStateCaptureForDocument(
-  currentDocument: Document
+  currentDocument: Document,
+  options: { forCaller?: boolean } = {}
 ): Promise<PageStateCapture> {
-  return getPageStateSession(currentDocument).getPageStateCapture();
+  return getPageStateSession(currentDocument).getPageStateCapture(
+    options.forCaller === true
+  );
+}
+
+/**
+ * Package-internal: capture the Settled Page after an action and reconcile it
+ * against the Structural Page State the caller last received; null while the
+ * session has no such state. The capture becomes the caller's current state.
+ */
+export async function captureChangeRecordForDocument(
+  currentDocument: Document
+): Promise<StructuralTree | null> {
+  return getPageStateSession(currentDocument).captureChangeRecord();
+}
+
+/**
+ * Package-internal: before an action that takes no ref, make sure the session
+ * has a state to compare against. Captures only while the caller has received
+ * nothing and no capture stands in for it; an existing caller state is kept.
+ */
+export async function ensureCallerPageState(
+  currentDocument: Document
+): Promise<void> {
+  return getPageStateSession(currentDocument).ensureCallerPageState();
 }
 
 /** Resolve refs through the current document's session and a fresh capture. */
@@ -134,19 +167,6 @@ export async function resolvePageStateRefs(
   ...refs: AriaRef[]
 ): Promise<RefResolution[]> {
   return getPageStateSession(currentDocument).resolveRefs(refs);
-}
-
-export type PageStateActionResolution = {
-  readonly resolutions: RefResolution[];
-  readonly decisionTree: StructuralTree;
-};
-
-/** Resolve refs for an action and return the Structural Page State they were decided on. */
-export async function resolvePageStateRefsForAction(
-  currentDocument: Document,
-  ...refs: AriaRef[]
-): Promise<PageStateActionResolution> {
-  return getPageStateSession(currentDocument).resolveRefsForAction(refs);
 }
 
 export async function resolvePageStateRef(
@@ -175,58 +195,79 @@ function getPageStateSession(currentDocument: Document) {
 
 class PageStateSession {
   private readonly refFactory = new SyntheticAriaRefFactory();
+  /** The previous capture, against which the next one is reconciled (ADR-0012). */
   private baseline: StructuralTree | null = null;
+  /**
+   * The Structural Page State the caller last received: the "before" of the
+   * next Change Record. Captures Ayme makes for itself do not move it; until
+   * the caller has received one, the first capture stands in for it.
+   */
+  private callerPageState: StructuralTree | null = null;
   private currentIdentitiesByRef = new Map<AriaRef, SessionIdentity>();
   private readonly identitiesByAlias = new Map<AriaRef, SessionIdentity>();
 
   constructor(private readonly currentRoot: () => Element) {}
 
   async getPageState(): Promise<PageState> {
-    return (await this.getPageStateForElements([])).state;
+    const capture = await this.capture();
+    this.callerPageState = capture.tree;
+    return this.pageStateFor(capture);
   }
 
-  async getPageStateCapture(): Promise<PageStateCapture> {
-    const capture = await captureCurrentPageState(
-      this.currentRoot(),
-      this.refFactory
-    );
-    return this.advance(capture);
+  async getPageStateCapture(forCaller: boolean): Promise<PageStateCapture> {
+    const capture = await this.capture();
+    if (forCaller) this.callerPageState = capture.tree;
+    return capture;
+  }
+
+  async ensureCallerPageState(): Promise<void> {
+    if (this.callerPageState === null) await this.capture();
+  }
+
+  async captureChangeRecord(): Promise<StructuralTree | null> {
+    const before = this.callerPageState;
+    const capture = await this.capture();
+    this.callerPageState = capture.tree;
+    return before === null
+      ? null
+      : StructuralTree.reconcile(before, capture.tree);
   }
 
   async getPageStateForElements(
     elements: readonly Element[]
   ): Promise<{ state: PageState; refs: (AriaRef | undefined)[] }> {
-    const capture = await captureCurrentPageState(
-      this.currentRoot(),
-      this.refFactory
-    );
-    this.advance(capture);
+    const capture = await this.capture();
 
     return {
-      state: Object.freeze({
-        text: capture.text,
-        resolve: async (...refs: AriaRef[]) => this.resolveRefs(refs),
-      }),
+      state: this.pageStateFor(capture),
       refs: this.elementRefs(capture, elements),
     };
   }
 
-  async resolveRefs(refs: readonly AriaRef[]): Promise<RefResolution[]> {
-    return (await this.resolveRefsForAction(refs)).resolutions;
-  }
-
-  async resolveRefsForAction(
-    refs: readonly AriaRef[]
-  ): Promise<PageStateActionResolution> {
+  private async capture(): Promise<AdvancedCapture> {
     const capture = await captureCurrentPageState(
       this.currentRoot(),
       this.refFactory
     );
-    this.advance(capture);
-    return {
-      decisionTree: capture.tree,
-      resolutions: refs.map((requestedRef) => this.resolveOne(requestedRef)),
-    };
+    const advanced = { ...capture, ...this.advance(capture) };
+    // While the caller has received nothing, the page as Ayme last saw it is
+    // the honest "before" of a Change Record.
+    this.callerPageState ??= capture.tree;
+    return advanced;
+  }
+
+  private pageStateFor(capture: CapturedPageState): PageState {
+    return Object.freeze({
+      text: capture.text,
+      resolve: async (...refs: AriaRef[]) => this.resolveRefs(refs),
+    });
+  }
+
+  async resolveRefs(refs: readonly AriaRef[]): Promise<RefResolution[]> {
+    // A capture Ayme makes for itself: it carries ref identities forward
+    // (ADR-0012) without becoming the state the caller received.
+    await this.capture();
+    return refs.map((requestedRef) => this.resolveOne(requestedRef));
   }
 
   private resolveOne(requestedRef: AriaRef): RefResolution {

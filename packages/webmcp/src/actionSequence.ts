@@ -6,7 +6,7 @@ import {
 import { isJsonValue, type JsonValue } from "./contracts";
 import { browserMonotonicClock } from "./browserMonotonicClock";
 import { getBrowserPageActivitySource } from "./pageActivitySource";
-import { getPageStateCaptureForDocument } from "./pageState";
+import { captureChangeRecordForDocument } from "./pageState";
 import { renderChangeRecord } from "./changeRecord";
 
 export type ActionResult = {
@@ -17,13 +17,15 @@ export type ActionResult = {
 };
 
 /**
- * Shared post-action sequence: wait for a Settled Page, capture the resulting
- * Structural Page State, reconcile against the state the action was decided on,
- * and return the unified action result with an optional Change Record.
+ * Shared post-action sequence: wait for a Settled Page, capture it and return
+ * the unified action result with an optional Change Record — what changed
+ * around the action: the difference between the Structural Page State the
+ * caller last received and the Settled Page after the action.
  *
- * The caller must have captured the page state (via resolvePageStateRefsForAction
- * or getPageStateCaptureForDocument) before executing the action, so the Page
- * State Session baseline matches the decision state.
+ * The caller's state comes from `get_page_context`, from the Settled Page of
+ * the previous action and from the tree a Goal Loop step sent to the model;
+ * captures Ayme makes for itself leave it untouched. A change that happened on
+ * its own since the caller last read the page is therefore part of the record.
  */
 export async function completeAction(
   currentDocument: Document,
@@ -36,9 +38,8 @@ export async function completeAction(
     deadlineMs: SETTLED_PAGE_DEADLINE_MS,
   });
 
-  const afterCapture = await getPageStateCaptureForDocument(currentDocument);
-  const reconciled = afterCapture.reconcile;
-  const pageChanged = reconciled !== null && reconciled.hasAnyChanges();
+  const changes = await captureChangeRecordForDocument(currentDocument);
+  const pageChanged = changes?.hasAnyChanges() ?? false;
 
   const out: ActionResult = {
     page_changed: pageChanged,
@@ -46,8 +47,8 @@ export async function completeAction(
   };
 
   if (rawResult !== undefined && isJsonValue(rawResult)) out.result = rawResult;
-  if (pageChanged && reconciled !== null)
-    out.changes = renderChangeRecord(reconciled);
+  if (changes !== null && pageChanged)
+    out.changes = renderChangeRecord(changes);
 
   return out;
 }
