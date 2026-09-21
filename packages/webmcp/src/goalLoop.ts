@@ -1,15 +1,8 @@
-import {
-  SETTLED_PAGE_DEADLINE_MS,
-  SETTLED_PAGE_QUIET_MS,
-  structuralPageChanged,
-  type StructuralTree,
-  waitForSettled,
-} from "@ayme-dev/core/structural-observation";
+import type { StructuralTree } from "@ayme-dev/core/structural-observation";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { JsonValue } from "./contracts";
-import { browserMonotonicClock } from "./browserMonotonicClock";
-import { getBrowserPageActivitySource } from "./pageActivitySource";
+import type { ActionResult } from "./actionSequence";
 import { getPageStateCaptureForDocument } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
@@ -263,32 +256,22 @@ function parseGoalMetAnswer(answers: Record<string, unknown>): NoulAnswer {
   return raw as NoulAnswer;
 }
 
-// --- Action execution (same sequence as direct tool calls) ---
+// --- Action execution (delegates to the shared action sequence) ---
 
 /**
- * Execute a tool and determine whether the structural page state changed.
- * Uses the decision-time tree as the before state (the same tree the model
- * saw when it chose the operation), matching the shared action sequence
- * pattern used by direct Ref Tool calls.
+ * Execute a tool and read the `ActionResult` it returns.
+ * Every registered tool (POM tools, Ref Tools) already runs through
+ * `completeAction` internally, so we just forward and interpret the result.
  */
 async function executeToolAction(
-  tool: ExecutableTool,
-  decisionTree: StructuralTree,
-  currentDocument: Document
+  tool: ExecutableTool
 ): Promise<{ result: string; page_changed: boolean }> {
-  await tool.execute({});
-
-  await waitForSettled({
-    activity: getBrowserPageActivitySource(currentDocument),
-    clock: browserMonotonicClock,
-    quietMs: SETTLED_PAGE_QUIET_MS,
-    deadlineMs: SETTLED_PAGE_DEADLINE_MS,
-  });
-
-  const afterCapture = await getPageStateCaptureForDocument(currentDocument);
-  const page_changed = structuralPageChanged(decisionTree, afterCapture.tree);
-
-  return { result: "ok", page_changed };
+  const raw = await tool.execute({});
+  const action = raw as ActionResult | undefined;
+  return {
+    result: action?.result != null ? String(action.result) : "ok",
+    page_changed: action?.page_changed ?? false,
+  };
 }
 
 // --- The loop ---
@@ -474,11 +457,7 @@ async function pursueGoal(
     // Execute the operation through the same action sequence as direct tool calls.
     let actionResult: { result: string; page_changed: boolean };
     try {
-      actionResult = await executeToolAction(
-        chosenOption.tool,
-        decisionTree,
-        currentDocument
-      );
+      actionResult = await executeToolAction(chosenOption.tool);
       consecutiveFailures = 0;
     } catch (error) {
       const errorText = error instanceof Error ? error.message : String(error);
