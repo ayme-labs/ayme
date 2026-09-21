@@ -36,8 +36,14 @@ function registration(id: string, registeredTool: RegisteredPomTool) {
 
 describe("DebugPanel", () => {
   it("invokes the active registration when tool names collide", async () => {
-    const inactiveExecute = vi.fn(async () => ({ ok: true as const }));
-    const activeExecute = vi.fn(async () => ({ ok: true as const }));
+    const inactiveExecute = vi.fn(async () => ({
+      page_changed: false,
+      settled: true,
+    }));
+    const activeExecute = vi.fn(async () => ({
+      page_changed: false,
+      settled: true,
+    }));
     const inactiveTool = tool("inactive", inactiveExecute);
     const activeTool = tool("active", activeExecute);
     vi.mocked(listRegisteredPomTools).mockReturnValue([activeTool]);

@@ -118,7 +118,7 @@ async function executePublishedTool(page: Page, name: string, args: unknown) {
     { args, name }
   );
 
-  expect(result).toEqual({ ok: true });
+  expect(result).toMatchObject({ settled: true });
 }
 
 async function recordedTools(page: Page) {
