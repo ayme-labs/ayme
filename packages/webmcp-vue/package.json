@@ -2,7 +2,7 @@
   "name": "@ayme-dev/webmcp-vue",
   "version": "0.1.0",
   "description": "Vue integration for WebMCP.",
-  "license": "MIT",
+  "license": "FSL-1.1-ALv2",
   "publishConfig": {
     "access": "public"
   },

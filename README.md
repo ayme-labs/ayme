@@ -140,3 +140,15 @@ The adapter supports same-document navigation and full-document navigation via
 `page.goto`. A full-document navigation replaces the controlled document and
 ends the current browser execution; it does not return a destination page to
 the old execution.
+
+## License
+
+Ayme is [Fair Source](https://fair.io), licensed under the
+[Functional Source License, Version 1.1, ALv2 Future License](LICENSE)
+(FSL-1.1-ALv2). You may use, modify, and redistribute it for any purpose other
+than a Competing Use, including in your own applications and products. Each
+version becomes available under the Apache License 2.0 two years after its
+release.
+
+Bundled third-party code keeps its original license; see each package's
+`THIRD_PARTY_NOTICES.txt`.
