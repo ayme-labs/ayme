@@ -82,6 +82,33 @@ function enrichBy(
   return new StructuralTree(attach(tree.root), new SyntheticAriaRefFactory());
 }
 
+describe("StructuralTree YAML keys", () => {
+  it("parses a node line whose whole key Playwright single-quoted", () => {
+    const tree = parse(
+      `- list [ref=e1]:\n  - 'button "Issue #123 it''s done" [ref=e2] [cursor=pointer]':\n    - text: x`
+    );
+    const node = tree.getNode(id("e2"))!;
+    expect(node.role).toBe("button");
+    expect(node.name).toBe("Issue #123 it's done");
+    expect(node.cursorPointer).toBe(true);
+    expect(node.children).toEqual(["x"]);
+  });
+
+  it("parses a single-quoted leaf node line, which has no trailing colon", () => {
+    const tree = parse(
+      `- list [ref=e1]:\n  - 'button "Issue #123" [ref=e2]'\n  - 'link "it''s #1" [ref=e3]'`
+    );
+    const button = tree.getNode(id("e2"))!;
+    expect(button.role).toBe("button");
+    expect(button.name).toBe("Issue #123");
+    expect(button.children).toEqual([]);
+    const link = tree.getNode(id("e3"))!;
+    expect(link.role).toBe("link");
+    expect(link.name).toBe("it's #1");
+    expect(link.children).toEqual([]);
+  });
+});
+
 describe("StructuralTree navigation", () => {
   const NESTED = `
 - generic [ref=e1]:
