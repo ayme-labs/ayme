@@ -348,6 +348,19 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     });
   });
 
+  it("returns decide_failed when goal_met is not a finite number", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.save", goal_met: Infinity },
+    ]);
+    const tool = await registerPom(decide);
+    const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
+    expect(result).toEqual({
+      reason: "decide_failed",
+      next: expect.stringContaining("Invalid goal_met answer"),
+      history: [],
+    });
+  });
+
   // --- Order of checks ---
 
   it("checks done before no_fitting_option (goal_met >= 0.5 wins over none)", async () => {

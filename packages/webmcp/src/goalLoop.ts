@@ -249,7 +249,7 @@ function parseGoalMetAnswer(answers: Record<string, unknown>): NoulAnswer {
     !raw ||
     typeof raw !== "object" ||
     (raw as Record<string, unknown>).type !== "noul" ||
-    typeof (raw as Record<string, unknown>).noul !== "number"
+    !Number.isFinite((raw as Record<string, unknown>).noul)
   )
     throw new Error("Invalid goal_met answer from decision function.");
   return raw as NoulAnswer;
