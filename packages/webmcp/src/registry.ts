@@ -14,9 +14,14 @@ import {
   isPlaywrightLiteLocator,
   resolveLocatorElements,
 } from "@ayme-dev/playwright-lite/internal";
+import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { Locator, Page } from "@playwright/test";
 import { probePomRootState } from "./pomReachability";
-import { getPageStateCaptureForDocument } from "./pageState";
+import {
+  getPageStateCaptureForDocument,
+  resolvePageStateRefs,
+  type AriaRef,
+} from "./pageState";
 import { completeAction, type ActionResult } from "./actionSequence";
 
 export type PageObjectConstructor<T extends object = object> = new (
@@ -510,12 +515,7 @@ function createComponentTool(
       componentPath
     );
 
-  const wrapper = indexedComponentToolManifest(
-    pomId,
-    path,
-    action,
-    collectionCount
-  );
+  const wrapper = refComponentToolManifest(pomId, path, action);
   return {
     pomId,
     componentClassName: component.className,
@@ -527,16 +527,23 @@ function createComponentTool(
     parameters: wrapper.parameters,
     execute: async (input) => {
       const values = validatedArguments(wrapper, input);
-      const indexes = values.slice(0, collectionCount);
-      const args = values[collectionCount];
-      const componentInstance = await resolveComponent(
+      const ref = AriaRefSchema.parse(values[0] as string);
+      const args = values[1];
+      const toolPath = `${pomId}.${publicComponentPath(path)}`;
+      const element = await resolveRefToElement(
+        ref,
+        wrapper.toolName,
+        toolPath
+      );
+      const componentInstance = await resolveComponentByElementStep(
         pageInstance,
         path,
-        indexes
+        0,
+        element
       );
       if (!componentInstance || !isRecord(componentInstance)) {
         throw new Error(
-          `No ${component.className} instance exists at ${pomId}.${publicComponentPath(path)}.`
+          `Ref "${ref}" does not match a present ${component.className} instance at ${toolPath} (tool ${wrapper.toolName}).`
         );
       }
       return await executeTool(componentInstance, action, args);
@@ -562,7 +569,10 @@ function createSingularComponentTool(
     inputSchema: action.inputSchema,
     parameters: action.parameters,
     execute: async (input) => {
-      const componentInstance = await resolveComponent(pageInstance, path, []);
+      const componentInstance = await resolveSingularComponent(
+        pageInstance,
+        path
+      );
       if (!componentInstance || !isRecord(componentInstance)) {
         throw new Error(
           `No ${component.className} instance exists at ${pomId}.${publicComponentPath(path)}.`
@@ -573,22 +583,21 @@ function createSingularComponentTool(
   };
 }
 
-function indexedComponentToolManifest(
+function refComponentToolManifest(
   pomId: string,
   path: readonly PomComponentMemberManifest[],
-  action: ToolManifest,
-  collectionCount: number
+  action: ToolManifest
 ): ToolManifest {
-  const indexParameters = Array.from(
-    { length: collectionCount },
-    (_, index) => ({
-      name: index === 0 ? "index" : `index${index + 1}`,
-      optional: false,
-      schema: { type: "integer", minimum: 0 } satisfies JsonSchema,
-    })
-  );
   const parameters = [
-    ...indexParameters,
+    {
+      name: "ref",
+      optional: false,
+      schema: {
+        type: "string",
+        description:
+          "Structural Ref of the instance's Page Object Root, as labelled in the page state.",
+      } satisfies JsonSchema,
+    },
     {
       name: "args",
       optional: false,
@@ -614,25 +623,83 @@ function publicComponentPath(path: readonly PomComponentMemberManifest[]) {
   return path.map((member) => member.memberName).join(".");
 }
 
-async function resolveComponent(
+async function resolveSingularComponent(
   pageInstance: object,
-  path: readonly PomComponentMemberManifest[],
-  indexes: readonly unknown[]
+  path: readonly PomComponentMemberManifest[]
 ) {
   let current: unknown = pageInstance;
-  let collectionIndex = 0;
   for (const member of path) {
     if (!isRecord(current)) return undefined;
-    const value = await readMember(current, member);
-    if (!member.collection) {
-      current = value;
-      continue;
-    }
-    const index = indexes[collectionIndex++];
-    if (typeof index !== "number") return undefined;
-    current = asComponents(value)[index];
+    current = await readMember(current, member);
   }
   return current;
+}
+
+async function resolveRefToElement(
+  ref: AriaRef,
+  toolName: string,
+  toolPath: string
+): Promise<Element> {
+  const resolutions = await resolvePageStateRefs(document, ref);
+  const resolution = resolutions[0];
+  if (!resolution || resolution.status === "unresolved")
+    throw new Error(
+      `Ref "${ref}" does not match a present instance at ${toolPath} (tool ${toolName}): ${resolution?.reason ?? "unknown-ref"}.`
+    );
+  return resolution.node.element;
+}
+
+async function resolveComponentByElementStep(
+  current: unknown,
+  path: readonly PomComponentMemberManifest[],
+  pathIndex: number,
+  targetElement: Element
+): Promise<unknown> {
+  if (pathIndex >= path.length) return undefined;
+  if (!isRecord(current)) return undefined;
+  const member = path[pathIndex]!;
+  const value = await readMember(current, member);
+
+  if (!member.collection) {
+    return resolveComponentByElementStep(
+      value,
+      path,
+      pathIndex + 1,
+      targetElement
+    );
+  }
+
+  const instances = asComponents(value);
+  const hasNestedCollection = path
+    .slice(pathIndex + 1)
+    .some((m) => m.collection);
+
+  for (const candidate of instances) {
+    if (!isPomComponent(candidate)) continue;
+
+    if (hasNestedCollection) {
+      const result = await resolveComponentByElementStep(
+        candidate,
+        path,
+        pathIndex + 1,
+        targetElement
+      );
+      if (result !== undefined) return result;
+    } else {
+      const elements = locatorElements(candidate.root);
+      if (elements.length === 1 && elements[0] === targetElement) {
+        // Walk any trailing singular members after the innermost collection.
+        let resolved: unknown = candidate;
+        for (let i = pathIndex + 1; i < path.length; i++) {
+          if (!isRecord(resolved)) return undefined;
+          resolved = await readMember(resolved, path[i]!);
+        }
+        return resolved;
+      }
+    }
+  }
+
+  return undefined;
 }
 
 async function probePomMembers(registration: RegisteredPom) {

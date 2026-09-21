@@ -12,9 +12,11 @@ dist/
 .turbo/
 coverage/
 test-results/
+.vitest-attachments/
 
 # Local Markdown issue tracker
 /.scratch/
 
 # Operating system files
 .DS_Store
+__screenshots__/

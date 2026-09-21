@@ -1,9 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { locatorElements, testLocators } = vi.hoisted(() => ({
-  locatorElements: new WeakMap<object, Element[]>(),
-  testLocators: new WeakSet<object>(),
-}));
+const { locatorElements, testLocators, pageStateResolutions } = vi.hoisted(
+  () => ({
+    locatorElements: new WeakMap<object, Element[]>(),
+    testLocators: new WeakSet<object>(),
+    pageStateResolutions: new Map<
+      string,
+      { node: { ref: string; element: Element } }
+    >(),
+  })
+);
 vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@ayme-dev/playwright-lite/internal")
@@ -12,12 +18,19 @@ vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
     typeof value === "object" && value !== null && testLocators.has(value),
   resolveLocatorElements: (value: object) => locatorElements.get(value) ?? [],
 }));
-vi.mock("./pageState", () => ({
+vi.mock("./pageState", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./pageState")>()),
   getPageStateCaptureForDocument: vi.fn().mockResolvedValue({
     tree: null,
     elementsByRef: new Map(),
     reconcile: null,
   }),
+  resolvePageStateRefs: async (_doc: unknown, ...refs: string[]) =>
+    refs.map((ref) => {
+      const entry = pageStateResolutions.get(ref);
+      if (entry) return { status: "resolved", requestedRef: ref, ...entry };
+      return { status: "unresolved", requestedRef: ref, reason: "unknown-ref" };
+    }),
 }));
 vi.mock("./actionSequence", () => ({
   completeAction: vi.fn(async (_doc: unknown, rawResult?: unknown) => {
@@ -28,10 +41,13 @@ vi.mock("./actionSequence", () => ({
 }));
 import type { Page } from "@playwright/test";
 
-function brandedLocator(overrides: Record<string, unknown> = {}) {
+function brandedLocator(
+  overrides: Record<string, unknown> = {},
+  element: Element = { isConnected: true } as Element
+) {
   const loc: Record<string | symbol, unknown> = { ...overrides };
   testLocators.add(loc);
-  locatorElements.set(loc, [{ isConnected: true } as Element]);
+  locatorElements.set(loc, [element]);
   return loc;
 }
 
@@ -214,10 +230,14 @@ describe("WebMCP publisher", () => {
     registry.configureAymeRuntime({} as Page);
 
     let rootCount = 1;
+    const itemElement = { isConnected: true } as Element;
+    pageStateResolutions.set("e1", {
+      node: { ref: "e1", element: itemElement },
+    });
     class ItemsPage {
       readonly items = [
         {
-          root: brandedLocator({ count: async () => rootCount }),
+          root: brandedLocator({ count: async () => rootCount }, itemElement),
           archive: vi.fn(() => {
             rootCount = 0;
           }),
@@ -259,12 +279,13 @@ describe("WebMCP publisher", () => {
     rootCount = 1;
 
     await expect(
-      archive?.tool.execute({ index: 0, args: {} })
+      archive?.tool.execute({ ref: "e1", args: {} })
     ).resolves.toEqual({ page_changed: false, settled: true });
     expect(archive?.signal.aborted).toBe(true);
 
     publication.dispose();
     pageRegistration.dispose();
+    pageStateResolutions.clear();
   });
 
   it("reports a failed re-publication once without failing the tool call", async () => {
