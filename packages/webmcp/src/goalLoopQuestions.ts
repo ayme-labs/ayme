@@ -6,7 +6,11 @@ import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
 import type { AriaRef, PageStateCapture } from "./pageState";
 import { listRefTools } from "./refTools";
-import { listRegisteredPomTools } from "./registry";
+import {
+  listCollectionToolRoots,
+  listRegisteredPomTools,
+  type RegisteredPomRoot,
+} from "./registry";
 
 /**
  * What the Goal Loop asks the model, and how an answer maps back to what it
@@ -26,11 +30,16 @@ const LEAVE_UNSET_KEY = "leave_unset";
 /** A closed set of values the model may pick one of. */
 type ClosedSet =
   | { kind: "ref"; filter: (element: Element) => boolean }
+  /** The present roots of one collection path; no filter is involved. */
+  | { kind: "instance"; roots: readonly RegisteredPomRoot[] }
   | { kind: "values"; values: readonly JsonPrimitive[] };
 
 /** One parameter of an operation, classified by what the model may fill. */
 type ArgumentSpec = {
+  /** The question id: the parameter's name, dotted inside a nested object. */
   name: string;
+  /** Where the chosen value goes in the operation's input. */
+  path: readonly string[];
   optional: boolean;
   /** The parameter's own description, when its schema carries one. */
   description?: string;
@@ -61,9 +70,14 @@ function closedSetOf(schema: JsonSchema): ClosedSet | null {
   return null;
 }
 
-function specOf(parameter: ToolParameter): ArgumentSpec {
+function specOf(
+  parameter: ToolParameter,
+  prefix: readonly string[] = []
+): ArgumentSpec {
+  const path = [...prefix, parameter.name];
   return {
-    name: parameter.name,
+    name: path.join("."),
+    path,
     optional: parameter.optional,
     ...(parameter.schema.description
       ? { description: parameter.schema.description }
@@ -72,25 +86,54 @@ function specOf(parameter: ToolParameter): ArgumentSpec {
   };
 }
 
-/** Read a published tool's input schema as the parameters the loop may fill. */
-function specsOfSchema(
+/** Read an object schema as the parameters the loop may fill, under `prefix`. */
+function specsOfObjectSchema(
+  schema: JsonSchema,
+  prefix: readonly string[] = []
+): ArgumentSpec[] {
+  const required = new Set(schema.required ?? []);
+  return Object.entries(schema.properties ?? {}).map(([name, propertySchema]) =>
+    specOf(
+      { name, optional: !required.has(name), schema: propertySchema },
+      prefix
+    )
+  );
+}
+
+/** Read a published Ref Tool's input schema the same way. */
+function specsOfRefToolSchema(
   schema: JsonSchema,
   refFilter: (element: Element) => boolean
 ): ArgumentSpec[] {
-  const required = new Set(schema.required ?? []);
-  return Object.entries(schema.properties ?? {}).map(
-    ([name, propertySchema]) => ({
-      ...specOf({
-        name,
-        optional: !required.has(name),
-        schema: propertySchema,
-      }),
-      // A Ref Tool's `ref` is the Structural Ref it acts on; the elements its
-      // filter keeps are the closed set (ADR-0023).
-      ...(name === "ref"
-        ? { closedSet: { kind: "ref", filter: refFilter } }
-        : {}),
-    })
+  return specsOfObjectSchema(schema).map((spec) =>
+    // A Ref Tool's `ref` is the Structural Ref it acts on; the elements its
+    // filter keeps are the closed set (ADR-0023).
+    spec.name === "ref"
+      ? { ...spec, closedSet: { kind: "ref", filter: refFilter } }
+      : spec
+  );
+}
+
+/**
+ * A tool that goes through a collection takes `{ ref, args }` (#82): the ref
+ * addresses one present instance of its path, the action's own parameters sit
+ * inside `args` and are classified like any other parameter.
+ */
+function specsOfCollectionTool(
+  parameters: readonly ToolParameter[],
+  roots: readonly RegisteredPomRoot[]
+): ArgumentSpec[] {
+  return parameters.flatMap((parameter) =>
+    parameter.name === "ref"
+      ? [
+          {
+            name: "ref",
+            path: ["ref"],
+            optional: parameter.optional,
+            closedSet: { kind: "instance", roots } as const,
+          },
+        ]
+      : specsOfObjectSchema(parameter.schema, [parameter.name])
   );
 }
 
@@ -104,15 +147,28 @@ export function buildToolOptions(): ToolOption[] {
     description: tool.description,
     execute: (input: unknown) => tool.execute(input),
     requiredParams: [...(tool.inputSchema.required ?? [])],
-    args: specsOfSchema(tool.inputSchema, filter),
+    args: specsOfRefToolSchema(tool.inputSchema, filter),
   }));
-  const pomTools: ExecutableTool[] = listRegisteredPomTools().map((t) => ({
-    name: t.name,
-    description: t.description,
-    execute: (input: unknown) => t.execute(input),
-    requiredParams: t.parameters.filter((p) => !p.optional).map((p) => p.name),
-    args: t.parameters.map(specOf),
-  }));
+  const collectionRoots = listCollectionToolRoots();
+  const pomTools: ExecutableTool[] = listRegisteredPomTools().map((t) => {
+    const roots = collectionRoots.get(t.name);
+    const args = roots
+      ? specsOfCollectionTool(t.parameters, roots)
+      : t.parameters.map((parameter) => specOf(parameter));
+    return {
+      name: t.name,
+      description: t.description,
+      // An action without parameters of its own still takes the empty `args`.
+      execute: (input: unknown) =>
+        t.execute(
+          roots ? { args: {}, ...(input as Record<string, unknown>) } : input
+        ),
+      requiredParams: args
+        .filter((arg) => !arg.optional)
+        .map((arg) => arg.name),
+      args,
+    };
+  });
 
   return [...refTools, ...pomTools].map((tool) => ({
     key: tool.name,
@@ -135,7 +191,10 @@ export type ArgumentOption = {
 };
 
 export type ArgumentQuestion = {
+  /** The question id: the parameter's name, dotted inside a nested object. */
   parameter: string;
+  /** Where the chosen value goes in the operation's input. */
+  path: readonly string[];
   instructions: string;
   options: ArgumentOption[];
 };
@@ -174,6 +233,33 @@ function describeNode(node: StructuralNode): string {
   return node.name ? `${node.role} "${node.name}"` : node.role;
 }
 
+/**
+ * One option per present root of a collection path, keyed by the ref the same
+ * capture gave that root's element. A root the capture holds no ref for cannot
+ * be targeted and is left out.
+ */
+function instanceOptions(
+  roots: readonly RegisteredPomRoot[],
+  capture: PageStateCapture
+): ArgumentOption[] {
+  const refsByElement = new Map<Element, AriaRef>();
+  for (const [ref, element] of capture.elementsByRef)
+    refsByElement.set(element, ref);
+
+  return roots.flatMap((root) => {
+    const ref = refsByElement.get(root.element);
+    const node = ref === undefined ? null : capture.tree.getNode(ref);
+    if (ref === undefined || node === null) return [];
+    return [
+      {
+        key: ref,
+        description: `${root.label} (${describeNode(node)})`,
+        value: ref,
+      },
+    ];
+  });
+}
+
 function* walkNodes(tree: StructuralTree): Generator<StructuralNode> {
   const pending = [...tree.getRootNodes()].reverse();
   while (pending.length > 0) {
@@ -199,9 +285,14 @@ function argumentInstructions(tool: ExecutableTool, arg: ArgumentSpec): string {
     ? `"${arg.name}" (${arg.description})`
     : `"${arg.name}"`;
   const operation = `The operation is "${tool.name}": ${tool.description}`;
-  return arg.closedSet?.kind === "ref"
-    ? `Pick the element this operation acts on as its ${parameter} parameter. ${operation}`
-    : `Pick the value for the ${parameter} parameter of this operation. ${operation}`;
+  switch (arg.closedSet?.kind) {
+    case "ref":
+      return `Pick the element this operation acts on as its ${parameter} parameter. ${operation}`;
+    case "instance":
+      return `Pick the instance this operation acts on as its ${parameter} parameter. ${operation}`;
+    default:
+      return `Pick the value for the ${parameter} parameter of this operation. ${operation}`;
+  }
 }
 
 /**
@@ -224,9 +315,11 @@ export function planArguments(
     const options =
       closedSet.kind === "ref"
         ? refOptions(closedSet.filter, capture)
-        : valueOptions(closedSet.values);
+        : closedSet.kind === "instance"
+          ? instanceOptions(closedSet.roots, capture)
+          : valueOptions(closedSet.values);
     if (
-      closedSet.kind === "ref" &&
+      closedSet.kind !== "values" &&
       (options.length === 0 || options.length > MAX_CHOICE_OPTIONS)
     )
       return {
@@ -242,6 +335,7 @@ export function planArguments(
       });
     questions.push({
       parameter: arg.name,
+      path: arg.path,
       instructions: argumentInstructions(tool, arg),
       options,
     });
@@ -421,9 +515,21 @@ export function readArgumentAnswers(
     if (answer.probabilities)
       probabilities[question.parameter] = answer.probabilities;
     if (!("value" in chosen)) continue;
-    args[question.parameter] = chosen.value;
+    assignAt(args, question.path, chosen.value);
     summary.push(`${question.parameter}: ${chosen.description}`);
   }
 
   return { args, summary, probabilities };
+}
+
+/** Put a chosen value where the operation's input expects it. */
+function assignAt(
+  args: Record<string, unknown>,
+  path: readonly string[],
+  value: unknown
+): void {
+  let target = args;
+  for (const key of path.slice(0, -1))
+    target = (target[key] ??= {}) as Record<string, unknown>;
+  target[path[path.length - 1]!] = value;
 }

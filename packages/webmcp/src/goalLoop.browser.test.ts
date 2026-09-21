@@ -67,15 +67,25 @@ const actionWithParameters = (
 const root = () =>
   ({ memberName: "root", kind: "locator", access: "field" }) as const;
 
+const collection = (memberName: string, componentClassName: string) =>
+  ({
+    memberName,
+    kind: "component",
+    access: "field",
+    componentClassName,
+    collection: true,
+  }) as const;
+
 const manifest = (
   className: string,
   members: PomManifest["members"],
-  tools: ToolManifest[] = []
+  tools: ToolManifest[] = [],
+  components: PomManifest["components"] = []
 ): PomManifest => ({
   className,
   members,
   tools,
-  components: [],
+  components,
 });
 
 // --- Scripted fake decision function ---
@@ -112,11 +122,18 @@ function choiceAnswer(criteria: Criteria, chosenKey: string) {
   return { type: "choice", choice: chosenKey, confidence: 1, probabilities };
 }
 
-/** Pick the option the script names, by key or by description. */
+/**
+ * Pick the option the script names, by key or by description. A description
+ * the script names only by its start (an instance label) also matches.
+ */
 function keyFor(criteria: Criteria, wanted: string): string {
-  const key = Object.keys(criteria).find(
-    (candidate) => candidate === wanted || criteria[candidate] === wanted
-  );
+  const key =
+    Object.keys(criteria).find(
+      (candidate) => candidate === wanted || criteria[candidate] === wanted
+    ) ??
+    Object.keys(criteria).find((candidate) =>
+      criteria[candidate]?.startsWith(wanted)
+    );
   if (!key)
     throw new Error(`No option "${wanted}" among ${JSON.stringify(criteria)}`);
   return key;
@@ -977,5 +994,288 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       history: [],
     });
     expect(clickCount).toBe(0);
+  });
+
+  // --- Stage two: which instance of a collection ---
+
+  /** A list of `count` items, each the root of one collection instance. */
+  function setupCollectionDom(count: number) {
+    document.body.innerHTML = `
+      <main>
+        <ul>
+          ${Array.from(
+            { length: count },
+            (_, index) => `<li id="item-${index}">Item ${index}</li>`
+          ).join("")}
+        </ul>
+      </main>
+    `;
+  }
+
+  /**
+   * A POM whose `items` collection carries one action. `itemTools` are the
+   * action manifests, `itemMembers` the methods each instance answers with.
+   */
+  async function registerItemsPom(
+    goalLoop: GoalLoopDecisionFunction,
+    count: number,
+    itemTools: ToolManifest[],
+    itemMembers: (index: number) => Record<string, unknown>
+  ) {
+    setupCollectionDom(count);
+    class ItemsPage {
+      readonly items = Array.from({ length: count }, (_, index) => ({
+        root: page.locator(`#item-${index}`),
+        ...itemMembers(index),
+      }));
+    }
+    registerCompiledPom(
+      ItemsPage,
+      manifest(
+        "ItemsPage",
+        [collection("items", "Item")],
+        [],
+        [{ className: "Item", members: [root()], tools: itemTools }]
+      )
+    );
+    const tool = await getPublishedPursueGoal(goalLoop);
+    createPageRegistration(ItemsPage);
+    return tool;
+  }
+
+  it("asks which instance of a collection to act on and runs the action on it", async () => {
+    const archived: number[] = [];
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "ItemsPage.items.archive",
+          goal_met: 0.1,
+          arguments: { ref: "ItemsPage.items[1]" },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await registerItemsPom(
+      decide,
+      3,
+      [action("archive", "archive")],
+      (index) => ({ archive: () => archived.push(index) })
+    );
+
+    const result = (await tool.execute({
+      goal: "archive the second item",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    // One question, over the present roots of the tool's collection path.
+    const stageTwo = criteriaOf(requests[1]!);
+    expect(Object.keys(stageTwo)).toEqual(["ref"]);
+    expect(Object.values(stageTwo.ref!)).toEqual([
+      expect.stringContaining("ItemsPage.items[0]"),
+      expect.stringContaining("ItemsPage.items[1]"),
+      expect.stringContaining("ItemsPage.items[2]"),
+    ]);
+    // The option keys are the refs the page state gave the model.
+    expect(refsInPage(requests[1]!.state)).toEqual(
+      expect.arrayContaining(Object.keys(stageTwo.ref!))
+    );
+    expect(archived).toEqual([1]);
+    expect(result.reason).toBe("done");
+    expect(result.history).toMatchObject([
+      { did: expect.stringContaining("ItemsPage.items[1]"), result: "ok" },
+    ]);
+  });
+
+  it("asks one instance question for a nested collection", async () => {
+    document.body.innerHTML = `
+      <main>
+        <div id="group-0"><ul><li id="item-0-0">A</li><li id="item-0-1">B</li></ul></div>
+        <div id="group-1"><ul><li id="item-1-0">C</li></ul></div>
+      </main>
+    `;
+    const acted: string[] = [];
+    class GroupsPage {
+      readonly groups = [0, 1].map((group) => ({
+        root: page.locator(`#group-${group}`),
+        items: (group === 0 ? [0, 1] : [0]).map((item) => ({
+          root: page.locator(`#item-${group}-${item}`),
+          open: () => acted.push(`${group}-${item}`),
+        })),
+      }));
+    }
+    registerCompiledPom(
+      GroupsPage,
+      manifest(
+        "GroupsPage",
+        [collection("groups", "Group")],
+        [],
+        [
+          {
+            className: "Group",
+            members: [root(), collection("items", "Item")],
+            tools: [],
+          },
+          {
+            className: "Item",
+            members: [root()],
+            tools: [action("open", "open")],
+          },
+        ]
+      )
+    );
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "GroupsPage.groups.items.open",
+          goal_met: 0.1,
+          arguments: { ref: "GroupsPage.groups[0].items[1]" },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(GroupsPage);
+
+    await tool.execute({ goal: "open the second item", maxSteps: 5 });
+
+    const stageTwo = criteriaOf(requests[1]!);
+    // One question, over the innermost roots only.
+    expect(Object.keys(stageTwo)).toEqual(["ref"]);
+    expect(Object.values(stageTwo.ref!)).toEqual([
+      expect.stringContaining("GroupsPage.groups[0].items[0]"),
+      expect.stringContaining("GroupsPage.groups[0].items[1]"),
+      expect.stringContaining("GroupsPage.groups[1].items[0]"),
+    ]);
+    expect(acted).toEqual(["0-1"]);
+  });
+
+  it("does not offer a collection tool while the collection is empty", async () => {
+    const { requests, decide } = recording(
+      scriptedDecisionFn([{ operation: "none", goal_met: 0.1 }])
+    );
+    const tool = await registerItemsPom(
+      decide,
+      0,
+      [action("archive", "archive")],
+      () => ({ archive: () => undefined })
+    );
+
+    const result = (await tool.execute({
+      goal: "archive the second item",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    expect(Object.keys(criteriaOf(requests[0]!).operation!)).not.toContain(
+      "ItemsPage.items.archive"
+    );
+    // No question without options is ever sent.
+    expect(requests).toHaveLength(1);
+    expect(result.reason).toBe("no_fitting_option");
+  });
+
+  it("asks a collection tool's enum and boolean arguments with the instance", async () => {
+    const calls: unknown[][] = [];
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "ItemsPage.items.configure",
+          goal_met: 0.1,
+          arguments: {
+            ref: "ItemsPage.items[1]",
+            "args.mode": "full",
+            "args.confirm": "true",
+          },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await registerItemsPom(
+      decide,
+      2,
+      [
+        actionWithParameters("configure", "configure", [
+          {
+            name: "mode",
+            optional: false,
+            schema: { type: "string", enum: ["compact", "full"] },
+          },
+          { name: "confirm", optional: false, schema: { type: "boolean" } },
+        ]),
+      ],
+      (index) => ({
+        configure: (mode: string, confirm: boolean) =>
+          calls.push([index, mode, confirm]),
+      })
+    );
+
+    await tool.execute({ goal: "configure the second item", maxSteps: 5 });
+
+    // One request carries every question the chosen operation still needs.
+    expect(requests).toHaveLength(3);
+    expect(Object.keys(criteriaOf(requests[1]!))).toEqual([
+      "ref",
+      "args.mode",
+      "args.confirm",
+    ]);
+    expect(calls).toEqual([[1, "full", true]]);
+  });
+
+  it("hands over when a collection tool needs a free value", async () => {
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        { operation: "ItemsPage.items.rename", goal_met: 0.1 },
+      ])
+    );
+    const tool = await registerItemsPom(
+      decide,
+      2,
+      [actionWithParam("rename", "rename")],
+      () => ({ rename: () => undefined })
+    );
+
+    const result = await tool.execute({
+      goal: "rename the second item",
+      maxSteps: 5,
+    });
+
+    expect(result).toEqual({
+      reason: "needs_value",
+      next: expect.stringContaining("ItemsPage.items.rename"),
+      history: [],
+      needs: {
+        tool: "ItemsPage.items.rename",
+        parameters: ["ref", "args.value"],
+      },
+    });
+    expect(requests).toHaveLength(1);
+  });
+
+  it("ends the run when the model answers outside the offered instances", async () => {
+    const archived: number[] = [];
+    const decide = scriptedDecisionFn([
+      {
+        operation: "ItemsPage.items.archive",
+        goal_met: 0.1,
+        arguments: { ref: { raw: "e999" } },
+      },
+    ]);
+    const tool = await registerItemsPom(
+      decide,
+      3,
+      [action("archive", "archive")],
+      (index) => ({ archive: () => archived.push(index) })
+    );
+
+    const result = await tool.execute({
+      goal: "archive the second item",
+      maxSteps: 5,
+    });
+
+    expect(result).toEqual({
+      reason: "decide_failed",
+      next: expect.stringContaining("not one of the offered options"),
+      history: [],
+    });
+    expect(archived).toEqual([]);
   });
 });

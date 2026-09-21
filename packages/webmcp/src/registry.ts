@@ -402,6 +402,38 @@ export function listRegisteredPomTools() {
   return [...activeTools.values()];
 }
 
+/**
+ * Package-internal: the present Page Object Roots each tool that goes through
+ * a collection acts on, by tool name, labelled as the page state labels them.
+ * A tool whose path holds no collection is absent from the map.
+ */
+export function listCollectionToolRoots(): Map<string, RegisteredPomRoot[]> {
+  const rootsByTool = new Map<string, RegisteredPomRoot[]>();
+  for (const registration of registeredPoms) {
+    for (const tool of registration.tools) {
+      const componentPath = tool.componentPath;
+      if (componentPath === undefined || !componentPath.includes("[]"))
+        continue;
+      const roots = registration.rootObservations.flatMap((root) =>
+        isRootPresent(root) &&
+        isLiveComponentRoot(componentPath, `${root.path}.root`)
+          ? [
+              {
+                label: `${registration.id}.${root.path}`,
+                element: root.element,
+              },
+            ]
+          : []
+      );
+      rootsByTool.set(tool.name, [
+        ...(rootsByTool.get(tool.name) ?? []),
+        ...roots,
+      ]);
+    }
+  }
+  return rootsByTool;
+}
+
 function isLiveComponentRoot(path: string, memberName: string) {
   const pattern = path
     .split(".")
