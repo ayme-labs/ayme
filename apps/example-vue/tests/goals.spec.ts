@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { loadEnv } from "vite";
 
 import { recordPublishedTools, type RecordingDriver } from "./publishedTools";
@@ -28,6 +28,17 @@ function activeItems(page: Page) {
   return page.getByRole("list", { name: "Active items" }).getByRole("listitem");
 }
 
+function archivedItems(page: Page) {
+  return page
+    .getByRole("list", { name: "Archived items" })
+    .getByRole("listitem");
+}
+
+/** Both lists show the item id, so it identifies the same item in either. */
+function itemIds(items: Locator) {
+  return items.locator("code").allInnerTexts();
+}
+
 async function pursueGoal(page: Page, goal: string, maxSteps: number) {
   return (await page.evaluate(
     async ({ goal, maxSteps }) => {
@@ -52,4 +63,22 @@ test("a goal that names a value the model cannot choose hands over", async ({
 
   expect(handover.reason).toBe("needs_value");
   expect(await activeItems(page).allInnerTexts()).toEqual(itemsBefore);
+});
+
+test("a goal that names a collection instance archives it", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(activeItems(page)).toHaveCount(2);
+  const [firstId, secondId] = await itemIds(activeItems(page));
+
+  const handover = await pursueGoal(
+    page,
+    "Archive the second item in the list",
+    6
+  );
+
+  expect(handover.reason).toBe("done");
+  expect(await itemIds(activeItems(page))).toEqual([firstId]);
+  expect(await itemIds(archivedItems(page))).toEqual([secondId]);
 });
