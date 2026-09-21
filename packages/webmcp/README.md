@@ -220,6 +220,18 @@ useAymeWebMcp({
 `Promise<DecisionResponse>`. Use `decisionEndpoint` for the common HTTP case,
 or pass a fake in tests.
 
+### What one step asks
+
+A step first asks which operation moves closest to the goal and whether the
+goal is met. When the chosen operation takes arguments the model can pick from
+a closed set — a Structural Ref, an enum value or a boolean — a second request
+asks for all of them at once and the operation runs with the chosen values.
+The ref options are the elements the operation's `filter` keeps. An optional
+closed-set parameter is offered an extra choice that leaves it unset. The model
+never writes a free value: an operation that requires one, such as
+`fill_page_state_ref`, ends the loop with `needs_value` so that the calling
+agent supplies it.
+
 ### The Handover
 
 `pursue_goal({ goal, maxSteps })` returns a Handover:
