@@ -52,3 +52,11 @@ pnpm run test:e2e
 ```
 
 The browser test injects a minimal `document.modelContext`, verifies the two published tools and their compiler-derived schemas, exercises direct list interaction, then invokes the published collection WebMCP tool and the same tool through the debug console against the real DOM-backed runtime.
+
+## Live goal lane
+
+The app turns the Goal Loop on only in development, because only the dev server mounts a Decision Endpoint; the deployed build publishes no `pursue_goal`.
+
+`pnpm run test:goals` is a separate Playwright lane that runs one real goal through `pursue_goal` against the model. It is a check that the architecture still works, not an evaluation. `pnpm run test:e2e` does not run it. Retries are on, so a test passes when one of three attempts passes.
+
+Anyone running it brings their own key: put an OpenRouter key in `AYME_OPENROUTER_API_KEY` as `.env.example` describes. Without a key the lane skips itself with a message, which is also what happens for a pull request from a fork, where no repository secret is available.
