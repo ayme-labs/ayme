@@ -124,28 +124,29 @@ const RESERVED_KEYS = new Set(["none"]);
  * Includes Ref Tools, all registered POM tools, and validates that no
  * key collides with another tool or the reserved `"none"` sentinel.
  */
+function toExecutable(t: {
+  name: string;
+  description: string;
+  execute(input: unknown): Promise<unknown>;
+  inputSchema: { required?: readonly string[] };
+}): ExecutableTool {
+  return {
+    name: t.name,
+    description: t.description,
+    execute: t.execute,
+    requiredParams: [...(t.inputSchema.required ?? [])],
+  };
+}
+
 function buildToolOptions(): ToolOption[] {
-  const refTools: ExecutableTool[] = [
-    {
-      name: clickPageStateRefTool.name,
-      description: clickPageStateRefTool.description,
-      execute: clickPageStateRefTool.execute,
-      requiredParams: [...(clickPageStateRefTool.inputSchema.required ?? [])],
-    },
-    {
-      name: fillPageStateRefTool.name,
-      description: fillPageStateRefTool.description,
-      execute: fillPageStateRefTool.execute,
-      requiredParams: [...(fillPageStateRefTool.inputSchema.required ?? [])],
-    },
-  ];
-  const pomTools: ExecutableTool[] = listRegisteredPomTools().map((tool) => ({
-    name: tool.name,
-    description: tool.description,
-    execute: (input: unknown) => tool.execute(input),
-    requiredParams: tool.parameters
-      .filter((p) => !p.optional)
-      .map((p) => p.name),
+  const refTools = [clickPageStateRefTool, fillPageStateRefTool].map(
+    toExecutable
+  );
+  const pomTools: ExecutableTool[] = listRegisteredPomTools().map((t) => ({
+    name: t.name,
+    description: t.description,
+    execute: (input: unknown) => t.execute(input),
+    requiredParams: t.parameters.filter((p) => !p.optional).map((p) => p.name),
   }));
 
   const seen = new Set<string>();
@@ -354,14 +355,12 @@ async function pursueGoal(
     // Refresh POM observations so newly revealed/hidden roots are reflected.
     await probeRegisteredPomMembers();
 
-    // Capture the decision-time tree (the tree the model will see).
-    const capture = await getPageStateCaptureForDocument(currentDocument);
-    const decisionTree = capture.tree;
+    // Capture the decision-time page state and build tool options.
+    const { tree: decisionTree } =
+      await getPageStateCaptureForDocument(currentDocument);
     const pomDefinitionsText = renderPomDefinitions(
       getPomDefinitions().definitions
     );
-
-    // Build tool options from currently available tools
     const toolOptions = buildToolOptions();
 
     // Ask the model

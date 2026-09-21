@@ -119,14 +119,8 @@ type PublishedTool = {
 function createFakeDriver() {
   const published = new Map<string, PublishedTool>();
   const driver = {
-    async registerTool(
-      tool: PublishedTool,
-      options?: { signal?: AbortSignal }
-    ) {
+    async registerTool(tool: PublishedTool) {
       published.set(tool.name, tool);
-      options?.signal?.addEventListener("abort", () => {
-        if (published.get(tool.name) === tool) published.delete(tool.name);
-      });
     },
   };
   return { driver, published };
@@ -372,14 +366,14 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     );
   });
 
-  it("checks needs_value before action_failed", async () => {
-    const decide = scriptedDecisionFn([
-      { operation: "App.fail", goal_met: 0.1 },
-      { operation: "App.fill", goal_met: 0.1 },
-    ]);
+  /** POM with save (no params), fail (throws), and fill (with param). */
+  async function registerCombinedPom(goalLoop: GoalLoopDecisionFunction) {
     setupDom();
     class App {
       root = page.locator("main");
+      save() {
+        (document.querySelector("#save") as HTMLButtonElement).click();
+      }
       fail() {
         throw new Error("action exploded");
       }
@@ -392,11 +386,24 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       manifest(
         "App",
         [root()],
-        [action("fail", "App.fail"), actionWithParam("fill", "App.fill")]
+        [
+          action("save", "App.save"),
+          action("fail", "App.fail"),
+          actionWithParam("fill", "App.fill"),
+        ]
       )
     );
-    const tool = await getPublishedPursueGoal(decide);
+    const tool = await getPublishedPursueGoal(goalLoop);
     createPageRegistration(App);
+    return tool;
+  }
+
+  it("checks needs_value before action_failed", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.fail", goal_met: 0.1 },
+      { operation: "App.fill", goal_met: 0.1 },
+    ]);
+    const tool = await registerCombinedPom(decide);
     const result = await tool.execute({ goal: "do something", maxSteps: 5 });
     expect((result as Record<string, unknown>).reason).toBe("needs_value");
     expect((result as Record<string, unknown>).needs).toEqual({
@@ -411,30 +418,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       { operation: "App.save", goal_met: 0.1 },
       { operation: "App.fail", goal_met: 0.1 },
     ]);
-    setupDom();
-    class App {
-      root = page.locator("main");
-      fail() {
-        throw new Error("action exploded");
-      }
-      save() {
-        (document.querySelector("#save") as HTMLButtonElement).click();
-      }
-    }
-    registerCompiledPom(
-      App,
-      manifest(
-        "App",
-        [root()],
-        [action("fail", "App.fail"), action("save", "App.save")]
-      )
-    );
-    const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(App);
-    const result = await tool.execute({
-      goal: "try hard",
-      maxSteps: 3,
-    });
+    const tool = await registerCombinedPom(decide);
+    const result = await tool.execute({ goal: "try hard", maxSteps: 3 });
     expect((result as Record<string, unknown>).reason).toBe("step_budget");
   });
 
