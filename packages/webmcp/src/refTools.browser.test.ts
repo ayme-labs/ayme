@@ -286,12 +286,14 @@ describe("Ref Tools in Chromium", () => {
     const registration = registrationOf(published, "highlight_element");
     expect(registration.signal.aborted).toBe(false);
 
+    // A session disposes the publication it owns when it stops; this test owns
+    // the publication, so it disposes it in the session's place.
     disposePublication?.();
     disposePublication = undefined;
-    stop?.();
-    stop = undefined;
     expect(registration.signal.aborted).toBe(true);
 
+    stop?.();
+    stop = undefined;
     const afterSession = await republish();
     expect([...afterSession.keys()]).not.toContain("highlight_element");
   });
