@@ -1134,6 +1134,11 @@ export class StructuralTree {
   }
 
   private static _parseNodeLine(trimmedLine: string): ParsedNodeLine {
+    // Playwright single-quotes a whole YAML key that contains ` #`, `: `,
+    // braces or backticks, e.g. - 'button "Fix #1" [ref=e2]':
+    const quotedKey = /^- '((?:[^']|'')*)'(:.*)?$/.exec(trimmedLine);
+    if (quotedKey)
+      trimmedLine = `- ${quotedKey[1]!.replace(/''/g, "'")}${quotedKey[2] ?? ""}`;
     const match =
       /^- ([^"[\]:]+?)(?: "((?:[^"\\]|\\.)*)")?((?: \[[^\]]+\])*)(?::(?:\s(.*))?)?$/.exec(
         trimmedLine

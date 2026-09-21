@@ -82,6 +82,19 @@ function enrichBy(
   return new StructuralTree(attach(tree.root), new SyntheticAriaRefFactory());
 }
 
+describe("StructuralTree YAML keys", () => {
+  it("parses a node line whose whole key Playwright single-quoted", () => {
+    const tree = parse(
+      `- list [ref=e1]:\n  - 'button "Issue #123 it''s done" [ref=e2] [cursor=pointer]':\n    - text: x`
+    );
+    const node = tree.getNode(id("e2"))!;
+    expect(node.role).toBe("button");
+    expect(node.name).toBe("Issue #123 it's done");
+    expect(node.cursorPointer).toBe(true);
+    expect(node.children).toEqual(["x"]);
+  });
+});
+
 describe("StructuralTree navigation", () => {
   const NESTED = `
 - generic [ref=e1]:
