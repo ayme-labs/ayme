@@ -272,6 +272,55 @@ describe("Structural Ref interactions in Chromium", () => {
       runtime.dispose();
     }
   });
+
+  it("drops a returned Page Object class instance from a POM action", async () => {
+    document.body.innerHTML = '<div id="app"><span>Content</span></div>';
+
+    class ChildComponent {
+      constructor(readonly name: string) {}
+    }
+    class ReturningPage {
+      constructor(readonly page: unknown) {}
+      getChild() {
+        return new ChildComponent("widget");
+      }
+    }
+    registerCompiledPom(ReturningPage, {
+      className: "ReturningPage",
+      members: [],
+      components: [],
+      tools: [
+        {
+          methodName: "getChild",
+          toolName: "getChild",
+          description: "Get a child component.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: [],
+            additionalProperties: false,
+          },
+          parameters: [],
+          returnPoms: ["ChildComponent"],
+        },
+      ],
+    });
+
+    const runtime = createAymeRuntime(createPage());
+    try {
+      const instance = new ReturningPage(undefined);
+      registerPageObject(ReturningPage, instance);
+
+      const tool = listRegisteredPomTools().find((t) => t.name === "getChild");
+      if (!tool) throw new Error("Expected the getChild tool.");
+      const result = (await tool.execute({})) as Record<string, unknown>;
+      expect(result.page_changed).toBe(false);
+      expect(result.settled).toBe(true);
+      expect(result.result).toBeUndefined();
+    } finally {
+      runtime.dispose();
+    }
+  });
 });
 
 function structuralRefFor(

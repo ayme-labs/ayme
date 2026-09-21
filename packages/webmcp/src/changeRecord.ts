@@ -12,7 +12,9 @@ import {
  *
  * Unchanged path nodes are kept as structural markers (role + name + ref)
  * but their text children and unchanged branch children are stripped.
- * Changed nodes (added, removed, updated) keep their full subtree.
+ * Added and removed subtrees appear in full (the reconciler marks every
+ * descendant). Updated nodes show their text content; unchanged structural
+ * children below them are pruned.
  */
 export function renderChangeRecord(reconciled: StructuralTree): string {
   const changed = new Set<AriaRef>();
