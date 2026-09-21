@@ -91,6 +91,25 @@ export type PomDefinitionsResult = {
   definitions: readonly PomDefinition[];
 };
 
+export function isJsonValue(value: unknown): value is JsonValue {
+  if (isJsonPrimitive(value)) return true;
+  if (Array.isArray(value)) return value.every(isJsonValue);
+  if (typeof value !== "object" || value === null) return false;
+  // Reject non-plain objects (DOM nodes, class instances, etc.)
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) return false;
+  return Object.values(value).every(isJsonValue);
+}
+
+export function isJsonPrimitive(value: unknown): value is JsonPrimitive {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
+}
+
 export type RegisteredPomTool = ModelContextTool<
   Record<string, unknown>,
   JsonValue

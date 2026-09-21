@@ -1,5 +1,4 @@
 import type {
-  JsonPrimitive,
   JsonSchema,
   JsonValue,
   PomComponentManifest,
@@ -10,6 +9,7 @@ import type {
   RegisteredPomTool,
   ToolManifest,
 } from "./contracts";
+import { isJsonPrimitive } from "./contracts";
 import { createPage } from "./browserPage";
 import {
   isPlaywrightLiteLocator,
@@ -17,6 +17,8 @@ import {
 } from "@ayme-dev/playwright-lite/internal";
 import type { Locator, Page } from "@playwright/test";
 import { probePomRootState } from "./pomReachability";
+import { getPageStateCaptureForDocument } from "./pageState";
+import { completeAction, type ActionResult } from "./actionSequence";
 
 export type PageObjectConstructor<T extends object = object> = new (
   page: Page
@@ -869,15 +871,21 @@ async function executeTool(
   instance: object,
   tool: ToolManifest,
   args: unknown
-): Promise<JsonValue> {
+): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
   if (!isCallable(method))
     throw new Error(`POM method ${tool.methodName} is not callable.`);
 
+  const currentDocument = requireCurrentDocument();
+  await getPageStateCaptureForDocument(currentDocument);
   const result = await method.apply(instance, validatedArguments(tool, args));
-  if (result === undefined) return { ok: true };
-  if (isJsonValue(result)) return { ok: true, result };
-  return { ok: true, result: String(result) };
+  return completeAction(currentDocument, result);
+}
+
+function requireCurrentDocument(): Document {
+  if (typeof document === "undefined")
+    throw new Error("POM tool execution requires a browser Document.");
+  return document;
 }
 
 function validatedArguments(tool: ToolManifest, args: unknown) {
@@ -990,22 +998,6 @@ function asComponents(value: unknown): unknown[] {
   if (!Array.isArray(value))
     throw new Error("Expected a component collection array.");
   return value;
-}
-
-function isJsonValue(value: unknown): value is JsonValue {
-  if (isJsonPrimitive(value)) return true;
-  if (Array.isArray(value)) return value.every(isJsonValue);
-  if (!isRecord(value)) return false;
-  return Object.values(value).every(isJsonValue);
-}
-
-function isJsonPrimitive(value: unknown): value is JsonPrimitive {
-  return (
-    value === null ||
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  );
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

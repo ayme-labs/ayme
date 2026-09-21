@@ -12,6 +12,20 @@ vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
     typeof value === "object" && value !== null && testLocators.has(value),
   resolveLocatorElements: (value: object) => locatorElements.get(value) ?? [],
 }));
+vi.mock("./pageState", () => ({
+  getPageStateCaptureForDocument: vi.fn().mockResolvedValue({
+    tree: null,
+    elementsByRef: new Map(),
+    reconcile: null,
+  }),
+}));
+vi.mock("./actionSequence", () => ({
+  completeAction: vi.fn(async (_doc: unknown, rawResult?: unknown) => {
+    const out: Record<string, unknown> = { page_changed: false, settled: true };
+    if (rawResult !== undefined) out.result = rawResult;
+    return out;
+  }),
+}));
 import type { Page } from "@playwright/test";
 import type { PomManifest } from "./contracts";
 
@@ -590,7 +604,8 @@ describe("live Page Object registry", () => {
     if (!tool) throw new Error("Expected a collection tool.");
 
     await expect(tool.execute({ index: 1, args: {} })).resolves.toEqual({
-      ok: true,
+      page_changed: false,
+      settled: true,
       result: "second",
     });
     expect(secondArchive).toHaveBeenCalledOnce();
@@ -598,7 +613,8 @@ describe("live Page Object registry", () => {
 
     currentItems = [replacement];
     await expect(tool.execute({ index: 0, args: {} })).resolves.toEqual({
-      ok: true,
+      page_changed: false,
+      settled: true,
       result: "replacement",
     });
     expect(replacementArchive).toHaveBeenCalledOnce();
