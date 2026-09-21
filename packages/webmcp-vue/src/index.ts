@@ -17,6 +17,7 @@ import {
   createPageRegistration,
   type AymePage,
   type GoalLoopDecisionFunction,
+  type RefTool,
   type RuntimeSession,
   type PageObjectConstructor,
 } from "@ayme-dev/webmcp/internal";
@@ -25,6 +26,7 @@ export type { AymeWebMcpPublicationStatus } from "@ayme-dev/webmcp/internal";
 export type UseAymeWebMcpOptions = {
   page?: AymePage;
   ignore?: (element: Element) => boolean;
+  refTools?: RefTool[];
   goalLoop?: GoalLoopDecisionFunction;
 };
 const runtimeKey: InjectionKey<RuntimeSession> = Symbol("Ayme runtime");
@@ -36,6 +38,7 @@ function inheritedRuntime() {
 function ownRuntime(options: UseAymeWebMcpOptions = {}) {
   const runtime = createRuntimeSession(options.page, {
     ignore: options.ignore,
+    refTools: options.refTools,
     goalLoop: options.goalLoop,
   });
   if (typeof window !== "undefined") {
@@ -66,6 +69,7 @@ export const AymeWebMcpProvider = defineComponent({
       type: Function as PropType<(element: Element) => boolean>,
       required: false,
     },
+    refTools: { type: Array as PropType<RefTool[]>, required: false },
     goalLoop: {
       type: Function as PropType<GoalLoopDecisionFunction>,
       required: false,
@@ -78,14 +82,16 @@ export const AymeWebMcpProvider = defineComponent({
       );
     const page = props.page;
     const ignore = props.ignore;
+    const refTools = props.refTools;
     const goalLoop = props.goalLoop;
-    ownRuntime({ page, ignore, goalLoop });
+    ownRuntime({ page, ignore, refTools, goalLoop });
     watch(
-      () => [props.page, props.ignore, props.goalLoop] as const,
-      ([nextPage, nextIgnore, nextGoalLoop]) => {
+      () => [props.page, props.ignore, props.refTools, props.goalLoop] as const,
+      ([nextPage, nextIgnore, nextRefTools, nextGoalLoop]) => {
         if (
           nextPage !== page ||
           nextIgnore !== ignore ||
+          nextRefTools !== refTools ||
           nextGoalLoop !== goalLoop
         )
           throw new Error(
@@ -108,10 +114,11 @@ export function useAymeWebMcp(options: UseAymeWebMcpOptions = {}) {
     inherited &&
     (options.page !== undefined ||
       options.ignore !== undefined ||
+      options.refTools !== undefined ||
       options.goalLoop !== undefined)
   )
     throw new Error(
-      "Configure page, ignore and goalLoop on the ancestor AymeWebMcpProvider or standalone useAymeWebMcp owner."
+      "Configure page, ignore, refTools and goalLoop on the ancestor AymeWebMcpProvider or standalone useAymeWebMcp owner."
     );
   return consumeRuntime(inherited ?? ownRuntime(options));
 }

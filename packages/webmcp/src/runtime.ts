@@ -1,6 +1,7 @@
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { configurePageStateIgnore } from "./pageState";
+import { configureRefTools, type RefTool } from "./refTools";
 import {
   constructPageObject,
   createAymeRuntime,
@@ -25,6 +26,7 @@ export type { GoalLoopDecisionFunction } from "./goalLoop";
 
 export type AymeRuntimeOptions = {
   ignore?: (element: Element) => boolean;
+  refTools?: RefTool[];
   goalLoop?: GoalLoopDecisionFunction;
 };
 type PageInstrumentation = (page: AymePage) => AymePage;
@@ -152,6 +154,7 @@ export function createRuntimeSession(
     owner.dispose();
     owner = undefined;
     configurePageStateIgnore(undefined);
+    configureRefTools(undefined);
     configureGoalLoop(undefined);
     setStatus({ state: "disposed", message: "The Ayme runtime was disposed." });
   }
@@ -190,6 +193,7 @@ export function createRuntimeSession(
         throw new Error("The Ayme runtime already has an active owner.");
       owner = createAymeRuntime(getPage());
       configurePageStateIgnore(options.ignore);
+      configureRefTools(options.refTools);
       configureGoalLoop(options.goalLoop);
       controller = new AbortController();
       try {

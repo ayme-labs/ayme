@@ -69,6 +69,31 @@ it("passes ignore to the runtime session", async () => {
   );
   expect(createRuntimeSession).toHaveBeenCalledWith(page, {
     ignore,
+    refTools: undefined,
+    goalLoop: undefined,
+  });
+});
+
+it("passes refTools to the runtime session", async () => {
+  const refTools = [
+    {
+      name: "highlight_element",
+      description: "Highlight one element on the page.",
+      execute: async () => null,
+    },
+  ];
+  await act(() =>
+    root().render(
+      h(
+        AymeWebMcpProvider,
+        { page, refTools },
+        h(() => null)
+      )
+    )
+  );
+  expect(createRuntimeSession).toHaveBeenCalledWith(page, {
+    ignore: undefined,
+    refTools,
     goalLoop: undefined,
   });
 });
@@ -86,6 +111,7 @@ it("passes goalLoop to the runtime session", async () => {
   );
   expect(createRuntimeSession).toHaveBeenCalledWith(page, {
     ignore: undefined,
+    refTools: undefined,
     goalLoop,
   });
 });

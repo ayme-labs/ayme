@@ -6,8 +6,8 @@ import {
   type PageState,
 } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
-import { createRefInteractions, type ActionResult } from "./refInteractions";
-import { requireAymeRuntimePage } from "./registry";
+import { type ActionResult } from "./actionSequence";
+import { clickRef, fillRef } from "./refTools";
 
 export type Ayme = {
   getPageContext(...names: readonly string[]): Promise<PageContext>;
@@ -22,16 +22,8 @@ export const ayme: Ayme = {
     getPageContextForDocument(requireCurrentDocument(), ...names),
   getPageState: async () => getPageStateForDocument(requireCurrentDocument()),
   getPomDefinitions,
-  click: async (ref) =>
-    createRefInteractions(
-      requireAymeRuntimePage(),
-      requireCurrentDocument()
-    ).click(ref),
-  fill: async (ref, value) =>
-    createRefInteractions(
-      requireAymeRuntimePage(),
-      requireCurrentDocument()
-    ).fill(ref, value),
+  click: async (ref) => clickRef(ref),
+  fill: async (ref, value) => fillRef(ref, value),
 };
 
 export default ayme;

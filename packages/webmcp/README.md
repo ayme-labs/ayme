@@ -71,6 +71,45 @@ useAymeWebMcp({
 });
 ```
 
+## Ref Tools
+
+A **Ref Tool** is an operation that applies to one Structural Ref. Click and
+fill are built in; your app registers its own through `refTools` on the Vue
+composable or React provider. One registration publishes the operation as a
+WebMCP tool for the calling agent and makes it an operation the Goal Loop may
+choose.
+
+```ts
+import type { RefTool } from "@ayme-dev/webmcp";
+
+const highlight: RefTool = {
+  name: "highlight_element",
+  description: "Outline one element on the page so the user can see it.",
+  filter: (element) => element.matches("[data-highlightable]"),
+  async execute({ ref, element }) {
+    element.classList.add("highlighted");
+    return { highlighted: ref };
+  },
+};
+
+useAymeWebMcp({ refTools: [highlight] });
+```
+
+- The published tool takes `{ ref }`. Ayme parses the ref, resolves it against
+  the Page State Session and calls `execute` with the current ref and its
+  element. An unknown, removed or ambiguous ref fails before `execute` runs.
+- `description` is the only instruction the model gets about the operation.
+- The call returns the same action result as every other action: a JSON value
+  returned by `execute` appears under `result`, next to `page_changed`,
+  `settled` and `changes`.
+- `filter` limits only which elements the Goal Loop may offer for this tool. It
+  is not enforced when the calling agent calls the tool with a ref. Without a
+  `filter`, every node that has a ref may be offered. Click's built-in filter
+  keeps elements that are not disabled and have an interactive role or a
+  pointer cursor; fill's keeps elements text can actually be entered into.
+- A Ref Tool whose name is already taken by another published tool is rejected.
+- Ref Tools live for the runtime session: they are unregistered when it ends.
+
 ## Decision Endpoint
 
 The Goal Loop calls a **Decision Endpoint** in your backend. Ayme ships the

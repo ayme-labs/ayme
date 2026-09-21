@@ -69,6 +69,25 @@ it("passes ignore to the runtime session", () => {
   scope.run(() => useAymeWebMcp({ page, ignore }));
   expect(createRuntimeSession).toHaveBeenCalledWith(page, {
     ignore,
+    refTools: undefined,
+    goalLoop: undefined,
+  });
+});
+
+it("passes refTools to the runtime session", () => {
+  const refTools = [
+    {
+      name: "highlight_element",
+      description: "Highlight one element on the page.",
+      execute: async () => null,
+    },
+  ];
+  const scope = effectScope();
+  scopes.push(scope);
+  scope.run(() => useAymeWebMcp({ page, refTools }));
+  expect(createRuntimeSession).toHaveBeenCalledWith(page, {
+    ignore: undefined,
+    refTools,
     goalLoop: undefined,
   });
 });
@@ -80,6 +99,7 @@ it("passes goalLoop to the runtime session", () => {
   scope.run(() => useAymeWebMcp({ page, goalLoop }));
   expect(createRuntimeSession).toHaveBeenCalledWith(page, {
     ignore: undefined,
+    refTools: undefined,
     goalLoop,
   });
 });
@@ -179,10 +199,10 @@ it("rejects child page and ignore options and nested providers", () => {
   app.mount(document.createElement("div"));
   expect(errors.map(String)).toEqual([
     expect.stringContaining(
-      "Configure page, ignore and goalLoop on the ancestor"
+      "Configure page, ignore, refTools and goalLoop on the ancestor"
     ),
     expect.stringContaining(
-      "Configure page, ignore and goalLoop on the ancestor"
+      "Configure page, ignore, refTools and goalLoop on the ancestor"
     ),
     expect.stringContaining("cannot be nested"),
   ]);
