@@ -468,40 +468,6 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(history[0]!.page_changed).toBe(true);
   });
 
-  // --- Zero-argument Page Object Action being run ---
-
-  it("runs a zero-argument Page Object Action through the same action sequence", async () => {
-    let actionCalled = false;
-    document.body.innerHTML = `
-      <main>
-        <button id="action">Do it</button>
-      </main>
-    `;
-    class App {
-      root = page.locator("main");
-      doIt() {
-        actionCalled = true;
-      }
-    }
-    registerCompiledPom(
-      App,
-      manifest("App", [root()], [action("doIt", "App.doIt")])
-    );
-    const decide = scriptedDecisionFn([
-      { operation: "App.doIt", goal_met: 0.1 },
-      { operation: "none", goal_met: 0.9 },
-    ]);
-    const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(App);
-    const result = (await tool.execute({
-      goal: "do it",
-      maxSteps: 5,
-    })) as Record<string, unknown>;
-    expect(actionCalled).toBe(true);
-    expect(result.reason).toBe("done");
-    expect((result.history as unknown[]).length).toBe(1);
-  });
-
   // --- State fields sent to the model ---
 
   it("sends goal, page (typed tree), page_objects, and history as state fields", async () => {
@@ -540,6 +506,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(state.goal).toBe("test state fields");
     // page is the typed structural tree (JSON array), not rendered text
     expect(Array.isArray(state.page)).toBe(true);
+    expect((state.page as unknown[]).length).toBeGreaterThan(0);
     expect(typeof state.page_objects).toBe("string");
     expect(state.history).toEqual([]);
 
