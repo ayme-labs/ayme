@@ -13,21 +13,8 @@ const PAGE_ACTIVITY_EVENTS = [
   "resize",
 ] as const;
 
-const pageActivitySources = new WeakMap<Document, PageActivitySource>();
-
 /** Returns a browser activity signal for the given document. */
 export function getBrowserPageActivitySource(
-  currentDocument: Document = document
-): PageActivitySource {
-  let source = pageActivitySources.get(currentDocument);
-  if (!source) {
-    source = createBrowserPageActivitySource(currentDocument);
-    pageActivitySources.set(currentDocument, source);
-  }
-  return source;
-}
-
-function createBrowserPageActivitySource(
   currentDocument: Document
 ): PageActivitySource {
   return {
