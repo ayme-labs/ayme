@@ -52,7 +52,6 @@ describe("Structural Ref interactions", () => {
       roots: [],
       absentElements: [],
     });
-    waitForSettled.mockResolvedValue({ stable: true });
     vi.clearAllMocks();
     waitForSettled.mockResolvedValue({ stable: true });
   });

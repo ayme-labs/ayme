@@ -84,21 +84,6 @@ describe("waitForSettled", () => {
 
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
-
-  it("does not take a capture", async () => {
-    const { clock, activity, advance } = createHarness();
-    const capture = vi.fn();
-    const result = waitForSettled({
-      activity,
-      clock,
-      quietMs: 250,
-      deadlineMs: 2_000,
-    });
-
-    await advance(250);
-    await result;
-    expect(capture).not.toHaveBeenCalled();
-  });
 });
 
 function createHarness() {
