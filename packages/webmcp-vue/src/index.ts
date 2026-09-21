@@ -16,6 +16,7 @@ import {
   createServerPageObject,
   createPageRegistration,
   type AymePage,
+  type GoalLoopDecisionFunction,
   type RuntimeSession,
   type PageObjectConstructor,
 } from "@ayme-dev/webmcp/internal";
@@ -24,6 +25,7 @@ export type { AymeWebMcpPublicationStatus } from "@ayme-dev/webmcp/internal";
 export type UseAymeWebMcpOptions = {
   page?: AymePage;
   ignore?: (element: Element) => boolean;
+  goalLoop?: GoalLoopDecisionFunction;
 };
 const runtimeKey: InjectionKey<RuntimeSession> = Symbol("Ayme runtime");
 
@@ -34,6 +36,7 @@ function inheritedRuntime() {
 function ownRuntime(options: UseAymeWebMcpOptions = {}) {
   const runtime = createRuntimeSession(options.page, {
     ignore: options.ignore,
+    goalLoop: options.goalLoop,
   });
   if (typeof window !== "undefined") {
     const stop = runtime.start();
@@ -63,6 +66,10 @@ export const AymeWebMcpProvider = defineComponent({
       type: Function as PropType<(element: Element) => boolean>,
       required: false,
     },
+    goalLoop: {
+      type: Function as PropType<GoalLoopDecisionFunction>,
+      required: false,
+    },
   },
   setup(props, { slots }) {
     if (inheritedRuntime())
@@ -71,11 +78,16 @@ export const AymeWebMcpProvider = defineComponent({
       );
     const page = props.page;
     const ignore = props.ignore;
-    ownRuntime({ page, ignore });
+    const goalLoop = props.goalLoop;
+    ownRuntime({ page, ignore, goalLoop });
     watch(
-      () => [props.page, props.ignore] as const,
-      ([nextPage, nextIgnore]) => {
-        if (nextPage !== page || nextIgnore !== ignore)
+      () => [props.page, props.ignore, props.goalLoop] as const,
+      ([nextPage, nextIgnore, nextGoalLoop]) => {
+        if (
+          nextPage !== page ||
+          nextIgnore !== ignore ||
+          nextGoalLoop !== goalLoop
+        )
           throw new Error(
             "The provider options must stay fixed while mounted. Remount the provider to change them."
           );
@@ -92,9 +104,14 @@ export function useAymeWebMcp(options: UseAymeWebMcpOptions = {}) {
       "useAymeWebMcp must be called within an active Vue effect scope"
     );
   const inherited = inheritedRuntime();
-  if (inherited && (options.page !== undefined || options.ignore !== undefined))
+  if (
+    inherited &&
+    (options.page !== undefined ||
+      options.ignore !== undefined ||
+      options.goalLoop !== undefined)
+  )
     throw new Error(
-      "Configure page and ignore on the ancestor AymeWebMcpProvider or standalone useAymeWebMcp owner."
+      "Configure page, ignore and goalLoop on the ancestor AymeWebMcpProvider or standalone useAymeWebMcp owner."
     );
   return consumeRuntime(inherited ?? ownRuntime(options));
 }

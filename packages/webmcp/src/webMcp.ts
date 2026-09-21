@@ -1,4 +1,5 @@
 import type { RegisteredPomTool } from "./contracts";
+import { getPursueGoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
 import { clickPageStateRefTool, fillPageStateRefTool } from "./refInteractions";
 import {
@@ -28,6 +29,11 @@ export type WebMcpSynchronizationOptions = {
   onError?: (error: unknown) => void;
 };
 
+/**
+ * Keep the MCP driver's tool set in sync with the live DOM. Publishes Ref
+ * Tools, Page Object tools, and `pursue_goal` (when configured). After each
+ * tool call the publication is re-settled so the agent sees current tools.
+ */
 export async function synchronizeWebMcpTools(
   driver: WebMcpDriver,
   options: WebMcpSynchronizationOptions = {}
@@ -97,11 +103,15 @@ export async function synchronizeWebMcpTools(
     try {
       do {
         syncAgain = false;
+        const pursueGoal = getPursueGoalTool();
         const active = new Map<string, PublishedTool>([
           [getPageContextTool.name, getPageContextTool],
           [clickPageStateRefTool.name, clickPageStateRefTool],
           [fillPageStateRefTool.name, fillPageStateRefTool],
           ...listRegisteredPomTools().map((tool) => [tool.name, tool] as const),
+          ...(pursueGoal
+            ? ([[pursueGoal.name, pursueGoal]] as [string, PublishedTool][])
+            : []),
         ]);
 
         for (const [name, registration] of published) {

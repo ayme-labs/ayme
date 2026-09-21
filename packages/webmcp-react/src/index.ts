@@ -12,6 +12,7 @@ import {
   createRuntimeSession,
   createServerPageObject,
   type AymePage,
+  type GoalLoopDecisionFunction,
   type PageObjectConstructor,
   type RuntimeSession,
 } from "@ayme-dev/webmcp/internal";
@@ -21,25 +22,32 @@ export type AymeWebMcpProviderProps = {
   page?: AymePage;
   children?: ReactNode;
   ignore?: (element: Element) => boolean;
+  goalLoop?: GoalLoopDecisionFunction;
 };
 const RuntimeContext = createContext<RuntimeSession | undefined>(undefined);
 
 export function AymeWebMcpProvider({
   page,
   ignore,
+  goalLoop,
   children,
 }: AymeWebMcpProviderProps): ReactElement {
   const ancestor = useContext(RuntimeContext);
   const [setup] = useState(() => ({
     page,
     ignore,
-    runtime: createRuntimeSession(page, { ignore }),
+    goalLoop,
+    runtime: createRuntimeSession(page, { ignore, goalLoop }),
   }));
   if (ancestor)
     throw new Error(
       "AymeWebMcpProvider cannot be nested beneath another Ayme runtime owner."
     );
-  if (page !== setup.page || ignore !== setup.ignore)
+  if (
+    page !== setup.page ||
+    ignore !== setup.ignore ||
+    goalLoop !== setup.goalLoop
+  )
     throw new Error(
       "The provider options must stay fixed while mounted. Remount the provider to change them."
     );

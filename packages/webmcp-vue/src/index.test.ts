@@ -67,7 +67,21 @@ it("passes ignore to the runtime session", () => {
   const scope = effectScope();
   scopes.push(scope);
   scope.run(() => useAymeWebMcp({ page, ignore }));
-  expect(createRuntimeSession).toHaveBeenCalledWith(page, { ignore });
+  expect(createRuntimeSession).toHaveBeenCalledWith(page, {
+    ignore,
+    goalLoop: undefined,
+  });
+});
+
+it("passes goalLoop to the runtime session", () => {
+  const goalLoop = vi.fn();
+  const scope = effectScope();
+  scopes.push(scope);
+  scope.run(() => useAymeWebMcp({ page, goalLoop }));
+  expect(createRuntimeSession).toHaveBeenCalledWith(page, {
+    ignore: undefined,
+    goalLoop,
+  });
 });
 
 it("preserves standalone effectScope setup, direct instance return and disposal", () => {
@@ -164,8 +178,12 @@ it("rejects child page and ignore options and nested providers", () => {
   apps.push(app);
   app.mount(document.createElement("div"));
   expect(errors.map(String)).toEqual([
-    expect.stringContaining("Configure page and ignore on the ancestor"),
-    expect.stringContaining("Configure page and ignore on the ancestor"),
+    expect.stringContaining(
+      "Configure page, ignore and goalLoop on the ancestor"
+    ),
+    expect.stringContaining(
+      "Configure page, ignore and goalLoop on the ancestor"
+    ),
     expect.stringContaining("cannot be nested"),
   ]);
 });

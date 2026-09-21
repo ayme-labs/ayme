@@ -30,6 +30,7 @@ export {
   installRuntimePageInstrumentation,
 } from "./runtime";
 export type {
+  GoalLoopDecisionFunction,
   RuntimeSession,
   AymePage,
   AymeWebMcpPublicationStatus,

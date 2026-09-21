@@ -1,4 +1,5 @@
 import { createPage } from "./browserPage";
+import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { configurePageStateIgnore } from "./pageState";
 import {
   constructPageObject,
@@ -20,8 +21,11 @@ export type AymeWebMcpPublicationStatus = Readonly<{
   message: string;
 }>;
 export type AymePage = ConstructorParameters<PageObjectConstructor>[0];
+export type { GoalLoopDecisionFunction } from "./goalLoop";
+
 export type AymeRuntimeOptions = {
   ignore?: (element: Element) => boolean;
+  goalLoop?: GoalLoopDecisionFunction;
 };
 type PageInstrumentation = (page: AymePage) => AymePage;
 type Registration = {
@@ -54,7 +58,11 @@ function instrumentPage(page: AymePage) {
   return instrumented;
 }
 
-// Construction is inert. Frameworks start activity only when their owner commits.
+/**
+ * Create an inert runtime session. Frameworks start activity only when their
+ * owner commits by calling `start()`. Accepts optional `goalLoop` and `ignore`
+ * options that are configured on start and cleared on stop.
+ */
 export function createRuntimeSession(
   sourcePage?: AymePage,
   options: AymeRuntimeOptions = {}
@@ -144,12 +152,16 @@ export function createRuntimeSession(
     owner.dispose();
     owner = undefined;
     configurePageStateIgnore(undefined);
+    configureGoalLoop(undefined);
     setStatus({ state: "disposed", message: "The Ayme runtime was disposed." });
   }
 
   return {
     get page() {
       return getPage();
+    },
+    get goalLoop() {
+      return options.goalLoop;
     },
     getSnapshot: () => status,
     subscribe(listener: () => void) {
@@ -178,6 +190,7 @@ export function createRuntimeSession(
         throw new Error("The Ayme runtime already has an active owner.");
       owner = createAymeRuntime(getPage());
       configurePageStateIgnore(options.ignore);
+      configureGoalLoop(options.goalLoop);
       controller = new AbortController();
       try {
         for (const registration of registrations)
