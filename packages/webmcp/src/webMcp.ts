@@ -29,6 +29,11 @@ export type WebMcpSynchronizationOptions = {
   onError?: (error: unknown) => void;
 };
 
+/**
+ * Keep the MCP driver's tool set in sync with the live DOM. Publishes Ref
+ * Tools, Page Object tools, and `pursue_goal` (when configured). After each
+ * tool call the publication is re-settled so the agent sees current tools.
+ */
 export async function synchronizeWebMcpTools(
   driver: WebMcpDriver,
   options: WebMcpSynchronizationOptions = {}

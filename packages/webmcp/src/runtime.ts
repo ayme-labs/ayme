@@ -58,7 +58,11 @@ function instrumentPage(page: AymePage) {
   return instrumented;
 }
 
-// Construction is inert. Frameworks start activity only when their owner commits.
+/**
+ * Create an inert runtime session. Frameworks start activity only when their
+ * owner commits by calling `start()`. Accepts optional `goalLoop` and `ignore`
+ * options that are configured on start and cleared on stop.
+ */
 export function createRuntimeSession(
   sourcePage?: AymePage,
   options: AymeRuntimeOptions = {}

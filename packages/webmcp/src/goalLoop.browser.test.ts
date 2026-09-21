@@ -224,7 +224,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       reason: "done",
       history: [
         {
-          did: "App.save",
+          did: "save",
           result: "ok",
           page_changed: false,
         },
@@ -280,8 +280,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result).toMatchObject({
       reason: "action_failed",
       history: [
-        { did: "App.fail", result: "action exploded", page_changed: false },
-        { did: "App.fail", result: "action exploded", page_changed: false },
+        { did: "fail", result: "action exploded", page_changed: false },
+        { did: "fail", result: "action exploded", page_changed: false },
       ],
     });
     expect((result as Record<string, unknown>).next).toContain(
@@ -302,8 +302,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result).toMatchObject({
       reason: "step_budget",
       history: [
-        { did: "App.save", result: "ok", page_changed: false },
-        { did: "App.save", result: "ok", page_changed: false },
+        { did: "save", result: "ok", page_changed: false },
+        { did: "save", result: "ok", page_changed: false },
       ],
     });
     expect(clickCount).toBe(2);
@@ -456,7 +456,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const history = result.history as Array<Record<string, unknown>>;
     expect(history).toHaveLength(1);
     expect(history[0]).toMatchObject({
-      did: "App.save",
+      did: "save",
       result: "ok",
     });
     // page_changed should be true since the result div was unhidden

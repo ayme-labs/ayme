@@ -13,7 +13,7 @@ import { getPageContextForDocument, type PageContext } from "./pageContext";
 import { getPageStateCaptureForDocument } from "./pageState";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { clickPageStateRefTool, fillPageStateRefTool } from "./refInteractions";
-import { listRegisteredPomTools } from "./registry";
+import { listRegisteredPomTools, probeRegisteredPomMembers } from "./registry";
 
 export type GoalLoopDecisionFunction = (
   request: DecisionRequest
@@ -31,14 +31,20 @@ const goalLoopStore: GoalLoopStore = ((
   }
 ).__aymeGoalLoopStore ??= {});
 
-/** Package-internal: set while a runtime session is active. */
+/**
+ * Package-internal: store or clear the decision function for the current
+ * runtime session. Called by `start()` and `stop()` in `runtime.ts`.
+ */
 export function configureGoalLoop(
   decisionFn: GoalLoopDecisionFunction | undefined
 ): void {
   goalLoopStore.decisionFn = decisionFn;
 }
 
-/** Package-internal: returns the pursue_goal tool when goalLoop is configured, null otherwise. */
+/**
+ * Package-internal: returns the `pursue_goal` tool when `goalLoop` is
+ * configured, `null` otherwise. Called by `synchronizeWebMcpTools`.
+ */
 export function getPursueGoalTool(): ModelContextTool<
   Record<string, unknown>,
   JsonValue
@@ -94,6 +100,13 @@ type ToolOption = {
   tool: ExecutableTool;
 };
 
+const RESERVED_KEYS = new Set(["none"]);
+
+/**
+ * Build the flat list of tool options offered to the model each step.
+ * Includes Ref Tools, all registered POM tools, and validates that no
+ * key collides with another tool or the reserved `"none"` sentinel.
+ */
 function buildToolOptions(): ToolOption[] {
   const refTools: ExecutableTool[] = [
     {
@@ -117,15 +130,20 @@ function buildToolOptions(): ToolOption[] {
       .filter((p) => !p.optional)
       .map((p) => p.name),
   }));
-  return [...refTools, ...pomTools].map((tool) => ({
-    key: tool.name,
-    label: tool.description,
-    tool,
-  }));
+
+  const seen = new Set<string>();
+  const options: ToolOption[] = [];
+  for (const tool of [...refTools, ...pomTools]) {
+    if (RESERVED_KEYS.has(tool.name) || seen.has(tool.name)) continue;
+    seen.add(tool.name);
+    options.push({ key: tool.name, label: tool.description, tool });
+  }
+  return options;
 }
 
 // --- Decision request building (ADR-0022: built in the browser) ---
 
+/** Construct a `DecisionRequest` for one step of the Goal Loop. */
 function buildStepRequest(
   goal: string,
   pageContext: PageContext,
@@ -172,6 +190,7 @@ type NoulAnswer = {
   noul: number;
 };
 
+/** Extract and validate the `operation` choice answer from the model response. */
 function parseOperationAnswer(answers: Record<string, unknown>): ChoiceAnswer {
   const raw = answers.operation;
   if (
@@ -184,6 +203,7 @@ function parseOperationAnswer(answers: Record<string, unknown>): ChoiceAnswer {
   return raw as ChoiceAnswer;
 }
 
+/** Extract and validate the `goal_met` noul answer from the model response. */
 function parseGoalMetAnswer(answers: Record<string, unknown>): NoulAnswer {
   const raw = answers.goal_met;
   if (
@@ -198,6 +218,11 @@ function parseGoalMetAnswer(answers: Record<string, unknown>): NoulAnswer {
 
 // --- Action execution (same sequence as direct tool calls) ---
 
+/**
+ * Execute a tool and determine whether the structural page state changed.
+ * Uses the same capture → execute → settle → compare sequence as direct
+ * tool calls (ADR-0024).
+ */
 async function executeToolAction(
   tool: ExecutableTool,
   currentDocument: Document
@@ -228,6 +253,7 @@ async function executeToolAction(
 
 // --- The loop ---
 
+/** Create the `pursue_goal` ModelContextTool bound to the given decision function and document. */
 export function createPursueGoalTool(
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document
@@ -257,6 +283,7 @@ export function createPursueGoalTool(
   };
 }
 
+/** Validate and narrow the raw `pursue_goal` input to typed fields. */
 function readPursueGoalInput(input: unknown): {
   goal: string;
   maxSteps: number;
@@ -276,6 +303,13 @@ function readPursueGoalInput(input: unknown): {
   );
 }
 
+/**
+ * Run the Goal Loop: iterate steps, asking the decision model which operation
+ * to run and whether the goal is met, until a Handover condition is reached.
+ *
+ * Per-step scores (operation probabilities and `goal_met` noul) are recorded
+ * in `stepScores` but are not part of the returned Handover.
+ */
 async function pursueGoal(
   goal: string,
   maxSteps: number,
@@ -283,9 +317,18 @@ async function pursueGoal(
   currentDocument: Document
 ): Promise<Handover> {
   const history: HandoverHistoryEntry[] = [];
+  // Internal run result: scores per step (not exposed in tool result).
+  const _stepScores: Array<{
+    operationProbabilities?: Record<string, number>;
+    goalMetScore: number;
+  }> = [];
+  void _stepScores; // ponytail: stored for future observability; not consumed yet
   let consecutiveFailures = 0;
 
   for (let step = 0; step < maxSteps; step++) {
+    // Refresh POM observations so newly revealed/hidden roots are reflected.
+    await probeRegisteredPomMembers();
+
     // Fresh page context each step
     const pageContext = await getPageContextForDocument(currentDocument);
 
@@ -336,6 +379,12 @@ async function pursueGoal(
         history,
       };
     }
+
+    // Record per-step scores internally (not part of the Handover).
+    _stepScores.push({
+      operationProbabilities: operationAnswer.probabilities,
+      goalMetScore: goalMetAnswer.noul,
+    });
 
     // --- Check handover reasons in order ---
 
@@ -396,9 +445,9 @@ async function pursueGoal(
       consecutiveFailures++;
     }
 
-    // Record history
+    // Record history — `did` is a readable label, not only the tool name.
     history.push({
-      did: chosenOption.tool.name,
+      did: chosenOption.label || chosenOption.tool.name,
       result: actionResult.result,
       page_changed: actionResult.page_changed,
     });
