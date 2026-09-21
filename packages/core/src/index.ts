@@ -73,4 +73,3 @@ export {
   SETTLED_PAGE_QUIET_MS,
   SETTLED_PAGE_DEADLINE_MS,
 } from "./observation/waitForSettled";
-export { structuralPageChanged } from "./observation/structuralPageChanged";

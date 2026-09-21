@@ -1,6 +1,5 @@
 import type {
   JsonSchema,
-  JsonValue,
   PomComponentManifest,
   PomComponentMemberManifest,
   PomManifest,

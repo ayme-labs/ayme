@@ -1,7 +1,6 @@
 import {
   SETTLED_PAGE_DEADLINE_MS,
   SETTLED_PAGE_QUIET_MS,
-  StructuralTree,
   waitForSettled,
 } from "@ayme-dev/core/structural-observation";
 import { isJsonValue, type JsonValue } from "./contracts";
