@@ -250,6 +250,152 @@ describe("the public Ayme page state facade", () => {
     ]);
   });
 
+  describe("synthetic POM root ref aliases (#84)", () => {
+    it("retargets an earlier synthetic ref when the same root element survives a re-render", async () => {
+      document.body.innerHTML = `
+        <div id="account"><button id="save">Save</button></div>
+      `;
+      const account = document.querySelector("#account");
+      const button = document.querySelector("#save");
+      if (!account || !button) throw new Error("Expected the account markup.");
+
+      captureAriaSnapshot.mockReturnValueOnce({
+        distilledText: `
+- generic [ref=e1]:
+  - button "Save" [ref=e2]
+`.trim(),
+        fullText: `
+- generic [ref=e1]:
+  - generic:
+    - button "Save" [ref=e2]
+`.trim(),
+        refsByElement: new Map([
+          [document.body, "e1"],
+          [button, "e2"],
+        ]),
+      });
+      listRegisteredPomRoots.mockResolvedValue([
+        { label: "AccountPage.root", element: account },
+      ]);
+
+      const state = await ayme.getPageState();
+      expect(state.text).toContain("s_1 AccountPage.root");
+
+      account.innerHTML = '<button id="save">Save changes</button>';
+      const replacementButton = document.querySelector("#save");
+      if (!replacementButton)
+        throw new Error("Expected the replacement button.");
+      const rerenderedCapture = {
+        distilledText: `
+- generic [ref=e3]:
+  - button "Save changes" [ref=e4]
+`.trim(),
+        fullText: `
+- generic [ref=e3]:
+  - generic:
+    - button "Save changes" [ref=e4]
+`.trim(),
+        refsByElement: new Map([
+          [document.body, "e3"],
+          [replacementButton, "e4"],
+        ]),
+      };
+      captureAriaSnapshot
+        .mockReturnValueOnce(rerenderedCapture)
+        .mockReturnValueOnce(rerenderedCapture);
+      listRegisteredPomRoots.mockResolvedValue([
+        { label: "AccountPage.root", element: account },
+      ]);
+
+      const rerendered = await ayme.getPageState();
+      expect(rerendered.text).toContain("s_2 AccountPage.root");
+
+      await expect(state.resolve(ref("s_1"))).resolves.toEqual([
+        {
+          status: "resolved",
+          requestedRef: ref("s_1"),
+          node: { ref: ref("s_3"), element: account },
+        },
+      ]);
+    });
+
+    it("reports removed rather than rebinding an earlier synthetic ref to a sibling root", async () => {
+      document.body.innerHTML = `
+        <section id="account"><button id="account-button">Account</button></section>
+        <section id="billing"><button id="billing-button">Billing</button></section>
+      `;
+      const account = document.querySelector("#account");
+      const accountButton = document.querySelector("#account-button");
+      const billing = document.querySelector("#billing");
+      const billingButton = document.querySelector("#billing-button");
+      if (!account || !accountButton || !billing || !billingButton)
+        throw new Error("Expected both POM roots.");
+
+      captureAriaSnapshot.mockReturnValueOnce({
+        distilledText:
+          '- generic [ref=e1]:\n  - button "Account" [ref=e2]\n  - button "Billing" [ref=e3]',
+        fullText:
+          '- generic [ref=e1]:\n  - generic:\n    - button "Account" [ref=e2]\n  - generic:\n    - button "Billing" [ref=e3]',
+        refsByElement: new Map([
+          [document.body, "e1"],
+          [accountButton, "e2"],
+          [billingButton, "e3"],
+        ]),
+      });
+      listRegisteredPomRoots.mockResolvedValue([
+        { label: "Account.root", element: account },
+        { label: "Billing.root", element: billing },
+      ]);
+
+      const state = await ayme.getPageState();
+      expect(state.text).toContain("s_1 Account.root");
+      expect(state.text).toContain("s_2 Billing.root");
+
+      account.remove();
+      const billingOnlyCapture = {
+        distilledText: '- generic [ref=e1]:\n  - button "Billing" [ref=e3]',
+        fullText:
+          '- generic [ref=e1]:\n  - generic:\n    - button "Billing" [ref=e3]',
+        refsByElement: new Map([
+          [document.body, "e1"],
+          [billingButton, "e3"],
+        ]),
+      };
+      captureAriaSnapshot.mockReturnValueOnce(billingOnlyCapture);
+      listRegisteredPomRoots.mockResolvedValue([
+        { label: "Billing.root", element: billing },
+      ]);
+
+      await expect(state.resolve(ref("s_1"), ref("s_2"))).resolves.toEqual([
+        { status: "unresolved", requestedRef: ref("s_1"), reason: "removed" },
+        {
+          status: "resolved",
+          requestedRef: ref("s_2"),
+          node: { ref: ref("s_3"), element: billing },
+        },
+      ]);
+    });
+
+    it("reports unknown-ref for a synthetic ref that was never observed in the session", async () => {
+      captureAriaSnapshot.mockReturnValue({
+        distilledText: "- generic [ref=e1]",
+        fullText: "- generic [ref=e1]",
+        refsByElement: new Map([[document.body, "e1"]]),
+      });
+      listRegisteredPomRoots.mockResolvedValue([]);
+
+      const state = await ayme.getPageState();
+
+      await expect(state.resolve(ref("s_99"))).resolves.toEqual([
+        {
+          status: "unresolved",
+          requestedRef: ref("s_99"),
+          reason: "unknown-ref",
+        },
+      ]);
+    });
+  });
+
   it("reports a rendered ref without an associated element as unresolved", async () => {
     captureAriaSnapshot.mockReturnValue({
       distilledText: "- generic [ref=e1]:",
