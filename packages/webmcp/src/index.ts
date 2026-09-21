@@ -8,5 +8,6 @@ export type {
   DecisionRequest,
   DecisionResponse,
 } from "./decisionEndpoint";
+export type { ActionResult } from "./actionSequence";
 export type { PageContext, PageContextPayload } from "./pageContext";
 export type { AriaRef, AymeNode, PageState, RefResolution } from "./pageState";

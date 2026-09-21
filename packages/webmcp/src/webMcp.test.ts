@@ -12,6 +12,20 @@ vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
     typeof value === "object" && value !== null && testLocators.has(value),
   resolveLocatorElements: (value: object) => locatorElements.get(value) ?? [],
 }));
+vi.mock("./pageState", () => ({
+  getPageStateCaptureForDocument: vi.fn().mockResolvedValue({
+    tree: null,
+    elementsByRef: new Map(),
+    reconcile: null,
+  }),
+}));
+vi.mock("./actionSequence", () => ({
+  completeAction: vi.fn(async (_doc: unknown, rawResult?: unknown) => {
+    const out: Record<string, unknown> = { page_changed: false, settled: true };
+    if (rawResult !== undefined) out.result = rawResult;
+    return out;
+  }),
+}));
 import type { Page } from "@playwright/test";
 
 function brandedLocator(overrides: Record<string, unknown> = {}) {
@@ -246,7 +260,7 @@ describe("WebMCP publisher", () => {
 
     await expect(
       archive?.tool.execute({ index: 0, args: {} })
-    ).resolves.toEqual({ ok: true });
+    ).resolves.toEqual({ page_changed: false, settled: true });
     expect(archive?.signal.aborted).toBe(true);
 
     publication.dispose();
@@ -306,7 +320,10 @@ describe("WebMCP publisher", () => {
     await synchronizeWebMcpTools({ registerTool }, { onError });
     const addItem = tools.find(({ name }) => name === "addItem");
 
-    await expect(addItem?.execute({})).resolves.toEqual({ ok: true });
+    await expect(addItem?.execute({})).resolves.toEqual({
+      page_changed: false,
+      settled: true,
+    });
     await flushPublisher();
     expect(onError).toHaveBeenCalledTimes(1);
     expect(onError).toHaveBeenCalledWith(new Error("registration failed"));

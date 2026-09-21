@@ -91,6 +91,37 @@ export type PomDefinitionsResult = {
   definitions: readonly PomDefinition[];
 };
 
+export function isJsonValue(
+  value: unknown,
+  ancestors: WeakSet<object> = new WeakSet()
+): value is JsonValue {
+  if (isJsonPrimitive(value)) return true;
+  if (typeof value !== "object" || value === null) return false;
+  if (ancestors.has(value)) return false;
+  ancestors.add(value);
+  let valid: boolean;
+  if (Array.isArray(value)) {
+    valid = value.every((v) => isJsonValue(v, ancestors));
+  } else {
+    // Reject non-plain objects (DOM nodes, class instances, etc.)
+    const proto = Object.getPrototypeOf(value);
+    valid =
+      (proto === Object.prototype || proto === null) &&
+      Object.values(value).every((v) => isJsonValue(v, ancestors));
+  }
+  ancestors.delete(value);
+  return valid;
+}
+
+export function isJsonPrimitive(value: unknown): value is JsonPrimitive {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    (typeof value === "number" && Number.isFinite(value)) ||
+    typeof value === "boolean"
+  );
+}
+
 export type RegisteredPomTool = ModelContextTool<
   Record<string, unknown>,
   JsonValue
