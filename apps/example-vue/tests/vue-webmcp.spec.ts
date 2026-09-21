@@ -22,6 +22,23 @@ type ListActions = {
   renameItem(index: number, text: string): Promise<void>;
 };
 
+async function getInstanceRef(page: Page, label: string): Promise<string> {
+  const pageState = await page.evaluate(async () => {
+    const tool = (
+      document.modelContext as unknown as RecordingDriver
+    ).tools.find((candidate) => candidate.name === "get_page_context");
+    if (!tool) throw new Error("get_page_context tool was not published.");
+    const result = (await tool.execute({})) as { structure: string };
+    return result.structure;
+  });
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const ref = pageState.match(
+    new RegExp(`(?:^|\\s)((?:e|s_)\\w+) ${escaped}(?:\\b|:)`, "m")
+  )?.[1];
+  if (!ref) throw new Error(`No ref found for instance label "${label}".`);
+  return ref;
+}
+
 /** Subtree from `main "Playground"` with refs renumbered from e1. Identical
  *  across platforms; only the ancestors above main differ. */
 function normalizeAppSubtree(pageState: string): string {
@@ -424,16 +441,20 @@ test("runs the same POM behavior through registered WebMCP tools", async ({
     {
       addItem: async (text) =>
         await executePublishedTool(page, "ListPage.addItem", { text }),
-      archiveItem: async (index) =>
+      archiveItem: async (index) => {
+        const ref = await getInstanceRef(page, `ListPage.items[${index}]`);
         await executePublishedTool(page, "ListPage.items.archive", {
-          index,
+          ref,
           args: {},
-        }),
-      renameItem: async (index, text) =>
+        });
+      },
+      renameItem: async (index, text) => {
+        const ref = await getInstanceRef(page, `ListPage.items[${index}]`);
         await executePublishedTool(page, "ListPage.items.rename", {
-          index,
+          ref,
           args: { text },
-        }),
+        });
+      },
     },
     "Added through WebMCP"
   );
@@ -447,12 +468,14 @@ test("publishes collection tools only while a component root is live", async ({
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
 
+  const firstRef = await getInstanceRef(page, "ListPage.items[0]");
   await executePublishedTool(page, "ListPage.items.archive", {
-    index: 0,
+    ref: firstRef,
     args: {},
   });
+  const remainingRef = await getInstanceRef(page, "ListPage.items[0]");
   await executePublishedTool(page, "ListPage.items.archive", {
-    index: 0,
+    ref: remainingRef,
     args: {},
   });
   await expect
@@ -575,7 +598,11 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
       inputSchema: {
         type: "object",
         properties: {
-          index: { type: "integer", minimum: 0 },
+          ref: {
+            type: "string",
+            description:
+              "Structural Ref of the instance's Page Object Root, as labelled in the page state.",
+          },
           args: {
             type: "object",
             properties: {},
@@ -583,7 +610,7 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
             additionalProperties: false,
           },
         },
-        required: ["index", "args"],
+        required: ["ref", "args"],
         additionalProperties: false,
       },
     },
@@ -593,7 +620,11 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
       inputSchema: {
         type: "object",
         properties: {
-          index: { type: "integer", minimum: 0 },
+          ref: {
+            type: "string",
+            description:
+              "Structural Ref of the instance's Page Object Root, as labelled in the page state.",
+          },
           args: {
             type: "object",
             properties: {
@@ -603,7 +634,7 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
             additionalProperties: false,
           },
         },
-        required: ["index", "args"],
+        required: ["ref", "args"],
         additionalProperties: false,
       },
     },
@@ -621,17 +652,18 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
     ).tools.find((candidate) => candidate.name === "ListPage.items.archive");
     if (!tool) throw new Error("Archive WebMCP tool was not published.");
     try {
-      await tool.execute({ index: -1, args: { unexpected: true } });
+      await tool.execute({ ref: "e99999", args: { unexpected: true } });
     } catch (error) {
       return error instanceof Error ? error.message : String(error);
     }
     throw new Error("Invalid collection tool input was accepted.");
   });
 
-  expect(invalidToolInputError).toContain("index must be at least 0");
+  expect(invalidToolInputError).toContain("args.unexpected is not supported");
 
+  const firstItemRef = await getInstanceRef(page, "ListPage.items[0]");
   await executePublishedTool(page, "ListPage.items.archive", {
-    index: 0,
+    ref: firstItemRef,
     args: {},
   });
   await expect(
@@ -675,7 +707,8 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
   await expect(page.locator("[data-demo-click-cue]")).toHaveCount(0);
 
   const renameTool = page.locator('[data-tool-name="ListPage.items.rename"]');
-  await renameTool.getByLabel("index").fill("0");
+  const renameRef = await getInstanceRef(page, "ListPage.items[0]");
+  await renameTool.getByLabel("ref").fill(renameRef);
   await renameTool
     .getByLabel("args")
     .fill('{"text":"Renamed from debug console"}');
@@ -685,7 +718,8 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
   ).toBeVisible();
 
   const archiveTool = page.locator('[data-tool-name="ListPage.items.archive"]');
-  await archiveTool.getByLabel("index").fill("0");
+  const archiveRef = await getInstanceRef(page, "ListPage.items[0]");
+  await archiveTool.getByLabel("ref").fill(archiveRef);
   await expect(archiveTool.getByLabel("args")).toHaveValue("{}");
   await archiveTool.getByRole("button", { name: "Invoke tool" }).click();
   await expect(page.locator("[data-archived-label]")).toHaveCount(2);

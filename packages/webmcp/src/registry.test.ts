@@ -1,9 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { locatorElements, testLocators } = vi.hoisted(() => ({
-  locatorElements: new WeakMap<object, Element[]>(),
-  testLocators: new WeakSet<object>(),
-}));
+const { locatorElements, testLocators, pageStateResolutions } = vi.hoisted(
+  () => ({
+    locatorElements: new WeakMap<object, Element[]>(),
+    testLocators: new WeakSet<object>(),
+    pageStateResolutions: new Map<
+      string,
+      { node: { ref: string; element: Element } }
+    >(),
+  })
+);
 vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@ayme-dev/playwright-lite/internal")
@@ -12,12 +18,19 @@ vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
     typeof value === "object" && value !== null && testLocators.has(value),
   resolveLocatorElements: (value: object) => locatorElements.get(value) ?? [],
 }));
-vi.mock("./pageState", () => ({
+vi.mock("./pageState", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./pageState")>()),
   getPageStateCaptureForDocument: vi.fn().mockResolvedValue({
     tree: null,
     elementsByRef: new Map(),
     reconcile: null,
   }),
+  resolvePageStateRefs: async (_doc: unknown, ...refs: string[]) =>
+    refs.map((ref) => {
+      const entry = pageStateResolutions.get(ref);
+      if (entry) return { status: "resolved", requestedRef: ref, ...entry };
+      return { status: "unresolved", requestedRef: ref, reason: "unknown-ref" };
+    }),
 }));
 vi.mock("./actionSequence", () => ({
   completeAction: vi.fn(async (_doc: unknown, rawResult?: unknown) => {
@@ -29,10 +42,13 @@ vi.mock("./actionSequence", () => ({
 import type { Page } from "@playwright/test";
 import type { PomManifest } from "./contracts";
 
-function brandedLocator(overrides: Record<string, unknown> = {}) {
+function brandedLocator(
+  overrides: Record<string, unknown> = {},
+  element: Element = { isConnected: true } as Element
+) {
   const loc: Record<string | symbol, unknown> = { ...overrides };
   testLocators.add(loc);
-  locatorElements.set(loc, [{ isConnected: true } as Element]);
+  locatorElements.set(loc, [element]);
   return loc;
 }
 
@@ -556,21 +572,30 @@ describe("live Page Object registry", () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);
 
+    const firstElement = { isConnected: true } as Element;
+    const secondElement = { isConnected: true } as Element;
+    const replacementElement = { isConnected: true } as Element;
     const firstArchive = vi.fn(() => "first");
     const secondArchive = vi.fn(() => "second");
     const replacementArchive = vi.fn(() => "replacement");
     const first = {
-      root: brandedLocator({ count: async () => 1 }),
+      root: brandedLocator({ count: async () => 1 }, firstElement),
       archive: firstArchive,
     };
     const second = {
-      root: brandedLocator({ count: async () => 1 }),
+      root: brandedLocator({ count: async () => 1 }, secondElement),
       archive: secondArchive,
     };
     const replacement = {
-      root: brandedLocator({ count: async () => 1 }),
+      root: brandedLocator({ count: async () => 1 }, replacementElement),
       archive: replacementArchive,
     };
+    pageStateResolutions.set("e2", {
+      node: { ref: "e2", element: secondElement },
+    });
+    pageStateResolutions.set("e3", {
+      node: { ref: "e3", element: replacementElement },
+    });
     let currentItems = [first, second];
     const getItems = vi.fn(async () => currentItems.slice());
     class ItemsPage {
@@ -603,7 +628,7 @@ describe("live Page Object registry", () => {
     const tool = registry.listRegisteredTools()[0];
     if (!tool) throw new Error("Expected a collection tool.");
 
-    await expect(tool.execute({ index: 1, args: {} })).resolves.toEqual({
+    await expect(tool.execute({ ref: "e2", args: {} })).resolves.toEqual({
       page_changed: false,
       settled: true,
       result: "second",
@@ -612,7 +637,7 @@ describe("live Page Object registry", () => {
     expect(firstArchive).not.toHaveBeenCalled();
 
     currentItems = [replacement];
-    await expect(tool.execute({ index: 0, args: {} })).resolves.toEqual({
+    await expect(tool.execute({ ref: "e3", args: {} })).resolves.toEqual({
       page_changed: false,
       settled: true,
       result: "replacement",
@@ -621,5 +646,6 @@ describe("live Page Object registry", () => {
     expect(getItems).toHaveBeenCalledTimes(3);
 
     registration.dispose();
+    pageStateResolutions.clear();
   });
 });

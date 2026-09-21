@@ -7,6 +7,7 @@ export type JsonValue =
 
 export type JsonSchema = {
   type?: "string" | "number" | "integer" | "boolean" | "object" | "array";
+  description?: string;
   items?: JsonSchema;
   enum?: readonly JsonPrimitive[];
   properties?: Record<string, JsonSchema>;
