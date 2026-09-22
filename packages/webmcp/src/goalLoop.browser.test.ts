@@ -80,14 +80,17 @@ const manifest = (
 
 // --- Scripted fake decision function ---
 
+/**
+ * Stage two: which option to choose — by key or description, by position in
+ * the offered options, or `raw` to answer with something not offered.
+ */
+type ScriptedChoice = string | { nth: number } | { raw: string };
+
 type ScriptedAnswer = {
   operation: string;
   goal_met: number;
-  /**
-   * Stage two: per parameter, the option to choose, named by its key or by
-   * its description. A raw answer is returned as the model's choice as is.
-   */
-  arguments?: Record<string, string | { raw: string }>;
+  /** Per parameter of the chosen operation. */
+  arguments?: Record<string, ScriptedChoice>;
 };
 
 type Criteria = Record<string, string>;
@@ -112,13 +115,22 @@ function choiceAnswer(criteria: Criteria, chosenKey: string) {
   return { type: "choice", choice: chosenKey, confidence: 1, probabilities };
 }
 
-/** Pick the option the script names, by key or by description. */
-function keyFor(criteria: Criteria, wanted: string): string {
+/** The key of the option the script names. */
+function keyFor(criteria: Criteria, wanted: ScriptedChoice): string {
+  if (typeof wanted === "object")
+    return "raw" in wanted ? wanted.raw : nthKey(criteria, wanted.nth);
   const key = Object.keys(criteria).find(
     (candidate) => candidate === wanted || criteria[candidate] === wanted
   );
   if (!key)
     throw new Error(`No option "${wanted}" among ${JSON.stringify(criteria)}`);
+  return key;
+}
+
+function nthKey(criteria: Criteria, nth: number): string {
+  const key = Object.keys(criteria)[nth];
+  if (key === undefined)
+    throw new Error(`No option ${nth} among ${JSON.stringify(criteria)}`);
   return key;
 }
 
@@ -138,10 +150,7 @@ function scriptedDecisionFn(
         const want = wanted[parameter];
         if (want === undefined)
           throw new Error(`No scripted argument for "${parameter}"`);
-        stageTwo[parameter] =
-          typeof want === "string"
-            ? choiceAnswer(options, keyFor(options, want))
-            : choiceAnswer(options, want.raw);
+        stageTwo[parameter] = choiceAnswer(options, keyFor(options, want));
       }
       return { model: request.model, answers: stageTwo };
     }
@@ -719,20 +728,20 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       maxSteps: 5,
     })) as Record<string, unknown>;
 
-    const refQuestion = criteriaOf(requests[1]!).ref!;
     // Only the element click's built-in filter keeps is offered.
-    expect(Object.values(refQuestion)).toEqual(['button "Save changes"']);
-    // Options carry the node's ref as their key, as the page state labels it.
-    expect(refsInPage(requests[1]!.state)).toContain(
-      Object.keys(refQuestion)[0]
+    const [[key, description], ...rest] = Object.entries(
+      criteriaOf(requests[1]!).ref!
     );
+    expect(rest).toEqual([]);
+    // Options carry the node's ref as their key, as the page state labels it,
+    // and its role and name so the model can tell options apart.
+    expect(refsInPage(requests[1]!.state)).toContain(key);
+    expect(description).toContain("button");
+    expect(description).toContain("Save changes");
     expect(clickCount).toBe(1);
     expect(result.reason).toBe("done");
     expect(result.history).toMatchObject([
-      {
-        did: expect.stringContaining('ref: button "Save changes"'),
-        result: "ok",
-      },
+      { did: expect.stringContaining("Save changes"), result: "ok" },
     ]);
   });
 
@@ -763,7 +772,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     await tool.execute({ goal: "highlight the title", maxSteps: 5 });
 
     const refQuestion = criteriaOf(requests[1]!).ref!;
-    expect(Object.values(refQuestion)).toEqual(['heading "Task list"']);
+    expect(Object.keys(refQuestion)).toHaveLength(1);
+    expect(Object.values(refQuestion)[0]).toContain("Task list");
     expect(highlighted).toEqual([
       { ref: Object.keys(refQuestion)[0], tagName: "H1" },
     ]);
@@ -791,13 +801,14 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
     await tool.execute({ goal: "highlight something", maxSteps: 5 });
 
-    const refQuestion = criteriaOf(requests[1]!).ref!;
-    const descriptions = Object.values(refQuestion);
-    expect(descriptions).toContain('heading "Task list"');
-    expect(descriptions).toContain('button "Save changes"');
-    expect(descriptions).toContain('button "Locked"');
-    // Nodes click would never offer are offered here.
-    expect(descriptions).toContain("paragraph");
+    const descriptions = Object.values(criteriaOf(requests[1]!).ref!);
+    const offers = (name: string) =>
+      descriptions.some((description) => description.includes(name));
+    expect(offers("Task list")).toBe(true);
+    expect(offers("Save changes")).toBe(true);
+    // Nodes click would never offer — a disabled button and a text paragraph.
+    expect(offers("Locked")).toBe(true);
+    expect(offers("paragraph")).toBe(true);
   });
 
   it("hands over instead of asking when a ref question would exceed the option limit", async () => {
@@ -926,11 +937,12 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
     await tool.execute({ goal: "sort the list", maxSteps: 5 });
 
-    expect(criteriaOf(requests[1]!).order).toEqual({
-      asc: "asc",
-      desc: "desc",
-      leave_unset: 'Leave "order" unset; the operation uses its default.',
-    });
+    // The enum's own values, plus one more choice that leaves it unset.
+    expect(Object.keys(criteriaOf(requests[1]!).order!)).toEqual([
+      "asc",
+      "desc",
+      "leave_unset",
+    ]);
     expect(calls).toEqual([[undefined]]);
   });
 
@@ -973,9 +985,160 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
     expect(result).toEqual({
       reason: "decide_failed",
-      next: expect.stringContaining("not one of the offered options"),
+      // The answer the loop could not use is named in plain words.
+      next: expect.stringContaining("e999"),
       history: [],
     });
     expect(clickCount).toBe(0);
+  });
+
+  // --- Option keys stay distinct within one question (#114) ---
+
+  /** Register a POM whose single tool takes one closed-set parameter. */
+  async function registerPomWithParameter(
+    goalLoop: GoalLoopDecisionFunction,
+    parameter: ToolManifest["parameters"][number],
+    calls: unknown[][]
+  ) {
+    setupDom();
+    class App {
+      root = page.locator("main");
+      pick(value?: unknown) {
+        calls.push([value]);
+      }
+    }
+    registerCompiledPom(
+      App,
+      manifest(
+        "App",
+        [root()],
+        [actionWithParameters("pick", "App.pick", [parameter])]
+      )
+    );
+    const tool = await getPublishedPursueGoal(goalLoop);
+    createPageRegistration(App);
+    return tool;
+  }
+
+  it("keeps an enum value that reads like the leave-unset choice apart from it", async () => {
+    const calls: unknown[][] = [];
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "App.pick",
+          goal_met: 0.1,
+          arguments: { value: { nth: 0 } },
+        },
+        {
+          operation: "App.pick",
+          goal_met: 0.1,
+          arguments: { value: { nth: 2 } },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await registerPomWithParameter(
+      decide,
+      {
+        name: "value",
+        optional: true,
+        schema: { type: "string", enum: ["leave_unset", "asc"] },
+      },
+      calls
+    );
+
+    await tool.execute({ goal: "pick a value", maxSteps: 5 });
+
+    // Both enum values and the leave-unset choice are offered.
+    expect(Object.keys(criteriaOf(requests[1]!).value!)).toHaveLength(3);
+    // The first option passes its value; the extra choice omits the parameter.
+    expect(calls).toEqual([["leave_unset"], [undefined]]);
+  });
+
+  it("keeps enum values that differ only by type apart", async () => {
+    const calls: unknown[][] = [];
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "App.pick",
+          goal_met: 0.1,
+          arguments: { value: { nth: 0 } },
+        },
+        {
+          operation: "App.pick",
+          goal_met: 0.1,
+          arguments: { value: { nth: 1 } },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await registerPomWithParameter(
+      decide,
+      { name: "value", optional: false, schema: { enum: [1, "1"] } },
+      calls
+    );
+
+    await tool.execute({ goal: "pick a value", maxSteps: 5 });
+
+    expect(Object.keys(criteriaOf(requests[1]!).value!)).toHaveLength(2);
+    expect(calls).toEqual([[1], ["1"]]);
+  });
+
+  it("hands over instead of asking when an enum holds more values than the limit", async () => {
+    const calls: unknown[][] = [];
+    const { requests, decide } = recording(
+      scriptedDecisionFn([{ operation: "App.pick", goal_met: 0.1 }])
+    );
+    const tool = await registerPomWithParameter(
+      decide,
+      {
+        name: "value",
+        optional: false,
+        schema: {
+          type: "string",
+          enum: Array.from({ length: 256 }, (_, index) => `value-${index}`),
+        },
+      },
+      calls
+    );
+
+    const result = await tool.execute({ goal: "pick a value", maxSteps: 5 });
+
+    expect(result).toMatchObject({
+      reason: "needs_value",
+      needs: { tool: "App.pick", parameters: ["value"] },
+    });
+    // The oversized question is never sent.
+    expect(requests).toHaveLength(1);
+    expect(calls).toEqual([]);
+  });
+
+  it("leaves an optional parameter unset when its options exceed the limit", async () => {
+    const calls: unknown[][] = [];
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        { operation: "App.pick", goal_met: 0.1 },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    // 255 values plus the leave-unset choice would be one option too many.
+    const tool = await registerPomWithParameter(
+      decide,
+      {
+        name: "value",
+        optional: true,
+        schema: {
+          type: "string",
+          enum: Array.from({ length: 255 }, (_, index) => `value-${index}`),
+        },
+      },
+      calls
+    );
+
+    await tool.execute({ goal: "pick a value", maxSteps: 5 });
+
+    // Two steps, each one stage-one request; no stage two was asked.
+    expect(requests).toHaveLength(2);
+    expect(calls).toEqual([[undefined]]);
   });
 });

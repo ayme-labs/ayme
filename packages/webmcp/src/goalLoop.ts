@@ -329,6 +329,14 @@ async function pursueGoal(
         needs: { tool: chosenTool.name, parameters: [plan.parameter] },
       });
     }
+    if (plan.kind === "needs_value_choice") {
+      return done({
+        reason: "needs_value",
+        next: `The operation "${chosenTool.name}" needs a value for "${plan.parameter}", and its ${plan.optionCount} allowed values are not a choice one decision can answer. Provide the value and call the operation directly, or try a different approach.`,
+        history,
+        needs: { tool: chosenTool.name, parameters: [plan.parameter] },
+      });
+    }
 
     // --- Stage two: the operation's arguments, asked in one parallel request ---
 
