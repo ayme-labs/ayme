@@ -216,7 +216,7 @@ available under the Apache 2.0 license (https://github.com/puppeteer/puppeteer/b
 
 
 === Bundled Ayme Playwright Lite fork ===
-Source: https://github.com/ayme-labs/playwright-lite/tree/8adaf9aac567570423379f87d2d412171baecd98
+Source: https://github.com/ayme-labs/playwright-lite/tree/5c088c47f271e361e8e07620c3c4f65eab02c430
 
 --- LICENSE ---
 MIT License
