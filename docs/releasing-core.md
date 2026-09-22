@@ -1,6 +1,6 @@
 # Releasing `@ayme-dev/core`
 
-Maintainer instructions for publishing and verifying `@ayme-dev/core`. The package's consumer documentation is its [README](../packages/core/README.md).
+Maintainer instructions for publishing and verifying `@ayme-dev/core`.
 
 ## Publishing
 
@@ -16,7 +16,7 @@ Then configure the package's [trusted publisher](https://docs.npmjs.com/trusted-
 
 ## Package verification
 
-`pnpm --filter @ayme-dev/core test:package` builds and packs a candidate, installs it outside the workspace, exercises both runtime exports, checks declarations with NodeNext and Bundler resolution, checks assignability from the pinned public Playwright ARIA definition, and bundles both exports for the browser. It also type-checks and runs the README example from the installed package and compares its output with the README. It checks the bundle input graph and writes the tarball manifest and SHA-256 to `verification.json`. An optional directory argument retains the artifact at a chosen location.
+`pnpm --filter @ayme-dev/core test:package` builds and packs a candidate, installs it outside the workspace, exercises both runtime exports, checks declarations with NodeNext and Bundler resolution, checks assignability from the pinned public Playwright ARIA definition, and bundles both exports for the browser. It checks the bundle input graph and writes the tarball manifest and SHA-256 to `verification.json`. An optional directory argument retains the artifact at a chosen location.
 
 ## ARIA type ownership
 

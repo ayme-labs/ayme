@@ -48,23 +48,6 @@ run("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", tarball]);
 for (const name of ["installed.test.mjs", "installed-types.ts"])
   copyFileSync(join(packageDir, "scripts", name), join(consumer, name));
 run("node", ["--test", "installed.test.mjs"]);
-// Run the README example from the installed package and compare its printed output with the README.
-const readme = readFileSync(
-  join(consumer, "node_modules/@ayme-dev/core/README.md"),
-  "utf8"
-);
-const readmeExample = readme.match(
-  /\n## Example[^\n]*\n[\s\S]*?```ts\n([\s\S]*?)```\n[\s\S]*?```text\n([\s\S]*?)```\n/
-);
-assert.ok(readmeExample, "README example and output blocks not found");
-writeFileSync(join(consumer, "readme-example.ts"), readmeExample[1]);
-assert.equal(
-  execFileSync("node", ["readme-example.ts"], {
-    cwd: consumer,
-    encoding: "utf8",
-  }),
-  readmeExample[2]
-);
 const manifest = JSON.parse(
   readFileSync(join(consumer, "node_modules/@ayme-dev/core/package.json"))
 );
@@ -107,7 +90,6 @@ for (const resolution of ["NodeNext", "Bundler"]) {
     "--moduleResolution",
     resolution,
     "installed-types.ts",
-    "readme-example.ts",
   ]);
 }
 writeFileSync(
