@@ -411,12 +411,11 @@ export function listCollectionToolRoots(): Map<string, RegisteredPomRoot[]> {
   const rootsByTool = new Map<string, RegisteredPomRoot[]>();
   for (const registration of registeredPoms) {
     for (const tool of registration.tools) {
-      const componentPath = tool.componentPath;
-      if (componentPath === undefined || !componentPath.includes("[]"))
-        continue;
+      const instancePath = innermostCollectionPath(tool.componentPath);
+      if (instancePath === undefined) continue;
       const roots = registration.rootObservations.flatMap((root) =>
         isRootPresent(root) &&
-        isLiveComponentRoot(componentPath, `${root.path}.root`)
+        isLiveComponentRoot(instancePath, `${root.path}.root`)
           ? [
               {
                 label: `${registration.id}.${root.path}`,
@@ -432,6 +431,19 @@ export function listCollectionToolRoots(): Map<string, RegisteredPomRoot[]> {
     }
   }
   return rootsByTool;
+}
+
+/**
+ * The path of the instance a collection tool is targeted by: everything up to
+ * and including the last collection segment. Members after it are walked from
+ * that instance, so `items[].child` is addressed through `items[]`.
+ * Undefined when the path holds no collection.
+ */
+function innermostCollectionPath(componentPath: string | undefined) {
+  if (componentPath === undefined) return undefined;
+  const segments = componentPath.split(".");
+  const last = segments.findLastIndex((segment) => segment.endsWith("[]"));
+  return last === -1 ? undefined : segments.slice(0, last + 1).join(".");
 }
 
 function isLiveComponentRoot(path: string, memberName: string) {
