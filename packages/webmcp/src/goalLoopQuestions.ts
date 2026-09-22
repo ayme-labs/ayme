@@ -416,6 +416,16 @@ export function buildStepState(
   };
 }
 
+/**
+ * The operation question offers every tool plus "none", so it too stays
+ * within what one decision can answer.
+ */
+export function operationQuestionFits(
+  toolOptions: readonly ToolOption[]
+): boolean {
+  return toolOptions.length + 1 <= MAX_CHOICE_OPTIONS;
+}
+
 /** Stage one: which operation moves closest to the goal, and is it met. */
 export function buildOperationRequest(
   state: StepState,
