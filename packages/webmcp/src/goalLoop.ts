@@ -1,4 +1,3 @@
-import type { StructuralTree } from "@ayme-dev/core/structural-observation";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { JsonValue } from "./contracts";
@@ -6,14 +5,26 @@ import type { ActionResult } from "./actionSequence";
 import { getPageStateCaptureForDocument } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
-import { listRefTools } from "./refTools";
-import { listRegisteredPomTools, probeRegisteredPomMembers } from "./registry";
+import { probeRegisteredPomMembers } from "./registry";
+import {
+  buildArgumentRequest,
+  buildOperationRequest,
+  buildStepState,
+  buildToolOptions,
+  operationQuestionFits,
+  parseGoalMetAnswer,
+  parseOperationAnswer,
+  planArguments,
+  readArgumentAnswers,
+  type ChoiceAnswer,
+  type ChosenArguments,
+  type ExecutableTool,
+  type NoulAnswer,
+} from "./goalLoopQuestions";
 
 export type GoalLoopDecisionFunction = (
   request: DecisionRequest
 ) => Promise<DecisionResponse>;
-
-const DECISION_MODEL = "typesafe/jev-1.13";
 
 // --- Module-level goal loop configuration (parallel to configurePageStateIgnore) ---
 
@@ -53,6 +64,8 @@ export function getPursueGoalTool(): ModelContextTool<
 export type GoalLoopStepScore = {
   operationProbabilities?: Record<string, number>;
   goalMetScore: number;
+  /** Stage two, per parameter of the chosen operation. */
+  argumentProbabilities?: Record<string, Record<string, number>>;
 };
 
 export type GoalLoopRunResult = {
@@ -101,158 +114,6 @@ export type Handover = {
   needs?: HandoverNeeds;
 };
 
-// --- Tool option building ---
-
-type ExecutableTool = {
-  name: string;
-  description: string;
-  execute(input: unknown): Promise<unknown>;
-  /** Required parameter names; empty if the tool takes no arguments. */
-  requiredParams: string[];
-};
-
-type ToolOption = {
-  key: string;
-  label: string;
-  tool: ExecutableTool;
-};
-
-function toExecutable(t: {
-  name: string;
-  description: string;
-  execute(input: unknown): Promise<unknown>;
-  inputSchema: { required?: readonly string[] };
-}): ExecutableTool {
-  return {
-    name: t.name,
-    description: t.description,
-    execute: t.execute,
-    requiredParams: [...(t.inputSchema.required ?? [])],
-  };
-}
-
-/**
- * Build the flat list of tool options offered to the model each step: every
- * Ref Tool, built in or registered (ADR-0023), and every registered POM tool.
- */
-function buildToolOptions(): ToolOption[] {
-  const refTools = listRefTools().map(({ tool }) => toExecutable(tool));
-  const pomTools: ExecutableTool[] = listRegisteredPomTools().map((t) => ({
-    name: t.name,
-    description: t.description,
-    execute: (input: unknown) => t.execute(input),
-    requiredParams: t.parameters.filter((p) => !p.optional).map((p) => p.name),
-  }));
-
-  return [...refTools, ...pomTools].map((tool) => ({
-    key: tool.name,
-    label: tool.description,
-    tool,
-  }));
-}
-
-// --- Decision request building (ADR-0022: built in the browser) ---
-
-/** Serialize a StructuralTree to a JSON-safe representation (full typed tree). */
-function serializeTree(tree: StructuralTree): unknown {
-  const serializeNode = (node: {
-    ref: string;
-    role: string;
-    name: string;
-    state: Record<string, unknown>;
-    cursorPointer: boolean;
-    props: Record<string, string>;
-    children: readonly unknown[];
-  }): unknown => ({
-    ref: node.ref,
-    role: node.role,
-    name: node.name,
-    ...(Object.values(node.state).some((v) => v !== undefined)
-      ? { state: node.state }
-      : {}),
-    ...(node.cursorPointer ? { cursorPointer: true } : {}),
-    ...(Object.keys(node.props).length > 0 ? { props: node.props } : {}),
-    children: node.children.map((child) =>
-      typeof child === "string" ? child : serializeNode(child as typeof node)
-    ),
-  });
-  return tree.getRootNodes().map(serializeNode);
-}
-
-/** Construct a `DecisionRequest` for one step of the Goal Loop. */
-function buildStepRequest(
-  goal: string,
-  pageTree: StructuralTree,
-  pomDefinitionsText: string,
-  history: HandoverHistoryEntry[],
-  toolOptions: ToolOption[]
-): DecisionRequest {
-  const criteria: Record<string, string> = {};
-  for (const option of toolOptions) criteria[option.key] = option.label;
-  criteria["none"] = "No available operation fits the goal right now.";
-
-  const state: Record<string, unknown> = {
-    goal,
-    page: serializeTree(pageTree),
-    page_objects: pomDefinitionsText,
-    history,
-  };
-
-  const questions: Record<string, unknown> = {
-    operation: {
-      type: "choice",
-      instructions: "Which operation moves closest to the goal?",
-      criteria,
-    },
-    goal_met: {
-      type: "noul",
-      instructions: "Has the goal been fully achieved on the current page?",
-    },
-  };
-
-  return { model: DECISION_MODEL, state, questions };
-}
-
-// --- Response parsing ---
-
-type ChoiceAnswer = {
-  type: "choice";
-  choice: string;
-  probabilities?: Record<string, number>;
-  confidence?: number;
-};
-
-type NoulAnswer = {
-  type: "noul";
-  noul: number;
-};
-
-/** Extract and validate the `operation` choice answer from the model response. */
-function parseOperationAnswer(answers: Record<string, unknown>): ChoiceAnswer {
-  const raw = answers.operation;
-  if (
-    !raw ||
-    typeof raw !== "object" ||
-    (raw as Record<string, unknown>).type !== "choice" ||
-    typeof (raw as Record<string, unknown>).choice !== "string"
-  )
-    throw new Error("Invalid operation answer from decision function.");
-  return raw as ChoiceAnswer;
-}
-
-/** Extract and validate the `goal_met` noul answer from the model response. */
-function parseGoalMetAnswer(answers: Record<string, unknown>): NoulAnswer {
-  const raw = answers.goal_met;
-  if (
-    !raw ||
-    typeof raw !== "object" ||
-    (raw as Record<string, unknown>).type !== "noul" ||
-    !Number.isFinite((raw as Record<string, unknown>).noul)
-  )
-    throw new Error("Invalid goal_met answer from decision function.");
-  return raw as NoulAnswer;
-}
-
 // --- Action execution (delegates to the shared action sequence) ---
 
 /**
@@ -261,9 +122,10 @@ function parseGoalMetAnswer(answers: Record<string, unknown>): NoulAnswer {
  * `completeAction` internally, so we just forward and interpret the result.
  */
 async function executeToolAction(
-  tool: ExecutableTool
+  tool: ExecutableTool,
+  args: Record<string, unknown>
 ): Promise<{ result: string; page_changed: boolean }> {
-  const raw = await tool.execute({});
+  const raw = await tool.execute(args);
   const action = raw as ActionResult | undefined;
   return {
     result: "ok",
@@ -327,7 +189,9 @@ function readPursueGoalInput(input: unknown): {
 
 /**
  * Run the Goal Loop: iterate steps, asking the decision model which operation
- * to run and whether the goal is met, until a Handover condition is reached.
+ * to run, whether the goal is met, and — when the operation has arguments the
+ * model may pick from closed sets — what to fill them with, until a Handover
+ * condition is reached.
  *
  * Returns a `GoalLoopRunResult` containing both the public Handover and the
  * internal per-step scores. The tool exposes only the Handover.
@@ -347,6 +211,25 @@ async function pursueGoal(
     stepScores,
   });
 
+  const errorTextOf = (error: unknown) =>
+    error instanceof Error ? error.message : String(error);
+
+  /** A decision the loop could not obtain ends the run; the error travels on. */
+  const decideFailed = (error: unknown): GoalLoopRunResult =>
+    done({
+      reason: "decide_failed",
+      next: `The decision function failed: ${errorTextOf(error)}. Retry, or handle the goal without the Goal Loop.`,
+      history,
+    });
+
+  /** A decision the loop could not use ends the run the same way. */
+  const invalidDecision = (error: unknown): GoalLoopRunResult =>
+    done({
+      reason: "decide_failed",
+      next: `The decision function returned an invalid response: ${errorTextOf(error)}. Retry, or handle the goal without the Goal Loop.`,
+      history,
+    });
+
   for (let step = 0; step < maxSteps; step++) {
     // Refresh POM observations so newly revealed/hidden roots are reflected.
     await probeRegisteredPomMembers();
@@ -354,59 +237,53 @@ async function pursueGoal(
     // Capture the page state this step decides on and build tool options. The
     // model is a caller, so the tree it sees is the "before" of the step's
     // Change Record: a change made while it decides counts into page_changed.
-    const { tree: decisionTree } = await getPageStateCaptureForDocument(
-      currentDocument,
-      { forCaller: true }
-    );
-    const pomDefinitionsText = renderPomDefinitions(
-      getPomDefinitions().definitions
+    // Both stages of the step are decided on this one capture, so the refs the
+    // model reads in the page are the refs the ref options offer.
+    const capture = await getPageStateCaptureForDocument(currentDocument, {
+      forCaller: true,
+    });
+    const state = buildStepState(
+      goal,
+      capture.tree,
+      renderPomDefinitions(getPomDefinitions().definitions),
+      history
     );
     const toolOptions = buildToolOptions();
 
-    // Ask the model
-    let response: DecisionResponse;
-    try {
-      const request = buildStepRequest(
-        goal,
-        decisionTree,
-        pomDefinitionsText,
-        history,
-        toolOptions
-      );
-      response = await decisionFn(request);
-    } catch (error) {
-      const errorText = error instanceof Error ? error.message : String(error);
+    // A question outside the limit is never sent, in either stage.
+    if (!operationQuestionFits(toolOptions)) {
       return done({
         reason: "decide_failed",
-        next: `The decision function failed: ${errorText}. Retry, or handle the goal without the Goal Loop.`,
+        next: `The page offers ${toolOptions.length} operations, more than one decision can choose from. Read the page context and call the tools you need directly.`,
         history,
       });
     }
 
-    // Parse answers
+    // --- Stage one: the operation, and whether the goal is met ---
+
+    let stageOne: DecisionResponse;
+    try {
+      stageOne = await decisionFn(buildOperationRequest(state, toolOptions));
+    } catch (error) {
+      return decideFailed(error);
+    }
+
     let operationAnswer: ChoiceAnswer;
     let goalMetAnswer: NoulAnswer;
     try {
-      operationAnswer = parseOperationAnswer(
-        response.answers as Record<string, unknown>
-      );
-      goalMetAnswer = parseGoalMetAnswer(
-        response.answers as Record<string, unknown>
-      );
+      const answers = stageOne.answers as Record<string, unknown>;
+      operationAnswer = parseOperationAnswer(answers);
+      goalMetAnswer = parseGoalMetAnswer(answers);
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : String(error);
-      return done({
-        reason: "decide_failed",
-        next: `The decision function returned an invalid response: ${errorText}. Retry, or handle the goal without the Goal Loop.`,
-        history,
-      });
+      return invalidDecision(error);
     }
 
     // Record per-step scores internally (not part of the Handover).
-    stepScores.push({
+    const score: GoalLoopStepScore = {
       operationProbabilities: operationAnswer.probabilities,
       goalMetScore: goalMetAnswer.noul,
-    });
+    };
+    stepScores.push(score);
 
     // --- Check handover reasons in order ---
 
@@ -438,25 +315,70 @@ async function pursueGoal(
         history,
       });
     }
+    const chosenTool = chosenOption.tool;
 
-    // 3. needs_value: the chosen tool has required parameters (stage one only — no args can be filled)
-    if (chosenOption.tool.requiredParams.length > 0) {
-      const requiredParams = chosenOption.tool.requiredParams;
+    // 3. needs_value: the operation needs a value the model cannot pick
+    const plan = planArguments(chosenTool, capture);
+    if (plan.kind === "needs_free_value") {
       return done({
         reason: "needs_value",
-        next: `The operation "${chosenOption.tool.name}" needs values for: ${requiredParams.join(", ")}. Provide them and call the operation directly, or try a different approach.`,
+        next: `The operation "${chosenTool.name}" needs values for: ${plan.parameters.join(", ")}. Provide them and call the operation directly, or try a different approach.`,
         history,
-        needs: {
-          tool: chosenOption.tool.name,
-          parameters: requiredParams,
-        },
+        needs: { tool: chosenTool.name, parameters: plan.parameters },
       });
+    }
+    if (plan.kind === "needs_ref_choice") {
+      return done({
+        reason: "needs_value",
+        next: `The operation "${chosenTool.name}" acts on one element, and ${
+          plan.optionCount === 0
+            ? "the loop found no element on the current page it applies to"
+            : "the current page holds more of them than one decision can offer"
+        }. Read the page context, pick "${plan.parameter}" yourself and call the operation directly, or try a different approach.`,
+        history,
+        needs: { tool: chosenTool.name, parameters: [plan.parameter] },
+      });
+    }
+    if (plan.kind === "needs_value_choice") {
+      return done({
+        reason: "needs_value",
+        next: `The operation "${chosenTool.name}" needs a value for "${plan.parameter}", and its ${plan.optionCount} allowed values are not a choice one decision can answer. Provide the value and call the operation directly, or try a different approach.`,
+        history,
+        needs: { tool: chosenTool.name, parameters: [plan.parameter] },
+      });
+    }
+
+    // --- Stage two: the operation's arguments, asked in one parallel request ---
+
+    let chosenArguments: ChosenArguments = {
+      args: {},
+      summary: [],
+      probabilities: {},
+    };
+    if (plan.questions.length > 0) {
+      let stageTwo: DecisionResponse;
+      try {
+        stageTwo = await decisionFn(
+          buildArgumentRequest(state, plan.questions)
+        );
+      } catch (error) {
+        return decideFailed(error);
+      }
+      try {
+        chosenArguments = readArgumentAnswers(
+          plan.questions,
+          stageTwo.answers as Record<string, unknown>
+        );
+      } catch (error) {
+        return invalidDecision(error);
+      }
+      score.argumentProbabilities = chosenArguments.probabilities;
     }
 
     // Execute the operation through the same action sequence as direct tool calls.
     let actionResult: { result: string; page_changed: boolean };
     try {
-      actionResult = await executeToolAction(chosenOption.tool);
+      actionResult = await executeToolAction(chosenTool, chosenArguments.args);
       consecutiveFailures = 0;
     } catch (error) {
       const errorText = error instanceof Error ? error.message : String(error);
@@ -465,8 +387,12 @@ async function pursueGoal(
     }
 
     // Record history — `did` is a readable label, not only the tool name.
+    const label = chosenOption.label || chosenTool.name;
     history.push({
-      did: chosenOption.label || chosenOption.tool.name,
+      did:
+        chosenArguments.summary.length > 0
+          ? `${label} (${chosenArguments.summary.join(", ")})`
+          : label,
       result: actionResult.result,
       page_changed: actionResult.page_changed,
     });
