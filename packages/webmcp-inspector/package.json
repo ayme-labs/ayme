@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#8adaf9aac567570423379f87d2d412171baecd98",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#5c088c47f271e361e8e07620c3c4f65eab02c430",
     "@ayme-dev/typescript-config": "workspace:*",
     "@playwright/test": "^1.62.1",
     "@vitejs/plugin-vue": "^6.0.8",
