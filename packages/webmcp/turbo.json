@@ -11,15 +11,23 @@
         "$TURBO_ROOT$/packages/webmcp-inspector/src/**",
         "$TURBO_ROOT$/packages/webmcp-inspector/package.json",
         "$TURBO_ROOT$/packages/webmcp-inspector/tsdown.config.ts",
+        "$TURBO_ROOT$/packages/webmcp-inspector/README.md",
+        "$TURBO_ROOT$/packages/webmcp-inspector/LICENSE",
         "$TURBO_ROOT$/packages/webmcp-react/src/**",
         "$TURBO_ROOT$/packages/webmcp-react/package.json",
         "$TURBO_ROOT$/packages/webmcp-react/tsdown.config.ts",
+        "$TURBO_ROOT$/packages/webmcp-react/README.md",
+        "$TURBO_ROOT$/packages/webmcp-react/LICENSE",
         "$TURBO_ROOT$/packages/webmcp-vue/src/**",
         "$TURBO_ROOT$/packages/webmcp-vue/package.json",
         "$TURBO_ROOT$/packages/webmcp-vue/tsdown.config.ts",
+        "$TURBO_ROOT$/packages/webmcp-vue/README.md",
+        "$TURBO_ROOT$/packages/webmcp-vue/LICENSE",
         "$TURBO_ROOT$/packages/unplugin-webmcp/src/**",
         "$TURBO_ROOT$/packages/unplugin-webmcp/package.json",
-        "$TURBO_ROOT$/packages/unplugin-webmcp/tsdown.config.ts"
+        "$TURBO_ROOT$/packages/unplugin-webmcp/tsdown.config.ts",
+        "$TURBO_ROOT$/packages/unplugin-webmcp/README.md",
+        "$TURBO_ROOT$/packages/unplugin-webmcp/LICENSE"
       ]
     }
   }

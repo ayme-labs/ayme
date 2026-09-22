@@ -96,8 +96,11 @@ function localPathPatterns() {
     /\/Users\//,
     /\/home\//,
     // A drive letter must not follow an identifier character, so URL
-    // protocols such as `file:` and object keys such as `{a:/re/}` pass.
-    /(?<![\w$])[A-Za-z]:(?:\\{1,2}[\w .-]+\\|\/(?:Users|Windows|Program Files)\/)/,
+    // protocols such as `file:` pass.
+    /(?<![\w$])[A-Za-z]:\\{1,2}[\w .-]+\\/,
+    // A forward-slash drive path must start a string or word, so object keys
+    // such as `{a:/re/}` pass.
+    /(?<=^|["'`\s])[A-Za-z]:\/[^\s/"'`]+\//m,
   ];
 }
 
@@ -219,7 +222,8 @@ it("the leak check reports non-registry specifiers and local paths", () => {
   );
   fs.writeFileSync(
     path.join(fixture, "dist", "index.mjs"),
-    'const url = "file:///x"; const re = {a:/b/}; export const p = "/home/ci";\n'
+    'const url = "file:///x"; const re = {a:/b/}; export const p = "/home/ci";\n' +
+      'export const q = "D:/agent/_work/pkg";\n'
   );
   fs.writeFileSync(
     path.join(fixture, "dist", "win.mjs"),
@@ -238,6 +242,7 @@ it("the leak check reports non-registry specifiers and local paths", () => {
     "devDependencies.b: file:../b",
     "peerDependencies.@ayme-dev/webmcp-vue: ^0.0.1 is not the sibling version 0.1.0",
     "dist/index.mjs: local path /home/",
+    "dist/index.mjs: local path D:/agent/",
     expect.stringMatching(/^dist\/win\.mjs: local path C:/),
   ]);
 });
