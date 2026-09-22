@@ -8,6 +8,12 @@
     "test": {
       "inputs": [
         "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/webmcp-inspector/src/**",
+        "$TURBO_ROOT$/packages/webmcp-inspector/package.json",
+        "$TURBO_ROOT$/packages/webmcp-inspector/tsdown.config.ts",
+        "$TURBO_ROOT$/packages/webmcp-react/src/**",
+        "$TURBO_ROOT$/packages/webmcp-react/package.json",
+        "$TURBO_ROOT$/packages/webmcp-react/tsdown.config.ts",
         "$TURBO_ROOT$/packages/webmcp-vue/src/**",
         "$TURBO_ROOT$/packages/webmcp-vue/package.json",
         "$TURBO_ROOT$/packages/webmcp-vue/tsdown.config.ts",
