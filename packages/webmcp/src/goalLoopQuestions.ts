@@ -19,7 +19,8 @@ import {
 
 const DECISION_MODEL = "typesafe/jev-1.13";
 
-/** The decisions API answers a choice over at most this many options. */
+/** The decisions API answers a choice over at most this many options. Every
+ *  question is kept within it, counted as it is sent. */
 const MAX_CHOICE_OPTIONS = 255;
 
 /** The extra choice of an optional closed-set parameter. */
@@ -206,7 +207,9 @@ export type ArgumentPlan =
   /** A required value outside the closed sets: the calling agent supplies it. */
   | { kind: "needs_free_value"; parameters: string[] }
   /** The elements to offer for a ref do not make a choice the model can answer. */
-  | { kind: "needs_ref_choice"; parameter: string; optionCount: number };
+  | { kind: "needs_ref_choice"; parameter: string; optionCount: number }
+  /** The values of a closed set do not make a choice the model can answer. */
+  | { kind: "needs_value_choice"; parameter: string; optionCount: number };
 
 /** Every node of the capture that has an element the filter keeps. */
 function refOptions(
@@ -280,6 +283,22 @@ function valueOptions(values: readonly JsonPrimitive[]): ArgumentOption[] {
   }));
 }
 
+/**
+ * An answer is matched back by key, so two options of one question must not
+ * share one. Keys are read by the model, so a value keeps its own text and
+ * only a key already taken within the question is made unique.
+ */
+function withUniqueKeys(options: ArgumentOption[]): ArgumentOption[] {
+  const taken = new Set<string>();
+  return options.map((option) => {
+    let key = option.key;
+    for (let attempt = 2; taken.has(key); attempt++)
+      key = `${option.key} (${attempt})`;
+    taken.add(key);
+    return key === option.key ? option : { ...option, key };
+  });
+}
+
 function argumentInstructions(tool: ExecutableTool, arg: ArgumentSpec): string {
   const parameter = arg.description
     ? `"${arg.name}" (${arg.description})`
@@ -312,27 +331,36 @@ export function planArguments(
     // An optional parameter outside the closed sets is left out.
     if (!closedSet) continue;
 
-    const options =
-      closedSet.kind === "ref"
+    const options = withUniqueKeys([
+      ...(closedSet.kind === "ref"
         ? refOptions(closedSet.filter, capture)
         : closedSet.kind === "instance"
           ? instanceOptions(closedSet.roots, capture)
-          : valueOptions(closedSet.values);
-    if (
-      closedSet.kind !== "values" &&
-      (options.length === 0 || options.length > MAX_CHOICE_OPTIONS)
-    )
+          : valueOptions(closedSet.values)),
+      ...(arg.optional
+        ? [
+            {
+              key: LEAVE_UNSET_KEY,
+              description: `Leave "${arg.name}" unset; the operation uses its default.`,
+            },
+          ]
+        : []),
+    ]);
+
+    // A question outside the limit is never sent. An optional parameter the
+    // loop cannot ask about is left unset, like the choice it would have had.
+    if (options.length === 0 || options.length > MAX_CHOICE_OPTIONS) {
+      if (arg.optional) continue;
       return {
-        kind: "needs_ref_choice",
+        kind:
+          closedSet.kind === "values"
+            ? "needs_value_choice"
+            : "needs_ref_choice",
         parameter: arg.name,
         optionCount: options.length,
       };
+    }
 
-    if (arg.optional)
-      options.push({
-        key: LEAVE_UNSET_KEY,
-        description: `Leave "${arg.name}" unset; the operation uses its default.`,
-      });
     questions.push({
       parameter: arg.name,
       path: arg.path,
