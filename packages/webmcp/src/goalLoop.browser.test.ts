@@ -1005,7 +1005,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
         <ul>
           ${Array.from(
             { length: count },
-            (_, index) => `<li id="item-${index}">Item ${index}</li>`
+            (_, index) =>
+              `<li id="item-${index}" aria-label="Item ${index}">Item ${index}</li>`
           ).join("")}
         </ul>
       </main>
@@ -1070,11 +1071,14 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     // One question, over the present roots of the tool's collection path.
     const stageTwo = criteriaOf(requests[1]!);
     expect(Object.keys(stageTwo)).toEqual(["ref"]);
-    expect(Object.values(stageTwo.ref!)).toEqual([
-      expect.stringContaining("ItemsPage.items[0]"),
-      expect.stringContaining("ItemsPage.items[1]"),
-      expect.stringContaining("ItemsPage.items[2]"),
-    ]);
+    const descriptions = Object.values(stageTwo.ref!);
+    expect(descriptions).toHaveLength(3);
+    descriptions.forEach((description, index) => {
+      // Label, role and name: what tells one instance from another.
+      expect(description).toContain(`ItemsPage.items[${index}]`);
+      expect(description).toContain("listitem");
+      expect(description).toContain(`Item ${index}`);
+    });
     // The option keys are the refs the page state gave the model.
     expect(refsInPage(requests[1]!.state)).toEqual(
       expect.arrayContaining(Object.keys(stageTwo.ref!))
@@ -1147,6 +1151,75 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       expect.stringContaining("GroupsPage.groups[1].items[0]"),
     ]);
     expect(acted).toEqual(["0-1"]);
+  });
+
+  it("offers the instance root for a tool on a singular child of a collection", async () => {
+    document.body.innerHTML = `
+      <main>
+        <div id="item-0" aria-label="Item 0"><button id="child-0">Open 0</button></div>
+        <div id="item-1" aria-label="Item 1"><button id="child-1">Open 1</button></div>
+      </main>
+    `;
+    const opened: number[] = [];
+    class ItemsPage {
+      readonly items = [0, 1].map((index) => ({
+        root: page.locator(`#item-${index}`),
+        child: {
+          root: page.locator(`#child-${index}`),
+          open: () => opened.push(index),
+        },
+      }));
+    }
+    registerCompiledPom(
+      ItemsPage,
+      manifest(
+        "ItemsPage",
+        [collection("items", "Item")],
+        [],
+        [
+          {
+            className: "Item",
+            members: [
+              root(),
+              {
+                memberName: "child",
+                kind: "component",
+                access: "field",
+                componentClassName: "Child",
+                collection: false,
+              },
+            ],
+            tools: [],
+          },
+          { className: "Child", members: [root()], tools: [action("open")] },
+        ]
+      )
+    );
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "ItemsPage.items.child.open",
+          goal_met: 0.1,
+          arguments: { ref: "ItemsPage.items[1]" },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(ItemsPage);
+
+    await tool.execute({ goal: "open the second item", maxSteps: 5 });
+
+    // The instance is addressed through the last collection, not through the
+    // singular child the action lives on.
+    const descriptions = Object.values(criteriaOf(requests[1]!).ref!);
+    expect(descriptions).toEqual([
+      expect.stringContaining("ItemsPage.items[0]"),
+      expect.stringContaining("ItemsPage.items[1]"),
+    ]);
+    for (const description of descriptions)
+      expect(description).not.toContain("child");
+    expect(opened).toEqual([1]);
   });
 
   it("does not offer a collection tool while the collection is empty", async () => {
