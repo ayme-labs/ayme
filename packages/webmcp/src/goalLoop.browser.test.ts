@@ -1365,6 +1365,28 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(archived).toEqual([]);
   });
 
+  it("hands over instead of asking when the page offers more operations than the limit", async () => {
+    setupDom();
+    const { requests, decide } = recording(
+      scriptedDecisionFn([{ operation: "none", goal_met: 0.1 }])
+    );
+    // Together with the built-in Ref Tools and "none", over the option limit.
+    const tool = await getPublishedPursueGoal(
+      decide,
+      Array.from({ length: 254 }, (_, index) => ({
+        name: `operation_${index}`,
+        description: `Operation number ${index}.`,
+        execute: async () => null,
+      }))
+    );
+
+    const result = await tool.execute({ goal: "do something", maxSteps: 5 });
+
+    expect(result).toMatchObject({ reason: "decide_failed", history: [] });
+    // The oversized question is never sent.
+    expect(requests).toEqual([]);
+  });
+
   // --- Option keys stay distinct within one question (#114) ---
 
   /** Register a POM whose single tool takes one closed-set parameter. */

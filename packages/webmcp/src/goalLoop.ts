@@ -11,6 +11,7 @@ import {
   buildOperationRequest,
   buildStepState,
   buildToolOptions,
+  operationQuestionFits,
   parseGoalMetAnswer,
   parseOperationAnswer,
   planArguments,
@@ -248,6 +249,15 @@ async function pursueGoal(
       history
     );
     const toolOptions = buildToolOptions();
+
+    // A question outside the limit is never sent, in either stage.
+    if (!operationQuestionFits(toolOptions)) {
+      return done({
+        reason: "decide_failed",
+        next: `The page offers ${toolOptions.length} operations, more than one decision can choose from. Read the page context and call the tools you need directly.`,
+        history,
+      });
+    }
 
     // --- Stage one: the operation, and whether the goal is met ---
 
