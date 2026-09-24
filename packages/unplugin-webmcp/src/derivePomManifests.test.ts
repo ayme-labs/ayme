@@ -189,6 +189,13 @@ describe("derivePomManifests", () => {
         collection: false,
       },
       {
+        memberName: "derivedChild",
+        kind: "component",
+        access: "field",
+        componentClassName: "DerivedComponent",
+        collection: false,
+      },
+      {
         memberName: "browserLocator",
         kind: "locator",
         access: "field",
@@ -243,6 +250,14 @@ describe("derivePomManifests", () => {
         ],
         tools: [],
       },
+      {
+        className: "DerivedComponent",
+        members: [
+          { memberName: "root", kind: "locator", access: "field" },
+          { memberName: "child", kind: "locator", access: "field" },
+        ],
+        tools: [],
+      },
     ]);
   });
 
@@ -282,5 +297,103 @@ describe("derivePomManifests", () => {
     });
     const status = manifest.tools.find((tool) => tool.methodName === "status");
     expect(status).not.toHaveProperty("authoredDescription");
+  });
+
+  describe("inherited @WebMCP recognition", () => {
+    const tool = (className: string, methodName: string, text: string) => ({
+      methodName,
+      toolName: `${className}.${methodName}`,
+      description: text,
+      authoredDescription: text,
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      },
+      parameters: [],
+    });
+    const locator = (memberName: string) => ({
+      memberName,
+      kind: "locator",
+      access: "field",
+    });
+
+    it("recognises an undecorated subclass of a decorated base and keeps the base", () => {
+      expect(
+        derivePomManifests(path.resolve("src/fixtures/decoratedBasePom.ts"))
+      ).toEqual([
+        {
+          className: "BaseMenu",
+          members: [locator("baseItem")],
+          components: [],
+          tools: [tool("BaseMenu", "open", "Open the menu.")],
+        },
+        {
+          className: "UserMenu",
+          members: [locator("signOutItem"), locator("baseItem")],
+          components: [],
+          tools: [
+            tool("UserMenu", "signOut", "Sign out."),
+            tool("UserMenu", "open", "Open the menu."),
+          ],
+        },
+      ]);
+    });
+
+    it("recognises the bottom class of three levels decorated only at the top", () => {
+      expect(
+        manifestForClass("threeLevelDecoratedBasePom", "BottomPom")
+      ).toEqual({
+        className: "BottomPom",
+        members: [
+          locator("bottomButton"),
+          locator("middleButton"),
+          locator("topButton"),
+        ],
+        components: [],
+        tools: [
+          tool("BottomPom", "bottomTool", "Use the bottom tool."),
+          tool("BottomPom", "topTool", "Use the top tool."),
+        ],
+      });
+    });
+
+    it("does not make a member typed as an undecorated class chain a Page Object Child", () => {
+      expect(
+        derivePomManifests(path.resolve("src/fixtures/undecoratedChildPom.ts"))
+      ).toEqual([
+        {
+          className: "PageX",
+          members: [locator("heading")],
+          components: [],
+          tools: [],
+        },
+      ]);
+    });
+
+    it("makes a member typed as an undecorated subclass of a decorated base a Page Object Child", () => {
+      expect(manifestForClass("inheritedChildPom", "PageY")).toEqual({
+        className: "PageY",
+        members: [
+          locator("heading"),
+          {
+            memberName: "userMenu",
+            kind: "component",
+            access: "field",
+            componentClassName: "UserMenu",
+            collection: false,
+          },
+        ],
+        components: [
+          {
+            className: "UserMenu",
+            members: [locator("signOutItem"), locator("item")],
+            tools: [],
+          },
+        ],
+        tools: [],
+      });
+    });
   });
 });

@@ -28,3 +28,17 @@ it("builds one TypeScript program per POM transform", () => {
   expect(transform(source, fixturePath)).not.toBeNull();
   expect(createPomProgram).toHaveBeenCalledTimes(2);
 });
+
+it("registers an undecorated subclass of a decorated base", () => {
+  const fixturePath = fileURLToPath(
+    new URL("./fixtures/decoratedBasePom.ts", import.meta.url)
+  );
+  const code = createPomTransform()(
+    readFileSync(fixturePath, "utf8"),
+    fixturePath
+  )?.code;
+
+  expect(code).toContain("registerCompiledPom(BaseMenu, {");
+  expect(code).toContain("registerCompiledPom(UserMenu, {");
+  expect(code).toContain('"toolName":"UserMenu.open"');
+});

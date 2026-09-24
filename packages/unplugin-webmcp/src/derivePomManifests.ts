@@ -57,7 +57,7 @@ export function derivePomManifestsFromProgram(
   for (const declaration of sourceFile.statements) {
     if (
       !ts.isClassDeclaration(declaration) ||
-      !hasWebMcpClassDecorator(declaration)
+      !isPageObjectClass(checker, declaration)
     )
       continue;
     if (!declaration.name)
@@ -130,7 +130,11 @@ function pomMembers(
         ];
       }
 
-      const component = componentType(memberInfo.type, member.name.text);
+      const component = componentType(
+        checker,
+        memberInfo.type,
+        member.name.text
+      );
       if (!component) return [];
       const componentClassName = ensureComponentManifest(
         checker,
@@ -294,11 +298,15 @@ function returnPomDeclarations(
       returnPomDeclarations(checker, member, seen)
     );
   }
-  return annotatedComponentDeclarations(type);
+  return pageObjectDeclarations(checker, type);
 }
 
-function componentType(type: ts.Type, memberName: string) {
-  const declaration = componentDeclaration(type, memberName);
+function componentType(
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  memberName: string
+) {
+  const declaration = componentDeclaration(checker, type, memberName);
   return declaration ? { declaration } : undefined;
 }
 
@@ -318,16 +326,17 @@ function componentCollectionType(
     ts.IndexKind.Number
   );
   const declaration = arrayElement
-    ? componentDeclaration(arrayElement, memberName)
+    ? componentDeclaration(checker, arrayElement, memberName)
     : undefined;
   return declaration ? { declaration } : undefined;
 }
 
 function componentDeclaration(
+  checker: ts.TypeChecker,
   type: ts.Type,
   memberName: string
 ): ts.ClassDeclaration | undefined {
-  const declarations = annotatedComponentDeclarations(type);
+  const declarations = pageObjectDeclarations(checker, type);
   if (declarations.length > 1) {
     throw new Error(
       `WebMCP component member "${memberName}" is ambiguous: ${declarations
@@ -338,7 +347,8 @@ function componentDeclaration(
   return declarations[0];
 }
 
-function annotatedComponentDeclarations(
+function pageObjectDeclarations(
+  checker: ts.TypeChecker,
   type: ts.Type,
   seen = new Set<ts.Type>()
 ): ts.ClassDeclaration[] {
@@ -350,7 +360,7 @@ function annotatedComponentDeclarations(
     for (const declaration of symbol?.declarations ?? []) {
       if (
         ts.isClassDeclaration(declaration) &&
-        hasWebMcpClassDecorator(declaration)
+        isPageObjectClass(checker, declaration)
       ) {
         declarations.add(declaration);
       }
@@ -359,7 +369,8 @@ function annotatedComponentDeclarations(
 
   if (type.isIntersection()) {
     for (const constituent of type.types) {
-      for (const declaration of annotatedComponentDeclarations(
+      for (const declaration of pageObjectDeclarations(
+        checker,
         constituent,
         seen
       )) {
@@ -426,6 +437,29 @@ function isPublicInstanceMember(member: ts.ClassElement) {
 function isLocatorType(type: ts.Type) {
   const symbol = type.aliasSymbol ?? type.getSymbol();
   return symbol?.getName() === "Locator";
+}
+
+/** A class is a Page Object Model when it, or an ancestor class, carries `@WebMCP`. */
+function isPageObjectClass(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration,
+  seen = new Set<ts.ClassDeclaration>()
+): boolean {
+  if (hasWebMcpClassDecorator(declaration)) return true;
+  if (seen.has(declaration)) return false;
+  seen.add(declaration);
+
+  const type = checker.getTypeAtLocation(declaration);
+  if (!type.isClassOrInterface()) return false;
+  return checker
+    .getBaseTypes(type)
+    .some((base) =>
+      (base.getSymbol()?.declarations ?? []).some(
+        (baseDeclaration) =>
+          ts.isClassDeclaration(baseDeclaration) &&
+          isPageObjectClass(checker, baseDeclaration, seen)
+      )
+    );
 }
 
 function hasWebMcpClassDecorator(declaration: ts.ClassDeclaration) {
