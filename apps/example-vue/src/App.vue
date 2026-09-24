@@ -11,7 +11,7 @@ import ListDemo from "./demo/ListDemo.vue";
 // Ordinary apps call useAymeWebMcp() without options. This demo adds tracing and pacing.
 const { page } = useDemoTrace();
 useAymeWebMcp({
-  page,
+  page: () => page,
   // Only the dev server mounts a Decision Endpoint, so the Goal Loop is a
   // development feature here and the deployed build publishes no pursue_goal.
   goalLoop: import.meta.env.DEV

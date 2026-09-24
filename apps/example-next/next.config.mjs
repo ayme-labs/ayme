@@ -7,6 +7,9 @@ export default function nextConfig(phase) {
     reactStrictMode: true,
     // Keep the dev check from overwriting the production build under test.
     distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
+    // Publication is a build policy (ADR-0016). Without Vite's define hook,
+    // Next's own compile-time defines set Ayme's build constant in both graphs.
+    compiler: { define: { __AYME_WEBMCP_PUBLISH__: true } },
     turbopack: {
       root: fileURLToPath(new URL("../../", import.meta.url)),
       rules: {

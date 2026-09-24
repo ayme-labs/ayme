@@ -1,32 +1,12 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import {
   AymeWebMcpProvider,
   useAymeWebMcp,
   usePageObject,
 } from "@ayme-dev/webmcp-react";
-import {
-  listRegisteredPoms,
-  subscribeToRegisteredPoms,
-} from "@ayme-dev/webmcp/internal";
 import { CounterPage } from "../playwright/pom/CounterPage";
-
-function compiledMetadataSnapshot() {
-  const registration = listRegisteredPoms().find(
-    ({ id }) => id === "CounterPage"
-  );
-  return JSON.stringify(registration?.manifest.tools ?? []);
-}
-
-function CompiledMetadata() {
-  const metadata = useSyncExternalStore(
-    subscribeToRegisteredPoms,
-    compiledMetadataSnapshot,
-    () => "[]"
-  );
-  return <pre data-testid="compiled-metadata">{metadata}</pre>;
-}
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -54,7 +34,6 @@ function Demo() {
         {visible ? "Unmount counter" : "Mount counter"}
       </button>
       {visible && <Counter />}
-      <CompiledMetadata />
     </>
   );
 }

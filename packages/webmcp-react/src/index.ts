@@ -10,17 +10,20 @@ import {
 } from "react";
 import {
   createRuntimeSession,
-  createServerPageObject,
   type AymePage,
   type GoalLoopDecisionFunction,
-  type PageObjectConstructor,
   type RefTool,
   type RuntimeSession,
+} from "@ayme-dev/webmcp";
+import {
+  createServerPageObject,
+  type PageObjectConstructor,
 } from "@ayme-dev/webmcp/internal";
 
-export type { AymeWebMcpPublicationStatus } from "@ayme-dev/webmcp/internal";
+export type { AymeWebMcpPublicationStatus } from "@ayme-dev/webmcp";
 export type AymeWebMcpProviderProps = {
-  page?: AymePage;
+  /** Builds the browser Page; called once, in the browser, on first use. */
+  page?: () => AymePage;
   children?: ReactNode;
   ignore?: (element: Element) => boolean;
   refTools?: RefTool[];
@@ -41,7 +44,7 @@ export function AymeWebMcpProvider({
     ignore,
     refTools,
     goalLoop,
-    runtime: createRuntimeSession(page, { ignore, refTools, goalLoop }),
+    runtime: createRuntimeSession({ page, ignore, refTools, goalLoop }),
   }));
   if (ancestor)
     throw new Error(

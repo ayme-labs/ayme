@@ -1,5 +1,5 @@
 import { computed, ref } from "vue";
-import { createRuntimeSession } from "@ayme-dev/webmcp/internal";
+import { createPage } from "@ayme-dev/webmcp";
 import {
   withDemoFeedback,
   type TraceEntry,
@@ -8,7 +8,7 @@ import {
 export function useDemoTrace() {
   const revision = ref(0);
   const entries = ref<TraceEntry[]>([]);
-  const page = withDemoFeedback(createRuntimeSession().page, {
+  const page = withDemoFeedback(createPage(), {
     onTrace(entry) {
       entries.value.push(entry);
       revision.value += 1;

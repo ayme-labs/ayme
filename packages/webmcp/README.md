@@ -19,6 +19,20 @@ then follow the framework integration README, currently
 [Vue](https://github.com/ayme-labs/ayme/blob/main/packages/webmcp-vue/README.md).
 Internal adapter packages are bundled; consumers do not install them separately.
 
+## Entries
+
+- `@ayme-dev/webmcp` is what a consumer uses: the `@WebMCP` decorators, the
+  runtime session (`createRuntimeSession`, with `pursueGoal` for the Goal
+  Loop), `createPage`, the `ayme` page-state facade, `decisionEndpoint`, and
+  their types.
+- `@ayme-dev/webmcp/server` is the Decision Endpoint handler,
+  `createDecisionEndpoint`, for your backend.
+- `@ayme-dev/webmcp/internal` serves ayme's own packages only: the framework
+  packages (`webmcp-vue`, `webmcp-react`) for server page objects and page
+  registrations, the code `unplugin-webmcp` generates into your bundle
+  (`registerCompiledPom`), and the inspector. Applications do not import it,
+  and what it exports may change without notice.
+
 ## Expose an action
 
 Keep the existing POM behavior and annotate the class and selected methods:
@@ -71,11 +85,49 @@ useAymeWebMcp({
 });
 ```
 
-## Browser Page
+## Runtime session
 
-The runtime session (`createRuntimeSession`, today under
-`@ayme-dev/webmcp/internal`) drives one browser Page for the current document.
-When it is given none, it creates the default Page: the `testIdAttribute`,
+The Vue and React packages start the runtime for you. Any other consumer,
+such as a prebuilt script on a page, starts it through the runtime session:
+
+```ts
+import {
+  createPage,
+  createRuntimeSession,
+  decisionEndpoint,
+} from "@ayme-dev/webmcp";
+
+const session = createRuntimeSession({
+  page: () => createPage({ actionTimeout: 500 }),
+  refTools: [highlight],
+  goalLoop: decisionEndpoint("/api/decisions"),
+});
+const stop = session.start();
+const handover = await session.pursueGoal("archive the oldest item", {
+  maxSteps: 5,
+});
+stop();
+```
+
+`createRuntimeSession(options?)` takes one options object:
+
+- `page`: a factory for the browser Page the session drives. The session calls
+  it at most once, lazily, on its first use in the browser, and never during
+  server rendering. Without it, the session calls `createPage()`.
+- `ignore`, `refTools` and `goalLoop`: described in their own sections below.
+  They are configured on `start()` and cleared when the session stops.
+
+`start()` claims the runtime for the current document, one owner at a time,
+and returns the function that stops it. `construct(Model)` and
+`register(Model, instance)` create and register Page Objects. `getSnapshot()`
+and `subscribe()` report the WebMCP publication status and `retryPublication()`
+retries it; publication is a build policy of the Vite plugin, and the session
+works without it. `pursueGoal(goal, { maxSteps })` runs the Goal Loop.
+
+### Browser Page
+
+The runtime session drives one browser Page for the current document. When it
+is given no `page`, it creates the default Page: the `testIdAttribute`,
 `actionTimeout` and `navigationTimeout` come from the Playwright settings the
 Vite plugin compiled in.
 
@@ -86,13 +138,13 @@ result of `createPage()` is exactly the default Page.
 ```ts
 import { createPage } from "@ayme-dev/webmcp";
 
-const page = createPage({ actionTimeout: 500 });
+const page = () => createPage({ actionTimeout: 500 });
 ```
 
-Pass the result as the runtime session's `page` when you want to own page
+Pass such a factory as the runtime session's `page` when you want to own page
 construction: without the Vite plugin, with a timeout that differs from your
 build, or wrapped in your own instrumentation. The Vue and React packages keep
-creating the default Page; their `page` option takes a Page built this way.
+creating the default Page; their `page` option takes the same factory.
 
 ## Ref Tools
 
@@ -243,6 +295,13 @@ useAymeWebMcp({
 `Promise<DecisionResponse>`. Use `decisionEndpoint` for the common HTTP case,
 or pass a fake in tests.
 
+### Running it from your own code
+
+`session.pursueGoal(goal, { maxSteps })` on the runtime session runs the same
+loop and resolves with the Handover, whether or not tools are published and
+whether or not a WebMCP driver is present. It rejects when the session is not
+started or has no `goalLoop`.
+
 ### What one step asks
 
 A step first asks which operation moves closest to the goal and whether the
@@ -257,7 +316,8 @@ agent supplies it.
 
 ### The Handover
 
-`pursue_goal({ goal, maxSteps })` returns a Handover:
+`pursue_goal({ goal, maxSteps })` and `session.pursueGoal(goal, { maxSteps })`
+return a Handover:
 
 ```ts
 {

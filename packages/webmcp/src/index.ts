@@ -4,7 +4,15 @@ export { ayme, default } from "./ayme";
 export type { Ayme } from "./ayme";
 export { createPage } from "./browserPage";
 export type { CreatePageOptions } from "./browserPage";
-export type { AymePage } from "./runtime";
+export { createRuntimeSession } from "./runtime";
+export type {
+  AymePage,
+  AymeRuntimeOptions,
+  AymeWebMcpPublicationStatus,
+  GoalLoopDecisionFunction,
+  RuntimeSession,
+} from "./runtime";
+export type { Handover } from "./goalLoop";
 export { decisionEndpoint } from "./decisionEndpoint";
 export type {
   DecisionEndpointOptions,

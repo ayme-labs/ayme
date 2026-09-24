@@ -1,5 +1,10 @@
 import { createPage } from "./browserPage";
-import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
+import {
+  configureGoalLoop,
+  pursueGoal,
+  type GoalLoopDecisionFunction,
+  type Handover,
+} from "./goalLoop";
 import { configurePageStateIgnore } from "./pageState";
 import { configureRefTools, type RefTool } from "./refTools";
 import {
@@ -25,6 +30,11 @@ export type AymePage = ConstructorParameters<PageObjectConstructor>[0];
 export type { GoalLoopDecisionFunction } from "./goalLoop";
 
 export type AymeRuntimeOptions = {
+  /**
+   * Builds the browser Page the session drives. Called at most once, lazily,
+   * on the session's first use in the browser; `createPage()` when absent.
+   */
+  page?: () => AymePage;
   ignore?: (element: Element) => boolean;
   refTools?: RefTool[];
   goalLoop?: GoalLoopDecisionFunction;
@@ -61,17 +71,14 @@ function instrumentPage(page: AymePage) {
 }
 
 /**
- * Create an inert runtime session. Frameworks start activity only when their
- * owner commits by calling `start()`. Accepts optional `goalLoop` and `ignore`
- * options that are configured on start and cleared on stop.
+ * Create an inert runtime session. Its owner starts activity by calling
+ * `start()`. The `page` factory runs once, on first use; `ignore`, `refTools`
+ * and `goalLoop` are configured on start and cleared on stop.
  */
-export function createRuntimeSession(
-  sourcePage?: AymePage,
-  options: AymeRuntimeOptions = {}
-) {
+export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
   let resolvedPage: AymePage | undefined;
   const getPage = () =>
-    (resolvedPage ??= instrumentPage(sourcePage ?? createPage()));
+    (resolvedPage ??= instrumentPage((options.page ?? createPage)()));
   const enabled =
     typeof __AYME_WEBMCP_PUBLISH__ !== "undefined" && __AYME_WEBMCP_PUBLISH__;
   const initialStatus: AymeWebMcpPublicationStatus = {
@@ -174,6 +181,31 @@ export function createRuntimeSession(
       };
     },
     retryPublication,
+    /**
+     * Run the Goal Loop with the session's `goalLoop` and resolve with its
+     * Handover. Needs no WebMCP publication and no driver; the published
+     * `pursue_goal` tool runs the same loop.
+     */
+    async pursueGoal(
+      goal: string,
+      { maxSteps }: { maxSteps: number }
+    ): Promise<Handover> {
+      if (!owner)
+        throw new Error(
+          "pursueGoal needs a started runtime session: the session is not started."
+        );
+      if (!options.goalLoop)
+        throw new Error(
+          "pursueGoal needs a decision function: the session has no goalLoop."
+        );
+      const result = await pursueGoal(
+        goal,
+        maxSteps,
+        options.goalLoop,
+        document
+      );
+      return result.handover;
+    },
     construct<T extends object>(model: PageObjectConstructor<T>) {
       return constructPageObject(model, getPage());
     },

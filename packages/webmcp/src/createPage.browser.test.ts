@@ -36,9 +36,7 @@ describe("createPage from the public entry in Chromium", () => {
       members: [],
       tools: [],
     });
-    // The page is the session's positional argument today; #120 turns it into
-    // the `page` factory option.
-    const runtime = createRuntimeSession(page);
+    const runtime = createRuntimeSession({ page: () => page });
     stop = runtime.start();
     const app = runtime.construct(App);
     expect(app.page).toBe(page);

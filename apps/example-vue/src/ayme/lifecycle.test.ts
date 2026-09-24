@@ -2,32 +2,10 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { defineComponent, h } from "vue";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { registerCompiledPom } from "@ayme-dev/webmcp/internal";
+// The compiler plugin in vitest.config.ts registers this POM's manifest.
 import { ListPage } from "../../playwright/pom/ListPage";
 import { useAymeWebMcp, usePageObject } from "@ayme-dev/webmcp-vue";
 import App from "../App.vue";
-
-function registerListPage() {
-  registerCompiledPom(ListPage, {
-    className: "ListPage",
-    components: [],
-    members: [],
-    tools: [
-      {
-        methodName: "addItem",
-        toolName: "ListPage.addItem",
-        description: "Add an item.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-          required: [],
-          additionalProperties: false,
-        },
-        parameters: [],
-      },
-    ],
-  });
-}
 
 describe("example lifecycle", () => {
   afterEach(() => {
@@ -40,7 +18,6 @@ describe("example lifecycle", () => {
 
   it("does not publish when the driver appears after unmount", async () => {
     vi.useFakeTimers();
-    registerListPage();
     const wrapper = mount(
       defineComponent({
         setup() {
@@ -71,8 +48,9 @@ describe("example lifecycle", () => {
   });
 
   it("publishes the demo's tools without loading the relay", async () => {
-    registerListPage();
-    const registerTool = vi.fn(async () => {});
+    const registerTool = vi.fn(async (tool: { name: string }) => {
+      void tool;
+    });
     Object.defineProperty(document, "modelContext", {
       configurable: true,
       value: { registerTool },
@@ -81,7 +59,9 @@ describe("example lifecycle", () => {
     const wrapper = mount(App);
     await flushPromises();
 
-    expect(registerTool).toHaveBeenCalled();
+    expect(registerTool.mock.calls.map(([tool]) => tool.name)).toContain(
+      "ListPage.addItem"
+    );
     expect(document.head.querySelector("script[data-ayme-relay]")).toBeNull();
     wrapper.unmount();
   });

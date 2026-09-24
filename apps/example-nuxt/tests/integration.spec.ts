@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { CounterPage } from "../playwright/pom/CounterPage";
+import {
+  executePublishedTool,
+  publishedToolNames,
+  publishedToolSchema,
+  recordPublishedTools,
+} from "./publishedTools";
 
 // Run the same contract against nuxt dev and the built Nitro server.
 test.describe("server render", () => {
@@ -22,12 +28,12 @@ test.describe("server render", () => {
       await expect(
         page.getByRole("button", { name: "Call Page Object" })
       ).toBeVisible();
-      await expect(page.getByTestId("registration-count")).toHaveText("0");
     }
   });
 });
 
-test("hydrates, publishes, executes the compiled POM, and cleans up on remount", async ({
+test("hydrates, publishes the compiled POM, executes it, and cleans up on remount", async ({
+  context,
   page,
 }) => {
   const errors: string[] = [];
@@ -36,12 +42,7 @@ test("hydrates, publishes, executes the compiled POM, and cleans up on remount",
     if (/hydration.*mismatch/i.test(message.text()))
       errors.push(message.text());
   });
-  await page.addInitScript(() => {
-    Object.defineProperty(document, "modelContext", {
-      configurable: true,
-      value: { registerTool() {} },
-    });
-  });
+  await recordPublishedTools(context);
 
   const response = await page.goto("/");
   expect(response?.status()).toBe(200);
@@ -49,24 +50,39 @@ test("hydrates, publishes, executes the compiled POM, and cleans up on remount",
     "Publication: active",
     { timeout: 15_000 }
   );
-  await expect(page.getByTestId("registration-count")).toHaveText("1");
-  await expect(page.getByTestId("compiled-metadata")).toContainText(
-    "CounterPage.increment"
-  );
+  // The published schema is the compiler's manifest for the POM.
+  await expect
+    .poll(() => publishedToolSchema(page, "CounterPage.increment"))
+    .toEqual({
+      name: "CounterPage.increment",
+      description: "Increment the counter.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      },
+    });
   await expect(page.locator("output")).toHaveText("0");
 
   await page.getByRole("button", { name: "Call Page Object" }).click();
   await expect(page.locator("output")).toHaveText("1");
-  await new CounterPage(page).increment();
+  await executePublishedTool(page, "CounterPage.increment");
   await expect(page.locator("output")).toHaveText("2");
+  await new CounterPage(page).increment();
+  await expect(page.locator("output")).toHaveText("3");
 
   await page.getByRole("button", { name: "Unmount counter" }).click();
   await expect(page.getByRole("region", { name: "Counter" })).toHaveCount(0);
-  await expect(page.getByTestId("registration-count")).toHaveText("0");
+  await expect
+    .poll(() => publishedToolNames(page))
+    .not.toContain("CounterPage.increment");
   await page
     .getByRole("button", { name: "Mount counter", exact: true })
     .click();
-  await expect(page.getByTestId("registration-count")).toHaveText("1");
+  await expect
+    .poll(() => publishedToolNames(page))
+    .toContain("CounterPage.increment");
   await expect(page.locator("output")).toHaveText("0");
   await page.getByRole("button", { name: "Call Page Object" }).click();
   await expect(page.locator("output")).toHaveText("1");

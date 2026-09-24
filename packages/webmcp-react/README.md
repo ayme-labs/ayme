@@ -37,7 +37,7 @@ createRoot(document.getElementById("root")!).render(
 );
 ```
 
-The provider creates a Page for the current document. To use a custom or decorated Page, create it once and pass `page={customPage}`. Ayme observation requires the browser adapter's locator metadata; a wrapper must preserve it. An arbitrary object typed as Playwright `Page` is not sufficient for observation.
+The provider creates a Page for the current document. To use a custom or decorated Page, pass a factory, `page={() => customPage}`; the runtime calls it once, in the browser, on first use, and never during server rendering. `createPage(options)` from `@ayme-dev/webmcp` builds the default Page with your own settings. Ayme observation requires the browser adapter's locator metadata; a wrapper must preserve it. An arbitrary object typed as Playwright `Page` is not sufficient for observation.
 
 Pass `ignore={ignorePageState}` to keep matching elements and their descendants out of the Structural Page State:
 
@@ -48,7 +48,7 @@ const ignorePageState = (element: Element) =>
 
 When the predicate returns `true`, the matching subtree is dropped from page state capture. This affects page state only; it does not change which tools are published.
 
-The Page and `ignore` predicate must stay fixed while the provider is mounted. Remount the provider and its consumers to change either option. Only one runtime owner may be active. Nested providers and concurrent owners are rejected.
+The `page` factory and `ignore` predicate must stay fixed while the provider is mounted. Remount the provider and its consumers to change either option. Only one runtime owner may be active. Nested providers and concurrent owners are rejected.
 
 ## Page Objects, status, and retry
 

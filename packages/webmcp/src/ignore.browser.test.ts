@@ -52,7 +52,7 @@ describe("ignore predicate in page state capture", () => {
   });
 
   function startRuntime(ignore?: (element: Element) => boolean) {
-    const runtime = createRuntimeSession(page, { ignore });
+    const runtime = createRuntimeSession({ page: () => page, ignore });
     stop = runtime.start();
     return runtime;
   }

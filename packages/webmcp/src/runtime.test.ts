@@ -32,7 +32,7 @@ const flush = async () => {
 };
 function session(enabled = true) {
   vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", enabled);
-  const runtime = createRuntimeSession(page);
+  const runtime = createRuntimeSession({ page: () => page });
   sessions.push(runtime);
   return runtime;
 }
@@ -70,7 +70,7 @@ it("threads ignore to page state capture for the session lifetime", () => {
   const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnore");
   try {
     const ignore = (element: Element) => element.matches(".assistant");
-    const runtime = createRuntimeSession(page, { ignore });
+    const runtime = createRuntimeSession({ page: () => page, ignore });
     expect(configureIgnore).not.toHaveBeenCalled();
     const stop = start(runtime);
     expect(configureIgnore).toHaveBeenLastCalledWith(ignore);
@@ -85,7 +85,7 @@ it("threads goalLoop to the goal loop configuration for the session lifetime", (
   const configureGoalLoop = vi.spyOn(goalLoopModule, "configureGoalLoop");
   try {
     const goalLoop = vi.fn();
-    const runtime = createRuntimeSession(page, { goalLoop });
+    const runtime = createRuntimeSession({ page: () => page, goalLoop });
     expect(configureGoalLoop).not.toHaveBeenCalled();
     const stop = start(runtime);
     expect(configureGoalLoop).toHaveBeenLastCalledWith(goalLoop);
@@ -117,6 +117,56 @@ it("builds the default page with createPage() and no options, once", () => {
   expect(createPage).toHaveBeenCalledWith();
   expect(runtime.page).toBe(page);
   expect(createPage).toHaveBeenCalledOnce();
+});
+
+it("calls the page factory at most once, lazily, on first use", () => {
+  const factory = vi.fn(() => page);
+  const runtime = createRuntimeSession({ page: factory });
+  sessions.push(runtime);
+  expect(factory).not.toHaveBeenCalled();
+  expect(runtime.construct(Model).page).toBe(page);
+  expect(factory).toHaveBeenCalledOnce();
+  const stop = start(runtime);
+  expect(runtime.page).toBe(page);
+  stop();
+  start(runtime);
+  expect(factory).toHaveBeenCalledOnce();
+  expect(createPage).not.toHaveBeenCalled();
+});
+
+it("rejects pursueGoal before start and without a goalLoop, naming the cause", async () => {
+  const withLoop = createRuntimeSession({
+    page: () => page,
+    goalLoop: vi.fn(),
+  });
+  sessions.push(withLoop);
+  await expect(withLoop.pursueGoal("save", { maxSteps: 1 })).rejects.toThrow(
+    "not started"
+  );
+  const withoutLoop = session(false);
+  start(withoutLoop);
+  await expect(withoutLoop.pursueGoal("save", { maxSteps: 1 })).rejects.toThrow(
+    "goalLoop"
+  );
+});
+
+it("runs the Goal Loop through the session's goalLoop and resolves its Handover", async () => {
+  const handover = { reason: "done" as const, next: "Continue.", history: [] };
+  const run = vi
+    .spyOn(goalLoopModule, "pursueGoal")
+    .mockResolvedValue({ handover, stepScores: [] });
+  try {
+    const goalLoop = vi.fn();
+    const runtime = createRuntimeSession({ page: () => page, goalLoop });
+    sessions.push(runtime);
+    start(runtime);
+    await expect(runtime.pursueGoal("save", { maxSteps: 3 })).resolves.toBe(
+      handover
+    );
+    expect(run).toHaveBeenCalledWith("save", 3, goalLoop, document);
+  } finally {
+    run.mockRestore();
+  }
 });
 
 it("constructs without activation and handles registration before owner startup and replay", () => {

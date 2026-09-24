@@ -248,7 +248,11 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     goalLoop: GoalLoopDecisionFunction,
     refTools?: RefTool[]
   ) {
-    const runtime = createRuntimeSession(page, { goalLoop, refTools });
+    const runtime = createRuntimeSession({
+      page: () => page,
+      goalLoop,
+      refTools,
+    });
     stop = runtime.start();
     return runtime;
   }

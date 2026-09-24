@@ -161,7 +161,6 @@ export function createPursueGoalTool(
         decisionFn,
         currentDocument
       );
-      runResultStore.last = result;
       return result.handover as unknown as JsonValue;
     },
   };
@@ -194,9 +193,10 @@ function readPursueGoalInput(input: unknown): {
  * condition is reached.
  *
  * Returns a `GoalLoopRunResult` containing both the public Handover and the
- * internal per-step scores. The tool exposes only the Handover.
+ * internal per-step scores, and records it as the last run. The published
+ * tool and the runtime session's `pursueGoal` expose only the Handover.
  */
-async function pursueGoal(
+export async function pursueGoal(
   goal: string,
   maxSteps: number,
   decisionFn: GoalLoopDecisionFunction,
@@ -206,10 +206,11 @@ async function pursueGoal(
   const stepScores: GoalLoopStepScore[] = [];
   let consecutiveFailures = 0;
 
-  const done = (handover: Handover): GoalLoopRunResult => ({
-    handover,
-    stepScores,
-  });
+  const done = (handover: Handover): GoalLoopRunResult => {
+    const result = { handover, stepScores };
+    runResultStore.last = result;
+    return result;
+  };
 
   const errorTextOf = (error: unknown) =>
     error instanceof Error ? error.message : String(error);

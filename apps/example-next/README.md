@@ -40,9 +40,9 @@ Turbopack loads the built package entry, not a source-file alias. The workspace
 root is explicit so linked Ayme packages resolve. Dev and production outputs
 use separate directories.
 
-`CompiledMetadata` reads the internal registry only so E2E tests can assert the
-compiler result. Consumer applications should use the public React integration,
-not this fixture-only instrumentation.
+The fixture imports only the public React integration. The E2E tests observe
+the compiler result and the registration lifetime through the tool schemas a
+WebMCP driver fixture receives, not through Ayme's internal registry.
 
 The React runtime session creates its default browser page lazily. During a
 server render, `usePageObject` returns an unconstructed object with the POM
@@ -63,11 +63,12 @@ pnpm --filter @ayme-dev/unplugin-webmcp test
 pnpm --filter @ayme-dev/example-next test:e2e
 ```
 
-The development suite verifies server rendering, hydration, real Playwright and
-POM execution, removal/remounting, and dependency invalidation of compiled
-metadata. The invalidation check edits an imported POM type while `next dev`
-remains running, reloads the browser, and requires the browser-visible manifest
-to contain the new type metadata without restarting Next. The production suite
+The development suite verifies server rendering, hydration, publication to a
+driver fixture, real Playwright and POM execution, removal/remounting, and
+dependency invalidation of compiled metadata. The invalidation check edits an
+imported POM type while `next dev` remains running, reloads the browser, and
+requires the published tool schema to contain the new type metadata without
+restarting Next. The production suite
 repeats the stable rendering and execution checks against `next start`; the
 source-mutation check is development-only.
 
@@ -83,11 +84,11 @@ Rendering code must not read Page Object locator fields or execute Page Object
 actions on the server. Prototype methods exist on the server placeholder so
 normal event closures can reference them without running the constructor.
 
-WebMCP publication remains disabled in the Next example. The loader does not
-replace the existing `__AYME_WEBMCP_PUBLISH__` build constant. Default test-id
-and timeout settings are unchanged. The next experiment is publication
-configuration without Vite's `define` hook, including a stable server snapshot
-when publication is enabled.
+WebMCP publication is enabled through Next's `compiler.define`, which sets the
+`__AYME_WEBMCP_PUBLISH__` build constant in both graphs; the loader itself sets
+no build constants. The initial status is `waiting` on the server and in the
+browser, so the server snapshot is stable. Default test-id and timeout settings
+are unchanged.
 
 Server Component POM execution, Edge deployments, Pages Router, source-map
 fidelity and packaged-consumer certification are not covered. POMs must use

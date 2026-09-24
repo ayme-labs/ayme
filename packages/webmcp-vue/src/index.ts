@@ -13,18 +13,21 @@ import {
 } from "vue";
 import {
   createRuntimeSession,
-  createServerPageObject,
-  createPageRegistration,
   type AymePage,
   type GoalLoopDecisionFunction,
   type RefTool,
   type RuntimeSession,
+} from "@ayme-dev/webmcp";
+import {
+  createServerPageObject,
+  createPageRegistration,
   type PageObjectConstructor,
 } from "@ayme-dev/webmcp/internal";
 
-export type { AymeWebMcpPublicationStatus } from "@ayme-dev/webmcp/internal";
+export type { AymeWebMcpPublicationStatus } from "@ayme-dev/webmcp";
 export type UseAymeWebMcpOptions = {
-  page?: AymePage;
+  /** Builds the browser Page; called once, in the browser, on first use. */
+  page?: () => AymePage;
   ignore?: (element: Element) => boolean;
   refTools?: RefTool[];
   goalLoop?: GoalLoopDecisionFunction;
@@ -36,7 +39,8 @@ function inheritedRuntime() {
 }
 
 function ownRuntime(options: UseAymeWebMcpOptions = {}) {
-  const runtime = createRuntimeSession(options.page, {
+  const runtime = createRuntimeSession({
+    page: options.page,
     ignore: options.ignore,
     refTools: options.refTools,
     goalLoop: options.goalLoop,
@@ -64,7 +68,7 @@ function consumeRuntime(runtime: RuntimeSession) {
 export const AymeWebMcpProvider = defineComponent({
   name: "AymeWebMcpProvider",
   props: {
-    page: { type: Object as PropType<AymePage>, required: false },
+    page: { type: Function as PropType<() => AymePage>, required: false },
     ignore: {
       type: Function as PropType<(element: Element) => boolean>,
       required: false,
