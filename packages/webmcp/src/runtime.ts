@@ -191,13 +191,13 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
       { maxSteps }: { maxSteps: number }
     ): Promise<Handover> {
       if (!owner)
-        throw new Error(
-          "pursueGoal needs a started runtime session: the session is not started."
-        );
+        throw new Error("pursueGoal requires a started runtime session.");
       if (!options.goalLoop)
         throw new Error(
-          "pursueGoal needs a decision function: the session has no goalLoop."
+          "pursueGoal requires a goalLoop on the runtime session."
         );
+      // While started, `options.goalLoop` is the function `start()` stored for
+      // the published tool, so both paths decide with the same function.
       const result = await pursueGoal(
         goal,
         maxSteps,

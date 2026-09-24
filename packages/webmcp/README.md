@@ -99,7 +99,15 @@ import {
 
 const session = createRuntimeSession({
   page: () => createPage({ actionTimeout: 500 }),
-  refTools: [highlight],
+  refTools: [
+    {
+      name: "highlight_element",
+      description: "Outline one element on the page so the user can see it.",
+      async execute({ element }) {
+        element.classList.add("highlighted");
+      },
+    },
+  ],
   goalLoop: decisionEndpoint("/api/decisions"),
 });
 const stop = session.start();

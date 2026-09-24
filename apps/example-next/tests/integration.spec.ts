@@ -42,7 +42,7 @@ test("hydrates, publishes the compiled POM, uses it and real Playwright, then re
     "Publication: active",
     { timeout: 15_000 }
   );
-  // The published schema is the compiler's manifest for the POM.
+  // The published schema matches the metadata declared in the POM source.
   await expect
     .poll(() => publishedToolSchema(page, "CounterPage.increment"))
     .toEqual({

@@ -141,16 +141,16 @@ it("rejects pursueGoal before start and without a goalLoop, naming the cause", a
   });
   sessions.push(withLoop);
   await expect(withLoop.pursueGoal("save", { maxSteps: 1 })).rejects.toThrow(
-    "not started"
+    "pursueGoal requires a started runtime session."
   );
   const withoutLoop = session(false);
   start(withoutLoop);
   await expect(withoutLoop.pursueGoal("save", { maxSteps: 1 })).rejects.toThrow(
-    "goalLoop"
+    "pursueGoal requires a goalLoop on the runtime session."
   );
 });
 
-it("runs the Goal Loop through the session's goalLoop and resolves its Handover", async () => {
+it("forwards goal, maxSteps and the session's goalLoop to the loop", async () => {
   const handover = { reason: "done" as const, next: "Continue.", history: [] };
   const run = vi
     .spyOn(goalLoopModule, "pursueGoal")
@@ -160,10 +160,33 @@ it("runs the Goal Loop through the session's goalLoop and resolves its Handover"
     const runtime = createRuntimeSession({ page: () => page, goalLoop });
     sessions.push(runtime);
     start(runtime);
-    await expect(runtime.pursueGoal("save", { maxSteps: 3 })).resolves.toBe(
+    await runtime.pursueGoal("save", { maxSteps: 3 });
+    expect(run).toHaveBeenCalledWith("save", 3, goalLoop, document);
+  } finally {
+    run.mockRestore();
+  }
+});
+
+it("resolves pursueGoal while enabled publication is unavailable", async () => {
+  const handover = { reason: "done" as const, next: "Continue.", history: [] };
+  const run = vi
+    .spyOn(goalLoopModule, "pursueGoal")
+    .mockResolvedValue({ handover, stepScores: [] });
+  try {
+    vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", true);
+    vi.mocked(waitForWebMcpDriver).mockResolvedValue(undefined);
+    const runtime = createRuntimeSession({
+      page: () => page,
+      goalLoop: vi.fn(),
+    });
+    sessions.push(runtime);
+    start(runtime);
+    await runtime.retryPublication();
+    expect(runtime.getSnapshot().state).toBe("unavailable");
+    await expect(runtime.pursueGoal("save", { maxSteps: 1 })).resolves.toBe(
       handover
     );
-    expect(run).toHaveBeenCalledWith("save", 3, goalLoop, document);
+    expect(synchronizeWebMcpTools).not.toHaveBeenCalled();
   } finally {
     run.mockRestore();
   }

@@ -1,3 +1,5 @@
+// Twin of apps/example-next/tests/publishedTools.ts: the apps share no test
+// package, so the two stay in step: a change here belongs there too.
 import type { BrowserContext, Page } from "@playwright/test";
 
 export type PublishedTool = {
@@ -67,14 +69,20 @@ export function publishedToolSchema(page: Page, name: string) {
   }, name);
 }
 
-/** Wait until one tool is published. */
-export function waitForPublishedTool(page: Page, name: string) {
+/** Wait until one tool is published; fails within the given time, so a
+ *  publication failure is reported as such and not as the test's timeout. */
+export function waitForPublishedTool(
+  page: Page,
+  name: string,
+  { timeout = 15_000 } = {}
+) {
   return page.waitForFunction(
     (name) =>
       (document.modelContext as unknown as RecordingDriver).tools.some(
         (tool) => tool.name === name
       ),
-    name
+    name,
+    { timeout }
   );
 }
 
