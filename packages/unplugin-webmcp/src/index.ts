@@ -67,6 +67,11 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
   if (options.inspector !== undefined && typeof options.inspector !== "boolean")
     throw new TypeError("inspector must be a boolean");
   const transformPom = createPomTransform(options);
+  // Vite soft-invalidates static importers of a changed file and keeps their
+  // previous transform result, so a Page Object compiled from a changed base
+  // class would keep a stale manifest. Record which transformed modules read
+  // each compiler dependency and hard-invalidate them when it changes.
+  const viteDependants = new Map<string, Set<string>>();
 
   return {
     name: "ayme-webmcp",
@@ -112,8 +117,20 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
         handler(code, id, transformOptions) {
           if (transformOptions?.ssr) return null;
           const transformed = transformPom(code, id);
+          for (const dependency of transformed?.dependencies ?? []) {
+            const dependants = viteDependants.get(dependency) ?? new Set();
+            viteDependants.set(dependency, dependants.add(id));
+          }
           return transformed;
         },
+      },
+      watchChange(file) {
+        if (this.environment.mode !== "dev") return;
+        const moduleGraph = this.environment.moduleGraph;
+        for (const id of viteDependants.get(resolve(file)) ?? []) {
+          const module = moduleGraph.getModuleById(id);
+          if (module) moduleGraph.invalidateModule(module);
+        }
       },
       async config(config) {
         const exclude = config.optimizeDeps?.exclude ?? [];

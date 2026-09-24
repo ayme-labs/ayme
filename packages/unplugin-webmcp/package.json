@@ -34,8 +34,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ayme-dev/webmcp-inspector": "workspace:*",
     "@ayme-dev/webmcp": "workspace:*",
+    "@ayme-dev/webmcp-inspector": "workspace:*",
     "typescript": "^6.0.3",
     "unplugin": "^3.3.0"
   },
@@ -46,6 +46,7 @@
     "eslint": "^10.9.1",
     "playwright": "~1.62.1",
     "tsdown": "^0.22.14",
+    "vite": "^8.2.2",
     "vitest": "^4.1.11"
   }
 }
