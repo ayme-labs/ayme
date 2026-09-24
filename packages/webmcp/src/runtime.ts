@@ -1,4 +1,3 @@
-import { RuntimeStateError } from "./errors";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { configurePageStateIgnore } from "./pageState";
@@ -14,6 +13,7 @@ import {
   waitForWebMcpDriver,
   type WebMcpRegistration,
 } from "./webMcp";
+import { RuntimeStateError } from "./errors";
 
 declare const __AYME_WEBMCP_PUBLISH__: boolean | undefined;
 

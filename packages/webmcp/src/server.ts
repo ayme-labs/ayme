@@ -1,5 +1,5 @@
-import { RuntimeStateError } from "./errors";
 import type { DecisionRequest } from "./decisionTypes";
+import { RuntimeStateError } from "./errors";
 
 const upstreamUrl = "https://openrouter.ai/api/v1/systemone";
 const maxBodyBytes = 1024 * 1024;

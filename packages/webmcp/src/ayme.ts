@@ -1,4 +1,3 @@
-import { RuntimeStateError } from "./errors";
 import type { PomDefinitionsResult } from "./contracts";
 import { getPageContextForDocument, type PageContext } from "./pageContext";
 import {
@@ -9,6 +8,7 @@ import {
 import { getPomDefinitions } from "./pomDefinitions";
 import { type ActionResult } from "./actionSequence";
 import { clickRef, fillRef } from "./refTools";
+import { RuntimeStateError } from "./errors";
 
 export type Ayme = {
   getPageContext(...names: readonly string[]): Promise<PageContext>;

@@ -1,4 +1,3 @@
-import { ToolInputError } from "./errors";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { JsonValue, PomDefinition } from "./contracts";
 import {
@@ -8,6 +7,7 @@ import {
 } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
+import { ToolInputError } from "./errors";
 
 type GetPageContextInput = { names?: string[] };
 

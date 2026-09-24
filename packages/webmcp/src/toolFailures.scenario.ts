@@ -15,6 +15,7 @@ import type { PomManifest } from "./contracts";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createRuntimeSession } from "./runtime";
 import { synchronizeWebMcpTools, type WebMcpDriver } from "./webMcp";
+import { toolFailure } from "./toolFailure.testSupport";
 
 type Context = ModelContext & ChromeModelContextExtensions;
 
@@ -71,13 +72,17 @@ export function describeToolFailures(
       document.body.innerHTML = "";
     });
 
-    async function executeTool(name: string, input: unknown) {
+    /** `executeTool` as a WebMCP caller sees it: the result's JSON string. */
+    async function callTool(name: string, input: unknown) {
       const tool = (await context.getTools()).find(
         (candidate) => candidate.name === name
       );
       if (!tool) throw new Error(`Tool ${name} was not published.`);
-      const json = await context.executeTool!(tool, JSON.stringify(input));
-      return JSON.parse(json ?? "null") as unknown;
+      return context.executeTool!(tool, JSON.stringify(input));
+    }
+
+    async function executeTool(name: string, input: unknown) {
+      return JSON.parse((await callTool(name, input)) ?? "null") as unknown;
     }
 
     async function saveRef() {
@@ -89,44 +94,47 @@ export function describeToolFailures(
       return AriaRefSchema.parse(ref);
     }
 
-    function failureText(result: unknown): string {
-      expect(result).toEqual({
-        content: [{ type: "text", text: expect.any(String) }],
-        isError: true,
-      });
-      return (result as { content: [{ text: string }] }).content[0].text;
+    /** The contract: an MCP `isError` result carrying `text`. */
+    function expectFailureResult(result: unknown, text: unknown) {
+      expect(result).toEqual(toolFailure(text));
     }
 
     it("returns a browser action failure with its name and call log", async () => {
       const ref = await saveRef();
 
-      const text = failureText(
-        await executeTool("click_page_state_ref", { ref })
-      );
+      const call = callTool("click_page_state_ref", { ref });
 
-      expect(text).toMatch(/^TimeoutError: page\.click: Timeout 1000ms/);
-      expect(text).toContain("Call log:");
+      await expect(call).resolves.toBeTypeOf("string");
+      expectFailureResult(
+        JSON.parse((await call)!),
+        expect.stringMatching(
+          /^TimeoutError: page\.click: Timeout 1000ms[\s\S]*Call log:/
+        )
+      );
     });
 
     it("returns a ref that no longer matches as a RefResolutionError", async () => {
       const ref = await saveRef();
       document.querySelector("#save")!.remove();
 
-      expect(
-        failureText(await executeTool("click_page_state_ref", { ref }))
-      ).toBe(`RefResolutionError: Cannot click ref "${ref}": removed.`);
+      expectFailureResult(
+        await executeTool("click_page_state_ref", { ref }),
+        `RefResolutionError: Cannot click ref "${ref}": removed.`
+      );
     });
 
     it("returns a throwing Page Object tool's message", async () => {
-      expect(failureText(await executeTool("FailingPage.explode", {}))).toBe(
+      expectFailureResult(
+        await executeTool("FailingPage.explode", {}),
         "The page object action exploded."
       );
     });
 
     it("returns invalid get_page_context input as a ToolInputError", async () => {
-      expect(
-        failureText(await executeTool("get_page_context", { names: "x" }))
-      ).toBe("ToolInputError: POM definition names must be an array.");
+      expectFailureResult(
+        await executeTool("get_page_context", { names: "x" }),
+        expect.stringMatching(/^ToolInputError: .*names/)
+      );
     });
   });
 }

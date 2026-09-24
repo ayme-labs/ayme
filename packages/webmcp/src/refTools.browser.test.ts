@@ -9,6 +9,7 @@ import {
   isFillableElement,
   type RefTool,
 } from "./refTools";
+import { toolFailure } from "./toolFailure.testSupport";
 
 type PublishedTool = {
   name: string;
@@ -25,12 +26,6 @@ type ActionResultShape = {
   settled: boolean;
   changes?: string;
 };
-
-/** A published tool's failure result (see `withErrorResult`). */
-const failure = (text: string) => ({
-  content: [{ type: "text", text }],
-  isError: true,
-});
 
 function createFakeDriver() {
   const published = new Map<string, Registration>();
@@ -260,7 +255,7 @@ describe("Ref Tools in Chromium", () => {
         ref: "e999",
       })
     ).resolves.toEqual(
-      failure(
+      toolFailure(
         'RefResolutionError: Cannot run "highlight_element" on ref "e999": unknown-ref.'
       )
     );
@@ -280,7 +275,7 @@ describe("Ref Tools in Chromium", () => {
         ref: saveRef,
       })
     ).resolves.toEqual(
-      failure(
+      toolFailure(
         `RefResolutionError: Cannot run "highlight_element" on ref "${saveRef}": removed.`
       )
     );

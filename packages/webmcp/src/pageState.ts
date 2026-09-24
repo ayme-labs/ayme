@@ -1,4 +1,3 @@
-import { RefResolutionError, ToolInputError } from "./errors";
 import { captureAriaSnapshot } from "@ayme-dev/playwright-lite/internal";
 import {
   AriaRefSchema,
@@ -18,6 +17,7 @@ import {
   type ReferencedCapturedRoot,
 } from "./pomRootPlacement";
 import { parseCapturedTree } from "./capturedTree";
+import { RefResolutionError, ToolInputError } from "./errors";
 
 const inputSchema = {
   type: "object",

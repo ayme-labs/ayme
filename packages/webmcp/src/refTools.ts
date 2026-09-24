@@ -1,14 +1,14 @@
-import {
-  RefResolutionError,
-  RuntimeStateError,
-  ToolInputError,
-} from "./errors";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import { completeAction, type ActionResult } from "./actionSequence";
 import type { JsonSchema, JsonValue } from "./contracts";
 import { resolvePageStateRefs, type AriaRef, type AymeNode } from "./pageState";
 import { requireAymeRuntimePage } from "./registry";
+import {
+  RefResolutionError,
+  RuntimeStateError,
+  ToolInputError,
+} from "./errors";
 
 /**
  * An operation that applies to one Structural Ref. One registration publishes

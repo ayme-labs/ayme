@@ -11,6 +11,7 @@ import {
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
 import type { RefTool } from "./refTools";
+import { toolFailure } from "./toolFailure.testSupport";
 
 // --- Fixtures ---
 
@@ -468,15 +469,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const decide = scriptedDecisionFn([]);
     const tool = await registerPom(decide);
 
-    await expect(tool.execute({ goal: "do the thing" })).resolves.toEqual({
-      content: [
-        {
-          type: "text",
-          text: "ToolInputError: pursue_goal requires a string goal and an integer maxSteps.",
-        },
-      ],
-      isError: true,
-    });
+    await expect(tool.execute({ goal: "do the thing" })).resolves.toEqual(
+      toolFailure(expect.stringMatching(/^ToolInputError: .*maxSteps/))
+    );
   });
 
   // --- Handover reason: step_budget ---

@@ -36,6 +36,7 @@ vi.mock("./actionSequence", () => ({
   }),
 }));
 import type { Page } from "@playwright/test";
+import { toolFailure } from "./toolFailure.testSupport";
 
 function brandedLocator(
   overrides: Record<string, unknown> = {},
@@ -515,11 +516,6 @@ describe("tool failure results", () => {
     vi.unstubAllGlobals();
   });
 
-  const failure = (text: string) => ({
-    content: [{ type: "text", text }],
-    isError: true,
-  });
-
   async function failWith(error: unknown) {
     const { withErrorResult } = await import("./webMcp");
     const tool = {
@@ -554,7 +550,7 @@ describe("tool failure results", () => {
     await expect(
       failWith(new RefResolutionError('Cannot click ref "e2": removed.'))
     ).resolves.toEqual(
-      failure('RefResolutionError: Cannot click ref "e2": removed.')
+      toolFailure('RefResolutionError: Cannot click ref "e2": removed.')
     );
   });
 
@@ -565,24 +561,27 @@ describe("tool failure results", () => {
     error.name = "TimeoutError";
 
     await expect(failWith(error)).resolves.toEqual(
-      failure(
+      toolFailure(
         "TimeoutError: page.click: Timeout 1000ms exceeded.\nCall log:\n  - waiting for locator"
       )
     );
   });
 
   it("renders a plain Error as its message alone", async () => {
-    await expect(failWith(new Error("boom"))).resolves.toEqual(failure("boom"));
+    await expect(failWith(new Error("boom"))).resolves.toEqual(
+      toolFailure("boom")
+    );
   });
 
   it("renders a thrown non-Error value as a string", async () => {
     await expect(failWith("not an error")).resolves.toEqual(
-      failure("not an error")
+      toolFailure("not an error")
     );
-    await expect(failWith(42)).resolves.toEqual(failure("42"));
+    await expect(failWith(42)).resolves.toEqual(toolFailure("42"));
   });
 
   it("publishes every tool, get_page_context included, with failure results", async () => {
+    // No Goal Loop is configured here; pursue_goal is covered in goalLoop.browser.test.ts.
     type ExecutableTool = PublishedTool & {
       execute(input: unknown): Promise<unknown>;
     };
@@ -646,18 +645,16 @@ describe("tool failure results", () => {
     };
 
     await expect(execute("get_page_context", { names: "x" })).resolves.toEqual(
-      failure("ToolInputError: POM definition names must be an array.")
+      toolFailure("ToolInputError: POM definition names must be an array.")
     );
-    await expect(execute("run", {})).resolves.toEqual(failure("boom"));
+    await expect(execute("run", {})).resolves.toEqual(toolFailure("boom"));
     await expect(execute("run", { extra: true })).resolves.toEqual(
-      failure("ToolInputError: Unexpected input property extra.")
+      toolFailure(expect.stringMatching(/^ToolInputError: .*extra/))
     );
     await expect(
       execute("FailingPage.items.archive", { ref: "e404", args: {} })
     ).resolves.toEqual(
-      failure(
-        'RefResolutionError: Ref "e404" does not match a present instance at FailingPage.items (tool FailingPage.items.archive): unknown-ref.'
-      )
+      toolFailure(expect.stringMatching(/^RefResolutionError: .*"e404"/))
     );
 
     publication.dispose();

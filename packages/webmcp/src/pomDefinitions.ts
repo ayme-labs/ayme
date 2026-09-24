@@ -1,4 +1,3 @@
-import { RefResolutionError, ToolInputError } from "./errors";
 import type {
   PomComponentManifest,
   PomDefinition,
@@ -7,6 +6,7 @@ import type {
   PomManifest,
 } from "./contracts";
 import { listRegisteredPoms } from "./registry";
+import { RefResolutionError, ToolInputError } from "./errors";
 
 type DefinitionNode = {
   name: string;

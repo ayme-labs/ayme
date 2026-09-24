@@ -1,4 +1,3 @@
-import { RuntimeStateError } from "./errors";
 import type { RegisteredPomTool } from "./contracts";
 import { getPursueGoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
@@ -8,6 +7,7 @@ import {
   subscribeToRegisteredPoms,
   probeRegisteredPomMembers,
 } from "./registry";
+import { RuntimeStateError } from "./errors";
 
 type PublishedTool =
   RegisteredPomTool | typeof getPageContextTool | PublishedRefTool;
@@ -39,12 +39,13 @@ export function withErrorResult<T extends { execute(input: unknown): unknown }>(
 }
 
 function toolErrorResult(error: unknown): ToolErrorResult {
-  const text = !(error instanceof Error)
-    ? String(error)
-    : error.name && error.name !== "Error"
-      ? `${error.name}: ${error.message}`
-      : error.message;
-  return { content: [{ type: "text", text }], isError: true };
+  return { content: [{ type: "text", text: errorText(error) }], isError: true };
+}
+
+function errorText(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  if (!error.name || error.name === "Error") return error.message;
+  return `${error.name}: ${error.message}`;
 }
 
 export type WebMcpDriver = Pick<

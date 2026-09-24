@@ -1,4 +1,3 @@
-import { ToolInputError } from "./errors";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { JsonValue } from "./contracts";
@@ -22,6 +21,7 @@ import {
   type ExecutableTool,
   type NoulAnswer,
 } from "./goalLoopQuestions";
+import { ToolInputError } from "./errors";
 
 export type GoalLoopDecisionFunction = (
   request: DecisionRequest

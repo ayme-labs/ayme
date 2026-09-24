@@ -1,8 +1,3 @@
-import {
-  RefResolutionError,
-  RuntimeStateError,
-  ToolInputError,
-} from "./errors";
 import type {
   JsonSchema,
   PomComponentManifest,
@@ -28,6 +23,11 @@ import {
   type AriaRef,
 } from "./pageState";
 import { completeAction, type ActionResult } from "./actionSequence";
+import {
+  RefResolutionError,
+  RuntimeStateError,
+  ToolInputError,
+} from "./errors";
 
 export type PageObjectConstructor<T extends object = object> = new (
   page: Page
