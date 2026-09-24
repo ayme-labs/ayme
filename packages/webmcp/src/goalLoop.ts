@@ -216,6 +216,10 @@ async function pursueGoal(
   const errorTextOf = (error: unknown) =>
     error instanceof Error ? error.message : String(error);
 
+  /** How a `needs_value` Handover ends when the model could not pick a closed-set value. */
+  const pickYourself = (parameter: string) =>
+    `Read the page context, pick "${parameter}" yourself and call the operation directly, or try a different approach.`;
+
   /** A decision the loop could not obtain ends the run; the error travels on. */
   const decideFailed = (error: unknown): GoalLoopRunResult =>
     done({
@@ -332,7 +336,7 @@ async function pursueGoal(
     if (plan.kind === "needs_ref_choice") {
       return done({
         reason: "needs_value",
-        next: `The operation "${chosenTool.name}" acts on one element, and the loop found no element on the current page it applies to. Read the page context, pick "${plan.parameter}" yourself and call the operation directly, or try a different approach.`,
+        next: `The operation "${chosenTool.name}" acts on one element, and the loop found no element on the current page it applies to. ${pickYourself(plan.parameter)}`,
         history,
         needs: { tool: chosenTool.name, parameters: [plan.parameter] },
       });
@@ -344,7 +348,7 @@ async function pursueGoal(
           plan.optionCount === 0
             ? "the loop found no instance on the current page"
             : "the current page holds more of them than one decision can offer"
-        }. Read the page context, pick "${plan.parameter}" yourself and call the operation directly, or try a different approach.`,
+        }. ${pickYourself(plan.parameter)}`,
         history,
         needs: { tool: chosenTool.name, parameters: [plan.parameter] },
       });
@@ -395,9 +399,6 @@ async function pursueGoal(
           history,
         });
       }
-
-      // The stage-two scores are kept even when the run-off below fails.
-      score.argumentProbabilities = argumentAnswers.chosen.probabilities;
 
       // Several chunks each named an element: one run-off among exactly those.
       if (argumentAnswers.kind === "run_off") {

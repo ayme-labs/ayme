@@ -227,7 +227,7 @@ goal is met. When the chosen operation takes arguments the model can pick from
 a closed set — a Structural Ref, an enum value or a boolean — a second request
 asks for all of them at once and the operation runs with the chosen values.
 The ref options are the elements the operation's `filter` keeps, one option per
-element in page order; nothing is merged or ranked. One question takes at most
+element in document order; nothing is merged or ranked. One question takes at most
 255 options. When the elements outnumber that, they are cut into contiguous
 chunks of at most 254 plus "none of these", asked side by side in the same
 request. When exactly one chunk names an element the operation runs on it; when
@@ -251,14 +251,14 @@ loop with `needs_value` so that the calling agent supplies it.
 }
 ```
 
-| Reason              | Meaning                                                                                                      |
-| ------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `done`              | The model judged the goal achieved (goal_met ≥ 0.5).                                                         |
-| `no_fitting_option` | The model chose "none" — no available operation fits.                                                        |
-| `needs_value`       | The chosen operation needs parameter values the loop cannot fill. `needs` names the tool and its parameters. |
-| `action_failed`     | Two operations failed in a row.                                                                              |
-| `step_budget`       | `maxSteps` exhausted before the goal was achieved.                                                           |
-| `decide_failed`     | The decision function failed (network, rejected, malformed).                                                 |
+| Reason              | Meaning                                                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `done`              | The model judged the goal achieved (goal_met ≥ 0.5).                                                              |
+| `no_fitting_option` | The model chose "none" — no available operation fits — or every chunk of a ref question answered "none of these". |
+| `needs_value`       | The chosen operation needs parameter values the loop cannot fill. `needs` names the tool and its parameters.      |
+| `action_failed`     | Two operations failed in a row.                                                                                   |
+| `step_budget`       | `maxSteps` exhausted before the goal was achieved.                                                                |
+| `decide_failed`     | The decision function failed (network, rejected, malformed).                                                      |
 
 The `next` field tells the calling agent what to do in plain words. History
 records each operation the loop ran: a readable label in `did`, `"ok"` or an

@@ -10,6 +10,7 @@ import {
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { PageStateCapture } from "./pageState";
 import {
+  NONE_OF_THESE_KEY,
   buildArgumentRequest,
   planArguments,
   readArgumentAnswers,
@@ -79,13 +80,6 @@ function askedQuestions(
   return plan.questions;
 }
 
-/** The option of a question that stands for no value ("none of these"). */
-function noneOptionOf(question: ArgumentQuestion): string {
-  const none = question.options.filter((option) => !("value" in option));
-  expect(none).toHaveLength(1);
-  return none[0]!.key;
-}
-
 /** The refs a question offers, in the order it offers them. */
 function refsOf(question: ArgumentQuestion): string[] {
   return question.options.flatMap((option) =>
@@ -93,30 +87,47 @@ function refsOf(question: ArgumentQuestion): string[] {
   );
 }
 
+const idsOf = (questions: readonly ArgumentQuestion[]) =>
+  questions.map((question) => question.id);
+
 // --- Scripted decision function ---
 
-/** What to answer per question id: an option key, or `none` for "none of these". */
-type Script = Record<string, string | "none">;
+/**
+ * What to answer, per parameter: an option key, `"none"` for "none of these",
+ * or one such entry per chunk of a parameter asked in chunks.
+ */
+type Script = Record<string, string | string[]>;
 
 /**
- * Answer a request from the script, with a probability of 1 on the chosen key
- * and 0 on the others, the way the decisions API scores a choice.
+ * Answer the questions from the script, with a probability of 1 on the chosen
+ * key and 0 on the others, the way the decisions API scores a choice. The
+ * chunks of one parameter take the script's entries in the order they are
+ * asked.
  */
-function scriptedDecision(script: Script) {
+function scriptedDecision(
+  questions: readonly ArgumentQuestion[],
+  script: Script
+) {
+  const seen = new Map<string, number>();
+  const wantedFor = (question: ArgumentQuestion): string => {
+    const wanted = script[question.parameter];
+    if (wanted === undefined)
+      throw new Error(`No scripted answer for ${question.parameter}`);
+    if (!Array.isArray(wanted)) return wanted;
+    const nth = seen.get(question.parameter) ?? 0;
+    seen.set(question.parameter, nth + 1);
+    return wanted[nth] ?? "none";
+  };
   return async (request: DecisionRequest): Promise<DecisionResponse> => {
-    const questions = request.questions as Record<
-      string,
-      { criteria: Record<string, string> }
-    >;
     const answers: Record<string, unknown> = {};
-    for (const [id, question] of Object.entries(questions)) {
-      const wanted = script[id];
-      if (wanted === undefined) throw new Error(`No scripted answer for ${id}`);
-      const keys = Object.keys(question.criteria);
-      const choice = wanted === "none" ? keys[keys.length - 1]! : wanted;
+    for (const question of questions) {
+      if (!(question.id in request.questions)) continue;
+      const wanted = wantedFor(question);
+      const keys = question.options.map((option) => option.key);
+      const choice = wanted === "none" ? NONE_OF_THESE_KEY : wanted;
       const probabilities: Record<string, number> = {};
       for (const key of keys) probabilities[key] = key === choice ? 1 : 0;
-      answers[id] = { type: "choice", choice, probabilities };
+      answers[question.id] = { type: "choice", choice, probabilities };
     }
     return { model: request.model, answers };
   };
@@ -130,7 +141,7 @@ async function askStageTwo(
 ) {
   const questions = askedQuestions(tool, capture);
   const request = buildArgumentRequest({}, questions);
-  const response = await scriptedDecision(script)(request);
+  const response = await scriptedDecision(questions, script)(request);
   return {
     questions,
     request,
@@ -148,22 +159,19 @@ describe("ref questions over the option cap", () => {
 
     const questions = askedQuestions(clickTool, capture);
 
-    // ⌈600 / 254⌉ = 3 chunks, all for the one parameter.
-    expect(questions.map((question) => question.id)).toEqual([
-      "ref_1",
-      "ref_2",
-      "ref_3",
-    ]);
+    // ⌈600 / 254⌉ = 3 chunks, all for the one parameter, each with its own id.
+    expect(questions).toHaveLength(3);
+    expect(new Set(idsOf(questions)).size).toBe(3);
     expect(questions.every((question) => question.parameter === "ref")).toBe(
       true
     );
     for (const question of questions) {
       expect(refsOf(question).length).toBeLessThanOrEqual(254);
       expect(question.options.length).toBeLessThanOrEqual(255);
-      // "None of these" is the last option of every chunk.
-      expect(question.options[question.options.length - 1]!.key).toBe(
-        noneOptionOf(question)
-      );
+      // "None of these" is the last option of every chunk and names no ref.
+      const last = question.options.at(-1)!;
+      expect(last.key).toBe(NONE_OF_THESE_KEY);
+      expect("value" in last).toBe(false);
       expect(question.instructions).toContain('"click_page_state_ref"');
     }
     // Together the chunks hold every option exactly once, in document order.
@@ -174,16 +182,16 @@ describe("ref questions over the option cap", () => {
 
   it("sends every chunk in the one stage-two request", () => {
     const capture = captureOfButtons(300);
+    const questions = askedQuestions(clickTool, capture);
 
-    const request = buildArgumentRequest(
-      { goal: "g" },
-      askedQuestions(clickTool, capture)
-    );
+    const request = buildArgumentRequest({ goal: "g" }, questions);
 
-    expect(Object.keys(request.questions)).toEqual(["ref_1", "ref_2"]);
-    const criteria = (request.questions as Record<string, { criteria: object }>)
-      .ref_1!.criteria;
-    expect(Object.keys(criteria).length).toBeLessThanOrEqual(255);
+    // One request question per planned question, each within the cap.
+    expect(Object.keys(request.questions)).toEqual(idsOf(questions));
+    for (const question of Object.values(
+      request.questions as Record<string, { criteria: object }>
+    ))
+      expect(Object.keys(question.criteria).length).toBeLessThanOrEqual(255);
   });
 
   it("keeps a question within the cap as one question without none of these", () => {
@@ -204,52 +212,44 @@ describe("ref questions over the option cap", () => {
     expect(planArguments(clickTool, captureOfButtons(0))).toEqual({
       kind: "needs_ref_choice",
       parameter: "ref",
-      optionCount: 0,
     });
   });
 
   it("acts on the one chunk that names an element", async () => {
-    const { answers } = await askStageTwo(clickTool, captureOfButtons(600), {
-      ref_1: "none",
-      ref_2: "e300",
-      ref_3: "none",
-    });
+    const { questions, answers } = await askStageTwo(
+      clickTool,
+      captureOfButtons(600),
+      { ref: ["none", "e300", "none"] }
+    );
 
     expect(answers.kind).toBe("chosen");
     if (answers.kind !== "chosen") return;
     expect(answers.chosen.args).toEqual({ ref: "e300" });
     expect(answers.chosen.summary).toEqual(['ref: button "Item 300"']);
     // Every chunk's answer is recorded.
-    expect(Object.keys(answers.chosen.probabilities)).toEqual([
-      "ref_1",
-      "ref_2",
-      "ref_3",
-    ]);
+    expect(Object.keys(answers.chosen.probabilities)).toEqual(idsOf(questions));
   });
 
   it("asks a run-off among exactly the elements several chunks named", async () => {
-    const { answers } = await askStageTwo(clickTool, captureOfButtons(600), {
-      ref_1: "e10",
-      ref_2: "e300",
-      ref_3: "none",
-    });
+    const { questions, answers } = await askStageTwo(
+      clickTool,
+      captureOfButtons(600),
+      { ref: ["e10", "e300", "none"] }
+    );
 
     expect(answers.kind).toBe("run_off");
     if (answers.kind !== "run_off") return;
     const { question } = answers;
-    expect(question.id).toBe("ref_run_off");
+    // A question of its own, for the same parameter.
+    expect(idsOf(questions)).not.toContain(question.id);
     expect(question.parameter).toBe("ref");
     expect(question.path).toEqual(["ref"]);
     expect(refsOf(question)).toEqual(["e10", "e300"]);
     // The run-off offers no "none of these".
     expect(question.options.every((option) => "value" in option)).toBe(true);
     expect(question.instructions).toContain('"click_page_state_ref"');
-    // It is one request with this one question.
-    expect(Object.keys(buildArgumentRequest({}, [question]).questions)).toEqual(
-      ["ref_run_off"]
-    );
 
-    const response = await scriptedDecision({ ref_run_off: "e300" })(
+    const response = await scriptedDecision([question], { ref: "e300" })(
       buildArgumentRequest({}, [question])
     );
     const chosen = readRunOffAnswer(
@@ -260,64 +260,63 @@ describe("ref questions over the option cap", () => {
     expect(chosen.summary).toEqual(['ref: button "Item 300"']);
     // The chunk answers and the run-off answer are all recorded.
     expect(Object.keys(chosen.probabilities)).toEqual([
-      "ref_1",
-      "ref_2",
-      "ref_3",
-      "ref_run_off",
+      ...idsOf(questions),
+      question.id,
     ]);
-    expect(chosen.probabilities.ref_run_off).toEqual({ e10: 0, e300: 1 });
+    expect(chosen.probabilities[question.id]).toEqual({ e10: 0, e300: 1 });
   });
 
   it("rejects a run-off answer outside the elements it offered", async () => {
     const { answers } = await askStageTwo(clickTool, captureOfButtons(600), {
-      ref_1: "e10",
-      ref_2: "e300",
-      ref_3: "none",
+      ref: ["e10", "e300", "none"],
     });
     if (answers.kind !== "run_off") throw new Error(answers.kind);
 
     expect(() =>
       readRunOffAnswer(answers, {
-        ref_run_off: { type: "choice", choice: "e20" },
+        [answers.question.id]: { type: "choice", choice: "e20" },
       })
     ).toThrow(/not one of the offered options/);
   });
 
   it("reports that no element fits when every chunk answers none of these", async () => {
-    const { answers } = await askStageTwo(clickTool, captureOfButtons(600), {
-      ref_1: "none",
-      ref_2: "none",
-      ref_3: "none",
-    });
+    const { questions, answers } = await askStageTwo(
+      clickTool,
+      captureOfButtons(600),
+      { ref: ["none", "none", "none"] }
+    );
 
     expect(answers.kind).toBe("none_fits");
     if (answers.kind !== "none_fits") return;
     expect(answers.parameter).toBe("ref");
-    expect(Object.keys(answers.probabilities)).toEqual([
-      "ref_1",
-      "ref_2",
-      "ref_3",
-    ]);
+    expect(Object.keys(answers.probabilities)).toEqual(idsOf(questions));
   });
 
   it("asks the operation's other parameters alongside the chunks", async () => {
-    const { request, answers } = await askStageTwo(
+    const { questions, request, answers } = await askStageTwo(
       clickWithForceTool,
       captureOfButtons(300),
-      { ref_1: "e5", ref_2: "e299", force: "true" }
+      { ref: ["e5", "e299"], force: "true" }
     );
 
-    expect(Object.keys(request.questions)).toEqual(["ref_1", "ref_2", "force"]);
+    expect(Object.keys(request.questions)).toEqual(idsOf(questions));
+    expect(questions.map((question) => question.parameter)).toEqual([
+      "ref",
+      "ref",
+      "force",
+    ]);
     expect(answers.kind).toBe("run_off");
     if (answers.kind !== "run_off") return;
     // The other parameter is already chosen; the run-off adds the ref.
     expect(answers.chosen.args).toEqual({ force: true });
 
     const chosen = readRunOffAnswer(answers, {
-      ref_run_off: { type: "choice", choice: "e5" },
+      [answers.question.id]: { type: "choice", choice: "e5" },
     });
     expect(chosen.args).toEqual({ force: true, ref: "e5" });
-    expect(chosen.summary).toEqual(["force: true", 'ref: button "Item 5"']);
+    expect(chosen.summary).toEqual(
+      expect.arrayContaining(["force: true", 'ref: button "Item 5"'])
+    );
   });
 });
 

@@ -31,10 +31,36 @@ const LEAVE_UNSET_KEY = "leave_unset";
  * the cap: the chunks are asked side by side, so all but one usually hold no
  * fitting element. Under the cap a ref question has no such choice.
  */
-const NONE_OF_THESE_KEY = "none_of_these";
+export const NONE_OF_THESE_KEY = "none_of_these";
 
 /** A chunk holds at most this many elements, leaving room for "none of these". */
 const MAX_CHUNK_ELEMENTS = MAX_CHOICE_OPTIONS - 1;
+
+// --- Question ids ---
+//
+// A question is normally identified by its parameter's name. A ref parameter
+// over the cap is asked as several questions, so those carry ids of their own.
+// The format lives here only; tests match ids through `isQuestionOf`.
+
+/** The id of the `ordinal`-th chunk (1-based) of a parameter's options. */
+export function chunkQuestionId(parameter: string, ordinal: number): string {
+  return `${parameter}_${ordinal}`;
+}
+
+/** The id of the run-off among the elements a parameter's chunks named. */
+export function runOffQuestionId(parameter: string): string {
+  return `${parameter}_run_off`;
+}
+
+/** Whether a question id belongs to a parameter: its own, a chunk's or the run-off's. */
+export function isQuestionOf(parameter: string, questionId: string): boolean {
+  return (
+    questionId === parameter ||
+    questionId === runOffQuestionId(parameter) ||
+    (questionId.startsWith(parameter) &&
+      /^_[1-9]\d*$/.test(questionId.slice(parameter.length)))
+  );
+}
 
 // --- Operations offered in stage one ---
 
@@ -206,8 +232,8 @@ export type ArgumentQuestion = {
   /**
    * The question id in the request. It is the parameter's name, except for a
    * ref parameter whose elements outnumber the cap: each chunk of its options
-   * is one question (`ref_1`, `ref_2`, …), and a run-off among the chunks'
-   * answers is `ref_run_off`.
+   * is one question (`chunkQuestionId`), and a run-off among the chunks'
+   * answers is another (`runOffQuestionId`).
    */
   id: string;
   /** The parameter the answer fills: its name, dotted inside a nested object. */
@@ -225,7 +251,7 @@ export type ArgumentPlan =
   /** A required value outside the closed sets: the calling agent supplies it. */
   | { kind: "needs_free_value"; parameters: string[] }
   /** No element on the page is one the operation's ref may address. */
-  | { kind: "needs_ref_choice"; parameter: string; optionCount: number }
+  | { kind: "needs_ref_choice"; parameter: string }
   /** The instances of a collection do not make a choice the model can answer. */
   | { kind: "needs_instance_choice"; parameter: string; optionCount: number }
   /** The values of a closed set do not make a choice the model can answer. */
@@ -329,12 +355,17 @@ function describeOperation(tool: ExecutableTool): string {
   return `The operation is "${tool.name}": ${tool.description}`;
 }
 
+/** The sentence every question about a ref parameter starts with. */
+function pickElementSentence(parameter: string): string {
+  return `Pick the element this operation acts on as its ${parameter} parameter.`;
+}
+
 function argumentInstructions(tool: ExecutableTool, arg: ArgumentSpec): string {
   const parameter = describeParameter(arg);
   const operation = describeOperation(tool);
   switch (arg.closedSet?.kind) {
     case "ref":
-      return `Pick the element this operation acts on as its ${parameter} parameter. ${operation}`;
+      return `${pickElementSentence(parameter)} ${operation}`;
     case "instance":
       return `Pick the instance this operation acts on as its ${parameter} parameter. ${operation}`;
     default:
@@ -361,12 +392,12 @@ function chunkedRefQuestions(
     const from = index * size;
     const chunk = options.slice(from, from + size);
     return {
-      id: `${arg.name}_${index + 1}`,
+      id: chunkQuestionId(arg.name, index + 1),
       parameter: arg.name,
       path: arg.path,
       instructions:
-        `Pick the element this operation acts on as its ${parameter} parameter. ` +
-        `The page holds ${options.length} candidate elements, split in page order over ${count} questions; ` +
+        `${pickElementSentence(parameter)} ` +
+        `The page holds ${options.length} candidate elements, split in document order over ${count} questions; ` +
         `this one offers elements ${from + 1} to ${from + chunk.length}. ` +
         `Choose "${NONE_OF_THESE_KEY}" when the element is not among these. ` +
         describeOperation(tool),
@@ -391,7 +422,7 @@ function runOffQuestion(
   named: readonly ArgumentOption[]
 ): ArgumentQuestion {
   return {
-    id: `${chunk.parameter}_run_off`,
+    id: runOffQuestionId(chunk.parameter),
     parameter: chunk.parameter,
     path: chunk.path,
     instructions:
@@ -446,13 +477,14 @@ export function planArguments(
     // loop cannot ask about is left unset, like the choice it would have had.
     if (options.length === 0 || options.length > MAX_CHOICE_OPTIONS) {
       if (arg.optional) continue;
+      // A ref gets here only with no element left to offer.
+      if (closedSet.kind === "ref")
+        return { kind: "needs_ref_choice", parameter: arg.name };
       return {
         kind:
           closedSet.kind === "values"
             ? "needs_value_choice"
-            : closedSet.kind === "instance"
-              ? "needs_instance_choice"
-              : "needs_ref_choice",
+            : "needs_instance_choice",
         parameter: arg.name,
         optionCount: options.length,
       };
@@ -703,6 +735,7 @@ export function readArgumentAnswers(
     byParameter.set(pick.question.parameter, group);
   }
 
+  // Only a `ref` is chunked and an operation has one, so at most one run-off.
   let runOff: ArgumentQuestion | undefined;
   for (const [parameter, group] of byParameter) {
     const named = group.filter((pick) => "value" in pick.option);
@@ -734,7 +767,7 @@ export function readArgumentAnswers(
 
 /** Read the run-off's answer and complete the arguments with it. */
 export function readRunOffAnswer(
-  runOff: { chosen: ChosenArguments; question: ArgumentQuestion },
+  runOff: Extract<ArgumentAnswers, { kind: "run_off" }>,
   answers: Record<string, unknown>
 ): ChosenArguments {
   const chosen: ChosenArguments = {
