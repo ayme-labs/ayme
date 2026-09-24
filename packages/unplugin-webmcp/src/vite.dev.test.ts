@@ -103,13 +103,23 @@ it("recompiles a decorated subclass after its base class file changes", async ()
     },
     server: { middlewareMode: true, ws: false },
     optimizeDeps: { noDiscovery: true, include: [] },
+    // A custom browser environment besides client, e.g. a worker graph.
+    environments: { worker: { consumer: "client" } },
   });
-  const environment = server.environments.client;
+  const environments = [
+    server.environments.client,
+    server.environments.worker!,
+  ] as const;
   const baseFile = join(projectRoot, "src/base.ts");
-  const subDescription = async () =>
-    (await environment.transformRequest("/src/sub.ts"))?.code.match(
-      /"description":\s*"(\w+)"/
-    )?.[1];
+  const subDescriptions = () =>
+    Promise.all(
+      environments.map(
+        async (environment) =>
+          (await environment.transformRequest("/src/sub.ts"))?.code.match(
+            /"description":\s*"(\w+)"/
+          )?.[1]
+      )
+    );
   const editBase = async (description: string) => {
     const changed = new Promise<void>((resolve) => {
       const onChange = (file: string) => {
@@ -125,13 +135,15 @@ it("recompiles a decorated subclass after its base class file changes", async ()
     await new Promise((resolve) => setTimeout(resolve, 100));
   };
 
-  await environment.transformRequest("/src/main.ts");
-  await environment.transformRequest("/src/base.ts");
-  expect(await subDescription()).toBe("ORIGINAL");
+  for (const environment of environments) {
+    await environment.transformRequest("/src/main.ts");
+    await environment.transformRequest("/src/base.ts");
+  }
+  expect(await subDescriptions()).toEqual(["ORIGINAL", "ORIGINAL"]);
 
   await editBase("CHANGED");
-  expect(await subDescription()).toBe("CHANGED");
+  expect(await subDescriptions()).toEqual(["CHANGED", "CHANGED"]);
 
   await editBase("CHANGEDAGAIN");
-  expect(await subDescription()).toBe("CHANGEDAGAIN");
+  expect(await subDescriptions()).toEqual(["CHANGEDAGAIN", "CHANGEDAGAIN"]);
 });
