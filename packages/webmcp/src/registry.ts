@@ -1,3 +1,8 @@
+import {
+  RefResolutionError,
+  RuntimeStateError,
+  ToolInputError,
+} from "./errors";
 import type {
   JsonSchema,
   PomComponentManifest,
@@ -83,19 +88,25 @@ const layoutEvents = [
 
 export function configureAymeRuntime(page: Page) {
   if (runtimeOwner)
-    throw new Error("The Ayme runtime already has an active owner.");
+    throw new RuntimeStateError(
+      "The Ayme runtime already has an active owner."
+    );
   browserPage = page;
 }
 
 export function requireAymeRuntimePage(): Page {
   if (!browserPage)
-    throw new Error("Configure the Ayme browser runtime before interacting.");
+    throw new RuntimeStateError(
+      "Configure the Ayme browser runtime before interacting."
+    );
   return browserPage;
 }
 
 export function createAymeRuntime(page?: object) {
   if (runtimeOwner)
-    throw new Error("The Ayme runtime already has an active owner.");
+    throw new RuntimeStateError(
+      "The Ayme runtime already has an active owner."
+    );
 
   resetRegisteredPoms();
   browserPage = undefined;
@@ -131,13 +142,13 @@ export function createPageRegistration<T extends object>(
 ) {
   const page = browserPage;
   if (!page)
-    throw new Error(
+    throw new RuntimeStateError(
       "Configure the Ayme browser runtime before registering a page object."
     );
 
   const compiledPom = compiledPoms.get(PomClass);
   if (!compiledPom)
-    throw new Error(
+    throw new RuntimeStateError(
       "The imported page object has no compiler-derived Ayme metadata."
     );
 
@@ -150,7 +161,7 @@ export function constructPageObject<T extends object>(
   page: Page
 ): T {
   if (!compiledPoms.has(PomClass))
-    throw new Error(
+    throw new RuntimeStateError(
       "The imported page object has no compiler-derived Ayme metadata."
     );
   return new PomClass(page);
@@ -162,7 +173,7 @@ export function registerPageObject<T extends object>(
 ) {
   const compiledPom = compiledPoms.get(PomClass);
   if (!compiledPom)
-    throw new Error(
+    throw new RuntimeStateError(
       "The imported page object has no compiler-derived Ayme metadata."
     );
   const registration: ObservedRegisteredPom = {
@@ -586,7 +597,7 @@ function createComponentTool(
         element
       );
       if (!componentInstance || !isRecord(componentInstance)) {
-        throw new Error(
+        throw new RefResolutionError(
           `Ref "${ref}" does not match a present ${component.className} instance at ${toolPath} (tool ${wrapper.toolName}).`
         );
       }
@@ -618,7 +629,7 @@ function createSingularComponentTool(
         path
       );
       if (!componentInstance || !isRecord(componentInstance)) {
-        throw new Error(
+        throw new RefResolutionError(
           `No ${component.className} instance exists at ${pomId}.${publicComponentPath(path)}.`
         );
       }
@@ -687,7 +698,7 @@ async function resolveRefToElement(
   const resolutions = await resolvePageStateRefs(document, ref);
   const resolution = resolutions[0];
   if (!resolution || resolution.status === "unresolved")
-    throw new Error(
+    throw new RefResolutionError(
       `Ref "${ref}" does not match a present instance at ${toolPath} (tool ${toolName}): ${resolution?.reason ?? "unknown-ref"}.`
     );
   return resolution.node.element;
@@ -887,7 +898,9 @@ async function probeMembers(
       const value = await readMember(instance, member);
       if (member.kind === "locator") {
         if (!isLocator(value))
-          throw new Error(`POM member ${memberPath} is not a browser locator.`);
+          throw new RuntimeStateError(
+            `POM member ${memberPath} is not a browser locator.`
+          );
         observations.push({
           memberName: memberPath,
           kind: "locator",
@@ -899,7 +912,7 @@ async function probeMembers(
 
       const componentManifest = components.get(member.componentClassName);
       if (!componentManifest)
-        throw new Error(
+        throw new RuntimeStateError(
           `No metadata found for component ${member.componentClassName}.`
         );
       const componentValues = member.collection ? asComponents(value) : [value];
@@ -971,7 +984,9 @@ async function readMember(instance: object, member: PomMemberManifest) {
   const value = Reflect.get(instance, member.memberName);
   if (member.access === "method") {
     if (!isCallable(value))
-      throw new Error(`POM member ${member.memberName} is not callable.`);
+      throw new RuntimeStateError(
+        `POM member ${member.memberName} is not callable.`
+      );
     return await value.apply(instance, []);
   }
   return await value;
@@ -984,7 +999,9 @@ async function executeTool(
 ): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
   if (!isCallable(method))
-    throw new Error(`POM method ${tool.methodName} is not callable.`);
+    throw new RuntimeStateError(
+      `POM method ${tool.methodName} is not callable.`
+    );
 
   const currentDocument = requireCurrentDocument();
   // A tool may be called without the caller ever having read the page; the
@@ -996,7 +1013,9 @@ async function executeTool(
 
 function requireCurrentDocument(): Document {
   if (typeof document === "undefined")
-    throw new Error("POM tool execution requires a browser Document.");
+    throw new RuntimeStateError(
+      "POM tool execution requires a browser Document."
+    );
   return document;
 }
 
@@ -1007,14 +1026,16 @@ function validatedArguments(tool: ToolManifest, args: unknown) {
   );
   for (const name of Object.keys(input)) {
     if (!knownParameterNames.has(name))
-      throw new Error(`Unexpected input property ${name}.`);
+      throw new ToolInputError(`Unexpected input property ${name}.`);
   }
 
   return tool.parameters.map((parameter) => {
     const value = input[parameter.name];
     if (value === undefined) {
       if (parameter.optional) return undefined;
-      throw new Error(`Missing required input property ${parameter.name}.`);
+      throw new ToolInputError(
+        `Missing required input property ${parameter.name}.`
+      );
     }
     validateValue(parameter.name, parameter.schema, value);
     return value;
@@ -1028,14 +1049,14 @@ function validateValue(name: string, schema: JsonSchema, value: unknown) {
     if (schema.additionalProperties === false) {
       for (const propertyName of Object.keys(object)) {
         if (!properties[propertyName])
-          throw new Error(
+          throw new ToolInputError(
             `Input property ${name}.${propertyName} is not supported.`
           );
       }
     }
     for (const requiredProperty of schema.required ?? []) {
       if (object[requiredProperty] === undefined) {
-        throw new Error(
+        throw new ToolInputError(
           `Input property ${name}.${requiredProperty} is required.`
         );
       }
@@ -1050,16 +1071,18 @@ function validateValue(name: string, schema: JsonSchema, value: unknown) {
 
   if (schema.type === "integer") {
     if (!Number.isInteger(value) || typeof value !== "number") {
-      throw new Error(`Input property ${name} must be an integer.`);
+      throw new ToolInputError(`Input property ${name} must be an integer.`);
     }
   } else if (schema.type && typeof value !== schema.type) {
-    throw new Error(`Input property ${name} must be a ${schema.type}.`);
+    throw new ToolInputError(
+      `Input property ${name} must be a ${schema.type}.`
+    );
   }
   if (
     schema.minimum !== undefined &&
     (typeof value !== "number" || value < schema.minimum)
   ) {
-    throw new Error(
+    throw new ToolInputError(
       `Input property ${name} must be at least ${schema.minimum}.`
     );
   }
@@ -1067,7 +1090,7 @@ function validateValue(name: string, schema: JsonSchema, value: unknown) {
     schema.enum &&
     (!isJsonPrimitive(value) || !schema.enum.includes(value))
   ) {
-    throw new Error(
+    throw new ToolInputError(
       `Input property ${name} must be one of ${schema.enum.join(", ")}.`
     );
   }
@@ -1108,13 +1131,13 @@ function isPomComponent(value: unknown): value is { root: Locator } {
 
 function asComponents(value: unknown): unknown[] {
   if (!Array.isArray(value))
-    throw new Error("Expected a component collection array.");
+    throw new RuntimeStateError("Expected a component collection array.");
   return value;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (isRecord(value)) return value;
-  throw new Error("Tool input must be an object.");
+  throw new ToolInputError("Tool input must be an object.");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

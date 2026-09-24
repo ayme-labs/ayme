@@ -107,6 +107,9 @@ describe("live Page Object registry", () => {
     expect(() => registry.createAymeRuntime({} as Page)).toThrow(
       "The Ayme runtime already has an active owner."
     );
+    expect(() => registry.createAymeRuntime({} as Page)).toThrow(
+      expect.objectContaining({ name: "RuntimeStateError", kind: "runtime" })
+    );
 
     class OwnedPage {}
     registry.registerCompiledPom(OwnedPage, emptyManifest("OwnedPage"));

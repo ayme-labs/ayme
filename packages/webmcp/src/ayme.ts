@@ -1,3 +1,4 @@
+import { RuntimeStateError } from "./errors";
 import type { PomDefinitionsResult } from "./contracts";
 import { getPageContextForDocument, type PageContext } from "./pageContext";
 import {
@@ -30,6 +31,6 @@ export default ayme;
 
 function requireCurrentDocument(): Document {
   if (typeof document === "undefined")
-    throw new Error("Ayme requires a browser Document.");
+    throw new RuntimeStateError("Ayme requires a browser Document.");
   return document;
 }

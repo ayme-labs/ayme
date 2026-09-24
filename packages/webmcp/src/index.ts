@@ -8,6 +8,13 @@ export type {
   DecisionRequest,
   DecisionResponse,
 } from "./decisionEndpoint";
+export {
+  AymeError,
+  RefResolutionError,
+  RuntimeStateError,
+  ToolInputError,
+} from "./errors";
+export type { AymeErrorKind } from "./errors";
 export type { ActionResult } from "./actionSequence";
 export type { RefTool } from "./refTools";
 export type { PageContext, PageContextPayload } from "./pageContext";

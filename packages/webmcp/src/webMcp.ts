@@ -1,3 +1,4 @@
+import { RuntimeStateError } from "./errors";
 import type { RegisteredPomTool } from "./contracts";
 import { getPursueGoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
@@ -111,7 +112,7 @@ export async function synchronizeWebMcpTools(
         ]);
         for (const { tool } of listRefTools()) {
           if (active.has(tool.name) || takenElsewhere.has(tool.name))
-            throw new Error(
+            throw new RuntimeStateError(
               `Cannot publish the Ref Tool "${tool.name}": another published tool already uses that name.`
             );
           active.set(tool.name, tool);

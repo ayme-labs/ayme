@@ -1,3 +1,8 @@
+import {
+  RefResolutionError,
+  RuntimeStateError,
+  ToolInputError,
+} from "./errors";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import { completeAction, type ActionResult } from "./actionSequence";
@@ -94,7 +99,7 @@ async function resolveTarget(
   currentDocument: Document
 ): Promise<AymeNode> {
   const fail = (reason: string) =>
-    new Error(`Cannot ${label} ref "${requestedRef}": ${reason}.`);
+    new RefResolutionError(`Cannot ${label} ref "${requestedRef}": ${reason}.`);
 
   if (requestedRef.startsWith("s_"))
     throw fail("synthetic observation-only ref");
@@ -118,12 +123,14 @@ function readInputFields(input: unknown): Record<string, unknown> & {
     typeof input.ref === "string"
   )
     return input as Record<string, unknown> & { ref: string };
-  throw new Error("A Structural Ref string is required.");
+  throw new ToolInputError("A Structural Ref string is required.");
 }
 
 function requireCurrentDocument(): Document {
   if (typeof document === "undefined")
-    throw new Error("Structural Ref interactions require a browser Document.");
+    throw new RuntimeStateError(
+      "Structural Ref interactions require a browser Document."
+    );
   return document;
 }
 
@@ -158,7 +165,9 @@ const fillDefinition: RefToolDefinition = {
   run: async ({ ref }, input) => {
     const { value } = input;
     if (typeof value !== "string")
-      throw new Error("A Structural Ref and string value are required.");
+      throw new ToolInputError(
+        "A Structural Ref and string value are required."
+      );
     const page = requireAymeRuntimePage();
     await page.ariaSnapshot({ mode: "ai" });
     await page.fill(`aria-ref=${ref}`, value);

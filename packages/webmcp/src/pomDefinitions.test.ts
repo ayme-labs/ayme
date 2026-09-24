@@ -214,6 +214,12 @@ describe("POM definition catalog", () => {
     expect(() => definitions.getPomDefinitions()).toThrow(
       'POM definition "ConflictingPage" is ambiguous.'
     );
+    expect(() => definitions.getPomDefinitions()).toThrow(
+      expect.objectContaining({
+        name: "RefResolutionError",
+        kind: "resolution",
+      })
+    );
 
     registrations.forEach((registration) => registration.dispose());
   });
@@ -232,6 +238,9 @@ describe("POM definition catalog", () => {
     );
     expect(() => definitions.getPomDefinitions(true as never)).toThrow(
       "POM definition names must be strings."
+    );
+    expect(() => definitions.getPomDefinitions(42 as never)).toThrow(
+      expect.objectContaining({ name: "ToolInputError", kind: "input" })
     );
   });
 

@@ -1,3 +1,4 @@
+import { ToolInputError } from "./errors";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { JsonValue, PomDefinition } from "./contracts";
 import {
@@ -63,8 +64,8 @@ function definitionNamesFrom(input: unknown): string[] {
     return [];
   if (!("names" in input) || input.names === undefined) return [];
   if (!Array.isArray(input.names))
-    throw new Error("POM definition names must be an array.");
+    throw new ToolInputError("POM definition names must be an array.");
   if (!input.names.every((name) => typeof name === "string"))
-    throw new Error("POM definition names must be strings.");
+    throw new ToolInputError("POM definition names must be strings.");
   return input.names;
 }

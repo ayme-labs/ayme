@@ -1,3 +1,4 @@
+import { RuntimeStateError } from "./errors";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { configurePageStateIgnore } from "./pageState";
@@ -190,7 +191,9 @@ export function createRuntimeSession(
     },
     start() {
       if (owner)
-        throw new Error("The Ayme runtime already has an active owner.");
+        throw new RuntimeStateError(
+          "The Ayme runtime already has an active owner."
+        );
       owner = createAymeRuntime(getPage());
       configurePageStateIgnore(options.ignore);
       configureRefTools(options.refTools);

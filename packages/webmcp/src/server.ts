@@ -1,3 +1,4 @@
+import { RuntimeStateError } from "./errors";
 import type { DecisionRequest } from "./decisionTypes";
 
 const upstreamUrl = "https://openrouter.ai/api/v1/systemone";
@@ -98,7 +99,9 @@ export function createDecisionEndpoint({
   authorize,
 }: CreateDecisionEndpointOptions): (request: Request) => Promise<Response> {
   if (typeof document !== "undefined")
-    throw new Error("createDecisionEndpoint must run on the server.");
+    throw new RuntimeStateError(
+      "createDecisionEndpoint must run on the server."
+    );
 
   return async (request) => {
     if (request.method !== "POST")

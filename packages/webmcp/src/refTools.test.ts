@@ -32,6 +32,7 @@ vi.mock("@ayme-dev/core/structural-observation", async (importOriginal) => ({
 }));
 
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import { RefResolutionError } from "./errors";
 import { getPageStateForDocument } from "./pageState";
 import {
   clickPageStateRefTool,
@@ -133,6 +134,9 @@ describe("Structural Ref interactions", () => {
     const page = usePage();
     await expect(clickRef(ref("e2"))).rejects.toThrow(
       'Cannot click ref "e2": removed.'
+    );
+    await expect(clickRef(ref("e2"))).rejects.toBeInstanceOf(
+      RefResolutionError
     );
     expect(page.ariaSnapshot).not.toHaveBeenCalled();
     expect(page.click).not.toHaveBeenCalled();
