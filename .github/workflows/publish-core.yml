@@ -27,7 +27,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: core-package
-          path: ${{ runner.temp }}/core-package/*.tgz
+          path: |
+            ${{ runner.temp }}/core-package/*.tgz
+            ${{ runner.temp }}/core-package/verification.json
           if-no-files-found: error
 
   publish:

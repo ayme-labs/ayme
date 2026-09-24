@@ -38,6 +38,7 @@ assert.ok(
     )
   )
 );
+assert.ok(contents.includes("package/README.md"));
 writeFileSync(
   join(consumer, "package.json"),
   JSON.stringify({ private: true, type: "module" })
