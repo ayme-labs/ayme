@@ -226,11 +226,16 @@ A step first asks which operation moves closest to the goal and whether the
 goal is met. When the chosen operation takes arguments the model can pick from
 a closed set — a Structural Ref, an enum value or a boolean — a second request
 asks for all of them at once and the operation runs with the chosen values.
-The ref options are the elements the operation's `filter` keeps. An optional
-closed-set parameter is offered an extra choice that leaves it unset. The model
-never writes a free value: an operation that requires one, such as
-`fill_page_state_ref`, ends the loop with `needs_value` so that the calling
-agent supplies it.
+The ref options are the elements the operation's `filter` keeps, one option per
+element in page order; nothing is merged or ranked. One question takes at most
+255 options. When the elements outnumber that, they are cut into contiguous
+chunks of at most 254 plus "none of these", asked side by side in the same
+request. When exactly one chunk names an element the operation runs on it; when
+several do, one more question offers exactly those elements; when none does,
+the loop ends with `no_fitting_option`. An optional closed-set parameter is
+offered an extra choice that leaves it unset. The model never writes a free
+value: an operation that requires one, such as `fill_page_state_ref`, ends the
+loop with `needs_value` so that the calling agent supplies it.
 
 ### The Handover
 
