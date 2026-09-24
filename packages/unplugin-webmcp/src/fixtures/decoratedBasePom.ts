@@ -20,3 +20,6 @@ export class UserMenu extends BaseMenu {
     return value;
   }
 }
+
+// An anonymous class has no binding to register, so it is not recognised.
+export default class extends BaseMenu {}

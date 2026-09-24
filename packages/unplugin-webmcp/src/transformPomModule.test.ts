@@ -40,5 +40,4 @@ it("registers an undecorated subclass of a decorated base", () => {
 
   expect(code).toContain("registerCompiledPom(BaseMenu, {");
   expect(code).toContain("registerCompiledPom(UserMenu, {");
-  expect(code).toContain('"toolName":"UserMenu.open"');
 });

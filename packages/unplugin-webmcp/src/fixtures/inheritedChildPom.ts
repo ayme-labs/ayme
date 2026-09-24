@@ -15,4 +15,5 @@ class UserMenu extends BaseMenu {
 export class PageY {
   readonly heading!: Locator;
   readonly userMenu!: UserMenu;
+  readonly narrowedMenu!: UserMenu & BaseMenu;
 }

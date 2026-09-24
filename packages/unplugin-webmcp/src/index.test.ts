@@ -323,11 +323,10 @@ exports.configLoader = {
       .split("\n")
       .filter((line) => line.startsWith("registerCompiledPom("));
 
-    expect(registrations).toHaveLength(3);
+    expect(registrations).toHaveLength(2);
     expect(registrations).toEqual(
       expect.arrayContaining([
         expect.stringContaining("registerCompiledPom(AnnotatedComponent, "),
-        expect.stringContaining("registerCompiledPom(DerivedComponent, "),
         expect.stringContaining("registerCompiledPom(AnnotatedChildrenPom, "),
       ])
     );

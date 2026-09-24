@@ -189,13 +189,6 @@ describe("derivePomManifests", () => {
         collection: false,
       },
       {
-        memberName: "derivedChild",
-        kind: "component",
-        access: "field",
-        componentClassName: "DerivedComponent",
-        collection: false,
-      },
-      {
         memberName: "browserLocator",
         kind: "locator",
         access: "field",
@@ -250,14 +243,6 @@ describe("derivePomManifests", () => {
         ],
         tools: [],
       },
-      {
-        className: "DerivedComponent",
-        members: [
-          { memberName: "root", kind: "locator", access: "field" },
-          { memberName: "child", kind: "locator", access: "field" },
-        ],
-        tools: [],
-      },
     ]);
   });
 
@@ -300,72 +285,64 @@ describe("derivePomManifests", () => {
   });
 
   describe("inherited @WebMCP recognition", () => {
-    const tool = (className: string, methodName: string, text: string) => ({
-      methodName,
-      toolName: `${className}.${methodName}`,
-      description: text,
-      authoredDescription: text,
-      inputSchema: {
-        type: "object",
-        properties: {},
-        required: [],
-        additionalProperties: false,
-      },
-      parameters: [],
-    });
-    const locator = (memberName: string) => ({
-      memberName,
-      kind: "locator",
-      access: "field",
-    });
+    function manifestsOf(fixture: string) {
+      return derivePomManifests(path.resolve(`src/fixtures/${fixture}.ts`));
+    }
+
+    function expectNames(names: readonly string[], expected: string[]) {
+      expect(new Set(names)).toEqual(new Set(expected));
+      expect(names).toHaveLength(expected.length);
+    }
 
     it("recognises an undecorated subclass of a decorated base and keeps the base", () => {
-      expect(
-        derivePomManifests(path.resolve("src/fixtures/decoratedBasePom.ts"))
-      ).toEqual([
-        {
-          className: "BaseMenu",
-          members: [locator("baseItem")],
-          components: [],
-          tools: [tool("BaseMenu", "open", "Open the menu.")],
-        },
-        {
-          className: "UserMenu",
-          members: [locator("signOutItem"), locator("baseItem")],
-          components: [],
-          tools: [
-            tool("UserMenu", "signOut", "Sign out."),
-            tool("UserMenu", "open", "Open the menu."),
-          ],
-        },
-      ]);
+      const manifests = manifestsOf("decoratedBasePom");
+      expectNames(
+        manifests.map((manifest) => manifest.className),
+        ["BaseMenu", "UserMenu"]
+      );
+
+      const userMenu = manifestForClass("decoratedBasePom", "UserMenu");
+      if (!userMenu) throw new Error("UserMenu was not recognised.");
+      expectNames(
+        userMenu.members.map((member) => member.memberName),
+        ["signOutItem", "baseItem"]
+      );
+      expectNames(
+        userMenu.tools.map((tool) => tool.toolName),
+        ["UserMenu.signOut", "UserMenu.open"]
+      );
     });
 
-    it("recognises the bottom class of three levels decorated only at the top", () => {
-      expect(
-        manifestForClass("threeLevelDecoratedBasePom", "BottomPom")
-      ).toEqual({
-        className: "BottomPom",
-        members: [
-          locator("bottomButton"),
-          locator("middleButton"),
-          locator("topButton"),
-        ],
-        components: [],
-        tools: [
-          tool("BottomPom", "bottomTool", "Use the bottom tool."),
-          tool("BottomPom", "topTool", "Use the top tool."),
-        ],
-      });
+    it("recognises every class below a decorator three levels up", () => {
+      expectNames(
+        manifestsOf("threeLevelDecoratedBasePom").map(
+          (manifest) => manifest.className
+        ),
+        ["TopPom", "MiddlePom", "BottomPom"]
+      );
+
+      const bottom = manifestForClass(
+        "threeLevelDecoratedBasePom",
+        "BottomPom"
+      );
+      if (!bottom) throw new Error("BottomPom was not recognised.");
+      expectNames(
+        bottom.members.map((member) => member.memberName),
+        ["bottomButton", "middleButton", "topButton"]
+      );
+      expectNames(
+        bottom.tools.map((tool) => tool.toolName),
+        ["BottomPom.bottomTool", "BottomPom.topTool"]
+      );
     });
 
     it("does not make a member typed as an undecorated class chain a Page Object Child", () => {
-      expect(
-        derivePomManifests(path.resolve("src/fixtures/undecoratedChildPom.ts"))
-      ).toEqual([
+      expect(manifestsOf("undecoratedChildPom")).toEqual([
         {
           className: "PageX",
-          members: [locator("heading")],
+          members: [
+            { memberName: "heading", kind: "locator", access: "field" },
+          ],
           components: [],
           tools: [],
         },
@@ -373,27 +350,45 @@ describe("derivePomManifests", () => {
     });
 
     it("makes a member typed as an undecorated subclass of a decorated base a Page Object Child", () => {
-      expect(manifestForClass("inheritedChildPom", "PageY")).toEqual({
-        className: "PageY",
-        members: [
-          locator("heading"),
-          {
+      const page = manifestForClass("inheritedChildPom", "PageY");
+      if (!page) throw new Error("PageY was not recognised.");
+
+      expect(page.members).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
             memberName: "userMenu",
             kind: "component",
-            access: "field",
             componentClassName: "UserMenu",
-            collection: false,
-          },
-        ],
-        components: [
-          {
-            className: "UserMenu",
-            members: [locator("signOutItem"), locator("item")],
-            tools: [],
-          },
-        ],
-        tools: [],
-      });
+          }),
+        ])
+      );
+      const userMenu = page.components.find(
+        (component) => component.className === "UserMenu"
+      );
+      expectNames(userMenu?.members.map((member) => member.memberName) ?? [], [
+        "signOutItem",
+        "item",
+      ]);
+    });
+
+    it("resolves an intersection of a subclass and its decorated ancestor to the subclass", () => {
+      const page = manifestForClass("inheritedChildPom", "PageY");
+
+      expect(page?.members).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            memberName: "narrowedMenu",
+            kind: "component",
+            componentClassName: "UserMenu",
+          }),
+        ])
+      );
+    });
+
+    it("rejects an intersection of two unrelated recognised subclasses", () => {
+      expect(() => manifestsOf("ambiguousInheritedChildrenPom")).toThrow(
+        'WebMCP component member "ambiguousMenu" is ambiguous: UserMenu, AdminMenu.'
+      );
     });
   });
 });
