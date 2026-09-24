@@ -26,6 +26,16 @@ const MAX_CHOICE_OPTIONS = 255;
 /** The extra choice of an optional closed-set parameter. */
 const LEAVE_UNSET_KEY = "leave_unset";
 
+/**
+ * The extra choice of every chunk of a ref question whose elements outnumber
+ * the cap: the chunks are asked side by side, so all but one usually hold no
+ * fitting element. Under the cap a ref question has no such choice.
+ */
+const NONE_OF_THESE_KEY = "none_of_these";
+
+/** A chunk holds at most this many elements, leaving room for "none of these". */
+const MAX_CHUNK_ELEMENTS = MAX_CHOICE_OPTIONS - 1;
+
 // --- Operations offered in stage one ---
 
 /** A closed set of values the model may pick one of. */
@@ -37,7 +47,7 @@ type ClosedSet =
 
 /** One parameter of an operation, classified by what the model may fill. */
 type ArgumentSpec = {
-  /** The question id: the parameter's name, dotted inside a nested object. */
+  /** The parameter's name, dotted inside a nested object. */
   name: string;
   /** Where the chosen value goes in the operation's input. */
   path: readonly string[];
@@ -184,15 +194,23 @@ export type ArgumentOption = {
   key: string;
   description: string;
   /**
-   * The argument this option stands for; absent means "leave unset". A ref
-   * option carries the branded Structural Ref of the capture it was built
-   * from, so an answer never becomes a ref string parsed from model output.
+   * The argument this option stands for; absent means the option names no
+   * argument ("leave unset", "none of these"). A ref option carries the
+   * branded Structural Ref of the capture it was built from, so an answer
+   * never becomes a ref string parsed from model output.
    */
   value?: AriaRef | JsonPrimitive;
 };
 
 export type ArgumentQuestion = {
-  /** The question id: the parameter's name, dotted inside a nested object. */
+  /**
+   * The question id in the request. It is the parameter's name, except for a
+   * ref parameter whose elements outnumber the cap: each chunk of its options
+   * is one question (`ref_1`, `ref_2`, …), and a run-off among the chunks'
+   * answers is `ref_run_off`.
+   */
+  id: string;
+  /** The parameter the answer fills: its name, dotted inside a nested object. */
   parameter: string;
   /** Where the chosen value goes in the operation's input. */
   path: readonly string[];
@@ -206,8 +224,10 @@ export type ArgumentPlan =
   | { kind: "ask"; questions: ArgumentQuestion[] }
   /** A required value outside the closed sets: the calling agent supplies it. */
   | { kind: "needs_free_value"; parameters: string[] }
-  /** The elements to offer for a ref do not make a choice the model can answer. */
+  /** No element on the page is one the operation's ref may address. */
   | { kind: "needs_ref_choice"; parameter: string; optionCount: number }
+  /** The instances of a collection do not make a choice the model can answer. */
+  | { kind: "needs_instance_choice"; parameter: string; optionCount: number }
   /** The values of a closed set do not make a choice the model can answer. */
   | { kind: "needs_value_choice"; parameter: string; optionCount: number };
 
@@ -299,11 +319,19 @@ function withUniqueKeys(options: ArgumentOption[]): ArgumentOption[] {
   });
 }
 
-function argumentInstructions(tool: ExecutableTool, arg: ArgumentSpec): string {
-  const parameter = arg.description
+function describeParameter(arg: Pick<ArgumentSpec, "name" | "description">) {
+  return arg.description
     ? `"${arg.name}" (${arg.description})`
     : `"${arg.name}"`;
-  const operation = `The operation is "${tool.name}": ${tool.description}`;
+}
+
+function describeOperation(tool: ExecutableTool): string {
+  return `The operation is "${tool.name}": ${tool.description}`;
+}
+
+function argumentInstructions(tool: ExecutableTool, arg: ArgumentSpec): string {
+  const parameter = describeParameter(arg);
+  const operation = describeOperation(tool);
   switch (arg.closedSet?.kind) {
     case "ref":
       return `Pick the element this operation acts on as its ${parameter} parameter. ${operation}`;
@@ -312,6 +340,66 @@ function argumentInstructions(tool: ExecutableTool, arg: ArgumentSpec): string {
     default:
       return `Pick the value for the ${parameter} parameter of this operation. ${operation}`;
   }
+}
+
+/**
+ * Cut a ref parameter's options into contiguous chunks in document order, each
+ * a question of its own. The chunks are as even as the count allows and every
+ * one stays within the cap with its "none of these". Nothing is merged, ranked
+ * or reordered: the model is offered what the page shows, one option per
+ * element.
+ */
+function chunkedRefQuestions(
+  tool: ExecutableTool,
+  arg: ArgumentSpec,
+  options: readonly ArgumentOption[]
+): ArgumentQuestion[] {
+  const count = Math.ceil(options.length / MAX_CHUNK_ELEMENTS);
+  const size = Math.ceil(options.length / count);
+  const parameter = describeParameter(arg);
+  return Array.from({ length: count }, (_, index) => {
+    const from = index * size;
+    const chunk = options.slice(from, from + size);
+    return {
+      id: `${arg.name}_${index + 1}`,
+      parameter: arg.name,
+      path: arg.path,
+      instructions:
+        `Pick the element this operation acts on as its ${parameter} parameter. ` +
+        `The page holds ${options.length} candidate elements, split in page order over ${count} questions; ` +
+        `this one offers elements ${from + 1} to ${from + chunk.length}. ` +
+        `Choose "${NONE_OF_THESE_KEY}" when the element is not among these. ` +
+        describeOperation(tool),
+      options: [
+        ...chunk,
+        {
+          key: NONE_OF_THESE_KEY,
+          description: `None of these; the element is offered by another "${arg.name}" question, or no element fits.`,
+        },
+      ],
+    };
+  });
+}
+
+/**
+ * When several chunks each named an element, one more question offers exactly
+ * those elements, and nothing else, so the model picks between them directly.
+ */
+function runOffQuestion(
+  tool: ExecutableTool,
+  chunk: ArgumentQuestion,
+  named: readonly ArgumentOption[]
+): ArgumentQuestion {
+  return {
+    id: `${chunk.parameter}_run_off`,
+    parameter: chunk.parameter,
+    path: chunk.path,
+    instructions:
+      `Several "${chunk.parameter}" questions each named an element. ` +
+      `Pick the one element this operation acts on as its "${chunk.parameter}" parameter. ` +
+      describeOperation(tool),
+    options: [...named],
+  };
 }
 
 /**
@@ -347,6 +435,13 @@ export function planArguments(
         : []),
     ]);
 
+    // A ref whose elements outnumber the cap is asked in chunks (#123). The
+    // other closed sets are not, yet: #130.
+    if (closedSet.kind === "ref" && options.length > MAX_CHOICE_OPTIONS) {
+      questions.push(...chunkedRefQuestions(tool, arg, options));
+      continue;
+    }
+
     // A question outside the limit is never sent. An optional parameter the
     // loop cannot ask about is left unset, like the choice it would have had.
     if (options.length === 0 || options.length > MAX_CHOICE_OPTIONS) {
@@ -355,13 +450,16 @@ export function planArguments(
         kind:
           closedSet.kind === "values"
             ? "needs_value_choice"
-            : "needs_ref_choice",
+            : closedSet.kind === "instance"
+              ? "needs_instance_choice"
+              : "needs_ref_choice",
         parameter: arg.name,
         optionCount: options.length,
       };
     }
 
     questions.push({
+      id: arg.name,
       parameter: arg.name,
       path: arg.path,
       instructions: argumentInstructions(tool, arg),
@@ -450,7 +548,12 @@ export function buildOperationRequest(
   return { model: DECISION_MODEL, state, questions };
 }
 
-/** Stage two: the chosen operation's arguments, asked in parallel. */
+/**
+ * Stage two: the chosen operation's arguments, asked in parallel. The chunks of
+ * a ref over the cap are questions like any other, so they travel in the same
+ * request with the page state sent once. A run-off is the same request shape
+ * with its one question.
+ */
 export function buildArgumentRequest(
   state: StepState,
   argumentQuestions: readonly ArgumentQuestion[]
@@ -460,7 +563,7 @@ export function buildArgumentRequest(
     const criteria: Record<string, string> = {};
     for (const option of question.options)
       criteria[option.key] = option.description;
-    questions[question.parameter] = {
+    questions[question.id] = {
       type: "choice",
       instructions: question.instructions,
       criteria,
@@ -528,36 +631,120 @@ export type ChosenArguments = {
   probabilities: Record<string, Record<string, number>>;
 };
 
+/** What the stage-two answers amount to. */
+export type ArgumentAnswers =
+  /** Every parameter has its value: run the operation. */
+  | { kind: "chosen"; chosen: ChosenArguments }
+  /**
+   * Several chunks of one parameter each named an element. `chosen` holds the
+   * other parameters; `question` is the run-off to ask before running.
+   */
+  | { kind: "run_off"; chosen: ChosenArguments; question: ArgumentQuestion }
+  /** Every chunk of one parameter answered "none of these". */
+  | {
+      kind: "none_fits";
+      parameter: string;
+      probabilities: Record<string, Record<string, number>>;
+    };
+
 /**
- * Map each answer back to one of the options that question offered. Model
- * output is never read as a value of its own; an answer outside the offered
- * options is an invalid response.
+ * The option the model picked for one question. Model output is never read as
+ * a value of its own; an answer outside the offered options is an invalid
+ * response. The answer's scores are recorded under the question id.
+ */
+function readPick(
+  question: ArgumentQuestion,
+  answers: Record<string, unknown>,
+  probabilities: Record<string, Record<string, number>>
+): ArgumentOption {
+  const answer = readChoiceAnswer(answers, question.id);
+  const chosen = question.options.find(
+    (option) => option.key === answer.choice
+  );
+  if (!chosen)
+    throw new Error(
+      `The model chose "${answer.choice}" for "${question.id}", which is not one of the offered options.`
+    );
+  if (answer.probabilities) probabilities[question.id] = answer.probabilities;
+  return chosen;
+}
+
+function choose(
+  chosen: ChosenArguments,
+  question: ArgumentQuestion,
+  option: ArgumentOption
+): void {
+  assignAt(chosen.args, question.path, option.value);
+  chosen.summary.push(`${question.parameter}: ${option.description}`);
+}
+
+/**
+ * Map each answer back to one of the options that question offered. The
+ * chunks of one parameter answer together: the one chunk that named an
+ * element decides, several call for a run-off, none means no element fits.
+ * Every answer is read first, so the scores of every question are recorded
+ * even when the step ends without an action.
  */
 export function readArgumentAnswers(
+  tool: ExecutableTool,
   argumentQuestions: readonly ArgumentQuestion[],
   answers: Record<string, unknown>
-): ChosenArguments {
-  const args: Record<string, unknown> = {};
-  const summary: string[] = [];
-  const probabilities: Record<string, Record<string, number>> = {};
+): ArgumentAnswers {
+  const chosen: ChosenArguments = { args: {}, summary: [], probabilities: {} };
+  const picks = argumentQuestions.map((question) => ({
+    question,
+    option: readPick(question, answers, chosen.probabilities),
+  }));
 
-  for (const question of argumentQuestions) {
-    const answer = readChoiceAnswer(answers, question.parameter);
-    const chosen = question.options.find(
-      (option) => option.key === answer.choice
-    );
-    if (!chosen)
-      throw new Error(
-        `The model chose "${answer.choice}" for "${question.parameter}", which is not one of the offered options.`
-      );
-    if (answer.probabilities)
-      probabilities[question.parameter] = answer.probabilities;
-    if (!("value" in chosen)) continue;
-    assignAt(args, question.path, chosen.value);
-    summary.push(`${question.parameter}: ${chosen.description}`);
+  const byParameter = new Map<string, typeof picks>();
+  for (const pick of picks) {
+    const group = byParameter.get(pick.question.parameter) ?? [];
+    group.push(pick);
+    byParameter.set(pick.question.parameter, group);
   }
 
-  return { args, summary, probabilities };
+  let runOff: ArgumentQuestion | undefined;
+  for (const [parameter, group] of byParameter) {
+    const named = group.filter((pick) => "value" in pick.option);
+    // A lone question: an option without a value leaves the parameter unset.
+    if (group.length === 1) {
+      if (named[0]) choose(chosen, named[0].question, named[0].option);
+      continue;
+    }
+    if (named.length === 0)
+      return {
+        kind: "none_fits",
+        parameter,
+        probabilities: chosen.probabilities,
+      };
+    if (named.length === 1)
+      choose(chosen, named[0]!.question, named[0]!.option);
+    else
+      runOff = runOffQuestion(
+        tool,
+        group[0]!.question,
+        named.map((pick) => pick.option)
+      );
+  }
+
+  return runOff
+    ? { kind: "run_off", chosen, question: runOff }
+    : { kind: "chosen", chosen };
+}
+
+/** Read the run-off's answer and complete the arguments with it. */
+export function readRunOffAnswer(
+  runOff: { chosen: ChosenArguments; question: ArgumentQuestion },
+  answers: Record<string, unknown>
+): ChosenArguments {
+  const chosen: ChosenArguments = {
+    args: structuredClone(runOff.chosen.args),
+    summary: [...runOff.chosen.summary],
+    probabilities: { ...runOff.chosen.probabilities },
+  };
+  const option = readPick(runOff.question, answers, chosen.probabilities);
+  choose(chosen, runOff.question, option);
+  return chosen;
 }
 
 /** Put a chosen value where the operation's input expects it. */
