@@ -27,3 +27,7 @@ Consumers can retain their existing POM architecture.
 Public POM members do not automatically become production tools.
 
 Unsupported or ambiguous types produce build diagnostics instead of weak runtime schemas.
+
+## Clarification (2026-09-24)
+
+Explicit exposure concerns actions: every action stays decorated with `@WebMCP.tool`. Recognition of a Page Object class may be inherited: a class is a Page Object Model when it, or an ancestor, carries `@WebMCP` (#22).
