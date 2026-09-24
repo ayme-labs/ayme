@@ -110,6 +110,49 @@ useAymeWebMcp({ refTools: [highlight] });
 - A Ref Tool whose name is already taken by another published tool is rejected.
 - Ref Tools live for the runtime session: they are unregistered when it ends.
 
+## Tool failures
+
+A published tool never throws. WebMCP drops the reason of a rejected tool call:
+native Chrome reports only a generic `UnknownError`. Every tool Ayme publishes,
+including `get_page_context` and `pursue_goal`, therefore resolves a failure as
+an MCP tool-failure result:
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "RefResolutionError: Cannot click ref \"e12\": removed."
+    }
+  ],
+  "isError": true
+}
+```
+
+- `document.modelContext.executeTool()` resolves with this result's JSON. A
+  caller must read `isError`; the call does not reject.
+- The text is the error's full message, prefixed with the error's name unless
+  the name is plain `Error`. A browser action failure keeps Playwright Lite's
+  name and call log, for example
+  `TimeoutError: page.click: Timeout 1000ms exceeded. …` followed by
+  `Call log:`.
+- The result has no `structuredContent`; no standard defines a structured error
+  yet.
+- Only publication converts errors. `ayme.click` and `ayme.fill` still reject
+  with the thrown error, and the Goal Loop still records a failed step's message
+  in its history.
+- The WebMCP local relay's pass-through of `isError` to the MCP client has not
+  been verified.
+
+Ayme's own failures are `AymeError` subclasses, exported from
+`@ayme-dev/webmcp`. Each `name` is its class name, and `kind` tells them apart:
+
+| Class                | `kind`       | Meaning                                                           |
+| -------------------- | ------------ | ----------------------------------------------------------------- |
+| `ToolInputError`     | `input`      | The caller's arguments are wrong.                                 |
+| `RefResolutionError` | `resolution` | A Structural Ref or Page Object instance does not match the page. |
+| `RuntimeStateError`  | `runtime`    | Ayme is not set up for this call.                                 |
+
 ## Decision Endpoint
 
 The Goal Loop calls a **Decision Endpoint** in your backend. Ayme ships the

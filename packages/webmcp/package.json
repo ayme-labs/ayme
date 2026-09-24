@@ -46,6 +46,7 @@
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/core": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
+    "@mcp-b/webmcp-polyfill": "5.1.0",
     "@types/node": "^24.0.0",
     "@vitest/browser-playwright": "^4.1.11",
     "@playwright/test": "^1.62.1",

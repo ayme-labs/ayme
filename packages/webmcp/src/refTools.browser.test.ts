@@ -26,6 +26,12 @@ type ActionResultShape = {
   changes?: string;
 };
 
+/** A published tool's failure result (see `withErrorResult`). */
+const failure = (text: string) => ({
+  content: [{ type: "text", text }],
+  isError: true,
+});
+
 function createFakeDriver() {
   const published = new Map<string, Registration>();
   const driver = {
@@ -253,8 +259,10 @@ describe("Ref Tools in Chromium", () => {
       registrationOf(published, "highlight_element").tool.execute({
         ref: "e999",
       })
-    ).rejects.toThrow(
-      'Cannot run "highlight_element" on ref "e999": unknown-ref.'
+    ).resolves.toEqual(
+      failure(
+        'RefResolutionError: Cannot run "highlight_element" on ref "e999": unknown-ref.'
+      )
     );
     expect(targets).toHaveLength(0);
   });
@@ -271,8 +279,10 @@ describe("Ref Tools in Chromium", () => {
       registrationOf(published, "highlight_element").tool.execute({
         ref: saveRef,
       })
-    ).rejects.toThrow(
-      `Cannot run "highlight_element" on ref "${saveRef}": removed.`
+    ).resolves.toEqual(
+      failure(
+        `RefResolutionError: Cannot run "highlight_element" on ref "${saveRef}": removed.`
+      )
     );
     expect(targets).toHaveLength(0);
   });

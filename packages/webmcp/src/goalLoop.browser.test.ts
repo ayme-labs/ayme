@@ -464,6 +464,21 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     );
   });
 
+  it("returns invalid pursue_goal input as a ToolInputError result", async () => {
+    const decide = scriptedDecisionFn([]);
+    const tool = await registerPom(decide);
+
+    await expect(tool.execute({ goal: "do the thing" })).resolves.toEqual({
+      content: [
+        {
+          type: "text",
+          text: "ToolInputError: pursue_goal requires a string goal and an integer maxSteps.",
+        },
+      ],
+      isError: true,
+    });
+  });
+
   // --- Handover reason: step_budget ---
 
   it("returns step_budget when maxSteps is exhausted", async () => {
