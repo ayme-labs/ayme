@@ -6,6 +6,12 @@
 
 ## Agent skills
 
+### Repo-local skills
+
+Skills for agents working on this repository live in `.agents/skills/` (agent-agnostic; `.claude/skills` is a symlink to it). They are separate from `skills/`, which holds the skills ayme ships to consumers.
+
+- `typesafe-ai`: copied from [typesafe-ai/skills](https://github.com/typesafe-ai/skills) at tag v0.5.7 (`skills/typesafe-ai/`). To refresh it, copy `SKILL.md` and `LICENSE` from a newer tag and update the tag here.
+
 ### Issue tracker
 
 Issues and specs live as GitHub issues in `ayme-labs/ayme`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
