@@ -59,6 +59,28 @@ export function pomProgramDependencies(
   return [...dependencies].sort();
 }
 
+/**
+ * Whether a module's transitive local imports include one whose text carries
+ * `@WebMCP`, found with the same import walk as `pomProgramDependencies`.
+ */
+export function importsWebMcpModule(
+  fileName: string,
+  options: PomCompilerOptions = {}
+) {
+  const absoluteFileName = path.resolve(fileName);
+  let compilerOptions: ts.CompilerOptions = {};
+  try {
+    compilerOptions = projectConfigFor(absoluteFileName, options, true).options;
+  } catch {
+    // Without a readable tsconfig, resolve with TypeScript's defaults.
+  }
+  const importedModules = new Set<string>();
+  reportImportedModules(absoluteFileName, compilerOptions, importedModules);
+  return [...importedModules].some((importedModule) =>
+    ts.sys.readFile(importedModule)?.includes("@WebMCP")
+  );
+}
+
 function reportImportedModules(
   fileName: string,
   compilerOptions: ts.CompilerOptions,
