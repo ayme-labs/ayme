@@ -28,7 +28,7 @@ import {
   type ReferencedCapturedRoot,
 } from "./pomRootPlacement";
 import { parseCapturedTree } from "./capturedTree";
-import { RefResolutionError, ToolInputError } from "./errors";
+import { ToolInputError } from "./errors";
 
 export type { AriaRef };
 export type { Caller } from "./interactionHistory";
@@ -59,25 +59,9 @@ export type PageState = {
 export type PageStateCapture = {
   readonly tree: StructuralTree;
   readonly elementsByRef: ReadonlyMap<AriaRef, Element>;
-  /** Reconcile between the previous and current capture; null on the first capture. */
-  readonly reconcile: StructuralTree | null;
 };
 
-type CapturedPageState = {
-  text: string;
-  tree: StructuralTree;
-  elementsByRef: ReadonlyMap<AriaRef, Element>;
-};
-
-type AdvancedCapture = CapturedPageState & {
-  readonly reconcile: StructuralTree | null;
-};
-
-type SessionIdentity = {
-  currentRef: AriaRef | null;
-  currentElement: Element | undefined;
-  unresolvedReason: "removed" | "ambiguous" | null;
-};
+type CapturedPageState = PageStateCapture & { readonly text: string };
 
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
 
@@ -219,13 +203,10 @@ function getPageStateSession(currentDocument: Document) {
 
 class PageStateSession {
   private readonly refFactory = new SyntheticAriaRefFactory();
-  /** The previous capture, against which the next one is reconciled (ADR-0012). */
-  private baseline: StructuralTree | null = null;
-  private currentIdentitiesByRef = new Map<AriaRef, SessionIdentity>();
-  private readonly identitiesByAlias = new Map<AriaRef, SessionIdentity>();
   /**
    * Every capture is an observation in it; each caller's cursor is the "before"
-   * of its next Change Record. Captures Ayme makes for itself move no cursor.
+   * of its next Change Record, and its identity ledger keeps ref continuity.
+   * Captures Ayme makes for itself move no cursor.
    */
   readonly history: InteractionHistory;
 
@@ -253,7 +234,7 @@ class PageStateSession {
   }
 
   async completeAction(actionId: StructuralActionId): Promise<StructuralTree> {
-    const capture = await this.advancedCapture();
+    const capture = await this.captureTree();
     return this.history.completeAction(
       actionId,
       capture.tree,
@@ -262,7 +243,7 @@ class PageStateSession {
   }
 
   async failAction(actionId: StructuralActionId): Promise<void> {
-    const capture = await this.advancedCapture();
+    const capture = await this.captureTree();
     this.history.failAction(actionId, capture.tree, this.history.now());
   }
 
@@ -278,20 +259,16 @@ class PageStateSession {
   }
 
   /** Capture and record an observation; `receivedBy` moves that caller's cursor. */
-  private async capture(receivedBy?: Caller): Promise<AdvancedCapture> {
-    const capture = await this.advancedCapture();
+  private async capture(receivedBy?: Caller): Promise<CapturedPageState> {
+    const capture = await this.captureTree();
     // Stamped once the capture is taken, so it cannot share its time with an
     // action started right after it.
     this.history.observe(capture.tree, this.history.now(), receivedBy);
     return capture;
   }
 
-  private async advancedCapture(): Promise<AdvancedCapture> {
-    const capture = await captureCurrentPageState(
-      this.currentDocument.body,
-      this.refFactory
-    );
-    return { ...capture, ...this.advance(capture) };
+  private async captureTree(): Promise<CapturedPageState> {
+    return captureCurrentPageState(this.currentDocument.body, this.refFactory);
   }
 
   private pageStateFor(capture: CapturedPageState): PageState {
@@ -302,29 +279,25 @@ class PageStateSession {
   }
 
   async resolveRefs(refs: readonly AriaRef[]): Promise<RefResolution[]> {
-    // A capture Ayme makes for itself: it carries ref identities forward
-    // (ADR-0012) without becoming the state the caller received.
-    await this.capture();
-    return refs.map((requestedRef) => this.resolveOne(requestedRef));
-  }
-
-  private resolveOne(requestedRef: AriaRef): RefResolution {
-    const identity = this.identitiesByAlias.get(requestedRef);
-    if (!identity)
-      return { status: "unresolved", requestedRef, reason: "unknown-ref" };
-    if (identity.currentRef === null)
+    // A capture Ayme makes for itself: the observation session's identity
+    // ledger carries ref identities forward through it without it becoming
+    // the state a caller received.
+    const capture = await this.capture();
+    const ledger = await this.history.observations.identityLedger(
+      this.history.pageId
+    );
+    return refs.map((requestedRef): RefResolution => {
+      const identity = ledger.resolve(requestedRef);
+      if (identity.status === "unresolved") return identity;
+      const element = capture.elementsByRef.get(identity.currentRef);
+      if (element === undefined)
+        return { status: "unresolved", requestedRef, reason: "no-element" };
       return {
-        status: "unresolved",
+        status: "resolved",
         requestedRef,
-        reason: identity.unresolvedReason ?? "removed",
+        node: { ref: identity.currentRef, element },
       };
-    if (identity.currentElement === undefined)
-      return { status: "unresolved", requestedRef, reason: "no-element" };
-    return {
-      status: "resolved",
-      requestedRef,
-      node: { ref: identity.currentRef, element: identity.currentElement },
-    };
+    });
   }
 
   async resolveElementRef(element: Element): Promise<AriaRef | undefined> {
@@ -353,145 +326,6 @@ class PageStateSession {
       const refs = refsByElement.get(element) ?? [];
       return refs.length === 1 ? refs[0] : undefined;
     });
-  }
-
-  private advance(capture: CapturedPageState): PageStateCapture {
-    if (this.baseline === null) {
-      this.currentIdentitiesByRef = this.addInitialIdentities(capture);
-      this.baseline = capture.tree;
-      return {
-        tree: capture.tree,
-        elementsByRef: capture.elementsByRef,
-        reconcile: null,
-      };
-    }
-
-    const previousIdentitiesByRef = this.currentIdentitiesByRef;
-    const reconciled = StructuralTree.reconcile(this.baseline, capture.tree);
-    const assignments = capture.tree.getAllNodes().map((node) => {
-      const beforeRef = reconciled.getBeforeNodeForAfterRef(node.ref)?.ref;
-      const candidates = new Set<SessionIdentity>();
-      const currentIdentity = previousIdentitiesByRef.get(node.ref);
-      const historicalIdentity = this.identitiesByAlias.get(node.ref);
-      const lineageIdentity =
-        beforeRef === undefined
-          ? undefined
-          : previousIdentitiesByRef.get(beforeRef);
-
-      if (currentIdentity) candidates.add(currentIdentity);
-      if (historicalIdentity) candidates.add(historicalIdentity);
-      if (lineageIdentity) candidates.add(lineageIdentity);
-
-      return {
-        node,
-        candidates,
-        hasAmbiguousCandidate: [...candidates].some(
-          (identity) => identity.unresolvedReason === "ambiguous"
-        ),
-      };
-    });
-    const claimsByIdentity = new Map<SessionIdentity, number[]>();
-    for (const [index, { candidates }] of assignments.entries()) {
-      if (candidates.size !== 1) continue;
-      const identity = [...candidates][0]!;
-      const claims = claimsByIdentity.get(identity) ?? [];
-      claims.push(index);
-      claimsByIdentity.set(identity, claims);
-    }
-
-    const nextIdentitiesByRef = new Map<AriaRef, SessionIdentity>();
-    const retainedIdentities = new Set<SessionIdentity>();
-    const ambiguousIdentities = new Set<SessionIdentity>();
-
-    for (const { candidates, hasAmbiguousCandidate } of assignments) {
-      if (candidates.size > 1 || hasAmbiguousCandidate)
-        for (const identity of candidates) ambiguousIdentities.add(identity);
-    }
-    for (const [identity, claims] of claimsByIdentity) {
-      if (claims.length > 1) ambiguousIdentities.add(identity);
-    }
-
-    for (const { node, candidates, hasAmbiguousCandidate } of assignments) {
-      const identity = candidates.size === 1 ? [...candidates][0] : undefined;
-      const claims =
-        identity === undefined ? undefined : claimsByIdentity.get(identity);
-      if (
-        candidates.size > 1 ||
-        hasAmbiguousCandidate ||
-        (claims !== undefined && claims.length > 1)
-      ) {
-        if (!this.identitiesByAlias.has(node.ref))
-          this.identitiesByAlias.set(node.ref, this.createAmbiguousIdentity());
-        continue;
-      }
-
-      const selectedIdentity = identity ?? this.createIdentity();
-      selectedIdentity.currentRef = node.ref;
-      selectedIdentity.currentElement = capture.elementsByRef.get(node.ref);
-      selectedIdentity.unresolvedReason = null;
-      this.bindAlias(node.ref, selectedIdentity);
-      nextIdentitiesByRef.set(node.ref, selectedIdentity);
-      retainedIdentities.add(selectedIdentity);
-    }
-
-    for (const [beforeRef, identity] of previousIdentitiesByRef) {
-      if (retainedIdentities.has(identity)) continue;
-      identity.currentRef = null;
-      identity.currentElement = undefined;
-      identity.unresolvedReason =
-        ambiguousIdentities.has(identity) ||
-        reconciled.wasBeforeRefAmbiguous(AriaRefSchema.parse(beforeRef))
-          ? "ambiguous"
-          : "removed";
-    }
-
-    this.currentIdentitiesByRef = nextIdentitiesByRef;
-    this.baseline = capture.tree;
-    return {
-      tree: capture.tree,
-      elementsByRef: capture.elementsByRef,
-      reconcile: reconciled,
-    };
-  }
-
-  private addInitialIdentities(
-    capture: CapturedPageState
-  ): Map<AriaRef, SessionIdentity> {
-    const identities = new Map<AriaRef, SessionIdentity>();
-    for (const node of capture.tree.getAllNodes()) {
-      const identity = this.createIdentity();
-      identity.currentRef = node.ref;
-      identity.currentElement = capture.elementsByRef.get(node.ref);
-      this.bindAlias(node.ref, identity);
-      identities.set(node.ref, identity);
-    }
-    return identities;
-  }
-
-  private createIdentity(): SessionIdentity {
-    return {
-      currentRef: null,
-      currentElement: undefined,
-      unresolvedReason: null,
-    };
-  }
-
-  private createAmbiguousIdentity(): SessionIdentity {
-    return {
-      currentRef: null,
-      currentElement: undefined,
-      unresolvedReason: "ambiguous",
-    };
-  }
-
-  private bindAlias(ref: AriaRef, identity: SessionIdentity): void {
-    const existing = this.identitiesByAlias.get(ref);
-    if (existing !== undefined && existing !== identity) {
-      throw new RefResolutionError(
-        `Structural Ref alias ${ref} is already bound to another Page State identity.`
-      );
-    }
-    this.identitiesByAlias.set(ref, identity);
   }
 }
 

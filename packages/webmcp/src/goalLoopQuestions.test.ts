@@ -37,7 +37,7 @@ function captureOfButtons(count: number): PageStateCapture {
       AriaRefSchema.parse(`e${index}`),
       document.createElement("button")
     );
-  return { tree, elementsByRef, reconcile: null };
+  return { tree, elementsByRef };
 }
 
 const refArg = {

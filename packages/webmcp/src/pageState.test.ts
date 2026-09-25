@@ -19,6 +19,7 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import {
   configurePageStateIgnore,
   getPageStateCaptureForDocument,
+  resolvePageStateRefs,
 } from "./pageState";
 import { getPageStateTool } from "./pageContext";
 import ayme from "./index";
@@ -598,7 +599,6 @@ describe("get_page_state", () => {
     listRegisteredPomRoots.mockResolvedValue([]);
 
     const first = await getPageStateCaptureForDocument(document);
-    expect(first.reconcile).toBeNull();
     expect(first.tree.getNode(ref("e2"))?.role).toBe("button");
     expect(first.tree.getNode(ref("e2"))?.name).toBe("Captured omitted");
     expect(first.elementsByRef.get(ref("e2"))).toBe(original);
@@ -618,10 +618,15 @@ describe("get_page_state", () => {
     });
 
     const second = await getPageStateCaptureForDocument(document);
-    expect(second.reconcile).not.toBeNull();
     expect(second.tree.getNode(ref("e4"))?.name).toBe("Captured omitted");
     expect(second.elementsByRef.get(ref("e4"))).toBe(replacement);
-    expect(second.reconcile?.getNode(ref("e4"))?.status?.kind).toBe("updated");
+    await expect(resolvePageStateRefs(document, ref("e2"))).resolves.toEqual([
+      {
+        status: "resolved",
+        requestedRef: ref("e2"),
+        node: { ref: ref("e4"), element: replacement },
+      },
+    ]);
   });
 
   it("keeps concurrent capture results scoped to their own capture", async () => {

@@ -205,6 +205,39 @@ describe("Interaction history in Chromium", () => {
     await expectBeforeChangeAfter(actionId);
   });
 
+  it("keeps ref identities in the identity ledger with the action a node appeared after", async () => {
+    document.body.innerHTML = '<main><button id="add">Add</button></main>';
+    document.querySelector("#add")!.addEventListener("click", () => {
+      const add = document.querySelector("#add")!;
+      add.replaceWith(add.cloneNode(true));
+      document
+        .querySelector("main")!
+        .insertAdjacentHTML("beforeend", "<button>Added</button>");
+    });
+    startRuntime();
+    await publishTools();
+    const addRef = refFor(await readStructure(), "Add");
+
+    const result = await act("click_page_state_ref", { ref: addRef });
+    const actionId = lastActionId();
+    const ledger = await history().observations.identityLedger(
+      history().pageId
+    );
+
+    expect(result.changes).toContain("Added");
+    const addedRef = refFor(await readStructure(), "Added");
+    expect(ledger.lifecycle(addedRef)?.appeared.afterActionId).toBe(actionId);
+    // The re-rendered button got a new ref; the old one is an alias of it.
+    const resolved = ledger.resolve(addRef);
+    expect(resolved).toMatchObject({ status: "resolved" });
+    expect(resolved.status === "resolved" && resolved.currentRef).not.toBe(
+      addRef
+    );
+    expect(
+      (await getPageStateForElements([document.querySelector("#add")!])).refs
+    ).toEqual([resolved.status === "resolved" && resolved.currentRef]);
+  });
+
   it("reports the new route's page in the Change Record of an action that navigates", async () => {
     document.body.innerHTML = '<main><a href="#" id="next">Orders</a></main>';
     document.querySelector("#next")!.addEventListener("click", (event) => {
