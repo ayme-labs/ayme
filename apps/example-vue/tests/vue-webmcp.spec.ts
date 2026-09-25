@@ -627,20 +627,25 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
     page.getByText("Write release notes", { exact: true })
   ).toBeVisible();
 
-  const invalidToolInputError = await page.evaluate(async () => {
+  const invalidToolInputResult = await page.evaluate(async () => {
     const tool = (
       document.modelContext as unknown as RecordingDriver
     ).tools.find((candidate) => candidate.name === "ListPage.items.archive");
     if (!tool) throw new Error("Archive WebMCP tool was not published.");
-    try {
-      await tool.execute({ ref: "e99999", args: { unexpected: true } });
-    } catch (error) {
-      return error instanceof Error ? error.message : String(error);
-    }
-    throw new Error("Invalid collection tool input was accepted.");
+    return tool.execute({ ref: "e99999", args: { unexpected: true } });
   });
 
-  expect(invalidToolInputError).toContain("args.unexpected is not supported");
+  expect(invalidToolInputResult).toEqual({
+    content: [
+      {
+        type: "text",
+        text: expect.stringMatching(
+          /^ToolInputError: .*args\.unexpected is not supported/
+        ),
+      },
+    ],
+    isError: true,
+  });
 
   const firstItemRef = await getInstanceRef(page, "ListPage.items[0]");
   await executePublishedTool(page, "ListPage.items.archive", {

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import ayme from "./index";
+import ayme, { RefResolutionError } from "./index";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import { createPage as createPlaywrightLitePage } from "@ayme-dev/playwright-lite";
 import { createPage } from "./browserPage";
 import { createAymeRuntime } from "./registry";
 
@@ -93,6 +94,34 @@ describe("the public Ayme page state facade in Chromium", () => {
 
       expect(clicks).toBe(1);
       expect(input.value).toBe("Updated name");
+    } finally {
+      runtime.dispose();
+    }
+  });
+
+  it("rejects click and fill with the thrown error", async () => {
+    document.body.innerHTML =
+      '<button id="save">Save changes</button><input id="name" aria-label="Name">' +
+      '<div style="position: fixed; inset: 0"></div>';
+    const runtime = createAymeRuntime(
+      createPlaywrightLitePage({ actionTimeout: 1000 })
+    );
+    try {
+      const state = await ayme.getPageState();
+      const saveRef = structuralRefFor(state.text, "Save changes");
+      const nameRef = structuralRefFor(state.text, "Name", "textbox");
+
+      const clickError = await ayme.click(saveRef).catch((error) => error);
+      expect(clickError).toBeInstanceOf(Error);
+      expect(clickError.name).toBe("TimeoutError");
+      expect(clickError.message).toMatch(/^page\.click: Timeout 1000ms/);
+
+      document.querySelector("#name")!.remove();
+      const fillError = await ayme
+        .fill(nameRef, "Updated name")
+        .catch((error) => error);
+      expect(fillError).toBeInstanceOf(RefResolutionError);
+      expect(fillError.message).toBe(`Cannot fill ref "${nameRef}": removed.`);
     } finally {
       runtime.dispose();
     }

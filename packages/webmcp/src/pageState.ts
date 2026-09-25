@@ -17,6 +17,7 @@ import {
   type ReferencedCapturedRoot,
 } from "./pomRootPlacement";
 import { parseCapturedTree } from "./capturedTree";
+import { RefResolutionError, ToolInputError } from "./errors";
 
 const inputSchema = {
   type: "object",
@@ -180,7 +181,9 @@ export async function getPageStateForElements(
 ): Promise<{ state: PageState; refs: (AriaRef | undefined)[] }> {
   const currentDocument = elements[0]?.ownerDocument ?? document;
   if (elements.some((element) => element.ownerDocument !== currentDocument))
-    throw new Error("Page State elements must belong to one Document.");
+    throw new ToolInputError(
+      "Page State elements must belong to one Document."
+    );
   return getPageStateSession(currentDocument).getPageStateForElements(elements);
 }
 
@@ -449,7 +452,7 @@ class PageStateSession {
   private bindAlias(ref: AriaRef, identity: SessionIdentity): void {
     const existing = this.identitiesByAlias.get(ref);
     if (existing !== undefined && existing !== identity) {
-      throw new Error(
+      throw new RefResolutionError(
         `Structural Ref alias ${ref} is already bound to another Page State identity.`
       );
     }

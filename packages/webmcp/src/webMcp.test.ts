@@ -36,6 +36,7 @@ vi.mock("./actionSequence", () => ({
   }),
 }));
 import type { Page } from "@playwright/test";
+import { toolFailure } from "./toolFailure.testSupport";
 
 function brandedLocator(
   overrides: Record<string, unknown> = {},
@@ -501,5 +502,162 @@ describe("WebMCP publisher", () => {
     controller.abort();
     await expect(driver).resolves.toBeUndefined();
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe("tool failure results", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubGlobal("MutationObserver", FakeMutationObserver);
+  });
+
+  afterEach(() => {
+    vi.doUnmock("./pageContext");
+    vi.unstubAllGlobals();
+  });
+
+  async function failWith(error: unknown) {
+    const { withErrorResult } = await import("./webMcp");
+    const tool = {
+      name: "failing",
+      execute: async () => {
+        throw error;
+      },
+    };
+    return withErrorResult(tool).execute({});
+  }
+
+  it("returns a successful result untouched", async () => {
+    const { withErrorResult } = await import("./webMcp");
+    const result = { page_changed: false, settled: true };
+    const tool = {
+      name: "succeeding",
+      description: "Succeeds.",
+      execute: vi.fn(async () => result),
+    };
+
+    const wrapped = withErrorResult(tool);
+
+    expect(wrapped.name).toBe("succeeding");
+    expect(wrapped.description).toBe("Succeeds.");
+    await expect(wrapped.execute({ ref: "e1" })).resolves.toBe(result);
+    expect(tool.execute).toHaveBeenCalledWith({ ref: "e1" });
+  });
+
+  it("renders an Ayme error as its name and message", async () => {
+    const { RefResolutionError } = await import("./errors");
+
+    await expect(
+      failWith(new RefResolutionError('Cannot click ref "e2": removed.'))
+    ).resolves.toEqual(
+      toolFailure('RefResolutionError: Cannot click ref "e2": removed.')
+    );
+  });
+
+  it("keeps a browser action error's full message, call log included", async () => {
+    const error = new Error(
+      "page.click: Timeout 1000ms exceeded.\nCall log:\n  - waiting for locator"
+    );
+    error.name = "TimeoutError";
+
+    await expect(failWith(error)).resolves.toEqual(
+      toolFailure(
+        "TimeoutError: page.click: Timeout 1000ms exceeded.\nCall log:\n  - waiting for locator"
+      )
+    );
+  });
+
+  it("renders a plain Error as its message alone", async () => {
+    await expect(failWith(new Error("boom"))).resolves.toEqual(
+      toolFailure("boom")
+    );
+  });
+
+  it("renders a thrown non-Error value as a string", async () => {
+    await expect(failWith("not an error")).resolves.toEqual(
+      toolFailure("not an error")
+    );
+    await expect(failWith(42)).resolves.toEqual(toolFailure("42"));
+  });
+
+  it("publishes every tool, get_page_context included, with failure results", async () => {
+    // No Goal Loop is configured here; pursue_goal is covered in goalLoop.browser.test.ts.
+    type ExecutableTool = PublishedTool & {
+      execute(input: unknown): Promise<unknown>;
+    };
+    const tools: ExecutableTool[] = [];
+    const registerTool = vi.fn(async (tool: ExecutableTool) => {
+      tools.push(tool);
+    });
+    vi.doMock("./pageContext", async () => {
+      const { ToolInputError } = await import("./errors");
+      return {
+        getPageContextTool: {
+          name: "get_page_context",
+          description: "Get page context.",
+          inputSchema: { type: "object" },
+          execute: async () => {
+            throw new ToolInputError("POM definition names must be an array.");
+          },
+        },
+      };
+    });
+    vi.stubGlobal("document", { documentElement: {} });
+
+    const registry = await import("./registry");
+    const { synchronizeWebMcpTools } = await import("./webMcp");
+    registry.configureAymeRuntime({} as Page);
+
+    class FailingPage {
+      readonly run = vi.fn(() => {
+        throw new Error("boom");
+      });
+      readonly items = [
+        { root: brandedLocator({ count: async () => 1 }), archive: vi.fn() },
+      ];
+    }
+    registry.registerCompiledPom(FailingPage, {
+      className: "FailingPage",
+      tools: [action("run")],
+      members: [
+        {
+          memberName: "items",
+          kind: "component",
+          access: "field",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      components: [
+        {
+          className: "Item",
+          members: [{ memberName: "root", kind: "locator", access: "field" }],
+          tools: [action("archive")],
+        },
+      ],
+    });
+    const registration = registry.createPageRegistration(FailingPage);
+    const publication = await synchronizeWebMcpTools({ registerTool });
+    const execute = (name: string, input: unknown) => {
+      const tool = tools.find((candidate) => candidate.name === name);
+      if (!tool) throw new Error(`Tool ${name} was not published.`);
+      return tool.execute(input);
+    };
+
+    await expect(execute("get_page_context", { names: "x" })).resolves.toEqual(
+      toolFailure("ToolInputError: POM definition names must be an array.")
+    );
+    await expect(execute("run", {})).resolves.toEqual(toolFailure("boom"));
+    await expect(execute("run", { extra: true })).resolves.toEqual(
+      toolFailure(expect.stringMatching(/^ToolInputError: .*extra/))
+    );
+    await expect(
+      execute("FailingPage.items.archive", { ref: "e404", args: {} })
+    ).resolves.toEqual(
+      toolFailure(expect.stringMatching(/^RefResolutionError: .*"e404"/))
+    );
+
+    publication.dispose();
+    registration.dispose();
   });
 });

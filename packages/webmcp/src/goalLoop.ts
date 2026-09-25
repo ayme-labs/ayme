@@ -23,6 +23,7 @@ import {
   type ExecutableTool,
   type NoulAnswer,
 } from "./goalLoopQuestions";
+import { ToolInputError } from "./errors";
 
 export type GoalLoopDecisionFunction = (
   request: DecisionRequest
@@ -189,7 +190,7 @@ function readPursueGoalInput(input: unknown): {
     Number.isInteger(input.maxSteps)
   )
     return { goal: input.goal, maxSteps: input.maxSteps };
-  throw new Error(
+  throw new ToolInputError(
     "pursue_goal requires a string goal and an integer maxSteps."
   );
 }

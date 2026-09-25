@@ -16,6 +16,7 @@ import {
   chunkQuestionId,
   runOffQuestionId,
 } from "./goalLoopQuestions";
+import { toolFailure } from "./toolFailure.testSupport";
 
 /** The parameters of the built-in click Ref Tool. */
 const CLICK_PARAMETERS = ["ref"];
@@ -534,6 +535,15 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     });
     expect((result as Record<string, unknown>).next).toContain(
       "Two operations failed"
+    );
+  });
+
+  it("returns invalid pursue_goal input as a ToolInputError result", async () => {
+    const decide = scriptedDecisionFn([]);
+    const tool = await registerPom(decide);
+
+    await expect(tool.execute({ goal: "do the thing" })).resolves.toEqual(
+      toolFailure(expect.stringMatching(/^ToolInputError: .*maxSteps/))
     );
   });
 
