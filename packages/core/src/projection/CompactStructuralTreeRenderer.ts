@@ -11,6 +11,12 @@ const STATUS_TOKEN: Partial<
   removed: "<removed>",
 };
 
+/**
+ * The compact text renderer: the notation `get_page_context` and the Change
+ * Record use. Every string child is one `text:` entry; adjacent strings stay
+ * separate, since the capture carries no layout to tell a word split across
+ * leaves from two neighbouring blocks.
+ */
 export function renderCompactStructuralNodeForest(
   forest: ProjectedStructuralNodeForest
 ): string {

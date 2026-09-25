@@ -17,6 +17,12 @@ import {
   runOffQuestionId,
 } from "./goalLoopQuestions";
 import { toolFailure } from "./toolFailure.testSupport";
+import {
+  captureChangeRecordForDocument,
+  resolvePageStateRefs,
+} from "./pageState";
+import { renderChangeRecord } from "./changeRecord";
+import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 /** The parameters of the built-in click Ref Tool. */
 const CLICK_PARAMETERS = ["ref"];
@@ -915,6 +921,87 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(offers("paragraph")).toBe(true);
   });
 
+  // --- The page the model reads is pruned; the options are not ---
+
+  it("prunes ref-only wrappers and text leaves from the page it sends, and every option still resolves", async () => {
+    document.body.innerHTML = `
+      <main>
+        <div id="outer">
+          <div id="inner">
+            <button id="save">Save changes</button>
+            <button id="other">Other</button>
+          </div>
+          <section aria-label="Word"><div>T</div><div>a</div><div>s</div><div>k</div></section>
+        </div>
+      </main>
+    `;
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "highlight_element",
+          goal_met: 0.1,
+          arguments: { ref: 'button "Save changes"' },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    // A Ref Tool without a filter is offered every node of the full capture.
+    const tool = await getPublishedPursueGoal(decide, [
+      {
+        name: "highlight_element",
+        description: "Highlight one element on the page.",
+        execute: async () => null,
+      },
+    ]);
+
+    await tool.execute({ goal: "highlight the save button", maxSteps: 5 });
+
+    const offered = criteriaOf(requests[1]!).ref!;
+    const wrapperRefs = Object.keys(offered).filter(
+      (ref) => offered[ref] === "generic"
+    );
+    const buttonRef = Object.keys(offered).find(
+      (ref) => offered[ref] === 'button "Save changes"'
+    );
+    expect(wrapperRefs.length).toBeGreaterThan(0);
+    expect(buttonRef).toBeDefined();
+
+    // The page sent holds the button but none of the wrappers, and the text
+    // of the single-character leaves hoisted, each string as it was.
+    const page = requests[1]!.state as { page: unknown };
+    const refs = refsInPage(page);
+    expect(refs).toContain(buttonRef);
+    for (const ref of wrapperRefs) expect(refs).not.toContain(ref);
+    // Block leaves: the capture keeps each as a generic of its own, unlike
+    // inline text, which it folds into the parent before Ayme sees it.
+    const regions: unknown[][] = [];
+    const walk = (node: unknown) => {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (!node || typeof node !== "object") return;
+      const record = node as { role?: string; children?: unknown[] };
+      if (record.role === "region") regions.push(record.children ?? []);
+      walk(record.children);
+    };
+    walk(page.page);
+    expect(regions).toEqual([["T", "a", "s", "k"]]);
+
+    // Every option, wrappers included, resolves in the full capture.
+    const resolutions = await resolvePageStateRefs(
+      document,
+      ...Object.keys(offered).map((ref) => AriaRefSchema.parse(ref))
+    );
+    expect(resolutions.map((resolution) => resolution.status)).toEqual(
+      Object.keys(offered).map(() => "resolved")
+    );
+    expect(
+      resolutions.map(
+        (resolution) =>
+          resolution.status === "resolved" &&
+          resolution.node.element instanceof Element
+      )
+    ).not.toContain(false);
+  });
+
   // --- Stage two: a ref question over the option cap (#123) ---
 
   /** A page whose clickable elements outnumber one question's options. */
@@ -1332,6 +1419,98 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result.history).toMatchObject([
       { did: expect.stringContaining("ItemsPage.items[1]"), result: "ok" },
     ]);
+  });
+
+  it("keeps the full capture behind the instance options and the Change Record while the page it sends is pruned", async () => {
+    // Items under wrappers the model is not shown, with text leaves inside;
+    // the wrappers hold two children each so the capture keeps them as nodes
+    // of their own.
+    const count = 3;
+    document.body.innerHTML = `
+      <main>
+        <div>
+          <ul>
+            ${Array.from(
+              { length: count },
+              (_, index) =>
+                `<li id="item-${index}" aria-label="Item ${index}"><div>t</div><div>ask</div></li>`
+            ).join("")}
+          </ul>
+          <span>note</span>
+        </div>
+      </main>
+    `;
+    const archived: number[] = [];
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "ItemsPage.items.archive",
+          goal_met: 0.1,
+          arguments: { ref: "ItemsPage.items[1]" },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    class ItemsPage {
+      readonly items = Array.from({ length: count }, (_, index) => ({
+        root: page.locator(`#item-${index}`),
+        // An action that changes nothing on the page.
+        archive: () => archived.push(index),
+      }));
+    }
+    registerCompiledPom(
+      ItemsPage,
+      manifest(
+        "ItemsPage",
+        [collection("items", "Item")],
+        [],
+        [
+          {
+            className: "Item",
+            members: [root()],
+            tools: [action("archive", "archive")],
+          },
+        ]
+      )
+    );
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(ItemsPage);
+
+    const result = (await tool.execute({
+      goal: "archive the second item",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    // The page the model read: no wrapper, the leaves' text hoisted as it was.
+    const sent = JSON.stringify(requests[0]!.state);
+    expect(sent).not.toContain('"role":"generic"');
+    expect(sent).toContain('"name":"Item 1","children":["t","ask"]');
+
+    // The instance options come from the full capture and still resolve.
+    const instanceRefs = Object.keys(criteriaOf(requests[1]!).ref!);
+    expect(instanceRefs).toHaveLength(count);
+    const resolutions = await resolvePageStateRefs(
+      document,
+      ...instanceRefs.map((ref) => AriaRefSchema.parse(ref))
+    );
+    expect(resolutions.map((resolution) => resolution.status)).toEqual(
+      instanceRefs.map(() => "resolved")
+    );
+    expect(archived).toEqual([1]);
+
+    // The Change Record of the action diffs full against full: an action
+    // that changed nothing reports no change, and no phantom wrapper.
+    expect(result.history).toEqual([
+      {
+        did: expect.stringContaining("ItemsPage.items[1]"),
+        result: "ok",
+        page_changed: false,
+      },
+    ]);
+    const record = await captureChangeRecordForDocument(document);
+    expect(record).not.toBeNull();
+    expect(record!.hasAnyChanges()).toBe(false);
+    expect(renderChangeRecord(record!)).toBe("");
   });
 
   it("hands over, naming the collection instance, when the instances exceed the option limit", async () => {

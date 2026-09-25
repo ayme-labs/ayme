@@ -1,6 +1,14 @@
-import type {
-  StructuralNode,
-  StructuralTree,
+import {
+  projectStructuralNodeForest,
+  renderJsonStructuralNodeForest,
+  renderTreeOutput,
+  structuralNodeForest,
+  type JsonStructuralNodeForest,
+  type ProjectedStructuralNodeForest,
+  type StructuralNode,
+  type StructuralNodeForest,
+  type StructuralTree,
+  type TreeOutput,
 } from "@ayme-dev/core/structural-observation";
 import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
@@ -523,30 +531,52 @@ export function planArguments(
 
 // --- Decision requests (ADR-0022: built in the browser) ---
 
-/** Serialize a StructuralTree to a JSON-safe representation (full typed tree). */
-function serializeTree(tree: StructuralTree): unknown {
-  const serializeNode = (node: {
-    ref: string;
-    role: string;
-    name: string;
-    state: Record<string, unknown>;
-    cursorPointer: boolean;
-    props: Record<string, string>;
-    children: readonly unknown[];
-  }): unknown => ({
-    ref: node.ref,
-    role: node.role,
-    name: node.name,
-    ...(Object.values(node.state).some((v) => v !== undefined)
-      ? { state: node.state }
-      : {}),
-    ...(node.cursorPointer ? { cursorPointer: true } : {}),
-    ...(Object.keys(node.props).length > 0 ? { props: node.props } : {}),
-    children: node.children.map((child) =>
-      typeof child === "string" ? child : serializeNode(child as typeof node)
-    ),
-  });
-  return tree.getRootNodes().map(serializeNode);
+/**
+ * A node the model is not shown: a `generic` with no name, props, state or
+ * pointer cursor, whatever its children. Nothing targetable is among them: a
+ * ref-only wrapper is never an option, and a single-character text leaf is
+ * not interactive. Exploding them hoists their children, so a chain of
+ * wrappers vanishes and the text of a leaf is hoisted as the string it is.
+ */
+function prunable(node: StructuralNode): boolean {
+  return (
+    node.role === "generic" &&
+    node.name === "" &&
+    Object.keys(node.props).length === 0 &&
+    !Object.values(node.state).some((value) => value !== undefined) &&
+    !node.cursorPointer
+  );
+}
+
+/**
+ * The stages the model is shown the page through: projected as it is and
+ * rendered as JSON. The rendered page travels inside the decision request, so
+ * its serializer is the request's own JSON serialization, applied by the
+ * decision function to the whole request rather than here.
+ */
+const pageOutput: TreeOutput<
+  StructuralNodeForest<StructuralNode>,
+  ProjectedStructuralNodeForest,
+  JsonStructuralNodeForest
+> = {
+  projection: (forest) => projectStructuralNodeForest(forest),
+  renderer: renderJsonStructuralNodeForest,
+  serializer: (page) => JSON.stringify(page),
+};
+
+/**
+ * The page as the model is shown it: the full capture's root nodes with the
+ * prunable nodes exploded, then `pageOutput`. This forest is derived for
+ * serialization only; the ref options and the Change Record keep walking the
+ * full capture, so the refs the model reads are the capture's.
+ * (`pageState.ts` and `changeRecord.ts` still compose the stages by hand; they
+ * adopt them under #119.)
+ */
+function renderPage(pageTree: StructuralTree): JsonStructuralNodeForest {
+  const shown = structuralNodeForest(pageTree.getRootNodes()).explode(
+    (_entry, node) => prunable(node)
+  );
+  return renderTreeOutput(pageOutput, shown);
 }
 
 export type StepState = Record<string, unknown>;
@@ -560,7 +590,7 @@ export function buildStepState(
 ): StepState {
   return {
     goal,
-    page: serializeTree(pageTree),
+    page: renderPage(pageTree),
     page_objects: pomDefinitionsText,
     history,
   };
