@@ -59,6 +59,24 @@ it("registers a subclass whose file has no decorator but extends a decorated bas
   expect(dependencies).toContain(resourcePath);
 });
 
+it("reports compiler dependencies when deriving the manifest fails", () => {
+  // Otherwise Turbopack keeps the failure, even across restarts, until the
+  // Page Object itself changes: restoring the imported type does not rerun it.
+  const truncatedPath = path.join(
+    path.dirname(resourcePath),
+    "TruncatedModePage.ts"
+  );
+  const { context, dependencies } = loaderContext(truncatedPath);
+  expect(() =>
+    turbopackLoader.call(context, readFileSync(truncatedPath, "utf8"))
+  ).toThrow(
+    "Unsupported WebMCP input type for TruncatedModePage.setMode(mode): CounterMode."
+  );
+  expect(dependencies).toContain(
+    path.join(path.dirname(resourcePath), "TruncatedMode.ts")
+  );
+});
+
 it("transpiles ordinary TypeScript when no POM transform is needed", () => {
   const { context } = loaderContext("/unused/plain.ts");
   const code = turbopackLoader.call(

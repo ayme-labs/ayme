@@ -11,16 +11,25 @@ import { rewritePomImports } from "./rewritePomImports";
 
 /** The source transform shared by Vite and the experimental Turbopack loader. */
 export function createPomTransform(options: PomCompilerOptions = {}) {
-  return (code: string, id: string) => {
+  return (
+    code: string,
+    id: string,
+    reportDependencies?: (dependencies: readonly string[]) => void
+  ) => {
     const fileName = id.split("?")[0];
     if (!fileName?.endsWith(".ts") || !isPomCandidate(code, fileName, options))
       return null;
+
+    // Reported before deriving, so a bundler that caches a failed or empty
+    // result still reruns it when an input changes. A dependency read
+    // mid-write otherwise pins the failure until the Page Object changes.
+    const dependencies = pomProgramDependencies(fileName, options);
+    reportDependencies?.(dependencies);
 
     const program = createPomProgram(fileName, options);
     const manifests = derivePomManifestsFromProgram(fileName, program);
     if (manifests.length === 0) return null;
 
-    const dependencies = pomProgramDependencies(fileName, options);
     const rewrittenCode = rewritePomImports(code, fileName, options, program);
     const registrations = manifests
       .map(
