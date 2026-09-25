@@ -71,6 +71,31 @@ const clickWithForceTool: ExecutableTool = {
   ],
 };
 
+/**
+ * A Ref Tool whose other closed-set parameters are named like the first chunk
+ * and the run-off of its `ref` would be under a naive `<parameter>_<suffix>`.
+ */
+const clickWithLookalikeParametersTool: ExecutableTool = {
+  ...clickTool,
+  name: "lookalike_click",
+  requiredParams: ["ref", "ref_1", "ref_run_off"],
+  args: [
+    refArg,
+    {
+      name: "ref_1",
+      path: ["ref_1"],
+      optional: false,
+      closedSet: { kind: "values", values: ["left", "right"] },
+    },
+    {
+      name: "ref_run_off",
+      path: ["ref_run_off"],
+      optional: false,
+      closedSet: { kind: "values", values: [true, false] },
+    },
+  ],
+};
+
 function askedQuestions(
   tool: ExecutableTool,
   capture: PageStateCapture
@@ -317,6 +342,40 @@ describe("ref questions over the option cap", () => {
     expect(chosen.summary).toEqual(
       expect.arrayContaining(["force: true", 'ref: button "Item 5"'])
     );
+  });
+});
+
+describe("question ids", () => {
+  it("never share an id with a parameter of the operation", async () => {
+    const { questions, request, answers } = await askStageTwo(
+      clickWithLookalikeParametersTool,
+      captureOfButtons(300),
+      { ref: ["e5", "e299"], ref_1: "right", ref_run_off: "false" }
+    );
+
+    // Two chunks and the two other parameters: four questions, four ids.
+    expect(questions.map((question) => question.parameter)).toEqual([
+      "ref",
+      "ref",
+      "ref_1",
+      "ref_run_off",
+    ]);
+    expect(Object.keys(request.questions)).toEqual(idsOf(questions));
+    expect(new Set(idsOf(questions)).size).toBe(4);
+    expect(answers.kind).toBe("run_off");
+    if (answers.kind !== "run_off") return;
+    expect(idsOf(questions)).not.toContain(answers.question.id);
+    // Each answer fills the parameter its question belongs to.
+    expect(answers.chosen.args).toEqual({ ref_1: "right", ref_run_off: false });
+
+    const chosen = readRunOffAnswer(answers, {
+      [answers.question.id]: { type: "choice", choice: "e299" },
+    });
+    expect(chosen.args).toEqual({
+      ref: "e299",
+      ref_1: "right",
+      ref_run_off: false,
+    });
   });
 });
 

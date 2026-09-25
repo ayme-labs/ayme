@@ -39,28 +39,48 @@ const MAX_CHUNK_ELEMENTS = MAX_CHOICE_OPTIONS - 1;
 // --- Question ids ---
 //
 // A question is normally identified by its parameter's name. A ref parameter
-// over the cap is asked as several questions, so those carry ids of their own.
-// The format lives here only; tests match ids through `isQuestionOf`.
+// over the cap is asked as several questions, so those carry ids of their own:
+// the parameter's name, a separator, then the chunk's ordinal or "run_off".
+// The separator is lengthened until no parameter name of the operation starts
+// with the parameter's name and it, so these ids never equal a parameter name
+// (#141). An answer is mapped back through `ArgumentQuestion.parameter`, never
+// by reading its id.
 
-/** The id of the `ordinal`-th chunk (1-based) of a parameter's options. */
-export function chunkQuestionId(parameter: string, ordinal: number): string {
-  return `${parameter}_${ordinal}`;
+/** What every chunk and run-off id of `parameter` starts with. */
+function derivedIdPrefix(
+  parameter: string,
+  parameterNames: readonly string[]
+): string {
+  let prefix = `${parameter}_`;
+  while (parameterNames.some((name) => name.startsWith(prefix))) prefix += "_";
+  return prefix;
 }
 
-/** The id of the run-off among the elements a parameter's chunks named. */
-export function runOffQuestionId(parameter: string): string {
-  return `${parameter}_run_off`;
+/**
+ * The id of the `ordinal`-th chunk (1-based) of a parameter's options, given
+ * the names of every parameter of the operation.
+ */
+export function chunkQuestionId(
+  parameter: string,
+  ordinal: number,
+  parameterNames: readonly string[]
+): string {
+  return `${derivedIdPrefix(parameter, parameterNames)}${ordinal}`;
 }
 
-/** Whether a question id belongs to a parameter: its own, a chunk's or the run-off's. */
-export function isQuestionOf(parameter: string, questionId: string): boolean {
-  return (
-    questionId === parameter ||
-    questionId === runOffQuestionId(parameter) ||
-    (questionId.startsWith(parameter) &&
-      /^_[1-9]\d*$/.test(questionId.slice(parameter.length)))
-  );
+/**
+ * The id of the run-off among the elements a parameter's chunks named, given
+ * the names of every parameter of the operation.
+ */
+export function runOffQuestionId(
+  parameter: string,
+  parameterNames: readonly string[]
+): string {
+  return `${derivedIdPrefix(parameter, parameterNames)}run_off`;
 }
+
+const parameterNamesOf = (tool: ExecutableTool) =>
+  tool.args.map((arg) => arg.name);
 
 // --- Operations offered in stage one ---
 
@@ -233,7 +253,7 @@ export type ArgumentQuestion = {
    * The question id in the request. It is the parameter's name, except for a
    * ref parameter whose elements outnumber the cap: each chunk of its options
    * is one question (`chunkQuestionId`), and a run-off among the chunks'
-   * answers is another (`runOffQuestionId`).
+   * answers is another (`runOffQuestionId`). Neither equals a parameter name.
    */
   id: string;
   /** The parameter the answer fills: its name, dotted inside a nested object. */
@@ -392,7 +412,7 @@ function chunkedRefQuestions(
     const from = index * size;
     const chunk = options.slice(from, from + size);
     return {
-      id: chunkQuestionId(arg.name, index + 1),
+      id: chunkQuestionId(arg.name, index + 1, parameterNamesOf(tool)),
       parameter: arg.name,
       path: arg.path,
       instructions:
@@ -422,7 +442,7 @@ function runOffQuestion(
   named: readonly ArgumentOption[]
 ): ArgumentQuestion {
   return {
-    id: runOffQuestionId(chunk.parameter),
+    id: runOffQuestionId(chunk.parameter, parameterNamesOf(tool)),
     parameter: chunk.parameter,
     path: chunk.path,
     instructions:
@@ -660,8 +680,14 @@ export type ChosenArguments = {
   args: Record<string, unknown>;
   /** What was chosen, in readable words, for the history entry. */
   summary: string[];
+  /** Per question id: the key of the option the model chose. */
+  choices: Record<string, string>;
+  /** Per question id: the scores, when the decision function supplied them. */
   probabilities: Record<string, Record<string, number>>;
 };
+
+/** What was answered, per question id, whether or not an action follows. */
+type AnswerRecord = Pick<ChosenArguments, "choices" | "probabilities">;
 
 /** What the stage-two answers amount to. */
 export type ArgumentAnswers =
@@ -673,21 +699,18 @@ export type ArgumentAnswers =
    */
   | { kind: "run_off"; chosen: ChosenArguments; question: ArgumentQuestion }
   /** Every chunk of one parameter answered "none of these". */
-  | {
-      kind: "none_fits";
-      parameter: string;
-      probabilities: Record<string, Record<string, number>>;
-    };
+  | ({ kind: "none_fits"; parameter: string } & AnswerRecord);
 
 /**
  * The option the model picked for one question. Model output is never read as
  * a value of its own; an answer outside the offered options is an invalid
- * response. The answer's scores are recorded under the question id.
+ * response. The chosen key, and the answer's scores when it has them, are
+ * recorded under the question id.
  */
 function readPick(
   question: ArgumentQuestion,
   answers: Record<string, unknown>,
-  probabilities: Record<string, Record<string, number>>
+  record: AnswerRecord
 ): ArgumentOption {
   const answer = readChoiceAnswer(answers, question.id);
   const chosen = question.options.find(
@@ -697,7 +720,9 @@ function readPick(
     throw new Error(
       `The model chose "${answer.choice}" for "${question.id}", which is not one of the offered options.`
     );
-  if (answer.probabilities) probabilities[question.id] = answer.probabilities;
+  record.choices[question.id] = chosen.key;
+  if (answer.probabilities)
+    record.probabilities[question.id] = answer.probabilities;
   return chosen;
 }
 
@@ -714,18 +739,23 @@ function choose(
  * Map each answer back to one of the options that question offered. The
  * chunks of one parameter answer together: the one chunk that named an
  * element decides, several call for a run-off, none means no element fits.
- * Every answer is read first, so the scores of every question are recorded
- * even when the step ends without an action.
+ * Every answer is read first, so the choice and scores of every question are
+ * recorded even when the step ends without an action.
  */
 export function readArgumentAnswers(
   tool: ExecutableTool,
   argumentQuestions: readonly ArgumentQuestion[],
   answers: Record<string, unknown>
 ): ArgumentAnswers {
-  const chosen: ChosenArguments = { args: {}, summary: [], probabilities: {} };
+  const chosen: ChosenArguments = {
+    args: {},
+    summary: [],
+    choices: {},
+    probabilities: {},
+  };
   const picks = argumentQuestions.map((question) => ({
     question,
-    option: readPick(question, answers, chosen.probabilities),
+    option: readPick(question, answers, chosen),
   }));
 
   const byParameter = new Map<string, typeof picks>();
@@ -748,6 +778,7 @@ export function readArgumentAnswers(
       return {
         kind: "none_fits",
         parameter,
+        choices: chosen.choices,
         probabilities: chosen.probabilities,
       };
     if (named.length === 1)
@@ -773,9 +804,10 @@ export function readRunOffAnswer(
   const chosen: ChosenArguments = {
     args: structuredClone(runOff.chosen.args),
     summary: [...runOff.chosen.summary],
+    choices: { ...runOff.chosen.choices },
     probabilities: { ...runOff.chosen.probabilities },
   };
-  const option = readPick(runOff.question, answers, chosen.probabilities);
+  const option = readPick(runOff.question, answers, chosen);
   choose(chosen, runOff.question, option);
   return chosen;
 }

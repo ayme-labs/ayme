@@ -13,9 +13,12 @@ import {
 import type { RefTool } from "./refTools";
 import {
   NONE_OF_THESE_KEY,
-  isQuestionOf,
+  chunkQuestionId,
   runOffQuestionId,
 } from "./goalLoopQuestions";
+
+/** The parameters of the built-in click Ref Tool. */
+const CLICK_PARAMETERS = ["ref"];
 
 // --- Fixtures ---
 
@@ -119,16 +122,38 @@ const asList = (
 ): ScriptedChoice[] | undefined =>
   wanted === undefined || Array.isArray(wanted) ? wanted : [wanted];
 
-/** The script for a question: by its id, else by the parameter it belongs to. */
+/**
+ * The script for a question: by its id, which is the parameter's name or a
+ * run-off's id, else by the parameter whose chunk it is. Only click is asked in
+ * chunks here, so chunk ids are those of click's parameters.
+ */
 function scriptFor(
   wanted: Record<string, ScriptedArgument>,
-  questionId: string
+  questionId: string,
+  questionCount: number
 ): ScriptedArgument | undefined {
   if (wanted[questionId] !== undefined) return wanted[questionId];
   const parameter = Object.keys(wanted).find((candidate) =>
-    isQuestionOf(candidate, questionId)
+    Array.from({ length: questionCount }, (_, index) =>
+      chunkQuestionId(candidate, index + 1, CLICK_PARAMETERS)
+    ).includes(questionId)
   );
   return parameter === undefined ? undefined : asList(wanted[parameter]);
+}
+
+/** Answer every argument question without the optional probabilities. */
+function withoutArgumentProbabilities(
+  decide: GoalLoopDecisionFunction
+): GoalLoopDecisionFunction {
+  return async (request) => {
+    const response = await decide(request);
+    if ("operation" in request.questions) return response;
+    const answers = structuredClone(
+      response.answers as Record<string, { probabilities?: unknown }>
+    );
+    for (const answer of Object.values(answers)) delete answer.probabilities;
+    return { ...response, answers };
+  };
 }
 
 type Criteria = Record<string, string>;
@@ -212,7 +237,7 @@ function scriptedDecisionFn(
       const stageTwo: Record<string, unknown> = {};
       for (const [id, options] of Object.entries(criteria)) {
         // A chunk answers from its parameter's script with what it offers.
-        const want = scriptFor(wanted, id);
+        const want = scriptFor(wanted, id, Object.keys(criteria).length);
         if (want === undefined)
           throw new Error(`No scripted argument for "${id}"`);
         stageTwo[id] = choiceAnswer(options, keyFor(options, want));
@@ -918,9 +943,10 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     // The one stage-two request carries ⌈300 / 254⌉ = 2 chunk questions, all
     // for the `ref` parameter.
     const stageTwo = criteriaOf(requests[1]!);
-    expect(Object.keys(stageTwo)).toHaveLength(2);
-    for (const id of Object.keys(stageTwo))
-      expect(isQuestionOf("ref", id)).toBe(true);
+    expect(Object.keys(stageTwo)).toEqual([
+      chunkQuestionId("ref", 1, CLICK_PARAMETERS),
+      chunkQuestionId("ref", 2, CLICK_PARAMETERS),
+    ]);
     const chunks = Object.values(stageTwo);
     for (const chunk of chunks) {
       expect(refsOffered(chunk).length).toBeLessThanOrEqual(254);
@@ -952,18 +978,23 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
   it("asks one run-off among exactly the elements several chunks named", async () => {
     const clicked = setupPageWithManyClickables(300);
+    const runOffId = runOffQuestionId("ref", CLICK_PARAMETERS);
+    // The decision function answers stage two without the optional
+    // probabilities: the chosen keys are recorded all the same.
     const { requests, decide } = recording(
-      scriptedDecisionFn([
-        {
-          operation: "click_page_state_ref",
-          goal_met: 0.1,
-          arguments: {
-            ref: ['button "Item 3"', 'button "Item 299"'],
-            [runOffQuestionId("ref")]: 'button "Item 299"',
+      withoutArgumentProbabilities(
+        scriptedDecisionFn([
+          {
+            operation: "click_page_state_ref",
+            goal_met: 0.1,
+            arguments: {
+              ref: ['button "Item 3"', 'button "Item 299"'],
+              [runOffId]: 'button "Item 299"',
+            },
           },
-        },
-        { operation: "none", goal_met: 0.9 },
-      ])
+          { operation: "none", goal_met: 0.9 },
+        ])
+      )
     );
     const tool = await getPublishedPursueGoal(decide);
 
@@ -974,25 +1005,26 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
     // Stage one, stage two, the run-off, then the next step's stage one.
     expect(requests).toHaveLength(4);
-    const [firstChunk, secondChunk] = Object.values(criteriaOf(requests[1]!));
+    const stageTwo = criteriaOf(requests[1]!);
+    const [firstChunk, secondChunk] = Object.values(stageTwo);
     const named = [
       keyFor(firstChunk!, 'button "Item 3"'),
       keyFor(secondChunk!, 'button "Item 299"'),
     ];
     const runOff = criteriaOf(requests[2]!);
-    const runOffId = runOffQuestionId("ref");
     expect(Object.keys(runOff)).toEqual([runOffId]);
     expect(Object.keys(runOff[runOffId]!)).toEqual(named);
     expect(clicked).toEqual(["Item 299"]);
     expect(result.reason).toBe("done");
-    // The chunk answers and the run-off answer are all recorded.
-    const score =
-      getLastGoalLoopRunResult()!.stepScores[0]!.argumentProbabilities!;
-    expect(Object.keys(score)).toEqual([
-      ...Object.keys(criteriaOf(requests[1]!)),
-      runOffId,
-    ]);
-    expect(score[runOffId]).toEqual({ [named[0]!]: 0, [named[1]!]: 1 });
+    // Each chunk's chosen key and the run-off's are recorded.
+    const [firstChunkId, secondChunkId] = Object.keys(stageTwo);
+    const score = getLastGoalLoopRunResult()!.stepScores[0]!;
+    expect(score.argumentChoices).toEqual({
+      [firstChunkId!]: named[0],
+      [secondChunkId!]: named[1],
+      [runOffId]: named[1],
+    });
+    expect(score.argumentProbabilities).toEqual({});
   });
 
   it("hands over with no_fitting_option when every chunk answers none of these", async () => {
@@ -1028,6 +1060,11 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(Object.keys(score)).toEqual(Object.keys(stageTwo));
     for (const id of Object.keys(stageTwo))
       expect(score[id]![NONE_OF_THESE_KEY]).toBe(1);
+    expect(getLastGoalLoopRunResult()!.stepScores[0]!.argumentChoices).toEqual(
+      Object.fromEntries(
+        Object.keys(stageTwo).map((id) => [id, NONE_OF_THESE_KEY])
+      )
+    );
   });
 
   it("hands over when no element on the page fits the chosen operation", async () => {

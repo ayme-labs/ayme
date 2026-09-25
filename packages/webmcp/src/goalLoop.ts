@@ -66,7 +66,12 @@ export function getPursueGoalTool(): ModelContextTool<
 export type GoalLoopStepScore = {
   operationProbabilities?: Record<string, number>;
   goalMetScore: number;
-  /** Stage two, per parameter of the chosen operation. */
+  /**
+   * Stage two, per question id: the key of the option chosen for every
+   * argument question answered, chunks and run-off included.
+   */
+  argumentChoices?: Record<string, string>;
+  /** Stage two, per question id: the scores the decision function supplied. */
   argumentProbabilities?: Record<string, Record<string, number>>;
 };
 
@@ -367,6 +372,7 @@ async function pursueGoal(
     let chosenArguments: ChosenArguments = {
       args: {},
       summary: [],
+      choices: {},
       probabilities: {},
     };
     if (plan.questions.length > 0) {
@@ -392,6 +398,7 @@ async function pursueGoal(
       // Every chunk of a ref over the cap answered "none of these": the step
       // ran no action, so it leaves no history entry (#123).
       if (argumentAnswers.kind === "none_fits") {
+        score.argumentChoices = argumentAnswers.choices;
         score.argumentProbabilities = argumentAnswers.probabilities;
         return done({
           reason: "no_fitting_option",
@@ -421,6 +428,7 @@ async function pursueGoal(
       } else {
         chosenArguments = argumentAnswers.chosen;
       }
+      score.argumentChoices = chosenArguments.choices;
       score.argumentProbabilities = chosenArguments.probabilities;
     }
 
