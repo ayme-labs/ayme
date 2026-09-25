@@ -18,3 +18,6 @@ apps/example-nuxt/.data/
 apps/example-nuxt/*.tsbuildinfo
 apps/example-vue/tests/vue-webmcp.spec.ts-snapshots/
 
+
+# Vendored repo-local agent skills, kept byte-for-byte with upstream
+/.agents/skills/typesafe-ai/

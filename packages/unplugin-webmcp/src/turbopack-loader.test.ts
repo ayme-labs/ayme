@@ -44,6 +44,21 @@ it("emits POM registration, JavaScript and compiler dependencies", () => {
   );
 });
 
+it("registers a subclass whose file has no decorator but extends a decorated base", () => {
+  const subclassPath = path.join(
+    path.dirname(resourcePath),
+    "SubCounterPage.ts"
+  );
+  const { context, dependencies } = loaderContext(subclassPath);
+  const code = turbopackLoader.call(
+    context,
+    readFileSync(subclassPath, "utf8")
+  );
+  expect(code).toMatch(/registerCompiledPom\(SubCounterPage,/);
+  expect(code).toContain('"toolName": "SubCounterPage.increment"');
+  expect(dependencies).toContain(resourcePath);
+});
+
 it("transpiles ordinary TypeScript when no POM transform is needed", () => {
   const { context } = loaderContext("/unused/plain.ts");
   const code = turbopackLoader.call(

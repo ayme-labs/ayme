@@ -5,7 +5,7 @@ Ayme WebMCP exposes selected Page Object behavior as WebMCP Tools while keeping 
 ## Language
 
 **Page Object Model (POM)**:
-A class that describes a page or a meaningful part of a page through the elements and actions it provides.
+A class that describes a page or a meaningful part of a page through the elements and actions it provides. A class is one when it is marked as such, directly or through a class it extends; being used by a POM does not make a class one.
 
 **Page Object**:
 An instance of a Page Object Model. It represents one occurrence of the page or part of a page described by that model.

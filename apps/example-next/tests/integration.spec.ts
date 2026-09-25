@@ -34,6 +34,11 @@ test("hydrates, uses the compiled POM and real Playwright, then remounts", async
     "Publication: disabled"
   );
   await expect(page.locator("output")).toHaveText("0");
+  // SubCounterPage's file has no decorator; the Turbopack rule and the
+  // compiler must still reach it and register its inherited tools.
+  await expect(page.getByTestId("compiled-metadata")).toContainText(
+    '"toolName":"SubCounterPage.increment"'
+  );
   // usePageObject rejects models without compiler-derived metadata. This call
   // therefore checks the actual loader, registration and browser action path.
   await page.getByRole("button", { name: "Call Page Object" }).click();

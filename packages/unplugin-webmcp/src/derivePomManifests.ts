@@ -57,7 +57,7 @@ export function derivePomManifestsFromProgram(
   for (const declaration of sourceFile.statements) {
     if (
       !ts.isClassDeclaration(declaration) ||
-      !hasWebMcpClassDecorator(declaration)
+      !isPomClass(checker, declaration)
     )
       continue;
     if (!declaration.name)
@@ -130,7 +130,11 @@ function pomMembers(
         ];
       }
 
-      const component = componentType(memberInfo.type, member.name.text);
+      const component = componentType(
+        checker,
+        memberInfo.type,
+        member.name.text
+      );
       if (!component) return [];
       const componentClassName = ensureComponentManifest(
         checker,
@@ -155,16 +159,13 @@ function classMembers(
   checker: ts.TypeChecker,
   declaration: ts.ClassDeclaration
 ): ts.ClassElement[] {
-  if (!declaration.name) return [];
-  const symbol = checker.getSymbolAtLocation(declaration.name);
-  if (!symbol) return [];
+  const type = declaredClassType(checker, declaration);
+  if (!type) return [];
 
-  return checker
-    .getPropertiesOfType(checker.getDeclaredTypeOfSymbol(symbol))
-    .flatMap((property) => {
-      const member = property.valueDeclaration ?? property.declarations?.[0];
-      return member && ts.isClassElement(member) ? [member] : [];
-    });
+  return checker.getPropertiesOfType(type).flatMap((property) => {
+    const member = property.valueDeclaration ?? property.declarations?.[0];
+    return member && ts.isClassElement(member) ? [member] : [];
+  });
 }
 
 function memberValueInfo(
@@ -294,11 +295,15 @@ function returnPomDeclarations(
       returnPomDeclarations(checker, member, seen)
     );
   }
-  return annotatedComponentDeclarations(type);
+  return pomDeclarations(checker, type);
 }
 
-function componentType(type: ts.Type, memberName: string) {
-  const declaration = componentDeclaration(type, memberName);
+function componentType(
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  memberName: string
+) {
+  const declaration = componentDeclaration(checker, type, memberName);
   return declaration ? { declaration } : undefined;
 }
 
@@ -318,16 +323,22 @@ function componentCollectionType(
     ts.IndexKind.Number
   );
   const declaration = arrayElement
-    ? componentDeclaration(arrayElement, memberName)
+    ? componentDeclaration(checker, arrayElement, memberName)
     : undefined;
   return declaration ? { declaration } : undefined;
 }
 
 function componentDeclaration(
+  checker: ts.TypeChecker,
   type: ts.Type,
   memberName: string
 ): ts.ClassDeclaration | undefined {
-  const declarations = annotatedComponentDeclarations(type);
+  const candidates = pomDeclarations(checker, type);
+  // A subclass and its ancestor do not compete: `Sub & Base` is a `Sub`.
+  const declarations = candidates.filter(
+    (candidate) =>
+      !candidates.some((other) => isAncestorClass(checker, candidate, other))
+  );
   if (declarations.length > 1) {
     throw new Error(
       `WebMCP component member "${memberName}" is ambiguous: ${declarations
@@ -338,7 +349,8 @@ function componentDeclaration(
   return declarations[0];
 }
 
-function annotatedComponentDeclarations(
+function pomDeclarations(
+  checker: ts.TypeChecker,
   type: ts.Type,
   seen = new Set<ts.Type>()
 ): ts.ClassDeclaration[] {
@@ -350,7 +362,7 @@ function annotatedComponentDeclarations(
     for (const declaration of symbol?.declarations ?? []) {
       if (
         ts.isClassDeclaration(declaration) &&
-        hasWebMcpClassDecorator(declaration)
+        isPomClass(checker, declaration)
       ) {
         declarations.add(declaration);
       }
@@ -359,10 +371,7 @@ function annotatedComponentDeclarations(
 
   if (type.isIntersection()) {
     for (const constituent of type.types) {
-      for (const declaration of annotatedComponentDeclarations(
-        constituent,
-        seen
-      )) {
+      for (const declaration of pomDeclarations(checker, constituent, seen)) {
         declarations.add(declaration);
       }
     }
@@ -426,6 +435,52 @@ function isPublicInstanceMember(member: ts.ClassElement) {
 function isLocatorType(type: ts.Type) {
   const symbol = type.aliasSymbol ?? type.getSymbol();
   return symbol?.getName() === "Locator";
+}
+
+/** A class is a Page Object Model when it, or an ancestor class, carries `@WebMCP`. */
+function isPomClass(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+): boolean {
+  return (
+    hasWebMcpClassDecorator(declaration) ||
+    baseClassDeclarations(checker, declaration).some((base) =>
+      isPomClass(checker, base)
+    )
+  );
+}
+
+function isAncestorClass(
+  checker: ts.TypeChecker,
+  ancestor: ts.ClassDeclaration,
+  declaration: ts.ClassDeclaration
+): boolean {
+  return baseClassDeclarations(checker, declaration).some(
+    (base) => base === ancestor || isAncestorClass(checker, ancestor, base)
+  );
+}
+
+// TypeScript rejects circular `extends`, so walking base classes terminates.
+function baseClassDeclarations(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+): ts.ClassDeclaration[] {
+  const type = declaredClassType(checker, declaration);
+  if (!type?.isClassOrInterface()) return [];
+  return checker
+    .getBaseTypes(type)
+    .flatMap((base) =>
+      (base.getSymbol()?.declarations ?? []).filter(ts.isClassDeclaration)
+    );
+}
+
+function declaredClassType(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+) {
+  if (!declaration.name) return undefined;
+  const symbol = checker.getSymbolAtLocation(declaration.name);
+  return symbol ? checker.getDeclaredTypeOfSymbol(symbol) : undefined;
 }
 
 function hasWebMcpClassDecorator(declaration: ts.ClassDeclaration) {

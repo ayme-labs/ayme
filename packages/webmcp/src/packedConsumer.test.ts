@@ -549,6 +549,7 @@ it(
         'if (typeof main.ayme?.getPageState !== "function") throw new Error("missing named Ayme facade");',
         'if (main.default !== main.ayme) throw new Error("Ayme default differs from named export");',
         'if (typeof main.WebMCP !== "function") throw new Error("missing WebMCP");',
+        'if (typeof main.createPage !== "function") throw new Error("missing createPage");',
         'if (typeof internal.configureAymeRuntime !== "function") throw new Error("missing configureAymeRuntime");',
         'console.log("ok");',
       ].join("\n")

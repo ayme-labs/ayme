@@ -8,8 +8,6 @@ class AnnotatedComponent {
   readonly child!: Locator;
 }
 
-class DerivedComponent extends AnnotatedComponent {}
-
 type FynkComponent<T, Selector extends string> = T & {
   readonly selector: Selector;
 };
@@ -39,7 +37,6 @@ export class AnnotatedChildrenPom {
     "#fynk"
   );
 
-  readonly derivedChild!: DerivedComponent;
   readonly asyncField!: Promise<AnnotatedComponent>;
   readonly synchronousChildren!: AnnotatedComponent[];
   readonly mapChildren!: Map<string, AnnotatedComponent>;

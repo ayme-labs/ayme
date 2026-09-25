@@ -55,14 +55,37 @@ export function pomProgramDependencies(
   const config = projectConfigFor(absoluteFileName, options, false, report);
 
   for (const projectFile of config.fileNames) report(projectFile);
-  reportImportedModules(absoluteFileName, config.options, dependencies);
+  walkImportedModules(absoluteFileName, config.options, report);
   return [...dependencies].sort();
 }
 
-function reportImportedModules(
+/**
+ * Whether a module's transitive local imports include one whose text carries
+ * `@WebMCP`. It walks imports as `pomProgramDependencies` does, without adding
+ * the project's root files. Without a tsconfig, imports resolve with
+ * TypeScript's defaults; an unreadable tsconfig throws, as the Program build
+ * for the same file would.
+ */
+export function importsWebMcpModule(
+  fileName: string,
+  options: PomCompilerOptions = {}
+) {
+  const absoluteFileName = path.resolve(fileName);
+  const compilerOptions = projectConfigPath(absoluteFileName, options)
+    ? projectConfigFor(absoluteFileName, options, false).options
+    : {};
+  let found = false;
+  walkImportedModules(absoluteFileName, compilerOptions, (_, source) => {
+    found ||= source?.includes("@WebMCP") ?? false;
+  });
+  return found;
+}
+
+/** Calls `onImport` once per transitive local import, with its text if readable. */
+function walkImportedModules(
   fileName: string,
   compilerOptions: ts.CompilerOptions,
-  dependencies: Set<string>,
+  onImport: (fileName: string, source: string | undefined) => void,
   visited = new Set<string>()
 ) {
   const absoluteFileName = path.resolve(fileName);
@@ -70,6 +93,7 @@ function reportImportedModules(
   visited.add(absoluteFileName);
 
   const source = ts.sys.readFile(absoluteFileName);
+  if (visited.size > 1) onImport(absoluteFileName, source);
   if (source === undefined) return;
 
   const importedFiles = ts.preProcessFile(source, true, true).importedFiles;
@@ -82,10 +106,23 @@ function reportImportedModules(
     ).resolvedModule;
     if (!resolved || resolved.isExternalLibraryImport) continue;
 
-    const dependency = path.resolve(resolved.resolvedFileName);
-    dependencies.add(dependency);
-    reportImportedModules(dependency, compilerOptions, dependencies, visited);
+    walkImportedModules(
+      resolved.resolvedFileName,
+      compilerOptions,
+      onImport,
+      visited
+    );
   }
+}
+
+function projectConfigPath(fileName: string, options: PomCompilerOptions) {
+  return options.tsconfigPath
+    ? path.resolve(options.tsconfigPath)
+    : ts.findConfigFile(
+        path.dirname(fileName),
+        ts.sys.fileExists,
+        "tsconfig.json"
+      );
 }
 
 function projectConfigFor(
@@ -94,13 +131,7 @@ function projectConfigFor(
   allowConfigErrors: boolean,
   onDependency?: (fileName: string) => void
 ): ts.ParsedCommandLine {
-  const configPath = options.tsconfigPath
-    ? path.resolve(options.tsconfigPath)
-    : ts.findConfigFile(
-        path.dirname(fileName),
-        ts.sys.fileExists,
-        "tsconfig.json"
-      );
+  const configPath = projectConfigPath(fileName, options);
   if (!configPath)
     throw new Error(
       `Could not find a tsconfig.json for POM source ${fileName}.`

@@ -67,6 +67,17 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
   if (options.inspector !== undefined && typeof options.inspector !== "boolean")
     throw new TypeError("inspector must be a boolean");
   const transformPom = createPomTransform(options);
+  // Vite soft-invalidates static importers of a changed file and keeps their
+  // previous transform result, so a Page Object compiled from a changed base
+  // class would keep a stale manifest. Record which transformed modules read
+  // each compiler dependency, per Vite environment, and hard-invalidate them
+  // in that environment's module graph when it changes.
+  // ponytail: a dependency is every tsconfig input plus all transitive imports
+  // (pomProgramDependencies), so editing an unrelated shared import recompiles
+  // every Page Object module that reaches it, one TypeScript Program each.
+  // Upgrade: record only the manifest-relevant inputs, or cache the Program.
+  // Keyed by the Vite environment object (`this.environment`).
+  const viteDependants = new WeakMap<object, Map<string, Set<string>>>();
 
   return {
     name: "ayme-webmcp",
@@ -112,8 +123,30 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
         handler(code, id, transformOptions) {
           if (transformOptions?.ssr) return null;
           const transformed = transformPom(code, id);
+          // Vite before 6 has no environments and so no invalidation here.
+          const environment: object | undefined = this.environment;
+          if (!transformed || !environment) return transformed;
+          const dependantsByFile = viteDependants.get(environment) ?? new Map();
+          viteDependants.set(environment, dependantsByFile);
+          for (const dependency of transformed.dependencies) {
+            const dependants = dependantsByFile.get(dependency) ?? new Set();
+            dependantsByFile.set(dependency, dependants.add(id));
+          }
           return transformed;
         },
+      },
+      // Vite otherwise calls watchChange for the client environment only.
+      perEnvironmentWatchChangeDuringDev: true,
+      watchChange(file) {
+        const environment = this.environment as
+          typeof this.environment | undefined;
+        if (environment?.mode !== "dev") return;
+        const moduleGraph = environment.moduleGraph;
+        const dependantsByFile = viteDependants.get(environment);
+        for (const id of dependantsByFile?.get(resolve(file)) ?? []) {
+          const module = moduleGraph.getModuleById(id);
+          if (module) moduleGraph.invalidateModule(module);
+        }
       },
       async config(config) {
         const exclude = config.optimizeDeps?.exclude ?? [];
