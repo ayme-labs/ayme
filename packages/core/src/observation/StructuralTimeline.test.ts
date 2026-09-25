@@ -12,10 +12,7 @@ import {
   MonotonicTimeMsSchema,
   type MonotonicTimeMs,
 } from "../capture/MonotonicTimeMs";
-import {
-  PlaywrightPageIdSchema,
-  type PlaywrightPageId,
-} from "../capture/PlaywrightPageId";
+import { PageIdSchema, type PageId } from "../capture/PageId";
 import type { StructuralTreeEvidence } from "../capture/StructuralTreeEvidence";
 import {
   StructuralTimeline,
@@ -50,9 +47,8 @@ const POST_ACTION_YAML = pageYaml(
   ].join("\n")
 );
 
-const PAGE: PlaywrightPageId = PlaywrightPageIdSchema.parse("page@test");
-const OTHER_PAGE: PlaywrightPageId =
-  PlaywrightPageIdSchema.parse("other-page@test");
+const PAGE: PageId = PageIdSchema.parse("page@test");
+const OTHER_PAGE: PageId = PageIdSchema.parse("other-page@test");
 
 const refFactory = new SyntheticAriaRefFactory();
 
@@ -70,7 +66,7 @@ const evidenceLabels = new WeakMap<StructuralTreeEvidence, string>();
  */
 function treeEvidence(
   yaml: string,
-  options?: { at?: number; pageId?: PlaywrightPageId; label?: string }
+  options?: { at?: number; pageId?: PageId; label?: string }
 ): StructuralTreeEvidence {
   const parsed = tree(yaml);
   const evidence: StructuralTreeEvidence = {
@@ -88,7 +84,7 @@ function treeEvidence(
  */
 function failingTreeEvidence(options?: {
   at?: number;
-  pageId?: PlaywrightPageId;
+  pageId?: PageId;
 }): StructuralTreeEvidence {
   return {
     capturedAt: at(options?.at ?? 0),
@@ -124,7 +120,7 @@ function startVisit(
     visitId: VisitId;
     at: number;
     yaml: string;
-    pageId?: PlaywrightPageId;
+    pageId?: PageId;
     url?: string;
     fromUrl?: string | null;
   }
@@ -156,7 +152,7 @@ function observe(
     at: number;
     yaml: string;
     label?: string;
-    pageId?: PlaywrightPageId;
+    pageId?: PageId;
     capturedForActionId?: StructuralActionId;
   }
 ): StructuralTreeEvidence {
@@ -178,7 +174,7 @@ function observe(
 /** Records a visit start whose bootstrap observation resolves to an empty/unparseable snapshot. */
 function startVisitWithUnresolvableTree(
   timeline: StructuralTimeline,
-  options: { visitId: VisitId; at: number; pageId?: PlaywrightPageId }
+  options: { visitId: VisitId; at: number; pageId?: PageId }
 ): StructuralNavigationEntry {
   const entry = timeline.recordNavigation({
     kind: "navigation",
@@ -203,7 +199,7 @@ function observeUnresolvable(
   timeline: StructuralTimeline,
   options: {
     at: number;
-    pageId?: PlaywrightPageId;
+    pageId?: PageId;
     capturedForActionId?: StructuralActionId;
   }
 ): void {
@@ -226,7 +222,7 @@ function recordAction(
   options: {
     startedAt: number;
     endedAt: number;
-    pageId?: PlaywrightPageId;
+    pageId?: PageId;
     after?: { at: number; yaml: string; label?: string };
   }
 ): StructuralActionId {
@@ -520,7 +516,7 @@ describe("StructuralTimeline", () => {
   });
 
   describe("getActionEvidence", () => {
-    it("scopes interleaved visit and action windows to their Playwright page", async () => {
+    it("scopes interleaved visit and action windows to their page", async () => {
       const otherPageYaml = pageYaml('- textbox "Search" [ref=e9]');
       const timeline = new StructuralTimeline();
       startVisit(timeline, { visitId: visit(1), at: 0, yaml: INITIAL_YAML });

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { MonotonicTimeMsSchema } from "../capture/MonotonicTimeMs";
-import { PlaywrightPageIdSchema } from "../capture/PlaywrightPageId";
+import { PageIdSchema } from "../capture/PageId";
 import { StructuralObservationSession } from "./StructuralObservationSession";
 import { VisitIdSchema } from "./Visit";
 
-const PAGE = PlaywrightPageIdSchema.parse("page@test");
+const PAGE = PageIdSchema.parse("page@test");
 
 function sessionWithClock(values: number[]): StructuralObservationSession {
   let index = 0;

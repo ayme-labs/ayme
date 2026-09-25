@@ -5,7 +5,7 @@ import {
   SyntheticAriaRefFactory,
   StructuralTreeCaptureService,
   MonotonicTimeMsSchema,
-  PlaywrightPageIdSchema,
+  PageIdSchema,
   projectStructuralNodeForest,
   renderCompactStructuralNodeForest,
 } from "@ayme-dev/core/structural-observation";
@@ -31,7 +31,7 @@ const service = new StructuralTreeCaptureService({
   clock: { now: () => MonotonicTimeMsSchema.parse(1) },
   refFactory: new SyntheticAriaRefFactory(),
 });
-export const capture = service.capture(PlaywrightPageIdSchema.parse("page"));
+export const capture = service.capture(PageIdSchema.parse("page"));
 
 import type {
   PreparedNavigation,
