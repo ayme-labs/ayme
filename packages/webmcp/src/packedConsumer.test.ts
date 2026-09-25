@@ -379,7 +379,7 @@ void [ayme, WebMCP, mountInspector];
 ${
   version
     ? `
-import type { Page, Locator } from '@playwright/test';
+import type { BrowserContext, Page, Locator } from '@playwright/test';
 import { createPageRegistration, type PageObjectConstructor } from '@ayme-dev/webmcp/internal';
 import { usePageObject } from '@ayme-dev/webmcp-vue';
 @WebMCP
@@ -398,8 +398,15 @@ const ctor: PageObjectConstructor<Pom> = Pom;
 const instance: Pom = usePageObject(ctor);
 createPageRegistration(ctor);
 void instance;
-import type { BrowserContext } from '@playwright/test';
-import { executePublishedTool, publishedToolNames, publishedToolSchema, recordPublishedTools, waitForPublishedTool, type PublishedTool, type RecordingDriver } from '@ayme-dev/webmcp/testing';
+import {
+  executePublishedTool,
+  publishedToolNames,
+  publishedToolSchema,
+  recordPublishedTools,
+  waitForPublishedTool,
+  type PublishedTool,
+  type RecordingDriver,
+} from '@ayme-dev/webmcp/testing';
 export async function recordAndRun(context: BrowserContext, page: Page): Promise<unknown> {
   await recordPublishedTools(context);
   await waitForPublishedTool(page, 'Pom.act', { timeout: 10 });

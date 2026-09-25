@@ -2,17 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Linter } from "eslint";
 import base from "./base.js";
+import { message as adrMessage, plugin } from "./testing-entries.js";
 
-const linter = new Linter({ configType: "flat" });
-const adrMessage =
-  "Only test files may import a testing entry (docs/adr/0026-test-seams-behind-a-testing-entry.md).";
+const linter = new Linter();
 
 /** What `base` reports under the testing-entries policy for `code` in
  *  `filename`: "refused" for each refusal that cites ADR-0026. */
 function lint(code, filename) {
   return linter
     .verify(code, base, { filename })
-    .filter((message) => message.ruleId?.startsWith("testing-entries/"))
+    .filter((message) => message.ruleId?.startsWith(`${plugin}/`))
     .map((message) =>
       message.message.endsWith(adrMessage) ? "refused" : message.message
     );
@@ -20,6 +19,13 @@ function lint(code, filename) {
 
 const staticImport =
   'import { recordPublishedTools } from "@ayme-dev/webmcp/testing";\nexport { recordPublishedTools };\n';
+
+test("the refusal cites ADR-0026", () => {
+  assert.match(
+    adrMessage,
+    /docs\/adr\/0026-test-seams-behind-a-testing-entry\.md/
+  );
+});
 
 test("a test file or verification script may import a testing entry", () => {
   for (const filename of [
