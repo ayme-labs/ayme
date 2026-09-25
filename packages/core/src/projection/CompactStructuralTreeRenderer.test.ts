@@ -4,6 +4,7 @@ import type { AriaRef } from "../tree/StructuralTypes";
 import { AriaRefSchema } from "../tree/StructuralTypes";
 import { projectStructuralNodeForest } from "./StructuralProjection";
 import { renderCompactStructuralNodeForest } from "./CompactStructuralTreeRenderer";
+import { structuralNodeForest } from "./StructuralNodeForest";
 import { defineStructuralEnrichment } from "../tree/StructuralEnrichment";
 import { SyntheticAriaRefFactory } from "../tree/SyntheticAriaRefFactory";
 import { StructuralTree } from "../tree/StructuralTree";
@@ -405,6 +406,44 @@ describe("CompactStructuralTreeRenderer", () => {
     expect(renderIncremental(StructuralTree.reconcile(before, after))).toBe(
       '- <changed> [ref=e1]:\n  - <added> [ref=e3] button "New"\n  - <removed> [ref=e2]'
     );
+  });
+
+  it("joins adjacent text children and roots left by an exploded node", () => {
+    const tree = parse(
+      "- paragraph [ref=e1]:\n" +
+        "  - generic [ref=e2]: a\n" +
+        "  - generic [ref=e3]: b\n" +
+        '  - button "Go" [ref=e4]\n' +
+        "  - generic [ref=e5]: c\n" +
+        "  - text: d\n" +
+        "- generic [ref=e6]: e\n" +
+        "- generic [ref=e7]: f"
+    );
+    const forest = structuralNodeForest(tree.getRootNodes()).explode(
+      (_entry, node) => node.role === "generic"
+    );
+
+    expect(
+      renderCompactStructuralNodeForest(projectStructuralNodeForest(forest))
+    ).toBe(
+      "- [ref=e1] paragraph:\n" +
+        "  - text: ab\n" +
+        '  - [ref=e4] button "Go"\n' +
+        "  - text: cd\n" +
+        "- text: ef"
+    );
+  });
+
+  it("renders a joined run of text as the node's inline text", () => {
+    const forest = structuralNodeForest(
+      parse(
+        '- button "Go" [ref=e1]:\n  - generic [ref=e2]: G\n  - generic [ref=e3]: o'
+      ).getRootNodes()
+    ).explode((_entry, node) => node.role === "generic");
+
+    expect(
+      renderCompactStructuralNodeForest(projectStructuralNodeForest(forest))
+    ).toBe('- [ref=e1] button "Go": Go');
   });
 
   it("suppresses the synthetic fragment wrapper in multi-root projections", () => {

@@ -26,6 +26,24 @@ export {
   type StructuralProjection,
 } from "./projection/StructuralProjection";
 export { renderCompactStructuralNodeForest } from "./projection/CompactStructuralTreeRenderer";
+export {
+  renderJsonStructuralNodeForest,
+  type JsonStructuralNode,
+  type JsonStructuralNodeForest,
+} from "./projection/JsonStructuralTreeRenderer";
+export {
+  StructuralNodeForest,
+  structuralNodeForest,
+  type StructuralNodeForestAdapter,
+  type StructuralNodePredicate,
+} from "./projection/StructuralNodeForest";
+export {
+  emitTreeOutput,
+  type Projection,
+  type Renderer,
+  type Serializer,
+  type TreeOutput,
+} from "./projection/TreeOutput";
 export { PlaywrightPageIdSchema } from "./capture/PlaywrightPageId";
 export type { PlaywrightPageId } from "./capture/PlaywrightPageId";
 export { MonotonicTimeMsSchema } from "./capture/MonotonicTimeMs";
