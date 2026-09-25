@@ -18,7 +18,7 @@ import { browserMonotonicClock } from "./browserMonotonicClock";
 import {
   InteractionHistory,
   type Caller,
-  type RecordedAction,
+  type ToolCall,
 } from "./interactionHistory";
 import { getRegisteredPomStructure } from "./registry";
 
@@ -138,15 +138,27 @@ export async function getPageStateCaptureForDocument(
 }
 
 /**
- * Package-internal: start a Structural Action for the caller acting now. An
+ * Package-internal: start a Structural Action for `caller`'s tool call. An
  * action needs a page to compare against, so a session that has observed
  * nothing yet captures once first.
  */
 export async function startActionForDocument(
   currentDocument: Document,
-  action: Omit<RecordedAction, "caller">
+  caller: Caller,
+  call: ToolCall
 ): Promise<StructuralActionId> {
-  return getPageStateSession(currentDocument).startAction(action);
+  return getPageStateSession(currentDocument).startAction(caller, call);
+}
+
+/**
+ * Package-internal: complete an action whose tool call threw, with the page as
+ * it is now. No caller's cursor moves.
+ */
+export async function failActionForDocument(
+  currentDocument: Document,
+  actionId: StructuralActionId
+): Promise<void> {
+  return getPageStateSession(currentDocument).failAction(actionId);
 }
 
 /**
@@ -233,16 +245,25 @@ class PageStateSession {
   }
 
   async startAction(
-    action: Omit<RecordedAction, "caller">
+    caller: Caller,
+    call: ToolCall
   ): Promise<StructuralActionId> {
     if (!this.history.hasObservation) await this.capture();
-    return this.history.startAction(action);
+    return this.history.startAction(caller, call);
   }
 
   async completeAction(actionId: StructuralActionId): Promise<StructuralTree> {
-    const at = this.history.now();
     const capture = await this.advancedCapture();
-    return this.history.completeAction(actionId, capture.tree, at);
+    return this.history.completeAction(
+      actionId,
+      capture.tree,
+      this.history.now()
+    );
+  }
+
+  async failAction(actionId: StructuralActionId): Promise<void> {
+    const capture = await this.advancedCapture();
+    this.history.failAction(actionId, capture.tree, this.history.now());
   }
 
   async getPageStateForElements(
@@ -258,9 +279,10 @@ class PageStateSession {
 
   /** Capture and record an observation; `receivedBy` moves that caller's cursor. */
   private async capture(receivedBy?: Caller): Promise<AdvancedCapture> {
-    const at = this.history.now();
     const capture = await this.advancedCapture();
-    this.history.observe(capture.tree, at, receivedBy);
+    // Stamped once the capture is taken, so it cannot share its time with an
+    // action started right after it.
+    this.history.observe(capture.tree, this.history.now(), receivedBy);
     return capture;
   }
 

@@ -16,6 +16,7 @@ import type { AriaRef, PageStateCapture } from "./pageState";
 import { listRefTools } from "./refTools";
 import {
   listCollectionToolRoots,
+  executePomToolAs,
   listRegisteredPomTools,
   type RegisteredPomRoot,
 } from "./registry";
@@ -115,6 +116,7 @@ type ArgumentSpec = {
 export type ExecutableTool = {
   name: string;
   description: string;
+  /** Runs the tool as the Goal Loop's model, the caller of every step. */
   execute(input: unknown): Promise<unknown>;
   /** Parameter names a caller must pass; empty when the tool takes none. */
   requiredParams: string[];
@@ -207,13 +209,15 @@ function specsOfCollectionTool(
  * Ref Tool, built in or registered (ADR-0023), and every registered POM tool.
  */
 export function buildToolOptions(): ToolOption[] {
-  const refTools: ExecutableTool[] = listRefTools().map(({ tool, filter }) => ({
-    name: tool.name,
-    description: tool.description,
-    execute: (input: unknown) => tool.execute(input),
-    requiredParams: [...(tool.inputSchema.required ?? [])],
-    args: specsOfRefToolSchema(tool.inputSchema, filter),
-  }));
+  const refTools: ExecutableTool[] = listRefTools().map(
+    ({ tool, filter, executeAs }) => ({
+      name: tool.name,
+      description: tool.description,
+      execute: (input: unknown) => executeAs(input, "goalLoop"),
+      requiredParams: [...(tool.inputSchema.required ?? [])],
+      args: specsOfRefToolSchema(tool.inputSchema, filter),
+    })
+  );
   const collectionRoots = listCollectionToolRoots();
   const pomTools: ExecutableTool[] = listRegisteredPomTools().map((t) => {
     const roots = collectionRoots.get(t.name);
@@ -225,8 +229,10 @@ export function buildToolOptions(): ToolOption[] {
       description: t.description,
       // An action without parameters of its own still takes the empty `args`.
       execute: (input: unknown) =>
-        t.execute(
-          roots ? { args: {}, ...(input as Record<string, unknown>) } : input
+        executePomToolAs(
+          t,
+          roots ? { args: {}, ...(input as Record<string, unknown>) } : input,
+          "goalLoop"
         ),
       requiredParams: args
         .filter((arg) => !arg.optional)

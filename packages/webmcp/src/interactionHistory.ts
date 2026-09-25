@@ -21,16 +21,25 @@ import {
 /**
  * Who receives page states and acts: the calling agent (through WebMCP Tools
  * or the `ayme` API) or the Goal Loop's System One model.
+ *
+ * ponytail: `goalLoop` is a reader id of its own until the Goal Loop becomes
+ * a plain consumer of the history (D7, #168).
  */
 export type Caller = "agent" | "goalLoop";
 
 /** What core's Structural Action does not carry: the tool call behind it. */
-export type RecordedAction = {
-  readonly caller: Caller;
+export type ToolCall = {
   readonly tool: string;
   readonly args: unknown;
   /** For a Ref Tool, the current ref the action was applied to. */
   readonly targetRef?: AriaRef;
+};
+
+/** A tool call as recorded beside its Structural Action. */
+export type RecordedAction = ToolCall & {
+  readonly caller: Caller;
+  /** Set when the tool call threw; the action still completed. */
+  readonly failed?: true;
 };
 
 let documentCount = 0;
@@ -50,9 +59,12 @@ export class InteractionHistory {
   readonly observations: StructuralObservationSession;
   private readonly actionIds = new StructuralActionIdFactory();
   private readonly recorded = new Map<StructuralActionId, RecordedAction>();
+  /**
+   * ponytail: two remembered positions, the observation each caller last
+   * received; they become reader points with an explicit `since` (D7, #168).
+   */
   private readonly cursors = new Map<Caller, StructuralObservationEntry>();
   private first: StructuralObservationEntry | undefined;
-  private actingCaller: Caller = "agent";
 
   constructor(
     currentDocument: Document,
@@ -100,10 +112,10 @@ export class InteractionHistory {
     return this.cursors.get(caller) ?? this.first;
   }
 
-  /** Start a Structural Action for the caller acting now. */
-  startAction(action: Omit<RecordedAction, "caller">): StructuralActionId {
+  /** Start a Structural Action for `caller`'s tool call. */
+  startAction(caller: Caller, call: ToolCall): StructuralActionId {
     const actionId = this.actionIds.create();
-    this.recorded.set(actionId, { ...action, caller: this.actingCaller });
+    this.recorded.set(actionId, { ...call, caller });
     this.observations.recordActionStarted({
       kind: "action-started",
       at: this.now(),
@@ -120,25 +132,22 @@ export class InteractionHistory {
    *
    * The Change Record is read from these two observations rather than from
    * core's derived `actionChange`: that starts at the latest observation
-   * before the action (a ref-resolution capture, not the caller's), and an
+   * before the action (a ref-resolution capture, not the caller's), an
    * action that changes the route completes in the next Visit, where core
-   * keeps its before state as its after state.
+   * keeps its before state as its after state, and each query replays every
+   * earlier action of the Visit, quadratic per Visit.
+   *
+   * ponytail: the reconcile here stands in for core's two-point reading
+   * (D8, #169).
    */
   async completeAction(
     actionId: StructuralActionId,
     settledPage: StructuralTree,
     at: MonotonicTimeMs
   ): Promise<StructuralTree> {
-    const action = this.recorded.get(actionId);
-    if (!action) throw new Error(`No recorded action ${actionId}.`);
+    const action = this.recordedAction(actionId);
     const before = this.cursor(action.caller);
-    const after = this.record(settledPage, at, actionId);
-    this.observations.recordActionCompleted({
-      kind: "action-completed",
-      at: this.now(),
-      pageId: this.pageId,
-      actionId,
-    });
+    const after = this.complete(actionId, settledPage, at);
     this.cursors.set(action.caller, after);
     return StructuralTree.reconcile(
       await (before ?? after).tree.resolve(),
@@ -146,15 +155,20 @@ export class InteractionHistory {
     );
   }
 
-  /** Actions started while `run` is pending are the `caller`'s. */
-  async actingAs<T>(caller: Caller, run: () => Promise<T>): Promise<T> {
-    const previous = this.actingCaller;
-    this.actingCaller = caller;
-    try {
-      return await run();
-    } finally {
-      this.actingCaller = previous;
-    }
+  /**
+   * Complete an action whose tool call threw, with the page as it is now. The
+   * caller received an error, not a page, so its cursor stays where it was.
+   */
+  failAction(
+    actionId: StructuralActionId,
+    page: StructuralTree,
+    at: MonotonicTimeMs
+  ): void {
+    this.recorded.set(actionId, {
+      ...this.recordedAction(actionId),
+      failed: true,
+    });
+    this.complete(actionId, page, at);
   }
 
   /**
@@ -171,6 +185,28 @@ export class InteractionHistory {
   /** The tool calls behind the recorded Structural Actions, in start order. */
   actions(): ReadonlyMap<StructuralActionId, RecordedAction> {
     return this.recorded;
+  }
+
+  private recordedAction(actionId: StructuralActionId): RecordedAction {
+    const action = this.recorded.get(actionId);
+    if (!action) throw new Error(`No recorded action ${actionId}.`);
+    return action;
+  }
+
+  /** Record the action's after observation and its completion. */
+  private complete(
+    actionId: StructuralActionId,
+    page: StructuralTree,
+    at: MonotonicTimeMs
+  ): StructuralObservationEntry {
+    const after = this.record(page, at, actionId);
+    this.observations.recordActionCompleted({
+      kind: "action-completed",
+      at: this.now(),
+      pageId: this.pageId,
+      actionId,
+    });
+    return after;
   }
 
   private record(

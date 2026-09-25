@@ -5,9 +5,13 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import { isJsonValue, type JsonValue } from "./contracts";
 import { browserMonotonicClock } from "./browserMonotonicClock";
-import type { RecordedAction } from "./interactionHistory";
+import type { Caller, ToolCall } from "./interactionHistory";
 import { getBrowserPageActivitySource } from "./pageActivitySource";
-import { completeActionForDocument, startActionForDocument } from "./pageState";
+import {
+  completeActionForDocument,
+  failActionForDocument,
+  startActionForDocument,
+} from "./pageState";
 import { renderChangeRecord } from "./changeRecord";
 
 export type ActionResult = {
@@ -30,15 +34,23 @@ export type ActionResult = {
  * that happened on its own since the caller last read the page is therefore
  * part of the record.
  *
- * An action whose `perform` throws stays started and never completes.
+ * An action whose `perform` throws is completed as failed with the page as it
+ * is then, moves no cursor, and the error travels on.
  */
 export async function runAction(
   currentDocument: Document,
-  action: Omit<RecordedAction, "caller">,
+  caller: Caller,
+  call: ToolCall,
   perform: () => unknown
 ): Promise<ActionResult> {
-  const actionId = await startActionForDocument(currentDocument, action);
-  const rawResult = await perform();
+  const actionId = await startActionForDocument(currentDocument, caller, call);
+  let rawResult: unknown;
+  try {
+    rawResult = await perform();
+  } catch (error) {
+    await failActionForDocument(currentDocument, actionId).catch(() => {});
+    throw error;
+  }
   const { stable } = await waitForSettled({
     activity: getBrowserPageActivitySource(currentDocument),
     clock: browserMonotonicClock,

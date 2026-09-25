@@ -18,11 +18,15 @@ import {
 } from "./goalLoopQuestions";
 import { toolFailure } from "./toolFailure.testSupport";
 import {
-  captureChangeRecordForDocument,
+  getInteractionHistory,
+  getPageStateCaptureForDocument,
   resolvePageStateRefs,
 } from "./pageState";
 import { renderChangeRecord } from "./changeRecord";
-import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import {
+  AriaRefSchema,
+  StructuralTree,
+} from "@ayme-dev/core/structural-observation";
 
 /** The parameters of the built-in click Ref Tool. */
 const CLICK_PARAMETERS = ["ref"];
@@ -1507,10 +1511,15 @@ describe("Goal Loop pursue_goal in Chromium", () => {
         page_changed: false,
       },
     ]);
-    const record = await captureChangeRecordForDocument(document);
-    expect(record).not.toBeNull();
-    expect(record!.hasAnyChanges()).toBe(false);
-    expect(renderChangeRecord(record!)).toBe("");
+    // The agent's next Change Record: from the page the Handover gave it.
+    const handedOver = getInteractionHistory(document).cursor("agent")!;
+    const { tree: now } = await getPageStateCaptureForDocument(document);
+    const record = StructuralTree.reconcile(
+      await handedOver.tree.resolve(),
+      now
+    );
+    expect(record.hasAnyChanges()).toBe(false);
+    expect(renderChangeRecord(record)).toBe("");
   });
 
   it("hands over, naming the collection instance, when the instances exceed the option limit", async () => {

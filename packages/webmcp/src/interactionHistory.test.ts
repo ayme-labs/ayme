@@ -58,9 +58,10 @@ describe("InteractionHistory cursors", () => {
   it("renders an action against the acting caller's cursor and moves only that cursor", async () => {
     const history = new InteractionHistory(document, clock);
     const agentRead = history.observe(empty(), history.now(), "agent");
-    const actionId = await history.actingAs("goalLoop", async () => {
-      history.observe(empty(), history.now(), "goalLoop");
-      return history.startAction({ tool: "App.save", args: {} });
+    history.observe(empty(), history.now(), "goalLoop");
+    const actionId = history.startAction("goalLoop", {
+      tool: "App.save",
+      args: {},
     });
 
     const changes = await history.completeAction(
@@ -77,5 +78,22 @@ describe("InteractionHistory cursors", () => {
 
     history.handOver();
     expect(history.cursor("agent")?.capturedForActionId).toBe(actionId);
+  });
+
+  it("completes an action whose tool call failed without moving a cursor", async () => {
+    const history = new InteractionHistory(document, clock);
+    const agentRead = history.observe(empty(), history.now(), "agent");
+    const actionId = history.startAction("agent", {
+      tool: "App.save",
+      args: {},
+    });
+
+    history.failAction(actionId, saved(), history.now());
+
+    expect(history.actions().get(actionId)).toMatchObject({ failed: true });
+    expect(history.cursor("agent")).toBe(agentRead);
+    const { actionChange } =
+      await history.observations.getActionEvidence(actionId);
+    expect(actionChange.changeTree.hasAnyChanges()).toBe(true);
   });
 });

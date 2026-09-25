@@ -129,7 +129,7 @@ export type Handover = {
 
 /**
  * Execute a tool and read the `ActionResult` it returns.
- * Every registered tool (POM tools, Ref Tools) already runs through
+ * Every registered tool (POM tools, Ref Tools) runs, as the Goal Loop's model, through
  * `runAction` internally, so we just forward and interpret the result.
  */
 async function executeToolAction(
@@ -444,9 +444,7 @@ export async function pursueGoal(
     // Execute the operation through the same action sequence as direct tool calls.
     let actionResult: { result: string; page_changed: boolean };
     try {
-      actionResult = await interactions.actingAs("goalLoop", () =>
-        executeToolAction(chosenTool, chosenArguments.args)
-      );
+      actionResult = await executeToolAction(chosenTool, chosenArguments.args);
       consecutiveFailures = 0;
     } catch (error) {
       const errorText = error instanceof Error ? error.message : String(error);

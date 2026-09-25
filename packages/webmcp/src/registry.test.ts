@@ -29,7 +29,12 @@ vi.mock("./pageState", async (importOriginal) => ({
 }));
 vi.mock("./actionSequence", () => ({
   runAction: vi.fn(
-    async (_doc: unknown, _action: unknown, perform: () => unknown) => {
+    async (
+      _doc: unknown,
+      _caller: unknown,
+      _call: unknown,
+      perform: () => unknown
+    ) => {
       const rawResult: unknown = await perform();
       const out: Record<string, unknown> = {
         page_changed: false,

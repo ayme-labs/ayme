@@ -2,6 +2,7 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import { runAction, type ActionResult } from "./actionSequence";
 import type { JsonSchema, JsonValue } from "./contracts";
+import type { Caller } from "./interactionHistory";
 import { resolvePageStateRefs, type AriaRef, type AymeNode } from "./pageState";
 import { requireAymeRuntimePage } from "./registry";
 import {
@@ -33,11 +34,17 @@ export type PublishedRefTool = ModelContextTool<
   execute(input: unknown): Promise<JsonValue>;
 };
 
+/** Runs a Ref Tool for the caller it is given. */
+type CallerRun = (input: unknown, caller: Caller) => Promise<ActionResult>;
+
 /** Package-internal: a Ref Tool ready to publish, with the filter it offers. */
 export type RegisteredRefTool = {
+  /** As published, its `execute` runs it as the calling agent. */
   readonly tool: PublishedRefTool;
   /** true = the Goal Loop may offer this element; not enforced on direct calls. */
   readonly filter: (element: Element) => boolean;
+  /** Runs it as the caller given; the Goal Loop runs it as its model. */
+  readonly executeAs: CallerRun;
 };
 
 /** What a Ref Tool does once its ref is resolved. */
@@ -66,21 +73,40 @@ const REF_INPUT_SCHEMA: JsonSchema = {
  * every Ref Tool returns the same action result.
  */
 function publishRefTool(definition: RefToolDefinition): PublishedRefTool {
+  const executeAs = refToolRun(definition);
   return {
     name: definition.name,
     description: definition.description,
     inputSchema: definition.inputSchema,
-    execute: async (input: unknown): Promise<JsonValue> => {
-      const fields = readInputFields(input);
-      return runRefTool(definition, AriaRefSchema.parse(fields.ref), fields);
-    },
+    execute: (input: unknown) => executeAs(input, "agent"),
   };
+}
+
+function refToolRun(definition: RefToolDefinition): CallerRun {
+  return async (input, caller) => {
+    const fields = readInputFields(input);
+    return runRefTool(
+      definition,
+      AriaRefSchema.parse(fields.ref),
+      fields,
+      caller
+    );
+  };
+}
+
+function registerRefTool(
+  definition: RefToolDefinition,
+  filter: (element: Element) => boolean,
+  tool: PublishedRefTool = publishRefTool(definition)
+): RegisteredRefTool {
+  return { tool, filter, executeAs: refToolRun(definition) };
 }
 
 async function runRefTool(
   definition: RefToolDefinition,
   requestedRef: AriaRef,
   input: Record<string, unknown>,
+  caller: Caller,
   currentDocument: Document = requireCurrentDocument()
 ): Promise<ActionResult> {
   const target = await resolveTarget(
@@ -90,6 +116,7 @@ async function runRefTool(
   );
   return runAction(
     currentDocument,
+    caller,
     { tool: definition.name, args: input, targetRef: target.ref },
     () => definition.run(target, input)
   );
@@ -182,12 +209,12 @@ export const fillPageStateRefTool = publishRefTool(fillDefinition);
 
 /** Click a Structural Ref that is already parsed, for `ayme.click`. */
 export function clickRef(ref: AriaRef): Promise<ActionResult> {
-  return runRefTool(clickDefinition, ref, {});
+  return runRefTool(clickDefinition, ref, {}, "agent");
 }
 
 /** Fill a Structural Ref that is already parsed, for `ayme.fill`. */
 export function fillRef(ref: AriaRef, value: string): Promise<ActionResult> {
-  return runRefTool(fillDefinition, ref, { value });
+  return runRefTool(fillDefinition, ref, { value }, "agent");
 }
 
 // --- Built-in filters ---
@@ -273,21 +300,23 @@ const refToolStore: RefToolStore = ((
 export function configureRefTools(
   refTools: readonly RefTool[] | undefined
 ): void {
-  refToolStore.registered = refTools?.map((refTool) => ({
-    tool: publishRefTool({
-      name: refTool.name,
-      description: refTool.description,
-      label: `run "${refTool.name}" on`,
-      inputSchema: REF_INPUT_SCHEMA,
-      run: (target) => refTool.execute(target),
-    }),
-    filter: refTool.filter ?? (() => true),
-  }));
+  refToolStore.registered = refTools?.map((refTool) =>
+    registerRefTool(
+      {
+        name: refTool.name,
+        description: refTool.description,
+        label: `run "${refTool.name}" on`,
+        inputSchema: REF_INPUT_SCHEMA,
+        run: (target) => refTool.execute(target),
+      },
+      refTool.filter ?? (() => true)
+    )
+  );
 }
 
 const BUILT_IN_REF_TOOLS: readonly RegisteredRefTool[] = [
-  { tool: clickPageStateRefTool, filter: isClickableElement },
-  { tool: fillPageStateRefTool, filter: isFillableElement },
+  registerRefTool(clickDefinition, isClickableElement, clickPageStateRefTool),
+  registerRefTool(fillDefinition, isFillableElement, fillPageStateRefTool),
 ];
 
 /** Package-internal: the built-in and registered Ref Tools, in publication order. */

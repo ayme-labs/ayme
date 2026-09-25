@@ -9,7 +9,7 @@ import type { PomManifest, ToolManifest } from "./contracts";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
-import { getInteractionHistory } from "./pageState";
+import { getInteractionHistory, getPageStateForElements } from "./pageState";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createRuntimeSession } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
@@ -274,6 +274,69 @@ describe("Interaction history in Chromium", () => {
     expect(names(await history().cursor("agent")!.tree.resolve())).toContain(
       "Added by the action"
     );
+  });
+
+  it("renders the agent's first action after a Handover against the Handover's page", async () => {
+    let step = 0;
+    let agentActionId: StructuralActionId | undefined;
+    const decide: GoalLoopDecisionFunction = async (
+      request: DecisionRequest
+    ): Promise<DecisionResponse> => {
+      const first = step++ === 0;
+      if (!first) {
+        // An agent tool call while the run is pending stays the agent's.
+        await act("App.noop", {});
+        agentActionId = lastActionId();
+      }
+      return {
+        model: request.model,
+        answers: {
+          operation: {
+            type: "choice",
+            choice: first ? "App.add" : "none",
+            confidence: 1,
+          },
+          goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
+        },
+      };
+    };
+    document.body.innerHTML =
+      '<main><h1>List</h1><button id="mark">Mark</button></main>';
+    document.querySelector("#mark")!.addEventListener("click", () => {
+      document
+        .querySelector("main")!
+        .insertAdjacentHTML("beforeend", "<p>Marked by the agent</p>");
+    });
+    const currentPage = page;
+    class App {
+      root = currentPage.locator("main");
+      add() {
+        document
+          .querySelector("main")!
+          .insertAdjacentHTML("beforeend", "<p>Added by the action</p>");
+      }
+      noop() {}
+    }
+    registerCompiledPom(
+      App,
+      manifest("App", [action("add", "App.add"), action("noop", "App.noop")])
+    );
+    startRuntime(decide);
+    createPageRegistration(App);
+    await publishTools();
+    await readStructure();
+
+    await tool("pursue_goal").execute({ goal: "add one", maxSteps: 3 });
+    expect(history().actions().get(agentActionId!)?.caller).toBe("agent");
+
+    // A capture Ayme makes for itself: it finds the ref and moves no cursor.
+    const [markRef] = (
+      await getPageStateForElements([document.querySelector("#mark")!])
+    ).refs;
+    const result = await act("click_page_state_ref", { ref: markRef });
+
+    expect(result.changes).toContain("Marked by the agent");
+    expect(result.changes).not.toContain("Added by the action");
   });
 });
 
