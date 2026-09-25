@@ -1,6 +1,6 @@
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
-import { completeAction, type ActionResult } from "./actionSequence";
+import { runAction, type ActionResult } from "./actionSequence";
 import type { JsonSchema, JsonValue } from "./contracts";
 import { resolvePageStateRefs, type AriaRef, type AymeNode } from "./pageState";
 import { requireAymeRuntimePage } from "./registry";
@@ -88,8 +88,11 @@ async function runRefTool(
     requestedRef,
     currentDocument
   );
-  const returned = await definition.run(target, input);
-  return completeAction(currentDocument, returned);
+  return runAction(
+    currentDocument,
+    { tool: definition.name, args: input, targetRef: target.ref },
+    () => definition.run(target, input)
+  );
 }
 
 /** Resolve a requested ref to the node it addresses now, or fail clearly. */

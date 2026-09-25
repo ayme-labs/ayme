@@ -17,12 +17,8 @@ import {
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { Locator, Page } from "@playwright/test";
 import { probePomRootState } from "./pomReachability";
-import {
-  ensureCallerPageState,
-  resolvePageStateRefs,
-  type AriaRef,
-} from "./pageState";
-import { completeAction, type ActionResult } from "./actionSequence";
+import { resolvePageStateRefs, type AriaRef } from "./pageState";
+import { runAction, type ActionResult } from "./actionSequence";
 import {
   RefResolutionError,
   RuntimeStateError,
@@ -1004,11 +1000,12 @@ async function executeTool(
     );
 
   const currentDocument = requireCurrentDocument();
+  const parameters = validatedArguments(tool, args);
   // A tool may be called without the caller ever having read the page; the
   // Change Record then starts from the page right before the action.
-  await ensureCallerPageState(currentDocument);
-  const result = await method.apply(instance, validatedArguments(tool, args));
-  return completeAction(currentDocument, result);
+  return runAction(currentDocument, { tool: tool.toolName, args }, () =>
+    method.apply(instance, parameters)
+  );
 }
 
 function requireCurrentDocument(): Document {

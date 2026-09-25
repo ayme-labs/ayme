@@ -19,8 +19,8 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import {
   configurePageStateIgnore,
   getPageStateCaptureForDocument,
-  getPageStateTool,
 } from "./pageState";
+import { getPageStateTool } from "./pageContext";
 import ayme from "./index";
 
 const ref = AriaRefSchema.parse;

@@ -2,7 +2,10 @@ import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { JsonValue } from "./contracts";
 import type { ActionResult } from "./actionSequence";
-import { getPageStateCaptureForDocument } from "./pageState";
+import {
+  getInteractionHistory,
+  getPageStateCaptureForDocument,
+} from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { probeRegisteredPomMembers } from "./registry";
@@ -127,7 +130,7 @@ export type Handover = {
 /**
  * Execute a tool and read the `ActionResult` it returns.
  * Every registered tool (POM tools, Ref Tools) already runs through
- * `completeAction` internally, so we just forward and interpret the result.
+ * `runAction` internally, so we just forward and interpret the result.
  */
 async function executeToolAction(
   tool: ExecutableTool,
@@ -212,9 +215,11 @@ export async function pursueGoal(
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];
+  const interactions = getInteractionHistory(currentDocument);
   let consecutiveFailures = 0;
 
   const done = (handover: Handover): GoalLoopRunResult => {
+    interactions.handOver();
     const result = { handover, stepScores };
     runResultStore.last = result;
     return result;
@@ -248,12 +253,14 @@ export async function pursueGoal(
     await probeRegisteredPomMembers();
 
     // Capture the page state this step decides on and build tool options. The
-    // model is a caller, so the tree it sees is the "before" of the step's
-    // Change Record: a change made while it decides counts into page_changed.
+    // model is a caller with its own cursor, so the tree it sees is the
+    // "before" of the step's Change Record: a change made while it decides
+    // counts into page_changed. The calling agent's cursor stays put until the
+    // Handover.
     // Both stages of the step are decided on this one capture, so the refs the
     // model reads in the page are the refs the ref options offer.
     const capture = await getPageStateCaptureForDocument(currentDocument, {
-      forCaller: true,
+      receivedBy: "goalLoop",
     });
     const state = buildStepState(
       goal,
@@ -437,7 +444,9 @@ export async function pursueGoal(
     // Execute the operation through the same action sequence as direct tool calls.
     let actionResult: { result: string; page_changed: boolean };
     try {
-      actionResult = await executeToolAction(chosenTool, chosenArguments.args);
+      actionResult = await interactions.actingAs("goalLoop", () =>
+        executeToolAction(chosenTool, chosenArguments.args)
+      );
       consecutiveFailures = 0;
     } catch (error) {
       const errorText = error instanceof Error ? error.message : String(error);

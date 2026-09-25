@@ -20,7 +20,6 @@ vi.mock("@ayme-dev/playwright-lite/internal", async (importOriginal) => ({
 }));
 vi.mock("./pageState", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./pageState")>()),
-  ensureCallerPageState: vi.fn().mockResolvedValue(undefined),
   resolvePageStateRefs: async (_doc: unknown, ...refs: string[]) =>
     refs.map((ref) => {
       const entry = pageStateResolutions.get(ref);
@@ -29,11 +28,17 @@ vi.mock("./pageState", async (importOriginal) => ({
     }),
 }));
 vi.mock("./actionSequence", () => ({
-  completeAction: vi.fn(async (_doc: unknown, rawResult?: unknown) => {
-    const out: Record<string, unknown> = { page_changed: false, settled: true };
-    if (rawResult !== undefined) out.result = rawResult;
-    return out;
-  }),
+  runAction: vi.fn(
+    async (_doc: unknown, _action: unknown, perform: () => unknown) => {
+      const rawResult: unknown = await perform();
+      const out: Record<string, unknown> = {
+        page_changed: false,
+        settled: true,
+      };
+      if (rawResult !== undefined) out.result = rawResult;
+      return out;
+    }
+  ),
 }));
 import type { Page } from "@playwright/test";
 import type { PomManifest } from "./contracts";
