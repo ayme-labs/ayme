@@ -5,7 +5,6 @@ import { SyntheticAriaRefFactory } from "../tree/SyntheticAriaRefFactory";
 import { renderCompactStructuralNodeForest } from "./CompactStructuralTreeRenderer";
 import {
   StructuralNodeForest,
-  joinAdjacentText,
   structuralNodeForest,
   type StructuralNodeForestAdapter,
   type StructuralNodePredicate,
@@ -219,7 +218,7 @@ describe("StructuralNodeForest", () => {
     );
   });
 
-  it("works over any node type through its adapter", () => {
+  it("runs every operation over a node type of its own through its adapter", () => {
     type Entry = { id: string; node: StructuralNode; kids: (Entry | string)[] };
     const tree = StructuralTree.fromAriaSnapshotYaml(
       PAGE,
@@ -238,41 +237,46 @@ describe("StructuralNodeForest", () => {
       structuralNode: (entry) => entry.node,
       withChildren: (entry, kids) => ({ ...entry, kids: [...kids] }),
     };
+    const forest = new StructuralNodeForest(adapter);
+    const outline = (children: readonly (Entry | string)[]): unknown[] =>
+      children.map((child) =>
+        typeof child === "string" ? child : [child.id, ...outline(child.kids)]
+      );
 
-    const forest = new StructuralNodeForest(adapter).explode(
-      (_entry, node) => node.role === "list"
-    );
-    const [root] = forest.roots as Entry[];
-
-    expect(root!.id).toBe("entry:e1");
     expect(
-      root!.kids.map((kid) => (typeof kid === "string" ? kid : kid.id))
-    ).toEqual(["entry:e2", "loose", "entry:e4", "entry:e6"]);
+      outline(forest.filter((_entry, node) => node.role !== "list").roots)
+    ).toEqual([["entry:e1", ["entry:e2"], "loose", ["entry:e6"]]]);
+    expect(
+      outline(
+        forest.filterAndPromote(
+          (_entry, node) => node.role === "generic" || node.role === "button"
+        ).roots
+      )
+    ).toEqual([["entry:e1", ["entry:e2"], "loose", ["entry:e5"]]]);
+    expect(
+      outline(forest.collapse((_entry, node) => node.role === "list").roots)
+    ).toEqual([
+      ["entry:e1", ["entry:e2"], "loose", ["entry:e3"], ["entry:e6"]],
+    ]);
+    expect(
+      outline(forest.explode((_entry, node) => node.role === "list").roots)
+    ).toEqual([
+      [
+        "entry:e1",
+        ["entry:e2"],
+        "loose",
+        ["entry:e4", ["entry:e5"], "label"],
+        ["entry:e6"],
+      ],
+    ]);
+    // The result feeds the projection like any forest of that node type.
     expect(
       renderCompactStructuralNodeForest(
-        projectStructuralNodeForest(forest, {
-          includeIdentity: false,
-          prefixes: (entry) => [entry.id],
-        })
+        projectStructuralNodeForest(
+          forest.explode((_entry, node) => node.role === "list"),
+          { includeIdentity: false, prefixes: (entry) => [entry.id] }
+        )
       )
     ).toContain("- entry:e4 listitem:");
-  });
-});
-
-describe("joinAdjacentText", () => {
-  it("joins runs of strings and leaves nodes between them", () => {
-    expect(joinAdjacentText(["a", "b", 1, "c", 2, 3, "d", "e", "f"])).toEqual([
-      "ab",
-      1,
-      "c",
-      2,
-      3,
-      "def",
-    ]);
-  });
-
-  it("keeps a list without adjacent strings as it is", () => {
-    expect(joinAdjacentText(["a", 1, "b"])).toEqual(["a", 1, "b"]);
-    expect(joinAdjacentText([])).toEqual([]);
   });
 });

@@ -39,6 +39,7 @@ export {
 } from "./projection/StructuralNodeForest";
 export {
   emitTreeOutput,
+  renderTreeOutput,
   type Projection,
   type Renderer,
   type Serializer,

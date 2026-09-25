@@ -15,7 +15,13 @@ export type StructuralNodeForestAdapter<TNode> =
       withChildren(node: TNode, children: readonly (TNode | string)[]): TNode;
     }>;
 
-/** Decides an operation for one node: the forest's entry and its structural node. */
+/**
+ * Decides an operation for one node. `entry` is the node as the operation in
+ * progress sees it: for `explode`, the rebuilt node whose children were already
+ * exploded; for the other operations, the node as the forest holds it. `node` is
+ * the adapter's `structuralNode(entry)`, which for a node type of its own may
+ * still describe the original, with the children it had before the operation.
+ */
 export type StructuralNodePredicate<TNode> = (
   entry: TNode,
   node: StructuralNode
@@ -153,22 +159,4 @@ export function structuralNodeForest(
     structuralNode: (node) => node,
     withChildren: (node, children) => node.copy({ children: [...children] }),
   });
-}
-
-/**
- * Consecutive strings among `children` as one string each, in place. Exploding
- * a node leaves its text next to its neighbours' text; a renderer shows such a
- * run as the one text it is on the page.
- */
-export function joinAdjacentText<T>(
-  children: readonly (T | string)[]
-): readonly (T | string)[] {
-  const joined: (T | string)[] = [];
-  for (const child of children) {
-    const last = joined.length - 1;
-    if (typeof child === "string" && typeof joined[last] === "string")
-      joined[last] = `${joined[last] as string}${child}`;
-    else joined.push(child);
-  }
-  return joined;
 }

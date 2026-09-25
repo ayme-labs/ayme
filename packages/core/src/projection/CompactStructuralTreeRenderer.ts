@@ -1,4 +1,4 @@
-import { joinAdjacentText } from "./StructuralNodeForest";
+import { joinAdjacentText } from "./joinAdjacentText";
 import type {
   ProjectedStructuralNode,
   ProjectedStructuralNodeForest,

@@ -1,6 +1,6 @@
 import type { StructuralNode, StructuralRole } from "../tree/StructuralNode";
 import type { AriaRef } from "../tree/StructuralTypes";
-import { joinAdjacentText } from "./StructuralNodeForest";
+import { joinAdjacentText } from "./joinAdjacentText";
 import type {
   ProjectedStructuralNode,
   ProjectedStructuralNodeForest,

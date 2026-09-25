@@ -1,10 +1,14 @@
 import {
   projectStructuralNodeForest,
   renderJsonStructuralNodeForest,
+  renderTreeOutput,
   structuralNodeForest,
   type JsonStructuralNodeForest,
+  type ProjectedStructuralNodeForest,
   type StructuralNode,
+  type StructuralNodeForest,
   type StructuralTree,
+  type TreeOutput,
 } from "@ayme-dev/core/structural-observation";
 import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
@@ -545,16 +549,34 @@ function prunable(node: StructuralNode): boolean {
 }
 
 /**
+ * The stages the model is shown the page through: projected as it is and
+ * rendered as JSON. The rendered page travels inside the decision request, so
+ * its serializer is the request's own JSON serialization, applied by the
+ * decision function to the whole request rather than here.
+ */
+const pageOutput: TreeOutput<
+  StructuralNodeForest<StructuralNode>,
+  ProjectedStructuralNodeForest,
+  JsonStructuralNodeForest
+> = {
+  projection: (forest) => projectStructuralNodeForest(forest),
+  renderer: renderJsonStructuralNodeForest,
+  serializer: (page) => JSON.stringify(page),
+};
+
+/**
  * The page as the model is shown it: the full capture's root nodes with the
- * prunable nodes exploded, projected and rendered as JSON. This forest is
- * derived for serialization only; the ref options and the Change Record keep
- * walking the full capture, so the refs the model reads are the capture's.
+ * prunable nodes exploded, then `pageOutput`. This forest is derived for
+ * serialization only; the ref options and the Change Record keep walking the
+ * full capture, so the refs the model reads are the capture's.
+ * (`pageState.ts` and `changeRecord.ts` still compose the stages by hand; they
+ * adopt them under #119.)
  */
 function renderPage(pageTree: StructuralTree): JsonStructuralNodeForest {
   const shown = structuralNodeForest(pageTree.getRootNodes()).explode(
     (_entry, node) => prunable(node)
   );
-  return renderJsonStructuralNodeForest(projectStructuralNodeForest(shown));
+  return renderTreeOutput(pageOutput, shown);
 }
 
 export type StepState = Record<string, unknown>;

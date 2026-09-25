@@ -15,6 +15,7 @@ import {
 } from "./StructuralProjection";
 import {
   emitTreeOutput,
+  renderTreeOutput,
   type Projection,
   type Renderer,
   type Serializer,
@@ -32,9 +33,9 @@ const jsonRenderer: Renderer<
   ProjectedStructuralNodeForest,
   JsonStructuralNodeForest
 > = renderJsonStructuralNodeForest;
-const asIs: Serializer<string> = (document) => document;
-const asJson: Serializer<JsonStructuralNodeForest> = (document) =>
-  JSON.stringify(document);
+const asIs: Serializer<string> = (rendered) => rendered;
+const asJson: Serializer<JsonStructuralNodeForest> = (rendered) =>
+  JSON.stringify(rendered);
 
 const compactOutput: TreeOutput<Source, ProjectedStructuralNodeForest, string> =
   { projection, renderer: compactRenderer, serializer: asIs };
@@ -64,6 +65,20 @@ describe("emitTreeOutput", () => {
         children: [{ ref: "e2", role: "button", name: "Save", children: [] }],
       },
     ]);
+  });
+
+  it("renders without serializing, for a shape that travels inside a larger document", () => {
+    expect(renderTreeOutput(jsonOutput, forest)).toEqual([
+      {
+        ref: "e1",
+        role: "main",
+        name: "",
+        children: [{ ref: "e2", role: "button", name: "Save", children: [] }],
+      },
+    ]);
+    expect(renderTreeOutput(compactOutput, forest)).toBe(
+      emitTreeOutput(compactOutput, forest)
+    );
   });
 
   it("takes an operated forest as its source unchanged", () => {
