@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { createPage } from "./browserPage";
 import * as goalLoopModule from "./goalLoop";
 import * as pageState from "./pageState";
 import { createRuntimeSession, type AymePage } from "./runtime";
@@ -13,6 +14,9 @@ import {
 vi.mock("./webMcp", () => ({
   synchronizeWebMcpTools: vi.fn(),
   waitForWebMcpDriver: vi.fn(),
+}));
+vi.mock("./browserPage", () => ({
+  createPage: vi.fn(() => ({}) as AymePage),
 }));
 const page = {} as AymePage;
 const sessions: ReturnType<typeof createRuntimeSession>[] = [];
@@ -99,6 +103,20 @@ it("creates the default browser page lazily", () => {
     state: "disabled",
     message: "WebMCP publication is disabled.",
   });
+  expect(createPage).not.toHaveBeenCalled();
+});
+
+it("builds the default page with createPage() and no options, once", () => {
+  const runtime = session(false);
+  const defaultRuntime = createRuntimeSession();
+  sessions.push(defaultRuntime);
+  expect(createPage).not.toHaveBeenCalled();
+  expect(defaultRuntime.page).toBe(defaultRuntime.page);
+  start(defaultRuntime);
+  expect(createPage).toHaveBeenCalledOnce();
+  expect(createPage).toHaveBeenCalledWith();
+  expect(runtime.page).toBe(page);
+  expect(createPage).toHaveBeenCalledOnce();
 });
 
 it("constructs without activation and handles registration before owner startup and replay", () => {

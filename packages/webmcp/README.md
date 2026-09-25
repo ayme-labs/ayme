@@ -71,6 +71,29 @@ useAymeWebMcp({
 });
 ```
 
+## Browser Page
+
+The runtime session (`createRuntimeSession`, today under
+`@ayme-dev/webmcp/internal`) drives one browser Page for the current document.
+When it is given none, it creates the default Page: the `testIdAttribute`,
+`actionTimeout` and `navigationTimeout` come from the Playwright settings the
+Vite plugin compiled in.
+
+`createPage(options?)` builds that same Page for you. The compiled settings
+are its defaults; each option you pass wins for that option only, so the
+result of `createPage()` is exactly the default Page.
+
+```ts
+import { createPage } from "@ayme-dev/webmcp";
+
+const page = createPage({ actionTimeout: 500 });
+```
+
+Pass the result as the runtime session's `page` when you want to own page
+construction: without the Vite plugin, with a timeout that differs from your
+build, or wrapped in your own instrumentation. The Vue and React packages keep
+creating the default Page; their `page` option takes a Page built this way.
+
 ## Ref Tools
 
 A **Ref Tool** is an operation that applies to one Structural Ref. Click and

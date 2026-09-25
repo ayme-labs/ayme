@@ -2,6 +2,9 @@ export * from "./contracts";
 export * from "./decorators";
 export { ayme, default } from "./ayme";
 export type { Ayme } from "./ayme";
+export { createPage } from "./browserPage";
+export type { CreatePageOptions } from "./browserPage";
+export type { AymePage } from "./runtime";
 export { decisionEndpoint } from "./decisionEndpoint";
 export type {
   DecisionEndpointOptions,
