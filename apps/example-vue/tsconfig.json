@@ -2,6 +2,7 @@
   "extends": "@ayme-dev/typescript-config/vue.json",
   "compilerOptions": {
     "experimentalDecorators": true,
+    "allowImportingTsExtensions": true,
     "paths": {
       "@/*": ["./src/*"]
     }
@@ -11,6 +12,7 @@
     "src/**/*.vue",
     "playwright/**/*.ts",
     "tests/**/*.ts",
+    "scripts/**/*.ts",
     "vite.config.ts",
     "vite/**/*.ts",
     "playwright.config.ts",

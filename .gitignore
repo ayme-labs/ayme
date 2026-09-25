@@ -13,6 +13,7 @@ dist/
 coverage/
 test-results/
 .vitest-attachments/
+apps/example-vue/goal-runs/
 
 # Local Markdown issue tracker
 /.scratch/

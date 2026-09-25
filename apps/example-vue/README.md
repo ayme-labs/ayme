@@ -60,3 +60,34 @@ The app turns the Goal Loop on only in development, because only the dev server 
 `pnpm run test:goals` is a separate Playwright lane that runs real goals through `pursue_goal` against the model. It is a check that the architecture still works, not an evaluation. `pnpm run test:e2e` does not run it. Retries are on, so a test passes when one of three attempts passes.
 
 Anyone running it brings their own key: put an OpenRouter key in `AYME_OPENROUTER_API_KEY` as `.env.example` describes. Without a key the lane skips itself with a message, which is also what happens for a pull request from a fork, where no repository secret is available.
+
+## Goal run harness
+
+`pnpm run goals:runs --runs <N>` measures the Goal Loop instead of checking it: it runs every goal of the live lane N times against the real Decision Endpoint, with no retries, and writes one JSON file per invocation to `goal-runs/`, which Git ignores. It is run by hand only; CI and `pnpm check` never run it. It needs the same `AYME_OPENROUTER_API_KEY` as the live lane and stops without one. Run from this directory inside the repository's Devbox shell:
+
+```sh
+pnpm run goals:runs --runs 3
+pnpm run goals:runs compare goal-runs/<runA>.json goal-runs/<runB>.json
+```
+
+The script sets `AYME_GOAL_RUNS=1` for the Playwright run it starts. Only then does the live lane record a run; without it, as in CI and `pnpm run test:goals`, the recorder passes the goal straight through.
+
+Spend is bounded by N: an invocation makes N runs of each goal, each run at most one to three model calls per step, up to the goal's step budget in `tests/goals.spec.ts`. `--runs` is required, so no invocation spends by default. Nothing is committed as a baseline; keep the files you want to compare.
+
+The live lane records each `pursue_goal` call as a `goal-run` test attachment (`tests/goalRunRecord.ts`): the Decision Endpoint calls the page makes, and the run's per-step scores from the store behind the package-internal `getLastGoalLoopRunResult`. A recording failure never fails the test; it is recorded as `recorderError`. The script reads those attachments from Playwright's JSON report. A file holds:
+
+| Field                          | Meaning                                                                                                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `commit`                       | `sha` of `HEAD`, and `dirty` when the working tree had changes                                                                                                     |
+| `model`                        | The model identifier the decisions asked for                                                                                                                       |
+| `runsPerGoal`                  | N                                                                                                                                                                  |
+| `timestamp`                    | When the invocation finished, ISO 8601                                                                                                                             |
+| `goals.<test title>.goal`      | The goal text given to `pursue_goal`                                                                                                                               |
+| `goals.<test title>.runs[]`    | One record per run, below                                                                                                                                          |
+| `goals.<test title>.aggregate` | `runs`, `passRate`, `meanSteps`, `maxSteps`, `meanModelCallsPerStep`, `meanWallTimeMs`, `reasons` (Handover reason counts), `chunkConflicts`, `noneOfTheseAnswers` |
+
+A run record holds `passed` (the test's expectations held, so the goal's expected outcome was reached), `reason` (the Handover reason, or `null` when the run failed before `pursue_goal` returned), `stepCount`, `wallTimeMs` (the `pursue_goal` call), `chunkConflicts`, `noneOfTheseAnswers`, `error` (the first line of a failed test's error), `recorderError` when recording failed, and `steps[]`. A step holds `operation` (the operation option stage one chose, `none` when nothing fits), `goalMetScore`, `modelCalls` (stage one, stage two and any run-off), `runOff` (the step requested a run-off) and, for a step with stage two, `argumentChoices` (the chosen option key per argument question id: the loop's record where it has one, else each answer the Decision Endpoint returned for an offered option, so chunk answers survive a failed run-off).
+
+A chunk conflict is a step where several chunks of an over-cap ref question each named an element, so the loop requested a run-off among them; it counts even when the run-off then fails. A "none of these" answer is a chunk question answered with its `none_of_these` option.
+
+`compare` takes paths relative to this directory. It prints, per goal, each aggregate of A and B with its delta, then lists the goals whose pass rate changed.
