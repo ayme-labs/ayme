@@ -723,6 +723,17 @@ export type ChosenArguments = {
 /** What was answered, per question id, whether or not an action follows. */
 export type AnswerRecord = Pick<ChosenArguments, "choices" | "probabilities">;
 
+/** A stage-two answer that cannot be read, with the answers read before it. */
+export class ArgumentAnswerError extends Error {
+  constructor(
+    cause: unknown,
+    readonly record: AnswerRecord
+  ) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    this.name = "ArgumentAnswerError";
+  }
+}
+
 /** What the stage-two answers amount to. */
 export type ArgumentAnswers =
   /** Every parameter has its value: run the operation. */
@@ -774,25 +785,31 @@ function choose(
  * chunks of one parameter answer together: the one chunk that named an
  * element decides, several call for a run-off, none means no element fits.
  * Every answer is read first, so the choice and scores of every question are
- * recorded even when the step ends without an action. They are recorded into
- * `record` as each is read, so an answer that fails leaves the ones before it.
+ * recorded even when the step ends without an action. An answer that cannot
+ * be read throws an `ArgumentAnswerError` carrying the answers read before it.
  */
 export function readArgumentAnswers(
   tool: ExecutableTool,
   argumentQuestions: readonly ArgumentQuestion[],
-  answers: Record<string, unknown>,
-  record: AnswerRecord = { choices: {}, probabilities: {} }
+  answers: Record<string, unknown>
 ): ArgumentAnswers {
   const chosen: ChosenArguments = {
     args: {},
     summary: [],
-    choices: record.choices,
-    probabilities: record.probabilities,
+    choices: {},
+    probabilities: {},
   };
-  const picks = argumentQuestions.map((question) => ({
-    question,
-    option: readPick(question, answers, chosen),
-  }));
+  const picks: { question: ArgumentQuestion; option: ArgumentOption }[] = [];
+  for (const question of argumentQuestions) {
+    try {
+      picks.push({ question, option: readPick(question, answers, chosen) });
+    } catch (error) {
+      throw new ArgumentAnswerError(error, {
+        choices: chosen.choices,
+        probabilities: chosen.probabilities,
+      });
+    }
+  }
 
   const byParameter = new Map<string, typeof picks>();
   for (const pick of picks) {

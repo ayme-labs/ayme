@@ -21,6 +21,8 @@ import {
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
+  ArgumentAnswerError,
+  type AnswerRecord,
   type ArgumentAnswers,
   type ChoiceAnswer,
   type ChosenArguments,
@@ -140,6 +142,13 @@ export type Handover = {
 
 // --- Action execution (delegates to the shared action sequence) ---
 
+/** What one executed step came to: its history fields and its Change Record. */
+type StepOutcome = {
+  result: string;
+  page_changed: boolean;
+  changes?: string;
+};
+
 /**
  * Execute a tool and read the `ActionResult` it returns.
  * Every registered tool (POM tools, Ref Tools) runs, as the Goal Loop's model, through
@@ -148,7 +157,7 @@ export type Handover = {
 async function executeToolAction(
   tool: ExecutableTool,
   args: Record<string, unknown>
-): Promise<{ result: string; page_changed: boolean; changes?: string }> {
+): Promise<StepOutcome> {
   const raw = await tool.execute(args);
   const action = raw as ActionResult | undefined;
   return {
@@ -156,6 +165,15 @@ async function executeToolAction(
     page_changed: action?.page_changed ?? false,
     ...(action?.changes ? { changes: action.changes } : {}),
   };
+}
+
+/** Put the stage-two answers read so far on the step's score. */
+function recordArgumentAnswers(
+  score: GoalLoopStepScore,
+  record: AnswerRecord
+): void {
+  score.argumentChoices = record.choices;
+  score.argumentProbabilities = record.probabilities;
 }
 
 // --- The loop ---
@@ -405,12 +423,6 @@ export async function pursueGoal(
       probabilities: {},
     };
     if (plan.questions.length > 0) {
-      // The step score owns the record, so a failure later in stage two
-      // leaves the answers read so far on the run result.
-      const record = {
-        choices: (score.argumentChoices = {}),
-        probabilities: (score.argumentProbabilities = {}),
-      };
       let stageTwo: DecisionResponse;
       try {
         stageTwo = await decisionFn(
@@ -424,12 +436,20 @@ export async function pursueGoal(
         argumentAnswers = readArgumentAnswers(
           chosenTool,
           plan.questions,
-          stageTwo.answers as Record<string, unknown>,
-          record
+          stageTwo.answers as Record<string, unknown>
         );
       } catch (error) {
+        // The answers read before the one that failed stay on the run result.
+        if (error instanceof ArgumentAnswerError)
+          recordArgumentAnswers(score, error.record);
         return invalidDecision(error);
       }
+      recordArgumentAnswers(
+        score,
+        argumentAnswers.kind === "none_fits"
+          ? argumentAnswers
+          : argumentAnswers.chosen
+      );
 
       // Every chunk of a ref over the cap answered "none of these": the step
       // ran no action, so it leaves no history entry (#123).
@@ -462,16 +482,11 @@ export async function pursueGoal(
       } else {
         chosenArguments = argumentAnswers.chosen;
       }
-      score.argumentChoices = chosenArguments.choices;
-      score.argumentProbabilities = chosenArguments.probabilities;
+      recordArgumentAnswers(score, chosenArguments);
     }
 
     // Execute the operation through the same action sequence as direct tool calls.
-    let actionResult: {
-      result: string;
-      page_changed: boolean;
-      changes?: string;
-    };
+    let actionResult: StepOutcome;
     try {
       actionResult = await executeToolAction(chosenTool, chosenArguments.args);
       consecutiveFailures = 0;
