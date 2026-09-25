@@ -134,15 +134,15 @@ export function usePageObject<T extends object>(
     throw new Error(
       "usePageObject must be called within an active Vue effect scope"
     );
-  // SSR renders event closures, but never constructs or registers a real POM.
-  if (typeof window === "undefined") return createServerPageObject(model);
   const runtime = inheritedRuntime();
   if (runtime) {
     const instance = runtime.construct(model);
     onScopeDispose(runtime.register(model, instance));
     return instance;
   }
-  // Preserve same-scope and effectScope usage of the standalone Vue owner.
+  // Preserve same-scope and effectScope usage of the standalone Vue owner. It
+  // has no session to ask, so SSR gets an inert Page Object here.
+  if (typeof window === "undefined") return createServerPageObject(model);
   const registration = createPageRegistration(model);
   onScopeDispose(() => registration.dispose());
   return registration.instance;

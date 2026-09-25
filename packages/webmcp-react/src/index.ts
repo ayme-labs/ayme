@@ -15,10 +15,7 @@ import {
   type RefTool,
   type RuntimeSession,
 } from "@ayme-dev/webmcp";
-import {
-  createServerPageObject,
-  type PageObjectConstructor,
-} from "@ayme-dev/webmcp/internal";
+import type { PageObjectConstructor } from "@ayme-dev/webmcp/internal";
 
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/webmcp";
 export type AymeWebMcpProviderProps = {
@@ -91,10 +88,7 @@ export function usePageObject<T extends object>(
   const [retained] = useState(() => ({
     model,
     runtime,
-    instance:
-      typeof window === "undefined"
-        ? createServerPageObject(model)
-        : runtime.construct(model),
+    instance: runtime.construct(model),
   }));
   if (retained.model !== model || retained.runtime !== runtime)
     throw new Error(

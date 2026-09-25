@@ -127,7 +127,9 @@ stop();
 
 `start()` claims the runtime for the current document, one owner at a time,
 and returns the function that stops it. `construct(Model)` and
-`register(Model, instance)` create and register Page Objects. `getSnapshot()`
+`register(Model, instance)` create and register Page Objects. During server
+rendering, `construct(Model)` returns an inert Page Object without calling the
+`page` factory, and reading `session.page` throws. `getSnapshot()`
 and `subscribe()` report the WebMCP publication status and `retryPublication()`
 retries it; publication is a build policy of the Vite plugin, and the session
 works without it. `pursueGoal(goal, { maxSteps })` runs the Goal Loop.

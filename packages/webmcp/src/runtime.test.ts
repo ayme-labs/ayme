@@ -43,6 +43,7 @@ function start(runtime: ReturnType<typeof createRuntimeSession>) {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal("window", {});
   vi.stubGlobal("document", { documentElement: {} });
   vi.stubGlobal(
     "MutationObserver",
@@ -117,6 +118,21 @@ it("builds the default page with createPage() and no options, once", () => {
   expect(createPage).toHaveBeenCalledWith();
   expect(runtime.page).toBe(page);
   expect(createPage).toHaveBeenCalledOnce();
+});
+
+it("never calls the page factory on the server", () => {
+  vi.stubGlobal("window", undefined);
+  const factory = vi.fn(() => page);
+  const runtime = createRuntimeSession({ page: factory });
+  sessions.push(runtime);
+  const instance = runtime.construct(Model);
+  expect(instance).toBeInstanceOf(Model);
+  expect(instance.page).toBeUndefined();
+  expect(() => runtime.page).toThrow(
+    "The runtime session's page is available only in the browser."
+  );
+  expect(factory).not.toHaveBeenCalled();
+  expect(createPage).not.toHaveBeenCalled();
 });
 
 it("calls the page factory at most once, lazily, on first use", () => {

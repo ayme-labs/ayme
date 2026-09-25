@@ -72,8 +72,9 @@ function instrumentPage(page: AymePage) {
 
 /**
  * Create an inert runtime session. Its owner starts activity by calling
- * `start()`. The `page` factory runs once, on first use; `ignore`, `refTools`
- * and `goalLoop` are configured on start and cleared on stop.
+ * `start()`. The `page` factory runs once, on first use in the browser; on the
+ * server `construct` returns an inert Page Object and `page` throws. `ignore`,
+ * `refTools` and `goalLoop` are configured on start and cleared on stop.
  */
 export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
   let resolvedPage: AymePage | undefined;
@@ -168,6 +169,10 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
 
   return {
     get page() {
+      if (typeof window === "undefined")
+        throw new Error(
+          "The runtime session's page is available only in the browser."
+        );
       return getPage();
     },
     get goalLoop() {
@@ -206,7 +211,9 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
       );
       return result.handover;
     },
-    construct<T extends object>(model: PageObjectConstructor<T>) {
+    construct<T extends object>(model: PageObjectConstructor<T>): T {
+      // Server rendering gets an inert Page Object and never runs the factory.
+      if (typeof window === "undefined") return createServerPageObject(model);
       return constructPageObject(model, getPage());
     },
     register<T extends object>(model: PageObjectConstructor<T>, instance: T) {
