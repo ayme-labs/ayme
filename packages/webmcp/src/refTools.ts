@@ -68,7 +68,7 @@ const REF_INPUT_SCHEMA: JsonSchema = {
 
 /**
  * Publish a Ref Tool: parse the incoming ref at the tool-input boundary,
- * resolve it against the Page State Session (ADR-0012) and hand `execute` the
+ * resolve it through the identity ledger (ADR-0028) and hand `execute` the
  * current ref and its element. Finishes with the shared action sequence, so
  * every Ref Tool returns the same action result.
  */

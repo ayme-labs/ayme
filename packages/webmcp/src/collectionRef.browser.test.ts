@@ -165,7 +165,7 @@ describe("collection instances targeted by ref", () => {
       // Remove item-0 (the first instance) between look and act.
       document.querySelector("#item-0")?.remove();
 
-      // The earlier ref should still resolve to item-1's element (ADR-0012).
+      // The earlier ref should still resolve to item-1's element (ADR-0028).
       await archiveTool.execute({ ref, args: {} });
 
       expect(archiveFns[0]).not.toHaveBeenCalled();
