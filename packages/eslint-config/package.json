@@ -4,10 +4,20 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./base": "./base.js"
+    "./base": "./base.js",
+    "./testing-entries": "./testing-entries.js"
+  },
+  "scripts": {
+    "test": "node --test"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",
     "typescript-eslint": "^8.68.0"
+  },
+  "peerDependencies": {
+    "eslint": "^10.9.1"
+  },
+  "devDependencies": {
+    "eslint": "^10.9.1"
   }
 }

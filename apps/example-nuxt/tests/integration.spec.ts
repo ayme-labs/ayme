@@ -5,7 +5,7 @@ import {
   publishedToolNames,
   publishedToolSchema,
   recordPublishedTools,
-} from "./publishedTools";
+} from "@ayme-dev/webmcp/testing";
 
 // Run the same contract against nuxt dev and the built Nitro server.
 test.describe("server render", () => {

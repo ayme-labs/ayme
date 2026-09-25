@@ -379,7 +379,7 @@ void [ayme, WebMCP, mountInspector];
 ${
   version
     ? `
-import type { Page, Locator } from '@playwright/test';
+import type { BrowserContext, Page, Locator } from '@playwright/test';
 import { createPageRegistration, type PageObjectConstructor } from '@ayme-dev/webmcp/internal';
 import { usePageObject } from '@ayme-dev/webmcp-vue';
 @WebMCP
@@ -398,6 +398,24 @@ const ctor: PageObjectConstructor<Pom> = Pom;
 const instance: Pom = usePageObject(ctor);
 createPageRegistration(ctor);
 void instance;
+import {
+  executePublishedTool,
+  publishedToolNames,
+  publishedToolSchema,
+  recordPublishedTools,
+  waitForPublishedTool,
+  type PublishedTool,
+  type RecordingDriver,
+} from '@ayme-dev/webmcp/testing';
+export async function recordAndRun(context: BrowserContext, page: Page): Promise<unknown> {
+  await recordPublishedTools(context);
+  await waitForPublishedTool(page, 'Pom.act', { timeout: 10 });
+  const names: string[] = await publishedToolNames(page);
+  const schema = await publishedToolSchema(page, names[0]!);
+  const driver: RecordingDriver = { tools: [] as PublishedTool[] };
+  void [schema?.inputSchema, driver];
+  return executePublishedTool(page, 'Pom.act', { value: 'x' });
+}
 `
     : ""
 }
@@ -553,6 +571,10 @@ it(
         'if (typeof main.createRuntimeSession !== "function") throw new Error("missing createRuntimeSession");',
         'if ("createRuntimeSession" in internal) throw new Error("createRuntimeSession must not be on /internal");',
         'if (typeof internal.configureAymeRuntime !== "function") throw new Error("missing configureAymeRuntime");',
+        'const testing = await import("@ayme-dev/webmcp/testing");',
+        'const testingExports = ["executePublishedTool", "publishedToolNames", "publishedToolSchema", "recordPublishedTools", "waitForPublishedTool"];',
+        'if (JSON.stringify(Object.keys(testing).sort()) !== JSON.stringify(testingExports)) throw new Error("unexpected /testing exports: " + Object.keys(testing));',
+        'if ("recordPublishedTools" in main || "recordPublishedTools" in internal) throw new Error("the recording driver must stay on /testing");',
         'console.log("ok");',
       ].join("\n")
     );

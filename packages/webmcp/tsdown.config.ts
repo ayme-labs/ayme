@@ -9,6 +9,6 @@ export default defineConfig({
     alwaysBundle: ["@ayme-dev/playwright-lite", "@ayme-dev/core"],
   },
   dts: true,
-  entry: ["src/index.ts", "src/internal.ts", "src/server.ts"],
+  entry: ["src/index.ts", "src/internal.ts", "src/server.ts", "src/testing.ts"],
   format: ["esm"],
 });
