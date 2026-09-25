@@ -8,6 +8,7 @@ import {
 import { getPomDefinitions } from "./pomDefinitions";
 import { type ActionResult } from "./actionSequence";
 import { clickRef, fillRef } from "./refTools";
+import { RuntimeStateError } from "./errors";
 
 export type Ayme = {
   getPageContext(...names: readonly string[]): Promise<PageContext>;
@@ -30,6 +31,6 @@ export default ayme;
 
 function requireCurrentDocument(): Document {
   if (typeof document === "undefined")
-    throw new Error("Ayme requires a browser Document.");
+    throw new RuntimeStateError("Ayme requires a browser Document.");
   return document;
 }

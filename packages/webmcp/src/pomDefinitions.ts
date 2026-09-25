@@ -6,6 +6,7 @@ import type {
   PomManifest,
 } from "./contracts";
 import { listRegisteredPoms } from "./registry";
+import { RefResolutionError, ToolInputError } from "./errors";
 
 type DefinitionNode = {
   name: string;
@@ -18,7 +19,7 @@ export function getPomDefinitions(
   ...names: readonly string[]
 ): PomDefinitionsResult {
   if (!names.every((name) => typeof name === "string"))
-    throw new Error("POM definition names must be strings.");
+    throw new ToolInputError("POM definition names must be strings.");
 
   const index = definitionIndex();
   if (names.length > 0)
@@ -41,7 +42,7 @@ function unambiguousDefinitions(
 ) {
   const definitions = distinctDefinitions(candidates);
   if (definitions.length > 1)
-    throw new Error(`POM definition "${name}" is ambiguous.`);
+    throw new RefResolutionError(`POM definition "${name}" is ambiguous.`);
   return definitions;
 }
 

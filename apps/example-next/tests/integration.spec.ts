@@ -59,7 +59,11 @@ test("hydrates, publishes the compiled POM, uses it and real Playwright, then re
   expect(setMode?.description).toBe("Set counter mode metadata.");
   expect(JSON.stringify(setMode?.inputSchema)).toContain('"double"');
   await expect(page.locator("output")).toHaveText("0");
-
+  // SubCounterPage's file has no decorator; the Turbopack rule and the
+  // compiler must still reach it and publish its inherited tools.
+  await expect
+    .poll(() => publishedToolNames(page))
+    .toContain("SubCounterPage.increment");
   // usePageObject rejects models without compiler-derived metadata. This call
   // therefore checks the actual loader, registration and browser action path.
   await page.getByRole("button", { name: "Call Page Object" }).click();

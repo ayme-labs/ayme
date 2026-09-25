@@ -7,9 +7,46 @@ import {
   subscribeToRegisteredPoms,
   probeRegisteredPomMembers,
 } from "./registry";
+import { RuntimeStateError } from "./errors";
 
 type PublishedTool =
   RegisteredPomTool | typeof getPageContextTool | PublishedRefTool;
+
+/** The MCP tool-failure result a published tool returns instead of throwing. */
+type ToolErrorResult = {
+  content: [{ type: "text"; text: string }];
+  isError: true;
+};
+
+/**
+ * Return a thrown error as an MCP `isError` result. WebMCP drops the reason of
+ * a rejected `execute`, so a published tool never throws. The text is the
+ * error's full message, prefixed with its name unless that is plain "Error".
+ */
+export function withErrorResult<T extends { execute(input: unknown): unknown }>(
+  tool: T
+): Omit<T, "execute"> & { execute(input: unknown): Promise<unknown> } {
+  return {
+    ...tool,
+    execute: async (input: unknown) => {
+      try {
+        return await tool.execute(input);
+      } catch (error) {
+        return toolErrorResult(error);
+      }
+    },
+  };
+}
+
+function toolErrorResult(error: unknown): ToolErrorResult {
+  return { content: [{ type: "text", text: errorText(error) }], isError: true };
+}
+
+function errorText(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  if (!error.name || error.name === "Error") return error.message;
+  return `${error.name}: ${error.message}`;
+}
 
 export type WebMcpDriver = Pick<
   NonNullable<typeof document.modelContext>,
@@ -30,6 +67,7 @@ export type WebMcpSynchronizationOptions = {
  * Keep the MCP driver's tool set in sync with the live DOM. Publishes Ref
  * Tools, Page Object tools, and `pursue_goal` (when configured). After each
  * tool call the publication is re-settled so the agent sees current tools.
+ * A published tool never throws: a failure is an `isError` result.
  */
 export async function synchronizeWebMcpTools(
   driver: WebMcpDriver,
@@ -111,7 +149,7 @@ export async function synchronizeWebMcpTools(
         ]);
         for (const { tool } of listRefTools()) {
           if (active.has(tool.name) || takenElsewhere.has(tool.name))
-            throw new Error(
+            throw new RuntimeStateError(
               `Cannot publish the Ref Tool "${tool.name}": another published tool already uses that name.`
             );
           active.set(tool.name, tool);
@@ -132,9 +170,10 @@ export async function synchronizeWebMcpTools(
           const controller = new AbortController();
           published.set(name, { tool, controller });
           try {
-            await driver.registerTool(withSettledPublication(tool), {
-              signal: controller.signal,
-            });
+            await driver.registerTool(
+              withErrorResult(withSettledPublication(tool)),
+              { signal: controller.signal }
+            );
           } catch (error) {
             controller.abort();
             published.delete(name);

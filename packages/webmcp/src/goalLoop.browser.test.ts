@@ -11,6 +11,15 @@ import {
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
 import type { RefTool } from "./refTools";
+import {
+  NONE_OF_THESE_KEY,
+  chunkQuestionId,
+  runOffQuestionId,
+} from "./goalLoopQuestions";
+import { toolFailure } from "./toolFailure.testSupport";
+
+/** The parameters of the built-in click Ref Tool. */
+const CLICK_PARAMETERS = ["ref"];
 
 // --- Fixtures ---
 
@@ -96,12 +105,57 @@ const manifest = (
  */
 type ScriptedChoice = string | { nth: number } | { raw: string };
 
+/**
+ * A list scripts the chunks of one parameter over the option cap: each chunk
+ * answers with the first entry it offers, or "none of these".
+ */
+type ScriptedArgument = ScriptedChoice | ScriptedChoice[];
+
 type ScriptedAnswer = {
   operation: string;
   goal_met: number;
-  /** Per parameter of the chosen operation. */
-  arguments?: Record<string, ScriptedChoice>;
+  /** Per parameter of the chosen operation, or per question id (a run-off). */
+  arguments?: Record<string, ScriptedArgument>;
 };
+
+const asList = (
+  wanted: ScriptedArgument | undefined
+): ScriptedChoice[] | undefined =>
+  wanted === undefined || Array.isArray(wanted) ? wanted : [wanted];
+
+/**
+ * The script for a question: by its id, which is the parameter's name or a
+ * run-off's id, else by the parameter whose chunk it is. Only click is asked in
+ * chunks here, so chunk ids are those of click's parameters.
+ */
+function scriptFor(
+  wanted: Record<string, ScriptedArgument>,
+  questionId: string,
+  questionCount: number
+): ScriptedArgument | undefined {
+  if (wanted[questionId] !== undefined) return wanted[questionId];
+  const parameter = Object.keys(wanted).find((candidate) =>
+    Array.from({ length: questionCount }, (_, index) =>
+      chunkQuestionId(candidate, index + 1, CLICK_PARAMETERS)
+    ).includes(questionId)
+  );
+  return parameter === undefined ? undefined : asList(wanted[parameter]);
+}
+
+/** Answer every argument question without the optional probabilities. */
+function withoutArgumentProbabilities(
+  decide: GoalLoopDecisionFunction
+): GoalLoopDecisionFunction {
+  return async (request) => {
+    const response = await decide(request);
+    if ("operation" in request.questions) return response;
+    const answers = structuredClone(
+      response.answers as Record<string, { probabilities?: unknown }>
+    );
+    for (const answer of Object.values(answers)) delete answer.probabilities;
+    return { ...response, answers };
+  };
+}
 
 type Criteria = Record<string, string>;
 
@@ -127,21 +181,39 @@ function choiceAnswer(criteria: Criteria, chosenKey: string) {
 
 /**
  * The key of the option the script names: by key, by description, or by the
- * start of a description (an instance label).
+ * start of a description (an instance label). A list names the first of its
+ * entries this question offers, else "none of these".
  */
-function keyFor(criteria: Criteria, wanted: ScriptedChoice): string {
+function keyFor(criteria: Criteria, wanted: ScriptedArgument): string {
+  if (Array.isArray(wanted)) {
+    for (const choice of wanted) {
+      const key = offeredKey(criteria, choice);
+      if (key !== undefined) return key;
+    }
+    return NONE_OF_THESE_KEY;
+  }
+  const key = offeredKey(criteria, wanted);
+  if (key === undefined)
+    throw new Error(
+      `No option ${JSON.stringify(wanted)} among ${JSON.stringify(criteria)}`
+    );
+  return key;
+}
+
+function offeredKey(
+  criteria: Criteria,
+  wanted: ScriptedChoice
+): string | undefined {
   if (typeof wanted === "object")
     return "raw" in wanted ? wanted.raw : nthKey(criteria, wanted.nth);
-  const key =
+  return (
     Object.keys(criteria).find(
       (candidate) => candidate === wanted || criteria[candidate] === wanted
     ) ??
     Object.keys(criteria).find((candidate) =>
       criteria[candidate]?.startsWith(wanted)
-    );
-  if (!key)
-    throw new Error(`No option "${wanted}" among ${JSON.stringify(criteria)}`);
-  return key;
+    )
+  );
 }
 
 function nthKey(criteria: Criteria, nth: number): string {
@@ -158,16 +230,18 @@ function scriptedDecisionFn(
   return async (request: DecisionRequest): Promise<DecisionResponse> => {
     const criteria = criteriaOf(request);
 
-    // Stage two: one choice question per parameter of the chosen operation.
+    // Stage two: one choice question per parameter of the chosen operation,
+    // or per chunk of a parameter over the option cap.
     if (!criteria.operation) {
       const current = answers[step - 1];
       const wanted = current?.arguments ?? {};
       const stageTwo: Record<string, unknown> = {};
-      for (const [parameter, options] of Object.entries(criteria)) {
-        const want = wanted[parameter];
+      for (const [id, options] of Object.entries(criteria)) {
+        // A chunk answers from its parameter's script with what it offers.
+        const want = scriptFor(wanted, id, Object.keys(criteria).length);
         if (want === undefined)
-          throw new Error(`No scripted argument for "${parameter}"`);
-        stageTwo[parameter] = choiceAnswer(options, keyFor(options, want));
+          throw new Error(`No scripted argument for "${id}"`);
+        stageTwo[id] = choiceAnswer(options, keyFor(options, want));
       }
       return { model: request.model, answers: stageTwo };
     }
@@ -465,6 +539,15 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     });
     expect((result as Record<string, unknown>).next).toContain(
       "Two operations failed"
+    );
+  });
+
+  it("returns invalid pursue_goal input as a ToolInputError result", async () => {
+    const decide = scriptedDecisionFn([]);
+    const tool = await registerPom(decide);
+
+    await expect(tool.execute({ goal: "do the thing" })).resolves.toEqual(
+      toolFailure(expect.stringMatching(/^ToolInputError: .*maxSteps/))
     );
   });
 
@@ -832,26 +915,170 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(offers("paragraph")).toBe(true);
   });
 
-  it("hands over instead of asking when a ref question would exceed the option limit", async () => {
+  // --- Stage two: a ref question over the option cap (#123) ---
+
+  /** A page whose clickable elements outnumber one question's options. */
+  function setupPageWithManyClickables(count: number): string[] {
     document.body.innerHTML = `<main>${Array.from(
-      { length: 256 },
+      { length: count },
       (_, index) => `<button>Item ${index}</button>`
     ).join("")}</main>`;
+    const clicked: string[] = [];
+    document.querySelector("main")!.addEventListener("click", (event) => {
+      clicked.push((event.target as HTMLElement).textContent ?? "");
+    });
+    return clicked;
+  }
+
+  /** The refs a chunk question offers: every option but "none of these". */
+  function refsOffered(criteria: Criteria): string[] {
+    return Object.keys(criteria).filter((key) => key !== NONE_OF_THESE_KEY);
+  }
+
+  it("asks for a ref in document-order chunks when the page holds more elements than one question offers", async () => {
+    const clicked = setupPageWithManyClickables(300);
     const { requests, decide } = recording(
-      scriptedDecisionFn([{ operation: "click_page_state_ref", goal_met: 0.1 }])
+      scriptedDecisionFn([
+        {
+          operation: "click_page_state_ref",
+          goal_met: 0.1,
+          arguments: { ref: 'button "Item 299"' },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
     );
     const tool = await getPublishedPursueGoal(decide);
 
-    const result = await tool.execute({ goal: "click an item", maxSteps: 5 });
+    const result = (await tool.execute({
+      goal: "click the last item",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    // The one stage-two request carries ⌈300 / 254⌉ = 2 chunk questions, all
+    // for the `ref` parameter.
+    const stageTwo = criteriaOf(requests[1]!);
+    expect(Object.keys(stageTwo)).toEqual([
+      chunkQuestionId("ref", 1, CLICK_PARAMETERS),
+      chunkQuestionId("ref", 2, CLICK_PARAMETERS),
+    ]);
+    const chunks = Object.values(stageTwo);
+    for (const chunk of chunks) {
+      expect(refsOffered(chunk).length).toBeLessThanOrEqual(254);
+      expect(Object.keys(chunk).length).toBeLessThanOrEqual(255);
+      expect(Object.keys(chunk).at(-1)).toBe(NONE_OF_THESE_KEY);
+    }
+    // Together the chunks hold every clickable element exactly once, in the
+    // order the page state lists them.
+    const offered = chunks.flatMap(refsOffered);
+    expect(offered).toHaveLength(300);
+    expect(new Set(offered).size).toBe(300);
+    const offeredSet = new Set(offered);
+    expect(
+      refsInPage(requests[1]!.state).filter((ref) => offeredSet.has(ref))
+    ).toEqual(offered);
+    // The one chunk that named an element decides; no further request follows
+    // before the next step's stage one.
+    expect(requests).toHaveLength(3);
+    expect(clicked).toEqual(["Item 299"]);
+    expect(result.reason).toBe("done");
+    expect(result.history).toMatchObject([
+      { did: expect.stringContaining("Item 299"), result: "ok" },
+    ]);
+    // Each chunk's answer is recorded in the step's scores.
+    const score =
+      getLastGoalLoopRunResult()!.stepScores[0]!.argumentProbabilities!;
+    expect(Object.keys(score)).toEqual(Object.keys(stageTwo));
+  });
+
+  it("asks one run-off among exactly the elements several chunks named", async () => {
+    const clicked = setupPageWithManyClickables(300);
+    const runOffId = runOffQuestionId("ref", CLICK_PARAMETERS);
+    // The decision function answers stage two without the optional
+    // probabilities: the chosen keys are recorded all the same.
+    const { requests, decide } = recording(
+      withoutArgumentProbabilities(
+        scriptedDecisionFn([
+          {
+            operation: "click_page_state_ref",
+            goal_met: 0.1,
+            arguments: {
+              ref: ['button "Item 3"', 'button "Item 299"'],
+              [runOffId]: 'button "Item 299"',
+            },
+          },
+          { operation: "none", goal_met: 0.9 },
+        ])
+      )
+    );
+    const tool = await getPublishedPursueGoal(decide);
+
+    const result = (await tool.execute({
+      goal: "click the last item",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    // Stage one, stage two, the run-off, then the next step's stage one.
+    expect(requests).toHaveLength(4);
+    const stageTwo = criteriaOf(requests[1]!);
+    const [firstChunk, secondChunk] = Object.values(stageTwo);
+    const named = [
+      keyFor(firstChunk!, 'button "Item 3"'),
+      keyFor(secondChunk!, 'button "Item 299"'),
+    ];
+    const runOff = criteriaOf(requests[2]!);
+    expect(Object.keys(runOff)).toEqual([runOffId]);
+    expect(Object.keys(runOff[runOffId]!)).toEqual(named);
+    expect(clicked).toEqual(["Item 299"]);
+    expect(result.reason).toBe("done");
+    // Each chunk's chosen key and the run-off's are recorded.
+    const [firstChunkId, secondChunkId] = Object.keys(stageTwo);
+    const score = getLastGoalLoopRunResult()!.stepScores[0]!;
+    expect(score.argumentChoices).toEqual({
+      [firstChunkId!]: named[0],
+      [secondChunkId!]: named[1],
+      [runOffId]: named[1],
+    });
+    expect(score.argumentProbabilities).toEqual({});
+  });
+
+  it("hands over with no_fitting_option when every chunk answers none of these", async () => {
+    const clicked = setupPageWithManyClickables(300);
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "click_page_state_ref",
+          goal_met: 0.1,
+          arguments: { ref: [] },
+        },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+
+    const result = await tool.execute({
+      goal: "click the missing item",
+      maxSteps: 5,
+    });
 
     expect(result).toEqual({
-      reason: "needs_value",
-      next: expect.stringContaining("click_page_state_ref"),
+      reason: "no_fitting_option",
+      next: expect.stringContaining('"click_page_state_ref"'),
+      // The step ran no action, so it leaves no history entry.
       history: [],
-      needs: { tool: "click_page_state_ref", parameters: ["ref"] },
     });
-    // The oversized question is never sent.
-    expect(requests).toHaveLength(1);
+    expect(requests).toHaveLength(2);
+    expect(clicked).toEqual([]);
+    // The chunk answers are still scored.
+    const stageTwo = criteriaOf(requests[1]!);
+    const score =
+      getLastGoalLoopRunResult()!.stepScores[0]!.argumentProbabilities!;
+    expect(Object.keys(score)).toEqual(Object.keys(stageTwo));
+    for (const id of Object.keys(stageTwo))
+      expect(score[id]![NONE_OF_THESE_KEY]).toBe(1);
+    expect(getLastGoalLoopRunResult()!.stepScores[0]!.argumentChoices).toEqual(
+      Object.fromEntries(
+        Object.keys(stageTwo).map((id) => [id, NONE_OF_THESE_KEY])
+      )
+    );
   });
 
   it("hands over when no element on the page fits the chosen operation", async () => {
@@ -1105,6 +1332,35 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result.history).toMatchObject([
       { did: expect.stringContaining("ItemsPage.items[1]"), result: "ok" },
     ]);
+  });
+
+  it("hands over, naming the collection instance, when the instances exceed the option limit", async () => {
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        { operation: "ItemsPage.items.archive", goal_met: 0.1 },
+      ])
+    );
+    const tool = await registerItemsPom(
+      decide,
+      256,
+      [action("archive", "archive")],
+      () => ({ archive: () => undefined })
+    );
+
+    const result = (await tool.execute({
+      goal: "archive an item",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    // The cap still ends the run for instances (#130); the wording names what
+    // the operation acts on.
+    expect(result).toMatchObject({
+      reason: "needs_value",
+      next: expect.stringContaining("acts on a collection instance"),
+      needs: { tool: "ItemsPage.items.archive", parameters: ["ref"] },
+    });
+    expect(result.next).not.toContain("one element");
+    expect(requests).toHaveLength(1);
   });
 
   it("asks one instance question for a nested collection", async () => {

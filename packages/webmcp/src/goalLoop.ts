@@ -16,11 +16,14 @@ import {
   parseOperationAnswer,
   planArguments,
   readArgumentAnswers,
+  readRunOffAnswer,
+  type ArgumentAnswers,
   type ChoiceAnswer,
   type ChosenArguments,
   type ExecutableTool,
   type NoulAnswer,
 } from "./goalLoopQuestions";
+import { ToolInputError } from "./errors";
 
 export type GoalLoopDecisionFunction = (
   request: DecisionRequest
@@ -64,7 +67,12 @@ export function getPursueGoalTool(): ModelContextTool<
 export type GoalLoopStepScore = {
   operationProbabilities?: Record<string, number>;
   goalMetScore: number;
-  /** Stage two, per parameter of the chosen operation. */
+  /**
+   * Stage two, per question id: the key of the option chosen for every
+   * argument question answered, chunks and run-off included.
+   */
+  argumentChoices?: Record<string, string>;
+  /** Stage two, per question id: the scores the decision function supplied. */
   argumentProbabilities?: Record<string, Record<string, number>>;
 };
 
@@ -181,7 +189,7 @@ function readPursueGoalInput(input: unknown): {
     Number.isInteger(input.maxSteps)
   )
     return { goal: input.goal, maxSteps: input.maxSteps };
-  throw new Error(
+  throw new ToolInputError(
     "pursue_goal requires a string goal and an integer maxSteps."
   );
 }
@@ -214,6 +222,10 @@ export async function pursueGoal(
 
   const errorTextOf = (error: unknown) =>
     error instanceof Error ? error.message : String(error);
+
+  /** How a `needs_value` Handover ends when the model could not pick a closed-set value. */
+  const pickYourself = (parameter: string) =>
+    `Read the page context, pick "${parameter}" yourself and call the operation directly, or try a different approach.`;
 
   /** A decision the loop could not obtain ends the run; the error travels on. */
   const decideFailed = (error: unknown): GoalLoopRunResult =>
@@ -331,11 +343,19 @@ export async function pursueGoal(
     if (plan.kind === "needs_ref_choice") {
       return done({
         reason: "needs_value",
-        next: `The operation "${chosenTool.name}" acts on one element, and ${
+        next: `The operation "${chosenTool.name}" acts on one element, and the loop found no element on the current page it applies to. ${pickYourself(plan.parameter)}`,
+        history,
+        needs: { tool: chosenTool.name, parameters: [plan.parameter] },
+      });
+    }
+    if (plan.kind === "needs_instance_choice") {
+      return done({
+        reason: "needs_value",
+        next: `The operation "${chosenTool.name}" acts on a collection instance, and ${
           plan.optionCount === 0
-            ? "the loop found no element on the current page it applies to"
+            ? "the loop found no instance on the current page"
             : "the current page holds more of them than one decision can offer"
-        }. Read the page context, pick "${plan.parameter}" yourself and call the operation directly, or try a different approach.`,
+        }. ${pickYourself(plan.parameter)}`,
         history,
         needs: { tool: chosenTool.name, parameters: [plan.parameter] },
       });
@@ -354,6 +374,7 @@ export async function pursueGoal(
     let chosenArguments: ChosenArguments = {
       args: {},
       summary: [],
+      choices: {},
       probabilities: {},
     };
     if (plan.questions.length > 0) {
@@ -365,14 +386,51 @@ export async function pursueGoal(
       } catch (error) {
         return decideFailed(error);
       }
+      let argumentAnswers: ArgumentAnswers;
       try {
-        chosenArguments = readArgumentAnswers(
+        argumentAnswers = readArgumentAnswers(
+          chosenTool,
           plan.questions,
           stageTwo.answers as Record<string, unknown>
         );
       } catch (error) {
         return invalidDecision(error);
       }
+
+      // Every chunk of a ref over the cap answered "none of these": the step
+      // ran no action, so it leaves no history entry (#123).
+      if (argumentAnswers.kind === "none_fits") {
+        score.argumentChoices = argumentAnswers.choices;
+        score.argumentProbabilities = argumentAnswers.probabilities;
+        return done({
+          reason: "no_fitting_option",
+          next: `No element on the current page fits the operation "${chosenTool.name}". Navigate to a different page or try a different approach.`,
+          history,
+        });
+      }
+
+      // Several chunks each named an element: one run-off among exactly those.
+      if (argumentAnswers.kind === "run_off") {
+        let runOff: DecisionResponse;
+        try {
+          runOff = await decisionFn(
+            buildArgumentRequest(state, [argumentAnswers.question])
+          );
+        } catch (error) {
+          return decideFailed(error);
+        }
+        try {
+          chosenArguments = readRunOffAnswer(
+            argumentAnswers,
+            runOff.answers as Record<string, unknown>
+          );
+        } catch (error) {
+          return invalidDecision(error);
+        }
+      } else {
+        chosenArguments = argumentAnswers.chosen;
+      }
+      score.argumentChoices = chosenArguments.choices;
       score.argumentProbabilities = chosenArguments.probabilities;
     }
 

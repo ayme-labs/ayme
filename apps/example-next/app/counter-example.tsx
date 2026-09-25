@@ -7,10 +7,12 @@ import {
   usePageObject,
 } from "@ayme-dev/webmcp-react";
 import { CounterPage } from "../playwright/pom/CounterPage";
+import { SubCounterPage } from "../playwright/pom/SubCounterPage";
 
 function Counter() {
   const [count, setCount] = useState(0);
   const pom = usePageObject(CounterPage);
+  usePageObject(SubCounterPage);
   return (
     <section aria-label="Counter">
       <p>
