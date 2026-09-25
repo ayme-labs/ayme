@@ -28,7 +28,7 @@
     "lefthook": "^2.1.8",
     "lint-staged": "^17.3.0",
     "prettier": "^3.9.6",
-    "turbo": "^2.10.12",
+    "turbo": "^2.11.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.68.0"
   }
