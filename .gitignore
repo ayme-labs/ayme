@@ -12,6 +12,9 @@ dist/
 .turbo/
 coverage/
 test-results/
+
+# Goal Loop run harness output (apps/example-vue: pnpm run goals:runs)
+apps/example-vue/goal-runs/
 .vitest-attachments/
 
 # Local Markdown issue tracker

@@ -11,6 +11,7 @@
     "src/**/*.vue",
     "playwright/**/*.ts",
     "tests/**/*.ts",
+    "scripts/**/*.ts",
     "vite.config.ts",
     "vite/**/*.ts",
     "playwright.config.ts",

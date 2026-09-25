@@ -8,6 +8,8 @@ import {
   type RecordingDriver,
 } from "@ayme-dev/webmcp/testing";
 
+import { recordGoalRun } from "./goalRunRecord";
+
 type Handover = { reason: string };
 
 /** Read the same key the dev server's Decision Endpoint reads: anyone running
@@ -42,17 +44,20 @@ function itemIds(items: Locator) {
   return items.locator("code").allInnerTexts();
 }
 
+/** Pursue the goal and attach what the run did, for `pnpm run goals:runs`. */
 async function pursueGoal(page: Page, goal: string, maxSteps: number) {
-  return (await page.evaluate(
-    async ({ goal, maxSteps }) => {
-      const tool = (
-        document.modelContext as unknown as RecordingDriver
-      ).tools.find((candidate) => candidate.name === "pursue_goal");
-      if (!tool) throw new Error("pursue_goal tool was not published.");
-      return await tool.execute({ goal, maxSteps });
-    },
-    { goal, maxSteps }
-  )) as Handover;
+  return recordGoalRun(page, test.info(), goal, async () => {
+    return (await page.evaluate(
+      async ({ goal, maxSteps }) => {
+        const tool = (
+          document.modelContext as unknown as RecordingDriver
+        ).tools.find((candidate) => candidate.name === "pursue_goal");
+        if (!tool) throw new Error("pursue_goal tool was not published.");
+        return await tool.execute({ goal, maxSteps });
+      },
+      { goal, maxSteps }
+    )) as Handover;
+  });
 }
 
 test("a goal that names a value the model cannot choose hands over", async ({
