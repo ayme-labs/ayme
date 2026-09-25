@@ -11,12 +11,12 @@ import {
   subscribeToRegisteredPoms,
 } from "@ayme-dev/webmcp/internal";
 import { CounterPage } from "../playwright/pom/CounterPage";
+import { SubCounterPage } from "../playwright/pom/SubCounterPage";
 
 function compiledMetadataSnapshot() {
-  const registration = listRegisteredPoms().find(
-    ({ id }) => id === "CounterPage"
+  return JSON.stringify(
+    listRegisteredPoms().flatMap(({ manifest }) => manifest.tools)
   );
-  return JSON.stringify(registration?.manifest.tools ?? []);
 }
 
 function CompiledMetadata() {
@@ -31,6 +31,7 @@ function CompiledMetadata() {
 function Counter() {
   const [count, setCount] = useState(0);
   const pom = usePageObject(CounterPage);
+  usePageObject(SubCounterPage);
   return (
     <section aria-label="Counter">
       <p>

@@ -35,7 +35,9 @@ lets Turbopack invalidate compiled POM metadata when cross-file types or project
 configuration change. If the bundler does not provide dependency tracking, the
 loader fails instead of silently serving stale metadata.
 
-The Next config applies the loader to decorated `.ts` files on the browser graph.
+The Next config applies the loader to `.ts` files on the browser graph whose text
+contains `@WebMCP` or `extends`, so an undecorated subclass of a decorated Page
+Object Model reaches the compiler.
 Turbopack loads the built package entry, not a source-file alias. The workspace
 root is explicit so linked Ayme packages resolve. Dev and production outputs
 use separate directories.

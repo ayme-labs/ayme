@@ -313,6 +313,35 @@ describe("derivePomManifests", () => {
       );
     });
 
+    it.each([
+      {
+        fixture: "userMenu",
+        className: "UserMenu",
+        memberNames: ["signOutItem", "baseItem"],
+      },
+      {
+        fixture: "barrelUserMenu",
+        className: "BarrelUserMenu",
+        memberNames: ["baseItem"],
+      },
+    ])(
+      "recognises an undecorated subclass in $fixture.ts of a base decorated in another module",
+      ({ fixture, className, memberNames }) => {
+        const manifests = manifestsOf(`crossFile/${fixture}`);
+        expectNames(
+          manifests.map((manifest) => manifest.className),
+          [className]
+        );
+        expectNames(
+          manifests[0]?.members.map((member) => member.memberName) ?? [],
+          memberNames
+        );
+        expectNames(manifests[0]?.tools.map((tool) => tool.toolName) ?? [], [
+          `${className}.open`,
+        ]);
+      }
+    );
+
     it("recognises every class below a decorator three levels up", () => {
       expectNames(
         manifestsOf("threeLevelDecoratedBasePom").map(
