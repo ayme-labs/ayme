@@ -10,8 +10,16 @@ export type GoalRunStep = {
   goalMetScore: number | null;
   /** Decision Endpoint calls the step made: stage one, stage two, run-offs. */
   modelCalls: number;
-  /** Per argument question id, the chosen option key; only steps with stage two. */
+  /**
+   * Per argument question id, the chosen option key; only steps with stage
+   * two. The loop's record where it has one, else every answer the Decision
+   * Endpoint returned for an option the question offered, so chunk answers
+   * survive a run-off that failed.
+   */
   argumentChoices?: Record<string, string>;
+  /** The step requested a run-off: several chunks of a ref question each named
+   *  an element. Counted even when the run-off then failed. */
+  runOff: boolean;
 };
 
 /** What one `pursue_goal` call did, attached to the test that made it. */
@@ -26,11 +34,17 @@ export type GoalRunRecord = {
   recorderError?: string;
 };
 
-type Decision = {
+/** One Decision Endpoint call seen from the page; `answers` only when the
+ *  endpoint answered with success. */
+export type Decision = {
   model: unknown;
-  questions: Record<string, unknown>;
+  questions: Record<string, { criteria?: Record<string, unknown> }>;
   answers?: Record<string, { choice?: unknown }>;
 };
+
+/** A run-off question's id ends with this, as `runOffQuestionId` in
+ *  `packages/webmcp/src/goalLoopQuestions.ts` builds it. */
+const runOffSuffix = "run_off";
 
 /**
  * Mirrors `GoalLoopStepScore` and the run result store in
@@ -42,9 +56,11 @@ type GoalLoopStepScore = {
   goalMetScore: number;
   argumentChoices?: Record<string, string>;
 };
-type RunResultStore = {
-  last?: { handover: { reason: string }; stepScores: GoalLoopStepScore[] };
+export type GoalLoopRunResult = {
+  handover: { reason: string };
+  stepScores: GoalLoopStepScore[];
 };
+type RunResultStore = { last?: GoalLoopRunResult };
 
 const asError = (error: unknown) =>
   error instanceof Error ? error : new Error(String(error));
@@ -84,6 +100,21 @@ function recordDecisions(page: Page) {
   };
 }
 
+/** The answers of an argument call that pick an option its question offered. */
+function offeredChoices(decision: Decision): Record<string, string> {
+  const choices: Record<string, string> = {};
+  for (const [id, question] of Object.entries(decision.questions)) {
+    const choice = decision.answers?.[id]?.choice;
+    if (
+      typeof choice === "string" &&
+      question.criteria &&
+      choice in question.criteria
+    )
+      choices[id] = choice;
+  }
+  return choices;
+}
+
 /** Group the calls into steps: every stage-one call asks `operation`. */
 function stepsOf(
   decisions: Decision[],
@@ -96,20 +127,47 @@ function stepsOf(
       steps.push({
         operation: typeof choice === "string" ? choice : null,
         goalMetScore: null,
-        modelCalls: 0,
+        modelCalls: 1,
+        runOff: false,
       });
+      continue;
     }
     const step = steps.at(-1);
-    if (step) step.modelCalls++;
+    if (!step) continue;
+    step.modelCalls++;
+    if (Object.keys(decision.questions).some((id) => id.endsWith(runOffSuffix)))
+      step.runOff = true;
+    const choices = offeredChoices(decision);
+    if (Object.keys(choices).length > 0)
+      step.argumentChoices = { ...step.argumentChoices, ...choices };
   }
-  // A step score exists for every step whose stage one the loop could read.
+  // A step score exists for every step whose stage one the loop could read;
+  // where it records a choice, the loop's record wins.
   stepScores.forEach((score, index) => {
     const step = steps[index];
     if (!step) return;
     step.goalMetScore = score.goalMetScore;
-    if (score.argumentChoices) step.argumentChoices = score.argumentChoices;
+    if (score.argumentChoices)
+      step.argumentChoices = {
+        ...step.argumentChoices,
+        ...score.argumentChoices,
+      };
   });
   return steps;
+}
+
+/** What a run did, from the calls seen from the page and the loop's run result. */
+export function goalRunRecordOf(
+  base: Pick<GoalRunRecord, "goal" | "reason" | "wallTimeMs">,
+  decisions: Decision[],
+  runResult: GoalLoopRunResult | undefined
+): GoalRunRecord {
+  return {
+    ...base,
+    reason: runResult?.handover.reason ?? base.reason,
+    models: [...new Set(decisions.map((decision) => String(decision.model)))],
+    steps: stepsOf(decisions, runResult?.stepScores ?? []),
+  };
 }
 
 async function readRunResult(page: Page) {
@@ -169,12 +227,7 @@ export async function recordGoalRun<T extends { reason: string }>(
     if (recorderError) throw recorderError;
     const decisions = await recorder!.decisions();
     const runResult = await readRunResult(page);
-    record = {
-      ...record,
-      reason: runResult?.handover.reason ?? handover.reason,
-      models: [...new Set(decisions.map((decision) => String(decision.model)))],
-      steps: stepsOf(decisions, runResult?.stepScores ?? []),
-    };
+    record = goalRunRecordOf(record, decisions, runResult);
   } catch (error) {
     record.recorderError = asError(error).message;
   }
