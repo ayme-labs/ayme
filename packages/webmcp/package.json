@@ -25,6 +25,11 @@
       "types": "./dist/server.d.mts",
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.mts",
+      "import": "./dist/testing.mjs",
+      "default": "./dist/testing.mjs"
     }
   },
   "scripts": {

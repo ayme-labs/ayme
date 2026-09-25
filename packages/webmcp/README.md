@@ -32,6 +32,12 @@ Internal adapter packages are bundled; consumers do not install them separately.
   registrations, the code `unplugin-webmcp` generates into your bundle
   (`registerCompiledPom`), and the inspector. Applications do not import it,
   and what it exports may change without notice.
+- `@ayme-dev/webmcp/testing` is for Playwright tests of an integration: a
+  recording WebMCP driver that `recordPublishedTools` installs into a browser
+  context, with queries to list, inspect, await and execute the tools the
+  runtime publishes. It uses Playwright's types and receives your test's
+  `Page` and `BrowserContext`. Only tests may import it; application code
+  never does.
 
 ## Expose an action
 

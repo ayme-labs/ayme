@@ -5,7 +5,7 @@ import {
   publishedToolNames,
   publishedToolSchema,
   recordPublishedTools,
-} from "./publishedTools";
+} from "@ayme-dev/webmcp/testing";
 
 // These tests run unchanged against next dev and the next build/next start app.
 test.describe("server render", () => {

@@ -4,7 +4,10 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { ListPage } from "../playwright/pom/ListPage";
 import { derivePomManifests } from "@ayme-dev/unplugin-webmcp";
-import { recordPublishedTools, type RecordingDriver } from "./publishedTools";
+import {
+  recordPublishedTools,
+  type RecordingDriver,
+} from "@ayme-dev/webmcp/testing";
 
 type ListActions = {
   addItem(text: string): Promise<void>;

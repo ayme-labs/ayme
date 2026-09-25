@@ -3,7 +3,10 @@ import { fileURLToPath } from "node:url";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { loadEnv } from "vite";
 
-import { recordPublishedTools, type RecordingDriver } from "./publishedTools";
+import {
+  recordPublishedTools,
+  type RecordingDriver,
+} from "@ayme-dev/webmcp/testing";
 
 type Handover = { reason: string };
 

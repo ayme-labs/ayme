@@ -1,5 +1,6 @@
-// Twin of apps/example-next/tests/publishedTools.ts: the apps share no test
-// package, so the two stay in step: a change here belongs there too.
+// The testing entry (ADR-0026): a recording WebMCP driver for Playwright
+// tests, which only tests may import. It uses Playwright's types only; the
+// helpers receive the test's own `Page` and `BrowserContext`.
 import type { BrowserContext, Page } from "@playwright/test";
 
 export type PublishedTool = {
