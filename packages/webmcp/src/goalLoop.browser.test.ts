@@ -17,6 +17,8 @@ import {
   runOffQuestionId,
 } from "./goalLoopQuestions";
 import { toolFailure } from "./toolFailure.testSupport";
+import { resolvePageStateRefs } from "./pageState";
+import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 /** The parameters of the built-in click Ref Tool. */
 const CLICK_PARAMETERS = ["ref"];
@@ -913,6 +915,85 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     // Nodes click would never offer — a disabled button and a text paragraph.
     expect(offers("Locked")).toBe(true);
     expect(offers("paragraph")).toBe(true);
+  });
+
+  // --- The page the model reads is pruned; the options are not ---
+
+  it("prunes ref-only wrappers and text leaves from the page it sends, and every option still resolves", async () => {
+    document.body.innerHTML = `
+      <main>
+        <div id="outer">
+          <div id="inner">
+            <button id="save">Save changes</button>
+            <button id="other">Other</button>
+          </div>
+          <p id="word"><span>T</span><span>a</span><span>s</span><span>k</span></p>
+        </div>
+      </main>
+    `;
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "highlight_element",
+          goal_met: 0.1,
+          arguments: { ref: 'button "Save changes"' },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    // A Ref Tool without a filter is offered every node of the full capture.
+    const tool = await getPublishedPursueGoal(decide, [
+      {
+        name: "highlight_element",
+        description: "Highlight one element on the page.",
+        execute: async () => null,
+      },
+    ]);
+
+    await tool.execute({ goal: "highlight the save button", maxSteps: 5 });
+
+    const offered = criteriaOf(requests[1]!).ref!;
+    const wrapperRefs = Object.keys(offered).filter(
+      (ref) => offered[ref] === "generic"
+    );
+    const buttonRef = Object.keys(offered).find(
+      (ref) => offered[ref] === 'button "Save changes"'
+    );
+    expect(wrapperRefs.length).toBeGreaterThan(0);
+    expect(buttonRef).toBeDefined();
+
+    // The page sent holds the button but none of the wrappers, and the text
+    // of the single-character leaves as one string.
+    const page = requests[1]!.state as { page: unknown };
+    const refs = refsInPage(page);
+    expect(refs).toContain(buttonRef);
+    for (const ref of wrapperRefs) expect(refs).not.toContain(ref);
+    const paragraphs: unknown[][] = [];
+    const walk = (node: unknown) => {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (!node || typeof node !== "object") return;
+      const record = node as { role?: string; children?: unknown[] };
+      if (record.role === "paragraph") paragraphs.push(record.children ?? []);
+      walk(record.children);
+    };
+    walk(page.page);
+    expect(paragraphs).toEqual([["Task"]]);
+
+    // Every option, wrappers included, resolves in the full capture.
+    const resolutions = await resolvePageStateRefs(
+      document,
+      ...Object.keys(offered).map((ref) => AriaRefSchema.parse(ref))
+    );
+    expect(resolutions.map((resolution) => resolution.status)).toEqual(
+      Object.keys(offered).map(() => "resolved")
+    );
+    expect(
+      resolutions.map(
+        (resolution) =>
+          resolution.status === "resolved" &&
+          resolution.node.element instanceof Element
+      )
+    ).not.toContain(false);
   });
 
   // --- Stage two: a ref question over the option cap (#123) ---
