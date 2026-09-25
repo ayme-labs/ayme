@@ -408,7 +408,7 @@ describe("CompactStructuralTreeRenderer", () => {
     );
   });
 
-  it("joins adjacent text children and roots left by an exploded node", () => {
+  it("keeps adjacent text children and roots left by an exploded node separate", () => {
     const tree = parse(
       "- paragraph [ref=e1]:\n" +
         "  - generic [ref=e2]: a\n" +
@@ -427,14 +427,17 @@ describe("CompactStructuralTreeRenderer", () => {
       renderCompactStructuralNodeForest(projectStructuralNodeForest(forest))
     ).toBe(
       "- [ref=e1] paragraph:\n" +
-        "  - text: ab\n" +
+        "  - text: a\n" +
+        "  - text: b\n" +
         '  - [ref=e4] button "Go"\n' +
-        "  - text: cd\n" +
-        "- text: ef"
+        "  - text: c\n" +
+        "  - text: d\n" +
+        "- text: e\n" +
+        "- text: f"
     );
   });
 
-  it("renders a joined run of text as the node's inline text", () => {
+  it("renders a run of text children in block form, one entry each", () => {
     const forest = structuralNodeForest(
       parse(
         '- button "Go" [ref=e1]:\n  - generic [ref=e2]: G\n  - generic [ref=e3]: o'
@@ -443,7 +446,7 @@ describe("CompactStructuralTreeRenderer", () => {
 
     expect(
       renderCompactStructuralNodeForest(projectStructuralNodeForest(forest))
-    ).toBe('- [ref=e1] button "Go": Go');
+    ).toBe('- [ref=e1] button "Go":\n  - text: G\n  - text: o');
   });
 
   it("suppresses the synthetic fragment wrapper in multi-root projections", () => {

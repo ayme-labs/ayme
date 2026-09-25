@@ -41,7 +41,9 @@ export type StructuralNodePredicate<TNode> = (
  * - `collapse`: a matching node keeps its place and loses all its children.
  * - `explode`: a matching node is replaced by its children, text included.
  *
- * `explode` leaves adjacent text children as they are; the renderers join them.
+ * `explode` leaves adjacent text children as they are, and so do the renderers:
+ * the capture carries no layout to tell a word split across leaves from two
+ * neighbouring blocks, so no stage joins them.
  */
 export class StructuralNodeForest<
   TNode,

@@ -931,7 +931,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
             <button id="save">Save changes</button>
             <button id="other">Other</button>
           </div>
-          <p id="word"><span>T</span><span>a</span><span>s</span><span>k</span></p>
+          <section aria-label="Word"><div>T</div><div>a</div><div>s</div><div>k</div></section>
         </div>
       </main>
     `;
@@ -967,21 +967,23 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(buttonRef).toBeDefined();
 
     // The page sent holds the button but none of the wrappers, and the text
-    // of the single-character leaves as one string.
+    // of the single-character leaves hoisted, each string as it was.
     const page = requests[1]!.state as { page: unknown };
     const refs = refsInPage(page);
     expect(refs).toContain(buttonRef);
     for (const ref of wrapperRefs) expect(refs).not.toContain(ref);
-    const paragraphs: unknown[][] = [];
+    // Block leaves: the capture keeps each as a generic of its own, unlike
+    // inline text, which it folds into the parent before Ayme sees it.
+    const regions: unknown[][] = [];
     const walk = (node: unknown) => {
       if (Array.isArray(node)) return node.forEach(walk);
       if (!node || typeof node !== "object") return;
       const record = node as { role?: string; children?: unknown[] };
-      if (record.role === "paragraph") paragraphs.push(record.children ?? []);
+      if (record.role === "region") regions.push(record.children ?? []);
       walk(record.children);
     };
     walk(page.page);
-    expect(paragraphs).toEqual([["Task"]]);
+    expect(regions).toEqual([["T", "a", "s", "k"]]);
 
     // Every option, wrappers included, resolves in the full capture.
     const resolutions = await resolvePageStateRefs(
@@ -1420,9 +1422,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
   });
 
   it("keeps the full capture behind the instance options and the Change Record while the page it sends is pruned", async () => {
-    // Items under wrappers the model is not shown, with single-character
-    // text leaves inside; the wrappers hold two children each so the capture
-    // keeps them as nodes of their own.
+    // Items under wrappers the model is not shown, with text leaves inside;
+    // the wrappers hold two children each so the capture keeps them as nodes
+    // of their own.
     const count = 3;
     document.body.innerHTML = `
       <main>
@@ -1431,7 +1433,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
             ${Array.from(
               { length: count },
               (_, index) =>
-                `<li id="item-${index}" aria-label="Item ${index}"><span>t</span><span>ask</span></li>`
+                `<li id="item-${index}" aria-label="Item ${index}"><div>t</div><div>ask</div></li>`
             ).join("")}
           </ul>
           <span>note</span>
@@ -1479,10 +1481,10 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       maxSteps: 5,
     })) as Record<string, unknown>;
 
-    // The page the model read: no wrapper, the leaves' text joined.
+    // The page the model read: no wrapper, the leaves' text hoisted as it was.
     const sent = JSON.stringify(requests[0]!.state);
     expect(sent).not.toContain('"role":"generic"');
-    expect(sent).toContain('"name":"Item 1","children":["task"]');
+    expect(sent).toContain('"name":"Item 1","children":["t","ask"]');
 
     // The instance options come from the full capture and still resolve.
     const instanceRefs = Object.keys(criteriaOf(requests[1]!).ref!);

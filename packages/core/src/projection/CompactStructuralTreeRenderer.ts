@@ -1,4 +1,3 @@
-import { joinAdjacentText } from "./joinAdjacentText";
 import type {
   ProjectedStructuralNode,
   ProjectedStructuralNodeForest,
@@ -14,14 +13,14 @@ const STATUS_TOKEN: Partial<
 
 /**
  * The compact text renderer: the notation `get_page_context` and the Change
- * Record use. Adjacent text children are joined into one text.
+ * Record use. Every string child is one `text:` entry; adjacent strings stay
+ * separate, since the capture carries no layout to tell a word split across
+ * leaves from two neighbouring blocks.
  */
 export function renderCompactStructuralNodeForest(
   forest: ProjectedStructuralNodeForest
 ): string {
-  return joinAdjacentText(forest.roots)
-    .map((node) => renderNode(node, 0))
-    .join("\n");
+  return forest.roots.map((node) => renderNode(node, 0)).join("\n");
 }
 
 function renderNode(
@@ -45,11 +44,12 @@ function renderNode(
   const header = [...node.prefixes, statusToken, formatNodeHeader(node)]
     .filter((value): value is string => value !== undefined && value !== "")
     .join(" ");
-  const children = joinAdjacentText(node.children);
-  const inlineText = children.filter(
+  const inlineText = node.children.filter(
     (child): child is string => typeof child === "string"
   );
-  const hasNodeChildren = children.some((child) => typeof child !== "string");
+  const hasNodeChildren = node.children.some(
+    (child) => typeof child !== "string"
+  );
   const block =
     node.properties.length > 0 || hasNodeChildren || inlineText.length > 1;
   if (!block && inlineText.length === 1)
@@ -60,7 +60,7 @@ function renderNode(
     lines.push(
       `${indent(depth + 1)}- /${property.label}: ${formatProperty(property.value)}`
     );
-  for (const child of children) lines.push(renderNode(child, depth + 1));
+  for (const child of node.children) lines.push(renderNode(child, depth + 1));
   return lines.join("\n");
 }
 

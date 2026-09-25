@@ -536,7 +536,7 @@ export function planArguments(
  * pointer cursor, whatever its children. Nothing targetable is among them: a
  * ref-only wrapper is never an option, and a single-character text leaf is
  * not interactive. Exploding them hoists their children, so a chain of
- * wrappers vanishes and the text of adjacent leaves is joined by the renderer.
+ * wrappers vanishes and the text of a leaf is hoisted as the string it is.
  */
 function prunable(node: StructuralNode): boolean {
   return (

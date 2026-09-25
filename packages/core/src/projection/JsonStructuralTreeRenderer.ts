@@ -1,6 +1,5 @@
 import type { StructuralNode, StructuralRole } from "../tree/StructuralNode";
 import type { AriaRef } from "../tree/StructuralTypes";
-import { joinAdjacentText } from "./joinAdjacentText";
 import type {
   ProjectedStructuralNode,
   ProjectedStructuralNodeForest,
@@ -24,14 +23,16 @@ export type JsonStructuralNodeForest = readonly (JsonStructuralNode | string)[];
 
 /**
  * The JSON renderer: one object per projected node, its properties keyed by
- * their projected key, adjacent text children joined into one string. The
- * projection's identity token, status, prefixes and compact mark have no place
- * in this shape; the ref identifies a node.
+ * their projected key, string children as they are (adjacent strings stay
+ * separate: the capture carries no layout to tell a word split across leaves
+ * from two neighbouring blocks). The projection's identity token, status,
+ * prefixes and compact mark have no place in this shape; the ref identifies a
+ * node.
  */
 export function renderJsonStructuralNodeForest(
   forest: ProjectedStructuralNodeForest
 ): JsonStructuralNodeForest {
-  return Object.freeze(joinAdjacentText(forest.roots).map(renderChild));
+  return Object.freeze(forest.roots.map(renderChild));
 }
 
 function renderChild(
@@ -59,6 +60,6 @@ function renderNode(node: ProjectedStructuralNode): JsonStructuralNode {
           ),
         }
       : {}),
-    children: Object.freeze(joinAdjacentText(node.children).map(renderChild)),
+    children: Object.freeze(node.children.map(renderChild)),
   });
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { StructuralNode } from "../tree/StructuralNode";
+import type { StructuralChild, StructuralNode } from "../tree/StructuralNode";
 import { StructuralTree } from "../tree/StructuralTree";
 import { SyntheticAriaRefFactory } from "../tree/SyntheticAriaRefFactory";
 import { renderCompactStructuralNodeForest } from "./CompactStructuralTreeRenderer";
@@ -9,7 +9,10 @@ import {
   type StructuralNodeForestAdapter,
   type StructuralNodePredicate,
 } from "./StructuralNodeForest";
-import { projectStructuralNodeForest } from "./StructuralProjection";
+import {
+  projectStructuralNodeForest,
+  type StructuralNodeForestSource,
+} from "./StructuralProjection";
 
 function forestOf(yaml: string): StructuralNodeForest<StructuralNode> {
   return structuralNodeForest(
@@ -20,9 +23,18 @@ function forestOf(yaml: string): StructuralNodeForest<StructuralNode> {
   );
 }
 
-/** The forest as the compact renderer shows it. */
-function render(forest: StructuralNodeForest<StructuralNode>): string {
-  return renderCompactStructuralNodeForest(projectStructuralNodeForest(forest));
+/**
+ * The structure of a forest, nothing else: a node is `[ref, ...children]`, a
+ * text child is its string.
+ */
+function outline(
+  forest: StructuralNodeForestSource<StructuralNode>
+): unknown[] {
+  const visit = (children: readonly StructuralChild[]): unknown[] =>
+    children.map((child) =>
+      typeof child === "string" ? child : [child.ref, ...visit(child.children)]
+    );
+  return visit(forest.roots);
 }
 
 const isButton: StructuralNodePredicate<StructuralNode> = (_entry, node) =>
@@ -48,14 +60,9 @@ describe("StructuralNodeForest", () => {
       (_entry, node) => node.role !== "list"
     );
 
-    expect(render(forest)).toBe(
-      "- [ref=e1]:\n" +
-        '  - [ref=e2] button "Save"\n' +
-        "  - text: loose\n" +
-        '  - [ref=e6] link "Docs"'
-    );
+    expect(outline(forest)).toEqual([["e1", ["e2"], "loose", ["e6"]]]);
     // A root that does not match takes everything with it.
-    expect(render(forestOf(PAGE).filter(isButton))).toBe("");
+    expect(outline(forestOf(PAGE).filter(isButton))).toEqual([]);
   });
 
   it("filterAndPromote promotes the matching descendants of a dropped node and drops its text", () => {
@@ -65,12 +72,7 @@ describe("StructuralNodeForest", () => {
 
     // The list and its item are dropped; "Archive" rises into their place,
     // "loose" stays under the kept generic and "label" goes with the item.
-    expect(render(forest)).toBe(
-      "- [ref=e1]:\n" +
-        '  - [ref=e2] button "Save"\n' +
-        "  - text: loose\n" +
-        '  - [ref=e5] button "Archive"'
-    );
+    expect(outline(forest)).toEqual([["e1", ["e2"], "loose", ["e5"]]]);
   });
 
   it("filterAndPromote keeps text roots and drops a text child of a dropped root", () => {
@@ -83,19 +85,13 @@ describe("StructuralNodeForest", () => {
       ...tree.getRootNodes(),
     ]).filterAndPromote(isButton);
 
-    expect(render(forest)).toBe('- text: kept\n- [ref=e2] button "Save"');
+    expect(outline(forest)).toEqual(["kept", ["e2"]]);
   });
 
   it("collapse keeps a matching node and drops all its children, text included", () => {
     const forest = forestOf(PAGE).collapse(isList);
 
-    expect(render(forest)).toBe(
-      "- [ref=e1]:\n" +
-        '  - [ref=e2] button "Save"\n' +
-        "  - text: loose\n" +
-        "  - [ref=e3] list\n" +
-        '  - [ref=e6] link "Docs"'
-    );
+    expect(outline(forest)).toEqual([["e1", ["e2"], "loose", ["e3"], ["e6"]]]);
   });
 
   it("collapse does not look below a collapsed node", () => {
@@ -111,15 +107,9 @@ describe("StructuralNodeForest", () => {
   it("explode replaces a matching node by its children, text included and in order", () => {
     const forest = forestOf(PAGE).explode(isList);
 
-    expect(render(forest)).toBe(
-      "- [ref=e1]:\n" +
-        '  - [ref=e2] button "Save"\n' +
-        "  - text: loose\n" +
-        "  - [ref=e4] listitem:\n" +
-        '    - [ref=e5] button "Archive"\n' +
-        "    - text: label\n" +
-        '  - [ref=e6] link "Docs"'
-    );
+    expect(outline(forest)).toEqual([
+      ["e1", ["e2"], "loose", ["e4", ["e5"], "label"], ["e6"]],
+    ]);
   });
 
   it("explode evaluates the predicate bottom-up, on the node after its children were exploded", () => {
@@ -151,9 +141,7 @@ describe("StructuralNodeForest", () => {
       );
     });
 
-    expect(render(exploded)).toBe(
-      '- [ref=e4] button "Deep"\n- text: ab\n- [ref=e7] button "Top"'
-    );
+    expect(outline(exploded)).toEqual([["e4"], "a", "b", ["e7"]]);
     expect(seen).toEqual([
       { ref: "e4", children: [] },
       { ref: "e3", children: ["e4"] },
@@ -177,9 +165,7 @@ describe("StructuralNodeForest", () => {
   it("operations chain", () => {
     const forest = forestOf(PAGE).explode(isGeneric).collapse(isList);
 
-    expect(render(forest)).toBe(
-      '- [ref=e2] button "Save"\n- text: loose\n- [ref=e3] list\n- [ref=e6] link "Docs"'
-    );
+    expect(outline(forest)).toEqual([["e2"], "loose", ["e3"], ["e6"]]);
   });
 
   it("keeps the node objects whose children did not change", () => {
@@ -238,28 +224,32 @@ describe("StructuralNodeForest", () => {
       withChildren: (entry, kids) => ({ ...entry, kids: [...kids] }),
     };
     const forest = new StructuralNodeForest(adapter);
-    const outline = (children: readonly (Entry | string)[]): unknown[] =>
+    const entryOutline = (children: readonly (Entry | string)[]): unknown[] =>
       children.map((child) =>
-        typeof child === "string" ? child : [child.id, ...outline(child.kids)]
+        typeof child === "string"
+          ? child
+          : [child.id, ...entryOutline(child.kids)]
       );
 
     expect(
-      outline(forest.filter((_entry, node) => node.role !== "list").roots)
+      entryOutline(forest.filter((_entry, node) => node.role !== "list").roots)
     ).toEqual([["entry:e1", ["entry:e2"], "loose", ["entry:e6"]]]);
     expect(
-      outline(
+      entryOutline(
         forest.filterAndPromote(
           (_entry, node) => node.role === "generic" || node.role === "button"
         ).roots
       )
     ).toEqual([["entry:e1", ["entry:e2"], "loose", ["entry:e5"]]]);
     expect(
-      outline(forest.collapse((_entry, node) => node.role === "list").roots)
+      entryOutline(
+        forest.collapse((_entry, node) => node.role === "list").roots
+      )
     ).toEqual([
       ["entry:e1", ["entry:e2"], "loose", ["entry:e3"], ["entry:e6"]],
     ]);
     expect(
-      outline(forest.explode((_entry, node) => node.role === "list").roots)
+      entryOutline(forest.explode((_entry, node) => node.role === "list").roots)
     ).toEqual([
       [
         "entry:e1",

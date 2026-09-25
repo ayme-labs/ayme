@@ -360,8 +360,8 @@ started or has no `goalLoop`.
 Both stages of a step are decided on the current Structural Page State as
 JSON, one object per node, pruned of what a model cannot target: a `generic`
 node with no name, props, state or pointer cursor is replaced by its children,
-so wrapper chains vanish and the text of adjacent leaves is joined into one
-string. The pruning is for what the model reads only; the options it is
+so wrapper chains vanish and the text of their leaves is hoisted, each string
+as it was. The pruning is for what the model reads only; the options it is
 offered and the Change Record are taken from the full capture, so every ref the
 model reads or is offered is a ref of that capture.
 

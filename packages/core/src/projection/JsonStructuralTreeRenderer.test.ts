@@ -89,7 +89,7 @@ describe("renderJsonStructuralNodeForest", () => {
     expect(JSON.stringify(rendered)).toContain('"children":["Docs"]');
   });
 
-  it("differs from that serializer only in joining adjacent strings", () => {
+  it("keeps the shape on adjacent strings too, which stay separate", () => {
     const factory = new SyntheticAriaRefFactory();
     const root = new StructuralNode({
       ref: factory.create(),
@@ -100,26 +100,12 @@ describe("renderJsonStructuralNodeForest", () => {
     });
     const tree = new StructuralTree(root, factory);
 
-    const [reference] = serializeTreeReference(tree) as {
-      children: unknown[];
-    }[];
-    const [rendered] = renderJson(tree) as unknown as { children: unknown[] }[];
+    const rendered = renderJson(tree);
 
-    expect(reference!.children).toEqual([
-      "Hel",
-      "lo",
-      expect.objectContaining({ ref: "e2" }),
-      "!",
-    ]);
-    expect(rendered!.children).toEqual([
-      "Hello",
-      expect.objectContaining({ ref: "e2" }),
-      "!",
-    ]);
-    expect({ ...rendered, children: undefined }).toEqual({
-      ...reference,
-      children: undefined,
-    });
+    expect(rendered).toEqual(serializeTreeReference(tree));
+    expect(
+      (rendered[0] as unknown as { children: unknown[] }).children
+    ).toEqual(["Hel", "lo", expect.objectContaining({ ref: "e2" }), "!"]);
   });
 
   it("renders one object per node with ref, role, name and children", () => {
@@ -210,7 +196,7 @@ describe("renderJsonStructuralNodeForest", () => {
     ]);
   });
 
-  it("joins adjacent text children left by an exploded node", () => {
+  it("keeps adjacent text children left by an exploded node separate", () => {
     const tree = parse(
       "- paragraph [ref=e1]:\n" +
         "  - generic [ref=e2]: a\n" +
@@ -231,21 +217,23 @@ describe("renderJsonStructuralNodeForest", () => {
         role: "paragraph",
         name: "",
         children: [
-          "ab",
+          "a",
+          "b",
           { ref: "e4", role: "button", name: "Go", children: [] },
-          "cd",
+          "c",
+          "d",
         ],
       },
     ]);
   });
 
-  it("joins adjacent text roots", () => {
+  it("keeps adjacent text roots separate", () => {
     const forest = structuralNodeForest(
       parse("- generic [ref=e1]: a\n- generic [ref=e2]: b").getRootNodes()
     ).explode(() => true);
 
     expect(
       renderJsonStructuralNodeForest(projectStructuralNodeForest(forest))
-    ).toEqual(["ab"]);
+    ).toEqual(["a", "b"]);
   });
 });
