@@ -10,17 +10,17 @@ import {
 } from "react";
 import {
   createRuntimeSession,
-  createServerPageObject,
   type AymePage,
   type GoalLoopDecisionFunction,
-  type PageObjectConstructor,
   type RefTool,
   type RuntimeSession,
-} from "@ayme-dev/webmcp/internal";
+} from "@ayme-dev/webmcp";
+import type { PageObjectConstructor } from "@ayme-dev/webmcp/internal";
 
-export type { AymeWebMcpPublicationStatus } from "@ayme-dev/webmcp/internal";
+export type { AymeWebMcpPublicationStatus } from "@ayme-dev/webmcp";
 export type AymeWebMcpProviderProps = {
-  page?: AymePage;
+  /** Builds the browser Page; called once, in the browser, on first use. */
+  page?: () => AymePage;
   children?: ReactNode;
   ignore?: (element: Element) => boolean;
   refTools?: RefTool[];
@@ -41,7 +41,7 @@ export function AymeWebMcpProvider({
     ignore,
     refTools,
     goalLoop,
-    runtime: createRuntimeSession(page, { ignore, refTools, goalLoop }),
+    runtime: createRuntimeSession({ page, ignore, refTools, goalLoop }),
   }));
   if (ancestor)
     throw new Error(
@@ -88,10 +88,7 @@ export function usePageObject<T extends object>(
   const [retained] = useState(() => ({
     model,
     runtime,
-    instance:
-      typeof window === "undefined"
-        ? createServerPageObject(model)
-        : runtime.construct(model),
+    instance: runtime.construct(model),
   }));
   if (retained.model !== model || retained.runtime !== runtime)
     throw new Error(

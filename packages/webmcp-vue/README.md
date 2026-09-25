@@ -43,7 +43,7 @@ import App from "./App.vue";
 </template>
 ```
 
-In the browser, the provider creates a Page for the current document. To supply a custom or decorated Page, create it once in the root setup and pass `:page="customPage"`. Keep that Page fixed while mounted; remount the provider and its consumers to change it. Wrappers must preserve the browser adapter's locator metadata for Ayme observation. Playwright `Page` type compatibility alone does not guarantee observation support.
+In the browser, the provider creates a Page for the current document. To supply a custom or decorated Page, pass a factory, `:page="() => customPage"`; the runtime calls it once, in the browser, on first use, and never during server rendering. `createPage(options)` from `@ayme-dev/webmcp` builds the default Page with your own settings. Keep the factory fixed while mounted; remount the provider and its consumers to change it. Wrappers must preserve the browser adapter's locator metadata for Ayme observation. Playwright `Page` type compatibility alone does not guarantee observation support.
 
 Pass `:ignore="ignorePageState"` to keep matching elements and their descendants out of the Structural Page State:
 
@@ -75,7 +75,7 @@ Existing root setup continues to work:
 
 ```ts
 const { publicationStatus, retryPublication } = useAymeWebMcp({
-  page: customPage,
+  page: () => customPage,
 });
 const pom = usePageObject(ListPage);
 ```
@@ -97,7 +97,7 @@ In the browser, `usePageObject(Model)` returns the concrete instance and dispose
 
 The provider and composables can run during Vue server rendering. They do not construct Page Objects, start the browser runtime, observe the DOM, or publish tools on the server. Each render creates its own inert runtime session; no live browser registration is shared between requests.
 
-On the server, `usePageObject(Model)` returns an unconstructed object with the model's prototype. This allows rendering to reference prototype methods in event closures without running the constructor. Do not read locators or constructor-initialized fields, or execute POM actions, during server rendering. Custom browser Pages must also be created only in the browser, not in unguarded server setup.
+On the server, `usePageObject(Model)` returns an unconstructed object with the model's prototype. This allows rendering to reference prototype methods in event closures without running the constructor. Do not read locators or constructor-initialized fields, or execute POM actions, during server rendering. A custom `page` factory runs only in the browser; server rendering never calls it.
 
 Browser setup constructs and registers the real Page Object during hydration. Existing browser ownership, `effectScope()` support, and disposal behavior are unchanged. No client-only wrapper is needed around the application UI.
 

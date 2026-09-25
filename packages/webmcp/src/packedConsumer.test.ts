@@ -550,6 +550,8 @@ it(
         'if (main.default !== main.ayme) throw new Error("Ayme default differs from named export");',
         'if (typeof main.WebMCP !== "function") throw new Error("missing WebMCP");',
         'if (typeof main.createPage !== "function") throw new Error("missing createPage");',
+        'if (typeof main.createRuntimeSession !== "function") throw new Error("missing createRuntimeSession");',
+        'if ("createRuntimeSession" in internal) throw new Error("createRuntimeSession must not be on /internal");',
         'if (typeof internal.configureAymeRuntime !== "function") throw new Error("missing configureAymeRuntime");',
         'console.log("ok");',
       ].join("\n")

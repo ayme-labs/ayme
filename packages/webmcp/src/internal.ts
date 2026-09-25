@@ -24,16 +24,11 @@ export type {
 } from "./registry";
 export { synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
 export type { WebMcpDriver, WebMcpRegistration } from "./webMcp";
+// The runtime session and its types are public (ADR-0025); this entry keeps
+// the framework packages' server page objects, the plugin's registration and
+// the inspector's instrumentation and registry read model.
 export {
-  createRuntimeSession,
   createServerPageObject,
   installRuntimePageInstrumentation,
 } from "./runtime";
-export type {
-  GoalLoopDecisionFunction,
-  RuntimeSession,
-  AymePage,
-  AymeWebMcpPublicationStatus,
-} from "./runtime";
-export type { RefTool } from "./refTools";
 export { isPlaywrightLiteLocator as isAymeLocator } from "@ayme-dev/playwright-lite/internal";

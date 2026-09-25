@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import type { WebMcpDriver } from "@ayme-dev/webmcp/internal";
 import { CounterPage } from "../playwright/pom/CounterPage";
 
 test("uses the same POM with real Playwright", async ({ page }) => {
@@ -143,7 +142,7 @@ test("publishes, executes, and removes compiled tools under StrictMode", async (
       "CounterPage.increment",
     ]);
   await page.evaluate(async () => {
-    const driver = document.modelContext as unknown as WebMcpDriver & {
+    const driver = document.modelContext as unknown as {
       tools: Map<
         string,
         { execute: (args: Record<string, unknown>) => Promise<unknown> }

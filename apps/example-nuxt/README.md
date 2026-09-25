@@ -68,8 +68,9 @@ The Vue package has DOM-free SSR tests for provider and standalone ownership,
 with publication enabled and disabled. The existing Vue/Vite example remains
 the CSR regression test.
 
-The fixture reads the internal registry only for E2E assertions. Consumer
-applications should use the public Vue integration instead.
+The fixture imports only the public Vue integration. The E2E tests observe the
+compiled POM metadata and the registration lifetime through the tool schemas a
+WebMCP driver fixture receives, not through Ayme's internal registry.
 
 ## Limits
 

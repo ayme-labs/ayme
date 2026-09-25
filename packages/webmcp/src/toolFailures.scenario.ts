@@ -59,7 +59,9 @@ export function describeToolFailures(
         <button id="save">Save changes</button>
         <div style="position: fixed; inset: 0"></div>
       `;
-      const runtime = createRuntimeSession(createPage({ actionTimeout: 1000 }));
+      const runtime = createRuntimeSession({
+        page: () => createPage({ actionTimeout: 1000 }),
+      });
       cleanups.push(runtime.start());
       registerCompiledPom(FailingPage, failingManifest);
       cleanups.push(createPageRegistration(FailingPage).dispose);

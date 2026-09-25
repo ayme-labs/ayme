@@ -1,10 +1,9 @@
 import { afterEach, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
+import { createRuntimeSession, type AymePage } from "@ayme-dev/webmcp";
 import {
-  createRuntimeSession,
   capturePageState,
   registerCompiledPom,
-  type AymePage,
 } from "@ayme-dev/webmcp/internal";
 
 import {
@@ -35,7 +34,7 @@ it("instruments a supplied Page before constructing the first Page Object", asyn
     tools: [],
   });
 
-  const runtime = createRuntimeSession(suppliedPage);
+  const runtime = createRuntimeSession({ page: () => suppliedPage });
   const instance = runtime.construct(Model);
   await instance.page
     .getByRole("button", { name: "Run" })
@@ -91,7 +90,9 @@ it("adds Inspector tracing to an existing feedback Page without double instrumen
     tools: [],
   });
 
-  const instance = createRuntimeSession(page).construct(SharedModel);
+  const instance = createRuntimeSession({ page: () => page }).construct(
+    SharedModel
+  );
   await instance.page
     .getByRole("button", { name: "Shared" })
     .waitFor({ state: "attached" });

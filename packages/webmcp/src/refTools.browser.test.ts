@@ -57,7 +57,7 @@ describe("Ref Tools in Chromium", () => {
 
   /** Start a runtime session with the given Ref Tools and publish its tools. */
   async function publish(refTools?: RefTool[]) {
-    const runtime = createRuntimeSession(page, refTools ? { refTools } : {});
+    const runtime = createRuntimeSession({ page: () => page, refTools });
     stop = runtime.start();
     return republish();
   }

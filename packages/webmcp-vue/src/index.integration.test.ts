@@ -65,7 +65,9 @@ it("keeps a real publisher startup failure retryable", async () => {
 
   const scope = effectScope();
   const result = scope.run(() =>
-    useAymeWebMcp({ page: {} as UseAymeWebMcpOptions["page"] })
+    useAymeWebMcp({
+      page: () => ({}) as ReturnType<NonNullable<UseAymeWebMcpOptions["page"]>>,
+    })
   );
   await flushPromises();
 

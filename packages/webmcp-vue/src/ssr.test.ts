@@ -10,15 +10,19 @@ import {
   type UseAymeWebMcpOptions,
 } from "./index";
 
-type Page = NonNullable<UseAymeWebMcpOptions["page"]>;
+type PageFactory = NonNullable<UseAymeWebMcpOptions["page"]>;
+type Page = ReturnType<PageFactory>;
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe.each([false, true])("server rendering with publish=%s", (publish) => {
   it.each(["provider", "standalone"])(
-    "renders concurrent requests with a %s owner without constructing or registering Page Objects",
+    "renders concurrent requests with a %s owner without constructing or registering Page Objects or calling the page factory",
     async (kind) => {
       vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", publish);
+      const pageFactory = vi.fn<PageFactory>(() => {
+        throw new Error("The page factory must not run on the server.");
+      });
       let constructions = 0;
       class ServerModel {
         constructor(readonly page: Page) {
@@ -34,7 +38,9 @@ describe.each([false, true])("server rendering with publish=%s", (publish) => {
       // SSR must not require compiler-derived browser metadata.
       const Content = defineComponent({
         setup() {
-          const { publicationStatus } = useAymeWebMcp();
+          const { publicationStatus } = useAymeWebMcp(
+            kind === "standalone" ? { page: pageFactory } : {}
+          );
           const model = usePageObject(ServerModel);
           expect(model).toBeInstanceOf(ServerModel);
           return () =>
@@ -48,7 +54,12 @@ describe.each([false, true])("server rendering with publish=%s", (publish) => {
       const Root = defineComponent({
         setup() {
           return kind === "provider"
-            ? () => h(AymeWebMcpProvider, null, { default: () => h(Content) })
+            ? () =>
+                h(
+                  AymeWebMcpProvider,
+                  { page: pageFactory },
+                  { default: () => h(Content) }
+                )
             : () => h(Content);
         },
       });
@@ -59,6 +70,7 @@ describe.each([false, true])("server rendering with publish=%s", (publish) => {
       for (const html of rendered)
         expect(html).toContain(`>${publish ? "waiting" : "disabled"}</button>`);
       expect(constructions).toBe(0);
+      expect(pageFactory).not.toHaveBeenCalled();
       expect(listRegisteredPoms()).toHaveLength(0);
     }
   );
