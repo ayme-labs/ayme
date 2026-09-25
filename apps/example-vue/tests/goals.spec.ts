@@ -8,7 +8,7 @@ import {
 import { readModelKey } from "../scripts/appEnvironment";
 import { recordGoalRun } from "./goalRunRecord";
 
-type Handover = { reason: string };
+type Handover = { reason: string; changes?: string };
 
 /** Read the same key the dev server's Decision Endpoint reads: anyone running
  *  this lane brings their own. */
@@ -83,4 +83,6 @@ test("a goal that names a collection instance archives it", async ({
   expect(handover.reason).toBe("done");
   expect(await itemIds(activeItems(page))).toEqual([firstId]);
   expect(await itemIds(archivedItems(page))).toEqual([secondId]);
+  // The run's net Change Record shows the item leaving one list for the other.
+  expect(handover.changes).toContain(secondId!);
 });
