@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "./browserPage";
+import { RuntimeStateError } from "./errors";
 import * as goalLoopModule from "./goalLoop";
 import * as pageState from "./pageState";
 import { createRuntimeSession, type AymePage } from "./runtime";
@@ -131,6 +132,7 @@ it("never calls the page factory on the server", () => {
   expect(() => runtime.page).toThrow(
     "The runtime session's page is available only in the browser."
   );
+  expect(() => runtime.page).toThrow(RuntimeStateError);
   expect(factory).not.toHaveBeenCalled();
   expect(createPage).not.toHaveBeenCalled();
 });
@@ -159,11 +161,17 @@ it("rejects pursueGoal before start and without a goalLoop, naming the cause", a
   await expect(withLoop.pursueGoal("save", { maxSteps: 1 })).rejects.toThrow(
     "pursueGoal requires a started runtime session."
   );
+  await expect(
+    withLoop.pursueGoal("save", { maxSteps: 1 })
+  ).rejects.toBeInstanceOf(RuntimeStateError);
   const withoutLoop = session(false);
   start(withoutLoop);
   await expect(withoutLoop.pursueGoal("save", { maxSteps: 1 })).rejects.toThrow(
     "pursueGoal requires a goalLoop on the runtime session."
   );
+  await expect(
+    withoutLoop.pursueGoal("save", { maxSteps: 1 })
+  ).rejects.toBeInstanceOf(RuntimeStateError);
 });
 
 it("forwards goal, maxSteps and the session's goalLoop to the loop", async () => {

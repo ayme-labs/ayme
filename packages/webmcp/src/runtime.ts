@@ -171,7 +171,7 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
   return {
     get page() {
       if (typeof window === "undefined")
-        throw new Error(
+        throw new RuntimeStateError(
           "The runtime session's page is available only in the browser."
         );
       return getPage();
@@ -197,9 +197,11 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
       { maxSteps }: { maxSteps: number }
     ): Promise<Handover> {
       if (!owner)
-        throw new Error("pursueGoal requires a started runtime session.");
+        throw new RuntimeStateError(
+          "pursueGoal requires a started runtime session."
+        );
       if (!options.goalLoop)
-        throw new Error(
+        throw new RuntimeStateError(
           "pursueGoal requires a goalLoop on the runtime session."
         );
       // While started, `options.goalLoop` is the function `start()` stored for
