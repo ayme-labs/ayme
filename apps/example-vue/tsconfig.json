@@ -2,6 +2,7 @@
   "extends": "@ayme-dev/typescript-config/vue.json",
   "compilerOptions": {
     "experimentalDecorators": true,
+    "allowImportingTsExtensions": true,
     "paths": {
       "@/*": ["./src/*"]
     }

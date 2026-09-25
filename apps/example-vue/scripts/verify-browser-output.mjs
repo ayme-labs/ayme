@@ -1,17 +1,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-import { build, loadEnv } from "vite";
+import { build } from "vite";
 
 import { decisionEndpointPath } from "../vite/decisionEndpointPath.ts";
+import { appRoot, readModelKey } from "./appEnvironment.ts";
 
 const openRouterKeyPrefix = "sk-or-v1-";
-const appRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  ".."
-);
 
 function verifyBrowserOutput(directory, mode) {
   const serverOnlyMarkers = [
@@ -22,7 +18,7 @@ function verifyBrowserOutput(directory, mode) {
     ".test.ts",
     decisionEndpointPath,
     openRouterKeyPrefix,
-    loadEnv(mode, appRoot, "").AYME_OPENROUTER_API_KEY,
+    readModelKey(mode),
   ].filter(Boolean);
   const files = fs
     .readdirSync(path.join(directory, "assets"))

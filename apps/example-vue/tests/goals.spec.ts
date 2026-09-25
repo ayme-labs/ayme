@@ -1,24 +1,18 @@
-import { fileURLToPath } from "node:url";
-
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { loadEnv } from "vite";
 
 import {
   recordPublishedTools,
   type RecordingDriver,
 } from "@ayme-dev/webmcp/testing";
 
+import { readModelKey } from "../scripts/appEnvironment";
 import { recordGoalRun } from "./goalRunRecord";
 
 type Handover = { reason: string };
 
 /** Read the same key the dev server's Decision Endpoint reads: anyone running
  *  this lane brings their own. */
-const modelKey = loadEnv(
-  "development",
-  fileURLToPath(new URL("..", import.meta.url)),
-  ""
-).AYME_OPENROUTER_API_KEY;
+const modelKey = readModelKey();
 
 const skipReason =
   "Live goal lane skipped: set AYME_OPENROUTER_API_KEY to your own model key to run it.";
@@ -44,7 +38,7 @@ function itemIds(items: Locator) {
   return items.locator("code").allInnerTexts();
 }
 
-/** Pursue the goal and attach what the run did, for `pnpm run goals:runs`. */
+/** Pursue the goal; under `pnpm run goals:runs` also record what the run did. */
 async function pursueGoal(page: Page, goal: string, maxSteps: number) {
   return recordGoalRun(page, test.info(), goal, async () => {
     return (await page.evaluate(

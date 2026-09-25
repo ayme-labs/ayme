@@ -10,19 +10,17 @@ import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-import { loadEnv } from "vite";
 
 import type { GoalRunRecord, GoalRunStep } from "../tests/goalRunRecord";
+import { appRoot, goalRunsVariable, readModelKey } from "./appEnvironment.ts";
 
-const appRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  ".."
-);
 const outputDirectory = path.join(appRoot, "goal-runs");
 
-/** Question-id and option-key conventions of the chunked ref questions (#123). */
+/**
+ * Question-id and option-key conventions of the chunked ref questions in
+ * `packages/webmcp/src/goalLoopQuestions.ts`: a run-off's question id ends
+ * with `run_off`, and a chunk's "none of these" option is `none_of_these`.
+ */
 const runOffSuffix = "run_off";
 const noneOfTheseKey = "none_of_these";
 
@@ -34,11 +32,14 @@ type GoalRun = {
   stepCount: number;
   wallTimeMs: number;
   steps: GoalRunStep[];
-  /** Only when the loop records `argumentChoices`. */
-  chunkConflicts?: number;
-  noneOfTheseAnswers?: number;
+  /** Steps that asked a run-off because several chunks each named an element. */
+  chunkConflicts: number;
+  /** Chunk questions answered "none of these". */
+  noneOfTheseAnswers: number;
   /** The first line of the test's error, when it failed. */
   error?: string;
+  /** Why the recorder could not record the whole run. */
+  recorderError?: string;
 };
 
 type GoalAggregate = {
@@ -49,9 +50,8 @@ type GoalAggregate = {
   meanModelCallsPerStep: number;
   meanWallTimeMs: number;
   reasons: Record<string, number>;
-  /** Null when no run of the goal recorded `argumentChoices`. */
-  chunkConflicts: number | null;
-  noneOfTheseAnswers: number | null;
+  chunkConflicts: number;
+  noneOfTheseAnswers: number;
 };
 
 type GoalRunsFile = {
@@ -64,6 +64,22 @@ type GoalRunsFile = {
     { goal: string | null; aggregate: GoalAggregate; runs: GoalRun[] }
   >;
 };
+
+// --- Shared formatting ---
+
+function format(value: number | null | undefined) {
+  if (value === null || value === undefined) return "-";
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function commitLabel(commit: GoalRunsFile["commit"]) {
+  return `${commit.sha.slice(0, 7)}${commit.dirty ? " (dirty)" : ""}`;
+}
+
+function fail(message: string): never {
+  console.error(message);
+  process.exit(1);
+}
 
 // --- The Playwright JSON report, as far as this script reads it ---
 
@@ -87,12 +103,12 @@ function firstLine(text: string) {
   return text.replace(terminalColour, "").split("\n")[0]!.trim();
 }
 
-function toGoalRun(result: ReportResult): {
+function toGoalRun(testResult: ReportResult): {
   goal: string | null;
   models: string[];
   run: GoalRun;
 } {
-  const attachment = result.attachments.find(
+  const attachment = testResult.attachments.find(
     (candidate) => candidate.name === "goal-run" && candidate.body
   );
   const record = attachment
@@ -101,37 +117,31 @@ function toGoalRun(result: ReportResult): {
       ) as GoalRunRecord)
     : undefined;
   const steps = record?.steps ?? [];
-  const run: GoalRun = {
-    passed: result.status === "passed",
-    reason: record?.reason ?? null,
-    stepCount: steps.length,
-    wallTimeMs: record?.wallTimeMs ?? Math.round(result.duration),
-    steps,
-  };
   const choices = steps.flatMap((step) =>
     step.argumentChoices ? [step.argumentChoices] : []
   );
-  if (choices.length > 0) {
-    run.chunkConflicts = choices.filter((stepChoices) =>
+  const run: GoalRun = {
+    passed: testResult.status === "passed",
+    reason: record?.reason ?? null,
+    stepCount: steps.length,
+    wallTimeMs: record?.wallTimeMs ?? Math.round(testResult.duration),
+    steps,
+    chunkConflicts: choices.filter((stepChoices) =>
       Object.keys(stepChoices).some((id) => id.endsWith(runOffSuffix))
-    ).length;
-    run.noneOfTheseAnswers = choices
+    ).length,
+    noneOfTheseAnswers: choices
       .flatMap(Object.values)
-      .filter((key) => key === noneOfTheseKey).length;
-  }
-  if (result.error?.message) run.error = firstLine(result.error.message);
+      .filter((key) => key === noneOfTheseKey).length,
+  };
+  if (testResult.error?.message)
+    run.error = firstLine(testResult.error.message);
+  if (record?.recorderError) run.recorderError = record.recorderError;
   return { goal: record?.goal ?? null, models: record?.models ?? [], run };
 }
 
+const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
 const mean = (values: number[]) =>
-  values.length === 0
-    ? 0
-    : values.reduce((sum, value) => sum + value, 0) / values.length;
-
-function sumOrNull(values: (number | undefined)[]) {
-  const present = values.filter((value) => value !== undefined);
-  return present.length === 0 ? null : present.reduce((a, b) => a + b, 0);
-}
+  values.length === 0 ? 0 : sum(values) / values.length;
 
 function aggregate(runs: GoalRun[]): GoalAggregate {
   const stepCounts = runs.map((run) => run.stepCount);
@@ -140,10 +150,10 @@ function aggregate(runs: GoalRun[]): GoalAggregate {
     const reason = run.reason ?? "no_handover";
     reasons[reason] = (reasons[reason] ?? 0) + 1;
   }
-  const totalSteps = stepCounts.reduce((a, b) => a + b, 0);
-  const totalCalls = runs
-    .flatMap((run) => run.steps)
-    .reduce((sum, step) => sum + step.modelCalls, 0);
+  const totalSteps = sum(stepCounts);
+  const totalCalls = sum(
+    runs.flatMap((run) => run.steps.map((step) => step.modelCalls))
+  );
   return {
     runs: runs.length,
     passRate: runs.filter((run) => run.passed).length / runs.length,
@@ -152,17 +162,15 @@ function aggregate(runs: GoalRun[]): GoalAggregate {
     meanModelCallsPerStep: totalSteps === 0 ? 0 : totalCalls / totalSteps,
     meanWallTimeMs: Math.round(mean(runs.map((run) => run.wallTimeMs))),
     reasons,
-    chunkConflicts: sumOrNull(runs.map((run) => run.chunkConflicts)),
-    noneOfTheseAnswers: sumOrNull(runs.map((run) => run.noneOfTheseAnswers)),
+    chunkConflicts: sum(runs.map((run) => run.chunkConflicts)),
+    noneOfTheseAnswers: sum(runs.map((run) => run.noneOfTheseAnswers)),
   };
 }
 
-function fail(message: string): never {
-  console.error(message);
-  process.exit(1);
-}
+// --- goal runs ---
 
-function run(command: string, args: string[], env?: NodeJS.ProcessEnv) {
+/** Spawn a command in this app's directory; returns its exit status. */
+function spawnInApp(command: string, args: string[], env?: NodeJS.ProcessEnv) {
   return spawnSync(command, args, {
     cwd: appRoot,
     stdio: "inherit",
@@ -182,14 +190,14 @@ function readRunsArgument(args: string[]) {
 }
 
 function runGoals(runsPerGoal: number) {
-  if (!loadEnv("development", appRoot, "").AYME_OPENROUTER_API_KEY)
+  if (!readModelKey())
     fail(
       "Set AYME_OPENROUTER_API_KEY to your own model key: without it the live goals skip and there is nothing to record."
     );
 
   // The dev server needs the workspace packages built, as `test:goals` does.
   if (
-    run("pnpm", [
+    spawnInApp("pnpm", [
       "--workspace-root",
       "exec",
       "turbo",
@@ -206,7 +214,7 @@ function runGoals(runsPerGoal: number) {
   );
   // Every repeat is one run; a failed run is data, so there are no retries
   // and a non-zero exit is expected whenever a run fails.
-  run(
+  spawnInApp(
     "pnpm",
     [
       "exec",
@@ -218,7 +226,7 @@ function runGoals(runsPerGoal: number) {
       "--retries=0",
       "--reporter=list,json",
     ],
-    { PLAYWRIGHT_JSON_OUTPUT_NAME: reportFile }
+    { PLAYWRIGHT_JSON_OUTPUT_NAME: reportFile, [goalRunsVariable]: "1" }
   );
   if (!fs.existsSync(reportFile)) fail("Playwright wrote no report.");
 
@@ -227,9 +235,9 @@ function runGoals(runsPerGoal: number) {
   const models = new Set<string>();
   // With --repeat-each, every repeat is a spec of its own with the same title.
   for (const spec of specsOf(report)) {
-    const result = spec.tests[0]?.results.at(-1);
-    if (!result || result.status === "skipped") continue;
-    const parsed = toGoalRun(result);
+    const testResult = spec.tests[0]?.results.at(-1);
+    if (!testResult || testResult.status === "skipped") continue;
+    const parsed = toGoalRun(testResult);
     parsed.models.forEach((model) => models.add(model));
     const entry = byTitle.get(spec.title) ?? { goal: parsed.goal, runs: [] };
     entry.goal ??= parsed.goal;
@@ -240,7 +248,7 @@ function runGoals(runsPerGoal: number) {
 
   const git = (...args: string[]) =>
     execFileSync("git", args, { cwd: appRoot, encoding: "utf8" }).trim();
-  const result: GoalRunsFile = {
+  const runsFile: GoalRunsFile = {
     commit: {
       sha: git("rev-parse", "HEAD"),
       dirty: git("status", "--porcelain").length > 0,
@@ -263,14 +271,14 @@ function runGoals(runsPerGoal: number) {
   fs.mkdirSync(outputDirectory, { recursive: true });
   const file = path.join(
     outputDirectory,
-    `${result.timestamp.replace(/[:.]/g, "-")}.json`
+    `${runsFile.timestamp.replace(/[:.]/g, "-")}.json`
   );
-  fs.writeFileSync(file, `${JSON.stringify(result, null, 2)}\n`);
+  fs.writeFileSync(file, `${JSON.stringify(runsFile, null, 2)}\n`);
 
   console.log(
-    `\nGoal runs: ${runsPerGoal} per goal, model ${result.model}, commit ${result.commit.sha.slice(0, 7)}${result.commit.dirty ? " (dirty)" : ""}`
+    `\nGoal runs: ${runsPerGoal} per goal, model ${runsFile.model}, commit ${commitLabel(runsFile.commit)}`
   );
-  for (const [title, { aggregate: summary }] of Object.entries(result.goals))
+  for (const [title, { aggregate: summary }] of Object.entries(runsFile.goals))
     console.log(
       `  ${title}\n    pass rate ${format(summary.passRate)}, steps mean ${format(summary.meanSteps)} max ${summary.maxSteps}, model calls per step ${format(summary.meanModelCallsPerStep)}, reasons ${JSON.stringify(summary.reasons)}`
     );
@@ -289,13 +297,8 @@ const comparedFields = [
   "noneOfTheseAnswers",
 ] as const;
 
-function format(value: number | null | undefined) {
-  if (value === null || value === undefined) return "-";
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
-}
-
-function delta(before: number | null | undefined, after: number | null) {
-  if (typeof before !== "number" || after === null) return "";
+function delta(before: number | undefined, after: number | undefined) {
+  if (typeof before !== "number" || typeof after !== "number") return "";
   const difference = after - before;
   return difference === 0
     ? ""
@@ -317,7 +320,7 @@ function compare(fileA: string, fileB: string) {
     ["B", fileB, b],
   ] as const)
     console.log(
-      `${label}: ${file}\n   commit ${runs.commit.sha.slice(0, 7)}${runs.commit.dirty ? " (dirty)" : ""}, model ${runs.model}, ${runs.runsPerGoal} runs per goal, ${runs.timestamp}`
+      `${label}: ${file}\n   commit ${commitLabel(runs.commit)}, model ${runs.model}, ${runs.runsPerGoal} runs per goal, ${runs.timestamp}`
     );
 
   const titles = [

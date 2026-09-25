@@ -15,7 +15,6 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    include: ["src/**/*.test.ts"],
-    exclude: ["tests/**"],
+    include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
   },
 });

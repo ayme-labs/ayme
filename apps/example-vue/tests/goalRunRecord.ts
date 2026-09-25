@@ -1,5 +1,6 @@
 import type { Page, Request, TestInfo } from "@playwright/test";
 
+import { goalRunsVariable } from "../scripts/appEnvironment";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 
 /** One step of a Goal Loop run, as the run harness records it. */
@@ -9,7 +10,7 @@ export type GoalRunStep = {
   goalMetScore: number | null;
   /** Decision Endpoint calls the step made: stage one, stage two, run-offs. */
   modelCalls: number;
-  /** Per argument question id, the chosen option key, when the loop records it. */
+  /** Per argument question id, the chosen option key; only steps with stage two. */
   argumentChoices?: Record<string, string>;
 };
 
@@ -21,6 +22,8 @@ export type GoalRunRecord = {
   models: string[];
   wallTimeMs: number;
   steps: GoalRunStep[];
+  /** Set when recording failed; the other fields are then what was known. */
+  recorderError?: string;
 };
 
 type Decision = {
@@ -29,44 +32,62 @@ type Decision = {
   answers?: Record<string, { choice?: unknown }>;
 };
 
-/** Package-internal store `getLastGoalLoopRunResult` reads; the page shares it
- *  through `globalThis`, so the browser side can read it without an export. */
+/**
+ * Mirrors `GoalLoopStepScore` and the run result store in
+ * `packages/webmcp/src/goalLoop.ts`, reduced to the fields read here. The store
+ * is package-internal (`getLastGoalLoopRunResult` is not exported); the page
+ * shares it through `globalThis`, so the browser side can read it.
+ */
+type GoalLoopStepScore = {
+  goalMetScore: number;
+  argumentChoices?: Record<string, string>;
+};
 type RunResultStore = {
-  last?: {
-    handover: { reason: string };
-    stepScores: {
-      goalMetScore: number;
-      argumentChoices?: Record<string, string>;
-    }[];
-  };
+  last?: { handover: { reason: string }; stepScores: GoalLoopStepScore[] };
 };
 
-/** Record the Decision Endpoint calls the page makes from now on, in order. */
+const asError = (error: unknown) =>
+  error instanceof Error ? error : new Error(String(error));
+
+/** Record the Decision Endpoint calls the page makes from now on, in order.
+ *  No recorded call ever rejects on its own, so none goes unhandled. */
 function recordDecisions(page: Page) {
-  const pending: Promise<Decision>[] = [];
+  const pending: Promise<Decision | Error>[] = [];
   const onRequest = (request: Request) => {
-    if (new URL(request.url()).pathname !== decisionEndpointPath) return;
-    const body = request.postDataJSON() as Omit<Decision, "answers">;
-    pending.push(
-      request.response().then(async (response) => ({
-        ...body,
-        answers: response?.ok()
-          ? ((await response.json()) as Pick<Decision, "answers">).answers
-          : undefined,
-      }))
-    );
+    try {
+      if (new URL(request.url()).pathname !== decisionEndpointPath) return;
+      const body = request.postDataJSON() as Omit<Decision, "answers">;
+      pending.push(
+        request
+          .response()
+          .then(async (response) => ({
+            ...body,
+            answers: response?.ok()
+              ? ((await response.json()) as Pick<Decision, "answers">).answers
+              : undefined,
+          }))
+          .catch(asError)
+      );
+    } catch (error) {
+      pending.push(Promise.resolve(asError(error)));
+    }
   };
   page.on("request", onRequest);
-  return async () => {
-    page.off("request", onRequest);
-    return Promise.all(pending);
+  return {
+    stop: () => page.off("request", onRequest),
+    async decisions() {
+      const settled = await Promise.all(pending);
+      const failure = settled.find((entry) => entry instanceof Error);
+      if (failure) throw failure;
+      return settled as Decision[];
+    },
   };
 }
 
 /** Group the calls into steps: every stage-one call asks `operation`. */
 function stepsOf(
   decisions: Decision[],
-  stepScores: NonNullable<RunResultStore["last"]>["stepScores"]
+  stepScores: GoalLoopStepScore[]
 ): GoalRunStep[] {
   const steps: GoalRunStep[] = [];
   for (const decision of decisions) {
@@ -91,23 +112,8 @@ function stepsOf(
   return steps;
 }
 
-/**
- * Run `pursue` and attach what the run did to the test, so the run harness can
- * read it from the Playwright report. The attachment is made before the test
- * asserts anything, so a failed run is recorded too.
- */
-export async function recordGoalRun<T extends { reason: string }>(
-  page: Page,
-  testInfo: TestInfo,
-  goal: string,
-  pursue: () => Promise<T>
-): Promise<T> {
-  const stopRecording = recordDecisions(page);
-  const startedAt = performance.now();
-  const handover = await pursue();
-  const wallTimeMs = Math.round(performance.now() - startedAt);
-  const decisions = await stopRecording();
-  const runResult = await page.evaluate(
+async function readRunResult(page: Page) {
+  return page.evaluate(
     () =>
       (
         globalThis as typeof globalThis & {
@@ -115,18 +121,74 @@ export async function recordGoalRun<T extends { reason: string }>(
         }
       ).__aymeGoalLoopRunResultStore?.last
   );
+}
 
-  const record: GoalRunRecord = {
+/**
+ * Run `pursue` and, only when the run harness set `AYME_GOAL_RUNS=1`, attach
+ * what the run did to the test for the harness to read from the Playwright
+ * report. Otherwise this is a pass-through. Recording never fails the test:
+ * a recorder failure becomes a record with `recorderError`, or a warning when
+ * even that cannot be attached. A failure of `pursue` itself propagates.
+ */
+export async function recordGoalRun<T extends { reason: string }>(
+  page: Page,
+  testInfo: TestInfo,
+  goal: string,
+  pursue: () => Promise<T>
+): Promise<T> {
+  if (process.env[goalRunsVariable] !== "1") return pursue();
+
+  let recorder: ReturnType<typeof recordDecisions> | undefined;
+  let recorderError: unknown;
+  try {
+    recorder = recordDecisions(page);
+  } catch (error) {
+    recorderError = error;
+  }
+  const startedAt = performance.now();
+  let handover: T;
+  try {
+    handover = await pursue();
+  } finally {
+    try {
+      recorder?.stop();
+    } catch (error) {
+      recorderError ??= error;
+    }
+  }
+  const wallTimeMs = Math.round(performance.now() - startedAt);
+
+  let record: GoalRunRecord = {
     goal,
-    reason: runResult?.handover.reason ?? handover.reason,
-    models: [...new Set(decisions.map((decision) => String(decision.model)))],
+    reason: handover.reason,
+    models: [],
     wallTimeMs,
-    steps: stepsOf(decisions, runResult?.stepScores ?? []),
+    steps: [],
   };
-  // `scripts/goal-runs.ts` reads the record by this name.
-  await testInfo.attach("goal-run", {
-    body: JSON.stringify(record),
-    contentType: "application/json",
-  });
+  try {
+    if (recorderError) throw recorderError;
+    const decisions = await recorder!.decisions();
+    const runResult = await readRunResult(page);
+    record = {
+      ...record,
+      reason: runResult?.handover.reason ?? handover.reason,
+      models: [...new Set(decisions.map((decision) => String(decision.model)))],
+      steps: stepsOf(decisions, runResult?.stepScores ?? []),
+    };
+  } catch (error) {
+    record.recorderError = asError(error).message;
+  }
+  try {
+    // `scripts/goal-runs.ts` reads the record by this name.
+    await testInfo.attach("goal-run", {
+      body: JSON.stringify(record),
+      contentType: "application/json",
+    });
+  } catch (error) {
+    console.warn(
+      `Goal run record not attached: ${asError(error).message}`,
+      record
+    );
+  }
   return handover;
 }
