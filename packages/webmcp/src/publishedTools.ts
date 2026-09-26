@@ -1,7 +1,16 @@
 import type { JsonSchema, RegisteredPomTool } from "./contracts";
 import { getPursueGoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
-import { listRefTools, type PublishedRefTool } from "./refTools";
+import {
+  getPageStateCaptureForDocument,
+  type AriaRef,
+  type PageStateCapture,
+} from "./pageState";
+import {
+  acceptedRefNodes,
+  listRefTools,
+  type PublishedRefTool,
+} from "./refTools";
 import { listRegisteredPomTools } from "./registry";
 import { RuntimeStateError } from "./errors";
 import type { AymeWebMcpPublicationStatus } from "./runtime";
@@ -111,6 +120,30 @@ export function runPublishedTool(name: string, input: unknown) {
       new RuntimeStateError(`The tool "${name}" is not published.`)
     );
   return execute(input);
+}
+
+/**
+ * The refs each published Ref Tool can take in `capture` (the current page
+ * when absent), by tool name, in tree order: the same closed set the Goal Loop
+ * offers for that tool's ref.
+ */
+export async function listRefToolTargets(
+  capture?: PageStateCapture
+): Promise<Map<string, AriaRef[]>> {
+  const published = new Set(
+    readModel.tools.filter(({ group }) => group === "ref").map((t) => t.name)
+  );
+  const refTools = listRefTools().filter(({ tool }) =>
+    published.has(tool.name)
+  );
+  if (refTools.length === 0) return new Map();
+  const current = capture ?? (await getPageStateCaptureForDocument(document));
+  return new Map(
+    refTools.map(({ tool, filter }) => [
+      tool.name,
+      acceptedRefNodes(filter, current).map((node) => node.ref),
+    ])
+  );
 }
 
 /** Call `subscriber` whenever the published tools or the status change. */

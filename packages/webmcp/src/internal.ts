@@ -8,6 +8,7 @@ export { getPomDefinitions } from "./pomDefinitions";
 export {
   getPublicationStatus,
   listPublishedTools,
+  listRefToolTargets,
   runPublishedTool,
   subscribeToPublishedTools,
 } from "./publishedTools";

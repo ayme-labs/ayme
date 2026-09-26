@@ -19,11 +19,14 @@ import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import {
   getPublicationStatus,
   listPublishedTools,
+  listRefToolTargets,
   runPublishedTool,
   subscribeToPublishedTools,
   type PublishedToolGroup,
 } from "./publishedTools";
 import type { RefTool } from "./refTools";
+import { buildToolOptions, planArguments } from "./goalLoopQuestions";
+import { getPageStateCaptureForDocument, type AriaRef } from "./pageState";
 import { registerCompiledPom } from "./registry";
 import { createRuntimeSession, type RuntimeSession } from "./runtime";
 
@@ -130,9 +133,11 @@ async function noFittingOperation(
   };
 }
 
+/** An app-registered Ref Tool with its own filter. */
 const highlight: RefTool = {
   name: "highlight",
   description: "Highlight an element.",
+  filter: (element) => element.matches("[data-highlightable]"),
   execute: async () => undefined,
 };
 
@@ -293,7 +298,7 @@ export function describePublishedTools(
     ])(
       "runs %s and returns what an agent gets for the same call",
       async (_kind, name, inputFor) => {
-        document.body.innerHTML = `<button>Save changes</button>`;
+        document.body.innerHTML = `<button data-highlightable>Save changes</button>`;
         await startSession();
         const input = inputFor(await saveButtonRef());
         // A click focuses the button, so it is focused before the first call
@@ -320,6 +325,57 @@ export function describePublishedTools(
         expected
       );
       expect(expected).toMatchObject({ isError: true });
+    });
+
+    it("gives each Ref tool the refs the Goal Loop offers it for the same page", async () => {
+      document.body.innerHTML = `
+        <button>Save</button>
+        <button disabled>Archived</button>
+        <label>Name <input value="Ada" /></label>
+        <p data-highlightable>Draft</p>
+      `;
+      await startSession();
+      const capture = await getPageStateCaptureForDocument(document);
+      const described = (refs: readonly AriaRef[] = []) =>
+        refs.map((ref) => {
+          const element = capture.elementsByRef.get(ref)!;
+          return `${element.localName} ${element.textContent?.trim() || (element as HTMLInputElement).value}`;
+        });
+
+      const targets = await listRefToolTargets(capture);
+
+      expect(
+        Object.fromEntries(
+          [...targets].map(([name, refs]) => [name, described(refs)])
+        )
+      ).toEqual({
+        // Interactive and enabled; the disabled button is left out.
+        click_page_state_ref: ["button Save", "input Ada"],
+        fill_page_state_ref: ["input Ada"],
+        highlight: ["p Draft"],
+      });
+      for (const { key, tool } of buildToolOptions()) {
+        if (!targets.has(key)) continue;
+        // The ref question alone: fill's free `value` would otherwise stop
+        // the plan before the ref is asked.
+        const plan = planArguments(
+          {
+            ...tool,
+            args: tool.args.filter((arg) => arg.name === "ref"),
+            requiredParams: ["ref"],
+          },
+          capture
+        );
+        const offered =
+          plan.kind === "ask"
+            ? plan.questions
+                .find((question) => question.parameter === "ref")!
+                .options.flatMap((option) =>
+                  option.value === undefined ? [] : [option.value]
+                )
+            : [];
+        expect(targets.get(key), key).toEqual(offered);
+      }
     });
 
     it("refuses to run a tool that is not published", async () => {
