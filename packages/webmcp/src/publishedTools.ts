@@ -2,8 +2,9 @@ import type { JsonSchema, RegisteredPomTool } from "./contracts";
 import { getPursueGoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
 import { listRefTools, type PublishedRefTool } from "./refTools";
-import { listRegisteredPomTools, subscribeToRegisteredPoms } from "./registry";
+import { listRegisteredPomTools } from "./registry";
 import { RuntimeStateError } from "./errors";
+import type { AymeWebMcpPublicationStatus } from "./runtime";
 
 export type PublishedTool =
   RegisteredPomTool | typeof getPageContextTool | PublishedRefTool;
@@ -58,35 +59,69 @@ export function resolvePublishedTools(): Map<
   return active;
 }
 
-/** Every tool the runtime publishes to WebMCP, in publication order. */
-export function listPublishedTools(): PublishedToolInfo[] {
-  return [...resolvePublishedTools().values()].map(({ tool, group }) => ({
-    name: tool.name,
-    description: tool.description,
-    inputSchema: tool.inputSchema,
-    group,
-  }));
+type PublicationReadModel = {
+  status: AymeWebMcpPublicationStatus;
+  tools: readonly PublishedToolInfo[];
+};
+
+const NO_SESSION: AymeWebMcpPublicationStatus = Object.freeze({
+  state: "disposed",
+  message: "No Ayme runtime session has started.",
+});
+
+const readModel: PublicationReadModel = {
+  status: NO_SESSION,
+  tools: Object.freeze([]),
+};
+const subscribers = new Set<() => void>();
+
+function notify() {
+  for (const subscriber of subscribers) subscriber();
 }
 
-const sessionSubscribers = new Set<() => void>();
+/**
+ * The tools registered with WebMCP right now, in publication order. Empty
+ * while publication is disabled, waiting, unavailable, failed or disposed.
+ */
+export function listPublishedTools(): readonly PublishedToolInfo[] {
+  return readModel.tools;
+}
 
 /**
- * Call `subscriber` whenever the published set may have changed: when the
- * registered Page Objects change, and when a runtime session starts or stops.
+ * The runtime session's WebMCP publication status. A failed publication's
+ * `message` carries its error.
  */
+export function getPublicationStatus(): AymeWebMcpPublicationStatus {
+  return readModel.status;
+}
+
+/** Call `subscriber` whenever the published tools or the status change. */
 export function subscribeToPublishedTools(subscriber: () => void) {
-  sessionSubscribers.add(subscriber);
-  const unsubscribeFromPoms = subscribeToRegisteredPoms(subscriber);
+  subscribers.add(subscriber);
   return () => {
-    sessionSubscribers.delete(subscriber);
-    unsubscribeFromPoms();
+    subscribers.delete(subscriber);
   };
 }
 
-/**
- * Package-internal: a runtime session configured or cleared its Ref Tools and
- * Goal Loop. Called by `start()` and `stop()` in `runtime.ts`.
- */
-export function notifyPublishedToolsChanged() {
-  for (const subscriber of sessionSubscribers) subscriber();
+/** Package-internal: `synchronizeWebMcpTools` registered or withdrew tools. */
+export function reportPublishedTools(
+  tools: readonly { tool: PublishedTool; group: PublishedToolGroup }[]
+) {
+  readModel.tools = Object.freeze(
+    tools.map(({ tool, group }) =>
+      Object.freeze({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        group,
+      })
+    )
+  );
+  notify();
+}
+
+/** Package-internal: the runtime session's publication status changed. */
+export function reportPublicationStatus(status: AymeWebMcpPublicationStatus) {
+  readModel.status = status;
+  notify();
 }
