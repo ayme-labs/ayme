@@ -3,7 +3,7 @@
  * the real Decision Endpoint and writes one JSON file per invocation, or
  * compares two such files. Run by hand only; see the README.
  *
- *   node scripts/goal-runs.ts --runs <N> [--variant last-step] [--live-lane]
+ *   node scripts/goal-runs.ts --runs <N> [--live-lane]
  *   node scripts/goal-runs.ts compare <runA.json> <runB.json>
  */
 import { execFileSync, spawnSync } from "node:child_process";
@@ -30,18 +30,11 @@ const goalSets = {
 } as const;
 type GoalSet = keyof typeof goalSets;
 
-/**
- * The Goal Loop's experiment switch for #173 (see `goalLoop.ts`) and the one
- * value it knows; the dev server hands it to the page.
- */
-const historyChangesVariable = "AYME_GOAL_LOOP_HISTORY_CHANGES";
-const variants = ["last-step"];
-
 type GoalRunsFile = {
   commit: { sha: string; dirty: boolean };
-  goalSet: GoalSet;
-  /** The experiment variant the runs used; null for the loop as it is. */
-  variant: string | null;
+  /** Absent in files written before goal sets were recorded; those ran the
+   *  live lane. */
+  goalSet?: GoalSet;
   model: string | null;
   runsPerGoal: number;
   timestamp: string;
@@ -62,9 +55,8 @@ function commitLabel(commit: GoalRunsFile["commit"]) {
   return `${commit.sha.slice(0, 7)}${commit.dirty ? " (dirty)" : ""}`;
 }
 
-/** Files written before the goal set and variant were recorded lack them. */
 function runLabel(runs: GoalRunsFile) {
-  return `${runs.runsPerGoal} runs per goal, goal set ${runs.goalSet ?? "live-lane"}, variant ${runs.variant ?? "none"}`;
+  return `${runs.runsPerGoal} runs per goal, goal set ${runs.goalSet ?? "live-lane"}`;
 }
 
 function fail(message: string): never {
@@ -94,18 +86,14 @@ function readRunsArguments(args: string[]) {
     fail(
       "Pass the number of runs per goal, e.g. --runs 3. Every run makes real model calls."
     );
-  const variant = optionValue(args, "--variant") ?? null;
-  if (args.includes("--variant") && !variants.includes(variant ?? ""))
-    fail(`--variant takes one of: ${variants.join(", ")}.`);
   const goalSet: GoalSet = args.includes("--live-lane")
     ? "live-lane"
     : "harness";
-  return { runsPerGoal: runs, variant, goalSet };
+  return { runsPerGoal: runs, goalSet };
 }
 
 function runGoals({
   runsPerGoal,
-  variant,
   goalSet,
 }: ReturnType<typeof readRunsArguments>) {
   if (!readModelKey())
@@ -144,12 +132,7 @@ function runGoals({
       "--retries=0",
       "--reporter=list,json",
     ],
-    {
-      PLAYWRIGHT_JSON_OUTPUT_NAME: reportFile,
-      [goalRunsVariable]: "1",
-      // Set or cleared, so the variant a file records is the one that ran.
-      [historyChangesVariable]: variant ?? "",
-    }
+    { PLAYWRIGHT_JSON_OUTPUT_NAME: reportFile, [goalRunsVariable]: "1" }
   );
   if (!fs.existsSync(reportFile)) fail("Playwright wrote no report.");
 
@@ -177,7 +160,6 @@ function runGoals({
       dirty: git("status", "--porcelain").length > 0,
     },
     goalSet,
-    variant,
     model: models.size === 0 ? null : [...models].join(", "),
     runsPerGoal,
     timestamp: new Date().toISOString(),

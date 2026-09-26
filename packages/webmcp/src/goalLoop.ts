@@ -205,38 +205,6 @@ async function executeToolAction(
   };
 }
 
-// --- Experiment switch (#173) ---
-
-/**
- * An experiment switch for #173, not an option: whether the model's `history`
- * state carries the previous executed step's Change Record, last step only.
- * On when the environment variable `AYME_GOAL_LOOP_HISTORY_CHANGES` is
- * `last-step`: the playground's dev server hands it to the page through Vite's
- * `import.meta.env`, and the run harness sets it with `--variant last-step`.
- * Off by default and wherever the bundler provides no `import.meta.env`.
- * Remove it, or make it the loop's behaviour, once the experiment is decided.
- */
-function sendsLastStepChanges(): boolean {
-  // Written as `import.meta.env` so Vite and Vitest rewrite it.
-  // @ts-expect-error -- the package declares no bundler's `import.meta.env`.
-  const env = import.meta.env as Record<string, unknown> | undefined;
-  return env?.AYME_GOAL_LOOP_HISTORY_CHANGES === "last-step";
-}
-
-/**
- * The history the model is sent: the loop's history, with the previous
- * executed step's Change Record added to its last entry under the switch.
- * The Handover's history never carries it.
- */
-function historyForModel(
-  history: readonly GoalLoopStepRecord[],
-  lastStepChanges: string | undefined
-): readonly (GoalLoopStepRecord & { changes?: string })[] {
-  const last = history.at(-1);
-  if (!last || lastStepChanges === undefined) return history;
-  return [...history.slice(0, -1), { ...last, changes: lastStepChanges }];
-}
-
 // --- The loop ---
 
 /** Create the `pursue_goal` ModelContextTool bound to the given decision function and document. */
@@ -310,9 +278,6 @@ export async function pursueGoal(
   const stepScores: GoalLoopStepScore[] = [];
   const interactions = getInteractionHistory(currentDocument);
   let consecutiveFailures = 0;
-  const lastStepChangesSent = sendsLastStepChanges();
-  /** The previous executed step's Change Record; absent when nothing changed. */
-  let lastStepChanges: string | undefined;
 
   /**
    * End the run. The Handover moves the agent's cursor to the page the loop
@@ -368,7 +333,7 @@ export async function pursueGoal(
       goal,
       capture.tree,
       renderPomDefinitions(getPomDefinitions().definitions),
-      lastStepChangesSent ? historyForModel(history, lastStepChanges) : history
+      history
     );
     const toolOptions = buildToolOptions();
 
@@ -567,7 +532,6 @@ export async function pursueGoal(
     );
     history.push(record);
     Object.assign(score, record);
-    lastStepChanges = actionResult.changes;
 
     // 4. action_failed: two failed actions in a row
     if (consecutiveFailures >= 2) {

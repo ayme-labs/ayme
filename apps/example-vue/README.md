@@ -68,25 +68,16 @@ Anyone running it brings their own key: put an OpenRouter key in `AYME_OPENROUTE
 ```sh
 pnpm run goals:runs --runs 3
 pnpm run goals:runs --runs 3 --live-lane
-pnpm run goals:runs --runs 3 --variant last-step
 pnpm run goals:runs compare goal-runs/<runA>.json goal-runs/<runB>.json
 ```
 
 By default it runs the harness's own goal set, `tests/goalHarness.spec.ts` under `playwright.harness.config.ts`: goals that are allowed to fail, so neither CI nor `pnpm run test:goals` runs them. `--live-lane` runs the live lane's goals (`playwright.goals.config.ts`) instead. Both specs share their page helpers and `pursueGoal` through `tests/goalLane.ts`.
 
-| Goal set | Goal                                  | Expected end                                       |
-| -------- | ------------------------------------- | -------------------------------------------------- |
-| harness  | `archive Review onboarding flow`      | The item in Archived, reason `done`, after 2 steps |
-| live     | `Add an item called Milk`             | Reason `needs_value`, the list unchanged           |
-| live     | `Archive the second item in the list` | The second item in Archived, reason `done`         |
-
-`--variant last-step` runs the Goal Loop with its experiment switch for #173 on: the script sets `AYME_GOAL_LOOP_HISTORY_CHANGES=last-step` for the dev server, which hands it to the page, and the loop then adds the previous executed step's Change Record to the last entry of the `history` it sends the model. Without `--variant` the script clears the variable, so a file's `variant` is the one that ran. The switch is a development experiment, not an option; the experiment compares the two:
-
-```sh
-pnpm run goals:runs --runs 10
-pnpm run goals:runs --runs 10 --variant last-step
-pnpm run goals:runs compare goal-runs/<without>.json goal-runs/<last-step>.json
-```
+| Goal set  | Goal                                  | Expected end                                       |
+| --------- | ------------------------------------- | -------------------------------------------------- |
+| harness   | `archive Review onboarding flow`      | The item in Archived, reason `done`, after 2 steps |
+| live-lane | `Add an item called Milk`             | Reason `needs_value`, the list unchanged           |
+| live-lane | `Archive the second item in the list` | The second item in Archived, reason `done`         |
 
 The script sets `AYME_GOAL_RUNS=1` for the Playwright run it starts. Only then does a goal spec record a run; without it, as in CI and `pnpm run test:goals`, the recorder passes the goal straight through.
 
@@ -97,8 +88,7 @@ A goal spec records each `pursue_goal` call as a `goal-run` test attachment (`te
 | Field                          | Meaning                                                                                                                                                                                                                                                                                                                     |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `commit`                       | `sha` of `HEAD`, and `dirty` when the working tree had changes                                                                                                                                                                                                                                                              |
-| `goalSet`                      | `harness`, or `live-lane` with `--live-lane`                                                                                                                                                                                                                                                                                |
-| `variant`                      | `last-step` with `--variant last-step`, else `null`                                                                                                                                                                                                                                                                         |
+| `goalSet`                      | `harness`, or `live-lane` with `--live-lane`; absent in files written before goal sets were recorded, which ran the live lane                                                                                                                                                                                               |
 | `model`                        | The model identifier the decisions asked for                                                                                                                                                                                                                                                                                |
 | `runsPerGoal`                  | N                                                                                                                                                                                                                                                                                                                           |
 | `timestamp`                    | When the invocation finished, ISO 8601                                                                                                                                                                                                                                                                                      |
@@ -110,4 +100,4 @@ A run record holds `passed` (the test's expectations held, so the goal's expecte
 
 A chunk conflict is a step where several chunks of an over-cap ref question each named an element, so the loop requested a run-off among them; it counts even when the run-off then fails. A "none of these" answer is a chunk question answered with its `none_of_these` option. The rates count over all runs of the goal; the per-step means over all steps of all its runs.
 
-`compare` takes paths relative to this directory. It prints each file's goal set and variant, then, per goal, each aggregate of A and B with its delta, then lists the goals whose pass rate changed.
+`compare` takes paths relative to this directory. It prints each file's goal set, then, per goal, each aggregate of A and B with its delta, then lists the goals whose pass rate changed.

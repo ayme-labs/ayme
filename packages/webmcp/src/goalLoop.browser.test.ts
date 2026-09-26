@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
@@ -749,86 +749,6 @@ describe("Goal Loop pursue_goal in Chromium", () => {
         did: expect.any(String),
       },
     ]);
-  });
-
-  // --- Experiment switch (#173): the previous step's Change Record ---
-
-  describe("with AYME_GOAL_LOOP_HISTORY_CHANGES", () => {
-    afterEach(() => {
-      vi.unstubAllEnvs();
-    });
-
-    /** Save adds an alert, so each save's step has a Change Record. */
-    async function saveTwiceThenDone() {
-      document.body.innerHTML = `<main><button id="save">Save changes</button></main>`;
-      document.querySelector("#save")!.addEventListener("click", () => {
-        const banner = document.createElement("div");
-        banner.setAttribute("role", "alert");
-        banner.textContent = `Saved ${++clickCount}`;
-        document.querySelector("main")!.appendChild(banner);
-      });
-      class App {
-        root = page.locator("main");
-        save() {
-          (document.querySelector("#save") as HTMLButtonElement).click();
-        }
-      }
-      registerCompiledPom(
-        App,
-        manifest("App", [root()], [action("save", "App.save")])
-      );
-      const { requests, decide } = recording(
-        scriptedDecisionFn([
-          { operation: "App.save", goal_met: 0.1 },
-          { operation: "App.save", goal_met: 0.1 },
-          { operation: "none", goal_met: 0.9 },
-        ])
-      );
-      const tool = await getPublishedPursueGoal(decide);
-      createPageRegistration(App);
-      const handover = (await tool.execute({
-        goal: "save twice",
-        maxSteps: 5,
-      })) as { reason: string; history: Record<string, unknown>[] };
-      const historySent = requests.map(
-        (request) =>
-          (request.state as { history: Record<string, unknown>[] }).history
-      );
-      return { handover, historySent };
-    }
-
-    it("set to last-step, sends the previous step's Change Record on its history entry only", async () => {
-      vi.stubEnv("AYME_GOAL_LOOP_HISTORY_CHANGES", "last-step");
-      const { handover, historySent } = await saveTwiceThenDone();
-      const stepChanges = getLastGoalLoopRunResult()!.stepScores.map(
-        (score) => score.changes
-      );
-
-      expect(handover.reason).toBe("done");
-      expect(stepChanges[0]).toContain("Saved 1");
-      expect(stepChanges[1]).toContain("Saved 2");
-      expect(historySent[0]).toEqual([]);
-      // Last step only: the earlier entry goes without its record.
-      expect(historySent[1]).toEqual([
-        { ...handover.history[0], changes: stepChanges[0] },
-      ]);
-      expect(historySent[2]).toEqual([
-        handover.history[0],
-        { ...handover.history[1], changes: stepChanges[1] },
-      ]);
-      // The Handover's history never carries it.
-      for (const entry of handover.history)
-        expect(entry).not.toHaveProperty("changes");
-    });
-
-    it("unset, sends no Change Record", async () => {
-      const { handover, historySent } = await saveTwiceThenDone();
-
-      expect(handover.reason).toBe("done");
-      expect(historySent[2]).toEqual(handover.history);
-      for (const entry of historySent.flat())
-        expect(entry).not.toHaveProperty("changes");
-    });
   });
 
   // --- State fields sent to the model ---
