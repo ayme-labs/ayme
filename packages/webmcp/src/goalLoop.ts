@@ -2,7 +2,11 @@ import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { JsonValue } from "./contracts";
 import type { ActionResult } from "./actionSequence";
-import { getPageStateCaptureForDocument } from "./pageState";
+import { renderChangeRecord } from "./changeRecord";
+import {
+  getInteractionHistory,
+  getPageStateCaptureForDocument,
+} from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { probeRegisteredPomMembers } from "./registry";
@@ -17,6 +21,7 @@ import {
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
+  type AnswerRecord,
   type ArgumentAnswers,
   type ChoiceAnswer,
   type ChosenArguments,
@@ -74,6 +79,12 @@ export type GoalLoopStepScore = {
   argumentChoices?: Record<string, string>;
   /** Stage two, per question id: the scores the decision function supplied. */
   argumentProbabilities?: Record<string, Record<string, number>>;
+  /**
+   * The executed step's Change Record, as its action result carried it: the
+   * page the model decided on against the Settled Page after the action.
+   * Recorded, not sent; absent when the step ran no action or nothing changed.
+   */
+  changes?: string;
 };
 
 export type GoalLoopRunResult = {
@@ -120,24 +131,38 @@ export type Handover = {
   next: string;
   history: HandoverHistoryEntry[];
   needs?: HandoverNeeds;
+  /**
+   * The run's Change Record: the page the calling agent last received against
+   * the page the loop last received, in the notation of `ActionResult.changes`.
+   * Absent when nothing changed.
+   */
+  changes?: string;
 };
 
 // --- Action execution (delegates to the shared action sequence) ---
 
+/** What one executed step came to: its history fields and its Change Record. */
+type StepOutcome = {
+  result: string;
+  page_changed: boolean;
+  changes?: string;
+};
+
 /**
  * Execute a tool and read the `ActionResult` it returns.
- * Every registered tool (POM tools, Ref Tools) already runs through
- * `completeAction` internally, so we just forward and interpret the result.
+ * Every registered tool (POM tools, Ref Tools) runs, as the Goal Loop's model, through
+ * `runAction` internally, so we just forward and interpret the result.
  */
 async function executeToolAction(
   tool: ExecutableTool,
   args: Record<string, unknown>
-): Promise<{ result: string; page_changed: boolean }> {
+): Promise<StepOutcome> {
   const raw = await tool.execute(args);
   const action = raw as ActionResult | undefined;
   return {
     result: "ok",
     page_changed: action?.page_changed ?? false,
+    ...(action?.changes ? { changes: action.changes } : {}),
   };
 }
 
@@ -212,9 +237,17 @@ export async function pursueGoal(
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];
+  const interactions = getInteractionHistory(currentDocument);
   let consecutiveFailures = 0;
 
-  const done = (handover: Handover): GoalLoopRunResult => {
+  /**
+   * End the run. The Handover moves the agent's cursor to the page the loop
+   * last received and carries what changed since the agent's previous one.
+   */
+  const done = async (handover: Handover): Promise<GoalLoopRunResult> => {
+    const changes = await interactions.handOver();
+    if (changes?.hasAnyChanges())
+      handover.changes = renderChangeRecord(changes);
     const result = { handover, stepScores };
     runResultStore.last = result;
     return result;
@@ -228,7 +261,7 @@ export async function pursueGoal(
     `Read the page context, pick "${parameter}" yourself and call the operation directly, or try a different approach.`;
 
   /** A decision the loop could not obtain ends the run; the error travels on. */
-  const decideFailed = (error: unknown): GoalLoopRunResult =>
+  const decideFailed = (error: unknown): Promise<GoalLoopRunResult> =>
     done({
       reason: "decide_failed",
       next: `The decision function failed: ${errorTextOf(error)}. Retry, or handle the goal without the Goal Loop.`,
@@ -236,7 +269,7 @@ export async function pursueGoal(
     });
 
   /** A decision the loop could not use ends the run the same way. */
-  const invalidDecision = (error: unknown): GoalLoopRunResult =>
+  const invalidDecision = (error: unknown): Promise<GoalLoopRunResult> =>
     done({
       reason: "decide_failed",
       next: `The decision function returned an invalid response: ${errorTextOf(error)}. Retry, or handle the goal without the Goal Loop.`,
@@ -248,12 +281,14 @@ export async function pursueGoal(
     await probeRegisteredPomMembers();
 
     // Capture the page state this step decides on and build tool options. The
-    // model is a caller, so the tree it sees is the "before" of the step's
-    // Change Record: a change made while it decides counts into page_changed.
+    // model is a caller with its own cursor, so the tree it sees is the
+    // "before" of the step's Change Record: a change made while it decides
+    // counts into page_changed. The calling agent's cursor stays put until the
+    // Handover.
     // Both stages of the step are decided on this one capture, so the refs the
     // model reads in the page are the refs the ref options offer.
     const capture = await getPageStateCaptureForDocument(currentDocument, {
-      forCaller: true,
+      receivedBy: "goalLoop",
     });
     const state = buildStepState(
       goal,
@@ -378,6 +413,11 @@ export async function pursueGoal(
       probabilities: {},
     };
     if (plan.questions.length > 0) {
+      // The step score shares the record's maps, so an answer that fails to
+      // read leaves the ones read before it on the run result.
+      const record: AnswerRecord = { choices: {}, probabilities: {} };
+      score.argumentChoices = record.choices;
+      score.argumentProbabilities = record.probabilities;
       let stageTwo: DecisionResponse;
       try {
         stageTwo = await decisionFn(
@@ -391,7 +431,8 @@ export async function pursueGoal(
         argumentAnswers = readArgumentAnswers(
           chosenTool,
           plan.questions,
-          stageTwo.answers as Record<string, unknown>
+          stageTwo.answers as Record<string, unknown>,
+          record
         );
       } catch (error) {
         return invalidDecision(error);
@@ -400,8 +441,6 @@ export async function pursueGoal(
       // Every chunk of a ref over the cap answered "none of these": the step
       // ran no action, so it leaves no history entry (#123).
       if (argumentAnswers.kind === "none_fits") {
-        score.argumentChoices = argumentAnswers.choices;
-        score.argumentProbabilities = argumentAnswers.probabilities;
         return done({
           reason: "no_fitting_option",
           next: `No element on the current page fits the operation "${chosenTool.name}". Navigate to a different page or try a different approach.`,
@@ -435,10 +474,11 @@ export async function pursueGoal(
     }
 
     // Execute the operation through the same action sequence as direct tool calls.
-    let actionResult: { result: string; page_changed: boolean };
+    let actionResult: StepOutcome;
     try {
       actionResult = await executeToolAction(chosenTool, chosenArguments.args);
       consecutiveFailures = 0;
+      if (actionResult.changes) score.changes = actionResult.changes;
     } catch (error) {
       const errorText = error instanceof Error ? error.message : String(error);
       actionResult = { result: errorText, page_changed: false };

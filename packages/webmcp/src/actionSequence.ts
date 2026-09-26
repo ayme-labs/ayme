@@ -5,8 +5,13 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import { isJsonValue, type JsonValue } from "./contracts";
 import { browserMonotonicClock } from "./browserMonotonicClock";
+import type { Caller, ToolCall } from "./interactionHistory";
 import { getBrowserPageActivitySource } from "./pageActivitySource";
-import { captureChangeRecordForDocument } from "./pageState";
+import {
+  completeActionForDocument,
+  failActionForDocument,
+  startActionForDocument,
+} from "./pageState";
 import { renderChangeRecord } from "./changeRecord";
 
 export type ActionResult = {
@@ -17,20 +22,35 @@ export type ActionResult = {
 };
 
 /**
- * Shared post-action sequence: wait for a Settled Page, capture it and return
- * the unified action result with an optional Change Record — what changed
- * around the action: the difference between the Structural Page State the
- * caller last received and the Settled Page after the action.
+ * Shared action sequence: record a Structural Action around `perform`, wait
+ * for a Settled Page, capture it and return the unified action result with an
+ * optional Change Record — what changed around the action: the difference
+ * between the Structural Page State the acting caller last received and the
+ * Settled Page after the action.
  *
- * The caller's state comes from `get_page_context`, from the Settled Page of
- * the previous action and from the tree a Goal Loop step sent to the model;
- * captures Ayme makes for itself leave it untouched. A change that happened on
- * its own since the caller last read the page is therefore part of the record.
+ * A caller's state is what it received: `get_page_context` and the Settled
+ * Page of its previous action for the calling agent, each step's tree for the
+ * Goal Loop's model. Captures Ayme makes for itself move neither. A change
+ * that happened on its own since the caller last read the page is therefore
+ * part of the record.
+ *
+ * An action whose `perform` throws is completed as failed with the page as it
+ * is then, moves no cursor, and the error travels on.
  */
-export async function completeAction(
+export async function runAction(
   currentDocument: Document,
-  rawResult?: unknown
+  caller: Caller,
+  call: ToolCall,
+  perform: () => unknown
 ): Promise<ActionResult> {
+  const actionId = await startActionForDocument(currentDocument, caller, call);
+  let rawResult: unknown;
+  try {
+    rawResult = await perform();
+  } catch (error) {
+    await failActionForDocument(currentDocument, actionId).catch(() => {});
+    throw error;
+  }
   const { stable } = await waitForSettled({
     activity: getBrowserPageActivitySource(currentDocument),
     clock: browserMonotonicClock,
@@ -38,8 +58,8 @@ export async function completeAction(
     deadlineMs: SETTLED_PAGE_DEADLINE_MS,
   });
 
-  const changes = await captureChangeRecordForDocument(currentDocument);
-  const pageChanged = changes?.hasAnyChanges() ?? false;
+  const changes = await completeActionForDocument(currentDocument, actionId);
+  const pageChanged = changes.hasAnyChanges();
 
   const out: ActionResult = {
     page_changed: pageChanged,
@@ -47,8 +67,7 @@ export async function completeAction(
   };
 
   if (rawResult !== undefined && isJsonValue(rawResult)) out.result = rawResult;
-  if (changes !== null && pageChanged)
-    out.changes = renderChangeRecord(changes);
+  if (pageChanged) out.changes = renderChangeRecord(changes);
 
   return out;
 }

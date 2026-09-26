@@ -18,11 +18,15 @@ import {
 } from "./goalLoopQuestions";
 import { toolFailure } from "./toolFailure.testSupport";
 import {
-  captureChangeRecordForDocument,
+  getInteractionHistory,
+  getPageStateCaptureForDocument,
   resolvePageStateRefs,
 } from "./pageState";
 import { renderChangeRecord } from "./changeRecord";
-import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import {
+  AriaRefSchema,
+  StructuralTree,
+} from "@ayme-dev/core/structural-observation";
 
 /** The parameters of the built-in click Ref Tool. */
 const CLICK_PARAMETERS = ["ref"];
@@ -284,6 +288,17 @@ function recording(decide: GoalLoopDecisionFunction) {
   };
 }
 
+/**
+ * A Handover without its run's Change Record. The tests here share one
+ * document, so that record starts at whatever an earlier test left as the
+ * agent's page; handoverChanges.browser.test.ts covers it.
+ */
+function withoutChanges(handover: unknown): unknown {
+  const rest = { ...(handover as Record<string, unknown>) };
+  delete rest.changes;
+  return rest;
+}
+
 // --- Fake driver that captures published tools ---
 
 type PublishedTool = {
@@ -419,7 +434,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const decide = scriptedDecisionFn([{ operation: "none", goal_met: 0.8 }]);
     const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
-    expect(result).toEqual({
+    expect(withoutChanges(result)).toEqual({
       reason: "done",
       next: expect.stringContaining("achieved"),
       history: [],
@@ -452,7 +467,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const decide = scriptedDecisionFn([{ operation: "none", goal_met: 0.1 }]);
     const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "impossible", maxSteps: 5 });
-    expect(result).toEqual({
+    expect(withoutChanges(result)).toEqual({
       reason: "no_fitting_option",
       next: expect.stringContaining("No available operation"),
       history: [],
@@ -470,7 +485,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       goal: "fill the name field",
       maxSteps: 5,
     });
-    expect(result).toEqual({
+    expect(withoutChanges(result)).toEqual({
       reason: "needs_value",
       next: expect.stringContaining("App.fill"),
       history: [],
@@ -517,7 +532,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       maxSteps: 5,
     });
 
-    expect(result).toEqual({
+    expect(withoutChanges(result)).toEqual({
       reason: "needs_value",
       next: expect.stringContaining("fill_page_state_ref"),
       history: [],
@@ -582,7 +597,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const decide = failingDecisionFn(new Error("network error"));
     const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
-    expect(result).toEqual({
+    expect(withoutChanges(result)).toEqual({
       reason: "decide_failed",
       next: expect.stringContaining("network error"),
       history: [],
@@ -595,7 +610,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     ]);
     const tool = await registerPom(decide);
     const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
-    expect(result).toEqual({
+    expect(withoutChanges(result)).toEqual({
       reason: "decide_failed",
       next: expect.stringContaining("Invalid goal_met answer"),
       history: [],
@@ -1128,6 +1143,44 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(score.argumentProbabilities).toEqual({});
   });
 
+  it("keeps the chunks' choices on the run result when the run-off answer is invalid", async () => {
+    const clicked = setupPageWithManyClickables(300);
+    const runOffId = runOffQuestionId("ref", CLICK_PARAMETERS);
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "click_page_state_ref",
+          goal_met: 0.1,
+          arguments: {
+            ref: ['button "Item 3"', 'button "Item 299"'],
+            [runOffId]: { raw: "e999" },
+          },
+        },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+
+    const result = (await tool.execute({
+      goal: "click the last item",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    expect(result.reason).toBe("decide_failed");
+    expect(clicked).toEqual([]);
+    const stageTwo = criteriaOf(requests[1]!);
+    const [firstChunkId, secondChunkId] = Object.keys(stageTwo);
+    const score = getLastGoalLoopRunResult()!.stepScores[0]!;
+    // Both chunks named an element; the run-off's answer is not recorded.
+    expect(score.argumentChoices).toEqual({
+      [firstChunkId!]: keyFor(stageTwo[firstChunkId!]!, 'button "Item 3"'),
+      [secondChunkId!]: keyFor(stageTwo[secondChunkId!]!, 'button "Item 299"'),
+    });
+    expect(Object.keys(score.argumentProbabilities!)).toEqual([
+      firstChunkId,
+      secondChunkId,
+    ]);
+  });
+
   it("hands over with no_fitting_option when every chunk answers none of these", async () => {
     const clicked = setupPageWithManyClickables(300);
     const { requests, decide } = recording(
@@ -1146,7 +1199,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       maxSteps: 5,
     });
 
-    expect(result).toEqual({
+    expect(withoutChanges(result)).toEqual({
       reason: "no_fitting_option",
       next: expect.stringContaining('"click_page_state_ref"'),
       // The step ran no action, so it leaves no history entry.
@@ -1318,7 +1371,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       maxSteps: 5,
     });
 
-    expect(result).toEqual({
+    expect(withoutChanges(result)).toEqual({
       reason: "decide_failed",
       // The answer the loop could not use is named in plain words.
       next: expect.stringContaining("e999"),
@@ -1507,10 +1560,15 @@ describe("Goal Loop pursue_goal in Chromium", () => {
         page_changed: false,
       },
     ]);
-    const record = await captureChangeRecordForDocument(document);
-    expect(record).not.toBeNull();
-    expect(record!.hasAnyChanges()).toBe(false);
-    expect(renderChangeRecord(record!)).toBe("");
+    // The agent's next Change Record: from the page the Handover gave it.
+    const handedOver = getInteractionHistory(document).cursor("agent")!;
+    const { tree: now } = await getPageStateCaptureForDocument(document);
+    const record = StructuralTree.reconcile(
+      await handedOver.tree.resolve(),
+      now
+    );
+    expect(record.hasAnyChanges()).toBe(false);
+    expect(renderChangeRecord(record)).toBe("");
   });
 
   it("hands over, naming the collection instance, when the instances exceed the option limit", async () => {
@@ -1763,7 +1821,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       maxSteps: 5,
     });
 
-    expect(result).toEqual({
+    expect(withoutChanges(result)).toEqual({
       reason: "needs_value",
       next: expect.stringContaining("ItemsPage.items.rename"),
       history: [],
@@ -1796,7 +1854,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       maxSteps: 5,
     });
 
-    expect(result).toEqual({
+    expect(withoutChanges(result)).toEqual({
       reason: "decide_failed",
       next: expect.stringContaining("not one of the offered options"),
       history: [],

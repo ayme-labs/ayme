@@ -91,6 +91,16 @@ useAymeWebMcp({
 });
 ```
 
+### Interaction history
+
+The runtime records what happens in the document for as long as it lives: a
+Visit at load and at each same-document navigation, every tool call and Goal
+Loop step as an action, and every page state it captures. Each caller, the
+calling agent and the Goal Loop's model, has its own last-received page state;
+an action's Change Record is the difference between that state and the page
+after the action. A Goal Loop run leaves the agent's state alone until the
+Handover. A full page load starts a new history.
+
 ## Runtime session
 
 The Vue and React packages start the runtime for you. Any other consumer,
@@ -398,6 +408,26 @@ return a Handover:
   next:    string,     // plain words: what the calling agent should do now
   history: { did: string, result: string, page_changed: boolean }[],
   needs?:  { tool: string, parameters: string[] },  // only with needs_value
+  changes?: string,    // what the whole run changed; absent when nothing did
+}
+```
+
+A run that opened a dialog, closed it and archived an item hands over only the
+net result:
+
+```ts
+{
+  reason: "done",
+  next: "The goal has been achieved. Continue with your next task.",
+  history: [
+    { did: "openDialog", result: "ok", page_changed: true },
+    { did: "closeDialog", result: "ok", page_changed: true },
+    { did: "archive", result: "ok", page_changed: true },
+  ],
+  changes: `- e2 <changed> main:
+  - e4 <changed> list:
+    - e5 <removed> listitem: Invoice 7
+  - e9 <added> paragraph: Archived Invoice 7`,
 }
 ```
 
@@ -413,6 +443,9 @@ return a Handover:
 The `next` field tells the calling agent what to do in plain words. History
 records each operation the loop ran: a readable label in `did`, `"ok"` or an
 error message in `result`, and whether the page changed in `page_changed`.
+`changes` is one Change Record for the whole run, in the notation of an action's
+`changes`: the page the calling agent last received against the page after the
+run, which becomes the agent's page for its next Change Record.
 
 ## Coding agent skill
 

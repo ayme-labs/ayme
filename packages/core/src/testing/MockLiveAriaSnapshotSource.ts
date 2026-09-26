@@ -2,7 +2,7 @@ import type {
   LiveAriaSnapshot,
   LiveAriaSnapshotSource,
 } from "../capture/LiveAriaSnapshot";
-import type { PlaywrightPageId } from "../capture/PlaywrightPageId";
+import type { PageId } from "../capture/PageId";
 
 export class MockLiveAriaSnapshotSource implements LiveAriaSnapshotSource {
   private _snapshot: LiveAriaSnapshot = {
@@ -10,9 +10,7 @@ export class MockLiveAriaSnapshotSource implements LiveAriaSnapshotSource {
     undistilledYaml: "",
   };
 
-  async captureAriaSnapshot(
-    _pageId: PlaywrightPageId
-  ): Promise<LiveAriaSnapshot> {
+  async captureAriaSnapshot(_pageId: PageId): Promise<LiveAriaSnapshot> {
     void _pageId;
     return this._snapshot;
   }

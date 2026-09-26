@@ -1,4 +1,4 @@
-import type { PlaywrightPageId } from "./PlaywrightPageId";
+import type { PageId } from "./PageId";
 
 export type LiveAriaSnapshot = Readonly<{
   distilledYaml: string;
@@ -7,7 +7,7 @@ export type LiveAriaSnapshot = Readonly<{
 
 export interface LiveAriaSnapshotSource {
   captureAriaSnapshot(
-    pageId: PlaywrightPageId,
+    pageId: PageId,
     options?: { timeout?: number }
   ): Promise<LiveAriaSnapshot>;
 }

@@ -26,7 +26,10 @@ A model-facing observation of the currently presented page structure and its Pag
 A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node.
 
 **Page State Session**:
-The lifetime within one browser document during which Ayme maintains best-effort continuity between successive Structural Page States.
+The lifetime within one browser document during which Ayme maintains best-effort continuity between successive Structural Page States. It also records the document's interaction history: its Visits, the actions taken and what each caused.
+
+**Visit**:
+One stretch of a Page State Session between navigations: from document load, or from a same-document navigation, to the next. Interaction history is scoped by Visits.
 
 **Page Object Root**:
 The page element that anchors one Page Object instance in the observed structure.

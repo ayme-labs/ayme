@@ -5,7 +5,7 @@ import {
   type GoalLoopDecisionFunction,
   type Handover,
 } from "./goalLoop";
-import { configurePageStateIgnore } from "./pageState";
+import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
 import { configureRefTools, type RefTool } from "./refTools";
 import {
   constructPageObject,
@@ -236,6 +236,8 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
           "The Ayme runtime already has an active owner."
         );
       owner = createAymeRuntime(getPage());
+      // The document's interaction history starts with its first Visit.
+      getInteractionHistory(document);
       configurePageStateIgnore(options.ignore);
       configureRefTools(options.refTools);
       configureGoalLoop(options.goalLoop);

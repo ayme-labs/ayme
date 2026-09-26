@@ -16,7 +16,7 @@ import type { AriaRef, PageStateCapture } from "./pageState";
 import { listRefTools } from "./refTools";
 import {
   listCollectionToolRoots,
-  listRegisteredPomTools,
+  listCallerAwarePomTools,
   type RegisteredPomRoot,
 } from "./registry";
 
@@ -115,6 +115,7 @@ type ArgumentSpec = {
 export type ExecutableTool = {
   name: string;
   description: string;
+  /** Runs the tool as the Goal Loop's model, the caller of every step. */
   execute(input: unknown): Promise<unknown>;
   /** Parameter names a caller must pass; empty when the tool takes none. */
   requiredParams: string[];
@@ -207,15 +208,17 @@ function specsOfCollectionTool(
  * Ref Tool, built in or registered (ADR-0023), and every registered POM tool.
  */
 export function buildToolOptions(): ToolOption[] {
-  const refTools: ExecutableTool[] = listRefTools().map(({ tool, filter }) => ({
-    name: tool.name,
-    description: tool.description,
-    execute: (input: unknown) => tool.execute(input),
-    requiredParams: [...(tool.inputSchema.required ?? [])],
-    args: specsOfRefToolSchema(tool.inputSchema, filter),
-  }));
+  const refTools: ExecutableTool[] = listRefTools().map(
+    ({ tool, filter, executeAs }) => ({
+      name: tool.name,
+      description: tool.description,
+      execute: (input: unknown) => executeAs(input, "goalLoop"),
+      requiredParams: [...(tool.inputSchema.required ?? [])],
+      args: specsOfRefToolSchema(tool.inputSchema, filter),
+    })
+  );
   const collectionRoots = listCollectionToolRoots();
-  const pomTools: ExecutableTool[] = listRegisteredPomTools().map((t) => {
+  const pomTools: ExecutableTool[] = listCallerAwarePomTools().map((t) => {
     const roots = collectionRoots.get(t.name);
     const args = roots
       ? specsOfCollectionTool(t.parameters, roots)
@@ -225,8 +228,9 @@ export function buildToolOptions(): ToolOption[] {
       description: t.description,
       // An action without parameters of its own still takes the empty `args`.
       execute: (input: unknown) =>
-        t.execute(
-          roots ? { args: {}, ...(input as Record<string, unknown>) } : input
+        t.executeAs(
+          roots ? { args: {}, ...(input as Record<string, unknown>) } : input,
+          "goalLoop"
         ),
       requiredParams: args
         .filter((arg) => !arg.optional)
@@ -717,7 +721,7 @@ export type ChosenArguments = {
 };
 
 /** What was answered, per question id, whether or not an action follows. */
-type AnswerRecord = Pick<ChosenArguments, "choices" | "probabilities">;
+export type AnswerRecord = Pick<ChosenArguments, "choices" | "probabilities">;
 
 /** What the stage-two answers amount to. */
 export type ArgumentAnswers =
@@ -770,18 +774,21 @@ function choose(
  * chunks of one parameter answer together: the one chunk that named an
  * element decides, several call for a run-off, none means no element fits.
  * Every answer is read first, so the choice and scores of every question are
- * recorded even when the step ends without an action.
+ * recorded even when the step ends without an action. They are recorded into
+ * `record`, whose maps the result shares, as each is read: an answer that
+ * throws leaves the ones read before it there.
  */
 export function readArgumentAnswers(
   tool: ExecutableTool,
   argumentQuestions: readonly ArgumentQuestion[],
-  answers: Record<string, unknown>
+  answers: Record<string, unknown>,
+  record: AnswerRecord = { choices: {}, probabilities: {} }
 ): ArgumentAnswers {
   const chosen: ChosenArguments = {
     args: {},
     summary: [],
-    choices: {},
-    probabilities: {},
+    choices: record.choices,
+    probabilities: record.probabilities,
   };
   const picks = argumentQuestions.map((question) => ({
     question,

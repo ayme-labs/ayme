@@ -45,8 +45,8 @@ export {
   type Serializer,
   type TreeOutput,
 } from "./projection/TreeOutput";
-export { PlaywrightPageIdSchema } from "./capture/PlaywrightPageId";
-export type { PlaywrightPageId } from "./capture/PlaywrightPageId";
+export { PageIdSchema } from "./capture/PageId";
+export type { PageId } from "./capture/PageId";
 export { MonotonicTimeMsSchema } from "./capture/MonotonicTimeMs";
 export type { MonotonicTimeMs } from "./capture/MonotonicTimeMs";
 export type {
@@ -85,6 +85,12 @@ export type {
   StructuralVisitSnapshot,
   StructuralVisitTimelineEvidence,
 } from "./observation/StructuralTimeline";
+export { StructuralIdentityLedger } from "./observation/StructuralIdentityLedger";
+export type {
+  StructuralIdentityLifecycle,
+  StructuralIdentityResolution,
+  StructuralLifecycleMoment,
+} from "./observation/StructuralIdentityLedger";
 export type { PageActivitySource } from "./observation/PageActivitySource";
 export type { MonotonicClock } from "./observation/MonotonicClock";
 export {

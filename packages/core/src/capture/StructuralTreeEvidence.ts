@@ -5,7 +5,7 @@ import type {
 } from "../tree/StructuralEnrichment";
 import type { StructuralTree } from "../tree/StructuralTree";
 import type { AriaRef } from "../tree/StructuralTypes";
-import type { PlaywrightPageId } from "./PlaywrightPageId";
+import type { PageId } from "./PageId";
 
 const structuralEnrichmentEvidenceBrand: unique symbol = Symbol(
   "StructuralEnrichmentEvidence"
@@ -49,7 +49,7 @@ export function storedStructuralEnrichmentEvidence(
 }
 
 export interface StructuralTreeEvidence {
-  readonly pageId: PlaywrightPageId;
+  readonly pageId: PageId;
   readonly capturedAt: MonotonicTimeMs;
   resolve(): Promise<StructuralTree>;
 }

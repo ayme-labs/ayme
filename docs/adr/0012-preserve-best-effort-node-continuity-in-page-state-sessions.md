@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0028
 ---
 
 # Preserve best-effort node continuity in Page State Sessions
