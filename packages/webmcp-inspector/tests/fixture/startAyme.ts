@@ -11,6 +11,7 @@ const listPageManifest: PomManifest = {
   members: [
     { memberName: "newItemInput", kind: "locator", access: "field" },
     { memberName: "addItemButton", kind: "locator", access: "field" },
+    { memberName: "clearButton", kind: "locator", access: "field" },
     { memberName: "items", kind: "locator", access: "field" },
   ],
   components: [],
@@ -28,6 +29,18 @@ const listPageManifest: PomManifest = {
       parameters: [
         { name: "text", optional: false, schema: { type: "string" } },
       ],
+    },
+    {
+      methodName: "clear",
+      toolName: "ListPage.clear",
+      description: "Remove every item from the list.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      },
+      parameters: [],
     },
   ],
 };

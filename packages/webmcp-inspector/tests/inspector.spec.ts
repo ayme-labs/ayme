@@ -1,11 +1,11 @@
-import { expect, openFixture, test } from "./fixtures";
+import { callTool, expect, openFixture, test } from "./fixtures";
 import type { Inspector } from "../src/testing";
 
 // E2E: the built Inspector on fixture pages with a real Page Object, the
 // Ayme runtime and Chromium's own WebMCP. Each test has one reason to fail;
 // fixture, runtime and WebMCP problems fail first, in openFixture.
 
-test("the page objects reach into the Inspector's open shadow root", async ({
+test("the page objects reach into the Inspector's closed shadow root", async ({
   inspector,
 }) => {
   await expect(inspector.header.title).toBeVisible();
@@ -18,6 +18,24 @@ test("running a Page Object tool from the panel acts on the page", async ({
   await inspector.pageObjects.tool("ListPage.addItem").run({ text: "Milk" });
 
   await expect(listPage.items.filter({ hasText: "Milk" })).toHaveCount(1);
+});
+
+test("a host member named like one of the panel's controls stays one match, and its tool runs", async ({
+  page,
+  inspector,
+  listPage,
+}) => {
+  await inspector.pageObjects.tool("ListPage.addItem").run({ text: "Milk" });
+  await expect(listPage.items).toHaveCount(1);
+  // The panel now shows its own "Clear" button.
+  await inspector.showView("Runs");
+  await expect(inspector.runs.clearButton).toBeVisible();
+
+  await expect(listPage.clearButton).toHaveCount(1);
+  expect(await callTool(page, "ListPage.clear", {})).not.toMatchObject({
+    isError: true,
+  });
+  await expect(listPage.items).toHaveCount(0);
 });
 
 test.describe("on a React host with aggressive global CSS", () => {

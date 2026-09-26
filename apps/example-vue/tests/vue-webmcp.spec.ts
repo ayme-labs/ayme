@@ -1,10 +1,13 @@
 import path from "node:path";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, selectors, test, type Page } from "@playwright/test";
 
 import { ListPage } from "../playwright/pom/ListPage";
 import { derivePomManifests } from "@ayme-dev/unplugin-webmcp";
-import { Inspector } from "@ayme-dev/webmcp-inspector/testing";
+import {
+  Inspector,
+  registerInspectorSelectors,
+} from "@ayme-dev/webmcp-inspector/testing";
 import {
   recordPublishedTools,
   type RecordingDriver,
@@ -71,6 +74,9 @@ const initialToolNames = [
   "pursue_goal",
 ];
 
+// The Inspector renders into a closed shadow root; its page objects reach it
+// through this selector engine.
+test.beforeAll(() => registerInspectorSelectors(selectors));
 test.beforeEach(({ context }) => recordPublishedTools(context));
 
 async function runListActions(

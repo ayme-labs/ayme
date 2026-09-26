@@ -12,6 +12,7 @@ import {
   mountInspector,
 } from "./index";
 import { withDemoFeedback } from "./demo";
+import { inspectorShadowRoot } from "./shadowRootHook";
 
 const disposals: (() => void)[] = [];
 
@@ -137,7 +138,7 @@ it("stops tracing during disposal and resumes once after remount", async () => {
   expect(getInspectorTrace()).toHaveLength(1);
 });
 
-it("mounts one Inspector in an ordinary open Shadow Root and supports disposal and remount", async () => {
+it("mounts one Inspector in a closed Shadow Root and supports disposal and remount", async () => {
   const first = mountInspector();
   const duplicate = mountInspector();
   await Promise.resolve();
@@ -147,7 +148,9 @@ it("mounts one Inspector in an ordinary open Shadow Root and supports disposal a
     document.body.querySelectorAll("[data-ayme-inspector-host]")
   ).toHaveLength(1);
   expect(host?.tagName).toBe("DIV");
-  expect(host?.shadowRoot?.mode).toBe("open");
+  // Closed: the host page cannot reach it; tests use the test-only hook.
+  expect(host?.shadowRoot).toBeNull();
+  expect(inspectorShadowRoot(host!)?.mode).toBe("closed");
 
   duplicate.dispose();
   expect(host?.isConnected).toBe(true);
@@ -185,9 +188,9 @@ it("renders the React Inspector and its stylesheet inside the Shadow Root only",
     "style, link[rel=stylesheet]"
   ).length;
   const inspector = mountInspector();
-  const shadowRoot = document.body.querySelector(
-    "[data-ayme-inspector-host]"
-  )?.shadowRoot;
+  const shadowRoot = inspectorShadowRoot(
+    document.body.querySelector("[data-ayme-inspector-host]")!
+  );
 
   expect(
     shadowRoot?.querySelector('aside[aria-label="ayme"] h2')?.textContent

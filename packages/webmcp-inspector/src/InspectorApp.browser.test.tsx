@@ -74,7 +74,13 @@ function mockRegistry(poms: RegisteredPom[], activeTools: RegisteredPomTool[]) {
   vi.mocked(listRegisteredPomTools).mockReturnValue(activeTools);
 }
 
-const inspector = new Inspector(createPage());
+// The panel renders into an open root this test owns, so the page objects
+// reach it without the Playwright selector engine.
+const page = createPage();
+const inspector = new Inspector(
+  page,
+  page.locator("[data-ayme-inspector-root]")
+);
 const unmounts: (() => void)[] = [];
 
 function renderApp() {

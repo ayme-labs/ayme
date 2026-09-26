@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 
 import { CollapsedLogo } from "./CollapsedLogo";
 import { InspectorHeader } from "./InspectorHeader";
+import { INSPECTOR_SELECTOR_ENGINE } from "./inspectorSelectors";
 import { ModelView } from "./ModelView";
 import { PageObjectsView } from "./PageObjectsView";
 import { RunsView } from "./RunsView";
@@ -26,8 +27,20 @@ export class Inspector {
   readonly runs: RunsView;
   private readonly views: Locator;
 
-  constructor(page: Page) {
-    this.root = page.locator("[data-ayme-inspector-root]");
+  /**
+   * @param page a Playwright page with `registerInspectorSelectors` applied,
+   *   which reaches into the Inspector's closed shadow root.
+   * @param root where the Inspector's root is, when it is not behind the
+   *   mount's closed shadow root: a component test renders the panel into an
+   *   open root it owns.
+   */
+  constructor(
+    page: Page,
+    root: Locator = page.locator(
+      `${INSPECTOR_SELECTOR_ENGINE}=[data-ayme-inspector-root]`
+    )
+  ) {
+    this.root = root;
     this.panel = this.root.getByRole("complementary", {
       name: "ayme",
       exact: true,

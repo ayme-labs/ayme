@@ -3,7 +3,7 @@
 Browser Inspector for Ayme Page Object Models. It shows the live POM classes
 and their member states, a form for each generated tool, execution history,
 browser traces, and the structural page state a model sees, in an isolated
-open Shadow Root.
+closed Shadow Root.
 
 The Inspector is a React app on `@ayme-dev/design-system`. React is bundled
 into the package, so a host app of any framework, or any React version, never
@@ -33,6 +33,10 @@ The Inspector marks its body host and structural page-state capture temporarily
 hides that host from the accessibility snapshot. The host is otherwise visible
 and accessible, and its styles are contained by the Shadow Root.
 
+The Shadow Root is closed, so no locator on the host page, whether
+Playwright's or the runtime's, sees inside it: a Page Object member never
+matches the Inspector's own text.
+
 The playground imports `withDemoFeedback` from
 `@ayme-dev/webmcp-inspector/demo` to keep its teaching delay and click cue.
 Applications do not need this demo-only entry point.
@@ -47,8 +51,18 @@ each rooted at a `Locator`. The same classes run on Playwright and on
 playwright-lite's `createPage()`. They are plain classes, never registered
 with the Ayme runtime, so their actions never become WebMCP tools.
 
+On Playwright, register the `ayme-inspector` selector engine before the page
+is created. It reaches into the closed Shadow Root through a test-only hook
+the mount leaves on its host element; the hook is not public API.
+
 ```ts
-import { Inspector } from "@ayme-dev/webmcp-inspector/testing";
+import { selectors } from "@playwright/test";
+import {
+  Inspector,
+  registerInspectorSelectors,
+} from "@ayme-dev/webmcp-inspector/testing";
+
+test.beforeAll(() => registerInspectorSelectors(selectors));
 
 const inspector = new Inspector(page);
 await inspector.open();
@@ -60,8 +74,8 @@ Run from this directory inside the repository's Devbox shell:
 - `pnpm test` runs the unit tests in jsdom (`*.test.ts`) and the component
   tests in Chromium through vitest browser (`*.browser.test.tsx`). A
   component test renders one part with fixture props into an open shadow
-  root, as the Inspector renders itself (`src/renderPart.tsx`), and drives it
-  through the page objects on playwright-lite.
+  root it owns (`src/renderPart.tsx`), with the Inspector's stylesheet and
+  themed root, and drives it through the page objects on playwright-lite.
 - `pnpm test:e2e` tests the built package, so build first; Turbo's
   `test:e2e` task does. It runs Playwright on Chromium with native WebMCP
   (`--enable-features=WebMCP,WebMCPTesting`) against the fixture pages in

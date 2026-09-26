@@ -28,6 +28,9 @@ function App() {
       >
         Add item
       </button>
+      <button type="button" onClick={() => setItems([])}>
+        Clear
+      </button>
       <ul aria-label="Items">
         {items.map((item, index) => (
           <li key={index}>{item}</li>

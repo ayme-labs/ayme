@@ -9,11 +9,14 @@ import type { Locator, Page } from "@playwright/test";
 export class ListPage {
   readonly newItemInput: Locator;
   readonly addItemButton: Locator;
+  readonly clearButton: Locator;
   readonly items: Locator;
 
   constructor(page: Page) {
     this.newItemInput = page.getByRole("textbox", { name: "New item" });
     this.addItemButton = page.getByRole("button", { name: "Add item" });
+    // The Inspector's Runs view has a "Clear" button too.
+    this.clearButton = page.getByRole("button", { name: "Clear" });
     this.items = page
       .getByRole("list", { name: "Items" })
       .getByRole("listitem");
@@ -23,5 +26,10 @@ export class ListPage {
   async addItem(text: string) {
     await this.newItemInput.fill(text);
     await this.addItemButton.click();
+  }
+
+  /** Remove every item from the list. */
+  async clear() {
+    await this.clearButton.click();
   }
 }
