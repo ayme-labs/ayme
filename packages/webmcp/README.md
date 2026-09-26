@@ -91,6 +91,16 @@ useAymeWebMcp({
 });
 ```
 
+### Interaction history
+
+The runtime records what happens in the document for as long as it lives: a
+Visit at load and at each same-document navigation, every tool call and Goal
+Loop step as an action, and every page state it captures. Each caller, the
+calling agent and the Goal Loop's model, has its own last-received page state;
+an action's Change Record is the difference between that state and the page
+after the action. A Goal Loop run leaves the agent's state alone until the
+Handover. A full page load starts a new history.
+
 ## Runtime session
 
 The Vue and React packages start the runtime for you. Any other consumer,

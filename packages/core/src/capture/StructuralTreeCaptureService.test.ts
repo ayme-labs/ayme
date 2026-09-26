@@ -4,7 +4,7 @@ import { MonotonicTimeMsSchema } from "./MonotonicTimeMs";
 import { defineStructuralEnrichment } from "../tree/StructuralEnrichment";
 import { AriaRefSchema } from "../tree/StructuralTypes";
 import { SyntheticAriaRefFactory } from "../tree/SyntheticAriaRefFactory";
-import { PlaywrightPageIdSchema } from "./PlaywrightPageId";
+import { PageIdSchema } from "./PageId";
 import { defineStructuralEnrichmentEvidence } from "./StructuralTreeEvidence";
 import { StructuralTree } from "../tree/StructuralTree";
 import { StructuralTreeCaptureService } from "./StructuralTreeCaptureService";
@@ -40,7 +40,7 @@ function source(snapshot: {
 
 describe("StructuralTreeCaptureService", () => {
   it("captures one paired snapshot for the requested page and stamps the sample time", async () => {
-    const pageId = PlaywrightPageIdSchema.parse("page@one");
+    const pageId = PageIdSchema.parse("page@one");
     const snapshotSource = source({
       distilledYaml: '- button "Visible" [ref=e1]',
       undistilledYaml: '- button "Visible" [ref=e1]\n- generic "Raw" [ref=e2]',
@@ -78,9 +78,7 @@ describe("StructuralTreeCaptureService", () => {
       clock: { now: () => MonotonicTimeMsSchema.parse(1) },
       refFactory: new SyntheticAriaRefFactory(),
     });
-    const capture = await service.capture(
-      PlaywrightPageIdSchema.parse("page@one")
-    );
+    const capture = await service.capture(PageIdSchema.parse("page@one"));
     const evidence = capture.asEvidence([
       defineStructuralEnrichmentEvidence(componentEnrichment, resolve),
     ]);
@@ -115,9 +113,7 @@ describe("StructuralTreeCaptureService", () => {
       refFactory: new SyntheticAriaRefFactory(),
     });
 
-    const capture = await service.capture(
-      PlaywrightPageIdSchema.parse("page@one")
-    );
+    const capture = await service.capture(PageIdSchema.parse("page@one"));
     const tree = await capture
       .asEvidence([
         defineStructuralEnrichmentEvidence(componentEnrichment, resolve),
@@ -144,9 +140,7 @@ describe("StructuralTreeCaptureService", () => {
       clock: { now: () => MonotonicTimeMsSchema.parse(1) },
       refFactory: new SyntheticAriaRefFactory(),
     });
-    const capture = await service.capture(
-      PlaywrightPageIdSchema.parse("page@one")
-    );
+    const capture = await service.capture(PageIdSchema.parse("page@one"));
     const enrichment = [
       defineStructuralEnrichmentEvidence(componentEnrichment, resolve),
     ];
@@ -177,9 +171,7 @@ describe("StructuralTreeCaptureService", () => {
       clock: { now: () => MonotonicTimeMsSchema.parse(1) },
       refFactory: new SyntheticAriaRefFactory(),
     });
-    const capture = await service.capture(
-      PlaywrightPageIdSchema.parse("page@one")
-    );
+    const capture = await service.capture(PageIdSchema.parse("page@one"));
     const enriched = await capture
       .asEvidence([
         defineStructuralEnrichmentEvidence(
@@ -237,9 +229,7 @@ describe("StructuralTreeCaptureService", () => {
       clock: { now: () => MonotonicTimeMsSchema.parse(1) },
       refFactory: new SyntheticAriaRefFactory(),
     });
-    const capture = await service.capture(
-      PlaywrightPageIdSchema.parse("page@one")
-    );
+    const capture = await service.capture(PageIdSchema.parse("page@one"));
     const evidence = capture.asEvidence([
       defineStructuralEnrichmentEvidence(componentEnrichment, resolve),
     ]);
@@ -264,12 +254,8 @@ describe("StructuralTreeCaptureService", () => {
       refFactory: new SyntheticAriaRefFactory(),
     });
 
-    const first = await service.capture(
-      PlaywrightPageIdSchema.parse("page@one")
-    );
-    const second = await service.capture(
-      PlaywrightPageIdSchema.parse("page@one")
-    );
+    const first = await service.capture(PageIdSchema.parse("page@one"));
+    const second = await service.capture(PageIdSchema.parse("page@one"));
 
     expect((await first.asEvidence().resolve()).root.ref).toBe("s_1");
     expect((await second.asEvidence().resolve()).root.ref).toBe("s_2");
@@ -286,16 +272,12 @@ describe("StructuralTreeCaptureService", () => {
       refFactory: new SyntheticAriaRefFactory(),
     });
 
-    const first = await service.capture(
-      PlaywrightPageIdSchema.parse("page@one")
-    );
+    const first = await service.capture(PageIdSchema.parse("page@one"));
     const firstRawTree = first.resolveUndistilledTree();
     const secondRawTree = first.resolveUndistilledTree();
     const firstEvidenceTree = await first.asEvidence().resolve();
     const secondEvidenceTree = await first.asEvidence().resolve();
-    const nextCapture = await service.capture(
-      PlaywrightPageIdSchema.parse("page@one")
-    );
+    const nextCapture = await service.capture(PageIdSchema.parse("page@one"));
     const nextRawTree = await nextCapture.resolveUndistilledTree();
 
     expect(firstRawTree).toBe(secondRawTree);
@@ -322,10 +304,10 @@ it("resolves and reconciles SVG-containing captures without an enrichment source
     refFactory: new SyntheticAriaRefFactory(),
   });
   const before = (
-    await service.capture(PlaywrightPageIdSchema.parse("page@one"))
+    await service.capture(PageIdSchema.parse("page@one"))
   ).asEvidence();
   const after = (
-    await service.capture(PlaywrightPageIdSchema.parse("page@one"))
+    await service.capture(PageIdSchema.parse("page@one"))
   ).asEvidence();
   const pending = before.resolve();
   expect(before.resolve()).toBe(pending);

@@ -10,11 +10,8 @@ test("installed compiled exports share structural behavior and testing helpers",
   const source = new testing.MockLiveAriaSnapshotSource();
   source.setMockYaml('- button "Save" [ref=e1]');
   assert.equal(
-    (
-      await source.captureAriaSnapshot(
-        core.PlaywrightPageIdSchema.parse("page")
-      )
-    ).distilledYaml,
+    (await source.captureAriaSnapshot(core.PageIdSchema.parse("page")))
+      .distilledYaml,
     '- button "Save" [ref=e1]'
   );
 });
@@ -25,7 +22,7 @@ test("installed capture retains raw descendants and supports projection and hist
     await import("@ayme-dev/core/structural-observation/testing");
   const source = new MockLiveAriaSnapshotSource();
   source.setMockYaml('- img "Icon" [ref=e1]:\n  - generic "Path" [ref=e2]');
-  const pageId = core.PlaywrightPageIdSchema.parse("page");
+  const pageId = core.PageIdSchema.parse("page");
   const service = new core.StructuralTreeCaptureService({
     snapshotSource: source,
     clock: { now: () => core.MonotonicTimeMsSchema.parse(1) },

@@ -22,6 +22,19 @@ export type PageContextPayload = {
   readonly pomDefinitions: string;
 };
 
+export const getPageStateTool = {
+  name: "get_page_state",
+  description:
+    "Return the top-level structural page state, decorated with root POM labels. Real nodes use Playwright refs; synthetic POM roots use observation-only synthetic refs. Capture is limited to the top-level document.",
+  inputSchema: {
+    type: "object",
+    properties: {},
+    required: [],
+    additionalProperties: false,
+  } as const,
+  execute: async () => (await getPageStateForDocument(document)).text,
+} satisfies ModelContextTool<Record<string, never>, string>;
+
 export const getPageContextTool = {
   name: "get_page_context",
   description:

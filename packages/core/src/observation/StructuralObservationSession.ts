@@ -4,7 +4,7 @@ import {
   MonotonicTimeMsSchema,
   type MonotonicTimeMs,
 } from "../capture/MonotonicTimeMs";
-import type { PlaywrightPageId } from "../capture/PlaywrightPageId";
+import type { PageId } from "../capture/PageId";
 import {
   StructuralTimeline,
   normalizeNavigationUrl,
@@ -28,7 +28,7 @@ export type StructuralObservationSessionOptions = {
 };
 
 export type NavigationSignal = {
-  pageId: PlaywrightPageId;
+  pageId: PageId;
   url: string;
   cause: VisitStartedCause;
 };
@@ -144,7 +144,7 @@ export class StructuralObservationSession {
     return this._timeline.recordActionCompleted(entry);
   }
 
-  currentVisitIdForPage(pageId: PlaywrightPageId): VisitId | null {
+  currentVisitIdForPage(pageId: PageId): VisitId | null {
     return this._timeline.currentVisitIdForPage(pageId);
   }
 

@@ -11,7 +11,7 @@ import type {
   LiveAriaSnapshot,
   LiveAriaSnapshotSource,
 } from "./LiveAriaSnapshot";
-import type { PlaywrightPageId } from "./PlaywrightPageId";
+import type { PageId } from "./PageId";
 import {
   storedStructuralEnrichmentEvidence,
   type StructuralEnrichmentEvidence,
@@ -19,7 +19,7 @@ import {
 } from "./StructuralTreeEvidence";
 
 export interface StructuralCapture {
-  readonly pageId: PlaywrightPageId;
+  readonly pageId: PageId;
   readonly capturedAt: MonotonicTimeMs;
   asEvidence(
     enrichment?: readonly StructuralEnrichmentEvidence[]
@@ -45,14 +45,14 @@ export class StructuralTreeCaptureService {
     this._refFactory = options.refFactory;
   }
 
-  async capture(pageId: PlaywrightPageId): Promise<StructuralCapture> {
+  async capture(pageId: PageId): Promise<StructuralCapture> {
     const snapshot = await this._snapshotSource.captureAriaSnapshot(pageId);
     const capturedAt = MonotonicTimeMsSchema.parse(this._clock.now());
     return this._capture(pageId, capturedAt, snapshot);
   }
 
   private _capture(
-    pageId: PlaywrightPageId,
+    pageId: PageId,
     capturedAt: MonotonicTimeMs,
     snapshot: LiveAriaSnapshot
   ): StructuralCapture {
@@ -82,7 +82,7 @@ export class StructuralTreeCaptureService {
   }
 
   private _evidence(
-    pageId: PlaywrightPageId,
+    pageId: PageId,
     capturedAt: MonotonicTimeMs,
     resolveDistilledTree: () => Promise<StructuralTree>,
     enrichment: readonly StructuralEnrichmentEvidence[]

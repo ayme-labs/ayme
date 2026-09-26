@@ -1,3 +1,8 @@
+// Runtime, not publication (#159, decision D1): the Page State Session and its
+// interaction history import nothing from the publication side (`webMcp.ts`,
+// tool schema rendering, anything touching `document.modelContext`); the
+// publication side calls in, never the reverse.
+
 import { captureAriaSnapshot } from "@ayme-dev/playwright-lite/internal";
 import {
   AriaRefSchema,
@@ -7,8 +12,14 @@ import {
   SyntheticAriaRefFactory,
   type AriaRef,
   type ProjectedStructuralProperty,
+  type StructuralActionId,
 } from "@ayme-dev/core/structural-observation";
-import type { ModelContextTool } from "@mcp-b/webmcp-types";
+import { browserMonotonicClock } from "./browserMonotonicClock";
+import {
+  InteractionHistory,
+  type Caller,
+  type ToolCall,
+} from "./interactionHistory";
 import { getRegisteredPomStructure } from "./registry";
 
 import {
@@ -19,22 +30,8 @@ import {
 import { parseCapturedTree } from "./capturedTree";
 import { RefResolutionError, ToolInputError } from "./errors";
 
-const inputSchema = {
-  type: "object",
-  properties: {},
-  required: [],
-  additionalProperties: false,
-} as const;
-
-export const getPageStateTool = {
-  name: "get_page_state",
-  description:
-    "Return the top-level structural page state, decorated with root POM labels. Real nodes use Playwright refs; synthetic POM roots use observation-only synthetic refs. Capture is limited to the top-level document.",
-  inputSchema,
-  execute: async () => (await getPageStateForDocument(document)).text,
-} satisfies ModelContextTool<Record<string, never>, string>;
-
 export type { AriaRef };
+export type { Caller } from "./interactionHistory";
 
 export type AymeNode = {
   ref: AriaRef;
@@ -128,38 +125,62 @@ export async function getPageStateForDocument(
 
 /**
  * Package-internal: capture the current page state and return its typed data.
- * `forCaller` marks the capture as one the caller receives, so it becomes the
- * "before" of the next Change Record.
+ * `receivedBy` names the caller that receives the capture, which moves that
+ * caller's cursor: the "before" of its next Change Record.
  */
 export async function getPageStateCaptureForDocument(
   currentDocument: Document,
-  options: { forCaller?: boolean } = {}
+  options: { receivedBy?: Caller } = {}
 ): Promise<PageStateCapture> {
   return getPageStateSession(currentDocument).getPageStateCapture(
-    options.forCaller === true
+    options.receivedBy
   );
 }
 
 /**
- * Package-internal: capture the Settled Page after an action and reconcile it
- * against the Structural Page State the caller last received; null while the
- * session has no such state. The capture becomes the caller's current state.
+ * Package-internal: start a Structural Action for `caller`'s tool call. An
+ * action needs a page to compare against, so a session that has observed
+ * nothing yet captures once first.
  */
-export async function captureChangeRecordForDocument(
-  currentDocument: Document
-): Promise<StructuralTree | null> {
-  return getPageStateSession(currentDocument).captureChangeRecord();
+export async function startActionForDocument(
+  currentDocument: Document,
+  caller: Caller,
+  call: ToolCall
+): Promise<StructuralActionId> {
+  return getPageStateSession(currentDocument).startAction(caller, call);
 }
 
 /**
- * Package-internal: before an action that takes no ref, make sure the session
- * has a state to compare against. Captures only while the caller has received
- * nothing and no capture stands in for it; an existing caller state is kept.
+ * Package-internal: complete an action whose tool call threw, with the page as
+ * it is now. No caller's cursor moves.
  */
-export async function ensureCallerPageState(
-  currentDocument: Document
+export async function failActionForDocument(
+  currentDocument: Document,
+  actionId: StructuralActionId
 ): Promise<void> {
-  return getPageStateSession(currentDocument).ensureCallerPageState();
+  return getPageStateSession(currentDocument).failAction(actionId);
+}
+
+/**
+ * Package-internal: capture the Settled Page after an action and return its
+ * Change Record tree, reconciled against the page the acting caller last
+ * received. The capture becomes that caller's cursor.
+ */
+export async function completeActionForDocument(
+  currentDocument: Document,
+  actionId: StructuralActionId
+): Promise<StructuralTree> {
+  return getPageStateSession(currentDocument).completeAction(actionId);
+}
+
+/**
+ * Package-internal: the document's interaction history. Creating it records
+ * the document's first Visit, so the runtime opens it on start.
+ */
+export function getInteractionHistory(
+  currentDocument: Document
+): InteractionHistory {
+  return getPageStateSession(currentDocument).history;
 }
 
 /** Resolve refs through the current document's session and a fresh capture. */
@@ -190,7 +211,7 @@ export async function getPageStateForElements(
 function getPageStateSession(currentDocument: Document) {
   let session = pageStateSessions.get(currentDocument);
   if (!session) {
-    session = new PageStateSession(() => currentDocument.body);
+    session = new PageStateSession(currentDocument);
     pageStateSessions.set(currentDocument, session);
   }
   return session;
@@ -200,40 +221,49 @@ class PageStateSession {
   private readonly refFactory = new SyntheticAriaRefFactory();
   /** The previous capture, against which the next one is reconciled (ADR-0012). */
   private baseline: StructuralTree | null = null;
-  /**
-   * The Structural Page State the caller last received: the "before" of the
-   * next Change Record. Captures Ayme makes for itself do not move it; until
-   * the caller has received one, the first capture stands in for it.
-   */
-  private callerPageState: StructuralTree | null = null;
   private currentIdentitiesByRef = new Map<AriaRef, SessionIdentity>();
   private readonly identitiesByAlias = new Map<AriaRef, SessionIdentity>();
+  /**
+   * Every capture is an observation in it; each caller's cursor is the "before"
+   * of its next Change Record. Captures Ayme makes for itself move no cursor.
+   */
+  readonly history: InteractionHistory;
 
-  constructor(private readonly currentRoot: () => Element) {}
+  constructor(private readonly currentDocument: Document) {
+    this.history = new InteractionHistory(
+      currentDocument,
+      browserMonotonicClock
+    );
+  }
 
   async getPageState(): Promise<PageState> {
-    const capture = await this.capture();
-    this.callerPageState = capture.tree;
-    return this.pageStateFor(capture);
+    return this.pageStateFor(await this.capture("agent"));
   }
 
-  async getPageStateCapture(forCaller: boolean): Promise<PageStateCapture> {
-    const capture = await this.capture();
-    if (forCaller) this.callerPageState = capture.tree;
-    return capture;
+  async getPageStateCapture(receivedBy?: Caller): Promise<PageStateCapture> {
+    return this.capture(receivedBy);
   }
 
-  async ensureCallerPageState(): Promise<void> {
-    if (this.callerPageState === null) await this.capture();
+  async startAction(
+    caller: Caller,
+    call: ToolCall
+  ): Promise<StructuralActionId> {
+    if (!this.history.hasObservation) await this.capture();
+    return this.history.startAction(caller, call);
   }
 
-  async captureChangeRecord(): Promise<StructuralTree | null> {
-    const before = this.callerPageState;
-    const capture = await this.capture();
-    this.callerPageState = capture.tree;
-    return before === null
-      ? null
-      : StructuralTree.reconcile(before, capture.tree);
+  async completeAction(actionId: StructuralActionId): Promise<StructuralTree> {
+    const capture = await this.advancedCapture();
+    return this.history.completeAction(
+      actionId,
+      capture.tree,
+      this.history.now()
+    );
+  }
+
+  async failAction(actionId: StructuralActionId): Promise<void> {
+    const capture = await this.advancedCapture();
+    this.history.failAction(actionId, capture.tree, this.history.now());
   }
 
   async getPageStateForElements(
@@ -247,16 +277,21 @@ class PageStateSession {
     };
   }
 
-  private async capture(): Promise<AdvancedCapture> {
+  /** Capture and record an observation; `receivedBy` moves that caller's cursor. */
+  private async capture(receivedBy?: Caller): Promise<AdvancedCapture> {
+    const capture = await this.advancedCapture();
+    // Stamped once the capture is taken, so it cannot share its time with an
+    // action started right after it.
+    this.history.observe(capture.tree, this.history.now(), receivedBy);
+    return capture;
+  }
+
+  private async advancedCapture(): Promise<AdvancedCapture> {
     const capture = await captureCurrentPageState(
-      this.currentRoot(),
+      this.currentDocument.body,
       this.refFactory
     );
-    const advanced = { ...capture, ...this.advance(capture) };
-    // While the caller has received nothing, the page as Ayme last saw it is
-    // the honest "before" of a Change Record.
-    this.callerPageState ??= capture.tree;
-    return advanced;
+    return { ...capture, ...this.advance(capture) };
   }
 
   private pageStateFor(capture: CapturedPageState): PageState {

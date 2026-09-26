@@ -1,7 +1,7 @@
 import { StructuralTree } from "../tree/StructuralTree";
 import type { MonotonicTimeMs } from "../capture/MonotonicTimeMs";
 import type { StructuralTreeEvidence } from "../capture/StructuralTreeEvidence";
-import type { PlaywrightPageId } from "../capture/PlaywrightPageId";
+import type { PageId } from "../capture/PageId";
 import type { StructuralActionId } from "./StructuralAction";
 import type { VisitId, VisitStartedCause } from "./Visit";
 
@@ -16,7 +16,7 @@ const resolveStructuralTreeEvidence: StructuralTreeEvidenceResolver = async (
 export type StructuralNavigationEntry = {
   readonly kind: "navigation";
   readonly at: MonotonicTimeMs;
-  readonly pageId: PlaywrightPageId;
+  readonly pageId: PageId;
   readonly fromUrl: string | null;
   readonly toUrl: string;
   readonly cause: VisitStartedCause;
@@ -30,7 +30,7 @@ export type StructuralVisitOpeningNavigationEntry =
 
 export type StructuralVisitSnapshot = {
   id: VisitId;
-  pageId: PlaywrightPageId;
+  pageId: PageId;
   urls: string[];
 };
 
@@ -127,7 +127,7 @@ export function startsNewVisit(
 export type StructuralObservationEntry = {
   readonly kind: "observation";
   readonly at: MonotonicTimeMs;
-  readonly pageId: PlaywrightPageId;
+  readonly pageId: PageId;
   /**
    * Lazy handle to the observation's structural tree. Selecting boundaries reads only metadata
    * (`at`, `capturedForActionId`); the concrete tree is resolved (replayed/parsed) only for the
@@ -145,14 +145,14 @@ export type StructuralObservationEntry = {
 export type StructuralActionStartedEntry = {
   readonly kind: "action-started";
   readonly at: MonotonicTimeMs;
-  readonly pageId: PlaywrightPageId;
+  readonly pageId: PageId;
   readonly actionId: StructuralActionId;
 };
 
 export type StructuralActionCompletedEntry = {
   readonly kind: "action-completed";
   readonly at: MonotonicTimeMs;
-  readonly pageId: PlaywrightPageId;
+  readonly pageId: PageId;
   readonly actionId: StructuralActionId;
 };
 
@@ -164,7 +164,7 @@ export type StructuralTimelineEntry =
 
 export type StructuralVisitTimelineEvidence = {
   readonly visitId: VisitId;
-  readonly pageId: PlaywrightPageId;
+  readonly pageId: PageId;
   readonly url: string;
   readonly cause: VisitStartedCause;
   readonly structuralTree: StructuralTree;
@@ -213,7 +213,7 @@ export class StructuralTimeline {
     return deriveVisitsFromEntries(this._entries);
   }
 
-  currentVisitIdForPage(pageId: PlaywrightPageId): VisitId | null {
+  currentVisitIdForPage(pageId: PageId): VisitId | null {
     let current: VisitId | null = null;
     for (const entry of this._entries) {
       if (
@@ -227,7 +227,7 @@ export class StructuralTimeline {
     return current;
   }
 
-  latestNavigationUrlForPage(pageId: PlaywrightPageId): string | null {
+  latestNavigationUrlForPage(pageId: PageId): string | null {
     let latest: string | null = null;
     for (const entry of this._entries) {
       if (entry.kind !== "navigation" || entry.pageId !== pageId) continue;
