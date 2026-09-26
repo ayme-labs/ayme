@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Inspector model fixture</title>
+  </head>
+  <body>
+    <!-- A to-do list: its items are child Page Objects, and its archive
+         dialog is not on the page. -->
+    <main>
+      <h1>Chores</h1>
+      <label>New chore <input id="todo-new" /></label>
+      <button id="todo-add" type="button">Add chore</button>
+      <ul id="todo-items" aria-label="Chores">
+        <li>
+          Water plants <button class="todo-archive" type="button">Done</button>
+        </li>
+        <li>
+          Pay rent <button class="todo-archive" type="button">Done</button>
+        </li>
+      </ul>
+    </main>
+    <script type="module" src="./models.ts"></script>
+  </body>
+</html>

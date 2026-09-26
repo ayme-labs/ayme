@@ -46,13 +46,15 @@ Applications do not need this demo-only entry point.
 ## Source layout
 
 - `src/adapter`: the runtime adapter, the only code that reads webmcp or runs
-  tools. It provides the structure tree model (`adapter/structure.ts`).
+  tools. It provides the structure tree model (`adapter/structure.ts`) and
+  the page model of Page Objects and their models (`adapter/pageModel.ts`).
 - `src/shell`: the panel's frame: layouts, header, collapsed logo and
   preferences.
 - `src/frame`: the body: the navigator, the detail pane, the Runs region, the
   shared selection, and the `Lens` and run slot contracts.
-- `src/lenses`: one file per lens. Each contributes its tree, its search
-  entries, its legend counts and the detail views of what it selects.
+- `src/lenses`: one file per lens, with its parts in a folder of its name.
+  Each contributes its tree, its search entries, its legend counts and the
+  detail views of what it selects.
 
 Below the adapter, components take only props; lint enforces it.
 

@@ -6,7 +6,7 @@ import { ListPage } from "./fixture/ListPage";
 export { expect } from "@playwright/test";
 
 /** A fixture page: the list app with its Page Object, the runtime and the Inspector. */
-export type FixturePage = "/" | "/react.html";
+export type FixturePage = "/" | "/react.html" | "/models.html";
 
 /**
  * Opens a fixture page and fails with its own message, before any test

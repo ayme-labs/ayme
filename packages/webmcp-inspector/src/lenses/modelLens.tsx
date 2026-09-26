@@ -1,100 +1,183 @@
-import { BracesIcon, GlobeIcon } from "lucide-react";
-
-import type { Lens } from "../frame/lens";
-import { NavItem } from "../frame/NavItem";
+import {
+  walk,
+  type PageModel,
+  type PageObjectNode,
+} from "../adapter/pageModel";
+import { Empty } from "../common";
+import type { Lens, SearchEntry } from "../frame/lens";
 import type { RenderRun } from "../frame/runSlot";
 import type { Selection } from "../frame/selection";
-import { PageObjectsTab, type HighlightControls } from "../PageObjectsTab";
-import type { PomClass } from "../pomModel";
+import { highlighting, type HighlightControls } from "./model/highlight";
+import { ModelDetail, ObjectDetail, PageDetail } from "./model/ModelDetails";
+import { ModelTree } from "./model/ModelTree";
+
+export type { HighlightControls } from "./model/highlight";
 
 /**
- * The Model lens. Ticket E replaces this skeleton: for now it lists the Page
- * Object Models, and the page's and a model's detail are the skeleton's
- * Page objects view.
+ * The Model lens: the Page Objects on the page as a tree, and the Page
+ * Object Models the page knows. It owns the page, object and model
+ * selections. Picking an object pins its highlight on the page; picking
+ * anything else in the lens unpins it.
  */
 export function modelLens({
   host,
-  pomClasses,
+  pageModel,
   selection,
   onSelect,
-  highlight,
+  highlight: controls,
   renderRun,
 }: {
   /** The page's host, e.g. localhost:5173. */
   host: string;
-  pomClasses: readonly PomClass[];
+  pageModel: PageModel;
   selection: Selection;
   onSelect: (selection: Selection) => void;
   highlight: HighlightControls;
   renderRun: RenderRun;
 }): Lens {
-  const selectedClass =
-    selection.kind === "model" ? selection.className : undefined;
+  const highlight = highlighting(controls);
+  const nodes = [...walk(pageModel.objects)];
+  const byPath = new Map(nodes.map((node) => [node.path, node]));
+  const objects = nodes.filter((node) => node.kind !== "collection");
+  const live = objects.filter((node) => node.live).length;
+
+  const selectPage = () => {
+    onSelect({ kind: "page" });
+    highlight.pin(undefined);
+  };
+  const selectObject = (node: PageObjectNode) => {
+    onSelect({ kind: "object", path: node.path });
+    highlight.pin(node.live ? node.highlightPath : undefined);
+  };
+  const selectModel = (className: string) => {
+    onSelect({ kind: "model", className });
+    highlight.pin(undefined);
+  };
+
   return {
     id: "model",
     label: "Model",
     tree: (
-      <div className="flex flex-col">
-        <NavItem
-          selected={selection.kind === "page"}
-          onClick={() => onSelect({ kind: "page" })}
-        >
-          <GlobeIcon className="size-3.5 text-muted-foreground" aria-hidden />
-          <span className="font-mono">/</span>
-          <span className="truncate text-xs text-muted-foreground">{host}</span>
-        </NavItem>
-        <ul aria-label="Page object models">
-          {pomClasses.map((pomClass) => (
-            <li key={pomClass.className}>
-              <NavItem
-                depth={1}
-                selected={pomClass.className === selectedClass}
-                onClick={() =>
-                  onSelect({ kind: "model", className: pomClass.className })
-                }
-              >
-                <BracesIcon
-                  className="size-3.5 text-muted-foreground"
-                  aria-hidden
-                />
-                <span className="font-mono">{pomClass.className}</span>
-              </NavItem>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <ModelTree
+        host={host}
+        objects={pageModel.objects}
+        models={pageModel.models}
+        liveCount={live}
+        selection={selection}
+        highlight={highlight}
+        onPickPage={selectPage}
+        onPickObject={selectObject}
+        onPickModel={selectModel}
+      />
     ),
-    searchEntries: pomClasses.map((pomClass) => ({
-      key: `model:${pomClass.className}`,
-      kind: "POM",
-      label: pomClass.className,
-      description: `Page object · ${
-        pomClass.instances.length
-          ? `${pomClass.instances.length} on page`
-          : "not on page"
-      }`,
-      selection: { kind: "model", className: pomClass.className },
-    })),
-    legend: {},
+    searchEntries: searchEntries(pageModel, nodes),
+    legend: { live, notOnPage: objects.length - live },
     detail: (selected) => {
       if (selected.kind === "page")
         return (
-          <PageObjectsTab
-            pomClasses={pomClasses}
+          <PageDetail
+            host={host}
+            pages={pageModel.objects}
+            modelCount={pageModel.models.length}
             highlight={highlight}
-            renderRun={renderRun}
+            onOpenObject={selectObject}
           />
         );
-      if (selected.kind !== "model") return undefined;
-      return (
-        <PageObjectsTab
-          pomClasses={pomClasses.filter(
-            (pomClass) => pomClass.className === selected.className
-          )}
-          highlight={highlight}
-          renderRun={renderRun}
-        />
-      );
+      if (selected.kind === "object") {
+        const node = byPath.get(selected.path);
+        if (!node)
+          return <Empty>{selected.path} is no longer on the page.</Empty>;
+        return (
+          <ObjectDetail
+            node={node}
+            highlight={highlight}
+            renderRun={renderRun}
+            onOpenModel={selectModel}
+            onOpenObject={(path) => {
+              const child = byPath.get(path);
+              if (child) selectObject(child);
+            }}
+          />
+        );
+      }
+      if (selected.kind === "model") {
+        const model = pageModel.models.find(
+          (candidate) => candidate.className === selected.className
+        );
+        if (!model)
+          return <Empty>The page no longer knows {selected.className}.</Empty>;
+        return (
+          <ModelDetail
+            model={model}
+            instances={model.instancePaths.flatMap(
+              (path) => byPath.get(path) ?? []
+            )}
+            highlight={highlight}
+            renderRun={renderRun}
+            onOpenModel={selectModel}
+            onOpenObject={selectObject}
+          />
+        );
+      }
+      return undefined;
     },
   };
+}
+
+function searchEntries(
+  pageModel: PageModel,
+  nodes: readonly PageObjectNode[]
+): SearchEntry[] {
+  const objectEntries = nodes.map((node): SearchEntry => ({
+    key: `object:${node.path}`,
+    kind: "Object",
+    label: node.path,
+    description:
+      node.kind === "collection"
+        ? `${node.className}[] · ${node.itemCount ?? 0} items`
+        : `${node.className} · ${node.live ? "Live" : "Not on page"}`,
+    selection: { kind: "object", path: node.path },
+    ...(node.live && node.highlightPath
+      ? { highlightPath: node.highlightPath }
+      : {}),
+  }));
+  const modelEntries = pageModel.models.flatMap((model): SearchEntry[] => {
+    const onPage = model.instancePaths.length;
+    const selection: Selection = { kind: "model", className: model.className };
+    return [
+      {
+        key: `model:${model.className}`,
+        kind: "POM",
+        label: model.className,
+        description: `Page object · ${onPage ? `${onPage} on page` : "not on page"}`,
+        selection,
+      },
+      ...model.actions.map((action) => ({
+        key: `action:${model.className}.${action.name}`,
+        kind: "Action",
+        label: `${model.className}.${action.name}`,
+        description: [
+          action.description,
+          !action.publishedToolNames.length && "Not published.",
+        ]
+          .filter(Boolean)
+          .join(" "),
+        selection,
+      })),
+      ...model.members.map((member) => ({
+        key: `member:${model.className}.${member.name}`,
+        kind: "Member",
+        label: `${model.className}.${member.name}`,
+        description:
+          member.kind === "locator"
+            ? "locator"
+            : `${member.className}${member.collection ? "[]" : ""}`,
+        selection,
+        ...(onPage && member.highlightPath
+          ? { highlightPath: member.highlightPath }
+          : {}),
+      })),
+    ];
+  });
+  return [...objectEntries, ...modelEntries];
 }
