@@ -23,9 +23,9 @@
     }
   },
   "scripts": {
-    "build": "tsdown --config-loader tsx",
+    "build": "tsdown",
     "lint": "eslint src --max-warnings 0",
-    "test": "vitest run --configLoader runner",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -51,7 +51,6 @@
     "jsdom": "^30.0.1",
     "tailwindcss": "^4.3.3",
     "tsdown": "^0.22.14",
-    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   }

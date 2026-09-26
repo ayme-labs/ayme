@@ -9,6 +9,7 @@ import {
 
 import { Badge } from "@ayme-dev/design-system/components/badge";
 import { Button } from "@ayme-dev/design-system/components/button";
+import { PortalContainerProvider } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import { AymeMark } from "./AymeMark";
@@ -16,7 +17,6 @@ import { Fab } from "./Fab";
 import { ModelViewTab } from "./ModelViewTab";
 import { PageObjectsTab } from "./PageObjectsTab";
 import { listPomClasses } from "./pomModel";
-import { PortalContainerContext } from "./portal";
 import { RunsTab } from "./RunsTab";
 import { ThemeMenu } from "./ThemeMenu";
 import type { FieldValue, FieldValues } from "./toolArguments";
@@ -97,7 +97,7 @@ export function InspectorApp() {
         theme.dark ? "dark scheme-dark" : "scheme-light"
       )}
     >
-      <PortalContainerContext value={portalContainer}>
+      <PortalContainerProvider value={portalContainer}>
         {collapsed ? (
           <Fab ref={fabButton} onOpen={() => setCollapsedAndFocus(false)} />
         ) : (
@@ -184,7 +184,7 @@ export function InspectorApp() {
           className="pointer-events-auto"
           data-ayme-inspector-portal
         />
-      </PortalContainerContext>
+      </PortalContainerProvider>
     </div>
   );
 }

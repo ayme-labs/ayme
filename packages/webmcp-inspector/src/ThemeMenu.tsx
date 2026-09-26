@@ -1,6 +1,10 @@
 import { Button } from "@ayme-dev/design-system/components/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@ayme-dev/design-system/components/popover";
 
-import { Popover, PopoverContent, PopoverTrigger } from "./portal";
 import type { ThemePreference } from "./useTheme";
 
 const preferences: readonly { value: ThemePreference; label: string }[] = [

@@ -1,6 +1,6 @@
 import { defineConfig } from "tsdown";
 
-import { inspectorCss } from "./inspectorCss.config";
+import { inspectorCss } from "./inspectorCss.config.ts";
 
 export default defineConfig({
   clean: true,
