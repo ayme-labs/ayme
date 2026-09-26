@@ -6,6 +6,7 @@ export {
 export { getPageContextForDocument, getPageContextTool } from "./pageContext";
 export { getPomDefinitions } from "./pomDefinitions";
 export {
+  getPublicationStatus,
   listPublishedTools,
   subscribeToPublishedTools,
 } from "./publishedTools";

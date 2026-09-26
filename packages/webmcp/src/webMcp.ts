@@ -1,5 +1,9 @@
 import { getPageContextTool } from "./pageContext";
-import { type PublishedTool, resolvePublishedTools } from "./publishedTools";
+import {
+  type PublishedTool,
+  reportPublishedTools,
+  resolvePublishedTools,
+} from "./publishedTools";
 import {
   subscribeToRegisteredPoms,
   probeRegisteredPomMembers,
@@ -75,6 +79,7 @@ export async function synchronizeWebMcpTools(
   let syncAgain = false;
   let currentSync = Promise.resolve();
   let unsubscribe = () => {};
+  let reported = false;
 
   const dispose = () => {
     if (disposed) return;
@@ -84,6 +89,7 @@ export async function synchronizeWebMcpTools(
     for (const registration of published.values())
       registration.controller.abort();
     published.clear();
+    if (reported) reportPublishedTools([]);
   };
 
   if (options.signal?.aborted) dispose();
@@ -128,11 +134,13 @@ export async function synchronizeWebMcpTools(
         };
 
   const publish = async () => {
+    let resolved: ReturnType<typeof resolvePublishedTools>;
     try {
       do {
         syncAgain = false;
+        resolved = resolvePublishedTools();
         const active = new Map(
-          [...resolvePublishedTools()].map(([name, { tool }]) => [name, tool])
+          [...resolved].map(([name, { tool }]) => [name, tool])
         );
 
         for (const [name, registration] of published) {
@@ -158,6 +166,11 @@ export async function synchronizeWebMcpTools(
           }
         }
       } while (syncAgain && !disposed);
+      // The Inspector reads the settled set, never one mid-pass.
+      if (!disposed) {
+        reported = true;
+        reportPublishedTools([...resolved.values()]);
+      }
     } finally {
       syncing = false;
     }

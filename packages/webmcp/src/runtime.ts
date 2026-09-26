@@ -6,7 +6,7 @@ import {
   type Handover,
 } from "./goalLoop";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
-import { notifyPublishedToolsChanged } from "./publishedTools";
+import { reportPublicationStatus } from "./publishedTools";
 import { configureRefTools, type RefTool } from "./refTools";
 import {
   constructPageObject,
@@ -100,6 +100,7 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
 
   const setStatus = (next: AymeWebMcpPublicationStatus) => {
     status = Object.freeze(next);
+    reportPublicationStatus(status);
     for (const listener of subscribers) listener();
   };
   const failed = (error: unknown) =>
@@ -166,7 +167,6 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
     configurePageStateIgnore(undefined);
     configureRefTools(undefined);
     configureGoalLoop(undefined);
-    notifyPublishedToolsChanged();
     setStatus({ state: "disposed", message: "The Ayme runtime was disposed." });
   }
 
@@ -247,7 +247,6 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
       try {
         for (const registration of registrations)
           registration.active = registration.activate();
-        notifyPublishedToolsChanged();
         setStatus(initialStatus);
         void retryPublication();
       } catch (error) {
