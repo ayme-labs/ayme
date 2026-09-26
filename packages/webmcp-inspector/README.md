@@ -36,3 +36,40 @@ and accessible, and its styles are contained by the Shadow Root.
 The playground imports `withDemoFeedback` from
 `@ayme-dev/webmcp-inspector/demo` to keep its teaching delay and click cue.
 Applications do not need this demo-only entry point.
+
+## Testing
+
+The Inspector is tested the way Ayme asks its users to test: through a Page
+Object Model of the panel. `@ayme-dev/webmcp-inspector/testing` exports it
+(ADR-0026: only tests may import a testing entry). `Inspector` takes a
+Playwright `Page` and is built from one page object per part of the panel,
+each rooted at a `Locator`. The same classes run on Playwright and on
+playwright-lite's `createPage()`. They are plain classes, never registered
+with the Ayme runtime, so their actions never become WebMCP tools.
+
+```ts
+import { Inspector } from "@ayme-dev/webmcp-inspector/testing";
+
+const inspector = new Inspector(page);
+await inspector.open();
+await inspector.pageObjects.tool("ListPage.addItem").run({ text: "Milk" });
+```
+
+Run from this directory inside the repository's Devbox shell:
+
+- `pnpm test` runs the unit tests in jsdom (`*.test.ts`) and the component
+  tests in Chromium through vitest browser (`*.browser.test.tsx`). A
+  component test renders one part with fixture props into an open shadow
+  root, as the Inspector renders itself (`src/renderPart.tsx`), and drives it
+  through the page objects on playwright-lite.
+- `pnpm test:e2e` tests the built package, so build first; Turbo's
+  `test:e2e` task does. It runs Playwright on Chromium with native WebMCP
+  (`--enable-features=WebMCP,WebMCPTesting`) against the fixture pages in
+  `tests/fixture`, served on port 4291: a real Page Object, the Ayme runtime
+  and the built Inspector. A fixture page that fails to start, a runtime that
+  never publishes, or a browser without WebMCP fails before any test
+  assertion, with its own message.
+
+playwright-lite has no `page.mouse` and no `dragTo`. The page objects drag
+by dispatching pointer events to the dragged element, which works on both
+runners.

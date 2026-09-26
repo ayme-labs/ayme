@@ -5,7 +5,7 @@ import { inspectorCss } from "./inspectorCss.config.ts";
 export default defineConfig({
   clean: true,
   dts: true,
-  entry: ["src/index.ts", "src/demo.ts"],
+  entry: ["src/index.ts", "src/demo.ts", "src/testing.ts"],
   format: ["esm"],
   deps: {
     // The Inspector brings its own React: a host app may run another React

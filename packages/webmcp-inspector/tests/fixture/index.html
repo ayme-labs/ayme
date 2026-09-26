@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Inspector fixture</title>
+  </head>
+  <body>
+    <!-- No host styles: the browser's defaults show whether the Inspector's
+         CSS leaks out of its shadow root. -->
+    <main>
+      <h1>Groceries</h1>
+      <label>New item <input /></label>
+      <button type="button">Add item</button>
+      <ul aria-label="Items"></ul>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

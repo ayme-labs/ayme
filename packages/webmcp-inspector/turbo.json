@@ -2,7 +2,8 @@
   "extends": ["//"],
   "tasks": {
     "test": {
-      "outputs": ["coverage/**"]
+      "outputs": ["coverage/**"],
+      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
     }
   }
 }
