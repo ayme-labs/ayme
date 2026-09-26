@@ -63,31 +63,51 @@ Anyone running it brings their own key: put an OpenRouter key in `AYME_OPENROUTE
 
 ## Goal run harness
 
-`pnpm run goals:runs --runs <N>` measures the Goal Loop instead of checking it: it runs every goal of the live lane N times against the real Decision Endpoint, with no retries, and writes one JSON file per invocation to `goal-runs/`, which Git ignores. It is run by hand only; CI and `pnpm check` never run it. It needs the same `AYME_OPENROUTER_API_KEY` as the live lane and stops without one. Run from this directory inside the repository's Devbox shell:
+`pnpm run goals:runs --runs <N>` measures the Goal Loop instead of checking it: it runs every goal of a goal set N times against the real Decision Endpoint, with no retries, and writes one JSON file per invocation to `goal-runs/`, which Git ignores. It is run by hand only; CI and `pnpm check` never run it. It needs the same `AYME_OPENROUTER_API_KEY` as the live lane and stops without one. Run from this directory inside the repository's Devbox shell:
 
 ```sh
 pnpm run goals:runs --runs 3
+pnpm run goals:runs --runs 3 --live-lane
+pnpm run goals:runs --runs 3 --variant last-step
 pnpm run goals:runs compare goal-runs/<runA>.json goal-runs/<runB>.json
 ```
 
-The script sets `AYME_GOAL_RUNS=1` for the Playwright run it starts. Only then does the live lane record a run; without it, as in CI and `pnpm run test:goals`, the recorder passes the goal straight through.
+By default it runs the harness's own goal set, `tests/goalHarness.spec.ts` under `playwright.harness.config.ts`: goals that are allowed to fail, so neither CI nor `pnpm run test:goals` runs them. `--live-lane` runs the live lane's goals (`playwright.goals.config.ts`) instead. Both specs share their page helpers and `pursueGoal` through `tests/goalLane.ts`.
 
-Spend is bounded by N: an invocation makes N runs of each goal, each run at most one to three model calls per step, up to the goal's step budget in `tests/goals.spec.ts`. `--runs` is required, so no invocation spends by default. Nothing is committed as a baseline; keep the files you want to compare.
+| Goal set | Goal                                  | Expected end                                       |
+| -------- | ------------------------------------- | -------------------------------------------------- |
+| harness  | `archive Review onboarding flow`      | The item in Archived, reason `done`, after 2 steps |
+| live     | `Add an item called Milk`             | Reason `needs_value`, the list unchanged           |
+| live     | `Archive the second item in the list` | The second item in Archived, reason `done`         |
 
-The live lane records each `pursue_goal` call as a `goal-run` test attachment (`tests/goalRunRecord.ts`): the Decision Endpoint calls the page makes, and the run's per-step scores from the store behind the package-internal `getLastGoalLoopRunResult`. A recording failure never fails the test; it is recorded as `recorderError`. The script reads those attachments from Playwright's JSON report. A file holds:
+`--variant last-step` runs the Goal Loop with its experiment switch for #173 on: the script sets `AYME_GOAL_LOOP_HISTORY_CHANGES=last-step` for the dev server, which hands it to the page, and the loop then adds the previous executed step's Change Record to the last entry of the `history` it sends the model. Without `--variant` the script clears the variable, so a file's `variant` is the one that ran. The switch is a development experiment, not an option; the experiment compares the two:
 
-| Field                          | Meaning                                                                                                                                                            |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `commit`                       | `sha` of `HEAD`, and `dirty` when the working tree had changes                                                                                                     |
-| `model`                        | The model identifier the decisions asked for                                                                                                                       |
-| `runsPerGoal`                  | N                                                                                                                                                                  |
-| `timestamp`                    | When the invocation finished, ISO 8601                                                                                                                             |
-| `goals.<test title>.goal`      | The goal text given to `pursue_goal`                                                                                                                               |
-| `goals.<test title>.runs[]`    | One record per run, below                                                                                                                                          |
-| `goals.<test title>.aggregate` | `runs`, `passRate`, `meanSteps`, `maxSteps`, `meanModelCallsPerStep`, `meanWallTimeMs`, `reasons` (Handover reason counts), `chunkConflicts`, `noneOfTheseAnswers` |
+```sh
+pnpm run goals:runs --runs 10
+pnpm run goals:runs --runs 10 --variant last-step
+pnpm run goals:runs compare goal-runs/<without>.json goal-runs/<last-step>.json
+```
 
-A run record holds `passed` (the test's expectations held, so the goal's expected outcome was reached), `reason` (the Handover reason, or `null` when the run failed before `pursue_goal` returned), `stepCount`, `wallTimeMs` (the `pursue_goal` call), `chunkConflicts`, `noneOfTheseAnswers`, `error` (the first line of a failed test's error), `recorderError` when recording failed, and `steps[]`. A step holds `operation` (the operation option stage one chose, `none` when nothing fits), `goalMetScore`, `modelCalls` (stage one, stage two and any run-off), `runOff` (the step requested a run-off) and, for a step with stage two, `argumentChoices` (the chosen option key per argument question id: the loop's record where it has one, else each answer the Decision Endpoint returned for an offered option, so chunk answers survive a failed run-off).
+The script sets `AYME_GOAL_RUNS=1` for the Playwright run it starts. Only then does a goal spec record a run; without it, as in CI and `pnpm run test:goals`, the recorder passes the goal straight through.
 
-A chunk conflict is a step where several chunks of an over-cap ref question each named an element, so the loop requested a run-off among them; it counts even when the run-off then fails. A "none of these" answer is a chunk question answered with its `none_of_these` option.
+Spend is bounded by N: an invocation makes N runs of each goal, each run at most one to three model calls per step, up to the goal's step budget in its spec. `--runs` is required, so no invocation spends by default. Nothing is committed as a baseline; keep the files you want to compare.
 
-`compare` takes paths relative to this directory. It prints, per goal, each aggregate of A and B with its delta, then lists the goals whose pass rate changed.
+A goal spec records each `pursue_goal` call as a `goal-run` test attachment (`tests/goalRunRecord.ts`): the Decision Endpoint calls the page makes, and the run's per-step scores from the store behind the package-internal `getLastGoalLoopRunResult`. A recording failure never fails the test; it is recorded as `recorderError`. The script reads those attachments from Playwright's JSON report. A file holds:
+
+| Field                          | Meaning                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commit`                       | `sha` of `HEAD`, and `dirty` when the working tree had changes                                                                                                                                                                                                                                                              |
+| `goalSet`                      | `harness`, or `live-lane` with `--live-lane`                                                                                                                                                                                                                                                                                |
+| `variant`                      | `last-step` with `--variant last-step`, else `null`                                                                                                                                                                                                                                                                         |
+| `model`                        | The model identifier the decisions asked for                                                                                                                                                                                                                                                                                |
+| `runsPerGoal`                  | N                                                                                                                                                                                                                                                                                                                           |
+| `timestamp`                    | When the invocation finished, ISO 8601                                                                                                                                                                                                                                                                                      |
+| `goals.<test title>.goal`      | The goal text given to `pursue_goal`                                                                                                                                                                                                                                                                                        |
+| `goals.<test title>.runs[]`    | One record per run, below                                                                                                                                                                                                                                                                                                   |
+| `goals.<test title>.aggregate` | `runs`, `passRate`, `doneAtExpectedStepRate` (`null` when the spec states no expected step count), `noFittingOptionRate`, `meanSteps`, `maxSteps`, `meanModelCallsPerStep`, `meanPageBytesPerStep`, `meanHistoryBytesPerStep`, `meanWallTimeMs`, `reasons` (Handover reason counts), `chunkConflicts`, `noneOfTheseAnswers` |
+
+A run record holds `passed` (the test's expectations held, so the goal's expected outcome was reached), `reason` (the Handover reason, or `null` when the run failed before `pursue_goal` returned), `stepCount`, `doneAtExpectedStep` (the run ended `done` after exactly the step count its spec expects, the step judging the goal met included; absent when the spec states none), `wallTimeMs` (the `pursue_goal` call), `chunkConflicts`, `noneOfTheseAnswers`, `error` (the first line of a failed test's error), `recorderError` when recording failed, and `steps[]`. A step holds `operation` (the operation option stage one chose, `none` when nothing fits), `goalMetScore`, `modelCalls` (stage one, stage two and any run-off), `runOff` (the step requested a run-off), `pageBytes` and `historyBytes` (the UTF-8 bytes of the `page` and `history` state fields stage one sent, as JSON; stage two sends the same state) and, for a step with stage two, `argumentChoices` (the chosen option key per argument question id: the loop's record where it has one, else each answer the Decision Endpoint returned for an offered option, so chunk answers survive a failed run-off).
+
+A chunk conflict is a step where several chunks of an over-cap ref question each named an element, so the loop requested a run-off among them; it counts even when the run-off then fails. A "none of these" answer is a chunk question answered with its `none_of_these` option. The rates count over all runs of the goal; the per-step means over all steps of all its runs.
+
+`compare` takes paths relative to this directory. It prints each file's goal set and variant, then, per goal, each aggregate of A and B with its delta, then lists the goals whose pass rate changed.

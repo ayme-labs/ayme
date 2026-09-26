@@ -20,11 +20,18 @@ export type GoalRunStep = {
   /** The step requested a run-off: several chunks of a ref question each named
    *  an element. Counted even when the run-off then failed. */
   runOff: boolean;
+  /** UTF-8 bytes of the `page` and `history` state fields stage one sent, as
+   *  JSON; stage two sends the same state. */
+  pageBytes: number;
+  historyBytes: number;
 };
 
 /** What one `pursue_goal` call did, attached to the test that made it. */
 export type GoalRunRecord = {
   goal: string;
+  /** The step count of a run that ends `done` as the test intends, when the
+   *  test states one. */
+  expectedSteps?: number;
   reason: string;
   /** The model identifiers the run's decisions asked for. */
   models: string[];
@@ -38,6 +45,7 @@ export type GoalRunRecord = {
  *  endpoint answered with success. */
 export type Decision = {
   model: unknown;
+  state?: { page?: unknown; history?: unknown };
   questions: Record<string, { criteria?: Record<string, unknown> }>;
   answers?: Record<string, { choice?: unknown }>;
 };
@@ -115,6 +123,11 @@ function offeredChoices(decision: Decision): Record<string, string> {
   return choices;
 }
 
+const byteLength = (value: unknown) =>
+  value === undefined
+    ? 0
+    : new TextEncoder().encode(JSON.stringify(value)).length;
+
 /** Group the calls into steps: every stage-one call asks `operation`. */
 function stepsOf(
   decisions: Decision[],
@@ -129,6 +142,8 @@ function stepsOf(
         goalMetScore: null,
         modelCalls: 1,
         runOff: false,
+        pageBytes: byteLength(decision.state?.page),
+        historyBytes: byteLength(decision.state?.history),
       });
       continue;
     }
@@ -158,7 +173,7 @@ function stepsOf(
 
 /** What a run did, from the calls seen from the page and the loop's run result. */
 export function goalRunRecordOf(
-  base: Pick<GoalRunRecord, "goal" | "reason" | "wallTimeMs">,
+  base: Pick<GoalRunRecord, "goal" | "expectedSteps" | "reason" | "wallTimeMs">,
   decisions: Decision[],
   runResult: GoalLoopRunResult | undefined
 ): GoalRunRecord {
@@ -191,7 +206,7 @@ async function readRunResult(page: Page) {
 export async function recordGoalRun<T extends { reason: string }>(
   page: Page,
   testInfo: TestInfo,
-  goal: string,
+  { goal, expectedSteps }: Pick<GoalRunRecord, "goal" | "expectedSteps">,
   pursue: () => Promise<T>
 ): Promise<T> {
   if (process.env[goalRunsVariable] !== "1") return pursue();
@@ -218,6 +233,7 @@ export async function recordGoalRun<T extends { reason: string }>(
 
   let record: GoalRunRecord = {
     goal,
+    ...(expectedSteps === undefined ? {} : { expectedSteps }),
     reason: handover.reason,
     models: [],
     wallTimeMs,

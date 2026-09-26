@@ -11,6 +11,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
     base: process.env.VITE_BASE_PATH ?? "/",
+    // `AYME_GOAL_LOOP_` hands the Goal Loop's experiment switch for #173
+    // (`AYME_GOAL_LOOP_HISTORY_CHANGES`) to the page; the run harness sets it.
+    envPrefix: ["VITE_", "AYME_GOAL_LOOP_"],
     plugins: [
       vue(),
       tailwindcss(),

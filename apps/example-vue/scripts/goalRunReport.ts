@@ -13,6 +13,9 @@ export type GoalRun = {
   /** The Handover reason; null when the run failed before `pursue_goal` returned. */
   reason: string | null;
   stepCount: number;
+  /** The run ended `done` at the step count its test expects; absent when the
+   *  test states none. */
+  doneAtExpectedStep?: boolean;
   wallTimeMs: number;
   steps: GoalRunStep[];
   /** Steps that requested a run-off because several chunks each named an element. */
@@ -28,9 +31,14 @@ export type GoalRun = {
 export type GoalAggregate = {
   runs: number;
   passRate: number;
+  /** Null when the goal's test states no expected step count. */
+  doneAtExpectedStepRate: number | null;
+  noFittingOptionRate: number;
   meanSteps: number;
   maxSteps: number;
   meanModelCallsPerStep: number;
+  meanPageBytesPerStep: number;
+  meanHistoryBytesPerStep: number;
   meanWallTimeMs: number;
   reasons: Record<string, number>;
   chunkConflicts: number;
@@ -90,6 +98,9 @@ export function toGoalRun(testResult: ReportResult): {
       .flatMap(Object.values)
       .filter((key) => key === noneOfTheseKey).length,
   };
+  if (record?.expectedSteps !== undefined)
+    run.doneAtExpectedStep =
+      run.reason === "done" && run.stepCount === record.expectedSteps;
   if (testResult.error?.message)
     run.error = firstLine(testResult.error.message);
   if (record?.recorderError) run.recorderError = record.recorderError;
@@ -107,16 +118,24 @@ export function aggregate(runs: GoalRun[]): GoalAggregate {
     const reason = run.reason ?? "no_handover";
     reasons[reason] = (reasons[reason] ?? 0) + 1;
   }
-  const totalSteps = sum(stepCounts);
-  const totalCalls = sum(
-    runs.flatMap((run) => run.steps.map((step) => step.modelCalls))
-  );
+  const steps = runs.flatMap((run) => run.steps);
+  const perStep = (value: (step: GoalRunStep) => number) =>
+    mean(steps.map(value));
+  const rate = (count: number) => count / runs.length;
+  const expecting = runs.filter((run) => run.doneAtExpectedStep !== undefined);
   return {
     runs: runs.length,
-    passRate: runs.filter((run) => run.passed).length / runs.length,
+    passRate: rate(runs.filter((run) => run.passed).length),
+    doneAtExpectedStepRate:
+      expecting.length === 0
+        ? null
+        : rate(expecting.filter((run) => run.doneAtExpectedStep).length),
+    noFittingOptionRate: rate(reasons.no_fitting_option ?? 0),
     meanSteps: mean(stepCounts),
     maxSteps: Math.max(0, ...stepCounts),
-    meanModelCallsPerStep: totalSteps === 0 ? 0 : totalCalls / totalSteps,
+    meanModelCallsPerStep: perStep((step) => step.modelCalls),
+    meanPageBytesPerStep: perStep((step) => step.pageBytes),
+    meanHistoryBytesPerStep: perStep((step) => step.historyBytes),
     meanWallTimeMs: Math.round(mean(runs.map((run) => run.wallTimeMs))),
     reasons,
     chunkConflicts: sum(runs.map((run) => run.chunkConflicts)),
