@@ -9,6 +9,10 @@ on:
       - ready_for_review
     branches:
       - main
+      # The Inspector rebuild (#178) lands as a stack of PRs on this branch.
+      # Remove these two once it merges into main.
+      - claude/project-thread-lriusu
+      - "claude/inspector-*"
   workflow_dispatch:
 
 concurrency:
