@@ -1,0 +1,13 @@
+/*
+ * The design system without Tailwind's own import or any document-level base
+ * styles: the palette, the semantic tokens and the components' sources.
+ *
+ * Import it after your own `@import "tailwindcss"` wherever the stylesheet
+ * does not own the document, such as a shadow root. Pages that own the
+ * document import `globals.css` instead.
+ */
+@import "tw-animate-css";
+@import "./palette.css";
+@import "./tokens.css";
+
+@source "../**/*.{ts,tsx}";

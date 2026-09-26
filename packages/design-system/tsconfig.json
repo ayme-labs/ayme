@@ -1,0 +1,10 @@
+{
+  "extends": "@ayme-dev/typescript-config/react-library.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "paths": {
+      "@ayme-dev/design-system/*": ["./src/*"]
+    }
+  },
+  "include": ["src"]
+}

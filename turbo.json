@@ -44,6 +44,11 @@
         "dependencies": {
           "deny": ["app"]
         }
+      },
+      "design-system": {
+        "dependencies": {
+          "deny": ["core", "adapter", "app"]
+        }
       }
     }
   }
