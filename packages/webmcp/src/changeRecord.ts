@@ -10,11 +10,12 @@ import {
  * Render the changed subtrees of a reconciled structural tree
  * in the compact notation that get_page_context uses.
  *
- * Unchanged path nodes are kept as structural markers (role + name + ref)
- * but their text children and unchanged branch children are stripped.
- * Added and removed subtrees appear in full (the reconciler marks every
- * descendant). Updated nodes show their text content; unchanged structural
- * children below them are pruned.
+ * Path nodes whose own content did not change, including nodes updated only
+ * because their child list changed, are kept as plain structural markers
+ * (role + name + ref) with their text children and unchanged branch children
+ * stripped. Added and removed subtrees appear in full (the reconciler marks
+ * every descendant). Nodes whose own content changed show their text content;
+ * unchanged structural children below them are pruned.
  */
 export function renderChangeRecord(reconciled: StructuralTree): string {
   const changed = new Set<AriaRef>();
@@ -47,9 +48,13 @@ export function renderChangeRecord(reconciled: StructuralTree): string {
       roots: reconciled.getRootNodes().filter(hasChangeBelow),
       structuralNode: (node) => node,
       children: (node) => {
-        const isChanged = changed.has(node.ref);
+        const status = node.status;
+        const withText =
+          status?.kind === "added" ||
+          status?.kind === "removed" ||
+          (status?.kind === "updated" && status.selfChanged);
         return node.children.filter((child) =>
-          typeof child === "string" ? isChanged : hasChangeBelow(child)
+          typeof child === "string" ? withText : hasChangeBelow(child)
         );
       },
     },

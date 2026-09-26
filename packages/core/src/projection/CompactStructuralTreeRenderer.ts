@@ -3,13 +3,25 @@ import type {
   ProjectedStructuralNodeForest,
 } from "./StructuralProjection";
 
-const STATUS_TOKEN: Partial<
-  Record<NonNullable<ProjectedStructuralNode["status"]>["kind"], string>
-> = {
-  updated: "<changed>",
-  added: "<added>",
-  removed: "<removed>",
-};
+/**
+ * `<changed>` marks a change to the node's own content. A node updated only
+ * because its child list changed carries no token: it is a path marker to the
+ * change below it.
+ */
+function statusToken(
+  status: ProjectedStructuralNode["status"]
+): string | undefined {
+  switch (status?.kind) {
+    case "added":
+      return "<added>";
+    case "removed":
+      return "<removed>";
+    case "updated":
+      return status.selfChanged ? "<changed>" : undefined;
+    default:
+      return undefined;
+  }
+}
 
 /**
  * The compact text renderer: the notation `get_page_context` and the Change
@@ -29,11 +41,10 @@ function renderNode(
 ): string {
   if (typeof node === "string")
     return `${indent(depth)}- text: ${formatScalar(node)}`;
-  const statusToken =
-    node.status === undefined ? undefined : STATUS_TOKEN[node.status.kind];
+  const token = statusToken(node.status);
   if (node.compact) {
     const summary = [
-      statusToken,
+      token,
       node.identityToken === undefined ? undefined : `[${node.identityToken}]`,
     ]
       .filter((value): value is string => value !== undefined)
@@ -41,7 +52,7 @@ function renderNode(
     return `${indent(depth)}-${summary === "" ? "" : ` ${summary}`}`;
   }
 
-  const header = [...node.prefixes, statusToken, formatNodeHeader(node)]
+  const header = [...node.prefixes, token, formatNodeHeader(node)]
     .filter((value): value is string => value !== undefined && value !== "")
     .join(" ");
   const inlineText = node.children.filter(

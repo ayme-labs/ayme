@@ -884,7 +884,6 @@ export class StructuralTree {
       afterNode.ref
     );
     const selfChanged =
-      beforeNode.ref !== reconciledRef ||
       !beforeNode.isSelfEqualExceptRef(afterNode) ||
       beforeNode.hasChangedEnrichment(afterNode);
     const status: StructuralNodeStatus = selfChanged

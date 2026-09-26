@@ -436,8 +436,8 @@ net result:
       result: "ok", page_changed: true,
       did: 'InboxPage.invoices.archive(InboxPage.invoices[0] (listitem "Invoice 7"))' },
   ],
-  changes: `- e2 <changed> main:
-  - e4 <changed> list:
+  changes: `- e2 main:
+  - e4 list:
     - e5 <removed> listitem: Invoice 7
   - e9 <added> paragraph: Archived Invoice 7`,
 }

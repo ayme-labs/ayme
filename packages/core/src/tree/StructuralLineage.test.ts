@@ -81,7 +81,7 @@ describe("StructuralTree.reconcile aria-ref identity", () => {
     expect(reconciled.getNodesByStatus("removed")).toEqual([]);
   });
 
-  it("does not let an unchanged parent shortcut swallow a nested child re-ref", () => {
+  it("keeps lineage through a nested child re-ref under an unchanged parent", () => {
     const [before, after] = parsePair(
       '- generic [ref=e1]:\n  - button "Nested" [ref=e2]',
       '- generic [ref=e1]:\n  - button "Nested" [ref=e5]'
@@ -91,12 +91,8 @@ describe("StructuralTree.reconcile aria-ref identity", () => {
 
     expect(reconciled.root.status).toEqual({ kind: "unchanged" });
     expect(child.ref).toBe(ref("e5"));
-    expect(child.status).toEqual({
-      kind: "updated",
-      selfChanged: true,
-      childListChanged: false,
-    });
-    expect(reconciled.getBeforeNode(child.ref)?.ref).toBe(ref("e2"));
+    expect(child.status).toEqual({ kind: "unchanged" });
+    expect(reconciled.getBeforeNodeForAfterRef(child.ref)?.ref).toBe(ref("e2"));
   });
 
   it("reconciles a nested child re-ref inside a stable-ref moved node", () => {
@@ -119,12 +115,8 @@ describe("StructuralTree.reconcile aria-ref identity", () => {
 
     expect(moved.status).toEqual({ kind: "unchanged" });
     expect(child.ref).toBe(ref("e5"));
-    expect(child.status).toEqual({
-      kind: "updated",
-      selfChanged: true,
-      childListChanged: false,
-    });
-    expect(reconciled.getBeforeNode(child.ref)?.ref).toBe(ref("e3"));
+    expect(child.status).toEqual({ kind: "unchanged" });
+    expect(reconciled.getBeforeNodeForAfterRef(child.ref)?.ref).toBe(ref("e3"));
   });
 
   it("keeps one-before/two-after changed-ref candidates as additions and removals", () => {

@@ -404,7 +404,7 @@ describe("CompactStructuralTreeRenderer", () => {
     );
 
     expect(renderIncremental(StructuralTree.reconcile(before, after))).toBe(
-      '- <changed> [ref=e1]:\n  - <added> [ref=e3] button "New"\n  - <removed> [ref=e2]'
+      '- [ref=e1]:\n  - <added> [ref=e3] button "New"\n  - <removed> [ref=e2]'
     );
   });
 
