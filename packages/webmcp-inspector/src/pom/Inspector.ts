@@ -4,7 +4,7 @@ import { CollapsedLogo } from "./CollapsedLogo";
 import { DetailPane } from "./DetailPane";
 import { InspectorHeader } from "./InspectorHeader";
 import { Navigator } from "./Navigator";
-import { PageStateView } from "./PageStateView";
+import { StructureLens } from "./StructureLens";
 import { PanelShell } from "./PanelShell";
 import { RunsView } from "./RunsView";
 import type { ToolForm } from "./ToolForm";
@@ -26,8 +26,8 @@ export class Inspector {
   readonly navigator: Navigator;
   readonly detail: DetailPane;
   readonly runs: RunsView;
-  /** The skeleton Structure lens. */
-  readonly pageState: PageStateView;
+  /** The Structure lens's tree, in the navigator. */
+  readonly structure: StructureLens;
 
   constructor(page: Page) {
     this.root = page.locator("[data-ayme-inspector-root]");
@@ -50,7 +50,7 @@ export class Inspector {
       this.panel.getByRole("region", { name: "Selected" })
     );
     this.runs = new RunsView(this.panel.getByRole("region", { name: "Runs" }));
-    this.pageState = new PageStateView(this.navigator.root);
+    this.structure = new StructureLens(this.navigator.root);
   }
 
   /** Expands the panel if it is collapsed to the logo. */

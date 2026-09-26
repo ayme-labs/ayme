@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { buildStructureTree } from "./structure";
+import { buildStructureTree, memberOfTarget } from "./structure";
 
 // Unit tests: the structure tree model built from the page state text an
 // agent receives. The fixture is hand-written in its compact notation.
@@ -89,4 +89,39 @@ it("tags each node with the Page Object member it maps to", () => {
     member: "ListPage.items[0]",
   });
   expect(main.children[2]).not.toHaveProperty("member");
+});
+
+it("tags each node with the Page Object that owns its member", () => {
+  const { roots } = buildStructureTree(
+    pageState,
+    new Map([
+      ["e2", { member: "ListPage.newItemInput", owner: "ListPage" }],
+      ["e74", { member: "ListPage.items[0]", owner: "ListPage.items[0]" }],
+    ])
+  );
+
+  const main = roots[0]!.children[0]!;
+  expect(main.children[1]!.children[1]).toMatchObject({
+    member: "ListPage.newItemInput",
+    owner: "ListPage",
+  });
+  expect(main.children[3]!.children[0]).toMatchObject({
+    member: "ListPage.items[0]",
+    owner: "ListPage.items[0]",
+  });
+});
+
+it("reads a registry target as its member and the Page Object that owns it", () => {
+  expect(memberOfTarget("ListPage.addItemButton")).toEqual({
+    member: "ListPage.addItemButton",
+    owner: "ListPage",
+  });
+  expect(memberOfTarget("ListPage.items[1].archiveButton")).toEqual({
+    member: "ListPage.items[1].archiveButton",
+    owner: "ListPage.items[1]",
+  });
+  expect(memberOfTarget("ListPage.items[1].root")).toEqual({
+    member: "ListPage.items[1]",
+    owner: "ListPage.items[1]",
+  });
 });

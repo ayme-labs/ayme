@@ -19,6 +19,7 @@ export function Navigator({
   onLensChange,
   onSelect,
   onPreview,
+  onPreviewRef,
   onPreviewEnd,
 }: {
   lenses: readonly Lens[];
@@ -27,6 +28,8 @@ export function Navigator({
   onSelect: (selection: Selection) => void;
   /** Hovering a result that has a highlight path. */
   onPreview?: (path: string) => void;
+  /** Hovering a result that has a highlight ref. */
+  onPreviewRef?: (ref: string) => void;
   onPreviewEnd?: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -88,12 +91,15 @@ export function Navigator({
                     type="button"
                     className="flex w-full flex-col items-start gap-px rounded-md px-2 py-1.5 text-left hover:bg-muted"
                     onClick={() => pick(result)}
-                    onMouseEnter={() =>
-                      result.entry.highlightPath &&
-                      onPreview?.(result.entry.highlightPath)
-                    }
+                    onMouseEnter={() => {
+                      const { highlightPath, highlightRef } = result.entry;
+                      if (highlightPath) onPreview?.(highlightPath);
+                      else if (highlightRef) onPreviewRef?.(highlightRef);
+                    }}
                     onMouseLeave={() =>
-                      result.entry.highlightPath && onPreviewEnd?.()
+                      (result.entry.highlightPath ||
+                        result.entry.highlightRef) &&
+                      onPreviewEnd?.()
                     }
                   >
                     <span className="flex max-w-full items-center gap-1.5">

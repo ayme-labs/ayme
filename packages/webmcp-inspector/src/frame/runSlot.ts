@@ -6,6 +6,8 @@ import type { ReactNode } from "react";
  */
 export type RunRequest = {
   toolName: string;
+  /** The Structural Ref a Ref tool runs on, e.g. from a structure node. */
+  ref?: string;
 };
 
 /**

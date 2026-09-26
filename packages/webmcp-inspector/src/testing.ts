@@ -13,7 +13,8 @@ export {
 } from "./pom/InspectorHeader";
 export { Navigator, type LensName } from "./pom/Navigator";
 export { PageObjectsView, PomClassCard } from "./pom/PageObjectsView";
-export { PageStateView } from "./pom/PageStateView";
 export { PanelShell, type PanelEdge } from "./pom/PanelShell";
+export { NodeView } from "./pom/NodeView";
 export { RunsView } from "./pom/RunsView";
+export { StructureLens } from "./pom/StructureLens";
 export { ToolForm, type ArgumentValue } from "./pom/ToolForm";

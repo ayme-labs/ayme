@@ -196,9 +196,7 @@ describe("the Inspector", () => {
 
     await inspector.navigator.showLens("Structure");
 
-    await expect
-      .poll(() => inspector.pageState.root.textContent())
-      .toContain('e2 button "Save"');
+    await expect.poll(() => inspector.structure.node("e2").count()).toBe(1);
     await expect
       .poll(() => inspector.navigator.legend.textContent())
       .toBe("2 refs");

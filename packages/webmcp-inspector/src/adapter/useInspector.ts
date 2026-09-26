@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { AriaRef, RegisteredPomTool } from "@ayme-dev/webmcp";
+import type { AriaRef, PageState, RegisteredPomTool } from "@ayme-dev/webmcp";
 import type { RegisteredPom } from "@ayme-dev/webmcp/internal";
 
 import {
@@ -14,6 +14,8 @@ import {
 import {
   buildStructureTree,
   emptyStructure,
+  memberOfTarget,
+  type MemberMapping,
   type StructureTree,
 } from "./structure";
 
@@ -47,14 +49,15 @@ export function useInspector() {
     structure: emptyStructure,
     loading: false,
   });
-  const [pinnedPath, setPinnedPath] = useState<string>();
+  const [pinned, setPinned] = useState<HighlightTarget>();
 
   const mounted = useRef(false);
   const pageStateRequestId = useRef(0);
   const highlightRequestId = useRef(0);
+  const latestPageState = useRef<PageState>(undefined);
   const highlightedElements = useRef<Element[]>([]);
-  const pinnedPathRef = useRef<string>(undefined);
-  const hoveredPath = useRef<string>(undefined);
+  const pinnedTarget = useRef<HighlightTarget>(undefined);
+  const hoveredTarget = useRef<HighlightTarget>(undefined);
 
   const refreshPageState = useCallback(async () => {
     const requestId = ++pageStateRequestId.current;
@@ -67,10 +70,11 @@ export function useInspector() {
     }));
 
     try {
-      const { text, structure } = await captureStructure();
+      const { state, structure } = await captureStructure();
       if (!isCurrent()) return;
+      latestPageState.current = state;
       setPageState({
-        text,
+        text: state.text,
         structure,
         capturedAt: new Date().toLocaleTimeString([], {
           hour: "2-digit",
@@ -96,22 +100,17 @@ export function useInspector() {
   }, []);
 
   const applyHighlight = useCallback(
-    async (path: string | undefined) => {
+    async (target: HighlightTarget | undefined) => {
       const requestId = ++highlightRequestId.current;
       const isCurrent = () =>
         mounted.current && requestId === highlightRequestId.current;
       clearHighlightedElements();
-      if (!path) return;
+      if (!target) return;
 
       try {
-        const targets = (await listRegisteredPomTargets()).filter(
-          (target) => target.path === path
-        );
-        const { state, refs } = await getPageStateForElements(
-          uniqueElements(targets.map((target) => target.element))
-        );
-        const resolutions = await state.resolve(
-          ...refs.filter((ref): ref is AriaRef => ref !== undefined)
+        const resolutions = await resolveHighlightTarget(
+          target,
+          latestPageState.current
         );
         const elements = uniqueElements(
           resolutions.flatMap((resolution) =>
@@ -125,35 +124,55 @@ export function useInspector() {
         highlightedElements.current = elements;
       } catch (error) {
         if (!isCurrent()) return;
-        console.warn(`Could not highlight ${path}: ${errorMessage(error)}`);
+        console.warn(
+          `Could not highlight ${"path" in target ? target.path : target.ref}: ${errorMessage(error)}`
+        );
       }
     },
     [clearHighlightedElements]
   );
 
   /** Hover or focus: highlight a target until the preview ends. */
-  const previewTarget = useCallback(
-    (path: string) => {
-      hoveredPath.current = path;
-      void applyHighlight(path);
+  const preview = useCallback(
+    (target: HighlightTarget) => {
+      hoveredTarget.current = target;
+      void applyHighlight(target);
     },
     [applyHighlight]
   );
 
   const clearPreview = useCallback(() => {
-    hoveredPath.current = undefined;
-    void applyHighlight(pinnedPathRef.current);
+    hoveredTarget.current = undefined;
+    void applyHighlight(pinnedTarget.current);
   }, [applyHighlight]);
 
   /** Click: pin a target, or unpin it when it is already pinned. */
-  const togglePinnedTarget = useCallback(
-    (path: string) => {
-      const next = pinnedPathRef.current === path ? undefined : path;
-      pinnedPathRef.current = next;
-      setPinnedPath(next);
-      void applyHighlight(hoveredPath.current ?? next);
+  const togglePinned = useCallback(
+    (target: HighlightTarget) => {
+      const next = sameTarget(pinnedTarget.current, target)
+        ? undefined
+        : target;
+      pinnedTarget.current = next;
+      setPinned(next);
+      void applyHighlight(hoveredTarget.current ?? next);
     },
     [applyHighlight]
+  );
+
+  /** A Page Object or member, by registry path. */
+  const previewTarget = useCallback(
+    (path: string) => preview({ path }),
+    [preview]
+  );
+  const togglePinnedTarget = useCallback(
+    (path: string) => togglePinned({ path }),
+    [togglePinned]
+  );
+  /** A node of the page's structure, by ref. */
+  const previewRef = useCallback((ref: string) => preview({ ref }), [preview]);
+  const togglePinnedRef = useCallback(
+    (ref: string) => togglePinned({ ref }),
+    [togglePinned]
   );
 
   useEffect(() => {
@@ -165,14 +184,14 @@ export function useInspector() {
     const observer = new MutationObserver((records) => {
       if (records.every(isInspectorOwnMutation)) return;
       if (
-        !pinnedPathRef.current ||
-        hoveredPath.current ||
+        !pinnedTarget.current ||
+        hoveredTarget.current ||
         refreshTimer !== undefined
       )
         return;
       refreshTimer = setTimeout(() => {
         refreshTimer = undefined;
-        if (pinnedPathRef.current) void applyHighlight(pinnedPathRef.current);
+        if (pinnedTarget.current) void applyHighlight(pinnedTarget.current);
       }, 40);
     });
     observer.observe(document.body, {
@@ -202,11 +221,42 @@ export function useInspector() {
     ...registry,
     pageState,
     refreshPageState,
-    pinnedPath,
+    pinnedPath: pinned && "path" in pinned ? pinned.path : undefined,
+    pinnedRef: pinned && "ref" in pinned ? pinned.ref : undefined,
     previewTarget,
+    previewRef,
     clearPreview,
     togglePinnedTarget,
+    togglePinnedRef,
   };
+}
+
+/** What the page highlights: a registry path, or a node of the structure. */
+type HighlightTarget = { path: string } | { ref: string };
+
+function sameTarget(a: HighlightTarget | undefined, b: HighlightTarget) {
+  return a !== undefined && JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** Resolves a highlight target to the page state nodes it addresses now. */
+async function resolveHighlightTarget(
+  target: HighlightTarget,
+  /** The page state the Inspector captured last; resolving recaptures. */
+  latest: PageState | undefined
+) {
+  if ("ref" in target) {
+    const state = latest ?? (await getPageStateForElements([])).state;
+    return state.resolve(target.ref as AriaRef);
+  }
+  const targets = (await listRegisteredPomTargets()).filter(
+    (candidate) => candidate.path === target.path
+  );
+  const { state, refs } = await getPageStateForElements(
+    uniqueElements(targets.map((candidate) => candidate.element))
+  );
+  return state.resolve(
+    ...refs.filter((ref): ref is AriaRef => ref !== undefined)
+  );
 }
 
 /**
@@ -219,11 +269,11 @@ async function captureStructure() {
   const { state, refs } = await getPageStateForElements(elements);
   // The first path the registry lists for an element is its own member;
   // the rest are aliases through parents and classes.
-  const memberByElement = new Map<Element, string>();
+  const memberByElement = new Map<Element, MemberMapping>();
   for (const { element, path } of targets)
     if (!memberByElement.has(element))
-      memberByElement.set(element, path.replace(/\.root$/, ""));
-  const membersByRef = new Map<string, string>();
+      memberByElement.set(element, memberOfTarget(path));
+  const membersByRef = new Map<string, MemberMapping>();
   elements.forEach((element, index) => {
     const ref = refs[index];
     const member = memberByElement.get(element);
@@ -231,7 +281,7 @@ async function captureStructure() {
       membersByRef.set(ref, member);
   });
   return {
-    text: state.text,
+    state,
     structure: buildStructureTree(state.text, membersByRef),
   };
 }

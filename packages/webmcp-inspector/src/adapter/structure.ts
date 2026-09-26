@@ -14,8 +14,28 @@ export type StructureNode = {
    * Page, e.g. "ListPage.addItemButton" or "ListPage.items[1]".
    */
   member?: string;
+  /**
+   * The Page Object that owns {@link member}, by path: the object itself
+   * when the node is its root, e.g. "ListPage.items[1]", else the object
+   * the member is declared on, e.g. "ListPage".
+   */
+  owner?: string;
   children: StructureNode[];
 };
+
+/** The member a ref maps to, with the Page Object that owns it. */
+export type MemberMapping = { member: string; owner: string };
+
+/**
+ * The member a registry target path names, and the Page Object that owns
+ * it. A Page Object's root is listed as `<object>.root`: it is that object,
+ * which owns it. Any other member belongs to the object it is declared on.
+ */
+export function memberOfTarget(path: string): MemberMapping {
+  const member = path.replace(/\.root$/, "");
+  if (member !== path) return { member, owner: member };
+  return { member, owner: path.slice(0, path.lastIndexOf(".")) };
+}
 
 export type StructureTree = {
   roots: readonly StructureNode[];
@@ -32,7 +52,7 @@ export const emptyStructure: StructureTree = { roots: [], refCount: 0 };
  */
 export function buildStructureTree(
   text: string,
-  membersByRef: ReadonlyMap<string, string>
+  membersByRef: ReadonlyMap<string, string | MemberMapping>
 ): StructureTree {
   const roots: StructureNode[] = [];
   const open: { indent: number; node: StructureNode }[] = [];
@@ -52,8 +72,9 @@ export function buildStructureTree(
       header === "text" ? textNode(value ?? "") : elementNode(header);
     if (node.ref !== undefined) {
       refCount += 1;
-      const member = membersByRef.get(node.ref);
-      if (member !== undefined) node.member = member;
+      const mapping = membersByRef.get(node.ref);
+      if (typeof mapping === "string") node.member = mapping;
+      else if (mapping !== undefined) Object.assign(node, mapping);
     }
     if (header !== "text" && value !== undefined)
       node.children.push(textNode(value));
@@ -63,6 +84,20 @@ export function buildStructureTree(
   }
 
   return { roots, refCount };
+}
+
+/** A node as a row of the tree, depth first, with its depth from a root. */
+export type StructureRow = { node: StructureNode; depth: number };
+
+/** Every node of the tree, depth first, the way the page state lists them. */
+export function* structureRows(
+  nodes: readonly StructureNode[],
+  depth = 0
+): Generator<StructureRow> {
+  for (const node of nodes) {
+    yield { node, depth };
+    yield* structureRows(node.children, depth + 1);
+  }
 }
 
 function textNode(text: string): StructureNode {
