@@ -220,9 +220,7 @@ describe("InspectorApp", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Collapse inspector" }));
 
-    expect(
-      screen.queryByRole("complementary", { name: "Ayme Inspector" })
-    ).toBeNull();
+    expect(screen.queryByRole("complementary", { name: "ayme" })).toBeNull();
     const fab = screen.getByRole("button", { name: "Open Ayme POM inspector" });
     expect(document.activeElement).toBe(fab);
     const mark = fab.querySelector("svg path");
@@ -234,9 +232,7 @@ describe("InspectorApp", () => {
 
     fireEvent.click(fab);
 
-    expect(
-      screen.getByRole("complementary", { name: "Ayme Inspector" })
-    ).toBeTruthy();
+    expect(screen.getByRole("complementary", { name: "ayme" })).toBeTruthy();
     expect(document.activeElement).toBe(
       screen.getByRole("button", { name: "Collapse inspector" })
     );

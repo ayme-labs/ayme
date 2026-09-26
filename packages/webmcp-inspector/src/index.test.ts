@@ -190,9 +190,8 @@ it("renders the React Inspector and its stylesheet inside the Shadow Root only",
   )?.shadowRoot;
 
   expect(
-    shadowRoot?.querySelector('aside[aria-label="Ayme Inspector"] h2')
-      ?.textContent
-  ).toBe("Ayme Inspector");
+    shadowRoot?.querySelector('aside[aria-label="ayme"] h2')?.textContent
+  ).toBe("ayme");
   const style = shadowRoot?.querySelector("style[data-ayme-inspector-style]");
   expect(style?.textContent).toContain("--background");
   expect(style?.textContent).toContain(":host");

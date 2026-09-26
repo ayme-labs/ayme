@@ -102,12 +102,12 @@ export function InspectorApp() {
           <Fab ref={fabButton} onOpen={() => setCollapsedAndFocus(false)} />
         ) : (
           <aside
-            aria-label="Ayme Inspector"
+            aria-label="ayme"
             className="pointer-events-auto absolute top-4 right-4 flex max-h-[calc(100vh-2rem)] w-[min(34rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border bg-background shadow-lg max-sm:top-auto max-sm:right-2 max-sm:bottom-2 max-sm:left-2 max-sm:max-h-[60vh] max-sm:w-auto"
           >
             <header className="flex items-center gap-2 border-b p-3">
               <AymeMark className="size-6 shrink-0" />
-              <h2 className="text-base font-semibold">Ayme Inspector</h2>
+              <h2 className="text-base font-semibold">ayme</h2>
               <Badge variant="outline">{registeredPoms.length} POMs</Badge>
               <div className="ml-auto flex items-center gap-1">
                 <ThemeMenu
