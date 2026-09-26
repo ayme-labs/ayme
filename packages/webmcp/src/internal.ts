@@ -1,8 +1,10 @@
 export {
   capturePageState,
   getPageStateForElements,
+  peekPageStateForDocument,
   resolvePageStateRef,
 } from "./pageState";
+export type { PageStateCapture, PageStatePeek } from "./pageState";
 export { getPageContextForDocument, getPageContextTool } from "./pageContext";
 export { getPomDefinitions } from "./pomDefinitions";
 export {

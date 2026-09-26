@@ -26,7 +26,7 @@ import {
 } from "./publishedTools";
 import type { RefTool } from "./refTools";
 import { buildToolOptions, planArguments } from "./goalLoopQuestions";
-import { getPageStateCaptureForDocument, type AriaRef } from "./pageState";
+import { peekPageStateForDocument, type AriaRef } from "./pageState";
 import { registerCompiledPom } from "./registry";
 import { createRuntimeSession, type RuntimeSession } from "./runtime";
 
@@ -335,7 +335,7 @@ export function describePublishedTools(
         <p data-highlightable>Draft</p>
       `;
       await startSession();
-      const capture = await getPageStateCaptureForDocument(document);
+      const capture = await peekPageStateForDocument(document);
       const described = (refs: readonly AriaRef[] = []) =>
         refs.map((ref) => {
           const element = capture.elementsByRef.get(ref)!;

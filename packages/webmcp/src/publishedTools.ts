@@ -2,7 +2,7 @@ import type { JsonSchema, RegisteredPomTool } from "./contracts";
 import { getPursueGoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
 import {
-  getPageStateCaptureForDocument,
+  peekPageStateForDocument,
   type AriaRef,
   type PageStateCapture,
 } from "./pageState";
@@ -123,9 +123,10 @@ export function runPublishedTool(name: string, input: unknown) {
 }
 
 /**
- * The refs each published Ref Tool can take in `capture` (the current page
- * when absent), by tool name, in tree order: the same closed set the Goal Loop
- * offers for that tool's ref.
+ * The refs each published Ref Tool can take in `capture` (a peek of the
+ * current page when absent), by tool name, in tree order: the same closed set
+ * the Goal Loop offers for that tool's ref. Pass the peek the Inspector shows,
+ * so the refs match its structure.
  */
 export async function listRefToolTargets(
   capture?: PageStateCapture
@@ -137,7 +138,7 @@ export async function listRefToolTargets(
     published.has(tool.name)
   );
   if (refTools.length === 0) return new Map();
-  const current = capture ?? (await getPageStateCaptureForDocument(document));
+  const current = capture ?? (await peekPageStateForDocument(document));
   return new Map(
     refTools.map(({ tool, filter }) => [
       tool.name,
