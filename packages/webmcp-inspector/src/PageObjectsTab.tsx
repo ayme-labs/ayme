@@ -1,6 +1,6 @@
-import type { KeyboardEvent } from "react";
+import { Fragment, type KeyboardEvent } from "react";
 
-import type { PomMemberManifest, RegisteredPomTool } from "@ayme-dev/webmcp";
+import type { PomMemberManifest } from "@ayme-dev/webmcp";
 import { Badge } from "@ayme-dev/design-system/components/badge";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
@@ -13,9 +13,7 @@ import {
   type MemberState,
   type PomClass,
 } from "./pomModel";
-import type { FieldValue, FieldValues, ToolArguments } from "./toolArguments";
-import { ToolForm } from "./ToolForm";
-import type { Run } from "./useRuns";
+import type { RenderRun } from "./frame/runSlot";
 
 const memberStateVariant = {
   present: "secondary",
@@ -32,26 +30,14 @@ export type HighlightControls = {
   togglePinnedTarget: (path: string) => void;
 };
 
-export type ToolControls = {
-  activeTools: ReadonlyMap<string, RegisteredPomTool>;
-  formValues: Readonly<Record<string, FieldValues>>;
-  setFieldValue: (
-    toolName: string,
-    parameterName: string,
-    value: FieldValue
-  ) => void;
-  invoke: (toolName: string, args: ToolArguments) => void;
-  lastRunByTool: ReadonlyMap<string, Run>;
-};
-
 export function PageObjectsTab({
   pomClasses,
   highlight,
-  tools,
+  renderRun,
 }: {
   pomClasses: readonly PomClass[];
   highlight: HighlightControls;
-  tools: ToolControls;
+  renderRun: RenderRun;
 }) {
   if (!pomClasses.length) return <Empty>No POM classes are recognized.</Empty>;
 
@@ -100,17 +86,9 @@ export function PageObjectsTab({
           </h4>
           {pomClass.tools.length ? (
             pomClass.tools.map((tool) => (
-              <ToolForm
-                key={tool.name}
-                tool={tool}
-                available={tools.activeTools.has(tool.name)}
-                values={tools.formValues[tool.name]}
-                onChange={(parameterName, value) =>
-                  tools.setFieldValue(tool.name, parameterName, value)
-                }
-                onInvoke={(args) => tools.invoke(tool.name, args)}
-                lastRun={tools.lastRunByTool.get(tool.name)}
-              />
+              <Fragment key={tool.name}>
+                {renderRun({ toolName: tool.name })}
+              </Fragment>
             ))
           ) : (
             <Empty>This POM has no registered tools.</Empty>

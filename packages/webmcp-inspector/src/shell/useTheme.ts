@@ -1,6 +1,6 @@
-import { useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 
-export type ThemePreference = "system" | "light" | "dark";
+import type { ThemePreference } from "./preferences";
 
 const darkSchemeQuery = "(prefers-color-scheme: dark)";
 
@@ -21,16 +21,15 @@ function systemPrefersDark() {
 }
 
 /**
- * The Inspector's theme: the OS preference unless the user picks light or
- * dark. It applies to the Inspector's own root only, never the host page.
+ * Whether the Inspector is dark: the OS preference, followed live, unless
+ * the person picked light or dark. It applies to the Inspector's own root
+ * only, never the host page.
  */
-export function useTheme() {
-  const [preference, setPreference] = useState<ThemePreference>("system");
+export function useDarkTheme(preference: ThemePreference) {
   const systemDark = useSyncExternalStore(
     subscribeToSystemScheme,
     systemPrefersDark,
     () => false
   );
-  const dark = preference === "dark" || (preference === "system" && systemDark);
-  return { preference, setPreference, dark };
+  return preference === "dark" || (preference === "system" && systemDark);
 }

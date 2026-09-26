@@ -15,9 +15,33 @@ test("running a Page Object tool from the panel acts on the page", async ({
   inspector,
   listPage,
 }) => {
-  await inspector.pageObjects.tool("ListPage.addItem").run({ text: "Milk" });
+  await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
 
   await expect(listPage.items.filter({ hasText: "Milk" })).toHaveCount(1);
+});
+
+test("the panel follows the system theme", async ({ page, inspector }) => {
+  const colorScheme = () =>
+    inspector.panel.evaluate((panel) => getComputedStyle(panel).colorScheme);
+
+  await page.emulateMedia({ colorScheme: "light" });
+  await expect.poll(colorScheme).toBe("light");
+
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect.poll(colorScheme).toBe("dark");
+});
+
+test("the layout survives a reload", async ({ page, inspector }) => {
+  await inspector.header.layoutMenu.choose("Dock to bottom");
+  await inspector.shell.resizeBy("top", 0, -100);
+  const docked = await inspector.shell.box();
+
+  await openFixture(page, "/", { reload: true });
+
+  await expect
+    .poll(() => inspector.header.layoutMenu.current())
+    .toBe("Dock to bottom");
+  expect(await inspector.shell.box()).toEqual(docked);
 });
 
 test.describe("on a React host with aggressive global CSS", () => {
@@ -34,7 +58,7 @@ test.describe("on a React host with aggressive global CSS", () => {
     inspector,
     listPage,
   }) => {
-    await inspector.pageObjects.tool("ListPage.addItem").run({ text: "Eggs" });
+    await (await inspector.tool("ListPage.addItem")).run({ text: "Eggs" });
 
     await expect(listPage.items.filter({ hasText: "Eggs" })).toHaveCount(1);
   });

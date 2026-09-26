@@ -12,13 +12,16 @@ import {
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "./testing";
 
-// Component tests of the skeleton panel, driven through the Inspector POM on
-// playwright-lite. The runtime's registry is replaced with fixture Page
-// Objects, so the evidence covers the panel only.
+// Component tests of the whole panel, with the skeleton's views in the
+// frame, driven through the Inspector POM on playwright-lite. The runtime's
+// registry is replaced with fixture Page Objects, so the evidence covers the
+// panel and its adapter only.
 vi.mock("@ayme-dev/webmcp/internal", () => ({
-  capturePageState: vi.fn(async () => '- main:\n  - button "Save"'),
   getPageStateForElements: vi.fn(async () => ({
-    state: { resolve: async () => [] },
+    state: {
+      text: '- e1 main:\n  - e2 button "Save"',
+      resolve: async () => [],
+    },
     refs: [],
   })),
   listRegisteredPomTargets: vi.fn(async () => []),
@@ -90,14 +93,15 @@ function renderApp() {
 afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
   vi.clearAllMocks();
+  localStorage.clear();
 });
 
-describe("the skeleton Inspector", () => {
+describe("the Inspector", () => {
   it("shows a Page Object Model's member state and pins its highlight", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
     renderApp();
-    const card = inspector.pageObjects.pomClass("Editor");
+    const card = inspector.detail.pageObjects.pomClass("Editor");
 
     await expect
       .poll(() => card.memberState("saveButton").textContent())
@@ -119,7 +123,7 @@ describe("the skeleton Inspector", () => {
     const tool = saveTool("editor", execute);
     mockRegistry([editor("editor", tool)], [tool]);
     renderApp();
-    const save = inspector.pageObjects.tool("Editor.save");
+    const save = await inspector.tool("Editor.save");
 
     await save.run({
       mode: "final",
@@ -139,7 +143,6 @@ describe("the skeleton Inspector", () => {
       title: "Release notes",
       meta: { tag: "v1" },
     });
-    await inspector.showView("Runs");
     const run = inspector.runs.runsOf("Editor.save");
     await expect
       .poll(() => inspector.runs.status(run).textContent())
@@ -151,7 +154,7 @@ describe("the skeleton Inspector", () => {
     const tool = saveTool("editor", execute);
     mockRegistry([editor("editor", tool)], [tool]);
     renderApp();
-    const save = inspector.pageObjects.tool("Editor.save");
+    const save = await inspector.tool("Editor.save");
 
     await save.run({ meta: "{" });
 
@@ -172,49 +175,80 @@ describe("the skeleton Inspector", () => {
     );
     renderApp();
 
-    await inspector.pageObjects.tool("Editor.save").runButton.first().click();
+    await (await inspector.tool("Editor.save")).runButton.click();
 
     await expect.poll(() => activeExecute).toHaveBeenCalledOnce();
     expect(inactiveExecute).not.toHaveBeenCalled();
   });
 
-  it("shows the model's page state and registered tools", async () => {
+  it("names the page it inspects in the header", async () => {
+    const tool = saveTool("editor", vi.fn());
+    mockRegistry([editor("editor", tool)], [tool]);
+    renderApp();
+
+    await expect
+      .poll(() => inspector.header.pageBadge.textContent())
+      .toBe("Editor");
+  });
+
+  it("shows the page state an agent receives in the Structure lens", async () => {
+    renderApp();
+
+    await inspector.navigator.showLens("Structure");
+
+    await expect
+      .poll(() => inspector.pageState.root.textContent())
+      .toContain('e2 button "Save"');
+    await expect
+      .poll(() => inspector.navigator.legend.textContent())
+      .toBe("2 refs");
+  });
+
+  it("shows whether a registered tool is published, with its schema", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], []);
     renderApp();
 
-    await inspector.showView("Model view");
+    await inspector.tool("Editor.save");
 
     await expect
-      .poll(() => inspector.modelView.pageState.textContent())
-      .toContain('button "Save"');
-    const registered = inspector.modelView.registeredTool("Editor.save");
-    await expect.poll(() => registered.textContent()).toContain("unavailable");
+      .poll(() => inspector.detail.root.textContent())
+      .toContain("unavailable");
     await expect
-      .poll(() => registered.textContent())
+      .poll(() => inspector.detail.root.textContent())
       .toContain('"type": "object"');
   });
 
-  it("collapses to the logo and opens again", async () => {
+  it("shows a search result in its lens and the detail pane", async () => {
+    const tool = saveTool("editor", vi.fn());
+    mockRegistry([editor("editor", tool)], [tool]);
     renderApp();
 
-    await inspector.collapse();
+    await inspector.navigator.search("save the editor");
+    await inspector.navigator.result("Editor.save").click();
 
-    await expect.poll(() => inspector.panel.count()).toBe(0);
-    await expect.poll(() => inspector.logo.root.isVisible()).toBe(true);
-    await inspector.logo.open();
-    await expect.poll(() => inspector.panel.isVisible()).toBe(true);
+    await expect
+      .poll(() =>
+        inspector.navigator.lens("Tools").getAttribute("aria-pressed")
+      )
+      .toBe("true");
+    await expect
+      .poll(() =>
+        inspector.navigator.item("Editor.save").getAttribute("aria-current")
+      )
+      .toBe("true");
+    await expect
+      .poll(() => inspector.detail.tool("Editor.save").root.count())
+      .toBe(1);
   });
 
-  it("switches to dark from a theme menu that opens inside the panel's root", async () => {
+  it("switches the panel to dark from the header", async () => {
     renderApp();
-    const menu = inspector.header.themeMenu;
 
-    await menu.choose("Dark");
+    await inspector.header.themeSwitch.choose("Dark");
 
     await expect
       .poll(() => inspector.root.getAttribute("class"))
       .toMatch(/\bdark\b/);
-    await expect.poll(() => menu.trigger.textContent()).toBe("Theme: Dark");
   });
 });

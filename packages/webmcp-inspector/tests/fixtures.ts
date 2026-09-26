@@ -13,11 +13,16 @@ export type FixturePage = "/" | "/react.html";
  * assertion, when the browser lacks WebMCP, the page's script broke or the
  * runtime never published its tools.
  */
-export async function openFixture(page: Page, path: FixturePage) {
+export async function openFixture(
+  page: Page,
+  path: FixturePage,
+  { reload = false } = {}
+) {
   const pageErrors: string[] = [];
   const onPageError = (error: Error) => pageErrors.push(error.message);
   page.on("pageerror", onPageError);
-  await page.goto(path);
+  if (reload) await page.reload();
+  else await page.goto(path);
 
   const hasWebMcp = await page.evaluate(
     () =>

@@ -1,50 +1,112 @@
+import { useCallback, useMemo, useState } from "react";
+
 import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
-import { Badge } from "@ayme-dev/design-system/components/badge";
-import { Button } from "@ayme-dev/design-system/components/button";
-
-import { AymeMark } from "./AymeMark";
-import { Fab } from "./Fab";
+  useRuntimeAdapter,
+  type InspectorRuntime,
+} from "./adapter/useRuntimeAdapter";
+import type { Run } from "./adapter/useRuns";
+import { Empty } from "./common";
+import { DetailPane, InspectorBody, RunsRegion } from "./frame/InspectorBody";
+import type { Lens, LensId } from "./frame/lens";
+import { Navigator } from "./frame/Navigator";
+import type { RenderRun } from "./frame/runSlot";
+import { pageSelection, type Selection } from "./frame/selection";
 import { InspectorRoot } from "./InspectorRoot";
-import { ModelViewTab } from "./ModelViewTab";
-import { PageObjectsTab } from "./PageObjectsTab";
-import { listPomClasses } from "./pomModel";
+import { modelLens } from "./lenses/modelLens";
+import { structureLens } from "./lenses/structureLens";
+import { toolsLens } from "./lenses/toolsLens";
 import { RunsTab } from "./RunsTab";
-import { ThemeMenu } from "./ThemeMenu";
+import { InspectorShell } from "./shell/InspectorShell";
+import { usePreferences } from "./shell/usePreferences";
+import { useDarkTheme } from "./shell/useTheme";
 import type { FieldValue, FieldValues } from "./toolArguments";
-import { useInspector } from "./useInspector";
-import { useInspectorTrace } from "./useInspectorTrace";
-import { useRuns, type Run } from "./useRuns";
-import { useTheme } from "./useTheme";
+import { ToolForm } from "./ToolForm";
 
-const tabs = [
-  { id: "page-objects", label: "Page objects" },
-  { id: "model-view", label: "Model view" },
-  { id: "runs", label: "Runs" },
-] as const;
-
-type TabId = (typeof tabs)[number]["id"];
-
+/**
+ * The Inspector: the runtime adapter's data wired into the frame. It owns
+ * the one selection the navigator, the detail pane and Runs share.
+ */
 export function InspectorApp() {
-  const inspector = useInspector();
-  const { refreshPageState, registeredPoms, activeTools, clearPreview } =
-    inspector;
-  const trace = useInspectorTrace();
-  const theme = useTheme();
-  const onRunSettled = useCallback(
-    () => void refreshPageState(),
-    [refreshPageState]
-  );
-  const { runs, invoke, clear } = useRuns({ onSettled: onRunSettled });
+  const runtime = useRuntimeAdapter();
+  const [preferences, updatePreferences] = usePreferences();
+  const dark = useDarkTheme(preferences.theme);
+  const [selection, setSelection] = useState<Selection>(pageSelection);
+  const [activeLens, setActiveLens] = useState<LensId>("model");
+  const renderRun = useSkeletonRunSlot(runtime);
 
-  const [activeTab, setActiveTab] = useState<TabId>("page-objects");
+  const lenses: Lens[] = [
+    modelLens({
+      host: window.location.host,
+      pomClasses: runtime.pomClasses,
+      selection,
+      onSelect: setSelection,
+      highlight: runtime.highlight,
+      renderRun,
+    }),
+    structureLens({
+      structure: runtime.pageState.structure,
+      pageState: runtime.pageState,
+      onRefresh: runtime.refreshPageState,
+    }),
+    toolsLens({
+      tools: [...runtime.registeredTools.values()].map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        available: runtime.activeTools.has(tool.name),
+      })),
+      selection,
+      onSelect: setSelection,
+      renderRun,
+    }),
+  ];
+  const detail = lenses
+    .map((lens) => lens.detail(selection))
+    .find((view) => view !== undefined) ?? (
+    <Empty>Nothing to show for this selection.</Empty>
+  );
+
+  return (
+    <InspectorRoot dark={dark}>
+      <InspectorShell
+        preferences={preferences}
+        onPreferencesChange={updatePreferences}
+        pageName={runtime.pageName}
+      >
+        <InspectorBody
+          layout={preferences.layout}
+          navigator={
+            <Navigator
+              lenses={lenses}
+              activeLens={activeLens}
+              onLensChange={setActiveLens}
+              onSelect={setSelection}
+              onPreview={runtime.highlight.previewTarget}
+              onPreviewEnd={runtime.highlight.clearPreview}
+            />
+          }
+          detail={<DetailPane>{detail}</DetailPane>}
+          runs={
+            <RunsRegion>
+              <RunsTab
+                runs={runtime.runs}
+                clearRuns={runtime.clearRuns}
+                trace={runtime.trace}
+              />
+            </RunsRegion>
+          }
+        />
+      </InspectorShell>
+    </InspectorRoot>
+  );
+}
+
+/**
+ * The skeleton's run slot: the typed tool form. Ticket D replaces it with
+ * the run card.
+ */
+function useSkeletonRunSlot(runtime: InspectorRuntime): RenderRun {
+  const { registeredTools, activeTools, runs, runTool } = runtime;
   const [formValues, setFormValues] = useState<Record<string, FieldValues>>({});
   const setFieldValue = useCallback(
     (toolName: string, parameterName: string, value: FieldValue) =>
@@ -54,11 +116,6 @@ export function InspectorApp() {
       })),
     []
   );
-
-  const pomClasses = useMemo(
-    () => listPomClasses(registeredPoms),
-    [registeredPoms]
-  );
   const lastRunByTool = useMemo(() => {
     const lastRuns = new Map<string, Run>();
     for (const run of runs)
@@ -66,108 +123,21 @@ export function InspectorApp() {
     return lastRuns;
   }, [runs]);
 
-  const [collapsed, setCollapsed] = useState(false);
-  const fabButton = useRef<HTMLButtonElement>(null);
-  const collapseButton = useRef<HTMLButtonElement>(null);
-  const moveFocus = useRef(false);
-  useEffect(() => {
-    if (!moveFocus.current) return;
-    moveFocus.current = false;
-    (collapsed ? fabButton : collapseButton).current?.focus();
-  }, [collapsed]);
-  const setCollapsedAndFocus = (next: boolean) => {
-    moveFocus.current = true;
-    if (next) clearPreview();
-    setCollapsed(next);
+  return ({ toolName }) => {
+    const tool = registeredTools.get(toolName);
+    if (!tool) return null;
+    return (
+      <ToolForm
+        key={toolName}
+        tool={tool}
+        available={activeTools.has(toolName)}
+        values={formValues[toolName]}
+        onChange={(parameterName, value) =>
+          setFieldValue(toolName, parameterName, value)
+        }
+        onInvoke={(args) => runTool(toolName, args)}
+        lastRun={lastRunByTool.get(toolName)}
+      />
+    );
   };
-
-  const id = useId();
-  const tabId = (tab: TabId) => `${id}-${tab}-tab`;
-  const panelId = (tab: TabId) => `${id}-${tab}-panel`;
-
-  return (
-    <InspectorRoot dark={theme.dark}>
-      {collapsed ? (
-        <Fab ref={fabButton} onOpen={() => setCollapsedAndFocus(false)} />
-      ) : (
-        <aside
-          aria-label="ayme"
-          className="pointer-events-auto absolute top-4 right-4 flex max-h-[calc(100vh-2rem)] w-[min(34rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border bg-background shadow-lg max-sm:top-auto max-sm:right-2 max-sm:bottom-2 max-sm:left-2 max-sm:max-h-[60vh] max-sm:w-auto"
-        >
-          <header className="flex items-center gap-2 border-b p-3">
-            <AymeMark className="size-6 shrink-0" />
-            <h2 className="text-base font-semibold">ayme</h2>
-            <Badge variant="outline">{registeredPoms.length} POMs</Badge>
-            <div className="ml-auto flex items-center gap-1">
-              <ThemeMenu
-                preference={theme.preference}
-                onChange={theme.setPreference}
-              />
-              <Button
-                ref={collapseButton}
-                size="icon"
-                variant="ghost"
-                aria-label="Collapse inspector"
-                aria-expanded
-                onClick={() => setCollapsedAndFocus(true)}
-              >
-                −
-              </Button>
-            </div>
-          </header>
-          <div
-            role="tablist"
-            aria-label="Inspector views"
-            className="flex gap-1 border-b px-3 py-2"
-          >
-            {tabs.map((tab) => (
-              <Button
-                key={tab.id}
-                id={tabId(tab.id)}
-                role="tab"
-                size="sm"
-                variant={activeTab === tab.id ? "secondary" : "ghost"}
-                aria-selected={activeTab === tab.id}
-                aria-controls={panelId(tab.id)}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </Button>
-            ))}
-          </div>
-          <div
-            id={panelId(activeTab)}
-            role="tabpanel"
-            aria-labelledby={tabId(activeTab)}
-            className="overflow-auto p-3"
-          >
-            {activeTab === "page-objects" && (
-              <PageObjectsTab
-                pomClasses={pomClasses}
-                highlight={inspector}
-                tools={{
-                  activeTools,
-                  formValues,
-                  setFieldValue,
-                  invoke: (toolName, args) => void invoke(toolName, args),
-                  lastRunByTool,
-                }}
-              />
-            )}
-            {activeTab === "model-view" && (
-              <ModelViewTab
-                pageState={inspector.pageState}
-                refreshPageState={() => void refreshPageState()}
-                registeredPoms={registeredPoms}
-                activeTools={activeTools}
-              />
-            )}
-            {activeTab === "runs" && (
-              <RunsTab runs={runs} clearRuns={clear} trace={trace} />
-            )}
-          </div>
-        </aside>
-      )}
-    </InspectorRoot>
-  );
 }

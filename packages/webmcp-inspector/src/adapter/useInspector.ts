@@ -2,14 +2,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { AriaRef, RegisteredPomTool } from "@ayme-dev/webmcp";
 import type { RegisteredPom } from "@ayme-dev/webmcp/internal";
+
 import {
-  capturePageState,
   getPageStateForElements,
   listRegisteredPomTargets,
   listRegisteredPomTools,
   listRegisteredPoms,
   subscribeToRegisteredPoms,
 } from "@ayme-dev/webmcp/internal";
+
+import {
+  buildStructureTree,
+  emptyStructure,
+  type StructureTree,
+} from "./structure";
 
 export type RegistrySnapshot = {
   registeredPoms: readonly RegisteredPom[];
@@ -19,6 +25,8 @@ export type RegistrySnapshot = {
 
 export type PageStateView = {
   text?: string;
+  /** The same page state, as the structure tree model. */
+  structure: StructureTree;
   capturedAt?: string;
   error?: string;
   loading: boolean;
@@ -36,6 +44,7 @@ function readRegistry(): RegistrySnapshot {
 export function useInspector() {
   const [registry, setRegistry] = useState(readRegistry);
   const [pageState, setPageState] = useState<PageStateView>({
+    structure: emptyStructure,
     loading: false,
   });
   const [pinnedPath, setPinnedPath] = useState<string>();
@@ -58,10 +67,11 @@ export function useInspector() {
     }));
 
     try {
-      const text = await capturePageState(document.body);
+      const { text, structure } = await captureStructure();
       if (!isCurrent()) return;
       setPageState({
         text,
+        structure,
         capturedAt: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -196,6 +206,33 @@ export function useInspector() {
     previewTarget,
     clearPreview,
     togglePinnedTarget,
+  };
+}
+
+/**
+ * Captures the page state an agent receives, with the refs agents use, and
+ * maps each ref to the Page Object member whose element it is.
+ */
+async function captureStructure() {
+  const targets = await listRegisteredPomTargets();
+  const elements = uniqueElements(targets.map((target) => target.element));
+  const { state, refs } = await getPageStateForElements(elements);
+  // The first path the registry lists for an element is its own member;
+  // the rest are aliases through parents and classes.
+  const memberByElement = new Map<Element, string>();
+  for (const { element, path } of targets)
+    if (!memberByElement.has(element))
+      memberByElement.set(element, path.replace(/\.root$/, ""));
+  const membersByRef = new Map<string, string>();
+  elements.forEach((element, index) => {
+    const ref = refs[index];
+    const member = memberByElement.get(element);
+    if (ref !== undefined && member !== undefined)
+      membersByRef.set(ref, member);
+  });
+  return {
+    text: state.text,
+    structure: buildStructureTree(state.text, membersByRef),
   };
 }
 
