@@ -7,7 +7,9 @@ consume it from a git subtree of this repository at `vendor/ayme`, and never edi
 it there. A change lands here first.
 
 The logos are trademarks and are not covered by the code license. See
-[TRADEMARKS.md](TRADEMARKS.md).
+[TRADEMARKS.md](TRADEMARKS.md). The components and `cn()` are derived from
+shadcn/ui; their upstream MIT notice is in
+[THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
 
 ## Contents
 
