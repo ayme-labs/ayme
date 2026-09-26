@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -44,5 +45,18 @@ describe("compileShadowCss", () => {
   it("compiles the design system's components and the dark variant", () => {
     expect(css).toContain(".bg-primary");
     expect(css).toMatch(/\.dark/);
+  });
+});
+
+describe("shadowTailwind", () => {
+  it("loads with Node's own TypeScript support, as a build config does", () => {
+    const plugin = new URL("./vite-plugin.ts", import.meta.url).href;
+    const script = `const { shadowTailwind } = await import(${JSON.stringify(plugin)});
+if (typeof shadowTailwind !== "function") process.exit(1);`;
+    expect(() =>
+      execFileSync(process.execPath, ["--input-type=module", "-e", script], {
+        stdio: "pipe",
+      })
+    ).not.toThrow();
   });
 });

@@ -7,21 +7,24 @@ consume it from a git subtree of this repository at `vendor/ayme`, and never edi
 it there. A change lands here first.
 
 The logos are trademarks and are not covered by the code license. See
-[TRADEMARKS.md](TRADEMARKS.md).
+[TRADEMARKS.md](TRADEMARKS.md). The components and `cn()` are derived from
+shadcn/ui; their upstream MIT notice is in
+[THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
 
 ## Contents
 
-| Export            | What it is                                                                                                                 |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `globals.css`     | The stylesheet for a page that owns its document: Tailwind, `theme.css`, and base styles for `*` and `body`                |
-| `theme.css`       | The design system without Tailwind's import or base styles, for a shadow root or another Tailwind entry                    |
-| `palette.css`     | The palette as a Tailwind `@theme`: 10 families, 50 to 950, in OKLCH. Tailwind's other default colours are disabled        |
-| `tokens.css`      | shadcn's semantic tokens (`--background`, `--primary`, …) plus `--success`, `--warning`, motion and radius, light and dark |
-| `components/*`    | shadcn components: `badge`, `button`, `card`, `marker`, `popover`, `resizable`, `separator`                                |
-| `lib/utils`       | `cn()`                                                                                                                     |
-| `logo`            | The Ayme mark as path data, for drawing it inline                                                                          |
-| `logo/*`          | The mark, the small mark, the wordmark, favicons and app icons                                                             |
-| `shadow-tailwind` | A Vite plugin that compiles a Tailwind entry for a shadow root and serves it as a string module                            |
+| Export                 | What it is                                                                                                                 |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `globals.css`          | The stylesheet for a page that owns its document: Tailwind, `theme.css`, and base styles for `*` and `body`                |
+| `theme.css`            | The design system without Tailwind's import or base styles, for a shadow root or another Tailwind entry                    |
+| `palette.css`          | The palette as a Tailwind `@theme`: 10 families, 50 to 950, in OKLCH. Tailwind's other default colours are disabled        |
+| `tokens.css`           | shadcn's semantic tokens (`--background`, `--primary`, …) plus `--success`, `--warning`, motion and radius, light and dark |
+| `components/*`         | shadcn components: `badge`, `button`, `card`, `marker`, `popover`, `resizable`, `separator`                                |
+| `lib/utils`            | `cn()`                                                                                                                     |
+| `lib/portal-container` | `PortalContainerProvider`: where popovers and other portalled content mount                                                |
+| `logo`                 | The Ayme mark as path data, for drawing it inline                                                                          |
+| `logo/*`               | The mark, the small mark, the wordmark, favicons and app icons                                                             |
+| `shadow-tailwind`      | A Vite plugin that compiles a Tailwind entry for a shadow root and serves it as a string module                            |
 
 ## Use
 
@@ -48,6 +51,17 @@ shadowTailwind({ entry: "/abs/path/panel.css", moduleId: "virtual:panel-css" });
 Inside a shadow root, `@property` is ignored and `rem` follows the host page's
 font size. The plugin makes Tailwind's `--tw-*` initial values apply anyway and
 converts `rem` to `px`.
+
+A popover portals into `document.body` by default, which is outside the shadow
+root and its styles. The panel provides its own root element instead, the one
+that carries `.dark`, and `PopoverContent` also takes a `container` for one
+popover:
+
+```tsx
+import { PortalContainerProvider } from "@ayme-dev/design-system/lib/portal-container";
+
+<PortalContainerProvider value={panelRoot}>{panel}</PortalContainerProvider>;
+```
 
 Components:
 
