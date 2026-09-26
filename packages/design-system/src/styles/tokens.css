@@ -2,12 +2,17 @@
  * Semantic tokens, under shadcn's names so its components use them unchanged.
  *
  * Light values are declared on `:root, :host`, so they also apply inside a
- * shadow root. Dark mode is a class: the `.dark` values apply to an element
- * with that class and everything inside it. A page sets it on <html> (e.g.
- * next-themes); an embedded panel sets it on its own root element, from the
- * Site's or the OS's preference.
+ * shadow root. Dark mode is a class: the `.dark` values and the `dark`
+ * variant apply to an element with that class and everything inside it. A page
+ * sets it on <html> (e.g. next-themes); an embedded panel sets it on its own
+ * root element, from the Site's or the OS's preference.
+ *
+ * The variant also matches the element carrying `.dark`, so dark rules on
+ * `:root` or on a panel's root apply. `:is()` keeps dark rules one class more
+ * specific than light ones, as shadcn's `&:is(.dark *)` does; Tailwind's
+ * `:where()` form would let a more specific light rule win in dark mode.
  */
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark, .dark *));
 
 :root,
 :host {
