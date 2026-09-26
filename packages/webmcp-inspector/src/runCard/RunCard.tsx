@@ -23,6 +23,7 @@ import {
   withArgument,
 } from "./fields";
 import { needsInput } from "./needsInput";
+import type { RefSource } from "./RefField";
 
 export type RunCardProps = {
   tool: RunnableTool;
@@ -38,6 +39,8 @@ export type RunCardProps = {
   item?: CollectionItem;
   /** For a collection action without an item: the items to pick from. */
   items?: readonly CollectionItem[];
+  /** Where a ref argument chooses its ref from: the page's structure. */
+  refSource?: RefSource;
   /** This tool's runs, newest first. */
   runs: readonly Run[];
   /** Runs the tool with its input, on the item for a collection action. */
@@ -60,6 +63,7 @@ export function RunCard({
   head = true,
   item,
   items = [],
+  refSource,
   runs,
   onRun,
   onShowRun,
@@ -257,6 +261,7 @@ export function RunCard({
             <ArgumentsForm
               fields={fields}
               values={args}
+              refSource={refSource}
               onChange={(path, value) =>
                 setArgs((current) => withArgument(current, path, value))
               }

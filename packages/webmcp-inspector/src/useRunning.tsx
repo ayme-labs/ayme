@@ -15,7 +15,7 @@ import { runScope } from "./runs/runScope";
  * selection. A run card's last-success link shows that run in Runs.
  */
 export function useRunning(runtime: InspectorRuntime, selection: Selection) {
-  const { runs, runnableTools, pageState, highlight } = runtime;
+  const { runs, runnableTools, pageState, highlight, refPicking } = runtime;
   const [allRuns, setAllRuns] = useState(false);
   const [open, setOpen] = useState(true);
   const [focus, setFocus] = useState<RunFocus>();
@@ -44,6 +44,13 @@ export function useRunning(runtime: InspectorRuntime, selection: Selection) {
         head={head}
         item={items.find((candidate) => candidate.path === item)}
         items={items}
+        refSource={{
+          roots,
+          canUse: refPicking.canUse(toolName),
+          onPick: refPicking.start,
+          onPreview: (ref) => void refPicking.preview(ref),
+          onPreviewEnd: refPicking.clearPreview,
+        }}
         runs={runs.filter((run) => run.toolName === toolName)}
         onRun={(input, target) => runtime.runTool(toolName, input, target)}
         onShowRun={showRun}

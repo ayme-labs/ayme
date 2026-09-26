@@ -42,12 +42,16 @@ export function InspectorApp() {
       onRefresh: runtime.refreshPageState,
     }),
     toolsLens({
-      tools: [...runtime.registeredTools.values()].map((tool) => ({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-        available: runtime.activeTools.has(tool.name),
-      })),
+      tools: [
+        ...[...runtime.registeredTools.values()].map((tool) => ({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema,
+          available: runtime.activeTools.has(tool.name),
+        })),
+        // Until G's lens lists every published tool: the built-in Ref tools.
+        ...runtime.refTools,
+      ],
       selection,
       onSelect: setSelection,
       renderRun,

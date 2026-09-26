@@ -29,6 +29,34 @@ export type OtherTool = {
 };
 
 /**
+ * The built-in Ref tools, which the Inspector runs through the public `ayme`
+ * API. The runtime doesn't list them to the Inspector yet (#181 does), so
+ * their input is written here the way the runtime declares it.
+ */
+export const builtInRefTools: readonly OtherTool[] = [
+  {
+    name: "click_page_state_ref",
+    description:
+      "Click a real element ref from get_page_context. The ref is resolved against a fresh capture before the action.",
+    inputSchema: {
+      type: "object",
+      properties: { ref: { type: "string" } },
+      required: ["ref"],
+    },
+  },
+  {
+    name: "fill_page_state_ref",
+    description:
+      "Fill a real editable element ref from get_page_context with text. The ref is resolved against a fresh capture before the action.",
+    inputSchema: {
+      type: "object",
+      properties: { ref: { type: "string" }, value: { type: "string" } },
+      required: ["ref", "value"],
+    },
+  },
+];
+
+/**
  * Every registered Page Object tool once by name, and the other tools the
  * panel can run, as the run card runs them.
  */

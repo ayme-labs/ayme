@@ -15,5 +15,6 @@ export { Navigator, type LensName } from "./pom/Navigator";
 export { PageObjectsView, PomClassCard } from "./pom/PageObjectsView";
 export { PageStateView } from "./pom/PageStateView";
 export { PanelShell, type PanelEdge } from "./pom/PanelShell";
+export { RefField } from "./pom/RefField";
 export { RunCard, type ArgumentValue } from "./pom/RunCard";
 export { RunEntry, RunsView, type RunStep } from "./pom/RunsView";
