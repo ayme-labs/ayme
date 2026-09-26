@@ -179,13 +179,20 @@ export class InteractionHistory {
 
   /**
    * The Goal Loop hands control back: the calling agent has now received the
-   * page the model last received, as it did when both shared one baseline.
+   * page the model last received. Returns the run's Change Record tree, the
+   * agent's previous cursor reconciled against that page; undefined when the
+   * model received nothing.
    */
-  handOver(): void {
+  async handOver(): Promise<StructuralTree | undefined> {
     const received = this.cursors.get("goalLoop");
-    if (!received) return;
+    if (!received) return undefined;
+    const before = this.cursor("agent") ?? received;
     this.cursors.set("agent", received);
     this.cursors.delete("goalLoop");
+    return StructuralTree.reconcile(
+      await before.tree.resolve(),
+      await received.tree.resolve()
+    );
   }
 
   /** The tool calls behind the recorded Structural Actions, in start order. */

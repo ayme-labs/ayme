@@ -96,8 +96,12 @@ describe("InteractionHistory cursors", () => {
     expect(history.actions().get(actionId)?.caller).toBe("goalLoop");
     expect(history.cursor("agent")).toBe(agentRead);
 
-    history.handOver();
+    const runChanges = await history.handOver();
     expect(history.cursor("agent")?.capturedForActionId).toBe(actionId);
+    // The run's Change Record starts at the agent's previous cursor.
+    expect(
+      runChanges?.getNodesByStatus("added").map((node) => node.name)
+    ).toEqual(["Saved"]);
   });
 
   it("completes an action whose tool call failed without moving a cursor", async () => {

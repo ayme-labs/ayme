@@ -721,7 +721,7 @@ export type ChosenArguments = {
 };
 
 /** What was answered, per question id, whether or not an action follows. */
-type AnswerRecord = Pick<ChosenArguments, "choices" | "probabilities">;
+export type AnswerRecord = Pick<ChosenArguments, "choices" | "probabilities">;
 
 /** What the stage-two answers amount to. */
 export type ArgumentAnswers =
@@ -774,18 +774,21 @@ function choose(
  * chunks of one parameter answer together: the one chunk that named an
  * element decides, several call for a run-off, none means no element fits.
  * Every answer is read first, so the choice and scores of every question are
- * recorded even when the step ends without an action.
+ * recorded even when the step ends without an action. They are recorded into
+ * `record`, whose maps the result shares, as each is read: an answer that
+ * throws leaves the ones read before it there.
  */
 export function readArgumentAnswers(
   tool: ExecutableTool,
   argumentQuestions: readonly ArgumentQuestion[],
-  answers: Record<string, unknown>
+  answers: Record<string, unknown>,
+  record: AnswerRecord = { choices: {}, probabilities: {} }
 ): ArgumentAnswers {
   const chosen: ChosenArguments = {
     args: {},
     summary: [],
-    choices: {},
-    probabilities: {},
+    choices: record.choices,
+    probabilities: record.probabilities,
   };
   const picks = argumentQuestions.map((question) => ({
     question,
