@@ -15,7 +15,9 @@ The Inspector is a React app on `@ayme-dev/design-system`. React is bundled
 into the package, so a host app of any framework, or any React version, never
 shares it. Its Tailwind stylesheet is compiled at build time and injected into
 the Shadow Root only; the host document's head receives just the page
-highlight style.
+highlight style and, while the panel is docked, a style that pads the page's
+root on the docked side so the panel sits beside the page. That style is
+removed when the panel floats, collapses or unmounts.
 
 Enable it through the Vite integration:
 

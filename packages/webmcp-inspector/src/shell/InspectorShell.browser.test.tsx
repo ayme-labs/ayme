@@ -159,3 +159,79 @@ describe("collapsed", () => {
     expect(await inspector.panel.count()).toBe(0);
   });
 });
+
+describe("the host page", () => {
+  // The host page's content: the first thing in its body, full width.
+  function renderHostContent() {
+    const content = document.createElement("main");
+    content.textContent = "The host page";
+    content.style.height = "100px";
+    document.body.prepend(content);
+    unmounts.push(() => content.remove());
+    const box = () => content.getBoundingClientRect();
+    return {
+      left: () => box().left,
+      right: () => box().right,
+      bottomRoom: () =>
+        parseFloat(getComputedStyle(document.documentElement).paddingBottom),
+    };
+  }
+
+  it.each([
+    ["left", { left: 600, right: 1280 }],
+    ["right", { left: 0, right: 680 }],
+  ] as const)("moves aside for a panel docked %s", async (layout, edges) => {
+    const host = renderHostContent();
+    renderShell({ layout, sideWidth: 600 });
+
+    await expect
+      .poll(() => ({ left: host.left(), right: host.right() }))
+      .toEqual(edges);
+  });
+
+  it("makes room at its bottom for a panel docked to the bottom", async () => {
+    const host = renderHostContent();
+    renderShell({ layout: "bottom", bottomHeight: 300 });
+
+    await expect.poll(() => host.bottomRoom()).toBe(300);
+  });
+
+  it("follows a docked panel as it resizes", async () => {
+    const host = renderHostContent();
+    renderShell({ layout: "left", sideWidth: 600 });
+
+    await shell.resizeBy("right", 100, 0);
+
+    await expect.poll(() => host.left()).toBe(700);
+  });
+
+  it.each([
+    ["floats", () => header.layoutMenu.choose("Floating")],
+    ["collapses", () => inspector.collapse()],
+  ])("gets its space back when the panel %s", async (_change, change) => {
+    const host = renderHostContent();
+    renderShell({ layout: "left", sideWidth: 600 });
+    await expect.poll(() => host.left()).toBe(600);
+
+    await change();
+
+    await expect
+      .poll(() => ({ left: host.left(), right: host.right() }))
+      .toEqual({ left: 0, right: 1280 });
+  });
+
+  it("gets its space back when the panel unmounts", async () => {
+    const host = renderHostContent();
+    const unmount = renderPart(
+      <ShellHarness initial={{ layout: "left", sideWidth: 600 }} />
+    );
+    await expect.poll(() => host.left()).toBe(600);
+
+    unmount();
+
+    expect(host.left()).toBe(0);
+    expect(document.head.querySelector("[data-ayme-inspector-dock]")).toBe(
+      null
+    );
+  });
+});
