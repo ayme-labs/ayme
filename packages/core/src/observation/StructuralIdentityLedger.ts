@@ -6,7 +6,11 @@ import type { VisitId } from "./Visit";
 /** Where in the history a node appeared or disappeared. */
 export type StructuralLifecycleMoment = {
   readonly visitId: VisitId | null;
-  /** The latest action started before the observation; null before any action. */
+  /**
+   * The action the observation followed: the action it was captured for when
+   * it is an action's after observation, otherwise the page's latest started
+   * action; null before any action.
+   */
   readonly afterActionId: StructuralActionId | null;
 };
 
@@ -45,34 +49,31 @@ type Identity = {
  * records when it appeared and disappeared. Nothing here assumes a browser.
  */
 export class StructuralIdentityLedger {
-  private baseline: StructuralTree | null = null;
-  private currentByRef = new Map<AriaRef, Identity>();
-  private readonly byAlias = new Map<AriaRef, Identity>();
+  private _baseline: StructuralTree | null = null;
+  private _currentByRef = new Map<AriaRef, Identity>();
+  private readonly _byAlias = new Map<AriaRef, Identity>();
 
-  /** Reconcile `tree` against the previous observation; null for the first. */
-  advance(
-    tree: StructuralTree,
-    moment: StructuralLifecycleMoment
-  ): StructuralTree | null {
-    const baseline = this.baseline;
-    this.baseline = tree;
+  /** Reconcile `tree` against the previous observation and carry identities forward. */
+  advance(tree: StructuralTree, moment: StructuralLifecycleMoment): void {
+    const baseline = this._baseline;
+    this._baseline = tree;
     if (baseline === null) {
       for (const node of tree.getAllNodes()) {
-        const identity = this.createIdentity(moment, null);
+        const identity = this._createIdentity(moment, null);
         identity.currentRef = node.ref;
-        this.bindAlias(node.ref, identity);
-        this.currentByRef.set(node.ref, identity);
+        this._bindAlias(node.ref, identity);
+        this._currentByRef.set(node.ref, identity);
       }
-      return null;
+      return;
     }
 
-    const previousByRef = this.currentByRef;
+    const previousByRef = this._currentByRef;
     const reconciled = StructuralTree.reconcile(baseline, tree);
     const assignments = tree.getAllNodes().map((node) => {
       const beforeRef = reconciled.getBeforeNodeForAfterRef(node.ref)?.ref;
       const candidates = new Set<Identity>();
       const current = previousByRef.get(node.ref);
-      const historical = this.byAlias.get(node.ref);
+      const historical = this._byAlias.get(node.ref);
       const lineage =
         beforeRef === undefined ? undefined : previousByRef.get(beforeRef);
       if (current) candidates.add(current);
@@ -111,16 +112,19 @@ export class StructuralIdentityLedger {
         hasAmbiguousCandidate ||
         (identity !== undefined && claimsByIdentity.get(identity)! > 1)
       ) {
-        if (!this.byAlias.has(node.ref))
-          this.byAlias.set(node.ref, this.createIdentity(moment, "ambiguous"));
+        if (!this._byAlias.has(node.ref))
+          this._byAlias.set(
+            node.ref,
+            this._createIdentity(moment, "ambiguous")
+          );
         continue;
       }
 
-      const selected = identity ?? this.createIdentity(moment, null);
+      const selected = identity ?? this._createIdentity(moment, null);
       selected.currentRef = node.ref;
       selected.unresolvedReason = null;
       selected.disappeared = null;
-      this.bindAlias(node.ref, selected);
+      this._bindAlias(node.ref, selected);
       nextByRef.set(node.ref, selected);
       retained.add(selected);
     }
@@ -135,13 +139,12 @@ export class StructuralIdentityLedger {
           : "removed";
     }
 
-    this.currentByRef = nextByRef;
-    return reconciled;
+    this._currentByRef = nextByRef;
   }
 
   /** Resolve any ref the ledger has observed to its identity's current ref. */
   resolve(requestedRef: AriaRef): StructuralIdentityResolution {
-    const identity = this.byAlias.get(requestedRef);
+    const identity = this._byAlias.get(requestedRef);
     if (!identity)
       return { status: "unresolved", requestedRef, reason: "unknown-ref" };
     if (identity.currentRef === null)
@@ -159,13 +162,13 @@ export class StructuralIdentityLedger {
 
   /** When the identity behind `ref` appeared and, if it has, disappeared. */
   lifecycle(ref: AriaRef): StructuralIdentityLifecycle | undefined {
-    const identity = this.byAlias.get(ref);
+    const identity = this._byAlias.get(ref);
     return identity
       ? { appeared: identity.appeared, disappeared: identity.disappeared }
       : undefined;
   }
 
-  private createIdentity(
+  private _createIdentity(
     moment: StructuralLifecycleMoment,
     unresolvedReason: Identity["unresolvedReason"]
   ): Identity {
@@ -177,12 +180,12 @@ export class StructuralIdentityLedger {
     };
   }
 
-  private bindAlias(ref: AriaRef, identity: Identity): void {
-    const existing = this.byAlias.get(ref);
+  private _bindAlias(ref: AriaRef, identity: Identity): void {
+    const existing = this._byAlias.get(ref);
     if (existing !== undefined && existing !== identity)
       throw new Error(
         `Structural Ref alias ${ref} is already bound to another identity.`
       );
-    this.byAlias.set(ref, identity);
+    this._byAlias.set(ref, identity);
   }
 }

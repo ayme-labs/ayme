@@ -34,7 +34,9 @@ type PageIdentities = {
     entry: StructuralObservationEntry;
     moment: StructuralLifecycleMoment;
   }[];
-  drained: Promise<void>;
+  /** The observation the ledger last reconciled. */
+  through: StructuralObservationEntry | null;
+  drained: Promise<unknown>;
 };
 
 export type StructuralObservationSessionOptions = {
@@ -66,7 +68,6 @@ export class StructuralObservationSession {
   private readonly _clock: { now(): number };
   private _timeline: StructuralTimeline;
   private _identities = new Map<PageId, PageIdentities>();
-  private _lastStartedAction = new Map<PageId, StructuralActionId>();
 
   constructor(options: StructuralObservationSessionOptions) {
     this._clock = options.clock;
@@ -152,8 +153,7 @@ export class StructuralObservationSession {
         visitId: this._timeline.currentVisitIdForPage(entry.pageId),
         afterActionId:
           entry.capturedForActionId ??
-          this._lastStartedAction.get(entry.pageId) ??
-          null,
+          this._timeline.latestActionStartedForPage(entry.pageId),
       },
     });
     return entry;
@@ -162,36 +162,45 @@ export class StructuralObservationSession {
   recordActionStarted(
     entry: StructuralActionStartedEntry
   ): StructuralActionStartedEntry {
-    this._lastStartedAction.set(entry.pageId, entry.actionId);
     return this._timeline.recordActionStarted(entry);
   }
 
   /**
-   * The page's identity ledger, with every observation recorded so far
-   * reconciled into it in recording order. Continuity runs through every
+   * Read the page's identity ledger once every observation recorded so far is
+   * reconciled into it, in recording order. Continuity runs through every
    * observation of the page, across its Visits; each appearance and
-   * disappearance names its Visit and the action it followed. An observation
-   * whose tree does not resolve is skipped.
+   * disappearance names its Visit and the action it followed.
+   *
+   * `read` runs in the same step as the last reconcile and receives the
+   * observation the ledger now stands at, so a caller can pair the ledger's
+   * current refs with that observation's own data. Reads are serialized.
+   *
+   * The ledger is its own reconciliation chain, run lazily here: one
+   * reconcile per recorded observation, against the page's previous one. An
+   * observation whose tree fails to resolve fails the read and stays pending,
+   * so lineage is never skipped over.
    */
-  async identityLedger(pageId: PageId): Promise<StructuralIdentityLedger> {
+  async readIdentityLedger<T>(
+    pageId: PageId,
+    read: (
+      ledger: StructuralIdentityLedger,
+      through: StructuralObservationEntry | null
+    ) => T
+  ): Promise<T> {
     const page = this._pageIdentities(pageId);
-    const drained = page.drained
+    const result = page.drained
       .catch(() => {})
       .then(async () => {
         while (page.pending.length > 0) {
-          const { entry, moment } = page.pending.shift()!;
-          let tree;
-          try {
-            tree = await entry.tree.resolve();
-          } catch {
-            continue;
-          }
-          page.ledger.advance(tree, moment);
+          const { entry, moment } = page.pending[0]!;
+          page.ledger.advance(await entry.tree.resolve(), moment);
+          page.pending.shift();
+          page.through = entry;
         }
+        return read(page.ledger, page.through);
       });
-    page.drained = drained;
-    await drained;
-    return page.ledger;
+    page.drained = result;
+    return result;
   }
 
   recordActionCompleted(
@@ -244,7 +253,6 @@ export class StructuralObservationSession {
     this._timeline = new StructuralTimeline();
     this._visitIdSource.reset();
     this._identities = new Map();
-    this._lastStartedAction = new Map();
   }
 
   private _pageIdentities(pageId: PageId): PageIdentities {
@@ -253,6 +261,7 @@ export class StructuralObservationSession {
       page = {
         ledger: new StructuralIdentityLedger(),
         pending: [],
+        through: null,
         drained: Promise.resolve(),
       };
       this._identities.set(pageId, page);

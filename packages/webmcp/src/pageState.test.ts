@@ -629,6 +629,43 @@ describe("get_page_state", () => {
     ]);
   });
 
+  it("resolves a ref against the capture the identity ledger last reconciled when another capture interleaves", async () => {
+    const original = document.querySelector("#captured");
+    if (!original) throw new Error("Missing test root.");
+    const snapshot = (body: string, button: string, element: Element) => ({
+      distilledText: `- generic [ref=${body}]:\n  - button "Captured omitted" [ref=${button}]`,
+      fullText: `- generic [ref=${body}]:\n  - button "Captured omitted" [ref=${button}]`,
+      refsByElement: new Map([
+        [document.body, body],
+        [element, button],
+      ]),
+    });
+    listRegisteredPomRoots.mockResolvedValue([]);
+    captureAriaSnapshot.mockReturnValueOnce(snapshot("e1", "e2", original));
+    await getPageStateCaptureForDocument(document);
+
+    original.outerHTML = '<button id="captured">Captured omitted</button>';
+    const replacement = document.querySelector("#captured")!;
+    captureAriaSnapshot
+      .mockReturnValueOnce(snapshot("e1", "e2", original))
+      .mockReturnValueOnce(snapshot("e3", "e4", replacement));
+
+    // The resolution's own capture still shows e2; the interleaved capture,
+    // recorded before the ledger is read, re-renders the button as e4.
+    const [resolutions] = await Promise.all([
+      resolvePageStateRefs(document, ref("e2")),
+      getPageStateCaptureForDocument(document),
+    ]);
+
+    expect(resolutions).toEqual([
+      {
+        status: "resolved",
+        requestedRef: ref("e2"),
+        node: { ref: ref("e4"), element: replacement },
+      },
+    ]);
+  });
+
   it("keeps concurrent capture results scoped to their own capture", async () => {
     const captured = document.querySelector("#captured");
     if (!captured) throw new Error("Missing test root.");

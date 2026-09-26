@@ -65,6 +65,7 @@ export class InteractionHistory {
    */
   private readonly cursors = new Map<Caller, StructuralObservationEntry>();
   private first: StructuralObservationEntry | undefined;
+  private latest: StructuralObservationEntry | undefined;
 
   constructor(
     currentDocument: Document,
@@ -105,6 +106,11 @@ export class InteractionHistory {
     const entry = this.record(tree, at);
     if (receivedBy) this.cursors.set(receivedBy, entry);
     return entry;
+  }
+
+  /** The observation recorded most recently, of any kind. */
+  get latestObservation(): StructuralObservationEntry | undefined {
+    return this.latest;
   }
 
   /** The observation `caller` last received; the first observation while it has received none. */
@@ -222,6 +228,7 @@ export class InteractionHistory {
       ...(capturedForActionId ? { capturedForActionId } : {}),
     });
     this.first ??= entry;
+    this.latest = entry;
     return entry;
   }
 }

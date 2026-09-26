@@ -13,6 +13,8 @@ import {
   type AriaRef,
   type ProjectedStructuralProperty,
   type StructuralActionId,
+  type StructuralIdentityLedger,
+  type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
 import { browserMonotonicClock } from "./browserMonotonicClock";
 import {
@@ -28,7 +30,7 @@ import {
   type ReferencedCapturedRoot,
 } from "./pomRootPlacement";
 import { parseCapturedTree } from "./capturedTree";
-import { ToolInputError } from "./errors";
+import { RuntimeStateError, ToolInputError } from "./errors";
 
 export type { AriaRef };
 export type { Caller } from "./interactionHistory";
@@ -209,6 +211,17 @@ class PageStateSession {
    * Captures Ayme makes for itself move no cursor.
    */
   readonly history: InteractionHistory;
+  /**
+   * The element map of the latest recorded observation. The identity ledger
+   * stands at that observation when it is read, so its current refs are
+   * looked up here; only this one map is kept, never one per observation.
+   */
+  private latestElements:
+    | {
+        observation: StructuralObservationEntry;
+        elementsByRef: ReadonlyMap<AriaRef, Element>;
+      }
+    | undefined;
 
   constructor(private readonly currentDocument: Document) {
     this.history = new InteractionHistory(
@@ -235,16 +248,19 @@ class PageStateSession {
 
   async completeAction(actionId: StructuralActionId): Promise<StructuralTree> {
     const capture = await this.captureTree();
-    return this.history.completeAction(
+    const changes = this.history.completeAction(
       actionId,
       capture.tree,
       this.history.now()
     );
+    this.rememberElements(capture);
+    return changes;
   }
 
   async failAction(actionId: StructuralActionId): Promise<void> {
     const capture = await this.captureTree();
     this.history.failAction(actionId, capture.tree, this.history.now());
+    this.rememberElements(capture);
   }
 
   async getPageStateForElements(
@@ -264,7 +280,16 @@ class PageStateSession {
     // Stamped once the capture is taken, so it cannot share its time with an
     // action started right after it.
     this.history.observe(capture.tree, this.history.now(), receivedBy);
+    this.rememberElements(capture);
     return capture;
+  }
+
+  /** Call in the same step as the observation of `capture` is recorded. */
+  private rememberElements(capture: CapturedPageState): void {
+    this.latestElements = {
+      observation: this.history.latestObservation!,
+      elementsByRef: capture.elementsByRef,
+    };
   }
 
   private async captureTree(): Promise<CapturedPageState> {
@@ -282,22 +307,40 @@ class PageStateSession {
     // A capture Ayme makes for itself: the observation session's identity
     // ledger carries ref identities forward through it without it becoming
     // the state a caller received.
-    const capture = await this.capture();
-    const ledger = await this.history.observations.identityLedger(
-      this.history.pageId
+    // The ledger is read at the latest recorded observation, which may be a
+    // capture that interleaved after this one; refs and elements are taken
+    // from that same observation.
+    await this.capture();
+    return this.history.observations.readIdentityLedger(
+      this.history.pageId,
+      (ledger, through) => {
+        const latest = this.latestElements;
+        if (!latest || latest.observation !== through)
+          throw new RuntimeStateError(
+            "The identity ledger stands at an observation without an element map."
+          );
+        return refs.map((requestedRef) =>
+          this.resolveOne(ledger, latest.elementsByRef, requestedRef)
+        );
+      }
     );
-    return refs.map((requestedRef): RefResolution => {
-      const identity = ledger.resolve(requestedRef);
-      if (identity.status === "unresolved") return identity;
-      const element = capture.elementsByRef.get(identity.currentRef);
-      if (element === undefined)
-        return { status: "unresolved", requestedRef, reason: "no-element" };
-      return {
-        status: "resolved",
-        requestedRef,
-        node: { ref: identity.currentRef, element },
-      };
-    });
+  }
+
+  private resolveOne(
+    ledger: StructuralIdentityLedger,
+    elementsByRef: ReadonlyMap<AriaRef, Element>,
+    requestedRef: AriaRef
+  ): RefResolution {
+    const identity = ledger.resolve(requestedRef);
+    if (identity.status === "unresolved") return identity;
+    const element = elementsByRef.get(identity.currentRef);
+    if (element === undefined)
+      return { status: "unresolved", requestedRef, reason: "no-element" };
+    return {
+      status: "resolved",
+      requestedRef,
+      node: { ref: identity.currentRef, element },
+    };
   }
 
   async resolveElementRef(element: Element): Promise<AriaRef | undefined> {
