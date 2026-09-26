@@ -19,13 +19,13 @@ import {
  */
 export function renderChangeRecord(reconciled: StructuralTree): string {
   const changed = new Set<AriaRef>();
-  const contentChanged = new Set<AriaRef>();
+  const showsText = new Set<AriaRef>();
   reconciled.walk((node) => {
     const status = node.status;
     if (status === undefined || status.kind === "unchanged") return;
     changed.add(node.ref);
     if (status.kind !== "updated" || status.selfChanged)
-      contentChanged.add(node.ref);
+      showsText.add(node.ref);
   });
 
   if (changed.size === 0) return "";
@@ -48,9 +48,9 @@ export function renderChangeRecord(reconciled: StructuralTree): string {
       roots: reconciled.getRootNodes().filter(hasChangeBelow),
       structuralNode: (node) => node,
       children: (node) => {
-        const showsText = contentChanged.has(node.ref);
+        const withText = showsText.has(node.ref);
         return node.children.filter((child) =>
-          typeof child === "string" ? showsText : hasChangeBelow(child)
+          typeof child === "string" ? withText : hasChangeBelow(child)
         );
       },
     },

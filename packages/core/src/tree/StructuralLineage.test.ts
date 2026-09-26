@@ -81,7 +81,7 @@ describe("StructuralTree.reconcile aria-ref identity", () => {
     expect(reconciled.getNodesByStatus("removed")).toEqual([]);
   });
 
-  it("does not let an unchanged parent shortcut swallow a nested child re-ref", () => {
+  it("keeps lineage through a nested child re-ref under an unchanged parent", () => {
     const [before, after] = parsePair(
       '- generic [ref=e1]:\n  - button "Nested" [ref=e2]',
       '- generic [ref=e1]:\n  - button "Nested" [ref=e5]'
