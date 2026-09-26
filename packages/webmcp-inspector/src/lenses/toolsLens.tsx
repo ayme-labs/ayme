@@ -78,7 +78,7 @@ export function toolsLens({
               {tool.available ? "available" : "unavailable"}
             </Badge>
           </div>
-          {renderRun({ toolName: tool.name })}
+          {renderRun({ toolName: tool.name, head: false })}
           <Json value={tool.inputSchema} aria-label="Input schema" />
         </div>
       );

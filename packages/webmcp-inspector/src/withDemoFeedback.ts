@@ -7,7 +7,8 @@ export type { TraceEntry } from "./trace";
 export type DemoFeedbackOptions = {
   beforeActionMs?: number;
   clickCue?: boolean;
-  onTrace: (entry: TraceEntry) => void;
+  /** Called before each traced operation, with the locator it acts on. */
+  onTrace: (entry: TraceEntry, locator: Locator) => void;
 };
 
 type FeedbackContext = {
@@ -83,7 +84,7 @@ export function withDemoFeedback(
                 }
               : {}),
           };
-          for (const listener of context.listeners) listener(entry);
+          for (const listener of context.listeners) listener(entry, locator);
 
           return (async () => {
             if (operation !== "waitFor" && operation !== "expect") {

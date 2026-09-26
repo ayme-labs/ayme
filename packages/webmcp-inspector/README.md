@@ -1,9 +1,9 @@
 # @ayme-dev/webmcp-inspector
 
 Browser Inspector for Ayme Page Object Models. It shows the live POM classes
-and their member states, a form for each generated tool, execution history,
-browser traces, and the structural page state a model sees, in an isolated
-open Shadow Root.
+and their member states, a run card for each tool, the runs made from the
+panel with their steps, and the structural page state a model sees, in an
+isolated open Shadow Root.
 
 The panel floats, or docks to the left, the right or the bottom of the page,
 and collapses to the ayme logo. It remembers its layout, sizes, positions and
@@ -55,6 +55,11 @@ Applications do not need this demo-only entry point.
   shared selection, and the `Lens` and run slot contracts.
 - `src/lenses`: one file per lens. Each contributes its tree, its search
   entries, its legend counts and the detail views of what it selects.
+- `src/runCard`: the run card that fills the run slot: the typed form built
+  from a tool's schema, the item picker and the last result. Each field's
+  control is chosen by its kind; `RefField` is the ref field's.
+- `src/runs`: Runs, the timeline of the runs made from the panel, and which
+  runs belong to the selection.
 
 Below the adapter, components take only props; lint enforces it.
 

@@ -1,10 +1,12 @@
 import { useCallback, useMemo } from "react";
 
 import type { RegisteredPomTool } from "@ayme-dev/webmcp";
+import { getPageContextTool } from "@ayme-dev/webmcp/internal";
 
 import { listPomClasses } from "../pomModel";
+import { listRunnableTools } from "./runnableTools";
+import { clearStepPreview, previewStep } from "./runSteps";
 import { useInspector } from "./useInspector";
-import { useInspectorTrace } from "./useInspectorTrace";
 import { useRuns } from "./useRuns";
 
 /**
@@ -15,7 +17,6 @@ import { useRuns } from "./useRuns";
 export function useRuntimeAdapter() {
   const inspector = useInspector();
   const { registeredPoms, refreshPageState } = inspector;
-  const trace = useInspectorTrace();
   const onRunSettled = useCallback(
     () => void refreshPageState(),
     [refreshPageState]
@@ -29,6 +30,13 @@ export function useRuntimeAdapter() {
   const registeredTools = useMemo(
     () => listRegisteredTools(registeredPoms),
     [registeredPoms]
+  );
+  const runnableTools = useMemo(
+    () =>
+      listRunnableTools(registeredPoms, inspector.activeTools, [
+        getPageContextTool,
+      ]),
+    [registeredPoms, inspector.activeTools]
   );
 
   return {
@@ -48,11 +56,18 @@ export function useRuntimeAdapter() {
       clearPreview: inspector.clearPreview,
       togglePinnedTarget: inspector.togglePinnedTarget,
     },
+    /**
+     * Every registered Page Object tool once by name, and the other tools the
+     * panel can run, as the run card runs them.
+     */
+    runnableTools,
+    /** The runs made from the panel, newest first. */
     runs,
-    runTool: (toolName: string, args: Parameters<typeof invoke>[1]) =>
-      void invoke(toolName, args),
+    runTool: (...args: Parameters<typeof invoke>) => void invoke(...args),
     clearRuns: clear,
-    trace,
+    /** Highlights a run step's element while it's on the page. */
+    previewStep,
+    clearStepPreview,
   };
 }
 

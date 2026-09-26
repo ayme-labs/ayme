@@ -17,6 +17,11 @@ import { Inspector } from "./testing";
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its adapter only.
 vi.mock("@ayme-dev/webmcp/internal", () => ({
+  getPageContextTool: {
+    name: "get_page_context",
+    description: "Return the page context.",
+    inputSchema: { type: "object" },
+  },
   getPageStateForElements: vi.fn(async () => ({
     state: {
       text: '- e1 main:\n  - e2 button "Save"',
@@ -135,7 +140,7 @@ describe("the Inspector", () => {
 
     await expect
       .poll(() => save.lastResult.textContent())
-      .toContain('"saved": true');
+      .toContain("Succeeded");
     expect(execute).toHaveBeenCalledExactlyOnceWith({
       mode: "final",
       copies: 3,
@@ -143,25 +148,28 @@ describe("the Inspector", () => {
       title: "Release notes",
       meta: { tag: "v1" },
     });
-    const run = inspector.runs.runsOf("Editor.save");
     await expect
-      .poll(() => inspector.runs.status(run).textContent())
-      .toBe("succeeded");
+      .poll(() => inspector.runs.latest("Editor.save").status())
+      .toBe("Succeeded");
   });
 
-  it("rejects invalid JSON without running the tool", async () => {
-    const execute = vi.fn(async () => null);
-    const tool = saveTool("editor", execute);
+  it("shows a run card's last successful run in Runs", async () => {
+    const tool = saveTool(
+      "editor",
+      vi.fn(async () => ({ saved: true }))
+    );
     mockRegistry([editor("editor", tool)], [tool]);
     renderApp();
     const save = await inspector.tool("Editor.save");
+    await save.run({ copies: 1, title: "Notes" });
+    await inspector.runs.header.click();
+    await expect.poll(() => inspector.runs.runs.count()).toBe(0);
 
-    await save.run({ meta: "{" });
+    await save.lastSuccessLink.click();
 
     await expect
-      .poll(() => save.error.textContent())
-      .toBe("meta: enter valid JSON.");
-    expect(execute).not.toHaveBeenCalled();
+      .poll(() => inspector.runs.latest("Editor.save").status())
+      .toBe("Succeeded");
   });
 
   it("runs the active registration when tool names collide", async () => {
@@ -237,9 +245,7 @@ describe("the Inspector", () => {
         inspector.navigator.item("Editor.save").getAttribute("aria-current")
       )
       .toBe("true");
-    await expect
-      .poll(() => inspector.detail.tool("Editor.save").root.count())
-      .toBe(1);
+    await expect.poll(() => inspector.detail.runCard().root.count()).toBe(1);
   });
 
   it("switches the panel to dark from the header", async () => {
