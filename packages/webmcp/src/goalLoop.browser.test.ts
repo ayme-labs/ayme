@@ -751,6 +751,33 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     ]);
   });
 
+  it("records a failed step as a bare step record with the error as its result", async () => {
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        { operation: "App.fail", goal_met: 0.1 },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await registerFailingPom(decide);
+    const result = (await tool.execute({
+      goal: "do the thing",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+    const record = {
+      operation: "App.fail",
+      chosen: {},
+      result: "action exploded",
+      page_changed: false,
+      did: "App.fail()",
+    };
+    expect(result.reason).toBe("done");
+    expect(result.history).toEqual([record]);
+    // The next step's model state carries the same entry, and nothing more.
+    expect((requests.at(-1)!.state as Record<string, unknown>).history).toEqual(
+      [record]
+    );
+  });
+
   // --- State fields sent to the model ---
 
   it("sends goal, page (typed tree), page_objects, and history as state fields", async () => {

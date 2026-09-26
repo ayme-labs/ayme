@@ -1,58 +1,16 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import {
-  recordPublishedTools,
-  type RecordingDriver,
-} from "@ayme-dev/webmcp/testing";
+  activeItems,
+  archivedItems,
+  itemIds,
+  pursueGoal,
+  useGoalLane,
+} from "./goalLane";
 
-import { readModelKey } from "../scripts/appEnvironment";
-import { recordGoalRun } from "./goalRunRecord";
-
-type Handover = { reason: string; changes?: string };
-
-/** Read the same key the dev server's Decision Endpoint reads: anyone running
- *  this lane brings their own. */
-const modelKey = readModelKey();
-
-const skipReason =
-  "Live goal lane skipped: set AYME_OPENROUTER_API_KEY to your own model key to run it.";
-
-// The list reporter prints no skip reason, so say it once before the run.
-if (!modelKey) console.log(`\n${skipReason}\n`);
-test.skip(!modelKey, skipReason);
-
-test.beforeEach(({ context }) => recordPublishedTools(context));
-
-function activeItems(page: Page) {
-  return page.getByRole("list", { name: "Active items" }).getByRole("listitem");
-}
-
-function archivedItems(page: Page) {
-  return page
-    .getByRole("list", { name: "Archived items" })
-    .getByRole("listitem");
-}
-
-/** Both lists show the item id, so it identifies the same item in either. */
-function itemIds(items: Locator) {
-  return items.locator("code").allInnerTexts();
-}
-
-/** Pursue the goal; under `pnpm run goals:runs` also record what the run did. */
-async function pursueGoal(page: Page, goal: string, maxSteps: number) {
-  return recordGoalRun(page, test.info(), goal, async () => {
-    return (await page.evaluate(
-      async ({ goal, maxSteps }) => {
-        const tool = (
-          document.modelContext as unknown as RecordingDriver
-        ).tools.find((candidate) => candidate.name === "pursue_goal");
-        if (!tool) throw new Error("pursue_goal tool was not published.");
-        return await tool.execute({ goal, maxSteps });
-      },
-      { goal, maxSteps }
-    )) as Handover;
-  });
-}
+/** The live lane (`test:goals`): goals CI expects to pass. Goals allowed to
+ *  fail belong to the run harness's own set, `goalHarness.spec.ts`. */
+useGoalLane("Live goal lane");
 
 test("a goal that names a value the model cannot choose hands over", async ({
   page,

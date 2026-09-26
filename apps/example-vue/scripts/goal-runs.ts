@@ -1,9 +1,9 @@
 /**
- * The Goal Loop run harness (#121): runs the live lane's goals N times each
- * against the real Decision Endpoint and writes one JSON file per invocation,
- * or compares two such files. Run by hand only; see the README.
+ * The Goal Loop run harness (#121): runs a goal set N times per goal against
+ * the real Decision Endpoint and writes one JSON file per invocation, or
+ * compares two such files. Run by hand only; see the README.
  *
- *   node scripts/goal-runs.ts --runs <N>
+ *   node scripts/goal-runs.ts --runs <N> [--live-lane]
  *   node scripts/goal-runs.ts compare <runA.json> <runB.json>
  */
 import { execFileSync, spawnSync } from "node:child_process";
@@ -23,8 +23,18 @@ import {
 
 const outputDirectory = path.join(appRoot, "goal-runs");
 
+/** The goal sets: the harness's own by default, the live lane on request. */
+const goalSets = {
+  harness: "playwright.harness.config.ts",
+  "live-lane": "playwright.goals.config.ts",
+} as const;
+type GoalSet = keyof typeof goalSets;
+
 type GoalRunsFile = {
   commit: { sha: string; dirty: boolean };
+  /** Absent in files written before goal sets were recorded; those ran the
+   *  live lane. */
+  goalSet?: GoalSet;
   model: string | null;
   runsPerGoal: number;
   timestamp: string;
@@ -45,6 +55,10 @@ function commitLabel(commit: GoalRunsFile["commit"]) {
   return `${commit.sha.slice(0, 7)}${commit.dirty ? " (dirty)" : ""}`;
 }
 
+function runLabel(runs: GoalRunsFile) {
+  return `${runs.runsPerGoal} runs per goal, goal set ${runs.goalSet ?? "live-lane"}`;
+}
+
 function fail(message: string): never {
   console.error(message);
   process.exit(1);
@@ -61,21 +75,30 @@ function spawnInApp(command: string, args: string[], env?: NodeJS.ProcessEnv) {
   }).status;
 }
 
-function readRunsArgument(args: string[]) {
-  const index = args.indexOf("--runs");
-  const value = index >= 0 ? args[index + 1] : undefined;
-  const runs = Number(value);
+function optionValue(args: string[], name: string) {
+  const index = args.indexOf(name);
+  return index >= 0 ? args[index + 1] : undefined;
+}
+
+function readRunsArguments(args: string[]) {
+  const runs = Number(optionValue(args, "--runs"));
   if (!Number.isInteger(runs) || runs < 1)
     fail(
       "Pass the number of runs per goal, e.g. --runs 3. Every run makes real model calls."
     );
-  return runs;
+  const goalSet: GoalSet = args.includes("--live-lane")
+    ? "live-lane"
+    : "harness";
+  return { runsPerGoal: runs, goalSet };
 }
 
-function runGoals(runsPerGoal: number) {
+function runGoals({
+  runsPerGoal,
+  goalSet,
+}: ReturnType<typeof readRunsArguments>) {
   if (!readModelKey())
     fail(
-      "Set AYME_OPENROUTER_API_KEY to your own model key: without it the live goals skip and there is nothing to record."
+      "Set AYME_OPENROUTER_API_KEY to your own model key: without it the goals skip and there is nothing to record."
     );
 
   // The dev server needs the workspace packages built, as `test:goals` does.
@@ -104,7 +127,7 @@ function runGoals(runsPerGoal: number) {
       "playwright",
       "test",
       "--config",
-      "playwright.goals.config.ts",
+      goalSets[goalSet],
       `--repeat-each=${runsPerGoal}`,
       "--retries=0",
       "--reporter=list,json",
@@ -136,6 +159,7 @@ function runGoals(runsPerGoal: number) {
       sha: git("rev-parse", "HEAD"),
       dirty: git("status", "--porcelain").length > 0,
     },
+    goalSet,
     model: models.size === 0 ? null : [...models].join(", "),
     runsPerGoal,
     timestamp: new Date().toISOString(),
@@ -159,11 +183,11 @@ function runGoals(runsPerGoal: number) {
   fs.writeFileSync(file, `${JSON.stringify(runsFile, null, 2)}\n`);
 
   console.log(
-    `\nGoal runs: ${runsPerGoal} per goal, model ${runsFile.model}, commit ${commitLabel(runsFile.commit)}`
+    `\nGoal runs: ${runLabel(runsFile)}, model ${runsFile.model}, commit ${commitLabel(runsFile.commit)}`
   );
   for (const [title, { aggregate: summary }] of Object.entries(runsFile.goals))
     console.log(
-      `  ${title}\n    pass rate ${format(summary.passRate)}, steps mean ${format(summary.meanSteps)} max ${summary.maxSteps}, model calls per step ${format(summary.meanModelCallsPerStep)}, reasons ${JSON.stringify(summary.reasons)}`
+      `  ${title}\n    pass rate ${format(summary.passRate)}, done at expected step ${format(summary.doneAtExpectedStepRate)}, steps mean ${format(summary.meanSteps)} max ${summary.maxSteps}, model calls per step ${format(summary.meanModelCallsPerStep)}, page bytes per step ${format(summary.meanPageBytesPerStep)}, reasons ${JSON.stringify(summary.reasons)}`
     );
   console.log(`Wrote ${path.relative(process.cwd(), file)}`);
 }
@@ -172,15 +196,22 @@ function runGoals(runsPerGoal: number) {
 
 const comparedFields = [
   "passRate",
+  "doneAtExpectedStepRate",
+  "noFittingOptionRate",
   "meanSteps",
   "maxSteps",
   "meanModelCallsPerStep",
+  "meanPageBytesPerStep",
+  "meanHistoryBytesPerStep",
   "meanWallTimeMs",
   "chunkConflicts",
   "noneOfTheseAnswers",
 ] as const;
 
-function delta(before: number | undefined, after: number | undefined) {
+function delta(
+  before: number | null | undefined,
+  after: number | null | undefined
+) {
   if (typeof before !== "number" || typeof after !== "number") return "";
   const difference = after - before;
   return difference === 0
@@ -203,7 +234,7 @@ function compare(fileA: string, fileB: string) {
     ["B", fileB, b],
   ] as const)
     console.log(
-      `${label}: ${file}\n   commit ${commitLabel(runs.commit)}, model ${runs.model}, ${runs.runsPerGoal} runs per goal, ${runs.timestamp}`
+      `${label}: ${file}\n   commit ${commitLabel(runs.commit)}, model ${runs.model}, ${runLabel(runs)}, ${runs.timestamp}`
     );
 
   const titles = [
@@ -223,7 +254,7 @@ function compare(fileA: string, fileB: string) {
         after.aggregate[field],
       ];
       console.log(
-        `  ${field.padEnd(22)}${format(valueA).padStart(8)} -> ${format(valueB).padEnd(8)}${delta(valueA, valueB)}`.trimEnd()
+        `  ${field.padEnd(24)}${format(valueA).padStart(8)} -> ${format(valueB).padEnd(8)}${delta(valueA, valueB)}`.trimEnd()
       );
     }
     if (before.aggregate.passRate !== after.aggregate.passRate)
@@ -244,5 +275,5 @@ if (args[0] === "compare") {
     fail("Usage: goals:runs compare <runA.json> <runB.json>");
   compare(args[1]!, args[2]!);
 } else {
-  runGoals(readRunsArgument(args));
+  runGoals(readRunsArguments(args));
 }
