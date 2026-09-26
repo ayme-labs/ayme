@@ -6,6 +6,7 @@ import {
   type Handover,
 } from "./goalLoop";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
+import { reportPublicationStatus } from "./publishedTools";
 import { configureRefTools, type RefTool } from "./refTools";
 import {
   constructPageObject,
@@ -99,6 +100,7 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
 
   const setStatus = (next: AymeWebMcpPublicationStatus) => {
     status = Object.freeze(next);
+    reportPublicationStatus(status);
     for (const listener of subscribers) listener();
   };
   const failed = (error: unknown) =>

@@ -17,3 +17,6 @@ export { PageStateView } from "./pom/PageStateView";
 export { PanelShell, type PanelEdge } from "./pom/PanelShell";
 export { RunsView } from "./pom/RunsView";
 export { ToolForm, type ArgumentValue } from "./pom/ToolForm";
+export { ToolPage } from "./pom/ToolPage";
+export { ToolsLens, type ToolGroupLabel } from "./pom/ToolsLens";
+export { WhatTheModelSees } from "./pom/WhatTheModelSees";

@@ -8,7 +8,15 @@ export default defineConfig({
   // Prebundle the panel's dependencies up front. Discovered mid-run, they
   // are optimized again and load a second React.
   optimizeDeps: {
-    include: ["react", "react-dom/client", "lucide-react", "radix-ui"],
+    include: [
+      "react",
+      "react-dom/client",
+      "lucide-react",
+      "radix-ui",
+      "sugar-high/core",
+      "sugar-high/lang/json",
+      "sugar-high/lang/typescript",
+    ],
   },
   test: {
     projects: [

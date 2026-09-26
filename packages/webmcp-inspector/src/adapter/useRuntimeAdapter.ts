@@ -5,6 +5,7 @@ import type { RegisteredPomTool } from "@ayme-dev/webmcp";
 import { listPomClasses } from "../pomModel";
 import { useInspector } from "./useInspector";
 import { useInspectorTrace } from "./useInspectorTrace";
+import { usePublishedTools } from "./usePublishedTools";
 import { useRuns } from "./useRuns";
 
 /**
@@ -26,6 +27,7 @@ export function useRuntimeAdapter() {
     () => listPomClasses(registeredPoms),
     [registeredPoms]
   );
+  const published = usePublishedTools(registeredPoms);
   const registeredTools = useMemo(
     () => listRegisteredTools(registeredPoms),
     [registeredPoms]
@@ -39,6 +41,10 @@ export function useRuntimeAdapter() {
     registeredTools,
     /** The tools published now, by name. */
     activeTools: inspector.activeTools,
+    /** The tools WebMCP publishes now, with their groups. */
+    publishedTools: published.tools,
+    /** The runtime's WebMCP publication status. */
+    publication: published.publication,
     /** The page state, with the structure tree model. */
     pageState: inspector.pageState,
     refreshPageState: () => void refreshPageState(),
