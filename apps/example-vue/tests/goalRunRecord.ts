@@ -32,7 +32,8 @@ export type GoalRunRecord = {
   /** The step count of a run that ends `done` as the test intends, when the
    *  test states one. */
   expectedSteps?: number;
-  reason: string;
+  /** The Handover reason; null when `pursue` threw. */
+  reason: string | null;
   /** The model identifiers the run's decisions asked for. */
   models: string[];
   wallTimeMs: number;
@@ -201,7 +202,8 @@ async function readRunResult(page: Page) {
  * what the run did to the test for the harness to read from the Playwright
  * report. Otherwise this is a pass-through. Recording never fails the test:
  * a recorder failure becomes a record with `recorderError`, or a warning when
- * even that cannot be attached. A failure of `pursue` itself propagates.
+ * even that cannot be attached. A failure of `pursue` itself is recorded,
+ * then propagates.
  */
 export async function recordGoalRun<T extends { reason: string }>(
   page: Page,
@@ -219,22 +221,26 @@ export async function recordGoalRun<T extends { reason: string }>(
     recorderError = error;
   }
   const startedAt = performance.now();
-  let handover: T;
+  let outcome: { handover: T } | { error: unknown };
   try {
-    handover = await pursue();
-  } finally {
-    try {
-      recorder?.stop();
-    } catch (error) {
-      recorderError ??= error;
-    }
+    outcome = { handover: await pursue() };
+  } catch (error) {
+    outcome = { error };
+  }
+  try {
+    recorder?.stop();
+  } catch (error) {
+    recorderError ??= error;
   }
   const wallTimeMs = Math.round(performance.now() - startedAt);
 
+  // A run whose `pursue` threw is recorded too, with no reason, so it still
+  // counts against the goal's expected step.
+  const reason = "handover" in outcome ? outcome.handover.reason : null;
   let record: GoalRunRecord = {
     goal,
     ...(expectedSteps === undefined ? {} : { expectedSteps }),
-    reason: handover.reason,
+    reason,
     models: [],
     wallTimeMs,
     steps: [],
@@ -244,6 +250,7 @@ export async function recordGoalRun<T extends { reason: string }>(
     const decisions = await recorder!.decisions();
     const runResult = await readRunResult(page);
     record = goalRunRecordOf(record, decisions, runResult);
+    if (reason === null) record.reason = null;
   } catch (error) {
     record.recorderError = asError(error).message;
   }
@@ -259,5 +266,6 @@ export async function recordGoalRun<T extends { reason: string }>(
       record
     );
   }
-  return handover;
+  if ("error" in outcome) throw outcome.error;
+  return outcome.handover;
 }

@@ -29,6 +29,42 @@ it("passes the run straight through unless the run harness asks for a record", a
     expect(spy).not.toHaveBeenCalled();
 });
 
+it("records a run whose pursue throws, so it counts as not done at the expected step", async () => {
+  vi.stubEnv(goalRunsVariable, "1");
+  const page = { on: vi.fn(), off: vi.fn(), evaluate: vi.fn() };
+  const attach = vi.fn();
+  const failure = new Error("pursue_goal exploded");
+
+  await expect(
+    recordGoalRun(
+      page as unknown as Page,
+      { attach } as unknown as TestInfo,
+      { goal: "archive it", expectedSteps: 2 },
+      async () => {
+        throw failure;
+      }
+    )
+  ).rejects.toBe(failure);
+
+  expect(attach).toHaveBeenCalledOnce();
+  const [name, { body }] = attach.mock.calls[0]! as [string, { body: string }];
+  const record = JSON.parse(body) as GoalRunRecord;
+  expect(record).toMatchObject({
+    goal: "archive it",
+    expectedSteps: 2,
+    reason: null,
+    models: [],
+    steps: [],
+  });
+  expect(record).not.toHaveProperty("recorderError");
+
+  expect(name).toBe("goal-run");
+  const { run } = toGoalRun(testResultOf(record));
+  expect(run.doneAtExpectedStep).toBe(false);
+  expect(aggregate([run, run]).doneAtExpectedStepRate).toBe(0);
+  vi.unstubAllEnvs();
+});
+
 it("counts a chunk conflict and keeps the chunk choices when the run-off fails", () => {
   const model = "typesafe/jev-1.13";
   const decisions: Decision[] = [
