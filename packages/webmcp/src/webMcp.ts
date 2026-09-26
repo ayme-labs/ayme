@@ -1,16 +1,9 @@
-import type { RegisteredPomTool } from "./contracts";
-import { getPursueGoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
-import { listRefTools, type PublishedRefTool } from "./refTools";
+import { type PublishedTool, resolvePublishedTools } from "./publishedTools";
 import {
-  listRegisteredPomTools,
   subscribeToRegisteredPoms,
   probeRegisteredPomMembers,
 } from "./registry";
-import { RuntimeStateError } from "./errors";
-
-type PublishedTool =
-  RegisteredPomTool | typeof getPageContextTool | PublishedRefTool;
 
 /** The MCP tool-failure result a published tool returns instead of throwing. */
 type ToolErrorResult = {
@@ -138,25 +131,9 @@ export async function synchronizeWebMcpTools(
     try {
       do {
         syncAgain = false;
-        const pursueGoal = getPursueGoalTool();
-        const pomTools = listRegisteredPomTools();
-        const active = new Map<string, PublishedTool>([
-          [getPageContextTool.name, getPageContextTool],
-        ]);
-        const takenElsewhere = new Set([
-          ...pomTools.map((tool) => tool.name),
-          ...(pursueGoal ? [pursueGoal.name] : []),
-        ]);
-        for (const { tool } of listRefTools()) {
-          if (active.has(tool.name) || takenElsewhere.has(tool.name))
-            throw new RuntimeStateError(
-              `Cannot publish the Ref Tool "${tool.name}": another published tool already uses that name.`
-            );
-          active.set(tool.name, tool);
-        }
-        for (const tool of pomTools) active.set(tool.name, tool);
-        if (pursueGoal)
-          active.set(pursueGoal.name, pursueGoal as PublishedTool);
+        const active = new Map(
+          [...resolvePublishedTools()].map(([name, { tool }]) => [name, tool])
+        );
 
         for (const [name, registration] of published) {
           const tool = active.get(name);

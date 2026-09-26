@@ -6,6 +6,11 @@ export {
 export { getPageContextForDocument, getPageContextTool } from "./pageContext";
 export { getPomDefinitions } from "./pomDefinitions";
 export {
+  listPublishedTools,
+  subscribeToPublishedTools,
+} from "./publishedTools";
+export type { PublishedToolGroup, PublishedToolInfo } from "./publishedTools";
+export {
   configureAymeRuntime,
   createAymeRuntime,
   createPageRegistration,
