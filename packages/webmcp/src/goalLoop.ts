@@ -21,7 +21,6 @@ import {
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
-  ArgumentAnswerError,
   type AnswerRecord,
   type ArgumentAnswers,
   type ChoiceAnswer,
@@ -165,15 +164,6 @@ async function executeToolAction(
     page_changed: action?.page_changed ?? false,
     ...(action?.changes ? { changes: action.changes } : {}),
   };
-}
-
-/** Put the stage-two answers read so far on the step's score. */
-function recordArgumentAnswers(
-  score: GoalLoopStepScore,
-  record: AnswerRecord
-): void {
-  score.argumentChoices = record.choices;
-  score.argumentProbabilities = record.probabilities;
 }
 
 // --- The loop ---
@@ -423,6 +413,11 @@ export async function pursueGoal(
       probabilities: {},
     };
     if (plan.questions.length > 0) {
+      // The step score shares the record's maps, so an answer that fails to
+      // read leaves the ones read before it on the run result.
+      const record: AnswerRecord = { choices: {}, probabilities: {} };
+      score.argumentChoices = record.choices;
+      score.argumentProbabilities = record.probabilities;
       let stageTwo: DecisionResponse;
       try {
         stageTwo = await decisionFn(
@@ -436,20 +431,12 @@ export async function pursueGoal(
         argumentAnswers = readArgumentAnswers(
           chosenTool,
           plan.questions,
-          stageTwo.answers as Record<string, unknown>
+          stageTwo.answers as Record<string, unknown>,
+          record
         );
       } catch (error) {
-        // The answers read before the one that failed stay on the run result.
-        if (error instanceof ArgumentAnswerError)
-          recordArgumentAnswers(score, error.record);
         return invalidDecision(error);
       }
-      recordArgumentAnswers(
-        score,
-        argumentAnswers.kind === "none_fits"
-          ? argumentAnswers
-          : argumentAnswers.chosen
-      );
 
       // Every chunk of a ref over the cap answered "none of these": the step
       // ran no action, so it leaves no history entry (#123).
@@ -482,7 +469,8 @@ export async function pursueGoal(
       } else {
         chosenArguments = argumentAnswers.chosen;
       }
-      recordArgumentAnswers(score, chosenArguments);
+      score.argumentChoices = chosenArguments.choices;
+      score.argumentProbabilities = chosenArguments.probabilities;
     }
 
     // Execute the operation through the same action sequence as direct tool calls.
