@@ -7,7 +7,7 @@ import { Navigator } from "./Navigator";
 import { PageStateView } from "./PageStateView";
 import { PanelShell } from "./PanelShell";
 import { RunsView } from "./RunsView";
-import type { ToolForm } from "./ToolForm";
+import type { RunCard } from "./RunCard";
 
 /**
  * The Inspector, as a person sees it on the page. It is built from one page
@@ -64,10 +64,10 @@ export class Inspector {
     await this.header.collapse();
   }
 
-  /** Selects a tool in the Tools lens and returns its run slot. */
-  async tool(name: string): Promise<ToolForm> {
+  /** Selects a tool in the Tools lens and returns its run card. */
+  async tool(name: string): Promise<RunCard> {
     await this.navigator.showLens("Tools");
     await this.navigator.item(name).click();
-    return this.detail.tool(name);
+    return this.detail.runCard();
   }
 }

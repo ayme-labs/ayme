@@ -1,26 +1,19 @@
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 
-import {
-  useRuntimeAdapter,
-  type InspectorRuntime,
-} from "./adapter/useRuntimeAdapter";
-import type { Run } from "./adapter/useRuns";
+import { useRuntimeAdapter } from "./adapter/useRuntimeAdapter";
 import { Empty } from "./common";
-import { DetailPane, InspectorBody, RunsRegion } from "./frame/InspectorBody";
+import { DetailPane, InspectorBody } from "./frame/InspectorBody";
 import type { Lens, LensId } from "./frame/lens";
 import { Navigator } from "./frame/Navigator";
-import type { RenderRun } from "./frame/runSlot";
 import { pageSelection, type Selection } from "./frame/selection";
 import { InspectorRoot } from "./InspectorRoot";
 import { modelLens } from "./lenses/modelLens";
 import { structureLens } from "./lenses/structureLens";
 import { toolsLens } from "./lenses/toolsLens";
-import { RunsTab } from "./RunsTab";
 import { InspectorShell } from "./shell/InspectorShell";
 import { usePreferences } from "./shell/usePreferences";
 import { useDarkTheme } from "./shell/useTheme";
-import type { FieldValue, FieldValues } from "./toolArguments";
-import { ToolForm } from "./ToolForm";
+import { useRunning } from "./useRunning";
 
 /**
  * The Inspector: the runtime adapter's data wired into the frame. It owns
@@ -32,7 +25,7 @@ export function InspectorApp() {
   const dark = useDarkTheme(preferences.theme);
   const [selection, setSelection] = useState<Selection>(pageSelection);
   const [activeLens, setActiveLens] = useState<LensId>("model");
-  const renderRun = useSkeletonRunSlot(runtime);
+  const { renderRun, runsRegion } = useRunning(runtime, selection);
 
   const lenses: Lens[] = [
     modelLens({
@@ -86,58 +79,9 @@ export function InspectorApp() {
             />
           }
           detail={<DetailPane>{detail}</DetailPane>}
-          runs={
-            <RunsRegion>
-              <RunsTab
-                runs={runtime.runs}
-                clearRuns={runtime.clearRuns}
-                trace={runtime.trace}
-              />
-            </RunsRegion>
-          }
+          runs={runsRegion}
         />
       </InspectorShell>
     </InspectorRoot>
   );
-}
-
-/**
- * The skeleton's run slot: the typed tool form. Ticket D replaces it with
- * the run card.
- */
-function useSkeletonRunSlot(runtime: InspectorRuntime): RenderRun {
-  const { registeredTools, activeTools, runs, runTool } = runtime;
-  const [formValues, setFormValues] = useState<Record<string, FieldValues>>({});
-  const setFieldValue = useCallback(
-    (toolName: string, parameterName: string, value: FieldValue) =>
-      setFormValues((current) => ({
-        ...current,
-        [toolName]: { ...current[toolName], [parameterName]: value },
-      })),
-    []
-  );
-  const lastRunByTool = useMemo(() => {
-    const lastRuns = new Map<string, Run>();
-    for (const run of runs)
-      if (!lastRuns.has(run.toolName)) lastRuns.set(run.toolName, run);
-    return lastRuns;
-  }, [runs]);
-
-  return ({ toolName }) => {
-    const tool = registeredTools.get(toolName);
-    if (!tool) return null;
-    return (
-      <ToolForm
-        key={toolName}
-        tool={tool}
-        available={activeTools.has(toolName)}
-        values={formValues[toolName]}
-        onChange={(parameterName, value) =>
-          setFieldValue(toolName, parameterName, value)
-        }
-        onInvoke={(args) => runTool(toolName, args)}
-        lastRun={lastRunByTool.get(toolName)}
-      />
-    );
-  };
 }
