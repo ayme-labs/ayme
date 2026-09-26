@@ -98,7 +98,18 @@ describe("the public runtime session in Chromium", () => {
 
     expect(handover).toMatchObject({
       reason: "done",
-      history: [{ did: expect.stringContaining("Highlight"), result: "ok" }],
+      history: [
+        {
+          operation: "highlight_element",
+          chosen: {
+            ref: {
+              key: expect.any(String),
+              description: 'button "Save changes"',
+            },
+          },
+          result: "ok",
+        },
+      ],
     });
     expect(
       document.querySelector("button")?.classList.contains("highlighted")

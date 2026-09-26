@@ -282,7 +282,8 @@ function recording(decide: GoalLoopDecisionFunction) {
   return {
     requests,
     decide: (async (request) => {
-      requests.push(request);
+      // A snapshot: the loop keeps appending to the history the state holds.
+      requests.push(structuredClone(request));
       return decide(request);
     }) satisfies GoalLoopDecisionFunction,
   };
@@ -452,7 +453,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       reason: "done",
       history: [
         {
-          did: "save",
+          operation: "App.save",
+          chosen: {},
           result: "ok",
           page_changed: false,
         },
@@ -554,8 +556,16 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result).toMatchObject({
       reason: "action_failed",
       history: [
-        { did: "fail", result: "action exploded", page_changed: false },
-        { did: "fail", result: "action exploded", page_changed: false },
+        {
+          operation: "App.fail",
+          result: "action exploded",
+          page_changed: false,
+        },
+        {
+          operation: "App.fail",
+          result: "action exploded",
+          page_changed: false,
+        },
       ],
     });
     expect((result as Record<string, unknown>).next).toContain(
@@ -584,8 +594,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result).toMatchObject({
       reason: "step_budget",
       history: [
-        { did: "save", result: "ok", page_changed: false },
-        { did: "save", result: "ok", page_changed: false },
+        { operation: "App.save", result: "ok", page_changed: false },
+        { operation: "App.save", result: "ok", page_changed: false },
       ],
     });
     expect(clickCount).toBe(2);
@@ -694,7 +704,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
   // --- History contents ---
 
-  it("records readable labels, ok results, and page_changed in history", async () => {
+  it("records the operation, ok results, and page_changed in history", async () => {
     document.body.innerHTML = `
       <main>
         <button id="save">Save changes</button>
@@ -730,11 +740,15 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result.reason).toBe("done");
     const history = result.history as Array<Record<string, unknown>>;
     expect(history).toHaveLength(1);
-    expect(history[0]).toMatchObject({
-      did: "save",
-      result: "ok",
-    });
-    expect(history[0]!.page_changed).toBe(true);
+    expect(history).toEqual([
+      {
+        operation: "App.save",
+        chosen: {},
+        result: "ok",
+        page_changed: true,
+        did: expect.any(String),
+      },
+    ]);
   });
 
   // --- State fields sent to the model ---
@@ -865,9 +879,24 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(description).toContain("Save changes");
     expect(clickCount).toBe(1);
     expect(result.reason).toBe("done");
-    expect(result.history).toMatchObject([
-      { did: expect.stringContaining("Save changes"), result: "ok" },
+    // The step record names the tool and the option chosen, as offered.
+    const record = {
+      operation: "click_page_state_ref",
+      chosen: { ref: { key, description } },
+      result: "ok",
+      // Whether a click changes the page (focus among others) is the
+      // interaction history's promise, pinned in its own tests.
+      page_changed: expect.any(Boolean),
+      did: expect.any(String),
+    };
+    expect(description).toBe('button "Save changes"');
+    expect(result.history).toEqual([record]);
+    // The next step's state, as sent, carries the same record, and the run
+    // result's step is built on it.
+    expect((requests[2]!.state as Record<string, unknown>).history).toEqual([
+      record,
     ]);
+    expect(getLastGoalLoopRunResult()!.stepScores[0]).toMatchObject(record);
   });
 
   it("offers a Ref Tool with a filter only the elements it keeps", async () => {
@@ -1084,7 +1113,13 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(clicked).toEqual(["Item 299"]);
     expect(result.reason).toBe("done");
     expect(result.history).toMatchObject([
-      { did: expect.stringContaining("Item 299"), result: "ok" },
+      {
+        operation: "click_page_state_ref",
+        chosen: {
+          ref: { key: expect.any(String), description: 'button "Item 299"' },
+        },
+        result: "ok",
+      },
     ]);
     // Each chunk's answer is recorded in the step's scores.
     const score =
@@ -1276,13 +1311,29 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const tool = await getPublishedPursueGoal(decide);
     createPageRegistration(App);
 
-    await tool.execute({ goal: "configure the app", maxSteps: 5 });
+    const result = (await tool.execute({
+      goal: "configure the app",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
 
     const stageTwo = criteriaOf(requests[1]!);
     expect(Object.keys(stageTwo)).toEqual(["mode", "confirm"]);
     expect(Object.keys(stageTwo.mode!)).toEqual(["compact", "full"]);
     expect(Object.keys(stageTwo.confirm!)).toEqual(["true", "false"]);
     expect(calls).toEqual([["full", true]]);
+    // `did` is derived: the operation and the chosen options' descriptions.
+    expect(result.history).toEqual([
+      {
+        operation: "App.configure",
+        chosen: {
+          mode: { key: "full", description: "full" },
+          confirm: { key: "true", description: "true" },
+        },
+        result: "ok",
+        page_changed: false,
+        did: "App.configure(full, true)",
+      },
+    ]);
   });
 
   it("offers an optional closed-set parameter a leave-unset choice", async () => {
@@ -1323,15 +1374,24 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const tool = await getPublishedPursueGoal(decide);
     createPageRegistration(App);
 
-    await tool.execute({ goal: "sort the list", maxSteps: 5 });
+    const result = (await tool.execute({
+      goal: "sort the list",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
 
     // The enum's own values, plus one more choice that leaves it unset.
-    expect(Object.keys(criteriaOf(requests[1]!).order!)).toEqual([
-      "asc",
-      "desc",
-      "leave_unset",
-    ]);
+    const offered = criteriaOf(requests[1]!).order!;
+    expect(Object.keys(offered)).toEqual(["asc", "desc", "leave_unset"]);
     expect(calls).toEqual([[undefined]]);
+    // The history says the parameter was left unset on purpose.
+    expect(result.history).toMatchObject([
+      {
+        operation: "App.sort",
+        chosen: {
+          order: { key: "leave_unset", description: offered.leave_unset },
+        },
+      },
+    ]);
   });
 
   it("records the scores of stage two per step in the internal run result", async () => {
@@ -1469,9 +1529,23 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     );
     expect(archived).toEqual([1]);
     expect(result.reason).toBe("done");
-    expect(result.history).toMatchObject([
-      { did: expect.stringContaining("ItemsPage.items[1]"), result: "ok" },
+    // The step record names the qualified tool and the instance chosen, as
+    // offered.
+    const [chosenKey, chosenDescription] = Object.entries(stageTwo.ref!)[1]!;
+    const record = {
+      operation: "ItemsPage.items.archive",
+      chosen: {
+        ref: { key: chosenKey, description: chosenDescription },
+      },
+      result: "ok",
+      page_changed: false,
+      did: expect.any(String),
+    };
+    expect(result.history).toEqual([record]);
+    expect((requests[2]!.state as Record<string, unknown>).history).toEqual([
+      record,
     ]);
+    expect(getLastGoalLoopRunResult()!.stepScores[0]).toMatchObject(record);
   });
 
   it("keeps the full capture behind the instance options and the Change Record while the page it sends is pruned", async () => {
@@ -1554,11 +1628,17 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     // The Change Record of the action diffs full against full: an action
     // that changed nothing reports no change, and no phantom wrapper.
     expect(result.history).toEqual([
-      {
-        did: expect.stringContaining("ItemsPage.items[1]"),
+      expect.objectContaining({
+        operation: "ItemsPage.items.archive",
+        chosen: {
+          ref: {
+            key: instanceRefs[1],
+            description: criteriaOf(requests[1]!).ref![instanceRefs[1]!],
+          },
+        },
         result: "ok",
         page_changed: false,
-      },
+      }),
     ]);
     // The agent's next Change Record: from the page the Handover gave it.
     const handedOver = getInteractionHistory(document).cursor("agent")!;

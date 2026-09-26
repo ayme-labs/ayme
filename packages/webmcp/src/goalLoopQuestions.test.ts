@@ -250,7 +250,9 @@ describe("ref questions over the option cap", () => {
     expect(answers.kind).toBe("chosen");
     if (answers.kind !== "chosen") return;
     expect(answers.chosen.args).toEqual({ ref: "e300" });
-    expect(answers.chosen.summary).toEqual(['ref: button "Item 300"']);
+    expect(answers.chosen.chosen).toEqual({
+      ref: { key: "e300", description: 'button "Item 300"' },
+    });
     // Every chunk's answer is recorded.
     expect(Object.keys(answers.chosen.probabilities)).toEqual(idsOf(questions));
   });
@@ -282,7 +284,9 @@ describe("ref questions over the option cap", () => {
       response.answers as Record<string, unknown>
     );
     expect(chosen.args).toEqual({ ref: "e300" });
-    expect(chosen.summary).toEqual(['ref: button "Item 300"']);
+    expect(chosen.chosen).toEqual({
+      ref: { key: "e300", description: 'button "Item 300"' },
+    });
     // The chunk answers and the run-off answer are all recorded.
     expect(Object.keys(chosen.probabilities)).toEqual([
       ...idsOf(questions),
@@ -339,9 +343,10 @@ describe("ref questions over the option cap", () => {
       [answers.question.id]: { type: "choice", choice: "e5" },
     });
     expect(chosen.args).toEqual({ force: true, ref: "e5" });
-    expect(chosen.summary).toEqual(
-      expect.arrayContaining(["force: true", 'ref: button "Item 5"'])
-    );
+    expect(chosen.chosen).toEqual({
+      force: { key: "true", description: "true" },
+      ref: { key: "e5", description: 'button "Item 5"' },
+    });
   });
 });
 

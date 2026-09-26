@@ -12,6 +12,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
+import type { GoalLoopStepRecord } from "./goalLoop";
 import type { AriaRef, PageStateCapture } from "./pageState";
 import { listRefTools } from "./refTools";
 import {
@@ -585,12 +586,15 @@ function renderPage(pageTree: StructuralTree): JsonStructuralNodeForest {
 
 export type StepState = Record<string, unknown>;
 
+/** The option the model chose for one parameter, exactly as it was offered. */
+export type ChosenOption = { key: string; description: string };
+
 /** The state both stages of one step are decided on. */
 export function buildStepState(
   goal: string,
   pageTree: StructuralTree,
   pomDefinitionsText: string,
-  history: readonly unknown[]
+  history: readonly GoalLoopStepRecord[]
 ): StepState {
   return {
     goal,
@@ -712,8 +716,11 @@ export function parseGoalMetAnswer(
 export type ChosenArguments = {
   /** The arguments to call the operation with; a ref is the offered branded ref. */
   args: Record<string, unknown>;
-  /** What was chosen, in readable words, for the history entry. */
-  summary: string[];
+  /**
+   * Per parameter asked: the option chosen, as offered, for the step record.
+   * A choice that leaves the parameter unset is here, but not in `args`.
+   */
+  chosen: Record<string, ChosenOption>;
   /** Per question id: the key of the option the model chose. */
   choices: Record<string, string>;
   /** Per question id: the scores, when the decision function supplied them. */
@@ -760,13 +767,17 @@ function readPick(
   return chosen;
 }
 
+/** Record the option chosen for a parameter; one without a value leaves it unset. */
 function choose(
-  chosen: ChosenArguments,
+  into: ChosenArguments,
   question: ArgumentQuestion,
   option: ArgumentOption
 ): void {
-  assignAt(chosen.args, question.path, option.value);
-  chosen.summary.push(`${question.parameter}: ${option.description}`);
+  if ("value" in option) assignAt(into.args, question.path, option.value);
+  into.chosen[question.parameter] = {
+    key: option.key,
+    description: option.description,
+  };
 }
 
 /**
@@ -786,7 +797,7 @@ export function readArgumentAnswers(
 ): ArgumentAnswers {
   const chosen: ChosenArguments = {
     args: {},
-    summary: [],
+    chosen: {},
     choices: record.choices,
     probabilities: record.probabilities,
   };
@@ -808,7 +819,7 @@ export function readArgumentAnswers(
     const named = group.filter((pick) => "value" in pick.option);
     // A lone question: an option without a value leaves the parameter unset.
     if (group.length === 1) {
-      if (named[0]) choose(chosen, named[0].question, named[0].option);
+      choose(chosen, group[0]!.question, group[0]!.option);
       continue;
     }
     if (named.length === 0)
@@ -840,7 +851,7 @@ export function readRunOffAnswer(
 ): ChosenArguments {
   const chosen: ChosenArguments = {
     args: structuredClone(runOff.chosen.args),
-    summary: [...runOff.chosen.summary],
+    chosen: { ...runOff.chosen.chosen },
     choices: { ...runOff.chosen.choices },
     probabilities: { ...runOff.chosen.probabilities },
   };
