@@ -18,7 +18,7 @@ export type Field = {
 
 export type FieldKind =
   | { kind: "text"; inputType: TextInputType }
-  /** A Structural Ref, e.g. e12. Ref picking (ticket R) replaces its control. */
+  /** A Structural Ref, e.g. e12, chosen from the page structure or on the page. */
   | { kind: "ref" }
   | { kind: "number"; integer: boolean }
   | { kind: "boolean" }

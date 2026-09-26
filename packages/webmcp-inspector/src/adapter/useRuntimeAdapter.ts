@@ -4,7 +4,13 @@ import type { RegisteredPomTool } from "@ayme-dev/webmcp";
 import { getPageContextTool } from "@ayme-dev/webmcp/internal";
 
 import { listPomClasses } from "../pomModel";
-import { listRunnableTools } from "./runnableTools";
+import {
+  clearRefPreview,
+  previewRef,
+  refFilterOf,
+  startRefPicking,
+} from "./refPicking";
+import { builtInRefTools, listRunnableTools } from "./runnableTools";
 import { clearStepPreview, previewStep } from "./runSteps";
 import { useInspector } from "./useInspector";
 import { useRuns } from "./useRuns";
@@ -35,6 +41,7 @@ export function useRuntimeAdapter() {
     () =>
       listRunnableTools(registeredPoms, inspector.activeTools, [
         getPageContextTool,
+        ...builtInRefTools,
       ]),
     [registeredPoms, inspector.activeTools]
   );
@@ -65,6 +72,23 @@ export function useRuntimeAdapter() {
     runs,
     runTool: (...args: Parameters<typeof invoke>) => void invoke(...args),
     clearRuns: clear,
+    /** The built-in Ref tools, as the skeleton Tools lens lists them. */
+    refTools: builtInRefTools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      available: true,
+    })),
+    /** Choosing a ref for a tool's ref field. */
+    refPicking: {
+      /** Whether a tool can use a node of the structure, by the tool's name. */
+      canUse: refFilterOf,
+      /** Picks a ref by pointing at the page. */
+      start: startRefPicking,
+      /** Highlights a ref's element while it's hovered. */
+      preview: previewRef,
+      clearPreview: clearRefPreview,
+    },
     /** Highlights a run step's element while it's on the page. */
     previewStep,
     clearStepPreview,

@@ -1,5 +1,7 @@
 import type { Locator } from "@playwright/test";
 
+import { RefField } from "./RefField";
+
 /** A value for one argument, as a person would enter it. */
 export type ArgumentValue =
   | string
@@ -63,6 +65,11 @@ export class RunCard {
     return this.root.getByLabel(path, { exact: true });
   }
 
+  /** A ref argument's field, by its path, e.g. "ref". */
+  refField(path = "ref"): RefField {
+    return new RefField(this.root, path);
+  }
+
   /** Opens the form, on a card whose form is closed. */
   async openArguments() {
     if (
@@ -114,11 +121,14 @@ export class RunCard {
     const field = this.field(path);
     const kind = (await field.count())
       ? await field.evaluate((element) =>
-          element instanceof HTMLInputElement
-            ? element.type
-            : element.tagName.toLowerCase()
+          element.getAttribute("aria-haspopup") === "tree"
+            ? "ref"
+            : element instanceof HTMLInputElement
+              ? element.type
+              : element.tagName.toLowerCase()
         )
       : "none";
+    if (kind === "ref") return await this.refField(path).choose(String(value));
     if (typeof value === "object" && kind !== "textarea") {
       // An object: an optional one is switched on, then each entry filled.
       if (kind === "checkbox") await field.setChecked(true);
