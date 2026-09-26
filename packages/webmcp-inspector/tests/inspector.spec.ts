@@ -31,17 +31,57 @@ test("the panel follows the system theme", async ({ page, inspector }) => {
   await expect.poll(colorScheme).toBe("dark");
 });
 
-test("the layout survives a reload", async ({ page, inspector }) => {
-  await inspector.header.layoutMenu.choose("Dock to bottom");
-  await inspector.shell.resizeBy("top", 0, -100);
-  const docked = await inspector.shell.box();
+test("the layout and its sizes survive a reload", async ({
+  page,
+  inspector,
+}) => {
+  const { header, shell } = inspector;
+  await header.dragBy(-100, 50);
+  await shell.resizeBy("left", -60, 0);
+  const floating = await shell.box();
+  await header.layoutMenu.choose("Dock left");
+  await shell.resizeBy("right", 80, 0);
+  const dockedLeft = await shell.box();
+  await header.layoutMenu.choose("Dock to bottom");
+  await shell.resizeBy("top", 0, -60);
+  const dockedBottom = await shell.box();
 
   await openFixture(page, "/", { reload: true });
 
-  await expect
-    .poll(() => inspector.header.layoutMenu.current())
-    .toBe("Dock to bottom");
-  expect(await inspector.shell.box()).toEqual(docked);
+  await expect.poll(() => header.layoutMenu.current()).toBe("Dock to bottom");
+  expect(await shell.box()).toEqual(dockedBottom);
+  await header.layoutMenu.choose("Dock left");
+  await expect.poll(() => shell.box()).toEqual(dockedLeft);
+  await header.layoutMenu.choose("Floating");
+  await expect.poll(() => shell.box()).toEqual(floating);
+});
+
+test("a collapsed panel stays collapsed after a reload", async ({
+  page,
+  inspector,
+}) => {
+  await inspector.collapse();
+
+  await openFixture(page, "/", { reload: true });
+
+  await expect(inspector.logo.root).toBeVisible();
+  await expect(inspector.panel).toHaveCount(0);
+});
+
+test("a docked panel sits beside the page, and floating it gives the space back", async ({
+  page,
+  inspector,
+}) => {
+  const heading = page.getByRole("heading", { name: "Groceries" });
+  const pageLeft = async () => (await heading.boundingBox())!.x;
+  const before = await pageLeft();
+
+  await inspector.header.layoutMenu.choose("Dock left");
+  const panel = await inspector.shell.box();
+  await expect.poll(pageLeft).toBeGreaterThanOrEqual(panel.x + panel.width);
+
+  await inspector.header.layoutMenu.choose("Floating");
+  await expect.poll(pageLeft).toBe(before);
 });
 
 test.describe("on a React host with aggressive global CSS", () => {
