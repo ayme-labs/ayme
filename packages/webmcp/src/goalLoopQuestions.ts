@@ -12,6 +12,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
+import type { GoalLoopStepRecord } from "./goalLoop";
 import type { AriaRef, PageStateCapture } from "./pageState";
 import { listRefTools } from "./refTools";
 import {
@@ -588,41 +589,6 @@ export type StepState = Record<string, unknown>;
 /** The option the model chose for one parameter, exactly as it was offered. */
 export type ChosenOption = { key: string; description: string };
 
-/**
- * One executed step, as the loop knew it at the step. The same record is a
- * Handover's `history` entry, the base of the step's run record and an entry
- * of the `history` the model is sent.
- */
-export type GoalLoopStepRecord = {
-  /** The tool's name; a Page Object tool's is its qualified name. */
-  operation: string;
-  /** Per parameter the model filled: the option it chose. */
-  arguments: Record<string, ChosenOption>;
-  /** `"ok"`, or the error the action failed with. */
-  result: string;
-  page_changed: boolean;
-  /** A one-line label derived from the fields above; nothing reads it back. */
-  did: string;
-};
-
-/** Record an executed step; `did` is derived, e.g. `click_page_state_ref(button "Add item")`. */
-export function stepRecord(
-  operation: string,
-  chosen: Record<string, ChosenOption>,
-  outcome: Pick<GoalLoopStepRecord, "result" | "page_changed">
-): GoalLoopStepRecord {
-  const descriptions = Object.values(chosen).map(
-    (option) => option.description
-  );
-  return {
-    operation,
-    arguments: chosen,
-    result: outcome.result,
-    page_changed: outcome.page_changed,
-    did: `${operation}(${descriptions.join(", ")})`,
-  };
-}
-
 /** The state both stages of one step are decided on. */
 export function buildStepState(
   goal: string,
@@ -750,8 +716,11 @@ export function parseGoalMetAnswer(
 export type ChosenArguments = {
   /** The arguments to call the operation with; a ref is the offered branded ref. */
   args: Record<string, unknown>;
-  /** Per parameter filled: the option chosen, as offered, for the step record. */
-  arguments: Record<string, ChosenOption>;
+  /**
+   * Per parameter asked: the option chosen, as offered, for the step record.
+   * A choice that leaves the parameter unset is here, but not in `args`.
+   */
+  chosen: Record<string, ChosenOption>;
   /** Per question id: the key of the option the model chose. */
   choices: Record<string, string>;
   /** Per question id: the scores, when the decision function supplied them. */
@@ -798,13 +767,14 @@ function readPick(
   return chosen;
 }
 
+/** Record the option chosen for a parameter; one without a value leaves it unset. */
 function choose(
-  chosen: ChosenArguments,
+  into: ChosenArguments,
   question: ArgumentQuestion,
   option: ArgumentOption
 ): void {
-  assignAt(chosen.args, question.path, option.value);
-  chosen.arguments[question.parameter] = {
+  if ("value" in option) assignAt(into.args, question.path, option.value);
+  into.chosen[question.parameter] = {
     key: option.key,
     description: option.description,
   };
@@ -827,7 +797,7 @@ export function readArgumentAnswers(
 ): ArgumentAnswers {
   const chosen: ChosenArguments = {
     args: {},
-    arguments: {},
+    chosen: {},
     choices: record.choices,
     probabilities: record.probabilities,
   };
@@ -849,7 +819,7 @@ export function readArgumentAnswers(
     const named = group.filter((pick) => "value" in pick.option);
     // A lone question: an option without a value leaves the parameter unset.
     if (group.length === 1) {
-      if (named[0]) choose(chosen, named[0].question, named[0].option);
+      choose(chosen, group[0]!.question, group[0]!.option);
       continue;
     }
     if (named.length === 0)
@@ -881,7 +851,7 @@ export function readRunOffAnswer(
 ): ChosenArguments {
   const chosen: ChosenArguments = {
     args: structuredClone(runOff.chosen.args),
-    arguments: { ...runOff.chosen.arguments },
+    chosen: { ...runOff.chosen.chosen },
     choices: { ...runOff.chosen.choices },
     probabilities: { ...runOff.chosen.probabilities },
   };

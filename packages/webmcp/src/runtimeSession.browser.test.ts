@@ -101,7 +101,12 @@ describe("the public runtime session in Chromium", () => {
       history: [
         {
           operation: "highlight_element",
-          did: 'highlight_element(button "Save changes")',
+          chosen: {
+            ref: {
+              key: expect.any(String),
+              description: 'button "Save changes"',
+            },
+          },
           result: "ok",
         },
       ],

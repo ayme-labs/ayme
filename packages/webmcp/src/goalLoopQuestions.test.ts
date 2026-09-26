@@ -250,7 +250,7 @@ describe("ref questions over the option cap", () => {
     expect(answers.kind).toBe("chosen");
     if (answers.kind !== "chosen") return;
     expect(answers.chosen.args).toEqual({ ref: "e300" });
-    expect(answers.chosen.arguments).toEqual({
+    expect(answers.chosen.chosen).toEqual({
       ref: { key: "e300", description: 'button "Item 300"' },
     });
     // Every chunk's answer is recorded.
@@ -284,7 +284,7 @@ describe("ref questions over the option cap", () => {
       response.answers as Record<string, unknown>
     );
     expect(chosen.args).toEqual({ ref: "e300" });
-    expect(chosen.arguments).toEqual({
+    expect(chosen.chosen).toEqual({
       ref: { key: "e300", description: 'button "Item 300"' },
     });
     // The chunk answers and the run-off answer are all recorded.
@@ -343,7 +343,7 @@ describe("ref questions over the option cap", () => {
       [answers.question.id]: { type: "choice", choice: "e5" },
     });
     expect(chosen.args).toEqual({ force: true, ref: "e5" });
-    expect(chosen.arguments).toEqual({
+    expect(chosen.chosen).toEqual({
       force: { key: "true", description: "true" },
       ref: { key: "e5", description: 'button "Item 5"' },
     });
