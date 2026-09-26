@@ -45,8 +45,13 @@ export function InspectorApp() {
     }),
     structureLens({
       structure: runtime.pageState.structure,
-      pageState: runtime.pageState,
+      capture: runtime.pageState,
       onRefresh: runtime.refreshPageState,
+      selection,
+      onSelect: setSelection,
+      highlight: runtime.refHighlight,
+      refTools: runtime.refTools,
+      renderRun,
     }),
     toolsLens({
       tools: [...runtime.registeredTools.values()].map((tool) => ({
@@ -82,6 +87,7 @@ export function InspectorApp() {
               onLensChange={setActiveLens}
               onSelect={setSelection}
               onPreview={runtime.highlight.previewTarget}
+              onPreviewRef={runtime.refHighlight.previewRef}
               onPreviewEnd={runtime.highlight.clearPreview}
             />
           }

@@ -15,6 +15,8 @@ export type SearchEntry = {
   selection: Selection;
   /** The registry path to highlight on the page while it's hovered. */
   highlightPath?: string;
+  /** The structure node to highlight on the page while it's hovered. */
+  highlightRef?: string;
 };
 
 /** The navigator's legend. Each lens counts what it knows. */

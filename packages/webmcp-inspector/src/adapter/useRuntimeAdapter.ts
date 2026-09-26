@@ -48,6 +48,18 @@ export function useRuntimeAdapter() {
       clearPreview: inspector.clearPreview,
       togglePinnedTarget: inspector.togglePinnedTarget,
     },
+    /**
+     * The published Ref tools. The runtime does not list them yet: the
+     * internal entry's published tools (#181) will feed them.
+     */
+    refTools: noRefTools,
+    /** Highlights a node of the page's structure, by ref. */
+    refHighlight: {
+      pinnedRef: inspector.pinnedRef,
+      previewRef: inspector.previewRef,
+      clearPreview: inspector.clearPreview,
+      togglePinnedRef: inspector.togglePinnedRef,
+    },
     runs,
     runTool: (toolName: string, args: Parameters<typeof invoke>[1]) =>
       void invoke(toolName, args),
@@ -55,6 +67,8 @@ export function useRuntimeAdapter() {
     trace,
   };
 }
+
+const noRefTools: readonly { name: string }[] = [];
 
 export type InspectorRuntime = ReturnType<typeof useRuntimeAdapter>;
 
