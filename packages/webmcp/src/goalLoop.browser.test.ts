@@ -1598,7 +1598,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     });
     expect(result.next).not.toContain("one element");
     expect(requests).toHaveLength(1);
-  });
+    // 256 instances take under a second locally but 7-14s on CI runners,
+    // close to the 15s default.
+  }, 30_000);
 
   it("asks one instance question for a nested collection", async () => {
     document.body.innerHTML = `
