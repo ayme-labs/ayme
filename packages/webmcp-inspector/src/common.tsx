@@ -3,7 +3,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { Badge } from "@ayme-dev/design-system/components/badge";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { Run } from "./useRuns";
+import type { Run } from "./adapter/useRuns";
 
 export function Json({
   value,

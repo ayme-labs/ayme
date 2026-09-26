@@ -560,9 +560,8 @@ test("opens the Inspector and runs a tool from it", async ({ page }) => {
   const inspector = new Inspector(page);
 
   await inspector.open();
-  await inspector.pageObjects
-    .tool("ListPage.addItem")
-    .run({ text: "Added from the Inspector" });
+  const addItem = await inspector.tool("ListPage.addItem");
+  await addItem.run({ text: "Added from the Inspector" });
 
   await expect(
     page

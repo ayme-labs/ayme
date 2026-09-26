@@ -13,7 +13,7 @@ import {
   type ToolArguments,
 } from "./toolArguments";
 import { Json, RunStatus } from "./common";
-import type { Run } from "./useRuns";
+import type { Run } from "./adapter/useRuns";
 
 const inputClass =
   "w-full min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";

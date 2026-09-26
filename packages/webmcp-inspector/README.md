@@ -5,11 +5,19 @@ and their member states, a form for each generated tool, execution history,
 browser traces, and the structural page state a model sees, in an isolated
 open Shadow Root.
 
+The panel floats, or docks to the left, the right or the bottom of the page,
+and collapses to the ayme logo. It remembers its layout, sizes, positions and
+theme per site in the page's `localStorage`, and falls back to its defaults
+when storage is unavailable. Its theme follows the system until it's
+overridden.
+
 The Inspector is a React app on `@ayme-dev/design-system`. React is bundled
 into the package, so a host app of any framework, or any React version, never
 shares it. Its Tailwind stylesheet is compiled at build time and injected into
 the Shadow Root only; the host document's head receives just the page
-highlight style.
+highlight style and, while the panel is docked, a style that pads the page's
+root on the docked side so the panel sits beside the page. That style is
+removed when the panel floats, collapses or unmounts.
 
 Enable it through the Vite integration:
 
@@ -37,6 +45,19 @@ The playground imports `withDemoFeedback` from
 `@ayme-dev/webmcp-inspector/demo` to keep its teaching delay and click cue.
 Applications do not need this demo-only entry point.
 
+## Source layout
+
+- `src/adapter`: the runtime adapter, the only code that reads webmcp or runs
+  tools. It provides the structure tree model (`adapter/structure.ts`).
+- `src/shell`: the panel's frame: layouts, header, collapsed logo and
+  preferences.
+- `src/frame`: the body: the navigator, the detail pane, the Runs region, the
+  shared selection, and the `Lens` and run slot contracts.
+- `src/lenses`: one file per lens. Each contributes its tree, its search
+  entries, its legend counts and the detail views of what it selects.
+
+Below the adapter, components take only props; lint enforces it.
+
 ## Testing
 
 The Inspector is tested the way Ayme asks its users to test: through a Page
@@ -52,7 +73,8 @@ import { Inspector } from "@ayme-dev/webmcp-inspector/testing";
 
 const inspector = new Inspector(page);
 await inspector.open();
-await inspector.pageObjects.tool("ListPage.addItem").run({ text: "Milk" });
+const addItem = await inspector.tool("ListPage.addItem");
+await addItem.run({ text: "Milk" });
 ```
 
 Run from this directory inside the repository's Devbox shell:
