@@ -1,7 +1,8 @@
 import { defineConfig } from "vitest/config";
-import vue from "@vitejs/plugin-vue";
+
+import { inspectorCss } from "./inspectorCss.config";
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [inspectorCss()],
   test: { environment: "jsdom" },
 });

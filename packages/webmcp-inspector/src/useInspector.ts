@@ -1,192 +1,217 @@
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { AriaRef } from "@ayme-dev/webmcp";
+import type { AriaRef, RegisteredPomTool } from "@ayme-dev/webmcp";
 import type { RegisteredPom } from "@ayme-dev/webmcp/internal";
 import {
   capturePageState,
   getPageStateForElements,
   listRegisteredPomTargets,
+  listRegisteredPomTools,
   listRegisteredPoms,
-  probeRegisteredPomMembers,
   subscribeToRegisteredPoms,
 } from "@ayme-dev/webmcp/internal";
 
+export type RegistrySnapshot = {
+  registeredPoms: readonly RegisteredPom[];
+  /** The tools callable now, by name: the ones WebMCP publishes. */
+  activeTools: ReadonlyMap<string, RegisteredPomTool>;
+};
+
+export type PageStateView = {
+  text?: string;
+  capturedAt?: string;
+  error?: string;
+  loading: boolean;
+};
+
+function readRegistry(): RegistrySnapshot {
+  return {
+    registeredPoms: listRegisteredPoms(),
+    activeTools: new Map(
+      listRegisteredPomTools().map((tool) => [tool.name, tool])
+    ),
+  };
+}
+
 export function useInspector() {
-  const registeredPoms = ref<RegisteredPom[]>([]);
-  const pageState = ref<string>();
-  const pageStateCapturedAt = ref<string>();
-  const pageStateError = ref<string>();
-  const pageStateLoading = ref(false);
-  const applicationModelSelectionPath = ref<string>();
+  const [registry, setRegistry] = useState(readRegistry);
+  const [pageState, setPageState] = useState<PageStateView>({
+    loading: false,
+  });
+  const [pinnedPath, setPinnedPath] = useState<string>();
 
-  const refreshPomMembers = () => probeRegisteredPomMembers();
+  const mounted = useRef(false);
+  const pageStateRequestId = useRef(0);
+  const highlightRequestId = useRef(0);
+  const highlightedElements = useRef<Element[]>([]);
+  const pinnedPathRef = useRef<string>(undefined);
+  const hoveredPath = useRef<string>(undefined);
 
-  let pageStateRequestId = 0;
-  let unsubscribeFromRegisteredPoms: (() => void) | undefined;
-  let highlightObserver: MutationObserver | undefined;
-  let highlightRefreshTimer: ReturnType<typeof setTimeout> | undefined;
-  let highlightedElements: Element[] = [];
-  let highlightRequestId = 0;
-  let selectedApplicationModelPath: string | undefined;
-  let hoveredApplicationModelPath: string | undefined;
-  let unmounted = false;
-
-  const clearHighlightedElements = () => {
-    for (const element of highlightedElements)
-      element.removeAttribute("data-ayme-highlight");
-    highlightedElements = [];
-  };
-
-  const applyApplicationModelHighlight = async (path: string | undefined) => {
-    const requestId = ++highlightRequestId;
-    clearHighlightedElements();
-
-    if (!path) return;
+  const refreshPageState = useCallback(async () => {
+    const requestId = ++pageStateRequestId.current;
+    const isCurrent = () =>
+      mounted.current && requestId === pageStateRequestId.current;
+    setPageState((current) => ({
+      ...current,
+      error: undefined,
+      loading: true,
+    }));
 
     try {
-      const targets = (await listRegisteredPomTargets()).filter(
-        (target) => target.path === path
-      );
-      const targetElements = uniqueElements(
-        targets.map((target) => target.element)
-      );
-      const { state, refs: targetRefs } =
-        await getPageStateForElements(targetElements);
-      const refs = targetRefs.filter(
-        (ref): ref is AriaRef => ref !== undefined
-      );
-      const resolutions = await state.resolve(...refs);
-      const elements = uniqueElements(
-        resolutions.flatMap((resolution) =>
-          resolution.status === "resolved" ? [resolution.node.element] : []
-        )
-      );
-      if (unmounted || requestId !== highlightRequestId) return;
-
-      for (const element of elements)
-        element.setAttribute("data-ayme-highlight", "");
-      highlightedElements = elements;
-    } catch (error) {
-      if (unmounted || requestId !== highlightRequestId) return;
-      console.warn(`Could not highlight ${path}: ${errorMessage(error)}`);
-    }
-  };
-
-  const previewApplicationModelTarget = (path: string) => {
-    hoveredApplicationModelPath = path;
-    void applyApplicationModelHighlight(
-      hoveredApplicationModelPath ?? selectedApplicationModelPath
-    );
-  };
-
-  const clearApplicationModelPreview = () => {
-    hoveredApplicationModelPath = undefined;
-    void applyApplicationModelHighlight(selectedApplicationModelPath);
-  };
-
-  const pinApplicationModelTarget = (path: string) => {
-    selectedApplicationModelPath =
-      selectedApplicationModelPath === path ? undefined : path;
-    applicationModelSelectionPath.value = selectedApplicationModelPath;
-    void applyApplicationModelHighlight(
-      hoveredApplicationModelPath ?? selectedApplicationModelPath
-    );
-  };
-
-  const schedulePinnedHighlightRefresh = (records?: MutationRecord[]) => {
-    if (
-      records?.length &&
-      records.every(
-        (record) =>
-          (record.type === "attributes" &&
-            record.attributeName === "data-ayme-highlight") ||
-          (record.target instanceof Element &&
-            record.target.matches("[data-ayme-inspector-host]"))
-      )
-    )
-      return;
-    if (
-      !selectedApplicationModelPath ||
-      hoveredApplicationModelPath ||
-      highlightRefreshTimer !== undefined
-    )
-      return;
-    highlightRefreshTimer = setTimeout(() => {
-      highlightRefreshTimer = undefined;
-      if (selectedApplicationModelPath)
-        void applyApplicationModelHighlight(selectedApplicationModelPath);
-    }, 40);
-  };
-
-  const refreshPageState = async () => {
-    const requestId = ++pageStateRequestId;
-    pageStateLoading.value = true;
-    pageStateError.value = undefined;
-
-    try {
-      const snapshot = await capturePageState(document.body);
-      if (unmounted || requestId !== pageStateRequestId) return;
-      pageState.value = snapshot;
-      pageStateCapturedAt.value = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
+      const text = await capturePageState(document.body);
+      if (!isCurrent()) return;
+      setPageState({
+        text,
+        capturedAt: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+        loading: false,
       });
     } catch (error) {
-      if (unmounted || requestId !== pageStateRequestId) return;
-      pageStateError.value = errorMessage(error);
-    } finally {
-      if (!unmounted && requestId === pageStateRequestId)
-        pageStateLoading.value = false;
+      if (!isCurrent()) return;
+      setPageState((current) => ({
+        ...current,
+        error: errorMessage(error),
+        loading: false,
+      }));
     }
-  };
+  }, []);
 
-  onMounted(() => {
-    highlightObserver = new MutationObserver(schedulePinnedHighlightRefresh);
-    highlightObserver.observe(document.body, {
+  const clearHighlightedElements = useCallback(() => {
+    for (const element of highlightedElements.current)
+      element.removeAttribute("data-ayme-highlight");
+    highlightedElements.current = [];
+  }, []);
+
+  const applyHighlight = useCallback(
+    async (path: string | undefined) => {
+      const requestId = ++highlightRequestId.current;
+      const isCurrent = () =>
+        mounted.current && requestId === highlightRequestId.current;
+      clearHighlightedElements();
+      if (!path) return;
+
+      try {
+        const targets = (await listRegisteredPomTargets()).filter(
+          (target) => target.path === path
+        );
+        const { state, refs } = await getPageStateForElements(
+          uniqueElements(targets.map((target) => target.element))
+        );
+        const resolutions = await state.resolve(
+          ...refs.filter((ref): ref is AriaRef => ref !== undefined)
+        );
+        const elements = uniqueElements(
+          resolutions.flatMap((resolution) =>
+            resolution.status === "resolved" ? [resolution.node.element] : []
+          )
+        );
+        if (!isCurrent()) return;
+
+        for (const element of elements)
+          element.setAttribute("data-ayme-highlight", "");
+        highlightedElements.current = elements;
+      } catch (error) {
+        if (!isCurrent()) return;
+        console.warn(`Could not highlight ${path}: ${errorMessage(error)}`);
+      }
+    },
+    [clearHighlightedElements]
+  );
+
+  /** Hover or focus: highlight a target until the preview ends. */
+  const previewTarget = useCallback(
+    (path: string) => {
+      hoveredPath.current = path;
+      void applyHighlight(path);
+    },
+    [applyHighlight]
+  );
+
+  const clearPreview = useCallback(() => {
+    hoveredPath.current = undefined;
+    void applyHighlight(pinnedPathRef.current);
+  }, [applyHighlight]);
+
+  /** Click: pin a target, or unpin it when it is already pinned. */
+  const togglePinnedTarget = useCallback(
+    (path: string) => {
+      const next = pinnedPathRef.current === path ? undefined : path;
+      pinnedPathRef.current = next;
+      setPinnedPath(next);
+      void applyHighlight(hoveredPath.current ?? next);
+    },
+    [applyHighlight]
+  );
+
+  useEffect(() => {
+    mounted.current = true;
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+
+    // The page re-renders under a pinned highlight; re-resolve it so the
+    // highlight follows the target's current element.
+    const observer = new MutationObserver((records) => {
+      if (records.every(isInspectorOwnMutation)) return;
+      if (
+        !pinnedPathRef.current ||
+        hoveredPath.current ||
+        refreshTimer !== undefined
+      )
+        return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = undefined;
+        if (pinnedPathRef.current) void applyHighlight(pinnedPathRef.current);
+      }, 40);
+    });
+    observer.observe(document.body, {
       attributes: true,
       childList: true,
       characterData: true,
       subtree: true,
     });
 
-    const updateRegisteredPoms = () => {
-      registeredPoms.value = listRegisteredPoms();
+    const updateRegistry = () => {
+      setRegistry(readRegistry());
       void refreshPageState();
     };
-    updateRegisteredPoms();
-    unsubscribeFromRegisteredPoms =
-      subscribeToRegisteredPoms(updateRegisteredPoms);
-  });
+    updateRegistry();
+    const unsubscribe = subscribeToRegisteredPoms(updateRegistry);
 
-  onBeforeUnmount(() => {
-    unmounted = true;
-    highlightObserver?.disconnect();
-    if (highlightRefreshTimer !== undefined)
-      clearTimeout(highlightRefreshTimer);
-    clearHighlightedElements();
-    unsubscribeFromRegisteredPoms?.();
-  });
+    return () => {
+      mounted.current = false;
+      observer.disconnect();
+      if (refreshTimer !== undefined) clearTimeout(refreshTimer);
+      clearHighlightedElements();
+      unsubscribe();
+    };
+  }, [applyHighlight, clearHighlightedElements, refreshPageState]);
 
   return {
+    ...registry,
     pageState,
-    pageStateCapturedAt,
-    pageStateError,
-    pageStateLoading,
-    applicationModelSelectionPath,
     refreshPageState,
-    registeredPoms,
-    refreshPomMembers,
-    previewApplicationModelTarget,
-    clearApplicationModelPreview,
-    pinApplicationModelTarget,
+    pinnedPath,
+    previewTarget,
+    clearPreview,
+    togglePinnedTarget,
   };
+}
+
+function isInspectorOwnMutation(record: MutationRecord) {
+  return (
+    (record.type === "attributes" &&
+      record.attributeName === "data-ayme-highlight") ||
+    (record.target instanceof Element &&
+      record.target.matches("[data-ayme-inspector-host]"))
+  );
 }
 
 function uniqueElements(elements: readonly Element[]) {
   return [...new Set(elements)];
 }
 
-function errorMessage(error: unknown) {
+export function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }

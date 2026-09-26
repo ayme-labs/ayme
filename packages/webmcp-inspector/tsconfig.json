@@ -1,4 +1,4 @@
 {
-  "extends": "@ayme-dev/typescript-config/vue.json",
-  "include": ["src/**/*.ts", "src/**/*.vue"]
+  "extends": "@ayme-dev/typescript-config/react-library.json",
+  "include": ["src"]
 }
