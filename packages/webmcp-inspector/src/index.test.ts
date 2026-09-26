@@ -217,6 +217,7 @@ it("excludes the Inspector UI from structural page-state capture", async () => {
   const state = await capturePageState(document.body);
 
   expect(state).toContain("Consumer application");
-  expect(state).not.toContain("Inspector");
+  // The panel is titled and labelled "ayme"; the host page never says it.
+  expect(state).not.toContain("ayme");
   inspector.dispose();
 });

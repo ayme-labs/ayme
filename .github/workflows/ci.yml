@@ -123,6 +123,7 @@ jobs:
           name: browser-test-results
           path: |
             packages/webmcp/test-results
+            packages/webmcp-inspector/test-results
             apps/*/test-results
           if-no-files-found: ignore
 
