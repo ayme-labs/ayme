@@ -221,7 +221,7 @@ describe("InspectorApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "Collapse inspector" }));
 
     expect(
-      screen.queryByRole("complementary", { name: "Ayme inspector" })
+      screen.queryByRole("complementary", { name: "Ayme Inspector" })
     ).toBeNull();
     const fab = screen.getByRole("button", { name: "Open Ayme POM inspector" });
     expect(document.activeElement).toBe(fab);
@@ -235,7 +235,7 @@ describe("InspectorApp", () => {
     fireEvent.click(fab);
 
     expect(
-      screen.getByRole("complementary", { name: "Ayme inspector" })
+      screen.getByRole("complementary", { name: "Ayme Inspector" })
     ).toBeTruthy();
     expect(document.activeElement).toBe(
       screen.getByRole("button", { name: "Collapse inspector" })
