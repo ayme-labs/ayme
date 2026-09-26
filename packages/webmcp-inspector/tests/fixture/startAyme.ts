@@ -1,5 +1,8 @@
 import { createRuntimeSession, type PomManifest } from "@ayme-dev/webmcp";
-import { registerCompiledPom } from "@ayme-dev/webmcp/internal";
+import {
+  registerCompiledPom,
+  type PageObjectConstructor,
+} from "@ayme-dev/webmcp/internal";
 import { mountInspector } from "@ayme-dev/webmcp-inspector";
 
 import { ListPage } from "./ListPage";
@@ -35,17 +38,20 @@ const listPageManifest: PomManifest = {
 registerCompiledPom(ListPage, listPageManifest);
 
 /**
- * Mounts the Inspector, then starts the runtime with the ListPage Page
- * Object, the way the Ayme integrations do. The page reports its state on
+ * Mounts the Inspector, then starts the runtime with a Page Object (the
+ * ListPage by default), the way the Ayme integrations do. The page reports its state on
  * <html> so the e2e tests can tell a broken fixture or a runtime that never
  * published from a broken Inspector.
  */
-export function startAyme() {
+export function startAyme(PageObject: PageObjectConstructor = ListPage) {
   const root = document.documentElement.dataset;
   try {
     const inspector = mountInspector();
     const runtime = createRuntimeSession();
-    const unregister = runtime.register(ListPage, runtime.construct(ListPage));
+    const unregister = runtime.register(
+      PageObject,
+      runtime.construct(PageObject)
+    );
     const reportRuntime = () => {
       const { state, message } = runtime.getSnapshot();
       root.runtime = state;

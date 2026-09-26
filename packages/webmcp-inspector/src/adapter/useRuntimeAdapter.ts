@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import type { RegisteredPomTool } from "@ayme-dev/webmcp";
 
-import { listPomClasses } from "../pomModel";
+import { buildPageModel } from "./pageModel";
 import { useInspector } from "./useInspector";
 import { useInspectorTrace } from "./useInspectorTrace";
 import { useRuns } from "./useRuns";
@@ -14,7 +14,8 @@ import { useRuns } from "./useRuns";
  */
 export function useRuntimeAdapter() {
   const inspector = useInspector();
-  const { registeredPoms, refreshPageState } = inspector;
+  const { registeredPoms, activeTools, pomDefinitions, refreshPageState } =
+    inspector;
   const trace = useInspectorTrace();
   const onRunSettled = useCallback(
     () => void refreshPageState(),
@@ -22,9 +23,14 @@ export function useRuntimeAdapter() {
   );
   const { runs, invoke, clear } = useRuns({ onSettled: onRunSettled });
 
-  const pomClasses = useMemo(
-    () => listPomClasses(registeredPoms),
-    [registeredPoms]
+  const pageModel = useMemo(
+    () =>
+      buildPageModel(
+        registeredPoms,
+        new Set(activeTools.keys()),
+        pomDefinitions
+      ),
+    [registeredPoms, activeTools, pomDefinitions]
   );
   const registeredTools = useMemo(
     () => listRegisteredTools(registeredPoms),
@@ -34,7 +40,8 @@ export function useRuntimeAdapter() {
   return {
     /** The page's name for the header badge: its page Page Object's class. */
     pageName: registeredPoms[0]?.manifest.className,
-    pomClasses,
+    /** The Page Objects on the page and the Page Object Models it knows. */
+    pageModel,
     /** Every registered tool once by name, whether published now or not. */
     registeredTools,
     /** The tools published now, by name. */

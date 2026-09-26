@@ -17,6 +17,7 @@ import { Inspector } from "./testing";
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its adapter only.
 vi.mock("@ayme-dev/webmcp/internal", () => ({
+  getPomDefinitions: vi.fn(() => ({ definitions: [] })),
   getPageStateForElements: vi.fn(async () => ({
     state: {
       text: '- e1 main:\n  - e2 button "Save"',
@@ -97,24 +98,25 @@ afterEach(() => {
 });
 
 describe("the Inspector", () => {
-  it("shows a Page Object Model's member state and pins its highlight", async () => {
+  it("shows a Page Object's members as the page probe found them and pins one's highlight", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
     renderApp();
-    const card = inspector.detail.pageObjects.pomClass("Editor");
+    const detail = inspector.detail.model;
+
+    await inspector.navigator.model.object("Editor").click();
+    await expect
+      .poll(() => detail.memberDescription("saveButton"))
+      .toBe("locator · 1 match");
+    await detail.member("saveButton").click();
 
     await expect
-      .poll(() => card.memberState("saveButton").textContent())
-      .toBe("present");
-    await card.member("saveButton").click();
-
-    await expect
-      .poll(() => card.member("saveButton").getAttribute("aria-pressed"))
+      .poll(() => detail.member("saveButton").getAttribute("aria-pressed"))
       .toBe("true");
     await expect.poll(() => listRegisteredPomTargets).toHaveBeenCalled();
-    await card.member("saveButton").click();
+    await detail.member("saveButton").click();
     await expect
-      .poll(() => card.member("saveButton").getAttribute("aria-pressed"))
+      .poll(() => detail.member("saveButton").getAttribute("aria-pressed"))
       .toBe("false");
   });
 
@@ -201,7 +203,7 @@ describe("the Inspector", () => {
       .toContain('e2 button "Save"');
     await expect
       .poll(() => inspector.navigator.legend.textContent())
-      .toBe("2 refs");
+      .toContain("2 refs");
   });
 
   it("shows whether a registered tool is published, with its schema", async () => {

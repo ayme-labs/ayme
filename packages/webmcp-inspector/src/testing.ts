@@ -12,7 +12,11 @@ export {
   type ThemeChoice,
 } from "./pom/InspectorHeader";
 export { Navigator, type LensName } from "./pom/Navigator";
-export { PageObjectsView, PomClassCard } from "./pom/PageObjectsView";
+export {
+  ModelDetailView,
+  type ModelDetailSection,
+} from "./pom/ModelDetailView";
+export { ModelLens, type ModelPaneName } from "./pom/ModelLens";
 export { PageStateView } from "./pom/PageStateView";
 export { PanelShell, type PanelEdge } from "./pom/PanelShell";
 export { RunsView } from "./pom/RunsView";

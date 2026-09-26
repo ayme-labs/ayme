@@ -1,17 +1,17 @@
 import type { Locator } from "@playwright/test";
 
-import { PageObjectsView } from "./PageObjectsView";
+import { ModelDetailView } from "./ModelDetailView";
 import { ToolForm } from "./ToolForm";
 
 /** The detail pane: the view of what's selected, with its run slot. */
 export class DetailPane {
   readonly root: Locator;
-  /** The skeleton's Page objects view, for the page and for a model. */
-  readonly pageObjects: PageObjectsView;
+  /** The Model lens's view of the page, a Page Object or a model. */
+  readonly model: ModelDetailView;
 
   constructor(root: Locator) {
     this.root = root;
-    this.pageObjects = new PageObjectsView(root);
+    this.model = new ModelDetailView(root);
   }
 
   /** The run slot for a tool. */

@@ -37,7 +37,7 @@ export function InspectorApp() {
   const lenses: Lens[] = [
     modelLens({
       host: window.location.host,
-      pomClasses: runtime.pomClasses,
+      pageModel: runtime.pageModel,
       selection,
       onSelect: setSelection,
       highlight: runtime.highlight,

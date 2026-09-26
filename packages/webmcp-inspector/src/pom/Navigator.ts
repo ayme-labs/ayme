@@ -1,5 +1,7 @@
 import type { Locator } from "@playwright/test";
 
+import { ModelLens } from "./ModelLens";
+
 export type LensName = "Model" | "Structure" | "Tools";
 
 /**
@@ -12,6 +14,8 @@ export class Navigator {
   readonly legend: Locator;
   readonly searchResults: Locator;
   readonly noResults: Locator;
+  /** The Model lens's tree. */
+  readonly model: ModelLens;
 
   constructor(root: Locator) {
     this.root = root;
@@ -21,6 +25,7 @@ export class Navigator {
       .getByRole("list", { name: "Search results" })
       .getByRole("button");
     this.noResults = root.getByText("Nothing matches.");
+    this.model = new ModelLens(root);
   }
 
   lens(name: LensName): Locator {

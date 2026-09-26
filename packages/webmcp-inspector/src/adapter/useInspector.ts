@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { AriaRef, RegisteredPomTool } from "@ayme-dev/webmcp";
+import type {
+  AriaRef,
+  PomDefinition,
+  RegisteredPomTool,
+} from "@ayme-dev/webmcp";
 import type { RegisteredPom } from "@ayme-dev/webmcp/internal";
 
 import {
   getPageStateForElements,
+  getPomDefinitions,
   listRegisteredPomTargets,
   listRegisteredPomTools,
   listRegisteredPoms,
@@ -21,6 +26,8 @@ export type RegistrySnapshot = {
   registeredPoms: readonly RegisteredPom[];
   /** The tools callable now, by name: the ones WebMCP publishes. */
   activeTools: ReadonlyMap<string, RegisteredPomTool>;
+  /** The Page Object Model definitions get_page_context returns. */
+  pomDefinitions: readonly PomDefinition[];
 };
 
 export type PageStateView = {
@@ -38,7 +45,20 @@ function readRegistry(): RegistrySnapshot {
     activeTools: new Map(
       listRegisteredPomTools().map((tool) => [tool.name, tool])
     ),
+    pomDefinitions: readPomDefinitions(),
   };
+}
+
+function readPomDefinitions() {
+  try {
+    return getPomDefinitions().definitions;
+  } catch (error) {
+    // get_page_context fails the same way, e.g. on an ambiguous definition.
+    console.warn(
+      `Could not read the page object models: ${errorMessage(error)}`
+    );
+    return [];
+  }
 }
 
 export function useInspector() {
