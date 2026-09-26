@@ -3,6 +3,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { RegisteredPomTool } from "@ayme-dev/webmcp";
 import {
+  listPublishedTools,
   listRegisteredPomTargets,
   listRegisteredPomTools,
   listRegisteredPoms,
@@ -16,7 +17,18 @@ import { Inspector } from "./testing";
 // frame, driven through the Inspector POM on playwright-lite. The runtime's
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its adapter only.
+const { nothingPublished, activePublication } = vi.hoisted(() => ({
+  nothingPublished: [] as never[],
+  activePublication: { state: "active", message: "Published." },
+}));
+
 vi.mock("@ayme-dev/webmcp/internal", () => ({
+  getPageContextTool: {
+    execute: vi.fn(async () => ({ structure: "", pomDefinitions: "" })),
+  },
+  getPublicationStatus: vi.fn(() => activePublication),
+  listPublishedTools: vi.fn(() => nothingPublished),
+  subscribeToPublishedTools: vi.fn(() => () => {}),
   getPageStateForElements: vi.fn(async () => ({
     state: {
       text: '- e1 main:\n  - e2 button "Save"',
@@ -75,6 +87,14 @@ function editor(id: string, tool: RegisteredPomTool): RegisteredPom {
 function mockRegistry(poms: RegisteredPom[], activeTools: RegisteredPomTool[]) {
   vi.mocked(listRegisteredPoms).mockReturnValue(poms);
   vi.mocked(listRegisteredPomTools).mockReturnValue(activeTools);
+  vi.mocked(listPublishedTools).mockReturnValue(
+    activeTools.map(({ name, description, inputSchema }) => ({
+      name,
+      description,
+      inputSchema,
+      group: "pageObject",
+    }))
+  );
 }
 
 const inspector = new Inspector(createPage());
@@ -202,21 +222,6 @@ describe("the Inspector", () => {
     await expect
       .poll(() => inspector.navigator.legend.textContent())
       .toBe("2 refs");
-  });
-
-  it("shows whether a registered tool is published, with its schema", async () => {
-    const tool = saveTool("editor", vi.fn());
-    mockRegistry([editor("editor", tool)], []);
-    renderApp();
-
-    await inspector.tool("Editor.save");
-
-    await expect
-      .poll(() => inspector.detail.root.textContent())
-      .toContain("unavailable");
-    await expect
-      .poll(() => inspector.detail.root.textContent())
-      .toContain('"type": "object"');
   });
 
   it("shows a search result in its lens and the detail pane", async () => {

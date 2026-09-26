@@ -4,6 +4,7 @@ import {
   useRuntimeAdapter,
   type InspectorRuntime,
 } from "./adapter/useRuntimeAdapter";
+import { usePomDefinition } from "./adapter/usePublishedTools";
 import type { Run } from "./adapter/useRuns";
 import { Empty } from "./common";
 import { DetailPane, InspectorBody, RunsRegion } from "./frame/InspectorBody";
@@ -14,7 +15,7 @@ import { pageSelection, type Selection } from "./frame/selection";
 import { InspectorRoot } from "./InspectorRoot";
 import { modelLens } from "./lenses/modelLens";
 import { structureLens } from "./lenses/structureLens";
-import { toolsLens } from "./lenses/toolsLens";
+import { selectedToolModel, toolsLens } from "./lenses/toolsLens";
 import { RunsTab } from "./RunsTab";
 import { InspectorShell } from "./shell/InspectorShell";
 import { usePreferences } from "./shell/usePreferences";
@@ -33,6 +34,9 @@ export function InspectorApp() {
   const [selection, setSelection] = useState<Selection>(pageSelection);
   const [activeLens, setActiveLens] = useState<LensId>("model");
   const renderRun = useSkeletonRunSlot(runtime);
+  const toolDefinition = usePomDefinition(
+    selectedToolModel(runtime.publishedTools, selection)
+  );
 
   const lenses: Lens[] = [
     modelLens({
@@ -49,12 +53,9 @@ export function InspectorApp() {
       onRefresh: runtime.refreshPageState,
     }),
     toolsLens({
-      tools: [...runtime.registeredTools.values()].map((tool) => ({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-        available: runtime.activeTools.has(tool.name),
-      })),
+      tools: runtime.publishedTools,
+      publication: runtime.publication,
+      definitions: toolDefinition,
       selection,
       onSelect: setSelection,
       renderRun,

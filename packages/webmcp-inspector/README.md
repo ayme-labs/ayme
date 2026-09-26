@@ -53,6 +53,8 @@ Applications do not need this demo-only entry point.
   shared selection, and the `Lens` and run slot contracts.
 - `src/lenses`: one file per lens. Each contributes its tree, its search
   entries, its legend counts and the detail views of what it selects.
+- `src/detail`: parts any detail view can use, such as "What the model
+  sees", the syntax-highlighted definitions and schemas an agent receives.
 
 Below the adapter, components take only props; lint enforces it.
 
