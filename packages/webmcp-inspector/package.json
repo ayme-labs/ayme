@@ -36,6 +36,7 @@
     "@playwright/test": ">=1.29 <1.63"
   },
   "devDependencies": {
+    "@ayme-dev/design-system": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#5c088c47f271e361e8e07620c3c4f65eab02c430",
     "@ayme-dev/typescript-config": "workspace:*",
