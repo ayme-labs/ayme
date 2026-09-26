@@ -1,6 +1,9 @@
 {
   "extends": ["//"],
   "tasks": {
+    "typecheck": {
+      "dependsOn": ["build", "^build", "^typecheck"]
+    },
     "test": {
       "outputs": ["coverage/**"],
       "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
