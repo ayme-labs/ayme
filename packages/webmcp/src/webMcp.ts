@@ -72,7 +72,12 @@ export async function synchronizeWebMcpTools(
 ): Promise<WebMcpRegistration> {
   const published = new Map<
     string,
-    { tool: PublishedTool; controller: AbortController }
+    {
+      tool: PublishedTool;
+      controller: AbortController;
+      /** The tool exactly as registered with the driver. */
+      registered: ReturnType<typeof withErrorResult>;
+    }
   >();
   let disposed = false;
   let syncing = false;
@@ -153,12 +158,12 @@ export async function synchronizeWebMcpTools(
         for (const [name, tool] of active) {
           if (disposed || published.has(name)) continue;
           const controller = new AbortController();
-          published.set(name, { tool, controller });
+          const registered = withErrorResult(withSettledPublication(tool));
+          published.set(name, { tool, controller, registered });
           try {
-            await driver.registerTool(
-              withErrorResult(withSettledPublication(tool)),
-              { signal: controller.signal }
-            );
+            await driver.registerTool(registered, {
+              signal: controller.signal,
+            });
           } catch (error) {
             controller.abort();
             published.delete(name);
@@ -169,7 +174,12 @@ export async function synchronizeWebMcpTools(
       // The Inspector reads the settled set, never one mid-pass.
       if (!disposed) {
         reported = true;
-        reportPublishedTools([...resolved.values()]);
+        reportPublishedTools(
+          [...resolved.values()].map((entry) => ({
+            ...entry,
+            execute: published.get(entry.tool.name)!.registered.execute,
+          }))
+        );
       }
     } finally {
       syncing = false;

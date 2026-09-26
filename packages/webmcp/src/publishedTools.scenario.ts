@@ -2,16 +2,24 @@
  * Browser-test scenario, shared by the native WebMCP and the polyfill runs:
  * the internal list of published tools is exactly what the runtime session
  * has published to WebMCP: every tool while publication is active, nothing
- * while it is disabled, failed or stopped.
+ * while it is disabled, failed or stopped. Running a published tool from the
+ * internal entry returns what an agent gets for the same call.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ModelContext, RegisteredTool } from "@mcp-b/webmcp-types";
+import type {
+  ChromeModelContextExtensions,
+  ModelContext as WebMcpModelContext,
+  RegisteredTool,
+} from "@mcp-b/webmcp-types";
+import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { PomManifest } from "./contracts";
+import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import {
   getPublicationStatus,
   listPublishedTools,
+  runPublishedTool,
   subscribeToPublishedTools,
   type PublishedToolGroup,
 } from "./publishedTools";
@@ -96,7 +104,31 @@ function byName(a: { name: string }, b: { name: string }) {
   return a.name.localeCompare(b.name);
 }
 
+type ModelContext = WebMcpModelContext & ChromeModelContextExtensions;
 type SessionOptions = Parameters<typeof createRuntimeSession>[0];
+
+/** A stubbed System One model: no operation fits, so the loop hands over. */
+async function noFittingOperation(
+  request: DecisionRequest
+): Promise<DecisionResponse> {
+  const criteria = (
+    request.questions as Record<string, { criteria?: Record<string, string> }>
+  ).operation!.criteria!;
+  return {
+    model: request.model,
+    answers: {
+      operation: {
+        type: "choice",
+        choice: "none",
+        confidence: 1,
+        probabilities: Object.fromEntries(
+          Object.keys(criteria).map((key) => [key, key === "none" ? 1 : 0])
+        ),
+      },
+      goal_met: { type: "noul", noul: 0.1 },
+    },
+  };
+}
 
 const highlight: RefTool = {
   name: "highlight",
@@ -108,7 +140,7 @@ export function describePublishedTools(
   label: string,
   getContext: () => ModelContext
 ): void {
-  describe(`the published tool list through ${label}`, () => {
+  describe(`published tools through ${label}`, () => {
     let context: ModelContext;
     let runtime: RuntimeSession;
     const cleanups: (() => void)[] = [];
@@ -125,7 +157,7 @@ export function describePublishedTools(
       runtime = createRuntimeSession({
         page: () => createPage({ actionTimeout: 1000 }),
         refTools: [highlight],
-        goalLoop: () => Promise.reject(new Error("The Goal Loop is not run.")),
+        goalLoop: noFittingOperation,
         ...options,
       });
       cleanups.push(runtime.register(TodoPage, runtime.construct(TodoPage)));
@@ -146,7 +178,28 @@ export function describePublishedTools(
     afterEach(() => {
       for (const cleanup of cleanups.splice(0).reverse()) cleanup();
       vi.unstubAllGlobals();
+      document.body.innerHTML = "";
     });
+
+    /** What an agent gets back from WebMCP for this call. */
+    async function agentGets(name: string, input: unknown) {
+      const tool = (await context.getTools()).find(
+        (candidate) => candidate.name === name
+      );
+      if (!tool) throw new Error(`Tool ${name} was not published.`);
+      return JSON.parse(
+        (await context.executeTool!(tool, JSON.stringify(input))) ?? "null"
+      ) as unknown;
+    }
+
+    async function saveButtonRef() {
+      const { structure } = (await agentGets("get_page_context", {})) as {
+        structure: string;
+      };
+      const ref = structure.match(/(e\d+) button "Save changes"/)?.[1];
+      if (!ref) throw new Error("Expected a Structural Ref for Save changes.");
+      return AriaRefSchema.parse(ref);
+    }
 
     it("lists each published tool with the name, description and input schema WebMCP publishes", async () => {
       await startSession();
@@ -221,6 +274,60 @@ export function describePublishedTools(
       expect(heard.at(-1)).toBe("disposed");
       expect(listed()).toEqual([]);
       expect(await publishedOverWebMcp(context)).toEqual([]);
+    });
+
+    it.each([
+      ["a Page Object tool", "TodoPage.addTodo", () => ({ title: "Milk" })],
+      [
+        "the built-in click Ref tool",
+        "click_page_state_ref",
+        (ref: string) => ({ ref }),
+      ],
+      ["an app-registered Ref tool", "highlight", (ref: string) => ({ ref })],
+      ["get_page_context", "get_page_context", () => ({})],
+      [
+        "pursue_goal",
+        "pursue_goal",
+        () => ({ goal: "Save the changes", maxSteps: 1 }),
+      ],
+    ])(
+      "runs %s and returns what an agent gets for the same call",
+      async (_kind, name, inputFor) => {
+        document.body.innerHTML = `<button>Save changes</button>`;
+        await startSession();
+        const input = inputFor(await saveButtonRef());
+        // A click focuses the button, so it is focused before the first call
+        // too. Both calls then start from the same page, already seen.
+        document.querySelector("button")!.focus();
+        await agentGets("get_page_context", {});
+        const expected = await agentGets(name, input);
+        // Diagnostic: the call itself succeeds for an agent.
+        expect(expected).not.toMatchObject({ isError: true });
+        await agentGets("get_page_context", {});
+
+        expect(await runPublishedTool(name, input)).toEqual(expected);
+      }
+    );
+
+    it("returns a failing call's error result as an agent gets it", async () => {
+      document.body.innerHTML = `<button id="save">Save changes</button>`;
+      await startSession();
+      const ref = await saveButtonRef();
+      document.querySelector("#save")!.remove();
+      const expected = await agentGets("click_page_state_ref", { ref });
+
+      expect(await runPublishedTool("click_page_state_ref", { ref })).toEqual(
+        expected
+      );
+      expect(expected).toMatchObject({ isError: true });
+    });
+
+    it("refuses to run a tool that is not published", async () => {
+      await startSession();
+
+      await expect(
+        runPublishedTool("SettingsPage.save", { title: "x" })
+      ).rejects.toThrow('The tool "SettingsPage.save" is not published.');
     });
   });
 }

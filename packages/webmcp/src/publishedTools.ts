@@ -62,6 +62,8 @@ export function resolvePublishedTools(): Map<
 type PublicationReadModel = {
   status: AymeWebMcpPublicationStatus;
   tools: readonly PublishedToolInfo[];
+  /** Each published tool's `execute`, exactly as registered with WebMCP. */
+  executes: ReadonlyMap<string, (input: unknown) => Promise<unknown>>;
 };
 
 const NO_SESSION: AymeWebMcpPublicationStatus = Object.freeze({
@@ -72,6 +74,7 @@ const NO_SESSION: AymeWebMcpPublicationStatus = Object.freeze({
 const readModel: PublicationReadModel = {
   status: NO_SESSION,
   tools: Object.freeze([]),
+  executes: new Map(),
 };
 const subscribers = new Set<() => void>();
 
@@ -95,6 +98,21 @@ export function getPublicationStatus(): AymeWebMcpPublicationStatus {
   return readModel.status;
 }
 
+/**
+ * Run a published tool the way WebMCP calls it: the same `execute` the driver
+ * was given, so the result, including an `isError` failure result, is what an
+ * agent gets. The call runs as the calling agent. Rejects when no tool of
+ * that name is published right now.
+ */
+export function runPublishedTool(name: string, input: unknown) {
+  const execute = readModel.executes.get(name);
+  if (!execute)
+    return Promise.reject(
+      new RuntimeStateError(`The tool "${name}" is not published.`)
+    );
+  return execute(input);
+}
+
 /** Call `subscriber` whenever the published tools or the status change. */
 export function subscribeToPublishedTools(subscriber: () => void) {
   subscribers.add(subscriber);
@@ -105,8 +123,15 @@ export function subscribeToPublishedTools(subscriber: () => void) {
 
 /** Package-internal: `synchronizeWebMcpTools` registered or withdrew tools. */
 export function reportPublishedTools(
-  tools: readonly { tool: PublishedTool; group: PublishedToolGroup }[]
+  tools: readonly {
+    tool: PublishedTool;
+    group: PublishedToolGroup;
+    execute: (input: unknown) => Promise<unknown>;
+  }[]
 ) {
+  readModel.executes = new Map(
+    tools.map(({ tool, execute }) => [tool.name, execute])
+  );
   readModel.tools = Object.freeze(
     tools.map(({ tool, group }) =>
       Object.freeze({
