@@ -25,6 +25,7 @@ import {
 import { Header, layoutNames } from "./Header";
 import type { Layout, Preferences } from "./preferences";
 import { usePointerDrag } from "./pointerDrag";
+import { useHostReservation } from "./useHostReservation";
 import { currentViewport, useViewport } from "./useViewport";
 
 type Edge = "left" | "right" | "top" | "bottom";
@@ -70,6 +71,11 @@ export function InspectorShell({
   const float = fitFloat(preferences.float ?? defaultFloat(viewport), viewport);
   const sideWidth = fitSideWidth(preferences.sideWidth, viewport);
   const bottomHeight = fitBottomHeight(preferences.bottomHeight, viewport);
+  useHostReservation(
+    collapsed || layout === "float"
+      ? undefined
+      : { dock: layout, size: layout === "bottom" ? bottomHeight : sideWidth }
+  );
 
   // Collapsing moves focus to the logo and opening moves it back, but only
   // when the person did it, not when the panel starts collapsed.

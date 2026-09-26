@@ -106,7 +106,10 @@ export function Navigator({
                       <span className="w-[52px] flex-none text-[10.5px] font-semibold tracking-wide text-muted-foreground uppercase">
                         {result.entry.kind}
                       </span>
-                      <span className="truncate font-mono text-xs">
+                      <span
+                        className="truncate font-mono text-xs"
+                        title={result.entry.label}
+                      >
                         {result.entry.label}
                       </span>
                     </span>
