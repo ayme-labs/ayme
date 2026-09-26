@@ -585,12 +585,50 @@ function renderPage(pageTree: StructuralTree): JsonStructuralNodeForest {
 
 export type StepState = Record<string, unknown>;
 
+/** The option the model chose for one parameter, exactly as it was offered. */
+export type ChosenOption = { key: string; description: string };
+
+/**
+ * One executed step, as the loop knew it at the step. The same record is a
+ * Handover's `history` entry, the base of the step's run record and an entry
+ * of the `history` the model is sent.
+ */
+export type GoalLoopStepRecord = {
+  /** The tool's name; a Page Object tool's is its qualified name. */
+  operation: string;
+  /** Per parameter the model filled: the option it chose. */
+  arguments: Record<string, ChosenOption>;
+  /** `"ok"`, or the error the action failed with. */
+  result: string;
+  page_changed: boolean;
+  /** A one-line label derived from the fields above; nothing reads it back. */
+  did: string;
+};
+
+/** Record an executed step; `did` is derived, e.g. `click_page_state_ref(button "Add item")`. */
+export function stepRecord(
+  operation: string,
+  chosen: Record<string, ChosenOption>,
+  outcome: Pick<GoalLoopStepRecord, "result" | "page_changed">
+): GoalLoopStepRecord {
+  const descriptions = Object.values(chosen).map(
+    (option) => option.description
+  );
+  return {
+    operation,
+    arguments: chosen,
+    result: outcome.result,
+    page_changed: outcome.page_changed,
+    did: `${operation}(${descriptions.join(", ")})`,
+  };
+}
+
 /** The state both stages of one step are decided on. */
 export function buildStepState(
   goal: string,
   pageTree: StructuralTree,
   pomDefinitionsText: string,
-  history: readonly unknown[]
+  history: readonly GoalLoopStepRecord[]
 ): StepState {
   return {
     goal,
@@ -712,8 +750,8 @@ export function parseGoalMetAnswer(
 export type ChosenArguments = {
   /** The arguments to call the operation with; a ref is the offered branded ref. */
   args: Record<string, unknown>;
-  /** What was chosen, in readable words, for the history entry. */
-  summary: string[];
+  /** Per parameter filled: the option chosen, as offered, for the step record. */
+  arguments: Record<string, ChosenOption>;
   /** Per question id: the key of the option the model chose. */
   choices: Record<string, string>;
   /** Per question id: the scores, when the decision function supplied them. */
@@ -766,7 +804,10 @@ function choose(
   option: ArgumentOption
 ): void {
   assignAt(chosen.args, question.path, option.value);
-  chosen.summary.push(`${question.parameter}: ${option.description}`);
+  chosen.arguments[question.parameter] = {
+    key: option.key,
+    description: option.description,
+  };
 }
 
 /**
@@ -786,7 +827,7 @@ export function readArgumentAnswers(
 ): ArgumentAnswers {
   const chosen: ChosenArguments = {
     args: {},
-    summary: [],
+    arguments: {},
     choices: record.choices,
     probabilities: record.probabilities,
   };
@@ -840,7 +881,7 @@ export function readRunOffAnswer(
 ): ChosenArguments {
   const chosen: ChosenArguments = {
     args: structuredClone(runOff.chosen.args),
-    summary: [...runOff.chosen.summary],
+    arguments: { ...runOff.chosen.arguments },
     choices: { ...runOff.chosen.choices },
     probabilities: { ...runOff.chosen.probabilities },
   };

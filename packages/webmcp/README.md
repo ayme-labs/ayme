@@ -406,7 +406,13 @@ return a Handover:
   reason:  "done" | "no_fitting_option" | "needs_value"
          | "action_failed" | "step_budget" | "decide_failed",
   next:    string,     // plain words: what the calling agent should do now
-  history: { did: string, result: string, page_changed: boolean }[],
+  history: {
+    operation: string,   // the tool's name; a Page Object tool's qualified name
+    arguments: Record<string, { key: string, description: string }>,
+    result: string,      // "ok", or the error the action failed with
+    page_changed: boolean,
+    did: string,         // operation(description, …), for a human skimming
+  }[],
   needs?:  { tool: string, parameters: string[] },  // only with needs_value
   changes?: string,    // what the whole run changed; absent when nothing did
 }
@@ -420,9 +426,15 @@ net result:
   reason: "done",
   next: "The goal has been achieved. Continue with your next task.",
   history: [
-    { did: "openDialog", result: "ok", page_changed: true },
-    { did: "closeDialog", result: "ok", page_changed: true },
-    { did: "archive", result: "ok", page_changed: true },
+    { operation: "InboxPage.openDialog", arguments: {}, result: "ok",
+      page_changed: true, did: "InboxPage.openDialog()" },
+    { operation: "InboxPage.closeDialog", arguments: {}, result: "ok",
+      page_changed: true, did: "InboxPage.closeDialog()" },
+    { operation: "InboxPage.invoices.archive",
+      arguments: { ref: { key: "e5",
+        description: 'InboxPage.invoices[0] (listitem "Invoice 7")' } },
+      result: "ok", page_changed: true,
+      did: 'InboxPage.invoices.archive(InboxPage.invoices[0] (listitem "Invoice 7"))' },
   ],
   changes: `- e2 <changed> main:
   - e4 <changed> list:
@@ -441,8 +453,13 @@ net result:
 | `decide_failed`     | The decision function failed (network, rejected, malformed).                                                      |
 
 The `next` field tells the calling agent what to do in plain words. History
-records each operation the loop ran: a readable label in `did`, `"ok"` or an
-error message in `result`, and whether the page changed in `page_changed`.
+records each operation the loop ran: the tool in `operation`; in `arguments`,
+per parameter the model filled, the key of the option it chose and that
+option's description exactly as it was offered; `"ok"` or an error message in
+`result`; whether the page changed in `page_changed`; and `did`, a one-line
+label derived from the others, such as `click_page_state_ref(button "Add item")`.
+A step that hands over before acting records nothing. The model is sent the
+same entries as its `history`.
 `changes` is one Change Record for the whole run, in the notation of an action's
 `changes`: the page the calling agent last received against the page after the
 run, which becomes the agent's page for its next Change Record.

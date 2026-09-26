@@ -21,11 +21,13 @@ import {
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
+  stepRecord,
   type AnswerRecord,
   type ArgumentAnswers,
   type ChoiceAnswer,
   type ChosenArguments,
   type ExecutableTool,
+  type GoalLoopStepRecord,
   type NoulAnswer,
 } from "./goalLoopQuestions";
 import { ToolInputError } from "./errors";
@@ -69,7 +71,14 @@ export function getPursueGoalTool(): ModelContextTool<
 }
 // --- Internal run result (per-step scores; not part of the Handover) ---
 
-export type GoalLoopStepScore = {
+export type { GoalLoopStepRecord };
+
+/**
+ * One step of the run result. A step that executed an action carries its step
+ * record, the object its Handover history entry is; one that ended before
+ * acting carries only the scores.
+ */
+export type GoalLoopStepScore = Partial<GoalLoopStepRecord> & {
   operationProbabilities?: Record<string, number>;
   goalMetScore: number;
   /**
@@ -115,11 +124,7 @@ export type HandoverReason =
   | "step_budget"
   | "decide_failed";
 
-export type HandoverHistoryEntry = {
-  did: string;
-  result: string;
-  page_changed: boolean;
-};
+export type HandoverHistoryEntry = GoalLoopStepRecord;
 
 export type HandoverNeeds = {
   tool: string;
@@ -408,7 +413,7 @@ export async function pursueGoal(
 
     let chosenArguments: ChosenArguments = {
       args: {},
-      summary: [],
+      arguments: {},
       choices: {},
       probabilities: {},
     };
@@ -485,16 +490,14 @@ export async function pursueGoal(
       consecutiveFailures++;
     }
 
-    // Record history — `did` is a readable label, not only the tool name.
-    const label = chosenOption.label || chosenTool.name;
-    history.push({
-      did:
-        chosenArguments.summary.length > 0
-          ? `${label} (${chosenArguments.summary.join(", ")})`
-          : label,
-      result: actionResult.result,
-      page_changed: actionResult.page_changed,
-    });
+    // One record for the Handover, the run result and the model's state.
+    const record = stepRecord(
+      chosenTool.name,
+      chosenArguments.arguments,
+      actionResult
+    );
+    history.push(record);
+    Object.assign(score, record);
 
     // 4. action_failed: two failed actions in a row
     if (consecutiveFailures >= 2) {

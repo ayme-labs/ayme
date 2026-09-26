@@ -452,9 +452,11 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       reason: "done",
       history: [
         {
-          did: "save",
+          operation: "App.save",
+          arguments: {},
           result: "ok",
           page_changed: false,
+          did: "App.save()",
         },
       ],
     });
@@ -554,8 +556,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result).toMatchObject({
       reason: "action_failed",
       history: [
-        { did: "fail", result: "action exploded", page_changed: false },
-        { did: "fail", result: "action exploded", page_changed: false },
+        { did: "App.fail()", result: "action exploded", page_changed: false },
+        { did: "App.fail()", result: "action exploded", page_changed: false },
       ],
     });
     expect((result as Record<string, unknown>).next).toContain(
@@ -584,8 +586,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result).toMatchObject({
       reason: "step_budget",
       history: [
-        { did: "save", result: "ok", page_changed: false },
-        { did: "save", result: "ok", page_changed: false },
+        { did: "App.save()", result: "ok", page_changed: false },
+        { did: "App.save()", result: "ok", page_changed: false },
       ],
     });
     expect(clickCount).toBe(2);
@@ -694,7 +696,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
   // --- History contents ---
 
-  it("records readable labels, ok results, and page_changed in history", async () => {
+  it("records the operation, a derived label, ok results, and page_changed in history", async () => {
     document.body.innerHTML = `
       <main>
         <button id="save">Save changes</button>
@@ -730,11 +732,15 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result.reason).toBe("done");
     const history = result.history as Array<Record<string, unknown>>;
     expect(history).toHaveLength(1);
-    expect(history[0]).toMatchObject({
-      did: "save",
-      result: "ok",
-    });
-    expect(history[0]!.page_changed).toBe(true);
+    expect(history).toEqual([
+      {
+        operation: "App.save",
+        arguments: {},
+        result: "ok",
+        page_changed: true,
+        did: "App.save()",
+      },
+    ]);
   });
 
   // --- State fields sent to the model ---
@@ -865,9 +871,22 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(description).toContain("Save changes");
     expect(clickCount).toBe(1);
     expect(result.reason).toBe("done");
-    expect(result.history).toMatchObject([
-      { did: expect.stringContaining("Save changes"), result: "ok" },
+    // The step record names the tool and the option chosen, as offered.
+    const record = {
+      operation: "click_page_state_ref",
+      arguments: { ref: { key, description } },
+      result: "ok",
+      page_changed: expect.any(Boolean),
+      did: `click_page_state_ref(${description})`,
+    };
+    expect(description).toBe('button "Save changes"');
+    expect(result.history).toEqual([record]);
+    // The next step's state carries the same records, and the run result's
+    // step is built on it.
+    expect((requests[2]!.state as Record<string, unknown>).history).toEqual([
+      record,
     ]);
+    expect(getLastGoalLoopRunResult()!.stepScores[0]).toMatchObject(record);
   });
 
   it("offers a Ref Tool with a filter only the elements it keeps", async () => {
@@ -1469,9 +1488,23 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     );
     expect(archived).toEqual([1]);
     expect(result.reason).toBe("done");
-    expect(result.history).toMatchObject([
-      { did: expect.stringContaining("ItemsPage.items[1]"), result: "ok" },
+    // The step record names the qualified tool and the instance chosen, as
+    // offered.
+    const [chosenKey, chosenDescription] = Object.entries(stageTwo.ref!)[1]!;
+    const record = {
+      operation: "ItemsPage.items.archive",
+      arguments: {
+        ref: { key: chosenKey, description: chosenDescription },
+      },
+      result: "ok",
+      page_changed: false,
+      did: `ItemsPage.items.archive(${chosenDescription})`,
+    };
+    expect(result.history).toEqual([record]);
+    expect((requests[2]!.state as Record<string, unknown>).history).toEqual([
+      record,
     ]);
+    expect(getLastGoalLoopRunResult()!.stepScores[0]).toMatchObject(record);
   });
 
   it("keeps the full capture behind the instance options and the Change Record while the page it sends is pruned", async () => {
@@ -1554,11 +1587,11 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     // The Change Record of the action diffs full against full: an action
     // that changed nothing reports no change, and no phantom wrapper.
     expect(result.history).toEqual([
-      {
+      expect.objectContaining({
         did: expect.stringContaining("ItemsPage.items[1]"),
         result: "ok",
         page_changed: false,
-      },
+      }),
     ]);
     // The agent's next Change Record: from the page the Handover gave it.
     const handedOver = getInteractionHistory(document).cursor("agent")!;
