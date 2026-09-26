@@ -107,6 +107,55 @@ describe("StructuralTree YAML keys", () => {
     expect(link.name).toBe("it's #1");
     expect(link.children).toEqual([]);
   });
+
+  it("parses a name that Playwright prints unquoted because it starts and ends with a slash", () => {
+    const tree = parse(
+      [
+        "- list [ref=e1]:",
+        "  - link / [ref=e2] [cursor=pointer]:",
+        "    - /url: /",
+        "  - link /docs/",
+        "  - button /a b/ [ref=e3] [disabled]: Go",
+      ].join("\n")
+    );
+    const home = tree.getNode(id("e2"))!;
+    expect(home.role).toBe("link");
+    expect(home.name).toBe("/");
+    expect(home.cursorPointer).toBe(true);
+    expect(home.props).toEqual({ url: "/" });
+
+    const docs = expectNode(tree.getNode(id("e1"))!.children[1]);
+    expect(docs.role).toBe("link");
+    expect(docs.name).toBe("/docs/");
+
+    const button = tree.getNode(id("e3"))!;
+    expect(button.role).toBe("button");
+    expect(button.name).toBe("/a b/");
+    expect(button.state.disabled).toBe(true);
+    expect(button.children).toEqual(["Go"]);
+  });
+
+  it("keeps quoted names, including slash-shaped ones, and unnamed roles parsing as before", () => {
+    const tree = parse(
+      [
+        "- list [ref=e1]:",
+        '  - link "/" [ref=e2]:',
+        "    - /url: /",
+        '  - heading "/docs/ intro" [level=2] [ref=e3]',
+        "  - separator [ref=e4]",
+      ].join("\n")
+    );
+    const link = tree.getNode(id("e2"))!;
+    expect(link.name).toBe("/");
+    expect(link.props).toEqual({ url: "/" });
+    const heading = tree.getNode(id("e3"))!;
+    expect(heading.role).toBe("heading");
+    expect(heading.name).toBe("/docs/ intro");
+    expect(heading.state.level).toBe(2);
+    const separator = tree.getNode(id("e4"))!;
+    expect(separator.role).toBe("separator");
+    expect(separator.name).toBe("");
+  });
 });
 
 describe("StructuralTree navigation", () => {
