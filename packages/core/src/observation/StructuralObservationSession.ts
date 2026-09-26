@@ -20,8 +20,24 @@ import {
   type StructuralVisitTimelineEvidence,
 } from "./StructuralTimeline";
 import { VisitIdFactory } from "./VisitIdFactory";
+import {
+  StructuralIdentityLedger,
+  type StructuralLifecycleMoment,
+} from "./StructuralIdentityLedger";
 
 export type { StructuralVisitSnapshot } from "./StructuralTimeline";
+
+/** A page's identity ledger and the observations it has not reconciled yet. */
+type PageIdentities = {
+  readonly ledger: StructuralIdentityLedger;
+  readonly pending: {
+    entry: StructuralObservationEntry;
+    moment: StructuralLifecycleMoment;
+  }[];
+  /** The observation the ledger last reconciled. */
+  through: StructuralObservationEntry | null;
+  drained: Promise<unknown>;
+};
 
 export type StructuralObservationSessionOptions = {
   clock: { now(): number };
@@ -51,6 +67,7 @@ export class StructuralObservationSession {
   private readonly _visitIdSource = new VisitIdFactory();
   private readonly _clock: { now(): number };
   private _timeline: StructuralTimeline;
+  private _identities = new Map<PageId, PageIdentities>();
 
   constructor(options: StructuralObservationSessionOptions) {
     this._clock = options.clock;
@@ -129,13 +146,61 @@ export class StructuralObservationSession {
   recordObservation(
     entry: StructuralObservationEntry
   ): StructuralObservationEntry {
-    return this._timeline.recordObservation(entry);
+    this._timeline.recordObservation(entry);
+    this._pageIdentities(entry.pageId).pending.push({
+      entry,
+      moment: {
+        visitId: this._timeline.currentVisitIdForPage(entry.pageId),
+        afterActionId:
+          entry.capturedForActionId ??
+          this._timeline.latestActionStartedForPage(entry.pageId),
+      },
+    });
+    return entry;
   }
 
   recordActionStarted(
     entry: StructuralActionStartedEntry
   ): StructuralActionStartedEntry {
     return this._timeline.recordActionStarted(entry);
+  }
+
+  /**
+   * Read the page's identity ledger once every observation recorded so far is
+   * reconciled into it, in recording order. Continuity runs through every
+   * observation of the page, across its Visits; each appearance and
+   * disappearance names its Visit and the action it followed.
+   *
+   * `read` runs in the same step as the last reconcile and receives the
+   * observation the ledger now stands at, so a caller can pair the ledger's
+   * current refs with that observation's own data. Reads are serialized.
+   *
+   * The ledger is its own reconciliation chain, run lazily here: one
+   * reconcile per recorded observation, against the page's previous one. An
+   * observation whose tree fails to resolve fails the read and stays pending,
+   * so lineage is never skipped over.
+   */
+  async readIdentityLedger<T>(
+    pageId: PageId,
+    read: (
+      ledger: StructuralIdentityLedger,
+      through: StructuralObservationEntry | null
+    ) => T
+  ): Promise<T> {
+    const page = this._pageIdentities(pageId);
+    const result = page.drained
+      .catch(() => {})
+      .then(async () => {
+        while (page.pending.length > 0) {
+          const { entry, moment } = page.pending[0]!;
+          page.ledger.advance(await entry.tree.resolve(), moment);
+          page.pending.shift();
+          page.through = entry;
+        }
+        return read(page.ledger, page.through);
+      });
+    page.drained = result;
+    return result;
   }
 
   recordActionCompleted(
@@ -187,6 +252,21 @@ export class StructuralObservationSession {
   reset(): void {
     this._timeline = new StructuralTimeline();
     this._visitIdSource.reset();
+    this._identities = new Map();
+  }
+
+  private _pageIdentities(pageId: PageId): PageIdentities {
+    let page = this._identities.get(pageId);
+    if (!page) {
+      page = {
+        ledger: new StructuralIdentityLedger(),
+        pending: [],
+        through: null,
+        drained: Promise.resolve(),
+      };
+      this._identities.set(pageId, page);
+    }
+    return page;
   }
 
   private _monotonicNow(): MonotonicTimeMs {

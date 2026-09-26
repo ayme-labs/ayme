@@ -85,6 +85,12 @@ export type {
   StructuralVisitSnapshot,
   StructuralVisitTimelineEvidence,
 } from "./observation/StructuralTimeline";
+export { StructuralIdentityLedger } from "./observation/StructuralIdentityLedger";
+export type {
+  StructuralIdentityLifecycle,
+  StructuralIdentityResolution,
+  StructuralLifecycleMoment,
+} from "./observation/StructuralIdentityLedger";
 export type { PageActivitySource } from "./observation/PageActivitySource";
 export type { MonotonicClock } from "./observation/MonotonicClock";
 export {

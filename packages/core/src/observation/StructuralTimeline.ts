@@ -227,6 +227,16 @@ export class StructuralTimeline {
     return current;
   }
 
+  /** The action most recently started on the page in timeline order; null before any. */
+  latestActionStartedForPage(pageId: PageId): StructuralActionId | null {
+    for (let index = this._entries.length - 1; index >= 0; index -= 1) {
+      const entry = this._entries[index]!;
+      if (entry.kind === "action-started" && entry.pageId === pageId)
+        return entry.actionId;
+    }
+    return null;
+  }
+
   latestNavigationUrlForPage(pageId: PageId): string | null {
     let latest: string | null = null;
     for (const entry of this._entries) {

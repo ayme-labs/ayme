@@ -9,7 +9,11 @@ import type { PomManifest, ToolManifest } from "./contracts";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
-import { getInteractionHistory, getPageStateForElements } from "./pageState";
+import {
+  getInteractionHistory,
+  getPageStateForElements,
+  resolvePageStateRefs,
+} from "./pageState";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createRuntimeSession } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
@@ -104,6 +108,12 @@ describe("Interaction history in Chromium", () => {
   ): Promise<ActionResultShape> {
     return (await tool(name).execute(input)) as ActionResultShape;
   }
+
+  const readLedger = () =>
+    history().observations.readIdentityLedger(
+      history().pageId,
+      (ledger) => ledger
+    );
 
   function lastActionId(): StructuralActionId {
     const ids = [...history().actions().keys()];
@@ -203,6 +213,85 @@ describe("Interaction history in Chromium", () => {
       args: {},
     });
     await expectBeforeChangeAfter(actionId);
+  });
+
+  it("keeps ref identities in the identity ledger with the action a node appeared after", async () => {
+    document.body.innerHTML = '<main><button id="add">Add</button></main>';
+    document.querySelector("#add")!.addEventListener("click", () => {
+      const add = document.querySelector("#add")!;
+      add.replaceWith(add.cloneNode(true));
+      document
+        .querySelector("main")!
+        .insertAdjacentHTML("beforeend", "<button>Added</button>");
+    });
+    startRuntime();
+    await publishTools();
+    const addRef = refFor(await readStructure(), "Add");
+
+    const result = await act("click_page_state_ref", { ref: addRef });
+    const actionId = lastActionId();
+    const ledger = await readLedger();
+
+    expect(result.changes).toContain("Added");
+    const addedRef = refFor(await readStructure(), "Added");
+    expect(ledger.lifecycle(addedRef)?.appeared.afterActionId).toBe(actionId);
+    // The re-rendered button got a new ref; the old one is an alias of it.
+    const resolved = ledger.resolve(addRef);
+    if (resolved.status !== "resolved")
+      throw new Error(`Expected ${addRef} to resolve, got ${resolved.reason}.`);
+    expect(resolved.currentRef).not.toBe(addRef);
+    expect(
+      (await getPageStateForElements([document.querySelector("#add")!])).refs
+    ).toEqual([resolved.currentRef]);
+  });
+
+  it("records the action and Visit a node disappeared in", async () => {
+    document.body.innerHTML =
+      '<main><p id="draft">Unsaved draft</p><button id="discard">Discard</button></main>';
+    document.querySelector("#discard")!.addEventListener("click", () => {
+      document.querySelector("#draft")!.remove();
+    });
+    startRuntime();
+    await publishTools();
+    const structure = await readStructure();
+    const [draftRef] = (
+      await getPageStateForElements([document.querySelector("#draft")!])
+    ).refs;
+    if (!draftRef) throw new Error("Expected a ref for the draft paragraph.");
+
+    await act("click_page_state_ref", {
+      ref: refFor(structure, "Discard"),
+    });
+    const ledger = await readLedger();
+
+    expect(ledger.resolve(draftRef)).toMatchObject({
+      status: "unresolved",
+      reason: "removed",
+    });
+    expect(ledger.lifecycle(draftRef)?.disappeared).toEqual({
+      visitId: history().observations.currentVisitIdForPage(history().pageId),
+      afterActionId: lastActionId(),
+    });
+  });
+
+  it("resolves a ref taken before a same-document route change after it", async () => {
+    document.body.innerHTML = '<main><button id="save">Save</button></main>';
+    startRuntime();
+    await publishTools();
+    const saveRef = refFor(await readStructure(), "Save");
+    const visitsBefore = history().observations.getVisits().length;
+
+    window.history.pushState(null, "", "?route=continuity");
+    const save = document.querySelector("#save")!;
+    save.replaceWith(save.cloneNode(true));
+    await expect
+      .poll(() => history().observations.getVisits().length)
+      .toBe(visitsBefore + 1);
+
+    const [resolution] = await resolvePageStateRefs(document, saveRef);
+    if (resolution?.status !== "resolved")
+      throw new Error(`Expected ${saveRef} to resolve after the route change.`);
+    expect(resolution.node.element).toBe(document.querySelector("#save"));
   });
 
   it("reports the new route's page in the Change Record of an action that navigates", async () => {
