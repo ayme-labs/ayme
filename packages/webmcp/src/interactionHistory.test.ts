@@ -39,6 +39,26 @@ describe("InteractionHistory without the Navigation API", () => {
       ],
     ]);
   });
+
+  it("records a direct fragment navigation in the current Visit", async () => {
+    const history = new InteractionHistory(document, clock);
+    const lastUrl = () => history.observations.getVisits().at(-1)!.urls.at(-1);
+
+    // Assigning location.hash, as a fragment link does.
+    const hashChanged = new Promise((resolve) =>
+      window.addEventListener("hashchange", resolve, { once: true })
+    );
+    window.location.hash = "details";
+    await hashChanged;
+    expect(lastUrl()).toBe("http://localhost:3000/customers#details");
+
+    // A fragment navigation that fires only hashchange: the URL changes
+    // through the unwrapped History method, then the event arrives.
+    History.prototype.replaceState.call(window.history, null, "", "#reviews");
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    expect(lastUrl()).toBe("http://localhost:3000/customers#reviews");
+    expect(history.observations.getVisits()).toHaveLength(1);
+  });
 });
 
 describe("InteractionHistory cursors", () => {

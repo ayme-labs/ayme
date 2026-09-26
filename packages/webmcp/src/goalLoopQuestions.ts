@@ -16,8 +16,7 @@ import type { AriaRef, PageStateCapture } from "./pageState";
 import { listRefTools } from "./refTools";
 import {
   listCollectionToolRoots,
-  executePomToolAs,
-  listRegisteredPomTools,
+  listCallerAwarePomTools,
   type RegisteredPomRoot,
 } from "./registry";
 
@@ -219,7 +218,7 @@ export function buildToolOptions(): ToolOption[] {
     })
   );
   const collectionRoots = listCollectionToolRoots();
-  const pomTools: ExecutableTool[] = listRegisteredPomTools().map((t) => {
+  const pomTools: ExecutableTool[] = listCallerAwarePomTools().map((t) => {
     const roots = collectionRoots.get(t.name);
     const args = roots
       ? specsOfCollectionTool(t.parameters, roots)
@@ -229,8 +228,7 @@ export function buildToolOptions(): ToolOption[] {
       description: t.description,
       // An action without parameters of its own still takes the empty `args`.
       execute: (input: unknown) =>
-        executePomToolAs(
-          t,
+        t.executeAs(
           roots ? { args: {}, ...(input as Record<string, unknown>) } : input,
           "goalLoop"
         ),

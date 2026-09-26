@@ -228,8 +228,10 @@ export class InteractionHistory {
 
 /**
  * Call `onNavigate` after every same-document navigation: through the
- * Navigation API where the browser has one, otherwise through `popstate` and
- * wrapped `history.pushState` / `replaceState`, which fire no event.
+ * Navigation API where the browser has one, otherwise through `popstate`,
+ * `hashchange` (a fragment navigation such as assigning `location.hash`) and
+ * wrapped `history.pushState` / `replaceState`, which fire no event. A URL
+ * reported twice is recorded once.
  */
 function watchSameDocumentNavigations(view: Window, onNavigate: () => void) {
   const navigation = (
@@ -242,6 +244,7 @@ function watchSameDocumentNavigations(view: Window, onNavigate: () => void) {
     return;
   }
   view.addEventListener("popstate", onNavigate);
+  view.addEventListener("hashchange", onNavigate);
   const history = view.history;
   for (const method of ["pushState", "replaceState"] as const) {
     const original = history[method];

@@ -34,6 +34,18 @@ type LiveRegisteredPomTool = RegisteredPomTool & {
   componentPath?: string;
 };
 
+/** Runs a Page Object tool for the caller it is given. */
+type CallerRun = (input: unknown, caller: Caller) => Promise<ActionResult>;
+
+/**
+ * Package-internal: a live Page Object tool as the registry holds it. Its
+ * `execute` runs it as the calling agent; `executeAs` for the caller given,
+ * which is how the Goal Loop runs it as its model.
+ */
+export type CallerAwarePomTool = LiveRegisteredPomTool & {
+  readonly executeAs: CallerRun;
+};
+
 export type RegisteredPom = {
   id: string;
   instance: object;
@@ -61,6 +73,7 @@ type ObservedPomRoot = {
 
 type ObservedRegisteredPom = RegisteredPom & {
   rootObservations: readonly ObservedPomRoot[];
+  tools: readonly CallerAwarePomTool[];
 };
 
 let browserPage: Page | undefined;
@@ -384,8 +397,17 @@ export async function listRegisteredPomTargets(): Promise<
   return targets;
 }
 
-export function listRegisteredPomTools() {
-  const activeTools = new Map<string, LiveRegisteredPomTool>();
+/** The live Page Object tools, as published. */
+export function listRegisteredPomTools(): LiveRegisteredPomTool[] {
+  return listCallerAwarePomTools();
+}
+
+/**
+ * Package-internal: the live Page Object tools with the run that takes a
+ * caller, for the Goal Loop.
+ */
+export function listCallerAwarePomTools(): CallerAwarePomTool[] {
+  const activeTools = new Map<string, CallerAwarePomTool>();
   for (const registration of registeredPoms) {
     const declaredRoot = registration.manifest.members.some(
       (member) => member.kind === "locator" && member.memberName === "root"
@@ -507,7 +529,9 @@ function createRegisteredTool(
   pomId: string,
   instance: object,
   tool: ToolManifest
-): RegisteredPomTool {
+): CallerAwarePomTool {
+  const executeAs: CallerRun = async (args, caller) =>
+    await executeTool(instance, tool, args, caller);
   return {
     pomId,
     methodName: tool.methodName,
@@ -515,9 +539,8 @@ function createRegisteredTool(
     description: tool.description,
     inputSchema: tool.inputSchema,
     parameters: tool.parameters,
-    ...executors(
-      async (args, caller) => await executeTool(instance, tool, args, caller)
-    ),
+    execute: (args) => executeAs(args, "agent"),
+    executeAs,
   };
 }
 
@@ -528,7 +551,7 @@ function createComponentTools(
   component: PomComponentManifest,
   components: ReadonlyMap<string, PomComponentManifest>,
   componentPath: ReadonlySet<string> = new Set()
-): LiveRegisteredPomTool[] {
+): CallerAwarePomTool[] {
   if (componentPath.has(component.className)) return [];
   const nextComponentPath = new Set(componentPath).add(component.className);
   const tools = component.tools.map((action) =>
@@ -556,7 +579,7 @@ function createComponentTool(
   path: readonly PomComponentMemberManifest[],
   component: PomComponentManifest,
   action: ToolManifest
-): LiveRegisteredPomTool {
+): CallerAwarePomTool {
   const componentPath = componentPathFor(path);
   const collectionCount = path.filter((member) => member.collection).length;
   if (collectionCount === 0)
@@ -570,6 +593,25 @@ function createComponentTool(
     );
 
   const wrapper = refComponentToolManifest(pomId, path, action);
+  const executeAs: CallerRun = async (input, caller) => {
+    const values = validatedArguments(wrapper, input);
+    const ref = AriaRefSchema.parse(values[0] as string);
+    const args = values[1];
+    const toolPath = `${pomId}.${publicComponentPath(path)}`;
+    const element = await resolveRefToElement(ref, wrapper.toolName, toolPath);
+    const componentInstance = await resolveComponentByElementStep(
+      pageInstance,
+      path,
+      0,
+      element
+    );
+    if (!componentInstance || !isRecord(componentInstance)) {
+      throw new RefResolutionError(
+        `Ref "${ref}" does not match a present ${component.className} instance at ${toolPath} (tool ${wrapper.toolName}).`
+      );
+    }
+    return await executeTool(componentInstance, action, args, caller);
+  };
   return {
     pomId,
     componentClassName: component.className,
@@ -579,29 +621,8 @@ function createComponentTool(
     description: action.description,
     inputSchema: wrapper.inputSchema,
     parameters: wrapper.parameters,
-    ...executors(async (input, caller) => {
-      const values = validatedArguments(wrapper, input);
-      const ref = AriaRefSchema.parse(values[0] as string);
-      const args = values[1];
-      const toolPath = `${pomId}.${publicComponentPath(path)}`;
-      const element = await resolveRefToElement(
-        ref,
-        wrapper.toolName,
-        toolPath
-      );
-      const componentInstance = await resolveComponentByElementStep(
-        pageInstance,
-        path,
-        0,
-        element
-      );
-      if (!componentInstance || !isRecord(componentInstance)) {
-        throw new RefResolutionError(
-          `Ref "${ref}" does not match a present ${component.className} instance at ${toolPath} (tool ${wrapper.toolName}).`
-        );
-      }
-      return await executeTool(componentInstance, action, args, caller);
-    }),
+    execute: (input) => executeAs(input, "agent"),
+    executeAs,
   };
 }
 
@@ -612,7 +633,19 @@ function createSingularComponentTool(
   component: PomComponentManifest,
   action: ToolManifest,
   componentPath: string
-): LiveRegisteredPomTool {
+): CallerAwarePomTool {
+  const executeAs: CallerRun = async (input, caller) => {
+    const componentInstance = await resolveSingularComponent(
+      pageInstance,
+      path
+    );
+    if (!componentInstance || !isRecord(componentInstance)) {
+      throw new RefResolutionError(
+        `No ${component.className} instance exists at ${pomId}.${publicComponentPath(path)}.`
+      );
+    }
+    return await executeTool(componentInstance, action, input, caller);
+  };
   return {
     pomId,
     componentClassName: component.className,
@@ -622,18 +655,8 @@ function createSingularComponentTool(
     description: action.description,
     inputSchema: action.inputSchema,
     parameters: action.parameters,
-    ...executors(async (input, caller) => {
-      const componentInstance = await resolveSingularComponent(
-        pageInstance,
-        path
-      );
-      if (!componentInstance || !isRecord(componentInstance)) {
-        throw new RefResolutionError(
-          `No ${component.className} instance exists at ${pomId}.${publicComponentPath(path)}.`
-        );
-      }
-      return await executeTool(componentInstance, action, input, caller);
-    }),
+    execute: (input) => executeAs(input, "agent"),
+    executeAs,
   };
 }
 
@@ -989,30 +1012,6 @@ async function readMember(instance: object, member: PomMemberManifest) {
     return await value.apply(instance, []);
   }
   return await value;
-}
-
-type CallerRun = (input: unknown, caller: Caller) => Promise<ActionResult>;
-
-/** Each Page Object tool's `execute`, by the run that takes its caller. */
-const callerRuns = new WeakMap<RegisteredPomTool["execute"], CallerRun>();
-
-/** A tool's `execute` runs it as the calling agent. */
-function executors(run: CallerRun) {
-  const execute = (input: unknown) => run(input, "agent");
-  callerRuns.set(execute, run);
-  return { execute };
-}
-
-/** Package-internal: run a Page Object tool as `caller`. */
-export async function executePomToolAs(
-  tool: RegisteredPomTool,
-  input: unknown,
-  caller: Caller
-): Promise<ActionResult> {
-  const run = callerRuns.get(tool.execute);
-  if (!run)
-    throw new RuntimeStateError(`Tool  is not a registered Page Object tool.`);
-  return run(input, caller);
 }
 
 async function executeTool(
