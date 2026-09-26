@@ -20,8 +20,11 @@ import {
   listRegisteredPomTools,
   type RegisteredPom,
 } from "@ayme-dev/webmcp/internal";
-
-import { AYME_LOGO_FILL, AYME_LOGO_PATH, AYME_LOGO_VIEWBOX } from "./aymeLogo";
+import {
+  AYME_LOGO_FILL,
+  AYME_LOGO_PATH,
+  AYME_LOGO_VIEWBOX,
+} from "@ayme-dev/design-system/logo";
 
 type ToolArguments = Record<string, JsonValue>;
 
