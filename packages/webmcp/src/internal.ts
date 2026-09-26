@@ -5,7 +5,11 @@ export {
   resolvePageStateRef,
 } from "./pageState";
 export type { PageStateCapture, PageStatePeek } from "./pageState";
-export { getPageContextForDocument, getPageContextTool } from "./pageContext";
+export {
+  getPageContextForDocument,
+  getPageContextTool,
+  getPomDefinitionText,
+} from "./pageContext";
 export { getPomDefinitions } from "./pomDefinitions";
 export {
   getPublicationStatus,

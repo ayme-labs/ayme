@@ -26,7 +26,12 @@ import {
 } from "./publishedTools";
 import type { RefTool } from "./refTools";
 import { buildToolOptions, planArguments } from "./goalLoopQuestions";
-import { peekPageStateForDocument, type AriaRef } from "./pageState";
+import { getPomDefinitionText } from "./pageContext";
+import {
+  getInteractionHistory,
+  peekPageStateForDocument,
+  type AriaRef,
+} from "./pageState";
 import { registerCompiledPom } from "./registry";
 import { createRuntimeSession, type RuntimeSession } from "./runtime";
 
@@ -376,6 +381,30 @@ export function describePublishedTools(
             : [];
         expect(targets.get(key), key).toEqual(offered);
       }
+    });
+
+    it("gives the POM definition text get_page_context returns, without reading the page", async () => {
+      await startSession();
+      cleanups.push(
+        runtime.register(SettingsPage, runtime.construct(SettingsPage))
+      );
+      const history = getInteractionHistory(document);
+      const latest = history.latestObservation;
+
+      const text = getPomDefinitionText("TodoPage");
+      const all = getPomDefinitionText();
+
+      expect(history.latestObservation).toBe(latest);
+      const context = (names?: string[]) =>
+        agentGets("get_page_context", names ? { names } : {}) as Promise<{
+          pomDefinitions: string;
+        }>;
+      expect(text).toBe((await context(["TodoPage"])).pomDefinitions);
+      expect(all).toBe((await context()).pomDefinitions);
+      // Diagnostic: the definitions are there to compare.
+      expect(all).toMatch(
+        /TodoPage[\s\S]*SettingsPage|SettingsPage[\s\S]*TodoPage/
+      );
     });
 
     it("refuses to run a tool that is not published", async () => {

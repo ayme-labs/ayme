@@ -72,6 +72,14 @@ export async function getPageContextForDocument(
   });
 }
 
+/**
+ * The POM definitions for `names` (every known one when empty), as the text
+ * `get_page_context` returns in `pomDefinitions`. Captures no page state.
+ */
+export function getPomDefinitionText(...names: readonly string[]): string {
+  return renderPomDefinitions(getPomDefinitions(...names).definitions);
+}
+
 function definitionNamesFrom(input: unknown): string[] {
   if (input === undefined || input === null || typeof input !== "object")
     return [];
