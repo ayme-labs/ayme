@@ -19,12 +19,16 @@
     },
     "test:e2e": {
       "dependsOn": ["build", "^build"],
-      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"],
+      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH", "AYME_E2E_PORT_*"],
       "cache": false
     },
     "test:goals": {
       "dependsOn": ["^build"],
-      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH", "AYME_OPENROUTER_API_KEY"],
+      "passThroughEnv": [
+        "PLAYWRIGHT_BROWSERS_PATH",
+        "AYME_OPENROUTER_API_KEY",
+        "AYME_E2E_PORT_*"
+      ],
       "cache": false
     }
   },
