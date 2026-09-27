@@ -247,9 +247,7 @@ export function describePublishedTools(
     it("lists the live tools as published while publication is active", async () => {
       await startSession();
 
-      expect(listLiveTools()).toEqual(
-        listPublishedTools().map((tool) => ({ ...tool, published: true }))
-      );
+      expect(listLiveTools()).toEqual(listPublishedTools());
     });
 
     it("puts each published tool in its group", async () => {
@@ -501,7 +499,7 @@ export function describePublishedTools(
         expect(actual).toEqual(expected);
       });
 
-      it("lists the live tools as published with publication on, marked unpublished", async () => {
+      it("lists the live tools as published with publication on", async () => {
         const stopPublishing = await startSession();
         const published = listPublishedTools();
         stopPublishing();
@@ -510,9 +508,7 @@ export function describePublishedTools(
           listLiveTools()
         );
 
-        expect(live).toEqual(
-          published.map((tool) => ({ ...tool, published: false }))
-        );
+        expect(live).toEqual(published);
       });
 
       it("tells subscribers when a Page Object registers, and returns a new list only then", async () => {

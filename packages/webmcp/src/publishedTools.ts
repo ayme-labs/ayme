@@ -96,31 +96,23 @@ export function listPublishedTools(): readonly PublishedToolInfo[] {
   return readModel.tools;
 }
 
-/** A live tool: one `runTool` can run now, and whether WebMCP has it too. */
-export type LiveToolInfo = PublishedToolInfo & Readonly<{ published: boolean }>;
-
-let liveTools: { key: string; tools: readonly LiveToolInfo[] } = {
+let liveTools: { key: string; tools: readonly PublishedToolInfo[] } = {
   key: "[]",
   tools: Object.freeze([]),
 };
 
 /**
- * Every live tool, in publication order: each tool `runTool` can run now, and
- * whether it is in the current WebMCP publication. The same array comes back
+ * Every live tool, published or not, in publication order: each tool
+ * `runTool` can run now. The same array comes back
  * until the set changes (for `useSyncExternalStore`); subscribe with
  * `subscribeToPublishedTools`. Empty when a Ref Tool's name clash leaves the
  * set unresolvable; `runTool` then rejects with that error, and an active
  * publication reports it as its failed status.
  */
-export function listLiveTools(): readonly LiveToolInfo[] {
-  const published = new Set(readModel.tools.map(({ name }) => name));
-  let tools: readonly LiveToolInfo[];
+export function listLiveTools(): readonly PublishedToolInfo[] {
+  let tools: readonly PublishedToolInfo[];
   try {
-    tools = Object.freeze(
-      toInfo([...resolvePublishedTools().values()]).map((tool) =>
-        Object.freeze({ ...tool, published: published.has(tool.name) })
-      )
-    );
+    tools = toInfo([...resolvePublishedTools().values()]);
   } catch {
     tools = Object.freeze([]);
   }
