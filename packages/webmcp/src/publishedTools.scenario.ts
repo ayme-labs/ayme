@@ -33,6 +33,7 @@ import {
   type AriaRef,
 } from "./pageState";
 import { registerCompiledPom } from "./registry";
+import { runTool } from "./webMcp";
 import { createRuntimeSession, type RuntimeSession } from "./runtime";
 
 // --- Fixtures: one tool of each kind an agent can be given ---
@@ -146,9 +147,26 @@ const highlight: RefTool = {
   execute: async () => undefined,
 };
 
+const TOOL_CALLS: [string, string, (ref: string) => unknown][] = [
+  ["a Page Object tool", "TodoPage.addTodo", () => ({ title: "Milk" })],
+  ["the built-in click Ref tool", "click_page_state_ref", (ref) => ({ ref })],
+  ["an app-registered Ref tool", "highlight", (ref) => ({ ref })],
+  ["get_page_context", "get_page_context", () => ({})],
+  [
+    "pursue_goal",
+    "pursue_goal",
+    () => ({ goal: "Save the changes", maxSteps: 1 }),
+  ],
+];
+
+/**
+ * `removeDriver` takes WebMCP off the page and returns a function that puts it
+ * back; given, the runs without publication also cover the no-driver case.
+ */
 export function describePublishedTools(
   label: string,
-  getContext: () => ModelContext
+  getContext: () => ModelContext,
+  removeDriver?: () => () => void
 ): void {
   describe(`published tools through ${label}`, () => {
     let context: ModelContext;
@@ -161,8 +179,12 @@ export function describePublishedTools(
      */
     async function startSession({
       publish = true,
+      expectedState,
       ...options
-    }: SessionOptions & { publish?: boolean } = {}) {
+    }: SessionOptions & {
+      publish?: boolean;
+      expectedState?: string;
+    } = {}) {
       vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", publish);
       runtime = createRuntimeSession({
         page: () => createPage({ actionTimeout: 1000 }),
@@ -173,10 +195,15 @@ export function describePublishedTools(
       cleanups.push(runtime.register(TodoPage, runtime.construct(TodoPage)));
       const stop = runtime.start();
       cleanups.push(stop);
-      await expect.poll(() => runtime.getSnapshot().state).not.toBe("waiting");
+      // Without a driver, the session waits two seconds before giving up.
+      await expect
+        .poll(() => runtime.getSnapshot().state, { timeout: 5_000 })
+        .not.toBe("waiting");
       // Diagnostic: a session meant to publish reached WebMCP, or failed for
       // the reason its test gives, before the Contract runs.
-      if (publish && !options.refTools)
+      if (expectedState)
+        expect(runtime.getSnapshot().state).toBe(expectedState);
+      else if (publish && !options.refTools)
         expect(runtime.getSnapshot().state).toBe("active");
       return stop;
     }
@@ -286,21 +313,7 @@ export function describePublishedTools(
       expect(await publishedOverWebMcp(context)).toEqual([]);
     });
 
-    it.each([
-      ["a Page Object tool", "TodoPage.addTodo", () => ({ title: "Milk" })],
-      [
-        "the built-in click Ref tool",
-        "click_page_state_ref",
-        (ref: string) => ({ ref }),
-      ],
-      ["an app-registered Ref tool", "highlight", (ref: string) => ({ ref })],
-      ["get_page_context", "get_page_context", () => ({})],
-      [
-        "pursue_goal",
-        "pursue_goal",
-        () => ({ goal: "Save the changes", maxSteps: 1 }),
-      ],
-    ])(
+    it.each(TOOL_CALLS)(
       "runs %s and returns what an agent gets for the same call",
       async (_kind, name, inputFor) => {
         document.body.innerHTML = `<button data-highlightable>Save changes</button>`;
@@ -405,6 +418,90 @@ export function describePublishedTools(
       expect(all).toMatch(
         /TodoPage[\s\S]*SettingsPage|SettingsPage[\s\S]*TodoPage/
       );
+    });
+
+    // --- Running a tool while publication is off ---
+
+    const offModes = [
+      { off: "publication is disabled", publish: false, state: "disabled" },
+      ...(removeDriver
+        ? [
+            {
+              off: "the page has no driver",
+              publish: true,
+              state: "unavailable",
+            },
+          ]
+        : []),
+    ];
+
+    /**
+     * Start a session whose publication is off, run `calls` in it, and put
+     * the driver back if it was removed.
+     */
+    async function whilePublicationIsOff<T>(
+      mode: (typeof offModes)[number],
+      calls: () => Promise<T>
+    ): Promise<T> {
+      const restore = mode.state === "unavailable" ? removeDriver!() : () => {};
+      try {
+        await startSession({
+          publish: mode.publish,
+          expectedState: mode.state,
+        });
+        return await calls();
+      } finally {
+        restore();
+      }
+    }
+
+    describe.each(offModes)("while $off", (mode) => {
+      it.each(TOOL_CALLS)(
+        "runs %s and returns what an agent gets with publication on",
+        async (_kind, name, inputFor) => {
+          document.body.innerHTML = `<button data-highlightable>Save changes</button>`;
+          const stopPublishing = await startSession();
+          const input = inputFor(await saveButtonRef());
+          // Both calls start from the same page, already seen by the agent.
+          document.querySelector("button")!.focus();
+          await agentGets("get_page_context", {});
+          const expected = await agentGets(name, input);
+          // Diagnostic: the call itself succeeds for an agent.
+          expect(expected).not.toMatchObject({ isError: true });
+          stopPublishing();
+
+          const actual = await whilePublicationIsOff(mode, async () => {
+            await runTool("get_page_context", {});
+            return runTool(name, input);
+          });
+
+          expect(actual).toEqual(expected);
+        }
+      );
+
+      it("returns a failing call's error result as an agent gets it", async () => {
+        document.body.innerHTML = `<button id="save">Save changes</button>`;
+        const stopPublishing = await startSession();
+        const ref = await saveButtonRef();
+        document.querySelector("#save")!.remove();
+        const expected = await agentGets("click_page_state_ref", { ref });
+        expect(expected).toMatchObject({ isError: true });
+        stopPublishing();
+
+        const actual = await whilePublicationIsOff(mode, () =>
+          runTool("click_page_state_ref", { ref })
+        );
+
+        expect(actual).toEqual(expected);
+      });
+
+      it("refuses to run a tool that is not live", async () => {
+        await expect(
+          whilePublicationIsOff(mode, () =>
+            runTool("SettingsPage.save", { title: "x" })
+          )
+        ).rejects.toThrow('The tool "SettingsPage.save" is not live.');
+      });
     });
 
     it("refuses to run a tool that is not published", async () => {

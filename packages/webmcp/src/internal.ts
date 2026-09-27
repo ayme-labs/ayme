@@ -36,7 +36,7 @@ export type {
   RegisteredPom,
   RegisteredPomTarget,
 } from "./registry";
-export { synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
+export { runTool, synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
 export type { WebMcpDriver, WebMcpRegistration } from "./webMcp";
 // The runtime session and its types are public (ADR-0025); this entry keeps
 // the framework packages' server page objects, the plugin's registration and

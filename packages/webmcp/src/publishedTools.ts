@@ -107,6 +107,11 @@ export function getPublicationStatus(): AymeWebMcpPublicationStatus {
   return readModel.status;
 }
 
+/** Package-internal: the execute WebMCP was given for `name`, if published. */
+export function getPublishedExecute(name: string) {
+  return readModel.executes.get(name);
+}
+
 /**
  * Run a published tool the way WebMCP calls it: the same `execute` the driver
  * was given, so the result, including an `isError` failure result, is what an
@@ -114,7 +119,7 @@ export function getPublicationStatus(): AymeWebMcpPublicationStatus {
  * that name is published right now.
  */
 export function runPublishedTool(name: string, input: unknown) {
-  const execute = readModel.executes.get(name);
+  const execute = getPublishedExecute(name);
   if (!execute)
     return Promise.reject(
       new RuntimeStateError(`The tool "${name}" is not published.`)

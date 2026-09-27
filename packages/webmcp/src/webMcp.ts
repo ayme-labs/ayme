@@ -1,9 +1,11 @@
 import { getPageContextTool } from "./pageContext";
 import {
+  getPublishedExecute,
   type PublishedTool,
   reportPublishedTools,
   resolvePublishedTools,
 } from "./publishedTools";
+import { RuntimeStateError } from "./errors";
 import {
   subscribeToRegisteredPoms,
   probeRegisteredPomMembers,
@@ -43,6 +45,56 @@ function errorText(error: unknown): string {
   if (!(error instanceof Error)) return String(error);
   if (!error.name || error.name === "Error") return error.message;
   return `${error.name}: ${error.message}`;
+}
+
+/**
+ * A tool as WebMCP runs it for an agent: after a call that can change the
+ * page, `settle` runs before the call resolves; a failure is an `isError`
+ * result. `get_page_context` only reads, so it does not settle.
+ */
+export function asAgentCall(tool: PublishedTool, settle: () => Promise<void>) {
+  return withErrorResult(
+    tool === getPageContextTool
+      ? tool
+      : {
+          ...tool,
+          execute: async (input: unknown) => {
+            try {
+              return await tool.execute(input);
+            } finally {
+              await settle();
+            }
+          },
+        }
+  );
+}
+
+/**
+ * Run any live tool the way an agent's call runs, whether or not WebMCP
+ * publication is active. A published tool runs through the execute WebMCP was
+ * given. Otherwise the tool is wrapped the same way, and settling only probes
+ * the Page Objects, since there is no publication to wait for. Rejects when no
+ * tool of that name is live.
+ */
+export function runTool(name: string, input: unknown): Promise<unknown> {
+  const published = getPublishedExecute(name);
+  if (published) return published(input);
+  let live: ReturnType<typeof resolvePublishedTools>;
+  try {
+    live = resolvePublishedTools();
+  } catch (error) {
+    return Promise.reject(error);
+  }
+  const entry = live.get(name);
+  if (!entry)
+    return Promise.reject(
+      new RuntimeStateError(`The tool "${name}" is not live.`)
+    );
+  return asAgentCall(entry.tool, () =>
+    // Without a publication, a failed probe has nowhere to be reported; the
+    // call's own result stands, as it does for an agent.
+    probeRegisteredPomMembers().catch(() => {})
+  ).execute(input);
 }
 
 export type WebMcpDriver = Pick<
@@ -121,22 +173,12 @@ export async function synchronizeWebMcpTools(
   // A tool call resolves only once the published tools reflect the page it
   // changed, so an agent's next call sees the tools that are live now. A probe
   // that observes a change starts the publication pass through the subscriber.
-  const withSettledPublication = (tool: PublishedTool): PublishedTool =>
-    tool === getPageContextTool
-      ? tool
-      : {
-          ...tool,
-          execute: async (input: unknown) => {
-            try {
-              return await tool.execute(input);
-            } finally {
-              if (!disposed)
-                await probeRegisteredPomMembers()
-                  .then(() => currentSync)
-                  .catch(failPublication);
-            }
-          },
-        };
+  const settle = () =>
+    disposed
+      ? Promise.resolve()
+      : probeRegisteredPomMembers()
+          .then(() => currentSync)
+          .catch(failPublication);
 
   const publish = async () => {
     let resolved: ReturnType<typeof resolvePublishedTools>;
@@ -158,7 +200,7 @@ export async function synchronizeWebMcpTools(
         for (const [name, tool] of active) {
           if (disposed || published.has(name)) continue;
           const controller = new AbortController();
-          const registered = withErrorResult(withSettledPublication(tool));
+          const registered = asAgentCall(tool, settle);
           published.set(name, { tool, controller, registered });
           try {
             await driver.registerTool(registered, {

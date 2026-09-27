@@ -15,4 +15,11 @@ afterAll(() => {
   cleanupWebMCPPolyfill();
 });
 
-describePublishedTools("the WebMCP polyfill", () => document.modelContext!);
+describePublishedTools(
+  "the WebMCP polyfill",
+  () => document.modelContext!,
+  () => {
+    cleanupWebMCPPolyfill();
+    return () => initializeWebMCPPolyfill();
+  }
+);
