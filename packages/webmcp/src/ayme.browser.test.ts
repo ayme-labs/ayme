@@ -126,6 +126,21 @@ describe("the public Ayme page state facade in Chromium", () => {
       runtime.dispose();
     }
   });
+
+  it("captures a link whose accessible name starts and ends with a slash", async () => {
+    document.body.innerHTML = '<a id="home" href="/">/</a>';
+
+    const state = await ayme.getPageState();
+
+    const homeRef = structuralRefFor(state.text, "/", "link");
+    await expect(state.resolve(homeRef)).resolves.toEqual([
+      {
+        status: "resolved",
+        requestedRef: homeRef,
+        node: { ref: homeRef, element: document.querySelector("#home") },
+      },
+    ]);
+  });
 });
 
 function structuralRefFor(

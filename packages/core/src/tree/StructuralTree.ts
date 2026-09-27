@@ -1138,15 +1138,19 @@ export class StructuralTree {
     const quotedKey = /^- '((?:[^']|'')*)'(:.*)?$/.exec(trimmedLine);
     if (quotedKey)
       trimmedLine = `- ${quotedKey[1]!.replace(/''/g, "'")}${quotedKey[2] ?? ""}`;
+    // Playwright prints a name unquoted when it starts and ends with "/",
+    // e.g. - link / [ref=e3] or - link /docs/
     const match =
-      /^- ([^"[\]:]+?)(?: "((?:[^"\\]|\\.)*)")?((?: \[[^\]]+\])*)(?::(?:\s(.*))?)?$/.exec(
+      /^- ([^"[\]:/]+?)(?: "((?:[^"\\]|\\.)*)"| (\/(?:.*?\/)?(?= \[|:|$)))?((?: \[[^\]]+\])*)(?::(?:\s(.*))?)?$/.exec(
         trimmedLine
       );
     if (!match) throw new Error(`Invalid aria node line: ${trimmedLine}`);
-    const [, rawRole, rawName, rawAttributes, inlineText] = match;
+    const [, rawRole, rawName, slashName, rawAttributes, inlineText] = match;
     return {
       role: parseStructuralRole(rawRole!.trim()),
-      name: rawName ? StructuralTree._unescapeQuoted(rawName) : "",
+      name: rawName
+        ? StructuralTree._unescapeQuoted(rawName)
+        : (slashName ?? ""),
       attributes: StructuralTree._parseAttributes(rawAttributes ?? ""),
       inlineText:
         inlineText === undefined
