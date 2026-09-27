@@ -2,3 +2,6 @@
 .next-dev/
 next-env.d.ts
 *.tsbuildinfo
+# `next dev` generates these agent files.
+AGENTS.md
+CLAUDE.md
