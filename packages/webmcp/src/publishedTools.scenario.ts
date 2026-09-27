@@ -20,7 +20,6 @@ import {
   getPublicationStatus,
   listPublishedTools,
   listRefToolTargets,
-  runPublishedTool,
   subscribeToPublishedTools,
   type PublishedToolGroup,
 } from "./publishedTools";
@@ -328,7 +327,7 @@ export function describePublishedTools(
         expect(expected).not.toMatchObject({ isError: true });
         await agentGets("get_page_context", {});
 
-        expect(await runPublishedTool(name, input)).toEqual(expected);
+        expect(await runTool(name, input)).toEqual(expected);
       }
     );
 
@@ -339,9 +338,7 @@ export function describePublishedTools(
       document.querySelector("#save")!.remove();
       const expected = await agentGets("click_page_state_ref", { ref });
 
-      expect(await runPublishedTool("click_page_state_ref", { ref })).toEqual(
-        expected
-      );
+      expect(await runTool("click_page_state_ref", { ref })).toEqual(expected);
       expect(expected).toMatchObject({ isError: true });
     });
 
@@ -495,6 +492,22 @@ export function describePublishedTools(
         expect(actual).toEqual(expected);
       });
 
+      it("lists each Ref tool's targets", async () => {
+        document.body.innerHTML = `<button>Save</button><p data-highlightable>Draft</p>`;
+
+        const targets = await whilePublicationIsOff(mode, () =>
+          listRefToolTargets()
+        );
+
+        const peek = await peekPageStateForDocument(document);
+        const described = (name: string) =>
+          (targets.get(name) ?? []).map(
+            (ref) => peek.elementsByRef.get(ref)?.textContent
+          );
+        expect(described("click_page_state_ref")).toEqual(["Save"]);
+        expect(described("highlight")).toEqual(["Draft"]);
+      });
+
       it("refuses to run a tool that is not live", async () => {
         await expect(
           whilePublicationIsOff(mode, () =>
@@ -502,14 +515,6 @@ export function describePublishedTools(
           )
         ).rejects.toThrow('The tool "SettingsPage.save" is not live.');
       });
-    });
-
-    it("refuses to run a tool that is not published", async () => {
-      await startSession();
-
-      await expect(
-        runPublishedTool("SettingsPage.save", { title: "x" })
-      ).rejects.toThrow('The tool "SettingsPage.save" is not published.');
     });
   });
 }

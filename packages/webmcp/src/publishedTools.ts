@@ -71,8 +71,6 @@ export function resolvePublishedTools(): Map<
 type PublicationReadModel = {
   status: AymeWebMcpPublicationStatus;
   tools: readonly PublishedToolInfo[];
-  /** Each published tool's `execute`, exactly as registered with WebMCP. */
-  executes: ReadonlyMap<string, (input: unknown) => Promise<unknown>>;
 };
 
 const NO_SESSION: AymeWebMcpPublicationStatus = Object.freeze({
@@ -83,7 +81,6 @@ const NO_SESSION: AymeWebMcpPublicationStatus = Object.freeze({
 const readModel: PublicationReadModel = {
   status: NO_SESSION,
   tools: Object.freeze([]),
-  executes: new Map(),
 };
 const subscribers = new Set<() => void>();
 
@@ -107,42 +104,16 @@ export function getPublicationStatus(): AymeWebMcpPublicationStatus {
   return readModel.status;
 }
 
-/** Package-internal: the execute WebMCP was given for `name`, if published. */
-export function getPublishedExecute(name: string) {
-  return readModel.executes.get(name);
-}
-
 /**
- * Run a published tool the way WebMCP calls it: the same `execute` the driver
- * was given, so the result, including an `isError` failure result, is what an
- * agent gets. The call runs as the calling agent. Rejects when no tool of
- * that name is published right now.
- */
-export function runPublishedTool(name: string, input: unknown) {
-  const execute = getPublishedExecute(name);
-  if (!execute)
-    return Promise.reject(
-      new RuntimeStateError(`The tool "${name}" is not published.`)
-    );
-  return execute(input);
-}
-
-/**
- * The refs each published Ref Tool can take in `capture` (a peek of the
- * current page when absent), by tool name, in tree order: the same closed set
- * the Goal Loop offers for that tool's ref. Pass the peek the Inspector shows,
+ * The refs each live Ref Tool can take in `capture` (a peek of the current
+ * page when absent), by tool name, in tree order: the same closed set the Goal
+ * Loop offers for that tool's ref. Pass the peek the Inspector shows,
  * so the refs match its structure.
  */
 export async function listRefToolTargets(
   capture?: PageStateCapture
 ): Promise<Map<string, AriaRef[]>> {
-  const published = new Set(
-    readModel.tools.filter(({ group }) => group === "ref").map((t) => t.name)
-  );
-  const refTools = listRefTools().filter(({ tool }) =>
-    published.has(tool.name)
-  );
-  if (refTools.length === 0) return new Map();
+  const refTools = listRefTools();
   const current = capture ?? (await peekPageStateForDocument(document));
   return new Map(
     refTools.map(({ tool, filter }) => [
@@ -165,12 +136,8 @@ export function reportPublishedTools(
   tools: readonly {
     tool: PublishedTool;
     group: PublishedToolGroup;
-    execute: (input: unknown) => Promise<unknown>;
   }[]
 ) {
-  readModel.executes = new Map(
-    tools.map(({ tool, execute }) => [tool.name, execute])
-  );
   readModel.tools = Object.freeze(
     tools.map(({ tool, group }) =>
       Object.freeze({

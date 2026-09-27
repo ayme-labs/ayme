@@ -1,6 +1,5 @@
 import { getPageContextTool } from "./pageContext";
 import {
-  getPublishedExecute,
   type PublishedTool,
   reportPublishedTools,
   resolvePublishedTools,
@@ -71,14 +70,11 @@ export function asAgentCall(tool: PublishedTool, settle: () => Promise<void>) {
 
 /**
  * Run any live tool the way an agent's call runs, whether or not WebMCP
- * publication is active. A published tool runs through the execute WebMCP was
- * given. Otherwise the tool is wrapped the same way, and settling only probes
- * the Page Objects, since there is no publication to wait for. Rejects when no
- * tool of that name is live.
+ * publication is active: the live tool, wrapped as publication wraps it.
+ * Settling probes the Page Objects; a publication, if any, re-publishes from
+ * that probe on its own. Rejects when no tool of that name is live.
  */
 export function runTool(name: string, input: unknown): Promise<unknown> {
-  const published = getPublishedExecute(name);
-  if (published) return published(input);
   let live: ReturnType<typeof resolvePublishedTools>;
   try {
     live = resolvePublishedTools();
@@ -91,8 +87,7 @@ export function runTool(name: string, input: unknown): Promise<unknown> {
       new RuntimeStateError(`The tool "${name}" is not live.`)
     );
   return asAgentCall(entry.tool, () =>
-    // Without a publication, a failed probe has nowhere to be reported; the
-    // call's own result stands, as it does for an agent.
+    // A failed probe does not change the call's own result, as for an agent.
     probeRegisteredPomMembers().catch(() => {})
   ).execute(input);
 }
@@ -127,8 +122,6 @@ export async function synchronizeWebMcpTools(
     {
       tool: PublishedTool;
       controller: AbortController;
-      /** The tool exactly as registered with the driver. */
-      registered: ReturnType<typeof withErrorResult>;
     }
   >();
   let disposed = false;
@@ -200,10 +193,9 @@ export async function synchronizeWebMcpTools(
         for (const [name, tool] of active) {
           if (disposed || published.has(name)) continue;
           const controller = new AbortController();
-          const registered = asAgentCall(tool, settle);
-          published.set(name, { tool, controller, registered });
+          published.set(name, { tool, controller });
           try {
-            await driver.registerTool(registered, {
+            await driver.registerTool(asAgentCall(tool, settle), {
               signal: controller.signal,
             });
           } catch (error) {
@@ -216,12 +208,7 @@ export async function synchronizeWebMcpTools(
       // The Inspector reads the settled set, never one mid-pass.
       if (!disposed) {
         reported = true;
-        reportPublishedTools(
-          [...resolved.values()].map((entry) => ({
-            ...entry,
-            execute: published.get(entry.tool.name)!.registered.execute,
-          }))
-        );
+        reportPublishedTools([...resolved.values()]);
       }
     } finally {
       syncing = false;
