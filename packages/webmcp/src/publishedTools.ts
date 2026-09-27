@@ -11,7 +11,7 @@ import {
   listRefTools,
   type PublishedRefTool,
 } from "./refTools";
-import { listRegisteredPomTools } from "./registry";
+import { listRegisteredPomTools, subscribeToRegisteredPoms } from "./registry";
 import { RuntimeStateError } from "./errors";
 import type { AymeWebMcpPublicationStatus } from "./runtime";
 
@@ -96,24 +96,31 @@ export function listPublishedTools(): readonly PublishedToolInfo[] {
   return readModel.tools;
 }
 
-let liveTools: { key: string; tools: readonly PublishedToolInfo[] } = {
+/** A live tool: one `runTool` can run now, and whether WebMCP has it too. */
+export type LiveToolInfo = PublishedToolInfo & Readonly<{ published: boolean }>;
+
+let liveTools: { key: string; tools: readonly LiveToolInfo[] } = {
   key: "[]",
   tools: Object.freeze([]),
 };
 
 /**
- * Every live tool, published or not, in publication order: what `runTool`
- * can run. The same array comes back until the set changes. Empty when a Ref
- * Tool's name clash leaves the set unresolvable; `runTool` then rejects with
- * that error, and an active publication reports it as its failed status.
- * The set changes when a session starts or stops (`subscribeToPublishedTools`
- * hears the status change) and when the Page Objects change
- * (`subscribeToRegisteredPoms`).
+ * Every live tool, in publication order: each tool `runTool` can run now, and
+ * whether it is in the current WebMCP publication. The same array comes back
+ * until the set changes (for `useSyncExternalStore`); subscribe with
+ * `subscribeToPublishedTools`. Empty when a Ref Tool's name clash leaves the
+ * set unresolvable; `runTool` then rejects with that error, and an active
+ * publication reports it as its failed status.
  */
-export function listLiveTools(): readonly PublishedToolInfo[] {
-  let tools: readonly PublishedToolInfo[];
+export function listLiveTools(): readonly LiveToolInfo[] {
+  const published = new Set(readModel.tools.map(({ name }) => name));
+  let tools: readonly LiveToolInfo[];
   try {
-    tools = toInfo([...resolvePublishedTools().values()]);
+    tools = Object.freeze(
+      toInfo([...resolvePublishedTools().values()]).map((tool) =>
+        Object.freeze({ ...tool, published: published.has(tool.name) })
+      )
+    );
   } catch {
     tools = Object.freeze([]);
   }
@@ -149,11 +156,17 @@ export async function listRefToolTargets(
   );
 }
 
-/** Call `subscriber` whenever the published tools or the status change. */
+/**
+ * Call `subscriber` whenever the published or live tools or the status may
+ * have changed: a publication pass, a status change (a session starting or
+ * stopping sets its Ref Tools and Goal Loop), or a Page Object change.
+ */
 export function subscribeToPublishedTools(subscriber: () => void) {
   subscribers.add(subscriber);
+  const unsubscribeFromPoms = subscribeToRegisteredPoms(subscriber);
   return () => {
     subscribers.delete(subscriber);
+    unsubscribeFromPoms();
   };
 }
 

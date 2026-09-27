@@ -244,6 +244,14 @@ export function describePublishedTools(
       expect(listed()).toEqual(await publishedOverWebMcp(context));
     });
 
+    it("lists the live tools as published while publication is active", async () => {
+      await startSession();
+
+      expect(listLiveTools()).toEqual(
+        listPublishedTools().map((tool) => ({ ...tool, published: true }))
+      );
+    });
+
     it("puts each published tool in its group", async () => {
       await startSession();
 
@@ -493,7 +501,7 @@ export function describePublishedTools(
         expect(actual).toEqual(expected);
       });
 
-      it("lists the live tools as they are published with publication on", async () => {
+      it("lists the live tools as published with publication on, marked unpublished", async () => {
         const stopPublishing = await startSession();
         const published = listPublishedTools();
         stopPublishing();
@@ -502,13 +510,21 @@ export function describePublishedTools(
           listLiveTools()
         );
 
-        expect(live).toEqual(published);
+        expect(live).toEqual(
+          published.map((tool) => ({ ...tool, published: false }))
+        );
       });
 
-      it("returns the same live-tool list until the live set changes", async () => {
+      it("tells subscribers when a Page Object registers, and returns a new list only then", async () => {
         await whilePublicationIsOff(mode, async () => {
           const before = listLiveTools();
           expect(listLiveTools()).toBe(before);
+          let notified = false;
+          cleanups.push(
+            subscribeToPublishedTools(() => {
+              notified = true;
+            })
+          );
 
           cleanups.push(
             runtime.register(SettingsPage, runtime.construct(SettingsPage))
@@ -516,6 +532,7 @@ export function describePublishedTools(
           await expect
             .poll(() => listLiveTools().map(({ name }) => name))
             .toContain("SettingsPage.save");
+          expect(notified).toBe(true);
           expect(listLiveTools()).not.toBe(before);
         });
       });
