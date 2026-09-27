@@ -18,6 +18,7 @@ import type { PomManifest } from "./contracts";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import {
   getPublicationStatus,
+  listLiveTools,
   listPublishedTools,
   listRefToolTargets,
   subscribeToPublishedTools,
@@ -490,6 +491,33 @@ export function describePublishedTools(
         );
 
         expect(actual).toEqual(expected);
+      });
+
+      it("lists the live tools as they are published with publication on", async () => {
+        const stopPublishing = await startSession();
+        const published = listPublishedTools();
+        stopPublishing();
+
+        const live = await whilePublicationIsOff(mode, async () =>
+          listLiveTools()
+        );
+
+        expect(live).toEqual(published);
+      });
+
+      it("returns the same live-tool list until the live set changes", async () => {
+        await whilePublicationIsOff(mode, async () => {
+          const before = listLiveTools();
+          expect(listLiveTools()).toBe(before);
+
+          cleanups.push(
+            runtime.register(SettingsPage, runtime.construct(SettingsPage))
+          );
+          await expect
+            .poll(() => listLiveTools().map(({ name }) => name))
+            .toContain("SettingsPage.save");
+          expect(listLiveTools()).not.toBe(before);
+        });
       });
 
       it("lists each Ref tool's targets", async () => {

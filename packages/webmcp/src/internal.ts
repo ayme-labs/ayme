@@ -13,6 +13,7 @@ export {
 export { getPomDefinitions } from "./pomDefinitions";
 export {
   getPublicationStatus,
+  listLiveTools,
   listPublishedTools,
   listRefToolTargets,
   subscribeToPublishedTools,

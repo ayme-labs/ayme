@@ -96,6 +96,32 @@ export function listPublishedTools(): readonly PublishedToolInfo[] {
   return readModel.tools;
 }
 
+let liveTools: { key: string; tools: readonly PublishedToolInfo[] } = {
+  key: "[]",
+  tools: Object.freeze([]),
+};
+
+/**
+ * Every live tool, published or not, in publication order: what `runTool`
+ * can run. The same array comes back until the set changes. Empty when a Ref
+ * Tool's name clash leaves the set unresolvable; `runTool` then rejects with
+ * that error, and an active publication reports it as its failed status.
+ * The set changes when a session starts or stops (`subscribeToPublishedTools`
+ * hears the status change) and when the Page Objects change
+ * (`subscribeToRegisteredPoms`).
+ */
+export function listLiveTools(): readonly PublishedToolInfo[] {
+  let tools: readonly PublishedToolInfo[];
+  try {
+    tools = toInfo([...resolvePublishedTools().values()]);
+  } catch {
+    tools = Object.freeze([]);
+  }
+  const key = JSON.stringify(tools);
+  if (key !== liveTools.key) liveTools = { key, tools };
+  return liveTools.tools;
+}
+
 /**
  * The runtime session's WebMCP publication status. A failed publication's
  * `message` carries its error.
@@ -138,7 +164,14 @@ export function reportPublishedTools(
     group: PublishedToolGroup;
   }[]
 ) {
-  readModel.tools = Object.freeze(
+  readModel.tools = toInfo(tools);
+  notify();
+}
+
+function toInfo(
+  tools: readonly { tool: PublishedTool; group: PublishedToolGroup }[]
+): readonly PublishedToolInfo[] {
+  return Object.freeze(
     tools.map(({ tool, group }) =>
       Object.freeze({
         name: tool.name,
@@ -148,7 +181,6 @@ export function reportPublishedTools(
       })
     )
   );
-  notify();
 }
 
 /** Package-internal: the runtime session's publication status changed. */
