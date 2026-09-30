@@ -13,7 +13,7 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#5c088c47f271e361e8e07620c3c4f65eab02c430",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#e95ea4b7cadd62ff4f6d74a5101506e7e855a899",
     "@ayme-dev/webmcp": "workspace:*",
     "@ayme-dev/webmcp-inspector": "workspace:*",
     "@ayme-dev/webmcp-vue": "workspace:*",
