@@ -2,7 +2,7 @@ packages:
   - apps/*
   - packages/*
 allowBuilds:
-  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/5c088c47f271e361e8e07620c3c4f65eab02c430": true
+  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/e95ea4b7cadd62ff4f6d74a5101506e7e855a899": true
   esbuild: true
   lefthook: true
   vue-demi: false
