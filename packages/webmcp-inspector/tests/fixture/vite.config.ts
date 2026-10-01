@@ -18,5 +18,6 @@ export default defineConfig({
       },
     ],
   },
-  server: { host: "127.0.0.1", port: 4291, strictPort: true },
+  // The e2e config picks a free port and passes it with --port.
+  server: { host: "127.0.0.1", strictPort: true },
 });

@@ -79,7 +79,7 @@ Run from this directory inside the repository's Devbox shell:
 - `pnpm test:e2e` tests the built package, so build first; Turbo's
   `test:e2e` task does. It runs Playwright on Chromium with native WebMCP
   (`--enable-features=WebMCP,WebMCPTesting`) against the fixture pages in
-  `tests/fixture`, served on port 4291: a real Page Object, the Ayme runtime
+  `tests/fixture`, served on a free port: a real Page Object, the Ayme runtime
   and the built Inspector. A fixture page that fails to start, a runtime that
   never publishes, or a browser without WebMCP fails before any test
   assertion, with its own message.
