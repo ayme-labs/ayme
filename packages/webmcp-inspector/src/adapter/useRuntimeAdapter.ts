@@ -38,6 +38,19 @@ export function useRuntimeAdapter({
       ),
     [registeredPoms, tools.live, pomDefinitions]
   );
+  const { refToolTargets } = inspector.pageState;
+  const refTools = useMemo(
+    () =>
+      tools.live
+        .filter((tool) => tool.group === "ref")
+        .map(({ name, description, inputSchema }) => ({
+          name,
+          description,
+          inputSchema,
+          refs: refToolTargets.get(name) ?? [],
+        })),
+    [tools.live, refToolTargets]
+  );
   const registeredTools = useMemo(
     () => listRegisteredTools(registeredPoms),
     [registeredPoms]
@@ -86,6 +99,11 @@ export function useRuntimeAdapter({
      * tool, as the run card runs them.
      */
     runnableTools,
+    /**
+     * The live Ref tools, published or not, each with the refs it can take
+     * now.
+     */
+    refTools,
     /** The runs made from the panel, newest first. */
     runs,
     runTool: (...args: Parameters<typeof invoke>) => void invoke(...args),

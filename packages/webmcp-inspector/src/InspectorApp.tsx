@@ -48,8 +48,12 @@ export function InspectorApp() {
     }),
     structureLens({
       structure: runtime.pageState.structure,
-      pageState: runtime.pageState,
-      onRefresh: runtime.refreshPageState,
+      capture: runtime.pageState,
+      selection,
+      onSelect: setSelection,
+      onHover: runtime.highlight.hover,
+      refTools: runtime.refTools,
+      renderRun,
     }),
     toolsLens({
       tools: [...runtime.runnableTools.values()].map((tool) => ({

@@ -120,24 +120,21 @@ test("a host member named like one of the panel's controls stays one match, and 
   await expect(listPage.items).toHaveCount(0);
 });
 
-test("the Structure view follows typing, checking and text changes on the page", async ({
+test("the Structure view follows typing and text changes on the page", async ({
   page,
   inspector,
   listPage,
 }) => {
-  const structure = () => inspector.pageState.root.textContent();
+  const structure = () => inspector.structure.tree.textContent();
   await inspector.navigator.showLens("Structure");
 
   await listPage.newItemInput.fill("Oat milk");
   await expect.poll(structure).toContain("Oat milk");
 
-  await page.getByRole("checkbox", { name: "Urgent" }).check();
-  await expect.poll(structure).toContain('checkbox "Urgent" [checked]');
-
   await page
     .getByRole("heading", { name: "Groceries" })
     .evaluate((heading) => (heading.textContent = "Groceries for Friday"));
-  await expect.poll(structure).toContain('heading "Groceries for Friday"');
+  await expect.poll(structure).toContain('heading"Groceries for Friday"');
 });
 
 test("the Inspector's looks at the page leave the agent's view of it alone", async ({
@@ -147,7 +144,7 @@ test("the Inspector's looks at the page leave the agent's view of it alone", asy
   // The panel has looked at the page: its structure shows the heading.
   await inspector.navigator.showLens("Structure");
   await expect
-    .poll(() => inspector.pageState.root.textContent())
+    .poll(() => inspector.structure.tree.textContent())
     .toContain("Groceries");
 
   // A toast appears, then the agent's first action changes nothing. Had the

@@ -10,6 +10,11 @@ export type StructureNode = {
   /** The accessible name, or the text itself. */
   name: string;
   /**
+   * Its states as the page state lists them, e.g. "checked" or "level=1".
+   * Rows leave them out; "What the model sees" shows them.
+   */
+  states?: string[];
+  /**
    * Every Page Object member path whose element this node is, in the
    * registry's order: e.g. both "ListPage.items[1]" and "ListPage.entries[1]"
    * when two collections hold the same element, plus the registry's alias
@@ -22,8 +27,42 @@ export type StructureNode = {
    * see {@link memberTag}.
    */
   member?: string;
+  /**
+   * The members a node's detail lists, the tag first, each with where it
+   * leads (see {@link memberLinks}).
+   */
+  memberLinks?: readonly MemberLink[];
+  /**
+   * The Page Object instance that owns {@link member}, the tag, by path: the
+   * instance itself when the node is its root, e.g. "ListPage.items[1]",
+   * else the instance the member is declared on, e.g. "ListPage".
+   */
+  owner?: string;
   children: StructureNode[];
 };
+
+/**
+ * Where a member leads: the Page Object instance that owns it, or, for a
+ * path through a class name such as "ListItem.nameButton", that Page Object
+ * Model.
+ */
+export type MemberOwner = { object: string } | { model: string };
+
+/** A member of a node, with where it leads. */
+export type MemberLink = { member: string; owner: MemberOwner };
+
+/** The Page Objects on the page, which own the members. */
+export type PageObjects = {
+  /** The page Page Objects, by class name: every instance path starts at one. */
+  pages: ReadonlySet<string>;
+  /**
+   * Every path the registry lists a Page Object root under: instances such
+   * as "ListPage.items[1]", and aliases such as "ListPage.items".
+   */
+  roots: ReadonlySet<string>;
+};
+
+const noPageObjects: PageObjects = { pages: new Set(), roots: new Set() };
 
 export type StructureTree = {
   roots: readonly StructureNode[];
@@ -40,7 +79,9 @@ export const emptyStructure: StructureTree = { roots: [], refCount: 0 };
  */
 export function buildStructureTree(
   text: string,
-  membersByRef: ReadonlyMap<string, readonly string[]>
+  membersByRef: ReadonlyMap<string, readonly string[]>,
+  /** The Page Objects on the page; they own the members. */
+  pageObjects: PageObjects = noPageObjects
 ): StructureTree {
   const roots: StructureNode[] = [];
   const open: { indent: number; node: StructureNode }[] = [];
@@ -63,7 +104,11 @@ export function buildStructureTree(
       const members = membersByRef.get(node.ref) ?? [];
       node.members = members;
       const tag = memberTag(members);
-      if (tag !== undefined) node.member = tag;
+      if (tag !== undefined) {
+        node.member = tag;
+        node.memberLinks = memberLinks(members, tag, pageObjects);
+        node.owner = ownerOf(tag, pageObjects);
+      }
     }
     if (header !== "text" && value !== undefined)
       node.children.push(textNode(value));
@@ -73,6 +118,88 @@ export function buildStructureTree(
   }
 
   return { roots, refCount };
+}
+
+/**
+ * The members a node's detail lists, the tag first, each with where it
+ * leads. A path through a class name ("ListItem", "ListItem.nameButton")
+ * leads to that model. A collection alias ("ListPage.items" beside
+ * "ListPage.items[0]") adds nothing beyond its item, so it is left out.
+ * Any other member leads to the instance that owns it.
+ */
+export function memberLinks(
+  members: readonly string[],
+  tag: string,
+  pageObjects: PageObjects
+): MemberLink[] {
+  const ordered = [tag, ...members.filter((member) => member !== tag)];
+  return ordered.flatMap((member): MemberLink[] => {
+    const start = member.split(/[.[]/)[0]!;
+    if (!pageObjects.pages.has(start))
+      return [{ member, owner: { model: start } }];
+    const aliasOfItem = members.some(
+      (other) => other !== member && withoutIndices(other) === member
+    );
+    if (aliasOfItem) return [];
+    return [{ member, owner: { object: ownerOf(member, pageObjects) } }];
+  });
+}
+
+/**
+ * The Page Object instance that owns a member: the member itself when it
+ * is an instance's root, else the nearest instance it is declared under.
+ * A collection path such as "ListPage.items" is not an instance, so its
+ * members belong to the object that declares the collection.
+ */
+export function ownerOf(member: string, { pages, roots }: PageObjects) {
+  const isInstance = (path: string) =>
+    pages.has(path) ||
+    (roots.has(path) &&
+      ![...roots].some((root) => withoutLastIndex(root) === path));
+  let path = isInstance(member) ? member : parentOf(member);
+  while (path && !isInstance(path)) path = parentOf(path);
+  return path || member.split(/[.[]/)[0]!;
+}
+
+/**
+ * The Page Objects the registry lists: every root path it lists as
+ * `<path>.root`, and the page objects the instance paths start at.
+ */
+export function pageObjectsOf(
+  pages: Iterable<string>,
+  targets: Iterable<{ path: string }>
+): PageObjects {
+  const roots = new Set<string>();
+  for (const { path } of targets)
+    if (path.endsWith(".root")) roots.add(path.slice(0, -".root".length));
+  return { pages: new Set(pages), roots };
+}
+
+function parentOf(path: string) {
+  const dot = path.lastIndexOf(".");
+  return dot < 0 ? "" : path.slice(0, dot);
+}
+
+function withoutIndices(path: string) {
+  return path.replace(/\[\d+\]/g, "");
+}
+
+function withoutLastIndex(path: string) {
+  return /\[\d+\]$/.test(path) ? path.replace(/\[\d+\]$/, "") : undefined;
+}
+
+/** A node as a row of the tree, depth first, with its depth from a root. */
+export type StructureRow = { node: StructureNode; depth: number };
+
+/** Every node of the tree, depth first, the way the page state lists them. */
+export function* structureRows(
+  nodes: readonly StructureNode[],
+  depth = 0
+): Generator<StructureRow> {
+  for (const node of nodes) {
+    yield { node, depth };
+    yield* structureRows(node.children, depth + 1);
+  }
 }
 
 function textNode(text: string): StructureNode {
@@ -87,8 +214,10 @@ function elementNode(header: string): StructureNode {
   const [ref, ...tokens] = header.match(/"(?:[^"\\]|\\.)*"|\S+/g) ?? [];
   let role = "generic";
   let name = "";
+  const states: string[] = [];
   for (const token of tokens) {
     if (token.startsWith('"')) name = unquote(token);
+    else if (/^\[.+\]$/.test(token)) states.push(token.slice(1, -1));
     // Roles are lowercase words; a Page Object label is an identifier path.
     else if (/^[a-z]+$/.test(token)) role = token;
   }
@@ -96,6 +225,7 @@ function elementNode(header: string): StructureNode {
     ...(ref === undefined ? {} : { ref }),
     role,
     name,
+    ...(states.length ? { states } : {}),
     members: [],
     children: [],
   };

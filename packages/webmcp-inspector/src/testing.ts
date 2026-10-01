@@ -23,8 +23,9 @@ export {
   type ModelDetailSection,
 } from "./pom/ModelDetailView";
 export { ModelLens, type ModelPaneName } from "./pom/ModelLens";
-export { PageStateView } from "./pom/PageStateView";
+export { NodeView } from "./pom/NodeView";
 export { PanelShell, type PanelEdge } from "./pom/PanelShell";
 export { RunCard, type ArgumentValue } from "./pom/RunCard";
 export { RunEntry, RunsView, type RunStep } from "./pom/RunsView";
+export { StructureLens } from "./pom/StructureLens";
 export { WebMcpStatus } from "./pom/WebMcpStatus";

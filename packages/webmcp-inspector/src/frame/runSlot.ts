@@ -8,6 +8,8 @@ export type RunRequest = {
    * "ListPage.items[1]". Without it, the run card lets the person pick one.
    */
   item?: string;
+  /** The Structural Ref a Ref tool runs on, e.g. from a structure node. */
+  ref?: string;
   /**
    * Whether the run card shows its head: the action's name, signature,
    * description and Run. A tool's own view leaves it out: its form is open
