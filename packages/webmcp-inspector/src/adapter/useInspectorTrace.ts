@@ -4,7 +4,7 @@ import {
   getInspectorTrace,
   subscribeToInspectorTrace,
   type TraceEntry,
-} from "./trace";
+} from "../trace";
 
 let snapshot: readonly TraceEntry[] = [];
 

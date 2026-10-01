@@ -11,6 +11,9 @@ import {
 } from "./trace";
 import { withDemoFeedback } from "./withDemoFeedback";
 
+// The page's two highlights: solid for the Inspector's selection, dashed
+// for what the pointer is over in the panel. An element that is both shows
+// the selection's.
 const highlightStyleText = `
 [data-ayme-highlight] {
   animation: ayme-highlight-pulse 1.6s ease-in-out infinite;
@@ -18,6 +21,11 @@ const highlightStyleText = `
   outline-offset: 3px;
   position: relative;
   z-index: 1;
+}
+
+[data-ayme-hover]:not([data-ayme-highlight]) {
+  outline: 2px dashed #d9a441;
+  outline-offset: 3px;
 }
 
 @keyframes ayme-highlight-pulse {
