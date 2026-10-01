@@ -28,6 +28,11 @@ export class ListPage {
     await this.addItemButton.click();
   }
 
+  /** Count the items on the list. */
+  async countItems() {
+    return this.items.count();
+  }
+
   /** Remove every item from the list. */
   async clear() {
     await this.clearButton.click();

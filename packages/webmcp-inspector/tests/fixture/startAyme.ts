@@ -31,6 +31,18 @@ const listPageManifest: PomManifest = {
       ],
     },
     {
+      methodName: "countItems",
+      toolName: "ListPage.countItems",
+      description: "Count the items on the list.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      },
+      parameters: [],
+    },
+    {
       methodName: "clear",
       toolName: "ListPage.clear",
       description: "Remove every item from the list.",
