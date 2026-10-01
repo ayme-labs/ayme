@@ -77,13 +77,13 @@ Run from this directory inside the repository's Devbox shell:
   root it owns (`src/renderPart.tsx`), with the Inspector's stylesheet and
   themed root, and drives it through the page objects on playwright-lite.
 - `pnpm test:e2e` tests the built package, so build first; Turbo's
-  `test:e2e` task does. It runs Playwright on Chromium with native WebMCP
-  (`--enable-features=WebMCP,WebMCPTesting`) against the fixture pages in
-  `tests/fixture`, served on a free port: a real Page Object, the Ayme runtime
-  and the built Inspector. A fixture page that fails to start, a runtime that
-  never publishes, or a browser without WebMCP fails before any test
-  assertion, with its own message.
+  `test:e2e` task does. It runs Playwright on Chromium against the fixture
+  pages in `tests/fixture`, served on a free port: a real Page Object, the
+  Ayme runtime and the built Inspector. The runtime publishes to the recording
+  WebMCP driver from `@ayme-dev/webmcp/testing`, and the tests call tools
+  through it. A fixture page that fails to start or a runtime that never
+  publishes fails before any test assertion, with its own message.
 
-playwright-lite has no `page.mouse` and no `dragTo`. The page objects drag
-by dispatching pointer events to the dragged element, which works on both
-runners.
+playwright-lite's `page.mouse` and `dragTo` don't follow pointer capture
+(enekesabel/playwright-lite#258). The page objects drag by dispatching
+pointer events to the dragged element, which works on both runners.

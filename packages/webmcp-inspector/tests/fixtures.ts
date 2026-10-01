@@ -1,4 +1,5 @@
 import { test as base, selectors, type Page } from "@playwright/test";
+import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
 
 import { Inspector, registerInspectorSelectors } from "../src/testing";
 import { ListPage } from "./fixture/ListPage";
@@ -10,24 +11,14 @@ export type FixturePage = "/" | "/react.html";
 
 /**
  * Opens a fixture page and fails with its own message, before any test
- * assertion, when the browser lacks WebMCP, the page's script broke or the
- * runtime never published its tools.
+ * assertion, when the page's script broke or the runtime never published its
+ * tools.
  */
 export async function openFixture(page: Page, path: FixturePage) {
   const pageErrors: string[] = [];
   const onPageError = (error: Error) => pageErrors.push(error.message);
   page.on("pageerror", onPageError);
   await page.goto(path);
-
-  const hasWebMcp = await page.evaluate(
-    () =>
-      typeof (document.modelContext as { executeTool?: unknown } | undefined)
-        ?.executeTool === "function"
-  );
-  if (!hasWebMcp)
-    throw new Error(
-      "Chromium runs without native WebMCP: launch it with --enable-features=WebMCP,WebMCPTesting."
-    );
 
   const root = page.locator("html");
   try {
@@ -56,29 +47,9 @@ export async function openFixture(page: Page, path: FixturePage) {
   return { inspector: new Inspector(page), listPage: new ListPage(page) };
 }
 
-/** Calls a published tool as an agent does, over Chromium's WebMCP. */
-export async function callTool(page: Page, name: string, args: unknown) {
-  return page.evaluate(
-    async ({ name, args }) => {
-      type Tool = { name: string };
-      const context = document.modelContext as unknown as {
-        getTools(): Promise<Tool[]>;
-        executeTool(tool: Tool, input: string): Promise<string | null>;
-      };
-      const tool = (await context.getTools()).find(
-        (candidate) => candidate.name === name
-      );
-      if (!tool) throw new Error(`${name} is not published.`);
-      return JSON.parse(
-        (await context.executeTool(tool, JSON.stringify(args))) ?? "null"
-      ) as unknown;
-    },
-    { name, args }
-  );
-}
-
 export const test = base.extend<
   {
+    publishedTools: void;
     fixturePath: FixturePage;
     opened: Awaited<ReturnType<typeof openFixture>>;
     inspector: Inspector;
@@ -96,6 +67,15 @@ export const test = base.extend<
       await use();
     },
     { scope: "worker", auto: true },
+  ],
+  // The runtime publishes to the recording WebMCP driver from
+  // `@ayme-dev/webmcp/testing`, which the tests call tools through.
+  publishedTools: [
+    async ({ context }, use) => {
+      await recordPublishedTools(context);
+      await use();
+    },
+    { auto: true },
   ],
   fixturePath: ["/", { option: true }],
   opened: async ({ page, fixturePath }, use) => {

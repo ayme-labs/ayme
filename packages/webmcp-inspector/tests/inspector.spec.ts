@@ -1,9 +1,11 @@
-import { callTool, expect, openFixture, test } from "./fixtures";
+import { executePublishedTool } from "@ayme-dev/webmcp/testing";
+
+import { expect, openFixture, test } from "./fixtures";
 import type { Inspector } from "../src/testing";
 
 // E2E: the built Inspector on fixture pages with a real Page Object, the
-// Ayme runtime and Chromium's own WebMCP. Each test has one reason to fail;
-// fixture, runtime and WebMCP problems fail first, in openFixture.
+// Ayme runtime and a recording WebMCP driver. Each test has one reason to
+// fail; fixture and runtime problems fail first, in openFixture.
 
 test("the page objects reach into the Inspector's closed shadow root", async ({
   inspector,
@@ -32,7 +34,7 @@ test("a host member named like one of the panel's controls stays one match, and 
   await expect(inspector.runs.clearButton).toBeVisible();
 
   await expect(listPage.clearButton).toHaveCount(1);
-  expect(await callTool(page, "ListPage.clear", {})).not.toMatchObject({
+  expect(await executePublishedTool(page, "ListPage.clear")).not.toMatchObject({
     isError: true,
   });
   await expect(listPage.items).toHaveCount(0);

@@ -25,8 +25,6 @@ export default defineConfig({
   use: {
     ...devices["Desktop Chrome"],
     baseURL,
-    // Chromium's own WebMCP, with executeTool for tests.
-    launchOptions: { args: ["--enable-features=WebMCP,WebMCPTesting"] },
   },
   webServer: {
     command: `pnpm exec vite --config tests/fixture/vite.config.ts --port ${port} --strictPort`,
