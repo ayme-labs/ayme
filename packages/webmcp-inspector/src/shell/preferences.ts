@@ -7,6 +7,18 @@ export type Point = { x: number; y: number };
 
 export type Rect = Point & { width: number; height: number };
 
+/** The Model lens's two panes: which are open, and the first one's share. */
+export type ModelPanes = {
+  objectsOpen: boolean;
+  modelsOpen: boolean;
+  /** The share of the height "On this page" gets when both are open. */
+  split: number;
+};
+
+/** The bounds of the Model lens's divider, as a share of the height. */
+export const minModelSplit = 0.15;
+export const maxModelSplit = 0.85;
+
 /**
  * How the person left the panel. Positions and sizes are in viewport pixels.
  * An unset floating rectangle or logo position means "the default place",
@@ -22,6 +34,7 @@ export type Preferences = {
   /** The height of the bottom dock. */
   bottomHeight: number;
   logo?: Point;
+  modelPanes: ModelPanes;
 };
 
 export const defaultPreferences: Preferences = {
@@ -30,6 +43,7 @@ export const defaultPreferences: Preferences = {
   theme: "system",
   sideWidth: 640,
   bottomHeight: 360,
+  modelPanes: { objectsOpen: true, modelsOpen: true, split: 0.58 },
 };
 
 /** Browser storage is per origin, so the preferences are per site. */
@@ -68,6 +82,24 @@ export function readPreferences(storage: Storage | undefined): Preferences {
       ? stored.bottomHeight
       : defaultPreferences.bottomHeight,
     logo: isPoint(stored.logo) ? pick(stored.logo, pointKeys) : undefined,
+    modelPanes: readModelPanes(stored.modelPanes),
+  };
+}
+
+function readModelPanes(stored: unknown): ModelPanes {
+  const defaults = defaultPreferences.modelPanes;
+  if (!isRecord(stored)) return defaults;
+  const open = (value: unknown, fallback: boolean) =>
+    typeof value === "boolean" ? value : fallback;
+  return {
+    objectsOpen: open(stored.objectsOpen, defaults.objectsOpen),
+    modelsOpen: open(stored.modelsOpen, defaults.modelsOpen),
+    split:
+      isFiniteNumber(stored.split) &&
+      stored.split >= minModelSplit &&
+      stored.split <= maxModelSplit
+        ? stored.split
+        : defaults.split,
   };
 }
 

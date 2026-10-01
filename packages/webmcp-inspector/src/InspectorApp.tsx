@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRuntimeAdapter } from "./adapter/useRuntimeAdapter";
 import { Empty } from "./common";
 import { DetailPane, InspectorBody } from "./frame/InspectorBody";
-import { selectionHighlight, type OnHover } from "./frame/highlight";
+import { selectionHighlight } from "./frame/highlight";
 import type { Lens, LensId } from "./frame/lens";
 import { memberResolves } from "./frame/memberSelection";
 import { Navigator } from "./frame/Navigator";
@@ -35,10 +35,15 @@ export function InspectorApp() {
   const lenses: Lens[] = [
     modelLens({
       host: window.location.host,
-      pomClasses: runtime.pomClasses,
+      pageModel: runtime.pageModel,
+      pageTools: runtime.tools.live
+        .filter((tool) => tool.group === "agent")
+        .map((tool) => tool.name),
+      panes: preferences.modelPanes,
+      onPanesChange: (modelPanes) => updatePreferences({ modelPanes }),
       selection,
       onSelect: setSelection,
-      highlight: skeletonHighlight(runtime.highlight.hover),
+      onHover: runtime.highlight.hover,
       renderRun,
     }),
     structureLens({
@@ -114,18 +119,4 @@ function pinTarget(lenses: readonly Lens[], selection: Selection) {
     if (target) return target;
   }
   return selectionHighlight(selection);
-}
-
-/**
- * The skeleton Page objects view's highlight controls: its members hover.
- * Ticket E replaces the view; its pin toggle does nothing, since the pin is
- * the selection now.
- */
-function skeletonHighlight(hover: OnHover) {
-  return {
-    pinnedPath: undefined,
-    previewTarget: (path: string) => hover({ path }),
-    clearPreview: () => hover(undefined),
-    togglePinnedTarget: () => {},
-  };
 }
