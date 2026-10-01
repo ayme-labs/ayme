@@ -12,6 +12,7 @@ import { Inspector } from "./testing";
 // one. The runtime is replaced by a peek that reads the fixture host page,
 // so the evidence covers the panel and its adapter's refresh triggers only.
 vi.mock("@ayme-dev/webmcp/internal", () => ({
+  getPomDefinitions: vi.fn(() => ({ definitions: [] })),
   peekPageStateForDocument: vi.fn(),
   listRefToolTargets: vi.fn(async () => new Map()),
   // One value each, as the runtime keeps them until they change.

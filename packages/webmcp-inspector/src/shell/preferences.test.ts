@@ -37,7 +37,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it("remembers the layout, sizes, positions and theme it was left with", () => {
+it("remembers the layout, sizes, positions, theme and Model lens panes it was left with", () => {
   const storage = memoryStorage();
   const left: Preferences = {
     layout: "bottom",
@@ -47,6 +47,7 @@ it("remembers the layout, sizes, positions and theme it was left with", () => {
     sideWidth: 700,
     bottomHeight: 300,
     logo: { x: 20, y: 500 },
+    modelPanes: { objectsOpen: false, modelsOpen: true, split: 0.3 },
   };
 
   writePreferences(storage, left);
@@ -61,6 +62,7 @@ it("opens with the defaults when nothing is stored yet", () => {
     theme: "system",
     sideWidth: 640,
     bottomHeight: 360,
+    modelPanes: { objectsOpen: true, modelsOpen: true, split: 0.58 },
   });
 });
 
@@ -73,6 +75,7 @@ it("keeps each valid stored value and defaults the malformed ones", () => {
       bottomHeight: -5,
       float: { x: "left", y: 0, width: 600, height: 500 },
       logo: { x: 10, y: 12 },
+      modelPanes: { objectsOpen: "no", modelsOpen: false, split: 0.95 },
     }),
   });
 
@@ -83,6 +86,7 @@ it("keeps each valid stored value and defaults the malformed ones", () => {
     sideWidth: 700,
     bottomHeight: 360,
     logo: { x: 10, y: 12 },
+    modelPanes: { objectsOpen: true, modelsOpen: false, split: 0.58 },
   });
 });
 

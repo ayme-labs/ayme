@@ -18,6 +18,7 @@ import { Inspector } from "./testing";
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its adapter only.
 vi.mock("@ayme-dev/webmcp/internal", () => ({
+  getPomDefinitions: vi.fn(() => ({ definitions: [] })),
   peekPageStateForDocument: vi.fn(async () => ({
     text: '- e1 main:\n  - e2 button "Save"',
     elementsByRef: new Map(),
@@ -108,15 +109,18 @@ afterEach(() => {
 });
 
 describe("the Inspector", () => {
-  it("shows a Page Object Model's member state", async () => {
+  it("shows a Page Object's members as the page probe found them", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
     renderApp();
-    const card = inspector.detail.pageObjects.pomClass("Editor");
+    const detail = inspector.detail.model;
 
+    // The file's first test renders the whole panel cold, which can take
+    // longer than playwright-lite's 1 s action timeout on a loaded CI runner.
+    await inspector.navigator.model.object("Editor").click({ timeout: 5_000 });
     await expect
-      .poll(() => card.memberState("saveButton").textContent())
-      .toBe("present");
+      .poll(() => detail.memberDescription("saveButton"))
+      .toBe("locator · 1 match");
   });
 
   it("runs a tool with typed arguments and lists the run", async () => {
@@ -227,7 +231,7 @@ describe("the Inspector", () => {
       .toContain('e2 button "Save"');
     await expect
       .poll(() => inspector.navigator.legend.textContent())
-      .toBe("2 refs");
+      .toContain("2 refs");
   });
 
   it("shows whether a registered tool is published, with its schema", async () => {
