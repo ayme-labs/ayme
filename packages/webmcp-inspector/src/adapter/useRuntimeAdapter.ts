@@ -5,8 +5,8 @@ import { getPomDefinitionText } from "@ayme-dev/webmcp/internal";
 
 import { listPomClasses } from "../pomModel";
 import { useLiveTools } from "./liveTools";
+import { listRunnableTools } from "./runnableTools";
 import { useInspector } from "./useInspector";
-import { useInspectorTrace } from "./useInspectorTrace";
 import { useRuns } from "./useRuns";
 
 /**
@@ -22,7 +22,6 @@ export function useRuntimeAdapter({
 } = {}) {
   const inspector = useInspector({ structureVisible });
   const { registeredPoms, refreshPageState } = inspector;
-  const trace = useInspectorTrace();
   const onRunSettled = useCallback(
     () => refreshPageState(),
     [refreshPageState]
@@ -37,6 +36,10 @@ export function useRuntimeAdapter({
   const registeredTools = useMemo(
     () => listRegisteredTools(registeredPoms),
     [registeredPoms]
+  );
+  const runnableTools = useMemo(
+    () => listRunnableTools(registeredPoms, inspector.activeTools, tools.live),
+    [registeredPoms, inspector.activeTools, tools.live]
   );
 
   return {
@@ -72,11 +75,15 @@ export function useRuntimeAdapter({
      * selection; lenses only hover.
      */
     highlight: inspector.highlight,
+    /**
+     * Every registered Page Object tool once by name, and every other live
+     * tool, as the run card runs them.
+     */
+    runnableTools,
+    /** The runs made from the panel, newest first. */
     runs,
-    runTool: (toolName: string, args: Parameters<typeof invoke>[1]) =>
-      void invoke(toolName, args),
+    runTool: (...args: Parameters<typeof invoke>) => void invoke(...args),
     clearRuns: clear,
-    trace,
   };
 }
 

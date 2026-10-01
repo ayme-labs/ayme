@@ -1,6 +1,6 @@
 import { executePublishedTool } from "@ayme-dev/webmcp/testing";
 
-import { expect, openFixture, test, unpublishedFixtureUrl } from "./fixtures";
+import { expect, openFixture, test } from "./fixtures";
 import type { Inspector } from "../src/testing";
 
 // E2E: the built Inspector on fixture pages with a real Page Object, the
@@ -204,7 +204,7 @@ test("the WebMCP status line is hidden while the tools are published", async ({
 test("with WebMCP publishing off, the status line says so and how to turn it on", async ({
   page,
 }) => {
-  const { inspector } = await openFixture(page, unpublishedFixtureUrl);
+  const { inspector } = await openFixture(page, "/unpublished.html");
 
   await expect(inspector.webMcpStatus.root).toContainText(
     "WebMCP publishing is off"
