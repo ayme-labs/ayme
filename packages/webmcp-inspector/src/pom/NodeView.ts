@@ -1,5 +1,8 @@
 import type { Locator } from "@playwright/test";
 
+import { RunCard } from "./RunCard";
+import { WhatTheModelSees } from "./WhatTheModelSees";
+
 /** A structure node's detail: what it is, who owns it, and its Ref tools. */
 export class NodeView {
   readonly root: Locator;
@@ -12,6 +15,8 @@ export class NodeView {
   readonly memberLinks: Locator;
   /** The Ref tools that run on it. */
   readonly tools: Locator;
+  /** Its page-state line and its Ref tools' schemas, as an agent gets them. */
+  readonly modelSees: WhatTheModelSees;
 
   constructor(detail: Locator) {
     this.root = detail.getByRole("article", { name: "Structure node" });
@@ -20,11 +25,17 @@ export class NodeView {
       .getByRole("group", { name: "Page object members" })
       .getByRole("button");
     this.tools = this.root.getByRole("region", { name: "Tools" });
+    this.modelSees = new WhatTheModelSees(this.root);
   }
 
   /** The run slot of one Ref tool the node offers, by the tool's name. */
   tool(name: string): Locator {
     return this.tools.getByRole("group", { name, exact: true });
+  }
+
+  /** The run card of one Ref tool the node offers, by the tool's name. */
+  runCard(name: string): RunCard {
+    return new RunCard(this.tool(name).getByRole("form"));
   }
 
   /** Opens the Page Object that owns one of its members. */

@@ -11,6 +11,7 @@ import {
   type StructureTree,
 } from "../adapter/structure";
 import { Empty } from "../common";
+import { WhatTheModelSees } from "../detail/WhatTheModelSees";
 import type { OnHover } from "../frame/highlight";
 import type { Lens, SearchEntry } from "../frame/lens";
 import type { RenderRun } from "../frame/runSlot";
@@ -25,6 +26,8 @@ export type StructureCapture = {
 /** A live Ref tool: it runs on one node, by ref. */
 export type RefToolSummary = {
   name: string;
+  /** Its input schema, as an agent receives it. */
+  inputSchema: unknown;
   /** The refs it can take now, as the Goal Loop would offer them. */
   refs: readonly string[];
 };
@@ -34,9 +37,9 @@ type RefNode = StructureNode & { ref: string };
 /**
  * The Structure lens: the Structural Page State an agent receives, as a
  * tree with each node tagged by the Page Object member it maps to. It owns
- * `node` selections, and a node's detail runs the Ref tools that can take
- * its ref. Hovering
- * a node highlights it on the page; the frame highlights the selected one.
+ * `node` selections. A node's detail runs the Ref tools that can take its
+ * ref and shows what the model sees of it. Hovering a node highlights it on
+ * the page; the frame highlights the selected one.
  */
 export function structureLens({
   structure,
@@ -291,6 +294,13 @@ function NodeDetail({
           ))}
         </section>
       )}
+      <WhatTheModelSees
+        pageState={{
+          lines: node.pageStateLines ?? [],
+          childCount: node.childCount ?? 0,
+        }}
+        schemas={tools.map(({ name, inputSchema }) => ({ name, inputSchema }))}
+      />
     </article>
   );
 }

@@ -33,7 +33,7 @@ export function useRunning(runtime: InspectorRuntime, selection: Selection) {
     setFocus({ runId, at: Date.now() });
   };
 
-  const renderRun: RenderRun = ({ toolName, item, head }) => {
+  const renderRun: RenderRun = ({ toolName, item, ref, head }) => {
     const tool = runnableTools.get(toolName);
     if (!tool) return null;
     const items = tool.collection
@@ -41,12 +41,13 @@ export function useRunning(runtime: InspectorRuntime, selection: Selection) {
       : [];
     return (
       <RunCard
-        key={`${toolName}|${item ?? ""}`}
+        key={`${toolName}|${item ?? ""}|${ref ?? ""}`}
         tool={tool}
         available={tool.available}
         head={head}
         item={items.find((candidate) => candidate.path === item)}
         items={items}
+        structuralRef={ref}
         refSource={{
           roots,
           canUse: refPicking.canUse(toolName),

@@ -2,14 +2,24 @@ import type { RunnableTool } from "../adapter/runnableTools";
 
 /**
  * Whether Run must open the form before it runs the tool: the tool has a
- * required argument, or it's a collection action whose item isn't given.
+ * required argument the view doesn't give, or it's a collection action whose
+ * item isn't given.
  */
 export function needsInput(
   tool: Pick<RunnableTool, "argumentsSchema" | "collection">,
-  { itemGiven }: { itemGiven: boolean }
+  {
+    itemGiven,
+    givenArguments = [],
+  }: {
+    itemGiven: boolean;
+    /** Arguments the view fills in, e.g. a structure node's `ref`. */
+    givenArguments?: readonly string[];
+  }
 ) {
   return (
     (tool.collection !== undefined && !itemGiven) ||
-    (tool.argumentsSchema.required?.length ?? 0) > 0
+    (tool.argumentsSchema.required ?? []).some(
+      (name) => !givenArguments.includes(name)
+    )
   );
 }

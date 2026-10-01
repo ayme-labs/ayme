@@ -14,7 +14,6 @@ const locators = new WeakMap<TraceEntry, Locator>();
 const traceDispatchSubscribers = new Set<
   (entry: TraceEntry, locator?: Locator) => void
 >();
-const subscribers = new Set<() => void>();
 
 export function dispatchInspectorTrace(entry: TraceEntry, locator?: Locator) {
   for (const subscriber of traceDispatchSubscribers) subscriber(entry, locator);
@@ -23,7 +22,6 @@ export function dispatchInspectorTrace(entry: TraceEntry, locator?: Locator) {
 export function recordInspectorTrace(entry: TraceEntry, locator?: Locator) {
   trace.push(entry);
   if (locator) locators.set(entry, locator);
-  for (const subscriber of subscribers) subscriber();
 }
 
 export function getInspectorTrace(): readonly TraceEntry[] {
@@ -37,7 +35,6 @@ export function traceEntryLocator(entry: TraceEntry): Locator | undefined {
 
 export function resetInspectorTrace() {
   trace.splice(0);
-  for (const subscriber of subscribers) subscriber();
 }
 
 export function subscribeToInspectorTraceDispatcher(
@@ -45,9 +42,4 @@ export function subscribeToInspectorTraceDispatcher(
 ) {
   traceDispatchSubscribers.add(subscriber);
   return () => traceDispatchSubscribers.delete(subscriber);
-}
-
-export function subscribeToInspectorTrace(subscriber: () => void) {
-  subscribers.add(subscriber);
-  return () => subscribers.delete(subscriber);
 }

@@ -19,15 +19,18 @@ export type PageModel = {
   models: readonly PageObjectModel[];
 };
 
-export const emptyPageModel: PageModel = { objects: [], models: [] };
-
 /**
  * A node of the object tree: a page, a child Page Object, a collection, or
  * one item of a collection.
  */
 export type PageObjectNode = {
-  /** Its path from the page, e.g. "ListPage.items[1]". Unique on the page. */
+  /**
+   * Its path from the page, e.g. "ListPage.items[1]". Two registrations of
+   * one page class share their paths.
+   */
   path: string;
+  /** What tells it apart from every other node: its registration and path. */
+  key: string;
   /** Its name under its parent: "ListPage", "archiveDialog", "items" or "[1]". */
   name: string;
   kind: "page" | "component" | "collection" | "item";
@@ -124,7 +127,7 @@ export function buildPageModel(
   definitions: readonly PomDefinition[]
 ): PageModel {
   const objects = registrations.map((registration) =>
-    pageObject(registration, liveToolNames)
+    withKeys(pageObject(registration, liveToolNames), registration.id)
   );
   const instances = [...walk(objects)].filter(
     (node) => node.kind !== "collection" && node.live
@@ -166,6 +169,18 @@ export function buildPageModel(
   return { objects, models };
 }
 
+type UnkeyedNode = Omit<PageObjectNode, "key" | "children"> & {
+  children: readonly UnkeyedNode[];
+};
+
+function withKeys(node: UnkeyedNode, registrationId: string): PageObjectNode {
+  return {
+    ...node,
+    key: `${registrationId}:${node.path}`,
+    children: node.children.map((child) => withKeys(child, registrationId)),
+  };
+}
+
 /** Every node of the object tree, depth first. */
 export function* walk(
   nodes: readonly PageObjectNode[]
@@ -179,7 +194,7 @@ export function* walk(
 function pageObject(
   registration: RegisteredPom,
   liveToolNames: ReadonlySet<string>
-): PageObjectNode {
+): UnkeyedNode {
   const { manifest } = registration;
   const context: Context = {
     registration,
@@ -223,7 +238,7 @@ function objectParts(
   ancestors: ReadonlySet<string> = new Set()
 ) {
   const members: ObjectMember[] = [];
-  const children: PageObjectNode[] = [];
+  const children: UnkeyedNode[] = [];
   const pageName = context.registration.id;
   for (const member of model.members) {
     if (isRootMember(member)) continue;
@@ -262,7 +277,7 @@ function objectParts(
           ...childParts(itemPath),
         };
       });
-      const collection: PageObjectNode = {
+      const collection: UnkeyedNode = {
         path: `${pageName}.${memberPath}`,
         name: member.memberName,
         kind: "collection",
@@ -298,7 +313,7 @@ function objectParts(
     }
 
     const live = isPresent(context.observations.get(`${memberPath}.root`));
-    const child: PageObjectNode = {
+    const child: UnkeyedNode = {
       path: `${pageName}.${memberPath}`,
       name: member.memberName,
       kind: "component",

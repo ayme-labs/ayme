@@ -38,6 +38,7 @@ afterEach(() => {
 
 const item = (index: number, label: string): PageObjectNode => ({
   path: `TodoPage.items[${index}]`,
+  key: `todo:TodoPage.items[${index}]`,
   name: `[${index}]`,
   kind: "item",
   className: "TodoItem",
@@ -67,6 +68,7 @@ const items = [item(0, "Water plants"), item(1, "Pay rent")];
 
 const dialog: PageObjectNode = {
   path: "TodoPage.archiveDialog",
+  key: "todo:TodoPage.archiveDialog",
   name: "archiveDialog",
   kind: "component",
   className: "ArchiveDialog",
@@ -86,6 +88,7 @@ const dialog: PageObjectNode = {
 
 const todoPage: PageObjectNode = {
   path: "TodoPage",
+  key: "todo:TodoPage",
   name: "TodoPage",
   kind: "page",
   className: "TodoPage",
@@ -130,6 +133,7 @@ const todoPage: PageObjectNode = {
   children: [
     {
       path: "TodoPage.items",
+      key: "todo:TodoPage.items",
       name: "items",
       kind: "collection",
       className: "TodoItem",
@@ -214,7 +218,7 @@ const pageModel: PageModel = {
   ],
 };
 
-// Another lens to switch to, standing in for ticket F's.
+// Another lens to switch to, standing in for the Structure lens.
 const structureLens: Lens = {
   id: "structure",
   label: "Structure",
@@ -465,6 +469,20 @@ it("runs an object's actions through the run slot", async () => {
     .poll(() => detail.section("Actions").textContent())
     .toContain("Run TodoPage.addItem");
   expect(renderRun).toHaveBeenCalledWith({ toolName: "TodoPage.addItem" });
+});
+
+it("runs a collection item's actions on that item", async () => {
+  const { renderRun } = renderLens({
+    selection: { kind: "object", path: "TodoPage.items[1]" },
+  });
+
+  await expect
+    .poll(() => detail.section("Actions").textContent())
+    .toContain("Run TodoPage.items.archive");
+  expect(renderRun).toHaveBeenCalledWith({
+    toolName: "TodoPage.items.archive",
+    item: "TodoPage.items[1]",
+  });
 });
 
 it("lists a model's instances on this page, its actions and its members", async () => {

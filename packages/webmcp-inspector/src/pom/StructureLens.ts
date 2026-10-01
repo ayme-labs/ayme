@@ -26,6 +26,13 @@ export class StructureLens {
     });
   }
 
+  /** A node by its role and name, e.g. ("checkbox", "Urgent"). */
+  nodeNamed(role: string, name: string): Locator {
+    return this.tree.getByRole("treeitem", {
+      name: new RegExp(`^e\\d+ ${role} ${JSON.stringify(name)}`),
+    });
+  }
+
   /** The node tagged with a Page Object member, e.g. "ListPage.addItemButton". */
   nodeOf(member: string): Locator {
     return this.rows.filter({

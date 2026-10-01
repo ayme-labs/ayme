@@ -211,6 +211,20 @@ test("with WebMCP publishing off, the status line says so and how to turn it on"
   );
 });
 
+test("with WebMCP publishing off, the status line stays above every lens", async ({
+  page,
+}) => {
+  const { inspector } = await openFixture(page, "/unpublished.html");
+
+  for (const lens of ["Model", "Structure", "Tools"] as const) {
+    await inspector.navigator.showLens(lens);
+    await expect(inspector.webMcpStatus.root).toBeVisible();
+    const status = (await inspector.webMcpStatus.root.boundingBox())!;
+    const navigator = (await inspector.navigator.root.boundingBox())!;
+    expect(status.y + status.height).toBeLessThanOrEqual(navigator.y);
+  }
+});
+
 test.describe("on a React host with aggressive global CSS", () => {
   test.use({ fixturePath: "/react.html" });
 

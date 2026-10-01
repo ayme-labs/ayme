@@ -7,15 +7,26 @@ import * as typescript from "sugar-high/lang/typescript";
 /** A tool's input schema, as an agent receives it. */
 export type ToolSchema = { name: string; inputSchema: unknown };
 
+/** One structure node as an agent reads it in the page state. */
+export type NodePageState = {
+  /** Its own lines: its entry with its states, then its properties. */
+  lines: readonly string[];
+  /** How many entries nest under it; only the count is shown. */
+  childCount: number;
+};
+
 /**
  * "What the model sees": the Page Object definitions and tool schemas an
  * agent receives, syntax-highlighted. It starts collapsed. The highlighter's
  * colours come from the --sh-* properties on the Inspector's root.
  */
 export function WhatTheModelSees({
+  pageState,
   definitions,
   schemas,
 }: {
+  /** A structure node's part of the page state, as the agent reads it. */
+  pageState?: NodePageState;
   /** Page Object definitions, as get_page_context renders them. */
   definitions?: string;
   schemas: readonly ToolSchema[];
@@ -37,10 +48,25 @@ export function WhatTheModelSees({
           <ChevronRightIcon className="size-3.5" aria-hidden />
         )}
         <CodeIcon className="size-3.5" aria-hidden />
-        What the model sees · {summary(definitions, schemas)}
+        What the model sees · {summary(pageState, definitions, schemas)}
       </button>
       {open && (
         <div id={contentId} className="grid gap-2.5">
+          {pageState && (
+            <div className="grid gap-1">
+              <pre
+                aria-label="Page state"
+                className="max-h-96 overflow-auto rounded-lg bg-muted px-3 py-2.5 font-mono text-xs leading-relaxed"
+              >
+                {pageState.lines.join("\n")}
+              </pre>
+              <p className="text-xs text-muted-foreground">
+                {pageState.childCount === 1
+                  ? "1 child"
+                  : `${pageState.childCount} children`}
+              </p>
+            </div>
+          )}
           {definitions && (
             <Code
               code={definitions}
@@ -93,10 +119,12 @@ function Code({
 }
 
 function summary(
+  pageState: NodePageState | undefined,
   definitions: string | undefined,
   schemas: readonly ToolSchema[]
 ) {
   const parts: string[] = [];
+  if (pageState) parts.push("page state");
   if (definitions) parts.push("definition");
   if (schemas.length > 0)
     parts.push(

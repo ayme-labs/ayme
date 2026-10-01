@@ -11,8 +11,8 @@ This browser playground combines a functional list app with an Ayme inspector so
 - POM metadata also describes components constructed from a locator root, including repeated components exposed as paths such as `items[0].archiveButton`.
 - `App.vue` calls `useAymeWebMcp()` to own the runtime and `usePageObject(ListPage)` to register the imported POM instance.
 - The runtime publishes the same registered tool objects to `document.modelContext` and the in-page debug console.
-- The in-page inspector separates the App Model view (POM metadata, actions, executions, and traces) from the Page State view, which renders a YAML snapshot of the demo application with capture-scoped refs and POM decorations.
-- The POM inspector probes registered members against the current DOM and refreshes when the demo changes. It does not use framework bindings or element identity.
+- The in-page Inspector (`inspector: true` in `vite.config.ts`) is a panel titled "ayme" that floats, docks left, right or bottom, or collapses to the ayme logo. Its navigator has three lenses: Model (the Page Objects on the page and the Page Object Models the page knows), Structure (the Structural Page State an agent receives, each node tagged with the member it maps to) and Tools (every published tool). Selecting anything opens its detail, where the same run card runs its tools with a typed form; a tool's page and a structure node's detail also show "What the model sees", the definitions, page state and schemas an agent gets. Runs lists the runs made from the panel with their steps.
+- The Inspector keeps its view live as the demo changes without recording anything an agent would see. It does not use framework bindings or element identity.
 - The browser runtime is DOM-backed. It supports the locator operations used by the POM, including role/name lookup, filling, clicking, and visible/hidden waits, without requiring Playwright at runtime.
 
 ## Try with your agent
@@ -39,7 +39,7 @@ usePageObject(ListPage);
 
 Enable publication with `aymeWebMcp({ publish: true })` in Vite configuration. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
 
-This example passes a custom page from `useDemoTrace` to add slow typing, click cues, and trace recording. `AgentPanel.vue` holds the agent wizard: it loads the local relay embed when the visitor connects, and reports what the embed says about the relay. `useDemoInspector` manages the debug panel and DOM highlights. These helpers support the demo and are optional for applications.
+This example passes a custom page from `useDemoTrace` to add slow typing, click cues, and trace recording. `AgentPanel.vue` holds the agent wizard: it loads the local relay embed when the visitor connects, and reports what the embed says about the relay. These helpers support the demo and are optional for applications.
 
 Disabling publication does not remove Ayme or Page Object code from the bundle. Production code removal is tracked separately in issue #39.
 
