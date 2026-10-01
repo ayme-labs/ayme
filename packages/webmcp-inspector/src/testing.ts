@@ -25,6 +25,7 @@ export {
 export { ModelLens, type ModelPaneName } from "./pom/ModelLens";
 export { NodeView } from "./pom/NodeView";
 export { PanelShell, type PanelEdge } from "./pom/PanelShell";
+export { RefField } from "./pom/RefField";
 export { RunCard, type ArgumentValue } from "./pom/RunCard";
 export { RunEntry, RunsView, type RunStep } from "./pom/RunsView";
 export { StructureLens } from "./pom/StructureLens";
