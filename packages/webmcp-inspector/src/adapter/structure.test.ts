@@ -4,7 +4,9 @@ import {
   buildStructureTree,
   collectionItems,
   mapMembersToRefs,
+  memberLinks,
   memberTag,
+  pageObjectsOf,
 } from "./structure";
 
 // Unit tests: the structure tree model built from the page state text an
@@ -43,6 +45,7 @@ it("builds the tree of nodes with their refs, roles and names", () => {
               ref: "e58",
               role: "heading",
               name: "Groceries",
+              states: ["level=1"],
               members: [],
               children: [],
             },
@@ -66,6 +69,7 @@ it("builds the tree of nodes with their refs, roles and names", () => {
               ref: "e3",
               role: "button",
               name: "Add item",
+              states: ["cursor=pointer"],
               members: [],
               children: [],
             },
@@ -195,6 +199,71 @@ describe("when several members locate the same elements", () => {
     expect(
       memberTag(["ListPage.items[1]", "ListPage.items[1].nameButton"])
     ).toBe("ListPage.items[1].nameButton");
+  });
+});
+
+describe("where each of a node's members leads", () => {
+  // As the registry lists a page with a collection of ListItem components:
+  // each root under its path, its collection and its class.
+  const pageObjects = pageObjectsOf(
+    ["ListPage"],
+    [
+      { path: "ListPage.newItemInput" },
+      { path: "ListPage.items[0].root" },
+      { path: "ListPage.items" },
+      { path: "ListPage.items.root" },
+      { path: "ListItem.root" },
+      { path: "ListPage.items[0].nameButton" },
+      { path: "ListPage.items.nameButton" },
+      { path: "ListItem.nameButton" },
+      { path: "ListPage.archiveDialog.root" },
+    ]
+  );
+  const links = (members: string[]) =>
+    memberLinks(members, memberTag(members)!, pageObjects);
+
+  it("leads a locator to the instance it is declared on", () => {
+    expect(links(["ListPage.newItemInput"])).toEqual([
+      { member: "ListPage.newItemInput", owner: { object: "ListPage" } },
+    ]);
+  });
+
+  it("leads a component's root to that instance, and its class to the model", () => {
+    expect(links(["ListPage.items", "ListPage.items[0]", "ListItem"])).toEqual([
+      { member: "ListPage.items[0]", owner: { object: "ListPage.items[0]" } },
+      { member: "ListItem", owner: { model: "ListItem" } },
+    ]);
+  });
+
+  it("leads a component's member to its item, and its class alias to the model", () => {
+    expect(
+      links([
+        "ListPage.items[0].nameButton",
+        "ListPage.items.nameButton",
+        "ListItem.nameButton",
+      ])
+    ).toEqual([
+      {
+        member: "ListPage.items[0].nameButton",
+        owner: { object: "ListPage.items[0]" },
+      },
+      { member: "ListItem.nameButton", owner: { model: "ListItem" } },
+    ]);
+  });
+
+  it("leads a single component to itself", () => {
+    expect(links(["ListPage.archiveDialog"])).toEqual([
+      {
+        member: "ListPage.archiveDialog",
+        owner: { object: "ListPage.archiveDialog" },
+      },
+    ]);
+  });
+
+  it("leads a collection alias with no item beside it to the object declaring the collection", () => {
+    expect(links(["ListPage.items.nameButton"])).toEqual([
+      { member: "ListPage.items.nameButton", owner: { object: "ListPage" } },
+    ]);
   });
 });
 
