@@ -1,9 +1,13 @@
 import path from "node:path";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, selectors, test, type Page } from "@playwright/test";
 
 import { ListPage } from "../playwright/pom/ListPage";
 import { derivePomManifests } from "@ayme-dev/unplugin-webmcp";
+import {
+  Inspector,
+  registerInspectorSelectors,
+} from "@ayme-dev/webmcp-inspector/testing";
 import {
   recordPublishedTools,
   type RecordingDriver,
@@ -70,6 +74,9 @@ const initialToolNames = [
   "pursue_goal",
 ];
 
+// The Inspector renders into a closed shadow root; its page objects reach it
+// through this selector engine.
+test.beforeAll(() => registerInspectorSelectors(selectors));
 test.beforeEach(({ context }) => recordPublishedTools(context));
 
 async function runListActions(
@@ -212,6 +219,8 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   page,
 }) => {
   await page.goto("/");
+  // The Inspector is open on the page, so leaving it out is observable.
+  await new Inspector(page).open();
   await expect
     .poll(async () =>
       (await recordedToolNames(page)).includes("get_page_context")
@@ -254,7 +263,8 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   ].map((match) => match[1]);
   expect(archiveRefs).toHaveLength(2);
   expect(new Set(archiveRefs).size).toBe(2);
-  expect(snapshot).not.toContain("POM inspector");
+  // The panel is titled and labelled "ayme"; the playground never says it.
+  expect(snapshot).not.toMatch(/\bayme\b/);
   expect(normalizeAppSubtree(snapshot)).toMatchSnapshot("page-state.yml");
 });
 
@@ -549,16 +559,16 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     .toEqual(initialToolNames);
 });
 
-// The playground's Inspector smoke test. It stays minimal until the
-// Inspector's own Page Object Model can drive it.
+// The playground's Inspector smoke test (#178): the hosted Inspector opens
+// and runs a tool, driven through the Inspector's own Page Object Model.
 test("opens the Inspector and runs a tool from it", async ({ page }) => {
   await page.goto("/");
+  const inspector = new Inspector(page);
 
-  const inspector = page.getByRole("complementary", { name: "ayme" });
-  await expect(inspector).toBeVisible();
-  const addTool = inspector.locator('[data-tool-name="ListPage.addItem"]');
-  await addTool.getByLabel("text").fill("Added from the Inspector");
-  await addTool.getByRole("button", { name: "Invoke" }).click();
+  await inspector.open();
+  await inspector.pageObjects
+    .tool("ListPage.addItem")
+    .run({ text: "Added from the Inspector" });
 
   await expect(
     page
