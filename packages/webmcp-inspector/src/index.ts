@@ -1,8 +1,7 @@
 import type { Page } from "@playwright/test";
 import { installRuntimePageInstrumentation } from "@ayme-dev/webmcp/internal";
-import { createApp } from "vue";
 
-import InspectorApp from "./InspectorApp.vue";
+import { renderInspector } from "./renderInspector";
 import {
   dispatchInspectorTrace,
   recordInspectorTrace,
@@ -70,16 +69,13 @@ export function mountInspector() {
     host.dataset.aymeInspectorHost = "";
     host.style.pointerEvents = "none";
     const shadowRoot = host.attachShadow({ mode: "open" });
-    const container = document.createElement("div");
-    shadowRoot.append(container);
     document.body.append(host);
-    const app = createApp(InspectorApp);
-    app.mount(container);
+    const unmountUi = renderInspector(shadowRoot);
     mounted = {
       references: 0,
       disposeInstrumentation,
       disposeUi() {
-        app.unmount();
+        unmountUi();
         host.remove();
         highlightStyle.remove();
       },

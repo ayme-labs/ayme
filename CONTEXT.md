@@ -58,3 +58,7 @@ The Goal Loop returning control to the calling agent, with the reason it stopped
 **Decision Endpoint**:
 The route in an app's own backend that adds the model key to a decision request and forwards it to the model provider. Ayme provides its definition; the app deploys and gates it.
 _Avoid_: relay (means the WebMCP local relay), proxy.
+
+**Inspector**:
+The in-page panel that shows a page's Page Objects, its Structural Page State and its tools, and lets a developer run those tools by hand.
+_Avoid_: debug panel, debugger, POM inspector
