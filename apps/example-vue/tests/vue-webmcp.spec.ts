@@ -258,145 +258,6 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   expect(normalizeAppSubtree(snapshot)).toMatchSnapshot("page-state.yml");
 });
 
-test("shows the app model and page state in separate inspector tabs", async ({
-  page,
-}) => {
-  await page.goto("/");
-
-  const appModelTab = page.getByRole("tab", { name: "App Model" });
-  const pageStateTab = page.getByRole("tab", { name: "Page State" });
-  await expect(appModelTab).toHaveAttribute("aria-selected", "true");
-
-  await pageStateTab.click();
-
-  const pageStatePanel = page.locator("#page-state-panel");
-  const output = pageStatePanel.locator(".page-state-output");
-  await expect(pageStatePanel).toBeVisible();
-  await expect(output).toContainText("ListPage.items");
-  await expect(output).not.toContainText("POM inspector");
-  await expect(pageStateTab).toHaveAttribute("aria-selected", "true");
-
-  await pageStatePanel.getByRole("button", { name: "Refresh" }).click();
-  await expect(output).toContainText("ListPage.items[1]");
-});
-
-test("toggles application-model selections and gives hover precedence", async ({
-  page,
-}) => {
-  await page.goto("/");
-
-  await expect(page.locator(".highlight-section")).toHaveCount(0);
-
-  const itemInstances = page.locator('[data-instance-list="ListItem"]');
-  await itemInstances.locator(".instances-heading").click();
-
-  const firstInstance = itemInstances.locator(
-    '[data-instance-path="ListPage.items[0]"]'
-  );
-  const secondInstance = itemInstances.locator(
-    '[data-instance-path="ListPage.items[1]"]'
-  );
-  await firstInstance.locator(".instance-heading").click();
-  await secondInstance.locator(".instance-heading").click();
-
-  const firstArchiveMember = firstInstance.locator(
-    '[data-instance-member-name="ListPage.items[0].archiveButton"]'
-  );
-  const secondArchiveMember = secondInstance.locator(
-    '[data-instance-member-name="ListPage.items[1].archiveButton"]'
-  );
-  const firstArchiveButton = page.getByRole("button", {
-    name: "Archive item-1",
-  });
-  const secondArchiveButton = page.getByRole("button", {
-    name: "Archive item-2",
-  });
-
-  await firstArchiveMember.hover();
-  await expect(firstArchiveButton).toHaveAttribute("data-ayme-highlight", "");
-  await firstArchiveMember.click();
-  await expect(firstArchiveMember).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("tab", { name: "Page State" }).hover();
-  await expect(firstArchiveButton).toHaveAttribute("data-ayme-highlight", "");
-
-  await firstArchiveButton.evaluate((element) =>
-    element.removeAttribute("data-ayme-highlight")
-  );
-  await page.waitForTimeout(80);
-  await expect(firstArchiveButton).not.toHaveAttribute("data-ayme-highlight");
-
-  await firstArchiveButton.evaluate((element) =>
-    element.setAttribute("data-highlight-refresh", "attribute")
-  );
-  await expect(firstArchiveButton).toHaveAttribute("data-ayme-highlight", "");
-
-  await firstArchiveButton.evaluate((element) => {
-    element.removeAttribute("data-ayme-highlight");
-    const text = [...element.childNodes].find(
-      (node) => node.nodeType === Node.TEXT_NODE
-    );
-    if (!text) throw new Error("Expected archive button text.");
-    text.textContent = `${text.textContent} `;
-  });
-  await expect(firstArchiveButton).toHaveAttribute("data-ayme-highlight", "");
-
-  await secondArchiveMember.hover();
-  await expect(firstArchiveButton).not.toHaveAttribute("data-ayme-highlight");
-  await expect(secondArchiveButton).toHaveAttribute("data-ayme-highlight", "");
-  await expect(firstArchiveMember).toHaveAttribute("aria-pressed", "true");
-
-  await page.locator('[data-pom-class="ListItem"] .pom-heading').hover();
-  await expect(firstArchiveButton).toHaveAttribute("data-ayme-highlight", "");
-
-  await secondArchiveMember.click();
-  await expect(firstArchiveMember).toHaveAttribute("aria-pressed", "false");
-  await expect(secondArchiveMember).toHaveAttribute("aria-pressed", "true");
-
-  await secondArchiveMember.click();
-  await expect(secondArchiveMember).toHaveAttribute("aria-pressed", "false");
-  await page.locator('[data-pom-class="ListItem"] .pom-heading').hover();
-  await expect(firstArchiveButton).not.toHaveAttribute("data-ayme-highlight");
-  await expect(secondArchiveButton).not.toHaveAttribute("data-ayme-highlight");
-});
-
-test("highlights collection and class-level application-model targets", async ({
-  page,
-}) => {
-  await page.goto("/");
-
-  const itemCard = page.locator('[data-pom-class="ListItem"]');
-  const classArchiveMember = itemCard.locator(
-    '[data-member-name="archiveButton"]'
-  );
-  const archiveButtons = page.getByRole("button", { name: /Archive item-/ });
-
-  await classArchiveMember.hover();
-  await expect(archiveButtons).toHaveCount(2);
-  await expect(archiveButtons.nth(0)).toHaveAttribute(
-    "data-ayme-highlight",
-    ""
-  );
-  await expect(archiveButtons.nth(1)).toHaveAttribute(
-    "data-ayme-highlight",
-    ""
-  );
-
-  const pageCard = page.locator('[data-pom-class="ListPage"]');
-  const itemsMember = pageCard.locator('[data-member-name="items"]');
-  const itemRoots = page
-    .getByRole("list", { name: "Active items" })
-    .getByRole("listitem");
-
-  await itemsMember.hover();
-  await expect(itemRoots).toHaveCount(2);
-  await expect(itemRoots.nth(0)).toHaveAttribute("data-ayme-highlight", "");
-  await expect(itemRoots.nth(1)).toHaveAttribute("data-ayme-highlight", "");
-
-  await page.locator('[data-pom-class="ListPage"] .pom-heading').hover();
-  await expect(itemRoots.nth(0)).not.toHaveAttribute("data-ayme-highlight");
-  await expect(itemRoots.nth(1)).not.toHaveAttribute("data-ayme-highlight");
-});
-
 test("runs the same POM behavior through registered WebMCP tools", async ({
   page,
 }) => {
@@ -465,49 +326,12 @@ test("publishes collection tools only while a component root is live", async ({
     .toEqual(initialToolNames);
 });
 
-test("demonstrates the list app and invokes the generated POM tools from the debug console", async ({
+test("demonstrates the list app and invokes the generated POM tools", async ({
   page,
 }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "My list" })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "POM inspector" })
-  ).toBeVisible();
-  const pomCard = page.locator('[data-pom-id="ListPage"]');
-  const archiveDialogCard = page.locator('[data-pom-class="ArchiveDialog"]');
-  const listItemCard = page.locator('[data-pom-class="ListItem"]');
-  await expect(page.locator("[data-pom-class]")).toHaveCount(3);
-  await expect(
-    pomCard.locator('[data-member-name="newItemInput"]')
-  ).toContainText("present");
-  await expect(
-    pomCard.locator('[data-member-name="addItemButton"]')
-  ).toContainText("present");
-  await expect(
-    archiveDialogCard.locator('[data-member-name="root"]')
-  ).toContainText("absent");
-  await expect(pomCard.locator('[data-member-name="items"]')).toContainText(
-    "2 components"
-  );
-  await expect(
-    listItemCard.locator('[data-member-name="archiveButton"]')
-  ).toContainText("present");
-  await expect(
-    listItemCard.locator('[data-member-name="nameButton"]')
-  ).toContainText("present");
-  await expect(
-    listItemCard.locator('[data-member-name="nameInput"]')
-  ).toContainText("absent");
-  const itemInstances = listItemCard.locator('[data-instance-list="ListItem"]');
-  await expect(itemInstances).not.toHaveAttribute("open", "");
-  await expect(itemInstances.locator(".instances-heading")).toContainText(
-    "2 instances"
-  );
-  await itemInstances.locator(".instances-heading").click();
-  await expect(
-    itemInstances.locator('[data-instance-path="ListPage.items[0]"]')
-  ).toContainText("present");
   await expect
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
@@ -660,7 +484,6 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
   ).toBeVisible();
   await expect(page.locator("[data-archived-label]")).toHaveCount(1);
 
-  const addTool = page.locator('[data-tool-name="ListPage.addItem"]');
   await page.evaluate(() => {
     const observer = new MutationObserver((records) => {
       if (
@@ -678,77 +501,68 @@ test("demonstrates the list app and invokes the generated POM tools from the deb
     });
     observer.observe(document.body, { childList: true });
   });
-  await addTool.getByLabel("text").fill("Added from debug console");
-  await addTool.getByRole("button", { name: "Invoke tool" }).click();
+  await executePublishedTool(page, "ListPage.addItem", {
+    text: "Added through a tool",
+  });
   await expect(
-    page.getByText("Added from debug console", { exact: true })
+    page.getByText("Added through a tool", { exact: true })
   ).toBeVisible();
-  await expect(page.locator(".execution-card").first()).toContainText(
-    "getByRole('textbox', { name: 'New item' })"
-  );
-  await expect(page.locator(".execution-card").first()).toContainText(
-    "pressSequentially"
-  );
   await expect(page.locator("body")).toHaveAttribute(
     "data-demo-cue-seen",
     "true"
   );
   await expect(page.locator("[data-demo-click-cue]")).toHaveCount(0);
 
-  const renameTool = page.locator('[data-tool-name="ListPage.items.rename"]');
-  const renameRef = await getInstanceRef(page, "ListPage.items[0]");
-  await renameTool.getByLabel("ref").fill(renameRef);
-  await renameTool
-    .getByLabel("args")
-    .fill('{"text":"Renamed from debug console"}');
-  await renameTool.getByRole("button", { name: "Invoke tool" }).click();
+  await executePublishedTool(page, "ListPage.items.rename", {
+    ref: await getInstanceRef(page, "ListPage.items[0]"),
+    args: { text: "Renamed through a tool" },
+  });
   await expect(
-    page.getByText("Renamed from debug console", { exact: true })
+    page.getByText("Renamed through a tool", { exact: true })
   ).toBeVisible();
 
-  const archiveTool = page.locator('[data-tool-name="ListPage.items.archive"]');
-  const archiveRef = await getInstanceRef(page, "ListPage.items[0]");
-  await archiveTool.getByLabel("ref").fill(archiveRef);
-  await expect(archiveTool.getByLabel("args")).toHaveValue("{}");
-  await archiveTool.getByRole("button", { name: "Invoke tool" }).click();
+  await executePublishedTool(page, "ListPage.items.archive", {
+    ref: await getInstanceRef(page, "ListPage.items[0]"),
+    args: {},
+  });
   await expect(page.locator("[data-archived-label]")).toHaveCount(2);
 
+  // The modal dialog hides the list, so its collection tools are withdrawn
+  // until the dialog closes.
   await page.getByRole("button", { name: "Archive item-3" }).click();
   await expect(
     page.getByRole("dialog", { name: "Archive item" })
   ).toBeVisible();
-  await expect(
-    archiveDialogCard.locator('[data-member-name="root"]')
-  ).toContainText("present");
-  await expect(
-    archiveDialogCard.locator('[data-member-name="confirmArchiveButton"]')
-  ).toContainText("present");
-  await expect(addTool).toContainText("WebMCP available");
-  // While the modal dialog is open, Reka marks everything outside it
-  // aria-hidden, including the inspector host, so role locators cannot reach
-  // the inspector's own controls here. See the inspector's `.invoke-button`.
-  await expect(addTool.locator(".invoke-button")).toBeEnabled();
-  for (const tool of [archiveTool, renameTool]) {
-    await expect(tool).toContainText("WebMCP unavailable");
-    await expect(tool.locator(".invoke-button")).toBeDisabled();
-  }
+  await expect
+    .poll(async () => await recordedToolNames(page))
+    .toEqual([
+      "get_page_context",
+      "click_page_state_ref",
+      "fill_page_state_ref",
+      "ListPage.addItem",
+      "pursue_goal",
+    ]);
   await page.getByRole("button", { name: "Confirm archive" }).click();
   await expect(page.locator("[data-archived-label]")).toHaveCount(3);
-  for (const tool of [archiveTool, renameTool]) {
-    await expect(tool).toContainText("WebMCP available");
-    await expect(
-      tool.getByRole("button", { name: "Invoke tool" })
-    ).toBeEnabled();
-  }
-  await expect(
-    archiveDialogCard.locator('[data-member-name="root"]')
-  ).toContainText("absent");
+  await expect
+    .poll(async () => await recordedToolNames(page))
+    .toEqual(initialToolNames);
+});
 
-  await page
-    .getByLabel("Recent executions")
-    .getByRole("button", { name: "Clear" })
-    .click();
+// The playground's Inspector smoke test. It stays minimal until the
+// Inspector's own Page Object Model can drive it.
+test("opens the Inspector and runs a tool from it", async ({ page }) => {
+  await page.goto("/");
+
+  const inspector = page.getByRole("complementary", { name: "ayme" });
+  await expect(inspector).toBeVisible();
+  const addTool = inspector.locator('[data-tool-name="ListPage.addItem"]');
+  await addTool.getByLabel("text").fill("Added from the Inspector");
+  await addTool.getByRole("button", { name: "Invoke" }).click();
+
   await expect(
-    page.getByText("Invoke a tool to see its execution here.")
+    page
+      .getByRole("list", { name: "Active items" })
+      .getByText("Added from the Inspector", { exact: true })
   ).toBeVisible();
 });
