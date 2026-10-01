@@ -1,13 +1,15 @@
 import type { Locator, Page } from "@playwright/test";
 
 import { CollapsedLogo } from "./CollapsedLogo";
+import { DetailPane } from "./DetailPane";
 import { InspectorHeader } from "./InspectorHeader";
 import { INSPECTOR_SELECTOR_ENGINE } from "./inspectorSelectors";
-import { ModelView } from "./ModelView";
-import { PageObjectsView } from "./PageObjectsView";
+import { Navigator } from "./Navigator";
+import { PageStateView } from "./PageStateView";
+import { PanelShell } from "./PanelShell";
 import { RunsView } from "./RunsView";
-
-export type InspectorView = "Page objects" | "Model view" | "Runs";
+import type { ToolForm } from "./ToolForm";
+import { WebMcpStatus } from "./WebMcpStatus";
 
 /**
  * The Inspector, as a person sees it on the page. It is built from one page
@@ -20,12 +22,16 @@ export class Inspector {
   readonly root: Locator;
   /** The expanded panel. */
   readonly panel: Locator;
+  readonly shell: PanelShell;
   readonly header: InspectorHeader;
+  /** The WebMCP status line, while publication isn't active. */
+  readonly webMcpStatus: WebMcpStatus;
   readonly logo: CollapsedLogo;
-  readonly pageObjects: PageObjectsView;
-  readonly modelView: ModelView;
+  readonly navigator: Navigator;
+  readonly detail: DetailPane;
   readonly runs: RunsView;
-  private readonly views: Locator;
+  /** The skeleton Structure lens. */
+  readonly pageState: PageStateView;
 
   /**
    * @param page a Playwright page with `registerInspectorSelectors` applied,
@@ -45,15 +51,23 @@ export class Inspector {
       name: "ayme",
       exact: true,
     });
-    this.header = new InspectorHeader(this.panel.locator("header"), this.root);
-    this.logo = new CollapsedLogo(
-      this.root.getByRole("button", { name: "Open Ayme POM inspector" })
+    this.shell = new PanelShell(this.panel);
+    this.header = new InspectorHeader(
+      this.panel.locator(":scope > header"),
+      this.root
     );
-    this.views = this.panel.getByRole("tablist", { name: "Inspector views" });
-    const view = this.panel.getByRole("tabpanel");
-    this.pageObjects = new PageObjectsView(view);
-    this.modelView = new ModelView(view);
-    this.runs = new RunsView(view);
+    this.webMcpStatus = new WebMcpStatus(this.panel);
+    this.logo = new CollapsedLogo(
+      this.root.getByRole("button", { name: "Open ayme" })
+    );
+    this.navigator = new Navigator(
+      this.panel.getByRole("navigation", { name: "Navigator" })
+    );
+    this.detail = new DetailPane(
+      this.panel.getByRole("region", { name: "Selected" })
+    );
+    this.runs = new RunsView(this.panel.getByRole("region", { name: "Runs" }));
+    this.pageState = new PageStateView(this.navigator.root);
   }
 
   /** Expands the panel if it is collapsed to the logo. */
@@ -67,7 +81,10 @@ export class Inspector {
     await this.header.collapse();
   }
 
-  async showView(view: InspectorView) {
-    await this.views.getByRole("tab", { name: view, exact: true }).click();
+  /** Selects a tool in the Tools lens and returns its run slot. */
+  async tool(name: string): Promise<ToolForm> {
+    await this.navigator.showLens("Tools");
+    await this.navigator.item(name).click();
+    return this.detail.tool(name);
   }
 }

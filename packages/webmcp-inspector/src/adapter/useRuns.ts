@@ -3,12 +3,12 @@ import { useCallback, useRef, useState } from "react";
 import type { JsonValue } from "@ayme-dev/webmcp";
 import { listRegisteredPomTools } from "@ayme-dev/webmcp/internal";
 
-import type { ToolArguments } from "./toolArguments";
+import type { ToolArguments } from "../toolArguments";
 import {
   getInspectorTrace,
   resetInspectorTrace,
   type TraceEntry,
-} from "./trace";
+} from "../trace";
 import { errorMessage } from "./useInspector";
 
 export type Run = {

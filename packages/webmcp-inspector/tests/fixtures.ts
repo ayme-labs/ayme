@@ -1,6 +1,7 @@
 import { test as base, selectors, type Page } from "@playwright/test";
 import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
 
+import { unpublishedBaseURL } from "../playwright.config";
 import { Inspector, registerInspectorSelectors } from "../src/testing";
 import { ListPage } from "./fixture/ListPage";
 
@@ -10,15 +11,28 @@ export { expect } from "@playwright/test";
 export type FixturePage = "/" | "/react.html";
 
 /**
+ * The same list app served with WebMCP publication off, as a dev server
+ * without `publish: true` serves it (tests/fixture/vite.unpublished.config.ts).
+ */
+export const unpublishedFixtureUrl = `${unpublishedBaseURL}/`;
+
+/**
  * Opens a fixture page and fails with its own message, before any test
  * assertion, when the page's script broke or the runtime never published its
  * tools.
  */
-export async function openFixture(page: Page, path: FixturePage) {
+export async function openFixture(
+  page: Page,
+  path: FixturePage | typeof unpublishedFixtureUrl,
+  { reload = false } = {}
+) {
+  // The unpublished page's runtime runs, but never publishes.
+  const runtimeState = path === unpublishedFixtureUrl ? "disabled" : "active";
   const pageErrors: string[] = [];
   const onPageError = (error: Error) => pageErrors.push(error.message);
   page.on("pageerror", onPageError);
-  await page.goto(path);
+  if (reload) await page.reload();
+  else await page.goto(path);
 
   const root = page.locator("html");
   try {
@@ -35,11 +49,11 @@ export async function openFixture(page: Page, path: FixturePage) {
 
   try {
     await root
-      .and(page.locator('[data-runtime="active"]'))
+      .and(page.locator(`[data-runtime="${runtimeState}"]`))
       .waitFor({ timeout: 10_000 });
   } catch {
     throw new Error(
-      `The Ayme runtime did not publish its tools: ${await root.getAttribute("data-runtime-message")}`
+      `The Ayme runtime did not reach "${runtimeState}": ${await root.getAttribute("data-runtime")}, ${await root.getAttribute("data-runtime-message")}`
     );
   }
 

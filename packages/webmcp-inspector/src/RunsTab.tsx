@@ -2,7 +2,7 @@ import { Button } from "@ayme-dev/design-system/components/button";
 
 import { Empty, Json, RunStatus, Section } from "./common";
 import type { TraceEntry } from "./trace";
-import type { Run } from "./useRuns";
+import type { Run } from "./adapter/useRuns";
 
 export function RunsTab({
   runs,

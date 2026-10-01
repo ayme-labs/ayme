@@ -5,6 +5,11 @@ import { inspectorCss } from "./inspectorCss.config.ts";
 
 export default defineConfig({
   plugins: [inspectorCss()],
+  // Prebundle the panel's dependencies up front. Discovered mid-run, they
+  // are optimized again and load a second React.
+  optimizeDeps: {
+    include: ["react", "react-dom/client", "lucide-react", "radix-ui"],
+  },
   test: {
     projects: [
       {
@@ -28,6 +33,8 @@ export default defineConfig({
             headless: true,
             provider: playwright(),
             instances: [{ browser: "chromium" }],
+            // A desktop viewport: the panel's layouts are sized for one.
+            viewport: { width: 1280, height: 800 },
           },
         },
       },
