@@ -1,10 +1,16 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { RegisteredPomTool } from "@ayme-dev/webmcp";
 import { getPomDefinitionText } from "@ayme-dev/webmcp/internal";
 
 import { buildPageModel } from "./pageModel";
 import { useLiveTools } from "./liveTools";
+import {
+  pickPromptOf,
+  refFilterOf,
+  startRefPicking,
+  type RefPickingHandlers,
+} from "./refPicking";
 import { listRunnableTools } from "./runnableTools";
 import { useInspector } from "./useInspector";
 import { useRuns } from "./useRuns";
@@ -29,6 +35,7 @@ export function useRuntimeAdapter({
   const { runs, invoke, clear } = useRuns({ onSettled: onRunSettled });
   const tools = useLiveTools();
 
+  const { elementsByRef, refToolTargets } = inspector.pageState;
   const pageModel = useMemo(
     () =>
       buildPageModel(
@@ -38,7 +45,6 @@ export function useRuntimeAdapter({
       ),
     [registeredPoms, tools.live, pomDefinitions]
   );
-  const { refToolTargets } = inspector.pageState;
   const refTools = useMemo(
     () =>
       tools.live
@@ -59,6 +65,13 @@ export function useRuntimeAdapter({
     () => listRunnableTools(registeredPoms, inspector.activeTools, tools.live),
     [registeredPoms, inspector.activeTools, tools.live]
   );
+
+  // Picking reads the latest look at the page as the pointer moves.
+  const refByElement = useRef(new Map<Element, string>());
+  useEffect(() => {
+    refByElement.current = uniqueRefs(elementsByRef);
+  }, [elementsByRef]);
+  const { hover } = inspector.highlight;
 
   return {
     /** The page's name for the header badge: its page Page Object's class. */
@@ -108,10 +121,42 @@ export function useRuntimeAdapter({
     runs,
     runTool: (...args: Parameters<typeof invoke>) => void invoke(...args),
     clearRuns: clear,
+    /** Choosing a ref for a tool's ref field. */
+    refPicking: {
+      /**
+       * Which nodes a tool can use, by the tool's name: the refs it can take
+       * in the page state, or every node when the runtime lists none for it.
+       */
+      canUse: (toolName: string) => refFilterOf(refToolTargets, toolName),
+      /** What picking with a tool asks the person to click, by its name. */
+      promptOf: pickPromptOf,
+      /** Picks a ref by pointing at the page, from the latest look at it. */
+      start: (handlers: RefPickingHandlers) => {
+        // Look at the page again, in case it changed unseen since the last look.
+        refreshPageState();
+        return startRefPicking({
+          ...handlers,
+          refOf: (element) => refByElement.current.get(element),
+          hover: (ref) => hover(ref === undefined ? undefined : { ref }),
+        });
+      },
+    },
   };
 }
 
 export type InspectorRuntime = ReturnType<typeof useRuntimeAdapter>;
+
+/** Each element's ref, for the elements that have exactly one. */
+function uniqueRefs(elementsByRef: ReadonlyMap<string, Element>) {
+  const refs = new Map<Element, string | undefined>();
+  for (const [ref, element] of elementsByRef)
+    refs.set(element, refs.has(element) ? undefined : ref);
+  return new Map(
+    [...refs].filter(
+      (entry): entry is [Element, string] => entry[1] !== undefined
+    )
+  );
+}
 
 function listRegisteredTools(
   registeredPoms: ReturnType<typeof useInspector>["registeredPoms"]

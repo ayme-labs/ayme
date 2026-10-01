@@ -44,6 +44,8 @@ export type PageStateView = {
    * name, in tree order: what an agent is offered for that tool's ref.
    */
   refToolTargets: ReadonlyMap<string, readonly string[]>;
+  /** Each ref's element in this page state. */
+  elementsByRef: ReadonlyMap<string, Element>;
   capturedAt?: string;
   error?: string;
   loading: boolean;
@@ -89,6 +91,7 @@ export function useInspector({
   const [pageState, setPageState] = useState<PageStateView>({
     structure: emptyStructure,
     refToolTargets: new Map(),
+    elementsByRef: new Map(),
     loading: false,
   });
 
@@ -128,6 +131,7 @@ export function useInspector({
           )
         ),
         refToolTargets: next.refToolTargets,
+        elementsByRef: next.peek.elementsByRef,
         capturedAt: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",

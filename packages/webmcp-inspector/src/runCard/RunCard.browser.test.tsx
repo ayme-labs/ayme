@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { RunnableTool } from "../adapter/runnableTools";
+import { buildStructureTree } from "../adapter/structure";
 import type { CollectionItem, Run } from "../adapter/useRuns";
 import { renderPart } from "../renderPart";
 import { RunCard as RunCardPart } from "../testing";
@@ -222,8 +223,14 @@ describe("a Ref Tool", () => {
     },
   };
 
-  it("runs with the ref and value typed in", async () => {
-    const { card, onRun } = renderCard({ tool: fillRef, head: false });
+  it("runs with the ref chosen and the value typed in", async () => {
+    const { card, onRun } = renderCard({
+      tool: fillRef,
+      head: false,
+      refSource: {
+        roots: buildStructureTree('- e12 textbox "New item"', new Map()).roots,
+      },
+    });
 
     await card.run({ ref: "e12", value: "Milk" });
 
