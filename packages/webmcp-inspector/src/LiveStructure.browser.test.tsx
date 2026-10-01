@@ -14,10 +14,12 @@ import { Inspector } from "./testing";
 vi.mock("@ayme-dev/webmcp/internal", () => ({
   peekPageStateForDocument: vi.fn(),
   listRefToolTargets: vi.fn(async () => new Map()),
+  // One value each, as the runtime keeps them until they change.
   listLiveTools: vi.fn().mockReturnValue([]),
   getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
   subscribeToPublishedTools: vi.fn(() => () => {}),
   getPomDefinitionText: vi.fn(() => ""),
+  runTool: vi.fn(),
   listRegisteredPomTargets: vi.fn(async () => []),
   listRegisteredPomTools: vi.fn(() => []),
   listRegisteredPoms: vi.fn(() => []),

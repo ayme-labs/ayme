@@ -21,6 +21,7 @@ vi.mock("@ayme-dev/webmcp/internal", () => ({
   getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
   subscribeToPublishedTools: vi.fn(() => () => {}),
   getPomDefinitionText: vi.fn(() => ""),
+  runTool: vi.fn(),
   listRegisteredPomTargets: vi.fn(),
   listRegisteredPomTools: vi.fn(() => []),
   listRegisteredPoms: vi.fn(() => []),

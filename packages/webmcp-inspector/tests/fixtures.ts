@@ -1,20 +1,16 @@
 import { test as base, selectors, type Page } from "@playwright/test";
 import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
 
-import { unpublishedBaseURL } from "../playwright.config";
 import { Inspector, registerInspectorSelectors } from "../src/testing";
 import { ListPage } from "./fixture/ListPage";
 
 export { expect } from "@playwright/test";
 
-/** A fixture page: the list app with its Page Object, the runtime and the Inspector. */
-export type FixturePage = "/" | "/react.html";
-
 /**
- * The same list app served with WebMCP publication off, as a dev server
- * without `publish: true` serves it (tests/fixture/vite.unpublished.config.ts).
+ * A fixture page: the list app with its Page Object, the runtime and the
+ * Inspector. "/unpublished.html" is the list app with WebMCP publication off.
  */
-export const unpublishedFixtureUrl = `${unpublishedBaseURL}/`;
+export type FixturePage = "/" | "/react.html" | "/unpublished.html";
 
 /**
  * Opens a fixture page and fails with its own message, before any test
@@ -23,11 +19,9 @@ export const unpublishedFixtureUrl = `${unpublishedBaseURL}/`;
  */
 export async function openFixture(
   page: Page,
-  path: FixturePage | typeof unpublishedFixtureUrl,
+  path: FixturePage,
   { reload = false } = {}
 ) {
-  // The unpublished page's runtime runs, but never publishes.
-  const runtimeState = path === unpublishedFixtureUrl ? "disabled" : "active";
   const pageErrors: string[] = [];
   const onPageError = (error: Error) => pageErrors.push(error.message);
   page.on("pageerror", onPageError);
@@ -47,6 +41,8 @@ export async function openFixture(
       `The fixture page ${path} failed to start: ${await root.getAttribute("data-fixture-error")}`
     );
 
+  // Without publication the runtime stays "disabled"; otherwise it publishes.
+  const runtimeState = path === "/unpublished.html" ? "disabled" : "active";
   try {
     await root
       .and(page.locator(`[data-runtime="${runtimeState}"]`))

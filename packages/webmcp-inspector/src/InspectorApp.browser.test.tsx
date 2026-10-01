@@ -3,8 +3,10 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { RegisteredPomTool } from "@ayme-dev/webmcp";
 import {
+  listLiveTools,
   listRegisteredPomTools,
   listRegisteredPoms,
+  runTool,
   type RegisteredPom,
 } from "@ayme-dev/webmcp/internal";
 
@@ -27,6 +29,7 @@ vi.mock("@ayme-dev/webmcp/internal", () => ({
   getPomDefinitionText: vi.fn(() => ""),
   listRegisteredPomTargets: vi.fn(async () => []),
   listRegisteredPomTools: vi.fn(() => []),
+  runTool: vi.fn(),
   listRegisteredPoms: vi.fn(() => []),
   subscribeToRegisteredPoms: vi.fn(() => () => true),
 }));
@@ -100,6 +103,7 @@ function renderApp() {
 afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
   vi.clearAllMocks();
+  vi.mocked(listLiveTools).mockReturnValue([]);
   localStorage.clear();
 });
 
@@ -116,9 +120,9 @@ describe("the Inspector", () => {
   });
 
   it("runs a tool with typed arguments and lists the run", async () => {
-    const execute = vi.fn(async () => ({ saved: true }));
-    const tool = saveTool("editor", execute);
+    const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
+    vi.mocked(runTool).mockResolvedValue({ saved: true });
     renderApp();
     const save = await inspector.tool("Editor.save");
 
@@ -132,50 +136,75 @@ describe("the Inspector", () => {
 
     await expect
       .poll(() => save.lastResult.textContent())
-      .toContain('"saved": true');
-    expect(execute).toHaveBeenCalledExactlyOnceWith({
+      .toContain("Succeeded");
+    expect(runTool).toHaveBeenCalledExactlyOnceWith("Editor.save", {
       mode: "final",
       copies: 3,
       notify: true,
       title: "Release notes",
       meta: { tag: "v1" },
     });
-    const run = inspector.runs.runsOf("Editor.save");
     await expect
-      .poll(() => inspector.runs.status(run).textContent())
-      .toBe("succeeded");
+      .poll(() => inspector.runs.latest("Editor.save").status())
+      .toBe("Succeeded");
   });
 
-  it("rejects invalid JSON without running the tool", async () => {
-    const execute = vi.fn(async () => null);
-    const tool = saveTool("editor", execute);
+  it("shows a run card's last successful run in Runs", async () => {
+    const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
+    vi.mocked(runTool).mockResolvedValue({ saved: true });
     renderApp();
     const save = await inspector.tool("Editor.save");
+    await save.run({ copies: 1, title: "Notes" });
+    await inspector.runs.header.click();
+    await expect.poll(() => inspector.runs.runs.count()).toBe(0);
 
-    await save.run({ meta: "{" });
+    await save.lastSuccessLink.click();
 
     await expect
-      .poll(() => save.error.textContent())
-      .toBe("meta: enter valid JSON.");
-    expect(execute).not.toHaveBeenCalled();
+      .poll(() => inspector.runs.latest("Editor.save").status())
+      .toBe("Succeeded");
   });
 
-  it("runs the active registration when tool names collide", async () => {
-    const inactiveExecute = vi.fn(async () => null);
-    const activeExecute = vi.fn(async () => null);
-    const inactiveTool = saveTool("inactive", inactiveExecute);
-    const activeTool = saveTool("active", activeExecute);
-    mockRegistry(
-      [editor("inactive", inactiveTool), editor("active", activeTool)],
-      [activeTool]
+  it("runs a tool the way an agent's call runs and shows its failure", async () => {
+    const tool = saveTool("editor", vi.fn());
+    mockRegistry([editor("editor", tool)], [tool]);
+    vi.mocked(runTool).mockResolvedValue({
+      content: [{ type: "text", text: "ToolInputError: title is required." }],
+      isError: true,
+    });
+    renderApp();
+
+    await (await inspector.tool("Editor.save")).run({ copies: 1 });
+
+    const run = inspector.runs.latest("Editor.save");
+    await expect.poll(() => run.status()).toBe("Failed");
+    expect(await run.error.textContent()).toBe(
+      "ToolInputError: title is required."
+    );
+    expect(runTool).toHaveBeenCalledExactlyOnceWith("Editor.save", {
+      mode: "draft",
+      copies: 1,
+    });
+  });
+
+  it("shows a tool the runtime doesn't run as a failed run", async () => {
+    const tool = saveTool("editor", vi.fn());
+    mockRegistry([editor("editor", tool)], [tool]);
+    vi.mocked(runTool).mockRejectedValue(
+      Object.assign(new Error('The tool "Editor.save" is not live.'), {
+        name: "RuntimeStateError",
+      })
     );
     renderApp();
 
-    await (await inspector.tool("Editor.save")).runButton.click();
+    await (await inspector.tool("Editor.save")).run({ copies: 1 });
 
-    await expect.poll(() => activeExecute).toHaveBeenCalledOnce();
-    expect(inactiveExecute).not.toHaveBeenCalled();
+    const run = inspector.runs.latest("Editor.save");
+    await expect.poll(() => run.status()).toBe("Failed");
+    expect(await run.error.textContent()).toBe(
+      'RuntimeStateError: The tool "Editor.save" is not live.'
+    );
   });
 
   it("names the page it inspects in the header", async () => {
@@ -234,9 +263,7 @@ describe("the Inspector", () => {
         inspector.navigator.item("Editor.save").getAttribute("aria-current")
       )
       .toBe("true");
-    await expect
-      .poll(() => inspector.detail.tool("Editor.save").root.count())
-      .toBe(1);
+    await expect.poll(() => inspector.detail.runCard().root.count()).toBe(1);
   });
 
   it("switches the panel to dark from the header", async () => {

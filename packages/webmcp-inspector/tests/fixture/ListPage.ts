@@ -1,5 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 
+import { ListItem } from "./ListItem";
+
 /**
  * The fixture page's Page Object. The page registers it with the Ayme
  * runtime, which constructs it on playwright-lite and publishes `addItem` as
@@ -20,6 +22,11 @@ export class ListPage {
     this.items = page
       .getByRole("list", { name: "Items" })
       .getByRole("listitem");
+  }
+
+  /** The items, as Page Objects a collection action runs on. */
+  async entries(): Promise<ListItem[]> {
+    return (await this.items.all()).map((item) => new ListItem(item));
   }
 
   /** Add an item to the list. */
