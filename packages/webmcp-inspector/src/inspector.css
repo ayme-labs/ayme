@@ -1,0 +1,30 @@
+/*
+ * The Inspector's stylesheet. It is compiled at build time by the design
+ * system's shadow-tailwind plugin and injected into the Inspector's shadow
+ * root as a string; it never reaches the host document.
+ */
+@import "tailwindcss" source(none);
+@import "@ayme-dev/design-system/theme.css";
+
+@source "./";
+
+/* The design system's base styles; theme.css leaves them to the consumer. */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+}
+
+/*
+ * The host covers the viewport without catching pointer events; the FAB, the
+ * panel and portalled content opt back in. `all: initial` stops the host
+ * page's inherited styles at the shadow boundary.
+ */
+:host {
+  all: initial;
+  display: block;
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 9;
+}

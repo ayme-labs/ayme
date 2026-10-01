@@ -1,8 +1,15 @@
 # @ayme-dev/webmcp-inspector
 
-Browser Inspector for Ayme Page Object Models. It shows live POM instances,
-member probes, generated actions, execution history, browser traces, and
-structural page state in an isolated open Shadow Root.
+Browser Inspector for Ayme Page Object Models. It shows the live POM classes
+and their member states, a form for each generated tool, execution history,
+browser traces, and the structural page state a model sees, in an isolated
+open Shadow Root.
+
+The Inspector is a React app on `@ayme-dev/design-system`. React is bundled
+into the package, so a host app of any framework, or any React version, never
+shares it. Its Tailwind stylesheet is compiled at build time and injected into
+the Shadow Root only; the host document's head receives just the page
+highlight style.
 
 Enable it through the Vite integration:
 

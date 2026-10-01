@@ -180,6 +180,35 @@ it("owns consumer highlight styling for the mounted Inspector", () => {
   expect(style?.isConnected).toBe(false);
 });
 
+it("renders the React Inspector and its stylesheet inside the Shadow Root only", () => {
+  const headStylesBefore = document.head.querySelectorAll(
+    "style, link[rel=stylesheet]"
+  ).length;
+  const inspector = mountInspector();
+  const shadowRoot = document.body.querySelector(
+    "[data-ayme-inspector-host]"
+  )?.shadowRoot;
+
+  expect(
+    shadowRoot?.querySelector('aside[aria-label="ayme"] h2')?.textContent
+  ).toBe("ayme");
+  const style = shadowRoot?.querySelector("style[data-ayme-inspector-style]");
+  expect(style?.textContent).toContain("--background");
+  expect(style?.textContent).toContain(":host");
+  expect(
+    shadowRoot?.querySelector(
+      "[data-ayme-inspector-root] [data-ayme-inspector-portal]"
+    )
+  ).not.toBeNull();
+  // Only the page highlight style reaches the host document.
+  expect(
+    document.head.querySelectorAll("style, link[rel=stylesheet]")
+  ).toHaveLength(headStylesBefore + 1);
+
+  inspector.dispose();
+  expect(shadowRoot?.childNodes).toHaveLength(0);
+});
+
 it("excludes the Inspector UI from structural page-state capture", async () => {
   document.body.innerHTML = "<main><h1>Consumer application</h1></main>";
   const inspector = mountInspector();
@@ -188,6 +217,6 @@ it("excludes the Inspector UI from structural page-state capture", async () => {
   const state = await capturePageState(document.body);
 
   expect(state).toContain("Consumer application");
-  expect(state).not.toContain("POM inspector");
+  expect(state).not.toContain("Inspector");
   inspector.dispose();
 });
