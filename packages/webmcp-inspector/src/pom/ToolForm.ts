@@ -37,8 +37,10 @@ export class ToolForm {
       else if (kind === "select")
         await field.selectOption({ label: String(value) });
       else if (kind === "number") {
-        // playwright-lite's fill assigns a number input's value directly,
+        // playwright-lite's fill assigned a number input's value directly,
         // which React's controlled input never sees; typing reaches it.
+        // Fixed in playwright-lite 0.7.0 (enekesabel/playwright-lite#242):
+        // drop this branch once the component tests pass without it.
         await field.fill("");
         await field.pressSequentially(String(value));
       } else

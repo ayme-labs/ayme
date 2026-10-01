@@ -15,9 +15,11 @@ export class CollapsedLogo {
   /**
    * Drags the logo by an offset, as a sequence of pointer events dispatched
    * to the logo, the element a real drag would capture the pointer on.
-   * playwright-lite's `page.mouse` sends each move to the element under the
-   * pointer, ignoring pointer capture, and doesn't enter closed shadow
-   * roots. This runs the same on Playwright and on playwright-lite.
+   * playwright-lite's `page.mouse` and `dragTo` send each move to the
+   * element under the pointer, ignoring pointer capture
+   * (enekesabel/playwright-lite#258), and don't enter closed shadow roots
+   * (enekesabel/playwright-lite#259). This runs the same on Playwright and on
+   * playwright-lite.
    */
   async dragBy(deltaX: number, deltaY: number) {
     const box = await this.root.boundingBox();
