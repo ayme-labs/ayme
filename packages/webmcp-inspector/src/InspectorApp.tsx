@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useRuntimeAdapter } from "./adapter/useRuntimeAdapter";
 import { Empty } from "./common";
 import { DetailPane, InspectorBody } from "./frame/InspectorBody";
 import { selectionHighlight } from "./frame/highlight";
 import type { Lens, LensId } from "./frame/lens";
-import { memberResolves } from "./frame/memberSelection";
+import { isStaleSelection } from "./frame/staleSelection";
 import { Navigator } from "./frame/Navigator";
 import { pageSelection, type Selection } from "./frame/selection";
 import { InspectorRoot } from "./InspectorRoot";
 import { modelLens } from "./lenses/modelLens";
 import { structureLens } from "./lenses/structureLens";
+import { attachToolModels } from "./lenses/toolGroups";
 import { toolsLens } from "./lenses/toolsLens";
 import { InspectorShell } from "./shell/InspectorShell";
 import { usePreferences } from "./shell/usePreferences";
@@ -31,12 +32,26 @@ export function InspectorApp() {
   const dark = useDarkTheme(preferences.theme);
   const [selection, setSelection] = useState<Selection>(pageSelection);
   const { renderRun, runsRegion } = useRunning(runtime, selection);
+  const { live } = runtime.tools;
+  const tools = useMemo(
+    () =>
+      attachToolModels(
+        live,
+        runtime.pageModel.models.map((model) => ({
+          className: model.className,
+          tools: model.actions.flatMap((action) =>
+            action.toolNames.map((name) => ({ name }))
+          ),
+        }))
+      ),
+    [live, runtime.pageModel]
+  );
 
   const lenses: Lens[] = [
     modelLens({
       host: window.location.host,
       pageModel: runtime.pageModel,
-      pageTools: runtime.tools.live
+      pageTools: live
         .filter((tool) => tool.group === "agent")
         .map((tool) => tool.name),
       panes: preferences.modelPanes,
@@ -56,12 +71,8 @@ export function InspectorApp() {
       renderRun,
     }),
     toolsLens({
-      tools: [...runtime.runnableTools.values()].map((tool) => ({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.argumentsSchema,
-        available: tool.available,
-      })),
+      tools,
+      definitionText: runtime.definitionText,
       selection,
       onSelect: setSelection,
       renderRun,
@@ -72,20 +83,22 @@ export function InspectorApp() {
   const { pin } = runtime.highlight;
   useEffect(() => pin(JSON.parse(pinKey) ?? undefined), [pin, pinKey]);
 
-  // A member selection whose path no longer resolves is stale: back to the
-  // page. Only judged once the page state has been read.
-  const { structure, capturedAt } = runtime.pageState;
-  const staleMember =
-    selection.kind === "member" &&
-    capturedAt !== undefined &&
-    !memberResolves(structure, selection.path);
+  const viewOf = (selected: Selection) =>
+    lenses
+      .map((lens) => lens.detail(selected))
+      .find((view) => view !== undefined);
+  const view = viewOf(selection);
+  // A stale selection goes back to the page. This render already shows the
+  // page; the effect makes it the selection.
+  const stale = isStaleSelection(selection, {
+    hasView: view !== undefined,
+    structure: runtime.pageState.structure,
+    pageStateRead: runtime.pageState.capturedAt !== undefined,
+  });
   useEffect(() => {
-    if (staleMember) setSelection(pageSelection);
-  }, [staleMember]);
-
-  const detail = lenses
-    .map((lens) => lens.detail(selection))
-    .find((view) => view !== undefined) ?? (
+    if (stale) setSelection(pageSelection);
+  }, [stale]);
+  const detail = (stale ? viewOf(pageSelection) : view) ?? (
     <Empty>Nothing to show for this selection.</Empty>
   );
 
