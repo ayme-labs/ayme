@@ -59,7 +59,7 @@ export function PageDetail({
       >
         {pages.map((page) => (
           <LinkRow
-            key={page.path}
+            key={page.key}
             name={page.path}
             kind="page"
             live={page.live}
@@ -131,7 +131,11 @@ export function ObjectDetail({
           Collection actions run on one item.
         </p>
       )}
-      <Actions actions={node.actions} renderRun={renderRun} />
+      <Actions
+        actions={node.actions}
+        item={node.kind === "item" ? node.path : undefined}
+        renderRun={renderRun}
+      />
       {node.members.length > 0 && (
         <DetailSection
           title="Members"
@@ -225,7 +229,7 @@ export function ModelDetail({
         >
           {instances.map((instance) => (
             <LinkRow
-              key={instance.path}
+              key={instance.key}
               name={instance.path}
               live
               onClick={() => onOpenObject(instance)}
@@ -468,9 +472,12 @@ function DetailSection({
 
 function Actions({
   actions,
+  item,
   renderRun,
 }: {
   actions: readonly ObjectAction[];
+  /** For a collection item's actions: the item they run on, by path. */
+  item?: string;
   renderRun: RenderRun;
 }) {
   if (!actions.length) return null;
@@ -480,7 +487,7 @@ function Actions({
         {actions.map((action) =>
           action.live ? (
             <Fragment key={action.toolName}>
-              {renderRun({ toolName: action.toolName })}
+              {renderRun({ toolName: action.toolName, item })}
             </Fragment>
           ) : (
             <OffPageAction key={action.name} action={action} />

@@ -38,6 +38,15 @@ export type StructureNode = {
    * else the instance the member is declared on, e.g. "ListPage".
    */
   owner?: string;
+  /**
+   * What an agent reads of this node alone, for "What the model sees": its
+   * own lines of the page state, unindented, e.g.
+   * `- e3 checkbox "Done" [checked]`, followed by its properties, such as
+   * `  - /pom: ListItem`. Text has none.
+   */
+  pageStateLines?: string[];
+  /** How many entries nest under it in the page state, besides properties. */
+  childCount?: number;
   children: StructureNode[];
 };
 
@@ -94,11 +103,20 @@ export function buildStructureTree(
     while (open.length && open.at(-1)!.indent >= indent) open.pop();
 
     const { header, value } = splitEntry(match[2]!);
+    const parent = open.at(-1)?.node;
     // A property of its parent, such as the Page Objects rooted at it.
-    if (header.startsWith("/")) continue;
+    if (header.startsWith("/")) {
+      parent?.pageStateLines?.push(`  - ${match[2]!}`);
+      continue;
+    }
+    if (parent?.childCount !== undefined) parent.childCount += 1;
 
     const node =
       header === "text" ? textNode(value ?? "") : elementNode(header);
+    if (header !== "text") {
+      node.pageStateLines = [`- ${match[2]!}`];
+      node.childCount = 0;
+    }
     if (node.ref !== undefined) {
       refCount += 1;
       const members = membersByRef.get(node.ref) ?? [];
@@ -113,7 +131,7 @@ export function buildStructureTree(
     if (header !== "text" && value !== undefined)
       node.children.push(textNode(value));
 
-    (open.at(-1)?.node.children ?? roots).push(node);
+    (parent?.children ?? roots).push(node);
     open.push({ indent, node });
   }
 

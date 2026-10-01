@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import type { RegisteredPomTool } from "@ayme-dev/webmcp";
 import { getPomDefinitionText } from "@ayme-dev/webmcp/internal";
 
-import { buildPageModel } from "./pageModel";
 import { useLiveTools } from "./liveTools";
+import { buildPageModel } from "./pageModel";
 import {
   pickPromptOf,
   refFilterOf,
@@ -27,7 +26,8 @@ export function useRuntimeAdapter({
   structureVisible?: boolean;
 } = {}) {
   const inspector = useInspector({ structureVisible });
-  const { registeredPoms, pomDefinitions, refreshPageState } = inspector;
+  const { registeredPoms, activeTools, pomDefinitions, refreshPageState } =
+    inspector;
   const onRunSettled = useCallback(
     () => refreshPageState(),
     [refreshPageState]
@@ -57,13 +57,9 @@ export function useRuntimeAdapter({
         })),
     [tools.live, refToolTargets]
   );
-  const registeredTools = useMemo(
-    () => listRegisteredTools(registeredPoms),
-    [registeredPoms]
-  );
   const runnableTools = useMemo(
-    () => listRunnableTools(registeredPoms, inspector.activeTools, tools.live),
-    [registeredPoms, inspector.activeTools, tools.live]
+    () => listRunnableTools(registeredPoms, activeTools, tools.live),
+    [registeredPoms, activeTools, tools.live]
   );
 
   // Picking reads the latest look at the page as the pointer moves.
@@ -90,17 +86,12 @@ export function useRuntimeAdapter({
      * as `get_page_context` renders them. Captures no page state.
      */
     definitionText: (...names: string[]) => getPomDefinitionText(...names),
-    /** Every registered tool once by name, whether published now or not. */
-    registeredTools,
-    /** The tools published now, by name. */
-    activeTools: inspector.activeTools,
     /**
      * The page state as an agent would receive it, kept live without ever
      * being recorded: its text, the structure tree model, and the refs each
      * published Ref Tool can take (`pageState.refToolTargets`).
      */
     pageState: inspector.pageState,
-    refreshPageState,
     /**
      * The page's two highlights: `hover` (dashed) for what the pointer is
      * over in the panel, `pin` (solid) for the selection. The app pins the
@@ -156,14 +147,4 @@ function uniqueRefs(elementsByRef: ReadonlyMap<string, Element>) {
       (entry): entry is [Element, string] => entry[1] !== undefined
     )
   );
-}
-
-function listRegisteredTools(
-  registeredPoms: ReturnType<typeof useInspector>["registeredPoms"]
-) {
-  const tools = new Map<string, RegisteredPomTool>();
-  for (const registration of registeredPoms)
-    for (const tool of registration.tools)
-      if (!tools.has(tool.name)) tools.set(tool.name, tool);
-  return tools as ReadonlyMap<string, RegisteredPomTool>;
 }

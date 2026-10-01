@@ -7,6 +7,7 @@ import {
   memberLinks,
   memberTag,
   pageObjectsOf,
+  type StructureNode,
 } from "./structure";
 
 // Unit tests: the structure tree model built from the page state text an
@@ -25,10 +26,20 @@ const pageState = `- e56:
         - /pom: ["ListItem", "Other"]
         - text: "Note: one"`;
 
+/** The tree without what an agent reads of each node, tested on its own. */
+function withoutPageStateLines(nodes: readonly StructureNode[]): unknown[] {
+  return nodes.map((node) => {
+    const rest: Partial<StructureNode> = { ...node };
+    delete rest.pageStateLines;
+    delete rest.childCount;
+    return { ...rest, children: withoutPageStateLines(node.children) };
+  });
+}
+
 it("builds the tree of nodes with their refs, roles and names", () => {
   const { roots, refCount } = buildStructureTree(pageState, new Map());
 
-  expect(roots).toEqual([
+  expect(withoutPageStateLines(roots)).toEqual([
     {
       ref: "e56",
       role: "generic",
@@ -110,6 +121,37 @@ it("builds the tree of nodes with their refs, roles and names", () => {
     },
   ]);
   expect(refCount).toBe(9);
+});
+
+it("keeps what an agent reads of each node alone: its line, its properties and how many entries nest under it", () => {
+  const { roots } = buildStructureTree(pageState, new Map());
+  const main = roots[0]!.children[0]!;
+  const [heading, listPage, addItem, list] = main.children;
+
+  expect(heading).toMatchObject({
+    pageStateLines: ['- e58 heading "Groceries" [level=1]'],
+    childCount: 0,
+  });
+  expect(listPage).toMatchObject({
+    pageStateLines: ["- e1 ListPage:"],
+    childCount: 2,
+  });
+  expect(addItem).toMatchObject({
+    pageStateLines: ['- e3 button "Add item" [cursor=pointer]'],
+    childCount: 0,
+  });
+  expect(list!.children[0]).toMatchObject({
+    pageStateLines: ["- e74 listitem: Milk"],
+    childCount: 0,
+  });
+  expect(list!.children[1]).toMatchObject({
+    pageStateLines: [
+      '- e75 link "Say \\"hi\\"":',
+      '  - /pom: ["ListItem", "Other"]',
+    ],
+    childCount: 1,
+  });
+  expect(main).toMatchObject({ childCount: 4 });
 });
 
 it("tags each node with the Page Object member it maps to", () => {

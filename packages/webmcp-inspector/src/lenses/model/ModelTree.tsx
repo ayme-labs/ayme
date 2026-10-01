@@ -93,7 +93,7 @@ export function ModelTree({
           />
           {rows.map(({ node, depth }) => (
             <TreeRow
-              key={node.path}
+              key={node.key}
               label={node.path}
               name={node.name}
               depth={depth}

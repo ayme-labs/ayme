@@ -239,6 +239,45 @@ describe("a Ref Tool", () => {
       value: "Milk",
     });
   });
+
+  it("runs on the view's ref, asking only for the rest", async () => {
+    const { card, onRun } = renderCard({
+      tool: fillRef,
+      structuralRef: "e12",
+      refSource: {
+        roots: buildStructureTree('- e12 textbox "New item"', new Map()).roots,
+      },
+    });
+
+    await card.runButton.click();
+    expect(await card.refField().value()).toBe('e12 textbox "New item"');
+    expect(onRun).not.toHaveBeenCalled();
+    await card.run({ value: "Milk" });
+
+    expect(onRun).toHaveBeenCalledExactlyOnceWith({
+      ref: "e12",
+      value: "Milk",
+    });
+  });
+
+  it("runs at once on the view's ref when nothing else is needed", async () => {
+    const click: RunnableTool = {
+      name: "click_page_state_ref",
+      action: "click_page_state_ref",
+      description: "Click a real element ref.",
+      available: true,
+      argumentsSchema: {
+        type: "object",
+        properties: { ref: { type: "string" } },
+        required: ["ref"],
+      },
+    };
+    const { card, onRun } = renderCard({ tool: click, structuralRef: "e4" });
+
+    await card.runButton.click();
+
+    expect(onRun).toHaveBeenCalledExactlyOnceWith({ ref: "e4" });
+  });
 });
 
 describe("a collection action", () => {
