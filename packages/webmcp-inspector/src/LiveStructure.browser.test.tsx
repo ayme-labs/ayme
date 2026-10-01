@@ -77,11 +77,11 @@ afterEach(() => {
   localStorage.clear();
 });
 
-const structure = () => inspector.pageState.root.textContent();
+const structure = () => inspector.structure.rows.allTextContents();
 
 async function showStructure() {
   await inspector.navigator.showLens("Structure");
-  await expect.poll(structure).toContain("paragraph: Draft");
+  await expect.poll(structure).toContain('"Draft"');
 }
 
 it("shows what's typed into the page", async () => {
@@ -89,15 +89,22 @@ it("shows what's typed into the page", async () => {
 
   await page.getByRole("textbox", { name: "Name" }).fill("Ada");
 
-  await expect.poll(structure).toContain('textbox "Name": Ada');
+  await expect.poll(structure).toContain('"Ada"');
 });
 
-it("shows a checkbox being checked", async () => {
+it("looks at the page again when a checkbox is checked", async () => {
   await showStructure();
 
   await page.getByRole("checkbox", { name: "Done" }).check();
 
-  await expect.poll(structure).toContain('checkbox "Done" [checked]');
+  // Rows show no states, so the look itself is the evidence: the page
+  // state it read has the checkbox checked.
+  await expect
+    .poll(async () => {
+      const looks = vi.mocked(peekPageStateForDocument).mock.results;
+      return (await looks.at(-1)?.value)?.text;
+    })
+    .toContain('checkbox "Done" [checked]');
 });
 
 it("shows text changing on the page", async () => {
@@ -105,5 +112,5 @@ it("shows text changing on the page", async () => {
 
   document.querySelector("p")!.textContent = "Sent";
 
-  await expect.poll(structure).toContain("paragraph: Sent");
+  await expect.poll(structure).toContain('"Sent"');
 });
