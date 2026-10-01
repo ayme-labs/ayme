@@ -3,10 +3,12 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { RegisteredPomTool } from "@ayme-dev/webmcp";
 import {
+  getPublicationStatus,
   listLiveTools,
   listRegisteredPomTools,
   listRegisteredPoms,
   runTool,
+  subscribeToPublishedTools,
   type RegisteredPom,
 } from "@ayme-dev/webmcp/internal";
 
@@ -80,6 +82,14 @@ function editor(id: string, tool: RegisteredPomTool): RegisteredPom {
 function mockRegistry(poms: RegisteredPom[], activeTools: RegisteredPomTool[]) {
   vi.mocked(listRegisteredPoms).mockReturnValue(poms);
   vi.mocked(listRegisteredPomTools).mockReturnValue(activeTools);
+  vi.mocked(listLiveTools).mockReturnValue(
+    activeTools.map(({ name, description, inputSchema }) => ({
+      name,
+      description,
+      inputSchema,
+      group: "pageObject",
+    }))
+  );
 }
 
 // The panel renders into an open root this test owns, so the page objects
@@ -101,7 +111,14 @@ function renderApp() {
   });
 }
 
+const publicationActive = { state: "active", message: "" } as const;
+const publicationDisabled = {
+  state: "disabled",
+  message: "WebMCP publication is disabled.",
+} as const;
+
 afterEach(() => {
+  vi.mocked(getPublicationStatus).mockReturnValue(publicationActive);
   for (const unmount of unmounts.splice(0)) unmount();
   vi.clearAllMocks();
   vi.mocked(listLiveTools).mockReturnValue([]);
@@ -232,19 +249,43 @@ describe("the Inspector", () => {
       .toContain("2 refs");
   });
 
-  it("shows whether a registered tool is published, with its schema", async () => {
+  it("lists the live tools when nothing is published", async () => {
     const tool = saveTool("editor", vi.fn());
-    mockRegistry([editor("editor", tool)], []);
+    mockRegistry([editor("editor", tool)], [tool]);
+    vi.mocked(getPublicationStatus).mockReturnValue(publicationDisabled);
     renderApp();
 
-    await inspector.tool("Editor.save");
+    await inspector.navigator.showLens("Tools");
 
     await expect
-      .poll(() => inspector.detail.root.textContent())
-      .toContain("unavailable");
+      .poll(() => inspector.navigator.tools.listed())
+      .toEqual({ "Page object tools": ["Editor.save"] });
+  });
+
+  it("drops an open tool that stops being live and shows the page", async () => {
+    const tool = saveTool("editor", vi.fn());
+    mockRegistry([editor("editor", tool)], [tool]);
+    let republish = () => {};
+    vi.mocked(subscribeToPublishedTools).mockImplementation((subscriber) => {
+      republish = subscriber;
+      return () => {};
+    });
+    renderApp();
+    await inspector.tool("Editor.save");
     await expect
-      .poll(() => inspector.detail.root.textContent())
-      .toContain('"type": "object"');
+      .poll(() => inspector.detail.toolPage.title.textContent())
+      .toBe("Editor.save");
+
+    mockRegistry([editor("editor", tool)], []);
+    republish();
+
+    await expect
+      .poll(() => inspector.navigator.tools.tool("Editor.save").count())
+      .toBe(0);
+    await expect
+      .poll(() => inspector.detail.model.instance("Editor").count())
+      .toBe(1);
+    expect(await inspector.detail.toolPage.root.count()).toBe(0);
   });
 
   it("shows a search result in its lens and the detail pane", async () => {

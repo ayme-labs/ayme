@@ -64,6 +64,8 @@ Applications do not need this demo-only entry point.
 - `src/lenses`: one file per lens, with its parts in a folder of its name.
   Each contributes its tree, its search entries, its legend counts and the
   detail views of what it selects.
+- `src/detail`: parts any detail view can use, such as "What the model
+  sees", the syntax-highlighted definitions and schemas an agent receives.
 - `src/runCard`: the run card that fills the run slot: the typed form built
   from a tool's schema, the item picker and the last result. Each field's
   control is chosen by its kind; `RefField` is the ref field's.
