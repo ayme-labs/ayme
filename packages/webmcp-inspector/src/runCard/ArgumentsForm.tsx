@@ -5,22 +5,27 @@ import type { JsonValue } from "@ayme-dev/webmcp";
 
 import type { ToolArguments } from "../adapter/useRuns";
 import { initialValues, type Field } from "./fields";
-import { RefField } from "./RefField";
+import { RefField, type RefSource } from "./RefField";
 
 export const inputClass =
   "h-[30px] w-full min-w-0 rounded-md border border-input bg-background px-[9px] text-[12.5px] outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring";
 
 type Change = (path: readonly string[], value: JsonValue | undefined) => void;
 
+const noRefs: RefSource = { roots: [] };
+
 /** The typed form: one control per field, editing the arguments in place. */
 export function ArgumentsForm({
   fields,
   values,
   onChange,
+  refSource = noRefs,
 }: {
   fields: readonly Field[];
   values: ToolArguments;
   onChange: Change;
+  /** Where a ref field chooses its ref from. */
+  refSource?: RefSource;
 }) {
   return (
     <>
@@ -31,6 +36,7 @@ export function ArgumentsForm({
           path={[field.name]}
           value={values[field.name]}
           onChange={onChange}
+          refSource={refSource}
         />
       ))}
     </>
@@ -62,11 +68,13 @@ function FieldRow({
   path,
   value,
   onChange,
+  refSource,
 }: {
   field: Field;
   path: readonly string[];
   value: JsonValue | undefined;
   onChange: Change;
+  refSource: RefSource;
 }) {
   const id = useId();
   // The control's name: its path, e.g. "details.due".
@@ -130,6 +138,7 @@ function FieldRow({
               path={[...path, child.name]}
               value={entries[child.name]}
               onChange={onChange}
+              refSource={refSource}
             />
           ))}
       </fieldset>
@@ -193,6 +202,7 @@ function FieldRow({
         name={name}
         value={value}
         onChange={set}
+        refSource={refSource}
       />
     </div>
   );
@@ -205,12 +215,14 @@ function ScalarControl({
   name,
   value,
   onChange,
+  refSource = noRefs,
 }: {
   field: Field;
   id?: string;
   name: string;
   value: JsonValue | undefined;
   onChange: (value: JsonValue | undefined) => void;
+  refSource?: RefSource;
 }) {
   const shared = { id, "aria-label": name, className: inputClass };
   switch (field.kind) {
@@ -220,6 +232,7 @@ function ScalarControl({
           {...shared}
           value={typeof value === "string" ? value : ""}
           onChange={onChange}
+          source={refSource}
         />
       );
     case "text":
