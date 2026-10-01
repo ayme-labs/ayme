@@ -14,7 +14,7 @@ import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
 import type { GoalLoopStepRecord } from "./goalLoop";
 import type { AriaRef, PageStateCapture } from "./pageState";
-import { listRefTools } from "./refTools";
+import { acceptedRefNodes, listRefTools } from "./refTools";
 import {
   listCollectionToolRoots,
   listCallerAwarePomTools,
@@ -290,24 +290,16 @@ export type ArgumentPlan =
   /** The values of a closed set do not make a choice the model can answer. */
   | { kind: "needs_value_choice"; parameter: string; optionCount: number };
 
-/** Every node of the capture that has an element the filter keeps. */
+/** Every node of the capture a Ref Tool with this filter can take. */
 function refOptions(
   filter: (element: Element) => boolean,
   capture: PageStateCapture
 ): ArgumentOption[] {
-  const options: ArgumentOption[] = [];
-  for (const node of walkNodes(capture.tree)) {
-    // Synthetic refs are observation-only: a Ref Tool rejects them.
-    if (node.ref.startsWith("s_")) continue;
-    const element = capture.elementsByRef.get(node.ref);
-    if (!element || !filter(element)) continue;
-    options.push({
-      key: node.ref,
-      description: describeNode(node),
-      value: node.ref,
-    });
-  }
-  return options;
+  return acceptedRefNodes(filter, capture).map((node) => ({
+    key: node.ref,
+    description: describeNode(node),
+    value: node.ref,
+  }));
 }
 
 /** Enough of the node for the model to tell the options apart. */
@@ -340,18 +332,6 @@ function instanceOptions(
       },
     ];
   });
-}
-
-function* walkNodes(tree: StructuralTree): Generator<StructuralNode> {
-  const pending = [...tree.getRootNodes()].reverse();
-  while (pending.length > 0) {
-    const node = pending.pop()!;
-    yield node;
-    for (let index = node.children.length - 1; index >= 0; index--) {
-      const child = node.children[index]!;
-      if (typeof child !== "string") pending.push(child);
-    }
-  }
 }
 
 function valueOptions(values: readonly JsonPrimitive[]): ArgumentOption[] {

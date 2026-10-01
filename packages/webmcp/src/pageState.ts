@@ -65,6 +65,9 @@ export type PageStateCapture = {
 
 type CapturedPageState = PageStateCapture & { readonly text: string };
 
+/** A capture that recorded nothing: its tree, element map and rendered text. */
+export type PageStatePeek = CapturedPageState;
+
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
 
 const INSPECTOR_HOST_SELECTOR = "[data-ayme-inspector-host]";
@@ -121,6 +124,16 @@ export async function getPageStateCaptureForDocument(
   return getPageStateSession(currentDocument).getPageStateCapture(
     options.receivedBy
   );
+}
+
+/**
+ * Capture `currentDocument`'s page state without recording it in the
+ * interaction history, for a reader that is not a caller (the Inspector).
+ */
+export async function peekPageStateForDocument(
+  currentDocument: Document
+): Promise<PageStatePeek> {
+  return getPageStateSession(currentDocument).peek();
 }
 
 /**
@@ -236,6 +249,20 @@ class PageStateSession {
 
   async getPageStateCapture(receivedBy?: Caller): Promise<PageStateCapture> {
     return this.capture(receivedBy);
+  }
+
+  /**
+   * Capture the page without recording it: no observation, no cursor, no
+   * element map. What callers see next is the same as if it never ran. Its
+   * `e` refs are the ones the page's next recorded capture gives the same
+   * elements; a fresh synthetic-ref factory keeps the `s_` refs a caller
+   * sees next from shifting.
+   */
+  async peek(): Promise<PageStatePeek> {
+    return captureCurrentPageState(
+      this.currentDocument.body,
+      new SyntheticAriaRefFactory()
+    );
   }
 
   async startAction(

@@ -1,16 +1,14 @@
-import type { RegisteredPomTool } from "./contracts";
-import { getPursueGoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
-import { listRefTools, type PublishedRefTool } from "./refTools";
 import {
-  listRegisteredPomTools,
+  type PublishedTool,
+  reportPublishedTools,
+  resolvePublishedTools,
+} from "./publishedTools";
+import { RuntimeStateError } from "./errors";
+import {
   subscribeToRegisteredPoms,
   probeRegisteredPomMembers,
 } from "./registry";
-import { RuntimeStateError } from "./errors";
-
-type PublishedTool =
-  RegisteredPomTool | typeof getPageContextTool | PublishedRefTool;
 
 /** The MCP tool-failure result a published tool returns instead of throwing. */
 type ToolErrorResult = {
@@ -48,6 +46,52 @@ function errorText(error: unknown): string {
   return `${error.name}: ${error.message}`;
 }
 
+/**
+ * A tool as WebMCP runs it for an agent: after a call that can change the
+ * page, `settle` runs before the call resolves; a failure is an `isError`
+ * result. `get_page_context` only reads, so it does not settle.
+ */
+export function asAgentCall(tool: PublishedTool, settle: () => Promise<void>) {
+  return withErrorResult(
+    tool === getPageContextTool
+      ? tool
+      : {
+          ...tool,
+          execute: async (input: unknown) => {
+            try {
+              return await tool.execute(input);
+            } finally {
+              await settle();
+            }
+          },
+        }
+  );
+}
+
+/**
+ * Run any live tool the way an agent's call runs, whether or not WebMCP
+ * publication is active: the live tool, wrapped as publication wraps it.
+ * Settling probes the Page Objects; a publication, if any, re-publishes from
+ * that probe on its own. Rejects when no tool of that name is live.
+ */
+export function runTool(name: string, input: unknown): Promise<unknown> {
+  let live: ReturnType<typeof resolvePublishedTools>;
+  try {
+    live = resolvePublishedTools();
+  } catch (error) {
+    return Promise.reject(error);
+  }
+  const entry = live.get(name);
+  if (!entry)
+    return Promise.reject(
+      new RuntimeStateError(`The tool "${name}" is not live.`)
+    );
+  return asAgentCall(entry.tool, () =>
+    // A failed probe does not change the call's own result, as for an agent.
+    probeRegisteredPomMembers().catch(() => {})
+  ).execute(input);
+}
+
 export type WebMcpDriver = Pick<
   NonNullable<typeof document.modelContext>,
   "registerTool"
@@ -75,13 +119,17 @@ export async function synchronizeWebMcpTools(
 ): Promise<WebMcpRegistration> {
   const published = new Map<
     string,
-    { tool: PublishedTool; controller: AbortController }
+    {
+      tool: PublishedTool;
+      controller: AbortController;
+    }
   >();
   let disposed = false;
   let syncing = false;
   let syncAgain = false;
   let currentSync = Promise.resolve();
   let unsubscribe = () => {};
+  let reported = false;
 
   const dispose = () => {
     if (disposed) return;
@@ -91,6 +139,7 @@ export async function synchronizeWebMcpTools(
     for (const registration of published.values())
       registration.controller.abort();
     published.clear();
+    if (reported) reportPublishedTools([]);
   };
 
   if (options.signal?.aborted) dispose();
@@ -117,46 +166,22 @@ export async function synchronizeWebMcpTools(
   // A tool call resolves only once the published tools reflect the page it
   // changed, so an agent's next call sees the tools that are live now. A probe
   // that observes a change starts the publication pass through the subscriber.
-  const withSettledPublication = (tool: PublishedTool): PublishedTool =>
-    tool === getPageContextTool
-      ? tool
-      : {
-          ...tool,
-          execute: async (input: unknown) => {
-            try {
-              return await tool.execute(input);
-            } finally {
-              if (!disposed)
-                await probeRegisteredPomMembers()
-                  .then(() => currentSync)
-                  .catch(failPublication);
-            }
-          },
-        };
+  const settle = () =>
+    disposed
+      ? Promise.resolve()
+      : probeRegisteredPomMembers()
+          .then(() => currentSync)
+          .catch(failPublication);
 
   const publish = async () => {
+    let resolved: ReturnType<typeof resolvePublishedTools>;
     try {
       do {
         syncAgain = false;
-        const pursueGoal = getPursueGoalTool();
-        const pomTools = listRegisteredPomTools();
-        const active = new Map<string, PublishedTool>([
-          [getPageContextTool.name, getPageContextTool],
-        ]);
-        const takenElsewhere = new Set([
-          ...pomTools.map((tool) => tool.name),
-          ...(pursueGoal ? [pursueGoal.name] : []),
-        ]);
-        for (const { tool } of listRefTools()) {
-          if (active.has(tool.name) || takenElsewhere.has(tool.name))
-            throw new RuntimeStateError(
-              `Cannot publish the Ref Tool "${tool.name}": another published tool already uses that name.`
-            );
-          active.set(tool.name, tool);
-        }
-        for (const tool of pomTools) active.set(tool.name, tool);
-        if (pursueGoal)
-          active.set(pursueGoal.name, pursueGoal as PublishedTool);
+        resolved = resolvePublishedTools();
+        const active = new Map(
+          [...resolved].map(([name, { tool }]) => [name, tool])
+        );
 
         for (const [name, registration] of published) {
           const tool = active.get(name);
@@ -170,10 +195,9 @@ export async function synchronizeWebMcpTools(
           const controller = new AbortController();
           published.set(name, { tool, controller });
           try {
-            await driver.registerTool(
-              withErrorResult(withSettledPublication(tool)),
-              { signal: controller.signal }
-            );
+            await driver.registerTool(asAgentCall(tool, settle), {
+              signal: controller.signal,
+            });
           } catch (error) {
             controller.abort();
             published.delete(name);
@@ -181,6 +205,11 @@ export async function synchronizeWebMcpTools(
           }
         }
       } while (syncAgain && !disposed);
+      // The Inspector reads the settled set, never one mid-pass.
+      if (!disposed) {
+        reported = true;
+        reportPublishedTools([...resolved.values()]);
+      }
     } finally {
       syncing = false;
     }
