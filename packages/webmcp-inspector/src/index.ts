@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { installRuntimePageInstrumentation } from "@ayme-dev/webmcp/internal";
 
 import { renderInspector } from "./renderInspector";
+import { exposeInspectorShadowRoot } from "./shadowRootHook";
 import {
   dispatchInspectorTrace,
   recordInspectorTrace,
@@ -68,7 +69,10 @@ export function mountInspector() {
     const host = document.createElement("div");
     host.dataset.aymeInspectorHost = "";
     host.style.pointerEvents = "none";
-    const shadowRoot = host.attachShadow({ mode: "open" });
+    // Closed, so the host page's locators and page-state capture never match
+    // the Inspector's own text. Tests reach the root through the hook.
+    const shadowRoot = host.attachShadow({ mode: "closed" });
+    exposeInspectorShadowRoot(host, shadowRoot);
     document.body.append(host);
     const unmountUi = renderInspector(shadowRoot);
     mounted = {

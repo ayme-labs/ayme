@@ -1,0 +1,108 @@
+import { executePublishedTool } from "@ayme-dev/webmcp/testing";
+
+import { expect, openFixture, test } from "./fixtures";
+import type { Inspector } from "../src/testing";
+
+// E2E: the built Inspector on fixture pages with a real Page Object, the
+// Ayme runtime and a recording WebMCP driver. Each test has one reason to
+// fail; fixture and runtime problems fail first, in openFixture.
+
+test("the page objects reach into the Inspector's closed shadow root", async ({
+  inspector,
+}) => {
+  await expect(inspector.header.title).toBeVisible();
+});
+
+test("running a Page Object tool from the panel acts on the page", async ({
+  inspector,
+  listPage,
+}) => {
+  await inspector.pageObjects.tool("ListPage.addItem").run({ text: "Milk" });
+
+  await expect(listPage.items.filter({ hasText: "Milk" })).toHaveCount(1);
+});
+
+test("a host member named like one of the panel's controls stays one match, and its tool runs", async ({
+  page,
+  inspector,
+  listPage,
+}) => {
+  await inspector.pageObjects.tool("ListPage.addItem").run({ text: "Milk" });
+  await expect(listPage.items).toHaveCount(1);
+  // The panel now shows its own "Clear" button.
+  await inspector.showView("Runs");
+  await expect(inspector.runs.clearButton).toBeVisible();
+
+  await expect(listPage.clearButton).toHaveCount(1);
+  expect(await executePublishedTool(page, "ListPage.clear")).not.toMatchObject({
+    isError: true,
+  });
+  await expect(listPage.items).toHaveCount(0);
+});
+
+test.describe("on a React host with aggressive global CSS", () => {
+  test.use({ fixturePath: "/react.html" });
+
+  test("there is exactly one Inspector under React StrictMode", async ({
+    inspector,
+  }) => {
+    await expect(inspector.root).toHaveCount(1);
+    await expect(inspector.panel).toBeVisible();
+  });
+
+  test("the panel works beside the host's own React", async ({
+    inspector,
+    listPage,
+  }) => {
+    await inspector.pageObjects.tool("ListPage.addItem").run({ text: "Eggs" });
+
+    await expect(listPage.items.filter({ hasText: "Eggs" })).toHaveCount(1);
+  });
+});
+
+/** How the panel looks: the styles host CSS would change if it leaked in. */
+async function panelLook(inspector: Inspector) {
+  const look = (element: Element) => {
+    const style = getComputedStyle(element);
+    return {
+      color: style.color,
+      backgroundColor: style.backgroundColor,
+      fontFamily: style.fontFamily,
+      fontSize: style.fontSize,
+      fontWeight: style.fontWeight,
+      letterSpacing: style.letterSpacing,
+      lineHeight: style.lineHeight,
+      textTransform: style.textTransform,
+      borderStyle: style.borderStyle,
+      padding: style.padding,
+      margin: style.margin,
+    };
+  };
+  return {
+    panel: await inspector.panel.evaluate(look),
+    title: await inspector.header.title.evaluate(look),
+    button: await inspector.header.collapseButton.evaluate(look),
+  };
+}
+
+test("host CSS does not reach the panel", async ({ page }) => {
+  const plain = await openFixture(page, "/");
+  const unstyled = await panelLook(plain.inspector);
+
+  const styled = await openFixture(page, "/react.html");
+
+  expect(await panelLook(styled.inspector)).toEqual(unstyled);
+});
+
+test("the panel's CSS does not reach the host", async ({ page }) => {
+  const { listPage } = await openFixture(page, "/");
+  const heading = page.getByRole("heading", { name: "Groceries" });
+
+  // The browser's defaults, which the Inspector's CSS reset would change.
+  await expect(heading).toHaveCSS("font-size", "32px");
+  await expect(heading).toHaveCSS("font-weight", "700");
+  await expect(listPage.addItemButton).not.toHaveCSS(
+    "background-color",
+    "rgba(0, 0, 0, 0)"
+  );
+});
