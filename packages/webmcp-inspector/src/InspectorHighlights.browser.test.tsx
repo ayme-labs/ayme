@@ -26,6 +26,7 @@ vi.mock("@ayme-dev/webmcp/internal", () => ({
   getPomDefinitionText: vi.fn(() => ""),
   listRegisteredPomTargets: vi.fn(),
   listRegisteredPomTools: vi.fn(() => []),
+  runTool: vi.fn(),
   listRegisteredPoms: vi.fn(),
   subscribeToRegisteredPoms: vi.fn(() => () => true),
 }));

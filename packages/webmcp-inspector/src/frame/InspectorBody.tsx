@@ -43,12 +43,19 @@ export function DetailPane({ children }: { children: ReactNode }) {
   );
 }
 
-/** The Runs region. Ticket D fills it with the timeline. */
-export function RunsRegion({ children }: { children: ReactNode }) {
+/** The Runs region. Collapsed, it keeps only the timeline's header. */
+export function RunsRegion({
+  collapsed = false,
+  children,
+}: {
+  collapsed?: boolean;
+  children: ReactNode;
+}) {
   return (
     <section
       aria-label="Runs"
-      className="flex h-[250px] min-h-0 flex-none flex-col overflow-auto border-t bg-background p-3 in-data-[layout=bottom]:h-auto in-data-[layout=bottom]:w-[420px] in-data-[layout=bottom]:border-t-0 in-data-[layout=bottom]:border-l"
+      data-collapsed={collapsed || undefined}
+      className="flex h-[250px] min-h-0 flex-none flex-col border-t bg-background data-collapsed:h-[38px] in-data-[layout=bottom]:h-auto in-data-[layout=bottom]:w-[420px] in-data-[layout=bottom]:border-t-0 in-data-[layout=bottom]:border-l in-data-[layout=bottom]:data-collapsed:w-[150px]"
     >
       {children}
     </section>

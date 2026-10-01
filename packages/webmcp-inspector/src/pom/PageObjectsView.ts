@@ -1,6 +1,6 @@
 import type { Locator } from "@playwright/test";
 
-import { ToolForm } from "./ToolForm";
+import { RunCard } from "./RunCard";
 
 /** A Page Object Model's card: its members and its tools. */
 export class PomClassCard {
@@ -20,8 +20,9 @@ export class PomClassCard {
     return this.member(name).locator("[data-member-state]");
   }
 
-  tool(name: string): ToolForm {
-    return new ToolForm(this.root.locator(`form[data-tool-name="${name}"]`));
+  /** An action's run card, by the action's name, e.g. "addItem". */
+  action(name: string): RunCard {
+    return new RunCard(this.root.getByRole("form", { name, exact: true }));
   }
 }
 
@@ -35,10 +36,5 @@ export class PageObjectsView {
 
   pomClass(name: string): PomClassCard {
     return new PomClassCard(this.root.locator(`[data-pom-class="${name}"]`));
-  }
-
-  /** A tool's form, whichever Page Object Model it belongs to. */
-  tool(name: string): ToolForm {
-    return new ToolForm(this.root.locator(`form[data-tool-name="${name}"]`));
   }
 }
