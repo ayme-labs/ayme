@@ -15,8 +15,8 @@ import {
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "./testing";
 
-// Component tests of the whole panel, with the skeleton's views in the
-// frame, driven through the Inspector POM on playwright-lite. The runtime's
+// Component tests of the whole panel, driven through the Inspector POM on
+// playwright-lite. The runtime's
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its adapter only.
 vi.mock("@ayme-dev/webmcp/internal", () => ({
@@ -70,7 +70,15 @@ function editor(id: string, tool: RegisteredPomTool): RegisteredPom {
       className: "Editor",
       members: [{ memberName: "saveButton", kind: "locator", access: "field" }],
       components: [],
-      tools: [],
+      tools: [
+        {
+          methodName: tool.methodName,
+          toolName: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema,
+          parameters: tool.parameters,
+        },
+      ],
     },
     memberObservations: [
       { memberName: "saveButton", kind: "locator", count: 1 },
@@ -185,6 +193,34 @@ describe("the Inspector", () => {
     await expect
       .poll(() => inspector.runs.latest("Editor.save").status())
       .toBe("Succeeded");
+  });
+
+  it("lists two registrations of one page class apart and runs their tool as the runtime does", async () => {
+    const consoleError = vi.spyOn(console, "error");
+    const first = saveTool("first", vi.fn());
+    const second = saveTool("second", vi.fn());
+    mockRegistry([editor("first", first), editor("second", second)], [second]);
+    vi.mocked(runTool).mockResolvedValue({ saved: true });
+    renderApp();
+
+    await expect
+      .poll(() => inspector.navigator.model.object("Editor").count())
+      .toBe(2);
+    await inspector.navigator.model.object("Editor").last().click();
+    await inspector.detail.runCard("save").run({ copies: 1, title: "Notes" });
+
+    await expect.poll(() => runTool).toHaveBeenCalledOnce();
+    expect(runTool).toHaveBeenCalledWith("Editor.save", {
+      mode: "draft",
+      copies: 1,
+      title: "Notes",
+    });
+    expect(
+      consoleError.mock.calls.filter(([message]) =>
+        String(message).includes("same key")
+      )
+    ).toEqual([]);
+    consoleError.mockRestore();
   });
 
   it("runs a tool the way an agent's call runs and shows its failure", async () => {

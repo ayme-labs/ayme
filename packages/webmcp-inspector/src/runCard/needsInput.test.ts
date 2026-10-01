@@ -51,3 +51,32 @@ it("needs input when a collection action on its item has a required argument", (
     )
   ).toBe(true);
 });
+
+it("runs at once when the view gives every required argument", () => {
+  const click = {
+    argumentsSchema: {
+      type: "object",
+      properties: { ref: { type: "string" } },
+      required: ["ref"],
+    },
+  } as const;
+
+  expect(needsInput(click, { itemGiven: false })).toBe(true);
+  expect(needsInput(click, { itemGiven: false, givenArguments: ["ref"] })).toBe(
+    false
+  );
+});
+
+it("needs input when the view gives the ref but another argument is required", () => {
+  const fill = {
+    argumentsSchema: {
+      type: "object",
+      properties: { ref: { type: "string" }, value: { type: "string" } },
+      required: ["ref", "value"],
+    },
+  } as const;
+
+  expect(needsInput(fill, { itemGiven: false, givenArguments: ["ref"] })).toBe(
+    true
+  );
+});

@@ -82,6 +82,8 @@ const groceries: StructureTree = {
           role: "list",
           name: "Items",
           members: [],
+          pageStateLines: ['- e5 list "Items" [cursor=pointer]:'],
+          childCount: 1,
           children: [
             {
               ref: "e6",
@@ -109,7 +111,7 @@ const groceries: StructureTree = {
   ],
 };
 
-// Stands in for the Model lens (ticket E): it shows the fixture page's Page
+// Stands in for the Model lens: it shows the fixture page's Page
 // Object instances and models, and nothing else.
 const pageObjectsLens: Lens = {
   id: "model",
@@ -129,9 +131,18 @@ const pageObjectsLens: Lens = {
 const nothingToShow = "Nothing to show for this selection.";
 
 // Which refs each Ref tool can take: fill only the text field.
+const refSchema = {
+  type: "object",
+  properties: { ref: { type: "string" } },
+  required: ["ref"],
+};
 const refTools = [
-  { name: "click_page_state_ref", refs: ["e3", "e4", "e6"] },
-  { name: "fill_page_state_ref", refs: ["e3"] },
+  {
+    name: "click_page_state_ref",
+    inputSchema: refSchema,
+    refs: ["e3", "e4", "e6"],
+  },
+  { name: "fill_page_state_ref", inputSchema: refSchema, refs: ["e3"] },
 ];
 
 function renderLens({
@@ -295,6 +306,28 @@ it("offers no tools on a node no Ref tool can take", async () => {
     .poll(() => node.title.textContent())
     .toBe('e2 heading "Groceries"');
   expect(await node.tools.count()).toBe(0);
+});
+
+it("shows what the model sees of a node: its line with its states, its children only as a count", async () => {
+  renderLens({ initialSelection: { kind: "node", ref: "e5" } });
+
+  await node.modelSees.open();
+
+  expect(await node.modelSees.pageState.textContent()).toBe(
+    '- e5 list "Items" [cursor=pointer]:'
+  );
+  expect(await node.modelSees.childCount.textContent()).toBe("1 child");
+});
+
+it("shows the schemas of the Ref tools a node offers in what the model sees", async () => {
+  renderLens({ initialSelection: { kind: "node", ref: "e4" } });
+
+  await node.modelSees.open();
+
+  expect(await node.modelSees.schemaValue("click_page_state_ref")).toEqual(
+    refSchema
+  );
+  expect(await node.modelSees.schema("fill_page_state_ref").count()).toBe(0);
 });
 
 it("finds refs in search and shows the one picked", async () => {

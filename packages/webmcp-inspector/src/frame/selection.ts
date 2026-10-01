@@ -16,11 +16,7 @@ export type Selection =
   | { kind: "model"; className: string }
   /** A node of the page's structure, by ref. */
   | { kind: "node"; ref: string }
-  /** A published tool, by name. */
+  /** A live tool, by name. */
   | { kind: "tool"; name: string };
 
 export const pageSelection: Selection = { kind: "page" };
-
-export function sameSelection(a: Selection, b: Selection) {
-  return JSON.stringify(a) === JSON.stringify(b);
-}

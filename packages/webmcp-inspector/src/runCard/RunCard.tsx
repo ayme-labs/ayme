@@ -40,6 +40,11 @@ export type RunCardProps = {
   item?: CollectionItem;
   /** For a collection action without an item: the items to pick from. */
   items?: readonly CollectionItem[];
+  /**
+   * The Structural Ref the view runs the tool on, e.g. a structure node's:
+   * it fills the tool's `ref` argument.
+   */
+  structuralRef?: string;
   /** Where a ref argument chooses its ref from: the page's structure. */
   refSource?: RefSource;
   /** This tool's runs, newest first. */
@@ -63,6 +68,7 @@ export function RunCard({
   head = true,
   item,
   items = [],
+  structuralRef,
   refSource,
   runs,
   onRun,
@@ -73,9 +79,12 @@ export function RunCard({
     () => fieldsOf(tool.argumentsSchema),
     [tool.argumentsSchema]
   );
-  const [args, setArgs] = useState(() =>
-    initialArguments(tool.argumentsSchema)
-  );
+  const refGiven =
+    structuralRef !== undefined && fields.some((field) => field.kind === "ref");
+  const [args, setArgs] = useState(() => {
+    const initial = initialArguments(tool.argumentsSchema);
+    return refGiven ? withArgument(initial, ["ref"], structuralRef) : initial;
+  });
   const [json, setJson] = useState<{ text?: string; error?: string }>();
   const [open, setOpen] = useState(false);
   const [pickedPath, setPickedPath] = useState<string>();
@@ -89,7 +98,10 @@ export function RunCard({
     items[0];
   const canOpen = fields.length > 0 || picking;
   const showBody = available && (!head || open);
-  const needs = needsInput(tool, { itemGiven: item !== undefined });
+  const needs = needsInput(tool, {
+    itemGiven: item !== undefined,
+    givenArguments: refGiven ? ["ref"] : [],
+  });
 
   const cardRuns = collection
     ? runs.filter((run) => run.item?.path === target?.path)
@@ -132,7 +144,7 @@ export function RunCard({
       <span className="font-mono text-[12.5px] font-semibold">
         {tool.action}
       </span>
-      <span className="min-w-0 truncate font-mono text-muted-foreground">
+      <span className="w-0 min-w-0 flex-1 truncate font-mono text-muted-foreground">
         {signatureOf(tool.argumentsSchema)}
       </span>
     </>

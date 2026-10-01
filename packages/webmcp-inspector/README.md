@@ -1,9 +1,12 @@
 # @ayme-dev/webmcp-inspector
 
-Browser Inspector for Ayme Page Object Models. It shows the live POM classes
-and their member states, a run card for each tool, the runs made from the
-panel with their steps, and the structural page state a model sees, in an
-isolated closed Shadow Root.
+Browser Inspector for Ayme Page Object Models, in an isolated closed Shadow
+Root. Its navigator has three lenses: Model (the Page Objects on the page and
+the Page Object Models it knows, with their member states), Structure (the
+Structural Page State a model sees, each node tagged with its member) and
+Tools (every published tool). Every detail runs its tools through one run
+card; a tool's page and a structure node's detail also show what the model
+sees of them. Runs lists the runs made from the panel with their steps.
 
 The panel floats, or docks to the left, the right or the bottom of the page,
 and collapses to the ayme logo. It remembers its layout, sizes, positions and
