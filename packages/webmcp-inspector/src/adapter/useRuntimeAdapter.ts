@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import type { RegisteredPomTool } from "@ayme-dev/webmcp";
 import { getPomDefinitionText } from "@ayme-dev/webmcp/internal";
 
-import { listPomClasses } from "../pomModel";
+import { buildPageModel } from "./pageModel";
 import { useLiveTools } from "./liveTools";
 import { listRunnableTools } from "./runnableTools";
 import { useInspector } from "./useInspector";
@@ -21,7 +21,7 @@ export function useRuntimeAdapter({
   structureVisible?: boolean;
 } = {}) {
   const inspector = useInspector({ structureVisible });
-  const { registeredPoms, refreshPageState } = inspector;
+  const { registeredPoms, pomDefinitions, refreshPageState } = inspector;
   const onRunSettled = useCallback(
     () => refreshPageState(),
     [refreshPageState]
@@ -29,9 +29,14 @@ export function useRuntimeAdapter({
   const { runs, invoke, clear } = useRuns({ onSettled: onRunSettled });
   const tools = useLiveTools();
 
-  const pomClasses = useMemo(
-    () => listPomClasses(registeredPoms),
-    [registeredPoms]
+  const pageModel = useMemo(
+    () =>
+      buildPageModel(
+        registeredPoms,
+        new Set(tools.live.map((tool) => tool.name)),
+        pomDefinitions
+      ),
+    [registeredPoms, tools.live, pomDefinitions]
   );
   const registeredTools = useMemo(
     () => listRegisteredTools(registeredPoms),
@@ -45,7 +50,8 @@ export function useRuntimeAdapter({
   return {
     /** The page's name for the header badge: its page Page Object's class. */
     pageName: registeredPoms[0]?.manifest.className,
-    pomClasses,
+    /** The Page Objects on the page and the Page Object Models it knows. */
+    pageModel,
     /**
      * The tools the panel can run now: `tools.live`, every live tool in
      * publication order, published or not;

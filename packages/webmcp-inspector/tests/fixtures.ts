@@ -8,9 +8,11 @@ export { expect } from "@playwright/test";
 
 /**
  * A fixture page: the list app with its Page Object, the runtime and the
- * Inspector. "/unpublished.html" is the list app with WebMCP publication off.
+ * Inspector. "/models.html" has other Page Objects; "/unpublished.html" is
+ * the list app with WebMCP publication off.
  */
-export type FixturePage = "/" | "/react.html" | "/unpublished.html";
+export type FixturePage =
+  "/" | "/react.html" | "/models.html" | "/unpublished.html";
 
 /**
  * Opens a fixture page and fails with its own message, before any test

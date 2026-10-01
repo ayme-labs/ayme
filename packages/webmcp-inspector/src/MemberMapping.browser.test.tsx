@@ -15,6 +15,7 @@ import { Inspector } from "./testing";
 // registry lists first. The runtime is replaced by fixture targets and a
 // peek of the host page, so the evidence covers the panel and its adapter.
 vi.mock("@ayme-dev/webmcp/internal", () => ({
+  getPomDefinitions: vi.fn(() => ({ definitions: [] })),
   peekPageStateForDocument: vi.fn(),
   listRefToolTargets: vi.fn(async () => new Map()),
   listLiveTools: vi.fn().mockReturnValue([]),

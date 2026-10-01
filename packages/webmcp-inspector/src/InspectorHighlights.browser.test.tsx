@@ -18,6 +18,7 @@ import { Inspector } from "./testing";
 // carry their refs in the peeked page state, so the evidence covers the
 // panel and its adapter only.
 vi.mock("@ayme-dev/webmcp/internal", () => ({
+  getPomDefinitions: vi.fn(() => ({ definitions: [] })),
   peekPageStateForDocument: vi.fn(),
   listRefToolTargets: vi.fn(async () => new Map()),
   listLiveTools: vi.fn().mockReturnValue([]),
@@ -127,10 +128,12 @@ function highlights() {
   );
 }
 
-const card = inspector.detail.pageObjects.pomClass("Editor");
+const objects = inspector.navigator.model;
+const member = (name: string) => inspector.detail.model.member(name);
 
 it("highlights what the pointer is over, until it leaves", async () => {
-  await card.member("saveButton").hover();
+  await inspector.navigator.search("saveButton");
+  await inspector.navigator.result("Editor.saveButton").hover();
 
   await expect
     .poll(highlights)
@@ -142,7 +145,8 @@ it("highlights what the pointer is over, until it leaves", async () => {
 });
 
 it("highlights the selection, and moves the highlight with it", async () => {
-  await inspector.navigator.item("Editor").click();
+  await objects.object("Editor").click();
+  await inspector.navigator.searchBox.hover();
 
   await expect
     .poll(highlights)
@@ -157,20 +161,21 @@ it("highlights the selection, and moves the highlight with it", async () => {
 });
 
 it("clears the selection's highlight when nothing on the page is selected", async () => {
-  await inspector.navigator.item("Editor").click();
+  await objects.object("Editor").click();
+  await inspector.navigator.searchBox.hover();
   await expect
     .poll(highlights)
     .toEqual({ e1: "selection", e2: "none", e3: "none" });
 
-  await inspector.navigator.item("/ localhost:" + location.port).click();
+  await objects.object("Page /").click();
 
   await expect.poll(highlights).toEqual({ e1: "none", e2: "none", e3: "none" });
 });
 
 it("shows both highlights at once", async () => {
-  await inspector.navigator.item("Editor").click();
+  await objects.object("Editor").click();
 
-  await card.member("saveButton").hover();
+  await member("saveButton").hover();
 
   await expect
     .poll(highlights)
