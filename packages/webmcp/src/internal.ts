@@ -1,10 +1,24 @@
 export {
   capturePageState,
   getPageStateForElements,
+  peekPageStateForDocument,
   resolvePageStateRef,
 } from "./pageState";
-export { getPageContextForDocument, getPageContextTool } from "./pageContext";
+export type { PageStateCapture, PageStatePeek } from "./pageState";
+export {
+  getPageContextForDocument,
+  getPageContextTool,
+  getPomDefinitionText,
+} from "./pageContext";
 export { getPomDefinitions } from "./pomDefinitions";
+export {
+  getPublicationStatus,
+  listLiveTools,
+  listPublishedTools,
+  listRefToolTargets,
+  subscribeToPublishedTools,
+} from "./publishedTools";
+export type { PublishedToolGroup, PublishedToolInfo } from "./publishedTools";
 export {
   configureAymeRuntime,
   createAymeRuntime,
@@ -22,7 +36,7 @@ export type {
   RegisteredPom,
   RegisteredPomTarget,
 } from "./registry";
-export { synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
+export { runTool, synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
 export type { WebMcpDriver, WebMcpRegistration } from "./webMcp";
 // The runtime session and its types are public (ADR-0025); this entry keeps
 // the framework packages' server page objects, the plugin's registration and

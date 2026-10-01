@@ -1,9 +1,18 @@
-import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import {
+  AriaRefSchema,
+  type StructuralNode,
+  type StructuralTree,
+} from "@ayme-dev/core/structural-observation";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import { runAction, type ActionResult } from "./actionSequence";
 import type { JsonSchema, JsonValue } from "./contracts";
 import type { Caller } from "./interactionHistory";
-import { resolvePageStateRefs, type AriaRef, type AymeNode } from "./pageState";
+import {
+  resolvePageStateRefs,
+  type AriaRef,
+  type AymeNode,
+  type PageStateCapture,
+} from "./pageState";
 import { requireAymeRuntimePage } from "./registry";
 import {
   RefResolutionError,
@@ -322,4 +331,36 @@ const BUILT_IN_REF_TOOLS: readonly RegisteredRefTool[] = [
 /** Package-internal: the built-in and registered Ref Tools, in publication order. */
 export function listRefTools(): readonly RegisteredRefTool[] {
   return [...BUILT_IN_REF_TOOLS, ...(refToolStore.registered ?? [])];
+}
+
+/**
+ * The closed set a Ref Tool's ref comes from (ADR-0023): every node of the
+ * capture, in tree order, whose element the tool's filter keeps. The Goal Loop
+ * offers these as options; the Inspector shows them as the tool's targets.
+ */
+export function acceptedRefNodes(
+  filter: (element: Element) => boolean,
+  capture: PageStateCapture
+): StructuralNode[] {
+  const nodes: StructuralNode[] = [];
+  for (const node of walkNodes(capture.tree)) {
+    // Synthetic refs are observation-only: a Ref Tool rejects them.
+    if (node.ref.startsWith("s_")) continue;
+    const element = capture.elementsByRef.get(node.ref);
+    if (!element || !filter(element)) continue;
+    nodes.push(node);
+  }
+  return nodes;
+}
+
+function* walkNodes(tree: StructuralTree): Generator<StructuralNode> {
+  const pending = [...tree.getRootNodes()].reverse();
+  while (pending.length > 0) {
+    const node = pending.pop()!;
+    yield node;
+    for (let index = node.children.length - 1; index >= 0; index--) {
+      const child = node.children[index]!;
+      if (typeof child !== "string") pending.push(child);
+    }
+  }
 }
