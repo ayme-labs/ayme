@@ -30,3 +30,20 @@
   position: fixed !important;
   z-index: 9 !important;
 }
+
+/*
+ * The syntax highlighter's colours (sugar-high reads --sh-*), from the
+ * design system's tokens. They sit on the themed root, so they follow its
+ * light or dark theme and stay inside the shadow root.
+ */
+[data-ayme-inspector-root] {
+  --sh-class: var(--chart-3);
+  --sh-identifier: var(--foreground);
+  --sh-sign: var(--muted-foreground);
+  --sh-property: var(--chart-2);
+  --sh-entity: var(--chart-3);
+  --sh-jsxliterals: var(--chart-1);
+  --sh-string: var(--success);
+  --sh-keyword: var(--primary);
+  --sh-comment: var(--muted-foreground);
+}

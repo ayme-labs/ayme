@@ -1,0 +1,77 @@
+/** Where a tool comes from, as the runtime groups it. */
+export type ToolGroup = "pageObject" | "ref" | "agent";
+
+/**
+ * A live tool: one the panel can run now, because its Page Object or
+ * element is on the page. Published to WebMCP or not.
+ */
+export type LiveTool = {
+  name: string;
+  description: string;
+  inputSchema: unknown;
+  group: ToolGroup;
+  /** For a Page object tool: the Page Object Model whose action it is. */
+  pomClassName?: string;
+};
+
+/** The Inspector's label for each group. They are UI labels, not glossary terms. */
+export const toolGroupLabels: Record<ToolGroup, string> = {
+  pageObject: "Page object tools",
+  ref: "Ref tools",
+  agent: "Agent tools",
+};
+
+/** What one tool of each group is called on its page. */
+export const toolKindLabels: Record<ToolGroup, string> = {
+  pageObject: "Page object tool",
+  ref: "Ref tool",
+  agent: "Agent tool",
+};
+
+const groupOrder: readonly ToolGroup[] = ["pageObject", "ref", "agent"];
+
+/** One group of the Tools lens. */
+export type ToolGroupListing = {
+  group: ToolGroup;
+  label: string;
+  tools: LiveTool[];
+};
+
+/**
+ * The live tools, grouped in a fixed order and keeping the runtime's order
+ * within a group. A group without tools is left out.
+ */
+export function listTools(tools: readonly LiveTool[]): ToolGroupListing[] {
+  return groupOrder
+    .map((group) => ({
+      group,
+      label: toolGroupLabels[group],
+      tools: tools.filter((tool) => tool.group === group),
+    }))
+    .filter(({ tools }) => tools.length > 0);
+}
+
+/** A Page Object Model and the tools its actions publish as. */
+export type ToolModel = {
+  className: string;
+  tools: readonly { name: string }[];
+};
+
+/**
+ * Adds to each Page object tool the Page Object Model whose action it is.
+ * The first model that lists a tool's name owns it.
+ */
+export function attachToolModels(
+  tools: readonly Omit<LiveTool, "pomClassName">[],
+  models: readonly ToolModel[]
+): LiveTool[] {
+  const modelByTool = new Map<string, string>();
+  for (const model of models)
+    for (const { name } of model.tools)
+      if (!modelByTool.has(name)) modelByTool.set(name, model.className);
+  return tools.map((tool) => {
+    const pomClassName =
+      tool.group === "pageObject" ? modelByTool.get(tool.name) : undefined;
+    return pomClassName ? { ...tool, pomClassName } : { ...tool };
+  });
+}
