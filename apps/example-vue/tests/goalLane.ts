@@ -1,9 +1,13 @@
-import { test, type Locator, type Page } from "@playwright/test";
+import { selectors, test, type Locator, type Page } from "@playwright/test";
 
 import {
   recordPublishedTools,
   type RecordingDriver,
 } from "@ayme-dev/ayme/testing";
+import {
+  Inspector,
+  registerInspectorSelectors,
+} from "@ayme-dev/inspector/testing";
 
 import { readModelKey } from "../scripts/appEnvironment";
 import { recordGoalRun } from "./goalRunRecord";
@@ -14,7 +18,8 @@ export type Handover = { reason: string; changes?: string };
 /**
  * Skip the calling spec file without a model key: the same key the dev
  * server's Decision Endpoint reads, since anyone running a goal brings their
- * own. Otherwise record the published tools, so `pursueGoal` can call one.
+ * own. Otherwise record the published tools, so `pursueGoal` can call one,
+ * and register the selector engine `openWithInspectorCollapsed` needs.
  */
 export function useGoalLane(lane: string) {
   const skipReason = `${lane} skipped: set AYME_OPENROUTER_API_KEY to your own model key to run it.`;
@@ -22,7 +27,18 @@ export function useGoalLane(lane: string) {
   // The list reporter prints no skip reason, so say it once before the run.
   if (!modelKey) console.log(`\n${skipReason}\n`);
   test.skip(!modelKey, skipReason);
+  test.beforeAll(() => registerInspectorSelectors(selectors));
   test.beforeEach(({ context }) => recordPublishedTools(context));
+}
+
+/**
+ * Opens the playground with the Inspector collapsed. The panel paints above
+ * the page's own UI, so at its default place it covers the archive dialog's
+ * confirm button (#272). Needs `registerInspectorSelectors` first.
+ */
+export async function openWithInspectorCollapsed(page: Page) {
+  await page.goto("/");
+  await new Inspector(page).collapse();
 }
 
 export function activeItems(page: Page) {

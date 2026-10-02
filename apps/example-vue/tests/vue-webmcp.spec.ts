@@ -13,6 +13,8 @@ import {
   type RecordingDriver,
 } from "@ayme-dev/ayme/testing";
 
+import { openWithInspectorCollapsed } from "./goalLane";
+
 type ListActions = {
   addItem(text: string): Promise<void>;
   archiveItem(index: number): Promise<void>;
@@ -78,16 +80,6 @@ const initialToolNames = [
 // through this selector engine.
 test.beforeAll(() => registerInspectorSelectors(selectors));
 test.beforeEach(({ context }) => recordPublishedTools(context));
-
-/**
- * Opens the playground with the Inspector collapsed. The panel paints above
- * the page's own UI, so at its default place it covers the archive dialog's
- * confirm button (#272).
- */
-async function openWithInspectorCollapsed(page: Page) {
-  await page.goto("/");
-  await new Inspector(page).collapse();
-}
 
 async function runListActions(
   page: Page,
