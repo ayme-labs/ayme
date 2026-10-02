@@ -48,7 +48,7 @@ function ownRuntime(options: UseAymeOptions | undefined): UseAymeResult {
   const { webMCP } = ayme;
   return {
     ayme,
-    webMCP: Object.freeze({
+    webMCP: {
       // `subscribe` does not call its listener immediately, so each start
       // reads the current status before listening.
       publicationStatus: readable(webMCP.publicationStatus, (set) => {
@@ -56,7 +56,7 @@ function ownRuntime(options: UseAymeOptions | undefined): UseAymeResult {
         return webMCP.subscribe(() => set(webMCP.publicationStatus));
       }),
       retryPublication: webMCP.retryPublication,
-    }),
+    },
   };
 }
 
