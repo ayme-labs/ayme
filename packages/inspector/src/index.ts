@@ -74,7 +74,9 @@ export function mountInspector() {
     highlightStyle.dataset.aymeInspectorHighlightStyle = "";
     highlightStyle.textContent = highlightStyleText;
     document.head.append(highlightStyle);
-    const host = document.createElement("div");
+    // A custom element name, so the page's `div` rules and queries miss the
+    // host. It needs no registration to host a shadow root.
+    const host = document.createElement("ayme-inspector");
     host.dataset.aymeInspectorHost = "";
     host.style.pointerEvents = "none";
     // Closed, so the host page's locators and page-state capture never match

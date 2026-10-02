@@ -144,7 +144,7 @@ it("mounts one Inspector in a closed Shadow Root and supports disposal and remou
   expect(
     document.body.querySelectorAll("[data-ayme-inspector-host]")
   ).toHaveLength(1);
-  expect(host?.tagName).toBe("DIV");
+  expect(host?.tagName).toBe("AYME-INSPECTOR");
   // Closed: the host page cannot reach it; tests use the test-only hook.
   expect(host?.shadowRoot).toBeNull();
   expect(inspectorShadowRoot(host!)?.mode).toBe("closed");
