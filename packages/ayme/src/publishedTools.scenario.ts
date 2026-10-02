@@ -24,7 +24,7 @@ import {
   subscribeToPublishedTools,
   type PublishedToolGroup,
 } from "./publishedTools";
-import type { RefTool } from "./refTools";
+import type { CustomTool } from "./refTools";
 import { buildToolOptions, planArguments } from "./goalLoopQuestions";
 import { getPomDefinitionText } from "./pageContext";
 import {
@@ -140,7 +140,7 @@ async function noFittingOperation(
 }
 
 /** An app-registered Ref Tool with its own filter. */
-const highlight: RefTool = {
+const highlight: CustomTool = {
   name: "highlight",
   description: "Highlight an element.",
   filter: (element) => element.matches("[data-highlightable]"),
@@ -187,8 +187,8 @@ export function describePublishedTools(
     } = {}) {
       vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", publish);
       runtime = createRuntimeSession({
-        page: () => createPage({ actionTimeout: 1000 }),
-        refTools: [highlight],
+        pageFactory: () => createPage({ actionTimeout: 1000 }),
+        customTools: [highlight],
         goalLoop: noFittingOperation,
         ...options,
       });
@@ -197,14 +197,14 @@ export function describePublishedTools(
       cleanups.push(stop);
       // Without a driver, the session waits two seconds before giving up.
       await expect
-        .poll(() => runtime.getSnapshot().state, { timeout: 5_000 })
+        .poll(() => runtime.webMCP.publicationStatus.state, { timeout: 5_000 })
         .not.toBe("waiting");
       // Diagnostic: a session meant to publish reached WebMCP, or failed for
       // the reason its test gives, before the Contract runs.
       if (expectedState)
-        expect(runtime.getSnapshot().state).toBe(expectedState);
-      else if (publish && !options.refTools)
-        expect(runtime.getSnapshot().state).toBe("active");
+        expect(runtime.webMCP.publicationStatus.state).toBe(expectedState);
+      else if (publish && !options.customTools)
+        expect(runtime.webMCP.publicationStatus.state).toBe("active");
       return stop;
     }
 
@@ -290,7 +290,7 @@ export function describePublishedTools(
 
     it("lists nothing, and reports the error, when publication fails on a name clash", async () => {
       await startSession({
-        refTools: [{ ...highlight, name: "TodoPage.addTodo" }],
+        customTools: [{ ...highlight, name: "TodoPage.addTodo" }],
       });
 
       expect(getPublicationStatus()).toEqual({

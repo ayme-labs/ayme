@@ -7,7 +7,7 @@ import { synchronizeWebMcpTools } from "./webMcp";
 import {
   isClickableElement,
   isFillableElement,
-  type RefTool,
+  type CustomTool,
 } from "./refTools";
 import { toolFailure } from "./toolFailure.testSupport";
 
@@ -56,8 +56,11 @@ describe("Ref Tools in Chromium", () => {
   });
 
   /** Start a runtime session with the given Ref Tools and publish its tools. */
-  async function publish(refTools?: RefTool[]) {
-    const runtime = createRuntimeSession({ page: () => page, refTools });
+  async function publish(customTools?: CustomTool[]) {
+    const runtime = createRuntimeSession({
+      pageFactory: () => page,
+      customTools,
+    });
     stop = runtime.start();
     return republish();
   }
@@ -89,9 +92,9 @@ describe("Ref Tools in Chromium", () => {
   }
 
   /** A Ref Tool that records the targets it received. */
-  function recordingRefTool(overrides: Partial<RefTool> = {}) {
+  function recordingRefTool(overrides: Partial<CustomTool> = {}) {
     const targets: { ref: string; element: Element }[] = [];
-    const refTool: RefTool = {
+    const refTool: CustomTool = {
       name: "highlight_element",
       description: "Highlight one element on the page.",
       execute: async (target) => {

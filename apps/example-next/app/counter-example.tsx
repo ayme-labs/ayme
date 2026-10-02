@@ -1,11 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  AymeWebMcpProvider,
-  useAymeWebMcp,
-  usePageObject,
-} from "@ayme-dev/react";
+import { AymeProvider, useAyme, usePageObject } from "@ayme-dev/react";
 import { CounterPage } from "../playwright/pom/CounterPage";
 import { SubCounterPage } from "../playwright/pom/SubCounterPage";
 
@@ -26,11 +22,11 @@ function Counter() {
 
 function Demo() {
   const [visible, setVisible] = useState(true);
-  const { publicationStatus } = useAymeWebMcp();
+  const { webMCP } = useAyme();
   return (
     <>
       <p role="status" aria-label="Publication">
-        Publication: {publicationStatus.state}
+        Publication: {webMCP.publicationStatus.state}
       </p>
       <button onClick={() => setVisible((value) => !value)}>
         {visible ? "Unmount counter" : "Mount counter"}
@@ -42,8 +38,8 @@ function Demo() {
 
 export default function CounterExample() {
   return (
-    <AymeWebMcpProvider>
+    <AymeProvider>
       <Demo />
-    </AymeWebMcpProvider>
+    </AymeProvider>
   );
 }

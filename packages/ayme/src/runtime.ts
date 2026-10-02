@@ -7,7 +7,7 @@ import {
 } from "./goalLoop";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
 import { reportPublicationStatus } from "./publishedTools";
-import { configureRefTools, type RefTool } from "./refTools";
+import { configureCustomTools, type CustomTool } from "./refTools";
 import {
   constructPageObject,
   createAymeRuntime,
@@ -29,6 +29,17 @@ export type AymeWebMcpPublicationStatus = Readonly<{
   message: string;
 }>;
 export type AymePage = ConstructorParameters<PageObjectConstructor>[0];
+
+/**
+ * A runtime session's WebMCP publication: its status, a subscription to status
+ * changes, and an explicit retry. The status is `disabled` while publication
+ * is off.
+ */
+export type AymeWebMcp = {
+  readonly publicationStatus: AymeWebMcpPublicationStatus;
+  subscribe(listener: () => void): () => void;
+  retryPublication(): Promise<void>;
+};
 export type { GoalLoopDecisionFunction } from "./goalLoop";
 
 export type AymeRuntimeOptions = {
@@ -36,9 +47,9 @@ export type AymeRuntimeOptions = {
    * Builds the browser Page the session drives. Called at most once, lazily,
    * on the session's first use in the browser; `createPage()` when absent.
    */
-  page?: () => AymePage;
+  pageFactory?: () => AymePage;
   ignore?: (element: Element) => boolean;
-  refTools?: RefTool[];
+  customTools?: CustomTool[];
   goalLoop?: GoalLoopDecisionFunction;
 };
 type PageInstrumentation = (page: AymePage) => AymePage;
@@ -74,14 +85,14 @@ function instrumentPage(page: AymePage) {
 
 /**
  * Create an inert runtime session. Its owner starts activity by calling
- * `start()`. The `page` factory runs once, on first use in the browser; on the
+ * `start()`. `pageFactory` runs once, on first use in the browser; on the
  * server `construct` returns an inert Page Object and `page` throws. `ignore`,
- * `refTools` and `goalLoop` are configured on start and cleared on stop.
+ * `customTools` and `goalLoop` are configured on start and cleared on stop.
  */
 export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
   let resolvedPage: AymePage | undefined;
   const getPage = () =>
-    (resolvedPage ??= instrumentPage((options.page ?? createPage)()));
+    (resolvedPage ??= instrumentPage((options.pageFactory ?? createPage)()));
   const enabled =
     typeof __AYME_WEBMCP_PUBLISH__ !== "undefined" && __AYME_WEBMCP_PUBLISH__;
   const initialStatus: AymeWebMcpPublicationStatus = {
@@ -165,12 +176,26 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
     owner.dispose();
     owner = undefined;
     configurePageStateIgnore(undefined);
-    configureRefTools(undefined);
+    configureCustomTools(undefined);
     configureGoalLoop(undefined);
     setStatus({ state: "disposed", message: "The Ayme runtime was disposed." });
   }
 
+  const webMCP: AymeWebMcp = {
+    get publicationStatus() {
+      return status;
+    },
+    subscribe(listener: () => void) {
+      subscribers.add(listener);
+      return () => {
+        subscribers.delete(listener);
+      };
+    },
+    retryPublication,
+  };
+
   return {
+    webMCP,
     get page() {
       if (typeof window === "undefined")
         throw new RuntimeStateError(
@@ -181,14 +206,6 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
     get goalLoop() {
       return options.goalLoop;
     },
-    getSnapshot: () => status,
-    subscribe(listener: () => void) {
-      subscribers.add(listener);
-      return () => {
-        subscribers.delete(listener);
-      };
-    },
-    retryPublication,
     /**
      * Run the Goal Loop with the session's `goalLoop` and resolve with its
      * Handover. Needs no WebMCP publication and no driver; the published
@@ -241,7 +258,7 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
       // The document's interaction history starts with its first Visit.
       getInteractionHistory(document);
       configurePageStateIgnore(options.ignore);
-      configureRefTools(options.refTools);
+      configureCustomTools(options.customTools);
       configureGoalLoop(options.goalLoop);
       controller = new AbortController();
       try {

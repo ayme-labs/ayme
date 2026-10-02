@@ -60,7 +60,7 @@ export function describeToolFailures(
         <div style="position: fixed; inset: 0"></div>
       `;
       const runtime = createRuntimeSession({
-        page: () => createPage({ actionTimeout: 1000 }),
+        pageFactory: () => createPage({ actionTimeout: 1000 }),
       });
       cleanups.push(runtime.start());
       registerCompiledPom(FailingPage, failingManifest);

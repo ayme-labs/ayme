@@ -1,10 +1,6 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import {
-  AymeWebMcpProvider,
-  useAymeWebMcp,
-  usePageObject,
-} from "@ayme-dev/react";
+import { AymeProvider, useAyme, usePageObject } from "@ayme-dev/react";
 import { CounterPage } from "../playwright/pom/CounterPage";
 import "./style.css";
 
@@ -23,16 +19,18 @@ function Counter() {
 }
 
 function App() {
-  const { publicationStatus, retryPublication } = useAymeWebMcp();
+  const { webMCP } = useAyme();
   const [visible, setVisible] = useState(true);
   return (
     <main>
       <h1>React integration check</h1>
       <p>One Page Object, direct calls, and Page Object Tools.</p>
       <p role="status" aria-label="Publication">
-        Publication: {publicationStatus.state}
+        Publication: {webMCP.publicationStatus.state}
       </p>
-      <button onClick={() => void retryPublication()}>Retry publication</button>
+      <button onClick={() => void webMCP.retryPublication()}>
+        Retry publication
+      </button>
       <button onClick={() => setVisible((value) => !value)}>
         {visible ? "Unmount counter" : "Mount counter"}
       </button>
@@ -43,8 +41,8 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AymeWebMcpProvider>
+    <AymeProvider>
       <App />
-    </AymeWebMcpProvider>
+    </AymeProvider>
   </StrictMode>
 );

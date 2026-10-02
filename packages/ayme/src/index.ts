@@ -6,6 +6,7 @@ export { createRuntimeSession } from "./runtime";
 export type {
   AymePage,
   AymeRuntimeOptions,
+  AymeWebMcp,
   AymeWebMcpPublicationStatus,
   GoalLoopDecisionFunction,
   RuntimeSession,
@@ -25,6 +26,6 @@ export {
 } from "./errors";
 export type { AymeErrorKind } from "./errors";
 export type { ActionResult } from "./actionSequence";
-export type { RefTool } from "./refTools";
+export type { CustomTool } from "./refTools";
 export type { PageContext, PageContextPayload } from "./pageContext";
 export type { AriaRef, AymeNode, PageState, RefResolution } from "./pageState";

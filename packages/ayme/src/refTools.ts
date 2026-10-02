@@ -21,11 +21,11 @@ import {
 } from "./errors";
 
 /**
- * An operation that applies to one Structural Ref. One registration publishes
- * it as a WebMCP Tool for the calling agent and makes it an operation the Goal
- * Loop may choose (ADR-0023).
+ * A Custom Tool: an operation an app registers that applies to one element.
+ * One registration publishes it as a WebMCP Tool for the calling agent and
+ * makes it an operation the Goal Loop may choose (ADR-0023).
  */
-export type RefTool = {
+export type CustomTool = {
   name: string;
   /** The only instruction the model gets about this operation. */
   description: string;
@@ -306,19 +306,19 @@ const refToolStore: RefToolStore = ((
 ).__aymeRefToolStore ??= {});
 
 /** Package-internal: set while a runtime session is active. */
-export function configureRefTools(
-  refTools: readonly RefTool[] | undefined
+export function configureCustomTools(
+  customTools: readonly CustomTool[] | undefined
 ): void {
-  refToolStore.registered = refTools?.map((refTool) =>
+  refToolStore.registered = customTools?.map((customTool) =>
     registerRefTool(
       {
-        name: refTool.name,
-        description: refTool.description,
-        label: `run "${refTool.name}" on`,
+        name: customTool.name,
+        description: customTool.description,
+        label: `run "${customTool.name}" on`,
         inputSchema: REF_INPUT_SCHEMA,
-        run: (target) => refTool.execute(target),
+        run: (target) => customTool.execute(target),
       },
-      refTool.filter ?? (() => true)
+      customTool.filter ?? (() => true)
     )
   );
 }

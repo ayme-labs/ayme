@@ -92,7 +92,7 @@ describe("Handover changes in Chromium", () => {
         action("archive", "Inbox.archive"),
       ])
     );
-    stop = createRuntimeSession({ page: () => page, goalLoop }).start();
+    stop = createRuntimeSession({ pageFactory: () => page, goalLoop }).start();
     createPageRegistration(Inbox);
     const publication = await synchronizeWebMcpTools({
       async registerTool(registered: PublishedTool) {

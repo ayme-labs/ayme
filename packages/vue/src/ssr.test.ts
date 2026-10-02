@@ -4,13 +4,13 @@ import { renderToString } from "@vue/server-renderer";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
 import {
-  AymeWebMcpProvider,
-  useAymeWebMcp,
+  AymeProvider,
+  useAyme,
   usePageObject,
-  type UseAymeWebMcpOptions,
+  type UseAymeOptions,
 } from "./index";
 
-type PageFactory = NonNullable<UseAymeWebMcpOptions["page"]>;
+type PageFactory = NonNullable<UseAymeOptions["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
 
 afterEach(() => vi.unstubAllGlobals());
@@ -38,8 +38,8 @@ describe.each([false, true])("server rendering with publish=%s", (publish) => {
       // SSR must not require compiler-derived browser metadata.
       const Content = defineComponent({
         setup() {
-          const { publicationStatus } = useAymeWebMcp(
-            kind === "standalone" ? { page: pageFactory } : {}
+          const { webMCP } = useAyme(
+            kind === "standalone" ? { pageFactory } : {}
           );
           const model = usePageObject(ServerModel);
           expect(model).toBeInstanceOf(ServerModel);
@@ -47,7 +47,7 @@ describe.each([false, true])("server rendering with publish=%s", (publish) => {
             h(
               "button",
               { onClick: () => model.increment() },
-              publicationStatus.value.state
+              webMCP.publicationStatus.state
             );
         },
       });
@@ -55,11 +55,7 @@ describe.each([false, true])("server rendering with publish=%s", (publish) => {
         setup() {
           return kind === "provider"
             ? () =>
-                h(
-                  AymeWebMcpProvider,
-                  { page: pageFactory },
-                  { default: () => h(Content) }
-                )
+                h(AymeProvider, { pageFactory }, { default: () => h(Content) })
             : () => h(Content);
         },
       });

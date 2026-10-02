@@ -32,7 +32,7 @@ it("instruments a supplied Page before constructing the first Page Object", asyn
     tools: [],
   });
 
-  const runtime = createRuntimeSession({ page: () => suppliedPage });
+  const runtime = createRuntimeSession({ pageFactory: () => suppliedPage });
   const instance = runtime.construct(Model);
   await instance.page
     .getByRole("button", { name: "Run" })
@@ -88,7 +88,7 @@ it("adds Inspector tracing to an existing feedback Page without double instrumen
     tools: [],
   });
 
-  const instance = createRuntimeSession({ page: () => page }).construct(
+  const instance = createRuntimeSession({ pageFactory: () => page }).construct(
     SharedModel
   );
   await instance.page

@@ -11,46 +11,52 @@ import {
 import {
   createRuntimeSession,
   type AymePage,
+  type AymeWebMcp,
+  type CustomTool,
   type GoalLoopDecisionFunction,
-  type RefTool,
   type RuntimeSession,
 } from "@ayme-dev/ayme";
 import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
 
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
-export type AymeWebMcpProviderProps = {
+export type AymeProviderProps = {
   /** Builds the browser Page; called once, in the browser, on first use. */
-  page?: () => AymePage;
+  pageFactory?: () => AymePage;
   children?: ReactNode;
   ignore?: (element: Element) => boolean;
-  refTools?: RefTool[];
+  customTools?: CustomTool[];
   goalLoop?: GoalLoopDecisionFunction;
 };
 const RuntimeContext = createContext<RuntimeSession | undefined>(undefined);
 
-export function AymeWebMcpProvider({
-  page,
+export function AymeProvider({
+  pageFactory,
   ignore,
-  refTools,
+  customTools,
   goalLoop,
   children,
-}: AymeWebMcpProviderProps): ReactElement {
+}: AymeProviderProps): ReactElement {
   const ancestor = useContext(RuntimeContext);
   const [setup] = useState(() => ({
-    page,
+    pageFactory,
     ignore,
-    refTools,
+    customTools,
     goalLoop,
-    runtime: createRuntimeSession({ page, ignore, refTools, goalLoop }),
+    runtime: createRuntimeSession({
+      pageFactory,
+      ignore,
+      customTools,
+      goalLoop,
+    }),
   }));
   if (ancestor)
     throw new Error(
-      "AymeWebMcpProvider cannot be nested beneath another Ayme runtime owner."
+      "AymeProvider cannot be nested beneath another Ayme runtime owner."
     );
   if (
-    page !== setup.page ||
+    pageFactory !== setup.pageFactory ||
     ignore !== setup.ignore ||
-    refTools !== setup.refTools ||
+    customTools !== setup.customTools ||
     goalLoop !== setup.goalLoop
   )
     throw new Error(
@@ -66,19 +72,30 @@ export function AymeWebMcpProvider({
 
 function useRuntime() {
   const runtime = useContext(RuntimeContext);
-  if (!runtime)
-    throw new Error("Ayme hooks require an ancestor AymeWebMcpProvider.");
+  if (!runtime) throw new Error("Ayme hooks require an ancestor AymeProvider.");
   return runtime;
 }
 
-export function useAymeWebMcp() {
+export type UseAymeResult = {
+  /** The runtime session. */
+  ayme: RuntimeSession;
+  /** The session's `webMCP` member, with its status as React state. */
+  webMCP: Pick<AymeWebMcp, "publicationStatus" | "retryPublication">;
+};
+
+export function useAyme(): UseAymeResult {
   const runtime = useRuntime();
+  const { webMCP } = runtime;
+  const readStatus = () => webMCP.publicationStatus;
   const publicationStatus = useSyncExternalStore(
-    runtime.subscribe,
-    runtime.getSnapshot,
-    runtime.getSnapshot
+    webMCP.subscribe,
+    readStatus,
+    readStatus
   );
-  return { publicationStatus, retryPublication: runtime.retryPublication };
+  return {
+    ayme: runtime,
+    webMCP: { publicationStatus, retryPublication: webMCP.retryPublication },
+  };
 }
 
 export function usePageObject<T extends object>(

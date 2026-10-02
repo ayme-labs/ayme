@@ -59,7 +59,7 @@ describe("Interaction history in Chromium", () => {
   });
 
   function startRuntime(goalLoop?: GoalLoopDecisionFunction) {
-    stop = createRuntimeSession({ page: () => page, goalLoop }).start();
+    stop = createRuntimeSession({ pageFactory: () => page, goalLoop }).start();
   }
 
   async function publishTools() {

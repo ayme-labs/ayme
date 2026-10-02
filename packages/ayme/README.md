@@ -82,11 +82,11 @@ Pass `ignore` on the Vue composable or React provider to keep parts of the DOM
 out of the Structural Page State. When the predicate returns `true` for an
 element, that element and everything inside it are dropped from page state
 capture. This affects page state only; it does not change which tools are
-published. Polarity is the opposite of a Ref Tool's `filter`: `ignore` true
+published. Polarity is the opposite of a Custom Tool's `filter`: `ignore` true
 drops, `filter` true keeps.
 
 ```ts
-useAymeWebMcp({
+useAyme({
   ignore: (element) => element.matches("[data-assistant-panel]"),
 });
 ```
@@ -114,8 +114,8 @@ import {
 } from "@ayme-dev/ayme";
 
 const session = createRuntimeSession({
-  page: () => createPage({ actionTimeout: 500 }),
-  refTools: [
+  pageFactory: () => createPage({ actionTimeout: 500 }),
+  customTools: [
     {
       name: "highlight_element",
       description: "Outline one element on the page so the user can see it.",
@@ -135,25 +135,26 @@ stop();
 
 `createRuntimeSession(options?)` takes one options object:
 
-- `page`: a factory for the browser Page the session drives. The session calls
-  it at most once, lazily, on its first use in the browser, and never during
-  server rendering. Without it, the session calls `createPage()`.
-- `ignore`, `refTools` and `goalLoop`: described in their own sections below.
+- `pageFactory`: a factory for the browser Page the session drives. The
+  session calls it at most once, lazily, on its first use in the browser, and
+  never during server rendering. Without it, the session calls `createPage()`.
+- `ignore`, `customTools` and `goalLoop`: described in their own sections below.
   They are configured on `start()` and cleared when the session stops.
 
 `start()` claims the runtime for the current document, one owner at a time,
 and returns the function that stops it. `construct(Model)` and
 `register(Model, instance)` create and register Page Objects. During server
-rendering, `construct(Model)` returns an inert Page Object without calling the
-`page` factory, and reading `session.page` throws. `getSnapshot()`
-and `subscribe()` report the WebMCP publication status and `retryPublication()`
-retries it; publication is a build policy of the Vite plugin, and the session
-works without it. `pursueGoal(goal, { maxSteps })` runs the Goal Loop.
+rendering, `construct(Model)` returns an inert Page Object without calling
+`pageFactory`, and reading `session.page` throws. `session.webMCP` holds the
+WebMCP publication: `publicationStatus` reports its status, `subscribe()`
+reports changes to it, and `retryPublication()` retries it. Publication is a
+build policy of the Vite plugin, and the session works without it.
+`pursueGoal(goal, { maxSteps })` runs the Goal Loop.
 
 ### Browser Page
 
 The runtime session drives one browser Page for the current document. When it
-is given no `page`, it creates the default Page: the `testIdAttribute`,
+is given no `pageFactory`, it creates the default Page: the `testIdAttribute`,
 `actionTimeout` and `navigationTimeout` come from the Playwright settings the
 Vite plugin compiled in.
 
@@ -167,23 +168,24 @@ import { createPage } from "@ayme-dev/ayme";
 const page = () => createPage({ actionTimeout: 500 });
 ```
 
-Pass such a factory as the runtime session's `page` when you want to own page
-construction: without the Vite plugin, with a timeout that differs from your
-build, or wrapped in your own instrumentation. The Vue and React packages keep
-creating the default Page; their `page` option takes the same factory.
+Pass such a factory as the runtime session's `pageFactory` when you want to own
+page construction: without the Vite plugin, with a timeout that differs from
+your build, or wrapped in your own instrumentation. The Vue and React packages
+keep creating the default Page; their `pageFactory` option takes the same
+factory.
 
-## Ref Tools
+## Custom Tools
 
-A **Ref Tool** is an operation that applies to one Structural Ref. Click and
-fill are built in; your app registers its own through `refTools` on the Vue
-composable or React provider. One registration publishes the operation as a
-WebMCP tool for the calling agent and makes it an operation the Goal Loop may
-choose.
+A **Custom Tool** is an operation your app registers that applies to one
+element. Register it through `customTools` on the Vue composable or React
+provider. One registration publishes the operation as a WebMCP tool for the
+calling agent and makes it an operation the Goal Loop may choose. The built-in
+click and fill take the same path.
 
 ```ts
-import type { RefTool } from "@ayme-dev/ayme";
+import type { CustomTool } from "@ayme-dev/ayme";
 
-const highlight: RefTool = {
+const highlight: CustomTool = {
   name: "highlight_element",
   description: "Outline one element on the page so the user can see it.",
   filter: (element) => element.matches("[data-highlightable]"),
@@ -193,7 +195,7 @@ const highlight: RefTool = {
   },
 };
 
-useAymeWebMcp({ refTools: [highlight] });
+useAyme({ customTools: [highlight] });
 ```
 
 - The published tool takes `{ ref }`. Ayme parses the ref, resolves it against
@@ -208,8 +210,10 @@ useAymeWebMcp({ refTools: [highlight] });
   `filter`, every node that has a ref may be offered. Click's built-in filter
   keeps elements that are not disabled and have an interactive role or a
   pointer cursor; fill's keeps elements text can actually be entered into.
-- A Ref Tool whose name is already taken by another published tool is rejected.
-- Ref Tools live for the runtime session: they are unregistered when it ends.
+- A Custom Tool whose name is already taken by another published tool is
+  rejected.
+- Custom Tools live for the runtime session: they are unregistered when it
+  ends.
 
 ## Tool failures
 
@@ -331,7 +335,7 @@ const decide = decisionEndpoint("/api/decisions", {
   credentials: "same-origin",
 });
 
-useAymeWebMcp({
+useAyme({
   goalLoop: decide,
 });
 ```
@@ -354,7 +358,7 @@ WebMCP tool is published only when `goalLoop` is set.
 ```ts
 import { decisionEndpoint } from "@ayme-dev/ayme";
 
-useAymeWebMcp({
+useAyme({
   goalLoop: decisionEndpoint("/api/ayme/decide"),
 });
 ```

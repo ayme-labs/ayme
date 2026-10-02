@@ -22,13 +22,13 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
   };
 });
 import {
-  AymeWebMcpProvider,
-  useAymeWebMcp,
+  AymeProvider,
+  useAyme,
   usePageObject,
-  type AymeWebMcpProviderProps,
+  type AymeProviderProps,
 } from "./index";
 
-type PageFactory = NonNullable<AymeWebMcpProviderProps["page"]>;
+type PageFactory = NonNullable<AymeProviderProps["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
 const page = {} as Page;
 const pageFactory: PageFactory = () => page;
@@ -62,22 +62,22 @@ it("passes the page factory and ignore to the runtime session", async () => {
   await act(() =>
     root().render(
       h(
-        AymeWebMcpProvider,
-        { page: pageFactory, ignore },
+        AymeProvider,
+        { pageFactory, ignore },
         h(() => null)
       )
     )
   );
   expect(createRuntimeSession).toHaveBeenCalledWith({
-    page: pageFactory,
+    pageFactory,
     ignore,
-    refTools: undefined,
+    customTools: undefined,
     goalLoop: undefined,
   });
 });
 
-it("passes refTools to the runtime session", async () => {
-  const refTools = [
+it("passes customTools to the runtime session", async () => {
+  const customTools = [
     {
       name: "highlight_element",
       description: "Highlight one element on the page.",
@@ -87,16 +87,16 @@ it("passes refTools to the runtime session", async () => {
   await act(() =>
     root().render(
       h(
-        AymeWebMcpProvider,
-        { page: pageFactory, refTools },
+        AymeProvider,
+        { pageFactory, customTools },
         h(() => null)
       )
     )
   );
   expect(createRuntimeSession).toHaveBeenCalledWith({
-    page: pageFactory,
+    pageFactory,
     ignore: undefined,
-    refTools,
+    customTools,
     goalLoop: undefined,
   });
 });
@@ -106,16 +106,16 @@ it("passes goalLoop to the runtime session", async () => {
   await act(() =>
     root().render(
       h(
-        AymeWebMcpProvider,
-        { page: pageFactory, goalLoop },
+        AymeProvider,
+        { pageFactory, goalLoop },
         h(() => null)
       )
     )
   );
   expect(createRuntimeSession).toHaveBeenCalledWith({
-    page: pageFactory,
+    pageFactory,
     ignore: undefined,
-    refTools: undefined,
+    customTools: undefined,
     goalLoop,
   });
 });
@@ -140,16 +140,16 @@ it("server-renders without constructing or registering a Page Object or calling 
   });
   function Child() {
     const model = usePageObject(ServerModel);
-    const { publicationStatus } = useAymeWebMcp();
+    const { webMCP } = useAyme();
     return h(
       "button",
       { onClick: () => model.increment() },
-      publicationStatus.state
+      webMCP.publicationStatus.state
     );
   }
 
   expect(
-    renderToString(h(AymeWebMcpProvider, { page: factory }, h(Child)))
+    renderToString(h(AymeProvider, { pageFactory: factory }, h(Child)))
   ).toContain(">disabled</button>");
   expect(constructions).toBe(0);
   expect(factory).not.toHaveBeenCalled();
@@ -174,7 +174,7 @@ it("retains a custom-page instance through StrictMode replay and rerenders, then
     h(
       StrictMode,
       null,
-      h(AymeWebMcpProvider, { page: factory }, h(Child, { key }))
+      h(AymeProvider, { pageFactory: factory }, h(Child, { key }))
     );
   await act(() => app.render(render("first")));
   expect(current?.page).toBe(page);
@@ -207,7 +207,7 @@ it("does not register or claim ownership for an abandoned suspended render", asy
       h(
         Suspense,
         { fallback: null },
-        h(AymeWebMcpProvider, { page: pageFactory }, h(Suspended))
+        h(AymeProvider, { pageFactory }, h(Suspended))
       )
     )
   );
@@ -216,9 +216,7 @@ it("does not register or claim ownership for an abandoned suspended render", asy
     usePageObject(Model);
     return null;
   }
-  await act(() =>
-    app.render(h(AymeWebMcpProvider, { page: pageFactory }, h(Ready)))
-  );
+  await act(() => app.render(h(AymeProvider, { pageFactory }, h(Ready))));
   expect(listRegisteredPoms()).toHaveLength(1);
 });
 
@@ -233,12 +231,12 @@ it("renders live publication state and retries without replacing the Page Object
   let retry: (() => Promise<void>) | undefined;
   function Child() {
     current = usePageObject(Model);
-    const runtime = useAymeWebMcp();
-    states.push(runtime.publicationStatus.state);
-    retry = runtime.retryPublication;
+    const { webMCP } = useAyme();
+    states.push(webMCP.publicationStatus.state);
+    retry = webMCP.retryPublication;
     return null;
   }
-  await act(() => root().render(h(AymeWebMcpProvider, null, h(Child))));
+  await act(() => root().render(h(AymeProvider, null, h(Child))));
   expect(typeof current?.page.getByRole).toBe("function");
   expect(states).toContain("waiting");
   expect(states.at(-1)).toBe("active");
@@ -249,13 +247,34 @@ it("renders live publication state and retries without replacing the Page Object
   expect(current).toBe(previous);
 });
 
+it("returns the session as ayme, so a goal runs through it, and its webMCP member", async () => {
+  const goalLoop = vi.fn(async () => {
+    throw new Error("No decision.");
+  });
+  let result: ReturnType<typeof useAyme> | undefined;
+  function Child() {
+    result = useAyme();
+    return null;
+  }
+  await act(() =>
+    root().render(h(AymeProvider, { pageFactory, goalLoop }, h(Child)))
+  );
+  const ayme = result!.ayme;
+  expect(ayme).toBe(vi.mocked(createRuntimeSession).mock.results[0]?.value);
+  expect(result!.webMCP.publicationStatus).toBe(ayme.webMCP.publicationStatus);
+  expect(result!.webMCP.retryPublication).toBe(ayme.webMCP.retryPublication);
+  const handover = await ayme.pursueGoal("Save the form", { maxSteps: 1 });
+  expect(goalLoop).toHaveBeenCalledOnce();
+  expect(handover.reason).toBe("decide_failed");
+});
+
 it("requires an ancestor provider", async () => {
   function Child() {
-    useAymeWebMcp();
+    useAyme();
     return null;
   }
   await expect(act(async () => root().render(h(Child)))).rejects.toThrow(
-    "ancestor AymeWebMcpProvider"
+    "ancestor AymeProvider"
   );
 });
 
@@ -263,11 +282,7 @@ it("rejects nested owners", async () => {
   await expect(
     act(async () =>
       root().render(
-        h(
-          AymeWebMcpProvider,
-          { page: pageFactory },
-          h(AymeWebMcpProvider, { page: pageFactory })
-        )
+        h(AymeProvider, { pageFactory }, h(AymeProvider, { pageFactory }))
       )
     )
   ).rejects.toThrow("cannot be nested");
@@ -275,10 +290,10 @@ it("rejects nested owners", async () => {
 
 it("rejects changing a mounted provider's page factory", async () => {
   const app = root();
-  await act(() => app.render(h(AymeWebMcpProvider, { page: pageFactory })));
+  await act(() => app.render(h(AymeProvider, { pageFactory })));
   await expect(
     act(async () =>
-      app.render(h(AymeWebMcpProvider, { page: () => ({}) as Page }))
+      app.render(h(AymeProvider, { pageFactory: () => ({}) as Page }))
     )
   ).rejects.toThrow("provider options must stay fixed");
 });
@@ -290,18 +305,12 @@ it("requires remounting to change the model class", async () => {
   }
   const app = root();
   await act(() =>
-    app.render(
-      h(AymeWebMcpProvider, { page: pageFactory }, h(Child, { model: Model }))
-    )
+    app.render(h(AymeProvider, { pageFactory }, h(Child, { model: Model })))
   );
   await expect(
     act(async () =>
       app.render(
-        h(
-          AymeWebMcpProvider,
-          { page: pageFactory },
-          h(Child, { model: OtherModel })
-        )
+        h(AymeProvider, { pageFactory }, h(Child, { model: OtherModel }))
       )
     )
   ).rejects.toThrow("model and provider must stay fixed");

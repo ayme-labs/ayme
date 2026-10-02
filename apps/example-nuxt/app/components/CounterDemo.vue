@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useAymeWebMcp } from "@ayme-dev/vue";
+import { useAyme } from "@ayme-dev/vue";
 import Counter from "./Counter.vue";
 
 const visible = ref(true);
-const { publicationStatus } = useAymeWebMcp();
+const { webMCP } = useAyme();
 </script>
 
 <template>
   <p role="status" aria-label="Publication">
-    Publication: {{ publicationStatus.state }}
+    Publication: {{ webMCP.publicationStatus.state }}
   </p>
   <button @click="visible = !visible">
     {{ visible ? "Unmount counter" : "Mount counter" }}

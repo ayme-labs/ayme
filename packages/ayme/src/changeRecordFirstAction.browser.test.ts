@@ -45,7 +45,7 @@ describe("Change Record of the first action in Chromium", () => {
     }
     registerCompiledPom(App, manifest);
 
-    const runtime = createRuntimeSession({ page: () => page });
+    const runtime = createRuntimeSession({ pageFactory: () => page });
     stop = runtime.start();
     createPageRegistration(App);
 

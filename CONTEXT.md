@@ -40,8 +40,8 @@ Whether a rooted Page Object can be associated with rendered UI in the current l
 **Page Object Availability**:
 Whether a live Page Object is currently available for interaction through its root in the user-facing page. Rooted Page Objects must be present to be available. Page Objects without a root retain registration-driven availability. DOM presence alone does not imply either structural presence or availability.
 
-**Ref Tool**:
-An operation that applies to one Structural Ref. Click and fill are built in; an app may register its own. One registration makes it a WebMCP Tool and an operation the Goal Loop may choose.
+**Custom Tool**:
+An operation an app registers that applies to one element. One registration makes it a published tool and an operation the Goal Loop may choose.
 
 **Settled Page**:
 A page that has shown no activity for a quiet window after an action. A wait for it is bounded by a deadline and reports whether the page became stable.

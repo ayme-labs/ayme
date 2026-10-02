@@ -5,8 +5,8 @@ import {
   inject,
   onScopeDispose,
   provide,
-  readonly,
-  shallowRef,
+  shallowReactive,
+  shallowReadonly,
   watch,
   type InjectionKey,
   type PropType,
@@ -14,8 +14,9 @@ import {
 import {
   createRuntimeSession,
   type AymePage,
+  type AymeWebMcp,
+  type CustomTool,
   type GoalLoopDecisionFunction,
-  type RefTool,
   type RuntimeSession,
 } from "@ayme-dev/ayme";
 import {
@@ -25,11 +26,11 @@ import {
 } from "@ayme-dev/ayme/internal";
 
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
-export type UseAymeWebMcpOptions = {
+export type UseAymeOptions = {
   /** Builds the browser Page; called once, in the browser, on first use. */
-  page?: () => AymePage;
+  pageFactory?: () => AymePage;
   ignore?: (element: Element) => boolean;
-  refTools?: RefTool[];
+  customTools?: CustomTool[];
   goalLoop?: GoalLoopDecisionFunction;
 };
 const runtimeKey: InjectionKey<RuntimeSession> = Symbol("Ayme runtime");
@@ -38,11 +39,11 @@ function inheritedRuntime() {
   return getCurrentInstance() ? inject(runtimeKey, undefined) : undefined;
 }
 
-function ownRuntime(options: UseAymeWebMcpOptions = {}) {
+function ownRuntime(options: UseAymeOptions = {}) {
   const runtime = createRuntimeSession({
-    page: options.page,
+    pageFactory: options.pageFactory,
     ignore: options.ignore,
-    refTools: options.refTools,
+    customTools: options.customTools,
     goalLoop: options.goalLoop,
   });
   if (typeof window !== "undefined") {
@@ -53,27 +54,37 @@ function ownRuntime(options: UseAymeWebMcpOptions = {}) {
   return runtime;
 }
 
-function consumeRuntime(runtime: RuntimeSession) {
-  const publicationStatus = shallowRef(runtime.getSnapshot());
-  const unsubscribe = runtime.subscribe(() => {
-    publicationStatus.value = runtime.getSnapshot();
+export type UseAymeResult = {
+  /** The runtime session. */
+  ayme: RuntimeSession;
+  /** The session's `webMCP` member, reactive and read-only. */
+  webMCP: Readonly<Pick<AymeWebMcp, "publicationStatus" | "retryPublication">>;
+};
+
+function consumeRuntime(runtime: RuntimeSession): UseAymeResult {
+  const webMCP = shallowReactive({
+    publicationStatus: runtime.webMCP.publicationStatus,
+    retryPublication: runtime.webMCP.retryPublication,
+  });
+  const unsubscribe = runtime.webMCP.subscribe(() => {
+    webMCP.publicationStatus = runtime.webMCP.publicationStatus;
   });
   onScopeDispose(unsubscribe);
-  return {
-    publicationStatus: readonly(publicationStatus),
-    retryPublication: runtime.retryPublication,
-  };
+  return { ayme: runtime, webMCP: shallowReadonly(webMCP) };
 }
 
-export const AymeWebMcpProvider = defineComponent({
-  name: "AymeWebMcpProvider",
+export const AymeProvider = defineComponent({
+  name: "AymeProvider",
   props: {
-    page: { type: Function as PropType<() => AymePage>, required: false },
+    pageFactory: {
+      type: Function as PropType<() => AymePage>,
+      required: false,
+    },
     ignore: {
       type: Function as PropType<(element: Element) => boolean>,
       required: false,
     },
-    refTools: { type: Array as PropType<RefTool[]>, required: false },
+    customTools: { type: Array as PropType<CustomTool[]>, required: false },
     goalLoop: {
       type: Function as PropType<GoalLoopDecisionFunction>,
       required: false,
@@ -82,20 +93,26 @@ export const AymeWebMcpProvider = defineComponent({
   setup(props, { slots }) {
     if (inheritedRuntime())
       throw new Error(
-        "AymeWebMcpProvider cannot be nested beneath another Ayme runtime owner."
+        "AymeProvider cannot be nested beneath another Ayme runtime owner."
       );
-    const page = props.page;
+    const pageFactory = props.pageFactory;
     const ignore = props.ignore;
-    const refTools = props.refTools;
+    const customTools = props.customTools;
     const goalLoop = props.goalLoop;
-    ownRuntime({ page, ignore, refTools, goalLoop });
+    ownRuntime({ pageFactory, ignore, customTools, goalLoop });
     watch(
-      () => [props.page, props.ignore, props.refTools, props.goalLoop] as const,
-      ([nextPage, nextIgnore, nextRefTools, nextGoalLoop]) => {
+      () =>
+        [
+          props.pageFactory,
+          props.ignore,
+          props.customTools,
+          props.goalLoop,
+        ] as const,
+      ([nextPageFactory, nextIgnore, nextCustomTools, nextGoalLoop]) => {
         if (
-          nextPage !== page ||
+          nextPageFactory !== pageFactory ||
           nextIgnore !== ignore ||
-          nextRefTools !== refTools ||
+          nextCustomTools !== customTools ||
           nextGoalLoop !== goalLoop
         )
           throw new Error(
@@ -108,21 +125,19 @@ export const AymeWebMcpProvider = defineComponent({
   },
 });
 
-export function useAymeWebMcp(options: UseAymeWebMcpOptions = {}) {
+export function useAyme(options: UseAymeOptions = {}): UseAymeResult {
   if (!getCurrentScope())
-    throw new Error(
-      "useAymeWebMcp must be called within an active Vue effect scope"
-    );
+    throw new Error("useAyme must be called within an active Vue effect scope");
   const inherited = inheritedRuntime();
   if (
     inherited &&
-    (options.page !== undefined ||
+    (options.pageFactory !== undefined ||
       options.ignore !== undefined ||
-      options.refTools !== undefined ||
+      options.customTools !== undefined ||
       options.goalLoop !== undefined)
   )
     throw new Error(
-      "Configure page, ignore, refTools and goalLoop on the ancestor AymeWebMcpProvider or standalone useAymeWebMcp owner."
+      "Configure pageFactory, ignore, customTools and goalLoop on the ancestor AymeProvider or standalone useAyme owner."
     );
   return consumeRuntime(inherited ?? ownRuntime(options));
 }
