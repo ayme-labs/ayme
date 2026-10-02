@@ -245,18 +245,17 @@ describe("when several members locate the same elements", () => {
   });
 });
 
-/** A page model node with what owning members reads of it. */
+/** A page model node, with the fields memberOwnersOf reads filled in. */
 function objectNode(
   path: string,
   kind: PageObjectNode["kind"],
   className: string,
   children: PageObjectNode[] = []
 ): PageObjectNode {
-  const name = path.slice(path.lastIndexOf(".") + 1);
   return {
     path,
     key: path,
-    name,
+    name: path,
     kind,
     className,
     live: true,

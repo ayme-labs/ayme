@@ -70,14 +70,11 @@ export type MemberLink = { member: string; owner: MemberOwner };
 export type MemberOwners = {
   nodes: ReadonlyMap<string, PageObjectNode>;
   parents: ReadonlyMap<PageObjectNode, PageObjectNode>;
-  models: ReadonlyMap<string, string>;
+  /** A model's class name by its class name or one of its member paths. */
+  classByPath: ReadonlyMap<string, string>;
 };
 
-const noOwners: MemberOwners = {
-  nodes: new Map(),
-  parents: new Map(),
-  models: new Map(),
-};
+const noOwners = memberOwnersOf({ objects: [], models: [] });
 
 /** Indexes the page model, once per update, for {@link memberLinks}. */
 export function memberOwnersOf({ objects, models }: PageModel): MemberOwners {
@@ -95,12 +92,12 @@ export function memberOwnersOf({ objects, models }: PageModel): MemberOwners {
     }
   };
   visit(objects);
-  const modelsByPath = new Map<string, string>();
+  const classByPath = new Map<string, string>();
   for (const { className, members } of models) {
-    modelsByPath.set(className, className);
-    for (const { path } of members) modelsByPath.set(path, className);
+    classByPath.set(className, className);
+    for (const { path } of members) classByPath.set(path, className);
   }
-  return { nodes, parents, models: modelsByPath };
+  return { nodes, parents, classByPath };
 }
 
 export type StructureTree = {
@@ -197,6 +194,7 @@ export function memberLinks(
   const instances = new Map(
     ordered.map((member) => [member, instanceOwner(member, owners)])
   );
+  // The tag's owner and its ancestors: the instances that hold the tag.
   const holdsTag = new Set(ancestry(instances.get(tag)?.owner, owners));
   // A class alias comes from a component or item of that class.
   const aliasedClasses = new Set(
@@ -204,13 +202,15 @@ export function memberLinks(
       .filter((node) => node.kind !== "page")
       .map((node) => node.className)
   );
+  // Every member's owner and its ancestors, to tell a collection alias by an
+  // item listed beside it.
   const listed = [...instances.values()].flatMap((instance) =>
     ancestry(instance?.owner, owners)
   );
 
   return ordered.flatMap((member): MemberLink[] => {
     const instance = instances.get(member);
-    const model = nearest(member, owners.models);
+    const model = nearest(member, owners.classByPath);
     const classAlias =
       model !== undefined &&
       (!instance ||

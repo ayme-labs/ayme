@@ -40,8 +40,8 @@ export function useRuntimeAdapter({
   const { runs, invoke, clear } = useRuns({ onSettled: onRunSettled });
   const tools = useLiveTools();
 
-  const { text, membersByRef, elementsByRef, refToolTargets } =
-    inspector.pageState;
+  const { text, membersByRef, ...pageState } = inspector.pageState;
+  const { elementsByRef, refToolTargets } = pageState;
   const pageModel = useMemo(
     () =>
       buildPageModel(
@@ -58,10 +58,6 @@ export function useRuntimeAdapter({
         ? emptyStructure
         : buildStructureTree(text, membersByRef, owners),
     [text, membersByRef, owners]
-  );
-  const pageState = useMemo(
-    () => ({ ...inspector.pageState, structure }),
-    [inspector.pageState, structure]
   );
   const refTools = useMemo(
     () =>
@@ -109,7 +105,7 @@ export function useRuntimeAdapter({
      * being recorded: its text, the structure tree model, and the refs each
      * published Ref Tool can take (`pageState.refToolTargets`).
      */
-    pageState,
+    pageState: { ...pageState, text, structure },
     /**
      * The page's two highlights: `hover` (dashed) for what the pointer is
      * over in the panel, `pin` (solid) for the selection. The app pins the

@@ -74,8 +74,8 @@ function readPomDefinitions() {
  * The Inspector's live view of the page. Each refresh takes one unrecorded
  * look at the page state (a peek: it never enters the interaction history,
  * so agents see exactly what they would without the Inspector), and that one
- * look feeds the structure, the member mapping, the Ref Tools' targets and
- * the highlights. Page changes, input, focus and registry changes schedule
+ * look feeds the member mapping (the structure is built from it), the Ref
+ * Tools' targets and the highlights. Page changes, input, focus and registry changes schedule
  * refreshes; while the Structure view shows, a slow poll catches the rest.
  */
 export function useInspector({
