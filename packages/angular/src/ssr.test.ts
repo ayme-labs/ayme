@@ -1,10 +1,10 @@
 // @vitest-environment node
+// Angular 19 needs Zone.js by default; later majors render zoneless with it
+// loaded too.
+import "zone.js/node";
 import "@angular/compiler";
-import { Component } from "@angular/core";
-import {
-  bootstrapApplication,
-  type BootstrapContext,
-} from "@angular/platform-browser";
+import { Component, type ApplicationRef } from "@angular/core";
+import { bootstrapApplication } from "@angular/platform-browser";
 import {
   provideServerRendering,
   renderApplication,
@@ -36,6 +36,11 @@ import {
 } from "./index";
 
 type PageFactory = NonNullable<AymeOptions["pageFactory"]>;
+// Angular 20 passes the server's BootstrapContext on to bootstrapApplication;
+// Angular 19 calls the bootstrap function without one.
+const bootstrap = bootstrapApplication as (
+  ...args: unknown[]
+) => Promise<ApplicationRef>;
 
 describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",
@@ -73,8 +78,8 @@ describe.each([false, true])(
       );
       const render = () =>
         renderApplication(
-          (context: BootstrapContext) =>
-            bootstrapApplication(
+          (context?: unknown) =>
+            bootstrap(
               Root,
               {
                 providers: [

@@ -42,7 +42,8 @@ function environment(
 }
 afterEach(() => {
   for (const injector of injectors.splice(0).reverse())
-    if (!injector.destroyed) injector.destroy();
+    // Angular 19 does not declare `destroyed` on EnvironmentInjector.
+    if (!(injector as { destroyed?: boolean }).destroyed) injector.destroy();
   vi.useRealTimers();
 });
 
