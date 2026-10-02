@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { isAymeLocator } from "@ayme-dev/ayme/internal";
+import { isPointerAction, passThroughWhileCovered } from "./panelPassThrough";
 import type { TraceEntry } from "./trace";
 
 export type { TraceEntry } from "./trace";
@@ -23,6 +24,7 @@ const wrappedPages = new WeakMap<
 >();
 
 // Diagnostic decoration. The underlying Page and its locator brands stay intact.
+// Pointer actions also pass through the Inspector panel when it covers them.
 export function withDemoFeedback(
   page: Page,
   options: DemoFeedbackOptions
@@ -65,11 +67,29 @@ export function withDemoFeedback(
         if (typeof member !== "function") return member;
 
         return (...args: unknown[]) => {
-          const operation = traceOperation(property);
-          if (!isAymeLocator(target) || !operation)
+          // The page's own pointer actions, such as the ref tools'
+          // `page.click(selector)`, act on the locator of their selector.
+          const pageSelector =
+            !isAymeLocator(target) && isPointerAction(property)
+              ? args[0]
+              : undefined;
+          const locator = isAymeLocator(target)
+            ? (target as Locator)
+            : typeof pageSelector === "string"
+              ? (target as Page).locator(pageSelector)
+              : undefined;
+          const operation = isAymeLocator(target)
+            ? traceOperation(property)
+            : undefined;
+          if (!locator || (!operation && !isPointerAction(property)))
             return wrapResult(member.apply(target, args));
 
-          const locator = target as Locator;
+          const act = () =>
+            passThroughWhileCovered(property, locator, () =>
+              member.apply(target, args)
+            ).then(wrapResult);
+          if (!operation) return act();
+
           const entry: TraceEntry = {
             operation,
             locator: locator.toString(),
@@ -95,7 +115,7 @@ export function withDemoFeedback(
               if (operation === "click" && context.options.clickCue)
                 await showClickCue(locator);
             }
-            return wrapResult(member.apply(target, args));
+            return act();
           })();
         };
       },
