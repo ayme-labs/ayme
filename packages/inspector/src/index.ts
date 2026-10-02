@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { installRuntimePageInstrumentation } from "@ayme-dev/ayme/internal";
 
+import { allowPassThrough } from "./panelPassThrough";
 import { renderInspector } from "./renderInspector";
 import { exposeInspectorShadowRoot } from "./shadowRootHook";
 import {
@@ -85,10 +86,12 @@ export function mountInspector() {
     exposeInspectorShadowRoot(host, shadowRoot);
     document.body.append(host);
     const unmountUi = renderInspector(shadowRoot);
+    const disallowPassThrough = allowPassThrough(shadowRoot);
     mounted = {
       references: 0,
       disposeInstrumentation,
       disposeUi() {
+        disallowPassThrough();
         unmountUi();
         host.remove();
         highlightStyle.remove();

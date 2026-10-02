@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { executePublishedTool } from "@ayme-dev/ayme/testing";
 
+import { AgentView } from "./agentView";
 import { expect, openFixture, test } from "./fixtures";
 
 // E2E: running tools from the panel, on the fixture page with the real
@@ -62,11 +63,7 @@ test("a Custom Tool runs from the panel and shows in Runs", async ({
   listPage,
 }) => {
   // The Add item button's ref, as an agent reads it from snapshot.
-  const { structure } = (await executePublishedTool(page, "snapshot")) as {
-    structure: string;
-  };
-  const ref = /(e\d+) button "Add item"/.exec(structure)?.[1];
-  if (!ref) throw new Error(`No Add item button in:\n${structure}`);
+  const ref = await new AgentView(page).ref('button "Add item"');
 
   await (await inspector.tool("mark_element")).run({ ref });
 
