@@ -30,7 +30,7 @@ const ELEMENT: JsonSchema = {
 const TARGET: JsonSchema = {
   type: "string",
   description:
-    "A Structural Ref from snapshot, or a selector that matches exactly one element.",
+    "A Structural Ref from the page snapshot, or a selector that matches exactly one element.",
 };
 
 const BUTTON: JsonSchema = {
@@ -93,6 +93,8 @@ function browserTool(
     label: name,
     inputSchema,
     targetField: "target",
+    // An action's own result would appear under `result`; Browser Tools have
+    // none, as in Playwright MCP, so `selectOption`'s values are dropped.
     run: async (target, input) => {
       await run(target, input);
     },
@@ -270,12 +272,20 @@ export function isFillableElement(element: Element): boolean {
   return false;
 }
 
-/** The filter of check and uncheck: a checkbox or radio button that is not disabled. */
+const UNCHECKABLE_SELECTOR =
+  "input[type=checkbox], [role=checkbox], [role=menuitemcheckbox], [role=switch]";
+
+/** The filter of check: a checkbox, radio button or switch that is not disabled. */
 export function isCheckableElement(element: Element): boolean {
   if (isDisabled(element)) return false;
   return element.matches(
-    "input[type=checkbox], input[type=radio], [role=checkbox], [role=radio], [role=menuitemcheckbox], [role=menuitemradio], [role=switch]"
+    `${UNCHECKABLE_SELECTOR}, input[type=radio], [role=radio], [role=menuitemradio]`
   );
+}
+
+/** The filter of uncheck: a checkbox or switch; a radio button cannot be unchecked. */
+export function isUncheckableElement(element: Element): boolean {
+  return !isDisabled(element) && element.matches(UNCHECKABLE_SELECTOR);
 }
 
 /** The filter of select_option: a select element that is not disabled. */
@@ -283,14 +293,17 @@ export function isSelectElement(element: Element): boolean {
   return element instanceof HTMLSelectElement && !isDisabled(element);
 }
 
+const click = registerElementTool(clickDefinition, isClickableElement);
+const fill = registerElementTool(fillDefinition, isFillableElement);
+
 const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
-  registerElementTool(clickDefinition, isClickableElement),
+  click,
   registerElementTool(dblclickDefinition, isClickableElement),
   registerElementTool(hoverDefinition, isClickableElement),
   registerElementTool(typeDefinition, isFillableElement),
-  registerElementTool(fillDefinition, isFillableElement),
+  fill,
   registerElementTool(checkDefinition, isCheckableElement),
-  registerElementTool(uncheckDefinition, isCheckableElement),
+  registerElementTool(uncheckDefinition, isUncheckableElement),
   registerElementTool(selectOptionDefinition, isSelectElement),
 ];
 
@@ -305,12 +318,12 @@ export function listElementTools(): readonly RegisteredElementTool[] {
 
 /** Click a Structural Ref that is already parsed, for `ayme.click`. */
 export function clickRef(ref: AriaRef): Promise<ActionResult> {
-  return SINGLE_ELEMENT_TOOLS[0]!.executeAs({ target: ref }, "agent");
+  return click.executeAs({ target: ref }, "agent");
 }
 
 /** Fill a Structural Ref that is already parsed, for `ayme.fill`. */
 export function fillRef(ref: AriaRef, text: string): Promise<ActionResult> {
-  return SINGLE_ELEMENT_TOOLS[4]!.executeAs({ target: ref, text }, "agent");
+  return fill.executeAs({ target: ref, text }, "agent");
 }
 
 // --- Browser Tools that are published only ---

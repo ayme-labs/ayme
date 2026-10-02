@@ -281,7 +281,6 @@ export function describePublishedTools(
 
     afterEach(() => {
       for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-      vi.unstubAllGlobals();
       document.body.innerHTML = "";
     });
 
@@ -345,6 +344,12 @@ export function describePublishedTools(
 
       expect(notified).toBe(true);
       expect(listed()).toEqual(await publishedOverWebMcp(context));
+    });
+
+    it("publishes nothing and reads disabled when webMCP.enabled is unset", async () => {
+      await startSession({ webMCP: {}, expectedState: "disabled" });
+
+      expect(await publishedOverWebMcp(context)).toEqual([]);
     });
 
     it("lists nothing while publication is disabled", async () => {

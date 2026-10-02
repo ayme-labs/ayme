@@ -45,10 +45,7 @@ export type PublishedElementTool = ModelContextTool<
 };
 
 /** Runs a tool for the caller it is given. */
-export type CallerRun = (
-  input: unknown,
-  caller: Caller
-) => Promise<ActionResult>;
+type CallerRun = (input: unknown, caller: Caller) => Promise<ActionResult>;
 
 /**
  * Package-internal: a tool that acts on one element, ready to publish, with
@@ -105,23 +102,11 @@ const REF_INPUT_SCHEMA: JsonSchema = {
 // --- The shared mechanism ---
 
 /**
- * Publish a tool that acts on one element: check the input against the
- * schema, resolve the element (a ref through the identity ledger, ADR-0028)
- * and hand `run` the element. Finishes with the shared action sequence, so
- * every such tool returns the same action result.
+ * Run a tool that acts on one element: check the input against the schema,
+ * resolve the element (a ref through the identity ledger, ADR-0028) and hand
+ * `run` the element. Finishes with the shared action sequence, so every such
+ * tool returns the same action result.
  */
-export function publishElementTool(
-  definition: ElementToolDefinition
-): PublishedElementTool {
-  const executeAs = elementToolRun(definition);
-  return {
-    name: definition.name,
-    description: definition.description,
-    inputSchema: definition.inputSchema,
-    execute: (input: unknown) => executeAs(input, "agent"),
-  };
-}
-
 function elementToolRun(definition: ElementToolDefinition): CallerRun {
   return async (input, caller) => {
     const fields = validatedToolInput(definition.inputSchema, input);
@@ -147,18 +132,23 @@ function elementToolRun(definition: ElementToolDefinition): CallerRun {
 /** Package-internal: register a tool so it is published and the Goal Loop may choose it. */
 export function registerElementTool(
   definition: ElementToolDefinition,
-  filter: (element: Element) => boolean,
-  tool: PublishedElementTool = publishElementTool(definition)
+  filter: (element: Element) => boolean
 ): RegisteredElementTool {
+  const executeAs = elementToolRun(definition);
   return {
-    tool,
+    tool: {
+      name: definition.name,
+      description: definition.description,
+      inputSchema: definition.inputSchema,
+      execute: (input: unknown) => executeAs(input, "agent"),
+    },
     targetField: definition.targetField,
     loopInputSchema:
       definition.targetField === "target"
         ? requiredInputOnly(definition.inputSchema)
         : definition.inputSchema,
     filter,
-    executeAs: elementToolRun(definition),
+    executeAs,
   };
 }
 
@@ -202,7 +192,10 @@ export function validatedToolInput(
   return fields;
 }
 
-/** A Structural Ref, as Playwright MCP tells a ref from a selector. */
+/**
+ * A Structural Ref rather than a selector: Playwright MCP's ref pattern
+ * (`e12`), plus Ayme's synthetic `s_` refs, which resolution then rejects.
+ */
 const STRUCTURAL_REF = /^(e\d+|s_.+)$/;
 
 /**
@@ -231,11 +224,10 @@ export async function resolveElementTarget(
     new RefResolutionError(
       `Cannot ${definition.label} "${requested}": ${reason}.`
     );
+  const page = requireAymeRuntimePage();
   let elements: Element[];
   try {
-    elements = resolveLocatorElements(
-      requireAymeRuntimePage().locator(requested)
-    );
+    elements = resolveLocatorElements(page.locator(requested));
   } catch (error) {
     throw new ToolInputError(
       `The target "${requested}" is neither a Structural Ref nor a selector this runtime supports: ${

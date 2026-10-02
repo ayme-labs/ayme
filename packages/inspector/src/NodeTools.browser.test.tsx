@@ -11,7 +11,7 @@ import { Inspector } from "./testing";
 // not published, and the refs each can take, so the evidence covers the
 // panel and its adapter.
 vi.mock("@ayme-dev/ayme/internal", () => {
-  const customTool = (name: string) => ({
+  const browserTool = (name: string) => ({
     name,
     description: `${name} by ref.`,
     inputSchema: { type: "object" },
@@ -35,7 +35,7 @@ vi.mock("@ayme-dev/ayme/internal", () => {
     ),
     listLiveTools: vi
       .fn()
-      .mockReturnValue([customTool("click"), customTool("fill")]),
+      .mockReturnValue([browserTool("click"), browserTool("fill")]),
     getPublicationStatus: vi.fn().mockReturnValue({ state: "disabled" }),
     subscribeToPublishedTools: vi.fn(() => () => {}),
     getPomDefinitionText: vi.fn(() => ""),

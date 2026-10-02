@@ -248,24 +248,28 @@ A **Browser Tool** is a built-in operation on the page itself, as opposed to
 one a Page Object provides. An agent that knows Playwright MCP can use them as
 it would there:
 
-| Tool            | Playwright MCP counterpart | Input                                                         |
-| --------------- | -------------------------- | ------------------------------------------------------------- |
-| `click`         | `browser_click`            | `target`, `element?`, `doubleClick?`, `button?`, `modifiers?` |
-| `dblclick`      | none                       | `target`, `element?`, `button?`, `modifiers?`                 |
-| `hover`         | `browser_hover`            | `target`, `element?`                                          |
-| `type`          | `browser_type`             | `target`, `element?`, `text`, `submit?`, `slowly?`            |
-| `fill`          | none                       | `target`, `element?`, `text`                                  |
-| `fill_form`     | `browser_fill_form`        | `fields`: `{ target, element?, name, type, value }[]`         |
-| `check`         | none                       | `target`, `element?`                                          |
-| `uncheck`       | none                       | `target`, `element?`                                          |
-| `select_option` | `browser_select_option`    | `target`, `element?`, `values`                                |
-| `press_key`     | `browser_press_key`        | `key`                                                         |
+| Tool            | Playwright MCP counterpart     | Input                                                         |
+| --------------- | ------------------------------ | ------------------------------------------------------------- |
+| `click`         | `browser_click`                | `target`, `element?`, `doubleClick?`, `button?`, `modifiers?` |
+| `dblclick`      | none                           | `target`, `element?`, `button?`, `modifiers?`                 |
+| `hover`         | `browser_hover`                | `target`, `element?`                                          |
+| `type`          | `browser_type`                 | `target`, `element?`, `text`, `submit?`, `slowly?`            |
+| `fill`          | none                           | `target`, `element?`, `text`                                  |
+| `fill_form`     | `browser_fill_form`            | `fields`: `{ target, element?, name, type, value }[]`         |
+| `check`         | `browser_check` (skill-only)   | `target`, `element?`                                          |
+| `uncheck`       | `browser_uncheck` (skill-only) | `target`, `element?`                                          |
+| `select_option` | `browser_select_option`        | `target`, `element?`, `values`                                |
+| `press_key`     | `browser_press_key`            | `key`                                                         |
 
 - The inputs follow Playwright MCP as bundled in `playwright-core` 1.62.1: the
   same field names, and the same behaviour when an option is omitted. `type`
   replaces the field's value, or types one character at a time with
-  `slowly: true`. `press_key` acts on the focused element. `element` is a
-  description of the element and changes nothing.
+  `slowly: true`. `press_key` acts on the focused element. `check` and
+  `uncheck` take the input of Playwright MCP's skill-only `browser_check` and
+  `browser_uncheck`; `dblclick` and `fill` have no counterpart and take the
+  `click` and `type` fields their names allow. Every tool that acts on one
+  element accepts Playwright MCP's optional `element`, a description of the
+  element that changes nothing.
 - `target` is a Structural Ref from `snapshot`, or a selector: CSS, `xpath=`,
   or a Playwright selector such as `role=button[name="Save"]` or
   `text=Save`. A selector must match exactly one element; one that matches
@@ -283,7 +287,8 @@ it would there:
   the elements its filter keeps: `click`, `dblclick` and `hover` take
   elements that are not disabled and have an interactive role or a pointer
   cursor; `type` and `fill` take elements text can actually be entered into;
-  `check` and `uncheck` take checkboxes, radio buttons and switches;
+  `check` takes checkboxes, radio buttons and switches, and `uncheck` the
+  same without radio buttons;
   `select_option` takes select elements. The loop fills only the element and
   the required fields. `fill_form` and `press_key` are published only.
 

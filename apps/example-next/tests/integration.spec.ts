@@ -64,6 +64,22 @@ test("hydrates, publishes the compiled POM, uses it and real Playwright, then re
   await expect
     .poll(() => publishedToolNames(page))
     .toContain("SubCounterPage.increment");
+  // Ayme's own tools, by name: every published name without a Page Object's dot.
+  expect(
+    (await publishedToolNames(page)).filter((name) => !name.includes("."))
+  ).toEqual([
+    "snapshot",
+    "click",
+    "dblclick",
+    "hover",
+    "type",
+    "fill",
+    "check",
+    "uncheck",
+    "select_option",
+    "fill_form",
+    "press_key",
+  ]);
   // usePageObject rejects models without compiler-derived metadata. This call
   // therefore checks the actual loader, registration and browser action path.
   await page.getByRole("button", { name: "Call Page Object" }).click();
