@@ -13,6 +13,7 @@
  *    declared export subpath.
  * 4. The packed @ayme-dev/ayme does not expose private workspace packages.
  * 5. Consumers type-check and load config with and without Playwright.
+ * 6. An Angular consumer type-checks at Angular's and TypeScript's floor.
  */
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -33,6 +34,7 @@ const PUBLISHED_PACKAGES = [
   "inspector",
   "vue",
   "react",
+  "angular",
   "unplugin-ayme",
 ];
 
@@ -262,7 +264,14 @@ it(
         name: "ayme-all-exports-consumer",
         private: true,
         type: "module",
-        dependencies: { ...tarballs, react: "19.2.8", vue: "3.5.42" },
+        dependencies: {
+          ...tarballs,
+          react: "19.2.8",
+          vue: "3.5.42",
+          "@angular/core": "22.2.1",
+          "@angular/common": "22.2.1",
+          rxjs: "7.8.2",
+        },
       })
     );
     fs.writeFileSync(path.join(consumer, "pnpm-workspace.yaml"), workspaceYaml);
@@ -274,8 +283,10 @@ it(
     );
     expect(specifiers).toEqual(
       expect.arrayContaining([
+        "@ayme-dev/angular",
         "@ayme-dev/unplugin-ayme/vite",
         "@ayme-dev/unplugin-ayme/turbopack-loader",
+        "@ayme-dev/unplugin-ayme/angular",
       ])
     );
     fs.writeFileSync(
@@ -492,6 +503,102 @@ assert.throws(() => createRequire(import.meta.url).resolve('@playwright/test/pac
       );
       exec(process.execPath, ["check.mjs"], consumer);
     }
+  }
+);
+
+it(
+  "packed Angular packages type-check in a consumer on Angular 19.0 and TypeScript 5.5",
+  { timeout: 120_000 },
+  () => {
+    const consumer = path.join(tmp, "angular-consumer");
+    fs.mkdirSync(consumer);
+    const { tarballs, workspaceYaml } = tarballDependencies([
+      "@ayme-dev/ayme",
+      "@ayme-dev/angular",
+      "@ayme-dev/inspector",
+      "@ayme-dev/unplugin-ayme",
+    ]);
+    fs.writeFileSync(
+      path.join(consumer, "package.json"),
+      JSON.stringify({
+        name: "ayme-angular-consumer",
+        private: true,
+        type: "module",
+        dependencies: {
+          ...tarballs,
+          "@angular/core": "19.0.0",
+          "@angular/common": "19.0.0",
+          rxjs: "7.8.2",
+        },
+        devDependencies: {
+          // The lowest TypeScript and esbuild Angular 19.0 supports.
+          typescript: "5.5.4",
+          esbuild: "0.24.0",
+          "@types/node": "22.10.10",
+        },
+      })
+    );
+    fs.writeFileSync(path.join(consumer, "pnpm-workspace.yaml"), workspaceYaml);
+    exec(
+      "pnpm",
+      [
+        "install",
+        "--ignore-scripts",
+        "--no-lockfile",
+        "--strict-peer-dependencies",
+      ],
+      consumer
+    );
+    fs.writeFileSync(
+      path.join(consumer, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          strict: true,
+          experimentalDecorators: true,
+          noEmit: true,
+          target: "ES2022",
+          lib: ["ES2022", "ESNext.Disposable", "DOM"],
+          module: "preserve",
+          moduleResolution: "bundler",
+          types: ["node"],
+        },
+        files: ["consumer.ts"],
+      })
+    );
+    fs.writeFileSync(
+      path.join(consumer, "consumer.ts"),
+      `
+import type { ApplicationConfig } from '@angular/core';
+import { ayme } from '@ayme-dev/ayme';
+import {
+  injectAyme,
+  injectPageObject,
+  provideAyme,
+  type AymeOptions,
+  type AymeSetup,
+  type AymeWebMcpPublicationStatus,
+} from '@ayme-dev/angular';
+import aymeAngularPlugin, { aymeAngular, type AymeAngularOptions } from '@ayme-dev/unplugin-ayme/angular';
+@ayme
+class Pom {
+  @ayme.action({ description: 'Act.' })
+  act() {}
+}
+const options: AymeOptions = { webMCP: { enabled: true, toolNamePrefix: 'demo_' } };
+export const appConfig: ApplicationConfig = { providers: [provideAyme(options)] };
+export function inComponent() {
+  const setup: AymeSetup = injectAyme();
+  const status: AymeWebMcpPublicationStatus = setup.webMCP.publicationStatus();
+  const retried: Promise<void> = setup.webMCP.retryPublication();
+  const pom: Pom = injectPageObject(Pom);
+  void [setup.ayme.pursueGoal, status.state, retried, pom.act()];
+}
+const pluginOptions: AymeAngularOptions = { tsconfigPath: 'tsconfig.app.json' };
+const name: string = aymeAngularPlugin(pluginOptions).name + aymeAngular().name;
+void name;
+`
+    );
+    exec("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
   }
 );
 
