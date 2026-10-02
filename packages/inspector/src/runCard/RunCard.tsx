@@ -88,7 +88,6 @@ export function RunCard({
   const [json, setJson] = useState<{ text?: string; error?: string }>();
   const [open, setOpen] = useState(false);
   const [pickedPath, setPickedPath] = useState<string>();
-  const [payloadOpen, setPayloadOpen] = useState(false);
 
   const collection = tool.collection !== undefined;
   const picking = collection && !item;
@@ -301,8 +300,6 @@ export function RunCard({
         <LastResult
           run={last}
           lastSuccess={lastSuccess}
-          payloadOpen={payloadOpen}
-          onTogglePayload={() => setPayloadOpen(!payloadOpen)}
           onShowRun={onShowRun}
         />
       )}
@@ -354,21 +351,19 @@ const statusStyle = {
   failed: "bg-destructive/10 text-destructive",
 } as const;
 
-/** The last run's status, its duration, and its payload or error. */
+/**
+ * The last run's status, its duration, and its error. Its result shows in
+ * Runs, which the link opens.
+ */
 function LastResult({
   run,
   lastSuccess,
-  payloadOpen,
-  onTogglePayload,
   onShowRun,
 }: {
   run: Run;
   lastSuccess: Run | undefined;
-  payloadOpen: boolean;
-  onTogglePayload: () => void;
   onShowRun: (runId: number) => void;
 }) {
-  const hasPayload = run.status === "succeeded" && run.result != null;
   const steps = `${run.steps.length} ${run.steps.length === 1 ? "step" : "steps"}`;
   const label =
     run.status === "running"
@@ -376,58 +371,38 @@ function LastResult({
       : run.status === "succeeded"
         ? `Succeeded · ${run.durationMs} ms · ${steps}`
         : `Failed · ${run.durationMs} ms`;
-  const link =
-    "cursor-pointer text-xs font-semibold underline underline-offset-2";
   return (
     <div
       role="status"
       aria-label="Last result"
       data-status={run.status}
-      className="flex flex-col gap-1.5"
+      className={cn(
+        "flex flex-col gap-1 rounded-md px-2 py-1.5 text-xs",
+        statusStyle[run.status]
+      )}
     >
-      <div
-        className={cn(
-          "flex flex-col gap-1 rounded-md px-2 py-1.5 text-xs",
-          statusStyle[run.status]
+      <div className="flex items-center gap-1.5">
+        {run.status === "running" && (
+          <LoaderCircleIcon className="size-3.5 animate-spin" aria-hidden />
         )}
-      >
-        <div className="flex items-center gap-1.5">
-          {run.status === "running" && (
-            <LoaderCircleIcon className="size-3.5 animate-spin" aria-hidden />
-          )}
-          {run.status === "succeeded" && (
-            <CheckIcon className="size-3.5" aria-hidden />
-          )}
-          {run.status === "failed" && (
-            <XIcon className="size-3.5" aria-hidden />
-          )}
-          <span>{label}</span>
-          <span className="flex-1" />
-          {hasPayload && (
-            <button type="button" className={link} onClick={onTogglePayload}>
-              {payloadOpen ? "Hide payload" : "Show payload"}
-            </button>
-          )}
-          {lastSuccess && (
-            <button
-              type="button"
-              className={cn(link, hasPayload && "ml-2.5")}
-              onClick={() => onShowRun(lastSuccess.id)}
-            >
-              {lastSuccess === run ? "Show in runs" : "Last success ›"}
-            </button>
-          )}
-        </div>
-        {run.status === "failed" && (
-          <p className="m-0 font-mono text-[11.5px] break-words">{run.error}</p>
+        {run.status === "succeeded" && (
+          <CheckIcon className="size-3.5" aria-hidden />
+        )}
+        {run.status === "failed" && <XIcon className="size-3.5" aria-hidden />}
+        <span>{label}</span>
+        <span className="flex-1" />
+        {lastSuccess && (
+          <button
+            type="button"
+            className="cursor-pointer text-xs font-semibold underline underline-offset-2"
+            onClick={() => onShowRun(lastSuccess.id)}
+          >
+            {lastSuccess === run ? "Show in runs" : "Last success ›"}
+          </button>
         )}
       </div>
-      {hasPayload && payloadOpen && (
-        <figure aria-label="Payload" className="m-0">
-          <pre className="m-0 max-h-[220px] overflow-auto rounded-md bg-muted px-2.5 py-2 font-mono text-[11.5px] leading-normal">
-            {JSON.stringify(run.result, null, 2)}
-          </pre>
-        </figure>
+      {run.status === "failed" && (
+        <p className="m-0 font-mono text-[11.5px] break-words">{run.error}</p>
       )}
     </div>
   );

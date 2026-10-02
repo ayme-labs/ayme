@@ -30,7 +30,12 @@ export type Run = {
   item?: CollectionItem;
   arguments: ToolArguments;
   status: "running" | "succeeded" | "failed";
-  result?: JsonValue;
+  /**
+   * What the tool returned, as formatted JSON captured as it returned, so a
+   * later change to the returned value doesn't change it. Absent when it
+   * returned `undefined`.
+   */
+  result?: string;
   error?: string;
   /** When it started, in epoch milliseconds. */
   startedAt: number;
@@ -79,7 +84,8 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
         ...current,
       ]);
       try {
-        const result = await tool.execute(args);
+        const result = JSON.stringify(await tool.execute(args), null, 2) as
+          string | undefined;
         await settle({ status: "succeeded", result });
       } catch (error) {
         await settle({

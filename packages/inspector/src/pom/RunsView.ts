@@ -15,6 +15,14 @@ export class RunEntry {
   readonly toggle: Locator;
   /** The mark of a run made by you from the panel. */
   readonly byYou: Locator;
+  /** Its arguments, absent when it had none. */
+  readonly arguments: Locator;
+  /** Shows or hides its result, on a successful run that returned one. */
+  readonly resultToggle: Locator;
+  /** Its result, as JSON, while shown. */
+  readonly result: Locator;
+  /** Copies its result. */
+  readonly copyResultButton: Locator;
   readonly error: Locator;
   readonly steps: Locator;
 
@@ -22,6 +30,16 @@ export class RunEntry {
     this.root = root;
     this.toggle = root.locator("button[aria-expanded]").first();
     this.byYou = root.getByRole("img", { name: "Run by you from the panel" });
+    this.arguments = root.getByRole("figure", { name: "Arguments" });
+    this.resultToggle = root.getByRole("button", {
+      name: "Result",
+      exact: true,
+    });
+    this.result = root.getByRole("figure", { name: "Result" });
+    this.copyResultButton = root.getByRole("button", {
+      name: "Copy",
+      exact: true,
+    });
     this.error = root.getByRole("note", { name: "Error" });
     this.steps = root
       .getByRole("list", { name: "Steps" })
@@ -33,6 +51,13 @@ export class RunEntry {
     return await this.root
       .getByRole("img", { name: /^(Running|Succeeded|Failed)$/ })
       .getAttribute("aria-label");
+  }
+
+  /** Its result as JSON, shown first if it isn't. */
+  async resultText() {
+    if ((await this.resultToggle.getAttribute("aria-expanded")) === "false")
+      await this.resultToggle.click();
+    return await this.result.textContent();
   }
 
   /** The element a step acted on; hovering it highlights that element. */

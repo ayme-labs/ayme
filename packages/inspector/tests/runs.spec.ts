@@ -121,7 +121,7 @@ test("Runs switches between the selection's runs and all runs with the mouse", a
 
 // The fixture stubs the Goal Loop's decision (clear the list, then judge the
 // goal met), so this covers the panel's run, not the model's judgement.
-test("pursue_goal runs from the panel and shows in Runs with its steps and Handover", async ({
+test("pursue_goal runs from the panel and shows in Runs with its steps and Handover result", async ({
   inspector,
   listPage,
 }) => {
@@ -138,8 +138,7 @@ test("pursue_goal runs from the panel and shows in Runs with its steps and Hando
     target: "ListPage.clearButton",
   });
   await expect(listPage.items).toHaveCount(0);
-  await pursueGoal.payloadToggle.click();
-  const handover = JSON.parse((await pursueGoal.payload.textContent()) ?? "");
+  const handover = JSON.parse((await run.resultText()) ?? "");
   expect(handover).toMatchObject({ reason: "done" });
 });
 
@@ -192,10 +191,11 @@ test.describe("with WebMCP publication off", () => {
     // with publication off, no agent can call it.
     const getPageContext = await inspector.tool("get_page_context");
     await getPageContext.runButton.click();
-    await getPageContext.payloadToggle.click();
-    const { structure } = JSON.parse(
-      (await getPageContext.payload.textContent()) ?? "{}"
-    ) as { structure: string };
+    const run = inspector.runs.latest("get_page_context");
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    const { structure } = JSON.parse((await run.resultText()) ?? "{}") as {
+      structure: string;
+    };
     const ref = /(e\d+) button "Add item"/.exec(structure)?.[1];
     if (!ref) throw new Error(`No Add item button in:\n${structure}`);
 
@@ -207,15 +207,16 @@ test.describe("with WebMCP publication off", () => {
       .toBe("Succeeded");
   });
 
-  test("get_page_context runs from the panel", async ({ inspector }) => {
+  test("get_page_context runs from the panel and shows its result", async ({
+    inspector,
+  }) => {
     const getPageContext = await inspector.tool("get_page_context");
     await getPageContext.runButton.click();
 
-    await expect
-      .poll(() => inspector.runs.latest("get_page_context").status())
-      .toBe("Succeeded");
-    await getPageContext.payloadToggle.click();
-    await expect(getPageContext.payload).toContainText('"structure"');
+    const run = inspector.runs.latest("get_page_context");
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    await run.resultToggle.click();
+    await expect(run.result).toContainText('"structure"');
   });
 });
 

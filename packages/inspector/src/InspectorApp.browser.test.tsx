@@ -62,7 +62,7 @@ function saveTool(
   };
 }
 
-function editor(id: string, tool: RegisteredPomTool): RegisteredPom {
+function editor(id: string, ...tools: RegisteredPomTool[]): RegisteredPom {
   return {
     id,
     instance: {},
@@ -70,20 +70,18 @@ function editor(id: string, tool: RegisteredPomTool): RegisteredPom {
       className: "Editor",
       members: [{ memberName: "saveButton", kind: "locator", access: "field" }],
       components: [],
-      tools: [
-        {
-          methodName: tool.methodName,
-          toolName: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema,
-          parameters: tool.parameters,
-        },
-      ],
+      tools: tools.map((tool) => ({
+        methodName: tool.methodName,
+        toolName: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        parameters: tool.parameters,
+      })),
     },
     memberObservations: [
       { memberName: "saveButton", kind: "locator", count: 1 },
     ],
-    tools: [tool],
+    tools,
   };
 }
 
@@ -178,21 +176,124 @@ describe("the Inspector", () => {
       .toBe("Succeeded");
   });
 
-  it("shows a run card's last successful run in Runs", async () => {
+  it("shows a run card's last successful run in Runs, with its result", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
     vi.mocked(runTool).mockResolvedValue({ saved: true });
     renderApp();
     const save = await inspector.tool("Editor.save");
     await save.run({ copies: 1, title: "Notes" });
+    const run = inspector.runs.latest("Editor.save");
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    await run.toggle.click();
     await inspector.runs.header.click();
     await expect.poll(() => inspector.runs.runs.count()).toBe(0);
 
     await save.lastSuccessLink.click();
 
     await expect
-      .poll(() => inspector.runs.latest("Editor.save").status())
-      .toBe("Succeeded");
+      .poll(() => run.result.textContent())
+      .toBe(JSON.stringify({ saved: true }, null, 2));
+  });
+
+  it("shows the last success's result after a failed run", async () => {
+    const tool = saveTool("editor", vi.fn());
+    mockRegistry([editor("editor", tool)], [tool]);
+    vi.mocked(runTool)
+      .mockResolvedValueOnce({ saved: 1 })
+      .mockResolvedValueOnce({
+        content: [{ type: "text", text: "Not saved." }],
+        isError: true,
+      });
+    renderApp();
+    const save = await inspector.tool("Editor.save");
+    await save.run({ copies: 1, title: "Notes" });
+    await expect.poll(() => inspector.runs.run(0).status()).toBe("Succeeded");
+    await save.runButton.click();
+    await expect.poll(() => inspector.runs.run(0).status()).toBe("Failed");
+
+    await save.lastSuccessLink.click();
+
+    expect(await save.lastSuccessLink.textContent()).toBe("Last success ›");
+    await expect
+      .poll(() => inspector.runs.run(1).result.textContent())
+      .toBe(JSON.stringify({ saved: 1 }, null, 2));
+    expect(await inspector.runs.run(0).error.textContent()).toBe("Not saved.");
+    expect(await inspector.runs.run(0).resultToggle.count()).toBe(0);
+  });
+
+  it("keeps each run's result as the tool returned it", async () => {
+    const tool = saveTool("editor", vi.fn());
+    mockRegistry([editor("editor", tool)], [tool]);
+    const first = { saved: 1 };
+    vi.mocked(runTool)
+      .mockResolvedValueOnce(first)
+      .mockResolvedValueOnce({ saved: 2 });
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue();
+    renderApp();
+    const save = await inspector.tool("Editor.save");
+    await save.run({ copies: 1, title: "Notes" });
+    await expect.poll(() => inspector.runs.run(0).status()).toBe("Succeeded");
+
+    // The tool changes the object it returned, then runs again.
+    first.saved = 99;
+    await save.runButton.click();
+    await expect.poll(() => inspector.runs.runs.count()).toBe(2);
+    await expect.poll(() => inspector.runs.run(0).status()).toBe("Succeeded");
+
+    const earlier = inspector.runs.run(1);
+    expect(await earlier.resultText()).toBe(
+      JSON.stringify({ saved: 1 }, null, 2)
+    );
+    await earlier.copyResultButton.click();
+    expect(writeText).toHaveBeenLastCalledWith(
+      JSON.stringify({ saved: 1 }, null, 2)
+    );
+    expect(await inspector.runs.run(0).resultText()).toBe(
+      JSON.stringify({ saved: 2 }, null, 2)
+    );
+    expect(runTool).toHaveBeenCalledTimes(2);
+    writeText.mockRestore();
+  });
+
+  it("gives overlapping runs their own results", async () => {
+    const save = saveTool("editor", vi.fn());
+    const publish: RegisteredPomTool = {
+      ...saveTool("editor", vi.fn()),
+      methodName: "publish",
+      name: "Editor.publish",
+      description: "Publish the editor.",
+    };
+    mockRegistry([editor("editor", save, publish)], [save, publish]);
+    const settle = new Map<string, (result: unknown) => void>();
+    vi.mocked(runTool).mockImplementation(
+      (name) => new Promise((resolve) => settle.set(name, resolve))
+    );
+    renderApp();
+    await (await inspector.tool("Editor.save")).run({ copies: 1, title: "A" });
+    await (
+      await inspector.tool("Editor.publish")
+    ).run({ copies: 2, title: "B" });
+    await expect.poll(() => settle.size).toBe(2);
+    await inspector.runs.showAll();
+    const saveRun = inspector.runs.latest("Editor.save");
+    const publishRun = inspector.runs.latest("Editor.publish");
+
+    // The later call returns first.
+    settle.get("Editor.publish")!({ published: true });
+    await expect.poll(() => publishRun.status()).toBe("Succeeded");
+    expect(await saveRun.status()).toBe("Running");
+    settle.get("Editor.save")!({ saved: true });
+    await expect.poll(() => saveRun.status()).toBe("Succeeded");
+
+    expect(await saveRun.resultText()).toBe(
+      JSON.stringify({ saved: true }, null, 2)
+    );
+    expect(await publishRun.resultText()).toBe(
+      JSON.stringify({ published: true }, null, 2)
+    );
   });
 
   it("lists two registrations of one page class apart and runs their tool as the runtime does", async () => {

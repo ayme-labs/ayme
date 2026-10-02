@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronRightIcon,
+  CopyIcon,
   EyeIcon,
   HistoryIcon,
   KeyboardIcon,
@@ -52,6 +53,9 @@ export function Runs({
   onHover,
 }: RunsProps) {
   const [closedRuns, setClosedRuns] = useState<ReadonlySet<number>>(new Set());
+  const [openResults, setOpenResults] = useState<ReadonlySet<number>>(
+    new Set()
+  );
   const [flashing, setFlashing] = useState<number>();
   const timeline = useRef<HTMLOListElement>(null);
 
@@ -62,6 +66,7 @@ export function Runs({
       next.delete(focus.runId);
       return next;
     });
+    setOpenResults((opened) => new Set(opened).add(focus.runId));
     setFlashing(focus.runId);
     const row = timeline.current?.querySelector(
       `[data-run-id="${focus.runId}"]`
@@ -72,11 +77,9 @@ export function Runs({
   }, [focus]);
 
   const toggleRun = (id: number) =>
-    setClosedRuns((closed) => {
-      const next = new Set(closed);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
+    setClosedRuns((closed) => toggled(closed, id));
+  const toggleResult = (id: number) =>
+    setOpenResults((opened) => toggled(opened, id));
 
   return (
     <>
@@ -143,8 +146,10 @@ export function Runs({
                   key={run.id}
                   run={run}
                   open={!closedRuns.has(run.id)}
+                  resultOpen={openResults.has(run.id)}
                   flashing={flashing === run.id}
                   onToggle={() => toggleRun(run.id)}
+                  onToggleResult={() => toggleResult(run.id)}
                   onHover={onHover}
                 />
               ))}
@@ -162,6 +167,13 @@ export function Runs({
   );
 }
 
+/** The set with `id` added, or removed if it was there. */
+function toggled(set: ReadonlySet<number>, id: number) {
+  const next = new Set(set);
+  if (!next.delete(id)) next.add(id);
+  return next;
+}
+
 const statusIcon = {
   running: {
     Icon: LoaderCircleIcon,
@@ -175,14 +187,19 @@ const statusIcon = {
 function RunRow({
   run,
   open,
+  resultOpen,
   flashing,
   onToggle,
+  onToggleResult,
   onHover,
 }: {
   run: Run;
   open: boolean;
+  /** Whether its Result shows its value, rather than only its label. */
+  resultOpen: boolean;
   flashing: boolean;
   onToggle: () => void;
+  onToggleResult: () => void;
   onHover: OnHover;
 }) {
   const status = statusIcon[run.status];
@@ -242,9 +259,21 @@ function RunRow({
         </button>
         {open && (
           <>
-            <div className="mx-2.5 mb-1.5 rounded-md bg-muted px-2 py-[5px] font-mono text-[11.5px] [overflow-wrap:anywhere]">
-              {JSON.stringify(run.arguments)}
-            </div>
+            {Object.keys(run.arguments).length > 0 && (
+              <figure
+                aria-label="Arguments"
+                className="mx-2.5 mt-0 mb-1.5 rounded-md bg-muted px-2 py-[5px] font-mono text-[11.5px] [overflow-wrap:anywhere]"
+              >
+                {JSON.stringify(run.arguments)}
+              </figure>
+            )}
+            {run.status === "succeeded" && run.result !== undefined && (
+              <RunResult
+                text={run.result}
+                open={resultOpen}
+                onToggle={onToggleResult}
+              />
+            )}
             {run.error && (
               <p
                 role="note"
@@ -268,6 +297,65 @@ function RunRow({
         )}
       </div>
     </li>
+  );
+}
+
+/** What a run returned: its label and Copy, and its JSON when open. */
+function RunResult({
+  text,
+  open,
+  onToggle,
+}: {
+  text: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // The page can deny the clipboard; the result can still be selected.
+    }
+  };
+
+  return (
+    <div className="mx-2.5 mb-2 flex flex-col gap-1">
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          aria-expanded={open}
+          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1 py-px text-[11.5px] font-semibold hover:bg-muted"
+          onClick={onToggle}
+        >
+          <ChevronRightIcon
+            className={cn("size-3 transition-transform", open && "rotate-90")}
+            aria-hidden
+          />
+          Result
+        </button>
+        <span className="flex-1" />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs text-muted-foreground"
+          onClick={() => void copy()}
+        >
+          <CopyIcon className="size-3.5" aria-hidden />
+          Copy
+        </Button>
+      </div>
+      {open && (
+        <figure aria-label="Result" className="m-0">
+          <pre
+            // Focusable, so a keyboard can scroll a long result.
+            tabIndex={0}
+            className="m-0 max-h-[220px] overflow-auto rounded-md bg-muted px-2.5 py-2 font-mono text-[11.5px] leading-normal outline-none focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            {text}
+          </pre>
+        </figure>
+      )}
+    </div>
   );
 }
 
