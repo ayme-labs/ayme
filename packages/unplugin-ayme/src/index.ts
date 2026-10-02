@@ -154,26 +154,64 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
           options.playwright,
           config.root ?? process.cwd()
         );
-        const define: Record<string, unknown> = {
-          ...config.define,
-          [PUBLISH_DEFINE]: JSON.stringify(options.publish ?? false),
+        const playwrightDefine: Record<string, string> = {
           [TEST_ID_ATTRIBUTE_DEFINE]: JSON.stringify(
             settings.testIdAttribute ?? DEFAULT_TEST_ID_ATTRIBUTE
           ),
         };
         if (settings.actionTimeout !== undefined)
-          define[ACTION_TIMEOUT_DEFINE] = JSON.stringify(
+          playwrightDefine[ACTION_TIMEOUT_DEFINE] = JSON.stringify(
             settings.actionTimeout
           );
         if (settings.navigationTimeout !== undefined)
-          define[NAVIGATION_TIMEOUT_DEFINE] = JSON.stringify(
+          playwrightDefine[NAVIGATION_TIMEOUT_DEFINE] = JSON.stringify(
             settings.navigationTimeout
           );
+        const define: Record<string, unknown> = {
+          ...config.define,
+          [PUBLISH_DEFINE]: JSON.stringify(options.publish ?? false),
+          ...playwrightDefine,
+        };
+        // Top-level define skips pre-bundled dependencies, so a registry
+        // install of @ayme-dev/ayme needs the optimizer's own define. Vite 8
+        // optimizes with Rolldown and warns about esbuildOptions; older Vite
+        // has no rolldownVersion in its plugin context and uses esbuild.
+        const context = this as
+          { meta?: { rolldownVersion?: string } } | undefined;
+        let optimizeDeps: NonNullable<typeof config.optimizeDeps>;
+        if (context?.meta?.rolldownVersion !== undefined) {
+          // Vite 8 exposes rollupOptions as an alias of rolldownOptions and
+          // warns when a plugin returns both, so return rolldownOptions only.
+          const { rollupOptions, ...rest } = config.optimizeDeps ?? {};
+          const rolldownOptions = rest.rolldownOptions ?? rollupOptions;
+          optimizeDeps = {
+            ...rest,
+            rolldownOptions: {
+              ...rolldownOptions,
+              transform: {
+                ...rolldownOptions?.transform,
+                define: {
+                  ...rolldownOptions?.transform?.define,
+                  ...playwrightDefine,
+                },
+              },
+            },
+          };
+        } else {
+          const esbuildOptions = config.optimizeDeps?.esbuildOptions;
+          optimizeDeps = {
+            ...config.optimizeDeps,
+            esbuildOptions: {
+              ...esbuildOptions,
+              define: { ...esbuildOptions?.define, ...playwrightDefine },
+            },
+          };
+        }
 
         return {
           define,
           optimizeDeps: {
-            ...config.optimizeDeps,
+            ...optimizeDeps,
             exclude: [...new Set([...exclude, PLAYWRIGHT_TEST_PACKAGE])],
           },
         };

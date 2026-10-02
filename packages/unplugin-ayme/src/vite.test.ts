@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
+import { rolldownVersion, version } from "vite";
 import { describe, expect, it } from "vitest";
 
 import { type AymeWebMcpOptions } from "./index";
@@ -16,10 +17,19 @@ type UserConfig = Parameters<ConfigHook>[0];
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
 const PUBLISH_DEFINE = "__AYME_WEBMCP_PUBLISH__";
+const VITE_8_META = { viteVersion: version, rolldownVersion };
+// Vite 7's config hook context, which has no Rolldown.
+const VITE_7_META = { viteVersion: "7.3.6", rollupVersion: "4.53.3" };
+const DEFAULT_OPTIMIZER_DEFINE = {
+  rolldownOptions: {
+    transform: { define: { [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"' } },
+  },
+};
 
 async function applyPluginConfig(
   config: UserConfig,
-  options: AymeWebMcpOptions = {}
+  options: AymeWebMcpOptions = {},
+  meta: object = VITE_8_META
 ) {
   const plugin = aymeWebMcp(options);
   if (Array.isArray(plugin)) {
@@ -30,7 +40,7 @@ async function applyPluginConfig(
   }
 
   const configHook = plugin.config;
-  return await Reflect.apply(configHook, null, [
+  return await Reflect.apply(configHook, { meta }, [
     config,
     { command: "serve", mode: "test" },
   ]);
@@ -94,7 +104,10 @@ describe("aymeWebMcp Vite integration", () => {
         [PUBLISH_DEFINE]: "false",
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"',
       },
-      optimizeDeps: { exclude: ["@playwright/test"] },
+      optimizeDeps: {
+        ...DEFAULT_OPTIMIZER_DEFINE,
+        exclude: ["@playwright/test"],
+      },
     });
   });
   it("adds the Playwright test runner exclusion when no optimizer config exists", async () => {
@@ -103,7 +116,10 @@ describe("aymeWebMcp Vite integration", () => {
         [PUBLISH_DEFINE]: "false",
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"',
       },
-      optimizeDeps: { exclude: ["@playwright/test"] },
+      optimizeDeps: {
+        ...DEFAULT_OPTIMIZER_DEFINE,
+        exclude: ["@playwright/test"],
+      },
     });
   });
 
@@ -118,6 +134,7 @@ describe("aymeWebMcp Vite integration", () => {
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"',
       },
       optimizeDeps: {
+        ...DEFAULT_OPTIMIZER_DEFINE,
         exclude: ["existing-dependency", "@playwright/test"],
       },
     });
@@ -133,7 +150,10 @@ describe("aymeWebMcp Vite integration", () => {
         [PUBLISH_DEFINE]: "false",
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"',
       },
-      optimizeDeps: { exclude: ["@playwright/test"] },
+      optimizeDeps: {
+        ...DEFAULT_OPTIMIZER_DEFINE,
+        exclude: ["@playwright/test"],
+      },
     });
   });
 
@@ -159,7 +179,102 @@ describe("aymeWebMcp Vite integration", () => {
         __AYME_PLAYWRIGHT_ACTION_TIMEOUT__: "11",
         __AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__: "22",
       },
-      optimizeDeps: { exclude: ["@playwright/test"] },
+      optimizeDeps: {
+        rolldownOptions: {
+          transform: {
+            define: {
+              [TEST_ID_ATTRIBUTE_DEFINE]: '"data-pw,data-ti"',
+              __AYME_PLAYWRIGHT_ACTION_TIMEOUT__: "11",
+              __AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__: "22",
+            },
+          },
+        },
+        exclude: ["@playwright/test"],
+      },
+    });
+  });
+
+  it("adds the Playwright settings to Rolldown's dependency optimizer and keeps the user's options", async () => {
+    await expect(
+      applyPluginConfig(
+        {
+          optimizeDeps: {
+            exclude: ["existing-dependency"],
+            rolldownOptions: {
+              platform: "browser",
+              transform: {
+                target: "es2022",
+                define: { __USER_DEFINE__: '"user"' },
+              },
+            },
+          },
+        },
+        { playwright: { use: { testIdAttribute: "data-qa" } } }
+      )
+    ).resolves.toEqual({
+      define: {
+        [PUBLISH_DEFINE]: "false",
+        [TEST_ID_ATTRIBUTE_DEFINE]: '"data-qa"',
+      },
+      optimizeDeps: {
+        exclude: ["existing-dependency", "@playwright/test"],
+        rolldownOptions: {
+          platform: "browser",
+          transform: {
+            target: "es2022",
+            define: {
+              __USER_DEFINE__: '"user"',
+              [TEST_ID_ATTRIBUTE_DEFINE]: '"data-qa"',
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it("does not return Vite 8's rollupOptions alias next to rolldownOptions", async () => {
+    const rolldownOptions = { platform: "browser" as const };
+    const result = await applyPluginConfig({
+      optimizeDeps: { rolldownOptions, rollupOptions: rolldownOptions },
+    });
+
+    expect(result?.optimizeDeps).not.toHaveProperty("rollupOptions");
+    expect(result?.optimizeDeps?.rolldownOptions).toEqual({
+      ...rolldownOptions,
+      ...DEFAULT_OPTIMIZER_DEFINE.rolldownOptions,
+    });
+  });
+
+  it("adds the Playwright settings to esbuild's dependency optimizer before Vite 8", async () => {
+    await expect(
+      applyPluginConfig(
+        {
+          optimizeDeps: {
+            exclude: ["existing-dependency"],
+            esbuildOptions: {
+              target: "es2022",
+              define: { __USER_DEFINE__: '"user"' },
+            },
+          },
+        },
+        { playwright: { use: { testIdAttribute: "data-qa" } } },
+        VITE_7_META
+      )
+    ).resolves.toEqual({
+      define: {
+        [PUBLISH_DEFINE]: "false",
+        [TEST_ID_ATTRIBUTE_DEFINE]: '"data-qa"',
+      },
+      optimizeDeps: {
+        exclude: ["existing-dependency", "@playwright/test"],
+        esbuildOptions: {
+          target: "es2022",
+          define: {
+            __USER_DEFINE__: '"user"',
+            [TEST_ID_ATTRIBUTE_DEFINE]: '"data-qa"',
+          },
+        },
+      },
     });
   });
 });

@@ -8,7 +8,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { createServer, type ViteDevServer } from "vite";
+import { createLogger, createServer, type ViteDevServer } from "vite";
 import { afterEach, expect, it } from "vitest";
 
 import { aymeWebMcp } from "./vite";
@@ -146,4 +146,73 @@ it("recompiles a decorated subclass after its base class file changes", async ()
 
   await editBase("CHANGEDAGAIN");
   expect(await subDescriptions()).toEqual(["CHANGEDAGAIN", "CHANGEDAGAIN"]);
+});
+
+it("passes the Playwright settings to pre-bundled dependencies", async () => {
+  root = realpathSync(mkdtempSync(join(tmpdir(), "ayme-vite-deps-")));
+  const dependency = join(root, "node_modules/playwright-settings-reader");
+  mkdirSync(dependency, { recursive: true });
+  mkdirSync(join(root, "src"));
+  writeFileSync(
+    join(dependency, "package.json"),
+    JSON.stringify({ name: "playwright-settings-reader", type: "module" })
+  );
+  // Reads the defines the way createPage does.
+  writeFileSync(
+    join(dependency, "index.js"),
+    `export const settings = [
+  typeof __AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__ === "string" ? __AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__ : "default",
+  typeof __AYME_PLAYWRIGHT_ACTION_TIMEOUT__ === "number" ? __AYME_PLAYWRIGHT_ACTION_TIMEOUT__ : 0,
+  typeof __AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__ === "number" ? __AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__ : 0,
+];
+`
+  );
+  writeFileSync(
+    join(root, "src/main.ts"),
+    `export { settings } from "playwright-settings-reader";\n`
+  );
+  const warnings: string[] = [];
+  const logger = createLogger("silent");
+  logger.warn = (message) => void warnings.push(message);
+  logger.warnOnce = logger.warn;
+  server = await createServer({
+    root,
+    configFile: false,
+    customLogger: logger,
+    plugins: [
+      // Sets optimizer options before Ayme does, as @vitejs/plugin-react does.
+      {
+        name: "earlier-optimizer-options",
+        enforce: "pre",
+        config: () => ({
+          optimizeDeps: {
+            rolldownOptions: { transform: { target: "es2022" } },
+          },
+        }),
+      },
+      aymeWebMcp({
+        playwright: {
+          use: {
+            testIdAttribute: "data-qa",
+            actionTimeout: 1234,
+            navigationTimeout: 5678,
+          },
+        },
+      }),
+    ],
+    server: { middlewareMode: true, ws: false },
+    optimizeDeps: { entries: ["src/main.ts"] },
+  });
+  const client = server.environments.client;
+
+  const main = await client.transformRequest("/src/main.ts");
+  const optimizedUrl = main?.code.match(
+    /"(\/node_modules\/\.vite\/deps\/playwright-settings-reader\.js[^"]*)"/
+  )?.[1];
+  expect(optimizedUrl).toBeDefined();
+  const optimized = (await client.transformRequest(optimizedUrl!))?.code;
+
+  expect(optimized).not.toContain("__AYME_PLAYWRIGHT_");
+  expect(optimized).toMatch(/"data-qa"[\s\S]*1234[\s\S]*5678/);
+  expect(warnings).toEqual([]);
 });
