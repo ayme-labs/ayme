@@ -18,7 +18,7 @@ export default defineConfig({
 
 Keep decorated Page Object Models in separate `.ts` files. Enable `experimentalDecorators` in your TypeScript configuration. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [CounterPage](../../apps/example-react/playwright/pom/CounterPage.ts).
 
-Publication is off unless the provider enables it with `webMCP={{ enabled: true }}`. `webMCP.toolNamePrefix` prefixes every published tool name; see the [main library README](../ayme/README.md#webmcp-publication). Local Page Object calls work without a WebMCP driver, including when publication is off.
+Publication is off unless the provider enables it with `webMCP={{ enabled: true }}`. `webMCP.toolNamePrefix` prefixes every published tool name; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#webmcp-publication). Local Page Object calls work without a WebMCP driver, including when publication is off.
 
 ## Root setup
 
