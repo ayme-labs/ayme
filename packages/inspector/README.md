@@ -50,7 +50,10 @@ its styles are contained by the Shadow Root.
 The Inspector paints above the page's own UI: its host takes the highest
 z-index there is. Only the browser's top layer (modal dialogs, popovers,
 fullscreen), or page content at that same z-index after the host, covers it.
-Outside the panel and the collapsed logo, the page keeps its pointer.
+Outside the panel and the collapsed logo, the page keeps its pointer. A
+runtime pointer action, such as an agent's click, whose target is under the
+panel passes through it: the panel ignores the pointer until that action ends.
+A person moves, docks or collapses the panel instead.
 
 The Shadow Root is closed, so no locator on the host page, whether
 Playwright's or the runtime's, sees inside it: a Page Object member never

@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { isAymeLocator } from "@ayme-dev/ayme/internal";
+import { isPointerAction, passThroughWhileCovered } from "./panelPassThrough";
 import type { TraceEntry } from "./trace";
 
 export type { TraceEntry } from "./trace";
@@ -23,6 +24,7 @@ const wrappedPages = new WeakMap<
 >();
 
 // Diagnostic decoration. The underlying Page and its locator brands stay intact.
+// Pointer actions also pass through the Inspector panel when it covers them.
 export function withDemoFeedback(
   page: Page,
   options: DemoFeedbackOptions
@@ -65,9 +67,20 @@ export function withDemoFeedback(
         if (typeof member !== "function") return member;
 
         return (...args: unknown[]) => {
-          const operation = traceOperation(property);
-          if (!isAymeLocator(target) || !operation)
+          const operation = isAymeLocator(target)
+            ? traceOperation(property)
+            : undefined;
+          const targets = isPointerAction(property)
+            ? pointerTargets(target, property, args)
+            : [];
+          if (!operation && targets.length === 0)
             return wrapResult(member.apply(target, args));
+
+          const act = () =>
+            passThroughWhileCovered(targets, () =>
+              member.apply(target, args)
+            ).then(wrapResult);
+          if (!operation) return act();
 
           const locator = target as Locator;
           const entry: TraceEntry = {
@@ -95,7 +108,7 @@ export function withDemoFeedback(
               if (operation === "click" && context.options.clickCue)
                 await showClickCue(locator);
             }
-            return wrapResult(member.apply(target, args));
+            return act();
           })();
         };
       },
@@ -108,6 +121,24 @@ export function withDemoFeedback(
   wrappedPages.set(page, { context, proxy });
   wrappedPages.set(proxy, { context, proxy });
   return proxy;
+}
+
+// The elements a pointer action hit-tests: a locator's own and a drag's drop
+// target, or the selectors of the page's own actions, such as the ref tools'
+// `page.click(selector)`.
+function pointerTargets(
+  target: Page | Locator,
+  property: string | symbol,
+  args: unknown[]
+): Locator[] {
+  if (isAymeLocator(target))
+    return property === "dragTo" && isAymeLocator(args[0])
+      ? [target as Locator, args[0] as Locator]
+      : [target as Locator];
+  return args
+    .slice(0, property === "dragAndDrop" ? 2 : 1)
+    .filter((arg): arg is string => typeof arg === "string")
+    .map((selector) => (target as Page).locator(selector));
 }
 
 // ponytail: only instrument locator operations used by the Inspector; extend as needed.
