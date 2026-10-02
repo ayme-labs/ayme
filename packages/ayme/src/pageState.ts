@@ -151,7 +151,8 @@ export async function startActionForDocument(
 
 /**
  * Package-internal: complete an action whose tool call threw, with the page as
- * it is now. No caller's cursor moves.
+ * it is now, or as last recorded when capturing it throws. No caller's cursor
+ * moves.
  */
 export async function failActionForDocument(
   currentDocument: Document,
@@ -163,7 +164,9 @@ export async function failActionForDocument(
 /**
  * Package-internal: capture the Settled Page after an action and return its
  * Change Record tree, reconciled against the page the acting caller last
- * received. The capture becomes that caller's cursor.
+ * received. The capture becomes that caller's cursor. When capturing throws,
+ * the action is completed as failed with the page as last recorded, and the
+ * error travels on.
  */
 export async function completeActionForDocument(
   currentDocument: Document,
@@ -274,7 +277,13 @@ class PageStateSession {
   }
 
   async completeAction(actionId: StructuralActionId): Promise<StructuralTree> {
-    const capture = await this.captureTree();
+    let capture: CapturedPageState;
+    try {
+      capture = await this.captureTree();
+    } catch (error) {
+      await this.failAtLatestObservation(actionId);
+      throw error;
+    }
     const changes = this.history.completeAction(
       actionId,
       capture.tree,
@@ -285,9 +294,26 @@ class PageStateSession {
   }
 
   async failAction(actionId: StructuralActionId): Promise<void> {
-    const capture = await this.captureTree();
+    let capture: CapturedPageState;
+    try {
+      capture = await this.captureTree();
+    } catch {
+      return this.failAtLatestObservation(actionId);
+    }
     this.history.failAction(actionId, capture.tree, this.history.now());
     this.rememberElements(capture);
+  }
+
+  /** Complete a failed action without a capture, when capturing is what failed. */
+  private async failAtLatestObservation(
+    actionId: StructuralActionId
+  ): Promise<void> {
+    // Set since the action started: every recorded observation remembers its
+    // elements. Read before awaiting, so the tree and its elements match.
+    const latest = this.latestElements!;
+    const tree = await latest.observation.tree.resolve();
+    this.history.failAction(actionId, tree, this.history.now());
+    this.rememberElements(latest);
   }
 
   async getPageStateForElements(
@@ -311,11 +337,13 @@ class PageStateSession {
     return capture;
   }
 
-  /** Call in the same step as the observation of `capture` is recorded. */
-  private rememberElements(capture: CapturedPageState): void {
+  /** Call in the same step as the observation of these elements is recorded. */
+  private rememberElements({
+    elementsByRef,
+  }: Pick<CapturedPageState, "elementsByRef">): void {
     this.latestElements = {
       observation: this.history.latestObservation!,
-      elementsByRef: capture.elementsByRef,
+      elementsByRef,
     };
   }
 
