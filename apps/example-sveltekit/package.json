@@ -1,0 +1,36 @@
+{
+  "name": "@ayme-dev/example-sveltekit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --host 127.0.0.1 --port 4194",
+    "build": "vite build",
+    "start": "node build",
+    "typecheck": "svelte-kit sync && svelte-check --fail-on-warnings && tsc --noEmit -p tsconfig.config.json",
+    "lint": "eslint . --max-warnings 0",
+    "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
+    "test:e2e:dev": "playwright test",
+    "test:e2e:prod": "playwright test --config=playwright.production.config.ts"
+  },
+  "dependencies": {
+    "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/svelte": "workspace:*"
+  },
+  "devDependencies": {
+    "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/typescript-config": "workspace:*",
+    "@ayme-dev/unplugin-ayme": "workspace:*",
+    "@playwright/test": "~1.62.1",
+    "@sveltejs/adapter-node": "^5.5.7",
+    "@sveltejs/kit": "^2.70.3",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.9.1",
+    "playwright": "~1.62.1",
+    "svelte": "^5.57.1",
+    "svelte-check": "^4.7.6",
+    "typescript": "^6.0.3",
+    "vite": "^8.2.2"
+  }
+}

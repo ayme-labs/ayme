@@ -1,0 +1,9 @@
+{
+  "extends": ["//"],
+  "tags": ["app"],
+  "tasks": {
+    "build": {
+      "cache": false
+    }
+  }
+}
