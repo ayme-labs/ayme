@@ -1,0 +1,38 @@
+--- ng22/src/ayme-angular.ts
++++ ng17/src/ayme-angular.ts
+@@ -8,7 +8,7 @@
+   assertInInjectionContext,
+   inject,
+   makeEnvironmentProviders,
+-  provideEnvironmentInitializer,
++  ENVIRONMENT_INITIALIZER,
+   signal,
+   type EnvironmentProviders,
+   type Signal,
+@@ -53,7 +53,7 @@
+       },
+     },
+     // Eager: the runtime starts with the environment, not on first injection.
+-    provideEnvironmentInitializer(() => void inject(AYME)),
++    { provide: ENVIRONMENT_INITIALIZER, multi: true, useValue: () => void inject(AYME) },
+   ]);
+ }
+ 
+--- ng22/src/app/demo.ts
++++ ng17/src/app/demo.ts
+@@ -4,6 +4,7 @@
+ import { Counter } from './counter';
+ 
+ @Component({
++  standalone: true,
+   selector: 'app-demo',
+   imports: [Counter, RouterLink],
+   template: `
+@@ -20,6 +21,7 @@
+ }
+ 
+ @Component({
++  standalone: true,
+   selector: 'app-other',
+   imports: [RouterLink],
+   template: `<h1>Other</h1><a routerLink="/">Home</a>`,
