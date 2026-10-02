@@ -2,9 +2,8 @@
 // so this policy cannot collide with other uses of them.
 import { builtinRules } from "eslint/use-at-your-own-risk";
 
-// ADR-0026: only tests and a package's verification scripts may import a
-// `testing` entry, whether `@ayme-dev/<package>/testing` or a relative
-// `./testing` inside the package.
+// ADR-0026: only tests may import a `testing` entry, whether
+// `@ayme-dev/<package>/testing` or a relative `./testing` inside the package.
 export const message =
   "Only test files may import a testing entry (docs/adr/0026-test-seams-behind-a-testing-entry.md).";
 const packageEntry = String.raw`^@ayme-dev/.+/testing$`;
@@ -23,7 +22,6 @@ export default [
       "**/*.test.tsx",
       "**/*.browser.test.ts",
       "**/tests/**",
-      "scripts/**",
     ],
     // Aliased so these restrictions cannot collide with other uses of the
     // built-in rules.

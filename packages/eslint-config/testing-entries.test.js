@@ -27,13 +27,12 @@ test("the refusal cites ADR-0026", () => {
   );
 });
 
-test("a test file or verification script may import a testing entry", () => {
+test("a test file may import a testing entry", () => {
   for (const filename of [
     "src/runtime.test.ts",
     "src/view.test.tsx",
     "src/page.browser.test.ts",
     "tests/integration.spec.ts",
-    "scripts/installed-types.ts",
   ])
     assert.deepEqual(lint(staticImport, filename), [], filename);
 });

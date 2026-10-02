@@ -4,14 +4,14 @@ Where each kind of test runs, what it is for, and where test-only code lives. Th
 
 ## Test lanes
 
-| Lane                 | Runs with                                         | Files                                          | Command                                            |
-| -------------------- | ------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------- |
-| Unit                 | Vitest in Node, or jsdom for hooks and components | `*.test.ts`, `*.test.tsx`                      | `pnpm test`                                        |
-| Browser              | Vitest browser mode on Chromium                   | `*.browser.test.ts`, `*.browser.test.tsx`      | `pnpm test` or `pnpm test:e2e` (see below)         |
-| Native WebMCP        | Vitest browser mode on Chromium's own WebMCP      | `*.native.browser.test.ts` in `webmcp`         | `pnpm test:e2e` in `packages/webmcp`               |
-| E2E                  | Playwright on built packages and example apps     | `tests/**/*.spec.ts`                           | `pnpm test:e2e`                                    |
-| Package verification | A clean consumer installs the packed packages     | `packedConsumer.test.ts`, `verify-package.mjs` | `pnpm test` in `webmcp`, `pnpm test:e2e` in `core` |
-| Live goals           | Playwright with the real model                    | `apps/example-vue/tests/goals.spec.ts`         | `pnpm test:goals` in `apps/example-vue`            |
+| Lane                 | Runs with                                         | Files                                     | Command                                    |
+| -------------------- | ------------------------------------------------- | ----------------------------------------- | ------------------------------------------ |
+| Unit                 | Vitest in Node, or jsdom for hooks and components | `*.test.ts`, `*.test.tsx`                 | `pnpm test`                                |
+| Browser              | Vitest browser mode on Chromium                   | `*.browser.test.ts`, `*.browser.test.tsx` | `pnpm test` or `pnpm test:e2e` (see below) |
+| Native WebMCP        | Vitest browser mode on Chromium's own WebMCP      | `*.native.browser.test.ts` in `webmcp`    | `pnpm test:e2e` in `packages/webmcp`       |
+| E2E                  | Playwright on built packages and example apps     | `tests/**/*.spec.ts`                      | `pnpm test:e2e`                            |
+| Package verification | A clean consumer installs the packed packages     | `packedConsumer.test.ts`                  | `pnpm test` in `webmcp`                    |
+| Live goals           | Playwright with the real model                    | `apps/example-vue/tests/goals.spec.ts`    | `pnpm test:goals` in `apps/example-vue`    |
 
 - **Unit** covers pure modules and framework hooks. Expected values come from fixtures and examples, never from the code under test.
 - **Browser** covers code that needs a real DOM.
@@ -26,7 +26,7 @@ Each package keeps its own Vitest config ([ADR-0003](adr/0003-keep-vitest-config
 
 ## Test-only code
 
-Fakes, test doubles and page objects for tests ship from the package's `testing` entry, `@ayme-dev/<package>/testing`, built from its `src/testing.ts`. Only test files and a package's own verification scripts may import one; lint enforces it ([`testing-entries.js`](../packages/eslint-config/testing-entries.js)). Why, and the options we rejected: [ADR-0026](adr/0026-test-seams-behind-a-testing-entry.md).
+Fakes, test doubles and page objects for tests ship from the package's `testing` entry, `@ayme-dev/<package>/testing`, built from its `src/testing.ts`. Only test files may import one; lint enforces it ([`testing-entries.js`](../packages/eslint-config/testing-entries.js)). Why, and the options we rejected: [ADR-0026](adr/0026-test-seams-behind-a-testing-entry.md).
 
 | Entry                                           | Holds                                                                                                               |
 | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
