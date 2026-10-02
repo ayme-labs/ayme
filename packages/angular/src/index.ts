@@ -41,13 +41,18 @@ const inBrowser = () => typeof window !== "undefined";
 /**
  * Starts Ayme with the environment injector that receives these providers,
  * before the root component is created, and stops it when that injector is
- * destroyed. Put it in the application config.
+ * destroyed. Put it in the application config, not in route providers: the
+ * router does not destroy a route's environment injector on navigation.
  */
 export function provideAyme(options: AymeOptions = {}): EnvironmentProviders {
   return makeEnvironmentProviders([
     {
       provide: aymeSetup,
       useFactory: (): AymeSetup => {
+        if (inject(aymeSetup, { skipSelf: true, optional: true }))
+          throw new Error(
+            "provideAyme cannot be nested beneath another Ayme runtime owner."
+          );
         const ayme = createRuntimeSession(options);
         const destroyRef = inject(DestroyRef);
         const publicationStatus = signal(ayme.webMCP.publicationStatus);
@@ -74,7 +79,10 @@ export function provideAyme(options: AymeOptions = {}): EnvironmentProviders {
 /** Reads the Ayme setup of the nearest `provideAyme`. Call in an injection context. */
 export function injectAyme(): AymeSetup {
   assertInInjectionContext(injectAyme);
-  return inject(aymeSetup);
+  const setup = inject(aymeSetup, { optional: true });
+  if (!setup)
+    throw new Error("Ayme requires provideAyme() in an ancestor injector.");
+  return setup;
 }
 
 /**

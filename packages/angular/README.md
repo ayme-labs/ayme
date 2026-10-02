@@ -44,7 +44,9 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-`provideAyme(options)` takes the options of `createRuntimeSession` (`pageFactory`, `ignore`, `customTools`, `goalLoop`, `webMCP`). It starts Ayme before the root component is created and stops it when the application is destroyed.
+`provideAyme(options)` takes the options of `createRuntimeSession` (`pageFactory`, `ignore`, `customTools`, `goalLoop`, `webMCP`) and passes them through unchanged. It starts Ayme before the root component is created and stops it when the application is destroyed. Publication is off, with status `disabled`, unless `webMCP.enabled` is `true`; `webMCP.toolNamePrefix` prefixes every published tool name.
+
+Put `provideAyme` in the application config, not in route providers. The router does not destroy a route's environment injector on navigation, so an owner there would outlive its route. One application owns Ayme per document: `provideAyme` beneath another `provideAyme` throws, and so does a second application that starts Ayme while the first is running.
 
 In a component, `injectPageObject(Model)` returns the Page Object, whose tools stay registered until the component is destroyed, and `injectAyme()` returns `{ ayme, webMCP }`:
 
@@ -65,6 +67,8 @@ export class Counter {
   protected readonly webMCP = injectAyme().webMCP;
 }
 ```
+
+`webMCP.publicationStatus` is a read-only signal, so templates follow it in zone and zoneless apps; `webMCP.retryPublication()` retries after a WebMCP driver becomes available. Both functions need an injection context and `provideAyme` in an ancestor injector, and say so when either is missing. A Page Object Model the build plugin did not compile fails at `injectPageObject` in the browser.
 
 Page Object Models are authored as for React and Vue, with `@ayme` and `@ayme.action`; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md).
 
