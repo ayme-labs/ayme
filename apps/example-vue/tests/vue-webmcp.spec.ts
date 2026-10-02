@@ -79,6 +79,16 @@ const initialToolNames = [
 test.beforeAll(() => registerInspectorSelectors(selectors));
 test.beforeEach(({ context }) => recordPublishedTools(context));
 
+/**
+ * Opens the playground with the Inspector collapsed. The panel paints above
+ * the page's own UI, so at its default place it covers the archive dialog's
+ * confirm button (#272).
+ */
+async function openWithInspectorCollapsed(page: Page) {
+  await page.goto("/");
+  await new Inspector(page).collapse();
+}
+
 async function runListActions(
   page: Page,
   actions: ListActions,
@@ -191,7 +201,7 @@ test("derives nested object input schemas from POM action types", () => {
 });
 
 test("runs the WebMCP POM source through real Playwright", async ({ page }) => {
-  await page.goto("/");
+  await openWithInspectorCollapsed(page);
   const listPage = new ListPage(page);
 
   await runListActions(
@@ -271,7 +281,7 @@ test("publishes the current page as ref-bearing ARIA state", async ({
 test("runs the same POM behavior through registered WebMCP tools", async ({
   page,
 }) => {
-  await page.goto("/");
+  await openWithInspectorCollapsed(page);
   await expect
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
@@ -303,7 +313,7 @@ test("runs the same POM behavior through registered WebMCP tools", async ({
 test("publishes collection tools only while a component root is live", async ({
   page,
 }) => {
-  await page.goto("/");
+  await openWithInspectorCollapsed(page);
   await expect
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
@@ -339,7 +349,7 @@ test("publishes collection tools only while a component root is live", async ({
 test("demonstrates the list app and invokes the generated POM tools", async ({
   page,
 }) => {
-  await page.goto("/");
+  await openWithInspectorCollapsed(page);
 
   await expect(page.getByRole("heading", { name: "My list" })).toBeVisible();
   await expect

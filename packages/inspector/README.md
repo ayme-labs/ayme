@@ -44,6 +44,11 @@ The Inspector marks its body host and structural page-state capture temporarily
 hides that host from the accessibility snapshot. The host is otherwise visible
 and accessible, and its styles are contained by the Shadow Root.
 
+The Inspector paints above the page's own UI: its host takes the highest
+z-index there is. Only the browser's top layer (modal dialogs, popovers,
+fullscreen), or page content at that same z-index after the host, covers it.
+Outside the panel and the collapsed logo, the page keeps its pointer.
+
 The Shadow Root is closed, so no locator on the host page, whether
 Playwright's or the runtime's, sees inside it: a Page Object member never
 matches the Inspector's own text.
