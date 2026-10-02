@@ -319,8 +319,18 @@ class PageStateSession {
     };
   }
 
+  /** Capture the page for recording, rejecting a capture the identity ledger could not accept. */
   private async captureTree(): Promise<CapturedPageState> {
-    return captureCurrentPageState(this.currentDocument.body, this.refFactory);
+    const capture = await captureCurrentPageState(
+      this.currentDocument.body,
+      this.refFactory
+    );
+    const duplicateRef = capture.tree.findDuplicateRef();
+    if (duplicateRef !== null)
+      throw new RuntimeStateError(
+        `The page capture gave more than one node the Structural Ref ${duplicateRef}.`
+      );
+    return capture;
   }
 
   private pageStateFor(capture: CapturedPageState): PageState {

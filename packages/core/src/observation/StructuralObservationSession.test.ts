@@ -241,4 +241,22 @@ describe("StructuralObservationSession identity ledger", () => {
       currentRef: "e2",
     });
   });
+
+  it("drops an observation the ledger rejects, failing only the read that reached it", async () => {
+    const { observe, ledger } = recordingSession();
+    observe('- button "Save" [ref=e1]');
+    observe('- button "Save" [ref=e2]\n- button "Cancel" [ref=e2]');
+
+    await expect(ledger()).rejects.toThrow(
+      "Structural Ref e2 names more than one node"
+    );
+    expect((await ledger()).resolve(ref("e1"))).toMatchObject({
+      currentRef: "e1",
+    });
+
+    observe('- button "Save" [ref=e3]');
+    expect((await ledger()).resolve(ref("e1"))).toMatchObject({
+      currentRef: "e3",
+    });
+  });
 });

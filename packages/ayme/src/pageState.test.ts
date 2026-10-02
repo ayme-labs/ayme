@@ -699,4 +699,67 @@ describe("get_page_state", () => {
     expect(first.tree.getNode(ref("e2"))?.name).toBe("First capture");
     expect(second.tree.getNode(ref("e4"))?.name).toBe("Second capture");
   });
+
+  describe("a capture in which two nodes share a ref", () => {
+    const snapshot = (...buttons: [name: string, element: Element][]) => {
+      const text = [
+        "- generic [ref=e1]:",
+        ...buttons.map(([name]) => `  - button "${name}" [ref=e2]`),
+      ].join("\n");
+      return {
+        distilledText: text,
+        fullText: text,
+        refsByElement: new Map<Element, string>([
+          [document.body, "e1"],
+          ...buttons.map(([, element]) => [element, "e2"] as const),
+        ]),
+      };
+    };
+
+    beforeEach(() => {
+      document.body.innerHTML = "<button>A</button><button>B</button>";
+      listRegisteredPomRoots.mockResolvedValue([]);
+    });
+
+    it("is rejected, and the next valid capture resolves the ref", async () => {
+      const [a, b] = document.querySelectorAll("button");
+      captureAriaSnapshot
+        .mockReturnValueOnce(snapshot(["A", a!], ["B", b!]))
+        .mockReturnValue(snapshot(["A", a!]));
+
+      await expect(getPageStateCaptureForDocument(document)).rejects.toThrow(
+        "more than one node the Structural Ref e2"
+      );
+      await getPageStateCaptureForDocument(document);
+
+      await expect(resolvePageStateRefs(document, ref("e2"))).resolves.toEqual([
+        {
+          status: "resolved",
+          requestedRef: ref("e2"),
+          node: { ref: ref("e2"), element: a },
+        },
+      ]);
+    });
+
+    it("is rejected after a valid capture without disturbing its refs", async () => {
+      const [a, b] = document.querySelectorAll("button");
+      captureAriaSnapshot
+        .mockReturnValueOnce(snapshot(["A", a!]))
+        .mockReturnValueOnce(snapshot(["A", a!], ["B", b!]))
+        .mockReturnValue(snapshot(["A", a!]));
+
+      await getPageStateCaptureForDocument(document);
+      await expect(getPageStateCaptureForDocument(document)).rejects.toThrow(
+        "more than one node the Structural Ref e2"
+      );
+
+      await expect(resolvePageStateRefs(document, ref("e2"))).resolves.toEqual([
+        {
+          status: "resolved",
+          requestedRef: ref("e2"),
+          node: { ref: ref("e2"), element: a },
+        },
+      ]);
+    });
+  });
 });

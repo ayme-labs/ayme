@@ -178,7 +178,9 @@ export class StructuralObservationSession {
    * The ledger is its own reconciliation chain, run lazily here: one
    * reconcile per recorded observation, against the page's previous one. An
    * observation whose tree fails to resolve fails the read and stays pending,
-   * so lineage is never skipped over.
+   * so lineage is never skipped over. An observation whose tree the ledger
+   * rejects fails the read and is dropped: retrying cannot change its tree,
+   * and the ledger stays at the last observation it accepted.
    */
   async readIdentityLedger<T>(
     pageId: PageId,
@@ -193,8 +195,9 @@ export class StructuralObservationSession {
       .then(async () => {
         while (page.pending.length > 0) {
           const { entry, moment } = page.pending[0]!;
-          page.ledger.advance(await entry.tree.resolve(), moment);
+          const tree = await entry.tree.resolve();
           page.pending.shift();
+          page.ledger.advance(tree, moment);
           page.through = entry;
         }
         return read(page.ledger, page.through);

@@ -76,4 +76,45 @@ describe("StructuralIdentityLedger", () => {
       reason: "ambiguous",
     });
   });
+
+  it("rejects an observation in which two nodes share a ref and keeps no part of it", () => {
+    const ledger = new StructuralIdentityLedger();
+
+    expect(() =>
+      ledger.advance(
+        tree('- button "A" [ref=e1]', '- button "B" [ref=e1]'),
+        BEFORE_ANY_ACTION
+      )
+    ).toThrow("Structural Ref e1 names more than one node");
+    expect(ledger.resolve(ref("e1"))).toMatchObject({ reason: "unknown-ref" });
+    expect(ledger.lifecycle(ref("e1"))).toBeUndefined();
+
+    ledger.advance(tree('- button "A" [ref=e1]'), AFTER_SAVE);
+    expect(ledger.resolve(ref("e1"))).toMatchObject({ currentRef: ref("e1") });
+    expect(ledger.lifecycle(ref("e1"))).toEqual({
+      appeared: AFTER_SAVE,
+      disappeared: null,
+    });
+  });
+
+  it("reconciles the next observation against the last accepted one after a rejection", () => {
+    const ledger = new StructuralIdentityLedger();
+    ledger.advance(tree('- button "Save" [ref=e1]'), BEFORE_ANY_ACTION);
+
+    expect(() =>
+      ledger.advance(
+        tree('- button "Save" [ref=e3]', '- status "Saved" [ref=e3]'),
+        AFTER_SAVE
+      )
+    ).toThrow("Structural Ref e3 names more than one node");
+    expect(ledger.resolve(ref("e1"))).toMatchObject({ currentRef: ref("e1") });
+    expect(ledger.resolve(ref("e3"))).toMatchObject({ reason: "unknown-ref" });
+
+    ledger.advance(tree('- button "Save" [ref=e5]'), AFTER_CLEAR);
+    expect(ledger.resolve(ref("e1"))).toMatchObject({ currentRef: ref("e5") });
+    expect(ledger.lifecycle(ref("e1"))).toEqual({
+      appeared: BEFORE_ANY_ACTION,
+      disappeared: null,
+    });
+  });
 });
