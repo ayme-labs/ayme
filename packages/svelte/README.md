@@ -93,7 +93,7 @@ Svelte 4 on SvelteKit 2 uses the same files with legacy markup: `let count = 0` 
 
 ## SvelteKit 3 setup
 
-SvelteKit 3 reads its configuration from the `sveltekit()` call and needs no `oxc` option:
+SvelteKit 3 reads its configuration from the `sveltekit()` call and needs no `oxc` option. This setup was checked against SvelteKit 3.0.0 during research; no example app in this repository runs it.
 
 ```ts
 // vite.config.ts
@@ -151,7 +151,38 @@ import App from "./App.svelte";
 mount(App, { target: document.getElementById("app")! });
 ```
 
-Svelte 3 and 4 start the app with `new App({ target: document.getElementById("app")! })`. `App.svelte` calls `useAyme(options)` like the root layout, and its components call `usePageObject` as above, importing the POM by relative path.
+Svelte 3 and 4 start the app with `new App({ target: document.getElementById("app")! })`.
+
+`src/App.svelte` owns the runtime and renders the page:
+
+```svelte
+<script lang="ts">
+  import { useAyme } from "@ayme-dev/svelte";
+  import Counter from "./Counter.svelte";
+
+  useAyme({ webMCP: { enabled: true } });
+</script>
+
+<Counter />
+```
+
+`src/Counter.svelte` uses the POM above, saved as `src/pom/CounterPage.ts`:
+
+```svelte
+<script lang="ts">
+  import { usePageObject } from "@ayme-dev/svelte";
+  import { CounterPage } from "./pom/CounterPage";
+
+  let count = $state(0);
+  const pom = usePageObject(CounterPage);
+</script>
+
+<p>Count: <output>{count}</output></p>
+<button onclick={() => (count += 1)}>Increment</button>
+<button onclick={() => pom.increment()}>Call Page Object</button>
+```
+
+Svelte 3 and 4 write `let count = 0` and `on:click` instead.
 
 ## Root setup
 
@@ -257,7 +288,6 @@ The initial publication status is `waiting` when the root setup enables publicat
 - The compiler follows SvelteKit's generated tsconfig, so POMs under `src` need nothing more. POMs outside `src`, such as a `playwright/` folder, need their own tsconfig with `experimentalDecorators`, passed to the plugin as `ayme({ tsconfigPath })`, as the [Nuxt example](https://github.com/ayme-labs/ayme/tree/main/apps/example-nuxt) does.
 - Below Vite 6, editing a type a POM imports needs a dev-server restart before the published schema changes. Vite 6 and later rebuild it in place.
 - SvelteKit 2 on Vite 8 needs `oxc: { decorator: { legacy: true } }` in `vite.config.ts` until #279. Without it, the server fails on the untransformed decorators.
-- In `vite dev` on Vite 8, a project that installs Ayme from packages rather than a workspace link ignores the plugin's Playwright settings (`testIdAttribute`, timeouts), because Vite pre-bundles `@ayme-dev/ayme` without them (#275). Production builds apply them. `optimizeDeps: { exclude: ["@ayme-dev/ayme"] }` works around it.
 - The names are `useAyme` and `usePageObject`, not the `setX` and `getX` pairs common in Svelte libraries, so setup reads the same as in the Vue and React packages. As with Vue's standalone setup, the owner is a function call in the root component, with no provider component; unlike Vue, `usePageObject` always needs an owner.
 
 For Chrome or a coding agent connection, follow the skill's
