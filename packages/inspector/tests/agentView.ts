@@ -45,6 +45,19 @@ export class AgentView {
     return executePublishedTool(this.page, name, input);
   }
 
+  /**
+   * The ref snapshot gives the node on this structure line, such as
+   * `button "Add item"`.
+   */
+  async ref(line: string): Promise<string> {
+    const { structure } = (await this.call("snapshot", {})) as {
+      structure: string;
+    };
+    const ref = structure.match(new RegExp(`(e\\d+) ${line}`))?.[1];
+    if (!ref) throw new Error(`No ${line} in:\n${structure}`);
+    return ref;
+  }
+
   /** The Page Object definitions snapshot returns for these models. */
   async pomDefinitions(...names: string[]): Promise<string> {
     const { pomDefinitions } = (await this.call("snapshot", {

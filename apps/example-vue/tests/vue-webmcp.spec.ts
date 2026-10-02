@@ -13,7 +13,16 @@ import {
   type RecordingDriver,
 } from "@ayme-dev/ayme/testing";
 
-import { openWithInspectorCollapsed } from "./goalLane";
+/**
+ * Opens the playground with the Inspector collapsed, for a test that clicks
+ * the archive dialog itself, as a person does. The panel paints above the
+ * page's own UI and at its default place covers the dialog's confirm button.
+ * Tool calls pass through the panel (#272); a person moves or collapses it.
+ */
+async function openWithInspectorCollapsed(page: Page) {
+  await page.goto("/");
+  await new Inspector(page).collapse();
+}
 
 type ListActions = {
   addItem(text: string): Promise<void>;
@@ -282,7 +291,7 @@ test("publishes the current page as ref-bearing ARIA state", async ({
 test("runs the same POM behavior through registered WebMCP tools", async ({
   page,
 }) => {
-  await openWithInspectorCollapsed(page);
+  await page.goto("/");
   await expect
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
@@ -314,7 +323,7 @@ test("runs the same POM behavior through registered WebMCP tools", async ({
 test("publishes collection tools only while a component root is live", async ({
   page,
 }) => {
-  await openWithInspectorCollapsed(page);
+  await page.goto("/");
   await expect
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
