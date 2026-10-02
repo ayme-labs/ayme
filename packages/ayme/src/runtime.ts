@@ -103,7 +103,9 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
   let resolvedPage: AymePage | undefined;
   const getPage = () =>
     (resolvedPage ??= instrumentPage((options.pageFactory ?? createPage)()));
+  // Publication is decided once, when the session is created.
   const enabled = options.webMCP?.enabled === true;
+  const toolNamePrefix = options.webMCP?.toolNamePrefix;
   const initialStatus: AymeWebMcpPublicationStatus = {
     state: enabled ? "waiting" : "disabled",
     message: enabled
@@ -147,7 +149,7 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
         }
         let attemptFailed = false;
         const registration = await synchronizeWebMcpTools(driver, {
-          toolNamePrefix: options.webMCP?.toolNamePrefix,
+          toolNamePrefix,
           signal,
           onError(error) {
             attemptFailed = true;

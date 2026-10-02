@@ -64,6 +64,10 @@ test("hydrates, publishes the compiled POM, executes it, and cleans up on remoun
       },
     });
   await expect(page.locator("output")).toHaveText("0");
+  // Ayme's own tools, by name: every published name without a Page Object's dot.
+  expect(
+    (await publishedToolNames(page)).filter((name) => !name.includes("."))
+  ).toEqual(["snapshot", "click", "fill"]);
 
   await page.getByRole("button", { name: "Call Page Object" }).click();
   await expect(page.locator("output")).toHaveText("1");
