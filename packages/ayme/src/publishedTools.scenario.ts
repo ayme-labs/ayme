@@ -13,6 +13,7 @@ import type {
 } from "@mcp-b/webmcp-types";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage } from "@ayme-dev/playwright-lite";
+import type { Page } from "@playwright/test";
 
 import type { PomManifest } from "./contracts";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
@@ -70,6 +71,68 @@ class SettingsPage {
 
 registerCompiledPom(TodoPage, pomManifest("TodoPage", "addTodo"));
 registerCompiledPom(SettingsPage, pomManifest("SettingsPage", "save"));
+
+/**
+ * One list item whose archive action makes the item unavailable while the
+ * call is still running, as a confirmation dialog opened over it does.
+ */
+class ListPage {
+  readonly items;
+
+  constructor(page: Page) {
+    this.items = [
+      {
+        root: page.locator("#item"),
+        async archive() {
+          document.querySelector("#item")!.setAttribute("hidden", "");
+          // Return only once the page change has reached publication, so the
+          // tool goes unavailable while its own call is still running.
+          while (
+            listLiveTools().some(
+              ({ name }) => name === "ListPage.items.archive"
+            )
+          )
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          return "archived";
+        },
+      },
+    ];
+  }
+}
+
+registerCompiledPom(ListPage, {
+  className: "ListPage",
+  tools: [],
+  members: [
+    {
+      memberName: "items",
+      kind: "component",
+      access: "field",
+      componentClassName: "ListItem",
+      collection: true,
+    },
+  ],
+  components: [
+    {
+      className: "ListItem",
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [
+        {
+          methodName: "archive",
+          toolName: "archive",
+          description: "archive on ListItem.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: [],
+            additionalProperties: false,
+          },
+          parameters: [],
+        },
+      ],
+    },
+  ],
+});
 
 /** Every tool the fixture session publishes, in the group the Inspector shows it under. */
 const EXPECTED_GROUPS: Record<string, PublishedToolGroup> = {
@@ -347,6 +410,27 @@ export function describePublishedTools(
 
       expect(await runTool("click_page_state_ref", { ref })).toEqual(expected);
       expect(expected).toMatchObject({ isError: true });
+    });
+
+    it("returns the result of a call that makes its own tool unavailable, then withdraws the tool", async () => {
+      document.body.innerHTML = `<ul><li id="item">Draft</li></ul>`;
+      await startSession();
+      cleanups.push(runtime.register(ListPage, runtime.construct(ListPage)));
+      await expect
+        .poll(async () => (await context.getTools()).map(({ name }) => name))
+        .toContain("ListPage.items.archive");
+      const { structure } = (await agentGets("get_page_context", {})) as {
+        structure: string;
+      };
+      const ref = structure.match(/(e\d+) ListPage\.items\[0\]/)?.[1];
+      if (!ref) throw new Error("Expected a ref for ListPage.items[0].");
+
+      expect(
+        await agentGets("ListPage.items.archive", { ref, args: {} })
+      ).toMatchObject({ result: "archived" });
+      await expect
+        .poll(async () => (await context.getTools()).map(({ name }) => name))
+        .not.toContain("ListPage.items.archive");
     });
 
     it("gives each Ref tool the refs the Goal Loop offers it for the same page", async () => {

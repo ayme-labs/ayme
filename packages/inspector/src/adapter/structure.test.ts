@@ -5,10 +5,11 @@ import {
   collectionItems,
   mapMembersToRefs,
   memberLinks,
+  memberOwnersOf,
   memberTag,
-  pageObjectsOf,
   type StructureNode,
 } from "./structure";
+import type { PageObjectModel, PageObjectNode } from "./pageModel";
 
 // Unit tests: the structure tree model built from the page state text an
 // agent receives. The fixture is hand-written in its compact notation.
@@ -244,25 +245,61 @@ describe("when several members locate the same elements", () => {
   });
 });
 
+/** A page model node, with the fields memberOwnersOf reads filled in. */
+function objectNode(
+  path: string,
+  kind: PageObjectNode["kind"],
+  className: string,
+  children: PageObjectNode[] = []
+): PageObjectNode {
+  return {
+    path,
+    key: path,
+    name: path,
+    kind,
+    className,
+    live: true,
+    members: [],
+    actions: [],
+    children,
+  };
+}
+
+/** A Page Object Model with its members' paths. */
+function model(className: string, members: string[]): PageObjectModel {
+  return {
+    className,
+    members: members.map((name) => ({
+      name,
+      kind: "locator",
+      path: `${className}.${name}`,
+    })),
+    actions: [],
+    instancePaths: [],
+  };
+}
+
 describe("where each of a node's members leads", () => {
-  // As the registry lists a page with a collection of ListItem components:
-  // each root under its path, its collection and its class.
-  const pageObjects = pageObjectsOf(
-    ["ListPage"],
-    [
-      { path: "ListPage.newItemInput" },
-      { path: "ListPage.items[0].root" },
-      { path: "ListPage.items" },
-      { path: "ListPage.items.root" },
-      { path: "ListItem.root" },
-      { path: "ListPage.items[0].nameButton" },
-      { path: "ListPage.items.nameButton" },
-      { path: "ListItem.nameButton" },
-      { path: "ListPage.archiveDialog.root" },
-    ]
-  );
+  // A page with a collection of ListItem components and an archive dialog.
+  // The members are the ones the registry lists for a node: its path, its
+  // collection's and its class's.
+  const owners = memberOwnersOf({
+    objects: [
+      objectNode("ListPage", "page", "ListPage", [
+        objectNode("ListPage.items", "collection", "ListItem", [
+          objectNode("ListPage.items[0]", "item", "ListItem"),
+        ]),
+        objectNode("ListPage.archiveDialog", "component", "ArchiveDialog"),
+      ]),
+    ],
+    models: [
+      model("ListPage", ["newItemInput", "items", "archiveDialog"]),
+      model("ListItem", ["nameButton"]),
+      model("ArchiveDialog", ["confirmButton"]),
+    ],
+  });
   const links = (members: string[]) =>
-    memberLinks(members, memberTag(members)!, pageObjects);
+    memberLinks(members, memberTag(members)!, owners);
 
   it("leads a locator to the instance it is declared on", () => {
     expect(links(["ListPage.newItemInput"])).toEqual([
@@ -305,6 +342,200 @@ describe("where each of a node's members leads", () => {
   it("leads a collection alias with no item beside it to the object declaring the collection", () => {
     expect(links(["ListPage.items.nameButton"])).toEqual([
       { member: "ListPage.items.nameButton", owner: { object: "ListPage" } },
+    ]);
+  });
+
+  it("leads each of two collections' items over the same element to its item", () => {
+    // As the registry lists a node that ListPage.items and ListPage.entries
+    // both hold, with a locator over it too.
+    const twoCollections = memberOwnersOf({
+      objects: [
+        objectNode("ListPage", "page", "ListPage", [
+          objectNode("ListPage.items", "collection", "ListItem", [
+            objectNode("ListPage.items[0]", "item", "ListItem"),
+          ]),
+          objectNode("ListPage.entries", "collection", "ListItem", [
+            objectNode("ListPage.entries[0]", "item", "ListItem"),
+          ]),
+        ]),
+      ],
+      models: [
+        model("ListPage", ["rows", "items", "entries"]),
+        model("ListItem", ["nameButton"]),
+      ],
+    });
+    const members = [
+      "ListPage.rows",
+      "ListPage.items[0]",
+      "ListPage.items",
+      "ListItem",
+      "ListPage.entries[0]",
+      "ListPage.entries",
+    ];
+    expect(memberLinks(members, memberTag(members)!, twoCollections)).toEqual([
+      { member: "ListPage.items[0]", owner: { object: "ListPage.items[0]" } },
+      { member: "ListPage.rows", owner: { object: "ListPage" } },
+      { member: "ListItem", owner: { model: "ListItem" } },
+      {
+        member: "ListPage.entries[0]",
+        owner: { object: "ListPage.entries[0]" },
+      },
+    ]);
+  });
+
+  it("leaves out an item the page model doesn't have yet", () => {
+    expect(links(["ListPage.items[1]", "ListPage.items", "ListItem"])).toEqual([
+      { member: "ListPage.items", owner: { object: "ListPage" } },
+      { member: "ListItem", owner: { model: "ListItem" } },
+    ]);
+  });
+
+  it("leaves out a member the page model doesn't know yet", () => {
+    expect(links(["ListPage.items[0]", "Unknown.thing"])).toEqual([
+      { member: "ListPage.items[0]", owner: { object: "ListPage.items[0]" } },
+    ]);
+  });
+});
+
+describe("a member in a collection nested in a collection's items", () => {
+  // Page.lists[].items[]: List components, each with a collection of Item
+  // components, and a button on each item.
+  const owners = memberOwnersOf({
+    objects: [
+      objectNode("Page", "page", "Page", [
+        objectNode("Page.lists", "collection", "List", [
+          objectNode("Page.lists[0]", "item", "List", [
+            objectNode("Page.lists[0].items", "collection", "Item", [
+              objectNode("Page.lists[0].items[0]", "item", "Item"),
+              objectNode("Page.lists[0].items[1]", "item", "Item"),
+            ]),
+          ]),
+        ]),
+      ]),
+    ],
+    models: [
+      model("Page", ["lists"]),
+      model("List", ["items"]),
+      model("Item", ["button"]),
+    ],
+  });
+  const { roots } = buildStructureTree(
+    '- e1 button "Done"',
+    new Map([
+      [
+        "e1",
+        [
+          "Page.lists[0].items[1].button",
+          "Page.lists[0].items.button",
+          "Page.lists.items.button",
+          "List.items.button",
+          "Item.button",
+        ],
+      ],
+    ]),
+    owners
+  );
+
+  it("is owned by its item", () => {
+    expect(roots[0]).toMatchObject({
+      member: "Page.lists[0].items[1].button",
+      owner: "Page.lists[0].items[1]",
+    });
+  });
+
+  it("leads to its item, leaving out the collection aliases, and its class paths to their models", () => {
+    expect(roots[0]!.memberLinks).toEqual([
+      {
+        member: "Page.lists[0].items[1].button",
+        owner: { object: "Page.lists[0].items[1]" },
+      },
+      { member: "List.items.button", owner: { model: "List" } },
+      { member: "Item.button", owner: { model: "Item" } },
+    ]);
+  });
+});
+
+describe("a component whose class is also a page on the page", () => {
+  // Header is a page Page Object of its own, and ListPage uses the same class
+  // for its header component.
+  const owners = memberOwnersOf({
+    objects: [
+      objectNode("ListPage", "page", "ListPage", [
+        objectNode("ListPage.header", "component", "Header"),
+      ]),
+      objectNode("Header", "page", "Header"),
+    ],
+    models: [model("ListPage", ["header"]), model("Header", ["title"])],
+  });
+  const links = (members: string[]) =>
+    memberLinks(members, memberTag(members)!, owners);
+
+  it("leads the component's root to the component, and its class to the model", () => {
+    expect(links(["ListPage.header", "Header"])).toEqual([
+      { member: "ListPage.header", owner: { object: "ListPage.header" } },
+      { member: "Header", owner: { model: "Header" } },
+    ]);
+  });
+
+  it("leads the component's member to the component, and its class path to the model", () => {
+    expect(links(["ListPage.header.title", "Header.title"])).toEqual([
+      { member: "ListPage.header.title", owner: { object: "ListPage.header" } },
+      { member: "Header.title", owner: { model: "Header" } },
+    ]);
+  });
+
+  it("leads the page's own members to the page", () => {
+    expect(links(["Header"])).toEqual([
+      { member: "Header", owner: { object: "Header" } },
+    ]);
+    expect(links(["Header.title"])).toEqual([
+      { member: "Header.title", owner: { object: "Header" } },
+    ]);
+  });
+
+  it("leads another page's item over the same element to that item", () => {
+    // App.list is a ListPage component, and a ListPage page is registered
+    // over the same list.
+    const pages = memberOwnersOf({
+      objects: [
+        objectNode("App", "page", "App", [
+          objectNode("App.list", "component", "ListPage", [
+            objectNode("App.list.items", "collection", "ListItem", [
+              objectNode("App.list.items[0]", "item", "ListItem"),
+            ]),
+          ]),
+        ]),
+        objectNode("ListPage", "page", "ListPage", [
+          objectNode("ListPage.items", "collection", "ListItem", [
+            objectNode("ListPage.items[0]", "item", "ListItem"),
+          ]),
+        ]),
+      ],
+      models: [
+        model("App", ["list"]),
+        model("ListPage", ["items"]),
+        model("ListItem", ["nameButton"]),
+      ],
+    });
+    const members = [
+      "App.list.items[0]",
+      "App.list.items",
+      "ListPage.items",
+      "ListItem",
+      "ListPage.items[0]",
+    ];
+    expect(memberLinks(members, memberTag(members)!, pages)).toEqual([
+      { member: "App.list.items[0]", owner: { object: "App.list.items[0]" } },
+      { member: "ListPage.items", owner: { model: "ListPage" } },
+      { member: "ListItem", owner: { model: "ListItem" } },
+      { member: "ListPage.items[0]", owner: { object: "ListPage.items[0]" } },
+    ]);
+  });
+
+  it("leads each page's member over the same element to its own page", () => {
+    expect(links(["ListPage.searchInput", "Header.searchInput"])).toEqual([
+      { member: "ListPage.searchInput", owner: { object: "ListPage" } },
+      { member: "Header.searchInput", owner: { object: "Header" } },
     ]);
   });
 });

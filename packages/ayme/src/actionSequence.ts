@@ -34,8 +34,10 @@ export type ActionResult = {
  * that happened on its own since the caller last read the page is therefore
  * part of the record.
  *
- * An action whose `perform` throws is completed as failed with the page as it
- * is then, moves no cursor, and the error travels on.
+ * An action whose `perform` or settle wait throws is completed as failed with
+ * the page as it is then, moves no cursor, and the error travels on. Where
+ * capturing that page or the Settled Page throws, the page as last recorded
+ * stands in for it.
  */
 export async function runAction(
   currentDocument: Document,
@@ -45,18 +47,19 @@ export async function runAction(
 ): Promise<ActionResult> {
   const actionId = await startActionForDocument(currentDocument, caller, call);
   let rawResult: unknown;
+  let stable: boolean;
   try {
     rawResult = await perform();
+    ({ stable } = await waitForSettled({
+      activity: getBrowserPageActivitySource(currentDocument),
+      clock: browserMonotonicClock,
+      quietMs: SETTLED_PAGE_QUIET_MS,
+      deadlineMs: SETTLED_PAGE_DEADLINE_MS,
+    }));
   } catch (error) {
     await failActionForDocument(currentDocument, actionId).catch(() => {});
     throw error;
   }
-  const { stable } = await waitForSettled({
-    activity: getBrowserPageActivitySource(currentDocument),
-    clock: browserMonotonicClock,
-    quietMs: SETTLED_PAGE_QUIET_MS,
-    deadlineMs: SETTLED_PAGE_DEADLINE_MS,
-  });
 
   const changes = await completeActionForDocument(currentDocument, actionId);
   const pageChanged = changes.hasAnyChanges();
