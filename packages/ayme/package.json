@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "description": "Ayme main library.",
   "license": "FSL-1.1-ALv2",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ayme-labs/ayme.git",
+    "directory": "packages/ayme"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -37,6 +42,7 @@
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run --passWithNoTests",
     "test:e2e": "vitest run --config vitest.browser.config.ts",
+    "test:package": "vitest run src/packedConsumer.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {

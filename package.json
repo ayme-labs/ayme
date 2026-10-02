@@ -11,6 +11,7 @@
     "boundaries": "turbo boundaries",
     "check": "pnpm run boundaries && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
     "prepare": "lefthook install",
+    "release:version": "node scripts/release-version.mjs",
     "hooks:install": "lefthook install",
     "commitlint": "commitlint --verbose",
     "format:check": "prettier --check .",
