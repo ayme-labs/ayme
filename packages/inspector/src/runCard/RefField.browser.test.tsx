@@ -131,16 +131,21 @@ describe("choosing from the structure", () => {
     expect(await ref.tree.textContent()).toBe("No element matches.");
   });
 
-  it("disables the nodes the tool can't use", async () => {
+  it("shows only the nodes the tool can use, under their disabled ancestors", async () => {
     const { ref } = renderCard({ canUse: textFieldsOnly });
 
     await ref.open();
 
+    expect(await nodeTexts(ref.nodes)).toEqual([
+      "e1main",
+      "e3generic",
+      'e4textbox"New item"',
+    ]);
+    expect(await ref.node("e1").isDisabled()).toBe(true);
     expect(await ref.node("e4").isEnabled()).toBe(true);
-    expect(await ref.node("e5").isDisabled()).toBe(true);
   });
 
-  it("disables what the runtime doesn't list as the tool's targets", async () => {
+  it("offers only what the runtime lists as the tool's targets", async () => {
     const targets = new Map([["click_page_state_ref", ["e4", "e9"]]]);
     const { ref } = renderCard({
       canUse: refFilterOf(targets, "click_page_state_ref"),
@@ -148,6 +153,14 @@ describe("choosing from the structure", () => {
 
     await ref.open();
 
+    expect(await nodeTexts(ref.nodes)).toEqual([
+      "e1main",
+      "e3generic",
+      'e4textbox"New item"',
+      'e6list"Items"',
+      "e8listitem",
+      'e9button"Archive"',
+    ]);
     expect(await ref.nodes.evaluateAll(enabledRefs)).toEqual(["e4", "e9"]);
   });
 

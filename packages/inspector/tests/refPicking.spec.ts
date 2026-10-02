@@ -49,7 +49,7 @@ test("Esc cancels picking, and clicks reach the page again", async ({
   expect(await ref.value()).toBeUndefined();
 });
 
-test("fill's structure disables a button and offers the text field", async ({
+test("fill's structure leaves a button out and offers the text field", async ({
   inspector,
 }) => {
   const ref = (await inspector.tool("fill_page_state_ref")).refField();
@@ -57,7 +57,7 @@ test("fill's structure disables a button and offers the text field", async ({
   await ref.open();
 
   await expect(ref.nodeNamed("textbox", "New item")).toBeEnabled();
-  await expect(ref.nodeNamed("button", "Add item")).toBeDisabled();
+  await expect(ref.nodeNamed("button", "Add item")).toHaveCount(0);
 });
 
 test("picking a button for fill greys it and doesn't pick it", async ({

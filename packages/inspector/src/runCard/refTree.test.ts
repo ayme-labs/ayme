@@ -75,10 +75,9 @@ it("shows nothing when no node matches", () => {
   expect(refTreeRows(roots, { query: "checkout" })).toEqual([]);
 });
 
-it("disables the nodes the tool can't use, and keeps them in the tree", () => {
+it("keeps only the spine to the nodes the tool can use", () => {
   // A fill-like tool: only text fields.
   const rows = refTreeRows(roots, {
-    query: "item",
     canUse: (node) => node.role === "textbox",
   });
 
@@ -86,13 +85,17 @@ it("disables the nodes the tool can't use, and keeps them in the tree", () => {
     rows.map(
       ({ node, usable }) => `${node.ref} ${usable ? "usable" : "disabled"}`
     )
-  ).toEqual([
-    "e1 disabled",
-    "e3 disabled",
-    "e4 usable",
-    "e5 disabled",
-    "e6 disabled",
-    "e7 disabled",
-    "e8 disabled",
+  ).toEqual(["e1 disabled", "e3 disabled", "e4 usable"]);
+});
+
+it("matches only the nodes the tool can use", () => {
+  const canUse = (node: { role: string }) => node.role === "button";
+
+  expect(shown(refTreeRows(roots, { query: "item", canUse }))).toEqual([
+    "e1 main",
+    "  e3 generic",
+    '    e5 button "Add item"',
   ]);
+  // A match the tool can't use leaves nothing, not even its ancestors.
+  expect(refTreeRows(roots, { query: "milk", canUse })).toEqual([]);
 });

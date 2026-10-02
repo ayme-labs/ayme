@@ -18,14 +18,18 @@ export type RefTreeRow = {
   text: string;
   /** Whether it matches the search. The ancestors of a match don't. */
   match: boolean;
-  /** Whether the tool can use it. A node it can't use can't be chosen. */
+  /**
+   * Whether the tool can use it. A node it can't use is only shown above one
+   * it can, and can't be chosen.
+   */
   usable: boolean;
 };
 
 /**
  * The rows of the ref field's tree, depth first: the nodes with a ref that
- * match the search, each with its ancestors, so the tree still reads as a
- * tree. Text has no ref and isn't a row; it counts as its parent's.
+ * the tool can use and that match the search, each with its ancestors, so the
+ * tree still reads as a tree. Text has no ref and isn't a row; it counts as
+ * its parent's.
  *
  * A node matches when every word of the query is in its ref, role, quoted
  * name or text, ignoring case. An empty query matches every node.
@@ -60,8 +64,9 @@ export function refTreeRows(
       const at = rows.length;
       rows.push(row);
       const below = visit(node.children, depth + 1);
-      // Neither a match nor above one: it isn't shown.
-      if (!row.match && !below) rows.splice(at, rows.length - at);
+      // Neither a usable match nor above one: it isn't shown.
+      if (!(row.match && row.usable) && !below)
+        rows.splice(at, rows.length - at);
       else found = true;
     }
     return found;
