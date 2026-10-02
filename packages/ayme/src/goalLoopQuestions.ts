@@ -1,14 +1,14 @@
 import {
   projectStructuralNodeForest,
   renderJsonStructuralNodeForest,
-  renderTreeOutput,
+  renderTree,
   structuralNodeForest,
   type JsonStructuralNodeForest,
   type ProjectedStructuralNodeForest,
   type StructuralNode,
   type StructuralNodeForest,
   type StructuralTree,
-  type TreeOutput,
+  type TreeRendering,
 } from "@ayme-dev/core/structural-observation";
 import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
@@ -535,23 +535,20 @@ function prunable(node: StructuralNode): boolean {
 
 /**
  * The stages the model is shown the page through: projected as it is and
- * rendered as JSON. The rendered page travels inside the decision request, so
- * its serializer is the request's own JSON serialization, applied by the
- * decision function to the whole request rather than here.
+ * rendered as JSON. The rendered page travels inside the decision request.
  */
-const pageOutput: TreeOutput<
+const pageRendering: TreeRendering<
   StructuralNodeForest<StructuralNode>,
   ProjectedStructuralNodeForest,
   JsonStructuralNodeForest
 > = {
   projection: (forest) => projectStructuralNodeForest(forest),
   renderer: renderJsonStructuralNodeForest,
-  serializer: (page) => JSON.stringify(page),
 };
 
 /**
  * The page as the model is shown it: the full capture's root nodes with the
- * prunable nodes exploded, then `pageOutput`. This forest is derived for
+ * prunable nodes exploded, then `pageRendering`. This forest is derived for
  * serialization only; the ref options and the Change Record keep walking the
  * full capture, so the refs the model reads are the capture's.
  * (`pageState.ts` and `changeRecord.ts` still compose the stages by hand; they
@@ -561,7 +558,7 @@ function renderPage(pageTree: StructuralTree): JsonStructuralNodeForest {
   const shown = structuralNodeForest(pageTree.getRootNodes()).explode(
     (_entry, node) => prunable(node)
   );
-  return renderTreeOutput(pageOutput, shown);
+  return renderTree(pageRendering, shown);
 }
 
 export type StepState = Record<string, unknown>;

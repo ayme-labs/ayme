@@ -14,13 +14,11 @@ import {
   type StructuralNodeForestSource,
 } from "./StructuralProjection";
 import {
-  emitTreeOutput,
-  renderTreeOutput,
+  renderTree,
   type Projection,
   type Renderer,
-  type Serializer,
-  type TreeOutput,
-} from "./TreeOutput";
+  type TreeRendering,
+} from "./TreeRendering";
 
 type Source = StructuralNodeForestSource<StructuralNode>;
 
@@ -33,17 +31,17 @@ const jsonRenderer: Renderer<
   ProjectedStructuralNodeForest,
   JsonStructuralNodeForest
 > = renderJsonStructuralNodeForest;
-const asIs: Serializer<string> = (rendered) => rendered;
-const asJson: Serializer<JsonStructuralNodeForest> = (rendered) =>
-  JSON.stringify(rendered);
 
-const compactOutput: TreeOutput<Source, ProjectedStructuralNodeForest, string> =
-  { projection, renderer: compactRenderer, serializer: asIs };
-const jsonOutput: TreeOutput<
+const compactRendering: TreeRendering<
+  Source,
+  ProjectedStructuralNodeForest,
+  string
+> = { projection, renderer: compactRenderer };
+const jsonRendering: TreeRendering<
   Source,
   ProjectedStructuralNodeForest,
   JsonStructuralNodeForest
-> = { projection, renderer: jsonRenderer, serializer: asJson };
+> = { projection, renderer: jsonRenderer };
 
 const forest = structuralNodeForest(
   StructuralTree.fromAriaSnapshotYaml(
@@ -52,12 +50,12 @@ const forest = structuralNodeForest(
   ).getRootNodes()
 );
 
-describe("emitTreeOutput", () => {
-  it("applies projection, renderer and serializer in order", () => {
-    expect(emitTreeOutput(compactOutput, forest)).toBe(
+describe("renderTree", () => {
+  it("applies projection and renderer in order", () => {
+    expect(renderTree(compactRendering, forest)).toBe(
       '- [ref=e1] main:\n  - [ref=e2] button "Save"'
     );
-    expect(JSON.parse(emitTreeOutput(jsonOutput, forest))).toEqual([
+    expect(renderTree(jsonRendering, forest)).toEqual([
       {
         ref: "e1",
         role: "main",
@@ -65,26 +63,12 @@ describe("emitTreeOutput", () => {
         children: [{ ref: "e2", role: "button", name: "Save", children: [] }],
       },
     ]);
-  });
-
-  it("renders without serializing, for a shape that travels inside a larger document", () => {
-    expect(renderTreeOutput(jsonOutput, forest)).toEqual([
-      {
-        ref: "e1",
-        role: "main",
-        name: "",
-        children: [{ ref: "e2", role: "button", name: "Save", children: [] }],
-      },
-    ]);
-    expect(renderTreeOutput(compactOutput, forest)).toBe(
-      emitTreeOutput(compactOutput, forest)
-    );
   });
 
   it("takes an operated forest as its source unchanged", () => {
     const exploded = forest.explode((_entry, node) => node.role === "main");
 
-    expect(emitTreeOutput(compactOutput, exploded)).toBe(
+    expect(renderTree(compactRendering, exploded)).toBe(
       '- [ref=e2] button "Save"'
     );
   });
@@ -95,7 +79,7 @@ describe("emitTreeOutput", () => {
     ) => projectStructuralNodeForest(source, { includeIdentity: false });
 
     expect(
-      emitTreeOutput({ ...compactOutput, projection: withoutIdentity }, forest)
+      renderTree({ ...compactRendering, projection: withoutIdentity }, forest)
     ).toBe('- main:\n  - button "Save"');
   });
 });
