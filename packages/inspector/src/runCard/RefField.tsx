@@ -176,8 +176,9 @@ export function RefField({
           onMouseLeave={onPreviewEnd}
         >
           {value ? (
-            <span className="min-w-0 truncate rounded-[5px] bg-muted px-2 py-0.5 font-mono text-[11.5px] text-primary">
-              {chosen ? nodeLabel(chosen) : value}
+            <span className="min-w-0 truncate rounded-[5px] bg-muted px-2 py-0.5 font-mono text-[11.5px] text-foreground">
+              <span className={refText}>{value}</span>
+              {chosen && <ChosenDetail node={chosen} />}
             </span>
           ) : (
             <span className="px-1 text-muted-foreground">
@@ -258,7 +259,7 @@ export function RefField({
                 onMouseEnter={() => onPreview?.(node.ref)}
                 onMouseLeave={onPreviewEnd}
               >
-                <span className="text-primary">{node.ref}</span>
+                <span className={refText}>{node.ref}</span>
                 <span>{node.role}</span>
                 {(node.name || text) && (
                   <span
@@ -312,14 +313,30 @@ function PickBanner({
   );
 }
 
-/** A node as the field shows it chosen, e.g. e12 button "Add item". */
-function nodeLabel(node: RefNode) {
-  if (node.name) return `${node.ref} ${node.role} ${JSON.stringify(node.name)}`;
+/** A ref as the field shows it: purple, light enough to read on dark. */
+const refText = "text-primary dark:text-purple-300";
+
+/**
+ * What the field shows after a chosen node's ref, e.g. ` button "Add item"`:
+ * its role, then its name, or its text when it has none.
+ */
+function ChosenDetail({ node }: { node: RefNode }) {
   const text = node.children
     .filter((child) => child.role === "text" && child.ref === undefined)
     .map((child) => child.name)
     .join(" ");
-  return `${node.ref} ${node.role}${text ? ` ${text}` : ""}`;
+  return (
+    <>
+      {` ${node.role}`}
+      {node.name ? (
+        <span className="text-green-700 dark:text-green-300">
+          {` ${JSON.stringify(node.name)}`}
+        </span>
+      ) : (
+        text && <span className="text-muted-foreground">{` ${text}`}</span>
+      )}
+    </>
+  );
 }
 
 function findNode(
