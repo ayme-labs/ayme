@@ -38,13 +38,12 @@ export {
   type StructuralNodePredicate,
 } from "./projection/StructuralNodeForest";
 export {
-  emitTreeOutput,
-  renderTreeOutput,
+  renderTree,
   type Projection,
   type Renderer,
   type Serializer,
-  type TreeOutput,
-} from "./projection/TreeOutput";
+  type TreeRendering,
+} from "./projection/TreeRendering";
 export { PageIdSchema } from "./capture/PageId";
 export type { PageId } from "./capture/PageId";
 export { MonotonicTimeMsSchema } from "./capture/MonotonicTimeMs";
