@@ -1,6 +1,7 @@
 {
   "name": "@ayme-dev/core",
-  "version": "0.1.0-alpha.3",
+  "version": "0.0.0",
+  "private": true,
   "type": "module",
   "exports": {
     "./structural-observation": {
@@ -18,9 +19,7 @@
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit",
-    "build": "tsdown",
-    "test:package": "node scripts/verify-package.mjs",
-    "test:e2e": "node scripts/verify-package.mjs --built"
+    "build": "tsdown"
   },
   "dependencies": {
     "zod": "^4.5.4"
@@ -34,19 +33,5 @@
     "tsdown": "^0.22.14"
   },
   "license": "FSL-1.1-ALv2",
-  "description": "Shared structural observation, capture history, and projection",
-  "files": [
-    "dist",
-    "LICENSE",
-    "README.md",
-    "THIRD_PARTY_NOTICES.txt"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ayme-labs/ayme.git",
-    "directory": "packages/core"
-  },
-  "publishConfig": {
-    "access": "public"
-  }
+  "description": "Shared structural observation, capture history, and projection"
 }

@@ -6,4 +6,4 @@ To add Ayme to an application, see [`@ayme-dev/webmcp`](https://github.com/ayme-
 
 ## License
 
-[FSL-1.1-ALv2](./LICENSE). The ARIA type definitions are derived from Playwright; their upstream notice is in [THIRD_PARTY_NOTICES.txt](./THIRD_PARTY_NOTICES.txt).
+[FSL-1.1-ALv2](../../LICENSE). The ARIA type definitions are derived from Playwright; their upstream notice is in [THIRD_PARTY_NOTICES.txt](./THIRD_PARTY_NOTICES.txt).
