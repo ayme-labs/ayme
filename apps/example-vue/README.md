@@ -33,11 +33,11 @@ Call the lifecycle API once in the application root, before registering Page Obj
 import { useAyme, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "./playwright/pom/ListPage";
 
-useAyme();
+useAyme({ webMCP: { enabled: true } });
 usePageObject(ListPage);
 ```
 
-Enable publication with `aymeWebMcp({ publish: true })` in Vite configuration. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
+`webMCP.enabled` turns publication on; it is off unless set. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
 
 This example passes a custom page from `useDemoTrace` to add slow typing, click cues, and trace recording. `AgentPanel.vue` holds the agent wizard: it loads the local relay embed when the visitor connects, and reports what the embed says about the relay. These helpers support the demo and are optional for applications.
 

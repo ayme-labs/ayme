@@ -3,10 +3,10 @@ import { dirname, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { type AymeWebMcpOptions } from "./index";
-import { aymeWebMcp } from "./vite";
+import { type AymeOptions } from "./index";
+import { ayme } from "./vite";
 
-type VitePlugin = Extract<ReturnType<typeof aymeWebMcp>, { config?: unknown }>;
+type VitePlugin = Extract<ReturnType<typeof ayme>, { config?: unknown }>;
 type ConfigHook = Extract<
   NonNullable<VitePlugin["config"]>,
   (...args: never[]) => unknown
@@ -15,13 +15,12 @@ type UserConfig = Parameters<ConfigHook>[0];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
-const PUBLISH_DEFINE = "__AYME_WEBMCP_PUBLISH__";
 
 async function applyPluginConfig(
   config: UserConfig,
-  options: AymeWebMcpOptions = {}
+  options: AymeOptions = {}
 ) {
-  const plugin = aymeWebMcp(options);
+  const plugin = ayme(options);
   if (Array.isArray(plugin)) {
     throw new Error("Expected a single Vite plugin");
   }
@@ -36,10 +35,10 @@ async function applyPluginConfig(
   ]);
 }
 
-describe("aymeWebMcp Vite integration", () => {
+describe("ayme Vite integration", () => {
   it("injects Inspector startup through an ordered HTML transform only when enabled", async () => {
-    const disabled = aymeWebMcp({ inspector: false });
-    const enabled = aymeWebMcp({ inspector: true });
+    const disabled = ayme({ inspector: false });
+    const enabled = ayme({ inspector: true });
     if (Array.isArray(disabled) || Array.isArray(enabled))
       throw new Error("Expected single Vite plugins");
 
@@ -61,7 +60,7 @@ describe("aymeWebMcp Vite integration", () => {
         attrs: {
           type: "module",
         },
-        children: "import 'virtual:ayme-webmcp-inspector';",
+        children: "import 'virtual:ayme-inspector';",
         injectTo: "head-prepend",
       },
     ]);
@@ -69,18 +68,12 @@ describe("aymeWebMcp Vite integration", () => {
     expect(disabled.transformIndexHtml).toBeUndefined();
   });
 
-  it("disables publication by default and enables it explicitly", async () => {
-    const defaultConfig = await applyPluginConfig({});
-    const publishingConfig = await applyPluginConfig({}, { publish: true });
-
-    expect(defaultConfig?.define?.[PUBLISH_DEFINE]).toBe("false");
-    expect(publishingConfig?.define?.[PUBLISH_DEFINE]).toBe("true");
-  });
-
-  it("rejects a non-boolean publication policy", async () => {
-    await expect(
-      applyPluginConfig({}, { publish: "yes" } as never)
-    ).rejects.toThrow("publish must be a boolean");
+  it("rejects the removed publish option and defines no publication setting", async () => {
+    expect(() => ayme({ publish: true } as never)).toThrow(
+      "The publish option was removed. Turn WebMCP publication on with webMCP.enabled"
+    );
+    const config = await applyPluginConfig({});
+    expect(config?.define).not.toHaveProperty("__AYME_WEBMCP_PUBLISH__");
   });
 
   it("accepts projects with omitted and explicit default test IDs", async () => {
@@ -91,7 +84,6 @@ describe("aymeWebMcp Vite integration", () => {
       )
     ).resolves.toEqual({
       define: {
-        [PUBLISH_DEFINE]: "false",
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"',
       },
       optimizeDeps: { exclude: ["@playwright/test"] },
@@ -100,7 +92,6 @@ describe("aymeWebMcp Vite integration", () => {
   it("adds the Playwright test runner exclusion when no optimizer config exists", async () => {
     await expect(applyPluginConfig({})).resolves.toEqual({
       define: {
-        [PUBLISH_DEFINE]: "false",
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"',
       },
       optimizeDeps: { exclude: ["@playwright/test"] },
@@ -114,7 +105,6 @@ describe("aymeWebMcp Vite integration", () => {
       })
     ).resolves.toEqual({
       define: {
-        [PUBLISH_DEFINE]: "false",
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"',
       },
       optimizeDeps: {
@@ -130,7 +120,6 @@ describe("aymeWebMcp Vite integration", () => {
       })
     ).resolves.toEqual({
       define: {
-        [PUBLISH_DEFINE]: "false",
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"',
       },
       optimizeDeps: { exclude: ["@playwright/test"] },
@@ -154,7 +143,6 @@ describe("aymeWebMcp Vite integration", () => {
       )
     ).resolves.toEqual({
       define: {
-        [PUBLISH_DEFINE]: "false",
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-pw,data-ti"',
         __AYME_PLAYWRIGHT_ACTION_TIMEOUT__: "11",
         __AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__: "22",

@@ -11,17 +11,18 @@ Add the plugin alongside your existing framework plugins:
 
 ```ts
 import { defineConfig } from "vite";
-import { aymeWebMcp } from "@ayme-dev/unplugin-ayme/vite";
+import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 
-export default defineConfig(({ command }) => ({
-  plugins: [aymeWebMcp({ publish: command === "serve" })],
-}));
+export default defineConfig({
+  plugins: [ayme()],
+});
 ```
 
-This example enables publication for the dev server only. `publish` defaults
-to false and controls publication, not runtime startup. Start the runtime using
-your framework integration. Disabling publication does not strip POM code from
-the bundle; production removal is not covered by this setup.
+The plugin compiles Page Object Models and, with `inspector: true`, injects
+the Inspector. It has no publication setting: start the runtime and turn WebMCP
+publication on with `webMCP.enabled` in your framework integration's `useAyme`
+or `AymeProvider`. Turning publication off does not strip POM code from the
+bundle; production removal is not covered by this setup.
 
 Enable `compilerOptions.experimentalDecorators: true` in the POMs' tsconfig.
 Import the annotated `.ts` files from the application so Vite transforms them.
@@ -45,8 +46,7 @@ An existing Playwright config is optional and is only loaded when explicitly
 supplied:
 
 ```ts
-aymeWebMcp({
-  publish: true,
+ayme({
   playwright: {
     config: "./playwright.config.ts",
     project: "chromium",

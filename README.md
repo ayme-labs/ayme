@@ -94,7 +94,7 @@ The Vite plugin accepts the small part of Playwright configuration that the
 Ayme browser adapter uses:
 
 ```ts
-aymeWebMcp({
+ayme({
   playwright: {
     config: "./playwright.config.ts",
     project: "chromium",

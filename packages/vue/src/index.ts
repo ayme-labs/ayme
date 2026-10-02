@@ -15,6 +15,7 @@ import {
   createRuntimeSession,
   type AymePage,
   type AymeWebMcp,
+  type AymeWebMcpOptions,
   type CustomTool,
   type GoalLoopDecisionFunction,
   type RuntimeSession,
@@ -32,6 +33,7 @@ export type UseAymeOptions = {
   ignore?: (element: Element) => boolean;
   customTools?: CustomTool[];
   goalLoop?: GoalLoopDecisionFunction;
+  webMCP?: AymeWebMcpOptions;
 };
 const runtimeKey: InjectionKey<RuntimeSession> = Symbol("Ayme runtime");
 
@@ -45,6 +47,7 @@ function ownRuntime(options: UseAymeOptions = {}) {
     ignore: options.ignore,
     customTools: options.customTools,
     goalLoop: options.goalLoop,
+    webMCP: options.webMCP,
   });
   if (typeof window !== "undefined") {
     const stop = runtime.start();
@@ -89,6 +92,10 @@ export const AymeProvider = defineComponent({
       type: Function as PropType<GoalLoopDecisionFunction>,
       required: false,
     },
+    webMCP: {
+      type: Object as PropType<AymeWebMcpOptions>,
+      required: false,
+    },
   },
   setup(props, { slots }) {
     if (inheritedRuntime())
@@ -99,7 +106,8 @@ export const AymeProvider = defineComponent({
     const ignore = props.ignore;
     const customTools = props.customTools;
     const goalLoop = props.goalLoop;
-    ownRuntime({ pageFactory, ignore, customTools, goalLoop });
+    const webMCP = props.webMCP && { ...props.webMCP };
+    ownRuntime({ pageFactory, ignore, customTools, goalLoop, webMCP });
     watch(
       () =>
         [
@@ -107,13 +115,24 @@ export const AymeProvider = defineComponent({
           props.ignore,
           props.customTools,
           props.goalLoop,
+          props.webMCP?.enabled,
+          props.webMCP?.toolNamePrefix,
         ] as const,
-      ([nextPageFactory, nextIgnore, nextCustomTools, nextGoalLoop]) => {
+      ([
+        nextPageFactory,
+        nextIgnore,
+        nextCustomTools,
+        nextGoalLoop,
+        nextEnabled,
+        nextToolNamePrefix,
+      ]) => {
         if (
           nextPageFactory !== pageFactory ||
           nextIgnore !== ignore ||
           nextCustomTools !== customTools ||
-          nextGoalLoop !== goalLoop
+          nextGoalLoop !== goalLoop ||
+          nextEnabled !== webMCP?.enabled ||
+          nextToolNamePrefix !== webMCP?.toolNamePrefix
         )
           throw new Error(
             "The provider options must stay fixed while mounted. Remount the provider to change them."
@@ -134,10 +153,11 @@ export function useAyme(options: UseAymeOptions = {}): UseAymeResult {
     (options.pageFactory !== undefined ||
       options.ignore !== undefined ||
       options.customTools !== undefined ||
-      options.goalLoop !== undefined)
+      options.goalLoop !== undefined ||
+      options.webMCP !== undefined)
   )
     throw new Error(
-      "Configure pageFactory, ignore, customTools and goalLoop on the ancestor AymeProvider or standalone useAyme owner."
+      "Configure pageFactory, ignore, customTools, goalLoop and webMCP on the ancestor AymeProvider or standalone useAyme owner."
     );
   return consumeRuntime(inherited ?? ownRuntime(options));
 }

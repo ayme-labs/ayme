@@ -248,11 +248,11 @@ export function describePublishedTools(
       publish?: boolean;
       expectedState?: string;
     } = {}) {
-      vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", publish);
       runtime = createRuntimeSession({
         pageFactory: () => createPage({ actionTimeout: 1000 }),
         customTools: [highlight],
         goalLoop: noFittingOperation,
+        webMCP: { enabled: publish },
         ...options,
       });
       cleanups.push(runtime.register(TodoPage, runtime.construct(TodoPage)));
@@ -351,6 +351,43 @@ export function describePublishedTools(
       expect(await publishedOverWebMcp(context)).toEqual([]);
     });
 
+    it("runs a Page Object Action and a goal from the application while publication is disabled", async () => {
+      document.body.innerHTML = `<button data-highlightable>Save changes</button>`;
+      await startSession({ publish: false });
+      const todos = runtime.construct(TodoPage);
+      const addTodo = vi.spyOn(todos, "addTodo");
+
+      todos.addTodo();
+      const handover = await runtime.pursueGoal("Save the changes", {
+        maxSteps: 1,
+      });
+
+      expect(addTodo).toHaveBeenCalledOnce();
+      expect(handover.reason).toBe("no_fitting_option");
+      expect(await publishedOverWebMcp(context)).toEqual([]);
+    });
+
+    it("publishes every tool under toolNamePrefix, and the Goal Loop still runs", async () => {
+      document.body.innerHTML = `<button data-highlightable>Save changes</button>`;
+      await startSession({
+        webMCP: { enabled: true, toolNamePrefix: "ayme_" },
+      });
+
+      expect(
+        (await publishedOverWebMcp(context)).map(({ name }) => name).sort()
+      ).toEqual(
+        Object.keys(EXPECTED_GROUPS)
+          .map((name) => `ayme_${name}`)
+          .sort()
+      );
+      expect(
+        await agentGets("ayme_pursue_goal", {
+          goal: "Save the changes",
+          maxSteps: 1,
+        })
+      ).toMatchObject({ reason: "no_fitting_option" });
+    });
+
     it("lists nothing, and reports the error, when publication fails on a name clash", async () => {
       await startSession({
         customTools: [{ ...highlight, name: "TodoPage.addTodo" }],
@@ -359,7 +396,7 @@ export function describePublishedTools(
       expect(getPublicationStatus()).toEqual({
         state: "failed",
         message: expect.stringContaining(
-          'Cannot publish the Ref Tool "TodoPage.addTodo"'
+          'Cannot publish the tool "TodoPage.addTodo"'
         ),
       });
       expect(listed()).toEqual([]);

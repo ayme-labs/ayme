@@ -23,7 +23,6 @@ afterEach(() => {
 });
 
 it("keeps a real publisher startup failure retryable", async () => {
-  vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", true);
   vi.stubGlobal("MutationObserver", FakeMutationObserver);
 
   let resolveInitialRegistration = () => {};
@@ -68,6 +67,7 @@ it("keeps a real publisher startup failure retryable", async () => {
     useAyme({
       pageFactory: () =>
         ({}) as ReturnType<NonNullable<UseAymeOptions["pageFactory"]>>,
+      webMCP: { enabled: true },
     })
   );
   await flushPromises();

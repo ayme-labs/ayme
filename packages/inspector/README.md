@@ -26,10 +26,10 @@ removed when the panel floats, collapses or unmounts.
 Enable it through the Vite integration:
 
 ```ts
-import { aymeWebMcp } from "@ayme-dev/unplugin-ayme/vite";
+import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 
 export default {
-  plugins: [aymeWebMcp({ inspector: true })],
+  plugins: [ayme({ inspector: true })],
 };
 ```
 
@@ -38,8 +38,8 @@ supplied Pages are instrumented before their first Page Object is constructed.
 No component props, mount call, or custom element registration is required.
 
 `inspector: false` (the default) omits the Inspector startup module. Inspector
-diagnostics work independently of WebMCP publication, so `publish: false` is a
-supported combination.
+diagnostics work independently of WebMCP publication, so the Inspector works
+while publication is off.
 
 The Inspector mounts on an `<ayme-inspector>` element at the end of the body,
 so the page's `div` rules and queries never match it; it is not a registered

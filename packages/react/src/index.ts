@@ -12,6 +12,7 @@ import {
   createRuntimeSession,
   type AymePage,
   type AymeWebMcp,
+  type AymeWebMcpOptions,
   type CustomTool,
   type GoalLoopDecisionFunction,
   type RuntimeSession,
@@ -26,6 +27,7 @@ export type AymeProviderProps = {
   ignore?: (element: Element) => boolean;
   customTools?: CustomTool[];
   goalLoop?: GoalLoopDecisionFunction;
+  webMCP?: AymeWebMcpOptions;
 };
 const RuntimeContext = createContext<RuntimeSession | undefined>(undefined);
 
@@ -34,21 +36,27 @@ export function AymeProvider({
   ignore,
   customTools,
   goalLoop,
+  webMCP,
   children,
 }: AymeProviderProps): ReactElement {
   const ancestor = useContext(RuntimeContext);
-  const [setup] = useState(() => ({
-    pageFactory,
-    ignore,
-    customTools,
-    goalLoop,
-    runtime: createRuntimeSession({
+  const [setup] = useState(() => {
+    const fixedWebMCP = webMCP && { ...webMCP };
+    return {
       pageFactory,
       ignore,
       customTools,
       goalLoop,
-    }),
-  }));
+      webMCP: fixedWebMCP,
+      runtime: createRuntimeSession({
+        pageFactory,
+        ignore,
+        customTools,
+        goalLoop,
+        webMCP: fixedWebMCP,
+      }),
+    };
+  });
   if (ancestor)
     throw new Error(
       "AymeProvider cannot be nested beneath another Ayme runtime owner."
@@ -57,7 +65,9 @@ export function AymeProvider({
     pageFactory !== setup.pageFactory ||
     ignore !== setup.ignore ||
     customTools !== setup.customTools ||
-    goalLoop !== setup.goalLoop
+    goalLoop !== setup.goalLoop ||
+    webMCP?.enabled !== setup.webMCP?.enabled ||
+    webMCP?.toolNamePrefix !== setup.webMCP?.toolNamePrefix
   )
     throw new Error(
       "The provider options must stay fixed while mounted. Remount the provider to change them."

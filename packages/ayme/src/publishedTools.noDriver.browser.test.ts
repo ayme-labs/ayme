@@ -15,8 +15,10 @@ afterEach(() => {
 it("lists nothing, and tells subscribers publication is unavailable, when the page has no WebMCP driver", async () => {
   // Diagnostic: this file runs without native WebMCP or the polyfill.
   expect(document.modelContext).toBeUndefined();
-  vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", true);
-  const runtime = createRuntimeSession({ pageFactory: () => createPage() });
+  const runtime = createRuntimeSession({
+    pageFactory: () => createPage(),
+    webMCP: { enabled: true },
+  });
   const heard: string[] = [];
   const unsubscribe = subscribeToPublishedTools(() => {
     heard.push(getPublicationStatus().state);

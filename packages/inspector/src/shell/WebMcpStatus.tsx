@@ -19,7 +19,7 @@ const explanations: Record<
   disabled: () => (
     <>
       WebMCP publishing is off, so agents can't call these tools. Set{" "}
-      {code("publish: true")} in {code("aymeWebMcp()")} for the dev server.
+      {code("webMCP: { enabled: true }")} where the app starts Ayme.
     </>
   ),
   waiting: () => (

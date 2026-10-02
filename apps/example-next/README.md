@@ -86,10 +86,9 @@ Rendering code must not read Page Object locator fields or execute Page Object
 actions on the server. Prototype methods exist on the server placeholder so
 normal event closures can reference them without running the constructor.
 
-WebMCP publication is enabled through Next's `compiler.define`, which sets the
-`__AYME_WEBMCP_PUBLISH__` build constant in both graphs; the loader itself sets
-no build constants. The initial status is `waiting` on the server and in the
-browser, so the server snapshot is stable. Default test-id and timeout settings
+WebMCP publication is enabled by `AymeProvider`'s `webMCP` option; the loader
+sets no build constants. The initial status is `waiting` on the server and in
+the browser, so the server snapshot is stable. Default test-id and timeout settings
 are unchanged.
 
 Server Component POM execution, Edge deployments, Pages Router, source-map

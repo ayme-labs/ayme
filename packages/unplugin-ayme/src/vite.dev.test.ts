@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { createServer, type ViteDevServer } from "vite";
 import { afterEach, expect, it } from "vitest";
 
-import { aymeWebMcp } from "./vite";
+import { ayme } from "./vite";
 
 const decoratorStub = `export const ayme = Object.assign(
   (value: unknown, context: ClassDecoratorContext) => {},
@@ -91,7 +91,7 @@ it("recompiles a decorated subclass after its base class file changes", async ()
     root: projectRoot,
     configFile: false,
     logLevel: "silent",
-    plugins: [aymeWebMcp()],
+    plugins: [ayme()],
     resolve: {
       alias: {
         "@ayme-dev/ayme/internal": join(projectRoot, "src/internalStub.ts"),

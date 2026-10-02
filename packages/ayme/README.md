@@ -140,6 +140,8 @@ stop();
   never during server rendering. Without it, the session calls `createPage()`.
 - `ignore`, `customTools` and `goalLoop`: described in their own sections below.
   They are configured on `start()` and cleared when the session stops.
+- `webMCP`: whether and how the session publishes its tools through WebMCP;
+  see [WebMCP publication](#webmcp-publication).
 
 `start()` claims the runtime for the current document, one owner at a time,
 and returns the function that stops it. `construct(Model)` and
@@ -147,9 +149,35 @@ and returns the function that stops it. `construct(Model)` and
 rendering, `construct(Model)` returns an inert Page Object without calling
 `pageFactory`, and reading `session.page` throws. `session.webMCP` holds the
 WebMCP publication: `publicationStatus` reports its status, `subscribe()`
-reports changes to it, and `retryPublication()` retries it. Publication is a
-build policy of the Vite plugin, and the session works without it.
-`pursueGoal(goal, { maxSteps })` runs the Goal Loop.
+reports changes to it, and `retryPublication()` retries it. The session works
+without publication. `pursueGoal(goal, { maxSteps })` runs the Goal Loop.
+
+### WebMCP publication
+
+The call that starts Ayme decides whether its tools are published through
+WebMCP: `useAyme`, `AymeProvider` or `createRuntimeSession`. The build
+integration has no publication setting.
+
+```ts
+useAyme({
+  webMCP: { enabled: true, toolNamePrefix: "ayme_" },
+});
+```
+
+- `webMCP.enabled` turns publication on. It is off unless set, and then
+  `webMCP.publicationStatus` reads `disabled`. Page Objects, page state and the
+  Goal Loop work either way.
+- `webMCP.toolNamePrefix` is prepended to every published tool name: the
+  agent's tools, click and fill, Custom Tools and Page Object Tools. It is
+  empty by default. It applies at publication only; the Goal Loop and the
+  Inspector use the unprefixed names. The `testing` helpers take the published
+  name, prefix included.
+- A tool name that two published tools would share fails publication; the
+  status reads `failed` and names the tool.
+- When enabled, publication waits up to two seconds for a WebMCP driver.
+  `retryPublication()` tries again after `unavailable` or `failed`.
+- Turning publication off does not remove Ayme or Page Object code from the
+  bundle.
 
 ### Browser Page
 

@@ -153,16 +153,12 @@ export function startAyme({
   publish = true,
 }: { PageObject?: PageObjectConstructor; publish?: boolean } = {}) {
   const root = document.documentElement.dataset;
-  // What the Ayme bundler plugin sets at build time; the fixture pages set it
-  // per page, so one server can serve a page without publication.
-  (
-    globalThis as { __AYME_WEBMCP_PUBLISH__?: boolean }
-  ).__AYME_WEBMCP_PUBLISH__ = publish;
   try {
     const inspector = mountInspector();
     const runtime = createRuntimeSession({
       customTools: [markElement],
       goalLoop: clearTheList(),
+      webMCP: { enabled: publish },
     });
     const unregister = runtime.register(
       PageObject,

@@ -17,6 +17,7 @@ useAyme({
   goalLoop: import.meta.env.DEV
     ? decisionEndpoint(decisionEndpointPath)
     : undefined,
+  webMCP: { enabled: true },
 });
 usePageObject(ListPage);
 </script>

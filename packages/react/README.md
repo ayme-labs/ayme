@@ -8,17 +8,17 @@ Use `@ayme-dev/unplugin-ayme/vite` alongside the React Vite plugin:
 
 ```ts
 import react from "@vitejs/plugin-react";
-import { aymeWebMcp } from "@ayme-dev/unplugin-ayme/vite";
+import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [react(), aymeWebMcp({ publish: true })],
+  plugins: [react(), ayme()],
 });
 ```
 
 Keep decorated Page Object Models in separate `.ts` files. Enable `experimentalDecorators` in your TypeScript configuration. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [CounterPage](../../apps/example-react/playwright/pom/CounterPage.ts).
 
-Publication is disabled unless the Vite plugin enables it. Local Page Object calls work without a WebMCP driver, including when publication is disabled.
+Publication is off unless the provider enables it with `webMCP={{ enabled: true }}`. `webMCP.toolNamePrefix` prefixes every published tool name; see the [main library README](../ayme/README.md#webmcp-publication). Local Page Object calls work without a WebMCP driver, including when publication is off.
 
 ## Root setup
 
@@ -30,7 +30,7 @@ import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AymeProvider>
+    <AymeProvider webMCP={{ enabled: true }}>
       <App />
     </AymeProvider>
   </StrictMode>
@@ -48,7 +48,7 @@ const ignorePageState = (element: Element) =>
 
 When the predicate returns `true`, the matching subtree is dropped from page state capture. This affects page state only; it does not change which tools are published.
 
-The `pageFactory` and `ignore` predicate must stay fixed while the provider is mounted. Remount the provider and its consumers to change either option. Only one runtime owner may be active. Nested providers and concurrent owners are rejected.
+The `pageFactory`, `ignore` predicate and `webMCP` settings must stay fixed while the provider is mounted. Remount the provider and its consumers to change either option. Only one runtime owner may be active. Nested providers and concurrent owners are rejected.
 
 ## Page Objects, the session, and publication
 
