@@ -16,6 +16,10 @@
  * 6. An Angular consumer type-checks at Angular's and TypeScript's floor.
  * 7. React, Vue and Svelte consumers type-check the published declarations
  *    at each adapter's framework floor.
+ *
+ * With `AYME_PACKED_DIR` set, the tarballs are packed into that empty
+ * directory and kept, so the release workflow publishes exactly the
+ * artefacts these tests checked.
  */
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -53,6 +57,8 @@ const DEPENDENCY_SECTIONS = [
 type Manifest = {
   name: string;
   version: string;
+  private?: boolean;
+  repository?: Record<string, string>;
   exports?: Record<string, unknown>;
 } & Partial<
   Record<(typeof DEPENDENCY_SECTIONS)[number], Record<string, string>>
@@ -77,6 +83,28 @@ function exec(file: string, args: string[], cwd: string) {
 
 function readManifest(dir: string): Manifest {
   return JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
+}
+
+/** Directories of the workspace packages that are not private. */
+function publishableDirs() {
+  return fs
+    .readdirSync(packagesRoot)
+    .filter(
+      (dir) =>
+        fs.existsSync(path.join(packagesRoot, dir, "package.json")) &&
+        !readManifest(path.join(packagesRoot, dir)).private
+    );
+}
+
+/** The directory the tarballs are packed into; kept when set by the caller. */
+function tarballsDir() {
+  const retained = process.env.AYME_PACKED_DIR;
+  if (!retained) return path.join(tmp, "tarballs");
+  const dir = path.resolve(retained);
+  fs.mkdirSync(dir, { recursive: true });
+  if (fs.readdirSync(dir).length > 0)
+    throw new Error(`AYME_PACKED_DIR must be empty: ${dir}`);
+  return dir;
 }
 
 /** Versions of the workspace packages, keyed by package name. */
@@ -156,6 +184,7 @@ const packed: Record<string, { tarball: string; dir: string }> = {};
 
 beforeAll(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ayme-packed-"));
+  const tarballs = tarballsDir();
   for (const name of PUBLISHED_PACKAGES) {
     const root = path.join(packagesRoot, name);
     const staging = path.join(tmp, "staging", name);
@@ -180,11 +209,7 @@ beforeAll(() => {
       root
     );
     const { filename } = JSON.parse(
-      exec(
-        "pnpm",
-        ["pack", "--json", "--pack-destination", path.join(tmp, "tarballs")],
-        staging
-      )
+      exec("pnpm", ["pack", "--json", "--pack-destination", tarballs], staging)
     ) as { filename: string };
     const extracted = path.join(tmp, "extracted", name);
     fs.mkdirSync(extracted, { recursive: true });
@@ -211,9 +236,26 @@ function tarballDependencies(names: string[]) {
   return { tarballs, workspaceYaml };
 }
 
+it("every publishable package is packed, all with one shared version", () => {
+  expect(publishableDirs().sort()).toEqual([...PUBLISHED_PACKAGES].sort());
+  const versions = Object.values(packed).map(
+    ({ dir }) => readManifest(dir).version
+  );
+  expect(versions).toHaveLength(PUBLISHED_PACKAGES.length);
+  expect(new Set(versions).size).toBe(1);
+});
+
+it("packed manifests name this repository, as npm provenance requires", () => {
+  for (const name of PUBLISHED_PACKAGES)
+    expect(readManifest(packed[`@ayme-dev/${name}`]!.dir).repository).toEqual({
+      type: "git",
+      url: "git+https://github.com/ayme-labs/ayme.git",
+      directory: `packages/${name}`,
+    });
+});
+
 it("packed packages contain no workspace references or local paths", () => {
   const versions = workspaceVersions();
-  expect(Object.keys(packed)).toHaveLength(PUBLISHED_PACKAGES.length);
   for (const [name, { dir }] of Object.entries(packed))
     expect(findPublicationLeaks(dir, versions), name).toEqual([]);
 });
