@@ -234,6 +234,7 @@ describe("WebMCP publisher", () => {
 
     const registry = await import("./registry");
     const { synchronizeWebMcpTools } = await import("./webMcp");
+    const { listPublishedTools } = await import("./publishedTools");
     registry.configureAymeRuntime({} as Page);
 
     let rootCount = 1;
@@ -296,10 +297,14 @@ describe("WebMCP publisher", () => {
     // The called tool outlives its own call, so a driver that fails running
     // calls on unregistration still returns the result.
     expect(archive?.signal.aborted).toBe(false);
+    const listed = () => listPublishedTools().map(({ name }) => name);
+    expect(listed()).toContain("ItemsPage.items.archive");
+    expect(listed()).not.toContain("ItemsPage.items.rename");
 
     await vi.runOnlyPendingTimersAsync();
     await flushPublisher();
     expect(archive?.signal.aborted).toBe(true);
+    expect(listed()).not.toContain("ItemsPage.items.archive");
 
     publication.dispose();
     pageRegistration.dispose();

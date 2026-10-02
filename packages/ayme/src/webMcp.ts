@@ -1,6 +1,7 @@
 import { getPageContextTool } from "./pageContext";
 import {
   type PublishedTool,
+  type PublishedToolGroup,
   reportPublishedTools,
   resolvePublishedTools,
 } from "./publishedTools";
@@ -117,17 +118,16 @@ export async function synchronizeWebMcpTools(
   driver: WebMcpDriver,
   options: WebMcpSynchronizationOptions = {}
 ): Promise<WebMcpRegistration> {
-  const published = new Map<
-    string,
-    {
-      tool: PublishedTool;
-      controller: AbortController;
-    }
-  >();
-  // Agents' calls still running, by tool name, and the tools a pass kept
-  // published only because a call of theirs was running.
-  const runningCalls = new Map<string, number>();
-  const keptForCalls = new Set<string>();
+  type Registration = {
+    tool: PublishedTool;
+    group: PublishedToolGroup;
+    controller: AbortController;
+    // Agents' calls of this tool still running, and whether a pass kept the
+    // tool published only because one was.
+    runningCalls: number;
+    keptForCall: boolean;
+  };
+  const published = new Map<string, Registration>();
   let disposed = false;
   let syncing = false;
   let syncAgain = false;
@@ -169,8 +169,8 @@ export async function synchronizeWebMcpTools(
 
   // A tool call resolves only once the published tools reflect the page it
   // changed, so an agent's next call sees the tools that are live now. The
-  // called tool itself is the exception: if the call made it inactive, it is
-  // withdrawn just after the call. A probe that observes a change starts the
+  // called tool itself is the exception: if the call made it unavailable, it
+  // is withdrawn just after the call (ADR-0020 does not cover this case). A probe that observes a change starts the
   // publication pass through the subscriber.
   const settle = () =>
     disposed
@@ -180,58 +180,57 @@ export async function synchronizeWebMcpTools(
           .catch(failPublication);
 
   const trackCall = <T extends { execute(input: unknown): Promise<unknown> }>(
-    name: string,
+    registration: Registration,
     tool: T
   ): T => ({
     ...tool,
     execute: async (input: unknown) => {
-      runningCalls.set(name, (runningCalls.get(name) ?? 0) + 1);
+      registration.runningCalls += 1;
       try {
         return await tool.execute(input);
       } finally {
-        const running = runningCalls.get(name)! - 1;
-        if (running) runningCalls.set(name, running);
-        else runningCalls.delete(name);
-        // A timer, so the driver has taken the result before the tool goes.
-        if (!running && keptForCalls.delete(name))
-          setTimeout(() => {
-            if (!disposed) void synchronize().catch(failPublication);
-          }, 0);
+        registration.runningCalls -= 1;
+        if (!registration.runningCalls && registration.keptForCall) {
+          registration.keptForCall = false;
+          // A timer, so the driver has taken the result before the tool goes.
+          setTimeout(() => void synchronize().catch(failPublication), 0);
+        }
       }
     },
   });
 
   const publish = async () => {
-    let resolved: ReturnType<typeof resolvePublishedTools>;
     try {
       do {
         syncAgain = false;
-        resolved = resolvePublishedTools();
-        const active = new Map(
-          [...resolved].map(([name, { tool }]) => [name, tool])
-        );
-
+        const resolved = resolvePublishedTools();
         for (const [name, registration] of published) {
-          const tool = active.get(name);
-          if (tool === registration.tool) continue;
+          if (resolved.get(name)?.tool === registration.tool) continue;
           // A driver may fail a running call once its tool is unregistered
           // (the WebMCP polyfill does), although the call goes on to succeed.
           // The pass after the call withdraws the tool.
-          if (runningCalls.has(name)) {
-            keptForCalls.add(name);
+          if (registration.runningCalls) {
+            registration.keptForCall = true;
             continue;
           }
           registration.controller.abort();
           published.delete(name);
         }
 
-        for (const [name, tool] of active) {
+        for (const [name, { tool, group }] of resolved) {
           if (disposed || published.has(name)) continue;
           const controller = new AbortController();
-          published.set(name, { tool, controller });
+          const registration: Registration = {
+            tool,
+            group,
+            controller,
+            runningCalls: 0,
+            keptForCall: false,
+          };
+          published.set(name, registration);
           try {
             await driver.registerTool(
-              trackCall(name, asAgentCall(tool, settle)),
+              trackCall(registration, asAgentCall(tool, settle)),
               { signal: controller.signal }
             );
           } catch (error) {
@@ -244,7 +243,7 @@ export async function synchronizeWebMcpTools(
       // The Inspector reads the settled set, never one mid-pass.
       if (!disposed) {
         reported = true;
-        reportPublishedTools([...resolved.values()]);
+        reportPublishedTools([...published.values()]);
       }
     } finally {
       syncing = false;

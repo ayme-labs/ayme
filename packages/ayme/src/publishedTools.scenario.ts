@@ -85,8 +85,14 @@ class ListPage {
         root: page.locator("#item"),
         async archive() {
           document.querySelector("#item")!.setAttribute("hidden", "");
-          // Long enough for the page change to reach publication mid-call.
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          // Return only once the page change has reached publication, so the
+          // tool goes unavailable while its own call is still running.
+          while (
+            listLiveTools().some(
+              ({ name }) => name === "ListPage.items.archive"
+            )
+          )
+            await new Promise((resolve) => setTimeout(resolve, 10));
           return "archived";
         },
       },
