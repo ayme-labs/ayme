@@ -1,6 +1,7 @@
 import { Component, signal } from "@angular/core";
 import { RouterLink } from "@angular/router";
-import { injectAyme } from "@ayme-dev/angular";
+import { injectAyme, injectPageObject } from "@ayme-dev/angular";
+import { OtherPage } from "@pom/OtherPage";
 import { Counter } from "./counter";
 
 @Component({
@@ -33,4 +34,6 @@ export class Demo {
     <a routerLink="/">Home</a>
   `,
 })
-export class Other {}
+export class Other {
+  protected readonly pom = injectPageObject(OtherPage);
+}

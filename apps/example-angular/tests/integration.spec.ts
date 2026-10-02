@@ -83,6 +83,26 @@ test("publishes the compiled POM, executes it, and cleans up on remount and navi
         additionalProperties: false,
       },
     });
+  const setMode = {
+    description: "Set counter mode metadata.",
+    inputSchema: {
+      type: "object",
+      properties: { mode: { type: "string", enum: ["single", "double"] } },
+      required: ["mode"],
+      additionalProperties: false,
+    },
+  };
+  expect(await publishedToolSchema(page, "CounterPage.setMode")).toEqual({
+    name: "CounterPage.setMode",
+    ...setMode,
+  });
+  // SubCounterPage's file has no decorator; the plugin must still claim it
+  // and publish its inherited tools.
+  expect(await publishedToolSchema(page, "SubCounterPage.setMode")).toEqual({
+    name: "SubCounterPage.setMode",
+    ...setMode,
+  });
+  expect(await publishedToolNames(page)).toContain("SubCounterPage.increment");
   await expect(page.locator("output")).toHaveText("0");
 
   await page.getByRole("button", { name: "Call Page Object" }).click();
@@ -114,7 +134,20 @@ test("publishes the compiled POM, executes it, and cleans up on remount and navi
   await expect
     .poll(() => publishedToolNames(page))
     .not.toContain("CounterPage.increment");
-  await page.getByRole("link", { name: "Home" }).click();
+  // OtherPage is imported through the tsconfig `paths` alias @pom/*.
+  await expect
+    .poll(() => publishedToolSchema(page, "OtherPage.goHome"))
+    .toEqual({
+      name: "OtherPage.goHome",
+      description: "Go back to the counter page.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      },
+    });
+  await executePublishedTool(page, "OtherPage.goHome");
   await expect
     .poll(() => publishedToolNames(page))
     .toContain("CounterPage.increment");
