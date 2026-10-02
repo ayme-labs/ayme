@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { executePublishedTool } from "@ayme-dev/ayme/testing";
 
 import { expect, openFixture, test } from "./fixtures";
@@ -270,13 +271,25 @@ async function panelLook(inspector: Inspector) {
   };
 }
 
+/** The element the pointer meets at the centre of the panel. */
+async function elementOverPanel(page: Page, inspector: Inspector) {
+  const box = (await inspector.panel.boundingBox())!;
+  return page.evaluate(
+    ([x, y]) => document.elementFromPoint(x, y)?.localName,
+    [box.x + box.width / 2, box.y + box.height / 2]
+  );
+}
+
 test("host CSS does not reach the panel", async ({ page }) => {
   const plain = await openFixture(page, "/");
   const unstyled = await panelLook(plain.inspector);
+  const unstyledBox = await plain.inspector.panel.boundingBox();
 
   const styled = await openFixture(page, "/react.html");
 
   expect(await panelLook(styled.inspector)).toEqual(unstyled);
+  expect(await styled.inspector.panel.boundingBox()).toEqual(unstyledBox);
+  expect(await elementOverPanel(page, styled.inspector)).toBe("ayme-inspector");
 });
 
 test("the panel's CSS does not reach the host", async ({ page }) => {

@@ -41,9 +41,11 @@ No component props, mount call, or custom element registration is required.
 diagnostics work independently of WebMCP publication, so `publish: false` is a
 supported combination.
 
-The Inspector marks its body host and structural page-state capture temporarily
-hides that host from the accessibility snapshot. The host is otherwise visible
-and accessible, and its styles are contained by the Shadow Root.
+The Inspector mounts on an `<ayme-inspector>` element at the end of the body,
+so the page's `div` rules and queries never match it; it is not a registered
+custom element. Structural page-state capture temporarily hides that host from
+the accessibility snapshot. The host is otherwise visible and accessible, and
+its styles are contained by the Shadow Root.
 
 The Inspector paints above the page's own UI: its host takes the highest
 z-index there is. Only the browser's top layer (modal dialogs, popovers,
@@ -94,8 +96,10 @@ playwright-lite's `createPage()`. They are plain classes, never registered
 with the Ayme runtime, so their actions never become WebMCP tools.
 
 On Playwright, register the `ayme-inspector` selector engine before the page
-is created. It reaches into the closed Shadow Root through a test-only hook
-the mount leaves on its host element; the hook is not public API.
+is created. The engine shares its name with the Inspector's host element but
+is a different thing: `ayme-inspector=<css>` is a Playwright selector. It
+reaches into the closed Shadow Root through a test-only hook the mount leaves
+on its host element; the hook is not public API.
 
 ```ts
 import { selectors } from "@playwright/test";
