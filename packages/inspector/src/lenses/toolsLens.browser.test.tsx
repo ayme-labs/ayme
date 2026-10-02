@@ -37,7 +37,7 @@ const addItem: LiveTool = {
   pomClassName: "ListPage",
 };
 const click: LiveTool = {
-  name: "click_page_state_ref",
+  name: "click",
   description: "Click the element a Structural Ref points to.",
   inputSchema: {
     type: "object",
@@ -47,7 +47,7 @@ const click: LiveTool = {
   group: "ref",
 };
 const pageContext: LiveTool = {
-  name: "get_page_context",
+  name: "snapshot",
   description: "Return the page state and the POM definitions.",
   inputSchema: { type: "object", properties: {} },
   group: "agent",
@@ -107,8 +107,8 @@ it("lists the live tools as Page object, Ref and Agent tools", async () => {
     .poll(() => navigator.tools.listed())
     .toEqual({
       "Page object tools": ["ListPage.addItem"],
-      "Ref tools": ["click_page_state_ref"],
-      "Agent tools": ["get_page_context"],
+      "Ref tools": ["click"],
+      "Agent tools": ["snapshot"],
     });
 });
 
@@ -172,7 +172,7 @@ it("shows what the model sees of a Page object tool: its model's definition and 
 
 it("shows only the schema of a tool without a Page Object Model", async () => {
   renderTools();
-  await navigator.tools.tool("click_page_state_ref").click();
+  await navigator.tools.tool("click").click();
   const { modelSees } = detail.toolPage;
 
   await modelSees.open();
@@ -181,9 +181,7 @@ it("shows only the schema of a tool without a Page Object Model", async () => {
     .poll(() => modelSees.toggle.textContent())
     .toBe("What the model sees · 1 tool schema");
   expect(await modelSees.definitions.count()).toBe(0);
-  expect(await modelSees.schemaValue("click_page_state_ref")).toEqual(
-    click.inputSchema
-  );
+  expect(await modelSees.schemaValue("click")).toEqual(click.inputSchema);
   expect(await detail.toolPage.modelLink.count()).toBe(0);
 });
 

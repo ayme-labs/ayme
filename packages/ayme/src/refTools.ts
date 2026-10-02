@@ -176,9 +176,9 @@ function requireCurrentDocument(): Document {
 // --- Built-in Ref Tools ---
 
 const clickDefinition: RefToolDefinition = {
-  name: "click_page_state_ref",
+  name: "click",
   description:
-    "Click a real element ref from get_page_context. The ref is resolved against a fresh capture before the action.",
+    "Click a real element ref from snapshot. The ref is resolved against a fresh capture before the action.",
   label: "click",
   inputSchema: REF_INPUT_SCHEMA,
   run: async ({ ref }) => {
@@ -191,9 +191,9 @@ const clickDefinition: RefToolDefinition = {
 };
 
 const fillDefinition: RefToolDefinition = {
-  name: "fill_page_state_ref",
+  name: "fill",
   description:
-    "Fill a real editable element ref from get_page_context with text. The ref is resolved against a fresh capture before the action.",
+    "Fill a real editable element ref from snapshot with text. The ref is resolved against a fresh capture before the action.",
   label: "fill",
   inputSchema: {
     type: "object",

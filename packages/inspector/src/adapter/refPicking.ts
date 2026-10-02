@@ -27,9 +27,9 @@ export function refFilterOf(
  */
 export function pickPromptOf(toolName: string): string {
   switch (toolName) {
-    case "click_page_state_ref":
+    case "click":
       return "Click an element to click";
-    case "fill_page_state_ref":
+    case "fill":
       return "Click a text field to fill";
     default:
       return `Click an element for ${toolName}`;

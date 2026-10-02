@@ -219,7 +219,7 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
     /**
      * Run the Goal Loop with the session's `goalLoop` and resolve with its
      * Handover. Needs no WebMCP publication and no driver; the published
-     * `pursue_goal` tool runs the same loop.
+     * `goal` tool runs the same loop.
      */
     async pursueGoal(
       goal: string,

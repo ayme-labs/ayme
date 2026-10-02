@@ -73,8 +73,8 @@ export async function pursueGoal(
       async ({ goal, maxSteps }) => {
         const tool = (
           document.modelContext as unknown as RecordingDriver
-        ).tools.find((candidate) => candidate.name === "pursue_goal");
-        if (!tool) throw new Error("pursue_goal tool was not published.");
+        ).tools.find((candidate) => candidate.name === "goal");
+        if (!tool) throw new Error("goal tool was not published.");
         return await tool.execute({ goal, maxSteps });
       },
       { goal, maxSteps }

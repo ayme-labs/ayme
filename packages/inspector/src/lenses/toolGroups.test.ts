@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { attachToolModels, listTools, type LiveTool } from "./toolGroups";
 
 // Unit: what the Tools lens lists, from the runtime's live tools. The expected groups come from the runtime's grouping:
-// Page Object Tools, Ref Tools, and get_page_context and pursue_goal.
+// Page Object Tools, Ref Tools, and snapshot and goal.
 
 function tool(name: string, group: LiveTool["group"]): LiveTool {
   return { name, description: "", inputSchema: {}, group };
@@ -11,12 +11,12 @@ function tool(name: string, group: LiveTool["group"]): LiveTool {
 
 // The runtime's order.
 const live = [
-  tool("get_page_context", "agent"),
-  tool("click_page_state_ref", "ref"),
-  tool("fill_page_state_ref", "ref"),
+  tool("snapshot", "agent"),
+  tool("click", "ref"),
+  tool("fill", "ref"),
   tool("ListPage.addItem", "pageObject"),
   tool("ListPage.items.rename", "pageObject"),
-  tool("pursue_goal", "agent"),
+  tool("goal", "agent"),
 ];
 
 const names = (tools: readonly LiveTool[]) => tools.map((t) => t.name);
@@ -27,17 +27,17 @@ describe("listTools", () => {
       listTools(live).map(({ label, tools }) => [label, names(tools)])
     ).toEqual([
       ["Page object tools", ["ListPage.addItem", "ListPage.items.rename"]],
-      ["Ref tools", ["click_page_state_ref", "fill_page_state_ref"]],
-      ["Agent tools", ["get_page_context", "pursue_goal"]],
+      ["Ref tools", ["click", "fill"]],
+      ["Agent tools", ["snapshot", "goal"]],
     ]);
   });
 
   it("leaves out a group with no tools", () => {
-    expect(listTools([tool("get_page_context", "agent")])).toEqual([
+    expect(listTools([tool("snapshot", "agent")])).toEqual([
       {
         group: "agent",
         label: "Agent tools",
-        tools: [tool("get_page_context", "agent")],
+        tools: [tool("snapshot", "agent")],
       },
     ]);
   });
@@ -60,12 +60,12 @@ describe("attachToolModels", () => {
         pomClassName,
       ])
     ).toEqual([
-      ["get_page_context", undefined],
-      ["click_page_state_ref", undefined],
-      ["fill_page_state_ref", undefined],
+      ["snapshot", undefined],
+      ["click", undefined],
+      ["fill", undefined],
       ["ListPage.addItem", "ListPage"],
       ["ListPage.items.rename", "ListItem"],
-      ["pursue_goal", undefined],
+      ["goal", undefined],
     ]);
   });
 });

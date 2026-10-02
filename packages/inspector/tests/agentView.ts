@@ -14,7 +14,7 @@ export type AgentTool = {
 
 /**
  * What an agent gets over the page's WebMCP: the published tools, and
- * get_page_context's result, as the recording WebMCP driver received them.
+ * snapshot's result, as the recording WebMCP driver received them.
  * The e2e tests take their expected values from here, never from the panel.
  */
 export class AgentView {
@@ -45,9 +45,9 @@ export class AgentView {
     return executePublishedTool(this.page, name, input);
   }
 
-  /** The Page Object definitions get_page_context returns for these models. */
+  /** The Page Object definitions snapshot returns for these models. */
   async pomDefinitions(...names: string[]): Promise<string> {
-    const { pomDefinitions } = (await this.call("get_page_context", {
+    const { pomDefinitions } = (await this.call("snapshot", {
       names,
     })) as { pomDefinitions: string };
     return pomDefinitions;

@@ -319,7 +319,7 @@ function createFakeDriver() {
 
 // --- Test setup ---
 
-describe("Goal Loop pursue_goal in Chromium", () => {
+describe("Goal Loop goal in Chromium", () => {
   let page: ReturnType<typeof createPage>;
   let stop: (() => void) | undefined;
   let disposePublication: (() => void) | undefined;
@@ -361,8 +361,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const { driver, published } = createFakeDriver();
     const publication = await synchronizeWebMcpTools(driver);
     disposePublication = publication.dispose;
-    const tool = published.get("pursue_goal");
-    if (!tool) throw new Error("pursue_goal not published");
+    const tool = published.get("goal");
+    if (!tool) throw new Error("goal not published");
     return tool;
   }
 
@@ -525,7 +525,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
   it("still hands over for a required free value of a tool that takes a ref", async () => {
     setupDom();
     const { requests, decide } = recording(
-      scriptedDecisionFn([{ operation: "fill_page_state_ref", goal_met: 0.1 }])
+      scriptedDecisionFn([{ operation: "fill", goal_met: 0.1 }])
     );
     const tool = await getPublishedPursueGoal(decide);
 
@@ -536,9 +536,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
     expect(withoutChanges(result)).toEqual({
       reason: "needs_value",
-      next: expect.stringContaining("fill_page_state_ref"),
+      next: expect.stringContaining("fill"),
       history: [],
-      needs: { tool: "fill_page_state_ref", parameters: ["ref", "value"] },
+      needs: { tool: "fill", parameters: ["ref", "value"] },
     });
     // No second request: the loop never asks for a tool it cannot fill.
     expect(requests).toHaveLength(1);
@@ -573,7 +573,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     );
   });
 
-  it("returns invalid pursue_goal input as a ToolInputError result", async () => {
+  it("returns invalid goal input as a ToolInputError result", async () => {
     const decide = scriptedDecisionFn([]);
     const tool = await registerPom(decide);
 
@@ -880,7 +880,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "click_page_state_ref",
+          operation: "click",
           goal_met: 0.1,
           arguments: { ref: 'button "Save changes"' },
         },
@@ -908,7 +908,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result.reason).toBe("done");
     // The step record names the tool and the option chosen, as offered.
     const record = {
-      operation: "click_page_state_ref",
+      operation: "click",
       chosen: { ref: { key, description } },
       result: "ok",
       // Whether a click changes the page (focus among others) is the
@@ -1098,7 +1098,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "click_page_state_ref",
+          operation: "click",
           goal_met: 0.1,
           arguments: { ref: 'button "Item 299"' },
         },
@@ -1141,7 +1141,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result.reason).toBe("done");
     expect(result.history).toMatchObject([
       {
-        operation: "click_page_state_ref",
+        operation: "click",
         chosen: {
           ref: { key: expect.any(String), description: 'button "Item 299"' },
         },
@@ -1163,7 +1163,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
       withoutArgumentProbabilities(
         scriptedDecisionFn([
           {
-            operation: "click_page_state_ref",
+            operation: "click",
             goal_met: 0.1,
             arguments: {
               ref: ['button "Item 3"', 'button "Item 299"'],
@@ -1211,7 +1211,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "click_page_state_ref",
+          operation: "click",
           goal_met: 0.1,
           arguments: {
             ref: ['button "Item 3"', 'button "Item 299"'],
@@ -1248,7 +1248,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "click_page_state_ref",
+          operation: "click",
           goal_met: 0.1,
           arguments: { ref: [] },
         },
@@ -1263,7 +1263,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
     expect(withoutChanges(result)).toEqual({
       reason: "no_fitting_option",
-      next: expect.stringContaining('"click_page_state_ref"'),
+      next: expect.stringContaining('"click"'),
       // The step ran no action, so it leaves no history entry.
       history: [],
     });
@@ -1286,7 +1286,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
   it("hands over when no element on the page fits the chosen operation", async () => {
     document.body.innerHTML = `<main><p>Nothing to do here.</p></main>`;
     const { requests, decide } = recording(
-      scriptedDecisionFn([{ operation: "click_page_state_ref", goal_met: 0.1 }])
+      scriptedDecisionFn([{ operation: "click", goal_met: 0.1 }])
     );
     const tool = await getPublishedPursueGoal(decide);
 
@@ -1294,7 +1294,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
     expect(result).toMatchObject({
       reason: "needs_value",
-      needs: { tool: "click_page_state_ref", parameters: ["ref"] },
+      needs: { tool: "click", parameters: ["ref"] },
     });
     expect(requests).toHaveLength(1);
   });
@@ -1425,7 +1425,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     setupPageWithOneClickable();
     const decide = scriptedDecisionFn([
       {
-        operation: "click_page_state_ref",
+        operation: "click",
         goal_met: 0.1,
         arguments: { ref: 'button "Save changes"' },
       },
@@ -1446,7 +1446,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     setupPageWithOneClickable();
     const decide = scriptedDecisionFn([
       {
-        operation: "click_page_state_ref",
+        operation: "click",
         goal_met: 0.1,
         arguments: { ref: { raw: "e999" } },
       },

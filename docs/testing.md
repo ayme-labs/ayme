@@ -20,7 +20,7 @@ Where each kind of test runs, what it is for, and where test-only code lives. Th
 - **Native WebMCP** is the only lane that tests the real WebMCP transport: Chromium with `--enable-features=WebMCP,WebMCPTesting`. Every other lane that needs WebMCP uses the recording driver below.
 - **E2E** runs the built packages on fixture pages or example apps, through page objects. Tools are called through the recording WebMCP driver from `@ayme-dev/ayme/testing`. Next and Nuxt run against both their dev server and a production build.
 - **Package verification** checks what consumers install: packed manifests, exports and type-checking in a clean consumer.
-- **Live goals** run real goals through `pursue_goal` against the model. It needs `AYME_OPENROUTER_API_KEY` and skips itself without one. It is a separate CI job, and `pnpm check` does not run it. See the [example-vue README](../apps/example-vue/README.md#live-goal-lane), which also covers the hand-run goal harness.
+- **Live goals** run real goals through `goal` against the model. It needs `AYME_OPENROUTER_API_KEY` and skips itself without one. It is a separate CI job, and `pnpm check` does not run it. See the [example-vue README](../apps/example-vue/README.md#live-goal-lane), which also covers the hand-run goal harness.
 
 Each package keeps its own Vitest config ([ADR-0003](adr/0003-keep-vitest-configuration-package-local.md)). Run `pnpm check` from the root for everything CI's Check job runs. On a pull request, CI runs the affected packages' `build lint typecheck test test:e2e`, plus commit lint, `turbo boundaries` and the format check ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)).
 

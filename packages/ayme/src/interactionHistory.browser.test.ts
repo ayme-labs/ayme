@@ -96,7 +96,7 @@ describe("Interaction history in Chromium", () => {
   }
 
   async function readStructure(): Promise<string> {
-    const context = (await tool("get_page_context").execute({})) as {
+    const context = (await tool("snapshot").execute({})) as {
       structure: string;
     };
     return context.structure;
@@ -183,14 +183,14 @@ describe("Interaction history in Chromium", () => {
     const addRef = refFor(await readStructure(), "Add");
     const actionsBefore = history().actions().size;
 
-    const result = await act("click_page_state_ref", { ref: addRef });
+    const result = await act("click", { ref: addRef });
 
     expect(result.changes).toContain("Added by the action");
     expect(history().actions().size).toBe(actionsBefore + 1);
     const actionId = lastActionId();
     expect(history().actions().get(actionId)).toEqual({
       caller: "agent",
-      tool: "click_page_state_ref",
+      tool: "click",
       args: { ref: addRef },
       targetRef: addRef,
     });
@@ -228,7 +228,7 @@ describe("Interaction history in Chromium", () => {
     await publishTools();
     const addRef = refFor(await readStructure(), "Add");
 
-    const result = await act("click_page_state_ref", { ref: addRef });
+    const result = await act("click", { ref: addRef });
     const actionId = lastActionId();
     const ledger = await readLedger();
 
@@ -259,7 +259,7 @@ describe("Interaction history in Chromium", () => {
     ).refs;
     if (!draftRef) throw new Error("Expected a ref for the draft paragraph.");
 
-    await act("click_page_state_ref", {
+    await act("click", {
       ref: refFor(structure, "Discard"),
     });
     const ledger = await readLedger();
@@ -305,7 +305,7 @@ describe("Interaction history in Chromium", () => {
     await publishTools();
     const visitsBefore = history().observations.getVisits().length;
 
-    const result = await act("click_page_state_ref", {
+    const result = await act("click", {
       ref: refFor(await readStructure(), "Orders", "link"),
     });
 
@@ -340,7 +340,7 @@ describe("Interaction history in Chromium", () => {
     const agentCursor = history().cursor("agent");
     const actionsBefore = history().actions().size;
 
-    const handover = (await tool("pursue_goal").execute({
+    const handover = (await tool("goal").execute({
       goal: "add one",
       maxSteps: 3,
     })) as { history: { page_changed: boolean }[] };
@@ -415,14 +415,14 @@ describe("Interaction history in Chromium", () => {
     await publishTools();
     await readStructure();
 
-    await tool("pursue_goal").execute({ goal: "add one", maxSteps: 3 });
+    await tool("goal").execute({ goal: "add one", maxSteps: 3 });
     expect(history().actions().get(agentActionId!)?.caller).toBe("agent");
 
     // A capture Ayme makes for itself: it finds the ref and moves no cursor.
     const [markRef] = (
       await getPageStateForElements([document.querySelector("#mark")!])
     ).refs;
-    const result = await act("click_page_state_ref", { ref: markRef });
+    const result = await act("click", { ref: markRef });
 
     expect(result.changes).toContain("Marked by the agent");
     expect(result.changes).not.toContain("Added by the action");

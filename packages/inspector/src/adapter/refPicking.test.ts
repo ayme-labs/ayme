@@ -6,8 +6,8 @@ import { pickPromptOf, refFilterOf } from "./refPicking";
 // targets are hand-written, as the runtime would list them for a page.
 
 const targets = new Map([
-  ["click_page_state_ref", ["e2", "e3"]],
-  ["fill_page_state_ref", ["e2"]],
+  ["click", ["e2", "e3"]],
+  ["fill", ["e2"]],
 ]);
 const node = (ref: string, role: string) => ({
   ref,
@@ -18,7 +18,7 @@ const node = (ref: string, role: string) => ({
 });
 
 it("lets a Ref Tool use exactly the refs it can take", () => {
-  const fill = refFilterOf(targets, "fill_page_state_ref")!;
+  const fill = refFilterOf(targets, "fill")!;
 
   expect(fill(node("e2", "textbox"))).toBe(true);
   expect(fill(node("e3", "button"))).toBe(false);
@@ -29,12 +29,8 @@ it("lets a tool the runtime lists no targets for use every node", () => {
 });
 
 it("asks for what each built-in Ref tool acts on", () => {
-  expect(pickPromptOf("click_page_state_ref")).toBe(
-    "Click an element to click"
-  );
-  expect(pickPromptOf("fill_page_state_ref")).toBe(
-    "Click a text field to fill"
-  );
+  expect(pickPromptOf("click")).toBe("Click an element to click");
+  expect(pickPromptOf("fill")).toBe("Click a text field to fill");
 });
 
 it("names any other tool", () => {

@@ -247,7 +247,7 @@ useAyme({ customTools: [highlight] });
 
 A published tool never throws. WebMCP drops the reason of a rejected tool call:
 native Chrome reports only a generic `UnknownError`. Every tool Ayme publishes,
-including `get_page_context` and `pursue_goal`, therefore resolves a failure as
+including `snapshot` and `goal`, therefore resolves a failure as
 an MCP tool-failure result:
 
 ```json
@@ -376,11 +376,11 @@ text. Use a fake function in deterministic tests.
 
 The Goal Loop drives the page toward a natural-language goal in steps. Each
 step is one judgement by a fast System One model, not by the calling agent's LLM.
-The calling agent starts the loop with `pursue_goal` and receives a **Handover**.
+The calling agent starts the loop with `goal` and receives a **Handover**.
 
 ### Turning it on
 
-Pass `goalLoop` on the Vue composable or React provider. The `pursue_goal`
+Pass `goalLoop` on the Vue composable or React provider. The `goal`
 WebMCP tool is published only when `goalLoop` is set.
 
 ```ts
@@ -424,12 +424,12 @@ request. When exactly one chunk names an element the operation runs on it; when
 several do, one more question offers exactly those elements; when none does,
 the loop ends with `no_fitting_option`. An optional closed-set parameter is
 offered an extra choice that leaves it unset. The model never writes a free
-value: an operation that requires one, such as `fill_page_state_ref`, ends the
+value: an operation that requires one, such as `fill`, ends the
 loop with `needs_value` so that the calling agent supplies it.
 
 ### The Handover
 
-`pursue_goal({ goal, maxSteps })` and `session.pursueGoal(goal, { maxSteps })`
+`goal({ goal, maxSteps })` and `session.pursueGoal(goal, { maxSteps })`
 return a Handover:
 
 ```ts
@@ -489,7 +489,7 @@ per parameter asked, the key of the option the model chose and that option's
 description exactly as it was offered, a choice to leave the parameter unset
 included; `"ok"` or an error message in `result`; whether the page changed in
 `page_changed`; and `did`, a one-line label derived from the others, such as
-`click_page_state_ref(button "Add item")`.
+`click(button "Add item")`.
 A step that hands over before acting records nothing. The model is sent the
 same entries as its `history`.
 `changes` is one Change Record for the whole run, in the notation of an action's

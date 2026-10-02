@@ -48,7 +48,7 @@ const refArg = {
 } as const;
 
 const clickTool: ExecutableTool = {
-  name: "click_page_state_ref",
+  name: "click",
   description: "Click an element.",
   execute: async () => null,
   requiredParams: ["ref"],
@@ -197,7 +197,7 @@ describe("ref questions over the option cap", () => {
       const last = question.options.at(-1)!;
       expect(last.key).toBe(NONE_OF_THESE_KEY);
       expect("value" in last).toBe(false);
-      expect(question.instructions).toContain('"click_page_state_ref"');
+      expect(question.instructions).toContain('"click"');
     }
     // Together the chunks hold every option exactly once, in document order.
     expect(questions.flatMap(refsOf)).toEqual(
@@ -274,7 +274,7 @@ describe("ref questions over the option cap", () => {
     expect(refsOf(question)).toEqual(["e10", "e300"]);
     // The run-off offers no "none of these".
     expect(question.options.every((option) => "value" in option)).toBe(true);
-    expect(question.instructions).toContain('"click_page_state_ref"');
+    expect(question.instructions).toContain('"click"');
 
     const response = await scriptedDecision([question], { ref: "e300" })(
       buildArgumentRequest({}, [question])

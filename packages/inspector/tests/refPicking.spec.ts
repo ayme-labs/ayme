@@ -8,7 +8,7 @@ test("a ref picked by clicking the page is the element the tool acts on", async 
   inspector,
   listPage,
 }) => {
-  const fill = await inspector.tool("fill_page_state_ref");
+  const fill = await inspector.tool("fill");
 
   await fill.refField().pickOnPage();
   await listPage.newItemInput.click();
@@ -24,7 +24,7 @@ test("while picking, the element under the pointer is highlighted", async ({
   inspector,
   listPage,
 }) => {
-  const click = await inspector.tool("click_page_state_ref");
+  const click = await inspector.tool("click");
 
   await click.refField().pickOnPage();
   await listPage.addItemButton.hover();
@@ -38,7 +38,7 @@ test("Esc cancels picking, and clicks reach the page again", async ({
   inspector,
   listPage,
 }) => {
-  const ref = (await inspector.tool("click_page_state_ref")).refField();
+  const ref = (await inspector.tool("click")).refField();
   await ref.pickOnPage();
 
   await page.keyboard.press("Escape");
@@ -52,7 +52,7 @@ test("Esc cancels picking, and clicks reach the page again", async ({
 test("fill's structure leaves a button out and offers the text field", async ({
   inspector,
 }) => {
-  const ref = (await inspector.tool("fill_page_state_ref")).refField();
+  const ref = (await inspector.tool("fill")).refField();
 
   await ref.open();
 
@@ -64,7 +64,7 @@ test("picking a button for fill greys it and doesn't pick it", async ({
   inspector,
   listPage,
 }) => {
-  const ref = (await inspector.tool("fill_page_state_ref")).refField();
+  const ref = (await inspector.tool("fill")).refField();
   await ref.pickOnPage();
 
   await listPage.addItemButton.hover();

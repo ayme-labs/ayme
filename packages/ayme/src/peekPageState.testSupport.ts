@@ -23,9 +23,9 @@ export async function startAgentSession(
   /** A call as the calling agent makes it. */
   const call = (name: string, input: unknown) =>
     tools.get(name)!.execute(input) as Promise<Record<string, unknown>>;
-  /** The structure an agent reads through get_page_context. */
+  /** The structure an agent reads through snapshot. */
   const read = async () =>
-    ((await call("get_page_context", {})) as { structure: string }).structure;
+    ((await call("snapshot", {})) as { structure: string }).structure;
   return {
     call,
     read,

@@ -56,7 +56,7 @@ export function configureGoalLoop(
 }
 
 /**
- * Package-internal: returns the `pursue_goal` tool when `goalLoop` is
+ * Package-internal: returns the `goal` tool when `goalLoop` is
  * configured, `null` otherwise. Called by `synchronizeWebMcpTools`.
  */
 export function getPursueGoalTool(): ModelContextTool<
@@ -169,7 +169,7 @@ type StepOutcome = Pick<GoalLoopStepRecord, "result" | "page_changed"> & {
   changes?: string;
 };
 
-/** Record an executed step; `did` is derived, e.g. `click_page_state_ref(button "Add item")`. */
+/** Record an executed step; `did` is derived, e.g. `click(button "Add item")`. */
 function stepRecord(
   operation: string,
   chosen: Record<string, ChosenOption>,
@@ -207,13 +207,13 @@ async function executeToolAction(
 
 // --- The loop ---
 
-/** Create the `pursue_goal` ModelContextTool bound to the given decision function and document. */
+/** Create the `goal` ModelContextTool bound to the given decision function and document. */
 export function createPursueGoalTool(
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document
 ): ModelContextTool<Record<string, unknown>, JsonValue> {
   return {
-    name: "pursue_goal",
+    name: "goal",
     description:
       "Drive the page toward a goal in steps. Each step is one fast model judgement. Returns a Handover: why the loop stopped, what it did, and what to do next.",
     inputSchema: {
@@ -238,7 +238,7 @@ export function createPursueGoalTool(
   };
 }
 
-/** Validate and narrow the raw `pursue_goal` input to typed fields. */
+/** Validate and narrow the raw `goal` input to typed fields. */
 function readPursueGoalInput(input: unknown): {
   goal: string;
   maxSteps: number;
@@ -254,7 +254,7 @@ function readPursueGoalInput(input: unknown): {
   )
     return { goal: input.goal, maxSteps: input.maxSteps };
   throw new ToolInputError(
-    "pursue_goal requires a string goal and an integer maxSteps."
+    "goal requires a string goal and an integer maxSteps."
   );
 }
 

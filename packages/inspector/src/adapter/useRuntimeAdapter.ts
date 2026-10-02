@@ -97,7 +97,7 @@ export function useRuntimeAdapter({
     tools,
     /**
      * The POM definitions for `names` (every known one when none are given),
-     * as `get_page_context` renders them. Captures no page state.
+     * as `snapshot` renders them. Captures no page state.
      */
     definitionText: (...names: string[]) => getPomDefinitionText(...names),
     /**

@@ -136,10 +136,10 @@ registerCompiledPom(ListPage, {
 
 /** Every tool the fixture session publishes, in the group the Inspector shows it under. */
 const EXPECTED_GROUPS: Record<string, PublishedToolGroup> = {
-  get_page_context: "agent",
-  pursue_goal: "agent",
-  click_page_state_ref: "ref",
-  fill_page_state_ref: "ref",
+  snapshot: "agent",
+  goal: "agent",
+  click: "ref",
+  fill: "ref",
   highlight: "ref",
   "TodoPage.addTodo": "pageObject",
 };
@@ -212,14 +212,10 @@ const highlight: CustomTool = {
 
 const TOOL_CALLS: [string, string, (ref: string) => unknown][] = [
   ["a Page Object tool", "TodoPage.addTodo", () => ({ title: "Milk" })],
-  ["the built-in click Ref tool", "click_page_state_ref", (ref) => ({ ref })],
+  ["the built-in click Ref tool", "click", (ref) => ({ ref })],
   ["an app-registered Ref tool", "highlight", (ref) => ({ ref })],
-  ["get_page_context", "get_page_context", () => ({})],
-  [
-    "pursue_goal",
-    "pursue_goal",
-    () => ({ goal: "Save the changes", maxSteps: 1 }),
-  ],
+  ["snapshot", "snapshot", () => ({})],
+  ["goal", "goal", () => ({ goal: "Save the changes", maxSteps: 1 })],
 ];
 
 /**
@@ -293,7 +289,7 @@ export function describePublishedTools(
     }
 
     async function saveButtonRef() {
-      const { structure } = (await agentGets("get_page_context", {})) as {
+      const { structure } = (await agentGets("snapshot", {})) as {
         structure: string;
       };
       const ref = structure.match(/(e\d+) button "Save changes"/)?.[1];
@@ -381,7 +377,7 @@ export function describePublishedTools(
           .sort()
       );
       expect(
-        await agentGets("ayme_pursue_goal", {
+        await agentGets("ayme_goal", {
           goal: "Save the changes",
           maxSteps: 1,
         })
@@ -428,11 +424,11 @@ export function describePublishedTools(
         // A click focuses the button, so it is focused before the first call
         // too. Both calls then start from the same page, already seen.
         document.querySelector("button")!.focus();
-        await agentGets("get_page_context", {});
+        await agentGets("snapshot", {});
         const expected = await agentGets(name, input);
         // Diagnostic: the call itself succeeds for an agent.
         expect(expected).not.toMatchObject({ isError: true });
-        await agentGets("get_page_context", {});
+        await agentGets("snapshot", {});
 
         expect(await runTool(name, input)).toEqual(expected);
       }
@@ -443,9 +439,9 @@ export function describePublishedTools(
       await startSession();
       const ref = await saveButtonRef();
       document.querySelector("#save")!.remove();
-      const expected = await agentGets("click_page_state_ref", { ref });
+      const expected = await agentGets("click", { ref });
 
-      expect(await runTool("click_page_state_ref", { ref })).toEqual(expected);
+      expect(await runTool("click", { ref })).toEqual(expected);
       expect(expected).toMatchObject({ isError: true });
     });
 
@@ -456,7 +452,7 @@ export function describePublishedTools(
       await expect
         .poll(async () => (await context.getTools()).map(({ name }) => name))
         .toContain("ListPage.items.archive");
-      const { structure } = (await agentGets("get_page_context", {})) as {
+      const { structure } = (await agentGets("snapshot", {})) as {
         structure: string;
       };
       const ref = structure.match(/(e\d+) ListPage\.items\[0\]/)?.[1];
@@ -493,8 +489,8 @@ export function describePublishedTools(
         )
       ).toEqual({
         // Interactive and enabled; the disabled button is left out.
-        click_page_state_ref: ["button Save", "input Ada"],
-        fill_page_state_ref: ["input Ada"],
+        click: ["button Save", "input Ada"],
+        fill: ["input Ada"],
         highlight: ["p Draft"],
       });
       for (const { key, tool } of buildToolOptions()) {
@@ -521,7 +517,7 @@ export function describePublishedTools(
       }
     });
 
-    it("gives the POM definition text get_page_context returns, without reading the page", async () => {
+    it("gives the POM definition text snapshot returns, without reading the page", async () => {
       await startSession();
       cleanups.push(
         runtime.register(SettingsPage, runtime.construct(SettingsPage))
@@ -534,7 +530,7 @@ export function describePublishedTools(
 
       expect(history.latestObservation).toBe(latest);
       const context = (names?: string[]) =>
-        agentGets("get_page_context", names ? { names } : {}) as Promise<{
+        agentGets("snapshot", names ? { names } : {}) as Promise<{
           pomDefinitions: string;
         }>;
       expect(text).toBe((await context(["TodoPage"])).pomDefinitions);
@@ -589,14 +585,14 @@ export function describePublishedTools(
           const input = inputFor(await saveButtonRef());
           // Both calls start from the same page, already seen by the agent.
           document.querySelector("button")!.focus();
-          await agentGets("get_page_context", {});
+          await agentGets("snapshot", {});
           const expected = await agentGets(name, input);
           // Diagnostic: the call itself succeeds for an agent.
           expect(expected).not.toMatchObject({ isError: true });
           stopPublishing();
 
           const actual = await whilePublicationIsOff(mode, async () => {
-            await runTool("get_page_context", {});
+            await runTool("snapshot", {});
             return runTool(name, input);
           });
 
@@ -609,12 +605,12 @@ export function describePublishedTools(
         const stopPublishing = await startSession();
         const ref = await saveButtonRef();
         document.querySelector("#save")!.remove();
-        const expected = await agentGets("click_page_state_ref", { ref });
+        const expected = await agentGets("click", { ref });
         expect(expected).toMatchObject({ isError: true });
         stopPublishing();
 
         const actual = await whilePublicationIsOff(mode, () =>
-          runTool("click_page_state_ref", { ref })
+          runTool("click", { ref })
         );
 
         expect(actual).toEqual(expected);
@@ -666,7 +662,7 @@ export function describePublishedTools(
           (targets.get(name) ?? []).map(
             (ref) => peek.elementsByRef.get(ref)?.textContent
           );
-        expect(described("click_page_state_ref")).toEqual(["Save"]);
+        expect(described("click")).toEqual(["Save"]);
         expect(described("highlight")).toEqual(["Draft"]);
       });
 

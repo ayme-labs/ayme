@@ -138,11 +138,11 @@ const refSchema = {
 };
 const refTools = [
   {
-    name: "click_page_state_ref",
+    name: "click",
     inputSchema: refSchema,
     refs: ["e3", "e4", "e6"],
   },
-  { name: "fill_page_state_ref", inputSchema: refSchema, refs: ["e3"] },
+  { name: "fill", inputSchema: refSchema, refs: ["e3"] },
 ];
 
 function renderLens({
@@ -284,7 +284,7 @@ it("runs the Ref tools that can take a node's ref through the run slot", async (
 
   await expect
     .poll(() => node.tools.getByRole("button").allTextContents())
-    .toEqual(["click_page_state_ref on e3", "fill_page_state_ref on e3"]);
+    .toEqual(["click on e3", "fill on e3"]);
 });
 
 it("offers a node only the Ref tools that can take its ref", async () => {
@@ -295,8 +295,8 @@ it("offers a node only the Ref tools that can take its ref", async () => {
 
   await expect
     .poll(() => node.tools.getByRole("button").allTextContents())
-    .toEqual(["click_page_state_ref"]);
-  expect(await node.tool("fill_page_state_ref").count()).toBe(0);
+    .toEqual(["click"]);
+  expect(await node.tool("fill").count()).toBe(0);
 });
 
 it("offers no tools on a node no Ref tool can take", async () => {
@@ -324,10 +324,8 @@ it("shows the schemas of the Ref tools a node offers in what the model sees", as
 
   await node.modelSees.open();
 
-  expect(await node.modelSees.schemaValue("click_page_state_ref")).toEqual(
-    refSchema
-  );
-  expect(await node.modelSees.schema("fill_page_state_ref").count()).toBe(0);
+  expect(await node.modelSees.schemaValue("click")).toEqual(refSchema);
+  expect(await node.modelSees.schema("fill").count()).toBe(0);
 });
 
 it("finds refs in search and shows the one picked", async () => {

@@ -29,16 +29,11 @@ vi.mock("@ayme-dev/ayme/internal", () => {
     listRefToolTargets: vi.fn(
       async () =>
         new Map([
-          ["click_page_state_ref", ["e2", "e3"]],
-          ["fill_page_state_ref", ["e2"]],
+          ["click", ["e2", "e3"]],
+          ["fill", ["e2"]],
         ])
     ),
-    listLiveTools: vi
-      .fn()
-      .mockReturnValue([
-        refTool("click_page_state_ref"),
-        refTool("fill_page_state_ref"),
-      ]),
+    listLiveTools: vi.fn().mockReturnValue([refTool("click"), refTool("fill")]),
     getPublicationStatus: vi.fn().mockReturnValue({ state: "disabled" }),
     subscribeToPublishedTools: vi.fn(() => () => {}),
     getPomDefinitionText: vi.fn(() => ""),
@@ -77,12 +72,8 @@ it("offers a node its live Ref tools while nothing is published", async () => {
 
   await inspector.structure.pick("e2");
 
-  await expect
-    .poll(() => inspector.detail.node.tool("fill_page_state_ref").count())
-    .toBe(1);
-  expect(await inspector.detail.node.tool("click_page_state_ref").count()).toBe(
-    1
-  );
+  await expect.poll(() => inspector.detail.node.tool("fill").count()).toBe(1);
+  expect(await inspector.detail.node.tool("click").count()).toBe(1);
 });
 
 it("offers a node only the live Ref tools that can take its ref", async () => {
@@ -90,10 +81,6 @@ it("offers a node only the live Ref tools that can take its ref", async () => {
 
   await inspector.structure.pick("e3");
 
-  await expect
-    .poll(() => inspector.detail.node.tool("click_page_state_ref").count())
-    .toBe(1);
-  expect(await inspector.detail.node.tool("fill_page_state_ref").count()).toBe(
-    0
-  );
+  await expect.poll(() => inspector.detail.node.tool("click").count()).toBe(1);
+  expect(await inspector.detail.node.tool("fill").count()).toBe(0);
 });

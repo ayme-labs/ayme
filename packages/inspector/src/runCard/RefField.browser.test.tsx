@@ -22,9 +22,9 @@ afterEach(() => {
 });
 
 const click: RunnableTool = {
-  name: "click_page_state_ref",
-  action: "click_page_state_ref",
-  description: "Click a real element ref from get_page_context.",
+  name: "click",
+  action: "click",
+  description: "Click a real element ref from snapshot.",
   available: true,
   argumentsSchema: {
     type: "object",
@@ -146,9 +146,9 @@ describe("choosing from the structure", () => {
   });
 
   it("offers only what the runtime lists as the tool's targets", async () => {
-    const targets = new Map([["click_page_state_ref", ["e4", "e9"]]]);
+    const targets = new Map([["click", ["e4", "e9"]]]);
     const { ref } = renderCard({
-      canUse: refFilterOf(targets, "click_page_state_ref"),
+      canUse: refFilterOf(targets, "click"),
     });
 
     await ref.open();
