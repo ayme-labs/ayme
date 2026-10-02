@@ -310,20 +310,11 @@ function RunResult({
   open: boolean;
   onToggle: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 1500);
-    return () => clearTimeout(timer);
-  }, [copied]);
-
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
     } catch {
-      // The page can deny the clipboard; the result stays open to select.
+      // The page can deny the clipboard; the result can still be selected.
     }
   };
 
@@ -349,11 +340,7 @@ function RunResult({
           className="h-6 px-2 text-xs text-muted-foreground"
           onClick={() => void copy()}
         >
-          {copied ? (
-            <CheckIcon className="size-3.5" aria-hidden />
-          ) : (
-            <CopyIcon className="size-3.5" aria-hidden />
-          )}
+          <CopyIcon className="size-3.5" aria-hidden />
           Copy
         </Button>
       </div>

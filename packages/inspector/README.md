@@ -6,7 +6,8 @@ the Page Object Models it knows, with their member states), Structure (the
 Structural Page State a model sees, each node tagged with its member) and
 Tools (every published tool). Every detail runs its tools through one run
 card; a tool's page and a structure node's detail also show what the model
-sees of them. Runs lists the runs made from the panel with their steps.
+sees of them. Runs lists the runs made from the panel with their arguments, steps and
+result, which can be copied.
 
 The panel floats, or docks to the left, the right or the bottom of the page,
 and collapses to the ayme logo. It remembers its layout, sizes, positions and

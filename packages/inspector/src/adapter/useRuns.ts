@@ -84,7 +84,6 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
         ...current,
       ]);
       try {
-        // Captured now; undefined when the tool returned undefined.
         const result = JSON.stringify(await tool.execute(args), null, 2) as
           string | undefined;
         await settle({ status: "succeeded", result });

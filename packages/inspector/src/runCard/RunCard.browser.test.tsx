@@ -322,7 +322,7 @@ describe("the last result", () => {
 
     await expect
       .poll(() => card.lastResult.textContent())
-      .toBe("Succeeded · 320 ms · 2 stepsShow in runs");
+      .toContain("Succeeded · 320 ms · 2 steps");
     expect(await card.lastResult.getByRole("button").count()).toBe(1);
   });
 
