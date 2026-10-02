@@ -1,4 +1,5 @@
 import { getPageContextTool } from "./pageContext";
+import { prototypePeekTool, subscribeToPrototypePeeks } from "./peekPrototype";
 import {
   type PublishedTool,
   reportPublishedTools,
@@ -49,11 +50,11 @@ function errorText(error: unknown): string {
 /**
  * A tool as WebMCP runs it for an agent: after a call that can change the
  * page, `settle` runs before the call resolves; a failure is an `isError`
- * result. `get_page_context` only reads, so it does not settle.
+ * result. `get_page_context` and prototype `peek` only read, so they do not settle.
  */
 export function asAgentCall(tool: PublishedTool, settle: () => Promise<void>) {
   return withErrorResult(
-    tool === getPageContextTool
+    tool === getPageContextTool || tool === prototypePeekTool
       ? tool
       : {
           ...tool,
@@ -219,9 +220,15 @@ export async function synchronizeWebMcpTools(
     try {
       await probeRegisteredPomMembers();
       if (!disposed) {
-        unsubscribe = subscribeToRegisteredPoms(() => {
+        const changed = () => {
           void synchronize().catch(failPublication);
-        });
+        };
+        const unsubscribeFromPoms = subscribeToRegisteredPoms(changed);
+        const unsubscribeFromPeeks = subscribeToPrototypePeeks(changed);
+        unsubscribe = () => {
+          unsubscribeFromPoms();
+          unsubscribeFromPeeks();
+        };
         await synchronize();
       }
     } catch (error) {

@@ -2,6 +2,11 @@ import type { JsonSchema, RegisteredPomTool } from "./contracts";
 import { getPursueGoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
 import {
+  getPrototypePeekTool,
+  subscribeToPrototypePeeks,
+  type prototypePeekTool,
+} from "./peekPrototype";
+import {
   peekPageStateForDocument,
   type AriaRef,
   type PageStateCapture,
@@ -16,7 +21,10 @@ import { RuntimeStateError } from "./errors";
 import type { AymeWebMcpPublicationStatus } from "./runtime";
 
 export type PublishedTool =
-  RegisteredPomTool | typeof getPageContextTool | PublishedRefTool;
+  | RegisteredPomTool
+  | typeof getPageContextTool
+  | typeof prototypePeekTool
+  | PublishedRefTool;
 
 /**
  * Where a published tool comes from: a Page Object (Generated WebMCP Tool), a
@@ -47,6 +55,8 @@ export function resolvePublishedTools(): Map<
     string,
     { tool: PublishedTool; group: PublishedToolGroup }
   >([[getPageContextTool.name, { tool: getPageContextTool, group: "agent" }]]);
+  const peek = getPrototypePeekTool();
+  if (peek) active.set(peek.name, { tool: peek, group: "agent" });
   const takenElsewhere = new Set([
     ...pomTools.map((tool) => tool.name),
     ...(pursueGoal ? [pursueGoal.name] : []),
@@ -151,14 +161,17 @@ export async function listRefToolTargets(
 /**
  * Call `subscriber` whenever the published or live tools or the status may
  * have changed: a publication pass, a status change (a session starting or
- * stopping sets its Ref Tools and Goal Loop), or a Page Object change.
+ * stopping sets its Ref Tools and Goal Loop), a Page Object change, or a
+ * prototype peek registration change.
  */
 export function subscribeToPublishedTools(subscriber: () => void) {
   subscribers.add(subscriber);
   const unsubscribeFromPoms = subscribeToRegisteredPoms(subscriber);
+  const unsubscribeFromPeeks = subscribeToPrototypePeeks(subscriber);
   return () => {
     subscribers.delete(subscriber);
     unsubscribeFromPoms();
+    unsubscribeFromPeeks();
   };
 }
 
