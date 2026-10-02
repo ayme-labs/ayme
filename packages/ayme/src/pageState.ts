@@ -161,6 +161,20 @@ export async function failActionForDocument(
 }
 
 /**
+ * Package-internal: complete a failed action when capturing the page is what
+ * failed. The page as last recorded stands in for it. No caller's cursor
+ * moves.
+ */
+export async function failActionWithoutCaptureForDocument(
+  currentDocument: Document,
+  actionId: StructuralActionId
+): Promise<void> {
+  return getPageStateSession(currentDocument).failActionWithoutCapture(
+    actionId
+  );
+}
+
+/**
  * Package-internal: capture the Settled Page after an action and return its
  * Change Record tree, reconciled against the page the acting caller last
  * received. The capture becomes that caller's cursor.
@@ -290,6 +304,15 @@ class PageStateSession {
     this.rememberElements(capture);
   }
 
+  async failActionWithoutCapture(actionId: StructuralActionId): Promise<void> {
+    // Set since the action started: every recorded observation remembers its
+    // elements. Read before awaiting, so the tree and its elements match.
+    const latest = this.latestElements!;
+    const tree = await latest.observation.tree.resolve();
+    this.history.failAction(actionId, tree, this.history.now());
+    this.rememberElements(latest);
+  }
+
   async getPageStateForElements(
     elements: readonly Element[]
   ): Promise<{ state: PageState; refs: (AriaRef | undefined)[] }> {
@@ -312,7 +335,9 @@ class PageStateSession {
   }
 
   /** Call in the same step as the observation of `capture` is recorded. */
-  private rememberElements(capture: CapturedPageState): void {
+  private rememberElements(
+    capture: Pick<CapturedPageState, "elementsByRef">
+  ): void {
     this.latestElements = {
       observation: this.history.latestObservation!,
       elementsByRef: capture.elementsByRef,

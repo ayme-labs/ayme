@@ -2,6 +2,7 @@ import {
   SETTLED_PAGE_DEADLINE_MS,
   SETTLED_PAGE_QUIET_MS,
   waitForSettled,
+  type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
 import { isJsonValue, type JsonValue } from "./contracts";
 import { browserMonotonicClock } from "./browserMonotonicClock";
@@ -10,6 +11,7 @@ import { getBrowserPageActivitySource } from "./pageActivitySource";
 import {
   completeActionForDocument,
   failActionForDocument,
+  failActionWithoutCaptureForDocument,
   startActionForDocument,
 } from "./pageState";
 import { renderChangeRecord } from "./changeRecord";
@@ -35,7 +37,9 @@ export type ActionResult = {
  * part of the record.
  *
  * An action whose `perform` throws is completed as failed with the page as it
- * is then, moves no cursor, and the error travels on.
+ * is then, moves no cursor, and the error travels on. When waiting for the
+ * Settled Page or capturing it throws, the action is completed as failed with
+ * the page as last recorded instead.
  */
 export async function runAction(
   currentDocument: Document,
@@ -51,14 +55,22 @@ export async function runAction(
     await failActionForDocument(currentDocument, actionId).catch(() => {});
     throw error;
   }
-  const { stable } = await waitForSettled({
-    activity: getBrowserPageActivitySource(currentDocument),
-    clock: browserMonotonicClock,
-    quietMs: SETTLED_PAGE_QUIET_MS,
-    deadlineMs: SETTLED_PAGE_DEADLINE_MS,
-  });
-
-  const changes = await completeActionForDocument(currentDocument, actionId);
+  let stable: boolean;
+  let changes: StructuralTree;
+  try {
+    ({ stable } = await waitForSettled({
+      activity: getBrowserPageActivitySource(currentDocument),
+      clock: browserMonotonicClock,
+      quietMs: SETTLED_PAGE_QUIET_MS,
+      deadlineMs: SETTLED_PAGE_DEADLINE_MS,
+    }));
+    changes = await completeActionForDocument(currentDocument, actionId);
+  } catch (error) {
+    await failActionWithoutCaptureForDocument(currentDocument, actionId).catch(
+      () => {}
+    );
+    throw error;
+  }
   const pageChanged = changes.hasAnyChanges();
 
   const out: ActionResult = {
