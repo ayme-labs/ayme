@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AymeWebMcpProvider } from "@ayme-dev/webmcp-vue";
+import { AymeWebMcpProvider } from "@ayme-dev/vue";
 import CounterDemo from "./components/CounterDemo.vue";
 </script>
 

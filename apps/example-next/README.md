@@ -24,7 +24,7 @@ through `usePageObject(CounterPage)`. It can be removed and remounted.
 
 ## What changed
 
-`@ayme-dev/unplugin-webmcp/turbopack-loader` is an experimental ESM loader using
+`@ayme-dev/unplugin-ayme/turbopack-loader` is an experimental ESM loader using
 the webpack loader calling convention supported by Turbopack. It calls the same
 source transform as Vite, then transpiles the result with the package's existing
 TypeScript dependency. Its only configuration option is `tsconfigPath`.
@@ -59,9 +59,9 @@ After building, with no manually started server running:
 
 ```sh
 pnpm --filter @ayme-dev/example-next exec playwright install chromium
-pnpm --filter @ayme-dev/webmcp test
-pnpm --filter @ayme-dev/webmcp-react test
-pnpm --filter @ayme-dev/unplugin-webmcp test
+pnpm --filter @ayme-dev/ayme test
+pnpm --filter @ayme-dev/react test
+pnpm --filter @ayme-dev/unplugin-ayme test
 pnpm --filter @ayme-dev/example-next test:e2e
 ```
 
@@ -111,5 +111,5 @@ imports. This favors correct invalidation over the smallest possible watch set.
 
 - [Turbopack rules and loader limitations](https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack)
 - [Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
-- [Existing React integration](../../packages/webmcp-react/README.md)
+- [Existing React integration](../../packages/react/README.md)
 - [Framework API parity decision](../../docs/adr/0017-keep-framework-integration-apis-closely-aligned.md)

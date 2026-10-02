@@ -2,8 +2,8 @@
 
 ## Framework integrations
 
-- [Vue](packages/webmcp-vue/README.md): provider setup and compatible standalone composable setup.
-- [React](packages/webmcp-react/README.md): provider setup for React 19 and client-rendered Vite applications.
+- [Vue](packages/vue/README.md): provider setup and compatible standalone composable setup.
+- [React](packages/react/README.md): provider setup for React 19 and client-rendered Vite applications.
 
 Both packages return Page Object instances through `usePageObject` and share
 publication, retry, and runtime ownership behavior. The
@@ -30,7 +30,7 @@ The demo's text-entry actions explicitly use `pressSequentially(text, { delay })
 `fill()` keeps its normal text-replacement behavior. The former `createPage`
 options `pacing` and `onTrace`, and the browser package's demo-specific types,
 are no longer supported.
-Start with the [core package README](packages/webmcp/README.md) for consumer setup.
+Start with the [main library README](packages/ayme/README.md) for consumer setup.
 
 ## Coding agent skill
 
@@ -42,7 +42,7 @@ For Page Object Models, install `@playwright/test` as a development dependency.
 A separate direct installation of `playwright` is unnecessary. Import `Page`
 and `Locator` with `import type`.
 
-`@ayme-dev/webmcp` and `@ayme-dev/webmcp-vue` declare an optional
+`@ayme-dev/ayme` and `@ayme-dev/vue` declare an optional
 `@playwright/test` peer of `>=1.29 <1.63`. Playwright is unnecessary for the
 core public API and plugin defaults or direct settings. POM registration types
 require it. Packed consumer checks exercise 1.29.1 with TypeScript 5.9.3 and

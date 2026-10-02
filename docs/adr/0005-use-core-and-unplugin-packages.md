@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0029
 ---
 
 # Use core and Unplugin packages

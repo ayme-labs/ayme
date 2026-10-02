@@ -30,7 +30,7 @@ The demo UI is built entirely from [shadcn-vue](https://www.shadcn-vue.com/) com
 Call the lifecycle API once in the application root, before registering Page Objects:
 
 ```ts
-import { useAymeWebMcp, usePageObject } from "@ayme-dev/webmcp-vue";
+import { useAymeWebMcp, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "./playwright/pom/ListPage";
 
 useAymeWebMcp();

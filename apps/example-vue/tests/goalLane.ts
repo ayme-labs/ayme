@@ -3,7 +3,7 @@ import { test, type Locator, type Page } from "@playwright/test";
 import {
   recordPublishedTools,
   type RecordingDriver,
-} from "@ayme-dev/webmcp/testing";
+} from "@ayme-dev/ayme/testing";
 
 import { readModelKey } from "../scripts/appEnvironment";
 import { recordGoalRun } from "./goalRunRecord";

@@ -5,7 +5,7 @@ import {
   AymeWebMcpProvider,
   useAymeWebMcp,
   usePageObject,
-} from "@ayme-dev/webmcp-react";
+} from "@ayme-dev/react";
 import { CounterPage } from "../playwright/pom/CounterPage";
 import { SubCounterPage } from "../playwright/pom/SubCounterPage";
 

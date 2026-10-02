@@ -1,0 +1,34 @@
+{
+  "extends": ["//"],
+  "tags": ["core"],
+  "tasks": {
+    "typecheck": {
+      "dependsOn": ["^typecheck", "^build"]
+    },
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/inspector/src/**",
+        "$TURBO_ROOT$/packages/inspector/package.json",
+        "$TURBO_ROOT$/packages/inspector/tsdown.config.ts",
+        "$TURBO_ROOT$/packages/inspector/README.md",
+        "$TURBO_ROOT$/packages/inspector/LICENSE",
+        "$TURBO_ROOT$/packages/react/src/**",
+        "$TURBO_ROOT$/packages/react/package.json",
+        "$TURBO_ROOT$/packages/react/tsdown.config.ts",
+        "$TURBO_ROOT$/packages/react/README.md",
+        "$TURBO_ROOT$/packages/react/LICENSE",
+        "$TURBO_ROOT$/packages/vue/src/**",
+        "$TURBO_ROOT$/packages/vue/package.json",
+        "$TURBO_ROOT$/packages/vue/tsdown.config.ts",
+        "$TURBO_ROOT$/packages/vue/README.md",
+        "$TURBO_ROOT$/packages/vue/LICENSE",
+        "$TURBO_ROOT$/packages/unplugin-ayme/src/**",
+        "$TURBO_ROOT$/packages/unplugin-ayme/package.json",
+        "$TURBO_ROOT$/packages/unplugin-ayme/tsdown.config.ts",
+        "$TURBO_ROOT$/packages/unplugin-ayme/README.md",
+        "$TURBO_ROOT$/packages/unplugin-ayme/LICENSE"
+      ]
+    }
+  }
+}

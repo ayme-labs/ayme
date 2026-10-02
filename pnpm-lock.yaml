@@ -43,12 +43,12 @@ importers:
 
   apps/example-next:
     dependencies:
-      "@ayme-dev/webmcp":
+      "@ayme-dev/ayme":
         specifier: workspace:*
-        version: link:../../packages/webmcp
-      "@ayme-dev/webmcp-react":
+        version: link:../../packages/ayme
+      "@ayme-dev/react":
         specifier: workspace:*
-        version: link:../../packages/webmcp-react
+        version: link:../../packages/react
       next:
         specifier: 16.3.4
         version: 16.3.4(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -65,9 +65,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
-      "@ayme-dev/unplugin-webmcp":
+      "@ayme-dev/unplugin-ayme":
         specifier: workspace:*
-        version: link:../../packages/unplugin-webmcp
+        version: link:../../packages/unplugin-ayme
       "@playwright/test":
         specifier: ~1.62.1
         version: 1.62.1
@@ -92,12 +92,12 @@ importers:
 
   apps/example-nuxt:
     dependencies:
-      "@ayme-dev/webmcp":
+      "@ayme-dev/ayme":
         specifier: workspace:*
-        version: link:../../packages/webmcp
-      "@ayme-dev/webmcp-vue":
+        version: link:../../packages/ayme
+      "@ayme-dev/vue":
         specifier: workspace:*
-        version: link:../../packages/webmcp-vue
+        version: link:../../packages/vue
       nuxt:
         specifier: 4.5.2
         version: 4.5.2(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@oxc-project/types@0.146.0)(@types/node@24.13.3)(@vue/compiler-sfc@3.5.42)(db0@0.3.4)(esbuild@0.28.2)(eslint@10.9.1(jiti@2.7.0)(supports-color@10.2.2))(ioredis@5.11.1(supports-color@10.2.2))(lightningcss@1.33.0)(magicast@0.5.5)(optionator@0.9.4)(rolldown@1.2.5)(rollup-plugin-visualizer@7.1.1(rolldown@1.2.5)(rollup@4.63.1))(rollup@4.63.1)(srvx@0.11.22)(supports-color@10.2.2)(terser@5.51.2)(tsx@4.23.13)(typescript@6.0.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vue-tsc@3.3.11(typescript@6.0.3))(yaml@2.9.0)
@@ -111,9 +111,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
-      "@ayme-dev/unplugin-webmcp":
+      "@ayme-dev/unplugin-ayme":
         specifier: workspace:*
-        version: link:../../packages/unplugin-webmcp
+        version: link:../../packages/unplugin-ayme
       "@playwright/test":
         specifier: ~1.62.1
         version: 1.62.1
@@ -135,12 +135,12 @@ importers:
 
   apps/example-react:
     dependencies:
-      "@ayme-dev/webmcp":
+      "@ayme-dev/ayme":
         specifier: workspace:*
-        version: link:../../packages/webmcp
-      "@ayme-dev/webmcp-react":
+        version: link:../../packages/ayme
+      "@ayme-dev/react":
         specifier: workspace:*
-        version: link:../../packages/webmcp-react
+        version: link:../../packages/react
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -154,9 +154,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
-      "@ayme-dev/unplugin-webmcp":
+      "@ayme-dev/unplugin-ayme":
         specifier: workspace:*
-        version: link:../../packages/unplugin-webmcp
+        version: link:../../packages/unplugin-ayme
       "@playwright/test":
         specifier: ^1.62.1
         version: 1.62.1
@@ -187,15 +187,15 @@ importers:
       "@ayme-dev/playwright-lite":
         specifier: github:ayme-labs/playwright-lite#e95ea4b7cadd62ff4f6d74a5101506e7e855a899
         version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/e95ea4b7cadd62ff4f6d74a5101506e7e855a899(@playwright/test@1.62.1)
-      "@ayme-dev/webmcp":
+      "@ayme-dev/ayme":
         specifier: workspace:*
-        version: link:../../packages/webmcp
-      "@ayme-dev/webmcp-inspector":
+        version: link:../../packages/ayme
+      "@ayme-dev/inspector":
         specifier: workspace:*
-        version: link:../../packages/webmcp-inspector
-      "@ayme-dev/webmcp-vue":
+        version: link:../../packages/inspector
+      "@ayme-dev/vue":
         specifier: workspace:*
-        version: link:../../packages/webmcp-vue
+        version: link:../../packages/vue
       "@lucide/vue":
         specifier: ^1.47.0
         version: 1.47.0(vue@3.5.42(typescript@6.0.3))
@@ -230,9 +230,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
-      "@ayme-dev/unplugin-webmcp":
+      "@ayme-dev/unplugin-ayme":
         specifier: workspace:*
-        version: link:../../packages/unplugin-webmcp
+        version: link:../../packages/unplugin-ayme
       "@playwright/test":
         specifier: ^1.62.1
         version: 1.62.1
@@ -383,14 +383,14 @@ importers:
 
   packages/typescript-config: {}
 
-  packages/unplugin-webmcp:
+  packages/unplugin-ayme:
     dependencies:
-      "@ayme-dev/webmcp":
+      "@ayme-dev/ayme":
         specifier: workspace:*
-        version: link:../webmcp
-      "@ayme-dev/webmcp-inspector":
+        version: link:../ayme
+      "@ayme-dev/inspector":
         specifier: workspace:*
-        version: link:../webmcp-inspector
+        version: link:../inspector
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -423,7 +423,7 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
 
-  packages/webmcp:
+  packages/ayme:
     dependencies:
       "@mcp-b/webmcp-types":
         specifier: ^5.0.1
@@ -469,11 +469,11 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
 
-  packages/webmcp-inspector:
+  packages/inspector:
     dependencies:
-      "@ayme-dev/webmcp":
+      "@ayme-dev/ayme":
         specifier: workspace:*
-        version: link:../webmcp
+        version: link:../ayme
       radix-ui:
         specifier: ^1.6.7
         version: 1.6.7(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -542,11 +542,11 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
 
-  packages/webmcp-react:
+  packages/react:
     dependencies:
-      "@ayme-dev/webmcp":
+      "@ayme-dev/ayme":
         specifier: workspace:*
-        version: link:../webmcp
+        version: link:../ayme
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
@@ -582,11 +582,11 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
 
-  packages/webmcp-vue:
+  packages/vue:
     dependencies:
-      "@ayme-dev/webmcp":
+      "@ayme-dev/ayme":
         specifier: workspace:*
-        version: link:../webmcp
+        version: link:../ayme
       "@playwright/test":
         specifier: ">=1.29 <1.63"
         version: 1.62.1

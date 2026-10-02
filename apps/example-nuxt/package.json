@@ -14,15 +14,15 @@
     "test:e2e:prod": "playwright test --config=playwright.production.config.ts"
   },
   "dependencies": {
-    "@ayme-dev/webmcp": "workspace:*",
-    "@ayme-dev/webmcp-vue": "workspace:*",
+    "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/vue": "workspace:*",
     "nuxt": "4.5.2",
     "vue": "^3.5.42"
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
-    "@ayme-dev/unplugin-webmcp": "workspace:*",
+    "@ayme-dev/unplugin-ayme": "workspace:*",
     "@playwright/test": "~1.62.1",
     "@types/node": "^24.0.0",
     "eslint": "^10.9.1",

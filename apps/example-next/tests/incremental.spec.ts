@@ -6,7 +6,7 @@ import {
   publishedToolSchema,
   recordPublishedTools,
   waitForPublishedTool,
-} from "@ayme-dev/webmcp/testing";
+} from "@ayme-dev/ayme/testing";
 
 const counterModePath = fileURLToPath(
   new URL("../playwright/pom/CounterMode.ts", import.meta.url)

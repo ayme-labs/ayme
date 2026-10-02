@@ -14,8 +14,8 @@
     "test:e2e:prod": "playwright test --config=playwright.production.config.ts"
   },
   "dependencies": {
-    "@ayme-dev/webmcp": "workspace:*",
-    "@ayme-dev/webmcp-react": "workspace:*",
+    "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/react": "workspace:*",
     "next": "16.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -23,7 +23,7 @@
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
-    "@ayme-dev/unplugin-webmcp": "workspace:*",
+    "@ayme-dev/unplugin-ayme": "workspace:*",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

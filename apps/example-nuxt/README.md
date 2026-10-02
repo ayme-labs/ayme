@@ -52,8 +52,8 @@ After building, with no manually started server:
 
 ```sh
 pnpm --filter @ayme-dev/example-nuxt exec playwright install chromium
-pnpm --filter @ayme-dev/webmcp-vue test
-pnpm --filter @ayme-dev/unplugin-webmcp test
+pnpm --filter @ayme-dev/vue test
+pnpm --filter @ayme-dev/unplugin-ayme test
 pnpm --filter @ayme-dev/example-nuxt test:e2e
 pnpm --filter @ayme-dev/example-vue test:e2e
 ```

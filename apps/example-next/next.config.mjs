@@ -23,7 +23,7 @@ export default function nextConfig(phase) {
           },
           loaders: [
             {
-              loader: "@ayme-dev/unplugin-webmcp/turbopack-loader",
+              loader: "@ayme-dev/unplugin-ayme/turbopack-loader",
               options: {
                 tsconfigPath: fileURLToPath(
                   new URL("./tsconfig.pom.json", import.meta.url)
