@@ -156,7 +156,7 @@ for (const zIndex of [50, 101]) {
       const agent = new AgentView(page);
 
       await agent.call("click", {
-        ref: await agent.ref('button "Covered button"'),
+        target: await agent.ref('button "Covered button"'),
       });
 
       await expect(button).toHaveAttribute("data-clicks", "1");
