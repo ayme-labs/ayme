@@ -5,13 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --host 127.0.0.1 --port 4194",
-    "build": "vite build",
+    "build": "vite build && VITE_AYME_SSR=off vite build",
     "start": "node build",
+    "start:spa": "node build-spa",
     "typecheck": "svelte-kit sync && svelte-check --fail-on-warnings && tsc --noEmit -p tsconfig.config.json",
     "lint": "eslint . --max-warnings 0",
-    "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
+    "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod && pnpm run test:e2e:spa:dev && pnpm run test:e2e:spa:prod",
     "test:e2e:dev": "playwright test",
-    "test:e2e:prod": "playwright test --config=playwright.production.config.ts"
+    "test:e2e:prod": "playwright test --config=playwright.production.config.ts",
+    "test:e2e:spa:dev": "playwright test --config=playwright.spa.config.ts",
+    "test:e2e:spa:prod": "playwright test --config=playwright.spa.production.config.ts"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",

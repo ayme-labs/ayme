@@ -7,13 +7,24 @@ import {
 } from "@ayme-dev/ayme/testing";
 import { CounterPage } from "../src/lib/pom/CounterPage";
 
-// Run the same contract against vite dev and the built adapter-node server.
+// Run the same contract against vite dev and the built adapter-node server,
+// with server rendering and in SPA mode.
+const ssr = process.env.VITE_AYME_SSR !== "off";
+
 test.describe("server render", () => {
   test.use({ javaScriptEnabled: false });
+
+  test("renders nothing on the server in SPA mode", async ({ page }) => {
+    test.skip(ssr, "Server rendering is on.");
+    const response = await page.goto("/");
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("region", { name: "Counter" })).toHaveCount(0);
+  });
 
   test("returns the page and the initial status on repeated requests", async ({
     page,
   }) => {
+    test.skip(!ssr, "SPA mode renders no server HTML.");
     for (let request = 0; request < 2; request += 1) {
       const response = await page.goto("/");
       expect(response?.status()).toBe(200);
