@@ -152,8 +152,9 @@ export function buildStructureTree(
       if (tag !== undefined) {
         node.member = tag;
         node.memberLinks = memberLinks(members, tag, owners);
-        const owner = instanceOwner(tag, owners)?.owner.path;
-        if (owner !== undefined) node.owner = owner;
+        const instance = instanceOwner(tag, owners);
+        if (instance && instance !== "unknown")
+          node.owner = instance.owner.path;
       }
     }
     if (header !== "text" && value !== undefined)
@@ -175,7 +176,8 @@ export function buildStructureTree(
  *   ancestors.
  * - A path through the class of a component or item that holds the tag
  *   ("ListItem", "ListItem.nameButton") leads to that model, even when a
- *   page of that class is on the page too.
+ *   page of that class is on the page too. A path through an item is never
+ *   a class path.
  * - Any other member leads to its instance, such as another page's member
  *   over the same element or a second collection's item, or else to its
  *   model.
@@ -183,7 +185,8 @@ export function buildStructureTree(
  *   "ListPage.items.nameButton" beside "ListPage.items[0]...") is an alias
  *   that adds nothing beyond its item, so it is left out when another
  *   member is in one of the collection's items.
- * - A member the page model doesn't know (yet) is left out.
+ * - A member the page model doesn't know (yet) is left out, such as an item
+ *   the registry probe hasn't reported.
  */
 export function memberLinks(
   members: readonly string[],
@@ -194,8 +197,12 @@ export function memberLinks(
   const instances = new Map(
     ordered.map((member) => [member, instanceOwner(member, owners)])
   );
+  const ownerOf = (member: string) => {
+    const instance = instances.get(member);
+    return instance === "unknown" ? undefined : instance?.owner;
+  };
   // The tag's owner and its ancestors: the instances that hold the tag.
-  const holdsTag = new Set(ancestry(instances.get(tag)?.owner, owners));
+  const holdsTag = new Set(ancestry(ownerOf(tag), owners));
   // A class alias comes from a component or item of that class.
   const aliasedClasses = new Set(
     [...holdsTag]
@@ -204,17 +211,20 @@ export function memberLinks(
   );
   // Every member's owner and its ancestors, to tell a collection alias by an
   // item listed beside it.
-  const listed = [...instances.values()].flatMap((instance) =>
-    ancestry(instance?.owner, owners)
-  );
+  const listed = ordered.flatMap((member) => ancestry(ownerOf(member), owners));
 
   return ordered.flatMap((member): MemberLink[] => {
     const instance = instances.get(member);
+    if (instance === "unknown") return [];
     const model = nearest(member, owners.classByPath);
     const classAlias =
       model !== undefined &&
       (!instance ||
-        (!holdsTag.has(instance.owner) && aliasedClasses.has(model)));
+        (!holdsTag.has(instance.owner) &&
+          aliasedClasses.has(model) &&
+          !ancestry(instance.owner, owners).some(
+            (node) => node.kind === "item"
+          )));
     if (classAlias) return [{ member, owner: { model } }];
     if (!instance) return [];
     const aliasOfItem = instance.collections.some((collection) =>
@@ -235,11 +245,14 @@ function ancestry(node: PageObjectNode | undefined, owners: MemberOwners) {
 
 /**
  * The nearest instance up a member's path in the page model, and the
- * collections between them.
+ * collections between them; "unknown" for a path into an item the page
+ * model doesn't have yet.
  */
 function instanceOwner(member: string, owners: MemberOwners) {
   const collections: PageObjectNode[] = [];
   let node = nearest(member, owners.nodes);
+  if (node?.kind === "collection" && member.startsWith(`${node.path}[`))
+    return "unknown" as const;
   for (; node?.kind === "collection"; node = owners.parents.get(node))
     collections.push(node);
   return node && { owner: node, collections };

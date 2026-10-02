@@ -383,6 +383,13 @@ describe("where each of a node's members leads", () => {
     ]);
   });
 
+  it("leaves out an item the page model doesn't have yet", () => {
+    expect(links(["ListPage.items[1]", "ListPage.items", "ListItem"])).toEqual([
+      { member: "ListPage.items", owner: { object: "ListPage" } },
+      { member: "ListItem", owner: { model: "ListItem" } },
+    ]);
+  });
+
   it("leaves out a member the page model doesn't know yet", () => {
     expect(links(["ListPage.items[0]", "Unknown.thing"])).toEqual([
       { member: "ListPage.items[0]", owner: { object: "ListPage.items[0]" } },
@@ -483,6 +490,45 @@ describe("a component whose class is also a page on the page", () => {
     ]);
     expect(links(["Header.title"])).toEqual([
       { member: "Header.title", owner: { object: "Header" } },
+    ]);
+  });
+
+  it("leads another page's item over the same element to that item", () => {
+    // App.list is a ListPage component, and a ListPage page is registered
+    // over the same list.
+    const pages = memberOwnersOf({
+      objects: [
+        objectNode("App", "page", "App", [
+          objectNode("App.list", "component", "ListPage", [
+            objectNode("App.list.items", "collection", "ListItem", [
+              objectNode("App.list.items[0]", "item", "ListItem"),
+            ]),
+          ]),
+        ]),
+        objectNode("ListPage", "page", "ListPage", [
+          objectNode("ListPage.items", "collection", "ListItem", [
+            objectNode("ListPage.items[0]", "item", "ListItem"),
+          ]),
+        ]),
+      ],
+      models: [
+        model("App", ["list"]),
+        model("ListPage", ["items"]),
+        model("ListItem", ["nameButton"]),
+      ],
+    });
+    const members = [
+      "App.list.items[0]",
+      "App.list.items",
+      "ListPage.items",
+      "ListItem",
+      "ListPage.items[0]",
+    ];
+    expect(memberLinks(members, memberTag(members)!, pages)).toEqual([
+      { member: "App.list.items[0]", owner: { object: "App.list.items[0]" } },
+      { member: "ListPage.items", owner: { model: "ListPage" } },
+      { member: "ListItem", owner: { model: "ListItem" } },
+      { member: "ListPage.items[0]", owner: { object: "ListPage.items[0]" } },
     ]);
   });
 
