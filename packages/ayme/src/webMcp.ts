@@ -124,6 +124,10 @@ export async function synchronizeWebMcpTools(
       controller: AbortController;
     }
   >();
+  // Agents' calls still running, by tool name, and the tools a pass kept
+  // published only because a call of theirs was running.
+  const runningCalls = new Map<string, number>();
+  const keptForCalls = new Set<string>();
   let disposed = false;
   let syncing = false;
   let syncAgain = false;
@@ -164,14 +168,38 @@ export async function synchronizeWebMcpTools(
   };
 
   // A tool call resolves only once the published tools reflect the page it
-  // changed, so an agent's next call sees the tools that are live now. A probe
-  // that observes a change starts the publication pass through the subscriber.
+  // changed, so an agent's next call sees the tools that are live now. The
+  // called tool itself is the exception: if the call made it inactive, it is
+  // withdrawn just after the call. A probe that observes a change starts the
+  // publication pass through the subscriber.
   const settle = () =>
     disposed
       ? Promise.resolve()
       : probeRegisteredPomMembers()
           .then(() => currentSync)
           .catch(failPublication);
+
+  const trackCall = <T extends { execute(input: unknown): Promise<unknown> }>(
+    name: string,
+    tool: T
+  ): T => ({
+    ...tool,
+    execute: async (input: unknown) => {
+      runningCalls.set(name, (runningCalls.get(name) ?? 0) + 1);
+      try {
+        return await tool.execute(input);
+      } finally {
+        const running = runningCalls.get(name)! - 1;
+        if (running) runningCalls.set(name, running);
+        else runningCalls.delete(name);
+        // A timer, so the driver has taken the result before the tool goes.
+        if (!running && keptForCalls.delete(name))
+          setTimeout(() => {
+            if (!disposed) void synchronize().catch(failPublication);
+          }, 0);
+      }
+    },
+  });
 
   const publish = async () => {
     let resolved: ReturnType<typeof resolvePublishedTools>;
@@ -186,6 +214,13 @@ export async function synchronizeWebMcpTools(
         for (const [name, registration] of published) {
           const tool = active.get(name);
           if (tool === registration.tool) continue;
+          // A driver may fail a running call once its tool is unregistered
+          // (the WebMCP polyfill does), although the call goes on to succeed.
+          // The pass after the call withdraws the tool.
+          if (runningCalls.has(name)) {
+            keptForCalls.add(name);
+            continue;
+          }
           registration.controller.abort();
           published.delete(name);
         }
@@ -195,9 +230,10 @@ export async function synchronizeWebMcpTools(
           const controller = new AbortController();
           published.set(name, { tool, controller });
           try {
-            await driver.registerTool(asAgentCall(tool, settle), {
-              signal: controller.signal,
-            });
+            await driver.registerTool(
+              trackCall(name, asAgentCall(tool, settle)),
+              { signal: controller.signal }
+            );
           } catch (error) {
             controller.abort();
             published.delete(name);

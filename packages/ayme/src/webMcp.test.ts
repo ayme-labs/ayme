@@ -219,7 +219,7 @@ describe("WebMCP publisher", () => {
     replacementPageRegistration.dispose();
   });
 
-  it("settles published tools before a tool call resolves", async () => {
+  it("settles published tools before a tool call resolves, and withdraws the called tool just after", async () => {
     type ExecutableTool = PublishedTool & {
       execute(input: unknown): Promise<unknown>;
     };
@@ -248,6 +248,7 @@ describe("WebMCP publisher", () => {
           archive: vi.fn(() => {
             rootCount = 0;
           }),
+          rename: vi.fn(),
         },
       ];
     }
@@ -267,7 +268,7 @@ describe("WebMCP publisher", () => {
         {
           className: "Item",
           members: [{ memberName: "root", kind: "locator", access: "field" }],
-          tools: [action("archive")],
+          tools: [action("archive"), action("rename")],
         },
       ],
     });
@@ -275,6 +276,9 @@ describe("WebMCP publisher", () => {
     const publication = await synchronizeWebMcpTools({ registerTool });
     const archive = registrations.find(
       ({ tool }) => tool.name === "ItemsPage.items.archive"
+    );
+    const rename = registrations.find(
+      ({ tool }) => tool.name === "ItemsPage.items.rename"
     );
 
     const pageContext = registrations.find(
@@ -288,6 +292,13 @@ describe("WebMCP publisher", () => {
     await expect(
       archive?.tool.execute({ ref: "e1", args: {} })
     ).resolves.toEqual({ page_changed: false, settled: true });
+    expect(rename?.signal.aborted).toBe(true);
+    // The called tool outlives its own call, so a driver that fails running
+    // calls on unregistration still returns the result.
+    expect(archive?.signal.aborted).toBe(false);
+
+    await vi.runOnlyPendingTimersAsync();
+    await flushPublisher();
     expect(archive?.signal.aborted).toBe(true);
 
     publication.dispose();
