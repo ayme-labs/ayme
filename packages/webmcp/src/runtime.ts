@@ -1,3 +1,5 @@
+import { registerPrototypePeek } from "./peekPrototype";
+import type { JsonValue } from "./contracts";
 import { createPage } from "./browserPage";
 import {
   configureGoalLoop,
@@ -224,6 +226,18 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
     register<T extends object>(model: PageObjectConstructor<T>, instance: T) {
       const registration: Registration = {
         activate: () => registerPageObject(model, instance),
+      };
+      if (owner) registration.active = registration.activate();
+      registrations.add(registration);
+      return () => {
+        registration.active?.dispose();
+        registrations.delete(registration);
+      };
+    },
+    /** Throwaway peek prototype; registration is owned by this runtime. */
+    registerPrototypePeek(id: string, label: string, read: () => JsonValue) {
+      const registration: Registration = {
+        activate: () => registerPrototypePeek(document, id, label, read),
       };
       if (owner) registration.active = registration.activate();
       registrations.add(registration);

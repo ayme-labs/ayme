@@ -7,6 +7,7 @@ import {
 } from "@ayme-dev/webmcp-react";
 import { CounterPage } from "../playwright/pom/CounterPage";
 import "./style.css";
+import { PeekPrototype } from "./PeekPrototype";
 
 function Counter() {
   const [count, setCount] = useState(0);
@@ -43,8 +44,12 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AymeWebMcpProvider>
-      <App />
-    </AymeWebMcpProvider>
+    {new URLSearchParams(location.search).has("peek") ? (
+      <PeekPrototype />
+    ) : (
+      <AymeWebMcpProvider>
+        <App />
+      </AymeWebMcpProvider>
+    )}
   </StrictMode>
 );

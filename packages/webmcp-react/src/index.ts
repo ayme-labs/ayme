@@ -3,6 +3,7 @@ import {
   createElement,
   useContext,
   useEffect,
+  useLayoutEffect,
   useState,
   useSyncExternalStore,
   type ReactElement,
@@ -99,4 +100,21 @@ export function usePageObject<T extends object>(
     [runtime, model, retained]
   );
   return retained.instance;
+}
+
+/** Throwaway prototype. Follow normal hook order; synchronous counter values only. */
+export function usePeek(getter: () => { count: number }, label = "Counter") {
+  const runtime = useRuntime();
+  const [retained] = useState(() => ({ id: crypto.randomUUID(), getter }));
+  // Only committed renders replace the callable. Render never changes the registry.
+  useLayoutEffect(() => {
+    retained.getter = getter;
+  });
+  useLayoutEffect(
+    () =>
+      runtime.registerPrototypePeek(retained.id, label, () =>
+        retained.getter()
+      ),
+    [runtime, retained, label]
+  );
 }

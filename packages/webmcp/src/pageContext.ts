@@ -1,3 +1,4 @@
+import { collectPrototypePeeks, type PrototypePeek } from "./peekPrototype";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { JsonValue, PomDefinition } from "./contracts";
 import {
@@ -12,12 +13,14 @@ import { ToolInputError } from "./errors";
 type GetPageContextInput = { names?: string[] };
 
 export type PageContext = {
+  readonly prototypePeeks?: readonly PrototypePeek[];
   readonly structure: string;
   readonly pomDefinitions: readonly PomDefinition[];
   resolve(...refs: AriaRef[]): ReturnType<PageState["resolve"]>;
 };
 
 export type PageContextPayload = {
+  readonly prototypePeeks?: readonly PrototypePeek[];
   readonly structure: string;
   readonly pomDefinitions: string;
 };
@@ -53,6 +56,9 @@ export const getPageContextTool = {
       ...definitionNamesFrom(input)
     );
     const payload: PageContextPayload = {
+      ...(context.prototypePeeks
+        ? { prototypePeeks: context.prototypePeeks }
+        : {}),
       structure: context.structure,
       pomDefinitions: renderPomDefinitions(context.pomDefinitions),
     };
@@ -65,7 +71,9 @@ export async function getPageContextForDocument(
   ...names: readonly string[]
 ): Promise<PageContext> {
   const pageState = await getPageStateForDocument(currentDocument);
+  const prototypePeeks = collectPrototypePeeks(currentDocument);
   return Object.freeze({
+    ...(prototypePeeks.length ? { prototypePeeks } : {}),
     structure: pageState.text,
     pomDefinitions: getPomDefinitions(...names).definitions,
     resolve: pageState.resolve,

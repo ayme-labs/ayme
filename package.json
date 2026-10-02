@@ -7,6 +7,7 @@
   },
   "packageManager": "pnpm@11.24.0",
   "scripts": {
+    "prototype:peek": "pnpm run build && pnpm --filter @ayme-dev/example-react dev",
     "build": "turbo run build",
     "boundaries": "turbo boundaries",
     "check": "pnpm run boundaries && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
