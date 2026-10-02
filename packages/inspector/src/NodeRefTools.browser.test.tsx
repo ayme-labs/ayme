@@ -15,7 +15,7 @@ vi.mock("@ayme-dev/ayme/internal", () => {
     name,
     description: `${name} by ref.`,
     inputSchema: { type: "object" },
-    group: "ref",
+    group: "browser",
   });
   return {
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
