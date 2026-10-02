@@ -297,7 +297,7 @@ export async function pursueGoal(
 
   /** How a `needs_value` Handover ends when the model could not pick a closed-set value. */
   const pickYourself = (parameter: string) =>
-    `Read the page context, pick "${parameter}" yourself and call the operation directly, or try a different approach.`;
+    `Read the page again, pick "${parameter}" yourself and call the operation directly, or try a different approach.`;
 
   /** A decision the loop could not obtain ends the run; the error travels on. */
   const decideFailed = (error: unknown): Promise<GoalLoopRunResult> =>
@@ -341,7 +341,7 @@ export async function pursueGoal(
     if (!operationQuestionFits(toolOptions)) {
       return done({
         reason: "decide_failed",
-        next: `The page offers ${toolOptions.length} operations, more than one decision can choose from. Read the page context and call the tools you need directly.`,
+        next: `The page offers ${toolOptions.length} operations, more than one decision can choose from. Read the page again and call the tools you need directly.`,
         history,
       });
     }
