@@ -38,6 +38,15 @@ test.describe("server render", () => {
       ).toBeVisible();
     }
   });
+
+  test("renders the status of the options the browser will use", async ({
+    page,
+  }) => {
+    await page.goto("/?publication=off");
+    await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
+      "Publication: disabled"
+    );
+  });
 });
 
 test("publishes the compiled POM, executes it, and cleans up on remount and navigation", async ({

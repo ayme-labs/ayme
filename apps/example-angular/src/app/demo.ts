@@ -10,6 +10,7 @@ import { Counter } from "./counter";
     <p role="status" aria-label="Publication">
       Publication: {{ webMCP.publicationStatus().state }}
     </p>
+    <button (click)="webMCP.retryPublication()">Retry publication</button>
     <button (click)="visible.set(!visible())">
       {{ visible() ? "Unmount counter" : "Mount counter" }}
     </button>
