@@ -19,13 +19,7 @@ import {
 
 import type { HighlightTarget } from "../frame/highlight";
 import { createRefreshScheduler } from "./refreshScheduler";
-import {
-  buildStructureTree,
-  emptyStructure,
-  mapMembersToRefs,
-  pageObjectsOf,
-  type StructureTree,
-} from "./structure";
+import { mapMembersToRefs } from "./structure";
 
 export type RegistrySnapshot = {
   registeredPoms: readonly RegisteredPom[];
@@ -37,8 +31,8 @@ export type RegistrySnapshot = {
 
 export type PageStateView = {
   text?: string;
-  /** The same page state, as the structure tree model. */
-  structure: StructureTree;
+  /** Every Page Object member whose element each ref is, by ref. */
+  membersByRef: ReadonlyMap<string, readonly string[]>;
   /**
    * The refs each published Ref Tool can take in this page state, by tool
    * name, in tree order: what an agent is offered for that tool's ref.
@@ -80,8 +74,8 @@ function readPomDefinitions() {
  * The Inspector's live view of the page. Each refresh takes one unrecorded
  * look at the page state (a peek: it never enters the interaction history,
  * so agents see exactly what they would without the Inspector), and that one
- * look feeds the structure, the member mapping, the Ref Tools' targets and
- * the highlights. Page changes, input, focus and registry changes schedule
+ * look feeds the member mapping (the structure is built from it), the Ref
+ * Tools' targets and the highlights. Page changes, input, focus and registry changes schedule
  * refreshes; while the Structure view shows, a slow poll catches the rest.
  */
 export function useInspector({
@@ -89,7 +83,7 @@ export function useInspector({
 }: { structureVisible?: boolean } = {}) {
   const [registry, setRegistry] = useState(readRegistry);
   const [pageState, setPageState] = useState<PageStateView>({
-    structure: emptyStructure,
+    membersByRef: new Map(),
     refToolTargets: new Map(),
     elementsByRef: new Map(),
     loading: false,
@@ -122,14 +116,7 @@ export function useInspector({
       for (const layer of highlightLayers) showLayer(layer);
       setPageState({
         text: next.peek.text,
-        structure: buildStructureTree(
-          next.peek.text,
-          next.membersByRef,
-          pageObjectsOf(
-            next.registeredPoms.map((registration) => registration.id),
-            next.targets
-          )
-        ),
+        membersByRef: next.membersByRef,
         refToolTargets: next.refToolTargets,
         elementsByRef: next.peek.elementsByRef,
         capturedAt: new Date().toLocaleTimeString([], {
@@ -235,7 +222,6 @@ export function useInspector({
 type Look = {
   peek: PageStatePeek;
   targets: readonly RegisteredPomTarget[];
-  registeredPoms: readonly RegisteredPom[];
   /** The page state's elements: only these can be highlighted. */
   elementsInState: ReadonlySet<Element>;
   membersByRef: ReadonlyMap<string, readonly string[]>;
@@ -260,7 +246,6 @@ async function lookAtPage(): Promise<Look> {
   return {
     peek,
     targets,
-    registeredPoms: listRegisteredPoms(),
     elementsInState: new Set(peek.elementsByRef.values()),
     membersByRef,
     refToolTargets,
