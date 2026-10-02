@@ -97,7 +97,7 @@ In the browser, `usePageObject(Model)` returns the concrete instance and dispose
 
 The provider and composables can run during Vue server rendering. They do not construct Page Objects, start the browser runtime, observe the DOM, or publish tools on the server. Each render creates its own inert runtime session; no live browser registration is shared between requests.
 
-On the server, `usePageObject(Model)` returns an unconstructed object with the model's prototype. This allows rendering to reference prototype methods in event closures without running the constructor. Do not read locators or constructor-initialized fields, or execute POM actions, during server rendering. A custom `page` factory runs only in the browser; server rendering never calls it.
+On the server, `usePageObject(Model)` returns an unconstructed object with the model's prototype. This allows rendering to reference prototype methods in event closures without running the constructor. Do not read locators or constructor-initialized fields, or execute POM actions, during server rendering. A custom `pageFactory` runs only in the browser; server rendering never calls it.
 
 Browser setup constructs and registers the real Page Object during hydration. Existing browser ownership, `effectScope()` support, and disposal behavior are unchanged. No client-only wrapper is needed around the application UI.
 
