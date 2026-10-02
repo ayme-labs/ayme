@@ -24,7 +24,7 @@ export default defineConfig({
 });
 ```
 
-Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Decorators inside `.svelte` scripts are not compiled.
+Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Decorators inside `.svelte` scripts are not compiled. Complete SvelteKit and Svelte app setups, with their version-specific configuration, follow in a later section.
 
 ## Root setup
 
@@ -40,7 +40,7 @@ Call `useAyme(options)` in the root `+layout.svelte` (SvelteKit) or `App.svelte`
 <slot />
 ```
 
-Svelte 5 layouts render `{@render children()}` instead of `<slot />`; the script is the same.
+In Svelte 5 runes mode, the layout also declares `let { children } = $props();` and renders `{@render children()}` instead of `<slot />`. The `useAyme` call is the same.
 
 The options are those of `createRuntimeSession` from `@ayme-dev/ayme`, passed to it unchanged: `pageFactory`, `ignore`, `customTools`, `goalLoop` and `webMCP: { enabled, toolNamePrefix }`. Publication is off unless `webMCP.enabled` is `true`; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#webmcp-publication). The options are read once. To change them, remount the owner.
 
