@@ -1,10 +1,12 @@
 import type { Locator, Page } from "@playwright/test";
 
+import { AgentView } from "./agentView";
 import { expect, test } from "./fixtures";
 import type { LayoutChoice } from "../src/testing";
 
 // E2E: the Inspector stays above, and operable over, the page's own
-// positioned UI, while the rest of the page keeps its pointer.
+// positioned UI, while the rest of the page keeps its pointer. An agent's
+// clicks reach page elements under the panel (#272).
 
 /** Covers the page with a fixed widget at this z-index, counting its clicks. */
 async function coverPage(page: Page, zIndex: number) {
@@ -56,6 +58,33 @@ async function clickOutsideOf(page: Page, element: Locator) {
   );
   if (!corner) throw new Error("The element covers every corner.");
   await page.mouse.click(corner[0], corner[1]);
+}
+
+/** Puts a button at this z-index under the element's centre, counting its clicks. */
+async function placeButtonUnder(page: Page, element: Locator, zIndex: number) {
+  const box = await element.boundingBox();
+  if (!box) throw new Error("The element is not visible.");
+  await page.evaluate(
+    ({ x, y, zIndex }) => {
+      const button = document.createElement("button");
+      button.textContent = "Covered button";
+      button.dataset.clicks = "0";
+      Object.assign(button.style, {
+        left: `${x - 60}px`,
+        position: "fixed",
+        top: `${y - 20}px`,
+        height: "40px",
+        width: "120px",
+        zIndex: String(zIndex),
+      });
+      button.addEventListener("click", () => {
+        button.dataset.clicks = String(Number(button.dataset.clicks) + 1);
+      });
+      document.body.append(button);
+    },
+    { x: box.x + box.width / 2, y: box.y + box.height / 2, zIndex }
+  );
+  return page.getByRole("button", { name: "Covered button" });
 }
 
 const layouts: LayoutChoice[] = [
@@ -116,6 +145,26 @@ for (const zIndex of [50, 101]) {
       }
       await inspector.collapse();
       await clickOutside(inspector.logo.root);
+    });
+
+    test("an agent's click reaches a page button under the panel", async ({
+      page,
+      inspector,
+    }) => {
+      const button = await placeButtonUnder(page, inspector.panel, zIndex);
+      expect(await inspectorIsOnTopAt(page, button)).toBe(true);
+      const agent = new AgentView(page);
+
+      await agent.call("click_page_state_ref", {
+        ref: await agent.ref('button "Covered button"'),
+      });
+
+      await expect(button).toHaveAttribute("data-clicks", "1");
+      expect(await inspectorIsOnTopAt(page, button)).toBe(true);
+      await inspector.header.layoutMenu.choose("Dock left");
+      await expect
+        .poll(() => inspector.header.layoutMenu.current())
+        .toBe("Dock left");
     });
   });
 }
