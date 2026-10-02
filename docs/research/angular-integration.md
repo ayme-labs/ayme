@@ -271,6 +271,8 @@ Behaviour, carried over from the probe plugin:
 
 ### Removing the setup hassle
 
+**Decision (user, 2026-10-02): keep the code plugin through custom-esbuild, and make setup one command with `ng add @ayme-dev/angular`.**
+
 - **`ng add @ayme-dev/angular`.** Angular libraries make multi-step setup one command with an `ng-add` schematic ([angular.dev: Schematics for libraries](https://angular.dev/tools/cli/schematics-for-libraries)); `@angular/ssr` and `@angular/material` set themselves up this way. Ayme's schematic would install `@ayme-dev/unplugin-ayme` and the matching `@angular-builders/custom-esbuild` major, switch the two builders, add the plugin entry and the one-line plugin file, and add `provideAyme()` to `app.config.ts`. The consumer then edits nothing by hand. Not probed.
 - **Nx workspaces need no builder swap.** Nx's `@nx/angular:application` executor already has a `plugins` option ("A list of ESBuild plugins", `{ path, options }` or a path relative to the workspace root, the same shape custom-esbuild uses) in `@nx/angular@23.2.1` (`dist/src/executors/application/schema.json`). `@nx/angular` had 1.15 M npm downloads in the week to 2026-10-02. The same Ayme plugin file applies. Not probed.
 
@@ -355,8 +357,9 @@ In dependency order. Each builds on #250's renamed runtime options landing first
 2. **`@ayme-dev/angular`**: `provideAyme`, `injectAyme`, `injectPageObject`, unit tests, README, packed-consumer coverage, release-set membership.
 3. **`apps/example-angular`** certification fixture with dev and prod E2E, plus the Devbox Node bump it needs.
 4. **Minimum lane** at the chosen floor.
-5. **Docs**: root README integration list and the shipped `ayme` skill's Angular setup, including the custom-esbuild requirement and the budget warning.
-6. **Inspector for Angular**: needs its own short design probe first.
+5. **`ng add @ayme-dev/angular`** schematic in the Angular package. Start with a short spike against fresh 19.0.0 and 22.x `ng new --ssr` apps: the schematic must edit `angular.json`, create the plugin file and add `provideAyme()` to `app.config.ts`, and say clearly what to do when the app already uses another custom builder or an NgModule bootstrap. Its acceptance check is that the certification fixture can be produced by `ng new` plus `ng add` alone.
+6. **Docs**: root README integration list and the shipped `ayme` skill's Angular setup, including the custom-esbuild requirement and the budget warning.
+7. **Inspector for Angular**: needs its own short design probe first.
 
 ## Unresolved
 
