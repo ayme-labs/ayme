@@ -184,15 +184,15 @@ importers:
 
   apps/example-vue:
     dependencies:
-      "@ayme-dev/playwright-lite":
-        specifier: github:ayme-labs/playwright-lite#e95ea4b7cadd62ff4f6d74a5101506e7e855a899
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/e95ea4b7cadd62ff4f6d74a5101506e7e855a899(@playwright/test@1.62.1)
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../../packages/ayme
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
+      "@ayme-dev/playwright-lite":
+        specifier: github:ayme-labs/playwright-lite#e95ea4b7cadd62ff4f6d74a5101506e7e855a899
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/e95ea4b7cadd62ff4f6d74a5101506e7e855a899(@playwright/test@1.62.1)
       "@ayme-dev/vue":
         specifier: workspace:*
         version: link:../../packages/vue
@@ -272,6 +272,52 @@ importers:
       vue-tsc:
         specifier: ^3.3.11
         version: 3.3.11(typescript@6.0.3)
+
+  packages/ayme:
+    dependencies:
+      "@mcp-b/webmcp-types":
+        specifier: ^5.0.1
+        version: 5.0.1
+    devDependencies:
+      "@ayme-dev/core":
+        specifier: workspace:*
+        version: link:../core
+      "@ayme-dev/eslint-config":
+        specifier: workspace:*
+        version: link:../eslint-config
+      "@ayme-dev/playwright-lite":
+        specifier: github:ayme-labs/playwright-lite#e95ea4b7cadd62ff4f6d74a5101506e7e855a899
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/e95ea4b7cadd62ff4f6d74a5101506e7e855a899(@playwright/test@1.62.1)
+      "@ayme-dev/typescript-config":
+        specifier: workspace:*
+        version: link:../typescript-config
+      "@mcp-b/webmcp-polyfill":
+        specifier: 5.1.0
+        version: 5.1.0
+      "@playwright/test":
+        specifier: ^1.62.1
+        version: 1.62.1
+      "@types/node":
+        specifier: ^24.0.0
+        version: 24.13.3
+      "@vitest/browser-playwright":
+        specifier: ^4.1.11
+        version: 4.1.11(playwright@1.62.1)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      eslint:
+        specifier: ^10.9.1
+        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
+      playwright:
+        specifier: ^1.62.1
+        version: 1.62.1
+      tsdown:
+        specifier: ^0.22.14
+        version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
 
   packages/core:
     dependencies:
@@ -380,94 +426,6 @@ importers:
       eslint:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
-
-  packages/typescript-config: {}
-
-  packages/unplugin-ayme:
-    dependencies:
-      "@ayme-dev/ayme":
-        specifier: workspace:*
-        version: link:../ayme
-      "@ayme-dev/inspector":
-        specifier: workspace:*
-        version: link:../inspector
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      unplugin:
-        specifier: ^3.3.0
-        version: 3.3.0(esbuild@0.28.2)(rolldown@1.2.5)(rollup@4.63.1)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
-    devDependencies:
-      "@ayme-dev/eslint-config":
-        specifier: workspace:*
-        version: link:../eslint-config
-      "@ayme-dev/typescript-config":
-        specifier: workspace:*
-        version: link:../typescript-config
-      "@playwright/test":
-        specifier: ~1.62.1
-        version: 1.62.1
-      eslint:
-        specifier: ^10.9.1
-        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
-      playwright:
-        specifier: ~1.62.1
-        version: 1.62.1
-      tsdown:
-        specifier: ^0.22.14
-        version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
-      vite:
-        specifier: ^8.2.2
-        version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
-
-  packages/ayme:
-    dependencies:
-      "@mcp-b/webmcp-types":
-        specifier: ^5.0.1
-        version: 5.0.1
-    devDependencies:
-      "@ayme-dev/core":
-        specifier: workspace:*
-        version: link:../core
-      "@ayme-dev/eslint-config":
-        specifier: workspace:*
-        version: link:../eslint-config
-      "@ayme-dev/playwright-lite":
-        specifier: github:ayme-labs/playwright-lite#e95ea4b7cadd62ff4f6d74a5101506e7e855a899
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/e95ea4b7cadd62ff4f6d74a5101506e7e855a899(@playwright/test@1.62.1)
-      "@ayme-dev/typescript-config":
-        specifier: workspace:*
-        version: link:../typescript-config
-      "@mcp-b/webmcp-polyfill":
-        specifier: 5.1.0
-        version: 5.1.0
-      "@playwright/test":
-        specifier: ^1.62.1
-        version: 1.62.1
-      "@types/node":
-        specifier: ^24.0.0
-        version: 24.13.3
-      "@vitest/browser-playwright":
-        specifier: ^4.1.11
-        version: 4.1.11(playwright@1.62.1)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
-      eslint:
-        specifier: ^10.9.1
-        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
-      playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
-      tsdown:
-        specifier: ^0.22.14
-        version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vitest:
-        specifier: ^4.1.11
-        version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
 
   packages/inspector:
     dependencies:
@@ -578,6 +536,79 @@ importers:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+
+  packages/svelte:
+    dependencies:
+      "@ayme-dev/ayme":
+        specifier: workspace:*
+        version: link:../ayme
+    devDependencies:
+      "@ayme-dev/eslint-config":
+        specifier: workspace:*
+        version: link:../eslint-config
+      "@ayme-dev/typescript-config":
+        specifier: workspace:*
+        version: link:../typescript-config
+      eslint:
+        specifier: ^10.9.1
+        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
+      jsdom:
+        specifier: ^30.0.1
+        version: 30.0.1(@noble/hashes@1.8.0)
+      svelte:
+        specifier: ^5.57.1
+        version: 5.57.1(@typescript-eslint/types@8.68.0)
+      tsdown:
+        specifier: ^0.22.14
+        version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+
+  packages/typescript-config: {}
+
+  packages/unplugin-ayme:
+    dependencies:
+      "@ayme-dev/ayme":
+        specifier: workspace:*
+        version: link:../ayme
+      "@ayme-dev/inspector":
+        specifier: workspace:*
+        version: link:../inspector
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      unplugin:
+        specifier: ^3.3.0
+        version: 3.3.0(esbuild@0.28.2)(rolldown@1.2.5)(rollup@4.63.1)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+    devDependencies:
+      "@ayme-dev/eslint-config":
+        specifier: workspace:*
+        version: link:../eslint-config
+      "@ayme-dev/typescript-config":
+        specifier: workspace:*
+        version: link:../typescript-config
+      "@playwright/test":
+        specifier: ~1.62.1
+        version: 1.62.1
+      eslint:
+        specifier: ^10.9.1
+        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
+      playwright:
+        specifier: ~1.62.1
+        version: 1.62.1
+      tsdown:
+        specifier: ^0.22.14
+        version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
+      vite:
+        specifier: ^8.2.2
+        version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)
       vitest:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
@@ -3548,6 +3579,14 @@ packages:
         integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==,
       }
 
+  "@sveltejs/acorn-typescript@1.0.13":
+    resolution:
+      {
+        integrity: sha512-wgKggnhZVL9Bfx1OaKKTrYY9BFRk6C8UAkQNUcIv1+llzYrIqy+RZm5HPKzn0NpEBvTVhTqB4kQyllZywsRBRQ==,
+      }
+    peerDependencies:
+      acorn: ^8.9.0
+
   "@swc/helpers@0.5.23":
     resolution:
       {
@@ -4636,6 +4675,13 @@ packages:
       }
     engines: { node: ">=10" }
 
+  aria-query@5.3.1:
+    resolution:
+      {
+        integrity: sha512-Z/ZeOgVl7bcSYZ/u/rh0fOpvEpq//LZmdbkXyc7syVzjPAhfOa9ebsdTSjEBDU4vs5nC98Kfduj1uFo0qyET3g==,
+      }
+    engines: { node: ">= 0.4" }
+
   assertion-error@2.0.1:
     resolution:
       {
@@ -4678,6 +4724,13 @@ packages:
     hasBin: true
     peerDependencies:
       postcss: ^8.1.0
+
+  axobject-query@4.1.0:
+    resolution:
+      {
+        integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==,
+      }
+    engines: { node: ">= 0.4" }
 
   b4a@1.8.1:
     resolution:
@@ -5634,6 +5687,12 @@ packages:
       jiti:
         optional: true
 
+  esm-env@1.2.2:
+    resolution:
+      {
+        integrity: sha512-Epxrv+Nr/CaL4ZcFGPJIYLWFom+YeV1DqMLHJoEd9SYRxNbaFruBwfEX/kkHUJf55j2+TUbmDcmuilbP1TmXHA==,
+      }
+
   espree@11.2.0:
     resolution:
       {
@@ -5647,6 +5706,17 @@ packages:
         integrity: sha512-Ap6G0WQwcU/LHsvLwON1fAQX9Zp0A2Y6Y/cJBl9r/JbW90Zyg4/zbG6zzKa2OTALELarYHmKu0GhpM5EO+7T0g==,
       }
     engines: { node: ">=0.10" }
+
+  esrap@2.4.0:
+    resolution:
+      {
+        integrity: sha512-CQPcneEHw/czj32uwQC52nYnax8H4SXt25FCM+LIwGZ49cMIxpOj3bP8wmzcI+Z0HIy5KkClaPhRLfCySzwHPA==,
+      }
+    peerDependencies:
+      "@typescript-eslint/types": ^8.2.0
+    peerDependenciesMeta:
+      "@typescript-eslint/types":
+        optional: true
 
   esrecurse@4.3.0:
     resolution:
@@ -6294,6 +6364,12 @@ packages:
         integrity: sha512-U82MsXXiFIrjCK4otLT+o2NA2Cd2g5MLoOVXUZjIOhLurrRxpEXzI8O0KZHr3IjLvlAH1kTPYSuqer5T9ZVBKQ==,
       }
 
+  is-reference@3.0.3:
+    resolution:
+      {
+        integrity: sha512-ixkJoqQvAP88E6wLydLGGqCJsrFUnqoH6HnaczB8XmDH1oaWU+xxdptvikTgaEhtZ53Ky6YXiBuUI2WXLMCwjw==,
+      }
+
   is-stream@2.0.1:
     resolution:
       {
@@ -6844,6 +6920,12 @@ packages:
         integrity: sha512-++gUqRDEvcnN6Zhqrr+y/CkVEHhlrR96vZn3nZZPYzMcBUyBtTKzB9NadClFIsIVSsu+3i9tfk/erqy9kAmt7Q==,
       }
     engines: { node: ">=14" }
+
+  locate-character@3.0.0:
+    resolution:
+      {
+        integrity: sha512-SW13ws7BjaeJ6p7Q6CO2nchbYEc3X3J6WrmTTDto7yMPqVSZTUyY5Tjbid+Ab8gLnATtygYtiDIJGQRRn2ZOiA==,
+      }
 
   locate-path@6.0.0:
     resolution:
@@ -8468,6 +8550,13 @@ packages:
       }
     engines: { node: ">= 0.4" }
 
+  svelte@5.57.1:
+    resolution:
+      {
+        integrity: sha512-Uqj49lWKB+iSSnneuwiYYJ7MZgkB+eXr0LXBhv4uDuAkXqnWmq65Sxflfvp0Lc6MdKjMUxGaeOKWJqz5SNiVIA==,
+      }
+    engines: { node: ">=18" }
+
   svgo@4.1.0:
     resolution:
       {
@@ -9547,6 +9636,12 @@ packages:
     resolution:
       {
         integrity: sha512-vRD9nwt4L3aYpxNqeSC4WqLv58xrXef0Ong1Mc45CTXTIpvLafx7JO05sczmQZwdLEZvywrLOGdNC5+Rp5N1BQ==,
+      }
+
+  zimmerframe@1.1.5:
+    resolution:
+      {
+        integrity: sha512-msJxIvYDYcoNL+PJsu+7qmpDWsYmAxTY+2TNYXXF0hzBzBk0BMecOqDOG/EckUoKCuKwObfbugIl8QpqHDXeFA==,
       }
 
   zip-stream@6.0.1:
@@ -11828,6 +11923,10 @@ snapshots:
 
   "@standard-schema/spec@1.1.0": {}
 
+  "@sveltejs/acorn-typescript@1.0.13(acorn@8.18.0)":
+    dependencies:
+      acorn: 8.18.0
+
   "@swc/helpers@0.5.23":
     dependencies:
       tslib: 2.8.1
@@ -12538,6 +12637,8 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  aria-query@5.3.1: {}
+
   assertion-error@2.0.1: {}
 
   ast-kit@2.2.0:
@@ -12563,6 +12664,8 @@ snapshots:
       picocolors: 1.1.1
       postcss: 8.5.26
       postcss-value-parser: 4.2.0
+
+  axobject-query@4.1.0: {}
 
   b4a@1.8.1: {}
 
@@ -13089,6 +13192,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  esm-env@1.2.2: {}
+
   espree@11.2.0:
     dependencies:
       acorn: 8.18.0
@@ -13098,6 +13203,12 @@ snapshots:
   esquery@1.7.0:
     dependencies:
       estraverse: 5.3.0
+
+  esrap@2.4.0(@typescript-eslint/types@8.68.0):
+    dependencies:
+      "@jridgewell/sourcemap-codec": 1.6.0
+    optionalDependencies:
+      "@typescript-eslint/types": 8.68.0
 
   esrecurse@4.3.0:
     dependencies:
@@ -13440,6 +13551,10 @@ snapshots:
     dependencies:
       "@types/estree": 1.0.9
 
+  is-reference@3.0.3:
+    dependencies:
+      "@types/estree": 1.0.9
+
   is-stream@2.0.1: {}
 
   is-stream@3.0.0: {}
@@ -13727,6 +13842,8 @@ snapshots:
       mlly: 1.8.2
       pkg-types: 2.3.3
       quansync: 0.2.11
+
+  locate-character@3.0.0: {}
 
   locate-path@6.0.0:
     dependencies:
@@ -15108,6 +15225,26 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
+  svelte@5.57.1(@typescript-eslint/types@8.68.0):
+    dependencies:
+      "@jridgewell/remapping": 2.3.5
+      "@jridgewell/sourcemap-codec": 1.6.0
+      "@sveltejs/acorn-typescript": 1.0.13(acorn@8.18.0)
+      "@types/estree": 1.0.9
+      acorn: 8.18.0
+      aria-query: 5.3.1
+      axobject-query: 4.1.0
+      clsx: 2.1.1
+      devalue: 5.9.2
+      esm-env: 1.2.2
+      esrap: 2.4.0(@typescript-eslint/types@8.68.0)
+      is-reference: 3.0.3
+      locate-character: 3.0.0
+      magic-string: 0.30.21
+      zimmerframe: 1.1.5
+    transitivePeerDependencies:
+      - "@typescript-eslint/types"
+
   svgo@4.1.0:
     dependencies:
       commander: 11.1.0
@@ -15788,6 +15925,8 @@ snapshots:
       "@yuku-parser/binding-linux-x64-musl": 0.8.7
       "@yuku-parser/binding-win32-arm64": 0.8.7
       "@yuku-parser/binding-win32-x64": 0.8.7
+
+  zimmerframe@1.1.5: {}
 
   zip-stream@6.0.1:
     dependencies:
