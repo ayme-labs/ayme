@@ -28,7 +28,7 @@ export default defineConfig({
 
 Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [ListPage](../../apps/example-vue/playwright/pom/ListPage.ts).
 
-Publication is off unless the root setup enables it with `webMCP: { enabled: true }` (on `AymeProvider` as `:webMCP="{ enabled: true }"`). `webMCP.toolNamePrefix` prefixes every published tool name; see the [main library README](../ayme/README.md#webmcp-publication). Local Page Object calls remain available without publication or a WebMCP driver.
+Publication is off unless the root setup enables it with `webMCP: { enabled: true }` (on `AymeProvider` as `:webMCP="{ enabled: true }"`). `webMCP.toolNamePrefix` prefixes every published tool name; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#webmcp-publication). Local Page Object calls remain available without publication or a WebMCP driver.
 
 ## Provider setup
 
@@ -97,7 +97,7 @@ In the browser, `usePageObject(Model)` returns the concrete instance and dispose
 
 The provider and composables can run during Vue server rendering. They do not construct Page Objects, start the browser runtime, observe the DOM, or publish tools on the server. Each render creates its own inert runtime session; no live browser registration is shared between requests.
 
-On the server, `usePageObject(Model)` returns an unconstructed object with the model's prototype. This allows rendering to reference prototype methods in event closures without running the constructor. Do not read locators or constructor-initialized fields, or execute POM actions, during server rendering. A custom `page` factory runs only in the browser; server rendering never calls it.
+On the server, `usePageObject(Model)` returns an unconstructed object with the model's prototype. This allows rendering to reference prototype methods in event closures without running the constructor. Do not read locators or constructor-initialized fields, or execute POM actions, during server rendering. A custom `pageFactory` runs only in the browser; server rendering never calls it.
 
 Browser setup constructs and registers the real Page Object during hydration. Existing browser ownership, `effectScope()` support, and disposal behavior are unchanged. No client-only wrapper is needed around the application UI.
 

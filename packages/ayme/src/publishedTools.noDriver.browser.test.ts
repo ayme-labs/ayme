@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import {
@@ -7,10 +7,6 @@ import {
   subscribeToPublishedTools,
 } from "./publishedTools";
 import { createRuntimeSession } from "./runtime";
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 it("lists nothing, and tells subscribers publication is unavailable, when the page has no WebMCP driver", async () => {
   // Diagnostic: this file runs without native WebMCP or the polyfill.
