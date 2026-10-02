@@ -159,6 +159,16 @@ export class StructuralTree {
     return this._nav().ordered.map((node) => node.ref);
   }
 
+  /** Returns the first ref, in canonical preorder, that more than one node carries. */
+  findDuplicateRef(): AriaRef | null {
+    const seen = new Set<AriaRef>();
+    for (const { ref } of this._nav().ordered) {
+      if (seen.has(ref)) return ref;
+      seen.add(ref);
+    }
+    return null;
+  }
+
   /** Returns all nodes in canonical preorder. */
   getAllNodes(): StructuralNode[] {
     return [...this._nav().ordered];

@@ -53,10 +53,19 @@ export class StructuralIdentityLedger {
   private _currentByRef = new Map<AriaRef, Identity>();
   private readonly _byAlias = new Map<AriaRef, Identity>();
 
-  /** Reconcile `tree` against the previous observation and carry identities forward. */
+  /**
+   * Reconcile `tree` against the previous observation and carry identities
+   * forward. A tree in which two nodes share a ref is rejected before anything
+   * changes, so the next observation reconciles against the last accepted one.
+   */
   advance(tree: StructuralTree, moment: StructuralLifecycleMoment): void {
+    const duplicateRef = tree.findDuplicateRef();
+    if (duplicateRef !== null)
+      throw new Error(
+        `Structural Ref ${duplicateRef} names more than one node in one observation.`
+      );
+
     const baseline = this._baseline;
-    this._baseline = tree;
     if (baseline === null) {
       for (const node of tree.getAllNodes()) {
         const identity = this._createIdentity(moment, null);
@@ -64,11 +73,13 @@ export class StructuralIdentityLedger {
         this._bindAlias(node.ref, identity);
         this._currentByRef.set(node.ref, identity);
       }
+      this._baseline = tree;
       return;
     }
 
     const previousByRef = this._currentByRef;
     const reconciled = StructuralTree.reconcile(baseline, tree);
+    this._baseline = tree;
     const assignments = tree.getAllNodes().map((node) => {
       const beforeRef = reconciled.getBeforeNodeForAfterRef(node.ref)?.ref;
       const candidates = new Set<Identity>();
