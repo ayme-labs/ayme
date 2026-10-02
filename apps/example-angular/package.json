@@ -1,0 +1,41 @@
+{
+  "name": "@ayme-dev/example-angular",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "ng serve --host 127.0.0.1 --port 4196",
+    "build": "ng build",
+    "start": "node scripts/serve-spa.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.pom.json",
+    "lint": "eslint . --max-warnings 0",
+    "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
+    "test:e2e:dev": "playwright test",
+    "test:e2e:prod": "playwright test --config=playwright.production.config.ts"
+  },
+  "dependencies": {
+    "@angular/common": "^22.2.1",
+    "@angular/compiler": "^22.2.1",
+    "@angular/core": "^22.2.1",
+    "@angular/platform-browser": "^22.2.1",
+    "@angular/router": "^22.2.1",
+    "@ayme-dev/angular": "workspace:*",
+    "@ayme-dev/ayme": "workspace:*",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular-builders/custom-esbuild": "^22.0.1",
+    "@angular/build": "^22.2.1",
+    "@angular/cli": "^22.2.1",
+    "@angular/compiler-cli": "^22.2.1",
+    "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/typescript-config": "workspace:*",
+    "@ayme-dev/unplugin-ayme": "workspace:*",
+    "@playwright/test": "~1.62.1",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.9.1",
+    "playwright": "~1.62.1",
+    "typescript": "~6.0.2"
+  }
+}
