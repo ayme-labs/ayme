@@ -67,3 +67,7 @@ export class Counter {
 ```
 
 Page Object Models are authored as for React and Vue, with `@ayme` and `@ayme.action`; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md).
+
+## Server rendering
+
+With Angular SSR, server rendering returns your ordinary UI. On the server `provideAyme` creates a runtime session per request but never starts it, `injectPageObject` returns an unconstructed object with the model's prototype and registers nothing, and `webMCP.publicationStatus` holds the initial status (`waiting` when publication is on, `disabled` when off), so the hydrated text matches. Do not read locator fields or run Page Object actions while rendering on the server; `ayme.page` and `ayme.pursueGoal` throw there. Hydration creates the real Page Objects in the browser. The plugin skips the server bundles.

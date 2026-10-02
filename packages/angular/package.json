@@ -38,7 +38,10 @@
   },
   "devDependencies": {
     "@angular/common": "^22.2.1",
+    "@angular/compiler": "^22.2.1",
     "@angular/core": "^22.2.1",
+    "@angular/platform-browser": "^22.2.1",
+    "@angular/platform-server": "^22.2.1",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "eslint": "^10.9.1",
