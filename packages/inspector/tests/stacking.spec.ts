@@ -87,16 +87,6 @@ async function placeButtonUnder(page: Page, element: Locator, zIndex: number) {
   return page.getByRole("button", { name: "Covered button" });
 }
 
-/** The ref get_page_context gives the element with this role line. */
-async function refOf(agent: AgentView, line: string) {
-  const { structure } = (await agent.call("get_page_context", {})) as {
-    structure: string;
-  };
-  const ref = structure.match(new RegExp(`(e\\d+) ${line}`))?.[1];
-  if (!ref) throw new Error(`No ref for ${line} in:\n${structure}`);
-  return ref;
-}
-
 const layouts: LayoutChoice[] = [
   "Dock left",
   "Dock right",
@@ -166,7 +156,7 @@ for (const zIndex of [50, 101]) {
       const agent = new AgentView(page);
 
       await agent.call("click_page_state_ref", {
-        ref: await refOf(agent, 'button "Covered button"'),
+        ref: await agent.ref('button "Covered button"'),
       });
 
       await expect(button).toHaveAttribute("data-clicks", "1");

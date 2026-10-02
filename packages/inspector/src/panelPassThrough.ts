@@ -4,15 +4,16 @@ import type { Locator } from "@playwright/test";
  * Lets the runtime's pointer actions reach page elements under the panel
  * (#272). Playwright Lite hit-tests an action's target and refuses it while
  * the Inspector host is what the pointer meets there. When that happens, the
- * Inspector's shadow roots stop taking pointer events until the action ends.
- * The toggle stays inside the closed shadow roots, out of the page's sight.
+ * Inspector's shadow root stops taking pointer events until the action ends.
+ * The toggle stays inside the closed shadow root, out of the page's sight.
  */
 
-// The locator actions Playwright Lite hit-tests.
+// The locator and page actions Playwright Lite hit-tests.
 const pointerActions = new Set<string | symbol>([
   "check",
   "click",
   "dblclick",
+  "dragAndDrop",
   "dragTo",
   "hover",
   "setChecked",
@@ -20,52 +21,53 @@ const pointerActions = new Set<string | symbol>([
   "uncheck",
 ]);
 const hostSelector = "[data-ayme-inspector-host]";
-// Below Playwright Lite's 50ms hit-target retry, so the next retry lands.
+// Playwright Lite retries a failed hit-target check after 0, 20, 100, 100,
+// then 500ms; polling at 25ms keeps detection ahead of the early retries.
 const coverPollMs = 25;
 
-const roots = new Set<ShadowRoot>();
-let passThroughSheet: CSSStyleSheet | undefined;
+let root: ShadowRoot | undefined;
 let holds = 0;
 
-/** Whether this locator method is an action Playwright Lite hit-tests. */
+/** Whether this method is an action Playwright Lite hit-tests. */
 export function isPointerAction(property: string | symbol) {
   return pointerActions.has(property);
 }
 
-/** Lets pointer actions pass through this shadow root's panel. */
-export function allowPassThrough(root: ShadowRoot) {
-  roots.add(root);
+/** Lets pointer actions pass through the panel in this shadow root. */
+export function allowPassThrough(shadowRoot: ShadowRoot) {
+  root = shadowRoot;
+  if (holds > 0) setPassThrough(true);
   return () => {
-    roots.delete(root);
-    if (passThroughSheet) setPassThrough(root, false);
+    setPassThrough(false);
+    if (root === shadowRoot) root = undefined;
   };
 }
 
 /**
- * Runs a locator action. When it is a pointer action and its target's centre
- * comes under the panel while it runs, the panel lets pointer events through
- * until it ends. Not re-checked once on: the same hit-test then reaches the
- * page element.
+ * Runs a pointer action. When one of its targets comes under the panel while
+ * it runs, the panel lets pointer events through until it ends. Not
+ * re-checked once on: the same hit-test then reaches the page element.
  */
 export async function passThroughWhileCovered<T>(
-  property: string | symbol,
-  locator: Locator,
+  targets: readonly Locator[],
   action: () => T
 ): Promise<Awaited<T>> {
-  if (roots.size === 0 || !isPointerAction(property)) return await action();
+  if (!root || targets.length === 0) return await action();
 
   let done = false;
   let held = false;
   void (async () => {
     while (!done) {
-      const covered = await locator
-        .evaluateAll(isUnderInspector, hostSelector)
-        .catch(() => false);
-      if (done) return;
-      if (covered) {
-        hold();
-        held = true;
-        return;
+      for (const target of targets) {
+        const covered = await target
+          .evaluateAll(isUnderInspector, hostSelector)
+          .catch(() => false);
+        if (done) return;
+        if (covered) {
+          hold();
+          held = true;
+          return;
+        }
       }
       await new Promise((resolve) => setTimeout(resolve, coverPollMs));
     }
@@ -78,35 +80,43 @@ export async function passThroughWhileCovered<T>(
   }
 }
 
+// Whether the Inspector host is what the pointer meets at an element's
+// action point: the centre of its first client rect inside the viewport, as
+// Playwright Lite picks it.
 function isUnderInspector(elements: Element[], hostSelector: string) {
   return elements.some((element) => {
-    const box = element.getBoundingClientRect();
-    if (!box.width || !box.height) return false;
-    const hit = element.ownerDocument.elementFromPoint(
-      box.left + box.width / 2,
-      box.top + box.height / 2
-    );
-    return hit?.matches(hostSelector) ?? false;
+    const document = element.ownerDocument;
+    const width = document.documentElement.clientWidth;
+    const height = document.documentElement.clientHeight;
+    for (const rect of element.getClientRects()) {
+      const left = Math.max(0, rect.left);
+      const right = Math.min(width, rect.right);
+      const top = Math.max(0, rect.top);
+      const bottom = Math.min(height, rect.bottom);
+      if (right <= left || bottom <= top) continue;
+      if ((right - left) * (bottom - top) <= 0.99) continue;
+      const hit = document.elementFromPoint(
+        (left + right) / 2,
+        (top + bottom) / 2
+      );
+      return hit?.matches(hostSelector) ?? false;
+    }
+    return false;
   });
 }
 
 function hold() {
   holds += 1;
-  if (holds === 1) for (const root of roots) setPassThrough(root, true);
+  if (holds === 1) setPassThrough(true);
 }
 
 function release() {
   holds -= 1;
-  if (holds === 0) for (const root of roots) setPassThrough(root, false);
+  if (holds === 0) setPassThrough(false);
 }
 
-function setPassThrough(root: ShadowRoot, on: boolean) {
-  if (!passThroughSheet) {
-    passThroughSheet = new CSSStyleSheet();
-    passThroughSheet.replaceSync("* { pointer-events: none !important; }");
-  }
-  const others = root.adoptedStyleSheets.filter(
-    (sheet) => sheet !== passThroughSheet
-  );
-  root.adoptedStyleSheets = on ? [...others, passThroughSheet] : others;
+function setPassThrough(on: boolean) {
+  root
+    ?.querySelector("[data-ayme-inspector-root]")
+    ?.toggleAttribute("data-ayme-pass-through", on);
 }

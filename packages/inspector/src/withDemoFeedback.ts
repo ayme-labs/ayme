@@ -67,29 +67,22 @@ export function withDemoFeedback(
         if (typeof member !== "function") return member;
 
         return (...args: unknown[]) => {
-          // The page's own pointer actions, such as the ref tools'
-          // `page.click(selector)`, act on the locator of their selector.
-          const pageSelector =
-            !isAymeLocator(target) && isPointerAction(property)
-              ? args[0]
-              : undefined;
-          const locator = isAymeLocator(target)
-            ? (target as Locator)
-            : typeof pageSelector === "string"
-              ? (target as Page).locator(pageSelector)
-              : undefined;
           const operation = isAymeLocator(target)
             ? traceOperation(property)
             : undefined;
-          if (!locator || (!operation && !isPointerAction(property)))
+          const targets = isPointerAction(property)
+            ? pointerTargets(target, property, args)
+            : [];
+          if (!operation && targets.length === 0)
             return wrapResult(member.apply(target, args));
 
           const act = () =>
-            passThroughWhileCovered(property, locator, () =>
+            passThroughWhileCovered(targets, () =>
               member.apply(target, args)
             ).then(wrapResult);
           if (!operation) return act();
 
+          const locator = target as Locator;
           const entry: TraceEntry = {
             operation,
             locator: locator.toString(),
@@ -128,6 +121,24 @@ export function withDemoFeedback(
   wrappedPages.set(page, { context, proxy });
   wrappedPages.set(proxy, { context, proxy });
   return proxy;
+}
+
+// The elements a pointer action hit-tests: a locator's own and a drag's drop
+// target, or the selectors of the page's own actions, such as the ref tools'
+// `page.click(selector)`.
+function pointerTargets(
+  target: Page | Locator,
+  property: string | symbol,
+  args: unknown[]
+): Locator[] {
+  if (isAymeLocator(target))
+    return property === "dragTo" && isAymeLocator(args[0])
+      ? [target as Locator, args[0] as Locator]
+      : [target as Locator];
+  return args
+    .slice(0, property === "dragAndDrop" ? 2 : 1)
+    .filter((arg): arg is string => typeof arg === "string")
+    .map((selector) => (target as Page).locator(selector));
 }
 
 // ponytail: only instrument locator operations used by the Inspector; extend as needed.
