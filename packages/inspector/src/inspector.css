@@ -39,6 +39,14 @@
 }
 
 /*
+ * While a runtime pointer action's target is under the panel, nothing in the
+ * Inspector takes pointer events, so the action reaches the page (#272).
+ */
+[data-ayme-inspector-root][data-ayme-pass-through] * {
+  pointer-events: none !important;
+}
+
+/*
  * The syntax highlighter's colours (sugar-high reads --sh-*), from the
  * design system's tokens. They sit on the themed root, so they follow its
  * light or dark theme and stay inside the shadow root.
