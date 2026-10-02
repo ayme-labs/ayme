@@ -6,6 +6,10 @@
 3. Read the [compiler README](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md)
    for build setup. For Vue lifecycle wiring, read the
    [Vue README](https://github.com/ayme-labs/ayme/blob/main/packages/vue/README.md).
+   For Svelte or SvelteKit, read the
+   [Svelte README](https://github.com/ayme-labs/ayme/blob/main/packages/svelte/README.md):
+   call `useAyme(options)` once, in the root `+layout.svelte` or `App.svelte`,
+   and keep decorated POMs in `.ts` modules.
    Other framework integrations are not documented yet; report that gap rather
    than adapting internal runtime APIs into an unsupported setup.
 4. Follow [Browser setup](browser-setup.md) to choose native WebMCP or a local
