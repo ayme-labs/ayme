@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { RunStep } from "../adapter/runSteps";
@@ -210,5 +210,142 @@ describe("Runs", () => {
     focusRun(1);
 
     await expect.poll(() => run.steps.count()).toBe(2);
+  });
+});
+
+/** A successful run of addItem, with the given changes. */
+function aRun(id: number, extra: Partial<Run>): Run {
+  return { ...addMilk, id, steps: [], ...extra };
+}
+
+describe("a run's result", () => {
+  beforeEach(() => {
+    vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("starts collapsed, then shows as formatted JSON", async () => {
+    const result = JSON.stringify({ added: "Milk", total: 2 }, null, 2);
+    renderRuns({ runs: [aRun(1, { result })] });
+    const run = runsView.run(0);
+
+    await expect
+      .poll(() => run.resultToggle.getAttribute("aria-expanded"))
+      .toBe("false");
+    expect(await run.result.count()).toBe(0);
+    expect(await run.root.textContent()).not.toContain("total");
+
+    await run.resultToggle.click();
+
+    await expect.poll(() => run.result.textContent()).toBe(result);
+  });
+
+  it("copies the whole result, which scrolls rather than growing the run", async () => {
+    const result = JSON.stringify(
+      Array.from({ length: 200 }, (_, index) => ({ index })),
+      null,
+      2
+    );
+    renderRuns({ runs: [aRun(1, { result })] });
+    const run = runsView.run(0);
+    await run.resultToggle.click();
+
+    const pre = run.result.locator("pre");
+    expect(
+      await pre.evaluate(
+        (element) => element.scrollHeight > element.clientHeight
+      )
+    ).toBe(true);
+    expect((await run.result.boundingBox())!.height).toBeLessThan(300);
+
+    await run.copyResultButton.click();
+
+    await expect
+      .poll(() => navigator.clipboard.writeText)
+      .toHaveBeenCalledExactlyOnceWith(result);
+  });
+
+  it("is copied while collapsed", async () => {
+    renderRuns({ runs: [aRun(1, { result: '"Milk"' })] });
+
+    await runsView.run(0).copyResultButton.click();
+
+    await expect
+      .poll(() => navigator.clipboard.writeText)
+      .toHaveBeenCalledExactlyOnceWith('"Milk"');
+  });
+
+  it("isn't there when the tool returned undefined", async () => {
+    renderRuns({ runs: [aRun(1, {})] });
+    const run = runsView.run(0);
+
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(await run.resultToggle.count()).toBe(0);
+    expect(await run.copyResultButton.count()).toBe(0);
+    expect(await run.root.textContent()).toContain("320 ms");
+    expect(await run.root.textContent()).not.toContain("Result");
+  });
+
+  it("is there for null, false, 0, the empty string and empty objects and arrays", async () => {
+    const results = ["null", "false", "0", '""', "{}", "[]"];
+    renderRuns({
+      runs: results.map((result, index) => aRun(index + 1, { result })),
+    });
+
+    await expect.poll(() => runsView.runs.count()).toBe(results.length);
+    for (const [index, result] of results.entries()) {
+      const run = runsView.run(index);
+      expect(await run.resultText()).toBe(result);
+      await run.copyResultButton.click();
+      expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(result);
+    }
+  });
+
+  it("isn't there for a running or failed run, which keeps its error", async () => {
+    renderRuns({
+      runs: [aRun(3, { status: "running" }), archiveGone],
+    });
+
+    await expect.poll(() => runsView.run(0).status()).toBe("Running");
+    expect(await runsView.run(0).resultToggle.count()).toBe(0);
+    expect(await runsView.run(1).resultToggle.count()).toBe(0);
+    expect(await runsView.run(1).error.textContent()).toBe(
+      'Ref "e3" does not match a present instance.'
+    );
+  });
+
+  it("shows when its run is asked to show, even from a collapsed run", async () => {
+    const { focusRun } = renderRuns({
+      runs: [aRun(2, { result: '"Eggs"' }), aRun(1, { result: '"Milk"' })],
+    });
+    const run = runsView.run(1);
+    await run.toggle.click();
+    await expect.poll(() => run.resultToggle.count()).toBe(0);
+
+    focusRun(1);
+
+    await expect.poll(() => run.result.textContent()).toBe('"Milk"');
+    expect(await runsView.run(0).result.count()).toBe(0);
+  });
+});
+
+describe("a run's arguments", () => {
+  it("aren't shown when there are none", async () => {
+    renderRuns({ runs: [aRun(1, { arguments: {} })] });
+
+    await expect.poll(() => runsView.run(0).status()).toBe("Succeeded");
+    expect(await runsView.run(0).arguments.count()).toBe(0);
+    expect(await runsView.run(0).root.textContent()).not.toContain("{}");
+  });
+
+  it("are shown with their null and falsy fields", async () => {
+    const args = { text: "", copies: 0, urgent: false, note: null };
+    renderRuns({ runs: [aRun(1, { arguments: args })] });
+
+    await expect
+      .poll(() => runsView.run(0).arguments.textContent())
+      .toBe(JSON.stringify(args));
   });
 });

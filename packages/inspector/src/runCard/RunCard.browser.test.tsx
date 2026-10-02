@@ -310,23 +310,20 @@ describe("a collection action", () => {
 });
 
 describe("the last result", () => {
-  it("shows a success's duration, steps and payload", async () => {
+  it("shows a success's duration and steps, leaving its result to Runs", async () => {
     const step = {
       operation: "click",
       locator: "getByRole('button')",
     } as const;
     const { card } = renderCard({
       tool: addItem,
-      runs: [aRun(1, { result: { added: "Milk" }, steps: [step, step] })],
+      runs: [aRun(1, { result: '{ "added": "Milk" }', steps: [step, step] })],
     });
 
     await expect
       .poll(() => card.lastResult.textContent())
-      .toContain("Succeeded · 320 ms · 2 steps");
-    await card.payloadToggle.click();
-    await expect
-      .poll(() => card.payload.textContent())
-      .toContain('"added": "Milk"');
+      .toBe("Succeeded · 320 ms · 2 stepsShow in runs");
+    expect(await card.lastResult.getByRole("button").count()).toBe(1);
   });
 
   it("shows a failure's duration and error", async () => {

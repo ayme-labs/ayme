@@ -28,8 +28,6 @@ export class RunCard {
   readonly items: Locator;
   /** The last run's status, its duration, and its error. */
   readonly lastResult: Locator;
-  readonly payloadToggle: Locator;
-  readonly payload: Locator;
   /** Shows the last successful run in Runs. */
   readonly lastSuccessLink: Locator;
 
@@ -48,10 +46,6 @@ export class RunCard {
       .getByRole("radiogroup", { name: "Item" })
       .getByRole("radio");
     this.lastResult = root.getByRole("status", { name: "Last result" });
-    this.payloadToggle = this.lastResult.getByRole("button", {
-      name: /^(Show|Hide) payload$/,
-    });
-    this.payload = this.lastResult.getByRole("figure", { name: "Payload" });
     this.lastSuccessLink = this.lastResult.getByRole("button", {
       name: /^(Show in runs|Last success)/,
     });
