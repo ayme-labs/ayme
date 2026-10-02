@@ -17,10 +17,14 @@ export const port = Number(
   (process.env.AYME_E2E_PORT_ANGULAR ??= String(await freePort()))
 );
 export const baseURL = `http://127.0.0.1:${port}`;
+// The suite runs against the default SSR build, or with
+// AYME_ANGULAR_RENDER=spa against the spa build configuration.
+export const render = process.env.AYME_ANGULAR_RENDER === "spa" ? "spa" : "ssr";
 
 export default defineConfig({
   testDir: "./tests",
-  outputDir: "test-results/development",
+  metadata: { render, server: "development" },
+  outputDir: `test-results/${render}-development`,
   workers: 1,
   timeout: 60_000,
   reporter: "list",
@@ -30,7 +34,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `pnpm exec ng serve --host 127.0.0.1 --port ${port}`,
+    command: `pnpm exec ng serve --host 127.0.0.1 --port ${port}${render === "spa" ? " --configuration spa" : ""}`,
     url: baseURL,
     stdout: "pipe",
     reuseExistingServer: false,

@@ -1,12 +1,12 @@
-// Serves the production build of the SPA, falling back to index.html for
-// client routes. The example needs no server of its own.
+// Serves the spa build configuration, falling back to the client-render
+// shell, index.csr.html, for client routes.
 import { createReadStream, statSync } from "node:fs";
 import { createServer } from "node:http";
 import path from "node:path";
 import process from "node:process";
 import { URL } from "node:url";
 
-const root = path.resolve("dist/example-angular/browser");
+const root = path.resolve("dist/spa/browser");
 const types = {
   ".html": "text/html",
   ".js": "text/javascript",
@@ -21,7 +21,7 @@ createServer((request, response) => {
     !file.startsWith(root) ||
     !statSync(file, { throwIfNoEntry: false })?.isFile()
   )
-    file = path.join(root, "index.html");
+    file = path.join(root, "index.csr.html");
   response.writeHead(200, {
     "content-type": types[path.extname(file)] ?? "application/octet-stream",
   });

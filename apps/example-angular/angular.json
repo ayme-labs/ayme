@@ -18,13 +18,28 @@
           "options": {
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
-            "assets": [{ "glob": "**/*", "input": "public" }],
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
+            ],
             "plugins": [
               {
                 "path": "./ayme.plugin.mjs",
-                "options": { "tsconfigPath": "tsconfig.app.json" }
+                "options": {
+                  "tsconfigPath": "tsconfig.app.json"
+                }
               }
-            ]
+            ],
+            "server": "src/main.server.ts",
+            "outputMode": "server",
+            "ssr": {
+              "entry": "src/server.ts"
+            },
+            "security": {
+              "allowedHosts": ["127.0.0.1"]
+            }
           },
           "configurations": {
             "production": {
@@ -46,6 +61,21 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "spa": {
+              "outputPath": "dist/spa",
+              "outputMode": "static",
+              "ssr": false,
+              "fileReplacements": [
+                {
+                  "replace": "src/app/hydration.ts",
+                  "with": "src/app/hydration.spa.ts"
+                },
+                {
+                  "replace": "src/app/app.routes.server.ts",
+                  "with": "src/app/app.routes.server.spa.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -58,6 +88,9 @@
             },
             "development": {
               "buildTarget": "example-angular:build:development"
+            },
+            "spa": {
+              "buildTarget": "example-angular:build:development,spa"
             }
           },
           "defaultConfiguration": "development"

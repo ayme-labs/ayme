@@ -7,16 +7,51 @@ import {
   recordPublishedTools,
 } from "@ayme-dev/ayme/testing";
 
-// Run the same contract against ng serve and the production build.
+// Run the same contract against ng serve and the production build, for the
+// default SSR build and the spa build configuration.
+const run = () =>
+  test.info().config.metadata as {
+    render: "ssr" | "spa";
+    server: "development" | "production";
+  };
+
+test.describe("server render", () => {
+  test.use({ javaScriptEnabled: false });
+  test.skip(() => run().render === "spa", "SSR only");
+
+  test("returns the rendered UI with inert Page Objects on repeated requests", async ({
+    page,
+  }) => {
+    for (let request = 0; request < 2; request += 1) {
+      const response = await page.goto("/");
+      expect(response?.status()).toBe(200);
+      await expect(
+        page.getByRole("heading", { name: "Ayme Angular example" })
+      ).toBeVisible();
+      await expect(page.getByRole("region", { name: "Counter" })).toBeVisible();
+      await expect(page.locator("output")).toHaveText("0");
+      await expect(
+        page.getByRole("status", { name: "Publication" })
+      ).toHaveText("Publication: waiting");
+      await expect(
+        page.getByRole("button", { name: "Call Page Object" })
+      ).toBeVisible();
+    }
+  });
+});
+
 test("publishes the compiled POM, executes it, and cleans up on remount and navigation", async ({
   context,
   page,
 }) => {
   const errors: string[] = [];
+  const hydration: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error" || /NG0\d{3}/.test(message.text()))
-      errors.push(message.text());
+    const text = message.text();
+    if (/Angular hydrated/.test(text)) hydration.push(text);
+    else if (message.type() === "error" || /NG0\d{3}|mismatch/i.test(text))
+      errors.push(text);
   });
   await recordPublishedTools(context);
 
@@ -78,4 +113,11 @@ test("publishes the compiled POM, executes it, and cleans up on remount and navi
   await executePublishedTool(page, "CounterPage.increment");
   await expect(page.locator("output")).toHaveText("1");
   expect(errors).toEqual([]);
+  // Development builds report hydration; production builds are silent.
+  if (run().render === "ssr" && run().server === "development")
+    expect(hydration).toEqual([
+      expect.stringMatching(
+        /hydrated 3 component\(s\).* 0 component\(s\) were skipped/
+      ),
+    ]);
 });
