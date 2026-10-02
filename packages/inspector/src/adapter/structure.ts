@@ -1,3 +1,5 @@
+import type { PageModel, PageObjectNode } from "./pageModel";
+
 /**
  * The structure tree model: the Structural Page State an agent receives, as
  * a tree the Inspector can render, search and pick refs from.
@@ -60,18 +62,46 @@ export type MemberOwner = { object: string } | { model: string };
 /** A member of a node, with where it leads. */
 export type MemberLink = { member: string; owner: MemberOwner };
 
-/** The Page Objects on the page, which own the members. */
-export type PageObjects = {
-  /** The page Page Objects, by class name: every instance path starts at one. */
-  pages: ReadonlySet<string>;
-  /**
-   * Every path the registry lists a Page Object root under: instances such
-   * as "ListPage.items[1]", and aliases such as "ListPage.items".
-   */
-  roots: ReadonlySet<string>;
+/**
+ * The page model, indexed to find where a member leads: its Page Object
+ * nodes by path, each node's parent, and the Page Object Models by class
+ * name and by member path ("ListItem.nameButton").
+ */
+export type MemberOwners = {
+  nodes: ReadonlyMap<string, PageObjectNode>;
+  parents: ReadonlyMap<PageObjectNode, PageObjectNode>;
+  models: ReadonlyMap<string, string>;
 };
 
-const noPageObjects: PageObjects = { pages: new Set(), roots: new Set() };
+const noOwners: MemberOwners = {
+  nodes: new Map(),
+  parents: new Map(),
+  models: new Map(),
+};
+
+/** Indexes the page model, once per update, for {@link memberLinks}. */
+export function memberOwnersOf({ objects, models }: PageModel): MemberOwners {
+  const nodes = new Map<string, PageObjectNode>();
+  const parents = new Map<PageObjectNode, PageObjectNode>();
+  const visit = (
+    children: readonly PageObjectNode[],
+    parent?: PageObjectNode
+  ) => {
+    for (const node of children) {
+      // Two registrations of one page class share their paths: the first wins.
+      if (!nodes.has(node.path)) nodes.set(node.path, node);
+      if (parent) parents.set(node, parent);
+      visit(node.children, node);
+    }
+  };
+  visit(objects);
+  const modelsByPath = new Map<string, string>();
+  for (const { className, members } of models) {
+    modelsByPath.set(className, className);
+    for (const { path } of members) modelsByPath.set(path, className);
+  }
+  return { nodes, parents, models: modelsByPath };
+}
 
 export type StructureTree = {
   roots: readonly StructureNode[];
@@ -89,8 +119,8 @@ export const emptyStructure: StructureTree = { roots: [], refCount: 0 };
 export function buildStructureTree(
   text: string,
   membersByRef: ReadonlyMap<string, readonly string[]>,
-  /** The Page Objects on the page; they own the members. */
-  pageObjects: PageObjects = noPageObjects
+  /** The page model's Page Objects and models; they own the members. */
+  owners: MemberOwners = noOwners
 ): StructureTree {
   const roots: StructureNode[] = [];
   const open: { indent: number; node: StructureNode }[] = [];
@@ -124,8 +154,9 @@ export function buildStructureTree(
       const tag = memberTag(members);
       if (tag !== undefined) {
         node.member = tag;
-        node.memberLinks = memberLinks(members, tag, pageObjects);
-        node.owner = ownerOf(tag, pageObjects);
+        node.memberLinks = memberLinks(members, tag, owners);
+        const owner = instanceOwner(tag, owners)?.owner.path;
+        if (owner !== undefined) node.owner = owner;
       }
     }
     if (header !== "text" && value !== undefined)
@@ -140,70 +171,90 @@ export function buildStructureTree(
 
 /**
  * The members a node's detail lists, the tag first, each with where it
- * leads. A path through a class name ("ListItem", "ListItem.nameButton")
- * leads to that model. A collection alias ("ListPage.items" beside
- * "ListPage.items[0]") adds nothing beyond its item, so it is left out.
- * Any other member leads to the instance that owns it.
+ * leads, found in the page model:
+ *
+ * - A member leads to the nearest instance (page, component or item) up its
+ *   path when that instance holds the tag: the tag's owner or one of its
+ *   ancestors.
+ * - A path through the class of a component or item that holds the tag
+ *   ("ListItem", "ListItem.nameButton") leads to that model, even when a
+ *   page of that class is on the page too.
+ * - Any other member leads to its instance, such as another page's member
+ *   over the same element or a second collection's item, or else to its
+ *   model.
+ * - A member through a collection ("ListPage.items" or
+ *   "ListPage.items.nameButton" beside "ListPage.items[0]...") is an alias
+ *   that adds nothing beyond its item, so it is left out when another
+ *   member is in one of the collection's items.
+ * - A member the page model doesn't know (yet) is left out.
  */
 export function memberLinks(
   members: readonly string[],
   tag: string,
-  pageObjects: PageObjects
+  owners: MemberOwners
 ): MemberLink[] {
   const ordered = [tag, ...members.filter((member) => member !== tag)];
+  const instances = new Map(
+    ordered.map((member) => [member, instanceOwner(member, owners)])
+  );
+  const holdsTag = new Set(ancestry(instances.get(tag)?.owner, owners));
+  // A class alias comes from a component or item of that class.
+  const aliasedClasses = new Set(
+    [...holdsTag]
+      .filter((node) => node.kind !== "page")
+      .map((node) => node.className)
+  );
+  const listed = [...instances.values()].flatMap((instance) =>
+    ancestry(instance?.owner, owners)
+  );
+
   return ordered.flatMap((member): MemberLink[] => {
-    const start = member.split(/[.[]/)[0]!;
-    if (!pageObjects.pages.has(start))
-      return [{ member, owner: { model: start } }];
-    const aliasOfItem = members.some(
-      (other) => other !== member && withoutIndices(other) === member
+    const instance = instances.get(member);
+    const model = nearest(member, owners.models);
+    const classAlias =
+      model !== undefined &&
+      (!instance ||
+        (!holdsTag.has(instance.owner) && aliasedClasses.has(model)));
+    if (classAlias) return [{ member, owner: { model } }];
+    if (!instance) return [];
+    const aliasOfItem = instance.collections.some((collection) =>
+      listed.some((node) => owners.parents.get(node) === collection)
     );
-    if (aliasOfItem) return [];
-    return [{ member, owner: { object: ownerOf(member, pageObjects) } }];
+    return aliasOfItem
+      ? []
+      : [{ member, owner: { object: instance.owner.path } }];
   });
 }
 
-/**
- * The Page Object instance that owns a member: the member itself when it
- * is an instance's root, else the nearest instance it is declared under.
- * A collection path such as "ListPage.items" is not an instance, so its
- * members belong to the object that declares the collection.
- */
-export function ownerOf(member: string, { pages, roots }: PageObjects) {
-  const isInstance = (path: string) =>
-    pages.has(path) ||
-    (roots.has(path) &&
-      ![...roots].some((root) => withoutLastIndex(root) === path));
-  let path = isInstance(member) ? member : parentOf(member);
-  while (path && !isInstance(path)) path = parentOf(path);
-  return path || member.split(/[.[]/)[0]!;
+/** A page model node and its ancestors, nearest first. */
+function ancestry(node: PageObjectNode | undefined, owners: MemberOwners) {
+  const nodes: PageObjectNode[] = [];
+  for (; node; node = owners.parents.get(node)) nodes.push(node);
+  return nodes;
 }
 
 /**
- * The Page Objects the registry lists: every root path it lists as
- * `<path>.root`, and the page objects the instance paths start at.
+ * The nearest instance up a member's path in the page model, and the
+ * collections between them.
  */
-export function pageObjectsOf(
-  pages: Iterable<string>,
-  targets: Iterable<{ path: string }>
-): PageObjects {
-  const roots = new Set<string>();
-  for (const { path } of targets)
-    if (path.endsWith(".root")) roots.add(path.slice(0, -".root".length));
-  return { pages: new Set(pages), roots };
+function instanceOwner(member: string, owners: MemberOwners) {
+  const collections: PageObjectNode[] = [];
+  let node = nearest(member, owners.nodes);
+  for (; node?.kind === "collection"; node = owners.parents.get(node))
+    collections.push(node);
+  return node && { owner: node, collections };
 }
 
-function parentOf(path: string) {
-  const dot = path.lastIndexOf(".");
-  return dot < 0 ? "" : path.slice(0, dot);
-}
-
-function withoutIndices(path: string) {
-  return path.replace(/\[\d+\]/g, "");
-}
-
-function withoutLastIndex(path: string) {
-  return /\[\d+\]$/.test(path) ? path.replace(/\[\d+\]$/, "") : undefined;
+/** The value of the path or of its nearest ancestor path that has one. */
+function nearest<Value>(path: string, byPath: ReadonlyMap<string, Value>) {
+  for (let current = path; ;) {
+    const value = byPath.get(current);
+    if (value !== undefined) return value;
+    // "ListPage.items[0].nameButton" → "ListPage.items[0]" → "ListPage.items".
+    const parent = current.replace(/(?:\.[^.[]*|\[\d+\])$/, "");
+    if (parent === current) return undefined;
+    current = parent;
+  }
 }
 
 /** A node as a row of the tree, depth first, with its depth from a root. */
