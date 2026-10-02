@@ -24,7 +24,7 @@ export default defineConfig({
 });
 ```
 
-Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Decorators inside `.svelte` scripts are not compiled. Complete SvelteKit and Svelte app setups, with their version-specific configuration, follow in a later section.
+Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Decorators inside `.svelte` scripts are not compiled.
 
 ## Root setup
 
