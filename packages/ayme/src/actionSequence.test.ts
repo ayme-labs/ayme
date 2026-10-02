@@ -37,29 +37,52 @@ describe("runAction", () => {
   });
 
   it("completes the action as failed when the post-action capture throws", async () => {
-    const tree = '- generic [ref=e1]:\n  - button "Save" [ref=e2]';
-    captureAriaSnapshot.mockReturnValueOnce({
-      distilledText: tree,
-      fullText: tree,
-      refsByElement: new Map([[document.body, "e1"]]),
-    });
-    const captureError = new Error("Capture failed.");
-    captureAriaSnapshot.mockImplementationOnce(() => {
-      throw captureError;
-    });
+    const captureError = captureOnceThenThrow();
 
     await expect(
       runAction(document, "agent", { tool: "App.save", args: {} }, () => {})
     ).rejects.toBe(captureError);
 
-    const history = getInteractionHistory(document);
-    const [[actionId, action]] = [...history.actions()];
-    expect(action).toMatchObject({ failed: true });
-    // Recorded against the last observation: no fresh capture was taken.
-    expect(captureAriaSnapshot).toHaveBeenCalledTimes(2);
-    const { actionChange } = await history.observations.getActionEvidence(
-      actionId!
-    );
-    expect(actionChange.changeTree.hasAnyChanges()).toBe(false);
+    await expectOneFailedCompletedAction();
+  });
+
+  it("completes the action as failed when perform and the capture after it throw", async () => {
+    captureOnceThenThrow();
+    const performError = new Error("Save failed.");
+
+    await expect(
+      runAction(document, "agent", { tool: "App.save", args: {} }, () => {
+        throw performError;
+      })
+    ).rejects.toBe(performError);
+
+    await expectOneFailedCompletedAction();
   });
 });
+
+/** The capture that starts the action succeeds; the one after it throws. */
+function captureOnceThenThrow(): Error {
+  const tree = '- generic [ref=e1]:\n  - button "Save" [ref=e2]';
+  captureAriaSnapshot.mockReturnValueOnce({
+    distilledText: tree,
+    fullText: tree,
+    refsByElement: new Map([[document.body, "e1"]]),
+  });
+  const captureError = new Error("Capture failed.");
+  captureAriaSnapshot.mockImplementationOnce(() => {
+    throw captureError;
+  });
+  return captureError;
+}
+
+async function expectOneFailedCompletedAction() {
+  const history = getInteractionHistory(document);
+  const [[actionId, action]] = [...history.actions()];
+  expect(action).toMatchObject({ failed: true });
+  // Recorded against the last observation: no capture after the failed one.
+  expect(captureAriaSnapshot).toHaveBeenCalledTimes(2);
+  // Core has evidence only for a completed action; a started one throws.
+  await expect(
+    history.observations.getActionEvidence(actionId!)
+  ).resolves.toBeDefined();
+}

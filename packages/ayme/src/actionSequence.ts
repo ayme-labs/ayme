@@ -2,7 +2,6 @@ import {
   SETTLED_PAGE_DEADLINE_MS,
   SETTLED_PAGE_QUIET_MS,
   waitForSettled,
-  type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
 import { isJsonValue, type JsonValue } from "./contracts";
 import { browserMonotonicClock } from "./browserMonotonicClock";
@@ -11,7 +10,6 @@ import { getBrowserPageActivitySource } from "./pageActivitySource";
 import {
   completeActionForDocument,
   failActionForDocument,
-  failActionWithoutCaptureForDocument,
   startActionForDocument,
 } from "./pageState";
 import { renderChangeRecord } from "./changeRecord";
@@ -36,10 +34,10 @@ export type ActionResult = {
  * that happened on its own since the caller last read the page is therefore
  * part of the record.
  *
- * An action whose `perform` throws is completed as failed with the page as it
- * is then, moves no cursor, and the error travels on. When waiting for the
- * Settled Page or capturing it throws, the action is completed as failed with
- * the page as last recorded instead.
+ * An action whose `perform` or settle wait throws is completed as failed with
+ * the page as it is then, moves no cursor, and the error travels on. Where
+ * capturing that page or the Settled Page throws, the page as last recorded
+ * stands in for it.
  */
 export async function runAction(
   currentDocument: Document,
@@ -49,28 +47,21 @@ export async function runAction(
 ): Promise<ActionResult> {
   const actionId = await startActionForDocument(currentDocument, caller, call);
   let rawResult: unknown;
+  let stable: boolean;
   try {
     rawResult = await perform();
-  } catch (error) {
-    await failActionForDocument(currentDocument, actionId).catch(() => {});
-    throw error;
-  }
-  let stable: boolean;
-  let changes: StructuralTree;
-  try {
     ({ stable } = await waitForSettled({
       activity: getBrowserPageActivitySource(currentDocument),
       clock: browserMonotonicClock,
       quietMs: SETTLED_PAGE_QUIET_MS,
       deadlineMs: SETTLED_PAGE_DEADLINE_MS,
     }));
-    changes = await completeActionForDocument(currentDocument, actionId);
   } catch (error) {
-    await failActionWithoutCaptureForDocument(currentDocument, actionId).catch(
-      () => {}
-    );
+    await failActionForDocument(currentDocument, actionId).catch(() => {});
     throw error;
   }
+
+  const changes = await completeActionForDocument(currentDocument, actionId);
   const pageChanged = changes.hasAnyChanges();
 
   const out: ActionResult = {
