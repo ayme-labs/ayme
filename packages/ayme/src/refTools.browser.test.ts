@@ -5,10 +5,12 @@ import { createPage } from "./browserPage";
 import { createRuntimeSession } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
 import {
+  isCheckableElement,
   isClickableElement,
   isFillableElement,
-  type CustomTool,
-} from "./refTools";
+  isSelectElement,
+} from "./browserTools";
+import type { CustomTool } from "./refTools";
 import { toolFailure } from "./toolFailure.testSupport";
 
 type PublishedTool = {
@@ -37,7 +39,7 @@ function createFakeDriver() {
   return { driver, published };
 }
 
-describe("Ref Tools in Chromium", () => {
+describe("Custom Tools in Chromium", () => {
   let page: ReturnType<typeof createPage>;
   let stop: (() => void) | undefined;
   let disposePublication: (() => void) | undefined;
@@ -119,25 +121,6 @@ describe("Ref Tools in Chromium", () => {
       type: "object",
       properties: { ref: { type: "string" } },
       required: ["ref"],
-      additionalProperties: false,
-    });
-  });
-
-  it("keeps click and fill published with their names and inputs", async () => {
-    document.body.innerHTML = '<button id="save">Save changes</button>';
-
-    const published = await publish();
-
-    expect(registrationOf(published, "click").tool.inputSchema).toEqual({
-      type: "object",
-      properties: { ref: { type: "string" } },
-      required: ["ref"],
-      additionalProperties: false,
-    });
-    expect(registrationOf(published, "fill").tool.inputSchema).toEqual({
-      type: "object",
-      properties: { ref: { type: "string" }, value: { type: "string" } },
-      required: ["ref", "value"],
       additionalProperties: false,
     });
   });
@@ -304,7 +287,7 @@ describe("Ref Tools in Chromium", () => {
 
 // --- Built-in filters (consumed by the Goal Loop when it offers elements) ---
 
-describe("built-in Ref Tool filters in Chromium", () => {
+describe("Browser Tool filters in Chromium", () => {
   afterEach(() => {
     document.body.innerHTML = "";
   });
@@ -369,6 +352,30 @@ describe("built-in Ref Tool filters in Chromium", () => {
     expect(
       isFillableElement(fixture('<input disabled aria-label="Name">'))
     ).toBe(false);
+  });
+
+  it("keeps checkboxes and radio buttons for check and uncheck", () => {
+    expect(isCheckableElement(fixture('<input type="checkbox">'))).toBe(true);
+    expect(isCheckableElement(fixture('<input type="radio">'))).toBe(true);
+    expect(isCheckableElement(fixture('<div role="switch">On</div>'))).toBe(
+      true
+    );
+    expect(isCheckableElement(fixture('<input type="text">'))).toBe(false);
+    expect(
+      isCheckableElement(fixture('<input type="checkbox" disabled>'))
+    ).toBe(false);
+  });
+
+  it("keeps select elements for select_option", () => {
+    expect(
+      isSelectElement(fixture("<select><option>A</option></select>"))
+    ).toBe(true);
+    expect(
+      isSelectElement(fixture("<select disabled><option>A</option></select>"))
+    ).toBe(false);
+    expect(isSelectElement(fixture('<div role="combobox">A</div>'))).toBe(
+      false
+    );
   });
 });
 

@@ -38,13 +38,13 @@ const addItem: LiveTool = {
 };
 const click: LiveTool = {
   name: "click",
-  description: "Click the element a Structural Ref points to.",
+  description: "Click one element.",
   inputSchema: {
     type: "object",
-    properties: { ref: { type: "string" } },
-    required: ["ref"],
+    properties: { target: { type: "string" } },
+    required: ["target"],
   },
-  group: "ref",
+  group: "browser",
 };
 const pageContext: LiveTool = {
   name: "snapshot",
@@ -107,7 +107,7 @@ it("lists the live tools as Page object, Ref and Agent tools", async () => {
     .poll(() => navigator.tools.listed())
     .toEqual({
       "Page object tools": ["ListPage.addItem"],
-      "Ref tools": ["click"],
+      "Browser tools": ["click"],
       "Agent tools": ["snapshot"],
     });
 });

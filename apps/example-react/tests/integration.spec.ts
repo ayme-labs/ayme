@@ -1,6 +1,19 @@
 import { expect, test } from "@playwright/test";
 import { CounterPage } from "../playwright/pom/CounterPage";
 
+const browserToolNames = [
+  "click",
+  "dblclick",
+  "hover",
+  "type",
+  "fill",
+  "check",
+  "uncheck",
+  "select_option",
+  "fill_form",
+  "press_key",
+];
+
 test("uses the same POM with real Playwright", async ({ page }) => {
   await page.goto("/");
   await new CounterPage(page).increment();
@@ -49,7 +62,7 @@ test("publishes, executes, and removes compiled tools under StrictMode", async (
     ]);
   await expect
     .poll(names)
-    .toEqual(["snapshot", "click", "fill", "CounterPage.increment"]);
+    .toEqual(["snapshot", ...browserToolNames, "CounterPage.increment"]);
   await page.evaluate(async () => {
     const driver = document.modelContext as unknown as {
       tools: Map<
@@ -63,12 +76,12 @@ test("publishes, executes, and removes compiled tools under StrictMode", async (
   await page.getByRole("button", { name: "Call Page Object" }).click();
   await expect(page.locator("output")).toHaveText("2");
   await page.getByRole("button", { name: "Unmount counter" }).click();
-  await expect.poll(names).toEqual(["snapshot", "click", "fill"]);
+  await expect.poll(names).toEqual(["snapshot", ...browserToolNames]);
   await page
     .getByRole("button", { name: "Mount counter", exact: true })
     .click();
   await expect
     .poll(names)
-    .toEqual(["snapshot", "click", "fill", "CounterPage.increment"]);
+    .toEqual(["snapshot", ...browserToolNames, "CounterPage.increment"]);
   await expect(page.locator("output")).toHaveText("0");
 });

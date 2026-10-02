@@ -13,7 +13,8 @@ import {
   type AymeNode,
   type PageStateCapture,
 } from "./pageState";
-import { requireAymeRuntimePage } from "./registry";
+import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
+import { requireAymeRuntimePage, validateValue } from "./registry";
 import {
   RefResolutionError,
   RuntimeStateError,
@@ -34,7 +35,7 @@ export type CustomTool = {
   execute(target: { ref: AriaRef; element: Element }): Promise<unknown>;
 };
 
-/** A Ref Tool as published: input `{ ref }` plus whatever else it declares. */
+/** A tool that acts on one element, as published. */
 export type PublishedRefTool = ModelContextTool<
   Record<string, unknown>,
   JsonValue
@@ -43,27 +44,55 @@ export type PublishedRefTool = ModelContextTool<
   execute(input: unknown): Promise<JsonValue>;
 };
 
-/** Runs a Ref Tool for the caller it is given. */
-type CallerRun = (input: unknown, caller: Caller) => Promise<ActionResult>;
+/** Runs a tool for the caller it is given. */
+export type CallerRun = (
+  input: unknown,
+  caller: Caller
+) => Promise<ActionResult>;
 
-/** Package-internal: a Ref Tool ready to publish, with the filter it offers. */
+/**
+ * Package-internal: a tool that acts on one element, ready to publish, with
+ * the filter it offers the Goal Loop: a Custom Tool or a single-element
+ * Browser Tool (ADR-0023).
+ */
 export type RegisteredRefTool = {
   /** As published, its `execute` runs it as the calling agent. */
   readonly tool: PublishedRefTool;
+  /** The input field that addresses the element: `ref` or `target`. */
+  readonly targetField: TargetField;
+  /** The input the Goal Loop fills; publication-only options are left out. */
+  readonly loopInputSchema: JsonSchema;
   /** true = the Goal Loop may offer this element; not enforced on direct calls. */
   readonly filter: (element: Element) => boolean;
   /** Runs it as the caller given; the Goal Loop runs it as its model. */
   readonly executeAs: CallerRun;
 };
 
-/** What a Ref Tool does once its ref is resolved. */
-type RefToolDefinition = {
+/**
+ * The input field that addresses the element. A Custom Tool takes a
+ * Structural Ref as `ref`; a Browser Tool takes a Structural Ref or a
+ * selector as `target`, as Playwright MCP does.
+ */
+export type TargetField = "ref" | "target";
+
+/** The element a call addresses, resolved for this call. */
+export type ResolvedTarget = {
+  /** Its current Structural Ref; absent when a selector addressed it. */
+  ref?: AriaRef;
+  element: Element;
+  /** A selector for it, for the browser Page: `aria-ref=…` or the one given. */
+  selector: string;
+};
+
+/** What a tool does once its element is resolved. */
+export type RefToolDefinition = {
   name: string;
   description: string;
   /** Names the operation in a resolution error: `Cannot ${label} ref "e1": …`. */
   label: string;
   inputSchema: JsonSchema;
-  run(target: AymeNode, input: Record<string, unknown>): Promise<unknown>;
+  targetField: TargetField;
+  run(target: ResolvedTarget, input: Record<string, unknown>): Promise<unknown>;
 };
 
 const REF_INPUT_SCHEMA: JsonSchema = {
@@ -76,12 +105,14 @@ const REF_INPUT_SCHEMA: JsonSchema = {
 // --- The shared mechanism ---
 
 /**
- * Publish a Ref Tool: parse the incoming ref at the tool-input boundary,
- * resolve it through the identity ledger (ADR-0028) and hand `execute` the
- * current ref and its element. Finishes with the shared action sequence, so
- * every Ref Tool returns the same action result.
+ * Publish a tool that acts on one element: check the input against the
+ * schema, resolve the element (a ref through the identity ledger, ADR-0028)
+ * and hand `run` the element. Finishes with the shared action sequence, so
+ * every such tool returns the same action result.
  */
-function publishRefTool(definition: RefToolDefinition): PublishedRefTool {
+export function publishRefTool(
+  definition: RefToolDefinition
+): PublishedRefTool {
   const executeAs = refToolRun(definition);
   return {
     name: definition.name,
@@ -93,42 +124,131 @@ function publishRefTool(definition: RefToolDefinition): PublishedRefTool {
 
 function refToolRun(definition: RefToolDefinition): CallerRun {
   return async (input, caller) => {
-    const fields = readInputFields(input);
-    return runRefTool(
+    const fields = validatedToolInput(definition.inputSchema, input);
+    const currentDocument = requireCurrentDocument();
+    const target = await resolveElementTarget(
       definition,
-      AriaRefSchema.parse(fields.ref),
-      fields,
-      caller
+      fields[definition.targetField] as string,
+      currentDocument
+    );
+    return runAction(
+      currentDocument,
+      caller,
+      {
+        tool: definition.name,
+        args: input,
+        ...(target.ref ? { targetRef: target.ref } : {}),
+      },
+      () => definition.run(target, fields)
     );
   };
 }
 
-function registerRefTool(
+/** Package-internal: register a tool so it is published and the Goal Loop may choose it. */
+export function registerRefTool(
   definition: RefToolDefinition,
   filter: (element: Element) => boolean,
   tool: PublishedRefTool = publishRefTool(definition)
 ): RegisteredRefTool {
-  return { tool, filter, executeAs: refToolRun(definition) };
+  return {
+    tool,
+    targetField: definition.targetField,
+    loopInputSchema:
+      definition.targetField === "target"
+        ? requiredInputOnly(definition.inputSchema)
+        : definition.inputSchema,
+    filter,
+    executeAs: refToolRun(definition),
+  };
 }
 
-async function runRefTool(
-  definition: RefToolDefinition,
-  requestedRef: AriaRef,
-  input: Record<string, unknown>,
-  caller: Caller,
-  currentDocument: Document = requireCurrentDocument()
-): Promise<ActionResult> {
-  const target = await resolveTarget(
-    definition.label,
-    requestedRef,
-    currentDocument
-  );
-  return runAction(
-    currentDocument,
-    caller,
-    { tool: definition.name, args: input, targetRef: target.ref },
-    () => definition.run(target, input)
-  );
+/**
+ * A Browser Tool's input as the Goal Loop fills it: its required fields. The
+ * options Playwright MCP adds (double click, modifiers, typing slowly) stay
+ * with the calling agent, so a loop step asks what it asked before them.
+ */
+function requiredInputOnly(schema: JsonSchema): JsonSchema {
+  const required = new Set(schema.required ?? []);
+  return {
+    ...schema,
+    properties: Object.fromEntries(
+      Object.entries(schema.properties ?? {}).filter(([name]) =>
+        required.has(name)
+      )
+    ),
+  };
+}
+
+/**
+ * Package-internal: check a tool's input against its object schema. An
+ * option the schema does not declare is rejected by name, never ignored.
+ */
+export function validatedToolInput(
+  schema: JsonSchema,
+  input: unknown
+): Record<string, unknown> {
+  if (typeof input !== "object" || input === null || Array.isArray(input))
+    throw new ToolInputError("Tool input must be an object.");
+  const fields = input as Record<string, unknown>;
+  const properties = schema.properties ?? {};
+  for (const name of Object.keys(fields))
+    if (!properties[name])
+      throw new ToolInputError(`The option "${name}" is not supported.`);
+  for (const name of schema.required ?? [])
+    if (fields[name] === undefined)
+      throw new ToolInputError(`The input property "${name}" is required.`);
+  for (const [name, value] of Object.entries(fields))
+    validateValue(name, properties[name]!, value);
+  return fields;
+}
+
+/** A Structural Ref, as Playwright MCP tells a ref from a selector. */
+const STRUCTURAL_REF = /^(e\d+|s_.+)$/;
+
+/**
+ * Package-internal: resolve the element one call addresses. A `ref` is a
+ * Structural Ref; a `target` is a Structural Ref or a selector, which must
+ * match exactly one element.
+ */
+export async function resolveElementTarget(
+  definition: Pick<RefToolDefinition, "label" | "targetField">,
+  requested: string,
+  currentDocument: Document
+): Promise<ResolvedTarget> {
+  if (definition.targetField === "ref" || STRUCTURAL_REF.test(requested)) {
+    const node = await resolveTarget(
+      definition.label,
+      AriaRefSchema.parse(requested),
+      currentDocument
+    );
+    return {
+      ref: node.ref,
+      element: node.element,
+      selector: `aria-ref=${node.ref}`,
+    };
+  }
+  const fail = (reason: string) =>
+    new RefResolutionError(
+      `Cannot ${definition.label} "${requested}": ${reason}.`
+    );
+  let elements: Element[];
+  try {
+    elements = resolveLocatorElements(
+      requireAymeRuntimePage().locator(requested)
+    );
+  } catch (error) {
+    throw new ToolInputError(
+      `The target "${requested}" is neither a Structural Ref nor a selector this runtime supports: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+  if (elements.length === 0) throw fail("the selector matches no element");
+  if (elements.length > 1)
+    throw fail(
+      `the selector matches ${elements.length} elements; it must match exactly one`
+    );
+  return { element: elements[0]!, selector: requested };
 }
 
 /** Resolve a requested ref to the node it addresses now, or fail clearly. */
@@ -152,149 +272,21 @@ async function resolveTarget(
   return resolution.node;
 }
 
-function readInputFields(input: unknown): Record<string, unknown> & {
-  ref: string;
-} {
-  if (
-    typeof input === "object" &&
-    input !== null &&
-    "ref" in input &&
-    typeof input.ref === "string"
-  )
-    return input as Record<string, unknown> & { ref: string };
-  throw new ToolInputError("A Structural Ref string is required.");
+/** Package-internal: the browser Page's locator for a resolved element. */
+export async function locatorOf(target: ResolvedTarget) {
+  const page = requireAymeRuntimePage();
+  // Page.ariaSnapshot updates Playwright-lite's public aria-ref lookup. The
+  // action must use the ref returned by the current Page State resolution.
+  if (target.ref) await page.ariaSnapshot({ mode: "ai" });
+  return page.locator(target.selector);
 }
 
-function requireCurrentDocument(): Document {
+export function requireCurrentDocument(): Document {
   if (typeof document === "undefined")
     throw new RuntimeStateError(
       "Structural Ref interactions require a browser Document."
     );
   return document;
-}
-
-// --- Built-in Ref Tools ---
-
-const clickDefinition: RefToolDefinition = {
-  name: "click",
-  description:
-    "Click a real element ref from snapshot. The ref is resolved against a fresh capture before the action.",
-  label: "click",
-  inputSchema: REF_INPUT_SCHEMA,
-  run: async ({ ref }) => {
-    // Page.ariaSnapshot updates Playwright-lite's public aria-ref lookup. The
-    // action must use the ref returned by the current Page State resolution.
-    const page = requireAymeRuntimePage();
-    await page.ariaSnapshot({ mode: "ai" });
-    await page.click(`aria-ref=${ref}`);
-  },
-};
-
-const fillDefinition: RefToolDefinition = {
-  name: "fill",
-  description:
-    "Fill a real editable element ref from snapshot with text. The ref is resolved against a fresh capture before the action.",
-  label: "fill",
-  inputSchema: {
-    type: "object",
-    properties: { ref: { type: "string" }, value: { type: "string" } },
-    required: ["ref", "value"],
-    additionalProperties: false,
-  },
-  run: async ({ ref }, input) => {
-    const { value } = input;
-    if (typeof value !== "string")
-      throw new ToolInputError(
-        "A Structural Ref and string value are required."
-      );
-    const page = requireAymeRuntimePage();
-    await page.ariaSnapshot({ mode: "ai" });
-    await page.fill(`aria-ref=${ref}`, value);
-  },
-};
-
-export const clickPageStateRefTool = publishRefTool(clickDefinition);
-export const fillPageStateRefTool = publishRefTool(fillDefinition);
-
-/** Click a Structural Ref that is already parsed, for `ayme.click`. */
-export function clickRef(ref: AriaRef): Promise<ActionResult> {
-  return runRefTool(clickDefinition, ref, {}, "agent");
-}
-
-/** Fill a Structural Ref that is already parsed, for `ayme.fill`. */
-export function fillRef(ref: AriaRef, value: string): Promise<ActionResult> {
-  return runRefTool(fillDefinition, ref, { value }, "agent");
-}
-
-// --- Built-in filters ---
-
-const INTERACTIVE_ROLE_SELECTOR = [
-  "a[href]",
-  "button",
-  "input",
-  "select",
-  "summary",
-  "textarea",
-  "[contenteditable='']",
-  "[contenteditable='true']",
-  "[role=button]",
-  "[role=checkbox]",
-  "[role=combobox]",
-  "[role=link]",
-  "[role=menuitem]",
-  "[role=menuitemcheckbox]",
-  "[role=menuitemradio]",
-  "[role=option]",
-  "[role=radio]",
-  "[role=searchbox]",
-  "[role=slider]",
-  "[role=spinbutton]",
-  "[role=switch]",
-  "[role=tab]",
-  "[role=textbox]",
-].join(",");
-
-/** Playwright fills these input types; any other type cannot be filled. */
-const FILLABLE_INPUT_TYPES = new Set([
-  "color",
-  "date",
-  "datetime-local",
-  "email",
-  "month",
-  "number",
-  "password",
-  "range",
-  "search",
-  "tel",
-  "text",
-  "time",
-  "url",
-  "week",
-]);
-
-function isDisabled(element: Element): boolean {
-  return element.matches(":disabled, [aria-disabled='true']");
-}
-
-/** The built-in filter of click: not disabled, interactive or pointer-cursored. */
-export function isClickableElement(element: Element): boolean {
-  if (isDisabled(element)) return false;
-  return (
-    element.matches(INTERACTIVE_ROLE_SELECTOR) ||
-    element.ownerDocument.defaultView?.getComputedStyle(element).cursor ===
-      "pointer"
-  );
-}
-
-/** The built-in filter of fill: an element text can actually be entered into. */
-export function isFillableElement(element: Element): boolean {
-  if (isDisabled(element)) return false;
-  if (element.matches("[contenteditable=''], [contenteditable='true']"))
-    return true;
-  if (element instanceof HTMLTextAreaElement) return !element.readOnly;
-  if (element instanceof HTMLInputElement)
-    return !element.readOnly && FILLABLE_INPUT_TYPES.has(element.type);
-  return false;
 }
 
 // --- Registration ---
@@ -316,21 +308,17 @@ export function configureCustomTools(
         description: customTool.description,
         label: `run "${customTool.name}" on`,
         inputSchema: REF_INPUT_SCHEMA,
-        run: (target) => customTool.execute(target),
+        targetField: "ref",
+        run: ({ ref, element }) => customTool.execute({ ref: ref!, element }),
       },
       customTool.filter ?? (() => true)
     )
   );
 }
 
-const BUILT_IN_REF_TOOLS: readonly RegisteredRefTool[] = [
-  registerRefTool(clickDefinition, isClickableElement, clickPageStateRefTool),
-  registerRefTool(fillDefinition, isFillableElement, fillPageStateRefTool),
-];
-
-/** Package-internal: the built-in and registered Ref Tools, in publication order. */
-export function listRefTools(): readonly RegisteredRefTool[] {
-  return [...BUILT_IN_REF_TOOLS, ...(refToolStore.registered ?? [])];
+/** Package-internal: the Custom Tools of the active session, in registration order. */
+export function listCustomTools(): readonly RegisteredRefTool[] {
+  return refToolStore.registered ?? [];
 }
 
 /**

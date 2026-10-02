@@ -55,7 +55,10 @@ function fieldOf(name: string, schema: Schema, optional: boolean): Field {
     };
   switch (schema.type) {
     case "string":
-      if (name === "ref") return { ...base, kind: "ref", typeLabel: "ref" };
+      // A Custom Tool's `ref`, or a Browser Tool's `target`, which also takes
+      // a selector; the panel picks a ref for either.
+      if (name === "ref" || name === "target")
+        return { ...base, kind: "ref", typeLabel: "ref" };
       return {
         ...base,
         kind: "text",

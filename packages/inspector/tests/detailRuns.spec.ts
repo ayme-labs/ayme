@@ -9,7 +9,7 @@ import { expect, test } from "./fixtures";
 // Steps come from the Inspector's trace of Page Object locator operations; a
 // Ref Tool acts on the element itself, so its run has none until the runtime
 // attributes steps to each call (#190).
-test("a structure node's Ref tool runs on that node, and Runs shows the run as yours", async ({
+test("a structure node's Browser tool runs on that node, and Runs shows the run as yours", async ({
   inspector,
   listPage,
 }) => {
@@ -17,7 +17,7 @@ test("a structure node's Ref tool runs on that node, and Runs shows the run as y
   await inspector.structure.nodeOf("ListPage.newItemInput").click();
   const fill = inspector.detail.node.runCard("fill");
 
-  await fill.run({ value: "Bread" });
+  await fill.run({ text: "Bread" });
 
   await expect(listPage.newItemInput).toHaveValue("Bread");
   const run = inspector.runs.latest("fill");

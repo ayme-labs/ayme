@@ -174,7 +174,15 @@ describe("WebMCP publisher", () => {
     expect(registrations.map(({ tool }) => tool.name)).toEqual([
       "snapshot",
       "click",
+      "dblclick",
+      "hover",
+      "type",
       "fill",
+      "check",
+      "uncheck",
+      "select_option",
+      "fill_form",
+      "press_key",
       "addItem",
       "ItemsPage.items.archive",
     ]);
@@ -184,7 +192,15 @@ describe("WebMCP publisher", () => {
     expect(registrations.map(({ tool }) => tool.name)).toEqual([
       "snapshot",
       "click",
+      "dblclick",
+      "hover",
+      "type",
       "fill",
+      "check",
+      "uncheck",
+      "select_option",
+      "fill_form",
+      "press_key",
       "addItem",
       "ItemsPage.items.archive",
     ]);
@@ -192,29 +208,29 @@ describe("WebMCP publisher", () => {
     FakeMutationObserver.instance?.trigger();
     await vi.runOnlyPendingTimersAsync();
     await flushPublisher();
-    expect(registerTool).toHaveBeenCalledTimes(5);
+    expect(registerTool).toHaveBeenCalledTimes(13);
 
     rootCount = 0;
     FakeMutationObserver.instance?.trigger();
     await vi.runOnlyPendingTimersAsync();
     await flushPublisher();
-    expect(registrations[4]?.signal.aborted).toBe(true);
+    expect(registrations[12]?.signal.aborted).toBe(true);
     expect(registrations[0]?.signal.aborted).toBe(false);
     expect(registrations[1]?.signal.aborted).toBe(false);
 
     pageRegistration.dispose();
     await flushPublisher();
-    expect(registrations[3]?.signal.aborted).toBe(true);
+    expect(registrations[11]?.signal.aborted).toBe(true);
     expect(registrations[0]?.signal.aborted).toBe(false);
 
     const replacementPageRegistration =
       registry.createPageRegistration(ItemsPage);
     await flushPublisher();
-    expect(registrations[5]?.signal.aborted).toBe(false);
+    expect(registrations[13]?.signal.aborted).toBe(false);
 
     publication.dispose();
     expect(registrations[0]?.signal.aborted).toBe(true);
-    expect(registrations[5]?.signal.aborted).toBe(true);
+    expect(registrations[13]?.signal.aborted).toBe(true);
 
     replacementPageRegistration.dispose();
   });
@@ -411,39 +427,47 @@ describe("WebMCP publisher", () => {
     expect(registrations.map(({ tool }) => tool.name)).toEqual([
       "snapshot",
       "click",
+      "dblclick",
+      "hover",
+      "type",
       "fill",
+      "check",
+      "uncheck",
+      "select_option",
+      "fill_form",
+      "press_key",
       "run",
     ]);
 
     const second = registry.createPageRegistration(SharedPage);
     await flushPublisher();
-    expect(registrations).toHaveLength(4);
+    expect(registrations).toHaveLength(12);
     expect(registrations[0]?.signal.aborted).toBe(false);
-    expect(registrations[3]?.signal.aborted).toBe(false);
+    expect(registrations[11]?.signal.aborted).toBe(false);
 
     second.dispose();
     await flushPublisher();
-    expect(registrations).toHaveLength(4);
+    expect(registrations).toHaveLength(12);
     expect(registrations[0]?.signal.aborted).toBe(false);
-    expect(registrations[3]?.signal.aborted).toBe(false);
+    expect(registrations[11]?.signal.aborted).toBe(false);
 
     const replacementOwner = registry.createPageRegistration(SharedPage);
     await flushPublisher();
-    expect(registrations).toHaveLength(4);
+    expect(registrations).toHaveLength(12);
     expect(registrations[0]?.signal.aborted).toBe(false);
-    expect(registrations[3]?.signal.aborted).toBe(false);
+    expect(registrations[11]?.signal.aborted).toBe(false);
 
     first.dispose();
     await flushPublisher();
-    expect(registrations).toHaveLength(5);
+    expect(registrations).toHaveLength(13);
     expect(registrations[0]?.signal.aborted).toBe(false);
-    expect(registrations[3]?.signal.aborted).toBe(true);
-    expect(registrations[4]?.signal.aborted).toBe(false);
+    expect(registrations[11]?.signal.aborted).toBe(true);
+    expect(registrations[12]?.signal.aborted).toBe(false);
 
     replacementOwner.dispose();
     publication.dispose();
     expect(registrations[0]?.signal.aborted).toBe(true);
-    expect(registrations[4]?.signal.aborted).toBe(true);
+    expect(registrations[12]?.signal.aborted).toBe(true);
   });
 
   it("cleans up partial publication when a tool registration fails", async () => {

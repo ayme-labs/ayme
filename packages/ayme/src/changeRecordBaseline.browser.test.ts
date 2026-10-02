@@ -102,7 +102,7 @@ describe("Change Record baseline in Chromium", () => {
     const actRef = refFor(await readStructure(), "Act");
     document.body.insertAdjacentHTML("beforeend", TOAST);
 
-    const result = await act("click", { ref: actRef });
+    const result = await act("click", { target: actRef });
 
     expect(result.page_changed).toBe(true);
     expect(result.changes).toContain("Background toast");
@@ -117,8 +117,8 @@ describe("Change Record baseline in Chromium", () => {
     document.body.insertAdjacentHTML("beforeend", TOAST);
 
     const result = await act("fill", {
-      ref: nameRef,
-      value: "Ada",
+      target: nameRef,
+      text: "Ada",
     });
 
     expect(result.page_changed).toBe(true);
@@ -157,12 +157,12 @@ describe("Change Record baseline in Chromium", () => {
     const firstRef = refFor(structure, "First");
     const secondRef = refFor(structure, "Second");
 
-    const first = await act("click", { ref: firstRef });
+    const first = await act("click", { target: firstRef });
     expect(first.changes).toContain("Result of the first action");
 
     document.body.insertAdjacentHTML("beforeend", TOAST);
 
-    const second = await act("click", { ref: secondRef });
+    const second = await act("click", { target: secondRef });
     expect(second.page_changed).toBe(true);
     expect(second.changes).toContain("Background toast");
     expect(second.changes).not.toContain("Result of the first action");
@@ -179,7 +179,7 @@ describe("Change Record baseline in Chromium", () => {
     document.body.insertAdjacentHTML("beforeend", TOAST);
     await getPageStateForElements([document.querySelector("#act")!]);
 
-    const result = await act("click", { ref: actRef });
+    const result = await act("click", { target: actRef });
 
     expect(result.page_changed).toBe(true);
     expect(result.changes).toContain("Background toast");
@@ -195,7 +195,7 @@ describe("Change Record baseline in Chromium", () => {
     await publishTools();
 
     const result = await act("click", {
-      ref: refFor(await readStructure(), "Act"),
+      target: refFor(await readStructure(), "Act"),
     });
 
     expect(result.page_changed).toBe(false);

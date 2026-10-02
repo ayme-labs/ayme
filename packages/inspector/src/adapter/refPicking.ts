@@ -29,8 +29,20 @@ export function pickPromptOf(toolName: string): string {
   switch (toolName) {
     case "click":
       return "Click an element to click";
+    case "dblclick":
+      return "Click an element to double-click";
+    case "hover":
+      return "Click an element to hover";
+    case "type":
+      return "Click a text field to type into";
     case "fill":
       return "Click a text field to fill";
+    case "check":
+      return "Click a checkbox to check";
+    case "uncheck":
+      return "Click a checkbox to uncheck";
+    case "select_option":
+      return "Click a select to choose from";
     default:
       return `Click an element for ${toolName}`;
   }

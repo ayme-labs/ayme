@@ -62,7 +62,7 @@ export function useRuntimeAdapter({
   const refTools = useMemo(
     () =>
       tools.live
-        .filter((tool) => tool.group === "ref")
+        .filter((tool) => refToolTargets.has(tool.name))
         .map(({ name, description, inputSchema }) => ({
           name,
           description,

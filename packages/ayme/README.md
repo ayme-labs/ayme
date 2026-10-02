@@ -168,7 +168,7 @@ useAyme({
   `webMCP.publicationStatus` reads `disabled`. Page Objects, page state and the
   Goal Loop work either way.
 - `webMCP.toolNamePrefix` is prepended to every published tool name: the
-  agent's tools, click and fill, Custom Tools and Page Object Tools. It is
+  agent's tools, the Browser Tools, Custom Tools and Page Object Tools. It is
   empty by default. It applies at publication only; the Goal Loop and the
   Inspector use the unprefixed names. The `testing` helpers take the published
   name, prefix included.
@@ -207,8 +207,8 @@ factory.
 A **Custom Tool** is an operation your app registers that applies to one
 element. Register it through `customTools` on the Vue composable or React
 provider. One registration publishes the operation as a WebMCP tool for the
-calling agent and makes it an operation the Goal Loop may choose. The built-in
-click and fill take the same path.
+calling agent and makes it an operation the Goal Loop may choose, as the
+single-element [Browser Tools](#browser-tools) are.
 
 ```ts
 import type { CustomTool } from "@ayme-dev/ayme";
@@ -235,13 +235,64 @@ useAyme({ customTools: [highlight] });
   `settled` and `changes`.
 - `filter` limits only which elements the Goal Loop may offer for this tool. It
   is not enforced when the calling agent calls the tool with a ref. Without a
-  `filter`, every node that has a ref may be offered. Click's built-in filter
-  keeps elements that are not disabled and have an interactive role or a
-  pointer cursor; fill's keeps elements text can actually be entered into.
+  `filter`, every node that has a ref may be offered.
 - A Custom Tool whose name is already taken by another published tool is
   rejected.
 - Custom Tools live for the runtime session: they are unregistered when it
   ends.
+
+## Browser Tools
+
+A **Browser Tool** is a built-in operation on the page itself, as opposed to
+one a Page Object provides. An agent that knows Playwright MCP can use them as
+it would there:
+
+| Tool            | Playwright MCP counterpart | Input                                                         |
+| --------------- | -------------------------- | ------------------------------------------------------------- |
+| `click`         | `browser_click`            | `target`, `element?`, `doubleClick?`, `button?`, `modifiers?` |
+| `dblclick`      | none                       | `target`, `element?`, `button?`, `modifiers?`                 |
+| `hover`         | `browser_hover`            | `target`, `element?`                                          |
+| `type`          | `browser_type`             | `target`, `element?`, `text`, `submit?`, `slowly?`            |
+| `fill`          | none                       | `target`, `element?`, `text`                                  |
+| `fill_form`     | `browser_fill_form`        | `fields`: `{ target, element?, name, type, value }[]`         |
+| `check`         | none                       | `target`, `element?`                                          |
+| `uncheck`       | none                       | `target`, `element?`                                          |
+| `select_option` | `browser_select_option`    | `target`, `element?`, `values`                                |
+| `press_key`     | `browser_press_key`        | `key`                                                         |
+
+- The inputs follow Playwright MCP as bundled in `playwright-core` 1.62.1: the
+  same field names, and the same behaviour when an option is omitted. `type`
+  replaces the field's value, or types one character at a time with
+  `slowly: true`. `press_key` acts on the focused element. `element` is a
+  description of the element and changes nothing.
+- `target` is a Structural Ref from `snapshot`, or a selector: CSS, `xpath=`,
+  or a Playwright selector such as `role=button[name="Save"]` or
+  `text=Save`. A selector must match exactly one element; one that matches
+  several fails and never acts on the first. Playwright MCP also takes locator
+  expressions such as `getByRole('button', { name: 'Save' })`; this runtime
+  does not, and rejects them as an unsupported target.
+- An option a tool does not declare is rejected with an error naming it; it is
+  never ignored.
+- Every action returns the compact action result: `page_changed`, `settled`,
+  `changes` and, when it has one, the action's own `result`.
+- `fill_form` fills its fields in order and stops at the first that fails. Its
+  `result` names the fields filled (`filled`) and the one that failed
+  (`failed`, with its error). Fields filled before it stay filled.
+- The single-element tools are operations the Goal Loop may choose, each for
+  the elements its filter keeps: `click`, `dblclick` and `hover` take
+  elements that are not disabled and have an interactive role or a pointer
+  cursor; `type` and `fill` take elements text can actually be entered into;
+  `check` and `uncheck` take checkboxes, radio buttons and switches;
+  `select_option` takes select elements. The loop fills only the element and
+  the required fields. `fill_form` and `press_key` are published only.
+
+The browser runtime differs from a real browser driven by Playwright:
+
+- Input is synthetic. Its events are not trusted, so they grant no user
+  activation.
+- `hover` does not apply CSS `:hover`.
+- Key presses do not move focus natively; `Tab` does not move to the next
+  field.
 
 ## Tool failures
 

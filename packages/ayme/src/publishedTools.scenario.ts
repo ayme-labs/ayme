@@ -138,9 +138,17 @@ registerCompiledPom(ListPage, {
 const EXPECTED_GROUPS: Record<string, PublishedToolGroup> = {
   snapshot: "agent",
   goal: "agent",
-  click: "ref",
-  fill: "ref",
-  highlight: "ref",
+  click: "browser",
+  dblclick: "browser",
+  hover: "browser",
+  type: "browser",
+  fill: "browser",
+  check: "browser",
+  uncheck: "browser",
+  select_option: "browser",
+  fill_form: "browser",
+  press_key: "browser",
+  highlight: "custom",
   "TodoPage.addTodo": "pageObject",
 };
 
@@ -212,8 +220,8 @@ const highlight: CustomTool = {
 
 const TOOL_CALLS: [string, string, (ref: string) => unknown][] = [
   ["a Page Object tool", "TodoPage.addTodo", () => ({ title: "Milk" })],
-  ["the built-in click Ref tool", "click", (ref) => ({ ref })],
-  ["an app-registered Ref tool", "highlight", (ref) => ({ ref })],
+  ["the click Browser Tool", "click", (ref) => ({ target: ref })],
+  ["an app-registered Custom Tool", "highlight", (ref) => ({ ref })],
   ["snapshot", "snapshot", () => ({})],
   ["goal", "goal", () => ({ goal: "Save the changes", maxSteps: 1 })],
 ];
@@ -439,9 +447,9 @@ export function describePublishedTools(
       await startSession();
       const ref = await saveButtonRef();
       document.querySelector("#save")!.remove();
-      const expected = await agentGets("click", { ref });
+      const expected = await agentGets("click", { target: ref });
 
-      expect(await runTool("click", { ref })).toEqual(expected);
+      expect(await runTool("click", { target: ref })).toEqual(expected);
       expect(expected).toMatchObject({ isError: true });
     });
 
@@ -466,7 +474,7 @@ export function describePublishedTools(
         .not.toContain("ListPage.items.archive");
     });
 
-    it("gives each Ref tool the refs the Goal Loop offers it for the same page", async () => {
+    it("gives each single-element tool the refs the Goal Loop offers it for the same page", async () => {
       document.body.innerHTML = `
         <button>Save</button>
         <button disabled>Archived</button>
@@ -490,25 +498,32 @@ export function describePublishedTools(
       ).toEqual({
         // Interactive and enabled; the disabled button is left out.
         click: ["button Save", "input Ada"],
+        dblclick: ["button Save", "input Ada"],
+        hover: ["button Save", "input Ada"],
+        type: ["input Ada"],
         fill: ["input Ada"],
+        check: [],
+        uncheck: [],
+        select_option: [],
         highlight: ["p Draft"],
       });
       for (const { key, tool } of buildToolOptions()) {
         if (!targets.has(key)) continue;
-        // The ref question alone: fill's free `value` would otherwise stop
-        // the plan before the ref is asked.
+        // The element question alone: fill's free `text` would otherwise stop
+        // the plan before the element is asked.
+        const element = key === "highlight" ? "ref" : "target";
         const plan = planArguments(
           {
             ...tool,
-            args: tool.args.filter((arg) => arg.name === "ref"),
-            requiredParams: ["ref"],
+            args: tool.args.filter((arg) => arg.name === element),
+            requiredParams: [element],
           },
           capture
         );
         const offered =
           plan.kind === "ask"
             ? plan.questions
-                .find((question) => question.parameter === "ref")!
+                .find((question) => question.parameter === element)!
                 .options.flatMap((option) =>
                   option.value === undefined ? [] : [option.value]
                 )
@@ -605,12 +620,12 @@ export function describePublishedTools(
         const stopPublishing = await startSession();
         const ref = await saveButtonRef();
         document.querySelector("#save")!.remove();
-        const expected = await agentGets("click", { ref });
+        const expected = await agentGets("click", { target: ref });
         expect(expected).toMatchObject({ isError: true });
         stopPublishing();
 
         const actual = await whilePublicationIsOff(mode, () =>
-          runTool("click", { ref })
+          runTool("click", { target: ref })
         );
 
         expect(actual).toEqual(expected);
@@ -650,7 +665,7 @@ export function describePublishedTools(
         });
       });
 
-      it("lists each Ref tool's targets", async () => {
+      it("lists each single-element tool's targets", async () => {
         document.body.innerHTML = `<button>Save</button><p data-highlightable>Draft</p>`;
 
         const targets = await whilePublicationIsOff(mode, () =>

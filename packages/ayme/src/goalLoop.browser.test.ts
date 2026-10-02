@@ -29,7 +29,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 
 /** The parameters of the built-in click Ref Tool. */
-const CLICK_PARAMETERS = ["ref"];
+const CLICK_PARAMETERS = ["target"];
 
 // --- Fixtures ---
 
@@ -538,7 +538,7 @@ describe("Goal Loop goal in Chromium", () => {
       reason: "needs_value",
       next: expect.stringContaining("fill"),
       history: [],
-      needs: { tool: "fill", parameters: ["ref", "value"] },
+      needs: { tool: "fill", parameters: ["target", "text"] },
     });
     // No second request: the loop never asks for a tool it cannot fill.
     expect(requests).toHaveLength(1);
@@ -882,7 +882,7 @@ describe("Goal Loop goal in Chromium", () => {
         {
           operation: "click",
           goal_met: 0.1,
-          arguments: { ref: 'button "Save changes"' },
+          arguments: { target: 'button "Save changes"' },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -896,7 +896,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     // Only the element click's built-in filter keeps is offered.
     const [[key, description], ...rest] = Object.entries(
-      criteriaOf(requests[1]!).ref!
+      criteriaOf(requests[1]!).target!
     );
     expect(rest).toEqual([]);
     // Options carry the node's ref as their key, as the page state labels it,
@@ -909,7 +909,7 @@ describe("Goal Loop goal in Chromium", () => {
     // The step record names the tool and the option chosen, as offered.
     const record = {
       operation: "click",
-      chosen: { ref: { key, description } },
+      chosen: { target: { key, description } },
       result: "ok",
       // Whether a click changes the page (focus among others) is the
       // interaction history's promise, pinned in its own tests.
@@ -1100,7 +1100,7 @@ describe("Goal Loop goal in Chromium", () => {
         {
           operation: "click",
           goal_met: 0.1,
-          arguments: { ref: 'button "Item 299"' },
+          arguments: { target: 'button "Item 299"' },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -1116,8 +1116,8 @@ describe("Goal Loop goal in Chromium", () => {
     // for the `ref` parameter.
     const stageTwo = criteriaOf(requests[1]!);
     expect(Object.keys(stageTwo)).toEqual([
-      chunkQuestionId("ref", 1, CLICK_PARAMETERS),
-      chunkQuestionId("ref", 2, CLICK_PARAMETERS),
+      chunkQuestionId("target", 1, CLICK_PARAMETERS),
+      chunkQuestionId("target", 2, CLICK_PARAMETERS),
     ]);
     const chunks = Object.values(stageTwo);
     for (const chunk of chunks) {
@@ -1143,7 +1143,7 @@ describe("Goal Loop goal in Chromium", () => {
       {
         operation: "click",
         chosen: {
-          ref: { key: expect.any(String), description: 'button "Item 299"' },
+          target: { key: expect.any(String), description: 'button "Item 299"' },
         },
         result: "ok",
       },
@@ -1156,7 +1156,7 @@ describe("Goal Loop goal in Chromium", () => {
 
   it("asks one run-off among exactly the elements several chunks named", async () => {
     const clicked = setupPageWithManyClickables(300);
-    const runOffId = runOffQuestionId("ref", CLICK_PARAMETERS);
+    const runOffId = runOffQuestionId("target", CLICK_PARAMETERS);
     // The decision function answers stage two without the optional
     // probabilities: the chosen keys are recorded all the same.
     const { requests, decide } = recording(
@@ -1166,7 +1166,7 @@ describe("Goal Loop goal in Chromium", () => {
             operation: "click",
             goal_met: 0.1,
             arguments: {
-              ref: ['button "Item 3"', 'button "Item 299"'],
+              target: ['button "Item 3"', 'button "Item 299"'],
               [runOffId]: 'button "Item 299"',
             },
           },
@@ -1207,14 +1207,14 @@ describe("Goal Loop goal in Chromium", () => {
 
   it("keeps the chunks' choices on the run result when the run-off answer is invalid", async () => {
     const clicked = setupPageWithManyClickables(300);
-    const runOffId = runOffQuestionId("ref", CLICK_PARAMETERS);
+    const runOffId = runOffQuestionId("target", CLICK_PARAMETERS);
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
           operation: "click",
           goal_met: 0.1,
           arguments: {
-            ref: ['button "Item 3"', 'button "Item 299"'],
+            target: ['button "Item 3"', 'button "Item 299"'],
             [runOffId]: { raw: "e999" },
           },
         },
@@ -1250,7 +1250,7 @@ describe("Goal Loop goal in Chromium", () => {
         {
           operation: "click",
           goal_met: 0.1,
-          arguments: { ref: [] },
+          arguments: { target: [] },
         },
       ])
     );
@@ -1294,7 +1294,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     expect(result).toMatchObject({
       reason: "needs_value",
-      needs: { tool: "click", parameters: ["ref"] },
+      needs: { tool: "click", parameters: ["target"] },
     });
     expect(requests).toHaveLength(1);
   });
@@ -1427,7 +1427,7 @@ describe("Goal Loop goal in Chromium", () => {
       {
         operation: "click",
         goal_met: 0.1,
-        arguments: { ref: 'button "Save changes"' },
+        arguments: { target: 'button "Save changes"' },
       },
       { operation: "none", goal_met: 0.9 },
     ]);
@@ -1438,7 +1438,7 @@ describe("Goal Loop goal in Chromium", () => {
     const runResult = getLastGoalLoopRunResult();
     const probabilities = runResult!.stepScores[0]!.argumentProbabilities;
     expect(probabilities).toBeDefined();
-    expect(Object.values(probabilities!.ref!)).toContain(1);
+    expect(Object.values(probabilities!.target!)).toContain(1);
     expect(runResult!.stepScores[1]!.argumentProbabilities).toBeUndefined();
   });
 
@@ -1448,7 +1448,7 @@ describe("Goal Loop goal in Chromium", () => {
       {
         operation: "click",
         goal_met: 0.1,
-        arguments: { ref: { raw: "e999" } },
+        arguments: { target: { raw: "e999" } },
       },
     ]);
     const tool = await getPublishedPursueGoal(decide);
