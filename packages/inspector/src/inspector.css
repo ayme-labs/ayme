@@ -21,6 +21,13 @@
  * page's inherited styles at the shadow boundary. The host element lives in
  * the page, so page rules reach it; `!important` here outranks even the
  * page's `!important` rules.
+ *
+ * Stacking policy: the Inspector paints above everything the page stacks.
+ * Its fixed host is a stacking context, so nothing inside the shadow root can
+ * escape it; the host itself takes the highest z-index there is, and the
+ * z-indices inside only order the Inspector's own parts. Only the top layer
+ * (modal dialogs, popovers, fullscreen) paints above it. The demo click cue
+ * shares this z-index and, appended after the host, paints above the panel.
  */
 :host {
   all: initial !important;
@@ -28,7 +35,7 @@
   inset: 0 !important;
   pointer-events: none !important;
   position: fixed !important;
-  z-index: 9 !important;
+  z-index: 2147483647 !important;
 }
 
 /*

@@ -4,6 +4,7 @@ import {
   activeItems,
   archivedItems,
   itemIds,
+  openWithInspectorCollapsed,
   pursueGoal,
   useGoalLane,
 } from "./goalLane";
@@ -15,7 +16,7 @@ useGoalLane("Live goal lane");
 test("a goal that names a value the model cannot choose hands over", async ({
   page,
 }) => {
-  await page.goto("/");
+  await openWithInspectorCollapsed(page);
   await expect(activeItems(page)).toHaveCount(2);
   const itemsBefore = await activeItems(page).allInnerTexts();
 
@@ -28,7 +29,7 @@ test("a goal that names a value the model cannot choose hands over", async ({
 test("a goal that names a collection instance archives it", async ({
   page,
 }) => {
-  await page.goto("/");
+  await openWithInspectorCollapsed(page);
   await expect(activeItems(page)).toHaveCount(2);
   const [firstId, secondId] = await itemIds(activeItems(page));
 

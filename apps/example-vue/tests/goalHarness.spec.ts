@@ -4,6 +4,7 @@ import {
   activeItems,
   archivedItems,
   itemIds,
+  openWithInspectorCollapsed,
   pursueGoal,
   useGoalLane,
 } from "./goalLane";
@@ -13,7 +14,7 @@ import {
 useGoalLane("Harness goal set");
 
 test("archive Review onboarding flow", async ({ page }) => {
-  await page.goto("/");
+  await openWithInspectorCollapsed(page);
   await expect(activeItems(page)).toHaveCount(2);
   const [reviewId] = await itemIds(
     activeItems(page).filter({ hasText: "Review onboarding flow" })
