@@ -25,6 +25,11 @@
       "types": "./dist/turbopack-loader.d.mts",
       "import": "./dist/turbopack-loader.mjs",
       "default": "./dist/turbopack-loader.mjs"
+    },
+    "./angular": {
+      "types": "./dist/angular.d.mts",
+      "import": "./dist/angular.mjs",
+      "default": "./dist/angular.mjs"
     }
   },
   "scripts": {
@@ -39,10 +44,19 @@
     "typescript": "^6.0.3",
     "unplugin": "^3.3.0"
   },
+  "peerDependencies": {
+    "esbuild": ">=0.24.0"
+  },
+  "peerDependenciesMeta": {
+    "esbuild": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@playwright/test": "~1.62.1",
+    "esbuild": "^0.28.2",
     "eslint": "^10.9.1",
     "playwright": "~1.62.1",
     "tsdown": "^0.22.14",

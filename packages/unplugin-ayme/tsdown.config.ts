@@ -6,6 +6,11 @@ export default defineConfig({
   deps: {
     neverBundle: ["@playwright/test"],
   },
-  entry: ["src/index.ts", "src/vite.ts", "src/turbopack-loader.ts"],
+  entry: [
+    "src/index.ts",
+    "src/vite.ts",
+    "src/turbopack-loader.ts",
+    "src/angular.ts",
+  ],
   format: ["esm"],
 });
