@@ -9,6 +9,7 @@ import {
   isClickableElement,
   isFillableElement,
   isSelectElement,
+  isUncheckableElement,
 } from "./browserTools";
 import type { CustomTool } from "./refTools";
 import { toolFailure } from "./toolFailure.testSupport";
@@ -364,6 +365,11 @@ describe("Browser Tool filters in Chromium", () => {
     expect(
       isCheckableElement(fixture('<input type="checkbox" disabled>'))
     ).toBe(false);
+  });
+
+  it("keeps checkboxes but not radio buttons for uncheck", () => {
+    expect(isUncheckableElement(fixture('<input type="checkbox">'))).toBe(true);
+    expect(isUncheckableElement(fixture('<input type="radio">'))).toBe(false);
   });
 
   it("keeps select elements for select_option", () => {

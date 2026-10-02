@@ -170,6 +170,28 @@ describe("Browser Tools in Chromium", () => {
     });
   });
 
+  it("passes the click options: double click, button and modifiers", async () => {
+    const events: string[] = [];
+    document
+      .querySelector<HTMLButtonElement>("#save")!
+      .addEventListener(
+        "mousedown",
+        (event) =>
+          events.push(`${event.button}${event.shiftKey ? " shift" : ""}`),
+        { signal: listening.signal }
+      );
+
+    await call("click", { target: "#save", doubleClick: true });
+    expect(log).toContain("dblclick save");
+    await call("click", {
+      target: "#save",
+      button: "right",
+      modifiers: ["Shift"],
+    });
+
+    expect(events.at(-1)).toBe("2 shift");
+  });
+
   it("returns the compact action result from every action", async () => {
     const results = [
       await call("click", { target: "#save" }),
@@ -236,10 +258,15 @@ describe("Browser Tools in Chromium", () => {
     expect(value("#email")).toBe("");
   });
 
-  it("fills a checkbox and a combobox through fill_form", async () => {
+  it("fills a checkbox and a combobox through fill_form, by ref or selector", async () => {
     await call("fill_form", {
       fields: [
-        { target: "#agree", name: "Agree", type: "checkbox", value: "true" },
+        {
+          target: await refOf("Agree"),
+          name: "Agree",
+          type: "checkbox",
+          value: "true",
+        },
         { target: "#size", name: "Size", type: "combobox", value: "Medium" },
       ],
     });
