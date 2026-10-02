@@ -4,7 +4,7 @@
  */
 import type { GoalRunRecord, GoalRunStep } from "../tests/goalRunRecord";
 /** A chunk's "none of these" option key, as `NONE_OF_THESE_KEY` in
- *  `packages/webmcp/src/goalLoopQuestions.ts`. */
+ *  `packages/ayme/src/goalLoopQuestions.ts`. */
 const noneOfTheseKey = "none_of_these";
 
 export type GoalRun = {

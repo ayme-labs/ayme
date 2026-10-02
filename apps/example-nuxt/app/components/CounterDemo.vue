@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useAymeWebMcp } from "@ayme-dev/webmcp-vue";
+import { useAymeWebMcp } from "@ayme-dev/vue";
 import Counter from "./Counter.vue";
 
 const visible = ref(true);

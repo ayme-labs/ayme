@@ -1,4 +1,4 @@
-import { WebMCP } from "@ayme-dev/webmcp";
+import { WebMCP } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 import { ArchiveDialog, ListItem } from "./components";
 

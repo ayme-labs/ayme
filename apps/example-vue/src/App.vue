@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { decisionEndpoint } from "@ayme-dev/webmcp";
-import { useAymeWebMcp, usePageObject } from "@ayme-dev/webmcp-vue";
+import { decisionEndpoint } from "@ayme-dev/ayme";
+import { useAymeWebMcp, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "../playwright/pom/ListPage";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 import { Badge } from "@/components/ui/badge";

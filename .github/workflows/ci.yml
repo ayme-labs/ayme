@@ -118,8 +118,8 @@ jobs:
         with:
           name: browser-test-results
           path: |
-            packages/webmcp/test-results
-            packages/webmcp-inspector/test-results
+            packages/ayme/test-results
+            packages/inspector/test-results
             apps/*/test-results
           if-no-files-found: ignore
 
@@ -185,12 +185,12 @@ jobs:
             ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
       - name: Install with Vue 3.2.0
         run: |
-          pnpm --dir packages/webmcp-vue pkg set devDependencies.vue=3.2.0
-          pnpm --dir packages/webmcp-vue pkg set 'devDependencies["@vue/server-renderer"]=3.2.0'
+          pnpm --dir packages/vue pkg set devDependencies.vue=3.2.0
+          pnpm --dir packages/vue pkg set 'devDependencies["@vue/server-renderer"]=3.2.0'
           pnpm install --no-frozen-lockfile
-      - name: Build core package and dependencies
-        run: pnpm exec turbo run build --filter=@ayme-dev/webmcp
+      - name: Build the main library and dependencies
+        run: pnpm exec turbo run build --filter=@ayme-dev/ayme
       - name: Typecheck Vue package
-        run: pnpm --filter @ayme-dev/webmcp-vue typecheck
+        run: pnpm --filter @ayme-dev/vue typecheck
       - name: Test Vue package
-        run: pnpm --filter @ayme-dev/webmcp-vue test
+        run: pnpm --filter @ayme-dev/vue test

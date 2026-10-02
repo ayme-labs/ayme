@@ -1,0 +1,68 @@
+{
+  "name": "@ayme-dev/ayme",
+  "version": "0.1.0",
+  "description": "Ayme main library.",
+  "license": "FSL-1.1-ALv2",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./internal": {
+      "types": "./dist/internal.d.mts",
+      "import": "./dist/internal.mjs",
+      "default": "./dist/internal.mjs"
+    },
+    "./server": {
+      "types": "./dist/server.d.mts",
+      "import": "./dist/server.mjs",
+      "default": "./dist/server.mjs"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.mts",
+      "import": "./dist/testing.mjs",
+      "default": "./dist/testing.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "lint": "eslint src --max-warnings 0",
+    "test": "vitest run --passWithNoTests",
+    "test:e2e": "vitest run --config vitest.browser.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@playwright/test": ">=1.29 <1.63"
+  },
+  "peerDependenciesMeta": {
+    "@playwright/test": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/core": "workspace:*",
+    "@ayme-dev/typescript-config": "workspace:*",
+    "@mcp-b/webmcp-polyfill": "5.1.0",
+    "@types/node": "^24.0.0",
+    "@vitest/browser-playwright": "^4.1.11",
+    "@playwright/test": "^1.62.1",
+    "eslint": "^10.9.1",
+    "playwright": "^1.62.1",
+    "tsdown": "^0.22.14",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#e95ea4b7cadd62ff4f6d74a5101506e7e855a899"
+  },
+  "dependencies": {
+    "@mcp-b/webmcp-types": "^5.0.1"
+  }
+}

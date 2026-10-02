@@ -52,12 +52,12 @@ export type Decision = {
 };
 
 /** A run-off question's id ends with this, as `runOffQuestionId` in
- *  `packages/webmcp/src/goalLoopQuestions.ts` builds it. */
+ *  `packages/ayme/src/goalLoopQuestions.ts` builds it. */
 const runOffSuffix = "run_off";
 
 /**
  * Mirrors `GoalLoopStepScore` and the run result store in
- * `packages/webmcp/src/goalLoop.ts`, reduced to the fields read here. The store
+ * `packages/ayme/src/goalLoop.ts`, reduced to the fields read here. The store
  * is package-internal (`getLastGoalLoopRunResult` is not exported); the page
  * shares it through `globalThis`, so the browser side can read it.
  */

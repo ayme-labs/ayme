@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { usePageObject } from "@ayme-dev/webmcp-vue";
+import { usePageObject } from "@ayme-dev/vue";
 import { CounterPage } from "../../playwright/pom/CounterPage";
 
 const count = ref(0);

@@ -1,0 +1,52 @@
+{
+  "name": "@ayme-dev/unplugin-ayme",
+  "version": "0.1.0",
+  "description": "Unplugin integration for Ayme.",
+  "license": "FSL-1.1-ALv2",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.mts",
+      "import": "./dist/vite.mjs",
+      "default": "./dist/vite.mjs"
+    },
+    "./turbopack-loader": {
+      "types": "./dist/turbopack-loader.d.mts",
+      "import": "./dist/turbopack-loader.mjs",
+      "default": "./dist/turbopack-loader.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "lint": "eslint src --max-warnings 0",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/inspector": "workspace:*",
+    "typescript": "^6.0.3",
+    "unplugin": "^3.3.0"
+  },
+  "devDependencies": {
+    "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/typescript-config": "workspace:*",
+    "@playwright/test": "~1.62.1",
+    "eslint": "^10.9.1",
+    "playwright": "~1.62.1",
+    "tsdown": "^0.22.14",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
+  }
+}

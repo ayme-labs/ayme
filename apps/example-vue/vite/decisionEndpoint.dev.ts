@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 
 import type { Plugin } from "vite";
-import { createDecisionEndpoint } from "@ayme-dev/webmcp/server";
+import { createDecisionEndpoint } from "@ayme-dev/ayme/server";
 
 import { decisionEndpointPath } from "./decisionEndpointPath";
 

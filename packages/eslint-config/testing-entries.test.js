@@ -18,7 +18,7 @@ function lint(code, filename) {
 }
 
 const staticImport =
-  'import { recordPublishedTools } from "@ayme-dev/webmcp/testing";\nexport { recordPublishedTools };\n';
+  'import { recordPublishedTools } from "@ayme-dev/ayme/testing";\nexport { recordPublishedTools };\n';
 
 test("the refusal cites ADR-0026", () => {
   assert.match(
@@ -40,9 +40,9 @@ test("a test file may import a testing entry", () => {
 test("source may not import a testing entry", () => {
   for (const code of [
     staticImport,
-    'import type { RecordingDriver } from "@ayme-dev/webmcp/testing";\nexport type { RecordingDriver };\n',
+    'import type { RecordingDriver } from "@ayme-dev/ayme/testing";\nexport type { RecordingDriver };\n',
     'import "@ayme-dev/core/structural-observation/testing";\n',
-    'export * from "@ayme-dev/webmcp/testing";\n',
+    'export * from "@ayme-dev/ayme/testing";\n',
     'export { StructuralTreeMockFactory } from "./testing";\n',
     'import "../src/testing.js";\n',
   ])
@@ -51,17 +51,17 @@ test("source may not import a testing entry", () => {
 
 test("source may not load a testing entry dynamically", () => {
   for (const code of [
-    'export const testing = import("@ayme-dev/webmcp/testing");\n',
+    'export const testing = import("@ayme-dev/ayme/testing");\n',
     'export const testing = import("./testing");\n',
-    'export const testing = require("@ayme-dev/webmcp/testing");\n',
+    'export const testing = require("@ayme-dev/ayme/testing");\n',
   ])
     assert.deepEqual(lint(code, "src/index.ts"), ["refused"], code);
 });
 
 test("other entries stay importable", () => {
   for (const code of [
-    'import "@ayme-dev/webmcp";\n',
-    'import "@ayme-dev/webmcp/internal";\n',
+    'import "@ayme-dev/ayme";\n',
+    'import "@ayme-dev/ayme/internal";\n',
     'import "./testingHelpers";\n',
     'import "some-package/testing";\n',
   ])

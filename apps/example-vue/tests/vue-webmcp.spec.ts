@@ -3,15 +3,15 @@ import path from "node:path";
 import { expect, selectors, test, type Page } from "@playwright/test";
 
 import { ListPage } from "../playwright/pom/ListPage";
-import { derivePomManifests } from "@ayme-dev/unplugin-webmcp";
+import { derivePomManifests } from "@ayme-dev/unplugin-ayme";
 import {
   Inspector,
   registerInspectorSelectors,
-} from "@ayme-dev/webmcp-inspector/testing";
+} from "@ayme-dev/inspector/testing";
 import {
   recordPublishedTools,
   type RecordingDriver,
-} from "@ayme-dev/webmcp/testing";
+} from "@ayme-dev/ayme/testing";
 
 type ListActions = {
   addItem(text: string): Promise<void>;

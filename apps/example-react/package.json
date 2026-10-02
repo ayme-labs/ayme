@@ -11,15 +11,15 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@ayme-dev/webmcp": "workspace:*",
-    "@ayme-dev/webmcp-react": "workspace:*",
+    "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/react": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
-    "@ayme-dev/unplugin-webmcp": "workspace:*",
+    "@ayme-dev/unplugin-ayme": "workspace:*",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@playwright/test": "^1.62.1",

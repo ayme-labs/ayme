@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 // The compiler plugin in vitest.config.ts registers this POM's manifest.
 import { ListPage } from "../../playwright/pom/ListPage";
-import { useAymeWebMcp, usePageObject } from "@ayme-dev/webmcp-vue";
+import { useAymeWebMcp, usePageObject } from "@ayme-dev/vue";
 import App from "../App.vue";
 
 describe("example lifecycle", () => {

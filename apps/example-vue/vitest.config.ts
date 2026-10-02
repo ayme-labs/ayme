@@ -1,7 +1,7 @@
 import { fileURLToPath, URL } from "node:url";
 
 import vue from "@vitejs/plugin-vue";
-import { aymeWebMcp } from "@ayme-dev/unplugin-webmcp/vite";
+import { aymeWebMcp } from "@ayme-dev/unplugin-ayme/vite";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({

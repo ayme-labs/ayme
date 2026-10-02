@@ -1,4 +1,4 @@
-import { WebMCP } from "@ayme-dev/webmcp";
+import { WebMCP } from "@ayme-dev/ayme";
 
 type ArchiveOptions = {
   reason: "obsolete" | "duplicate";
