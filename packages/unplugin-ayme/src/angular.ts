@@ -24,6 +24,16 @@ type CompiledPom = { contents: string; watchFiles: readonly string[] };
  * reach through `@angular-builders/custom-esbuild`.
  */
 export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
+  const unknown = Object.keys(options).filter((key) => key !== "tsconfigPath");
+  if (unknown.length > 0)
+    throw new TypeError(
+      `Ayme's Angular plugin has no option(s): ${unknown.join(", ")}`
+    );
+  if (
+    options.tsconfigPath !== undefined &&
+    typeof options.tsconfigPath !== "string"
+  )
+    throw new TypeError("tsconfigPath must be a string");
   return {
     name: "ayme-angular",
     setup(build) {
@@ -55,8 +65,9 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
       // from its own `onLoad`, which has no namespace filter. So a Page Object
       // Model module is claimed while resolving, into a namespace and a path
       // that Angular's `/\.[cm]?[jt]sx?$/` filter does not match. Every other
-      // module, including each Angular component, stays with Angular.
-      build.onResolve({ filter: /^\.{1,2}\// }, async (args) => {
+      // module, including each Angular component, stays with Angular. Bare
+      // specifiers count too: tsconfig `paths` resolve them into the workspace.
+      build.onResolve({ filter: /.*/ }, async (args) => {
         if (args.pluginData?.[namespace]) return;
         // A claimed module's own imports arrive from its namespace; resolving
         // them here keeps one copy of an imported base Page Object Model.
@@ -70,6 +81,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         });
         if (
           resolved.errors.length > 0 ||
+          resolved.external ||
           !resolved.path.endsWith(".ts") ||
           resolved.path.split(path.sep).includes("node_modules")
         )

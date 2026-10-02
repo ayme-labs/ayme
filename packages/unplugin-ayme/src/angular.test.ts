@@ -1,11 +1,12 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { build, type Plugin } from "esbuild";
 import { expect, it } from "vitest";
 
-import aymeAngularPlugin from "./angular";
+import aymeAngularPlugin, { type AymeAngularOptions } from "./angular";
 
 const fixtures = fileURLToPath(
   new URL("./__tests__/fixtures/angular/", import.meta.url)
@@ -23,9 +24,9 @@ const angularCompiler: Plugin = {
   },
 };
 
-async function bundle(platform: "browser" | "node") {
+async function bundle(platform: "browser" | "node", workspace = fixtures) {
   const result = await build({
-    absWorkingDir: fixtures,
+    absWorkingDir: workspace,
     entryPoints: ["main.ts"],
     bundle: true,
     write: false,
@@ -45,18 +46,49 @@ async function bundle(platform: "browser" | "node") {
   };
 }
 
-it("claims only Page Object Model modules and leaves the rest to Angular", async () => {
+// A throwaway workspace, for files the repository cannot hold, like a
+// `node_modules` directory.
+async function workspace(files: Record<string, string>) {
+  const root = await mkdtemp(path.join(tmpdir(), "ayme-angular-"));
+  for (const [name, contents] of Object.entries(files)) {
+    await mkdir(path.dirname(path.join(root, name)), { recursive: true });
+    await writeFile(path.join(root, name), contents);
+  }
+  return root;
+}
+
+const pomSource = (className: string) => `import { ayme } from "@ayme-dev/ayme";
+
+@ayme
+export class ${className} {
+  @ayme.action({ description: "Do it." })
+  doIt() {}
+}
+`;
+const tsconfig = JSON.stringify({
+  compilerOptions: {
+    target: "ES2022",
+    module: "ESNext",
+    moduleResolution: "Bundler",
+    experimentalDecorators: true,
+    skipLibCheck: true,
+  },
+});
+
+it("claims only Page Object Model modules, relative or aliased, and leaves the rest to Angular", async () => {
   const { code, inputs } = await bundle("browser");
 
   expect(inputs.sort()).toEqual([
     `ayme-pom:${fixtures}CounterPage.ts?ayme-pom`,
     `ayme-pom:${fixtures}SubCounterPage.ts?ayme-pom`,
+    `ayme-pom:${fixtures}poms/AliasedPage.ts?ayme-pom`,
     "base.ts",
     "counter.component.ts",
     "main.ts",
   ]);
   expect(code).toContain('"className": "CounterPage"');
   expect(code).toContain('"className": "SubCounterPage"');
+  expect(code).toContain('"className": "AliasedPage"');
   // One copy of the base model: the subclass imports the claimed module.
   expect(code.match(/var CounterPage = class/g)).toHaveLength(1);
   expect(code.match(/angular:[\w.]+/g)?.sort()).toEqual([
@@ -71,4 +103,57 @@ it("leaves the server bundle to Angular", async () => {
 
   expect(inputs.filter((input) => input.startsWith("ayme-pom:"))).toEqual([]);
   expect(code).not.toContain("registerCompiledPom");
+});
+
+it("never claims a Page Object Model under node_modules", async () => {
+  const root = await workspace({
+    "tsconfig.json": tsconfig,
+    "main.ts":
+      'import { ForeignPage } from "foreign-poms";\nconsole.log(ForeignPage);\n',
+    "node_modules/foreign-poms/package.json": JSON.stringify({
+      name: "foreign-poms",
+      main: "index.ts",
+    }),
+    "node_modules/foreign-poms/index.ts": pomSource("ForeignPage"),
+  });
+  try {
+    const { code, inputs } = await bundle("browser", root);
+
+    expect(inputs.filter((input) => input.startsWith("ayme-pom:"))).toEqual([]);
+    expect(code).not.toContain("registerCompiledPom");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("surfaces compiler diagnostics, like the error for the replaced @WebMCP", async () => {
+  const root = await workspace({
+    "tsconfig.json": tsconfig,
+    "main.ts":
+      'import { LegacyPage } from "./LegacyPage";\nconsole.log(LegacyPage);\n',
+    "LegacyPage.ts": `import { WebMCP } from "@ayme-dev/ayme";
+
+@WebMCP
+export class LegacyPage {}
+`,
+  });
+  try {
+    await expect(bundle("browser", root)).rejects.toThrow(
+      "LegacyPage is marked with @WebMCP, which was replaced by @ayme."
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it.each([
+  [
+    { tsconfig: "tsconfig.json" },
+    "Ayme's Angular plugin has no option(s): tsconfig",
+  ],
+  [{ tsconfigPath: 1 }, "tsconfigPath must be a string"],
+])("rejects the options %j", (options, message) => {
+  expect(() => aymeAngularPlugin(options as AymeAngularOptions)).toThrow(
+    new TypeError(message)
+  );
 });
