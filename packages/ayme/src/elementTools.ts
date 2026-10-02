@@ -36,7 +36,7 @@ export type CustomTool = {
 };
 
 /** A tool that acts on one element, as published. */
-export type PublishedRefTool = ModelContextTool<
+export type PublishedElementTool = ModelContextTool<
   Record<string, unknown>,
   JsonValue
 > & {
@@ -55,9 +55,9 @@ export type CallerRun = (
  * the filter it offers the Goal Loop: a Custom Tool or a single-element
  * Browser Tool (ADR-0023).
  */
-export type RegisteredRefTool = {
+export type RegisteredElementTool = {
   /** As published, its `execute` runs it as the calling agent. */
-  readonly tool: PublishedRefTool;
+  readonly tool: PublishedElementTool;
   /** The input field that addresses the element: `ref` or `target`. */
   readonly targetField: TargetField;
   /** The input the Goal Loop fills; publication-only options are left out. */
@@ -85,7 +85,7 @@ export type ResolvedTarget = {
 };
 
 /** What a tool does once its element is resolved. */
-export type RefToolDefinition = {
+export type ElementToolDefinition = {
   name: string;
   description: string;
   /** Names the operation in a resolution error: `Cannot ${label} ref "e1": …`. */
@@ -110,10 +110,10 @@ const REF_INPUT_SCHEMA: JsonSchema = {
  * and hand `run` the element. Finishes with the shared action sequence, so
  * every such tool returns the same action result.
  */
-export function publishRefTool(
-  definition: RefToolDefinition
-): PublishedRefTool {
-  const executeAs = refToolRun(definition);
+export function publishElementTool(
+  definition: ElementToolDefinition
+): PublishedElementTool {
+  const executeAs = elementToolRun(definition);
   return {
     name: definition.name,
     description: definition.description,
@@ -122,7 +122,7 @@ export function publishRefTool(
   };
 }
 
-function refToolRun(definition: RefToolDefinition): CallerRun {
+function elementToolRun(definition: ElementToolDefinition): CallerRun {
   return async (input, caller) => {
     const fields = validatedToolInput(definition.inputSchema, input);
     const currentDocument = requireCurrentDocument();
@@ -145,11 +145,11 @@ function refToolRun(definition: RefToolDefinition): CallerRun {
 }
 
 /** Package-internal: register a tool so it is published and the Goal Loop may choose it. */
-export function registerRefTool(
-  definition: RefToolDefinition,
+export function registerElementTool(
+  definition: ElementToolDefinition,
   filter: (element: Element) => boolean,
-  tool: PublishedRefTool = publishRefTool(definition)
-): RegisteredRefTool {
+  tool: PublishedElementTool = publishElementTool(definition)
+): RegisteredElementTool {
   return {
     tool,
     targetField: definition.targetField,
@@ -158,7 +158,7 @@ export function registerRefTool(
         ? requiredInputOnly(definition.inputSchema)
         : definition.inputSchema,
     filter,
-    executeAs: refToolRun(definition),
+    executeAs: elementToolRun(definition),
   };
 }
 
@@ -211,7 +211,7 @@ const STRUCTURAL_REF = /^(e\d+|s_.+)$/;
  * match exactly one element.
  */
 export async function resolveElementTarget(
-  definition: Pick<RefToolDefinition, "label" | "targetField">,
+  definition: Pick<ElementToolDefinition, "label" | "targetField">,
   requested: string,
   currentDocument: Document
 ): Promise<ResolvedTarget> {
@@ -291,18 +291,18 @@ export function requireCurrentDocument(): Document {
 
 // --- Registration ---
 
-type RefToolStore = { registered?: readonly RegisteredRefTool[] };
+type CustomToolStore = { registered?: readonly RegisteredElementTool[] };
 
-const refToolStore: RefToolStore = ((
-  globalThis as typeof globalThis & { __aymeRefToolStore?: RefToolStore }
-).__aymeRefToolStore ??= {});
+const customToolStore: CustomToolStore = ((
+  globalThis as typeof globalThis & { __aymeCustomToolStore?: CustomToolStore }
+).__aymeCustomToolStore ??= {});
 
 /** Package-internal: set while a runtime session is active. */
 export function configureCustomTools(
   customTools: readonly CustomTool[] | undefined
 ): void {
-  refToolStore.registered = customTools?.map((customTool) =>
-    registerRefTool(
+  customToolStore.registered = customTools?.map((customTool) =>
+    registerElementTool(
       {
         name: customTool.name,
         description: customTool.description,
@@ -317,12 +317,12 @@ export function configureCustomTools(
 }
 
 /** Package-internal: the Custom Tools of the active session, in registration order. */
-export function listCustomTools(): readonly RegisteredRefTool[] {
-  return refToolStore.registered ?? [];
+export function listCustomTools(): readonly RegisteredElementTool[] {
+  return customToolStore.registered ?? [];
 }
 
 /**
- * The closed set a Ref Tool's ref comes from (ADR-0023): every node of the
+ * The closed set a single-element tool's ref comes from (ADR-0023): every node of the
  * capture, in tree order, whose element the tool's filter keeps. The Goal Loop
  * offers these as options; the Inspector shows them as the tool's targets.
  */
@@ -332,7 +332,7 @@ export function acceptedRefNodes(
 ): StructuralNode[] {
   const nodes: StructuralNode[] = [];
   for (const node of walkNodes(capture.tree)) {
-    // Synthetic refs are observation-only: a Ref Tool rejects them.
+    // Synthetic refs are observation-only: a single-element tool rejects them.
     if (node.ref.startsWith("s_")) continue;
     const element = capture.elementsByRef.get(node.ref);
     if (!element || !filter(element)) continue;

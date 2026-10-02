@@ -9,14 +9,15 @@ These packages are not published yet. The commands below describe registry
 installation once released; before then use supplied package tarballs.
 
 ```sh
-npm install @ayme-dev/ayme
+npm install @ayme-dev/ayme @ayme-dev/vue # or @ayme-dev/react
 npm install -D @ayme-dev/unplugin-ayme @playwright/test@~1.62.1
 ```
 
 Use your project's package manager. Configure the
 [compiler integration](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md),
-then follow the framework integration README, currently
-[Vue](https://github.com/ayme-labs/ayme/blob/main/packages/vue/README.md).
+then follow your framework integration's README:
+[Vue](https://github.com/ayme-labs/ayme/blob/main/packages/vue/README.md) or
+[React](https://github.com/ayme-labs/ayme/blob/main/packages/react/README.md).
 Internal adapter packages are bundled; consumers do not install them separately.
 
 ## Entries

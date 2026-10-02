@@ -10,7 +10,7 @@ import {
   getLastGoalLoopRunResult,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
-import type { CustomTool } from "./refTools";
+import type { CustomTool } from "./elementTools";
 import {
   NONE_OF_THESE_KEY,
   chunkQuestionId,
@@ -28,7 +28,7 @@ import {
   StructuralTree,
 } from "@ayme-dev/core/structural-observation";
 
-/** The parameters of the built-in click Ref Tool. */
+/** The parameters of the click Browser Tool. */
 const CLICK_PARAMETERS = ["target"];
 
 // --- Fixtures ---
@@ -495,7 +495,7 @@ describe("Goal Loop goal in Chromium", () => {
     });
   });
 
-  it("offers a registered Ref Tool as an operation", async () => {
+  it("offers a Custom Tool as an operation", async () => {
     setupDom();
     const { requests, decide } = recording(
       scriptedDecisionFn([
@@ -926,7 +926,7 @@ describe("Goal Loop goal in Chromium", () => {
     expect(getLastGoalLoopRunResult()!.stepScores[0]).toMatchObject(record);
   });
 
-  it("offers a Ref Tool with a filter only the elements it keeps", async () => {
+  it("offers a single-element tool with a filter only the elements it keeps", async () => {
     setupPageWithOneClickable();
     const highlighted: { ref: string; tagName: string }[] = [];
     const { requests, decide } = recording(
@@ -960,7 +960,7 @@ describe("Goal Loop goal in Chromium", () => {
     ]);
   });
 
-  it("offers a Ref Tool without a filter every node that has a ref", async () => {
+  it("offers a single-element tool without a filter every node that has a ref", async () => {
     setupPageWithOneClickable();
     const { requests, decide } = recording(
       scriptedDecisionFn([
@@ -1016,7 +1016,7 @@ describe("Goal Loop goal in Chromium", () => {
         { operation: "none", goal_met: 0.9 },
       ])
     );
-    // A Ref Tool without a filter is offered every node of the full capture.
+    // A single-element tool without a filter is offered every node of the full capture.
     const tool = await getPublishedPursueGoal(decide, [
       {
         name: "highlight_element",
@@ -1976,7 +1976,7 @@ describe("Goal Loop goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([{ operation: "none", goal_met: 0.1 }])
     );
-    // Together with the built-in Ref Tools and "none", over the option limit.
+    // Together with the single-element Browser Tools and "none", over the option limit.
     const tool = await getPublishedPursueGoal(
       decide,
       Array.from({ length: 254 }, (_, index) => ({

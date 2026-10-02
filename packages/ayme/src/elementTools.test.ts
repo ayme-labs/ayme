@@ -266,7 +266,7 @@ describe("Structural Ref interactions", () => {
   });
 });
 
-/** Make a fake Playwright Page the Ayme runtime hands to Ref Tool actions. */
+/** Make a fake Playwright Page the Ayme runtime hands to single-element tool actions. */
 function usePage(
   overrides: {
     ariaSnapshot?: ReturnType<typeof vi.fn>;

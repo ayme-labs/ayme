@@ -9,7 +9,7 @@ import { listTools, toolKindLabels, type LiveTool } from "./toolGroups";
 
 /**
  * The Tools lens: every live tool, the ones the panel can run now whether
- * WebMCP publishes them or not, grouped as Page object tools, Ref tools and
+ * WebMCP publishes them or not, grouped as Page object tools, Custom tools, Browser tools and
  * Agent tools. A tool's page is its description, the
  * run slot and what the model sees of it.
  */

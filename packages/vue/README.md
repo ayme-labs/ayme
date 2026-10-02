@@ -26,7 +26,7 @@ export default defineConfig({
 });
 ```
 
-Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [ListPage](../../apps/example-vue/playwright/pom/ListPage.ts).
+Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [ListPage](https://github.com/ayme-labs/ayme/blob/main/apps/example-vue/playwright/pom/ListPage.ts).
 
 Publication is off unless the root setup enables it with `webMCP: { enabled: true }` (on `AymeProvider` as `:webMCP="{ enabled: true }"`). `webMCP.toolNamePrefix` prefixes every published tool name; see the [main library README](../ayme/README.md#webmcp-publication). Local Page Object calls remain available without publication or a WebMCP driver.
 

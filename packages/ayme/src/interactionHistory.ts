@@ -31,7 +31,7 @@ export type Caller = "agent" | "goalLoop";
 export type ToolCall = {
   readonly tool: string;
   readonly args: unknown;
-  /** For a Ref Tool, the current ref the action was applied to. */
+  /** For a single-element tool, the current ref the action was applied to. */
   readonly targetRef?: AriaRef;
 };
 
@@ -50,7 +50,7 @@ let documentCount = 0;
  * Action, and, per caller, the observation that caller last received.
  *
  * ponytail: everything is kept for the document's life, so memory has no
- * ceiling: it grows by one StructuralTree per observation (two per Ref Tool
+ * ceiling: it grows by one StructuralTree per observation (two per single-element tool
  * action, one per read or Goal Loop step), measured at 7 to 41 KB each on the
  * example apps. A retention rule replaces this.
  */

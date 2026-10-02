@@ -7,7 +7,7 @@ import { expect, test } from "./fixtures";
 // WebMCP, never from the panel.
 
 // Steps come from the Inspector's trace of Page Object locator operations; a
-// Ref Tool acts on the element itself, so its run has none until the runtime
+// single-element tool acts on the element itself, so its run has none until the runtime
 // attributes steps to each call (#190).
 test("a structure node's Browser tool runs on that node, and Runs shows the run as yours", async ({
   inspector,

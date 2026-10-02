@@ -210,7 +210,7 @@ describe("the typed form", () => {
   });
 });
 
-describe("a Ref Tool", () => {
+describe("a single-element tool", () => {
   const fillRef: RunnableTool = {
     name: "fill",
     action: "fill",

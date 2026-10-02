@@ -14,8 +14,8 @@ import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
 import type { GoalLoopStepRecord } from "./goalLoop";
 import type { AriaRef, PageStateCapture } from "./pageState";
-import { listRefTools } from "./browserTools";
-import { acceptedRefNodes, type TargetField } from "./refTools";
+import { listElementTools } from "./browserTools";
+import { acceptedRefNodes, type TargetField } from "./elementTools";
 import {
   listCollectionToolRoots,
   listCallerAwarePomTools,
@@ -169,7 +169,7 @@ function specsOfObjectSchema(
 }
 
 /** Read a single-element tool's input schema the same way. */
-function specsOfRefToolSchema(
+function specsOfElementToolSchema(
   schema: JsonSchema,
   targetField: TargetField,
   refFilter: (element: Element) => boolean
@@ -208,16 +208,16 @@ function specsOfCollectionTool(
 
 /**
  * Build the flat list of tool options offered to the model each step: every
- * Ref Tool, built in or registered (ADR-0023), and every registered POM tool.
+ * single-element tool, a Browser Tool or a Custom Tool (ADR-0023), and every registered POM tool.
  */
 export function buildToolOptions(): ToolOption[] {
-  const refTools: ExecutableTool[] = listRefTools().map(
+  const elementTools: ExecutableTool[] = listElementTools().map(
     ({ tool, targetField, loopInputSchema, filter, executeAs }) => ({
       name: tool.name,
       description: tool.description,
       execute: (input: unknown) => executeAs(input, "goalLoop"),
       requiredParams: [...(loopInputSchema.required ?? [])],
-      args: specsOfRefToolSchema(loopInputSchema, targetField, filter),
+      args: specsOfElementToolSchema(loopInputSchema, targetField, filter),
     })
   );
   const collectionRoots = listCollectionToolRoots();
@@ -242,7 +242,7 @@ export function buildToolOptions(): ToolOption[] {
     };
   });
 
-  return [...refTools, ...pomTools].map((tool) => ({
+  return [...elementTools, ...pomTools].map((tool) => ({
     key: tool.name,
     label: tool.description,
     tool,
@@ -292,7 +292,7 @@ export type ArgumentPlan =
   /** The values of a closed set do not make a choice the model can answer. */
   | { kind: "needs_value_choice"; parameter: string; optionCount: number };
 
-/** Every node of the capture a Ref Tool with this filter can take. */
+/** Every node of the capture a single-element tool with this filter can take. */
 function refOptions(
   filter: (element: Element) => boolean,
   capture: PageStateCapture

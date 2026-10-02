@@ -2,6 +2,15 @@
 
 React integration for Ayme. This first version supports React 19 in client-rendered Vite applications. Next.js and server rendering are not supported yet.
 
+## Install
+
+```sh
+npm install @ayme-dev/ayme @ayme-dev/react
+npm install -D @ayme-dev/unplugin-ayme @playwright/test@~1.62.1
+```
+
+Packages are not published yet; use supplied tarballs before release.
+
 ## Vite setup
 
 Use `@ayme-dev/unplugin-ayme/vite` alongside the React Vite plugin:
@@ -16,7 +25,7 @@ export default defineConfig({
 });
 ```
 
-Keep decorated Page Object Models in separate `.ts` files. Enable `experimentalDecorators` in your TypeScript configuration. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [CounterPage](../../apps/example-react/playwright/pom/CounterPage.ts).
+Keep decorated Page Object Models in separate `.ts` files. Enable `experimentalDecorators` in your TypeScript configuration. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [CounterPage](https://github.com/ayme-labs/ayme/blob/main/apps/example-react/playwright/pom/CounterPage.ts).
 
 Publication is off unless the provider enables it with `webMCP={{ enabled: true }}`. `webMCP.toolNamePrefix` prefixes every published tool name; see the [main library README](../ayme/README.md#webmcp-publication). Local Page Object calls work without a WebMCP driver, including when publication is off.
 

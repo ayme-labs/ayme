@@ -30,7 +30,7 @@ export type ToolSummary = {
 
 /**
  * Every registered Page Object tool once by name, and every other live tool,
- * such as Ref Tools and the agent's own tools, as the run card runs them,
+ * such as Browser and Custom Tools and the agent's own tools, as the run card runs them,
  * whether or not WebMCP publishes them.
  */
 export function listRunnableTools(

@@ -10,7 +10,7 @@ import {
   isFillableElement,
   isSelectElement,
 } from "./browserTools";
-import type { CustomTool } from "./refTools";
+import type { CustomTool } from "./elementTools";
 import { toolFailure } from "./toolFailure.testSupport";
 
 type PublishedTool = {
@@ -57,7 +57,7 @@ describe("Custom Tools in Chromium", () => {
     document.body.innerHTML = "";
   });
 
-  /** Start a runtime session with the given Ref Tools and publish its tools. */
+  /** Start a runtime session with the given Custom Tools and publish its tools. */
   async function publish(customTools?: CustomTool[]) {
     const runtime = createRuntimeSession({
       pageFactory: () => page,
@@ -92,10 +92,10 @@ describe("Custom Tools in Chromium", () => {
     return context.structure;
   }
 
-  /** A Ref Tool that records the targets it received. */
-  function recordingRefTool(overrides: Partial<CustomTool> = {}) {
+  /** A Custom Tool that records the targets it received. */
+  function recordingCustomTool(overrides: Partial<CustomTool> = {}) {
     const targets: { ref: string; element: Element }[] = [];
-    const refTool: CustomTool = {
+    const customTool: CustomTool = {
       name: "highlight_element",
       description: "Highlight one element on the page.",
       execute: async (target) => {
@@ -104,16 +104,16 @@ describe("Custom Tools in Chromium", () => {
       },
       ...overrides,
     };
-    return { refTool, targets };
+    return { customTool, targets };
   }
 
   // --- Registration ---
 
-  it("publishes a registered Ref Tool with its name, description and ref input", async () => {
+  it("publishes a registered Custom Tool with its name, description and ref input", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool } = recordingRefTool();
+    const { customTool } = recordingCustomTool();
 
-    const published = await publish([refTool]);
+    const published = await publish([customTool]);
 
     const { tool } = registrationOf(published, "highlight_element");
     expect(tool.description).toBe("Highlight one element on the page.");
@@ -125,11 +125,11 @@ describe("Custom Tools in Chromium", () => {
     });
   });
 
-  it("rejects a Ref Tool whose name collides with another published tool", async () => {
+  it("rejects a Custom Tool whose name collides with another published tool", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool } = recordingRefTool({ name: "click" });
+    const { customTool } = recordingCustomTool({ name: "click" });
 
-    await expect(publish([refTool])).rejects.toThrow(
+    await expect(publish([customTool])).rejects.toThrow(
       'Cannot publish the tool "click": another published tool already uses that name.'
     );
   });
@@ -138,8 +138,8 @@ describe("Custom Tools in Chromium", () => {
 
   it("passes the current Structural Ref and its element to execute", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool, targets } = recordingRefTool();
-    const published = await publish([refTool]);
+    const { customTool, targets } = recordingCustomTool();
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
 
     await registrationOf(published, "highlight_element").tool.execute({
@@ -153,8 +153,8 @@ describe("Custom Tools in Chromium", () => {
 
   it("retargets a historical ref to the element that replaced it", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool, targets } = recordingRefTool();
-    const published = await publish([refTool]);
+    const { customTool, targets } = recordingCustomTool();
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
 
     const replacement = document.createElement("button");
@@ -172,10 +172,10 @@ describe("Custom Tools in Chromium", () => {
 
   it("returns the action result shape with a JSON value under result", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool } = recordingRefTool({
+    const { customTool } = recordingCustomTool({
       execute: async () => ({ highlighted: true }),
     });
-    const published = await publish([refTool]);
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
 
     const result = (await registrationOf(
@@ -190,15 +190,15 @@ describe("Custom Tools in Chromium", () => {
     });
   });
 
-  it("reports what the Ref Tool changed on the page", async () => {
+  it("reports what the Custom Tool changed on the page", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool } = recordingRefTool({
+    const { customTool } = recordingCustomTool({
       execute: async ({ element }) => {
         element.insertAdjacentHTML("afterend", "<p>Highlighted</p>");
         return null;
       },
     });
-    const published = await publish([refTool]);
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
 
     const result = (await registrationOf(
@@ -212,8 +212,10 @@ describe("Custom Tools in Chromium", () => {
 
   it("does not enforce the filter when the calling agent calls the tool", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool, targets } = recordingRefTool({ filter: () => false });
-    const published = await publish([refTool]);
+    const { customTool, targets } = recordingCustomTool({
+      filter: () => false,
+    });
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
 
     await registrationOf(published, "highlight_element").tool.execute({
@@ -227,8 +229,8 @@ describe("Custom Tools in Chromium", () => {
 
   it("fails an unknown ref without calling execute", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool, targets } = recordingRefTool();
-    const published = await publish([refTool]);
+    const { customTool, targets } = recordingCustomTool();
+    const published = await publish([customTool]);
     await structure(published);
 
     await expect(
@@ -246,8 +248,8 @@ describe("Custom Tools in Chromium", () => {
   it("fails a removed ref without calling execute", async () => {
     document.body.innerHTML =
       '<button id="save">Save changes</button><p>Keep me</p>';
-    const { refTool, targets } = recordingRefTool();
-    const published = await publish([refTool]);
+    const { customTool, targets } = recordingCustomTool();
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
     document.querySelector("#save")!.remove();
 
@@ -265,10 +267,10 @@ describe("Custom Tools in Chromium", () => {
 
   // --- Session lifetime ---
 
-  it("unregisters a Ref Tool when the runtime session ends", async () => {
+  it("unregisters a Custom Tool when the runtime session ends", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool } = recordingRefTool();
-    const published = await publish([refTool]);
+    const { customTool } = recordingCustomTool();
+    const published = await publish([customTool]);
     const registration = registrationOf(published, "highlight_element");
     expect(registration.signal.aborted).toBe(false);
 

@@ -6,12 +6,12 @@ import type { PageStatePeek } from "@ayme-dev/ayme/internal";
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "./testing";
 
-// Component tests: a node's Ref tools while WebMCP publishes nothing. The
-// runtime is replaced by a peek of the host page, live Ref tools that are
+// Component tests: a node's single-element tools while WebMCP publishes nothing. The
+// runtime is replaced by a peek of the host page, live single-element tools that are
 // not published, and the refs each can take, so the evidence covers the
 // panel and its adapter.
 vi.mock("@ayme-dev/ayme/internal", () => {
-  const refTool = (name: string) => ({
+  const customTool = (name: string) => ({
     name,
     description: `${name} by ref.`,
     inputSchema: { type: "object" },
@@ -26,14 +26,16 @@ vi.mock("@ayme-dev/ayme/internal", () => {
           elementsByRef: new Map(),
         }) as unknown as PageStatePeek
     ),
-    listRefToolTargets: vi.fn(
+    listElementToolTargets: vi.fn(
       async () =>
         new Map([
           ["click", ["e2", "e3"]],
           ["fill", ["e2"]],
         ])
     ),
-    listLiveTools: vi.fn().mockReturnValue([refTool("click"), refTool("fill")]),
+    listLiveTools: vi
+      .fn()
+      .mockReturnValue([customTool("click"), customTool("fill")]),
     getPublicationStatus: vi.fn().mockReturnValue({ state: "disabled" }),
     subscribeToPublishedTools: vi.fn(() => () => {}),
     getPomDefinitionText: vi.fn(() => ""),
@@ -67,7 +69,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-it("offers a node its live Ref tools while nothing is published", async () => {
+it("offers a node its live single-element tools while nothing is published", async () => {
   await inspector.navigator.showLens("Structure");
 
   await inspector.structure.pick("e2");
@@ -76,7 +78,7 @@ it("offers a node its live Ref tools while nothing is published", async () => {
   expect(await inspector.detail.node.tool("click").count()).toBe(1);
 });
 
-it("offers a node only the live Ref tools that can take its ref", async () => {
+it("offers a node only the live single-element tools that can take its ref", async () => {
   await inspector.navigator.showLens("Structure");
 
   await inspector.structure.pick("e3");

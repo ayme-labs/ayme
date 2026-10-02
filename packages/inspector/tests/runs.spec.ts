@@ -56,7 +56,7 @@ test("a tool that fails on the page shows its error", async ({
   expect(firstLine(await run.error.textContent())).toBe(firstLine(agentError));
 });
 
-test("an app-registered Ref Tool runs from the panel and shows in Runs", async ({
+test("a Custom Tool runs from the panel and shows in Runs", async ({
   page,
   inspector,
   listPage,
@@ -182,10 +182,7 @@ test.describe("with WebMCP publication off", () => {
       .toBe("Succeeded");
   });
 
-  test("an app-registered Ref Tool runs from the panel", async ({
-    inspector,
-    listPage,
-  }) => {
+  test("a Custom Tool runs from the panel", async ({ inspector, listPage }) => {
     // The Add item button's ref, from snapshot run in the panel:
     // with publication off, no agent can call it.
     const getPageContext = await inspector.tool("snapshot");

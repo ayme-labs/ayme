@@ -8,7 +8,7 @@ import {
   PLAYWRIGHT_MCP_SCHEMAS,
   shapeOf,
 } from "./playwrightMcp.testSupport";
-import { listRefToolTargets } from "./publishedTools";
+import { listElementToolTargets } from "./publishedTools";
 import { createRuntimeSession } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
 
@@ -255,7 +255,7 @@ describe("Browser Tools in Chromium", () => {
   });
 
   it("offers each single-element tool to the Goal Loop only for the elements its filter keeps", async () => {
-    const targets = await listRefToolTargets();
+    const targets = await listElementToolTargets();
     const refs = Object.fromEntries(
       await Promise.all(
         ["Name", "Email", "Agree", "Size", "Save"].map(

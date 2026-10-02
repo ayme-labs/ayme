@@ -17,7 +17,7 @@ const node = (ref: string, role: string) => ({
   children: [],
 });
 
-it("lets a Ref Tool use exactly the refs it can take", () => {
+it("lets a single-element tool use exactly the refs it can take", () => {
   const fill = refFilterOf(targets, "fill")!;
 
   expect(fill(node("e2", "textbox"))).toBe(true);
@@ -28,7 +28,7 @@ it("lets a tool the runtime lists no targets for use every node", () => {
   expect(refFilterOf(targets, "ListPage.addItem")).toBeUndefined();
 });
 
-it("asks for what each built-in Ref tool acts on", () => {
+it("asks for what each single-element Browser Tool acts on", () => {
   expect(pickPromptOf("click")).toBe("Click an element to click");
   expect(pickPromptOf("fill")).toBe("Click a text field to fill");
 });

@@ -7,7 +7,7 @@ import {
 } from "./goalLoop";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
 import { reportPublicationStatus } from "./publishedTools";
-import { configureCustomTools, type CustomTool } from "./refTools";
+import { configureCustomTools, type CustomTool } from "./elementTools";
 import {
   constructPageObject,
   createAymeRuntime,

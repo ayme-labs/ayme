@@ -6,18 +6,18 @@ import {
   type AriaRef,
   type PageStateCapture,
 } from "./pageState";
-import { listPublishedBrowserTools, listRefTools } from "./browserTools";
+import { listPublishedBrowserTools, listElementTools } from "./browserTools";
 import {
   acceptedRefNodes,
   listCustomTools,
-  type PublishedRefTool,
-} from "./refTools";
+  type PublishedElementTool,
+} from "./elementTools";
 import { listRegisteredPomTools, subscribeToRegisteredPoms } from "./registry";
 import { RuntimeStateError } from "./errors";
 import type { AymeWebMcpPublicationStatus } from "./runtime";
 
 export type PublishedTool =
-  RegisteredPomTool | typeof getPageContextTool | PublishedRefTool;
+  RegisteredPomTool | typeof getPageContextTool | PublishedElementTool;
 
 /**
  * Where a published tool comes from: a Page Object (Page Object Tool), Ayme's
@@ -116,7 +116,7 @@ let liveTools: { key: string; tools: readonly PublishedToolInfo[] } = {
  * Every live tool, published or not, in publication order: each tool
  * `runTool` can run now. The same array comes back
  * until the set changes (for `useSyncExternalStore`); subscribe with
- * `subscribeToPublishedTools`. Empty when a Ref Tool's name clash leaves the
+ * `subscribeToPublishedTools`. Empty when a tool name clash leaves the
  * set unresolvable; `runTool` then rejects with that error, and an active
  * publication reports it as its failed status.
  */
@@ -146,13 +146,13 @@ export function getPublicationStatus(): AymeWebMcpPublicationStatus {
  * Loop offers for that tool's ref. Pass the peek the Inspector shows,
  * so the refs match its structure.
  */
-export async function listRefToolTargets(
+export async function listElementToolTargets(
   capture?: PageStateCapture
 ): Promise<Map<string, AriaRef[]>> {
-  const refTools = listRefTools();
+  const elementTools = listElementTools();
   const current = capture ?? (await peekPageStateForDocument(document));
   return new Map(
-    refTools.map(({ tool, filter }) => [
+    elementTools.map(({ tool, filter }) => [
       tool.name,
       acceptedRefNodes(filter, current).map((node) => node.ref),
     ])
@@ -162,7 +162,7 @@ export async function listRefToolTargets(
 /**
  * Call `subscriber` whenever the published or live tools or the status may
  * have changed: a publication pass, a status change (a session starting or
- * stopping sets its Ref Tools and Goal Loop), or a Page Object change.
+ * stopping sets its Custom Tools and Goal Loop), or a Page Object change.
  */
 export function subscribeToPublishedTools(subscriber: () => void) {
   subscribers.add(subscriber);

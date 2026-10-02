@@ -51,7 +51,7 @@ describe("Handover changes in Chromium", () => {
 
   /**
    * An inbox whose Page Object opens and closes a dialog and archives an item,
-   * with a Refresh button the agent clicks through a Ref Tool.
+   * with a Refresh button the agent clicks through the click Browser Tool.
    */
   async function startInbox(goalLoop: GoalLoopDecisionFunction) {
     document.body.innerHTML = `
