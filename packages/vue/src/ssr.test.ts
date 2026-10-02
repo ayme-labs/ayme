@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { createSSRApp, defineComponent, h } from "vue";
 import { renderToString } from "@vue/server-renderer";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
 import {
   AymeProvider,
@@ -12,8 +12,6 @@ import {
 
 type PageFactory = NonNullable<UseAymeOptions["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
-
-afterEach(() => vi.unstubAllGlobals());
 
 describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",
