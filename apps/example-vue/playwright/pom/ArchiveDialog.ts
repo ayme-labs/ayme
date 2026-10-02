@@ -1,7 +1,7 @@
-import { WebMCP } from "@ayme-dev/ayme";
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
-@WebMCP
+@ayme
 export class ArchiveDialog {
   readonly root: Locator;
   readonly confirmArchiveButton: Locator;

@@ -1,4 +1,4 @@
-import { WebMCP } from "@ayme-dev/ayme";
+import { ayme } from "@ayme-dev/ayme";
 
 type ArchiveOptions = {
   reason: "obsolete" | "duplicate";
@@ -8,9 +8,9 @@ type ArchiveOptions = {
   };
 };
 
-@WebMCP
+@ayme
 export class ObjectInputPom {
-  @WebMCP.tool({
+  @ayme.action({
     description: "Archive with structured options.",
   })
   async archive(options: ArchiveOptions) {

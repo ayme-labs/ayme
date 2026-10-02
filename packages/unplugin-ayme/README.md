@@ -28,16 +28,16 @@ Import the annotated `.ts` files from the application so Vite transforms them.
 
 ## Page Object Model subclasses
 
-A class that extends a `@WebMCP` class is a Page Object Model too, even in a file
+A class that extends an `@ayme` class is a Page Object Model too, even in a file
 without the decorator. The compiler checks such a file when it contains
 `extends` and imports, directly or through re-exports, a file containing
-`@WebMCP`. Imports are resolved with the tsconfig's module resolution, and
+`@ayme`. Imports are resolved with the tsconfig's module resolution, and
 external packages are skipped: a subclass whose base is reached only through an
 import that resolution cannot follow is not recognised.
 
 If your bundler rule filters files by content before they reach Ayme, such as
 a Turbopack rule with a `content` condition, it must not exclude files that
-extend a Page Object Model. Match `/@WebMCP|extends/` rather than `/@WebMCP/`.
+extend a Page Object Model. Match `/@ayme|extends/` rather than `/@ayme/`.
 
 ## Playwright settings
 

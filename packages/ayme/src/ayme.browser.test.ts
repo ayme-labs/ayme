@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import ayme, { RefResolutionError } from "./index";
+import { ayme } from "./ayme";
+import { RefResolutionError } from "./index";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage as createPlaywrightLitePage } from "@ayme-dev/playwright-lite";
 import { createPage } from "./browserPage";
 import { createAymeRuntime } from "./registry";
 
-describe("the public Ayme page state facade in Chromium", () => {
+describe("the Ayme page state helper in Chromium", () => {
   it("resolves live elements and retargets historical refs through replacements", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const originalState = await ayme.getPageState();

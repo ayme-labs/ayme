@@ -19,7 +19,7 @@ export type PublishedTool =
   RegisteredPomTool | typeof getPageContextTool | PublishedRefTool;
 
 /**
- * Where a published tool comes from: a Page Object (Generated WebMCP Tool), a
+ * Where a published tool comes from: a Page Object (Page Object Tool), a
  * Ref Tool, or the agent's own tools (`get_page_context`, `pursue_goal`).
  */
 export type PublishedToolGroup = "pageObject" | "ref" | "agent";

@@ -125,7 +125,7 @@ describe("Change Record baseline in Chromium", () => {
     expect(result.changes).toContain("Background toast");
   });
 
-  it("reports a change made after get_page_context in a Generated WebMCP Tool's Change Record", async () => {
+  it("reports a change made after get_page_context in a Page Object Tool's Change Record", async () => {
     await startWithNoopPom();
 
     await readStructure();

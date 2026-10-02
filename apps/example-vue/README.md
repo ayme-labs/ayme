@@ -4,7 +4,7 @@ This browser playground combines a functional list app with an Ayme inspector so
 
 - The demo app lets you add items and archive them through a confirmation dialog.
 - `ListPage` is a normal TypeScript class using `Page` and `Locator` types from Playwright. Vite bundles that same class for WebMCP and constructs it with the DOM-backed browser implementation.
-- `@WebMCP` and `@WebMCP.tool()` choose the production WebMCP surface. Tool descriptions come from the decorator.
+- `@ayme` and `@ayme.action` choose the Page Object Tools. Tool descriptions come from the decorator.
 - Registered page tools use their fully qualified POM method name, such as `ListPage.addItem`. A collection component action is registered once, at its collection path, such as `ListPage.items.archive`.
 - A collection component action receives a `ref` (the Structural Ref of the instance's Page Object Root, as labelled in the page state) followed by an `args` object derived from its TypeScript method parameters: `ListPage.items.archive({ ref: "e5", args: {} })`.
 - The bundler-neutral POM compiler reads the nearest `tsconfig.json` and derives each decorated method's input schema and each public `Locator` member as POM metadata. The Vite plugin is a thin adapter that places this metadata in the browser bundle. It derives nested, JSON-shaped object inputs too; the decorator does not duplicate parameter types or schemas.
@@ -51,7 +51,7 @@ pnpm run typecheck
 pnpm run test:e2e
 ```
 
-The browser test injects a minimal `document.modelContext`, verifies the two published tools and their compiler-derived schemas, exercises direct list interaction, then invokes the published collection WebMCP tool and the same tool through the debug console against the real DOM-backed runtime.
+The browser test injects a minimal `document.modelContext`, verifies the two published tools and their compiler-derived schemas, exercises direct list interaction, then invokes the published collection Page Object Tool and the same tool through the debug console against the real DOM-backed runtime.
 
 ## Live goal lane
 

@@ -1,8 +1,8 @@
-import { WebMCP } from "@ayme-dev/ayme";
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 import type { ArchiveDialog } from "./ArchiveDialog";
 
-@WebMCP
+@ayme
 export class ListItem {
   readonly root: Locator;
   readonly archiveButton: Locator;
@@ -19,7 +19,7 @@ export class ListItem {
     this.nameInput = root.getByRole("textbox", { name: "Item name" });
   }
 
-  @WebMCP.tool({
+  @ayme.action({
     description: "Archive this list item.",
   })
   async archive() {
@@ -27,7 +27,7 @@ export class ListItem {
     await this.archiveDialog.confirm();
   }
 
-  @WebMCP.tool({
+  @ayme.action({
     description: "Rename this list item.",
   })
   async rename(text: string) {

@@ -1,6 +1,6 @@
 # @ayme-dev/ayme
 
-Expose selected Page Object Actions as WebMCP tools. Ordinary TypeScript POMs
+Expose selected Page Object Actions as Page Object Tools. Ordinary TypeScript POMs
 remain the source of the behavior; no Ayme base class is required.
 
 ## Install
@@ -21,10 +21,9 @@ Internal adapter packages are bundled; consumers do not install them separately.
 
 ## Entries
 
-- `@ayme-dev/ayme` is what a consumer uses: the `@WebMCP` decorators, the
-  runtime session (`createRuntimeSession`, with `pursueGoal` for the Goal
-  Loop), `createPage`, the `ayme` page-state facade, `decisionEndpoint`, and
-  their types.
+- `@ayme-dev/ayme` is what a consumer uses: the `@ayme` and `@ayme.action`
+  decorators, the runtime session (`createRuntimeSession`, with `pursueGoal`
+  for the Goal Loop), `createPage`, `decisionEndpoint`, and their types.
 - `@ayme-dev/ayme/server` is the Decision Endpoint handler,
   `createDecisionEndpoint`, for your backend.
 - `@ayme-dev/ayme/internal` serves ayme's own packages only: the framework
@@ -41,23 +40,29 @@ Internal adapter packages are bundled; consumers do not install them separately.
 
 ## Expose an action
 
-Keep the existing POM behavior and annotate the class and selected methods:
+Keep the existing POM behavior. Mark the class with `@ayme` and each action to
+expose with `@ayme.action`; each becomes a Page Object Tool:
 
 ```ts
-import { WebMCP } from "@ayme-dev/ayme";
+import { ayme } from "@ayme-dev/ayme";
 import type { Page } from "@playwright/test";
 
-@WebMCP
+@ayme
 export class GreetingPage {
   constructor(private readonly page: Page) {}
 
-  @WebMCP.tool({ description: "Greet the visitor." })
+  @ayme.action({ description: "Greet the visitor." })
   async greet(name: string) {
     await this.page.getByRole("textbox", { name: "Name" }).fill(name);
     await this.page.getByRole("button", { name: "Greet", exact: true }).click();
   }
 }
 ```
+
+Both decorators also take the other form: `@ayme({ description })` describes
+the Page Object Model, and a bare `@ayme.action` publishes with a generated
+description. `description` is the only option. The build fails on a class or
+method still marked with the replaced `@WebMCP` or `@WebMCP.tool`.
 
 Put annotated POMs in `.ts` files imported by the application. Enable
 `compilerOptions.experimentalDecorators` in their TypeScript configuration.
@@ -68,14 +73,9 @@ Type-only Playwright imports are appropriate.
 
 ## Page state
 
-After runtime setup and POM registration:
-
-```ts
-import { ayme } from "@ayme-dev/ayme";
-console.log((await ayme.getPageState()).text);
-```
-
-Page state works without WebMCP publication. Tool invocation through a browser
+After runtime setup and POM registration, the runtime captures Structural Page
+State for agents and for the Goal Loop. Page state works without WebMCP
+publication. Tool invocation through a browser
 client also requires the driver and publication setup.
 
 Pass `ignore` on the Vue composable or React provider to keep parts of the DOM
@@ -239,9 +239,8 @@ an MCP tool-failure result:
   `Call log:`.
 - The result has no `structuredContent`; no standard defines a structured error
   yet.
-- Only publication converts errors. `ayme.click` and `ayme.fill` still reject
-  with the thrown error, and the Goal Loop still records a failed step's message
-  in its history.
+- Only publication converts errors. The Goal Loop still records a failed
+  step's message in its history.
 - The WebMCP local relay's pass-through of `isError` to the MCP client has not
   been verified.
 

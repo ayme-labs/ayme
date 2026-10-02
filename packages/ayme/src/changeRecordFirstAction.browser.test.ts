@@ -28,7 +28,7 @@ describe("Change Record of the first action in Chromium", () => {
     document.body.innerHTML = "";
   });
 
-  it("reports what a Generated WebMCP Tool changed when the caller never read the page", async () => {
+  it("reports what a Page Object Tool changed when the caller never read the page", async () => {
     document.body.innerHTML = "<main><p>Nothing yet</p></main>";
     const page = createPage();
 

@@ -61,7 +61,7 @@ export function derivePomManifestsFromProgram(
     )
       continue;
     if (!declaration.name)
-      throw new Error("A WebMCP page object needs a class name.");
+      throw new Error("A Page Object Model needs a class name.");
 
     const className = declaration.name.text;
     const members = pomMembers(checker, declaration, components);
@@ -222,7 +222,8 @@ function toolsForClass(
   components: Map<ts.ClassDeclaration, PomComponentManifest>
 ): ToolManifest[] {
   const className = declaration.name?.text;
-  if (!className) throw new Error("A WebMCP tool class needs a class name.");
+  if (!className)
+    throw new Error("A class with Page Object Actions needs a class name.");
 
   return classMembers(checker, declaration).flatMap((member) => {
     if (!isPublicInstanceMember(member) || !ts.isMethodDeclaration(member))
@@ -231,7 +232,7 @@ function toolsForClass(
     if (!description) return [];
     if (!member.name || !ts.isIdentifier(member.name)) {
       throw new Error(
-        `WebMCP tool in ${className} needs an identifier method name.`
+        `Page Object Action in ${className} needs an identifier method name.`
       );
     }
 
@@ -341,7 +342,7 @@ function componentDeclaration(
   );
   if (declarations.length > 1) {
     throw new Error(
-      `WebMCP component member "${memberName}" is ambiguous: ${declarations
+      `Page Object Child "${memberName}" is ambiguous: ${declarations
         .map((declaration) => declaration.name?.text ?? "<anonymous>")
         .join(", ")}.`
     );
@@ -437,13 +438,17 @@ function isLocatorType(type: ts.Type) {
   return symbol?.getName() === "Locator";
 }
 
-/** A class is a Page Object Model when it, or an ancestor class, carries `@WebMCP`. */
+/**
+ * A class is a Page Object Model when it, or an ancestor class, carries
+ * `@ayme`. Throws when one of them is still marked with a replaced decorator.
+ */
 function isPomClass(
   checker: ts.TypeChecker,
   declaration: ts.ClassDeclaration
 ): boolean {
+  rejectReplacedDecorators(declaration);
   return (
-    hasWebMcpClassDecorator(declaration) ||
+    findClassMarker(declaration) !== undefined ||
     baseClassDeclarations(checker, declaration).some((base) =>
       isPomClass(checker, base)
     )
@@ -483,39 +488,83 @@ function declaredClassType(
   return symbol ? checker.getDeclaredTypeOfSymbol(symbol) : undefined;
 }
 
-function hasWebMcpClassDecorator(declaration: ts.ClassDeclaration) {
-  return (ts.getDecorators(declaration) ?? []).some((decorator) => {
-    const expression = decorator.expression;
-    return ts.isIdentifier(expression)
-      ? expression.text === "WebMCP"
-      : ts.isCallExpression(expression) &&
-          ts.isIdentifier(expression.expression) &&
-          expression.expression.text === "WebMCP";
-  });
+/**
+ * The expression a decorator names: `ayme` for both `@ayme` and
+ * `@ayme({ ... })`, `ayme.action` for both `@ayme.action` and
+ * `@ayme.action({ ... })`.
+ */
+function decoratorTarget(decorator: ts.Decorator) {
+  const expression = decorator.expression;
+  return ts.isCallExpression(expression) ? expression.expression : expression;
+}
+
+function isMarker(decorator: ts.Decorator, name: string) {
+  const target = decoratorTarget(decorator);
+  return ts.isIdentifier(target) && target.text === name;
+}
+
+function isMemberMarker(decorator: ts.Decorator, name: string, member: string) {
+  const target = decoratorTarget(decorator);
+  return (
+    ts.isPropertyAccessExpression(target) &&
+    ts.isIdentifier(target.expression) &&
+    target.expression.text === name &&
+    target.name.text === member
+  );
+}
+
+function findClassMarker(declaration: ts.ClassDeclaration) {
+  return (ts.getDecorators(declaration) ?? []).find((decorator) =>
+    isMarker(decorator, "ayme")
+  );
+}
+
+/** The literal `description` option of a decorator, if it has one. */
+function decoratorDescription(decorator: ts.Decorator) {
+  if (!ts.isCallExpression(decorator.expression)) return undefined;
+  const options = decorator.expression.arguments[0];
+  if (!options || !ts.isObjectLiteralExpression(options)) return undefined;
+  for (const property of options.properties) {
+    if (
+      ts.isPropertyAssignment(property) &&
+      ts.isIdentifier(property.name) &&
+      property.name.text === "description" &&
+      ts.isStringLiteral(property.initializer)
+    )
+      return property.initializer.text;
+  }
+  return undefined;
+}
+
+/**
+ * `@WebMCP` and `@WebMCP.tool` were replaced without aliases. A class still
+ * marked with them would otherwise build and register nothing.
+ */
+function rejectReplacedDecorators(declaration: ts.ClassDeclaration) {
+  const className = declaration.name?.text ?? "An anonymous class";
+  if ((ts.getDecorators(declaration) ?? []).some((d) => isMarker(d, "WebMCP")))
+    throw new Error(
+      `${className} is marked with @WebMCP, which was replaced by @ayme. Import ayme from @ayme-dev/ayme.`
+    );
+  for (const member of declaration.members) {
+    if (
+      !ts.canHaveDecorators(member) ||
+      !(ts.getDecorators(member) ?? []).some((d) =>
+        isMemberMarker(d, "WebMCP", "tool")
+      )
+    )
+      continue;
+    const memberName = member.name?.getText() ?? "a member";
+    throw new Error(
+      `${className}.${memberName} is marked with @WebMCP.tool, which was replaced by @ayme.action.`
+    );
+  }
 }
 
 function classDescription(declaration: ts.ClassDeclaration) {
-  for (const decorator of ts.getDecorators(declaration) ?? []) {
-    if (!ts.isCallExpression(decorator.expression)) continue;
-    if (
-      !ts.isIdentifier(decorator.expression.expression) ||
-      decorator.expression.expression.text !== "WebMCP"
-    ) {
-      continue;
-    }
-    const options = decorator.expression.arguments[0];
-    if (!options || !ts.isObjectLiteralExpression(options)) return {};
-    const description = options.properties.find(
-      (property) =>
-        ts.isPropertyAssignment(property) &&
-        ts.isIdentifier(property.name) &&
-        property.name.text === "description" &&
-        ts.isStringLiteral(property.initializer)
-    );
-    if (!description || !ts.isPropertyAssignment(description)) return {};
-    return { description: (description.initializer as ts.StringLiteral).text };
-  }
-  return {};
+  const marker = findClassMarker(declaration);
+  const description = marker && decoratorDescription(marker);
+  return description === undefined ? {} : { description };
 }
 
 type ToolDescription = { authored?: string };
@@ -523,36 +572,12 @@ type ToolDescription = { authored?: string };
 function toolDescription(
   declaration: ts.MethodDeclaration
 ): ToolDescription | undefined {
-  for (const decorator of ts.getDecorators(declaration) ?? []) {
-    if (!ts.isCallExpression(decorator.expression)) continue;
-    const callee = decorator.expression.expression;
-    if (
-      !ts.isPropertyAccessExpression(callee) ||
-      !ts.isIdentifier(callee.expression) ||
-      callee.expression.text !== "WebMCP" ||
-      callee.name.text !== "tool"
-    ) {
-      continue;
-    }
-
-    const options = decorator.expression.arguments[0];
-    if (!options || !ts.isObjectLiteralExpression(options)) return {};
-    const description = options.properties.find(
-      (property) =>
-        ts.isPropertyAssignment(property) &&
-        ts.isIdentifier(property.name) &&
-        property.name.text === "description"
-    );
-    if (
-      !description ||
-      !ts.isPropertyAssignment(description) ||
-      !ts.isStringLiteral(description.initializer)
-    ) {
-      return {};
-    }
-    return { authored: description.initializer.text };
-  }
-  return undefined;
+  const marker = (ts.getDecorators(declaration) ?? []).find((decorator) =>
+    isMemberMarker(decorator, "ayme", "action")
+  );
+  if (!marker) return undefined;
+  const authored = decoratorDescription(marker);
+  return authored === undefined ? {} : { authored };
 }
 
 function toolDescriptionText(
@@ -571,7 +596,7 @@ function toolParameter(
 ): ToolParameter {
   if (!ts.isIdentifier(parameter.name)) {
     throw new Error(
-      `WebMCP tool ${className}.${methodName} needs identifier parameter names.`
+      `Page Object Action ${className}.${methodName} needs identifier parameter names.`
     );
   }
 
@@ -733,7 +758,7 @@ function unsupportedInputType(
   parameterName: string
 ) {
   return new Error(
-    `Unsupported WebMCP input type for ${className}.${methodName}(${parameterName}): ${checker.typeToString(type)}.`
+    `Unsupported Page Object Tool input type for ${className}.${methodName}(${parameterName}): ${checker.typeToString(type)}.`
   );
 }
 

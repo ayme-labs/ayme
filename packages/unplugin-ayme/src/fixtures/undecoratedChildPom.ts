@@ -1,6 +1,6 @@
 import type { Locator } from "@playwright/test";
 
-import { WebMCP } from "./webmcp";
+import { ayme } from "@ayme-dev/ayme";
 
 class MenuBase {
   readonly item!: Locator;
@@ -10,7 +10,7 @@ class UserMenu extends MenuBase {
   readonly signOutItem!: Locator;
 }
 
-@WebMCP
+@ayme
 export class PageX {
   readonly heading!: Locator;
   readonly userMenu!: UserMenu;

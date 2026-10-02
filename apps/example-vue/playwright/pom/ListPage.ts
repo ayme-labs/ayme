@@ -1,8 +1,8 @@
-import { WebMCP } from "@ayme-dev/ayme";
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 import { ArchiveDialog, ListItem } from "./components";
 
-@WebMCP
+@ayme
 export class ListPage {
   readonly newItemInput: Locator;
   readonly addItemButton: Locator;
@@ -25,7 +25,7 @@ export class ListPage {
     return rows.map((row) => new ListItem(row, this.archiveDialog));
   }
 
-  @WebMCP.tool({
+  @ayme.action({
     description: "Add a new item to the list.",
   })
   async addItem(text: string) {

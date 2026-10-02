@@ -1,17 +1,17 @@
 import type { Locator } from "@playwright/test";
 
-import { WebMCP } from "./webmcp";
+import { ayme } from "@ayme-dev/ayme";
 
 class BasePom {
   readonly inheritedButton!: Locator;
 
-  @WebMCP.tool({ description: "Use the inherited tool." })
+  @ayme.action({ description: "Use the inherited tool." })
   inheritedTool(value: string) {
     return value;
   }
 }
 
-@WebMCP
+@ayme
 export class InheritedPom extends BasePom {
   readonly ownButton!: Locator;
 }

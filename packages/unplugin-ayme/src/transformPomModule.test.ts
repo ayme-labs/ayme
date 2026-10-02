@@ -44,6 +44,27 @@ it("registers an undecorated subclass of a decorated base", () => {
   expect(code).toContain("registerCompiledPom(UserMenu, {");
 });
 
+it("fails the build for a module still marked with @WebMCP", () => {
+  const fixturePath = fileURLToPath(
+    new URL("./fixtures/legacyClassPom.ts", import.meta.url)
+  );
+  const transform = () =>
+    createPomTransform()(readFileSync(fixturePath, "utf8"), fixturePath);
+
+  expect(transform).toThrow(
+    "LegacyClassPom is marked with @WebMCP, which was replaced by @ayme."
+  );
+});
+
+it("builds no program for a module that only imports the main library", () => {
+  createPomProgram.mockClear();
+  const source =
+    'import { createPage } from "@ayme-dev/ayme";\nexport const page = createPage;\n';
+
+  expect(createPomTransform()(source, "/project/src/page.ts")).toBeNull();
+  expect(createPomProgram).not.toHaveBeenCalled();
+});
+
 describe("a subclass in a module without the decorator", () => {
   const fixture = (name: string) => {
     const fixturePath = fileURLToPath(
@@ -54,7 +75,7 @@ describe("a subclass in a module without the decorator", () => {
 
   it("registers it when it imports a decorated base directly", () => {
     const { fixturePath, source } = fixture("userMenu");
-    expect(source).not.toContain("@WebMCP");
+    expect(source).not.toMatch(/@ayme\b(?!-)/);
     createPomProgram.mockClear();
 
     const result = createPomTransform()(source, fixturePath);
@@ -68,7 +89,7 @@ describe("a subclass in a module without the decorator", () => {
 
   it("registers it when it imports a decorated base through a barrel", () => {
     const { fixturePath, source } = fixture("barrelUserMenu");
-    expect(source).not.toContain("@WebMCP");
+    expect(source).not.toMatch(/@ayme\b(?!-)/);
 
     const result = createPomTransform()(source, fixturePath);
 

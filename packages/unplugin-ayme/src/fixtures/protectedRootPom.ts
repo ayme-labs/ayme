@@ -1,13 +1,13 @@
 import type { Locator } from "@playwright/test";
 
-import { WebMCP } from "./webmcp";
+import { ayme } from "@ayme-dev/ayme";
 
 class PageObjectBase {
   protected readonly root!: Locator;
   protected readonly internalButton!: Locator;
 }
 
-@WebMCP
+@ayme
 export class ProtectedRootPom extends PageObjectBase {
   readonly actionButton!: Locator;
 }

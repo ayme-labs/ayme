@@ -1,12 +1,12 @@
 import type { Locator } from "@playwright/test";
 
-import { WebMCP } from "./webmcp";
+import { ayme } from "@ayme-dev/ayme";
 
-@WebMCP
+@ayme
 class TopPom {
   readonly topButton!: Locator;
 
-  @WebMCP.tool({ description: "Use the top tool." })
+  @ayme.action({ description: "Use the top tool." })
   topTool() {}
 }
 
@@ -17,6 +17,6 @@ class MiddlePom extends TopPom {
 export class BottomPom extends MiddlePom {
   readonly bottomButton!: Locator;
 
-  @WebMCP.tool({ description: "Use the bottom tool." })
+  @ayme.action({ description: "Use the bottom tool." })
   bottomTool() {}
 }

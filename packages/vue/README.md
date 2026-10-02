@@ -26,7 +26,7 @@ export default defineConfig({
 });
 ```
 
-Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Use `@WebMCP` on the model and `@WebMCP.tool(...)` on exposed actions, as shown in [ListPage](../../apps/example-vue/playwright/pom/ListPage.ts).
+Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [ListPage](../../apps/example-vue/playwright/pom/ListPage.ts).
 
 Publication is disabled unless enabled by the Vite plugin. Local Page Object calls remain available without publication or a WebMCP driver.
 

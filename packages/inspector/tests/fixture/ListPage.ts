@@ -5,7 +5,7 @@ import { ListItem } from "./ListItem";
 /**
  * The fixture page's Page Object. The page registers it with the Ayme
  * runtime, which constructs it on playwright-lite and publishes `addItem` as
- * a Generated WebMCP Tool; the e2e tests construct the same class on
+ * a Page Object Tool; the e2e tests construct the same class on
  * Playwright to read the page.
  */
 export class ListPage {

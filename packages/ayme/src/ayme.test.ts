@@ -18,12 +18,12 @@ vi.mock("./registry", () => ({
   listRegisteredPoms,
 }));
 
-import ayme, { ayme as namedAyme } from "./index";
+import { ayme } from "./ayme";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 const ref = AriaRefSchema.parse;
 
-describe("the public Ayme page state facade", () => {
+describe("the Ayme page state helper", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "document",
@@ -35,10 +35,6 @@ describe("the public Ayme page state facade", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
-  });
-
-  it("exports the facade by name as well as by default", () => {
-    expect(namedAyme).toBe(ayme);
   });
 
   it("combines page state with named POM definitions", async () => {

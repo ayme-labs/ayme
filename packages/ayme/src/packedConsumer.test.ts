@@ -368,20 +368,31 @@ it(
       fs.writeFileSync(
         path.join(consumer, "consumer.ts"),
         `
-import { ayme, WebMCP } from '@ayme-dev/ayme';
+import { ayme } from '@ayme-dev/ayme';
 import { mountInspector } from '@ayme-dev/inspector';
-void [ayme, WebMCP, mountInspector];
+void [ayme, mountInspector];
+@ayme({ description: 'A described page.' })
+class DescribedPom {
+  @ayme.action
+  open() {}
+}
+@ayme
+class BarePom {
+  @ayme.action({ description: 'Close the page.' })
+  close() {}
+}
+void [DescribedPom, BarePom];
 ${
   version
     ? `
 import type { BrowserContext, Page, Locator } from '@playwright/test';
 import { createPageRegistration, type PageObjectConstructor } from '@ayme-dev/ayme/internal';
 import { usePageObject } from '@ayme-dev/vue';
-@WebMCP
+@ayme
 class Pom {
   readonly input: Locator;
   constructor(page: Page) { this.input = page.getByRole('textbox', { name: 'Name' }); }
-  @WebMCP.tool({ description: 'Fill and submit the input.' })
+  @ayme.action({ description: 'Fill and submit the input.' })
   async act(value: string) {
     await this.input.fill(value, { timeout: 10 });
     await this.input.press('Enter');
@@ -559,9 +570,9 @@ it(
       [
         'const main = await import("@ayme-dev/ayme");',
         'const internal = await import("@ayme-dev/ayme/internal");',
-        'if (typeof main.ayme?.getPageState !== "function") throw new Error("missing named Ayme facade");',
-        'if (main.default !== main.ayme) throw new Error("Ayme default differs from named export");',
-        'if (typeof main.WebMCP !== "function") throw new Error("missing WebMCP");',
+        'if (typeof main.ayme !== "function" || typeof main.ayme.action !== "function") throw new Error("missing the ayme decorators");',
+        'if ("WebMCP" in main) throw new Error("WebMCP must not be exported");',
+        'if ("default" in main || "getPageState" in main.ayme) throw new Error("the helper object must not be on the main entry");',
         'if (typeof main.createPage !== "function") throw new Error("missing createPage");',
         'if (typeof main.createRuntimeSession !== "function") throw new Error("missing createRuntimeSession");',
         'if ("createRuntimeSession" in internal) throw new Error("createRuntimeSession must not be on /internal");',

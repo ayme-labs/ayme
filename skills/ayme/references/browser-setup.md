@@ -1,6 +1,6 @@
 # Browser setup
 
-Ayme publishes Generated WebMCP Tools through `document.modelContext`. First
+Ayme publishes Page Object Tools through `document.modelContext`. First
 complete the package README's runtime setup and enable build-time publication.
 Choose one route below.
 

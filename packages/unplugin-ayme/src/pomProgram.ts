@@ -60,13 +60,22 @@ export function pomProgramDependencies(
 }
 
 /**
- * Whether a module's transitive local imports include one whose text carries
- * `@WebMCP`. It walks imports as `pomProgramDependencies` does, without adding
- * the project's root files. Without a tsconfig, imports resolve with
+ * Whether source text carries a Page Object decorator: `@ayme`, or the
+ * replaced `@WebMCP` so that the build can reject it. The `@ayme-dev/...`
+ * import specifiers do not count.
+ */
+export function carriesPomMarker(source: string) {
+  return /@(?:ayme|WebMCP)\b(?!-)/.test(source);
+}
+
+/**
+ * Whether a module's transitive local imports include one that carries a Page
+ * Object decorator. It walks imports as `pomProgramDependencies` does, without
+ * adding the project's root files. Without a tsconfig, imports resolve with
  * TypeScript's defaults; an unreadable tsconfig throws, as the Program build
  * for the same file would.
  */
-export function importsWebMcpModule(
+export function importsPomModule(
   fileName: string,
   options: PomCompilerOptions = {}
 ) {
@@ -76,7 +85,7 @@ export function importsWebMcpModule(
     : {};
   let found = false;
   walkImportedModules(absoluteFileName, compilerOptions, (_, source) => {
-    found ||= source?.includes("@WebMCP") ?? false;
+    found ||= source !== undefined && carriesPomMarker(source);
   });
   return found;
 }

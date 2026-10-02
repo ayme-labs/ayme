@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { attachToolModels, listTools, type LiveTool } from "./toolGroups";
 
 // Unit: what the Tools lens lists, from the runtime's live tools. The expected groups come from the runtime's grouping:
-// Generated WebMCP Tools, Ref Tools, and get_page_context and pursue_goal.
+// Page Object Tools, Ref Tools, and get_page_context and pursue_goal.
 
 function tool(name: string, group: LiveTool["group"]): LiveTool {
   return { name, description: "", inputSchema: {}, group };

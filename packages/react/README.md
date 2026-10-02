@@ -16,7 +16,7 @@ export default defineConfig({
 });
 ```
 
-Keep decorated Page Object Models in separate `.ts` files. Enable `experimentalDecorators` in your TypeScript configuration. Use `@WebMCP` on the model and `@WebMCP.tool(...)` on exposed actions, as shown in [CounterPage](../../apps/example-react/playwright/pom/CounterPage.ts).
+Keep decorated Page Object Models in separate `.ts` files. Enable `experimentalDecorators` in your TypeScript configuration. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [CounterPage](../../apps/example-react/playwright/pom/CounterPage.ts).
 
 Publication is disabled unless the Vite plugin enables it. Local Page Object calls work without a WebMCP driver, including when publication is disabled.
 
@@ -86,4 +86,4 @@ Vue exposes the same provider, `usePageObject`, and status/retry names. Vue addi
 
 ## Smoke example
 
-From the workspace root, run `pnpm run build`, then `pnpm --filter @ayme-dev/example-react dev`. The [small example](../../apps/example-react) verifies direct Page Object calls, generated tool execution, and mount/unmount registration. Run it with `pnpm --filter @ayme-dev/example-react test:e2e`.
+From the workspace root, run `pnpm run build`, then `pnpm --filter @ayme-dev/example-react dev`. The [small example](../../apps/example-react) verifies direct Page Object calls, Page Object Tool execution, and mount/unmount registration. Run it with `pnpm --filter @ayme-dev/example-react test:e2e`.

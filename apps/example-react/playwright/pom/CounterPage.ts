@@ -1,7 +1,7 @@
-import { WebMCP } from "@ayme-dev/ayme";
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 
-@WebMCP
+@ayme
 export class CounterPage {
   readonly incrementButton: Locator;
   constructor(page: Page) {
@@ -10,7 +10,7 @@ export class CounterPage {
       exact: true,
     });
   }
-  @WebMCP.tool({ description: "Increment the counter." })
+  @ayme.action({ description: "Increment the counter." })
   async increment() {
     await this.incrementButton.click();
   }

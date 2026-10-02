@@ -1,8 +1,8 @@
 import type { Locator } from "@playwright/test";
 
-import { WebMCP } from "./webmcp";
+import { ayme } from "@ayme-dev/ayme";
 
-@WebMCP
+@ayme
 class AnnotatedComponent {
   readonly root!: Locator;
   readonly child!: Locator;
@@ -20,7 +20,7 @@ declare const createFynkComponent: <T, Selector extends string>(
   selector: Selector
 ) => FynkComponent<T, Selector>;
 
-@WebMCP
+@ayme
 export class AnnotatedChildrenPom {
   readonly directField!: AnnotatedComponent;
 

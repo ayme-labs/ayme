@@ -33,7 +33,7 @@ it("emits POM registration, JavaScript and compiler dependencies", () => {
   expect(code).toContain('"methodName": "increment"');
   expect(code).toContain('"methodName": "setMode"');
   expect(code).toContain('"enum": ["single", "double"]');
-  expect(code).not.toContain("@WebMCP");
+  expect(code).not.toContain("@ayme.action");
   expect(code).not.toContain("@playwright/test");
   expect(code).not.toContain("readonly incrementButton: Locator");
   expect(dependencies).toContain(
@@ -70,7 +70,7 @@ it("reports compiler dependencies when deriving the manifest fails", () => {
   expect(() =>
     turbopackLoader.call(context, readFileSync(truncatedPath, "utf8"))
   ).toThrow(
-    "Unsupported WebMCP input type for TruncatedModePage.setMode(mode): CounterMode."
+    "Unsupported Page Object Tool input type for TruncatedModePage.setMode(mode): CounterMode."
   );
   expect(dependencies).toContain(
     path.join(path.dirname(resourcePath), "TruncatedMode.ts")
