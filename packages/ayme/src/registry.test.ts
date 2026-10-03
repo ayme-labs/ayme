@@ -294,8 +294,13 @@ describe("live Page Object registry", () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);
 
-    class ReusedPage {}
-    registry.registerCompiledPom(ReusedPage, emptyManifest("ReusedPage"));
+    class ReusedPage {
+      open() {}
+    }
+    registry.registerCompiledPom(ReusedPage, {
+      ...emptyManifest("ReusedPage"),
+      tools: [{ ...action("open"), toolName: "ReusedPage.open" }],
+    });
 
     const first = registry.createPageRegistration(ReusedPage);
     const second = registry.createPageRegistration(ReusedPage);
@@ -304,6 +309,9 @@ describe("live Page Object registry", () => {
     expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
       "ReusedPage",
       "ReusedPage",
+    ]);
+    expect(registry.listRegisteredPomTools().map(({ name }) => name)).toEqual([
+      "ReusedPage.open",
     ]);
 
     first.dispose();
@@ -317,6 +325,49 @@ describe("live Page Object registry", () => {
     expect(
       FakeMutationObserver.instances[0]?.disconnect
     ).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a distinct class whose name is already registered", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    // Two bundles can each compile their own Dialog with the same definition.
+    const manifest = (): PomManifest => ({
+      ...emptyManifest("Dialog"),
+      tools: [{ ...action("confirm"), toolName: "Dialog.confirm" }],
+    });
+    const FirstDialog = class Dialog {
+      confirm() {}
+    };
+    const SecondDialog = class Dialog {
+      confirm() {}
+    };
+    registry.registerCompiledPom(FirstDialog, manifest());
+    registry.registerCompiledPom(SecondDialog, manifest());
+
+    const first = registry.createPageRegistration(FirstDialog);
+    expect(() => registry.createPageRegistration(SecondDialog)).toThrow(
+      expect.objectContaining({
+        name: "RuntimeStateError",
+        message:
+          'Cannot register the Page Object "Dialog": a different class with that name is already registered. Rename one of them so their tools do not share names.',
+      })
+    );
+    expect(
+      registry.listRegisteredPoms().map(({ instance }) => instance.constructor)
+    ).toEqual([FirstDialog]);
+    expect(registry.listRegisteredPomTools().map(({ name }) => name)).toEqual([
+      "Dialog.confirm",
+    ]);
+
+    // A failed registration leaves nothing behind, so retrying after the
+    // other class is gone succeeds.
+    first.dispose();
+    const second = registry.createPageRegistration(SecondDialog);
+    expect(
+      registry.listRegisteredPoms().map(({ instance }) => instance.constructor)
+    ).toEqual([SecondDialog]);
+    second.dispose();
   });
 
   it("reports an observation error for a manifest-declared locator without a brand", async () => {

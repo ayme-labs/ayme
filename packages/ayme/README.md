@@ -65,6 +65,11 @@ the Page Object Model, and a bare `@ayme.action` publishes with a generated
 description. `description` is the only option. The build fails on a class or
 method still marked with the replaced `@WebMCP` or `@WebMCP.tool`.
 
+A Page Object Tool is named after its class and method, as `GreetingPage.greet`.
+Registering a Page Object while a different class with the same name is
+registered throws; rename one of them. Several instances of one class can be
+registered together and share its tools.
+
 Put annotated POMs in `.ts` files imported by the application. Enable
 `compilerOptions.experimentalDecorators` in their TypeScript configuration.
 Tool schemas come from method signatures. Public members are not automatically
