@@ -541,6 +541,9 @@ it(
           // The lowest TypeScript and esbuild Angular 19.0 supports.
           typescript: "5.5.4",
           esbuild: "0.24.0",
+          // What the Angular CLI provides when it runs ng add.
+          "@angular-devkit/schematics": "19.0.0",
+          "@schematics/angular": "19.0.0",
           "@types/node": "22.10.10",
         },
       })
@@ -607,21 +610,24 @@ void name;
     );
     exec("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
 
-    // `ng add` reads the collection the manifest names and requires its factory.
-    const angularDir = packed["@ayme-dev/angular"]!.dir;
-    const collectionPath = path.join(
-      angularDir,
-      (readManifest(angularDir) as { schematics?: string }).schematics ?? ""
+    // `ng add` reads the collection the installed manifest names, then
+    // requires its factory beside the CLI's schematics packages.
+    fs.writeFileSync(
+      path.join(consumer, "load-ng-add.cjs"),
+      `const fs = require("node:fs");
+const path = require("node:path");
+const manifestPath = require.resolve("@ayme-dev/angular/package.json");
+const collectionPath = path.resolve(path.dirname(manifestPath), require(manifestPath).schematics);
+const ngAdd = JSON.parse(fs.readFileSync(collectionPath, "utf8")).schematics["ng-add"];
+const [factory, name] = ngAdd.factory.split("#");
+if (!fs.existsSync(path.resolve(path.dirname(collectionPath), ngAdd.schema))) throw new Error("ng-add schema missing");
+if (typeof require(path.resolve(path.dirname(collectionPath), factory))[name] !== "function") throw new Error("ng-add factory missing");
+console.log("ok");
+`
     );
-    const collection = JSON.parse(fs.readFileSync(collectionPath, "utf8")) as {
-      schematics: Record<string, { factory: string; schema: string }>;
-    };
-    const ngAdd = collection.schematics["ng-add"]!;
-    for (const file of [ngAdd.factory.split("#")[0]!, ngAdd.schema])
-      expect(
-        fs.existsSync(path.resolve(path.dirname(collectionPath), file)),
-        file
-      ).toBe(true);
+    expect(exec(process.execPath, ["load-ng-add.cjs"], consumer).trim()).toBe(
+      "ok"
+    );
   }
 );
 
