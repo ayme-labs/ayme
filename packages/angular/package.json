@@ -34,7 +34,6 @@
   },
   "peerDependencies": {
     "@angular-devkit/schematics": ">=19.0.0 <23.0.0",
-    "@angular/common": ">=19.0.0 <23.0.0",
     "@angular/core": ">=19.0.0 <23.0.0",
     "@playwright/test": ">=1.29 <1.63",
     "@schematics/angular": ">=19.0.0 <23.0.0"
@@ -60,7 +59,6 @@
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@schematics/angular": "^22.2.1",
-    "@types/node": "^24.13.3",
     "eslint": "^10.9.1",
     "jsdom": "^30.0.1",
     "rxjs": "^7.8.2",

@@ -1,6 +1,4 @@
 // @vitest-environment node
-import { fileURLToPath } from "node:url";
-
 import {
   SchematicTestRunner,
   type UnitTestTree,
@@ -10,7 +8,9 @@ import { describe, expect, it } from "vitest";
 // The built collection, as the Angular CLI loads it from the package.
 const runner = new SchematicTestRunner(
   "@ayme-dev/angular",
-  fileURLToPath(new URL("../../schematics/collection.json", import.meta.url))
+  decodeURIComponent(
+    new URL("../../schematics/collection.json", import.meta.url).pathname
+  )
 );
 const { version } = (await import("../../package.json")).default;
 
@@ -102,6 +102,7 @@ describe.each([true, false])("a standalone app with ssr=%s", (ssr) => {
     };
     expect(manifest.dependencies["@ayme-dev/ayme"]).toBe(version);
     expect(manifest.devDependencies["@ayme-dev/unplugin-ayme"]).toBe(version);
+    expect(manifest.devDependencies["@playwright/test"]).toBe("~1.62.1");
     // The custom-esbuild major follows the Angular major the workspace uses.
     const angularMajor =
       manifest.dependencies["@angular/core"]!.match(/\d+/)![0];

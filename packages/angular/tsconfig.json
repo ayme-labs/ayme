@@ -1,5 +1,5 @@
 {
   "extends": "@ayme-dev/typescript-config/library.json",
-  "compilerOptions": { "resolveJsonModule": true, "types": ["node"] },
+  "compilerOptions": { "resolveJsonModule": true },
   "include": ["src/**/*.ts"]
 }
