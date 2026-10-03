@@ -1,5 +1,6 @@
 import type { Locator } from "@playwright/test";
 
+import { FillForm } from "./FillForm";
 import { KeyField } from "./KeyField";
 import { RefField } from "./RefField";
 
@@ -68,6 +69,11 @@ export class RunCard {
   /** A key argument's field, by its path, e.g. "key". */
   keyField(path = "key"): KeyField {
     return new KeyField(this.root, path);
+  }
+
+  /** `fill_form`'s form. */
+  fillForm(): FillForm {
+    return new FillForm(this.root);
   }
 
   /** Opens the form, on a card whose form is closed. */

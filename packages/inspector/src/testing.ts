@@ -17,6 +17,7 @@ export {
   INSPECTOR_SELECTOR_ENGINE,
   registerInspectorSelectors,
 } from "./pom/inspectorSelectors";
+export { FillForm } from "./pom/FillForm";
 export { KeyField } from "./pom/KeyField";
 export { Navigator, type LensName } from "./pom/Navigator";
 export {
