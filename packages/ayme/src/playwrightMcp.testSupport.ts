@@ -118,26 +118,36 @@ export const PLAYWRIGHT_MCP_SCHEMAS: Record<
   },
 };
 
-/**
- * The shapes of the Browser Tools without a counterpart, as #242 sets them,
- * with Playwright MCP's optional `element` as on every element tool.
- */
-export const EXTRA_BROWSER_TOOL_SCHEMAS: Record<"dblclick" | "fill", Shape> = {
-  dblclick: {
-    type: "object",
-    properties: {
-      ...element,
-      button: { type: "string", enum: ["left", "right", "middle"] },
-      modifiers,
-    },
-    required: ["target"],
-  },
-  fill: {
-    type: "object",
-    properties: { ...element, text: { type: "string" } },
-    required: ["target", "text"],
-  },
+/** The shape of `fill`, which has no counterpart: `target` and `text`. */
+export const FILL_SCHEMA: Shape = {
+  type: "object",
+  properties: { target: { type: "string" }, text: { type: "string" } },
+  required: ["target", "text"],
 };
+
+/**
+ * A Playwright MCP schema as Ayme publishes it: without `element`, the
+ * description Playwright MCP's host shows in its permission prompt, which
+ * Ayme has no use for.
+ */
+export function withoutElement(shape: Shape): Shape {
+  const { element: _element, ...properties } = shape.properties ?? {};
+  void _element;
+  return {
+    ...shape,
+    ...(shape.items ? { items: withoutElement(shape.items) } : {}),
+    ...(shape.properties
+      ? {
+          properties: Object.fromEntries(
+            Object.entries(properties).map(([name, property]) => [
+              name,
+              withoutElement(property),
+            ])
+          ),
+        }
+      : {}),
+  };
+}
 
 /** A published JSON schema reduced to what the shapes above compare. */
 export function shapeOf(schema: unknown): Shape {

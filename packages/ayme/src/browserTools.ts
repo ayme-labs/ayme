@@ -1,6 +1,7 @@
 // Browser Tools: the built-in operations on the page itself, mirroring
 // Playwright MCP's tools at the revision the README pins. Field names and
-// defaults follow Playwright MCP; descriptions are Ayme's own.
+// defaults follow Playwright MCP, without its permission-prompt `element`;
+// descriptions are Ayme's own.
 import type { JsonSchema } from "./contracts";
 import type { ActionResult } from "./actionSequence";
 import { runAction } from "./actionSequence";
@@ -20,12 +21,6 @@ import {
 import { requireAymeRuntimePage } from "./registry";
 
 // --- Input schemas ---
-
-const ELEMENT: JsonSchema = {
-  type: "string",
-  description:
-    "Human-readable description of the element, for the record of the action.",
-};
 
 const TARGET: JsonSchema = {
   type: "string",
@@ -48,14 +43,14 @@ const MODIFIERS: JsonSchema = {
   description: "Modifier keys to hold during the click.",
 };
 
-/** An object schema whose `element` is optional and `target` required. */
+/** An object schema with a required `target`. */
 function elementInput(
   properties: Record<string, JsonSchema> = {},
   required: readonly string[] = []
 ): JsonSchema {
   return {
     type: "object",
-    properties: { element: ELEMENT, target: TARGET, ...properties },
+    properties: { target: TARGET, ...properties },
     required: ["target", ...required],
     additionalProperties: false,
   };
@@ -117,14 +112,6 @@ const clickDefinition = browserTool(
     if (input.doubleClick === true) await locator.dblclick(clickOptions(input));
     else await locator.click(clickOptions(input));
   }
-);
-
-const dblclickDefinition = browserTool(
-  "dblclick",
-  "Double-click one element.",
-  elementInput({ button: BUTTON, modifiers: MODIFIERS }),
-  async (target, input) =>
-    (await locatorOf(target)).dblclick(clickOptions(input))
 );
 
 const hoverDefinition = browserTool(
@@ -251,7 +238,7 @@ function isDisabled(element: Element): boolean {
   return element.matches(":disabled, [aria-disabled='true']");
 }
 
-/** The filter of click, dblclick and hover: not disabled, interactive or pointer-cursored. */
+/** The filter of click and hover: not disabled, interactive or pointer-cursored. */
 export function isClickableElement(element: Element): boolean {
   if (isDisabled(element)) return false;
   return (
@@ -298,7 +285,6 @@ const fill = registerRefTool(fillDefinition, isFillableElement);
 
 const SINGLE_ELEMENT_TOOLS: readonly RegisteredRefTool[] = [
   click,
-  registerRefTool(dblclickDefinition, isClickableElement),
   registerRefTool(hoverDefinition, isClickableElement),
   registerRefTool(typeDefinition, isFillableElement),
   fill,

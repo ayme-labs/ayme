@@ -70,7 +70,6 @@ test("hydrates, publishes the compiled POM, executes it, and cleans up on remoun
   ).toEqual([
     "snapshot",
     "click",
-    "dblclick",
     "hover",
     "type",
     "fill",

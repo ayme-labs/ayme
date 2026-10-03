@@ -3,7 +3,6 @@ import { CounterPage } from "../playwright/pom/CounterPage";
 
 const browserToolNames = [
   "click",
-  "dblclick",
   "hover",
   "type",
   "fill",
