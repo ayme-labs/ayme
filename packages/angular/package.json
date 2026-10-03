@@ -34,7 +34,6 @@
   },
   "peerDependencies": {
     "@angular-devkit/schematics": ">=19.0.0 <23.0.0",
-    "@angular/common": ">=19.0.0 <23.0.0",
     "@angular/core": ">=19.0.0 <23.0.0",
     "@playwright/test": ">=1.29 <1.63",
     "@schematics/angular": ">=19.0.0 <23.0.0"

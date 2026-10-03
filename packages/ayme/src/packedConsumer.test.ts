@@ -275,7 +275,6 @@ it(
           react: "19.2.8",
           vue: "3.5.42",
           "@angular/core": "22.2.1",
-          "@angular/common": "22.2.1",
           rxjs: "7.8.2",
         },
       })
@@ -534,7 +533,6 @@ it(
         dependencies: {
           ...tarballs,
           "@angular/core": "19.0.0",
-          "@angular/common": "19.0.0",
           rxjs: "7.8.2",
         },
         devDependencies: {
