@@ -17,31 +17,41 @@ export type RecordingDriver = {
 /** Install a minimal `document.modelContext` that records what the Ayme
  *  runtime publishes, so a test can read and execute the published tools. */
 export async function recordPublishedTools(context: BrowserContext) {
-  await context.addInitScript(() => {
-    const publishedTools: PublishedTool[] = [];
-    const driver: RecordingDriver & {
-      registerTool(
-        tool: PublishedTool,
-        options: { signal: AbortSignal }
-      ): Promise<void>;
-    } = {
-      tools: publishedTools,
-      async registerTool(tool, { signal }) {
-        publishedTools.push(tool);
-        signal.addEventListener(
-          "abort",
-          () => {
-            const index = publishedTools.indexOf(tool);
-            if (index >= 0) publishedTools.splice(index, 1);
-          },
-          { once: true }
-        );
-      },
-    };
-    Object.defineProperty(document, "modelContext", {
-      configurable: false,
-      value: driver,
-    });
+  await context.addInitScript(installRecordingDriver);
+}
+
+/** Install the same recording driver into the page's current document, after
+ *  it loaded: for a test of a driver that appears after Ayme's initial wait,
+ *  followed by `retryPublication`. */
+export async function recordPublishedToolsLate(page: Page) {
+  await page.evaluate(installRecordingDriver);
+}
+
+// Runs in the browser, so it uses nothing from this module's scope.
+function installRecordingDriver() {
+  const publishedTools: PublishedTool[] = [];
+  const driver: RecordingDriver & {
+    registerTool(
+      tool: PublishedTool,
+      options: { signal: AbortSignal }
+    ): Promise<void>;
+  } = {
+    tools: publishedTools,
+    async registerTool(tool, { signal }) {
+      publishedTools.push(tool);
+      signal.addEventListener(
+        "abort",
+        () => {
+          const index = publishedTools.indexOf(tool);
+          if (index >= 0) publishedTools.splice(index, 1);
+        },
+        { once: true }
+      );
+    },
+  };
+  Object.defineProperty(document, "modelContext", {
+    configurable: false,
+    value: driver,
   });
 }
 

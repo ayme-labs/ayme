@@ -18,6 +18,17 @@ import { version } from "../../package.json";
 export type NgAddOptions = { project?: string };
 
 const pluginFile = "ayme.plugin.mjs";
+const pluginSource =
+  'export { default } from "@ayme-dev/unplugin-ayme/angular";\n';
+const reexportsAymePlugin = (source: string) =>
+  /from\s*["']@ayme-dev\/unplugin-ayme\/angular["']/.test(source);
+const isAymePluginEntry = (plugin: unknown) => {
+  const path =
+    typeof plugin === "string"
+      ? plugin
+      : (plugin as { path?: unknown } | null)?.path;
+  return typeof path === "string" && path.replace(/^\.\//, "") === pluginFile;
+};
 const pluginEntry = (tsconfigPath: string) => ({
   path: `./${pluginFile}`,
   options: { tsconfigPath },
@@ -98,10 +109,16 @@ export function ngAdd(options: NgAddOptions): Rule {
         `ng add could not add provideAyme() to "${projectName}": it adds it only to a standalone application whose build target uses Angular's standard builder (yours: ${build?.builder ?? "none"}). Add provideAyme() from @ayme-dev/angular to your application config's providers, or to your root NgModule's.`
       );
 
+    // An existing plugin file is kept only when it already re-exports Ayme's
+    // plugin; ng add never overwrites one.
+    const pluginConflict =
+      tree.exists(pluginFile) &&
+      !reexportsAymePlugin(tree.readText(pluginFile));
     if (
       replaceable(build?.builder) &&
       replaceable(serve?.builder) &&
-      typeof tsconfigPath === "string"
+      typeof tsconfigPath === "string" &&
+      !pluginConflict
     ) {
       rules.push(
         addDependency(
@@ -119,26 +136,20 @@ export function ngAdd(options: NgAddOptions): Rule {
           const plugins = Array.isArray(buildOptions["plugins"])
             ? buildOptions["plugins"]
             : [];
-          if (
-            !plugins.some((plugin) =>
-              JSON.stringify(plugin).includes(pluginFile)
-            )
-          )
+          if (!plugins.some(isAymePluginEntry))
             buildOptions["plugins"] = [...plugins, pluginEntry(tsconfigPath)];
         }),
         (tree) => {
-          if (!tree.exists(pluginFile))
-            tree.create(
-              pluginFile,
-              'export { default } from "@ayme-dev/unplugin-ayme/angular";\n'
-            );
+          if (!tree.exists(pluginFile)) tree.create(pluginFile, pluginSource);
         }
       );
     } else {
       manual.push(
-        `ng add left angular.json alone: it switches only Angular's standard builders, on a build target with a tsConfig option ("${projectName}" has build: ${build?.builder ?? "none"}, serve: ${serve?.builder ?? "none"}, tsConfig: ${typeof tsconfigPath === "string" ? tsconfigPath : "none"}). Ayme's compiler needs an esbuild plugin:`,
-        `  - Create ${pluginFile} at the workspace root: export { default } from "@ayme-dev/unplugin-ayme/angular";`,
-        `  - Add { "path": "./${pluginFile}", "options": { "tsconfigPath": "<your app tsconfig>" } } to the build target's "plugins". With Angular's standard builders, first install @angular-builders/custom-esbuild for your Angular major and switch to ${customEsbuild.application} and ${customEsbuild.devServer}.`
+        pluginConflict
+          ? `ng add left angular.json and ${pluginFile} alone: ${pluginFile} already exists and does not re-export Ayme's plugin. Ayme's compiler needs an esbuild plugin:`
+          : `ng add left angular.json alone: it switches only Angular's standard builders, on a build target with a tsConfig option ("${projectName}" has build: ${build?.builder ?? "none"}, serve: ${serve?.builder ?? "none"}, tsConfig: ${typeof tsconfigPath === "string" ? tsconfigPath : "none"}). Ayme's compiler needs an esbuild plugin:`,
+        `  - Create a plugin file at the workspace root, such as ${pluginFile}: ${pluginSource.trim()}`,
+        `  - Add { "path": "./<plugin file>", "options": { "tsconfigPath": "<your app tsconfig>" } } to the build target's "plugins". With Angular's standard builders, first install @angular-builders/custom-esbuild for your Angular major and switch to ${customEsbuild.application} and ${customEsbuild.devServer}.`
       );
     }
 
