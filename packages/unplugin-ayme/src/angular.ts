@@ -27,7 +27,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
   const unknown = Object.keys(options).filter((key) => key !== "tsconfigPath");
   if (unknown.length > 0)
     throw new TypeError(
-      `Ayme's Angular plugin has no option(s): ${unknown.join(", ")}`
+      `Ayme's Angular plugin has no option(s): ${unknown.join(", ")}. Reference it in angular.json as { "path": "./ayme.plugin.mjs", "options": { ... } }; the string form passes the builder's options instead.`
     );
   if (
     options.tsconfigPath !== undefined &&
