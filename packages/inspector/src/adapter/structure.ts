@@ -5,7 +5,7 @@ import type { PageModel, PageObjectNode } from "./pageModel";
  * a tree the Inspector can render, search and pick refs from.
  */
 export type StructureNode = {
-  /** The ref an agent passes to Ref tools. Text has none. */
+  /** The ref an agent passes to single-element tools. Text has none. */
   ref?: string;
   /** The accessible role: "generic" when the page state names none, "text" for text. */
   role: string;

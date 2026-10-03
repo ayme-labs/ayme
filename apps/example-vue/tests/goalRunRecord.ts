@@ -26,7 +26,7 @@ export type GoalRunStep = {
   historyBytes: number;
 };
 
-/** What one `pursue_goal` call did, attached to the test that made it. */
+/** What one `goal` call did, attached to the test that made it. */
 export type GoalRunRecord = {
   goal: string;
   /** The step count of a run that ends `done` as the test intends, when the

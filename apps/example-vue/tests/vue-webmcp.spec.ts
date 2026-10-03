@@ -34,8 +34,8 @@ async function getInstanceRef(page: Page, label: string): Promise<string> {
   const pageState = await page.evaluate(async () => {
     const tool = (
       document.modelContext as unknown as RecordingDriver
-    ).tools.find((candidate) => candidate.name === "get_page_context");
-    if (!tool) throw new Error("get_page_context tool was not published.");
+    ).tools.find((candidate) => candidate.name === "snapshot");
+    if (!tool) throw new Error("snapshot tool was not published.");
     const result = (await tool.execute({})) as { structure: string };
     return result.structure;
   });
@@ -74,15 +74,26 @@ function normalizeAppSubtree(pageState: string): string {
 }
 
 // The dev server mounts a Decision Endpoint, so the app runs with the Goal
-// Loop on and publishes `pursue_goal` alongside the Page Object tools.
+// Loop on and publishes `goal` alongside the Page Object tools.
+const browserToolNames = [
+  "click",
+  "hover",
+  "type",
+  "fill",
+  "check",
+  "uncheck",
+  "select_option",
+  "fill_form",
+  "press_key",
+];
+
 const initialToolNames = [
-  "get_page_context",
-  "click_page_state_ref",
-  "fill_page_state_ref",
+  "snapshot",
+  ...browserToolNames,
   "ListPage.addItem",
   "ListPage.items.archive",
   "ListPage.items.rename",
-  "pursue_goal",
+  "goal",
 ];
 
 // The Inspector renders into a closed shadow root; its page objects reach it
@@ -233,17 +244,14 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   // The Inspector is open on the page, so leaving it out is observable.
   await new Inspector(page).open();
   await expect
-    .poll(async () =>
-      (await recordedToolNames(page)).includes("get_page_context")
-    )
+    .poll(async () => (await recordedToolNames(page)).includes("snapshot"))
     .toBe(true);
 
   const result = await page.evaluate(async () => {
     const tool = (
       document.modelContext as unknown as RecordingDriver
-    ).tools.find((candidate) => candidate.name === "get_page_context");
-    if (!tool)
-      throw new Error("get_page_context WebMCP tool was not published.");
+    ).tools.find((candidate) => candidate.name === "snapshot");
+    if (!tool) throw new Error("snapshot WebMCP tool was not published.");
     return {
       hasPomIdentity: "pomId" in tool,
       context: await tool.execute({}),
@@ -254,7 +262,7 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   const context = result.context;
   expect(context).toBeTruthy();
   if (!context || typeof context !== "object" || Array.isArray(context))
-    throw new Error("Expected get_page_context to return an object payload.");
+    throw new Error("Expected snapshot to return an object payload.");
   const payload = context as {
     pomDefinitions?: unknown;
     structure?: unknown;
@@ -331,13 +339,7 @@ test("publishes collection tools only while a component root is live", async ({
   });
   await expect
     .poll(async () => await recordedToolNames(page))
-    .toEqual([
-      "get_page_context",
-      "click_page_state_ref",
-      "fill_page_state_ref",
-      "ListPage.addItem",
-      "pursue_goal",
-    ]);
+    .toEqual(["snapshot", ...browserToolNames, "ListPage.addItem", "goal"]);
 
   await executePublishedTool(page, "ListPage.addItem", {
     text: "Restore live component tools",
@@ -357,11 +359,14 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
 
-  const tools = await recordedTools(page);
+  // The ayme package pins the Browser Tools' schemas; here they are only named.
+  const tools = (await recordedTools(page)).filter(
+    ({ name }) => !browserToolNames.includes(name)
+  );
 
   expect(tools).toEqual([
     {
-      name: "get_page_context",
+      name: "snapshot",
       description:
         "Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.",
       inputSchema: {
@@ -370,28 +375,6 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
           names: { type: "array", items: { type: "string" } },
         },
         required: [],
-        additionalProperties: false,
-      },
-    },
-    {
-      name: "click_page_state_ref",
-      description:
-        "Click a real element ref from get_page_context. The ref is resolved against a fresh capture before the action.",
-      inputSchema: {
-        type: "object",
-        properties: { ref: { type: "string" } },
-        required: ["ref"],
-        additionalProperties: false,
-      },
-    },
-    {
-      name: "fill_page_state_ref",
-      description:
-        "Fill a real editable element ref from get_page_context with text. The ref is resolved against a fresh capture before the action.",
-      inputSchema: {
-        type: "object",
-        properties: { ref: { type: "string" }, value: { type: "string" } },
-        required: ["ref", "value"],
         additionalProperties: false,
       },
     },
@@ -454,7 +437,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
       },
     },
     {
-      name: "pursue_goal",
+      name: "goal",
       description:
         "Drive the page toward a goal in steps. Each step is one fast model judgement. Returns a Handover: why the loop stopped, what it did, and what to do next.",
       inputSchema: {
@@ -556,13 +539,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
   ).toBeVisible();
   await expect
     .poll(async () => await recordedToolNames(page))
-    .toEqual([
-      "get_page_context",
-      "click_page_state_ref",
-      "fill_page_state_ref",
-      "ListPage.addItem",
-      "pursue_goal",
-    ]);
+    .toEqual(["snapshot", ...browserToolNames, "ListPage.addItem", "goal"]);
   await page.getByRole("button", { name: "Confirm archive" }).click();
   await expect(page.locator("[data-archived-label]")).toHaveCount(3);
   await expect
