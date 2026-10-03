@@ -87,9 +87,9 @@ export function ngAdd(options: NgAddOptions): Rule {
             code`${external("provideAyme", "@ayme-dev/angular")}()`
         )
       );
-    else
+    else if (!providesAyme(tree, project.sourceRoot ?? project.root))
       manual.push(
-        `ng add could not add provideAyme() to "${projectName}": it is not a standalone application built with Angular's standard builder. Add provideAyme() from @ayme-dev/angular to the providers of your application config, or of your root NgModule.`
+        `ng add could not add provideAyme() to "${projectName}": it adds it only to a standalone application whose build target uses Angular's standard builder (yours: ${build?.builder ?? "none"}). Add provideAyme() from @ayme-dev/angular to your application config's providers, or to your root NgModule's.`
       );
 
     if (
@@ -130,7 +130,7 @@ export function ngAdd(options: NgAddOptions): Rule {
       );
     } else {
       manual.push(
-        `The build or serve target of "${projectName}" does not use Angular's standard builder (build: ${build?.builder ?? "none"}, serve: ${serve?.builder ?? "none"}), so ng add left angular.json alone. Ayme's compiler needs an esbuild plugin:`,
+        `ng add left angular.json alone: it switches only Angular's standard builders, on a build target with a tsConfig option ("${projectName}" has build: ${build?.builder ?? "none"}, serve: ${serve?.builder ?? "none"}, tsConfig: ${typeof tsconfigPath === "string" ? tsconfigPath : "none"}). Ayme's compiler needs an esbuild plugin:`,
         `  - Create ${pluginFile} at the workspace root: export { default } from "@ayme-dev/unplugin-ayme/angular";`,
         `  - Add { "path": "./${pluginFile}", "options": { "tsconfigPath": "<your app tsconfig>" } } to the build target's "plugins". With Angular's standard builders, first install @angular-builders/custom-esbuild for your Angular major and switch to ${customEsbuild.application} and ${customEsbuild.devServer}.`
       );
@@ -153,10 +153,21 @@ function angularMajor(tree: Tree) {
   const manifest = tree.readJson("package.json") as {
     dependencies?: Record<string, string>;
   };
-  const major = manifest.dependencies?.["@angular/core"]?.match(/\d+/)?.[0];
+  const range = manifest.dependencies?.["@angular/core"];
+  const major = range?.match(/\d+/)?.[0];
   if (!major)
     throw new SchematicsException(
-      "Ayme could not find @angular/core in package.json dependencies."
+      `Ayme could not read the Angular major from the @angular/core dependency in package.json (${range ?? "missing"}).`
     );
   return major;
+}
+
+/** Whether a TypeScript file under the project's source already calls provideAyme(). */
+function providesAyme(tree: Tree, sourceRoot: string) {
+  let found = false;
+  tree.getDir(sourceRoot).visit((path) => {
+    found ||=
+      path.endsWith(".ts") && tree.readText(path).includes("provideAyme(");
+  });
+  return found;
 }

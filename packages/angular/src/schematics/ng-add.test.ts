@@ -102,11 +102,42 @@ describe.each([true, false])("a standalone app with ssr=%s", (ssr) => {
     };
     expect(manifest.dependencies["@ayme-dev/ayme"]).toBe(version);
     expect(manifest.devDependencies["@ayme-dev/unplugin-ayme"]).toBe(version);
+    // The custom-esbuild major follows the Angular major the workspace uses.
+    const angularMajor =
+      manifest.dependencies["@angular/core"]!.match(/\d+/)![0];
     expect(manifest.devDependencies["@angular-builders/custom-esbuild"]).toBe(
-      "^22.0.0"
+      `^${angularMajor}.0.0`
     );
     expect(messages.filter(({ level }) => level === "warn")).toEqual([]);
   });
+});
+
+it("maps Angular 19's builders and installs the matching custom-esbuild major", async () => {
+  const before = await workspace({ ssr: true });
+  const json = architect(before);
+  const targets = json.projects["app"]!.architect;
+  targets["build"]!.builder = "@angular-devkit/build-angular:application";
+  targets["serve"]!.builder = "@angular-devkit/build-angular:dev-server";
+  before.overwrite("angular.json", JSON.stringify(json, null, 2));
+  const manifest = before.readJson("package.json") as {
+    dependencies: Record<string, string>;
+  };
+  manifest.dependencies["@angular/core"] = "^19.0.0";
+  before.overwrite("package.json", JSON.stringify(manifest, null, 2));
+
+  const { tree, messages } = await ngAdd(before);
+
+  const { build, serve } = architect(tree).projects["app"]!.architect;
+  expect(build!.builder).toBe("@angular-builders/custom-esbuild:application");
+  expect(serve!.builder).toBe("@angular-builders/custom-esbuild:dev-server");
+  expect(
+    (tree.readJson("package.json") as { devDependencies: object })
+      .devDependencies
+  ).toHaveProperty("@angular-builders/custom-esbuild", "^19.0.0");
+  expect(tree.readText("projects/app/src/app/app.config.ts")).toContain(
+    "provideAyme()"
+  );
+  expect(messages.filter(({ level }) => level === "warn")).toEqual([]);
 });
 
 it("leaves angular.json alone and prints the manual steps for another custom builder", async () => {
@@ -133,6 +164,7 @@ it("leaves angular.json alone and prints the manual steps for another custom bui
     .join("\n");
   expect(warnings).toContain("@angular-builders/custom-webpack:browser");
   expect(warnings).toContain("ng add left angular.json alone");
+  expect(warnings).toContain("build: @angular-builders/custom-webpack:browser");
   expect(warnings).toContain(
     'export { default } from "@ayme-dev/unplugin-ayme/angular";'
   );
@@ -144,10 +176,12 @@ it("leaves an NgModule app's modules alone and prints the provideAyme() step", a
 
   const { tree, messages } = await ngAdd(before);
 
-  for (const file of [
-    "projects/app/src/main.ts",
-    "projects/app/src/app/app-module.ts",
-  ])
+  // Angular 20 names the module app-module.ts, Angular 19 app.module.ts.
+  const sources: string[] = [];
+  before.getDir("projects/app/src").visit((path) => void sources.push(path));
+  const modules = sources.filter((path) => /app[.-]module\.ts$/.test(path));
+  expect(modules).toHaveLength(1);
+  for (const file of ["/projects/app/src/main.ts", ...modules])
     expect(tree.readText(file)).toBe(before.readText(file));
   expect(architect(tree).projects["app"]!.architect["build"]!.builder).toBe(
     "@angular-builders/custom-esbuild:application"
@@ -156,8 +190,22 @@ it("leaves an NgModule app's modules alone and prints the provideAyme() step", a
     {
       level: "warn",
       message: expect.stringContaining(
-        "Add provideAyme() from @ayme-dev/angular to the providers of your application config, or of your root NgModule."
+        "Add provideAyme() from @ayme-dev/angular to your application config's providers, or to your root NgModule's."
       ),
     },
   ]);
+});
+
+it("is safe to run again: no second plugin entry, no second provider, no warning", async () => {
+  const { tree: once } = await ngAdd(await workspace({ ssr: true }));
+
+  const { tree: twice, messages } = await ngAdd(once);
+
+  for (const file of [
+    "angular.json",
+    "ayme.plugin.mjs",
+    "projects/app/src/app/app.config.ts",
+  ])
+    expect(twice.readText(file)).toBe(once.readText(file));
+  expect(messages.filter(({ level }) => level === "warn")).toEqual([]);
 });
