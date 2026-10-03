@@ -9,7 +9,7 @@ npm install @ayme-dev/ayme @ayme-dev/svelte
 npm install -D @ayme-dev/unplugin-ayme @playwright/test@~1.62.1
 ```
 
-Packages are not published yet; use supplied tarballs before release. The [Vite plugin](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md) compiles decorated Page Object Models; annotate them as shown in the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md). The [SvelteKit example](https://github.com/ayme-labs/ayme/tree/main/apps/example-sveltekit) is a complete, tested SvelteKit 2 app.
+Packages are not published yet; use supplied tarballs before release. The [Vite plugin](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md) compiles decorated Page Object Models; annotate them as shown in the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md). The [SvelteKit example](https://github.com/ayme-labs/ayme/tree/main/apps/example-sveltekit) is a complete SvelteKit 2 app.
 
 ## SvelteKit 2 setup
 
@@ -93,7 +93,7 @@ Svelte 4 on SvelteKit 2 uses the same files with legacy markup: `let count = 0` 
 
 ## SvelteKit 3 setup
 
-SvelteKit 3 reads its configuration from the `sveltekit()` call and needs no `oxc` option. This setup was checked against SvelteKit 3.0.0 during research; no example app in this repository runs it.
+SvelteKit 3 reads its configuration from the `sveltekit()` call and needs no `oxc` option.
 
 ```ts
 // vite.config.ts
@@ -211,8 +211,6 @@ The options are those of `createRuntimeSession` from `@ayme-dev/ayme`, passed to
 | A second owner while one is active                | Throws a `RuntimeStateError`: `useAyme(options) already has an active owner. Call it once, in the root +layout.svelte or App.svelte.`                                                                            |
 | Outside component initialisation                  | Svelte's own error, as for `getContext`                                                                                                                                                                          |
 
-Keep the owner in the root layout. SvelteKit creates the next layout before it destroys the previous one, so an owner in a route-group layout becomes a second active owner on navigation.
-
 Because the runtime starts while the owner initialises, a descendant's `onMount` already sees a started runtime.
 
 ## Reading the runtime
@@ -288,7 +286,10 @@ The initial publication status is `waiting` when the root setup enables publicat
 - The compiler follows SvelteKit's generated tsconfig, so POMs under `src` need nothing more. POMs outside `src`, such as a `playwright/` folder, need their own tsconfig with `experimentalDecorators`, passed to the plugin as `ayme({ tsconfigPath })`, as the [Nuxt example](https://github.com/ayme-labs/ayme/tree/main/apps/example-nuxt) does.
 - Below Vite 6, editing a type a POM imports needs a dev-server restart before the published schema changes. Vite 6 and later rebuild it in place.
 - SvelteKit 2 on Vite 8 needs `oxc: { decorator: { legacy: true } }` in `vite.config.ts`. Without it, the server fails on the untransformed decorators.
-- The names are `useAyme` and `usePageObject`, not the `setX` and `getX` pairs common in Svelte libraries, so setup reads the same as in the Vue and React packages. As with Vue's standalone setup, the owner is a function call in the root component, with no provider component; unlike Vue, `usePageObject` always needs an owner.
+
+## Naming
+
+The names are `useAyme` and `usePageObject`, not the `setX` and `getX` pairs common in Svelte libraries, so setup reads the same as in the Vue and React packages.
 
 For Chrome or a coding agent connection, follow the skill's
 [browser setup reference](https://github.com/ayme-labs/ayme/blob/main/skills/ayme/references/browser-setup.md).
