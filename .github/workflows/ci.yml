@@ -232,8 +232,8 @@ jobs:
                 "@angular/common": 19.0.0
           YAML
           pnpm install --no-frozen-lockfile
-      - name: Build the main library and dependencies
-        run: pnpm exec turbo run build --filter=@ayme-dev/ayme
+      - name: Build the Angular package and its dependencies
+        run: pnpm exec turbo run build --filter=@ayme-dev/angular...
       - name: Typecheck Angular package
         run: pnpm --filter @ayme-dev/angular typecheck
       - name: Test Angular package
