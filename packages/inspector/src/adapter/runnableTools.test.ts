@@ -109,6 +109,25 @@ it("runs every other live tool with its schema, and names its ref argument", () 
   });
 });
 
+it("names a Browser Tool's key argument, and no other tool's", () => {
+  const keyed = (name: string, group: string) => ({
+    name,
+    description: "Press a key.",
+    inputSchema: {
+      type: "object" as const,
+      properties: { key: { type: "string" as const } },
+    },
+    group,
+  });
+  const tools = listRunnableTools([], new Map(), [
+    keyed("press_key", "browser"),
+    keyed("save_setting", "custom"),
+  ]);
+
+  expect(tools.get("press_key")?.keyField).toBe("key");
+  expect(tools.get("save_setting")?.keyField).toBeUndefined();
+});
+
 it("never treats a Page Object action's argument as a ref, whatever its name", () => {
   const retarget = {
     ...addItem,

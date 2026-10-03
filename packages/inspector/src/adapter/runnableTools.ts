@@ -25,6 +25,8 @@ export type RunnableTool = {
    * Object action's arguments never do, whatever their names.
    */
   refField?: "ref" | "target";
+  /** The argument that takes a key to press: a Browser Tool's `key`. */
+  keyField?: "key";
 };
 
 /** A tool the runtime lists as live: one `runTool` can run now. */
@@ -32,6 +34,8 @@ export type ToolSummary = {
   name: string;
   description: string;
   inputSchema: JsonSchema;
+  /** What kind of tool it is, e.g. "browser". */
+  group?: string;
 };
 
 /**
@@ -68,6 +72,10 @@ export function listRunnableTools(
         argumentsSchema: tool.inputSchema,
         available: true,
         ...(refField ? { refField } : {}),
+        ...(tool.group === "browser" &&
+        tool.inputSchema.properties?.key?.type === "string"
+          ? { keyField: "key" as const }
+          : {}),
       });
     }
   return tools;

@@ -76,8 +76,12 @@ export function RunCard({
   onHover,
 }: RunCardProps) {
   const fields = useMemo(
-    () => fieldsOf(tool.argumentsSchema, tool.refField),
-    [tool.argumentsSchema, tool.refField]
+    () =>
+      fieldsOf(tool.argumentsSchema, {
+        ref: tool.refField,
+        key: tool.keyField,
+      }),
+    [tool.argumentsSchema, tool.refField, tool.keyField]
   );
   // The field the given ref fills: a Custom Tool's `ref`, a Browser Tool's `target`.
   const refField =

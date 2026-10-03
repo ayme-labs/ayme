@@ -35,7 +35,7 @@ const addItem = {
 
 describe("schema to fields", () => {
   it("gives each property a typed field, in schema order", () => {
-    expect(fieldsOf(addItem, "ref")).toEqual([
+    expect(fieldsOf(addItem, { ref: "ref" })).toEqual([
       {
         name: "text",
         optional: false,
@@ -98,9 +98,23 @@ describe("schema to fields", () => {
     };
 
     expect(fieldsOf(rename)[0]).toMatchObject({ name: "target", kind: "text" });
-    expect(fieldsOf(rename, "target")[0]).toMatchObject({
+    expect(fieldsOf(rename, { ref: "target" })[0]).toMatchObject({
       name: "target",
       kind: "ref",
+    });
+  });
+
+  it("picks a key control only for the argument named as the tool's key field", () => {
+    const pressKey = {
+      type: "object" as const,
+      properties: { key: { type: "string" as const } },
+    };
+
+    expect(fieldsOf(pressKey)[0]).toMatchObject({ name: "key", kind: "text" });
+    expect(fieldsOf(pressKey, { key: "key" })[0]).toMatchObject({
+      name: "key",
+      kind: "key",
+      typeLabel: "key",
     });
   });
 

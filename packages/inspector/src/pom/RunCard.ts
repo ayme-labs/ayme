@@ -1,5 +1,6 @@
 import type { Locator } from "@playwright/test";
 
+import { KeyField } from "./KeyField";
 import { RefField } from "./RefField";
 
 /** A value for one argument, as a person would enter it. */
@@ -64,6 +65,11 @@ export class RunCard {
     return new RefField(this.root, path);
   }
 
+  /** A key argument's field, by its path, e.g. "key". */
+  keyField(path = "key"): KeyField {
+    return new KeyField(this.root, path);
+  }
+
   /** Opens the form, on a card whose form is closed. */
   async openArguments() {
     if (
@@ -117,12 +123,15 @@ export class RunCard {
       ? await field.evaluate((element) =>
           element.getAttribute("aria-haspopup") === "tree"
             ? "ref"
-            : element instanceof HTMLInputElement
-              ? element.type
-              : element.tagName.toLowerCase()
+            : element.getAttribute("role") === "combobox"
+              ? "key"
+              : element instanceof HTMLInputElement
+                ? element.type
+                : element.tagName.toLowerCase()
         )
       : "none";
     if (kind === "ref") return await this.refField(path).choose(String(value));
+    if (kind === "key") return await this.keyField(path).search(String(value));
     if (typeof value === "object" && kind !== "textarea") {
       // An object: an optional one is switched on, then each entry filled.
       if (kind === "checkbox") await field.setChecked(true);
