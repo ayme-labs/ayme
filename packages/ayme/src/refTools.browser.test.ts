@@ -340,6 +340,11 @@ describe("Browser Tool filters in Chromium", () => {
     expect(
       isFillableElement(fixture('<div contenteditable="true">Text</div>'))
     ).toBe(true);
+    expect(
+      isFillableElement(
+        fixture('<div contenteditable="plaintext-only">Text</div>')
+      )
+    ).toBe(true);
   });
 
   it("drops elements that cannot be filled", () => {

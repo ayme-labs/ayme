@@ -236,7 +236,17 @@ describe("Browser Tools in Chromium", () => {
       ],
       isError: true,
     });
+    // A name every object inherits is still not an option.
+    await expect(
+      call("fill", { target: "#name", text: "Ada", constructor: "x" })
+    ).resolves.toMatchObject({
+      content: [
+        { text: 'ToolInputError: The option "constructor" is not supported.' },
+      ],
+      isError: true,
+    });
     expect(log).not.toContain("click save");
+    expect(value("#name")).toBe("Old");
   });
 
   it("stops fill_form at the first failing field and keeps the fields filled before it", async () => {

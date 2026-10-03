@@ -199,6 +199,7 @@ const INTERACTIVE_ROLE_SELECTOR = [
   "textarea",
   "[contenteditable='']",
   "[contenteditable='true']",
+  "[contenteditable='plaintext-only']",
   "[role=button]",
   "[role=checkbox]",
   "[role=combobox]",
@@ -251,7 +252,11 @@ export function isClickableElement(element: Element): boolean {
 /** The filter of type and fill: an element text can actually be entered into. */
 export function isFillableElement(element: Element): boolean {
   if (isDisabled(element)) return false;
-  if (element.matches("[contenteditable=''], [contenteditable='true']"))
+  if (
+    element.matches(
+      "[contenteditable=''], [contenteditable='true'], [contenteditable='plaintext-only']"
+    )
+  )
     return true;
   if (element instanceof HTMLTextAreaElement) return !element.readOnly;
   if (element instanceof HTMLInputElement)

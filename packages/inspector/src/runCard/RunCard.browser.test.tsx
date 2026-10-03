@@ -216,6 +216,7 @@ describe("a Ref Tool", () => {
     action: "fill",
     description: "Fill a real editable element ref with text.",
     available: true,
+    refField: "ref",
     argumentsSchema: {
       type: "object",
       properties: { ref: { type: "string" }, value: { type: "string" } },
@@ -266,6 +267,7 @@ describe("a Ref Tool", () => {
       action: "click",
       description: "Click a real element ref.",
       available: true,
+      refField: "ref",
       argumentsSchema: {
         type: "object",
         properties: { ref: { type: "string" } },
