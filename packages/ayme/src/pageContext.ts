@@ -36,7 +36,7 @@ export const getPageStateTool = {
 } satisfies ModelContextTool<Record<string, never>, string>;
 
 export const getPageContextTool = {
-  name: "get_page_context",
+  name: "snapshot",
   description:
     "Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.",
   inputSchema: {
@@ -74,7 +74,7 @@ export async function getPageContextForDocument(
 
 /**
  * The POM definitions for `names` (every known one when empty), as the text
- * `get_page_context` returns in `pomDefinitions`. Captures no page state.
+ * `snapshot` returns in `pomDefinitions`. Captures no page state.
  */
 export function getPomDefinitionText(...names: readonly string[]): string {
   return renderPomDefinitions(getPomDefinitions(...names).definitions);

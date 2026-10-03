@@ -67,7 +67,7 @@ export function InspectorApp() {
       selection,
       onSelect: setSelection,
       onHover: runtime.highlight.hover,
-      refTools: runtime.refTools,
+      elementTools: runtime.elementTools,
       renderRun,
     }),
     toolsLens({

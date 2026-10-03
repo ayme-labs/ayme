@@ -30,7 +30,7 @@ const addItem: PublishedToolInfo = {
   group: "pageObject",
 };
 const getPageContext: PublishedToolInfo = {
-  name: "get_page_context",
+  name: "snapshot",
   description: "Read the page.",
   inputSchema: { type: "object" },
   group: "agent",

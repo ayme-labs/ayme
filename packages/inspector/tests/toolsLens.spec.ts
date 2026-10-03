@@ -2,7 +2,7 @@ import { AgentView } from "./agentView";
 import { expect, openFixture, test } from "./fixtures";
 
 // E2E: the panel shows exactly what an agent gets over WebMCP. The expected
-// values come from the page's WebMCP tool list and get_page_context, never
+// values come from the page's WebMCP tool list and snapshot, never
 // from the panel.
 
 test("the Tools lens lists exactly the tools an agent gets", async ({
@@ -42,7 +42,7 @@ test("each tool's page shows the description and schema an agent gets", async ({
   }
 });
 
-test("a Page Object tool's page shows its model's definition as get_page_context returns it", async ({
+test("a Page Object tool's page shows its model's definition as snapshot returns it", async ({
   page,
   inspector,
 }) => {
