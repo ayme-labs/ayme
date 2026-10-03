@@ -1,6 +1,7 @@
 # Browser setup
 
-Ayme publishes Page Object Tools through `document.modelContext`. First
+Ayme publishes its tools through `document.modelContext`: `snapshot`, the
+Browser Tools, your Page Object Tools and, with a Goal Loop, `goal`. First
 complete the package README's runtime setup and enable publication there with
 `webMCP: { enabled: true }`.
 Choose one route below.

@@ -57,7 +57,7 @@ describe("ignore predicate in page state capture", () => {
     return runtime;
   }
 
-  it("drops ignored subtrees from get_page_context and unresolved refs", async () => {
+  it("drops ignored subtrees from snapshot and unresolved refs", async () => {
     document.body.innerHTML = `
       <main>
         <button id="save">Save changes</button>

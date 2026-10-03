@@ -49,7 +49,9 @@ export function runScope(
         label: "This object",
         includes: (run) =>
           run.item?.ref === selection.ref ||
+          // A Custom Tool's `ref`, or a Browser Tool's `target`.
           run.arguments.ref === selection.ref ||
+          run.arguments.target === selection.ref ||
           members.some((member) => within(run.objectPath, member)),
       };
     }

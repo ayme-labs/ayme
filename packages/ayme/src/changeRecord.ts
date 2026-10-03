@@ -8,7 +8,7 @@ import {
 
 /**
  * Render the changed subtrees of a reconciled structural tree
- * in the compact notation that get_page_context uses.
+ * in the compact notation that snapshot uses.
  *
  * Path nodes whose own content did not change, including nodes updated only
  * because their child list changed, are kept as plain structural markers

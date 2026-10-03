@@ -8,7 +8,7 @@ import type { Locator } from "@playwright/test";
 export class WhatTheModelSees {
   readonly root: Locator;
   readonly toggle: Locator;
-  /** The Page Object definitions, as get_page_context renders them. */
+  /** The Page Object definitions, as snapshot renders them. */
   readonly definitions: Locator;
   /**
    * A structure node's own lines of the page state, e.g.
