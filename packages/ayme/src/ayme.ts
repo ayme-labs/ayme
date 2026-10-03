@@ -7,7 +7,7 @@ import {
 } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
 import { type ActionResult } from "./actionSequence";
-import { clickRef, fillRef } from "./refTools";
+import { clickRef, fillRef } from "./browserTools";
 import { RuntimeStateError } from "./errors";
 
 export type Ayme = {

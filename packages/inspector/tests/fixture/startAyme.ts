@@ -102,7 +102,7 @@ const listPageManifest: PomManifest = {
 
 registerCompiledPom(ListPage, listPageManifest);
 
-/** An app-registered Ref Tool: it marks the element it's given. */
+/** A Custom Tool: it marks the element it's given. */
 const markElement: CustomTool = {
   name: "mark_element",
   description: "Mark one element on the page.",
@@ -115,7 +115,7 @@ const markElement: CustomTool = {
 type Choice = { criteria?: Record<string, string> };
 
 /**
- * A stubbed Goal Loop decision, so pursue_goal is published without a model:
+ * A stubbed Goal Loop decision, so goal is published without a model:
  * the first step clears the list, the next one judges the goal met. It
  * stands in for the model's judgement, which no Inspector test depends on.
  */

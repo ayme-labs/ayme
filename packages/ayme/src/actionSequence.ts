@@ -28,7 +28,7 @@ export type ActionResult = {
  * between the Structural Page State the acting caller last received and the
  * Settled Page after the action.
  *
- * A caller's state is what it received: `get_page_context` and the Settled
+ * A caller's state is what it received: `snapshot` and the Settled
  * Page of its previous action for the calling agent, each step's tree for the
  * Goal Loop's model. Captures Ayme makes for itself move neither. A change
  * that happened on its own since the caller last read the page is therefore
