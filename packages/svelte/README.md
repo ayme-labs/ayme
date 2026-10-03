@@ -117,7 +117,7 @@ export default defineConfig({
 }
 ```
 
-The POM, root layout and page are the SvelteKit 2 files above, with `#lib/pom/CounterPage` in place of `$lib/pom/CounterPage`.
+The POM, root layout and page are the SvelteKit 2 files above, with `#lib/pom/CounterPage.ts` in place of `$lib/pom/CounterPage`. SvelteKit 3 needs the explicit `.ts` extension.
 
 ## Svelte app setup (without SvelteKit)
 
