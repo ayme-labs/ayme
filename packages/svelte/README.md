@@ -20,7 +20,7 @@ import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  // Vite 8 only, until #279: SvelteKit 2's tsconfig does not reach oxc.
+  // Vite 8 only: SvelteKit 2's tsconfig does not reach oxc.
   oxc: { decorator: { legacy: true } },
   plugins: [sveltekit(), ayme()],
 });
@@ -287,7 +287,7 @@ The initial publication status is `waiting` when the root setup enables publicat
 - POMs must be `.ts` modules. Decorators inside `.svelte` scripts are not compiled.
 - The compiler follows SvelteKit's generated tsconfig, so POMs under `src` need nothing more. POMs outside `src`, such as a `playwright/` folder, need their own tsconfig with `experimentalDecorators`, passed to the plugin as `ayme({ tsconfigPath })`, as the [Nuxt example](https://github.com/ayme-labs/ayme/tree/main/apps/example-nuxt) does.
 - Below Vite 6, editing a type a POM imports needs a dev-server restart before the published schema changes. Vite 6 and later rebuild it in place.
-- SvelteKit 2 on Vite 8 needs `oxc: { decorator: { legacy: true } }` in `vite.config.ts` until #279. Without it, the server fails on the untransformed decorators.
+- SvelteKit 2 on Vite 8 needs `oxc: { decorator: { legacy: true } }` in `vite.config.ts`. Without it, the server fails on the untransformed decorators.
 - The names are `useAyme` and `usePageObject`, not the `setX` and `getX` pairs common in Svelte libraries, so setup reads the same as in the Vue and React packages. As with Vue's standalone setup, the owner is a function call in the root component, with no provider component; unlike Vue, `usePageObject` always needs an owner.
 
 For Chrome or a coding agent connection, follow the skill's
