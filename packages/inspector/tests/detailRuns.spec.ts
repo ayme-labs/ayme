@@ -7,25 +7,25 @@ import { expect, test } from "./fixtures";
 // WebMCP, never from the panel.
 
 // Steps come from the Inspector's trace of Page Object locator operations; a
-// Ref Tool acts on the element itself, so its run has none until the runtime
+// single-element tool acts on the element itself, so its run has none until the runtime
 // attributes steps to each call (#190).
-test("a structure node's Ref tool runs on that node, and Runs shows the run as yours", async ({
+test("a structure node's Browser tool runs on that node, and Runs shows the run as yours", async ({
   inspector,
   listPage,
 }) => {
   await inspector.navigator.showLens("Structure");
   await inspector.structure.nodeOf("ListPage.newItemInput").click();
-  const fill = inspector.detail.node.runCard("fill_page_state_ref");
+  const fill = inspector.detail.node.runCard("fill");
 
-  await fill.run({ value: "Bread" });
+  await fill.run({ text: "Bread" });
 
   await expect(listPage.newItemInput).toHaveValue("Bread");
-  const run = inspector.runs.latest("fill_page_state_ref");
+  const run = inspector.runs.latest("fill");
   await expect.poll(() => run.status()).toBe("Succeeded");
   await expect(run.byYou).toBeVisible();
 });
 
-test("a tool's page runs it from a card without a head, and What the model sees shows the definition get_page_context gives an agent", async ({
+test("a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives an agent", async ({
   page,
   inspector,
   listPage,
@@ -61,10 +61,9 @@ test("a checked checkbox reads as checked in its node's What the model sees, as 
   await page.getByRole("checkbox", { name: "Urgent" }).check();
 
   await expect(modelSees.pageState).toContainText("[checked]");
-  const { structure } = (await new AgentView(page).call(
-    "get_page_context",
-    {}
-  )) as { structure: string };
+  const { structure } = (await new AgentView(page).call("snapshot", {})) as {
+    structure: string;
+  };
   const agentLines = structure.split("\n").map((line) => line.trim());
   const [nodeLine] = (await modelSees.pageState.textContent())!.split("\n");
   expect(agentLines).toContain(nodeLine);

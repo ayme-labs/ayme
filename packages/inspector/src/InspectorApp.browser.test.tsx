@@ -25,7 +25,7 @@ vi.mock("@ayme-dev/ayme/internal", () => ({
     text: '- e1 main:\n  - e2 button "Save"',
     elementsByRef: new Map(),
   })),
-  listRefToolTargets: vi.fn(async () => new Map()),
+  listElementToolTargets: vi.fn(async () => new Map()),
   listLiveTools: vi.fn().mockReturnValue([]),
   getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
   subscribeToPublishedTools: vi.fn(() => () => {}),

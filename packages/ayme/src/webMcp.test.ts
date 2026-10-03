@@ -62,7 +62,7 @@ type PublishedTool = { name: string };
 
 vi.mock("./pageContext", () => ({
   getPageContextTool: {
-    name: "get_page_context",
+    name: "snapshot",
     description: "Get page context.",
     inputSchema: {
       type: "object",
@@ -172,9 +172,16 @@ describe("WebMCP publisher", () => {
 
     const publication = await synchronizeWebMcpTools({ registerTool });
     expect(registrations.map(({ tool }) => tool.name)).toEqual([
-      "get_page_context",
-      "click_page_state_ref",
-      "fill_page_state_ref",
+      "snapshot",
+      "click",
+      "hover",
+      "type",
+      "fill",
+      "check",
+      "uncheck",
+      "select_option",
+      "fill_form",
+      "press_key",
       "addItem",
       "ItemsPage.items.archive",
     ]);
@@ -182,9 +189,16 @@ describe("WebMCP publisher", () => {
     await vi.runOnlyPendingTimersAsync();
     await flushPublisher();
     expect(registrations.map(({ tool }) => tool.name)).toEqual([
-      "get_page_context",
-      "click_page_state_ref",
-      "fill_page_state_ref",
+      "snapshot",
+      "click",
+      "hover",
+      "type",
+      "fill",
+      "check",
+      "uncheck",
+      "select_option",
+      "fill_form",
+      "press_key",
       "addItem",
       "ItemsPage.items.archive",
     ]);
@@ -192,29 +206,29 @@ describe("WebMCP publisher", () => {
     FakeMutationObserver.instance?.trigger();
     await vi.runOnlyPendingTimersAsync();
     await flushPublisher();
-    expect(registerTool).toHaveBeenCalledTimes(5);
+    expect(registerTool).toHaveBeenCalledTimes(12);
 
     rootCount = 0;
     FakeMutationObserver.instance?.trigger();
     await vi.runOnlyPendingTimersAsync();
     await flushPublisher();
-    expect(registrations[4]?.signal.aborted).toBe(true);
+    expect(registrations[11]?.signal.aborted).toBe(true);
     expect(registrations[0]?.signal.aborted).toBe(false);
     expect(registrations[1]?.signal.aborted).toBe(false);
 
     pageRegistration.dispose();
     await flushPublisher();
-    expect(registrations[3]?.signal.aborted).toBe(true);
+    expect(registrations[10]?.signal.aborted).toBe(true);
     expect(registrations[0]?.signal.aborted).toBe(false);
 
     const replacementPageRegistration =
       registry.createPageRegistration(ItemsPage);
     await flushPublisher();
-    expect(registrations[5]?.signal.aborted).toBe(false);
+    expect(registrations[12]?.signal.aborted).toBe(false);
 
     publication.dispose();
     expect(registrations[0]?.signal.aborted).toBe(true);
-    expect(registrations[5]?.signal.aborted).toBe(true);
+    expect(registrations[12]?.signal.aborted).toBe(true);
 
     replacementPageRegistration.dispose();
   });
@@ -283,7 +297,7 @@ describe("WebMCP publisher", () => {
     );
 
     const pageContext = registrations.find(
-      ({ tool }) => tool.name === "get_page_context"
+      ({ tool }) => tool.name === "snapshot"
     );
     rootCount = 0;
     await pageContext?.tool.execute({});
@@ -409,41 +423,48 @@ describe("WebMCP publisher", () => {
     const first = registry.createPageRegistration(SharedPage);
     const publication = await synchronizeWebMcpTools({ registerTool });
     expect(registrations.map(({ tool }) => tool.name)).toEqual([
-      "get_page_context",
-      "click_page_state_ref",
-      "fill_page_state_ref",
+      "snapshot",
+      "click",
+      "hover",
+      "type",
+      "fill",
+      "check",
+      "uncheck",
+      "select_option",
+      "fill_form",
+      "press_key",
       "run",
     ]);
 
     const second = registry.createPageRegistration(SharedPage);
     await flushPublisher();
-    expect(registrations).toHaveLength(4);
+    expect(registrations).toHaveLength(11);
     expect(registrations[0]?.signal.aborted).toBe(false);
-    expect(registrations[3]?.signal.aborted).toBe(false);
+    expect(registrations[10]?.signal.aborted).toBe(false);
 
     second.dispose();
     await flushPublisher();
-    expect(registrations).toHaveLength(4);
+    expect(registrations).toHaveLength(11);
     expect(registrations[0]?.signal.aborted).toBe(false);
-    expect(registrations[3]?.signal.aborted).toBe(false);
+    expect(registrations[10]?.signal.aborted).toBe(false);
 
     const replacementOwner = registry.createPageRegistration(SharedPage);
     await flushPublisher();
-    expect(registrations).toHaveLength(4);
+    expect(registrations).toHaveLength(11);
     expect(registrations[0]?.signal.aborted).toBe(false);
-    expect(registrations[3]?.signal.aborted).toBe(false);
+    expect(registrations[10]?.signal.aborted).toBe(false);
 
     first.dispose();
     await flushPublisher();
-    expect(registrations).toHaveLength(5);
+    expect(registrations).toHaveLength(12);
     expect(registrations[0]?.signal.aborted).toBe(false);
-    expect(registrations[3]?.signal.aborted).toBe(true);
-    expect(registrations[4]?.signal.aborted).toBe(false);
+    expect(registrations[10]?.signal.aborted).toBe(true);
+    expect(registrations[11]?.signal.aborted).toBe(false);
 
     replacementOwner.dispose();
     publication.dispose();
     expect(registrations[0]?.signal.aborted).toBe(true);
-    expect(registrations[4]?.signal.aborted).toBe(true);
+    expect(registrations[11]?.signal.aborted).toBe(true);
   });
 
   it("cleans up partial publication when a tool registration fails", async () => {
@@ -606,8 +627,8 @@ describe("tool failure results", () => {
     await expect(failWith(42)).resolves.toEqual(toolFailure("42"));
   });
 
-  it("publishes every tool, get_page_context included, with failure results", async () => {
-    // No Goal Loop is configured here; pursue_goal is covered in goalLoop.browser.test.ts.
+  it("publishes every tool, snapshot included, with failure results", async () => {
+    // No Goal Loop is configured here; goal is covered in goalLoop.browser.test.ts.
     type ExecutableTool = PublishedTool & {
       execute(input: unknown): Promise<unknown>;
     };
@@ -619,7 +640,7 @@ describe("tool failure results", () => {
       const { ToolInputError } = await import("./errors");
       return {
         getPageContextTool: {
-          name: "get_page_context",
+          name: "snapshot",
           description: "Get page context.",
           inputSchema: { type: "object" },
           execute: async () => {
@@ -670,7 +691,7 @@ describe("tool failure results", () => {
       return tool.execute(input);
     };
 
-    await expect(execute("get_page_context", { names: "x" })).resolves.toEqual(
+    await expect(execute("snapshot", { names: "x" })).resolves.toEqual(
       toolFailure("ToolInputError: POM definition names must be an array.")
     );
     await expect(execute("run", {})).resolves.toEqual(toolFailure("boom"));

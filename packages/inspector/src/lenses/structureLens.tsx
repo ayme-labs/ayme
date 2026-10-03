@@ -23,8 +23,8 @@ export type StructureCapture = {
   loading: boolean;
 };
 
-/** A live Ref tool: it runs on one node, by ref. */
-export type RefToolSummary = {
+/** A live single-element tool: it runs on one node, by ref. */
+export type ElementToolSummary = {
   name: string;
   /** Its input schema, as an agent receives it. */
   inputSchema: unknown;
@@ -37,7 +37,7 @@ type RefNode = StructureNode & { ref: string };
 /**
  * The Structure lens: the Structural Page State an agent receives, as a
  * tree with each node tagged by the Page Object member it maps to. It owns
- * `node` selections. A node's detail runs the Ref tools that can take its
+ * `node` selections. A node's detail runs the single-element tools that can take its
  * ref and shows what the model sees of it. Hovering a node highlights it on
  * the page; the frame highlights the selected one.
  */
@@ -47,7 +47,7 @@ export function structureLens({
   selection,
   onSelect,
   onHover,
-  refTools,
+  elementTools,
   renderRun,
 }: {
   structure: StructureTree;
@@ -55,7 +55,7 @@ export function structureLens({
   selection: Selection;
   onSelect: (selection: Selection) => void;
   onHover: OnHover;
-  refTools: readonly RefToolSummary[];
+  elementTools: readonly ElementToolSummary[];
   renderRun: RenderRun;
 }): Lens {
   const rows = [...structureRows(structure.roots)];
@@ -103,7 +103,7 @@ export function structureLens({
                 : { kind: "object", path: owner.object }
             )
           }
-          refTools={refTools}
+          elementTools={elementTools}
           renderRun={renderRun}
         />
       );
@@ -229,16 +229,16 @@ function NodeRow({
 function NodeDetail({
   node,
   onOpenOwner,
-  refTools,
+  elementTools,
   renderRun,
 }: {
   node: RefNode;
   onOpenOwner: (owner: MemberOwner) => void;
-  refTools: readonly RefToolSummary[];
+  elementTools: readonly ElementToolSummary[];
   renderRun: RenderRun;
 }) {
   const members = node.memberLinks ?? [];
-  const tools = refTools.filter((tool) => tool.refs.includes(node.ref));
+  const tools = elementTools.filter((tool) => tool.refs.includes(node.ref));
   return (
     <article aria-label="Structure node" className="grid gap-3">
       <div className="flex items-start gap-2.5">

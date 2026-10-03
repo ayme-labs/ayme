@@ -124,7 +124,7 @@ export function withDemoFeedback(
 }
 
 // The elements a pointer action hit-tests: a locator's own and a drag's drop
-// target, or the selectors of the page's own actions, such as the ref tools'
+// target, or the selectors of the page's own actions, such as the single-element tools'
 // `page.click(selector)`.
 function pointerTargets(
   target: Page | Locator,
