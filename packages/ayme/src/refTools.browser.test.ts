@@ -84,10 +84,9 @@ describe("Ref Tools in Chromium", () => {
   async function structure(
     published: Map<string, Registration>
   ): Promise<string> {
-    const context = (await registrationOf(
-      published,
-      "get_page_context"
-    ).tool.execute({})) as { structure: string };
+    const context = (await registrationOf(published, "snapshot").tool.execute(
+      {}
+    )) as { structure: string };
     return context.structure;
   }
 
@@ -129,17 +128,13 @@ describe("Ref Tools in Chromium", () => {
 
     const published = await publish();
 
-    expect(
-      registrationOf(published, "click_page_state_ref").tool.inputSchema
-    ).toEqual({
+    expect(registrationOf(published, "click").tool.inputSchema).toEqual({
       type: "object",
       properties: { ref: { type: "string" } },
       required: ["ref"],
       additionalProperties: false,
     });
-    expect(
-      registrationOf(published, "fill_page_state_ref").tool.inputSchema
-    ).toEqual({
+    expect(registrationOf(published, "fill").tool.inputSchema).toEqual({
       type: "object",
       properties: { ref: { type: "string" }, value: { type: "string" } },
       required: ["ref", "value"],
@@ -149,10 +144,10 @@ describe("Ref Tools in Chromium", () => {
 
   it("rejects a Ref Tool whose name collides with another published tool", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool } = recordingRefTool({ name: "click_page_state_ref" });
+    const { refTool } = recordingRefTool({ name: "click" });
 
     await expect(publish([refTool])).rejects.toThrow(
-      'Cannot publish the tool "click_page_state_ref": another published tool already uses that name.'
+      'Cannot publish the tool "click": another published tool already uses that name.'
     );
   });
 

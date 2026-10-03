@@ -24,7 +24,7 @@ function statusToken(
 }
 
 /**
- * The compact text renderer: the notation `get_page_context` and the Change
+ * The compact text renderer: the notation `snapshot` and the Change
  * Record use. Every string child is one `text:` entry; adjacent strings stay
  * separate, since the capture carries no layout to tell a word split across
  * leaves from two neighbouring blocks.

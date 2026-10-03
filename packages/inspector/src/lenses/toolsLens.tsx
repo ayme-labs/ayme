@@ -22,7 +22,7 @@ export function toolsLens({
 }: {
   tools: readonly LiveTool[];
   /**
-   * A Page Object Model's definition as get_page_context gives it to an
+   * A Page Object Model's definition as snapshot gives it to an
    * agent. Reading it must not capture the page.
    */
   definitionText: (className: string) => string;

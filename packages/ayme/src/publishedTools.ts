@@ -20,7 +20,7 @@ export type PublishedTool =
 
 /**
  * Where a published tool comes from: a Page Object (Page Object Tool), a
- * Ref Tool, or the agent's own tools (`get_page_context`, `pursue_goal`).
+ * Ref Tool, or the agent's own tools (`snapshot`, `goal`).
  */
 export type PublishedToolGroup = "pageObject" | "ref" | "agent";
 

@@ -88,7 +88,7 @@ export function describeToolFailures(
     }
 
     async function saveRef() {
-      const { structure } = (await executeTool("get_page_context", {})) as {
+      const { structure } = (await executeTool("snapshot", {})) as {
         structure: string;
       };
       const ref = structure.match(/(e\d+) button "Save changes"/)?.[1];
@@ -104,7 +104,7 @@ export function describeToolFailures(
     it("returns a browser action failure with its name and call log", async () => {
       const ref = await saveRef();
 
-      const call = callTool("click_page_state_ref", { ref });
+      const call = callTool("click", { ref });
 
       await expect(call).resolves.toBeTypeOf("string");
       expectFailureResult(
@@ -120,7 +120,7 @@ export function describeToolFailures(
       document.querySelector("#save")!.remove();
 
       expectFailureResult(
-        await executeTool("click_page_state_ref", { ref }),
+        await executeTool("click", { ref }),
         `RefResolutionError: Cannot click ref "${ref}": removed.`
       );
     });
@@ -132,9 +132,9 @@ export function describeToolFailures(
       );
     });
 
-    it("returns invalid get_page_context input as a ToolInputError", async () => {
+    it("returns invalid snapshot input as a ToolInputError", async () => {
       expectFailureResult(
-        await executeTool("get_page_context", { names: "x" }),
+        await executeTool("snapshot", { names: "x" }),
         expect.stringMatching(/^ToolInputError: .*names/)
       );
     });

@@ -12,7 +12,7 @@ vi.mock("./pomDefinitions", () => ({ getPomDefinitions }));
 
 import { getPageContextForDocument, getPageContextTool } from "./pageContext";
 
-describe("get_page_context", () => {
+describe("snapshot", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal(

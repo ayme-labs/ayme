@@ -62,7 +62,7 @@ test("an app-registered Ref Tool runs from the panel and shows in Runs", async (
   inspector,
   listPage,
 }) => {
-  // The Add item button's ref, as an agent reads it from get_page_context.
+  // The Add item button's ref, as an agent reads it from snapshot.
   const ref = await new AgentView(page).ref('button "Add item"');
 
   await (await inspector.tool("mark_element")).run({ ref });
@@ -117,16 +117,16 @@ test("Runs switches between the selection's runs and all runs with the mouse", a
 
 // The fixture stubs the Goal Loop's decision (clear the list, then judge the
 // goal met), so this covers the panel's run, not the model's judgement.
-test("pursue_goal runs from the panel and shows in Runs with its steps and Handover result", async ({
+test("goal runs from the panel and shows in Runs with its steps and Handover result", async ({
   inspector,
   listPage,
 }) => {
   await listPage.addItem("Milk");
 
-  const pursueGoal = await inspector.tool("pursue_goal");
+  const pursueGoal = await inspector.tool("goal");
   await pursueGoal.run({ goal: "Empty the list", maxSteps: 3 });
 
-  const run = inspector.runs.latest("pursue_goal");
+  const run = inspector.runs.latest("goal");
   await expect.poll(() => run.status()).toBe("Succeeded");
   await expect(run.byYou).toBeVisible();
   expect(await run.stepList()).toContainEqual({
@@ -183,11 +183,11 @@ test.describe("with WebMCP publication off", () => {
     inspector,
     listPage,
   }) => {
-    // The Add item button's ref, from get_page_context run in the panel:
+    // The Add item button's ref, from snapshot run in the panel:
     // with publication off, no agent can call it.
-    const getPageContext = await inspector.tool("get_page_context");
+    const getPageContext = await inspector.tool("snapshot");
     await getPageContext.runButton.click();
-    const run = inspector.runs.latest("get_page_context");
+    const run = inspector.runs.latest("snapshot");
     await expect.poll(() => run.status()).toBe("Succeeded");
     const { structure } = JSON.parse((await run.resultText()) ?? "{}") as {
       structure: string;
@@ -203,13 +203,13 @@ test.describe("with WebMCP publication off", () => {
       .toBe("Succeeded");
   });
 
-  test("get_page_context runs from the panel and shows its result", async ({
+  test("snapshot runs from the panel and shows its result", async ({
     inspector,
   }) => {
-    const getPageContext = await inspector.tool("get_page_context");
+    const getPageContext = await inspector.tool("snapshot");
     await getPageContext.runButton.click();
 
-    const run = inspector.runs.latest("get_page_context");
+    const run = inspector.runs.latest("snapshot");
     await expect.poll(() => run.status()).toBe("Succeeded");
     await run.resultToggle.click();
     await expect(run.result).toContainText('"structure"');
