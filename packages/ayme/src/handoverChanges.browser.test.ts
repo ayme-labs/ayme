@@ -178,7 +178,7 @@ describe("Handover changes in Chromium", () => {
     expect(handover.changes).toContain(ARCHIVED);
 
     const result = (await tool("click").execute({
-      ref: refreshRef,
+      target: refreshRef,
     })) as ActionResultShape;
 
     expect(result.changes).toContain("Refreshed");

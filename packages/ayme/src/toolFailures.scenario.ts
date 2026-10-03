@@ -104,13 +104,13 @@ export function describeToolFailures(
     it("returns a browser action failure with its name and call log", async () => {
       const ref = await saveRef();
 
-      const call = callTool("click", { ref });
+      const call = callTool("click", { target: ref });
 
       await expect(call).resolves.toBeTypeOf("string");
       expectFailureResult(
         JSON.parse((await call)!),
         expect.stringMatching(
-          /^TimeoutError: page\.click: Timeout 1000ms[\s\S]*Call log:/
+          /^TimeoutError: locator\.click: Timeout 1000ms[\s\S]*Call log:/
         )
       );
     });
@@ -120,7 +120,7 @@ export function describeToolFailures(
       document.querySelector("#save")!.remove();
 
       expectFailureResult(
-        await executeTool("click", { ref }),
+        await executeTool("click", { target: ref }),
         `RefResolutionError: Cannot click ref "${ref}": removed.`
       );
     });

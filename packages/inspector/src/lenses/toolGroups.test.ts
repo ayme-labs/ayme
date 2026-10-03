@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { attachToolModels, listTools, type LiveTool } from "./toolGroups";
 
 // Unit: what the Tools lens lists, from the runtime's live tools. The expected groups come from the runtime's grouping:
-// Page Object Tools, Ref Tools, and snapshot and goal.
+// Page Object Tools, Custom Tools, Browser Tools, and snapshot and goal.
 
 function tool(name: string, group: LiveTool["group"]): LiveTool {
   return { name, description: "", inputSchema: {}, group };
@@ -12,8 +12,9 @@ function tool(name: string, group: LiveTool["group"]): LiveTool {
 // The runtime's order.
 const live = [
   tool("snapshot", "agent"),
-  tool("click", "ref"),
-  tool("fill", "ref"),
+  tool("click", "browser"),
+  tool("fill", "browser"),
+  tool("highlight", "custom"),
   tool("ListPage.addItem", "pageObject"),
   tool("ListPage.items.rename", "pageObject"),
   tool("goal", "agent"),
@@ -22,12 +23,13 @@ const live = [
 const names = (tools: readonly LiveTool[]) => tools.map((t) => t.name);
 
 describe("listTools", () => {
-  it("groups the tools as Page object, Ref and Agent tools, in the runtime's order", () => {
+  it("groups the tools as Page object, Custom, Browser and Agent tools, in the runtime's order", () => {
     expect(
       listTools(live).map(({ label, tools }) => [label, names(tools)])
     ).toEqual([
       ["Page object tools", ["ListPage.addItem", "ListPage.items.rename"]],
-      ["Ref tools", ["click", "fill"]],
+      ["Custom tools", ["highlight"]],
+      ["Browser tools", ["click", "fill"]],
       ["Agent tools", ["snapshot", "goal"]],
     ]);
   });
@@ -63,6 +65,7 @@ describe("attachToolModels", () => {
       ["snapshot", undefined],
       ["click", undefined],
       ["fill", undefined],
+      ["highlight", undefined],
       ["ListPage.addItem", "ListPage"],
       ["ListPage.items.rename", "ListItem"],
       ["goal", undefined],

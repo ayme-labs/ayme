@@ -35,7 +35,7 @@ const addItem = {
 
 describe("schema to fields", () => {
   it("gives each property a typed field, in schema order", () => {
-    expect(fieldsOf(addItem)).toEqual([
+    expect(fieldsOf(addItem, "ref")).toEqual([
       {
         name: "text",
         optional: false,
@@ -89,6 +89,19 @@ describe("schema to fields", () => {
       { name: "ref", optional: true, kind: "ref", typeLabel: "ref" },
       { name: "extra", optional: true, kind: "json", typeLabel: "object" },
     ]);
+  });
+
+  it("picks a ref only for the argument named as the tool's ref field", () => {
+    const rename = {
+      type: "object" as const,
+      properties: { target: { type: "string" as const } },
+    };
+
+    expect(fieldsOf(rename)[0]).toMatchObject({ name: "target", kind: "text" });
+    expect(fieldsOf(rename, "target")[0]).toMatchObject({
+      name: "target",
+      kind: "ref",
+    });
   });
 
   it("types a string by its format", () => {

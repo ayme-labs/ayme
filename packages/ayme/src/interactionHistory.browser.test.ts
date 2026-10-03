@@ -183,7 +183,7 @@ describe("Interaction history in Chromium", () => {
     const addRef = refFor(await readStructure(), "Add");
     const actionsBefore = history().actions().size;
 
-    const result = await act("click", { ref: addRef });
+    const result = await act("click", { target: addRef });
 
     expect(result.changes).toContain("Added by the action");
     expect(history().actions().size).toBe(actionsBefore + 1);
@@ -191,7 +191,7 @@ describe("Interaction history in Chromium", () => {
     expect(history().actions().get(actionId)).toEqual({
       caller: "agent",
       tool: "click",
-      args: { ref: addRef },
+      args: { target: addRef },
       targetRef: addRef,
     });
     await expectBeforeChangeAfter(actionId);
@@ -228,7 +228,7 @@ describe("Interaction history in Chromium", () => {
     await publishTools();
     const addRef = refFor(await readStructure(), "Add");
 
-    const result = await act("click", { ref: addRef });
+    const result = await act("click", { target: addRef });
     const actionId = lastActionId();
     const ledger = await readLedger();
 
@@ -260,7 +260,7 @@ describe("Interaction history in Chromium", () => {
     if (!draftRef) throw new Error("Expected a ref for the draft paragraph.");
 
     await act("click", {
-      ref: refFor(structure, "Discard"),
+      target: refFor(structure, "Discard"),
     });
     const ledger = await readLedger();
 
@@ -306,7 +306,7 @@ describe("Interaction history in Chromium", () => {
     const visitsBefore = history().observations.getVisits().length;
 
     const result = await act("click", {
-      ref: refFor(await readStructure(), "Orders", "link"),
+      target: refFor(await readStructure(), "Orders", "link"),
     });
 
     expect(history().observations.getVisits()).toHaveLength(visitsBefore + 1);
@@ -422,7 +422,7 @@ describe("Interaction history in Chromium", () => {
     const [markRef] = (
       await getPageStateForElements([document.querySelector("#mark")!])
     ).refs;
-    const result = await act("click", { ref: markRef });
+    const result = await act("click", { target: markRef });
 
     expect(result.changes).toContain("Marked by the agent");
     expect(result.changes).not.toContain("Added by the action");

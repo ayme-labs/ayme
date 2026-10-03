@@ -14,7 +14,8 @@ import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
 import type { GoalLoopStepRecord } from "./goalLoop";
 import type { AriaRef, PageStateCapture } from "./pageState";
-import { acceptedRefNodes, listRefTools } from "./refTools";
+import { listRefTools } from "./browserTools";
+import { acceptedRefNodes, type TargetField } from "./refTools";
 import {
   listCollectionToolRoots,
   listCallerAwarePomTools,
@@ -167,15 +168,16 @@ function specsOfObjectSchema(
   );
 }
 
-/** Read a published Ref Tool's input schema the same way. */
+/** Read a single-element tool's input schema the same way. */
 function specsOfRefToolSchema(
   schema: JsonSchema,
+  targetField: TargetField,
   refFilter: (element: Element) => boolean
 ): ArgumentSpec[] {
   return specsOfObjectSchema(schema).map((spec) =>
-    // A Ref Tool's `ref` is the Structural Ref it acts on; the elements its
+    // Its `ref` or `target` is the Structural Ref it acts on; the elements its
     // filter keeps are the closed set (ADR-0023).
-    spec.name === "ref"
+    spec.name === targetField
       ? { ...spec, closedSet: { kind: "ref", filter: refFilter } }
       : spec
   );
@@ -210,12 +212,12 @@ function specsOfCollectionTool(
  */
 export function buildToolOptions(): ToolOption[] {
   const refTools: ExecutableTool[] = listRefTools().map(
-    ({ tool, filter, executeAs }) => ({
+    ({ tool, targetField, loopInputSchema, filter, executeAs }) => ({
       name: tool.name,
       description: tool.description,
       execute: (input: unknown) => executeAs(input, "goalLoop"),
-      requiredParams: [...(tool.inputSchema.required ?? [])],
-      args: specsOfRefToolSchema(tool.inputSchema, filter),
+      requiredParams: [...(loopInputSchema.required ?? [])],
+      args: specsOfRefToolSchema(loopInputSchema, targetField, filter),
     })
   );
   const collectionRoots = listCollectionToolRoots();

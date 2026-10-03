@@ -6,9 +6,10 @@ import {
   type AriaRef,
   type PageStateCapture,
 } from "./pageState";
+import { listPublishedBrowserTools, listRefTools } from "./browserTools";
 import {
   acceptedRefNodes,
-  listRefTools,
+  listCustomTools,
   type PublishedRefTool,
 } from "./refTools";
 import { listRegisteredPomTools, subscribeToRegisteredPoms } from "./registry";
@@ -19,10 +20,11 @@ export type PublishedTool =
   RegisteredPomTool | typeof getPageContextTool | PublishedRefTool;
 
 /**
- * Where a published tool comes from: a Page Object (Page Object Tool), a
- * Ref Tool, or the agent's own tools (`snapshot`, `goal`).
+ * Where a published tool comes from: a Page Object (Page Object Tool), Ayme's
+ * Browser Tools, the app's Custom Tools, or the agent's own tools
+ * (`snapshot`, `goal`).
  */
-export type PublishedToolGroup = "pageObject" | "ref" | "agent";
+export type PublishedToolGroup = "pageObject" | "browser" | "custom" | "agent";
 
 /** A published tool as an agent sees it, for reading only. */
 export type PublishedToolInfo = Readonly<{
@@ -50,12 +52,22 @@ export function resolvePublishedTools(): Map<
     ...pomTools.map((tool) => tool.name),
     ...(pursueGoal ? [pursueGoal.name] : []),
   ]);
-  for (const { tool } of listRefTools()) {
+  const ownTools = [
+    ...listPublishedBrowserTools().map((tool) => ({
+      tool,
+      group: "browser" as const,
+    })),
+    ...listCustomTools().map(({ tool }) => ({
+      tool,
+      group: "custom" as const,
+    })),
+  ];
+  for (const { tool, group } of ownTools) {
     if (active.has(tool.name) || takenElsewhere.has(tool.name))
       throw new RuntimeStateError(
         `Cannot publish the tool "${tool.name}": another published tool already uses that name.`
       );
-    active.set(tool.name, { tool, group: "ref" });
+    active.set(tool.name, { tool, group });
   }
   for (const tool of pomTools)
     active.set(tool.name, { tool, group: "pageObject" });
@@ -129,7 +141,7 @@ export function getPublicationStatus(): AymeWebMcpPublicationStatus {
 }
 
 /**
- * The refs each live Ref Tool can take in `capture` (a peek of the current
+ * The refs each live single-element tool can take in `capture` (a peek of the current
  * page when absent), by tool name, in tree order: the same closed set the Goal
  * Loop offers for that tool's ref. Pass the peek the Inspector shows,
  * so the refs match its structure.

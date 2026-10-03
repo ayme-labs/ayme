@@ -10,12 +10,12 @@ test("a ref picked by clicking the page is the element the tool acts on", async 
 }) => {
   const fill = await inspector.tool("fill");
 
-  await fill.refField().pickOnPage();
+  await fill.refField("target").pickOnPage();
   await listPage.newItemInput.click();
   await expect
-    .poll(() => fill.refField().value())
+    .poll(() => fill.refField("target").value())
     .toMatch(/textbox "New item"$/);
-  await fill.run({ value: "Milk" });
+  await fill.run({ text: "Milk" });
 
   await expect(listPage.newItemInput).toHaveValue("Milk");
 });
@@ -26,7 +26,7 @@ test("while picking, the element under the pointer is highlighted", async ({
 }) => {
   const click = await inspector.tool("click");
 
-  await click.refField().pickOnPage();
+  await click.refField("target").pickOnPage();
   await listPage.addItemButton.hover();
 
   // The dashed hover highlight.
@@ -38,7 +38,7 @@ test("Esc cancels picking, and clicks reach the page again", async ({
   inspector,
   listPage,
 }) => {
-  const ref = (await inspector.tool("click")).refField();
+  const ref = (await inspector.tool("click")).refField("target");
   await ref.pickOnPage();
 
   await page.keyboard.press("Escape");
@@ -52,7 +52,7 @@ test("Esc cancels picking, and clicks reach the page again", async ({
 test("fill's structure leaves a button out and offers the text field", async ({
   inspector,
 }) => {
-  const ref = (await inspector.tool("fill")).refField();
+  const ref = (await inspector.tool("fill")).refField("target");
 
   await ref.open();
 
@@ -64,7 +64,7 @@ test("picking a button for fill greys it and doesn't pick it", async ({
   inspector,
   listPage,
 }) => {
-  const ref = (await inspector.tool("fill")).refField();
+  const ref = (await inspector.tool("fill")).refField("target");
   await ref.pickOnPage();
 
   await listPage.addItemButton.hover();

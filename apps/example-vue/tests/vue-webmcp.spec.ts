@@ -75,10 +75,21 @@ function normalizeAppSubtree(pageState: string): string {
 
 // The dev server mounts a Decision Endpoint, so the app runs with the Goal
 // Loop on and publishes `goal` alongside the Page Object tools.
+const browserToolNames = [
+  "click",
+  "hover",
+  "type",
+  "fill",
+  "check",
+  "uncheck",
+  "select_option",
+  "fill_form",
+  "press_key",
+];
+
 const initialToolNames = [
   "snapshot",
-  "click",
-  "fill",
+  ...browserToolNames,
   "ListPage.addItem",
   "ListPage.items.archive",
   "ListPage.items.rename",
@@ -328,7 +339,7 @@ test("publishes collection tools only while a component root is live", async ({
   });
   await expect
     .poll(async () => await recordedToolNames(page))
-    .toEqual(["snapshot", "click", "fill", "ListPage.addItem", "goal"]);
+    .toEqual(["snapshot", ...browserToolNames, "ListPage.addItem", "goal"]);
 
   await executePublishedTool(page, "ListPage.addItem", {
     text: "Restore live component tools",
@@ -348,7 +359,10 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
 
-  const tools = await recordedTools(page);
+  // The ayme package pins the Browser Tools' schemas; here they are only named.
+  const tools = (await recordedTools(page)).filter(
+    ({ name }) => !browserToolNames.includes(name)
+  );
 
   expect(tools).toEqual([
     {
@@ -361,28 +375,6 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
           names: { type: "array", items: { type: "string" } },
         },
         required: [],
-        additionalProperties: false,
-      },
-    },
-    {
-      name: "click",
-      description:
-        "Click a real element ref from snapshot. The ref is resolved against a fresh capture before the action.",
-      inputSchema: {
-        type: "object",
-        properties: { ref: { type: "string" } },
-        required: ["ref"],
-        additionalProperties: false,
-      },
-    },
-    {
-      name: "fill",
-      description:
-        "Fill a real editable element ref from snapshot with text. The ref is resolved against a fresh capture before the action.",
-      inputSchema: {
-        type: "object",
-        properties: { ref: { type: "string" }, value: { type: "string" } },
-        required: ["ref", "value"],
         additionalProperties: false,
       },
     },
@@ -547,7 +539,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
   ).toBeVisible();
   await expect
     .poll(async () => await recordedToolNames(page))
-    .toEqual(["snapshot", "click", "fill", "ListPage.addItem", "goal"]);
+    .toEqual(["snapshot", ...browserToolNames, "ListPage.addItem", "goal"]);
   await page.getByRole("button", { name: "Confirm archive" }).click();
   await expect(page.locator("[data-archived-label]")).toHaveCount(3);
   await expect

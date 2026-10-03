@@ -274,7 +274,19 @@ describe("live Page Object availability", () => {
     try {
       await expect
         .poll(() => [...published.keys()])
-        .toEqual(["snapshot", "click", "fill", "Shell.sidebar.close"]);
+        .toEqual([
+          "snapshot",
+          "click",
+          "hover",
+          "type",
+          "fill",
+          "check",
+          "uncheck",
+          "select_option",
+          "fill_form",
+          "press_key",
+          "Shell.sidebar.close",
+        ]);
       const rule = document.querySelector<HTMLStyleElement>(
         "#availability-style"
       )!.sheet!.cssRules[0] as CSSStyleRule;
@@ -285,12 +297,35 @@ describe("live Page Object availability", () => {
       window.dispatchEvent(new Event("resize"));
       await expect
         .poll(() => [...published.keys()])
-        .toEqual(["snapshot", "click", "fill"]);
+        .toEqual([
+          "snapshot",
+          "click",
+          "hover",
+          "type",
+          "fill",
+          "check",
+          "uncheck",
+          "select_option",
+          "fill_form",
+          "press_key",
+        ]);
       rule.style.visibility = "visible";
       window.dispatchEvent(new Event("transitionend"));
       await expect
         .poll(() => [...published.keys()])
-        .toEqual(["snapshot", "click", "fill", "Shell.sidebar.close"]);
+        .toEqual([
+          "snapshot",
+          "click",
+          "hover",
+          "type",
+          "fill",
+          "check",
+          "uncheck",
+          "select_option",
+          "fill_form",
+          "press_key",
+          "Shell.sidebar.close",
+        ]);
     } finally {
       publication.dispose();
     }
@@ -508,7 +543,14 @@ describe("live Page Object availability", () => {
       expect(published).toEqual([
         "snapshot",
         "click",
+        "hover",
+        "type",
         "fill",
+        "check",
+        "uncheck",
+        "select_option",
+        "fill_form",
+        "press_key",
         "SlowShell.panels.close",
       ]);
     } finally {
