@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useId, useMemo, useState, type FormEvent } from "react";
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -23,6 +23,8 @@ import {
   signatureOf,
   withArgument,
 } from "./fields";
+import type { FormField } from "./fillForm";
+import { FillFormFields } from "./FillFormFields";
 import { needsInput } from "./needsInput";
 import type { RefSource } from "./RefField";
 
@@ -97,6 +99,10 @@ export function RunCard({
   const [json, setJson] = useState<{ text?: string; error?: string }>();
   const [open, setOpen] = useState(false);
   const [pickedPath, setPickedPath] = useState<string>();
+  const setFormFields = useCallback(
+    (formFields: FormField[]) => setArgs({ fields: formFields }),
+    []
+  );
 
   const collection = tool.collection !== undefined;
   const picking = collection && !item;
@@ -205,7 +211,7 @@ export function RunCard({
 
       {showBody && (
         <>
-          {fields.length > 0 && (
+          {fields.length > 0 && !tool.fillForm && (
             <div className="flex items-center gap-1.5">
               <span className="text-[11.5px] font-semibold">Arguments</span>
               <span className="flex-1" />
@@ -276,7 +282,13 @@ export function RunCard({
             </div>
           )}
 
-          {json === undefined ? (
+          {tool.fillForm ? (
+            <FillFormFields
+              source={refSource ?? { roots: [] }}
+              lastRun={last}
+              onChange={setFormFields}
+            />
+          ) : json === undefined ? (
             <ArgumentsForm
               fields={fields}
               values={args}

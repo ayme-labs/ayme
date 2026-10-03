@@ -1,3 +1,4 @@
+import type { ControlState } from "./formControls";
 import type { PageModel, PageObjectNode } from "./pageModel";
 
 /**
@@ -16,6 +17,11 @@ export type StructureNode = {
    * Rows leave them out; "What the model sees" shows them.
    */
   states?: string[];
+  /**
+   * A native form control's state, read from the element: what the page
+   * state leaves out, such as a slider's range.
+   */
+  control?: ControlState;
   /**
    * Every Page Object member path whose element this node is, in the
    * registry's order: e.g. both "ListPage.items[1]" and "ListPage.entries[1]"
@@ -117,7 +123,9 @@ export function buildStructureTree(
   text: string,
   membersByRef: ReadonlyMap<string, readonly string[]>,
   /** The page model's Page Objects and models; they own the members. */
-  owners: MemberOwners = noOwners
+  owners: MemberOwners = noOwners,
+  /** The native form controls' states, by ref. */
+  controls: ReadonlyMap<string, ControlState> = new Map()
 ): StructureTree {
   const roots: StructureNode[] = [];
   const open: { indent: number; node: StructureNode }[] = [];
@@ -146,6 +154,8 @@ export function buildStructureTree(
     }
     if (node.ref !== undefined) {
       refCount += 1;
+      const control = controls.get(node.ref);
+      if (control) node.control = control;
       const members = membersByRef.get(node.ref) ?? [];
       node.members = members;
       const tag = memberTag(members);

@@ -30,6 +30,8 @@ export type RunnableTool = {
   refField?: "ref" | "target";
   /** The argument that takes a key to press: a Browser Tool's `key`. */
   keyField?: "key";
+  /** Whether it's the `fill_form` Browser Tool, which has its own form. */
+  fillForm?: true;
 };
 
 /** A tool the runtime lists as live: one `runTool` can run now. */
@@ -77,6 +79,9 @@ export function listRunnableTools(
         ...(tool.group === "browser" &&
         tool.inputSchema.properties?.key?.type === "string"
           ? { keyField: "key" as const }
+          : {}),
+        ...(tool.group === "browser" && tool.name === "fill_form"
+          ? { fillForm: true as const }
           : {}),
       });
     }

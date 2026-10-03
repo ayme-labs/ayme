@@ -18,6 +18,7 @@ import {
 } from "@ayme-dev/ayme/internal";
 
 import type { HighlightTarget } from "../frame/highlight";
+import { readControls, type ControlState } from "./formControls";
 import { createRefreshScheduler } from "./refreshScheduler";
 import { mapMembersToRefs } from "./structure";
 
@@ -40,6 +41,8 @@ export type PageStateView = {
   elementToolTargets: ReadonlyMap<string, readonly string[]>;
   /** Each ref's element in this page state. */
   elementsByRef: ReadonlyMap<string, Element>;
+  /** The native form controls' states, by ref, read with this look. */
+  controls: ReadonlyMap<string, ControlState>;
   capturedAt?: string;
   error?: string;
   loading: boolean;
@@ -86,6 +89,7 @@ export function useInspector({
     membersByRef: new Map(),
     elementToolTargets: new Map(),
     elementsByRef: new Map(),
+    controls: new Map(),
     loading: false,
   });
 
@@ -119,6 +123,7 @@ export function useInspector({
         membersByRef: next.membersByRef,
         elementToolTargets: next.elementToolTargets,
         elementsByRef: next.peek.elementsByRef,
+        controls: readControls(next.peek.elementsByRef),
         capturedAt: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",

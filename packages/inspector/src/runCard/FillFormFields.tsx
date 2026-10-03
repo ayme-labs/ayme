@@ -1,0 +1,394 @@
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type DragEvent,
+  type KeyboardEvent,
+} from "react";
+import { GripVerticalIcon, RotateCcwIcon } from "lucide-react";
+
+import { cn } from "@ayme-dev/design-system/lib/utils";
+
+import type { Run } from "../adapter/useRuns";
+import { inputClass } from "./ArgumentsForm";
+import {
+  changedFields,
+  formRows,
+  inFillOrder,
+  isChanged,
+  type FormField,
+  type FormRow,
+} from "./fillForm";
+import type { RefSource } from "./RefField";
+
+/**
+ * `fill_form`'s form: every fillable element on the page as the control it
+ * is, holding the value the page shows now. The rows the person changes
+ * become `fields`, in the list's order; dragging a row changes the order.
+ */
+export function FillFormFields({
+  source,
+  lastRun,
+  onChange,
+}: {
+  /** The page's structure, and its hover preview. */
+  source: RefSource;
+  /** The tool's last run: a field it couldn't fill marks its row. */
+  lastRun: Run | undefined;
+  /** Gets the fields to fill whenever they change. */
+  onChange: (fields: FormField[]) => void;
+}) {
+  const { roots, onPreview, onPreviewEnd } = source;
+  const pageRows = useMemo(() => formRows(roots), [roots]);
+  const [edits, setEdits] = useState<ReadonlyMap<string, string>>(new Map());
+  const [order, setOrder] = useState<readonly string[]>();
+  const [dragged, setDragged] = useState<string>();
+  const [over, setOver] = useState<string>();
+
+  const rows = inFillOrder(pageRows, order);
+  const fields = changedFields(rows, edits);
+  const failure = failureOf(lastRun);
+
+  // A change the page now shows, after a run or typed on the page, is done.
+  useEffect(() => {
+    setEdits((current) => {
+      const left = new Map(current);
+      for (const row of pageRows)
+        if (left.get(row.key) === row.value) left.delete(row.key);
+      return left.size === current.size ? current : left;
+    });
+  }, [pageRows]);
+
+  const fieldsKey = JSON.stringify(fields);
+  useEffect(() => {
+    onChange(JSON.parse(fieldsKey) as FormField[]);
+  }, [fieldsKey, onChange]);
+
+  const edit = (row: FormRow, value: string | undefined) =>
+    setEdits((current) => {
+      const next = new Map(current);
+      if (value === undefined || value === row.value) next.delete(row.key);
+      else next.set(row.key, value);
+      return next;
+    });
+
+  const move = (key: string, to: number) => {
+    const keys = rows.map((row) => row.key).filter((other) => other !== key);
+    keys.splice(Math.max(0, Math.min(to, keys.length)), 0, key);
+    setOrder(keys);
+  };
+  const onGripKey = (event: KeyboardEvent, key: string, index: number) => {
+    const by = { ArrowUp: -1, ArrowDown: 1 }[event.key];
+    if (by === undefined) return;
+    event.preventDefault();
+    move(key, index + by);
+  };
+  const onDrop = (event: DragEvent, index: number) => {
+    event.preventDefault();
+    if (dragged !== undefined) move(dragged, index);
+    setDragged(undefined);
+    setOver(undefined);
+  };
+
+  let fillOrder = 0;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className="text-[11.5px] font-semibold">Fields</span>
+        <span
+          role="status"
+          aria-label="Changed fields"
+          className="text-[11px] text-muted-foreground"
+        >
+          {fields.length} changed
+        </span>
+        <span className="flex-1" />
+        {edits.size > 0 && (
+          <button
+            type="button"
+            className="h-[22px] rounded-[5px] border px-2 text-[11px] font-medium hover:border-ring"
+            onClick={() => setEdits(new Map())}
+          >
+            Undo all
+          </button>
+        )}
+      </div>
+      <p className="m-0 text-[11.5px] text-muted-foreground">
+        Every field on the page, holding what it shows now. The ones you change
+        are filled, in the numbered order; drag a row to change it.
+      </p>
+      {rows.length === 0 ? (
+        <p className="m-0 rounded-lg border p-3 text-center text-xs text-muted-foreground">
+          No fields are on the page.
+        </p>
+      ) : (
+        <ul
+          aria-label="Form fields"
+          className="m-0 flex list-none flex-col rounded-lg border p-0"
+        >
+          {rows.map((row, index) => {
+            const changed = isChanged(row, edits);
+            const failed =
+              failure &&
+              (row.key === failure.target ||
+                row.options?.some((option) => option.value === failure.target))
+                ? failure.error
+                : undefined;
+            return (
+              <li
+                key={row.key}
+                data-changed={changed}
+                data-failed={failed !== undefined}
+                className={cn(
+                  "grid grid-cols-[18px_18px_minmax(0,1fr)] items-start gap-1.5 border-t py-2 pr-2.5 pl-1 first:border-t-0",
+                  over === row.key &&
+                    dragged !== row.key &&
+                    "shadow-[inset_0_2px_0_var(--color-primary)]",
+                  failed !== undefined && "bg-destructive/10"
+                )}
+                onMouseEnter={() => onPreview?.(row.preview)}
+                onMouseLeave={onPreviewEnd}
+                onDragOver={(event) => {
+                  if (dragged === undefined) return;
+                  event.preventDefault();
+                  setOver(row.key);
+                }}
+                onDrop={(event) => onDrop(event, index)}
+              >
+                <button
+                  type="button"
+                  draggable
+                  aria-label={`Move ${row.name || row.type}`}
+                  title="Drag to change the fill order"
+                  className="mt-0.5 grid h-[22px] cursor-grab place-items-center rounded text-muted-foreground hover:bg-muted"
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", row.key);
+                    setDragged(row.key);
+                  }}
+                  onDragEnd={() => {
+                    setDragged(undefined);
+                    setOver(undefined);
+                  }}
+                  onKeyDown={(event) => onGripKey(event, row.key, index)}
+                >
+                  <GripVerticalIcon className="size-3.5" aria-hidden />
+                </button>
+                {changed ? (
+                  <span
+                    aria-label="Fill order"
+                    className="mt-[3px] grid size-[18px] place-items-center rounded-full bg-primary text-[10.5px] font-bold text-primary-foreground"
+                  >
+                    {++fillOrder}
+                  </span>
+                ) : (
+                  <span />
+                )}
+                <FieldRow
+                  row={row}
+                  value={edits.get(row.key) ?? row.value}
+                  changed={changed}
+                  error={failed}
+                  onChange={(value) => edit(row, value)}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** A row's label, its undo, and its control. */
+function FieldRow({
+  row,
+  value,
+  changed,
+  error,
+  onChange,
+}: {
+  row: FormRow;
+  value: string;
+  changed: boolean;
+  error: string | undefined;
+  onChange: (value: string | undefined) => void;
+}) {
+  const id = useId();
+  const name = row.name || row.type;
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <div className="flex min-h-[22px] items-center gap-1.5">
+        <label
+          htmlFor={id}
+          className={cn(
+            "min-w-0 truncate text-[11.5px] font-semibold",
+            !changed && "text-muted-foreground"
+          )}
+        >
+          {name}
+        </label>
+        <span className="font-mono text-[11px] text-muted-foreground">
+          {row.type}
+        </span>
+        <span className="flex-1" />
+        {changed && (
+          <button
+            type="button"
+            aria-label={`Undo the change to ${name}`}
+            title="Undo: keep what the page shows"
+            className="grid size-[22px] place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={() => onChange(undefined)}
+          >
+            <RotateCcwIcon className="size-3.5" aria-hidden />
+          </button>
+        )}
+      </div>
+      <FieldControl
+        id={id}
+        name={name}
+        row={row}
+        value={value}
+        onChange={onChange}
+      />
+      {error !== undefined && (
+        <span className="font-mono text-[11.5px] break-words text-destructive">
+          {error}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** The control that fits the row's type, holding `value`. */
+function FieldControl({
+  id,
+  name,
+  row,
+  value,
+  onChange,
+}: {
+  id: string;
+  name: string;
+  row: FormRow;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const { options, range } = row;
+  if (row.type === "radio")
+    return (
+      <div
+        id={id}
+        role="radiogroup"
+        aria-label={name}
+        className="flex flex-wrap gap-0.5 self-start rounded-md bg-muted p-0.5"
+      >
+        {options!.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={option.value === value}
+            className="rounded-[5px] px-2.5 py-1 text-xs text-muted-foreground aria-checked:bg-card aria-checked:text-foreground aria-checked:shadow-xs"
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    );
+  if (row.type === "checkbox")
+    return (
+      <label className="flex cursor-pointer items-center gap-2 text-xs">
+        <input
+          id={id}
+          type="checkbox"
+          aria-label={name}
+          checked={value === "true"}
+          onChange={(event) => onChange(String(event.target.checked))}
+        />
+        {value === "true" ? "Checked" : "Unchecked"}
+      </label>
+    );
+  if (row.type === "combobox" && options)
+    return (
+      <select
+        id={id}
+        aria-label={name}
+        className={inputClass}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {!options.some((option) => option.value === value) && (
+          <option value={value}>{value || "—"}</option>
+        )}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    );
+  if (row.type === "slider" && range)
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          id={id}
+          type="range"
+          aria-label={name}
+          className="min-w-0 flex-1 accent-primary"
+          min={range.min}
+          max={range.max}
+          step={range.step}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <span className="font-mono text-xs">{value}</span>
+      </div>
+    );
+  if (row.multiline)
+    return (
+      <textarea
+        id={id}
+        aria-label={name}
+        rows={2}
+        className={`${inputClass} h-auto py-1.5`}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    );
+  return (
+    <input
+      id={id}
+      type="text"
+      aria-label={name}
+      className={inputClass}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
+/**
+ * The field the last run couldn't fill, by its target, and why: `fill_form`
+ * stops there and returns the fields filled before it.
+ */
+function failureOf(run: Run | undefined) {
+  if (run?.status !== "succeeded" || run.result === undefined) return;
+  let result: unknown;
+  try {
+    result = JSON.parse(run.result);
+  } catch {
+    return;
+  }
+  const { filled, failed } = (result ?? {}) as {
+    filled?: unknown;
+    failed?: { error?: unknown };
+  };
+  const fields = run.arguments.fields;
+  if (!failed || !Array.isArray(filled) || !Array.isArray(fields)) return;
+  const field = fields[filled.length] as Partial<FormField> | undefined;
+  if (typeof field?.target !== "string") return;
+  return { target: field.target, error: String(failed.error ?? "") };
+}

@@ -84,6 +84,8 @@ Applications do not need this demo-only entry point.
   from a tool's schema, the item picker and the last result. Each field's
   control is chosen by its kind; `RefField` is the ref field's, and
   `KeyField` records or searches the key `press_key` presses.
+  `fill_form` has its own form, `FillFormFields`: every field on the page,
+  holding the value it shows, sending the ones the person changes.
 - `src/runs`: Runs, the timeline of the runs made from the panel, and which
   runs belong to the selection.
 
