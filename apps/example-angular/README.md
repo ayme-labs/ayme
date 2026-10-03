@@ -39,3 +39,25 @@ pnpm --filter @ayme-dev/example-angular test:e2e
 ```
 
 The same browser suite runs against `ng serve` and the production build, for the SSR build and the `spa` configuration. With JavaScript disabled, it checks that two server requests each return the rendered UI and the initial publication status. In development SSR it checks that hydration skipped no component. Through the recording WebMCP driver it checks that publication becomes active, that the published schema matches the Page Object Model source, that a published tool, a component button and the model constructed from Playwright all drive the page, and that `@if` removal and router navigation remove the tools and restore them with fresh state. The models include an undecorated subclass, `SubCounterPage`, and `OtherPage`, which the app imports through the tsconfig `paths` alias `@pom/*`. Publication is checked off by default, with a tool name prefix, and after a late driver through `retryPublication`; the app reads those settings from the page URL. Against `ng serve` only, a check edits a type imported by a Page Object Model and sees its schema change after a reload, without restarting the server.
+
+The fixture imports only the public Angular integration. The setup files match
+what `ng new` plus `ng add @ayme-dev/angular` produce, except for the
+publication options, which the suite varies through the page URL.
+
+## Limits
+
+This fixture certifies standalone Angular applications on the current major,
+client-rendered and server-rendered with hydration, on Node. It does not
+certify:
+
+- NgModule-bootstrapped apps (should work, not tested)
+- `provideAyme` in route-level providers
+- `ng test` with compiled Page Object Models
+- Nx workspaces
+- a separate POM-only tsconfig watched during `ng serve`
+- Page Object Models inside prebuilt packages
+- `@defer` and incremental hydration
+- a custom `RouteReuseStrategy`
+- Angular 21, which is inside the supported range but not run
+- Windows and Linux development hosts beyond CI
+- the Inspector, until its own issue lands

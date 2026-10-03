@@ -1,6 +1,6 @@
 # @ayme-dev/angular
 
-Angular integration for Ayme: start Ayme in the application config and use Page Objects inside components. Supports Angular `>=19.0.0 <23.0.0`, standalone apps.
+Angular integration for Ayme: start Ayme in the application config and use Page Objects inside components. It supports Angular `>=19.0.0 <23.0.0`, standalone applications, client-rendered and server-rendered with hydration.
 
 ## Install and configure
 
@@ -8,13 +8,13 @@ Angular integration for Ayme: start Ayme in the application config and use Page 
 ng add @ayme-dev/angular
 ```
 
-Packages are not published yet; use supplied tarballs before release. `ng add` installs `@ayme-dev/ayme`, and as dev dependencies `@ayme-dev/unplugin-ayme` and the `@angular-builders/custom-esbuild` major that matches your Angular major. It switches the project's build and serve builders to custom-esbuild, keeping their options, adds Ayme's plugin, writes the one-line plugin file and adds `provideAyme()` to the application config. It leaves bundle budgets alone. When your app uses another custom builder or bootstraps an NgModule, it changes only what it can change safely and prints the remaining steps.
+Packages are not published yet; use supplied tarballs before release. `ng add` installs `@ayme-dev/ayme`, and as dev dependencies `@ayme-dev/unplugin-ayme` and the `@angular-builders/custom-esbuild` major that matches your Angular major. It switches the project's build and serve builders to custom-esbuild, keeping their options, adds Ayme's plugin, writes the one-line plugin file and adds `provideAyme()` to the application config. It leaves bundle budgets alone; see [Bundle size](#bundle-size). When your app uses another custom builder or bootstraps an NgModule, it changes only what it can change safely and prints the remaining steps.
 
 ### Manual setup
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/angular
-npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild
+npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild@^22 @playwright/test@~1.62.1
 ```
 
 Install the `@angular-builders/custom-esbuild` major that matches your Angular major. The standard Angular builder has no plugin option, so Ayme's compiler enters through custom-esbuild. Add a one-line plugin file at the workspace root, because custom-esbuild loads plugins by file path only:
@@ -37,7 +37,7 @@ Then switch the project's builders in `angular.json`, keeping their existing opt
 "serve": { "builder": "@angular-builders/custom-esbuild:dev-server" }
 ```
 
-Finally add `provideAyme()` to the application config, as shown below.
+Finally add `provideAyme()` to the application config, as shown below. The plugin and its one option are described in the [build integration README](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md#angular-setup).
 
 ## Use
 
@@ -52,11 +52,7 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-`provideAyme(options)` takes the options of `createRuntimeSession` (`pageFactory`, `ignore`, `customTools`, `goalLoop`, `webMCP`) and passes them through unchanged. It starts Ayme before the root component is created and stops it when the application is destroyed. Publication is off, with status `disabled`, unless `webMCP.enabled` is `true`; `webMCP.toolNamePrefix` prefixes every published tool name.
-
-Put `provideAyme` in the application config, not in route providers. The router does not destroy a route's environment injector on navigation, so an owner there would outlive its route. One application owns Ayme per document: `provideAyme` beneath another `provideAyme` throws, and so does a second application that starts Ayme while the first is running.
-
-In a component, `injectPageObject(Model)` returns the Page Object, whose tools stay registered until the component is destroyed, and `injectAyme()` returns `{ ayme, webMCP }`:
+In a component, `injectPageObject(Model)` returns the Page Object and `injectAyme()` returns `{ ayme, webMCP }`:
 
 ```ts
 import { Component } from "@angular/core";
@@ -68,6 +64,7 @@ import { CounterPage } from "../../playwright/pom/CounterPage";
   template: `
     <p>Publication: {{ webMCP.publicationStatus().state }}</p>
     <button (click)="pom.increment()">Call Page Object</button>
+    <button (click)="webMCP.retryPublication()">Retry publication</button>
   `,
 })
 export class Counter {
@@ -76,10 +73,44 @@ export class Counter {
 }
 ```
 
-`webMCP.publicationStatus` is a read-only signal, so templates follow it in zone and zoneless apps; `webMCP.retryPublication()` retries after a WebMCP driver becomes available. Both functions need an injection context and `provideAyme` in an ancestor injector, and say so when either is missing. A Page Object Model the build plugin did not compile fails at `injectPageObject` in the browser.
+## API
 
-Page Object Models are authored as for React and Vue, with `@ayme` and `@ayme.action`; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md).
+| Function                  | Returns                | Behavior                                                                                                                                                             |
+| ------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provideAyme(options?)`   | `EnvironmentProviders` | Starts Ayme with the environment injector that receives it, before the root component is created, and stops it when that injector is destroyed.                      |
+| `injectAyme()`            | `{ ayme, webMCP }`     | `ayme` is the runtime session. `webMCP.publicationStatus` is a read-only signal and `webMCP.retryPublication()` retries publication.                                 |
+| `injectPageObject(Model)` | the Page Object        | Constructs the Page Object and registers its Page Object Tools until the caller is destroyed: component destruction, `@if` removal and router navigation all end it. |
+
+`provideAyme` takes the options of `createRuntimeSession` and passes them through unchanged:
+
+- `pageFactory`: builds the browser Page; called once, lazily, in the browser. Use `() => createPage({ testIdAttribute, actionTimeout, navigationTimeout })` from `@ayme-dev/ayme` for Playwright settings.
+- `ignore`: keeps matching elements out of the Structural Page State.
+- `customTools` and `goalLoop`: as described in the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md).
+- `webMCP.enabled`: publication is off, with status `disabled`, unless it is `true`.
+- `webMCP.toolNamePrefix`: prefixes every published tool name.
+
+The status signal updates templates in zone and zoneless apps. `retryPublication()` publishes once a WebMCP driver that appeared after Ayme's initial wait is available.
+
+`injectAyme` and `injectPageObject` need an injection context, such as a field initializer or a constructor, and `provideAyme` in an ancestor injector. Each says so when it is missing: outside an injection context Angular throws NG0203, and without `provideAyme` they throw "Ayme requires provideAyme() in an ancestor injector.".
+
+### Root only
+
+Put `provideAyme` in the application config, not in route providers. The router does not destroy a route's environment injector on navigation, so an owner there would outlive its route. One application owns Ayme per document: `provideAyme` beneath another `provideAyme` throws, and so does a second application that starts Ayme while the first runs.
+
+## Page Object Models
+
+Page Object Models are authored as for React and Vue, with `@ayme` and `@ayme.action`; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md). Keep each in its own `.ts` file; new Angular workspaces already enable `experimentalDecorators`. They use Playwright's `Page` and `Locator` types, so install `@playwright/test@~1.62.1` as a dev dependency; `ng add` does not. Import them with relative paths or through tsconfig `paths` aliases, and share them with your Playwright tests. A Page Object Model inside `node_modules` is not compiled. A model the plugin did not compile fails at `injectPageObject` in the browser with the runtime's "no compiler-derived Ayme metadata" error.
+
+During `ng serve`, editing a type a Page Object Model imports updates its tool schema after a reload, without restarting the server.
 
 ## Server rendering
 
 With Angular SSR, server rendering returns your ordinary UI. On the server `provideAyme` creates a runtime session per request but never starts it, `injectPageObject` returns an unconstructed object with the model's prototype and registers nothing, and `webMCP.publicationStatus` holds the initial status (`waiting` when publication is on, `disabled` when off), so the hydrated text matches. Do not read locator fields or run Page Object actions while rendering on the server; `ayme.page` and `ayme.pursueGoal` throw there. Hydration creates the real Page Objects in the browser. The plugin skips the server bundles.
+
+## Bundle size
+
+Ayme adds about 240 kB transferred (about 900 kB raw) to the initial chunk of a production build. That trips Angular's default 500 kB initial-budget warning, and a blank application then sits just under the default 1 MB `maximumError`, so most applications need a higher error budget. `ng add` leaves budgets to you: raise `maximumError` of the `initial` budget under `configurations.production.budgets` in `angular.json`.
+
+## Supported versions and limits
+
+`@ayme-dev/angular` declares `@angular/core` and `@angular/common` `>=19.0.0 <23.0.0`. CI runs the package tests on Angular 19.0.0 and the example app on the current major. The [example app's limits](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md#limits) list what is not certified, including NgModule apps, route-level `provideAyme`, `@defer` and incremental hydration, Nx workspaces and the Inspector.

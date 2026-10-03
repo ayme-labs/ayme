@@ -4,9 +4,11 @@
 
 - [Vue](packages/vue/README.md): provider setup and compatible standalone composable setup.
 - [React](packages/react/README.md): provider setup for React 19 and client-rendered Vite applications.
+- [Angular](packages/angular/README.md): `ng add` setup, `provideAyme` and `injectPageObject` for standalone Angular 19 to 22 applications, with or without server rendering.
 
-Both packages return Page Object instances through `usePageObject` and share
-publication, retry, and runtime ownership behavior. The
+The Vue and React packages return Page Object instances through
+`usePageObject`, the Angular package through `injectPageObject`. All three
+share publication, retry, and runtime ownership behavior. The
 [React smoke app](apps/example-react/README.md) checks the integration with one
 counter; the Vue example retains its full inspector demo.
 

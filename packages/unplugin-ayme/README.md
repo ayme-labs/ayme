@@ -1,7 +1,7 @@
 # @ayme-dev/unplugin-ayme
 
 Compile annotated TypeScript POMs and their tool schemas into the browser build.
-The documented consumer integration is Vite.
+The documented consumer integrations are Vite and the Angular CLI.
 
 ## Vite setup
 
@@ -26,6 +26,41 @@ bundle; production removal is not covered by this setup.
 
 Enable `compilerOptions.experimentalDecorators: true` in the POMs' tsconfig.
 Import the annotated `.ts` files from the application so Vite transforms them.
+
+## Angular setup
+
+The `angular` entry is an esbuild code plugin for the Angular CLI's application
+builder. Prefer `ng add @ayme-dev/angular`, which sets it up; the
+[Angular README](https://github.com/ayme-labs/ayme/blob/main/packages/angular/README.md)
+lists the manual steps.
+
+The standard builder, `@angular/build:application`, has no plugin option, so
+the plugin needs `@angular-builders/custom-esbuild` in the same major as
+Angular, which replaces the application and dev-server builders and passes
+plugins to Angular's build. custom-esbuild loads plugins by workspace file path
+only, so add a one-line plugin file and reference it from `angular.json`:
+
+```js
+// ayme.plugin.mjs
+export { default } from "@ayme-dev/unplugin-ayme/angular";
+```
+
+```jsonc
+"plugins": [{ "path": "./ayme.plugin.mjs", "options": { "tsconfigPath": "tsconfig.app.json" } }]
+```
+
+Its one option, `tsconfigPath`, is the tsconfig the compiler reads, resolved
+from the workspace root. Point it at the app's own tsconfig, which Angular's
+watcher also reads, so editing a type a Page Object Model imports updates its
+schema during `ng serve`. Unknown options and a non-string `tsconfigPath`
+throw a `TypeError`.
+
+The plugin compiles Page Object Models imported with relative paths or through
+tsconfig `paths`, skips modules under `node_modules`, and leaves every other
+module, including Angular components, to Angular's compiler. It compiles only
+the browser bundles; the server bundles keep Angular's own output. Like the
+Vite plugin it has no publication setting, and it sets no build constants: pass
+Playwright settings through `provideAyme({ pageFactory })`.
 
 ## Page Object Model subclasses
 
