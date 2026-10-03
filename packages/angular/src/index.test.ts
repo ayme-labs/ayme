@@ -80,6 +80,9 @@ it("returns { ayme, webMCP } with publication disabled by default, and stops Aym
   );
 });
 
+// The runtime waits 2 s for a WebMCP driver before reporting `unavailable`.
+const pastDriverWait = 2_100;
+
 it("updates the status signal as publication changes", async () => {
   vi.useFakeTimers();
   const root = environment([
@@ -89,11 +92,11 @@ it("updates the status signal as publication changes", async () => {
 
   expect(webMCP.publicationStatus().state).toBe("waiting");
   // No WebMCP driver appears within the runtime's wait.
-  await vi.advanceTimersByTimeAsync(2_100);
+  await vi.advanceTimersByTimeAsync(pastDriverWait);
   expect(webMCP.publicationStatus().state).toBe("unavailable");
   const retry = webMCP.retryPublication();
   expect(webMCP.publicationStatus().state).toBe("waiting");
-  await vi.advanceTimersByTimeAsync(2_100);
+  await vi.advanceTimersByTimeAsync(pastDriverWait);
   await retry;
   expect(webMCP.publicationStatus().state).toBe("unavailable");
 });
@@ -126,7 +129,7 @@ it("rejects injectAyme and injectPageObject outside an injection context", () =>
     expect(inject).toThrow(/NG0203/);
 });
 
-it("keeps one owner per document across applications, and allows a new one after the first is destroyed", () => {
+it("keeps one owner per document across root injectors, as two applications have, and allows a new one after the first is destroyed", () => {
   const first = environment([provideAyme({ pageFactory })]);
 
   expect(() => environment([provideAyme({ pageFactory })])).toThrow(
