@@ -27,7 +27,7 @@ The default build renders on the server (`outputMode: "server"`, `RenderMode.Ser
 
 ## SSR contract
 
-`provideAyme` and the inject functions run during server rendering. On the server they never start Ayme, construct Page Objects, observe the DOM or publish tools. `injectPageObject` returns an unconstructed object with the model's prototype, so templates can reference its actions in event bindings. The plugin skips the server bundles, so they keep Angular's own emit. Each request bootstraps its own application and gets its own runtime session. The publication status starts as `waiting` on the server and in the browser, so hydration finds the same text; hydration then creates the real Page Objects.
+`provideAyme` and the inject functions run during server rendering. On the server they never start Ayme, construct Page Objects, observe the DOM or publish tools. `injectPageObject` returns an unconstructed object with the model's prototype, so templates can reference its actions in event bindings. The plugin skips the server bundles, so they keep Angular's own emit. Each request bootstraps its own application and gets its own runtime session. The publication status starts as `waiting`, or `disabled` with publication off, on the server and in the browser alike, so hydration finds the same text; hydration then creates the real Page Objects.
 
 ## Verify
 

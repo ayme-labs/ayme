@@ -49,7 +49,9 @@ export { default } from "@ayme-dev/unplugin-ayme/angular";
 "plugins": [{ "path": "./ayme.plugin.mjs", "options": { "tsconfigPath": "tsconfig.app.json" } }]
 ```
 
-Its one option, `tsconfigPath`, is the tsconfig the compiler reads, resolved
+Reference the plugin in this object form only: custom-esbuild calls a plain
+string entry with the builder's options, which the plugin rejects. Its one
+option, `tsconfigPath`, is the tsconfig the compiler reads, resolved
 from the workspace root. Point it at the app's own tsconfig, which Angular's
 watcher also reads, so editing a type a Page Object Model imports updates its
 schema during `ng serve`. Unknown options and a non-string `tsconfigPath`

@@ -17,14 +17,7 @@ npm install @ayme-dev/ayme @ayme-dev/angular
 npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild@^22 @playwright/test@~1.62.1
 ```
 
-Install the `@angular-builders/custom-esbuild` major that matches your Angular major. The standard Angular builder has no plugin option, so Ayme's compiler enters through custom-esbuild. Add a one-line plugin file at the workspace root, because custom-esbuild loads plugins by file path only:
-
-```js
-// ayme.plugin.mjs
-export { default } from "@ayme-dev/unplugin-ayme/angular";
-```
-
-Then switch the project's builders in `angular.json`, keeping their existing options:
+Install the `@angular-builders/custom-esbuild` major that matches your Angular major. Then set up the plugin as the [build integration README](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md#angular-setup) describes: a one-line `ayme.plugin.mjs` at the workspace root, and in `angular.json` the custom-esbuild builders with the plugin entry, keeping the existing options:
 
 ```jsonc
 "build": {
@@ -37,7 +30,7 @@ Then switch the project's builders in `angular.json`, keeping their existing opt
 "serve": { "builder": "@angular-builders/custom-esbuild:dev-server" }
 ```
 
-Finally add `provideAyme()` to the application config, as shown below. The plugin and its one option are described in the [build integration README](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md#angular-setup).
+Finally add `provideAyme()` to the application config, as shown below.
 
 ## Use
 
