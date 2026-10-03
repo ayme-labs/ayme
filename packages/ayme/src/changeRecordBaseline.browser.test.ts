@@ -79,7 +79,7 @@ describe("Change Record baseline in Chromium", () => {
   }
 
   async function readStructure(): Promise<string> {
-    const context = (await tool("get_page_context").execute({})) as {
+    const context = (await tool("snapshot").execute({})) as {
       structure: string;
     };
     return context.structure;
@@ -94,7 +94,7 @@ describe("Change Record baseline in Chromium", () => {
 
   // --- A change between the caller's read and its next action ---
 
-  it("reports a change made after get_page_context in the click's Change Record", async () => {
+  it("reports a change made after snapshot in the click's Change Record", async () => {
     document.body.innerHTML = '<button id="act">Act</button>';
     startRuntime();
     await publishTools();
@@ -102,13 +102,13 @@ describe("Change Record baseline in Chromium", () => {
     const actRef = refFor(await readStructure(), "Act");
     document.body.insertAdjacentHTML("beforeend", TOAST);
 
-    const result = await act("click_page_state_ref", { ref: actRef });
+    const result = await act("click", { target: actRef });
 
     expect(result.page_changed).toBe(true);
     expect(result.changes).toContain("Background toast");
   });
 
-  it("reports a change made after get_page_context in the fill's Change Record", async () => {
+  it("reports a change made after snapshot in the fill's Change Record", async () => {
     document.body.innerHTML = '<input id="name" aria-label="Name">';
     startRuntime();
     await publishTools();
@@ -116,16 +116,16 @@ describe("Change Record baseline in Chromium", () => {
     const nameRef = refFor(await readStructure(), "Name", "textbox");
     document.body.insertAdjacentHTML("beforeend", TOAST);
 
-    const result = await act("fill_page_state_ref", {
-      ref: nameRef,
-      value: "Ada",
+    const result = await act("fill", {
+      target: nameRef,
+      text: "Ada",
     });
 
     expect(result.page_changed).toBe(true);
     expect(result.changes).toContain("Background toast");
   });
 
-  it("reports a change made after get_page_context in a Page Object Tool's Change Record", async () => {
+  it("reports a change made after snapshot in a Page Object Tool's Change Record", async () => {
     await startWithNoopPom();
 
     await readStructure();
@@ -157,12 +157,12 @@ describe("Change Record baseline in Chromium", () => {
     const firstRef = refFor(structure, "First");
     const secondRef = refFor(structure, "Second");
 
-    const first = await act("click_page_state_ref", { ref: firstRef });
+    const first = await act("click", { target: firstRef });
     expect(first.changes).toContain("Result of the first action");
 
     document.body.insertAdjacentHTML("beforeend", TOAST);
 
-    const second = await act("click_page_state_ref", { ref: secondRef });
+    const second = await act("click", { target: secondRef });
     expect(second.page_changed).toBe(true);
     expect(second.changes).toContain("Background toast");
     expect(second.changes).not.toContain("Result of the first action");
@@ -179,7 +179,7 @@ describe("Change Record baseline in Chromium", () => {
     document.body.insertAdjacentHTML("beforeend", TOAST);
     await getPageStateForElements([document.querySelector("#act")!]);
 
-    const result = await act("click_page_state_ref", { ref: actRef });
+    const result = await act("click", { target: actRef });
 
     expect(result.page_changed).toBe(true);
     expect(result.changes).toContain("Background toast");
@@ -194,8 +194,8 @@ describe("Change Record baseline in Chromium", () => {
     startRuntime();
     await publishTools();
 
-    const result = await act("click_page_state_ref", {
-      ref: refFor(await readStructure(), "Act"),
+    const result = await act("click", {
+      target: refFor(await readStructure(), "Act"),
     });
 
     expect(result.page_changed).toBe(false);
@@ -226,7 +226,7 @@ describe("Change Record baseline in Chromium", () => {
 
     await startWithNoopPom(decide);
 
-    const handover = (await tool("pursue_goal").execute({
+    const handover = (await tool("goal").execute({
       goal: "do the thing",
       maxSteps: 3,
     })) as { history: { page_changed: boolean }[] };

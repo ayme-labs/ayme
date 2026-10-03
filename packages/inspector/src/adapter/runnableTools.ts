@@ -19,6 +19,12 @@ export type RunnableTool = {
   collection?: string;
   /** Whether it can be called now: WebMCP publishes it. */
   available: boolean;
+  /**
+   * The argument that takes a Structural Ref, for a tool that acts on one
+   * element: a Custom Tool's `ref` or a Browser Tool's `target`. A Page
+   * Object action's arguments never do, whatever their names.
+   */
+  refField?: "ref" | "target";
 };
 
 /** A tool the runtime lists as live: one `runTool` can run now. */
@@ -30,7 +36,7 @@ export type ToolSummary = {
 
 /**
  * Every registered Page Object tool once by name, and every other live tool,
- * such as Ref Tools and the agent's own tools, as the run card runs them,
+ * such as Browser and Custom Tools and the agent's own tools, as the run card runs them,
  * whether or not WebMCP publishes them.
  */
 export function listRunnableTools(
@@ -51,14 +57,19 @@ export function listRunnableTools(
           )
         );
   for (const tool of otherTools)
-    if (!tools.has(tool.name))
+    if (!tools.has(tool.name)) {
+      const refField = (["target", "ref"] as const).find(
+        (name) => tool.inputSchema.properties?.[name]?.type === "string"
+      );
       tools.set(tool.name, {
         name: tool.name,
         action: tool.name,
         description: tool.description,
         argumentsSchema: tool.inputSchema,
         available: true,
+        ...(refField ? { refField } : {}),
       });
+    }
   return tools;
 }
 

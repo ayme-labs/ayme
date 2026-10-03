@@ -16,7 +16,8 @@ const {
 vi.mock("@ayme-dev/playwright-lite/internal", () => ({
   captureAriaSnapshot,
 }));
-vi.mock("./registry", () => ({
+vi.mock("./registry", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./registry")>()),
   getRegisteredPomStructure,
   requireAymeRuntimePage,
 }));
@@ -34,12 +35,7 @@ vi.mock("@ayme-dev/core/structural-observation", async (importOriginal) => ({
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { RefResolutionError } from "./errors";
 import { getPageStateForDocument } from "./pageState";
-import {
-  clickPageStateRefTool,
-  clickRef,
-  fillPageStateRefTool,
-  fillRef,
-} from "./refTools";
+import { clickRef, fillRef, listPublishedBrowserTools } from "./browserTools";
 
 const ref = AriaRefSchema.parse;
 
@@ -245,7 +241,7 @@ describe("Structural Ref interactions", () => {
     });
   });
 
-  it("publishes click and fill tool schemas and action results", async () => {
+  it("runs the published click and fill with a Structural Ref target", async () => {
     const button = document.querySelector("#save");
     if (!button) throw new Error("Expected the save button.");
     mockCapture(button, "e2");
@@ -256,35 +252,21 @@ describe("Structural Ref interactions", () => {
     const click = vi.fn().mockResolvedValue(undefined);
     const fill = vi.fn().mockResolvedValue(undefined);
     usePage({ ariaSnapshot, click, fill });
+    const published = (name: string) =>
+      listPublishedBrowserTools().find((tool) => tool.name === name)!;
 
-    expect(clickPageStateRefTool.inputSchema).toEqual({
-      type: "object",
-      properties: { ref: { type: "string" } },
-      required: ["ref"],
-      additionalProperties: false,
-    });
-    expect(fillPageStateRefTool.inputSchema).toEqual({
-      type: "object",
-      properties: { ref: { type: "string" }, value: { type: "string" } },
-      required: ["ref", "value"],
-      additionalProperties: false,
-    });
-
-    await expect(clickPageStateRefTool.execute({ ref: "e2" })).resolves.toEqual(
-      {
-        page_changed: false,
-        settled: true,
-      }
+    await expect(published("click").execute({ target: "e2" })).resolves.toEqual(
+      { page_changed: false, settled: true }
     );
     await expect(
-      fillPageStateRefTool.execute({ ref: "e2", value: "updated" })
+      published("fill").execute({ target: "e2", text: "updated" })
     ).resolves.toEqual({ page_changed: false, settled: true });
     expect(click).toHaveBeenCalledWith("aria-ref=e2");
     expect(fill).toHaveBeenCalledWith("aria-ref=e2", "updated");
   });
 });
 
-/** Make a fake Playwright Page the Ayme runtime hands to Ref Tool actions. */
+/** Make a fake Playwright Page the Ayme runtime hands to single-element tool actions. */
 function usePage(
   overrides: {
     ariaSnapshot?: ReturnType<typeof vi.fn>;
@@ -292,10 +274,20 @@ function usePage(
     fill?: ReturnType<typeof vi.fn>;
   } = {}
 ): Page {
+  // A locator's action reports the selector it acts on, as `page.click` would.
+  type Act = (...args: unknown[]) => unknown;
+  const click = (overrides.click ??
+    vi.fn().mockResolvedValue(undefined)) as unknown as Act;
+  const fill = (overrides.fill ??
+    vi.fn().mockResolvedValue(undefined)) as unknown as Act;
   const page = {
     ariaSnapshot: overrides.ariaSnapshot ?? vi.fn().mockResolvedValue(""),
-    click: overrides.click ?? vi.fn().mockResolvedValue(undefined),
-    fill: overrides.fill ?? vi.fn().mockResolvedValue(undefined),
+    click,
+    fill,
+    locator: (selector: string) => ({
+      click: () => click(selector),
+      fill: (value: string) => fill(selector, value),
+    }),
   } as unknown as Page;
   requireAymeRuntimePage.mockReturnValue(page);
   return page;

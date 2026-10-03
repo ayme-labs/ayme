@@ -1,5 +1,5 @@
 /** Where a tool comes from, as the runtime groups it. */
-export type ToolGroup = "pageObject" | "ref" | "agent";
+export type ToolGroup = "pageObject" | "browser" | "custom" | "agent";
 
 /**
  * A live tool: one the panel can run now, because its Page Object or
@@ -17,18 +17,25 @@ export type LiveTool = {
 /** The Inspector's label for each group. They are UI labels, not glossary terms. */
 export const toolGroupLabels: Record<ToolGroup, string> = {
   pageObject: "Page object tools",
-  ref: "Ref tools",
+  browser: "Browser tools",
+  custom: "Custom tools",
   agent: "Agent tools",
 };
 
 /** What one tool of each group is called on its page. */
 export const toolKindLabels: Record<ToolGroup, string> = {
   pageObject: "Page object tool",
-  ref: "Ref tool",
+  browser: "Browser tool",
+  custom: "Custom tool",
   agent: "Agent tool",
 };
 
-const groupOrder: readonly ToolGroup[] = ["pageObject", "ref", "agent"];
+const groupOrder: readonly ToolGroup[] = [
+  "pageObject",
+  "custom",
+  "browser",
+  "agent",
+];
 
 /** One group of the Tools lens. */
 export type ToolGroupListing = {

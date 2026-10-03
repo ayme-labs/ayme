@@ -13,7 +13,7 @@ const { page } = useDemoTrace();
 useAyme({
   pageFactory: () => page,
   // Only the dev server mounts a Decision Endpoint, so the Goal Loop is a
-  // development feature here and the deployed build publishes no pursue_goal.
+  // development feature here and the deployed build publishes no goal.
   goalLoop: import.meta.env.DEV
     ? decisionEndpoint(decisionEndpointPath)
     : undefined,

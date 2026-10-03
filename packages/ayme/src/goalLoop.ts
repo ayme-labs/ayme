@@ -56,7 +56,7 @@ export function configureGoalLoop(
 }
 
 /**
- * Package-internal: returns the `pursue_goal` tool when `goalLoop` is
+ * Package-internal: returns the `goal` tool when `goalLoop` is
  * configured, `null` otherwise. Called by `synchronizeWebMcpTools`.
  */
 export function getPursueGoalTool(): ModelContextTool<
@@ -169,7 +169,7 @@ type StepOutcome = Pick<GoalLoopStepRecord, "result" | "page_changed"> & {
   changes?: string;
 };
 
-/** Record an executed step; `did` is derived, e.g. `click_page_state_ref(button "Add item")`. */
+/** Record an executed step; `did` is derived, e.g. `click(button "Add item")`. */
 function stepRecord(
   operation: string,
   chosen: Record<string, ChosenOption>,
@@ -189,7 +189,7 @@ function stepRecord(
 
 /**
  * Execute a tool and read the `ActionResult` it returns.
- * Every registered tool (POM tools, Ref Tools) runs, as the Goal Loop's model, through
+ * Every registered tool (POM tools, Browser Tools, Custom Tools) runs, as the Goal Loop's model, through
  * `runAction` internally, so we just forward and interpret the result.
  */
 async function executeToolAction(
@@ -207,13 +207,13 @@ async function executeToolAction(
 
 // --- The loop ---
 
-/** Create the `pursue_goal` ModelContextTool bound to the given decision function and document. */
+/** Create the `goal` ModelContextTool bound to the given decision function and document. */
 export function createPursueGoalTool(
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document
 ): ModelContextTool<Record<string, unknown>, JsonValue> {
   return {
-    name: "pursue_goal",
+    name: "goal",
     description:
       "Drive the page toward a goal in steps. Each step is one fast model judgement. Returns a Handover: why the loop stopped, what it did, and what to do next.",
     inputSchema: {
@@ -238,7 +238,7 @@ export function createPursueGoalTool(
   };
 }
 
-/** Validate and narrow the raw `pursue_goal` input to typed fields. */
+/** Validate and narrow the raw `goal` input to typed fields. */
 function readPursueGoalInput(input: unknown): {
   goal: string;
   maxSteps: number;
@@ -254,7 +254,7 @@ function readPursueGoalInput(input: unknown): {
   )
     return { goal: input.goal, maxSteps: input.maxSteps };
   throw new ToolInputError(
-    "pursue_goal requires a string goal and an integer maxSteps."
+    "goal requires a string goal and an integer maxSteps."
   );
 }
 
@@ -297,7 +297,7 @@ export async function pursueGoal(
 
   /** How a `needs_value` Handover ends when the model could not pick a closed-set value. */
   const pickYourself = (parameter: string) =>
-    `Read the page context, pick "${parameter}" yourself and call the operation directly, or try a different approach.`;
+    `Read the page again, pick "${parameter}" yourself and call the operation directly, or try a different approach.`;
 
   /** A decision the loop could not obtain ends the run; the error travels on. */
   const decideFailed = (error: unknown): Promise<GoalLoopRunResult> =>
@@ -341,7 +341,7 @@ export async function pursueGoal(
     if (!operationQuestionFits(toolOptions)) {
       return done({
         reason: "decide_failed",
-        next: `The page offers ${toolOptions.length} operations, more than one decision can choose from. Read the page context and call the tools you need directly.`,
+        next: `The page offers ${toolOptions.length} operations, more than one decision can choose from. Read the page again and call the tools you need directly.`,
         history,
       });
     }

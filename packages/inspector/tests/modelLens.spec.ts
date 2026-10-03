@@ -10,14 +10,13 @@ import { expect, openFixture, test } from "./fixtures";
 test.use({ fixturePath: "/models.html" });
 
 /**
- * The Page Object Models get_page_context describes, called over WebMCP the
+ * The Page Object Models snapshot describes, called over WebMCP the
  * way an agent calls it.
  */
 async function modelsAnAgentIsTold(page: Page) {
-  const { pomDefinitions } = (await executePublishedTool(
-    page,
-    "get_page_context"
-  )) as { pomDefinitions: string };
+  const { pomDefinitions } = (await executePublishedTool(page, "snapshot")) as {
+    pomDefinitions: string;
+  };
   const names = [...pomDefinitions.matchAll(/^POM (\S+)/gm)].map(
     (match) => match[1]!
   );
