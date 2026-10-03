@@ -1,0 +1,42 @@
+{
+  "name": "@ayme-dev/svelte",
+  "version": "0.1.0",
+  "description": "Svelte and SvelteKit integration for Ayme.",
+  "license": "FSL-1.1-ALv2",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "lint": "eslint src --max-warnings 0",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ayme-dev/ayme": "workspace:*"
+  },
+  "peerDependencies": {
+    "svelte": "^3.54.0 || ^4.0.0 || ^5.0.0"
+  },
+  "devDependencies": {
+    "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/typescript-config": "workspace:*",
+    "eslint": "^10.9.1",
+    "jsdom": "^30.0.1",
+    "svelte": "^5.57.1",
+    "tsdown": "^0.22.14",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
+  }
+}

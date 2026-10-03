@@ -16,6 +16,9 @@ apps/example-nuxt/.nuxt/
 apps/example-nuxt/.output/
 apps/example-nuxt/.data/
 apps/example-nuxt/*.tsbuildinfo
+apps/example-sveltekit/.svelte-kit/
+apps/example-sveltekit/build/
+apps/example-sveltekit/build-spa/
 apps/example-vue/tests/vue-webmcp.spec.ts-snapshots/
 
 

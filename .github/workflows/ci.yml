@@ -194,3 +194,36 @@ jobs:
         run: pnpm --filter @ayme-dev/vue typecheck
       - name: Test Vue package
         run: pnpm --filter @ayme-dev/vue test
+
+  svelte-compatibility:
+    name: Svelte 3.54.0 compatibility
+    needs: changes
+    if: needs.changes.outputs.package_checks == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - name: Resolve pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Cache pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
+      - name: Install with Svelte 3.54.0
+        run: |
+          pnpm --dir packages/svelte pkg set devDependencies.svelte=3.54.0
+          pnpm install --no-frozen-lockfile
+      - name: Build the main library and dependencies
+        run: pnpm exec turbo run build --filter=@ayme-dev/ayme
+      - name: Typecheck Svelte package
+        run: pnpm --filter @ayme-dev/svelte typecheck
+      - name: Test Svelte package
+        run: pnpm --filter @ayme-dev/svelte test

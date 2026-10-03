@@ -5,10 +5,12 @@
    for installation and explicit action exposure. Reuse an existing action.
 3. Read the [compiler README](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md)
    for build setup. For lifecycle wiring, read the
-   [Vue README](https://github.com/ayme-labs/ayme/blob/main/packages/vue/README.md)
-   or the [React README](https://github.com/ayme-labs/ayme/blob/main/packages/react/README.md).
-   Start Ayme once at the application root with `useAyme` (Vue) or
-   `AymeProvider` (React), and pass `webMCP: { enabled: true }` so its tools
+   [Vue README](https://github.com/ayme-labs/ayme/blob/main/packages/vue/README.md),
+   the [React README](https://github.com/ayme-labs/ayme/blob/main/packages/react/README.md)
+   or the [Svelte README](https://github.com/ayme-labs/ayme/blob/main/packages/svelte/README.md).
+   Start Ayme once at the application root with `useAyme` (Vue),
+   `AymeProvider` (React) or `useAyme` in the root `+layout.svelte` or
+   `App.svelte` (Svelte), and pass `webMCP: { enabled: true }` so its tools
    are published. Other framework integrations are not documented yet; report
    that gap rather than adapting internal runtime APIs into an unsupported
    setup.

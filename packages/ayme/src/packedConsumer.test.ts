@@ -33,6 +33,7 @@ const PUBLISHED_PACKAGES = [
   "inspector",
   "vue",
   "react",
+  "svelte",
   "unplugin-ayme",
 ];
 
@@ -262,7 +263,12 @@ it(
         name: "ayme-all-exports-consumer",
         private: true,
         type: "module",
-        dependencies: { ...tarballs, react: "19.2.8", vue: "3.5.42" },
+        dependencies: {
+          ...tarballs,
+          react: "19.2.8",
+          svelte: "5.57.1",
+          vue: "3.5.42",
+        },
       })
     );
     fs.writeFileSync(path.join(consumer, "pnpm-workspace.yaml"), workspaceYaml);
@@ -311,6 +317,7 @@ it(
     const { tarballs, workspaceYaml } = tarballDependencies([
       "@ayme-dev/ayme",
       "@ayme-dev/vue",
+      "@ayme-dev/svelte",
       "@ayme-dev/inspector",
       "@ayme-dev/unplugin-ayme",
     ]);
@@ -330,6 +337,7 @@ it(
             typescript: version === "1.29.1" ? "5.9.3" : "6.0.3",
             "@types/node": "24.13.3",
             vue: "3.5.42",
+            svelte: "5.57.1",
             vite: "8.0.0",
             ...(version ? { "@playwright/test": version } : {}),
           },
@@ -388,6 +396,7 @@ ${
 import type { BrowserContext, Page, Locator } from '@playwright/test';
 import { createPageRegistration, type PageObjectConstructor } from '@ayme-dev/ayme/internal';
 import { usePageObject } from '@ayme-dev/vue';
+import { usePageObject as useSveltePageObject } from '@ayme-dev/svelte';
 @ayme
 class Pom {
   readonly input: Locator;
@@ -402,8 +411,9 @@ class Pom {
 }
 const ctor: PageObjectConstructor<Pom> = Pom;
 const instance: Pom = usePageObject(ctor);
+const svelteInstance: Pom = useSveltePageObject(ctor);
 createPageRegistration(ctor);
-void instance;
+void [instance, svelteInstance];
 import {
   executePublishedTool,
   publishedToolNames,

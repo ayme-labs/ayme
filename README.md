@@ -4,11 +4,14 @@
 
 - [Vue](packages/vue/README.md): provider setup and compatible standalone composable setup.
 - [React](packages/react/README.md): provider setup for React 19 and client-rendered Vite applications.
+- [Svelte](packages/svelte/README.md): root-component setup for Svelte 3.54+, 4 and 5, SvelteKit and plain Svelte apps.
 
-Both packages return Page Object instances through `usePageObject` and share
-publication, retry, and runtime ownership behavior. The
+All three packages return Page Object instances through `usePageObject` and
+share publication, retry, and runtime ownership behavior. The
 [React smoke app](apps/example-react/README.md) checks the integration with one
-counter; the Vue example retains its full inspector demo.
+counter, the [SvelteKit example](apps/example-sveltekit/README.md) certifies
+server rendering and SPA mode, and the Vue example retains its full inspector
+demo.
 
 ## Browser page creation
 
