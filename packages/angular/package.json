@@ -27,7 +27,6 @@
     "@ayme-dev/ayme": "workspace:*"
   },
   "peerDependencies": {
-    "@angular/common": ">=19.0.0 <23.0.0",
     "@angular/core": ">=19.0.0 <23.0.0",
     "@playwright/test": ">=1.29 <1.63"
   },
