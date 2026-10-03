@@ -1,7 +1,7 @@
 {
   // The compiler tests build a TypeScript program from the nearest tsconfig.
   // Without this one, each program would also load the whole package and its
-  // dependencies' types (vite, rolldown, Node), about twice the files and four
-  // times the build time of the fixtures alone.
+  // dependencies' types (Vite, Rolldown, Node): twice the files, and twice the
+  // compiler tests' time on CI.
   "extends": "@ayme-dev/typescript-config/library.json"
 }
