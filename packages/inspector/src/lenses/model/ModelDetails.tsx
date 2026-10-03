@@ -25,7 +25,7 @@ import { hoverHandlers } from "./hover";
 
 /**
  * The page as a whole: its host, the page Page Objects on it, and the
- * page-wide tools such as get_page_context.
+ * page-wide tools such as snapshot.
  */
 export function PageDetail({
   host,
@@ -304,7 +304,7 @@ export type MemberView = {
 };
 
 /**
- * A Page Object member: what it is, its owner, how get_page_context declares
+ * A Page Object member: what it is, its owner, how snapshot declares
  * it, what the page has of it now, and for a child Page Object a way to it.
  */
 export function MemberDetail({

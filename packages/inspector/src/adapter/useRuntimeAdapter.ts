@@ -41,7 +41,7 @@ export function useRuntimeAdapter({
   const tools = useLiveTools();
 
   const { text, membersByRef, ...pageState } = inspector.pageState;
-  const { elementsByRef, refToolTargets } = pageState;
+  const { elementsByRef, elementToolTargets } = pageState;
   const pageModel = useMemo(
     () =>
       buildPageModel(
@@ -59,17 +59,17 @@ export function useRuntimeAdapter({
         : buildStructureTree(text, membersByRef, owners),
     [text, membersByRef, owners]
   );
-  const refTools = useMemo(
+  const elementTools = useMemo(
     () =>
       tools.live
-        .filter((tool) => tool.group === "ref")
+        .filter((tool) => elementToolTargets.has(tool.name))
         .map(({ name, description, inputSchema }) => ({
           name,
           description,
           inputSchema,
-          refs: refToolTargets.get(name) ?? [],
+          refs: elementToolTargets.get(name) ?? [],
         })),
-    [tools.live, refToolTargets]
+    [tools.live, elementToolTargets]
   );
   const runnableTools = useMemo(
     () => listRunnableTools(registeredPoms, activeTools, tools.live),
@@ -97,13 +97,13 @@ export function useRuntimeAdapter({
     tools,
     /**
      * The POM definitions for `names` (every known one when none are given),
-     * as `get_page_context` renders them. Captures no page state.
+     * as `snapshot` renders them. Captures no page state.
      */
     definitionText: (...names: string[]) => getPomDefinitionText(...names),
     /**
      * The page state as an agent would receive it, kept live without ever
      * being recorded: its text, the structure tree model, and the refs each
-     * published Ref Tool can take (`pageState.refToolTargets`).
+     * published single-element tool can take (`pageState.elementToolTargets`).
      */
     pageState: { ...pageState, text, structure },
     /**
@@ -118,10 +118,10 @@ export function useRuntimeAdapter({
      */
     runnableTools,
     /**
-     * The live Ref tools, published or not, each with the refs it can take
+     * The live single-element tools, published or not, each with the refs it can take
      * now.
      */
-    refTools,
+    elementTools,
     /** The runs made from the panel, newest first. */
     runs,
     runTool: (...args: Parameters<typeof invoke>) => void invoke(...args),
@@ -132,7 +132,7 @@ export function useRuntimeAdapter({
        * Which nodes a tool can use, by the tool's name: the refs it can take
        * in the page state, or every node when the runtime lists none for it.
        */
-      canUse: (toolName: string) => refFilterOf(refToolTargets, toolName),
+      canUse: (toolName: string) => refFilterOf(elementToolTargets, toolName),
       /** What picking with a tool asks the person to click, by its name. */
       promptOf: pickPromptOf,
       /** Picks a ref by pointing at the page, from the latest look at it. */

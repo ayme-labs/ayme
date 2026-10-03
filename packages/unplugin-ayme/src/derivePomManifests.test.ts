@@ -345,7 +345,7 @@ describe("derivePomManifests", () => {
     expect(status).not.toHaveProperty("authoredDescription");
   });
 
-  describe("inherited @WebMCP recognition", () => {
+  describe("inherited @ayme recognition", () => {
     function manifestsOf(fixture: string) {
       return derivePomManifests(path.resolve(`src/fixtures/${fixture}.ts`));
     }

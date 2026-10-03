@@ -9,14 +9,15 @@ These packages are not published yet. The commands below describe registry
 installation once released; before then use supplied package tarballs.
 
 ```sh
-npm install @ayme-dev/ayme
+npm install @ayme-dev/ayme @ayme-dev/vue # or @ayme-dev/react
 npm install -D @ayme-dev/unplugin-ayme @playwright/test@~1.62.1
 ```
 
 Use your project's package manager. Configure the
 [compiler integration](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md),
-then follow the framework integration README, currently
-[Vue](https://github.com/ayme-labs/ayme/blob/main/packages/vue/README.md).
+then follow your framework integration's README:
+[Vue](https://github.com/ayme-labs/ayme/blob/main/packages/vue/README.md) or
+[React](https://github.com/ayme-labs/ayme/blob/main/packages/react/README.md).
 Internal adapter packages are bundled; consumers do not install them separately.
 
 ## Entries
@@ -168,7 +169,7 @@ useAyme({
   `webMCP.publicationStatus` reads `disabled`. Page Objects, page state and the
   Goal Loop work either way.
 - `webMCP.toolNamePrefix` is prepended to every published tool name: the
-  agent's tools, click and fill, Custom Tools and Page Object Tools. It is
+  agent's tools, the Browser Tools, Custom Tools and Page Object Tools. It is
   empty by default. It applies at publication only; the Goal Loop and the
   Inspector use the unprefixed names. The `testing` helpers take the published
   name, prefix included.
@@ -207,8 +208,8 @@ factory.
 A **Custom Tool** is an operation your app registers that applies to one
 element. Register it through `customTools` on the Vue composable or React
 provider. One registration publishes the operation as a WebMCP tool for the
-calling agent and makes it an operation the Goal Loop may choose. The built-in
-click and fill take the same path.
+calling agent and makes it an operation the Goal Loop may choose, as the
+single-element [Browser Tools](#browser-tools) are.
 
 ```ts
 import type { CustomTool } from "@ayme-dev/ayme";
@@ -235,19 +236,74 @@ useAyme({ customTools: [highlight] });
   `settled` and `changes`.
 - `filter` limits only which elements the Goal Loop may offer for this tool. It
   is not enforced when the calling agent calls the tool with a ref. Without a
-  `filter`, every node that has a ref may be offered. Click's built-in filter
-  keeps elements that are not disabled and have an interactive role or a
-  pointer cursor; fill's keeps elements text can actually be entered into.
+  `filter`, every node that has a ref may be offered.
 - A Custom Tool whose name is already taken by another published tool is
   rejected.
 - Custom Tools live for the runtime session: they are unregistered when it
   ends.
 
+## Browser Tools
+
+A **Browser Tool** is a built-in operation on the page itself, as opposed to
+one a Page Object provides. An agent that knows Playwright MCP can use them as
+it would there:
+
+| Tool            | Playwright MCP counterpart     | Input                                             |
+| --------------- | ------------------------------ | ------------------------------------------------- |
+| `click`         | `browser_click`                | `target`, `doubleClick?`, `button?`, `modifiers?` |
+| `hover`         | `browser_hover`                | `target`                                          |
+| `type`          | `browser_type`                 | `target`, `text`, `submit?`, `slowly?`            |
+| `fill`          | none                           | `target`, `text`                                  |
+| `fill_form`     | `browser_fill_form`            | `fields`: `{ target, name, type, value }[]`       |
+| `check`         | `browser_check` (skill-only)   | `target`                                          |
+| `uncheck`       | `browser_uncheck` (skill-only) | `target`                                          |
+| `select_option` | `browser_select_option`        | `target`, `values`                                |
+| `press_key`     | `browser_press_key`            | `key`                                             |
+
+- The inputs follow Playwright MCP as bundled in `playwright-core` 1.62.1: the
+  same field names, and the same behaviour when an option is omitted. `type`
+  replaces the field's value, or types one character at a time with
+  `slowly: true`. `press_key` acts on the focused element. `check` and
+  `uncheck` take the input of Playwright MCP's skill-only `browser_check` and
+  `browser_uncheck`; `fill` has no counterpart and takes `target` and `text`.
+  Playwright MCP's `element`, the description its host shows when asking the
+  user to allow an action, is left out: Ayme has no such prompt, so a call
+  that passes it is rejected like any other undeclared option.
+- `target` is a Structural Ref from `snapshot`, or a selector: CSS, `xpath=`,
+  or a Playwright selector such as `role=button[name="Save"]` or
+  `text=Save`. A selector must match exactly one element; one that matches
+  several fails and never acts on the first. Playwright MCP also takes locator
+  expressions such as `getByRole('button', { name: 'Save' })`; this runtime
+  does not, and rejects them as an unsupported target.
+- An option a tool does not declare is rejected with an error naming it; it is
+  never ignored.
+- Every action returns the compact action result: `page_changed`, `settled`,
+  `changes` and, when it has one, the action's own `result`.
+- `fill_form` fills its fields in order and stops at the first that fails. Its
+  `result` names the fields filled (`filled`) and the one that failed
+  (`failed`, with its error). Fields filled before it stay filled.
+- The single-element tools are operations the Goal Loop may choose, each for
+  the elements its filter keeps: `click` and `hover` take
+  elements that are not disabled and have an interactive role or a pointer
+  cursor; `type` and `fill` take elements text can actually be entered into;
+  `check` takes checkboxes, radio buttons and switches, and `uncheck` the
+  same without radio buttons;
+  `select_option` takes select elements. The loop fills only the element and
+  the required fields. `fill_form` and `press_key` are published only.
+
+The browser runtime differs from a real browser driven by Playwright:
+
+- Input is synthetic. Its events are not trusted, so they grant no user
+  activation.
+- `hover` does not apply CSS `:hover`.
+- Key presses do not move focus natively; `Tab` does not move to the next
+  field.
+
 ## Tool failures
 
 A published tool never throws. WebMCP drops the reason of a rejected tool call:
 native Chrome reports only a generic `UnknownError`. Every tool Ayme publishes,
-including `get_page_context` and `pursue_goal`, therefore resolves a failure as
+including `snapshot` and `goal`, therefore resolves a failure as
 an MCP tool-failure result:
 
 ```json
@@ -376,11 +432,11 @@ text. Use a fake function in deterministic tests.
 
 The Goal Loop drives the page toward a natural-language goal in steps. Each
 step is one judgement by a fast System One model, not by the calling agent's LLM.
-The calling agent starts the loop with `pursue_goal` and receives a **Handover**.
+The calling agent starts the loop with `goal` and receives a **Handover**.
 
 ### Turning it on
 
-Pass `goalLoop` on the Vue composable or React provider. The `pursue_goal`
+Pass `goalLoop` on the Vue composable or React provider. The `goal`
 WebMCP tool is published only when `goalLoop` is set.
 
 ```ts
@@ -424,12 +480,12 @@ request. When exactly one chunk names an element the operation runs on it; when
 several do, one more question offers exactly those elements; when none does,
 the loop ends with `no_fitting_option`. An optional closed-set parameter is
 offered an extra choice that leaves it unset. The model never writes a free
-value: an operation that requires one, such as `fill_page_state_ref`, ends the
+value: an operation that requires one, such as `fill`, ends the
 loop with `needs_value` so that the calling agent supplies it.
 
 ### The Handover
 
-`pursue_goal({ goal, maxSteps })` and `session.pursueGoal(goal, { maxSteps })`
+`goal({ goal, maxSteps })` and `session.pursueGoal(goal, { maxSteps })`
 return a Handover:
 
 ```ts
@@ -489,7 +545,7 @@ per parameter asked, the key of the option the model chose and that option's
 description exactly as it was offered, a choice to leave the parameter unset
 included; `"ok"` or an error message in `result`; whether the page changed in
 `page_changed`; and `did`, a one-line label derived from the others, such as
-`click_page_state_ref(button "Add item")`.
+`click(button "Add item")`.
 A step that hands over before acting records nothing. The model is sent the
 same entries as its `history`.
 `changes` is one Change Record for the whole run, in the notation of an action's
