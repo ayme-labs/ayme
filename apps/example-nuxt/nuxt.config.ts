@@ -40,6 +40,7 @@ export default defineNuxtConfig({
   vite: {
     plugins: [
       ayme({
+        // POMs live outside Nuxt's generated app TypeScript project.
         tsconfigPath: fileURLToPath(
           new URL("./tsconfig.pom.json", import.meta.url)
         ),

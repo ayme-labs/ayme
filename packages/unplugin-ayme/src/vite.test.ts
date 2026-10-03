@@ -178,5 +178,6 @@ describe("ayme Vite integration", () => {
     expect(
       resolved.oxc === false ? undefined : resolved.oxc.decorator?.legacy
     ).toBe(legacy);
+    if (config.oxc) expect(resolved.oxc).toMatchObject(config.oxc);
   });
 });
