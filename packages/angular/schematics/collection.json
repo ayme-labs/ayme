@@ -1,0 +1,9 @@
+{
+  "schematics": {
+    "ng-add": {
+      "description": "Set Ayme up in an Angular application.",
+      "factory": "../dist/schematics/ng-add.cjs#ngAdd",
+      "schema": "./ng-add/schema.json"
+    }
+  }
+}

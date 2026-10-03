@@ -8,14 +8,20 @@
   },
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "schematics"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
-    }
+    },
+    "./package.json": "./package.json"
+  },
+  "schematics": "./schematics/collection.json",
+  "ng-add": {
+    "save": "dependencies"
   },
   "scripts": {
     "build": "tsdown",
@@ -37,6 +43,7 @@
     }
   },
   "devDependencies": {
+    "@angular-devkit/schematics": "^22.2.1",
     "@angular/common": "^22.2.1",
     "@angular/compiler": "^22.2.1",
     "@angular/core": "^22.2.1",
@@ -44,6 +51,8 @@
     "@angular/platform-server": "^22.2.1",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
+    "@schematics/angular": "^22.2.1",
+    "@types/node": "^24.13.3",
     "eslint": "^10.9.1",
     "jsdom": "^30.0.1",
     "rxjs": "^7.8.2",

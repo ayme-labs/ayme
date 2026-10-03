@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "AymeNgAdd",
+  "title": "Set Ayme up in an Angular application",
+  "type": "object",
+  "properties": {
+    "project": {
+      "type": "string",
+      "description": "The application to set Ayme up in.",
+      "$default": { "$source": "projectName" }
+    }
+  }
+}

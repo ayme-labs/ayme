@@ -5,13 +5,19 @@ Angular integration for Ayme: start Ayme in the application config and use Page 
 ## Install and configure
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/angular
-npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild @playwright/test@~1.62.1
+ng add @ayme-dev/angular
 ```
 
-Packages are not published yet; use supplied tarballs before release. Install the `@angular-builders/custom-esbuild` major that matches your Angular major.
+Packages are not published yet; use supplied tarballs before release. `ng add` installs `@ayme-dev/ayme`, and as dev dependencies `@ayme-dev/unplugin-ayme` and the `@angular-builders/custom-esbuild` major that matches your Angular major. It switches the project's build and serve builders to custom-esbuild, keeping their options, adds Ayme's plugin, writes the one-line plugin file and adds `provideAyme()` to the application config. It leaves bundle budgets alone. When your app uses another custom builder or bootstraps an NgModule, it changes only what it can change safely and prints the remaining steps.
 
-The standard Angular builder has no plugin option, so Ayme's compiler enters through `@angular-builders/custom-esbuild`. Add a one-line plugin file at the workspace root, because custom-esbuild loads plugins by file path only:
+### Manual setup
+
+```sh
+npm install @ayme-dev/ayme @ayme-dev/angular
+npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild
+```
+
+Install the `@angular-builders/custom-esbuild` major that matches your Angular major. The standard Angular builder has no plugin option, so Ayme's compiler enters through custom-esbuild. Add a one-line plugin file at the workspace root, because custom-esbuild loads plugins by file path only:
 
 ```js
 // ayme.plugin.mjs
@@ -30,6 +36,8 @@ Then switch the project's builders in `angular.json`, keeping their existing opt
 },
 "serve": { "builder": "@angular-builders/custom-esbuild:dev-server" }
 ```
+
+Finally add `provideAyme()` to the application config, as shown below.
 
 ## Use
 
