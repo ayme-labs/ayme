@@ -4,10 +4,10 @@ import {
   useContext,
   useEffect,
   useState,
-  useSyncExternalStore,
   type ReactElement,
   type ReactNode,
 } from "react";
+import { useSyncExternalStore } from "use-sync-external-store/shim";
 import {
   createRuntimeSession,
   type AymePage,
