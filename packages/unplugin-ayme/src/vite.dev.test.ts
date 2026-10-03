@@ -146,4 +146,6 @@ it("recompiles a decorated subclass after its base class file changes", async ()
 
   await editBase("CHANGEDAGAIN");
   expect(await subDescriptions()).toEqual(["CHANGEDAGAIN", "CHANGEDAGAIN"]);
-});
+  // Starts a Vite dev server and compiles the subclass three times: 1.3 s
+  // locally, 7.6 to 13.5 s on CI beside the other Turbo tasks.
+}, 30_000);
