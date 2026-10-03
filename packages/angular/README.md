@@ -8,7 +8,7 @@ Angular integration for Ayme: start Ayme in the application config and use Page 
 ng add @ayme-dev/angular
 ```
 
-Packages are not published yet; use supplied tarballs before release. `ng add` installs `@ayme-dev/ayme`, and as dev dependencies `@ayme-dev/unplugin-ayme` and the `@angular-builders/custom-esbuild` major that matches your Angular major. It switches the project's build and serve builders to custom-esbuild, keeping their options, adds Ayme's plugin, writes the one-line plugin file and adds `provideAyme()` to the application config. It leaves bundle budgets alone; see [Bundle size](#bundle-size). When your app uses another custom builder or bootstraps an NgModule, it changes only what it can change safely and prints the remaining steps.
+Packages are not published yet; use supplied tarballs before release. `ng add` installs `@ayme-dev/ayme`, and as dev dependencies `@ayme-dev/unplugin-ayme`, the `@angular-builders/custom-esbuild` major that matches your Angular major, and `@playwright/test` for the types Page Object Models use, unless the project already has it. It switches the project's build and serve builders to custom-esbuild, keeping their options, adds Ayme's plugin, writes the one-line plugin file and adds `provideAyme()` to the application config. It leaves bundle budgets alone; see [Bundle size](#bundle-size). When your app uses another custom builder or bootstraps an NgModule, it changes only what it can change safely and prints the remaining steps.
 
 ### Manual setup
 
@@ -92,7 +92,7 @@ Put `provideAyme` in the application config, not in route providers. The router 
 
 ## Page Object Models
 
-Page Object Models are authored as for React and Vue, with `@ayme` and `@ayme.action`; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md). Keep each in its own `.ts` file; new Angular workspaces already enable `experimentalDecorators`. They use Playwright's `Page` and `Locator` types, so install `@playwright/test@~1.62.1` as a dev dependency; `ng add` does not. Import them with relative paths or through tsconfig `paths` aliases, and share them with your Playwright tests. A Page Object Model inside `node_modules` is not compiled. A model the plugin did not compile fails at `injectPageObject` in the browser with the runtime's "no compiler-derived Ayme metadata" error.
+Page Object Models are authored as for React and Vue, with `@ayme` and `@ayme.action`; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md). Keep each in its own `.ts` file; new Angular workspaces already enable `experimentalDecorators`. They use Playwright's `Page` and `Locator` types from `@playwright/test`, which `ng add` installs. Import them with relative paths or through tsconfig `paths` aliases, and share them with your Playwright tests. A Page Object Model inside `node_modules` is not compiled. A model the plugin did not compile fails at `injectPageObject` in the browser with the runtime's "no compiler-derived Ayme metadata" error.
 
 During `ng serve`, editing a type a Page Object Model imports updates its tool schema after a reload, without restarting the server.
 
@@ -106,4 +106,4 @@ Ayme adds about 240 kB transferred (about 900 kB raw) to the initial chunk of a 
 
 ## Supported versions and limits
 
-`@ayme-dev/angular` declares `@angular/core` and `@angular/common` `>=19.0.0 <23.0.0`. CI runs the package tests on Angular 19.0.0 and the example app on the current major. The [example app's limits](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md#limits) list what is not certified, including NgModule apps, route-level `provideAyme`, `@defer` and incremental hydration, Nx workspaces and the Inspector.
+`@ayme-dev/angular` declares `@angular/core` `>=19.0.0 <23.0.0`. CI runs the package tests on Angular 19.0.0 and the example app on the current major. The [example app's limits](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md#limits) list what is not certified, including NgModule apps, route-level `provideAyme`, `@defer` and incremental hydration, Nx workspaces and the Inspector.
