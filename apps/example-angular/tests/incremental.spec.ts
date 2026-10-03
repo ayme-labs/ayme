@@ -29,6 +29,8 @@ test("rebuilds POM metadata from an imported type without restarting ng serve", 
     test.info().config.metadata.server !== "development",
     "development only"
   );
+  // Each edit waits for an ng serve rebuild, which takes over 10 s on CI.
+  test.setTimeout(150_000);
   const original = await readFile(counterModePath, "utf8");
   const changed = original.replace('"double"', '"triple"');
   expect(changed).not.toBe(original);
@@ -38,7 +40,7 @@ test("rebuilds POM metadata from an imported type without restarting ng serve", 
   await waitForPublishedTool(page, "CounterPage.setMode");
   expect(await modeSchemaAfterReload(page)).toContain('"double"');
 
-  const rebuild = { timeout: 30_000, intervals: [250, 500, 1_000] };
+  const rebuild = { timeout: 60_000, intervals: [250, 500, 1_000] };
   try {
     await writeFile(counterModePath, changed);
     await expect
