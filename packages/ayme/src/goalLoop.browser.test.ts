@@ -1705,8 +1705,10 @@ describe("Goal Loop goal in Chromium", () => {
     });
     expect(result.next).not.toContain("one element");
     expect(requests).toHaveLength(1);
-    // 256 instances take under a second locally but 7-14s on CI runners,
-    // close to the 15s default.
+    // 256 is one instance over the option limit. The run reads the page three
+    // times, and each read checks every root against its siblings, so the
+    // time grows with the square of the instance count: about 0.7 s locally,
+    // 13 to 17 s on CI (three reads of about 5.6 s each).
   }, 30_000);
 
   it("asks one instance question for a nested collection", async () => {
