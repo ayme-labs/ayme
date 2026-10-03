@@ -1,0 +1,78 @@
+name: Release alpha
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish to npm under the alpha dist-tag. Leave off for a dry run.
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pack:
+    name: Validate, build and pack
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse to publish from a branch other than the default branch
+        if: inputs.publish && github.ref_name != github.event.repository.default_branch
+        env:
+          REF: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          echo "::error::Publish only from $DEFAULT_BRANCH, not from $REF."
+          exit 1
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Check the shared alpha version
+        run: node scripts/release-version.mjs
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Build the packages
+        run: pnpm exec turbo run build --filter='./packages/*'
+      - name: Pack and run the packed-consumer check
+        env:
+          AYME_PACKED_DIR: ${{ runner.temp }}/packages
+        run: pnpm --filter @ayme-dev/ayme test:package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: ${{ runner.temp }}/packages/*.tgz
+          if-no-files-found: error
+
+  publish:
+    name: Publish to npm
+    needs: pack
+    if: inputs.publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: packages
+      # Alphabetical order publishes each package after the Ayme packages it
+      # depends on.
+      - name: Publish the checked tarballs
+        run: |
+          for tarball in packages/*.tgz; do
+            npm publish "$tarball" --tag alpha
+          done
