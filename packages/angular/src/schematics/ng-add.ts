@@ -38,9 +38,10 @@ const replaceable = (builder: string | undefined) =>
   (builder in replaced || Object.values(customEsbuild).includes(builder));
 
 /**
- * `ng add @ayme-dev/angular`: installs Ayme's runtime and build integration,
- * switches the build and serve targets to custom-esbuild with Ayme's plugin,
- * and adds `provideAyme()` to the application config. What it cannot change
+ * `ng add @ayme-dev/angular`: installs Ayme's runtime and build integration
+ * and the Playwright types Page Object Models use, switches the build and
+ * serve targets to custom-esbuild with Ayme's plugin, and adds `provideAyme()`
+ * to the application config. What it cannot change
  * safely, it leaves alone and lists as manual steps.
  */
 export function ngAdd(options: NgAddOptions): Rule {
@@ -66,6 +67,11 @@ export function ngAdd(options: NgAddOptions): Rule {
     const rules: Rule[] = [
       addDependency("@ayme-dev/ayme", version),
       addDependency("@ayme-dev/unplugin-ayme", version, {
+        type: DependencyType.Dev,
+      }),
+      // Page Object Models use Playwright's types; a project that already
+      // has @playwright/test keeps its version.
+      addDependency("@playwright/test", "~1.62.1", {
         type: DependencyType.Dev,
       }),
     ];
