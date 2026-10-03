@@ -182,7 +182,7 @@ export function validatedToolInput(
   const fields = input as Record<string, unknown>;
   const properties = schema.properties ?? {};
   for (const name of Object.keys(fields))
-    if (!properties[name])
+    if (!Object.hasOwn(properties, name))
       throw new ToolInputError(`The option "${name}" is not supported.`);
   for (const name of schema.required ?? [])
     if (fields[name] === undefined)

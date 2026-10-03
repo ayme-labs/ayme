@@ -36,11 +36,16 @@ const inputTypes: Partial<Record<string, TextInputType>> = {
   url: "url",
 };
 
-/** The fields of an object schema, one per property, in schema order. */
-export function fieldsOf(schema: JsonSchema): Field[] {
+/**
+ * The fields of an object schema, one per property, in schema order.
+ * `refField` names the property that takes a Structural Ref, if any.
+ */
+export function fieldsOf(schema: JsonSchema, refField?: string): Field[] {
   const required = new Set(schema.required ?? []);
   return Object.entries(schema.properties ?? {}).map(([name, property]) =>
-    fieldOf(name, property, !required.has(name))
+    name === refField && property.type === "string"
+      ? { name, optional: !required.has(name), kind: "ref", typeLabel: "ref" }
+      : fieldOf(name, property, !required.has(name))
   );
 }
 
@@ -55,10 +60,6 @@ function fieldOf(name: string, schema: Schema, optional: boolean): Field {
     };
   switch (schema.type) {
     case "string":
-      // A Custom Tool's `ref`, or a Browser Tool's `target`, which also takes
-      // a selector; the panel picks a ref for either.
-      if (name === "ref" || name === "target")
-        return { ...base, kind: "ref", typeLabel: "ref" };
       return {
         ...base,
         kind: "text",

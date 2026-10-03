@@ -26,6 +26,7 @@ const click: RunnableTool = {
   action: "click",
   description: "Click a real element ref from snapshot.",
   available: true,
+  refField: "ref",
   argumentsSchema: {
     type: "object",
     properties: { ref: { type: "string" } },
