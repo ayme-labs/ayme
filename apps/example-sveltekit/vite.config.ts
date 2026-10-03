@@ -4,7 +4,7 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   // SvelteKit 2's tsconfig chain does not reach Vite 8's oxc, so POM
-  // decorators are lowered here until #279.
+  // decorators are lowered here.
   oxc: { decorator: { legacy: true } },
   plugins: [sveltekit(), ayme()],
 });
