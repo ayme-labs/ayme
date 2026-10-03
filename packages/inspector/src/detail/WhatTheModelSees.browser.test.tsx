@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 const definitions =
-  'POM ListPage // The list <main> page\n  items: ListItem[]\n\n  // Add an item to the list.\n  addItem(text: string, priority?: "low" | "high"): this';
+  'ListPage // The list <main> page\n  items: ListItem[]\n\n  // Add an item to the list.\n  addItem(text: string, priority?: "low" | "high"): this';
 const addItemSchema = {
   type: "object",
   properties: { text: { type: "string" }, priority: { enum: ["low", "high"] } },

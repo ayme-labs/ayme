@@ -64,7 +64,7 @@ test("reading What the model sees leaves the agent's view of the page alone", as
   const { modelSees } = inspector.detail.toolPage;
   await inspector.tool("ListPage.addItem");
   await modelSees.open();
-  await expect(modelSees.definitions).toContainText("POM ListPage");
+  await expect(modelSees.definitions).toHaveText(/^ListPage\b/);
 
   // A toast appears, then the agent's first action changes nothing. Had the
   // panel's read been recorded as a page observation, it would be the
