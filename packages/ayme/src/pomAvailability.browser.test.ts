@@ -275,9 +275,16 @@ describe("live Page Object availability", () => {
       await expect
         .poll(() => [...published.keys()])
         .toEqual([
-          "get_page_context",
-          "click_page_state_ref",
-          "fill_page_state_ref",
+          "snapshot",
+          "click",
+          "hover",
+          "type",
+          "fill",
+          "check",
+          "uncheck",
+          "select_option",
+          "fill_form",
+          "press_key",
           "Shell.sidebar.close",
         ]);
       const rule = document.querySelector<HTMLStyleElement>(
@@ -291,18 +298,32 @@ describe("live Page Object availability", () => {
       await expect
         .poll(() => [...published.keys()])
         .toEqual([
-          "get_page_context",
-          "click_page_state_ref",
-          "fill_page_state_ref",
+          "snapshot",
+          "click",
+          "hover",
+          "type",
+          "fill",
+          "check",
+          "uncheck",
+          "select_option",
+          "fill_form",
+          "press_key",
         ]);
       rule.style.visibility = "visible";
       window.dispatchEvent(new Event("transitionend"));
       await expect
         .poll(() => [...published.keys()])
         .toEqual([
-          "get_page_context",
-          "click_page_state_ref",
-          "fill_page_state_ref",
+          "snapshot",
+          "click",
+          "hover",
+          "type",
+          "fill",
+          "check",
+          "uncheck",
+          "select_option",
+          "fill_form",
+          "press_key",
           "Shell.sidebar.close",
         ]);
     } finally {
@@ -520,9 +541,16 @@ describe("live Page Object availability", () => {
       expect(ticks).toBeGreaterThan(0);
       expect(state.text).toContain("SlowShell.panels[0]");
       expect(published).toEqual([
-        "get_page_context",
-        "click_page_state_ref",
-        "fill_page_state_ref",
+        "snapshot",
+        "click",
+        "hover",
+        "type",
+        "fill",
+        "check",
+        "uncheck",
+        "select_option",
+        "fill_form",
+        "press_key",
         "SlowShell.panels.close",
       ]);
     } finally {

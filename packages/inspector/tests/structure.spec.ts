@@ -31,15 +31,9 @@ test("a text field's node offers fill, and a button's does not", async ({
   await inspector.navigator.showLens("Structure");
 
   await inspector.structure.nodeOf("ListPage.newItemInput").click();
-  await expect(inspector.detail.node.tool("fill_page_state_ref")).toHaveCount(
-    1
-  );
+  await expect(inspector.detail.node.tool("fill")).toHaveCount(1);
 
   await inspector.structure.nodeOf("ListPage.addItemButton").click();
-  await expect(inspector.detail.node.tool("click_page_state_ref")).toHaveCount(
-    1
-  );
-  await expect(inspector.detail.node.tool("fill_page_state_ref")).toHaveCount(
-    0
-  );
+  await expect(inspector.detail.node.tool("click")).toHaveCount(1);
+  await expect(inspector.detail.node.tool("fill")).toHaveCount(0);
 });
