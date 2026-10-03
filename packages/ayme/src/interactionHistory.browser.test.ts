@@ -171,7 +171,7 @@ describe("Interaction history in Chromium", () => {
 
   // --- Actions ---
 
-  it("records one action with before, change and after evidence per Ref Tool call", async () => {
+  it("records one action with before, change and after evidence per single-element tool call", async () => {
     document.body.innerHTML = '<main><button id="add">Add</button></main>';
     document.querySelector("#add")!.addEventListener("click", () => {
       document

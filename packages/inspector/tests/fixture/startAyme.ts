@@ -102,7 +102,7 @@ const listPageManifest: PomManifest = {
 
 registerCompiledPom(ListPage, listPageManifest);
 
-/** An app-registered Ref Tool: it marks the element it's given. */
+/** A Custom Tool: it marks the element it's given. */
 const markElement: CustomTool = {
   name: "mark_element",
   description: "Mark one element on the page.",

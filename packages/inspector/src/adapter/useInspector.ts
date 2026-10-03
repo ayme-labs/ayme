@@ -9,7 +9,7 @@ import type {
 
 import {
   getPomDefinitions,
-  listRefToolTargets,
+  listElementToolTargets,
   listRegisteredPomTargets,
   listRegisteredPomTools,
   listRegisteredPoms,
@@ -34,10 +34,10 @@ export type PageStateView = {
   /** Every Page Object member whose element each ref is, by ref. */
   membersByRef: ReadonlyMap<string, readonly string[]>;
   /**
-   * The refs each published Ref Tool can take in this page state, by tool
+   * The refs each published single-element tool can take in this page state, by tool
    * name, in tree order: what an agent is offered for that tool's ref.
    */
-  refToolTargets: ReadonlyMap<string, readonly string[]>;
+  elementToolTargets: ReadonlyMap<string, readonly string[]>;
   /** Each ref's element in this page state. */
   elementsByRef: ReadonlyMap<string, Element>;
   capturedAt?: string;
@@ -84,7 +84,7 @@ export function useInspector({
   const [registry, setRegistry] = useState(readRegistry);
   const [pageState, setPageState] = useState<PageStateView>({
     membersByRef: new Map(),
-    refToolTargets: new Map(),
+    elementToolTargets: new Map(),
     elementsByRef: new Map(),
     loading: false,
   });
@@ -117,7 +117,7 @@ export function useInspector({
       setPageState({
         text: next.peek.text,
         membersByRef: next.membersByRef,
-        refToolTargets: next.refToolTargets,
+        elementToolTargets: next.elementToolTargets,
         elementsByRef: next.peek.elementsByRef,
         capturedAt: new Date().toLocaleTimeString([], {
           hour: "2-digit",
@@ -225,7 +225,7 @@ type Look = {
   /** The page state's elements: only these can be highlighted. */
   elementsInState: ReadonlySet<Element>;
   membersByRef: ReadonlyMap<string, readonly string[]>;
-  refToolTargets: ReadonlyMap<string, readonly string[]>;
+  elementToolTargets: ReadonlyMap<string, readonly string[]>;
 };
 
 /**
@@ -234,9 +234,9 @@ type Look = {
  */
 async function lookAtPage(): Promise<Look> {
   const peek = await peekPageStateForDocument(document);
-  const [targets, refToolTargets] = await Promise.all([
+  const [targets, elementToolTargets] = await Promise.all([
     listRegisteredPomTargets(),
-    listRefToolTargets(peek),
+    listElementToolTargets(peek),
   ]);
 
   // Several members can hold the same element (two collections over the
@@ -248,7 +248,7 @@ async function lookAtPage(): Promise<Look> {
     targets,
     elementsInState: new Set(peek.elementsByRef.values()),
     membersByRef,
-    refToolTargets,
+    elementToolTargets,
   };
 }
 

@@ -21,11 +21,11 @@ import {
   getPublicationStatus,
   listLiveTools,
   listPublishedTools,
-  listRefToolTargets,
+  listElementToolTargets,
   subscribeToPublishedTools,
   type PublishedToolGroup,
 } from "./publishedTools";
-import type { CustomTool } from "./refTools";
+import type { CustomTool } from "./elementTools";
 import { buildToolOptions, planArguments } from "./goalLoopQuestions";
 import { getPomDefinitionText } from "./pageContext";
 import {
@@ -209,7 +209,7 @@ async function noFittingOperation(
   };
 }
 
-/** An app-registered Ref Tool with its own filter. */
+/** A Custom Tool with its own filter. */
 const highlight: CustomTool = {
   name: "highlight",
   description: "Highlight an element.",
@@ -493,7 +493,7 @@ export function describePublishedTools(
           return `${element.localName} ${element.textContent?.trim() || (element as HTMLInputElement).value}`;
         });
 
-      const targets = await listRefToolTargets(capture);
+      const targets = await listElementToolTargets(capture);
 
       expect(
         Object.fromEntries(
@@ -672,7 +672,7 @@ export function describePublishedTools(
         document.body.innerHTML = `<button>Save</button><p data-highlightable>Draft</p>`;
 
         const targets = await whilePublicationIsOff(mode, () =>
-          listRefToolTargets()
+          listElementToolTargets()
         );
 
         const peek = await peekPageStateForDocument(document);

@@ -2,7 +2,7 @@ import { expect, test } from "./fixtures";
 
 // E2E: picking a ref by pointing at the fixture page, with the real ListPage
 // Page Object, the Ayme runtime and Chromium's own WebMCP. The run card is
-// the built-in Ref tools' own view.
+// the single-element Browser Tools' own view.
 
 test("a ref picked by clicking the page is the element the tool acts on", async ({
   inspector,

@@ -189,7 +189,7 @@ function stepRecord(
 
 /**
  * Execute a tool and read the `ActionResult` it returns.
- * Every registered tool (POM tools, Ref Tools) runs, as the Goal Loop's model, through
+ * Every registered tool (POM tools, Browser Tools, Custom Tools) runs, as the Goal Loop's model, through
  * `runAction` internally, so we just forward and interpret the result.
  */
 async function executeToolAction(

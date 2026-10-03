@@ -6,16 +6,16 @@ const inspectorHost = "[data-ayme-inspector-host]";
 /**
  * Which nodes of the structure a tool can use: the refs the tool can take
  * in the page state, as the runtime offers them to the Goal Loop. A tool
- * the runtime lists no targets for, such as one that isn't a Ref Tool, can
+ * the runtime lists no targets for, such as one that isn't a single-element tool, can
  * use every node: then it's undefined.
  *
- * @param refToolTargets the refs each published Ref Tool can take, by name.
+ * @param elementToolTargets the refs each published single-element tool can take, by name.
  */
 export function refFilterOf(
-  refToolTargets: ReadonlyMap<string, readonly string[]>,
+  elementToolTargets: ReadonlyMap<string, readonly string[]>,
   toolName: string
 ): ((node: StructureNode & { ref: string }) => boolean) | undefined {
-  const targets = refToolTargets.get(toolName);
+  const targets = elementToolTargets.get(toolName);
   if (!targets) return undefined;
   const usable = new Set(targets);
   return (node) => usable.has(node.ref);

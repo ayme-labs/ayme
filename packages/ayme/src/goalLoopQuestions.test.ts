@@ -55,7 +55,7 @@ const clickTool: ExecutableTool = {
   args: [refArg],
 };
 
-/** A Ref Tool with a boolean parameter next to its ref. */
+/** A single-element tool with a boolean parameter next to its ref. */
 const clickWithForceTool: ExecutableTool = {
   ...clickTool,
   name: "force_click",
@@ -72,7 +72,7 @@ const clickWithForceTool: ExecutableTool = {
 };
 
 /**
- * A Ref Tool whose other closed-set parameters are named like the first chunk
+ * A single-element tool whose other closed-set parameters are named like the first chunk
  * and the run-off of its `ref` would be under a naive `<parameter>_<suffix>`.
  */
 const clickWithLookalikeParametersTool: ExecutableTool = {

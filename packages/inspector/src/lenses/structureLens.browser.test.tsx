@@ -130,13 +130,13 @@ const pageObjectsLens: Lens = {
 };
 const nothingToShow = "Nothing to show for this selection.";
 
-// Which refs each Ref tool can take: fill only the text field.
+// Which refs each single-element tool can take: fill only the text field.
 const refSchema = {
   type: "object",
   properties: { ref: { type: "string" } },
   required: ["ref"],
 };
-const refTools = [
+const elementTools = [
   {
     name: "click",
     inputSchema: refSchema,
@@ -168,7 +168,7 @@ function renderLens({
         onSelect(next);
       },
       onHover,
-      refTools,
+      elementTools,
       renderRun,
     });
     return (
@@ -274,7 +274,7 @@ it("says a node without a member can still be acted on by ref", async () => {
   expect(await node.memberLinks.count()).toBe(0);
 });
 
-it("runs the Ref tools that can take a node's ref through the run slot", async () => {
+it("runs the single-element tools that can take a node's ref through the run slot", async () => {
   const renderRun: RenderRun = ({ toolName, ref }) => (
     <button type="button">
       {toolName} on {ref}
@@ -287,7 +287,7 @@ it("runs the Ref tools that can take a node's ref through the run slot", async (
     .toEqual(["click on e3", "fill on e3"]);
 });
 
-it("offers a node only the Ref tools that can take its ref", async () => {
+it("offers a node only the single-element tools that can take its ref", async () => {
   const renderRun: RenderRun = ({ toolName }) => (
     <button type="button">{toolName}</button>
   );
@@ -299,7 +299,7 @@ it("offers a node only the Ref tools that can take its ref", async () => {
   expect(await node.tool("fill").count()).toBe(0);
 });
 
-it("offers no tools on a node no Ref tool can take", async () => {
+it("offers no tools on a node no single-element tool can take", async () => {
   renderLens({ initialSelection: { kind: "node", ref: "e2" } });
 
   await expect
@@ -319,7 +319,7 @@ it("shows what the model sees of a node: its line with its states, its children 
   expect(await node.modelSees.childCount.textContent()).toBe("1 child");
 });
 
-it("shows the schemas of the Ref tools a node offers in what the model sees", async () => {
+it("shows the schemas of the single-element tools a node offers in what the model sees", async () => {
   renderLens({ initialSelection: { kind: "node", ref: "e4" } });
 
   await node.modelSees.open();

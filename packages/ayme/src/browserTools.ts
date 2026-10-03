@@ -9,15 +9,15 @@ import type { AriaRef } from "./pageState";
 import {
   listCustomTools,
   locatorOf,
-  registerRefTool,
+  registerElementTool,
   requireCurrentDocument,
   resolveElementTarget,
   validatedToolInput,
-  type PublishedRefTool,
-  type RefToolDefinition,
-  type RegisteredRefTool,
+  type PublishedElementTool,
+  type ElementToolDefinition,
+  type RegisteredElementTool,
   type ResolvedTarget,
-} from "./refTools";
+} from "./elementTools";
 import { requireAymeRuntimePage } from "./registry";
 
 // --- Input schemas ---
@@ -81,7 +81,7 @@ function browserTool(
   description: string,
   inputSchema: JsonSchema,
   run: (target: ResolvedTarget, input: Fields) => Promise<unknown>
-): RefToolDefinition {
+): ElementToolDefinition {
   return {
     name,
     description,
@@ -285,17 +285,17 @@ export function isSelectElement(element: Element): boolean {
   return element instanceof HTMLSelectElement && !isDisabled(element);
 }
 
-const click = registerRefTool(clickDefinition, isClickableElement);
-const fill = registerRefTool(fillDefinition, isFillableElement);
+const click = registerElementTool(clickDefinition, isClickableElement);
+const fill = registerElementTool(fillDefinition, isFillableElement);
 
-const SINGLE_ELEMENT_TOOLS: readonly RegisteredRefTool[] = [
+const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
   click,
-  registerRefTool(hoverDefinition, isClickableElement),
-  registerRefTool(typeDefinition, isFillableElement),
+  registerElementTool(hoverDefinition, isClickableElement),
+  registerElementTool(typeDefinition, isFillableElement),
   fill,
-  registerRefTool(checkDefinition, isCheckableElement),
-  registerRefTool(uncheckDefinition, isUncheckableElement),
-  registerRefTool(selectOptionDefinition, isSelectElement),
+  registerElementTool(checkDefinition, isCheckableElement),
+  registerElementTool(uncheckDefinition, isUncheckableElement),
+  registerElementTool(selectOptionDefinition, isSelectElement),
 ];
 
 /**
@@ -303,7 +303,7 @@ const SINGLE_ELEMENT_TOOLS: readonly RegisteredRefTool[] = [
  * Tools, in publication order. Each is published and the Goal Loop may choose
  * it (ADR-0023).
  */
-export function listRefTools(): readonly RegisteredRefTool[] {
+export function listElementTools(): readonly RegisteredElementTool[] {
   return [...SINGLE_ELEMENT_TOOLS, ...listCustomTools()];
 }
 
@@ -386,7 +386,7 @@ async function fillField(field: FormField, currentDocument: Document) {
  * Fill the fields in order and stop at the first failure. The result names the
  * fields filled and the one that failed; filled fields stay filled.
  */
-const fillFormTool: PublishedRefTool = {
+const fillFormTool: PublishedElementTool = {
   name: "fill_form",
   description:
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
@@ -435,7 +435,7 @@ const pressKeySchema: JsonSchema = {
 };
 
 /** Press a key on the focused element. */
-const pressKeyTool: PublishedRefTool = {
+const pressKeyTool: PublishedElementTool = {
   name: "press_key",
   description: "Press a key on the element that has focus.",
   inputSchema: pressKeySchema,
@@ -453,13 +453,13 @@ const pressKeyTool: PublishedRefTool = {
 };
 
 /** Browser Tools that take no single element, published only. */
-const PUBLISHED_ONLY_BROWSER_TOOLS: readonly PublishedRefTool[] = [
+const PUBLISHED_ONLY_BROWSER_TOOLS: readonly PublishedElementTool[] = [
   fillFormTool,
   pressKeyTool,
 ];
 
 /** Package-internal: every Browser Tool as published, in publication order. */
-export function listPublishedBrowserTools(): readonly PublishedRefTool[] {
+export function listPublishedBrowserTools(): readonly PublishedElementTool[] {
   return [
     ...SINGLE_ELEMENT_TOOLS.map(({ tool }) => tool),
     ...PUBLISHED_ONLY_BROWSER_TOOLS,

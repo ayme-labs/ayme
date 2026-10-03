@@ -4,14 +4,7 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage } from "./browserPage";
 import { createRuntimeSession } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
-import {
-  isCheckableElement,
-  isClickableElement,
-  isFillableElement,
-  isSelectElement,
-  isUncheckableElement,
-} from "./browserTools";
-import type { CustomTool } from "./refTools";
+import type { CustomTool } from "./elementTools";
 import { toolFailure } from "./toolFailure.testSupport";
 
 type PublishedTool = {
@@ -58,7 +51,7 @@ describe("Custom Tools in Chromium", () => {
     document.body.innerHTML = "";
   });
 
-  /** Start a runtime session with the given Ref Tools and publish its tools. */
+  /** Start a runtime session with the given Custom Tools and publish its tools. */
   async function publish(customTools?: CustomTool[]) {
     const runtime = createRuntimeSession({
       pageFactory: () => page,
@@ -93,10 +86,10 @@ describe("Custom Tools in Chromium", () => {
     return context.structure;
   }
 
-  /** A Ref Tool that records the targets it received. */
-  function recordingRefTool(overrides: Partial<CustomTool> = {}) {
+  /** A Custom Tool that records the targets it received. */
+  function recordingCustomTool(overrides: Partial<CustomTool> = {}) {
     const targets: { ref: string; element: Element }[] = [];
-    const refTool: CustomTool = {
+    const customTool: CustomTool = {
       name: "highlight_element",
       description: "Highlight one element on the page.",
       execute: async (target) => {
@@ -105,16 +98,16 @@ describe("Custom Tools in Chromium", () => {
       },
       ...overrides,
     };
-    return { refTool, targets };
+    return { customTool, targets };
   }
 
   // --- Registration ---
 
-  it("publishes a registered Ref Tool with its name, description and ref input", async () => {
+  it("publishes a registered Custom Tool with its name, description and ref input", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool } = recordingRefTool();
+    const { customTool } = recordingCustomTool();
 
-    const published = await publish([refTool]);
+    const published = await publish([customTool]);
 
     const { tool } = registrationOf(published, "highlight_element");
     expect(tool.description).toBe("Highlight one element on the page.");
@@ -126,11 +119,11 @@ describe("Custom Tools in Chromium", () => {
     });
   });
 
-  it("rejects a Ref Tool whose name collides with another published tool", async () => {
+  it("rejects a Custom Tool whose name collides with another published tool", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool } = recordingRefTool({ name: "click" });
+    const { customTool } = recordingCustomTool({ name: "click" });
 
-    await expect(publish([refTool])).rejects.toThrow(
+    await expect(publish([customTool])).rejects.toThrow(
       'Cannot publish the tool "click": another published tool already uses that name.'
     );
   });
@@ -139,8 +132,8 @@ describe("Custom Tools in Chromium", () => {
 
   it("passes the current Structural Ref and its element to execute", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool, targets } = recordingRefTool();
-    const published = await publish([refTool]);
+    const { customTool, targets } = recordingCustomTool();
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
 
     await registrationOf(published, "highlight_element").tool.execute({
@@ -154,8 +147,8 @@ describe("Custom Tools in Chromium", () => {
 
   it("retargets a historical ref to the element that replaced it", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool, targets } = recordingRefTool();
-    const published = await publish([refTool]);
+    const { customTool, targets } = recordingCustomTool();
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
 
     const replacement = document.createElement("button");
@@ -173,10 +166,10 @@ describe("Custom Tools in Chromium", () => {
 
   it("returns the action result shape with a JSON value under result", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool } = recordingRefTool({
+    const { customTool } = recordingCustomTool({
       execute: async () => ({ highlighted: true }),
     });
-    const published = await publish([refTool]);
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
 
     const result = (await registrationOf(
@@ -191,15 +184,15 @@ describe("Custom Tools in Chromium", () => {
     });
   });
 
-  it("reports what the Ref Tool changed on the page", async () => {
+  it("reports what the Custom Tool changed on the page", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool } = recordingRefTool({
+    const { customTool } = recordingCustomTool({
       execute: async ({ element }) => {
         element.insertAdjacentHTML("afterend", "<p>Highlighted</p>");
         return null;
       },
     });
-    const published = await publish([refTool]);
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
 
     const result = (await registrationOf(
@@ -213,8 +206,10 @@ describe("Custom Tools in Chromium", () => {
 
   it("does not enforce the filter when the calling agent calls the tool", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool, targets } = recordingRefTool({ filter: () => false });
-    const published = await publish([refTool]);
+    const { customTool, targets } = recordingCustomTool({
+      filter: () => false,
+    });
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
 
     await registrationOf(published, "highlight_element").tool.execute({
@@ -228,8 +223,8 @@ describe("Custom Tools in Chromium", () => {
 
   it("fails an unknown ref without calling execute", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool, targets } = recordingRefTool();
-    const published = await publish([refTool]);
+    const { customTool, targets } = recordingCustomTool();
+    const published = await publish([customTool]);
     await structure(published);
 
     await expect(
@@ -247,8 +242,8 @@ describe("Custom Tools in Chromium", () => {
   it("fails a removed ref without calling execute", async () => {
     document.body.innerHTML =
       '<button id="save">Save changes</button><p>Keep me</p>';
-    const { refTool, targets } = recordingRefTool();
-    const published = await publish([refTool]);
+    const { customTool, targets } = recordingCustomTool();
+    const published = await publish([customTool]);
     const saveRef = refFor(await structure(published), "Save changes");
     document.querySelector("#save")!.remove();
 
@@ -266,10 +261,10 @@ describe("Custom Tools in Chromium", () => {
 
   // --- Session lifetime ---
 
-  it("unregisters a Ref Tool when the runtime session ends", async () => {
+  it("unregisters a Custom Tool when the runtime session ends", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
-    const { refTool } = recordingRefTool();
-    const published = await publish([refTool]);
+    const { customTool } = recordingCustomTool();
+    const published = await publish([customTool]);
     const registration = registrationOf(published, "highlight_element");
     expect(registration.signal.aborted).toBe(false);
 
@@ -283,110 +278,6 @@ describe("Custom Tools in Chromium", () => {
     stop = undefined;
     const afterSession = await republish();
     expect([...afterSession.keys()]).not.toContain("highlight_element");
-  });
-});
-
-// --- Built-in filters (consumed by the Goal Loop when it offers elements) ---
-
-describe("Browser Tool filters in Chromium", () => {
-  afterEach(() => {
-    document.body.innerHTML = "";
-  });
-
-  function fixture(html: string): Element {
-    document.body.innerHTML = html;
-    const element = document.body.firstElementChild;
-    if (!element) throw new Error("Expected a fixture element.");
-    return element;
-  }
-
-  it("keeps elements with an interactive role for click", () => {
-    expect(isClickableElement(fixture("<button>Save</button>"))).toBe(true);
-    expect(isClickableElement(fixture('<a href="/next">Next</a>'))).toBe(true);
-    expect(isClickableElement(fixture('<div role="button">Go</div>'))).toBe(
-      true
-    );
-  });
-
-  it("keeps elements with a pointer cursor for click", () => {
-    expect(
-      isClickableElement(fixture('<div style="cursor: pointer">Card</div>'))
-    ).toBe(true);
-  });
-
-  it("drops plain and disabled elements for click", () => {
-    expect(isClickableElement(fixture("<p>Just text</p>"))).toBe(false);
-    expect(isClickableElement(fixture("<button disabled>Save</button>"))).toBe(
-      false
-    );
-    expect(
-      isClickableElement(fixture('<button aria-disabled="true">Save</button>'))
-    ).toBe(false);
-    expect(
-      isClickableElement(
-        fixture('<a role="button" style="cursor: pointer">No href</a>')
-      )
-    ).toBe(true);
-  });
-
-  it("keeps elements that can actually be filled", () => {
-    expect(isFillableElement(fixture('<input aria-label="Name">'))).toBe(true);
-    expect(
-      isFillableElement(fixture('<input type="email" aria-label="Mail">'))
-    ).toBe(true);
-    expect(isFillableElement(fixture('<textarea aria-label="Note">'))).toBe(
-      true
-    );
-    expect(
-      isFillableElement(fixture('<div contenteditable="true">Text</div>'))
-    ).toBe(true);
-    expect(
-      isFillableElement(
-        fixture('<div contenteditable="plaintext-only">Text</div>')
-      )
-    ).toBe(true);
-  });
-
-  it("drops elements that cannot be filled", () => {
-    expect(isFillableElement(fixture("<button>Save</button>"))).toBe(false);
-    expect(
-      isFillableElement(fixture('<input type="checkbox" aria-label="Done">'))
-    ).toBe(false);
-    expect(
-      isFillableElement(fixture('<input readonly aria-label="Name">'))
-    ).toBe(false);
-    expect(
-      isFillableElement(fixture('<input disabled aria-label="Name">'))
-    ).toBe(false);
-  });
-
-  it("keeps checkboxes and radio buttons for check and uncheck", () => {
-    expect(isCheckableElement(fixture('<input type="checkbox">'))).toBe(true);
-    expect(isCheckableElement(fixture('<input type="radio">'))).toBe(true);
-    expect(isCheckableElement(fixture('<div role="switch">On</div>'))).toBe(
-      true
-    );
-    expect(isCheckableElement(fixture('<input type="text">'))).toBe(false);
-    expect(
-      isCheckableElement(fixture('<input type="checkbox" disabled>'))
-    ).toBe(false);
-  });
-
-  it("keeps checkboxes but not radio buttons for uncheck", () => {
-    expect(isUncheckableElement(fixture('<input type="checkbox">'))).toBe(true);
-    expect(isUncheckableElement(fixture('<input type="radio">'))).toBe(false);
-  });
-
-  it("keeps select elements for select_option", () => {
-    expect(
-      isSelectElement(fixture("<select><option>A</option></select>"))
-    ).toBe(true);
-    expect(
-      isSelectElement(fixture("<select disabled><option>A</option></select>"))
-    ).toBe(false);
-    expect(isSelectElement(fixture('<div role="combobox">A</div>'))).toBe(
-      false
-    );
   });
 });
 

@@ -18,7 +18,7 @@ export {
   getPublicationStatus,
   listLiveTools,
   listPublishedTools,
-  listRefToolTargets,
+  listElementToolTargets,
   subscribeToPublishedTools,
 } from "./publishedTools";
 export type { PublishedToolGroup, PublishedToolInfo } from "./publishedTools";
