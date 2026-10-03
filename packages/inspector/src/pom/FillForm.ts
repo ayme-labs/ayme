@@ -42,13 +42,14 @@ export class FillForm {
 
   /** The changed rows' names, in fill order. */
   async changed(): Promise<string[]> {
-    const names = await this.names();
-    const changed = await Promise.all(
-      (await this.rows.all()).map(
-        async (row) => (await row.getAttribute("data-changed")) === "true"
+    const changed = this.rows.filter({
+      has: this.rows.page().getByLabel("Fill order", { exact: true }),
+    });
+    return Promise.all(
+      (await changed.all()).map(
+        async (row) => (await row.locator("label").first().textContent()) ?? ""
       )
     );
-    return names.filter((_, index) => changed[index]);
   }
 
   /** A row's fill-order number; none on a row that isn't changed. */
@@ -90,10 +91,13 @@ export class FillForm {
       .click();
   }
 
+  /** A row's handle: drag it, or press the arrow keys on it, to move the row. */
+  moveButton(name: string): Locator {
+    return this.row(name).getByRole("button", { name: `Move ${name}` });
+  }
+
   /** Drags a row onto another, which moves it to that row's place. */
   async drag(name: string, onto: string) {
-    await this.row(name)
-      .getByRole("button", { name: `Move ${name}` })
-      .dragTo(this.row(onto));
+    await this.moveButton(name).dragTo(this.row(onto));
   }
 }

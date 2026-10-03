@@ -103,6 +103,26 @@ function sentFields(onRun: ReturnType<typeof vi.fn>) {
   return (onRun.mock.lastCall?.[0] as { fields: unknown[] }).fields;
 }
 
+/** A fill_form run that returned, filling the first `filled` of `fields`. */
+function returnedRun(
+  fields: { target: string; name: string; type: string; value: string }[],
+  { filled = fields.length, error }: { filled?: number; error?: string } = {}
+): Run {
+  return {
+    id: 1,
+    toolName: "fill_form",
+    arguments: { fields },
+    status: "succeeded",
+    result: JSON.stringify({
+      filled: fields.slice(0, filled).map((field) => field.name),
+      ...(error ? { failed: { name: fields[filled]!.name, error } } : {}),
+    }),
+    startedAt: 0,
+    durationMs: 5,
+    steps: [],
+  };
+}
+
 describe("the list", () => {
   it("shows every fillable element in page order, holding the page's value", async () => {
     const { card, form } = renderCard();
@@ -197,35 +217,58 @@ describe("running", () => {
     expect(await form.control("Name").inputValue()).toBe("Grace");
   });
 
+  it("marks no row the run filled, even when the page shows it differently", async () => {
+    const { form, showPage, showRuns } = renderCard();
+    await form.set("Name", "  Grace ");
+    showRuns([
+      returnedRun([
+        { target: "e4", name: "Name", type: "textbox", value: "  Grace " },
+      ]),
+    ]);
+    showPage({
+      text: pageState.replace('"Name": Ada', '"Name": Grace'),
+      controls,
+    });
+
+    await expect.poll(() => form.changed()).toEqual([]);
+    expect(await form.control("Name").inputValue()).toBe("Grace");
+  });
+
+  it("drops a radio choice whose radio left the page", async () => {
+    const { card, form, onRun, showPage } = renderCard();
+    await form.set("Plan", "Pro");
+    await form.set("Name", "Grace");
+
+    showPage({
+      text: pageState.replace('      - e9 radio "Pro"\n', ""),
+      controls,
+    });
+
+    await expect.poll(() => form.changed()).toEqual(["Name"]);
+    await card.runButton.click();
+    expect(sentFields(onRun)).toEqual([
+      { target: "e4", name: "Name", type: "textbox", value: "Grace" },
+    ]);
+  });
+
   it("marks the row of the field the run couldn't fill", async () => {
     const { form, showRuns } = renderCard();
     await form.set("Name", "Grace");
     await form.set("Country", "Germany");
 
     showRuns([
-      {
-        id: 1,
-        toolName: "fill_form",
-        arguments: {
-          fields: [
-            { target: "e4", name: "Name", type: "textbox", value: "Grace" },
-            {
-              target: "e10",
-              name: "Country",
-              type: "combobox",
-              value: "Germany",
-            },
-          ],
-        },
-        status: "succeeded",
-        result: JSON.stringify({
-          filled: ["Name"],
-          failed: { name: "Country", error: "The select is disabled." },
-        }),
-        startedAt: 0,
-        durationMs: 5,
-        steps: [],
-      },
+      returnedRun(
+        [
+          { target: "e4", name: "Name", type: "textbox", value: "Grace" },
+          {
+            target: "e10",
+            name: "Country",
+            type: "combobox",
+            value: "Germany",
+          },
+        ],
+        { filled: 1, error: "The select is disabled." }
+      ),
     ]);
 
     await expect.poll(() => form.failed("Country")).toBe(true);
@@ -264,6 +307,18 @@ describe("undo", () => {
 });
 
 describe("fill order", () => {
+  it("moves a row with the arrow keys on its handle", async () => {
+    const { form } = renderCard();
+    await form.set("Seats", "5");
+
+    await form.moveButton("Seats").press("ArrowUp");
+    await form.moveButton("Seats").press("ArrowUp");
+
+    await expect
+      .poll(() => form.names())
+      .toEqual(["Name", "Email", "Agree", "Seats", "Plan", "Country"]);
+  });
+
   it("follows the rows dragged into a new order", async () => {
     const { card, form, onRun } = renderCard();
     await form.set("Name", "Grace");

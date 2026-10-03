@@ -146,13 +146,21 @@ function textOf(node: StructureNode) {
   );
 }
 
-/** Whether the person changed the row: their value differs from the page's. */
+/**
+ * Whether the person changed the row: their value differs from the page's,
+ * and for a radio group, the radio they chose is still on the page.
+ */
 export function isChanged(
   row: FormRow,
   edits: ReadonlyMap<string, string>
 ): boolean {
   const edit = edits.get(row.key);
-  return edit !== undefined && edit !== row.value;
+  return (
+    edit !== undefined &&
+    edit !== row.value &&
+    (row.type !== "radio" ||
+      row.options!.some((option) => option.value === edit))
+  );
 }
 
 /** The fields to fill: the changed rows, in the rows' order. */

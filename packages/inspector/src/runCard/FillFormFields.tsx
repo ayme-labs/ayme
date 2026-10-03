@@ -2,6 +2,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type DragEvent,
   type KeyboardEvent,
@@ -46,24 +47,44 @@ export function FillFormFields({
   const [dragged, setDragged] = useState<string>();
   const [over, setOver] = useState<string>();
 
-  const rows = inFillOrder(pageRows, order);
-  const fields = changedFields(rows, edits);
-  const failure = failureOf(lastRun);
+  const rows = useMemo(() => inFillOrder(pageRows, order), [pageRows, order]);
+  const fields = useMemo(() => changedFields(rows, edits), [rows, edits]);
+  const failure = outcomeOf(lastRun)?.failure;
 
-  // A change the page now shows, after a run or typed on the page, is done.
+  // A change the page now shows, after a run or typed on the page, is done,
+  // as is a radio choice whose radio left the page.
   useEffect(() => {
     setEdits((current) => {
       const left = new Map(current);
       for (const row of pageRows)
-        if (left.get(row.key) === row.value) left.delete(row.key);
+        if (left.has(row.key) && !isChanged(row, left)) left.delete(row.key);
       return left.size === current.size ? current : left;
     });
   }, [pageRows]);
 
-  const fieldsKey = JSON.stringify(fields);
+  // A change the last run filled is done too, even when the page shows it
+  // differently, e.g. trimmed. Runs from before the form opened are not its.
+  const settled = useRef(lastRun?.id);
   useEffect(() => {
-    onChange(JSON.parse(fieldsKey) as FormField[]);
-  }, [fieldsKey, onChange]);
+    const outcome = outcomeOf(lastRun);
+    if (!outcome || settled.current === lastRun?.id) return;
+    settled.current = lastRun?.id;
+    setEdits((current) => {
+      const left = new Map(current);
+      for (const [key, value] of current)
+        if (
+          outcome.filled.some((field) =>
+            field.type === "radio"
+              ? field.target === value
+              : field.target === key && field.value === value
+          )
+        )
+          left.delete(key);
+      return left.size === current.size ? current : left;
+    });
+  }, [lastRun]);
+
+  useEffect(() => onChange(fields), [fields, onChange]);
 
   const edit = (row: FormRow, value: string | undefined) =>
     setEdits((current) => {
@@ -138,7 +159,6 @@ export function FillFormFields({
             return (
               <li
                 key={row.key}
-                data-changed={changed}
                 data-failed={failed !== undefined}
                 className={cn(
                   "grid grid-cols-[18px_18px_minmax(0,1fr)] items-start gap-1.5 border-t py-2 pr-2.5 pl-1 first:border-t-0",
@@ -221,7 +241,7 @@ function FieldRow({
     <div className="flex min-w-0 flex-col gap-1">
       <div className="flex min-h-[22px] items-center gap-1.5">
         <label
-          htmlFor={id}
+          htmlFor={row.type === "radio" ? undefined : id}
           className={cn(
             "min-w-0 truncate text-[11.5px] font-semibold",
             !changed && "text-muted-foreground"
@@ -323,8 +343,8 @@ function FieldControl({
         {!options.some((option) => option.value === value) && (
           <option value={value}>{value || "—"}</option>
         )}
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
+        {options.map((option, index) => (
+          <option key={index} value={option.value}>
             {option.label}
           </option>
         ))}
@@ -371,10 +391,10 @@ function FieldControl({
 }
 
 /**
- * The field the last run couldn't fill, by its target, and why: `fill_form`
- * stops there and returns the fields filled before it.
+ * What the last run did, when it returned: the fields it filled and, when it
+ * stopped at one it couldn't fill, that field's target and why.
  */
-function failureOf(run: Run | undefined) {
+function outcomeOf(run: Run | undefined) {
   if (run?.status !== "succeeded" || run.result === undefined) return;
   let result: unknown;
   try {
@@ -387,8 +407,14 @@ function failureOf(run: Run | undefined) {
     failed?: { error?: unknown };
   };
   const fields = run.arguments.fields;
-  if (!failed || !Array.isArray(filled) || !Array.isArray(fields)) return;
-  const field = fields[filled.length] as Partial<FormField> | undefined;
-  if (typeof field?.target !== "string") return;
-  return { target: field.target, error: String(failed.error ?? "") };
+  if (!Array.isArray(filled) || !Array.isArray(fields)) return;
+  const sent = fields as Partial<FormField>[];
+  const stopped = failed ? sent[filled.length] : undefined;
+  return {
+    filled: sent.slice(0, filled.length),
+    failure:
+      typeof stopped?.target === "string"
+        ? { target: stopped.target, error: String(failed?.error ?? "") }
+        : undefined,
+  };
 }
