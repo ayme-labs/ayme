@@ -26,6 +26,8 @@ it("accepts only a boolean Inspector policy", () => {
 
 it(
   "publishes option types that remain strict without Playwright",
+  // Builds the package with tsdown, then type-checks a consumer: 1.6 s
+  // locally, 3.9 to 11 s on CI beside the other Turbo tasks.
   { timeout: 30_000 },
   () => {
     const root = fileURLToPath(new URL("..", import.meta.url));
