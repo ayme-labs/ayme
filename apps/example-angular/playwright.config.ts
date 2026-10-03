@@ -34,7 +34,8 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `pnpm exec ng serve --host 127.0.0.1 --port ${port}${render === "spa" ? " --configuration spa" : ""}`,
+    // Without live reload, a test's own reload is the only navigation.
+    command: `pnpm exec ng serve --host 127.0.0.1 --port ${port} --no-live-reload${render === "spa" ? " --configuration spa" : ""}`,
     url: baseURL,
     stdout: "pipe",
     reuseExistingServer: false,
