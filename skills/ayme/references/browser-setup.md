@@ -1,7 +1,8 @@
 # Browser setup
 
 Ayme publishes Page Object Tools through `document.modelContext`. First
-complete the package README's runtime setup and enable build-time publication.
+complete the package README's runtime setup and enable publication there with
+`webMCP: { enabled: true }`.
 Choose one route below.
 
 ## Native Chrome

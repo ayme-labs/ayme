@@ -38,7 +38,7 @@ function Demo() {
 
 export default function CounterExample() {
   return (
-    <AymeProvider>
+    <AymeProvider webMCP={{ enabled: true }}>
       <Demo />
     </AymeProvider>
   );

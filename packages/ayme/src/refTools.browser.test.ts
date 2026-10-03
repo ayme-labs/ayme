@@ -152,7 +152,7 @@ describe("Ref Tools in Chromium", () => {
     const { refTool } = recordingRefTool({ name: "click_page_state_ref" });
 
     await expect(publish([refTool])).rejects.toThrow(
-      'Cannot publish the Ref Tool "click_page_state_ref": another published tool already uses that name.'
+      'Cannot publish the tool "click_page_state_ref": another published tool already uses that name.'
     );
   });
 

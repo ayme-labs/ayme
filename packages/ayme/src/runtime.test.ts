@@ -32,8 +32,10 @@ const flush = async () => {
   for (let i = 0; i < 8; i++) await Promise.resolve();
 };
 function session(enabled = true) {
-  vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", enabled);
-  const runtime = createRuntimeSession({ pageFactory: () => page });
+  const runtime = createRuntimeSession({
+    pageFactory: () => page,
+    webMCP: { enabled },
+  });
   sessions.push(runtime);
   return runtime;
 }
@@ -210,11 +212,11 @@ it("resolves pursueGoal while enabled publication is unavailable", async () => {
     .spyOn(goalLoopModule, "pursueGoal")
     .mockResolvedValue({ handover, stepScores: [] });
   try {
-    vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", true);
     vi.mocked(waitForWebMcpDriver).mockResolvedValue(undefined);
     const runtime = createRuntimeSession({
       pageFactory: () => page,
       goalLoop: vi.fn(),
+      webMCP: { enabled: true },
     });
     sessions.push(runtime);
     start(runtime);

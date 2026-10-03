@@ -30,7 +30,7 @@ it.each([
   [
     "disabled",
     "",
-    "WebMCP publishing is off, so agents can't call these tools. Set publish: true in aymeWebMcp() for the dev server.",
+    "WebMCP publishing is off, so agents can't call these tools. Set webMCP: { enabled: true } where the app starts Ayme.",
   ],
   [
     "waiting",
@@ -44,8 +44,8 @@ it.each([
   ],
   [
     "failed",
-    'Cannot publish the Ref Tool "click": another published tool already uses that name.',
-    'WebMCP publishing failed: Cannot publish the Ref Tool "click": another published tool already uses that name.',
+    'Cannot publish the tool "click": another published tool already uses that name.',
+    'WebMCP publishing failed: Cannot publish the tool "click": another published tool already uses that name.',
   ],
   [
     "disposed",

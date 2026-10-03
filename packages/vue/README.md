@@ -18,17 +18,17 @@ alongside `@vitejs/plugin-vue`, and annotate your POM as shown in the
 
 ```ts
 import vue from "@vitejs/plugin-vue";
-import { aymeWebMcp } from "@ayme-dev/unplugin-ayme/vite";
+import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [vue(), aymeWebMcp({ publish: true })],
+  plugins: [vue(), ayme()],
 });
 ```
 
 Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [ListPage](../../apps/example-vue/playwright/pom/ListPage.ts).
 
-Publication is disabled unless enabled by the Vite plugin. Local Page Object calls remain available without publication or a WebMCP driver.
+Publication is off unless the root setup enables it with `webMCP: { enabled: true }` (on `AymeProvider` as `:webMCP="{ enabled: true }"`). `webMCP.toolNamePrefix` prefixes every published tool name; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#webmcp-publication). Local Page Object calls remain available without publication or a WebMCP driver.
 
 ## Provider setup
 
@@ -39,7 +39,7 @@ import App from "./App.vue";
 </script>
 
 <template>
-  <AymeProvider><App /></AymeProvider>
+  <AymeProvider :webMCP="{ enabled: true }"><App /></AymeProvider>
 </template>
 ```
 
@@ -101,7 +101,7 @@ On the server, `usePageObject(Model)` returns an unconstructed object with the m
 
 Browser setup constructs and registers the real Page Object during hydration. Existing browser ownership, `effectScope()` support, and disposal behavior are unchanged. No client-only wrapper is needed around the application UI.
 
-The Vite plugin skips its POM source transform for SSR while retaining shared build configuration. Keep publication settings consistent between server and browser builds: the initial status is `waiting` when publication is enabled and `disabled` otherwise. Only the browser attempts publication.
+The Vite plugin skips its POM source transform for SSR while retaining shared build configuration. The initial status is `waiting` when the root setup enables publication and `disabled` otherwise, on the server and in the browser. Only the browser attempts publication.
 
 The [Nuxt example](../../apps/example-nuxt) shows the existing Vue provider and Vite plugin in an SSR app, including configuration for the built runtime packages and the POM TypeScript project. Its tests run against both Nuxt development and the production Node server. This prototype does not certify Nuxt islands, edge deployment, prerendering, or server-side POM execution.
 

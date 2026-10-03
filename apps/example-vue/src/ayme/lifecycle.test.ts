@@ -21,7 +21,7 @@ describe("example lifecycle", () => {
     const wrapper = mount(
       defineComponent({
         setup() {
-          useAyme();
+          useAyme({ webMCP: { enabled: true } });
           usePageObject(ListPage);
           return () => h("div");
         },

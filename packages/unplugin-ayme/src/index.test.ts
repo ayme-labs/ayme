@@ -11,16 +11,13 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { unpluginFactory, type AymeWebMcpOptions } from "./index";
+import { unpluginFactory, type AymeOptions } from "./index";
 
 const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
 const ACTION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_ACTION_TIMEOUT__";
 const NAVIGATION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__";
 
-async function applyPluginConfig(
-  root: string,
-  options: AymeWebMcpOptions = {}
-) {
+async function applyPluginConfig(root: string, options: AymeOptions = {}) {
   const pluginResult = unpluginFactory(options, {
     framework: "vite",
     versions: {},
@@ -67,7 +64,7 @@ function writePackage(root: string) {
 
 describe("ayme WebMCP transform", () => {
   it("types only the supported Playwright overrides", () => {
-    const supported: AymeWebMcpOptions = {
+    const supported: AymeOptions = {
       playwright: {
         use: {
           testIdAttribute: "data-testid",
@@ -76,7 +73,7 @@ describe("ayme WebMCP transform", () => {
         },
       },
     };
-    const unsupportedOption: AymeWebMcpOptions = {
+    const unsupportedOption: AymeOptions = {
       playwright: {
         use: {
           // @ts-expect-error Playwright fields outside Ayme's supported subset are rejected.
@@ -84,7 +81,7 @@ describe("ayme WebMCP transform", () => {
         },
       },
     };
-    const wrongTimeout: AymeWebMcpOptions = {
+    const wrongTimeout: AymeOptions = {
       playwright: {
         use: {
           // @ts-expect-error Supported timeout values are numbers.
@@ -98,7 +95,7 @@ describe("ayme WebMCP transform", () => {
   });
 
   it("does not discover or import a config for override-only startup", async () => {
-    const root = mkdtempSync(join(tmpdir(), "ayme-webmcp-overrides-"));
+    const root = mkdtempSync(join(tmpdir(), "ayme-overrides-"));
     try {
       writePackage(root);
       writeFileSync(join(root, "playwright.config.ts"), "invalid config");
@@ -120,7 +117,7 @@ describe("ayme WebMCP transform", () => {
   });
 
   it("uses defaults without a Playwright config", async () => {
-    const root = mkdtempSync(join(tmpdir(), "ayme-webmcp-no-config-"));
+    const root = mkdtempSync(join(tmpdir(), "ayme-no-config-"));
     try {
       writePackage(root);
       await expect(applyPluginConfig(root)).resolves.toMatchObject({
@@ -132,7 +129,7 @@ describe("ayme WebMCP transform", () => {
   });
 
   it("loads an explicit config relative to Vite root and emits only supported settings", async () => {
-    const root = mkdtempSync(join(tmpdir(), "ayme-webmcp-config-"));
+    const root = mkdtempSync(join(tmpdir(), "ayme-config-"));
     try {
       writePackage(root);
       const configPath = join(root, "configs/playwright.config.mjs");
@@ -190,7 +187,7 @@ exports.configLoader = {
   });
 
   it("reports explicit config, loader, project, and ambiguity errors", async () => {
-    const missingRoot = mkdtempSync(join(tmpdir(), "ayme-webmcp-missing-"));
+    const missingRoot = mkdtempSync(join(tmpdir(), "ayme-missing-"));
     try {
       writePackage(missingRoot);
       await expect(
@@ -203,7 +200,7 @@ exports.configLoader = {
     }
 
     const unsupportedRoot = mkdtempSync(
-      join(tmpdir(), "ayme-webmcp-unsupported-loader-")
+      join(tmpdir(), "ayme-unsupported-loader-")
     );
     try {
       writePackage(unsupportedRoot);
@@ -221,7 +218,7 @@ exports.configLoader = {
       rmSync(unsupportedRoot, { recursive: true, force: true });
     }
 
-    const root = mkdtempSync(join(tmpdir(), "ayme-webmcp-ambiguous-"));
+    const root = mkdtempSync(join(tmpdir(), "ayme-ambiguous-"));
     try {
       writePackage(root);
       writeFileSync(join(root, "playwright.config.ts"), "export default {};");
@@ -264,7 +261,7 @@ exports.configLoader = {
       rmSync(root, { recursive: true, force: true });
     }
 
-    const malformedRoot = mkdtempSync(join(tmpdir(), "ayme-webmcp-shape-"));
+    const malformedRoot = mkdtempSync(join(tmpdir(), "ayme-shape-"));
     try {
       writePackage(malformedRoot);
       writeFileSync(

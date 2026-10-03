@@ -7,7 +7,7 @@ import CounterDemo from "./components/CounterDemo.vue";
   <main>
     <h1>Ayme Nuxt prototype</h1>
     <p>Server-rendered Vue, with Page Objects running in the browser.</p>
-    <AymeProvider>
+    <AymeProvider :webMCP="{ enabled: true }">
       <CounterDemo />
     </AymeProvider>
   </main>

@@ -1,8 +1,5 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-
-import { build } from "vite";
 
 import { decisionEndpointPath } from "../vite/decisionEndpointPath.ts";
 import { appRoot, readModelKey } from "./appEnvironment.ts";
@@ -42,19 +39,6 @@ function verifyBrowserOutput(directory, mode) {
     );
 }
 
+// Publication is decided at runtime setup (ADR-0030), so one build covers
+// publication on and off.
 verifyBrowserOutput(path.join(appRoot, "dist"), "production");
-
-const disabledOutput = fs.mkdtempSync(
-  path.join(os.tmpdir(), "ayme-publication-disabled-")
-);
-try {
-  await build({
-    configFile: path.join(appRoot, "vite.config.ts"),
-    mode: "publication-disabled",
-    build: { outDir: disabledOutput, emptyOutDir: true },
-    logLevel: "warn",
-  });
-  verifyBrowserOutput(disabledOutput, "publication-disabled");
-} finally {
-  fs.rmSync(disabledOutput, { recursive: true, force: true });
-}

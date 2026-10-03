@@ -21,8 +21,6 @@ import {
 } from "./webMcp";
 import { RuntimeStateError } from "./errors";
 
-declare const __AYME_WEBMCP_PUBLISH__: boolean | undefined;
-
 export type AymeWebMcpPublicationStatus = Readonly<{
   state:
     "disabled" | "waiting" | "active" | "unavailable" | "failed" | "disposed";
@@ -51,6 +49,18 @@ export type AymeRuntimeOptions = {
   ignore?: (element: Element) => boolean;
   customTools?: CustomTool[];
   goalLoop?: GoalLoopDecisionFunction;
+  webMCP?: AymeWebMcpOptions;
+};
+
+/** WebMCP publication, decided where the runtime starts (ADR-0030). */
+export type AymeWebMcpOptions = {
+  /** Publishes the tools through WebMCP. Off unless `true`. */
+  enabled?: boolean;
+  /**
+   * Prepended to every published tool name; `""` by default. Applies at
+   * publication only: the Goal Loop and the registry use unprefixed names.
+   */
+  toolNamePrefix?: string;
 };
 type PageInstrumentation = (page: AymePage) => AymePage;
 type Registration = {
@@ -93,8 +103,9 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
   let resolvedPage: AymePage | undefined;
   const getPage = () =>
     (resolvedPage ??= instrumentPage((options.pageFactory ?? createPage)()));
-  const enabled =
-    typeof __AYME_WEBMCP_PUBLISH__ !== "undefined" && __AYME_WEBMCP_PUBLISH__;
+  // Publication is decided once, when the session is created.
+  const enabled = options.webMCP?.enabled === true;
+  const toolNamePrefix = options.webMCP?.toolNamePrefix;
   const initialStatus: AymeWebMcpPublicationStatus = {
     state: enabled ? "waiting" : "disabled",
     message: enabled
@@ -138,6 +149,7 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
         }
         let attemptFailed = false;
         const registration = await synchronizeWebMcpTools(driver, {
+          toolNamePrefix,
           signal,
           onError(error) {
             attemptFailed = true;

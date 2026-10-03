@@ -7,6 +7,7 @@ export type {
   AymePage,
   AymeRuntimeOptions,
   AymeWebMcp,
+  AymeWebMcpOptions,
   AymeWebMcpPublicationStatus,
   GoalLoopDecisionFunction,
   RuntimeSession,

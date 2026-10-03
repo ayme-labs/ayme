@@ -41,7 +41,7 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AymeProvider>
+    <AymeProvider webMCP={{ enabled: true }}>
       <App />
     </AymeProvider>
   </StrictMode>

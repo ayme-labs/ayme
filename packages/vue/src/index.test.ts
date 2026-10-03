@@ -108,6 +108,24 @@ it("passes goalLoop to the runtime session", () => {
   });
 });
 
+it("passes webMCP to the runtime session", () => {
+  const scope = effectScope();
+  scopes.push(scope);
+  scope.run(() =>
+    useAyme({
+      pageFactory,
+      webMCP: { enabled: false, toolNamePrefix: "ayme_" },
+    })
+  );
+  expect(createRuntimeSession).toHaveBeenCalledWith({
+    pageFactory,
+    ignore: undefined,
+    customTools: undefined,
+    goalLoop: undefined,
+    webMCP: { enabled: false, toolNamePrefix: "ayme_" },
+  });
+});
+
 it("returns the session as ayme, so a goal runs through it, and its webMCP member", async () => {
   const goalLoop = vi.fn(async () => {
     throw new Error("No decision.");
@@ -231,17 +249,16 @@ it("rejects child page and ignore options and nested providers", () => {
   app.mount(document.createElement("div"));
   expect(errors.map(String)).toEqual([
     expect.stringContaining(
-      "Configure pageFactory, ignore, customTools and goalLoop on the ancestor"
+      "Configure pageFactory, ignore, customTools, goalLoop and webMCP on the ancestor"
     ),
     expect.stringContaining(
-      "Configure pageFactory, ignore, customTools and goalLoop on the ancestor"
+      "Configure pageFactory, ignore, customTools, goalLoop and webMCP on the ancestor"
     ),
     expect.stringContaining("cannot be nested"),
   ]);
 });
 
 it("creates the default page and reports real publication state to consumers", async () => {
-  vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", true);
   Object.defineProperty(document, "modelContext", {
     configurable: true,
     value: { registerTool: vi.fn() },
@@ -256,7 +273,12 @@ it("creates the default page and reports real publication state to consumers", a
     },
   });
   const app = mount({
-    render: () => h(AymeProvider, null, { default: () => h(Child) }),
+    render: () =>
+      h(
+        AymeProvider,
+        { webMCP: { enabled: true } },
+        { default: () => h(Child) }
+      ),
   });
   expect(typeof instance?.page.getByRole).toBe("function");
   await state?.webMCP.retryPublication();

@@ -208,7 +208,7 @@ test("with WebMCP publishing off, the status line says so and how to turn it on"
     "WebMCP publishing is off"
   );
   await expect(inspector.webMcpStatus.root).toContainText(
-    "Set publish: true in aymeWebMcp() for the dev server."
+    "Set webMCP: { enabled: true } where the app starts Ayme."
   );
 });
 

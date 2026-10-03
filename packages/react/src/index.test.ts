@@ -120,6 +120,36 @@ it("passes goalLoop to the runtime session", async () => {
   });
 });
 
+it("passes webMCP to the runtime session and accepts an equal object on rerender", async () => {
+  const app = root();
+  await act(() =>
+    app.render(
+      h(
+        AymeProvider,
+        { pageFactory, webMCP: { enabled: false, toolNamePrefix: "ayme_" } },
+        h(() => null)
+      )
+    )
+  );
+  expect(createRuntimeSession).toHaveBeenCalledWith({
+    pageFactory,
+    ignore: undefined,
+    customTools: undefined,
+    goalLoop: undefined,
+    webMCP: { enabled: false, toolNamePrefix: "ayme_" },
+  });
+  await act(() =>
+    app.render(
+      h(
+        AymeProvider,
+        { pageFactory, webMCP: { enabled: false, toolNamePrefix: "ayme_" } },
+        h(() => null)
+      )
+    )
+  );
+  expect(createRuntimeSession).toHaveBeenCalledOnce();
+});
+
 it("server-renders without constructing or registering a Page Object or calling the page factory", () => {
   vi.stubGlobal("window", undefined);
   const factory = vi.fn<PageFactory>(() => {
@@ -221,7 +251,6 @@ it("does not register or claim ownership for an abandoned suspended render", asy
 });
 
 it("renders live publication state and retries without replacing the Page Object", async () => {
-  vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", true);
   Object.defineProperty(document, "modelContext", {
     configurable: true,
     value: { registerTool: vi.fn() },
@@ -236,7 +265,9 @@ it("renders live publication state and retries without replacing the Page Object
     retry = webMCP.retryPublication;
     return null;
   }
-  await act(() => root().render(h(AymeProvider, null, h(Child))));
+  await act(() =>
+    root().render(h(AymeProvider, { webMCP: { enabled: true } }, h(Child)))
+  );
   expect(typeof current?.page.getByRole).toBe("function");
   expect(states).toContain("waiting");
   expect(states.at(-1)).toBe("active");

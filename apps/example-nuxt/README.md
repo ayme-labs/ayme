@@ -36,7 +36,7 @@ while rendering on the server. Real instances are constructed in browser setup.
 Custom browser Pages must also be created only in the browser.
 
 The Vite plugin skips the POM source transform for SSR, while retaining shared
-publication and Playwright build settings. The example transpiles the Ayme
+Playwright build settings. The example transpiles the Ayme
 runtime packages in both graphs so those settings reach server-rendered code.
 It uses built package exports, not workspace source aliases. A separate
 `tsconfig.pom.json` gives the compiler explicit POM and test roots instead of

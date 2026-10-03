@@ -13,8 +13,7 @@ const DEFAULT_TEST_ID_ATTRIBUTE = "data-testid";
 const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
 const ACTION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_ACTION_TIMEOUT__";
 const NAVIGATION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__";
-const PUBLISH_DEFINE = "__AYME_WEBMCP_PUBLISH__";
-const INSPECTOR_MODULE_ID = "virtual:ayme-webmcp-inspector";
+const INSPECTOR_MODULE_ID = "virtual:ayme-inspector";
 const RESOLVED_INSPECTOR_MODULE_ID = `\0${INSPECTOR_MODULE_ID}`;
 const INSPECTOR_PACKAGE_ID = "@ayme-dev/inspector";
 const SUPPORTED_PLAYWRIGHT_VERSION = /^1\.62\.\d+(?:[-+].*)?$/;
@@ -53,17 +52,19 @@ type LoadedPlaywrightConfig = {
   rawConfig: unknown;
 };
 
-export type AymeWebMcpOptions = PomCompilerOptions & {
+export type AymeOptions = PomCompilerOptions & {
   inspector?: boolean;
   playwright?: AymePlaywrightOptions;
-  publish?: boolean;
 };
 
-export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
+export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   options = {}
 ) => {
-  if (options.publish !== undefined && typeof options.publish !== "boolean")
-    throw new TypeError("publish must be a boolean");
+  // Publication moved to runtime setup (ADR-0030); fail rather than ignore it.
+  if ("publish" in options)
+    throw new TypeError(
+      "The publish option was removed. Turn WebMCP publication on with webMCP.enabled where Ayme starts: useAyme, AymeProvider or createRuntimeSession."
+    );
   if (options.inspector !== undefined && typeof options.inspector !== "boolean")
     throw new TypeError("inspector must be a boolean");
   const transformPom = createPomTransform(options);
@@ -80,7 +81,7 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
   const viteDependants = new WeakMap<object, Map<string, Set<string>>>();
 
   return {
-    name: "ayme-webmcp",
+    name: "ayme",
     enforce: "pre",
     ...(options.inspector
       ? {
@@ -156,7 +157,6 @@ export const unpluginFactory: UnpluginFactory<AymeWebMcpOptions | undefined> = (
         );
         const define: Record<string, unknown> = {
           ...config.define,
-          [PUBLISH_DEFINE]: JSON.stringify(options.publish ?? false),
           [TEST_ID_ATTRIBUTE_DEFINE]: JSON.stringify(
             settings.testIdAttribute ?? DEFAULT_TEST_ID_ATTRIBUTE
           ),

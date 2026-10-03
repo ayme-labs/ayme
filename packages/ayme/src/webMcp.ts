@@ -105,6 +105,8 @@ export type WebMcpRegistration = {
 
 export type WebMcpSynchronizationOptions = {
   signal?: AbortSignal;
+  /** Prepended to every name the driver registers; the registry's are unprefixed. */
+  toolNamePrefix?: string;
   onError?: (error: unknown) => void;
 };
 
@@ -118,6 +120,7 @@ export async function synchronizeWebMcpTools(
   driver: WebMcpDriver,
   options: WebMcpSynchronizationOptions = {}
 ): Promise<WebMcpRegistration> {
+  const prefix = options.toolNamePrefix ?? "";
   type Registration = {
     tool: PublishedTool;
     group: PublishedToolGroup;
@@ -230,7 +233,10 @@ export async function synchronizeWebMcpTools(
           published.set(name, registration);
           try {
             await driver.registerTool(
-              trackCall(registration, asAgentCall(tool, settle)),
+              {
+                ...trackCall(registration, asAgentCall(tool, settle)),
+                name: prefix + name,
+              },
               { signal: controller.signal }
             );
           } catch (error) {

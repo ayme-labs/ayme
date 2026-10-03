@@ -34,8 +34,7 @@ export type PublishedToolInfo = Readonly<{
 
 /**
  * Package-internal: the tools WebMCP publication registers, by name, in
- * publication order. Throws when a Ref Tool takes a name another published
- * tool uses.
+ * publication order. Throws when two published tools would share a name.
  */
 export function resolvePublishedTools(): Map<
   string,
@@ -54,7 +53,7 @@ export function resolvePublishedTools(): Map<
   for (const { tool } of listRefTools()) {
     if (active.has(tool.name) || takenElsewhere.has(tool.name))
       throw new RuntimeStateError(
-        `Cannot publish the Ref Tool "${tool.name}": another published tool already uses that name.`
+        `Cannot publish the tool "${tool.name}": another published tool already uses that name.`
       );
     active.set(tool.name, { tool, group: "ref" });
   }

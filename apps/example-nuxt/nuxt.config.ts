@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { defineNuxtConfig } from "nuxt/config";
-import { aymeWebMcp } from "@ayme-dev/unplugin-ayme/vite";
+import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 
 const nitroProcessImport = "import process from 'node:process';";
 
@@ -41,8 +41,7 @@ export default defineNuxtConfig({
     // POMs live outside Nuxt's generated app TypeScript project.
     oxc: { decorator: { legacy: true } },
     plugins: [
-      aymeWebMcp({
-        publish: true,
+      ayme({
         tsconfigPath: fileURLToPath(
           new URL("./tsconfig.pom.json", import.meta.url)
         ),

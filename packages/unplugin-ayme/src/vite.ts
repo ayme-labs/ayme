@@ -1,5 +1,5 @@
 import { unplugin } from "./index";
 
-export const aymeWebMcp = unplugin.vite;
+export const ayme = unplugin.vite;
 
-export default aymeWebMcp;
+export default ayme;
