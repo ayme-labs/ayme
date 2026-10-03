@@ -41,7 +41,7 @@ usePageObject(ListPage);
 
 This example passes a custom page from `useDemoTrace` to add slow typing, click cues, and trace recording. `AgentPanel.vue` holds the agent wizard: it loads the local relay embed when the visitor connects, and reports what the embed says about the relay. These helpers support the demo and are optional for applications.
 
-Disabling publication does not remove Ayme or Page Object code from the bundle. Production code removal is tracked separately in issue #39.
+Disabling publication does not remove Ayme or Page Object code from the bundle.
 
 Run from this directory inside the repository's Devbox shell:
 
