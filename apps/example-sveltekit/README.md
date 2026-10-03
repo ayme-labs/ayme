@@ -31,7 +31,7 @@ HOST=127.0.0.1 PORT=4194 pnpm --filter @ayme-dev/example-sveltekit start:spa
 
 ## Setup
 
-- `vite.config.ts` adds `ayme()` next to `sveltekit()` and sets `oxc: { decorator: { legacy: true } }`. SvelteKit 2's generated tsconfig does not reach Vite 8's oxc transform, so without it the server fails on the untransformed decorators. #279 tracks having the plugin set it.
+- `vite.config.ts` adds `ayme()` next to `sveltekit()` and sets `oxc: { decorator: { legacy: true } }`. SvelteKit 2's generated tsconfig does not reach Vite 8's oxc transform, so without it the server fails on the untransformed decorators.
 - `tsconfig.json` extends SvelteKit's generated config and enables `experimentalDecorators`. The compiler follows that chain, so the POM in `src/lib/pom` needs no separate tsconfig.
 - Publication is enabled in the root layout. The initial status is `waiting` on the server and in the browser. A browser with a WebMCP driver activates publication; without one it becomes unavailable and local Page Object calls still work.
 
