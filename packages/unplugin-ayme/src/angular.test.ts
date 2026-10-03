@@ -147,13 +147,15 @@ export class LegacyPage {}
 });
 
 it.each([
+  [{ tsconfig: "tsconfig.json" }, "has no option(s): tsconfig."],
+  // custom-esbuild's string form passes the builder's options.
   [
-    { tsconfig: "tsconfig.json" },
-    "Ayme's Angular plugin has no option(s): tsconfig",
+    { browser: "src/main.ts", tsConfig: "tsconfig.app.json" },
+    "has no option(s): browser, tsConfig. Reference it in angular.json as",
   ],
   [{ tsconfigPath: 1 }, "tsconfigPath must be a string"],
 ])("rejects the options %j", (options, message) => {
-  expect(() => aymeAngularPlugin(options as AymeAngularOptions)).toThrow(
-    new TypeError(message)
-  );
+  const create = () => aymeAngularPlugin(options as AymeAngularOptions);
+  expect(create).toThrow(TypeError);
+  expect(create).toThrow(message);
 });
