@@ -70,7 +70,6 @@ test("hydrates, publishes the compiled POM, uses it and real Playwright, then re
   ).toEqual([
     "snapshot",
     "click",
-    "dblclick",
     "hover",
     "type",
     "fill",

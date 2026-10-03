@@ -139,7 +139,6 @@ const EXPECTED_GROUPS: Record<string, PublishedToolGroup> = {
   snapshot: "agent",
   goal: "agent",
   click: "browser",
-  dblclick: "browser",
   hover: "browser",
   type: "browser",
   fill: "browser",
@@ -503,7 +502,6 @@ export function describePublishedTools(
       ).toEqual({
         // Interactive and enabled; the disabled button is left out.
         click: ["button Save", "input Ada"],
-        dblclick: ["button Save", "input Ada"],
         hover: ["button Save", "input Ada"],
         type: ["input Ada"],
         fill: ["input Ada"],

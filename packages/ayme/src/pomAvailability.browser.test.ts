@@ -277,7 +277,6 @@ describe("live Page Object availability", () => {
         .toEqual([
           "snapshot",
           "click",
-          "dblclick",
           "hover",
           "type",
           "fill",
@@ -301,7 +300,6 @@ describe("live Page Object availability", () => {
         .toEqual([
           "snapshot",
           "click",
-          "dblclick",
           "hover",
           "type",
           "fill",
@@ -318,7 +316,6 @@ describe("live Page Object availability", () => {
         .toEqual([
           "snapshot",
           "click",
-          "dblclick",
           "hover",
           "type",
           "fill",
@@ -546,7 +543,6 @@ describe("live Page Object availability", () => {
       expect(published).toEqual([
         "snapshot",
         "click",
-        "dblclick",
         "hover",
         "type",
         "fill",

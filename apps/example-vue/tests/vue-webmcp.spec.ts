@@ -77,7 +77,6 @@ function normalizeAppSubtree(pageState: string): string {
 // Loop on and publishes `goal` alongside the Page Object tools.
 const browserToolNames = [
   "click",
-  "dblclick",
   "hover",
   "type",
   "fill",

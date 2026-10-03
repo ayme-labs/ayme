@@ -29,8 +29,6 @@ export function pickPromptOf(toolName: string): string {
   switch (toolName) {
     case "click":
       return "Click an element to click";
-    case "dblclick":
-      return "Click an element to double-click";
     case "hover":
       return "Click an element to hover";
     case "type":

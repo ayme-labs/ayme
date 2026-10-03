@@ -10,10 +10,11 @@ import {
 } from "./browserTools";
 import { buildToolOptions } from "./goalLoopQuestions";
 import {
-  EXTRA_BROWSER_TOOL_SCHEMAS,
+  FILL_SCHEMA,
   PLAYWRIGHT_MCP_COUNTERPARTS,
   PLAYWRIGHT_MCP_SCHEMAS,
   shapeOf,
+  withoutElement,
 } from "./playwrightMcp.testSupport";
 import { listElementToolTargets } from "./publishedTools";
 import { createRuntimeSession } from "./runtime";
@@ -27,7 +28,6 @@ type PublishedTool = {
 
 const BROWSER_TOOLS = [
   "click",
-  "dblclick",
   "hover",
   "type",
   "fill",
@@ -113,16 +113,15 @@ describe("Browser Tools in Chromium", () => {
   const checked = () =>
     document.querySelector<HTMLInputElement>("#agree")!.checked;
 
-  it("publishes the ten Browser Tools with Playwright MCP's input fields", () => {
+  it("publishes the nine Browser Tools with Playwright MCP's input fields, without element", () => {
     for (const name of BROWSER_TOOLS) expect(tools.has(name), name).toBe(true);
     for (const [name, counterpart] of Object.entries(
       PLAYWRIGHT_MCP_COUNTERPARTS
     ))
       expect(shapeOf(tools.get(name)!.inputSchema), name).toEqual(
-        PLAYWRIGHT_MCP_SCHEMAS[counterpart]
+        withoutElement(PLAYWRIGHT_MCP_SCHEMAS[counterpart])
       );
-    for (const [name, schema] of Object.entries(EXTRA_BROWSER_TOOL_SCHEMAS))
-      expect(shapeOf(tools.get(name)!.inputSchema), name).toEqual(schema);
+    expect(shapeOf(tools.get("fill")!.inputSchema)).toEqual(FILL_SCHEMA);
   });
 
   describe.each([
@@ -131,7 +130,10 @@ describe("Browser Tools in Chromium", () => {
   ])("addressed by %s", (_kind, target) => {
     it("clicks, double-clicks and hovers", async () => {
       await call("click", { target: await target("Save", "#save") });
-      await call("dblclick", { target: await target("Save", "#save") });
+      await call("click", {
+        target: await target("Save", "#save"),
+        doubleClick: true,
+      });
       await call("hover", { target: await target("Name", "#name") });
       expect(log).toEqual(
         expect.arrayContaining([
@@ -309,7 +311,7 @@ describe("Browser Tools in Chromium", () => {
     expect(offered("select_option")).toEqual(["Size"]);
     expect(offered("type")).toEqual(["Name", "Email"]);
     expect(offered("fill")).toEqual(["Name", "Email"]);
-    for (const tool of ["click", "dblclick", "hover"])
+    for (const tool of ["click", "hover"])
       expect(offered(tool)).toEqual(["Name", "Email", "Agree", "Size", "Save"]);
 
     const options = buildToolOptions();
