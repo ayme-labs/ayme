@@ -28,10 +28,10 @@ Each package keeps its own Vitest config ([ADR-0003](adr/0003-keep-vitest-config
 
 Fakes, test doubles and page objects for tests ship from the package's `testing` entry, `@ayme-dev/<package>/testing`, built from its `src/testing.ts`. Only test files may import one; lint enforces it ([`testing-entries.js`](../packages/eslint-config/testing-entries.js)). Why, and the options we rejected: [ADR-0026](adr/0026-test-seams-behind-a-testing-entry.md).
 
-| Entry                                           | Holds                                                                                                               |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `@ayme-dev/ayme/testing`                        | The recording WebMCP driver: `recordPublishedTools`, `waitForPublishedTool`, `executePublishedTool` and its queries |
-| `@ayme-dev/inspector/testing`                   | The Inspector's page objects, for its own tests and example-vue's smoke test                                        |
-| `@ayme-dev/core/structural-observation/testing` | `StructuralTreeMockFactory` and `MockLiveAriaSnapshotSource`, for structural trees without a browser                |
+| Entry                                           | Holds                                                                                                                                           |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ayme-dev/ayme/testing`                        | The recording WebMCP driver: `recordPublishedTools`, `recordPublishedToolsLate`, `waitForPublishedTool`, `executePublishedTool` and its queries |
+| `@ayme-dev/inspector/testing`                   | The Inspector's page objects, for its own tests and example-vue's smoke test                                                                    |
+| `@ayme-dev/core/structural-observation/testing` | `StructuralTreeMockFactory` and `MockLiveAriaSnapshotSource`, for structural trees without a browser                                            |
 
 Consumers may use these entries to test their own integration.
