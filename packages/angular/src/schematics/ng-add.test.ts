@@ -210,3 +210,49 @@ it("is safe to run again: no second plugin entry, no second provider, no warning
     expect(twice.readText(file)).toBe(once.readText(file));
   expect(messages.filter(({ level }) => level === "warn")).toEqual([]);
 });
+
+it("leaves an unrelated ayme.plugin.mjs and angular.json alone and prints the manual steps", async () => {
+  const before = await workspace({ ssr: false });
+  before.create(
+    "ayme.plugin.mjs",
+    "export default () => ({ name: 'other' });\n"
+  );
+
+  const { tree, messages } = await ngAdd(before);
+
+  for (const file of ["angular.json", "ayme.plugin.mjs"])
+    expect(tree.readText(file)).toBe(before.readText(file));
+  const warnings = messages
+    .filter(({ level }) => level === "warn")
+    .map(({ message }) => message)
+    .join("\n");
+  expect(warnings).toContain(
+    "ayme.plugin.mjs already exists and does not re-export Ayme's plugin"
+  );
+  expect(messages.map(({ message }) => message).join("\n")).not.toContain(
+    "Ayme is set up"
+  );
+});
+
+it("adds its entry beside a plugin whose path only contains ayme.plugin.mjs", async () => {
+  const before = await workspace({ ssr: false });
+  const json = architect(before);
+  const build = json.projects["app"]!.architect["build"]!;
+  build.options = {
+    ...build.options,
+    plugins: [{ path: "./ayme.plugin.mjs.previous" }],
+  };
+  before.overwrite("angular.json", JSON.stringify(json, null, 2));
+
+  const { tree } = await ngAdd(before);
+
+  expect(
+    architect(tree).projects["app"]!.architect["build"]!.options!["plugins"]
+  ).toEqual([
+    { path: "./ayme.plugin.mjs.previous" },
+    {
+      path: "./ayme.plugin.mjs",
+      options: { tsconfigPath: "projects/app/tsconfig.app.json" },
+    },
+  ]);
+});
