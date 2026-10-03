@@ -12,7 +12,7 @@ export function renderPomDefinitions(
 
 function renderPomDefinition(definition: PomDefinition): string {
   const lines = [
-    `POM ${definition.name}${
+    `${definition.name}${
       definition.description ? ` // ${definition.description}` : ""
     }`,
   ];
