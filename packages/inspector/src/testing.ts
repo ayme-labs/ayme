@@ -17,12 +17,12 @@ export {
   INSPECTOR_SELECTOR_ENGINE,
   registerInspectorSelectors,
 } from "./pom/inspectorSelectors";
+export { KeyField } from "./pom/KeyField";
 export { Navigator, type LensName } from "./pom/Navigator";
 export {
   ModelDetailView,
   type ModelDetailSection,
 } from "./pom/ModelDetailView";
-export { KeyField } from "./pom/KeyField";
 export { ModelLens, type ModelPaneName } from "./pom/ModelLens";
 export { NodeView } from "./pom/NodeView";
 export { PanelShell, type PanelEdge } from "./pom/PanelShell";

@@ -136,7 +136,8 @@ describe("searching", () => {
 
     await expect
       .poll(() => key.help.textContent())
-      .toBe("“tabb” isn't a key name.Use Shift+Tab");
+      .toBe("“tabb” isn't a key name.");
+    expect(await key.fixButton.textContent()).toBe("Use Shift+Tab");
     await key.fixButton.click();
     expect(await key.input.inputValue()).toBe("Shift+Tab");
   });
@@ -156,7 +157,9 @@ describe("searching", () => {
 
     await key.search("ctrl+c");
 
-    await expect.poll(() => key.help.textContent()).toBe("Use ControlOrMeta+C");
+    await expect
+      .poll(() => key.fixButton.textContent())
+      .toBe("Use ControlOrMeta+C");
     await key.input.press("Escape");
     await card.runButton.click();
     expect(onRun).toHaveBeenCalledExactlyOnceWith({ key: "ControlOrMeta+C" });
@@ -168,6 +171,34 @@ describe("searching", () => {
     await key.search("F5");
 
     expect(await key.help.textContent()).toBe("");
+  });
+});
+
+describe("leaving", () => {
+  it("lets Tab leave the field after Esc, keeping the key", async () => {
+    const { card, key } = renderCard();
+    // playwright-lite doesn't move focus on Tab: the field must let it.
+    const tabs: boolean[] = [];
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Tab") tabs.push(event.defaultPrevented);
+    };
+    document.addEventListener("keydown", onKey);
+
+    for (const [pressed, recorded] of [
+      [undefined, ""],
+      ["F5", "F5"],
+      ["Control+c", "ControlOrMeta+C"],
+      ["Shift", "Shift"],
+    ]) {
+      await card.runButton.focus();
+      if (pressed) await key.record(pressed);
+      await key.input.press("Escape");
+      await key.input.press("Tab");
+
+      expect(await key.input.inputValue()).toBe(recorded);
+    }
+    document.removeEventListener("keydown", onKey);
+    expect(tabs).toEqual([false, false, false, false]);
   });
 });
 

@@ -22,7 +22,7 @@ export class KeyField {
       name: /^(Search key names|Record a key press) instead$/,
     });
     this.help = card.getByRole("status", { name: `${path} help` });
-    this.fixButton = this.help.getByRole("button", { name: /^Use / });
+    this.fixButton = card.getByRole("button", { name: /^Use / });
     this.options = card
       .getByRole("listbox", { name: "Key names" })
       .getByRole("option");

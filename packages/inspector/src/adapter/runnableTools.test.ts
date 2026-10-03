@@ -110,7 +110,7 @@ it("runs every other live tool with its schema, and names its ref argument", () 
 });
 
 it("names a Browser Tool's key argument, and no other tool's", () => {
-  const keyed = (name: string, group: string) => ({
+  const keyed = (name: string, group: "browser" | "custom") => ({
     name,
     description: "Press a key.",
     inputSchema: {

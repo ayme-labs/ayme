@@ -72,7 +72,11 @@ const aliases: Readonly<Record<string, string>> = {
 
 const byLowerCase = new Map(names.map((name) => [name.toLowerCase(), name]));
 
-/** A key press as a key string, e.g. `ControlOrMeta+C`, `A` or `Shift+Tab`. */
+/**
+ * A key press as a key string, e.g. `ControlOrMeta+C`, `A` or `Shift+Tab`.
+ * A key Playwright has no name for, such as a dead key, is kept as the
+ * browser names it, and checking it says so.
+ */
 export function keyOfEvent(
   event: Pick<
     KeyboardEvent,
@@ -164,21 +168,22 @@ export function checkKey(text: string): KeyCheck {
     named.push(name);
   }
   const key = named.pop()!;
-  // A combo takes a letter in upper case, as recording gives it.
-  const chord = named.some((name) => !name.startsWith("Shift"));
-  return {
-    ok: true,
-    value: [
-      ...named,
-      chord && /^[a-z]$/.test(key) ? key.toUpperCase() : key,
-    ].join("+"),
-  };
+  return { ok: true, value: [...named, inCombo(named, key)].join("+") };
+}
+
+/** A key after modifiers: a combo takes a letter in upper case, as recording gives it. */
+function inCombo(held: readonly string[], key: string) {
+  const chord = held.some((name) => !name.startsWith("Shift"));
+  return chord && /^[a-z]$/.test(key) ? key.toUpperCase() : key;
 }
 
 /** The key name closest to a misspelt one, when one is close enough. */
 function closestName(part: string) {
   const lower = part.toLowerCase();
-  const candidates = [...byLowerCase, ...Object.entries(aliases)];
+  // A one-character spelling, such as ⌘, is never a typo of a longer one.
+  const candidates = [...byLowerCase, ...Object.entries(aliases)].filter(
+    ([spelling]) => spelling.length > 1
+  );
   let best: string | undefined;
   let bestDistance = Math.max(1, Math.floor(lower.length / 3)) + 1;
   for (const [spelling, name] of candidates) {
@@ -201,7 +206,7 @@ function editDistance(a: string, b: string) {
   return row[b.length]!;
 }
 
-/** What the search lists before anything is typed. */
+/** What the search lists after a modifier, before the key is typed. */
 const common = [
   "Enter",
   "Tab",
@@ -225,6 +230,9 @@ export function suggestKeys(text: string): { value: string; label: string }[] {
   const parts = partsOf(text.trimStart());
   const typed = parts.pop()!.trim();
   const before = parts.map((part) => nameOf(part.trim()) ?? part.trim());
+  // Nothing typed yet, or a combo only a modifier can continue: no list.
+  if ((!typed && !before.length) || before.some((name) => !modifiers.has(name)))
+    return [];
   const prefix = before.map((part) => `${part}+`).join("");
   const query = typed.toLowerCase();
   const pool = query
@@ -235,11 +243,8 @@ export function suggestKeys(text: string): { value: string; label: string }[] {
     (name) => !starts.includes(name) && name.toLowerCase().includes(query)
   );
   const exact = typed && nameOf(typed);
-  const chord = before.some((name) => !name.startsWith("Shift"));
   const found = [
-    ...(exact
-      ? [chord && /^[a-z]$/.test(exact) ? exact.toUpperCase() : exact]
-      : []),
+    ...(exact ? [inCombo(before, exact)] : []),
     ...starts,
     ...contains,
   ];

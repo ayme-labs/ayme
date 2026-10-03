@@ -39,10 +39,6 @@ export function KeyField({
   const [active, setActive] = useState(0);
   const [listClosed, setListClosed] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  // A key went down since the modifiers did: letting them go records nothing.
-  const pressedKey = useRef(false);
-  // The icon focuses the field in the mode it chose, not in record mode.
-  const keepMode = useRef(false);
   const helpId = useId();
   const listId = useId();
 
@@ -70,6 +66,8 @@ export function KeyField({
   };
   const record = (key: string) => {
     setDraft(undefined);
+    // Letting the modifiers go after a key records nothing more.
+    setHeld([]);
     onChange(key);
   };
   const switchTo = (next: Mode) => {
@@ -87,22 +85,15 @@ export function KeyField({
     if (key === "Escape" && !(ctrlKey || metaKey || altKey || shiftKey))
       return switchTo("search");
     const modifier = modifierOf(key);
-    if (!modifier) {
-      pressedKey.current = true;
-      return record(keyOfEvent(event));
-    }
+    if (!modifier) return record(keyOfEvent(event));
     if (event.repeat) return;
-    pressedKey.current = false;
     setHeld((current) =>
       current.includes(modifier) ? current : [...current, modifier]
     );
   };
   const onRecordKeyUp = (event: KeyboardEvent) => {
-    if (!modifierOf(event.key)) return;
     // A modifier pressed and let go on its own is the key, e.g. Shift.
-    if (!pressedKey.current && held.length) record(modifiersOnly(held));
-    pressedKey.current = true;
-    setHeld([]);
+    if (modifierOf(event.key) && held.length) record(modifiersOnly(held));
   };
   const onSearchKey = (event: KeyboardEvent) => {
     if (!listOpen) return;
@@ -112,8 +103,11 @@ export function KeyField({
       event.preventDefault();
       setActive((at) => (at + move + options.length) % options.length);
     } else if (event.key === "Enter" || event.key === "Tab") {
+      const option = options[Math.min(active, options.length - 1)]!;
+      // Tab leaves the field when picking would change nothing.
+      if (event.key === "Tab" && option.label === text.trim()) return;
       event.preventDefault();
-      write(options[Math.min(active, options.length - 1)]!.value);
+      write(option.value);
     } else if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
@@ -144,7 +138,7 @@ export function KeyField({
           role="combobox"
           aria-label={label}
           aria-expanded={listOpen}
-          aria-controls={listId}
+          aria-controls={listOpen ? listId : undefined}
           aria-autocomplete="list"
           aria-activedescendant={
             listOpen
@@ -172,8 +166,7 @@ export function KeyField({
           onKeyUp={mode === "record" ? onRecordKeyUp : undefined}
           onFocus={() => {
             setFocused(true);
-            if (!keepMode.current) switchTo("record");
-            keepMode.current = false;
+            switchTo("record");
           }}
           onBlur={() => {
             setFocused(false);
@@ -196,9 +189,9 @@ export function KeyField({
           className="absolute top-[3px] right-[3px] grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted"
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => {
-            keepMode.current = !focused;
-            switchTo(mode === "record" ? "search" : "record");
+            // Focusing starts recording; the switch after it wins.
             input.current?.focus();
+            switchTo(mode === "record" ? "search" : "record");
           }}
         >
           {mode === "record" ? (
@@ -239,27 +232,21 @@ export function KeyField({
           </div>
         )}
       </div>
-      <div
-        id={helpId}
-        role="status"
-        aria-label={`${label} help`}
-        // One line high when empty, so Run doesn't move as focus leaves.
-        className="flex min-h-[1lh] flex-wrap items-center gap-2 text-[11.5px]"
-      >
-        {recording ? (
-          <span className="text-muted-foreground">
-            {held.length
+      {/* One line high when empty, so Run doesn't move as focus leaves. */}
+      <div className="flex min-h-[1lh] flex-wrap items-center gap-2 text-[11.5px]">
+        <span
+          id={helpId}
+          role="status"
+          aria-label={`${label} help`}
+          className={recording ? "text-muted-foreground" : "text-destructive"}
+        >
+          {recording
+            ? held.length
               ? `${held.map(modifierLabel).join(" + ")} + … then a key`
-              : "Recording. Press any key or combination. Esc to search instead."}
-          </span>
-        ) : (
-          <>
-            {!check.ok && (
-              <span className="text-destructive">{check.problem}</span>
-            )}
-            {fixButton}
-          </>
-        )}
+              : "Recording. Press any key or combination. Esc to search instead."
+            : !check.ok && check.problem}
+        </span>
+        {!recording && fixButton}
       </div>
     </div>
   );

@@ -74,6 +74,10 @@ describe("checking a typed key", () => {
       problem: "“tabb” isn't a key name.",
       fix: "Shift+Tab",
     });
+    expect(checkKey("ö")).toEqual({
+      ok: false,
+      problem: "“ö” isn't a key name.",
+    });
     expect(checkKey("qwertyuiop")).toEqual({
       ok: false,
       problem: "“qwertyuiop” isn't a key name.",
@@ -111,6 +115,12 @@ describe("suggesting keys", () => {
   it("puts the key an alias means first", () => {
     expect(labels("esc")[0]).toBe("Escape");
     expect(labels("ctrl")[0]).toBe("ControlOrMeta");
+  });
+
+  it("lists nothing before a key is typed, or after a key that isn't a modifier", () => {
+    expect(labels("")).toEqual([]);
+    expect(labels("Tab+")).toEqual([]);
+    expect(labels("Shift+")[0]).toBe("Shift+Enter");
   });
 
   it("continues a combo after a modifier", () => {

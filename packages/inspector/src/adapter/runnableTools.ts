@@ -1,5 +1,8 @@
 import type { JsonSchema, RegisteredPomTool } from "@ayme-dev/ayme";
-import type { RegisteredPom } from "@ayme-dev/ayme/internal";
+import type {
+  PublishedToolGroup,
+  RegisteredPom,
+} from "@ayme-dev/ayme/internal";
 
 /** A tool as the run card runs it. */
 export type RunnableTool = {
@@ -34,8 +37,7 @@ export type ToolSummary = {
   name: string;
   description: string;
   inputSchema: JsonSchema;
-  /** What kind of tool it is, e.g. "browser". */
-  group?: string;
+  group?: PublishedToolGroup;
 };
 
 /**
