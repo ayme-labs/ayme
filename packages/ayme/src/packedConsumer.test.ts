@@ -159,6 +159,12 @@ beforeAll(() => {
     fs.mkdirSync(staging, { recursive: true });
     for (const file of ["package.json", "README.md", "LICENSE"])
       fs.copyFileSync(path.join(root, file), path.join(staging, file));
+    // Published files other than the build, such as Angular's schematics.
+    const { files = [] } = readManifest(root) as { files?: string[] };
+    for (const entry of files.filter((entry) => entry !== "dist"))
+      fs.cpSync(path.join(root, entry), path.join(staging, entry), {
+        recursive: true,
+      });
     // pnpm pack reads the versions for `workspace:` from linked siblings.
     fs.symlinkSync(
       path.join(root, "node_modules"),
@@ -277,9 +283,10 @@ it(
     fs.writeFileSync(path.join(consumer, "pnpm-workspace.yaml"), workspaceYaml);
     exec("pnpm", ["install", "--ignore-scripts", "--no-lockfile"], consumer);
     const specifiers = Object.entries(packed).flatMap(([name, { dir }]) =>
-      Object.keys(readManifest(dir).exports ?? {}).map((subpath) =>
-        path.posix.join(name, subpath)
-      )
+      Object.keys(readManifest(dir).exports ?? {})
+        // A manifest export, for tools like the Angular CLI, is not a module.
+        .filter((subpath) => subpath !== "./package.json")
+        .map((subpath) => path.posix.join(name, subpath))
     );
     expect(specifiers).toEqual(
       expect.arrayContaining([
@@ -599,6 +606,22 @@ void name;
 `
     );
     exec("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
+
+    // `ng add` reads the collection the manifest names and requires its factory.
+    const angularDir = packed["@ayme-dev/angular"]!.dir;
+    const collectionPath = path.join(
+      angularDir,
+      (readManifest(angularDir) as { schematics?: string }).schematics ?? ""
+    );
+    const collection = JSON.parse(fs.readFileSync(collectionPath, "utf8")) as {
+      schematics: Record<string, { factory: string; schema: string }>;
+    };
+    const ngAdd = collection.schematics["ng-add"]!;
+    for (const file of [ngAdd.factory.split("#")[0]!, ngAdd.schema])
+      expect(
+        fs.existsSync(path.resolve(path.dirname(collectionPath), file)),
+        file
+      ).toBe(true);
   }
 );
 
