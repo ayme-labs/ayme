@@ -15,7 +15,7 @@ import type { RegisteredPom } from "@ayme-dev/ayme/internal";
 export type PageModel = {
   /** The page Page Objects, each with its tree of children. */
   objects: readonly PageObjectNode[];
-  /** The Page Object Models get_page_context describes, in its order. */
+  /** The Page Object Models snapshot describes, in its order. */
   models: readonly PageObjectModel[];
 };
 
@@ -80,7 +80,7 @@ export type ObjectAction = {
   live: boolean;
 };
 
-/** A Page Object Model, as get_page_context describes it. */
+/** A Page Object Model, as snapshot describes it. */
 export type PageObjectModel = {
   className: string;
   description?: string;
@@ -119,7 +119,7 @@ type RegisteredTool = RegisteredPom["tools"][number] & {
 /**
  * Builds the page model from the registered Page Objects, the live tools
  * (the ones the panel can run now), and the Page Object Model definitions
- * get_page_context returns.
+ * snapshot returns.
  */
 export function buildPageModel(
   registrations: readonly RegisteredPom[],
@@ -404,7 +404,7 @@ function locatorState(observation: PomMemberObservation | undefined) {
   return plural(observation.count, "match", "matches");
 }
 
-/** An action's arguments, the way get_page_context writes them. */
+/** An action's arguments, the way snapshot writes them. */
 export function signature(schema: JsonSchema) {
   const required = new Set(schema.required ?? []);
   const parameters = Object.entries(schema.properties ?? {}).map(

@@ -40,6 +40,9 @@ Whether a rooted Page Object can be associated with rendered UI in the current l
 **Page Object Availability**:
 Whether a live Page Object is currently available for interaction through its root in the user-facing page. Rooted Page Objects must be present to be available. Page Objects without a root retain registration-driven availability. DOM presence alone does not imply either structural presence or availability.
 
+**Browser Tool**:
+A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose.
+
 **Custom Tool**:
 An operation an app registers that applies to one element. One registration makes it a published tool and an operation the Goal Loop may choose.
 

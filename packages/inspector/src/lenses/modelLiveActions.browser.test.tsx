@@ -102,7 +102,7 @@ vi.mock("@ayme-dev/ayme/internal", () => ({
     text: "",
     elementsByRef: new Map(),
   })),
-  listRefToolTargets: vi.fn(async () => new Map()),
+  listElementToolTargets: vi.fn(async () => new Map()),
   listLiveTools: vi.fn(() => runtime.liveTools),
   getPublicationStatus: vi.fn(() => runtime.publication),
   subscribeToPublishedTools: vi.fn(() => () => {}),
