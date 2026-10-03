@@ -3,6 +3,7 @@ import {
   executePublishedTool,
   publishedToolNames,
   recordPublishedTools,
+  recordPublishedToolsLate,
   waitForPublishedTool,
 } from "@ayme-dev/ayme/testing";
 
@@ -58,28 +59,7 @@ test("publishes after retryPublication once a late driver appears", async ({
     timeout: 15_000,
   });
 
-  // A reduced copy of the recording driver in @ayme-dev/ayme/testing, which
-  // installs only before load; this one arrives late.
-  await page.evaluate(() => {
-    const tools: { name: string }[] = [];
-    Object.defineProperty(document, "modelContext", {
-      configurable: false,
-      value: {
-        tools,
-        async registerTool(
-          tool: { name: string },
-          { signal }: { signal: AbortSignal }
-        ) {
-          tools.push(tool);
-          signal.addEventListener(
-            "abort",
-            () => tools.splice(tools.indexOf(tool), 1),
-            { once: true }
-          );
-        },
-      },
-    });
-  });
+  await recordPublishedToolsLate(page);
   await page.getByRole("button", { name: "Retry publication" }).click();
 
   await expect(status(page)).toHaveText("Publication: active");
