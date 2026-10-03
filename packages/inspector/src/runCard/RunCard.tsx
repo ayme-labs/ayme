@@ -76,14 +76,19 @@ export function RunCard({
   onHover,
 }: RunCardProps) {
   const fields = useMemo(
-    () => fieldsOf(tool.argumentsSchema),
-    [tool.argumentsSchema]
+    () => fieldsOf(tool.argumentsSchema, tool.refField),
+    [tool.argumentsSchema, tool.refField]
   );
-  const refGiven =
-    structuralRef !== undefined && fields.some((field) => field.kind === "ref");
+  // The field the given ref fills: a Custom Tool's `ref`, a Browser Tool's `target`.
+  const refField =
+    structuralRef === undefined
+      ? undefined
+      : fields.find((field) => field.kind === "ref")?.name;
   const [args, setArgs] = useState(() => {
     const initial = initialArguments(tool.argumentsSchema);
-    return refGiven ? withArgument(initial, ["ref"], structuralRef) : initial;
+    return refField
+      ? withArgument(initial, [refField], structuralRef)
+      : initial;
   });
   const [json, setJson] = useState<{ text?: string; error?: string }>();
   const [open, setOpen] = useState(false);
@@ -99,7 +104,7 @@ export function RunCard({
   const showBody = available && (!head || open);
   const needs = needsInput(tool, {
     itemGiven: item !== undefined,
-    givenArguments: refGiven ? ["ref"] : [],
+    givenArguments: refField ? [refField] : [],
   });
 
   const cardRuns = collection

@@ -244,7 +244,7 @@ function renderLens({
     const model = modelLens({
       host: "localhost:5173",
       pageModel,
-      pageTools: ["get_page_context", "pursue_goal"],
+      pageTools: ["snapshot", "goal"],
       selection,
       onSelect: (next) => {
         onSelect(next);
@@ -455,9 +455,9 @@ it("runs the page-wide tools from the page's detail through the run slot", async
 
   await expect
     .poll(() => detail.section("Tools").textContent())
-    .toBe("Tools · 2Run get_page_contextRun pursue_goal");
-  expect(renderRun).toHaveBeenCalledWith({ toolName: "get_page_context" });
-  expect(renderRun).toHaveBeenCalledWith({ toolName: "pursue_goal" });
+    .toBe("Tools · 2Run snapshotRun goal");
+  expect(renderRun).toHaveBeenCalledWith({ toolName: "snapshot" });
+  expect(renderRun).toHaveBeenCalledWith({ toolName: "goal" });
 });
 
 it("runs an object's actions through the run slot", async () => {

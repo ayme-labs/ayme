@@ -50,7 +50,7 @@ function errorText(error: unknown): string {
 /**
  * A tool as WebMCP runs it for an agent: after a call that can change the
  * page, `settle` runs before the call resolves; a failure is an `isError`
- * result. `get_page_context` only reads, so it does not settle.
+ * result. `snapshot` only reads, so it does not settle.
  */
 export function asAgentCall(tool: PublishedTool, settle: () => Promise<void>) {
   return withErrorResult(
@@ -112,7 +112,7 @@ export type WebMcpSynchronizationOptions = {
 
 /**
  * Keep the MCP driver's tool set in sync with the live DOM. Publishes Ref
- * Tools, Page Object tools, and `pursue_goal` (when configured). After each
+ * Tools, Page Object tools, and `goal` (when configured). After each
  * tool call the publication is re-settled so the agent sees current tools.
  * A published tool never throws: a failure is an `isError` result.
  */

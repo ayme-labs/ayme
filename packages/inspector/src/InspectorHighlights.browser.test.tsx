@@ -20,7 +20,7 @@ import { Inspector } from "./testing";
 vi.mock("@ayme-dev/ayme/internal", () => ({
   getPomDefinitions: vi.fn(() => ({ definitions: [] })),
   peekPageStateForDocument: vi.fn(),
-  listRefToolTargets: vi.fn(async () => new Map()),
+  listElementToolTargets: vi.fn(async () => new Map()),
   listLiveTools: vi.fn().mockReturnValue([]),
   getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
   subscribeToPublishedTools: vi.fn(() => () => {}),

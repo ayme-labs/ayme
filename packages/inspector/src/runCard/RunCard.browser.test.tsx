@@ -210,12 +210,13 @@ describe("the typed form", () => {
   });
 });
 
-describe("a Ref Tool", () => {
+describe("a single-element tool", () => {
   const fillRef: RunnableTool = {
-    name: "fill_page_state_ref",
-    action: "fill_page_state_ref",
+    name: "fill",
+    action: "fill",
     description: "Fill a real editable element ref with text.",
     available: true,
+    refField: "ref",
     argumentsSchema: {
       type: "object",
       properties: { ref: { type: "string" }, value: { type: "string" } },
@@ -262,10 +263,11 @@ describe("a Ref Tool", () => {
 
   it("runs at once on the view's ref when nothing else is needed", async () => {
     const click: RunnableTool = {
-      name: "click_page_state_ref",
-      action: "click_page_state_ref",
+      name: "click",
+      action: "click",
       description: "Click a real element ref.",
       available: true,
+      refField: "ref",
       argumentsSchema: {
         type: "object",
         properties: { ref: { type: "string" } },

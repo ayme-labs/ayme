@@ -69,7 +69,7 @@ describe("the public runtime session in Chromium", () => {
     document.body.innerHTML = "";
   });
 
-  it("runs the Goal Loop with a caller page factory and a Ref Tool, without publication or a driver", async () => {
+  it("runs the Goal Loop with a caller page factory and a Custom Tool, without publication or a driver", async () => {
     document.body.innerHTML = `<main><button>Save changes</button></main>`;
     expect(document.modelContext).toBeUndefined();
     const highlight: CustomTool = {

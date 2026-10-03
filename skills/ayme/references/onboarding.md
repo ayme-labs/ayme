@@ -4,14 +4,18 @@
 2. Read the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md)
    for installation and explicit action exposure. Reuse an existing action.
 3. Read the [compiler README](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md)
-   for build setup. For Vue lifecycle wiring, read the
-   [Vue README](https://github.com/ayme-labs/ayme/blob/main/packages/vue/README.md).
-   For an Angular CLI application, run `ng add @ayme-dev/angular` as the
-   [Angular README](https://github.com/ayme-labs/ayme/blob/main/packages/angular/README.md)
+   for build setup. For lifecycle wiring, read the
+   [Vue README](https://github.com/ayme-labs/ayme/blob/main/packages/vue/README.md)
+   or the [React README](https://github.com/ayme-labs/ayme/blob/main/packages/react/README.md).
+   Start Ayme once at the application root with `useAyme` (Vue) or
+   `AymeProvider` (React), and pass `webMCP: { enabled: true }` so its tools
+   are published. For an Angular CLI application, run `ng add @ayme-dev/angular`
+   as the [Angular README](https://github.com/ayme-labs/ayme/blob/main/packages/angular/README.md)
    describes, follow its manual steps for what `ng add` reports it could not
-   change, and raise the production `maximumError` budget if the build fails it.
-   Other framework integrations are not documented yet; report that gap rather
-   than adapting internal runtime APIs into an unsupported setup.
+   change, pass `webMCP: { enabled: true }` to `provideAyme`, and raise the
+   production `maximumError` budget if the build fails it. Other framework
+   integrations are not documented yet; report that gap rather than adapting
+   internal runtime APIs into an unsupported setup.
 4. Follow [Browser setup](browser-setup.md) to choose native WebMCP or a local
    polyfill and relay, then invoke the exposed action through the client.
 

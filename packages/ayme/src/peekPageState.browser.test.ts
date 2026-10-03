@@ -36,7 +36,7 @@ it("lets the agent's ref reach an identical replacement even when a peek saw the
   document.querySelector("#new")!.addEventListener("click", () => {
     clicked = true;
   });
-  const result = await call("click_page_state_ref", { ref: save });
+  const result = await call("click", { target: save });
 
   expect(result).not.toMatchObject({ isError: true });
   expect(clicked).toBe(true);

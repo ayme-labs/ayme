@@ -10,7 +10,7 @@ import {
   getLastGoalLoopRunResult,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
-import type { CustomTool } from "./refTools";
+import type { CustomTool } from "./elementTools";
 import {
   NONE_OF_THESE_KEY,
   chunkQuestionId,
@@ -28,8 +28,8 @@ import {
   StructuralTree,
 } from "@ayme-dev/core/structural-observation";
 
-/** The parameters of the built-in click Ref Tool. */
-const CLICK_PARAMETERS = ["ref"];
+/** The parameters of the click Browser Tool. */
+const CLICK_PARAMETERS = ["target"];
 
 // --- Fixtures ---
 
@@ -319,7 +319,7 @@ function createFakeDriver() {
 
 // --- Test setup ---
 
-describe("Goal Loop pursue_goal in Chromium", () => {
+describe("Goal Loop goal in Chromium", () => {
   let page: ReturnType<typeof createPage>;
   let stop: (() => void) | undefined;
   let disposePublication: (() => void) | undefined;
@@ -361,8 +361,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const { driver, published } = createFakeDriver();
     const publication = await synchronizeWebMcpTools(driver);
     disposePublication = publication.dispose;
-    const tool = published.get("pursue_goal");
-    if (!tool) throw new Error("pursue_goal not published");
+    const tool = published.get("goal");
+    if (!tool) throw new Error("goal not published");
     return tool;
   }
 
@@ -495,7 +495,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     });
   });
 
-  it("offers a registered Ref Tool as an operation", async () => {
+  it("offers a Custom Tool as an operation", async () => {
     setupDom();
     const { requests, decide } = recording(
       scriptedDecisionFn([
@@ -525,7 +525,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
   it("still hands over for a required free value of a tool that takes a ref", async () => {
     setupDom();
     const { requests, decide } = recording(
-      scriptedDecisionFn([{ operation: "fill_page_state_ref", goal_met: 0.1 }])
+      scriptedDecisionFn([{ operation: "fill", goal_met: 0.1 }])
     );
     const tool = await getPublishedPursueGoal(decide);
 
@@ -536,9 +536,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
     expect(withoutChanges(result)).toEqual({
       reason: "needs_value",
-      next: expect.stringContaining("fill_page_state_ref"),
+      next: expect.stringContaining("fill"),
       history: [],
-      needs: { tool: "fill_page_state_ref", parameters: ["ref", "value"] },
+      needs: { tool: "fill", parameters: ["target", "text"] },
     });
     // No second request: the loop never asks for a tool it cannot fill.
     expect(requests).toHaveLength(1);
@@ -573,7 +573,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     );
   });
 
-  it("returns invalid pursue_goal input as a ToolInputError result", async () => {
+  it("returns invalid goal input as a ToolInputError result", async () => {
     const decide = scriptedDecisionFn([]);
     const tool = await registerPom(decide);
 
@@ -880,9 +880,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "click_page_state_ref",
+          operation: "click",
           goal_met: 0.1,
-          arguments: { ref: 'button "Save changes"' },
+          arguments: { target: 'button "Save changes"' },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -896,7 +896,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
     // Only the element click's built-in filter keeps is offered.
     const [[key, description], ...rest] = Object.entries(
-      criteriaOf(requests[1]!).ref!
+      criteriaOf(requests[1]!).target!
     );
     expect(rest).toEqual([]);
     // Options carry the node's ref as their key, as the page state labels it,
@@ -908,8 +908,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result.reason).toBe("done");
     // The step record names the tool and the option chosen, as offered.
     const record = {
-      operation: "click_page_state_ref",
-      chosen: { ref: { key, description } },
+      operation: "click",
+      chosen: { target: { key, description } },
       result: "ok",
       // Whether a click changes the page (focus among others) is the
       // interaction history's promise, pinned in its own tests.
@@ -926,7 +926,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(getLastGoalLoopRunResult()!.stepScores[0]).toMatchObject(record);
   });
 
-  it("offers a Ref Tool with a filter only the elements it keeps", async () => {
+  it("offers a single-element tool with a filter only the elements it keeps", async () => {
     setupPageWithOneClickable();
     const highlighted: { ref: string; tagName: string }[] = [];
     const { requests, decide } = recording(
@@ -960,7 +960,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     ]);
   });
 
-  it("offers a Ref Tool without a filter every node that has a ref", async () => {
+  it("offers a single-element tool without a filter every node that has a ref", async () => {
     setupPageWithOneClickable();
     const { requests, decide } = recording(
       scriptedDecisionFn([
@@ -1016,7 +1016,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
         { operation: "none", goal_met: 0.9 },
       ])
     );
-    // A Ref Tool without a filter is offered every node of the full capture.
+    // A single-element tool without a filter is offered every node of the full capture.
     const tool = await getPublishedPursueGoal(decide, [
       {
         name: "highlight_element",
@@ -1098,9 +1098,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "click_page_state_ref",
+          operation: "click",
           goal_met: 0.1,
-          arguments: { ref: 'button "Item 299"' },
+          arguments: { target: 'button "Item 299"' },
         },
         { operation: "none", goal_met: 0.9 },
       ])
@@ -1116,8 +1116,8 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     // for the `ref` parameter.
     const stageTwo = criteriaOf(requests[1]!);
     expect(Object.keys(stageTwo)).toEqual([
-      chunkQuestionId("ref", 1, CLICK_PARAMETERS),
-      chunkQuestionId("ref", 2, CLICK_PARAMETERS),
+      chunkQuestionId("target", 1, CLICK_PARAMETERS),
+      chunkQuestionId("target", 2, CLICK_PARAMETERS),
     ]);
     const chunks = Object.values(stageTwo);
     for (const chunk of chunks) {
@@ -1141,9 +1141,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     expect(result.reason).toBe("done");
     expect(result.history).toMatchObject([
       {
-        operation: "click_page_state_ref",
+        operation: "click",
         chosen: {
-          ref: { key: expect.any(String), description: 'button "Item 299"' },
+          target: { key: expect.any(String), description: 'button "Item 299"' },
         },
         result: "ok",
       },
@@ -1156,17 +1156,17 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
   it("asks one run-off among exactly the elements several chunks named", async () => {
     const clicked = setupPageWithManyClickables(300);
-    const runOffId = runOffQuestionId("ref", CLICK_PARAMETERS);
+    const runOffId = runOffQuestionId("target", CLICK_PARAMETERS);
     // The decision function answers stage two without the optional
     // probabilities: the chosen keys are recorded all the same.
     const { requests, decide } = recording(
       withoutArgumentProbabilities(
         scriptedDecisionFn([
           {
-            operation: "click_page_state_ref",
+            operation: "click",
             goal_met: 0.1,
             arguments: {
-              ref: ['button "Item 3"', 'button "Item 299"'],
+              target: ['button "Item 3"', 'button "Item 299"'],
               [runOffId]: 'button "Item 299"',
             },
           },
@@ -1207,14 +1207,14 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
   it("keeps the chunks' choices on the run result when the run-off answer is invalid", async () => {
     const clicked = setupPageWithManyClickables(300);
-    const runOffId = runOffQuestionId("ref", CLICK_PARAMETERS);
+    const runOffId = runOffQuestionId("target", CLICK_PARAMETERS);
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "click_page_state_ref",
+          operation: "click",
           goal_met: 0.1,
           arguments: {
-            ref: ['button "Item 3"', 'button "Item 299"'],
+            target: ['button "Item 3"', 'button "Item 299"'],
             [runOffId]: { raw: "e999" },
           },
         },
@@ -1248,9 +1248,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([
         {
-          operation: "click_page_state_ref",
+          operation: "click",
           goal_met: 0.1,
-          arguments: { ref: [] },
+          arguments: { target: [] },
         },
       ])
     );
@@ -1263,7 +1263,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
     expect(withoutChanges(result)).toEqual({
       reason: "no_fitting_option",
-      next: expect.stringContaining('"click_page_state_ref"'),
+      next: expect.stringContaining('"click"'),
       // The step ran no action, so it leaves no history entry.
       history: [],
     });
@@ -1286,7 +1286,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
   it("hands over when no element on the page fits the chosen operation", async () => {
     document.body.innerHTML = `<main><p>Nothing to do here.</p></main>`;
     const { requests, decide } = recording(
-      scriptedDecisionFn([{ operation: "click_page_state_ref", goal_met: 0.1 }])
+      scriptedDecisionFn([{ operation: "click", goal_met: 0.1 }])
     );
     const tool = await getPublishedPursueGoal(decide);
 
@@ -1294,7 +1294,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
     expect(result).toMatchObject({
       reason: "needs_value",
-      needs: { tool: "click_page_state_ref", parameters: ["ref"] },
+      needs: { tool: "click", parameters: ["target"] },
     });
     expect(requests).toHaveLength(1);
   });
@@ -1425,9 +1425,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     setupPageWithOneClickable();
     const decide = scriptedDecisionFn([
       {
-        operation: "click_page_state_ref",
+        operation: "click",
         goal_met: 0.1,
-        arguments: { ref: 'button "Save changes"' },
+        arguments: { target: 'button "Save changes"' },
       },
       { operation: "none", goal_met: 0.9 },
     ]);
@@ -1438,7 +1438,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const runResult = getLastGoalLoopRunResult();
     const probabilities = runResult!.stepScores[0]!.argumentProbabilities;
     expect(probabilities).toBeDefined();
-    expect(Object.values(probabilities!.ref!)).toContain(1);
+    expect(Object.values(probabilities!.target!)).toContain(1);
     expect(runResult!.stepScores[1]!.argumentProbabilities).toBeUndefined();
   });
 
@@ -1446,9 +1446,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     setupPageWithOneClickable();
     const decide = scriptedDecisionFn([
       {
-        operation: "click_page_state_ref",
+        operation: "click",
         goal_met: 0.1,
-        arguments: { ref: { raw: "e999" } },
+        arguments: { target: { raw: "e999" } },
       },
     ]);
     const tool = await getPublishedPursueGoal(decide);
@@ -1976,7 +1976,7 @@ describe("Goal Loop pursue_goal in Chromium", () => {
     const { requests, decide } = recording(
       scriptedDecisionFn([{ operation: "none", goal_met: 0.1 }])
     );
-    // Together with the built-in Ref Tools and "none", over the option limit.
+    // Together with the single-element Browser Tools and "none", over the option limit.
     const tool = await getPublishedPursueGoal(
       decide,
       Array.from({ length: 254 }, (_, index) => ({

@@ -92,6 +92,19 @@ it("shows the runs on a structure node's ref or on the object it maps to", () =>
   expect(shown(runScope({ kind: "node", ref: "e99" }, memberOf))).toEqual([]);
 });
 
+it("shows a Browser Tool's run on the node its target names", () => {
+  const fillMilk = run(4, {
+    toolName: "fill",
+    className: undefined,
+    objectPath: undefined,
+    arguments: { target: "e12", text: "Oat milk" },
+  });
+
+  expect(
+    runScope({ kind: "node", ref: "e12" }, memberOf).includes(fillMilk)
+  ).toBe(true);
+});
+
 it("shows a tool's runs", () => {
   const scope = runScope({ kind: "tool", name: "ListPage.addItem" }, memberOf);
 
