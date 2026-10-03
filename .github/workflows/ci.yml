@@ -222,8 +222,8 @@ jobs:
       # workspace's hoisted Angular 22. The extension links it to 19.0.0.
       - name: Install with Angular 19.0.0
         run: |
-          for package in core common compiler platform-browser platform-server; do
-            pnpm --dir packages/angular pkg set "devDependencies[\"@angular/$package\"]=19.0.0"
+          for package in @angular/core @angular/common @angular/compiler @angular/platform-browser @angular/platform-server @angular-devkit/schematics @schematics/angular; do
+            pnpm --dir packages/angular pkg set "devDependencies[\"$package\"]=19.0.0"
           done
           cat >> pnpm-workspace.yaml <<'YAML'
           packageExtensions:
