@@ -38,10 +38,9 @@ export default defineNuxtConfig({
     tsConfig: { compilerOptions: { experimentalDecorators: true } },
   },
   vite: {
-    // POMs live outside Nuxt's generated app TypeScript project.
-    oxc: { decorator: { legacy: true } },
     plugins: [
       ayme({
+        // POMs live outside Nuxt's generated app TypeScript project.
         tsconfigPath: fileURLToPath(
           new URL("./tsconfig.pom.json", import.meta.url)
         ),

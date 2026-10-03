@@ -169,6 +169,17 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
           define[NAVIGATION_TIMEOUT_DEFINE] = JSON.stringify(
             settings.navigationTimeout
           );
+        // Oxc-based Vite (8) does not always apply the POMs' tsconfig
+        // experimentalDecorators, e.g. under SvelteKit 2 and Nuxt, and then
+        // serves decorators untransformed. Our return value would override
+        // the consumer's, so their own decorator setting, oxc: false or
+        // esbuild options without oxc are left alone.
+        const oxc = config.oxc;
+        const lowerDecorators =
+          this?.meta?.rolldownVersion !== undefined &&
+          oxc !== false &&
+          oxc?.decorator?.legacy === undefined &&
+          !(config.esbuild && oxc === undefined);
 
         return {
           define,
@@ -176,6 +187,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
             ...config.optimizeDeps,
             exclude: [...new Set([...exclude, PLAYWRIGHT_TEST_PACKAGE])],
           },
+          ...(lowerDecorators ? { oxc: { decorator: { legacy: true } } } : {}),
         };
       },
     },

@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
+import { resolveConfig, type InlineConfig } from "vite";
 import { describe, expect, it } from "vitest";
 
 import { type AymeOptions } from "./index";
@@ -149,5 +150,34 @@ describe("ayme Vite integration", () => {
       },
       optimizeDeps: { exclude: ["@playwright/test"] },
     });
+  });
+
+  it.each<[string, InlineConfig, unknown]>([
+    ["sets it when the consumer has not", {}, true],
+    [
+      "keeps the consumer's own setting",
+      { oxc: { decorator: { legacy: false } } },
+      false,
+    ],
+    [
+      "keeps the consumer's other oxc options",
+      { oxc: { jsx: { pragma: "h" } } },
+      true,
+    ],
+    ["does nothing with oxc off", { oxc: false }, undefined],
+    [
+      "does nothing when the consumer uses esbuild options",
+      { esbuild: { jsx: "automatic" } },
+      undefined,
+    ],
+  ])("on Vite 8, legacy decorators: %s", async (_, config, legacy) => {
+    const resolved = await resolveConfig(
+      { ...config, configFile: false, logLevel: "silent", plugins: [ayme()] },
+      "serve"
+    );
+    expect(
+      resolved.oxc === false ? undefined : resolved.oxc.decorator?.legacy
+    ).toBe(legacy);
+    if (config.oxc) expect(resolved.oxc).toMatchObject(config.oxc);
   });
 });

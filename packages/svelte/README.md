@@ -20,8 +20,6 @@ import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  // Vite 8 only: SvelteKit 2's tsconfig does not reach oxc.
-  oxc: { decorator: { legacy: true } },
   plugins: [sveltekit(), ayme()],
 });
 ```
@@ -93,7 +91,7 @@ Svelte 4 on SvelteKit 2 uses the same files with legacy markup: `let count = 0` 
 
 ## SvelteKit 3 setup
 
-SvelteKit 3 reads its configuration from the `sveltekit()` call and needs no `oxc` option.
+SvelteKit 3 reads its configuration from the `sveltekit()` call.
 
 ```ts
 // vite.config.ts
@@ -285,7 +283,6 @@ The initial publication status is `waiting` when the root setup enables publicat
 - POMs must be `.ts` modules. Decorators inside `.svelte` scripts are not compiled.
 - The compiler follows SvelteKit's generated tsconfig, so POMs under `src` need nothing more. POMs outside `src`, such as a `playwright/` folder, need their own tsconfig with `experimentalDecorators`, passed to the plugin as `ayme({ tsconfigPath })`, as the [Nuxt example](https://github.com/ayme-labs/ayme/tree/main/apps/example-nuxt) does.
 - Below Vite 6, editing a type a POM imports needs a dev-server restart before the published schema changes. Vite 6 and later rebuild it in place.
-- SvelteKit 2 on Vite 8 needs `oxc: { decorator: { legacy: true } }` in `vite.config.ts`. Without it, the server fails on the untransformed decorators.
 
 ## Naming
 

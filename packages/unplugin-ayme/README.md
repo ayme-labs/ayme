@@ -25,6 +25,10 @@ or `AymeProvider`. Turning publication off does not strip POM code from the
 bundle; production removal is not covered by this setup.
 
 Enable `compilerOptions.experimentalDecorators: true` in the POMs' tsconfig.
+On Vite 8, whose oxc transform does not always read that tsconfig, the plugin
+also sets `oxc: { decorator: { legacy: true } }`. It leaves the option alone
+when your config sets `oxc.decorator.legacy`, sets `oxc: false`, or sets
+`esbuild` options without `oxc`.
 Import the annotated `.ts` files from the application so Vite transforms them.
 
 ## Angular setup
