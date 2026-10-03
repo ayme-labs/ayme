@@ -4,18 +4,12 @@ import { defineConfig } from "vite";
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
-/** Serves the e2e fixture pages with the built Inspector and runtime. */
+/**
+ * Serves the e2e fixture pages with the built Inspector and runtime: the
+ * workspace packages resolve to their `dist`, as they ship.
+ */
 export default defineConfig({
   root: here("."),
-  resolve: {
-    alias: [
-      // The package as it ships: its own React bundled in, its CSS compiled.
-      {
-        find: /^@ayme-dev\/inspector$/,
-        replacement: here("../../dist/index.mjs"),
-      },
-    ],
-  },
   // The e2e config picks a free port and passes it with --port.
   server: { host: "127.0.0.1", strictPort: true },
 });

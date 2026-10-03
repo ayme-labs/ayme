@@ -11,7 +11,7 @@ import {
 } from "@ayme-dev/ayme/internal";
 import { mountInspector } from "@ayme-dev/inspector";
 
-import { ListPage } from "./ListPage";
+import { ListPage } from "../pom/ListPage";
 
 // What the Ayme compiler derives from ListPage.ts. The fixture registers it
 // by hand: the compiler's bundler plugin depends on this package.

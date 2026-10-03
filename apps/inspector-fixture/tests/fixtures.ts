@@ -1,8 +1,11 @@
 import { test as base, selectors, type Page } from "@playwright/test";
 import { recordPublishedTools } from "@ayme-dev/ayme/testing";
+import {
+  Inspector,
+  registerInspectorSelectors,
+} from "@ayme-dev/inspector/testing";
 
-import { Inspector, registerInspectorSelectors } from "../src/testing";
-import { ListPage } from "./fixture/ListPage";
+import { ListPage } from "../pom/ListPage";
 
 export { expect } from "@playwright/test";
 

@@ -1,7 +1,7 @@
 {
   "extends": "@ayme-dev/typescript-config/react-library.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node", "vite/client"]
   },
-  "include": [".", "../playwright.config.ts"]
+  "include": ["app", "pom", "tests", "*.ts"]
 }

@@ -1,8 +1,8 @@
 import type { Page } from "@playwright/test";
 import { executePublishedTool } from "@ayme-dev/ayme/testing";
+import type { Inspector } from "@ayme-dev/inspector/testing";
 
 import { expect, openFixture, test } from "./fixtures";
-import type { Inspector } from "../src/testing";
 
 // E2E: the built Inspector on fixture pages with a real Page Object, the
 // Ayme runtime and a recording WebMCP driver. Each test has one reason to

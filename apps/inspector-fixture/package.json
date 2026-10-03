@@ -1,0 +1,29 @@
+{
+  "name": "@ayme-dev/inspector-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "test:e2e": "playwright test --reporter=list",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/inspector": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/typescript-config": "workspace:*",
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^10.9.1",
+    "playwright": "^1.62.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.2.2"
+  }
+}

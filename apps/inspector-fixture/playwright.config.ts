@@ -28,7 +28,7 @@ export default defineConfig({
   },
   webServer: {
     // Serves every fixture page; /unpublished.html has publication off.
-    command: `pnpm exec vite --config tests/fixture/vite.config.ts --port ${port} --strictPort`,
+    command: `pnpm exec vite --config app/vite.config.ts --port ${port} --strictPort`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 60_000,
