@@ -58,7 +58,8 @@ test("publishes after retryPublication once a late driver appears", async ({
     timeout: 15_000,
   });
 
-  // The recording driver of @ayme-dev/ayme/testing, installed after load.
+  // A reduced copy of the recording driver in @ayme-dev/ayme/testing, which
+  // installs only before load; this one arrives late.
   await page.evaluate(() => {
     const tools: { name: string }[] = [];
     Object.defineProperty(document, "modelContext", {
