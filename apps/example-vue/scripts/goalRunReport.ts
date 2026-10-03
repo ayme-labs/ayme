@@ -10,7 +10,7 @@ const noneOfTheseKey = "none_of_these";
 export type GoalRun = {
   /** The test's expectations held: the goal's expected outcome was reached. */
   passed: boolean;
-  /** The Handover reason; null when the run failed before `pursue_goal` returned. */
+  /** The Handover reason; null when the run failed before `goal` returned. */
   reason: string | null;
   stepCount: number;
   /** The run ended `done` at the step count its test expects; absent when the

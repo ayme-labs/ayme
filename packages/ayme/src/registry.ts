@@ -1066,7 +1066,21 @@ function validatedArguments(tool: ToolManifest, args: unknown) {
   });
 }
 
-function validateValue(name: string, schema: JsonSchema, value: unknown) {
+/** Package-internal: check one input value against its schema, or throw a ToolInputError naming it. */
+export function validateValue(
+  name: string,
+  schema: JsonSchema,
+  value: unknown
+) {
+  if (schema.type === "array") {
+    if (!Array.isArray(value))
+      throw new ToolInputError(`Input property ${name} must be an array.`);
+    if (schema.items)
+      value.forEach((item, index) =>
+        validateValue(`${name}[${index}]`, schema.items!, item)
+      );
+    return;
+  }
   if (schema.type === "object") {
     const object = asRecord(value);
     const properties = schema.properties ?? {};
