@@ -26,7 +26,7 @@ export default defineConfig({
 });
 ```
 
-Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [ListPage](../../apps/example-vue/playwright/pom/ListPage.ts).
+Keep decorated Page Object Models in separate `.ts` files with `experimentalDecorators` enabled. Use `@ayme` on the model and `@ayme.action` on exposed actions, as shown in [ListPage](https://github.com/ayme-labs/ayme/blob/main/apps/example-vue/playwright/pom/ListPage.ts).
 
 Publication is off unless the root setup enables it with `webMCP: { enabled: true }` (on `AymeProvider` as `:webMCP="{ enabled: true }"`). `webMCP.toolNamePrefix` prefixes every published tool name; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#webmcp-publication). Local Page Object calls remain available without publication or a WebMCP driver.
 
@@ -103,13 +103,13 @@ Browser setup constructs and registers the real Page Object during hydration. Ex
 
 The Vite plugin skips its POM source transform for SSR while retaining shared build configuration. The initial status is `waiting` when the root setup enables publication and `disabled` otherwise, on the server and in the browser. Only the browser attempts publication.
 
-The [Nuxt example](../../apps/example-nuxt) shows the existing Vue provider and Vite plugin in an SSR app, including configuration for the built runtime packages and the POM TypeScript project. Its tests run against both Nuxt development and the production Node server. This prototype does not certify Nuxt islands, edge deployment, prerendering, or server-side POM execution.
+The [Nuxt example](https://github.com/ayme-labs/ayme/tree/main/apps/example-nuxt) shows the existing Vue provider and Vite plugin in an SSR app, including configuration for the built runtime packages and the POM TypeScript project. Its tests run against both Nuxt development and the production Node server. This prototype does not certify Nuxt islands, edge deployment, prerendering, or server-side POM execution.
 
 ## Framework parity and example
 
 React has the same provider and Page Object/status/retry names. React requires an ancestor provider; it does not support Vue's standalone startup composable. React status is a plain snapshot instead of a Vue ref.
 
-The [Vue example](../../apps/example-vue) retains standalone setup and external demo feedback. From the workspace root, run `pnpm run build`, then `pnpm --filter @ayme-dev/example-vue dev`. Provider and standalone compatibility are checked by this package's tests.
+The [Vue example](https://github.com/ayme-labs/ayme/tree/main/apps/example-vue) retains standalone setup and external demo feedback. From the workspace root, run `pnpm run build`, then `pnpm --filter @ayme-dev/example-vue dev`. Provider and standalone compatibility are checked by this package's tests.
 
 Register each root POM in the component that owns its lifetime. Child POMs in compiled member metadata are discovered recursively; action return values do not register independent roots.
 

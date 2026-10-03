@@ -115,7 +115,7 @@ describe("the Ayme page state helper in Chromium", () => {
       const clickError = await ayme.click(saveRef).catch((error) => error);
       expect(clickError).toBeInstanceOf(Error);
       expect(clickError.name).toBe("TimeoutError");
-      expect(clickError.message).toMatch(/^page\.click: Timeout 1000ms/);
+      expect(clickError.message).toMatch(/^locator\.click: Timeout 1000ms/);
 
       document.querySelector("#name")!.remove();
       const fillError = await ayme

@@ -6,23 +6,25 @@ import {
   type AriaRef,
   type PageStateCapture,
 } from "./pageState";
+import { listPublishedBrowserTools, listElementTools } from "./browserTools";
 import {
   acceptedRefNodes,
-  listRefTools,
-  type PublishedRefTool,
-} from "./refTools";
+  listCustomTools,
+  type PublishedElementTool,
+} from "./elementTools";
 import { listRegisteredPomTools, subscribeToRegisteredPoms } from "./registry";
 import { RuntimeStateError } from "./errors";
 import type { AymeWebMcpPublicationStatus } from "./runtime";
 
 export type PublishedTool =
-  RegisteredPomTool | typeof getPageContextTool | PublishedRefTool;
+  RegisteredPomTool | typeof getPageContextTool | PublishedElementTool;
 
 /**
- * Where a published tool comes from: a Page Object (Page Object Tool), a
- * Ref Tool, or the agent's own tools (`get_page_context`, `pursue_goal`).
+ * Where a published tool comes from: a Page Object (Page Object Tool), Ayme's
+ * Browser Tools, the app's Custom Tools, or the agent's own tools
+ * (`snapshot`, `goal`).
  */
-export type PublishedToolGroup = "pageObject" | "ref" | "agent";
+export type PublishedToolGroup = "pageObject" | "browser" | "custom" | "agent";
 
 /** A published tool as an agent sees it, for reading only. */
 export type PublishedToolInfo = Readonly<{
@@ -50,12 +52,22 @@ export function resolvePublishedTools(): Map<
     ...pomTools.map((tool) => tool.name),
     ...(pursueGoal ? [pursueGoal.name] : []),
   ]);
-  for (const { tool } of listRefTools()) {
+  const ownTools = [
+    ...listPublishedBrowserTools().map((tool) => ({
+      tool,
+      group: "browser" as const,
+    })),
+    ...listCustomTools().map(({ tool }) => ({
+      tool,
+      group: "custom" as const,
+    })),
+  ];
+  for (const { tool, group } of ownTools) {
     if (active.has(tool.name) || takenElsewhere.has(tool.name))
       throw new RuntimeStateError(
         `Cannot publish the tool "${tool.name}": another published tool already uses that name.`
       );
-    active.set(tool.name, { tool, group: "ref" });
+    active.set(tool.name, { tool, group });
   }
   for (const tool of pomTools)
     active.set(tool.name, { tool, group: "pageObject" });
@@ -104,7 +116,7 @@ let liveTools: { key: string; tools: readonly PublishedToolInfo[] } = {
  * Every live tool, published or not, in publication order: each tool
  * `runTool` can run now. The same array comes back
  * until the set changes (for `useSyncExternalStore`); subscribe with
- * `subscribeToPublishedTools`. Empty when a Ref Tool's name clash leaves the
+ * `subscribeToPublishedTools`. Empty when a tool name clash leaves the
  * set unresolvable; `runTool` then rejects with that error, and an active
  * publication reports it as its failed status.
  */
@@ -129,18 +141,18 @@ export function getPublicationStatus(): AymeWebMcpPublicationStatus {
 }
 
 /**
- * The refs each live Ref Tool can take in `capture` (a peek of the current
+ * The refs each live single-element tool can take in `capture` (a peek of the current
  * page when absent), by tool name, in tree order: the same closed set the Goal
  * Loop offers for that tool's ref. Pass the peek the Inspector shows,
  * so the refs match its structure.
  */
-export async function listRefToolTargets(
+export async function listElementToolTargets(
   capture?: PageStateCapture
 ): Promise<Map<string, AriaRef[]>> {
-  const refTools = listRefTools();
+  const elementTools = listElementTools();
   const current = capture ?? (await peekPageStateForDocument(document));
   return new Map(
-    refTools.map(({ tool, filter }) => [
+    elementTools.map(({ tool, filter }) => [
       tool.name,
       acceptedRefNodes(filter, current).map((node) => node.ref),
     ])
@@ -150,7 +162,7 @@ export async function listRefToolTargets(
 /**
  * Call `subscriber` whenever the published or live tools or the status may
  * have changed: a publication pass, a status change (a session starting or
- * stopping sets its Ref Tools and Goal Loop), or a Page Object change.
+ * stopping sets its Custom Tools and Goal Loop), or a Page Object change.
  */
 export function subscribeToPublishedTools(subscriber: () => void) {
   subscribers.add(subscriber);

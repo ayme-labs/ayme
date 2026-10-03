@@ -96,7 +96,7 @@ it("can't run an action that isn't live", () => {
   expect(tools.get("ListPage.addItem")?.available).toBe(false);
 });
 
-it("runs every other live tool with its schema", () => {
+it("runs every other live tool with its schema, and names its ref argument", () => {
   const tools = listRunnableTools([listPage], new Map(), [markElement]);
 
   expect(tools.get("mark_element")).toEqual({
@@ -105,5 +105,24 @@ it("runs every other live tool with its schema", () => {
     description: "Mark one element on the page.",
     argumentsSchema: markElement.inputSchema,
     available: true,
+    refField: "ref",
   });
+});
+
+it("never treats a Page Object action's argument as a ref, whatever its name", () => {
+  const retarget = {
+    ...addItem,
+    name: "ListPage.retarget",
+    methodName: "retarget",
+    parameters: [
+      { name: "target", optional: false, schema: { type: "string" as const } },
+    ],
+  };
+  const tools = listRunnableTools(
+    [{ ...listPage, tools: [retarget] }],
+    new Map([[retarget.name, retarget]]),
+    []
+  );
+
+  expect(tools.get("ListPage.retarget")?.refField).toBeUndefined();
 });

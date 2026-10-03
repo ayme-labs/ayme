@@ -27,7 +27,7 @@ export function WhatTheModelSees({
 }: {
   /** A structure node's part of the page state, as the agent reads it. */
   pageState?: NodePageState;
-  /** Page Object definitions, as get_page_context renders them. */
+  /** Page Object definitions, as snapshot renders them. */
   definitions?: string;
   schemas: readonly ToolSchema[];
 }) {

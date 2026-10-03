@@ -146,7 +146,7 @@ function registration(
   return { id: "TodoPage", instance: {}, manifest, memberObservations, tools };
 }
 
-// What get_page_context describes for this page.
+// What snapshot describes for this page.
 const definitions: PomDefinition[] = [
   {
     name: "TodoPage",
@@ -301,7 +301,7 @@ describe("the page model", () => {
     ).toEqual([{ toolName: "TodoPage.archiveDialog.confirm", live: false }]);
   });
 
-  it("lists every model get_page_context describes, with its instances on the page", () => {
+  it("lists every model snapshot describes, with its instances on the page", () => {
     const { models } = buildPageModel([registration()], live, definitions);
 
     expect(

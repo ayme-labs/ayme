@@ -51,7 +51,7 @@ describe("Handover changes in Chromium", () => {
 
   /**
    * An inbox whose Page Object opens and closes a dialog and archives an item,
-   * with a Refresh button the agent clicks through a Ref Tool.
+   * with a Refresh button the agent clicks through the click Browser Tool.
    */
   async function startInbox(goalLoop: GoalLoopDecisionFunction) {
     document.body.innerHTML = `
@@ -109,14 +109,14 @@ describe("Handover changes in Chromium", () => {
   }
 
   async function readStructure(): Promise<string> {
-    const context = (await tool("get_page_context").execute({})) as {
+    const context = (await tool("snapshot").execute({})) as {
       structure: string;
     };
     return context.structure;
   }
 
   async function pursue(): Promise<Handover> {
-    return (await tool("pursue_goal").execute({
+    return (await tool("goal").execute({
       goal: "archive the invoice",
       maxSteps: 5,
     })) as Handover;
@@ -177,8 +177,8 @@ describe("Handover changes in Chromium", () => {
     const handover = await pursue();
     expect(handover.changes).toContain(ARCHIVED);
 
-    const result = (await tool("click_page_state_ref").execute({
-      ref: refreshRef,
+    const result = (await tool("click").execute({
+      target: refreshRef,
     })) as ActionResultShape;
 
     expect(result.changes).toContain("Refreshed");

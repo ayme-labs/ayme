@@ -33,7 +33,7 @@ it("records a run whose pursue throws, so it counts as not done at the expected 
   vi.stubEnv(goalRunsVariable, "1");
   const page = { on: vi.fn(), off: vi.fn(), evaluate: vi.fn() };
   const attach = vi.fn();
-  const failure = new Error("pursue_goal exploded");
+  const failure = new Error("goal exploded");
 
   await expect(
     recordGoalRun(

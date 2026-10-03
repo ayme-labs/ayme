@@ -38,7 +38,7 @@ export function modelLens({
   /** The page's host, e.g. localhost:5173. */
   host: string;
   pageModel: PageModel;
-  /** The page-wide tools WebMCP publishes, e.g. get_page_context. */
+  /** The page-wide tools WebMCP publishes, e.g. snapshot. */
   pageTools?: readonly string[];
   selection: Selection;
   onSelect: (selection: Selection) => void;
