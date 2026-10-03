@@ -13,6 +13,7 @@
  *    declared export subpath.
  * 4. The packed @ayme-dev/ayme does not expose private workspace packages.
  * 5. Consumers type-check and load config with and without Playwright.
+ * 6. An Angular consumer type-checks at Angular's and TypeScript's floor.
  */
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -33,6 +34,7 @@ const PUBLISHED_PACKAGES = [
   "inspector",
   "vue",
   "react",
+  "angular",
   "svelte",
   "unplugin-ayme",
 ];
@@ -158,6 +160,12 @@ beforeAll(() => {
     fs.mkdirSync(staging, { recursive: true });
     for (const file of ["package.json", "README.md", "LICENSE"])
       fs.copyFileSync(path.join(root, file), path.join(staging, file));
+    // Published files other than the build, such as Angular's schematics.
+    const { files = [] } = readManifest(root) as { files?: string[] };
+    for (const entry of files.filter((entry) => entry !== "dist"))
+      fs.cpSync(path.join(root, entry), path.join(staging, entry), {
+        recursive: true,
+      });
     // pnpm pack reads the versions for `workspace:` from linked siblings.
     fs.symlinkSync(
       path.join(root, "node_modules"),
@@ -268,20 +276,25 @@ it(
           react: "19.2.8",
           svelte: "5.57.1",
           vue: "3.5.42",
+          "@angular/core": "22.2.1",
+          rxjs: "7.8.2",
         },
       })
     );
     fs.writeFileSync(path.join(consumer, "pnpm-workspace.yaml"), workspaceYaml);
     exec("pnpm", ["install", "--ignore-scripts", "--no-lockfile"], consumer);
     const specifiers = Object.entries(packed).flatMap(([name, { dir }]) =>
-      Object.keys(readManifest(dir).exports ?? {}).map((subpath) =>
-        path.posix.join(name, subpath)
-      )
+      Object.keys(readManifest(dir).exports ?? {})
+        // A manifest export, for tools like the Angular CLI, is not a module.
+        .filter((subpath) => subpath !== "./package.json")
+        .map((subpath) => path.posix.join(name, subpath))
     );
     expect(specifiers).toEqual(
       expect.arrayContaining([
+        "@ayme-dev/angular",
         "@ayme-dev/unplugin-ayme/vite",
         "@ayme-dev/unplugin-ayme/turbopack-loader",
+        "@ayme-dev/unplugin-ayme/angular",
       ])
     );
     fs.writeFileSync(
@@ -506,6 +519,123 @@ assert.throws(() => createRequire(import.meta.url).resolve('@playwright/test/pac
 );
 
 it(
+  "packed Angular packages type-check in a consumer on Angular 19.0 and TypeScript 5.5",
+  { timeout: 120_000 },
+  () => {
+    const consumer = path.join(tmp, "angular-consumer");
+    fs.mkdirSync(consumer);
+    const { tarballs, workspaceYaml } = tarballDependencies([
+      "@ayme-dev/ayme",
+      "@ayme-dev/angular",
+      "@ayme-dev/inspector",
+      "@ayme-dev/unplugin-ayme",
+    ]);
+    fs.writeFileSync(
+      path.join(consumer, "package.json"),
+      JSON.stringify({
+        name: "ayme-angular-consumer",
+        private: true,
+        type: "module",
+        dependencies: {
+          ...tarballs,
+          "@angular/core": "19.0.0",
+          rxjs: "7.8.2",
+        },
+        devDependencies: {
+          // The lowest TypeScript and esbuild Angular 19.0 supports.
+          typescript: "5.5.4",
+          esbuild: "0.24.0",
+          // What the Angular CLI provides when it runs ng add.
+          "@angular-devkit/schematics": "19.0.0",
+          "@schematics/angular": "19.0.0",
+          "@types/node": "22.10.10",
+        },
+      })
+    );
+    fs.writeFileSync(path.join(consumer, "pnpm-workspace.yaml"), workspaceYaml);
+    exec(
+      "pnpm",
+      [
+        "install",
+        "--ignore-scripts",
+        "--no-lockfile",
+        "--strict-peer-dependencies",
+      ],
+      consumer
+    );
+    fs.writeFileSync(
+      path.join(consumer, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          strict: true,
+          experimentalDecorators: true,
+          noEmit: true,
+          target: "ES2022",
+          lib: ["ES2022", "ESNext.Disposable", "DOM"],
+          module: "preserve",
+          moduleResolution: "bundler",
+          types: ["node"],
+        },
+        files: ["consumer.ts"],
+      })
+    );
+    fs.writeFileSync(
+      path.join(consumer, "consumer.ts"),
+      `
+import type { ApplicationConfig } from '@angular/core';
+import { ayme } from '@ayme-dev/ayme';
+import {
+  injectAyme,
+  injectPageObject,
+  provideAyme,
+  type AymeOptions,
+  type AymeSetup,
+  type AymeWebMcpPublicationStatus,
+} from '@ayme-dev/angular';
+import aymeAngularPlugin, { aymeAngular, type AymeAngularOptions } from '@ayme-dev/unplugin-ayme/angular';
+@ayme
+class Pom {
+  @ayme.action({ description: 'Act.' })
+  act() {}
+}
+const options: AymeOptions = { webMCP: { enabled: true, toolNamePrefix: 'demo_' } };
+export const appConfig: ApplicationConfig = { providers: [provideAyme(options)] };
+export function inComponent() {
+  const setup: AymeSetup = injectAyme();
+  const status: AymeWebMcpPublicationStatus = setup.webMCP.publicationStatus();
+  const retried: Promise<void> = setup.webMCP.retryPublication();
+  const pom: Pom = injectPageObject(Pom);
+  void [setup.ayme.pursueGoal, status.state, retried, pom.act()];
+}
+const pluginOptions: AymeAngularOptions = { tsconfigPath: 'tsconfig.app.json' };
+const name: string = aymeAngularPlugin(pluginOptions).name + aymeAngular().name;
+void name;
+`
+    );
+    exec("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
+
+    // `ng add` reads the collection the installed manifest names, then
+    // requires its factory beside the CLI's schematics packages.
+    fs.writeFileSync(
+      path.join(consumer, "load-ng-add.cjs"),
+      `const fs = require("node:fs");
+const path = require("node:path");
+const manifestPath = require.resolve("@ayme-dev/angular/package.json");
+const collectionPath = path.resolve(path.dirname(manifestPath), require(manifestPath).schematics);
+const ngAdd = JSON.parse(fs.readFileSync(collectionPath, "utf8")).schematics["ng-add"];
+const [factory, name] = ngAdd.factory.split("#");
+if (!fs.existsSync(path.resolve(path.dirname(collectionPath), ngAdd.schema))) throw new Error("ng-add schema missing");
+if (typeof require(path.resolve(path.dirname(collectionPath), factory))[name] !== "function") throw new Error("ng-add factory missing");
+console.log("ok");
+`
+    );
+    expect(exec(process.execPath, ["load-ng-add.cjs"], consumer).trim()).toBe(
+      "ok"
+    );
+  }
+);
+
+it(
   "packed @ayme-dev/ayme contains no private workspace leaks and is importable",
   { timeout: 60_000 },
   () => {
@@ -588,7 +718,7 @@ it(
         'if ("createRuntimeSession" in internal) throw new Error("createRuntimeSession must not be on /internal");',
         'if (typeof internal.configureAymeRuntime !== "function") throw new Error("missing configureAymeRuntime");',
         'const testing = await import("@ayme-dev/ayme/testing");',
-        'const testingExports = ["executePublishedTool", "publishedToolNames", "publishedToolSchema", "recordPublishedTools", "waitForPublishedTool"];',
+        'const testingExports = ["executePublishedTool", "publishedToolNames", "publishedToolSchema", "recordPublishedTools", "recordPublishedToolsLate", "waitForPublishedTool"];',
         'if (JSON.stringify(Object.keys(testing).sort()) !== JSON.stringify(testingExports)) throw new Error("unexpected /testing exports: " + Object.keys(testing));',
         'if ("recordPublishedTools" in main || "recordPublishedTools" in internal) throw new Error("the recording driver must stay on /testing");',
         'console.log("ok");',

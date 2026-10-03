@@ -3,8 +3,11 @@ packages:
   - packages/*
 allowBuilds:
   "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/e95ea4b7cadd62ff4f6d74a5101506e7e855a899": true
+  "@parcel/watcher": false
   esbuild: true
   lefthook: true
+  lmdb: false
+  msgpackr-extract: false
   vue-demi: false
 minimumReleaseAgeExclude:
   - "@vue/compiler-core@3.5.42"
@@ -17,3 +20,8 @@ minimumReleaseAgeExclude:
   - "@vue/server-renderer@3.5.42"
   - "@vue/shared@3.5.42"
   - vue@3.5.42
+# rolldown 1.2.12, which vite 8.3.0 (from @angular/build) would bring into
+# Nuxt's peer set, crashes vue-tsc in nuxt typecheck. 1.2.8 is the version
+# @angular/build pins.
+overrides:
+  rolldown@1.2.12: 1.2.8

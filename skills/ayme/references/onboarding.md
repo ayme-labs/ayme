@@ -11,7 +11,12 @@
    Start Ayme once at the application root with `useAyme` (Vue),
    `AymeProvider` (React) or `useAyme` in the root `+layout.svelte` or
    `App.svelte` (Svelte), and pass `webMCP: { enabled: true }` so its tools
-   are published. Other framework integrations are not documented yet; report
+   are published. For an Angular CLI application, run `ng add @ayme-dev/angular`
+   as the [Angular README](https://github.com/ayme-labs/ayme/blob/main/packages/angular/README.md)
+   describes, follow its manual steps for what `ng add` reports it could not
+   change, pass `webMCP: { enabled: true }` to `provideAyme`, and raise the
+   production `maximumError` budget if the build fails it. Other framework
+   integrations are not documented yet; report
    that gap rather than adapting internal runtime APIs into an unsupported
    setup.
 4. Follow [Browser setup](browser-setup.md) to choose native WebMCP or a local

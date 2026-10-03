@@ -46,9 +46,11 @@ test("hydrates, publishes the compiled POM, executes it, and cleans up on remoun
 
   const response = await page.goto("/");
   expect(response?.status()).toBe(200);
+  // nuxt dev compiles the Page Object Model on first request, one TypeScript
+  // Program, which takes over 10 s on CI while other example apps build.
   await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
     "Publication: active",
-    { timeout: 15_000 }
+    { timeout: 30_000 }
   );
   // The published schema matches the metadata declared in the POM source.
   await expect

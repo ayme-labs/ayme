@@ -34,7 +34,8 @@ Internal adapter packages are bundled; consumers do not install them separately.
   and what it exports may change without notice.
 - `@ayme-dev/ayme/testing` is for Playwright tests of an integration: a
   recording WebMCP driver that `recordPublishedTools` installs into a browser
-  context, with queries to list, inspect, await and execute the tools the
+  context (or `recordPublishedToolsLate` into an already loaded page, to test
+  a driver that appears late), with queries to list, inspect, await and execute the tools the
   runtime publishes. It uses Playwright's types and receives your test's
   `Page` and `BrowserContext`. Only tests may import it; application code
   never does.

@@ -1,0 +1,70 @@
+{
+  "name": "@ayme-dev/angular",
+  "version": "0.1.0",
+  "description": "Angular integration for Ayme.",
+  "license": "FSL-1.1-ALv2",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "files": [
+    "dist",
+    "schematics"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "schematics": "./schematics/collection.json",
+  "ng-add": {
+    "save": "dependencies"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "lint": "eslint src --max-warnings 0",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ayme-dev/ayme": "workspace:*"
+  },
+  "peerDependencies": {
+    "@angular-devkit/schematics": ">=19.0.0 <23.0.0",
+    "@angular/core": ">=19.0.0 <23.0.0",
+    "@playwright/test": ">=1.29 <1.63",
+    "@schematics/angular": ">=19.0.0 <23.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@angular-devkit/schematics": {
+      "optional": true
+    },
+    "@playwright/test": {
+      "optional": true
+    },
+    "@schematics/angular": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@angular-devkit/schematics": "^22.2.1",
+    "@angular/common": "^22.2.1",
+    "@angular/compiler": "^22.2.1",
+    "@angular/core": "^22.2.1",
+    "@angular/platform-browser": "^22.2.1",
+    "@angular/platform-server": "^22.2.1",
+    "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/typescript-config": "workspace:*",
+    "@schematics/angular": "^22.2.1",
+    "eslint": "^10.9.1",
+    "jsdom": "^30.0.1",
+    "rxjs": "^7.8.2",
+    "tsdown": "^0.22.14",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11",
+    "zone.js": "~0.15.1"
+  }
+}

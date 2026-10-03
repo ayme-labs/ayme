@@ -1,0 +1,9 @@
+{
+  "extends": ["//"],
+  "tags": ["adapter"],
+  "tasks": {
+    "test": {
+      "dependsOn": ["build", "^build"]
+    }
+  }
+}
