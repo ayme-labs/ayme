@@ -1,0 +1,20 @@
+$ /nix/store/si2a6wj95hir7ls51z4a9bfxj0bfv3vn-nodejs-slim-24.21.0/bin/node prerender.mjs
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.14.0
+
+file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.14.0/dist-ssr/server.js:2
+import { renderToString } from "react-dom/server.js";
+         ^^^^^^^^^^^^^^
+SyntaxError: Named export 'renderToString' not found. The requested module 'react-dom/server.js' is a CommonJS module, which may not support all module.exports as named exports.
+CommonJS modules can always be imported via the default export, for example using:
+
+import pkg from 'react-dom/server.js';
+const { renderToString } = pkg;
+
+    at #asyncInstantiate (node:internal/modules/esm/module_job:455:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:553:5)
+    at async node:internal/modules/esm/loader:647:26
+    at async file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.14.0/prerender.mjs:4:20
+
+Node.js v24.21.0
+
+exit 1

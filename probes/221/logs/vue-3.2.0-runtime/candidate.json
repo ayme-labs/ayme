@@ -1,0 +1,11 @@
+{
+  "label": "vue-3.2.0-runtime",
+  "framework": "vue",
+  "pack": "pack-main",
+  "client": "default",
+  "dependencies": {
+    "vue": "3.2.0",
+    "@vue/server-renderer": "3.2.0"
+  },
+  "skip": ["typecheck"]
+}

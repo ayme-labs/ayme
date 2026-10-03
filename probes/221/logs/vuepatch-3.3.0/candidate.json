@@ -1,0 +1,10 @@
+{
+  "label": "vuepatch-3.3.0",
+  "framework": "vue",
+  "pack": "pack-patched",
+  "client": "default",
+  "dependencies": {
+    "vue": "3.3.0",
+    "@vue/server-renderer": "3.3.0"
+  }
+}

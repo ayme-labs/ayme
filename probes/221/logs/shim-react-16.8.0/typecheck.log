@@ -1,0 +1,6 @@
+$ pnpm exec tsc -p tsconfig.json
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.8.0
+node_modules/.pnpm/@ayme-dev+react@file+..+..+pack-shim+tarballs+ayme-dev-react-0.1.0.tgz_@playwright+test@1.62.1_react@16.8.0/node_modules/@ayme-dev/react/dist/index.d.mts(14,117): error TS2707: Generic type 'ReactElement<P, T>' requires between 1 and 2 type arguments.
+
+
+exit 2

@@ -1,0 +1,65 @@
+[
+  {
+    "name": "probe-vue-3.2.0-runtime",
+    "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vue-3.2.0-runtime",
+    "private": true,
+    "dependencies": {
+      "@ayme-dev/ayme": {
+        "from": "@ayme-dev/ayme",
+        "version": "0.1.0",
+        "resolved": "file:../../pack-main/tarballs/ayme-dev-ayme-0.1.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vue-3.2.0-runtime/node_modules/.pnpm/@ayme-dev+ayme@file+..+..+pack-main+tarballs+ayme-dev-ayme-0.1.0.tgz_@playwright+test@1.62.1/node_modules/@ayme-dev/ayme"
+      },
+      "@ayme-dev/vue": {
+        "from": "@ayme-dev/vue",
+        "version": "0.1.0",
+        "resolved": "file:../../pack-main/tarballs/ayme-dev-vue-0.1.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vue-3.2.0-runtime/node_modules/.pnpm/@ayme-dev+vue@file+..+..+pack-main+tarballs+ayme-dev-vue-0.1.0.tgz_@playwright+test@1.62.1_vue@3.2.0/node_modules/@ayme-dev/vue"
+      },
+      "@vue/server-renderer": {
+        "from": "@vue/server-renderer",
+        "version": "3.2.0",
+        "resolved": "https://registry.npmjs.org/@vue/server-renderer/-/server-renderer-3.2.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vue-3.2.0-runtime/node_modules/.pnpm/@vue+server-renderer@3.2.0_vue@3.2.0/node_modules/@vue/server-renderer"
+      },
+      "vue": {
+        "from": "vue",
+        "version": "3.2.0",
+        "resolved": "https://registry.npmjs.org/vue/-/vue-3.2.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vue-3.2.0-runtime/node_modules/.pnpm/vue@3.2.0/node_modules/vue"
+      }
+    },
+    "devDependencies": {
+      "@ayme-dev/unplugin-ayme": {
+        "from": "@ayme-dev/unplugin-ayme",
+        "version": "0.1.0",
+        "resolved": "file:../../pack-main/tarballs/ayme-dev-unplugin-ayme-0.1.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vue-3.2.0-runtime/node_modules/.pnpm/@ayme-dev+unplugin-ayme@file+..+..+pack-main+tarballs+ayme-dev-unplugin-ayme-0.1.0.tgz__bb8e831bdce5da551de30312325399db/node_modules/@ayme-dev/unplugin-ayme"
+      },
+      "@playwright/test": {
+        "from": "@playwright/test",
+        "version": "1.62.1",
+        "resolved": "https://registry.npmjs.org/@playwright/test/-/test-1.62.1.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vue-3.2.0-runtime/node_modules/.pnpm/@playwright+test@1.62.1/node_modules/@playwright/test"
+      },
+      "@types/node": {
+        "from": "@types/node",
+        "version": "24.13.3",
+        "resolved": "https://registry.npmjs.org/@types/node/-/node-24.13.3.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vue-3.2.0-runtime/node_modules/.pnpm/@types+node@24.13.3/node_modules/@types/node"
+      },
+      "typescript": {
+        "from": "typescript",
+        "version": "6.0.3",
+        "resolved": "https://registry.npmjs.org/typescript/-/typescript-6.0.3.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vue-3.2.0-runtime/node_modules/.pnpm/typescript@6.0.3/node_modules/typescript"
+      },
+      "vite": {
+        "from": "vite",
+        "version": "8.2.2",
+        "resolved": "https://registry.npmjs.org/vite/-/vite-8.2.2.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vue-3.2.0-runtime/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3/node_modules/vite"
+      }
+    }
+  }
+]

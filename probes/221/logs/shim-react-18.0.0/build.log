@@ -1,0 +1,15 @@
+$ pnpm exec vite build --mode development
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-18.0.0
+vite v8.2.2 building client environment for development...
+transforming...
+✓ 23 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                              0.22 kB │ gzip:   0.18 kB
+dist/assets/_virtual_playwright-lite-mime-CpF3J5YM-CUDdQG1X-A40BtK0H.js     44.03 kB │ gzip:  10.36 kB
+dist/assets/index-D5U6_MM5.js                                            2,174.15 kB │ gzip: 472.93 kB
+
+✓ built in 853ms
+
+
+exit 0

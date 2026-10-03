@@ -1,0 +1,15 @@
+$ pnpm exec vite build --mode development
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vuepatch-3.5.0
+vite v8.2.2 building client environment for development...
+transforming...
+✓ 19 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                              0.22 kB │ gzip:   0.18 kB
+dist/assets/_virtual_playwright-lite-mime-CpF3J5YM-CUDdQG1X-b0kGKOKO.js     44.04 kB │ gzip:  10.36 kB
+dist/assets/index-nWfGjk8k.js                                            1,632.53 kB │ gzip: 383.39 kB
+
+✓ built in 1.09s
+
+
+exit 0

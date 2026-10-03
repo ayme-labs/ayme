@@ -1,0 +1,13 @@
+== typecheck (react 18.0.0, types 18.3.31/18.3.7)
+exit 0
+== unit tests
+Error: Ayme hooks require an ancestor AymeProvider.
+Error: Ayme hooks require an ancestor AymeProvider.
+Error: AymeProvider cannot be nested beneath another Ayme runtime owner.
+Error: AymeProvider cannot be nested beneath another Ayme runtime owner.
+Error: The provider options must stay fixed while mounted. Remount the provider to change them.
+Error: The provider options must stay fixed while mounted. Remount the provider to change them.
+Error: The Page Object model and provider must stay fixed while mounted. Remount the component to change them.
+Error: The Page Object model and provider must stay fixed while mounted. Remount the component to change them.
+exit 0
+restored

@@ -1,0 +1,5 @@
+$ pnpm exec tsc -p tsconfig.json
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-types18.0.0-scheduler0.16.2
+
+
+exit 0

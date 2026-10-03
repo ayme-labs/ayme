@@ -1,0 +1,17 @@
+{
+  "label": "shim-react-16.14.0-ssr-bundled",
+  "framework": "react",
+  "pack": "pack-shim",
+  "client": "17",
+  "dependencies": {
+    "react": "16.14.0",
+    "react-dom": "16.14.0"
+  },
+  "devDependencies": {
+    "@types/react": "16.14.70",
+    "@types/react-dom": "16.9.25"
+  },
+  "env": {
+    "PROBE_SSR_NOEXTERNAL": "1"
+  }
+}

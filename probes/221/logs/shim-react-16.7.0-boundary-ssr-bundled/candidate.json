@@ -1,0 +1,23 @@
+{
+  "label": "shim-react-16.7.0-boundary-ssr-bundled",
+  "framework": "react",
+  "pack": "pack-shim",
+  "client": "17",
+  "dependencies": {
+    "react": "16.7.0",
+    "react-dom": "16.7.0"
+  },
+  "devDependencies": {
+    "@types/react": "16.8.3",
+    "@types/react-dom": "16.8.0"
+  },
+  "env": {
+    "PROBE_SSR_NOEXTERNAL": "1"
+  },
+  "peerDependencyRules": {
+    "allowedVersions": {
+      "react": "16.7.0",
+      "react-dom": "16.7.0"
+    }
+  }
+}

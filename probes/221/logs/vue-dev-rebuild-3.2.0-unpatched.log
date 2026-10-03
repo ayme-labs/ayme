@@ -1,0 +1,9 @@
+Preparing pnpm@11.24.0 for immediate activation...
+== typecheck (3.2.0)
+exit 0
+== unit tests (3.2.0)
+      Tests  17 passed (17)
+exit 0
+== declaration build (3.2.0)
+exit 0
+restored

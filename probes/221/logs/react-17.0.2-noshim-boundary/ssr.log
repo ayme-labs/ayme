@@ -1,0 +1,20 @@
+$ /nix/store/si2a6wj95hir7ls51z4a9bfxj0bfv3vn-nodejs-slim-24.21.0/bin/node prerender.mjs
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-17.0.2-noshim-boundary
+
+file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-17.0.2-noshim-boundary/node_modules/.pnpm/@ayme-dev+react@file+..+..+pack-peer18+tarballs+ayme-dev-react-0.1.0.tgz_@playwright+test@1.62.1_react@17.0.2/node_modules/@ayme-dev/react/dist/index.mjs:1
+import { createContext, createElement, useContext, useEffect, useState, useSyncExternalStore } from "react";
+                                                                        ^^^^^^^^^^^^^^^^^^^^
+SyntaxError: Named export 'useSyncExternalStore' not found. The requested module 'react' is a CommonJS module, which may not support all module.exports as named exports.
+CommonJS modules can always be imported via the default export, for example using:
+
+import pkg from 'react';
+const { createContext, createElement, useContext, useEffect, useState, useSyncExternalStore } = pkg;
+
+    at #asyncInstantiate (node:internal/modules/esm/module_job:455:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:553:5)
+    at async node:internal/modules/esm/loader:647:26
+    at async file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-17.0.2-noshim-boundary/prerender.mjs:4:20
+
+Node.js v24.21.0
+
+exit 1

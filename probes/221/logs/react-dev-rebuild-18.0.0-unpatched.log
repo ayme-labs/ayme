@@ -1,0 +1,13 @@
+== typecheck (react 18.0.0, types 18.3.31/18.3.7)
+exit 0
+== unit tests
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/index.test.ts > passes the page factory and ignore to the runtime session
+TypeError: act is not a function
+ FAIL  src/index.test.ts > passes customTools to the runtime session
+TypeError: act is not a function
+ FAIL  src/index.test.ts > passes goalLoop to the runtime session
+TypeError: act is not a function
+ FAIL  src/index.test.ts > passes webMCP to the runtime session and accepts an equal object on rerender
+exit 1
+restored

@@ -1,0 +1,13 @@
+$ pnpm exec vite build --mode development --ssr src/server.ts --outDir dist-ssr
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-17.0.2-noshim-boundary
+vite v8.2.2 building ssr environment for development...
+transforming...
+✓ 5 modules transformed.
+rendering chunks...
+computing gzip size...
+dist-ssr/server.js  2.55 kB │ gzip: 1.07 kB
+
+✓ built in 15ms
+
+
+exit 0

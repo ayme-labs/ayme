@@ -1,0 +1,18 @@
+diff --git a/packages/react/src/index.test.ts b/packages/react/src/index.test.ts
+index 2714f4b..e2f801d 100644
+--- a/packages/react/src/index.test.ts
++++ b/packages/react/src/index.test.ts
+@@ -1,11 +1,12 @@
+ import {
+-  act,
+   createElement as h,
+   StrictMode,
+   Suspense,
+   useEffect,
+ } from "react";
+ import { createRoot, type Root } from "react-dom/client";
++// Probe mechanics: React <18.3 exports act only from react-dom/test-utils.
++import { act } from "react-dom/test-utils";
+ import { renderToString } from "react-dom/server";
+ import { afterEach, beforeEach, expect, expectTypeOf, it, vi } from "vitest";
+ import { createRuntimeSession } from "@ayme-dev/ayme";

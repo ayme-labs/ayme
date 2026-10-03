@@ -1,0 +1,28 @@
+$ pnpm install --ignore-scripts --no-lockfile --strict-peer-dependencies
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vuepatch-3.5.42
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +133
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Packages are cloned from the content-addressable store to the virtual store.
+  Content-addressable store is at: /Users/abelenekes/Library/pnpm/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 157, reused 133, downloaded 0, added 95
+Progress: resolved 157, reused 133, downloaded 0, added 133, done
+
+dependencies:
++ @ayme-dev/ayme 0.1.0
++ @ayme-dev/vue 0.1.0
++ @vue/server-renderer 3.5.42 (3.5.43 is available)
++ vue 3.5.42 (3.5.43 is available)
+
+devDependencies:
++ @ayme-dev/unplugin-ayme 0.1.0
++ @playwright/test 1.62.1 (1.63.0 is available)
++ @types/node 24.13.3 (26.6.4 is available)
++ typescript 6.0.3 (7.0.2 is available)
++ vite 8.2.2 (8.3.2 is available)
+
+Done in 2s using pnpm v11.24.0
+
+
+exit 0

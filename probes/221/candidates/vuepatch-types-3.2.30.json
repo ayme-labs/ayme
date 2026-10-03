@@ -1,0 +1,11 @@
+{
+  "label": "vuepatch-types-3.2.30",
+  "framework": "vue",
+  "pack": "pack-patched",
+  "client": "default",
+  "dependencies": {
+    "vue": "3.2.30",
+    "@vue/server-renderer": "3.2.30"
+  },
+  "skip": ["build", "ssr-build", "ssr", "browser"]
+}

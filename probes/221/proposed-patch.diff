@@ -1,0 +1,68 @@
+diff --git a/packages/react/package.json b/packages/react/package.json
+index b950bc3..1d9af44 100644
+--- a/packages/react/package.json
++++ b/packages/react/package.json
+@@ -24,7 +24,8 @@
+     "typecheck": "tsc --noEmit"
+   },
+   "dependencies": {
+-    "@ayme-dev/ayme": "workspace:*"
++    "@ayme-dev/ayme": "workspace:*",
++    "use-sync-external-store": "1.7.0"
+   },
+   "peerDependencies": {
+     "react": "^19.0.0"
+@@ -34,10 +35,11 @@
+     "@ayme-dev/typescript-config": "workspace:*",
+     "@types/react": "^19.0.0",
+     "@types/react-dom": "^19.0.0",
++    "@types/use-sync-external-store": "1.7.0",
++    "eslint": "^10.9.1",
++    "jsdom": "^30.0.1",
+     "react": "^19.0.0",
+     "react-dom": "^19.0.0",
+-    "jsdom": "^30.0.1",
+-    "eslint": "^10.9.1",
+     "tsdown": "^0.22.14",
+     "typescript": "^6.0.3",
+     "vitest": "^4.1.11"
+diff --git a/packages/react/src/index.ts b/packages/react/src/index.ts
+index f03b239..d844d58 100644
+--- a/packages/react/src/index.ts
++++ b/packages/react/src/index.ts
+@@ -4,10 +4,10 @@ import {
+   useContext,
+   useEffect,
+   useState,
+-  useSyncExternalStore,
+   type ReactElement,
+   type ReactNode,
+ } from "react";
++import { useSyncExternalStore } from "use-sync-external-store/shim";
+ import {
+   createRuntimeSession,
+   type AymePage,
+diff --git a/packages/vue/src/index.ts b/packages/vue/src/index.ts
+index 3e0f624..ff41197 100644
+--- a/packages/vue/src/index.ts
++++ b/packages/vue/src/index.ts
+@@ -8,6 +8,7 @@ import {
+   shallowReactive,
+   shallowReadonly,
+   watch,
++  type DefineComponent,
+   type InjectionKey,
+   type PropType,
+ } from "vue";
+@@ -76,7 +77,10 @@ function consumeRuntime(runtime: RuntimeSession): UseAymeResult {
+   return { ayme: runtime, webMCP: shallowReadonly(webMCP) };
+ }
+ 
+-export const AymeProvider = defineComponent({
++// Annotated so the emitted declaration names only DefineComponent<Props>,
++// which every Vue 3.2+ release accepts; the inferred type spells out the
++// build-time Vue's full DefineComponent arity.
++export const AymeProvider: DefineComponent<UseAymeOptions> = defineComponent({
+   name: "AymeProvider",
+   props: {
+     pageFactory: {

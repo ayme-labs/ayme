@@ -1,0 +1,77 @@
+[
+  {
+    "name": "probe-react-18.0.0-declared-peer",
+    "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer",
+    "private": true,
+    "dependencies": {
+      "@ayme-dev/ayme": {
+        "from": "@ayme-dev/ayme",
+        "version": "0.1.0",
+        "resolved": "file:../../pack-main/tarballs/ayme-dev-ayme-0.1.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer/node_modules/.pnpm/@ayme-dev+ayme@file+..+..+pack-main+tarballs+ayme-dev-ayme-0.1.0.tgz_@playwright+test@1.62.1/node_modules/@ayme-dev/ayme"
+      },
+      "@ayme-dev/react": {
+        "from": "@ayme-dev/react",
+        "version": "0.1.0",
+        "resolved": "file:../../pack-main/tarballs/ayme-dev-react-0.1.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer/node_modules/.pnpm/@ayme-dev+react@file+..+..+pack-main+tarballs+ayme-dev-react-0.1.0.tgz_@playwright+test@1.62.1_react@18.0.0/node_modules/@ayme-dev/react"
+      },
+      "react": {
+        "from": "react",
+        "version": "18.0.0",
+        "resolved": "https://registry.npmjs.org/react/-/react-18.0.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer/node_modules/.pnpm/react@18.0.0/node_modules/react"
+      },
+      "react-dom": {
+        "from": "react-dom",
+        "version": "18.0.0",
+        "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-18.0.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer/node_modules/.pnpm/react-dom@18.0.0_react@18.0.0/node_modules/react-dom"
+      }
+    },
+    "devDependencies": {
+      "@ayme-dev/unplugin-ayme": {
+        "from": "@ayme-dev/unplugin-ayme",
+        "version": "0.1.0",
+        "resolved": "file:../../pack-main/tarballs/ayme-dev-unplugin-ayme-0.1.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer/node_modules/.pnpm/@ayme-dev+unplugin-ayme@file+..+..+pack-main+tarballs+ayme-dev-unplugin-ayme-0.1.0.tgz__be9515ee2c7a24cfd378002852e950ec/node_modules/@ayme-dev/unplugin-ayme"
+      },
+      "@playwright/test": {
+        "from": "@playwright/test",
+        "version": "1.62.1",
+        "resolved": "https://registry.npmjs.org/@playwright/test/-/test-1.62.1.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer/node_modules/.pnpm/@playwright+test@1.62.1/node_modules/@playwright/test"
+      },
+      "@types/node": {
+        "from": "@types/node",
+        "version": "24.13.3",
+        "resolved": "https://registry.npmjs.org/@types/node/-/node-24.13.3.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer/node_modules/.pnpm/@types+node@24.13.3/node_modules/@types/node"
+      },
+      "@types/react": {
+        "from": "@types/react",
+        "version": "18.0.0",
+        "resolved": "https://registry.npmjs.org/@types/react/-/react-18.0.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer/node_modules/.pnpm/@types+react@18.0.0/node_modules/@types/react"
+      },
+      "@types/react-dom": {
+        "from": "@types/react-dom",
+        "version": "18.0.0",
+        "resolved": "https://registry.npmjs.org/@types/react-dom/-/react-dom-18.0.0.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer/node_modules/.pnpm/@types+react-dom@18.0.0/node_modules/@types/react-dom"
+      },
+      "typescript": {
+        "from": "typescript",
+        "version": "6.0.3",
+        "resolved": "https://registry.npmjs.org/typescript/-/typescript-6.0.3.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer/node_modules/.pnpm/typescript@6.0.3/node_modules/typescript"
+      },
+      "vite": {
+        "from": "vite",
+        "version": "8.2.2",
+        "resolved": "https://registry.npmjs.org/vite/-/vite-8.2.2.tgz",
+        "path": "/private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3/node_modules/vite"
+      }
+    }
+  }
+]

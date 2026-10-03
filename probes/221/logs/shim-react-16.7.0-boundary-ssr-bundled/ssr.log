@@ -1,0 +1,20 @@
+$ /nix/store/si2a6wj95hir7ls51z4a9bfxj0bfv3vn-nodejs-slim-24.21.0/bin/node prerender.mjs
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.7.0-boundary-ssr-bundled
+
+file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.7.0-boundary-ssr-bundled/dist-ssr/server.js:42702
+	const ancestor = (0, import_react.useContext)(RuntimeContext);
+	                                             ^
+
+TypeError: (0 , import_react.useContext) is not a function
+    at AymeProvider (file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.7.0-boundary-ssr-bundled/dist-ssr/server.js:42702:47)
+    at processChild (file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.7.0-boundary-ssr-bundled/dist-ssr/server.js:4597:13)
+    at resolve (file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.7.0-boundary-ssr-bundled/dist-ssr/server.js:4539:5)
+    at ReactDOMServerRenderer.render (file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.7.0-boundary-ssr-bundled/dist-ssr/server.js:4795:21)
+    at ReactDOMServerRenderer.read (file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.7.0-boundary-ssr-bundled/dist-ssr/server.js:4769:26)
+    at renderToString (file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.7.0-boundary-ssr-bundled/dist-ssr/server.js:5074:21)
+    at render (file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.7.0-boundary-ssr-bundled/dist-ssr/server.js:42804:53)
+    at file:///private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-16.7.0-boundary-ssr-bundled/prerender.mjs:6:22
+
+Node.js v24.21.0
+
+exit 1

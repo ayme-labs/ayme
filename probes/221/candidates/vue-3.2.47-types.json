@@ -1,0 +1,11 @@
+{
+  "label": "vue-3.2.47-types",
+  "framework": "vue",
+  "pack": "pack-main",
+  "client": "default",
+  "dependencies": {
+    "vue": "3.2.47",
+    "@vue/server-renderer": "3.2.47"
+  },
+  "skip": ["build", "ssr-build", "ssr", "browser"]
+}

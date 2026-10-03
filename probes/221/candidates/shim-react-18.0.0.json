@@ -1,0 +1,14 @@
+{
+  "label": "shim-react-18.0.0",
+  "framework": "react",
+  "pack": "pack-shim",
+  "client": "18",
+  "dependencies": {
+    "react": "18.0.0",
+    "react-dom": "18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7"
+  }
+}

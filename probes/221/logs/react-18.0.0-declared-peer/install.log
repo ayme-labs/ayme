@@ -1,0 +1,23 @@
+$ pnpm install --ignore-scripts --no-lockfile --strict-peer-dependencies
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/react-18.0.0-declared-peer
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 127, reused 56, downloaded 6, added 0
+Packages: +125
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Packages are cloned from the content-addressable store to the virtual store.
+  Content-addressable store is at: /Users/abelenekes/Library/pnpm/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 149, reused 118, downloaded 7, added 125, done
+[ERR_PNPM_PEER_DEP_ISSUES] Unmet peer dependencies
+
+✕ unmet peer react
+  Installed: 18.0.0
+  Wanted:
+    ^19.0.0:
+      @ayme-dev/react@0.1.0
+hint: To disable failing on peer dependency issues, add the following to pnpm-workspace.yaml in your project root:
+
+  strictPeerDependencies: false
+
+
+exit 1

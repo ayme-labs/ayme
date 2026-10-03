@@ -1,0 +1,6 @@
+$ /nix/store/si2a6wj95hir7ls51z4a9bfxj0bfv3vn-nodejs-slim-24.21.0/bin/node prerender.mjs
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vuepatch-3.5.0
+<!--[--><main><p role="status" aria-label="Publication">Publication: waiting</p><button>Retry publication</button><button>Unmount counter</button><section aria-label="Counter"><p>Count: <output>0</output></p><button>Increment</button><button>Call Page Object</button></section></main><!--]-->
+
+
+exit 0

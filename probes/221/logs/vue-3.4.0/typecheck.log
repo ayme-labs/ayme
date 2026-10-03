@@ -1,0 +1,6 @@
+$ pnpm exec tsc -p tsconfig.json
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vue-3.4.0
+node_modules/.pnpm/@ayme-dev+vue@file+..+..+pack-main+tarballs+ayme-dev-vue-0.1.0.tgz_@playwright+test@1.62.1_vue@3.4.0_typescript@6.0.3_/node_modules/@ayme-dev/vue/dist/index.d.mts(19,29): error TS2707: Generic type 'DefineComponent' requires between 0 and 13 type arguments.
+
+
+exit 2

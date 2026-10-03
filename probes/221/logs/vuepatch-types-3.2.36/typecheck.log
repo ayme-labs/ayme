@@ -1,0 +1,6 @@
+$ pnpm exec tsc -p tsconfig.json
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/vuepatch-types-3.2.36
+node_modules/.pnpm/@vue+runtime-core@3.2.36/node_modules/@vue/runtime-core/dist/runtime-core.d.ts(1840,33): error TS2344: Type 'HostElement' does not satisfy the constraint 'RendererElement'.
+
+
+exit 2

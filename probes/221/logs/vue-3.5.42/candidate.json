@@ -1,0 +1,10 @@
+{
+  "label": "vue-3.5.42",
+  "framework": "vue",
+  "pack": "pack-main",
+  "client": "default",
+  "dependencies": {
+    "vue": "3.5.42",
+    "@vue/server-renderer": "3.5.42"
+  }
+}

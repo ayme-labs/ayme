@@ -1,0 +1,12 @@
+$ pnpm exec playwright test
+# cwd /private/tmp/claude-501/-Users-abelenekes-Desktop-Development-ayme/9199bf81-aecd-442f-a6b7-bcf4eb9532fa/scratchpad/consumers/shim-react-17.0.0
+
+Running 2 tests using 1 worker
+
+  ✓  1 tests/consumer.spec.ts:14:3 › index.html: register, act, unmount, remount (1.3s)
+  ✓  2 tests/consumer.spec.ts:14:3 › ssr.html: register, act, unmount, remount (1.2s)
+
+  2 passed (3.9s)
+
+
+exit 0

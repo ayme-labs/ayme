@@ -1,0 +1,14 @@
+{
+  "label": "react-18.0.0-declared-peer",
+  "framework": "react",
+  "pack": "pack-main",
+  "client": "18",
+  "dependencies": {
+    "react": "18.0.0",
+    "react-dom": "18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "18.0.0",
+    "@types/react-dom": "18.0.0"
+  }
+}
