@@ -1,5 +1,8 @@
 import type { JsonSchema, RegisteredPomTool } from "@ayme-dev/ayme";
-import type { RegisteredPom } from "@ayme-dev/ayme/internal";
+import type {
+  PublishedToolGroup,
+  RegisteredPom,
+} from "@ayme-dev/ayme/internal";
 
 /** A tool as the run card runs it. */
 export type RunnableTool = {
@@ -25,6 +28,8 @@ export type RunnableTool = {
    * Object action's arguments never do, whatever their names.
    */
   refField?: "ref" | "target";
+  /** The argument that takes a key to press: a Browser Tool's `key`. */
+  keyField?: "key";
 };
 
 /** A tool the runtime lists as live: one `runTool` can run now. */
@@ -32,6 +37,7 @@ export type ToolSummary = {
   name: string;
   description: string;
   inputSchema: JsonSchema;
+  group?: PublishedToolGroup;
 };
 
 /**
@@ -68,6 +74,10 @@ export function listRunnableTools(
         argumentsSchema: tool.inputSchema,
         available: true,
         ...(refField ? { refField } : {}),
+        ...(tool.group === "browser" &&
+        tool.inputSchema.properties?.key?.type === "string"
+          ? { keyField: "key" as const }
+          : {}),
       });
     }
   return tools;

@@ -5,6 +5,7 @@ import type { JsonValue } from "@ayme-dev/ayme";
 
 import type { ToolArguments } from "../adapter/useRuns";
 import { initialValues, type Field } from "./fields";
+import { KeyField } from "./KeyField";
 import { RefField, type RefSource } from "./RefField";
 
 export const inputClass =
@@ -208,7 +209,7 @@ function FieldRow({
   );
 }
 
-/** The control of a single value: text, a ref, a number, a choice or JSON. */
+/** The control of a single value: text, a ref, a key, a number, a choice or JSON. */
 function ScalarControl({
   field,
   id,
@@ -233,6 +234,14 @@ function ScalarControl({
           value={typeof value === "string" ? value : ""}
           onChange={onChange}
           source={refSource}
+        />
+      );
+    case "key":
+      return (
+        <KeyField
+          {...shared}
+          value={typeof value === "string" ? value : ""}
+          onChange={onChange}
         />
       );
     case "text":

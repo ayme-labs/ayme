@@ -82,7 +82,8 @@ Applications do not need this demo-only entry point.
   sees", the syntax-highlighted definitions and schemas an agent receives.
 - `src/runCard`: the run card that fills the run slot: the typed form built
   from a tool's schema, the item picker and the last result. Each field's
-  control is chosen by its kind; `RefField` is the ref field's.
+  control is chosen by its kind; `RefField` is the ref field's, and
+  `KeyField` records or searches the key `press_key` presses.
 - `src/runs`: Runs, the timeline of the runs made from the panel, and which
   runs belong to the selection.
 

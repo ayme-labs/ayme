@@ -20,6 +20,8 @@ export type FieldKind =
   | { kind: "text"; inputType: TextInputType }
   /** A Structural Ref, e.g. e12, chosen from the page structure or on the page. */
   | { kind: "ref" }
+  /** A key or combo for press_key, e.g. ControlOrMeta+C, recorded or searched. */
+  | { kind: "key" }
   | { kind: "number"; integer: boolean }
   | { kind: "boolean" }
   | { kind: "choice"; options: readonly JsonPrimitive[] }
@@ -38,15 +40,22 @@ const inputTypes: Partial<Record<string, TextInputType>> = {
 
 /**
  * The fields of an object schema, one per property, in schema order.
- * `refField` names the property that takes a Structural Ref, if any.
+ * `ref` names the property that takes a Structural Ref, and `key` the one
+ * that takes a key to press, if any.
  */
-export function fieldsOf(schema: JsonSchema, refField?: string): Field[] {
+export function fieldsOf(
+  schema: JsonSchema,
+  { ref, key }: { ref?: string; key?: string } = {}
+): Field[] {
   const required = new Set(schema.required ?? []);
-  return Object.entries(schema.properties ?? {}).map(([name, property]) =>
-    name === refField && property.type === "string"
-      ? { name, optional: !required.has(name), kind: "ref", typeLabel: "ref" }
-      : fieldOf(name, property, !required.has(name))
-  );
+  return Object.entries(schema.properties ?? {}).map(([name, property]) => {
+    const optional = !required.has(name);
+    if (property.type === "string" && (name === ref || name === key)) {
+      const kind = name === ref ? "ref" : "key";
+      return { name, optional, kind, typeLabel: kind };
+    }
+    return fieldOf(name, property, optional);
+  });
 }
 
 function fieldOf(name: string, schema: Schema, optional: boolean): Field {

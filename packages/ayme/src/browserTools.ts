@@ -427,7 +427,7 @@ const pressKeySchema: JsonSchema = {
     key: {
       type: "string",
       description:
-        "Name of the key to press or a character to generate, such as `ArrowLeft` or `a`.",
+        "Name of the key to press or a character to generate, such as `ArrowLeft`, `a` or `ControlOrMeta+A`.",
     },
   },
   required: ["key"],
