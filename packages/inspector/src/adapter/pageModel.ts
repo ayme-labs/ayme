@@ -71,7 +71,7 @@ export type ObjectAction = {
   description?: string;
   /** Its arguments, e.g. "(text: string)". */
   signature: string;
-  /** Its Generated WebMCP Tool. */
+  /** Its Page Object Tool. */
   toolName: string;
   /**
    * Whether the tool is live: the panel can run it now because its Page
@@ -106,7 +106,7 @@ export type ModelAction = {
   name: string;
   description?: string;
   signature: string;
-  /** Its Generated WebMCP Tools: one per place the model is used. */
+  /** Its Page Object Tools: one per place the model is used. */
   toolNames: readonly string[];
   /** The ones that are live now: their Page Object is on the page. */
   liveToolNames: readonly string[];

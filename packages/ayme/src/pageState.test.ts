@@ -22,7 +22,7 @@ import {
   resolvePageStateRefs,
 } from "./pageState";
 import { getPageStateTool } from "./pageContext";
-import ayme from "./index";
+import { ayme } from "./ayme";
 
 const ref = AriaRefSchema.parse;
 

@@ -1,6 +1,6 @@
 import type { Locator } from "@playwright/test";
 
-import { WebMCP } from "./webmcp";
+import { ayme } from "@ayme-dev/ayme";
 
 class BasePom {
   readonly inheritedButton!: Locator;
@@ -8,18 +8,18 @@ class BasePom {
   private readonly basePrivateButton!: Locator;
   protected readonly baseProtectedButton!: Locator;
 
-  @WebMCP.tool({ description: "Use the inherited base tool." })
+  @ayme.action({ description: "Use the inherited base tool." })
   inheritedTool() {}
 
-  @WebMCP.tool({ description: "Use the base override tool." })
+  @ayme.action({ description: "Use the base override tool." })
   overriddenTool(value: string) {
     return value;
   }
 
-  @WebMCP.tool({ description: "Do not expose the private base tool." })
+  @ayme.action({ description: "Do not expose the private base tool." })
   private basePrivateTool() {}
 
-  @WebMCP.tool({ description: "Do not expose the protected base tool." })
+  @ayme.action({ description: "Do not expose the protected base tool." })
   protected baseProtectedTool() {}
 }
 
@@ -29,23 +29,23 @@ class MiddlePom extends BasePom {
   private readonly middlePrivateButton!: Locator;
   protected readonly middleProtectedButton!: Locator;
 
-  @WebMCP.tool({ description: "Use the inherited middle tool." })
+  @ayme.action({ description: "Use the inherited middle tool." })
   middleTool() {}
 
-  @WebMCP.tool({ description: "Use the middle override tool." })
+  @ayme.action({ description: "Use the middle override tool." })
   override overriddenTool(value: string) {
     return value;
   }
 }
 
-@WebMCP
+@ayme
 export class MultiLevelInheritedPom extends MiddlePom {
   readonly ownButton!: Locator;
   override readonly overriddenButton: Locator = undefined as unknown as Locator;
   private readonly finalPrivateButton!: Locator;
   protected readonly finalProtectedButton!: Locator;
 
-  @WebMCP.tool({ description: "Use the final override tool." })
+  @ayme.action({ description: "Use the final override tool." })
   override overriddenTool(value: string) {
     return value;
   }

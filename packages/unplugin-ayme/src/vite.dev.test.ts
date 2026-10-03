@@ -13,18 +13,18 @@ import { afterEach, expect, it } from "vitest";
 
 import { aymeWebMcp } from "./vite";
 
-const decoratorStub = `export const WebMCP = Object.assign(
+const decoratorStub = `export const ayme = Object.assign(
   (value: unknown, context: ClassDecoratorContext) => {},
-  { tool: (options: { description: string }) =>
+  { action: (options: { description: string }) =>
       (value: unknown, context: ClassMethodDecoratorContext) => {} }
 );
 `;
 
 function baseSource(description: string) {
-  return `import { WebMCP } from "./webmcp";
+  return `import { ayme } from "./ayme";
 
 export class BasePom {
-  @WebMCP.tool({ description: "${description}" })
+  @ayme.action({ description: "${description}" })
   status() {}
 }
 `;
@@ -57,14 +57,14 @@ function writeProject() {
       include: ["src"],
     })
   );
-  writeFileSync(join(projectRoot, "src/webmcp.ts"), decoratorStub);
+  writeFileSync(join(projectRoot, "src/ayme.ts"), decoratorStub);
   writeFileSync(join(projectRoot, "src/base.ts"), baseSource("ORIGINAL"));
   writeFileSync(
     join(projectRoot, "src/sub.ts"),
     `import { BasePom } from "./base";
-import { WebMCP } from "./webmcp";
+import { ayme } from "./ayme";
 
-@WebMCP
+@ayme
 export class SubPom extends BasePom {}
 `
   );

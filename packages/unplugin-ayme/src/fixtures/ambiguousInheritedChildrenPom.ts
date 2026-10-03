@@ -1,13 +1,13 @@
-import { WebMCP } from "./webmcp";
+import { ayme } from "@ayme-dev/ayme";
 
-@WebMCP
+@ayme
 class BaseMenu {}
 
 class UserMenu extends BaseMenu {}
 
 class AdminMenu extends BaseMenu {}
 
-@WebMCP
+@ayme
 export class AmbiguousInheritedChildrenPom {
   readonly ambiguousMenu!: UserMenu & AdminMenu;
 }

@@ -197,7 +197,7 @@ describe("Interaction history in Chromium", () => {
     await expectBeforeChangeAfter(actionId);
   });
 
-  it("records one action with before, change and after evidence per Generated WebMCP Tool call", async () => {
+  it("records one action with before, change and after evidence per Page Object Tool call", async () => {
     await startWithAddingPom();
     await readStructure();
     const actionsBefore = history().actions().size;

@@ -3,8 +3,9 @@ import {
   type PomCompilerOptions,
 } from "./derivePomManifests";
 import {
+  carriesPomMarker,
   createPomProgram,
-  importsWebMcpModule,
+  importsPomModule,
   pomProgramDependencies,
 } from "./pomProgram";
 import { rewritePomImports } from "./rewritePomImports";
@@ -47,7 +48,7 @@ export function createPomTransform(options: PomCompilerOptions = {}) {
 }
 
 /**
- * A module may declare a Page Object Model when it carries `@WebMCP`, or when it
+ * A module may declare a Page Object Model when it carries `@ayme`, or when it
  * extends something and imports, directly or transitively, a module that does.
  * The Program built next decides through the class's ancestors.
  */
@@ -56,10 +57,10 @@ function isPomCandidate(
   fileName: string,
   options: PomCompilerOptions
 ) {
-  if (code.includes("@WebMCP")) return true;
+  if (carriesPomMarker(code)) return true;
   // ponytail: stateless per-module gate. Ceiling: every false positive (a
   // module with `extends` that imports a decorated module but declares no Page
   // Object Model) costs one Program build. Upgrade: a Program cached across
   // transforms, if a large app makes that matter.
-  return code.includes("extends") && importsWebMcpModule(fileName, options);
+  return code.includes("extends") && importsPomModule(fileName, options);
 }

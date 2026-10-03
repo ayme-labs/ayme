@@ -16,8 +16,8 @@ A named part of a Page Object. It may refer to one or more elements, or to one o
 **Page Object Action**:
 A meaningful operation provided by a Page Object.
 
-**Generated WebMCP Tool**:
-A WebMCP Tool generated from a Page Object Action selected for WebMCP exposure.
+**Page Object Tool**:
+A tool generated from a Page Object Action marked for exposure. The Goal Loop may choose it, and WebMCP publication offers it to agents.
 
 **Structural Page State**:
 A model-facing observation of the currently presented page structure and its Page Object associations. Normally scrollable content and modal-blocked content remain represented. Known hidden or unreachable off-canvas Page Object subtrees are omitted. Structural inclusion does not imply interaction availability.

@@ -1,9 +1,9 @@
-import { WebMCP } from "@ayme-dev/ayme";
+import { ayme } from "@ayme-dev/ayme";
 import type { CounterMode } from "./TruncatedMode";
 
-@WebMCP
+@ayme
 export class TruncatedModePage {
-  @WebMCP.tool({ description: "Set counter mode metadata." })
+  @ayme.action({ description: "Set counter mode metadata." })
   setMode(mode: CounterMode) {
     void mode;
   }

@@ -28,7 +28,7 @@ function App() {
   return (
     <main>
       <h1>React integration check</h1>
-      <p>One Page Object, direct calls, and generated WebMCP tools.</p>
+      <p>One Page Object, direct calls, and Page Object Tools.</p>
       <p role="status" aria-label="Publication">
         Publication: {publicationStatus.state}
       </p>

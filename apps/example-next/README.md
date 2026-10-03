@@ -36,7 +36,7 @@ configuration change. If the bundler does not provide dependency tracking, the
 loader fails instead of silently serving stale metadata.
 
 The Next config applies the loader to `.ts` files on the browser graph whose text
-contains `@WebMCP` or `extends`, so an undecorated subclass of a decorated Page
+contains `@ayme` or `extends`, so an undecorated subclass of a decorated Page
 Object Model reaches the compiler.
 Turbopack loads the built package entry, not a source-file alias. The workspace
 root is explicit so linked Ayme packages resolve. Dev and production outputs
@@ -94,7 +94,7 @@ are unchanged.
 
 Server Component POM execution, Edge deployments, Pages Router, source-map
 fidelity and packaged-consumer certification are not covered. POMs must use
-`.ts` and the existing explicit `@WebMCP` convention.
+`.ts` and the explicit `@ayme` convention.
 
 React Fast Refresh is not part of the POM lifetime contract. Recompiling a POM
 module replaces its class identity, while `usePageObject` deliberately requires

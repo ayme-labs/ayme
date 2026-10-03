@@ -15,11 +15,7 @@ export default function nextConfig(phase) {
       rules: {
         "*.ts": {
           condition: {
-            all: [
-              "browser",
-              { not: "foreign" },
-              { content: /@WebMCP|extends/ },
-            ],
+            all: ["browser", { not: "foreign" }, { content: /@ayme|extends/ }],
           },
           loaders: [
             {

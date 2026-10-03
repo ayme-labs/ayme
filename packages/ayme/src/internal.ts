@@ -11,6 +11,9 @@ export {
   getPomDefinitionText,
 } from "./pageContext";
 export { getPomDefinitions } from "./pomDefinitions";
+// The programmatic helper object is not on the public entry.
+export { ayme } from "./ayme";
+export type { Ayme } from "./ayme";
 export {
   getPublicationStatus,
   listLiveTools,

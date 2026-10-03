@@ -1,12 +1,12 @@
-import { WebMCP } from "./webmcp";
+import { ayme } from "@ayme-dev/ayme";
 
-@WebMCP
+@ayme
 class FirstComponent {}
 
-@WebMCP
+@ayme
 class SecondComponent {}
 
-@WebMCP
+@ayme
 export class AmbiguousAnnotatedChildrenPom {
   readonly ambiguousChild!: FirstComponent & SecondComponent;
 }

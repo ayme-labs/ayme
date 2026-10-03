@@ -15,6 +15,67 @@ function manifestForClass(fixture: string, className: string) {
 }
 
 describe("derivePomManifests", () => {
+  describe("the ayme markers", () => {
+    it("derives a Page Object Model and its tools from the bare forms", () => {
+      const manifest = manifestForClass("aymeFormsPom", "BarePom");
+
+      expect(manifest).not.toHaveProperty("description");
+      expect(manifest?.tools).toEqual([
+        {
+          methodName: "open",
+          toolName: "BarePom.open",
+          description: "Run open.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: [],
+            additionalProperties: false,
+          },
+          parameters: [],
+        },
+        {
+          methodName: "close",
+          toolName: "BarePom.close",
+          description: "Run close.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: [],
+            additionalProperties: false,
+          },
+          parameters: [],
+        },
+      ]);
+    });
+
+    it("derives the descriptions of the options forms", () => {
+      const manifest = manifestForClass("aymeFormsPom", "DescribedPom");
+
+      expect(manifest).toMatchObject({
+        description: "A page that saves a name.",
+        tools: [
+          {
+            toolName: "DescribedPom.save",
+            description: "Save the name.",
+            authoredDescription: "Save the name.",
+          },
+        ],
+      });
+    });
+
+    it("rejects a class still marked with @WebMCP, naming @ayme", () => {
+      expect(() => manifestFor("legacyClassPom")).toThrow(
+        "LegacyClassPom is marked with @WebMCP, which was replaced by @ayme. Import ayme from @ayme-dev/ayme."
+      );
+    });
+
+    it("rejects a method still marked with @WebMCP.tool, naming @ayme.action", () => {
+      expect(() => manifestFor("legacyToolPom")).toThrow(
+        "LegacyToolPom.open is marked with @WebMCP.tool, which was replaced by @ayme.action."
+      );
+    });
+  });
+
   it.each(["privateRootPom", "protectedRootPom"])(
     "includes an inherited non-public root from %s without exposing other non-public members",
     (fixture) => {
@@ -248,7 +309,7 @@ describe("derivePomManifests", () => {
 
   it("rejects intersections containing multiple annotated components", () => {
     expect(() => manifestFor("ambiguousAnnotatedChildrenPom")).toThrow(
-      'WebMCP component member "ambiguousChild" is ambiguous: FirstComponent, SecondComponent.'
+      'Page Object Child "ambiguousChild" is ambiguous: FirstComponent, SecondComponent.'
     );
   });
 
@@ -416,7 +477,7 @@ describe("derivePomManifests", () => {
 
     it("rejects an intersection of two unrelated recognised subclasses", () => {
       expect(() => manifestsOf("ambiguousInheritedChildrenPom")).toThrow(
-        'WebMCP component member "ambiguousMenu" is ambiguous: UserMenu, AdminMenu.'
+        'Page Object Child "ambiguousMenu" is ambiguous: UserMenu, AdminMenu.'
       );
     });
   });

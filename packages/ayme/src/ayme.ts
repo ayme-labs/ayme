@@ -27,8 +27,6 @@ export const ayme: Ayme = {
   fill: async (ref, value) => fillRef(ref, value),
 };
 
-export default ayme;
-
 function requireCurrentDocument(): Document {
   if (typeof document === "undefined")
     throw new RuntimeStateError("Ayme requires a browser Document.");

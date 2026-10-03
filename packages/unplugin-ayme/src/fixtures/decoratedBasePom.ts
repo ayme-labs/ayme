@@ -1,19 +1,19 @@
 import type { Locator } from "@playwright/test";
 
-import { WebMCP } from "./webmcp";
+import { ayme } from "@ayme-dev/ayme";
 
-@WebMCP
+@ayme
 export abstract class BaseMenu {
   readonly baseItem!: Locator;
 
-  @WebMCP.tool({ description: "Open the menu." })
+  @ayme.action({ description: "Open the menu." })
   open() {}
 }
 
 export class UserMenu extends BaseMenu {
   readonly signOutItem!: Locator;
 
-  @WebMCP.tool({ description: "Sign out." })
+  @ayme.action({ description: "Sign out." })
   signOut() {}
 
   describe(value: string) {
