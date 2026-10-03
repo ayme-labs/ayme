@@ -72,6 +72,7 @@ type ObservedPomRoot = {
 };
 
 type ObservedRegisteredPom = RegisteredPom & {
+  pomClass: object;
   rootObservations: readonly ObservedPomRoot[];
   tools: readonly CallerAwarePomTool[];
 };
@@ -186,8 +187,19 @@ export function registerPageObject<T extends object>(
     throw new RuntimeStateError(
       "The imported page object has no compiler-derived Ayme metadata."
     );
+  // Tools are named after the class, so a different class with the same name
+  // would have its tools hidden by the first one registered.
+  for (const registered of registeredPoms)
+    if (
+      registered.id === compiledPom.className &&
+      registered.pomClass !== PomClass
+    )
+      throw new RuntimeStateError(
+        `Cannot register the Page Object "${compiledPom.className}": a different class with that name is already registered. Rename one of them so their tools do not share names.`
+      );
   const registration: ObservedRegisteredPom = {
     id: compiledPom.className,
+    pomClass: PomClass,
     instance,
     manifest: compiledPom,
     memberObservations: [],

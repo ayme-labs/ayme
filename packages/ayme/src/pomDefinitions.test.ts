@@ -148,16 +148,16 @@ describe("POM definition catalog", () => {
 
   it("uses one result shape for all, named, unknown, and duplicate definitions", async () => {
     const { definitions, registry } = await setup();
-    class FirstPage {}
-    class SecondPage {}
-    class ConflictingPage {}
-    class OtherConflictingPage {}
-    const shared = manifest("SharedPage", { description: "Shared." });
-    registry.registerCompiledPom(FirstPage, shared);
-    registry.registerCompiledPom(SecondPage, shared);
+    class SharedPage {}
+    class FirstRoot {}
+    class SecondRoot {}
+    registry.registerCompiledPom(
+      SharedPage,
+      manifest("SharedPage", { description: "Shared." })
+    );
     const registrations = [
-      registry.createPageRegistration(FirstPage),
-      registry.createPageRegistration(SecondPage),
+      registry.createPageRegistration(SharedPage),
+      registry.createPageRegistration(SharedPage),
     ];
 
     expect(definitions.getPomDefinitions()).toEqual({
@@ -195,17 +195,25 @@ describe("POM definition catalog", () => {
       ],
     });
 
+    // Distinct roots can each reach a different component with the same name.
+    const reachingConflict = (className: string, description: string) =>
+      manifest(className, {
+        tools: [action("open", "Open.", ["ConflictingPage"])],
+        components: [
+          { className: "ConflictingPage", description, members: [], tools: [] },
+        ],
+      });
     registry.registerCompiledPom(
-      ConflictingPage,
-      manifest("ConflictingPage", { description: "First definition." })
+      FirstRoot,
+      reachingConflict("FirstRoot", "First definition.")
     );
     registry.registerCompiledPom(
-      OtherConflictingPage,
-      manifest("ConflictingPage", { description: "Second definition." })
+      SecondRoot,
+      reachingConflict("SecondRoot", "Second definition.")
     );
     registrations.push(
-      registry.createPageRegistration(ConflictingPage),
-      registry.createPageRegistration(OtherConflictingPage)
+      registry.createPageRegistration(FirstRoot),
+      registry.createPageRegistration(SecondRoot)
     );
 
     expect(() => definitions.getPomDefinitions("ConflictingPage")).toThrow(

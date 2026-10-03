@@ -249,6 +249,28 @@ it("constructs without activation and handles registration before owner startup 
   expect(waitForWebMcpDriver).not.toHaveBeenCalled();
 });
 
+it("fails to start with two distinct classes sharing a name, and starts once one is gone", () => {
+  const OtherModel = class Model {
+    constructor(readonly page: AymePage) {}
+  };
+  registerCompiledPom(OtherModel, manifest);
+  const runtime = session(false);
+  runtime.register(Model, runtime.construct(Model));
+  const unregisterOther = runtime.register(
+    OtherModel,
+    runtime.construct(OtherModel)
+  );
+  expect(() => runtime.start()).toThrow(
+    'Cannot register the Page Object "Model"'
+  );
+  expect(listRegisteredPoms()).toHaveLength(0);
+  unregisterOther();
+  start(runtime);
+  expect(
+    listRegisteredPoms().map(({ instance }) => instance.constructor)
+  ).toEqual([Model]);
+});
+
 it("rejects concurrent owners and permits a fresh owner after disposal", () => {
   const first = session(false);
   const second = session(false);
