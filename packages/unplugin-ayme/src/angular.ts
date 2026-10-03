@@ -98,5 +98,9 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
   };
 }
 
-/** The factory `@angular-builders/custom-esbuild` calls with `{ path, options }`. */
+/**
+ * The factory `@angular-builders/custom-esbuild` loads from the plugin file.
+ * For a `{ path, options }` entry it calls `factory(options, builderOptions,
+ * target)`; the string form passes the builder's options first instead.
+ */
 export default aymeAngular;
