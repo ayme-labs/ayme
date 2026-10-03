@@ -107,10 +107,10 @@ jobs:
         env:
           TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
           TURBO_SCM_HEAD: ${{ github.event.pull_request.head.sha }}
-        run: pnpm exec turbo run build lint typecheck test test:e2e --affected
+        run: pnpm exec turbo run build lint typecheck test test:e2e --affected --continue=dependencies-successful
       - name: Run full package checks
         if: github.event_name != 'pull_request'
-        run: pnpm exec turbo run build lint typecheck test test:e2e
+        run: pnpm exec turbo run build lint typecheck test test:e2e --continue=dependencies-successful
       - run: pnpm run format:check
       - name: Upload browser test results
         if: always()
