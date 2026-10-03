@@ -60,4 +60,4 @@ certify:
 - a custom `RouteReuseStrategy`
 - Angular 21, which is inside the supported range but not run
 - Windows and Linux development hosts beyond CI
-- the Inspector, until its own issue lands
+- the Inspector
