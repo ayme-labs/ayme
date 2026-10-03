@@ -11,7 +11,7 @@ type Tool = { name: string; execute(input: unknown): Promise<unknown> };
 export async function startAgentSession(
   setup: (runtime: ReturnType<typeof createRuntimeSession>) => void = () => {}
 ) {
-  const runtime = createRuntimeSession({ page: () => createPage() });
+  const runtime = createRuntimeSession({ pageFactory: () => createPage() });
   setup(runtime);
   const stop = runtime.start();
   const tools = new Map<string, Tool>();

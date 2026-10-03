@@ -3,7 +3,7 @@ import {
   type DecisionRequest,
   type DecisionResponse,
   type PomManifest,
-  type RefTool,
+  type CustomTool,
 } from "@ayme-dev/ayme";
 import {
   registerCompiledPom,
@@ -103,7 +103,7 @@ const listPageManifest: PomManifest = {
 registerCompiledPom(ListPage, listPageManifest);
 
 /** An app-registered Ref Tool: it marks the element it's given. */
-const markElement: RefTool = {
+const markElement: CustomTool = {
   name: "mark_element",
   description: "Mark one element on the page.",
   async execute({ element }) {
@@ -161,7 +161,7 @@ export function startAyme({
   try {
     const inspector = mountInspector();
     const runtime = createRuntimeSession({
-      refTools: [markElement],
+      customTools: [markElement],
       goalLoop: clearTheList(),
     });
     const unregister = runtime.register(
@@ -169,11 +169,11 @@ export function startAyme({
       runtime.construct(PageObject)
     );
     const reportRuntime = () => {
-      const { state, message } = runtime.getSnapshot();
+      const { state, message } = runtime.webMCP.publicationStatus;
       root.runtime = state;
       root.runtimeMessage = message;
     };
-    const unsubscribe = runtime.subscribe(reportRuntime);
+    const unsubscribe = runtime.webMCP.subscribe(reportRuntime);
     const stop = runtime.start();
     reportRuntime();
     root.fixture = "ready";

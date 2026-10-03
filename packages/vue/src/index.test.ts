@@ -24,13 +24,13 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
   };
 });
 import {
-  AymeWebMcpProvider,
-  useAymeWebMcp,
+  AymeProvider,
+  useAyme,
   usePageObject,
-  type UseAymeWebMcpOptions,
+  type UseAymeOptions,
 } from "./index";
 
-type PageFactory = NonNullable<UseAymeWebMcpOptions["page"]>;
+type PageFactory = NonNullable<UseAymeOptions["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
 const page = {} as Page;
 const pageFactory: PageFactory = () => page;
@@ -67,17 +67,17 @@ it("passes the page factory and ignore to the runtime session", () => {
   const ignore = (element: Element) => element.matches(".assistant");
   const scope = effectScope();
   scopes.push(scope);
-  scope.run(() => useAymeWebMcp({ page: pageFactory, ignore }));
+  scope.run(() => useAyme({ pageFactory, ignore }));
   expect(createRuntimeSession).toHaveBeenCalledWith({
-    page: pageFactory,
+    pageFactory,
     ignore,
-    refTools: undefined,
+    customTools: undefined,
     goalLoop: undefined,
   });
 });
 
-it("passes refTools to the runtime session", () => {
-  const refTools = [
+it("passes customTools to the runtime session", () => {
+  const customTools = [
     {
       name: "highlight_element",
       description: "Highlight one element on the page.",
@@ -86,11 +86,11 @@ it("passes refTools to the runtime session", () => {
   ];
   const scope = effectScope();
   scopes.push(scope);
-  scope.run(() => useAymeWebMcp({ page: pageFactory, refTools }));
+  scope.run(() => useAyme({ pageFactory, customTools }));
   expect(createRuntimeSession).toHaveBeenCalledWith({
-    page: pageFactory,
+    pageFactory,
     ignore: undefined,
-    refTools,
+    customTools,
     goalLoop: undefined,
   });
 });
@@ -99,13 +99,28 @@ it("passes goalLoop to the runtime session", () => {
   const goalLoop = vi.fn();
   const scope = effectScope();
   scopes.push(scope);
-  scope.run(() => useAymeWebMcp({ page: pageFactory, goalLoop }));
+  scope.run(() => useAyme({ pageFactory, goalLoop }));
   expect(createRuntimeSession).toHaveBeenCalledWith({
-    page: pageFactory,
+    pageFactory,
     ignore: undefined,
-    refTools: undefined,
+    customTools: undefined,
     goalLoop,
   });
+});
+
+it("returns the session as ayme, so a goal runs through it, and its webMCP member", async () => {
+  const goalLoop = vi.fn(async () => {
+    throw new Error("No decision.");
+  });
+  const scope = effectScope();
+  scopes.push(scope);
+  const { ayme, webMCP } = scope.run(() => useAyme({ pageFactory, goalLoop }))!;
+  expect(ayme).toBe(vi.mocked(createRuntimeSession).mock.results[0]?.value);
+  expect(webMCP.publicationStatus).toBe(ayme.webMCP.publicationStatus);
+  expect(webMCP.retryPublication).toBe(ayme.webMCP.retryPublication);
+  const handover = await ayme.pursueGoal("Save the form", { maxSteps: 1 });
+  expect(goalLoop).toHaveBeenCalledOnce();
+  expect(handover.reason).toBe("decide_failed");
 });
 
 it("calls the page factory once for the owner's runtime, on start", () => {
@@ -113,7 +128,7 @@ it("calls the page factory once for the owner's runtime, on start", () => {
   const scope = effectScope();
   scopes.push(scope);
   const instance = scope.run(() => {
-    useAymeWebMcp({ page: factory });
+    useAyme({ pageFactory: factory });
     expect(factory).toHaveBeenCalledOnce();
     return usePageObject(Model);
   })!;
@@ -125,21 +140,21 @@ it("preserves standalone effectScope setup, direct instance return and disposal"
   const scope = effectScope();
   scopes.push(scope);
   const result = scope.run(() => {
-    const runtime = useAymeWebMcp({ page: pageFactory });
+    const runtime = useAyme({ pageFactory });
     const instance = usePageObject(Model);
     expectTypeOf(instance).toEqualTypeOf<Model>();
     return { runtime, instance };
   })!;
   expect(result.instance.page).toBe(page);
-  expect(result.runtime.publicationStatus.value.state).toBe("disabled");
+  expect(result.runtime.webMCP.publicationStatus.state).toBe("disabled");
   expect(listRegisteredPoms()).toHaveLength(1);
   scope.stop();
   expect(listRegisteredPoms()).toHaveLength(0);
-  expect(result.runtime.publicationStatus.value.state).toBe("disposed");
+  expect(result.runtime.webMCP.publicationStatus.state).toBe("disposed");
 });
 
 it("requires a Vue scope and a single-argument constructor", () => {
-  expect(() => useAymeWebMcp()).toThrow("active Vue effect scope");
+  expect(() => useAyme()).toThrow("active Vue effect scope");
   expect(() => usePageObject(Model)).toThrow("active Vue effect scope");
   expectTypeOf(ComplexModel).not.toMatchTypeOf<
     Parameters<typeof usePageObject>[0]
@@ -151,34 +166,33 @@ it.each(["provider", "standalone"])(
   async (kind) => {
     const visible = ref(true);
     let instance: Model | undefined;
-    let state: ReturnType<typeof useAymeWebMcp> | undefined;
+    let state: ReturnType<typeof useAyme> | undefined;
     const Child = defineComponent({
       setup() {
-        state = useAymeWebMcp();
+        state = useAyme();
         instance = usePageObject(Model);
         return () => null;
       },
     });
     const Root = defineComponent({
       setup() {
-        if (kind === "standalone") useAymeWebMcp({ page: pageFactory });
+        if (kind === "standalone") useAyme({ pageFactory });
         const content = () => (visible.value ? h(Child) : null);
         return kind === "provider"
-          ? () =>
-              h(AymeWebMcpProvider, { page: pageFactory }, { default: content })
+          ? () => h(AymeProvider, { pageFactory }, { default: content })
           : content;
       },
     });
     const app = mount(Root);
     expect(instance?.page).toBe(page);
-    expect(state?.publicationStatus.value.state).toBe("disabled");
+    expect(state?.webMCP.publicationStatus.state).toBe("disabled");
     expect(listRegisteredPoms()).toHaveLength(1);
     visible.value = false;
     await nextTick();
     expect(listRegisteredPoms()).toHaveLength(0);
     const scope = effectScope();
     scopes.push(scope);
-    expect(() => scope.run(() => useAymeWebMcp({ page: pageFactory }))).toThrow(
+    expect(() => scope.run(() => useAyme({ pageFactory }))).toThrow(
       "active owner"
     );
     visible.value = true;
@@ -197,31 +211,30 @@ it("rejects child page and ignore options and nested providers", () => {
   const Child = defineComponent({
     setup() {
       try {
-        useAymeWebMcp({ page: pageFactory });
+        useAyme({ pageFactory });
       } catch (error) {
         errors.push(error);
       }
       try {
-        useAymeWebMcp({ ignore });
+        useAyme({ ignore });
       } catch (error) {
         errors.push(error);
       }
-      return () => h(AymeWebMcpProvider, { page: pageFactory });
+      return () => h(AymeProvider, { pageFactory });
     },
   });
   const app = createApp({
-    render: () =>
-      h(AymeWebMcpProvider, { page: pageFactory }, { default: () => h(Child) }),
+    render: () => h(AymeProvider, { pageFactory }, { default: () => h(Child) }),
   });
   app.config.errorHandler = (error) => errors.push(error);
   apps.push(app);
   app.mount(document.createElement("div"));
   expect(errors.map(String)).toEqual([
     expect.stringContaining(
-      "Configure page, ignore, refTools and goalLoop on the ancestor"
+      "Configure pageFactory, ignore, customTools and goalLoop on the ancestor"
     ),
     expect.stringContaining(
-      "Configure page, ignore, refTools and goalLoop on the ancestor"
+      "Configure pageFactory, ignore, customTools and goalLoop on the ancestor"
     ),
     expect.stringContaining("cannot be nested"),
   ]);
@@ -233,21 +246,21 @@ it("creates the default page and reports real publication state to consumers", a
     configurable: true,
     value: { registerTool: vi.fn() },
   });
-  let state: ReturnType<typeof useAymeWebMcp> | undefined;
+  let state: ReturnType<typeof useAyme> | undefined;
   let instance: Model | undefined;
   const Child = defineComponent({
     setup() {
-      state = useAymeWebMcp();
+      state = useAyme();
       instance = usePageObject(Model);
       return () => null;
     },
   });
   const app = mount({
-    render: () => h(AymeWebMcpProvider, null, { default: () => h(Child) }),
+    render: () => h(AymeProvider, null, { default: () => h(Child) }),
   });
   expect(typeof instance?.page.getByRole).toBe("function");
-  await state?.retryPublication();
-  expect(state?.publicationStatus.value.state).toBe("active");
+  await state?.webMCP.retryPublication();
+  expect(state?.webMCP.publicationStatus.state).toBe("active");
   app.unmount();
   Reflect.deleteProperty(document, "modelContext");
 });

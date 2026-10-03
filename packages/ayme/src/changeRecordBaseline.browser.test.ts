@@ -45,7 +45,7 @@ describe("Change Record baseline in Chromium", () => {
   });
 
   function startRuntime(goalLoop?: GoalLoopDecisionFunction) {
-    const runtime = createRuntimeSession({ page: () => page, goalLoop });
+    const runtime = createRuntimeSession({ pageFactory: () => page, goalLoop });
     stop = runtime.start();
   }
 

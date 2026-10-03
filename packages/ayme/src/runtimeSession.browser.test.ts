@@ -5,7 +5,7 @@ import {
   type DecisionRequest,
   type DecisionResponse,
   type Handover,
-  type RefTool,
+  type CustomTool,
   type RuntimeSession,
 } from "./index";
 
@@ -72,7 +72,7 @@ describe("the public runtime session in Chromium", () => {
   it("runs the Goal Loop with a caller page factory and a Ref Tool, without publication or a driver", async () => {
     document.body.innerHTML = `<main><button>Save changes</button></main>`;
     expect(document.modelContext).toBeUndefined();
-    const highlight: RefTool = {
+    const highlight: CustomTool = {
       name: "highlight_element",
       description: "Highlight one element on the page.",
       async execute({ element }) {
@@ -80,17 +80,17 @@ describe("the public runtime session in Chromium", () => {
         return null;
       },
     };
-    const page = vi.fn(() => createPage({ actionTimeout: 500 }));
+    const pageFactory = vi.fn(() => createPage({ actionTimeout: 500 }));
     const session: RuntimeSession = createRuntimeSession({
-      page,
-      refTools: [highlight],
+      pageFactory,
+      customTools: [highlight],
       goalLoop: scriptedGoalLoop(),
     });
-    expect(page).not.toHaveBeenCalled();
-    expect(session.getSnapshot().state).toBe("disabled");
+    expect(pageFactory).not.toHaveBeenCalled();
+    expect(session.webMCP.publicationStatus.state).toBe("disabled");
 
     stop = session.start();
-    expect(page).toHaveBeenCalledOnce();
+    expect(pageFactory).toHaveBeenCalledOnce();
     const handover: Handover = await session.pursueGoal(
       "highlight the save button",
       { maxSteps: 3 }
@@ -114,8 +114,8 @@ describe("the public runtime session in Chromium", () => {
     expect(
       document.querySelector("button")?.classList.contains("highlighted")
     ).toBe(true);
-    expect(page).toHaveBeenCalledOnce();
-    expect(session.getSnapshot().state).toBe("disabled");
+    expect(pageFactory).toHaveBeenCalledOnce();
+    expect(session.webMCP.publicationStatus.state).toBe("disabled");
     expect(document.modelContext).toBeUndefined();
   });
 });

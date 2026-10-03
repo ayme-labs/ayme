@@ -10,7 +10,7 @@ import {
   getLastGoalLoopRunResult,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
-import type { RefTool } from "./refTools";
+import type { CustomTool } from "./refTools";
 import {
   NONE_OF_THESE_KEY,
   chunkQuestionId,
@@ -342,12 +342,12 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
   function startRuntime(
     goalLoop: GoalLoopDecisionFunction,
-    refTools?: RefTool[]
+    customTools?: CustomTool[]
   ) {
     const runtime = createRuntimeSession({
-      page: () => page,
+      pageFactory: () => page,
       goalLoop,
-      refTools,
+      customTools,
     });
     stop = runtime.start();
     return runtime;
@@ -355,9 +355,9 @@ describe("Goal Loop pursue_goal in Chromium", () => {
 
   async function getPublishedPursueGoal(
     goalLoop: GoalLoopDecisionFunction,
-    refTools?: RefTool[]
+    customTools?: CustomTool[]
   ): Promise<PublishedTool> {
-    startRuntime(goalLoop, refTools);
+    startRuntime(goalLoop, customTools);
     const { driver, published } = createFakeDriver();
     const publication = await synchronizeWebMcpTools(driver);
     disposePublication = publication.dispose;

@@ -16,7 +16,7 @@ it("lists nothing, and tells subscribers publication is unavailable, when the pa
   // Diagnostic: this file runs without native WebMCP or the polyfill.
   expect(document.modelContext).toBeUndefined();
   vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", true);
-  const runtime = createRuntimeSession({ page: () => createPage() });
+  const runtime = createRuntimeSession({ pageFactory: () => createPage() });
   const heard: string[] = [];
   const unsubscribe = subscribeToPublishedTools(() => {
     heard.push(getPublicationStatus().state);
@@ -25,7 +25,7 @@ it("lists nothing, and tells subscribers publication is unavailable, when the pa
 
   try {
     await expect
-      .poll(() => runtime.getSnapshot().state, { timeout: 5_000 })
+      .poll(() => runtime.webMCP.publicationStatus.state, { timeout: 5_000 })
       .toBe("unavailable");
 
     expect(heard.at(-1)).toBe("unavailable");

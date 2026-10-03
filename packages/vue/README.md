@@ -34,16 +34,16 @@ Publication is disabled unless enabled by the Vite plugin. Local Page Object cal
 
 ```vue
 <script setup lang="ts">
-import { AymeWebMcpProvider } from "@ayme-dev/vue";
+import { AymeProvider } from "@ayme-dev/vue";
 import App from "./App.vue";
 </script>
 
 <template>
-  <AymeWebMcpProvider><App /></AymeWebMcpProvider>
+  <AymeProvider><App /></AymeProvider>
 </template>
 ```
 
-In the browser, the provider creates a Page for the current document. To supply a custom or decorated Page, pass a factory, `:page="() => customPage"`; the runtime calls it once, in the browser, on first use, and never during server rendering. `createPage(options)` from `@ayme-dev/ayme` builds the default Page with your own settings. Keep the factory fixed while mounted; remount the provider and its consumers to change it. Wrappers must preserve the browser adapter's locator metadata for Ayme observation. Playwright `Page` type compatibility alone does not guarantee observation support.
+In the browser, the provider creates a Page for the current document. To supply a custom or decorated Page, pass a factory, `:page-factory="() => customPage"`; the runtime calls it once, in the browser, on first use, and never during server rendering. `createPage(options)` from `@ayme-dev/ayme` builds the default Page with your own settings. Keep the factory fixed while mounted; remount the provider and its consumers to change it. Wrappers must preserve the browser adapter's locator metadata for Ayme observation. Playwright `Page` type compatibility alone does not guarantee observation support.
 
 Pass `:ignore="ignorePageState"` to keep matching elements and their descendants out of the Structural Page State:
 
@@ -52,42 +52,42 @@ const ignorePageState = (element: Element) =>
   element.matches("[data-assistant-panel]");
 ```
 
-The same option is available to standalone setup as `useAymeWebMcp({ ignore })`. When the predicate returns `true`, the matching subtree is dropped from page state capture. This affects page state only; it does not change which tools are published. Keep the predicate fixed while its runtime owner is mounted.
+The same option is available to standalone setup as `useAyme({ ignore })`. When the predicate returns `true`, the matching subtree is dropped from page state capture. This affects page state only; it does not change which tools are published. Keep the predicate fixed while its runtime owner is mounted.
 
 Hooks in `App` and its descendants consume the provider:
 
 ```ts
-import { useAymeWebMcp, usePageObject } from "@ayme-dev/vue";
+import { useAyme, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "./playwright/pom/ListPage";
 
 const pom = usePageObject(ListPage);
-const { publicationStatus, retryPublication } = useAymeWebMcp();
+const { ayme, webMCP } = useAyme();
 
 // Later, in an event handler:
 await pom.addItem("Write release notes");
 ```
 
-The status is a read-only Vue ref: read `publicationStatus.value.state` in script, or `publicationStatus.state` in templates. States are `disabled`, `waiting`, `active`, `unavailable`, `failed`, and `disposed`. Enabled publication waits up to two seconds for a driver. `retryPublication()` retries after unavailability or failure; it shares pending attempts and does not duplicate active publication.
+`ayme` is the runtime session, so `ayme.pursueGoal(goal, { maxSteps })` runs a goal. `webMCP` is the session's `webMCP` member made reactive and read-only: read `webMCP.publicationStatus.state` in script or templates. States are `disabled`, `waiting`, `active`, `unavailable`, `failed`, and `disposed`. Enabled publication waits up to two seconds for a driver. `webMCP.retryPublication()` retries after unavailability or failure; it shares pending attempts and does not duplicate active publication.
 
-## Standalone composable compatibility
+## Standalone root setup
 
-Existing root setup continues to work:
+Without a provider, `useAyme(options)` owns the runtime:
 
 ```ts
-const { publicationStatus, retryPublication } = useAymeWebMcp({
-  page: () => customPage,
+const { ayme, webMCP } = useAyme({
+  pageFactory: () => customPage,
 });
 const pom = usePageObject(ListPage);
 ```
 
 Omit the options to use the default Page. In the browser, the standalone owner starts immediately in the Vue scope and provides its runtime to descendant components. It also continues to support `effectScope()` usage and Page Object registration in the owner's own setup.
 
-| Call                                                | Behavior                                                              |
-| --------------------------------------------------- | --------------------------------------------------------------------- |
-| `useAymeWebMcp()` beneath an owner                  | Consume its status and retry; do not start or dispose another runtime |
-| `useAymeWebMcp()` without an ancestor owner         | Start and own the default runtime in the current scope                |
-| `useAymeWebMcp({ page })` without an ancestor owner | Start and own the supplied Page's runtime                             |
-| `useAymeWebMcp({ page })` beneath an owner          | Throw; configure the Page on the ancestor owner                       |
+| Call                                                 | Behavior                                                                  |
+| ---------------------------------------------------- | ------------------------------------------------------------------------- |
+| `useAyme()` beneath an owner                         | Consume its session and `webMCP`; do not start or dispose another runtime |
+| `useAyme()` without an ancestor owner                | Start and own the default runtime in the current scope                    |
+| `useAyme({ pageFactory })` without an ancestor owner | Start and own the supplied Page's runtime                                 |
+| `useAyme({ pageFactory })` beneath an owner          | Throw; configure the Page on the ancestor owner                           |
 
 Ancestor lookup follows the component tree. It does not find a provider rendered below the calling component, or automatically share a runtime between unrelated `effectScope()` calls. Call standalone root setup once in its scope. A second active owner is rejected, including nested providers. Only the creator disposes the runtime. Descendant consumer cleanup removes its own subscriptions and Page Object registrations.
 
@@ -97,7 +97,7 @@ In the browser, `usePageObject(Model)` returns the concrete instance and dispose
 
 The provider and composables can run during Vue server rendering. They do not construct Page Objects, start the browser runtime, observe the DOM, or publish tools on the server. Each render creates its own inert runtime session; no live browser registration is shared between requests.
 
-On the server, `usePageObject(Model)` returns an unconstructed object with the model's prototype. This allows rendering to reference prototype methods in event closures without running the constructor. Do not read locators or constructor-initialized fields, or execute POM actions, during server rendering. A custom `page` factory runs only in the browser; server rendering never calls it.
+On the server, `usePageObject(Model)` returns an unconstructed object with the model's prototype. This allows rendering to reference prototype methods in event closures without running the constructor. Do not read locators or constructor-initialized fields, or execute POM actions, during server rendering. A custom `pageFactory` runs only in the browser; server rendering never calls it.
 
 Browser setup constructs and registers the real Page Object during hydration. Existing browser ownership, `effectScope()` support, and disposal behavior are unchanged. No client-only wrapper is needed around the application UI.
 

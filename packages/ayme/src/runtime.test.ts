@@ -33,7 +33,7 @@ const flush = async () => {
 };
 function session(enabled = true) {
   vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", enabled);
-  const runtime = createRuntimeSession({ page: () => page });
+  const runtime = createRuntimeSession({ pageFactory: () => page });
   sessions.push(runtime);
   return runtime;
 }
@@ -72,7 +72,7 @@ it("threads ignore to page state capture for the session lifetime", () => {
   const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnore");
   try {
     const ignore = (element: Element) => element.matches(".assistant");
-    const runtime = createRuntimeSession({ page: () => page, ignore });
+    const runtime = createRuntimeSession({ pageFactory: () => page, ignore });
     expect(configureIgnore).not.toHaveBeenCalled();
     const stop = start(runtime);
     expect(configureIgnore).toHaveBeenLastCalledWith(ignore);
@@ -87,7 +87,7 @@ it("threads goalLoop to the goal loop configuration for the session lifetime", (
   const configureGoalLoop = vi.spyOn(goalLoopModule, "configureGoalLoop");
   try {
     const goalLoop = vi.fn();
-    const runtime = createRuntimeSession({ page: () => page, goalLoop });
+    const runtime = createRuntimeSession({ pageFactory: () => page, goalLoop });
     expect(configureGoalLoop).not.toHaveBeenCalled();
     const stop = start(runtime);
     expect(configureGoalLoop).toHaveBeenLastCalledWith(goalLoop);
@@ -101,7 +101,7 @@ it("threads goalLoop to the goal loop configuration for the session lifetime", (
 it("creates the default browser page lazily", () => {
   vi.stubGlobal("window", undefined);
   const runtime = createRuntimeSession();
-  expect(runtime.getSnapshot()).toEqual({
+  expect(runtime.webMCP.publicationStatus).toEqual({
     state: "disabled",
     message: "WebMCP publication is disabled.",
   });
@@ -124,7 +124,7 @@ it("builds the default page with createPage() and no options, once", () => {
 it("never calls the page factory on the server", () => {
   vi.stubGlobal("window", undefined);
   const factory = vi.fn(() => page);
-  const runtime = createRuntimeSession({ page: factory });
+  const runtime = createRuntimeSession({ pageFactory: factory });
   sessions.push(runtime);
   const instance = runtime.construct(Model);
   expect(instance).toBeInstanceOf(Model);
@@ -139,7 +139,7 @@ it("never calls the page factory on the server", () => {
 
 it("calls the page factory at most once, lazily, on first use", () => {
   const factory = vi.fn(() => page);
-  const runtime = createRuntimeSession({ page: factory });
+  const runtime = createRuntimeSession({ pageFactory: factory });
   sessions.push(runtime);
   expect(factory).not.toHaveBeenCalled();
   expect(runtime.construct(Model).page).toBe(page);
@@ -154,7 +154,7 @@ it("calls the page factory at most once, lazily, on first use", () => {
 
 it("rejects pursueGoal before start and without a goalLoop, naming the cause", async () => {
   const withLoop = createRuntimeSession({
-    page: () => page,
+    pageFactory: () => page,
     goalLoop: vi.fn(),
   });
   sessions.push(withLoop);
@@ -174,6 +174,19 @@ it("rejects pursueGoal before start and without a goalLoop, naming the cause", a
   ).rejects.toBeInstanceOf(RuntimeStateError);
 });
 
+it("exposes publication status and retry only under its webMCP member", () => {
+  const runtime = session(false);
+  expect(runtime.webMCP.publicationStatus.state).toBe("disabled");
+  expect(typeof runtime.webMCP.retryPublication).toBe("function");
+  for (const member of [
+    "publicationStatus",
+    "retryPublication",
+    "getSnapshot",
+    "subscribe",
+  ])
+    expect(runtime).not.toHaveProperty(member);
+});
+
 it("forwards goal, maxSteps and the session's goalLoop to the loop", async () => {
   const handover = { reason: "done" as const, next: "Continue.", history: [] };
   const run = vi
@@ -181,7 +194,7 @@ it("forwards goal, maxSteps and the session's goalLoop to the loop", async () =>
     .mockResolvedValue({ handover, stepScores: [] });
   try {
     const goalLoop = vi.fn();
-    const runtime = createRuntimeSession({ page: () => page, goalLoop });
+    const runtime = createRuntimeSession({ pageFactory: () => page, goalLoop });
     sessions.push(runtime);
     start(runtime);
     await runtime.pursueGoal("save", { maxSteps: 3 });
@@ -200,13 +213,13 @@ it("resolves pursueGoal while enabled publication is unavailable", async () => {
     vi.stubGlobal("__AYME_WEBMCP_PUBLISH__", true);
     vi.mocked(waitForWebMcpDriver).mockResolvedValue(undefined);
     const runtime = createRuntimeSession({
-      page: () => page,
+      pageFactory: () => page,
       goalLoop: vi.fn(),
     });
     sessions.push(runtime);
     start(runtime);
-    await runtime.retryPublication();
-    expect(runtime.getSnapshot().state).toBe("unavailable");
+    await runtime.webMCP.retryPublication();
+    expect(runtime.webMCP.publicationStatus.state).toBe("unavailable");
     await expect(runtime.pursueGoal("save", { maxSteps: 1 })).resolves.toBe(
       handover
     );
@@ -246,14 +259,14 @@ it("rejects concurrent owners and permits a fresh owner after disposal", () => {
 it("publishes once, shares retries, and exposes immutable status snapshots", async () => {
   const runtime = session();
   const listener = vi.fn();
-  const unsubscribe = runtime.subscribe(listener);
+  const unsubscribe = runtime.webMCP.subscribe(listener);
   start(runtime);
-  const pending = runtime.retryPublication();
-  expect(runtime.retryPublication()).toBe(pending);
+  const pending = runtime.webMCP.retryPublication();
+  expect(runtime.webMCP.retryPublication()).toBe(pending);
   await pending;
-  expect(runtime.getSnapshot().state).toBe("active");
-  expect(Object.isFrozen(runtime.getSnapshot())).toBe(true);
-  await runtime.retryPublication();
+  expect(runtime.webMCP.publicationStatus.state).toBe("active");
+  expect(Object.isFrozen(runtime.webMCP.publicationStatus)).toBe(true);
+  await runtime.webMCP.retryPublication();
   expect(synchronizeWebMcpTools).toHaveBeenCalledOnce();
   expect(listener).toHaveBeenCalled();
   unsubscribe();
@@ -266,15 +279,15 @@ it("retries unavailable and failed publication", async () => {
   );
   const runtime = session();
   start(runtime);
-  await runtime.retryPublication();
-  expect(runtime.getSnapshot().state).toBe("unavailable");
-  await runtime.retryPublication();
-  expect(runtime.getSnapshot()).toEqual({
+  await runtime.webMCP.retryPublication();
+  expect(runtime.webMCP.publicationStatus.state).toBe("unavailable");
+  await runtime.webMCP.retryPublication();
+  expect(runtime.webMCP.publicationStatus).toEqual({
     state: "failed",
     message: "WebMCP publication failed: registration failed",
   });
-  await runtime.retryPublication();
-  expect(runtime.getSnapshot().state).toBe("active");
+  await runtime.webMCP.retryPublication();
+  expect(runtime.webMCP.publicationStatus.state).toBe("active");
 });
 
 it("does not overwrite a synchronous publisher failure with active status", async () => {
@@ -286,11 +299,11 @@ it("does not overwrite a synchronous publisher failure with active status", asyn
   );
   const runtime = session();
   start(runtime);
-  await runtime.retryPublication();
-  expect(runtime.getSnapshot().state).toBe("failed");
+  await runtime.webMCP.retryPublication();
+  expect(runtime.webMCP.publicationStatus.state).toBe("failed");
   expect(disposePublication).toHaveBeenCalledOnce();
-  await runtime.retryPublication();
-  expect(runtime.getSnapshot().state).toBe("active");
+  await runtime.webMCP.retryPublication();
+  expect(runtime.webMCP.publicationStatus.state).toBe("active");
 });
 
 it("aborts pending discovery without publishing its late result", async () => {
@@ -303,13 +316,13 @@ it("aborts pending discovery without publishing its late result", async () => {
   );
   const runtime = session();
   const stop = start(runtime);
-  const pending = runtime.retryPublication();
+  const pending = runtime.webMCP.retryPublication();
   stop();
   expect(vi.mocked(waitForWebMcpDriver).mock.calls[0]?.[1]?.aborted).toBe(true);
   resolve(driver);
   await pending;
   expect(synchronizeWebMcpTools).not.toHaveBeenCalled();
-  expect(runtime.getSnapshot().state).toBe("disposed");
+  expect(runtime.webMCP.publicationStatus.state).toBe("disposed");
 });
 
 it("disposes late publication from an old start without overwriting its replacement", async () => {
@@ -325,12 +338,12 @@ it("disposes late publication from an old start without overwriting its replacem
   await flush();
   stop();
   start(runtime);
-  await runtime.retryPublication();
+  await runtime.webMCP.retryPublication();
   const disposeLate = vi.fn();
   resolve({ message: "Late", dispose: disposeLate });
   await flush();
   expect(disposeLate).toHaveBeenCalledOnce();
-  expect(runtime.getSnapshot()).toEqual({
+  expect(runtime.webMCP.publicationStatus).toEqual({
     state: "active",
     message: "Published",
   });

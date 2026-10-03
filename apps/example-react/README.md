@@ -1,6 +1,6 @@
 # React integration smoke app
 
-A counter with one compiled Page Object, running beneath `AymeWebMcpProvider` in React Strict Mode. It checks the integration without duplicating the Vue inspector demo.
+A counter with one compiled Page Object, running beneath `AymeProvider` in React Strict Mode. It checks the integration without duplicating the Vue inspector demo.
 
 From the workspace root:
 

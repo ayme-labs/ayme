@@ -7,7 +7,7 @@ import {
   registerCompiledPom,
   type WebMcpDriver,
 } from "@ayme-dev/ayme/internal";
-import { useAymeWebMcp, type UseAymeWebMcpOptions } from "./index";
+import { useAyme, type UseAymeOptions } from "./index";
 
 class FakeMutationObserver {
   observe() {}
@@ -65,8 +65,9 @@ it("keeps a real publisher startup failure retryable", async () => {
 
   const scope = effectScope();
   const result = scope.run(() =>
-    useAymeWebMcp({
-      page: () => ({}) as ReturnType<NonNullable<UseAymeWebMcpOptions["page"]>>,
+    useAyme({
+      pageFactory: () =>
+        ({}) as ReturnType<NonNullable<UseAymeOptions["pageFactory"]>>,
     })
   );
   await flushPromises();
@@ -75,14 +76,14 @@ it("keeps a real publisher startup failure retryable", async () => {
   queueMicrotask(() => createPageRegistration(IntegrationPage));
   await flushPromises();
 
-  expect(result?.publicationStatus.value).toEqual({
+  expect(result?.webMCP.publicationStatus).toEqual({
     state: "failed",
     message: "WebMCP publication failed: synchronous registration failed",
   });
 
   failRegistration = false;
-  await result?.retryPublication();
-  expect(result?.publicationStatus.value.state).toBe("active");
+  await result?.webMCP.retryPublication();
+  expect(result?.webMCP.publicationStatus.state).toBe("active");
 
   scope.stop();
 });

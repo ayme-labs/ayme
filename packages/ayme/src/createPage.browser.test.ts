@@ -36,7 +36,7 @@ describe("createPage from the public entry in Chromium", () => {
       members: [],
       tools: [],
     });
-    const runtime = createRuntimeSession({ page: () => page });
+    const runtime = createRuntimeSession({ pageFactory: () => page });
     stop = runtime.start();
     const app = runtime.construct(App);
     expect(app.page).toBe(page);
