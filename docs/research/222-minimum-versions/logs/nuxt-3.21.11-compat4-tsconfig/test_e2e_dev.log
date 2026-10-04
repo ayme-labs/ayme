@@ -1,0 +1,75 @@
+$ playwright test
+[WebServer] │
+[WebServer] ●  Nuxt 3.21.11 (with Nitro 2.13.4, Vite 7.3.6 and Vue 3.5.42)
+[WebServer] 
+[WebServer]   ➜ Local:    http://127.0.0.1:64153/
+[WebServer]   ➜ Network:  use --host to expose
+[WebServer] 
+[WebServer] [nuxt] ℹ Running with compatibility version 4
+[WebServer] ✔ Vite client built in 20ms
+[WebServer] 
+[WebServer]  ERROR  Pre-transform error: Failed to resolve import "#app-manifest" from "../../node_modules/.pnpm/nuxt@3.21.11_@netlify+blobs@9.1.2_@oxc-project+types@0.146.0_@types+node@24.13.3_@vue+c_16b4b105e81c832cfa6f6705592fe1f6/node_modules/nuxt/dist/app/composables/manifest.js?v=1ae0245c". Does the file exist?
+[WebServer]   Plugin: vite:import-analysis
+[WebServer]   File: <worktree>/node_modules/.pnpm/nuxt@3.21.11_@netlify+blobs@9.1.2_@oxc-project+types@0.146.0_@types+node@24.13.3_@vue+c_16b4b105e81c832cfa6f6705592fe1f6/node_modules/nuxt/dist/app/composables/manifest.js?v=1ae0245c:16:6
+[WebServer]   14 |        /* webpackIgnore: true */
+[WebServer]   15 |        /* @vite-ignore */
+[WebServer]   16 |        "#app-manifest"
+[WebServer]      |        ^
+[WebServer]   17 |      );
+[WebServer]   18 |    } else {
+[WebServer] 
+[WebServer] 
+[WebServer]  ERROR  Pre-transform error: Failed to resolve import "#app-manifest" from "../../node_modules/.pnpm/nuxt@3.21.11_@netlify+blobs@9.1.2_@oxc-project+types@0.146.0_@types+node@24.13.3_@vue+c_16b4b105e81c832cfa6f6705592fe1f6/node_modules/nuxt/dist/app/composables/manifest.js?v=1ae0245c". Does the file exist?
+[WebServer]   Plugin: vite:import-analysis
+[WebServer]   File: <worktree>/node_modules/.pnpm/nuxt@3.21.11_@netlify+blobs@9.1.2_@oxc-project+types@0.146.0_@types+node@24.13.3_@vue+c_16b4b105e81c832cfa6f6705592fe1f6/node_modules/nuxt/dist/app/composables/manifest.js?v=1ae0245c:16:6
+[WebServer]   14 |        /* webpackIgnore: true */
+[WebServer]   15 |        /* @vite-ignore */
+[WebServer]   16 |        "#app-manifest"
+[WebServer]      |        ^
+[WebServer]   17 |      );
+[WebServer]   18 |    } else { (x2)
+[WebServer] 
+[WebServer] 
+[WebServer]  ERROR  Pre-transform error: Failed to resolve import "#app-manifest" from "../../node_modules/.pnpm/nuxt@3.21.11_@netlify+blobs@9.1.2_@oxc-project+types@0.146.0_@types+node@24.13.3_@vue+c_16b4b105e81c832cfa6f6705592fe1f6/node_modules/nuxt/dist/app/composables/manifest.js?v=1ae0245c". Does the file exist?
+[WebServer]   Plugin: vite:import-analysis
+[WebServer]   File: <worktree>/node_modules/.pnpm/nuxt@3.21.11_@netlify+blobs@9.1.2_@oxc-project+types@0.146.0_@types+node@24.13.3_@vue+c_16b4b105e81c832cfa6f6705592fe1f6/node_modules/nuxt/dist/app/composables/manifest.js?v=1ae0245c:16:6
+[WebServer]   14 |        /* webpackIgnore: true */
+[WebServer]   15 |        /* @vite-ignore */
+[WebServer]   16 |        "#app-manifest"
+[WebServer]      |        ^
+[WebServer]   17 |      );
+[WebServer]   18 |    } else { (x3)
+[WebServer] 
+[WebServer] 
+[WebServer]  ERROR  Pre-transform error: Failed to resolve import "#app-manifest" from "../../node_modules/.pnpm/nuxt@3.21.11_@netlify+blobs@9.1.2_@oxc-project+types@0.146.0_@types+node@24.13.3_@vue+c_16b4b105e81c832cfa6f6705592fe1f6/node_modules/nuxt/dist/app/composables/manifest.js?v=1ae0245c". Does the file exist?
+[WebServer]   Plugin: vite:import-analysis
+[WebServer]   File: <worktree>/node_modules/.pnpm/nuxt@3.21.11_@netlify+blobs@9.1.2_@oxc-project+types@0.146.0_@types+node@24.13.3_@vue+c_16b4b105e81c832cfa6f6705592fe1f6/node_modules/nuxt/dist/app/composables/manifest.js?v=1ae0245c:16:6
+[WebServer]   14 |        /* webpackIgnore: true */
+[WebServer]   15 |        /* @vite-ignore */
+[WebServer]   16 |        "#app-manifest"
+[WebServer]      |        ^
+[WebServer]   17 |      );
+[WebServer]   18 |    } else { (x4)
+[WebServer] 
+[WebServer] ✔ Vite server built in 138ms
+[WebServer] 
+[WebServer]  ERROR  Pre-transform error: Failed to resolve import "#app-manifest" from "../../node_modules/.pnpm/nuxt@3.21.11_@netlify+blobs@9.1.2_@oxc-project+types@0.146.0_@types+node@24.13.3_@vue+c_16b4b105e81c832cfa6f6705592fe1f6/node_modules/nuxt/dist/app/composables/manifest.js?v=1ae0245c". Does the file exist?
+[WebServer]   Plugin: vite:import-analysis
+[WebServer]   File: <worktree>/node_modules/.pnpm/nuxt@3.21.11_@netlify+blobs@9.1.2_@oxc-project+types@0.146.0_@types+node@24.13.3_@vue+c_16b4b105e81c832cfa6f6705592fe1f6/node_modules/nuxt/dist/app/composables/manifest.js?v=1ae0245c:16:6
+[WebServer]   14 |        /* webpackIgnore: true */
+[WebServer]   15 |        /* @vite-ignore */
+[WebServer]   16 |        "#app-manifest"
+[WebServer]      |        ^
+[WebServer]   17 |      );
+[WebServer]   18 |    } else { (x5)
+[WebServer] 
+[WebServer] [nitro] ✔ Nuxt Nitro server built in 414ms
+[WebServer] ℹ Vite server warmed up in 1ms
+[WebServer] ℹ Vite client warmed up in 1ms
+
+Running 2 tests using 1 worker
+
+  ✓  1 tests/integration.spec.ts:14:3 › server render › returns the Ayme subtree without browser registration on repeated requests (339ms)
+  ✓  2 tests/integration.spec.ts:35:1 › hydrates, publishes the compiled POM, executes it, and cleans up on remount (1.4s)
+
+  2 passed (7.2s)

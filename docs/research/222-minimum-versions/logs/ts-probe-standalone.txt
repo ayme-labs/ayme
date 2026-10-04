@@ -1,0 +1,9 @@
+TS 5.9.3 apps/example-next/probe-ts-tsconfig.json rc=0 errors=0
+TS 5.9.3 apps/example-next/probe-ts-tsconfig.pom.json rc=0 errors=0
+TS 5.9.3 apps/example-nuxt/probe-ts-tsconfig.pom.json rc=0 errors=0
+TS 5.4.5 apps/example-next/probe-ts-tsconfig.json rc=0 errors=0
+TS 5.4.5 apps/example-next/probe-ts-tsconfig.pom.json rc=0 errors=0
+TS 5.4.5 apps/example-nuxt/probe-ts-tsconfig.pom.json rc=0 errors=0
+TS 5.0.4 apps/example-next/probe-ts-tsconfig.json rc=0 errors=0
+TS 5.0.4 apps/example-next/probe-ts-tsconfig.pom.json rc=0 errors=0
+TS 5.0.4 apps/example-nuxt/probe-ts-tsconfig.pom.json rc=0 errors=0

@@ -1,0 +1,161 @@
+$ playwright test --config=playwright.production.config.ts
+[WebServer] $ node .output/server/index.mjs
+[WebServer] Listening on http://127.0.0.1:60775
+
+Running 2 tests using 1 worker
+
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:60775/_nuxt/builds/meta/7eb4ab79-23cd-4301-b020-bd3ebf671dda.json
+[WebServer]  H3Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/builds/meta/7eb4ab79-23cd-4301-b020-bd3ebf671dda.json'
+[WebServer]     at async open (node:internal/fs/promises:1345:25)
+[WebServer]     ... 2 lines matching cause stack trace ...
+[WebServer]     at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]   cause: Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/builds/meta/7eb4ab79-23cd-4301-b020-bd3ebf671dda.json'
+[WebServer]       at async open (node:internal/fs/promises:1345:25)
+[WebServer]       at async Object.readFile (node:internal/fs/promises:1996:14)
+[WebServer]       at async Object.handler (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1664:19)
+[WebServer]       at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]     errno: -2,
+[WebServer]     code: 'ENOENT',
+[WebServer]     syscall: 'open',
+[WebServer]     path: '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/builds/meta/7eb4ab79-23cd-4301-b020-bd3ebf671dda.json'
+[WebServer]   },
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:60775/_nuxt/Dar7KrzY.js
+[WebServer]  H3Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/Dar7KrzY.js'
+[WebServer]     at async open (node:internal/fs/promises:1345:25)
+[WebServer]     ... 2 lines matching cause stack trace ...
+[WebServer]     at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]   cause: Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/Dar7KrzY.js'
+[WebServer]       at async open (node:internal/fs/promises:1345:25)
+[WebServer]       at async Object.readFile (node:internal/fs/promises:1996:14)
+[WebServer]       at async Object.handler (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1664:19)
+[WebServer]       at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]     errno: -2,
+[WebServer]     code: 'ENOENT',
+[WebServer]     syscall: 'open',
+[WebServer]     path: '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/Dar7KrzY.js'
+[WebServer]   },
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:60775/_nuxt/Bfk8END1.js
+[WebServer]  H3Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/Bfk8END1.js'
+[WebServer]     at async open (node:internal/fs/promises:1345:25)
+[WebServer]     ... 2 lines matching cause stack trace ...
+[WebServer]     at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]   cause: Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/Bfk8END1.js'
+[WebServer]       at async open (node:internal/fs/promises:1345:25)
+[WebServer]       at async Object.readFile (node:internal/fs/promises:1996:14)
+[WebServer]       at async Object.handler (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1664:19)
+[WebServer]       at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]     errno: -2,
+[WebServer]     code: 'ENOENT',
+[WebServer]     syscall: 'open',
+[WebServer]     path: '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/Bfk8END1.js'
+[WebServer]   },
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:60775/_nuxt/DZfvDuy4.js
+[WebServer]  H3Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/DZfvDuy4.js'
+[WebServer]     at async open (node:internal/fs/promises:1345:25)
+[WebServer]     ... 2 lines matching cause stack trace ...
+[WebServer]     at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]   cause: Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/DZfvDuy4.js'
+[WebServer]       at async open (node:internal/fs/promises:1345:25)
+[WebServer]       at async Object.readFile (node:internal/fs/promises:1996:14)
+[WebServer]       at async Object.handler (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1664:19)
+[WebServer]       at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]     errno: -2,
+... [204 lines omitted] ...
+[WebServer]     at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]   cause: Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/DZfvDuy4.js'
+[WebServer]       at async open (node:internal/fs/promises:1345:25)
+[WebServer]       at async Object.readFile (node:internal/fs/promises:1996:14)
+[WebServer]       at async Object.handler (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1664:19)
+[WebServer]       at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]     errno: -2,
+[WebServer]     code: 'ENOENT',
+[WebServer]     syscall: 'open',
+[WebServer]     path: '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/DZfvDuy4.js'
+[WebServer]   },
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:60775/_nuxt/DjNUlEjI.js
+[WebServer]  H3Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/DjNUlEjI.js'
+[WebServer]     at async open (node:internal/fs/promises:1345:25)
+[WebServer]     ... 2 lines matching cause stack trace ...
+[WebServer]     at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]   cause: Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/DjNUlEjI.js'
+[WebServer]       at async open (node:internal/fs/promises:1345:25)
+[WebServer]       at async Object.readFile (node:internal/fs/promises:1996:14)
+[WebServer]       at async Object.handler (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1664:19)
+[WebServer]       at async Server.toNodeHandle (file://<worktree>/apps/example-nuxt/.output/server/chunks/nitro/nitro.mjs:1942:7) {
+[WebServer]     errno: -2,
+[WebServer]     code: 'ENOENT',
+[WebServer]     syscall: 'open',
+[WebServer]     path: '<worktree>/apps/example-nuxt/.output/server/chunks/public/_nuxt/DjNUlEjI.js'
+[WebServer]   },
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+  ✘  2 tests/integration.spec.ts:35:1 › hydrates, publishes the compiled POM, executes it, and cleans up on remount (15.1s)
+
+
+  1) tests/integration.spec.ts:35:1 › hydrates, publishes the compiled POM, executes it, and cleans up on remount 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator:  getByRole('status', { name: 'Publication' })
+    Expected: "Publication: active"
+    Received: " Publication: waiting"
+    Timeout:  15000ms
+
+    Call log:
+      - Expect "toHaveText" with timeout 15000ms
+      - waiting for getByRole('status', { name: 'Publication' })
+        34 × locator resolved to <p role="status" aria-label="Publication"> Publication: waiting</p>
+           - unexpected value " Publication: waiting"
+
+
+      47 |   const response = await page.goto("/");
+      48 |   expect(response?.status()).toBe(200);
+    > 49 |   await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
+         |                                                                   ^
+      50 |     "Publication: active",
+      51 |     { timeout: 15_000 }
+      52 |   );
+        at <worktree>/apps/example-nuxt/tests/integration.spec.ts:49:67
+
+    Error Context: test-results/production/integration-hydrates-publi-2d924-it-and-cleans-up-on-remount/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/production/integration-hydrates-publi-2d924-it-and-cleans-up-on-remount/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/production/integration-hydrates-publi-2d924-it-and-cleans-up-on-remount/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/integration.spec.ts:35:1 › hydrates, publishes the compiled POM, executes it, and cleans up on remount 
+  1 passed (16.8s)
+[ELIFECYCLE] Command failed with exit code 1.

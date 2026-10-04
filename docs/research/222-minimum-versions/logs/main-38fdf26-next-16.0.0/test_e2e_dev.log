@@ -1,0 +1,10 @@
+$ playwright test
+[WebServer] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+Running 3 tests using 1 worker
+
+  ✓  1 tests/incremental.spec.ts:15:1 › rebuilds POM metadata from an imported type without restarting Next (1.4s)
+  ✓  2 tests/integration.spec.ts:14:3 › server render › includes the Ayme subtree before hydration (280ms)
+  ✓  3 tests/integration.spec.ts:31:1 › hydrates, publishes the compiled POM, uses it and real Playwright, then remounts (1.1s)
+
+  3 passed (9.0s)

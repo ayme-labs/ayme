@@ -1,0 +1,161 @@
+$ playwright test
+[WebServer] │
+[WebServer] ●  Nuxt 4.5.2 (with Nitro 2.13.4, Vite 8.2.2 and Vue 3.5.42)
+[WebServer] 
+[WebServer]   ➜ Local:    http://127.0.0.1:65120/
+[WebServer]   ➜ Network:  use --host to expose
+[WebServer] 
+[WebServer] ℹ Re-optimizing dependencies because lockfile has changed
+[WebServer] ✔ Vite client built in 29ms
+[WebServer] ✔ Vite server built in 13ms
+[WebServer] [nitro] ✔ Nuxt Nitro server built in 435ms
+[WebServer] ℹ Vite server warmed up in 10ms
+[WebServer] ℹ Vite client warmed up in 18ms
+[WebServer]  ERROR  [request error] [unhandled] [GET] http://127.0.0.1:65120/
+[WebServer] 
+[WebServer]  
+[WebServer] ℹ Error: Invalid or unexpected token
+[WebServer] 
+[WebServer]  ⁃ at new Script (node:vm:117:7)
+[WebServer]  ⁃ at createScript (node:vm:269:10)
+[WebServer]  ⁃ at Object.runInThisContext (node:vm:317:10)
+[WebServer]  ⁃ at ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:13)
+[WebServer]  ⁃ at ViteNodeRunner.directRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:348:14)
+[WebServer]  ⁃ at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[WebServer]  ⁃ at async ViteNodeRunner.cachedRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:181:11)
+[WebServer]  ⁃ at async ViteNodeRunner.dependencyRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:228:10)
+[WebServer]  ⁃ (async app/components/Counter.vue:5:31)
+[WebServer]  ⁃ at async ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:4)
+[WebServer] 
+[WebServer] [CAUSE]
+[WebServer] SyntaxError {
+[WebServer]   stack: 'Invalid or unexpected token\n' +
+[WebServer]   'at ./playwright/pom/CounterPage.ts:4:undefined)\n' +
+[WebServer]   '    at new Script (node:vm:117:7)\n' +
+[WebServer]   '    at createScript (node:vm:269:10)\n' +
+[WebServer]   '    at Object.runInThisContext (node:vm:317:10)\n' +
+[WebServer]   'at ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:13)\n' +
+[WebServer]   'at ViteNodeRunner.directRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:348:14)\n' +
+[WebServer]   '    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n' +
+[WebServer]   'at async ViteNodeRunner.cachedRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser'... 685 more characters,
+[WebServer]   message: 'Invalid or unexpected token',
+[WebServer] }
+[WebServer]  ERROR  [request error] [unhandled] [GET] http://127.0.0.1:65120/__nuxt_error?error=true&url=%2F&statusCode=500&statusMessage=Server+Error&message=Invalid+or+unexpected+token&stack=Invalid+or+unexpected+token%0Aat+new+Script+(node:vm:117:7)%0Aat+createScript+(node:vm:269:10)%0Aat+Object.runInThisContext+(node:vm:317:10)%0Aat+ViteNodeRunner.runModule+(<worktree>%2Fnode_modules%2F.pnpm%2Fvite-node@6.0.0_@types%2Bnode@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0%2Fnode_modules%2Fvite-node%2Fdist%2Fclient.mjs:368:1…
+[WebServer] 
+[WebServer]  
+[WebServer] ℹ Error: Invalid or unexpected token
+[WebServer] 
+[WebServer]  ⁃ (playwright/pom/CounterPage.ts:4:undefined:undefined:undefined:undefined:undefined)
+[WebServer]  ⁃ at new Script (node:vm:117:7)
+[WebServer]  ⁃ at createScript (node:vm:269:10)
+[WebServer]  ⁃ at Object.runInThisContext (node:vm:317:10)
+[WebServer]  ⁃ at ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:13)
+[WebServer]  ⁃ at ViteNodeRunner.directRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:348:14)
+[WebServer]  ⁃ at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[WebServer]  ⁃ at async ViteNodeRunner.cachedRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:181:11)
+[WebServer]  ⁃ at async ViteNodeRunner.dependencyRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:228:10)
+[WebServer]  ⁃ (async app/components/Counter.vue:5:31)
+[WebServer]  ⁃ at async ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:4)
+[WebServer] 
+[WebServer] [CAUSE]
+[WebServer] SyntaxError {
+[WebServer]   stack: 'Invalid or unexpected token\n' +
+[WebServer]   'at ./playwright/pom/CounterPage.ts:4:undefined:undefined:undefined)\n' +
+[WebServer]   '    at new Script (node:vm:117:7)\n' +
+[WebServer]   '    at createScript (node:vm:269:10)\n' +
+[WebServer]   '    at Object.runInThisContext (node:vm:317:10)\n' +
+[WebServer]   'at ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:13)\n' +
+[WebServer]   'at ViteNodeRunner.directRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:348:14)\n' +
+[WebServer]   '    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n' +
+[WebServer]   'at async ViteNodeRunner.cachedRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28'... 705 more characters,
+[WebServer]   message: 'Invalid or unexpected token',
+[WebServer] }
+[WebServer]  ERROR  [request error] [unhandled] [GET] http://127.0.0.1:65120/
+[WebServer] 
+[WebServer]  
+[WebServer] ℹ Error: Invalid or unexpected token
+[WebServer] 
+[WebServer]  ⁃ at new Script (node:vm:117:7)
+[WebServer]  ⁃ at createScript (node:vm:269:10)
+[WebServer]  ⁃ at Object.runInThisContext (node:vm:317:10)
+... [6138 lines omitted] ...
+[WebServer]  ⁃ at async ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:4)
+[WebServer] 
+[WebServer] [CAUSE]
+[WebServer] SyntaxError {
+[WebServer]   stack: 'Invalid or unexpected token\n' +
+[WebServer]   'at ./playwright/pom/CounterPage.ts:4:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefine…
+[WebServer]   message: 'Invalid or unexpected token',
+[WebServer] }
+[WebServer]  ERROR  [request error] [unhandled] [GET] http://127.0.0.1:65120/
+[WebServer] 
+[WebServer]  
+[WebServer] ℹ Error: Invalid or unexpected token
+[WebServer] 
+[WebServer]  ⁃ (playwright/pom/CounterPage.ts:4:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:…
+[WebServer]  ⁃ at new Script (node:vm:117:7)
+[WebServer]  ⁃ at createScript (node:vm:269:10)
+[WebServer]  ⁃ at Object.runInThisContext (node:vm:317:10)
+[WebServer]  ⁃ at ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:13)
+[WebServer]  ⁃ at ViteNodeRunner.directRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:348:14)
+[WebServer]  ⁃ at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[WebServer]  ⁃ at async ViteNodeRunner.cachedRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:181:11)
+[WebServer]  ⁃ at async ViteNodeRunner.dependencyRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:228:10)
+[WebServer]  ⁃ (async app/components/Counter.vue:5:31)
+[WebServer]  ⁃ at async ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:4)
+[WebServer] 
+[WebServer] [CAUSE]
+[WebServer] SyntaxError {
+[WebServer]   stack: 'Invalid or unexpected token\n' +
+[WebServer]   'at ./playwright/pom/CounterPage.ts:4:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefine…
+[WebServer]   message: 'Invalid or unexpected token',
+[WebServer] }
+[WebServer]  ERROR  [request error] [unhandled] [GET] http://127.0.0.1:65120/__nuxt_error?error=true&url=%2F&statusCode=500&statusMessage=Server+Error&message=Invalid+or+unexpected+token&stack=Invalid+or+unexpected+token%0Aat+<worktree>%2Fapps%2Fexample-nuxt%2Fplaywright%2Fpom%2FCounterPage.ts:4:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefin…
+[WebServer] 
+[WebServer]  
+[WebServer] ℹ Error: Invalid or unexpected token
+[WebServer] 
+[WebServer]  ⁃ (playwright/pom/CounterPage.ts:4:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:…
+[WebServer]  ⁃ at new Script (node:vm:117:7)
+[WebServer]  ⁃ at createScript (node:vm:269:10)
+[WebServer]  ⁃ at Object.runInThisContext (node:vm:317:10)
+[WebServer]  ⁃ at ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:13)
+[WebServer]  ⁃ at ViteNodeRunner.directRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:348:14)
+[WebServer]  ⁃ at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[WebServer]  ⁃ at async ViteNodeRunner.cachedRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:181:11)
+[WebServer]  ⁃ at async ViteNodeRunner.dependencyRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:228:10)
+[WebServer]  ⁃ (async app/components/Counter.vue:5:31)
+[WebServer]  ⁃ at async ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:4)
+[WebServer] 
+[WebServer] [CAUSE]
+[WebServer] SyntaxError {
+[WebServer]   stack: 'Invalid or unexpected token\n' +
+[WebServer]   'at ./playwright/pom/CounterPage.ts:4:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefine…
+[WebServer]   message: 'Invalid or unexpected token',
+[WebServer] }
+[WebServer]  ERROR  [request error] [unhandled] [GET] http://127.0.0.1:65120/
+[WebServer] 
+[WebServer]  
+[WebServer] ℹ Error: Invalid or unexpected token
+[WebServer] 
+[WebServer]  ⁃ (playwright/pom/CounterPage.ts:4:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:…
+[WebServer]  ⁃ at new Script (node:vm:117:7)
+[WebServer]  ⁃ at createScript (node:vm:269:10)
+[WebServer]  ⁃ at Object.runInThisContext (node:vm:317:10)
+[WebServer]  ⁃ at ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:13)
+[WebServer]  ⁃ at ViteNodeRunner.directRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:348:14)
+[WebServer]  ⁃ at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[WebServer]  ⁃ at async ViteNodeRunner.cachedRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:181:11)
+[WebServer]  ⁃ at async ViteNodeRunner.dependencyRequest (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:228:10)
+[WebServer]  ⁃ (async app/components/Counter.vue:5:31)
+[WebServer]  ⁃ at async ViteNodeRunner.runModule (<worktree>/node_modules/.pnpm/vite-node@6.0.0_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite-node/dist/client.mjs:368:4)
+[WebServer] 
+[WebServer] [CAUSE]
+[WebServer] SyntaxError {
+[WebServer]   stack: 'Invalid or unexpected token\n' +
+[WebServer]   'at ./playwright/pom/CounterPage.ts:4:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefined:undefine…
+[WebServer]   message: 'Invalid or unexpected token',
+[WebServer] }
+Error: Timed out waiting 120000ms from config.webServer.
+
+[ELIFECYCLE] Command failed with exit code 1.

@@ -1,0 +1,73 @@
+$ playwright test
+
+Running 3 tests using 1 worker
+
+  ✘  1 tests/incremental.spec.ts:15:1 › rebuilds POM metadata from an imported type without restarting Next (15.5s)
+  ✓  2 tests/integration.spec.ts:14:3 › server render › includes the Ayme subtree before hydration (176ms)
+  ✘  3 tests/integration.spec.ts:31:1 › hydrates, publishes the compiled POM, uses it and real Playwright, then remounts (15.4s)
+
+
+  1) tests/incremental.spec.ts:15:1 › rebuilds POM metadata from an imported type without restarting Next 
+
+    TimeoutError: page.waitForFunction: Timeout 15000ms exceeded.
+
+       at ../../../packages/ayme/dist/testing.mjs:39
+
+      37 | *  publication failure is reported as such and not as the test's timeout. */
+      38 | function waitForPublishedTool(page, name, { timeout = 15e3 } = {}) {
+    > 39 | 	return page.waitForFunction((name) => document.modelContext.tools.some((tool) => tool.name === name), name, { timeout });
+         | 	            ^
+      40 | }
+      41 | /** Execute one published tool from the page. */
+      42 | function executePublishedTool(page, name, args = {}) {
+        at waitForPublishedTool (<worktree>/packages/ayme/dist/testing.mjs:39:14)
+        at <worktree>/apps/example-next/tests/incremental.spec.ts:31:9
+
+    Error Context: test-results/development/incremental-rebuilds-POM-m-2c3e6-ype-without-restarting-Next/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/development/incremental-rebuilds-POM-m-2c3e6-ype-without-restarting-Next/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/development/incremental-rebuilds-POM-m-2c3e6-ype-without-restarting-Next/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) tests/integration.spec.ts:31:1 › hydrates, publishes the compiled POM, uses it and real Playwright, then remounts 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByRole('status', { name: 'Publication' })
+    Expected: "Publication: active"
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" with timeout 15000ms
+      - waiting for getByRole('status', { name: 'Publication' })
+
+
+      39 |   expect(response?.status()).toBe(200);
+      40 |
+    > 41 |   await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
+         |                                                                   ^
+      42 |     "Publication: active",
+      43 |     { timeout: 15_000 }
+      44 |   );
+        at <worktree>/apps/example-next/tests/integration.spec.ts:41:67
+
+    Error Context: test-results/development/integration-hydrates-publi-271bb-al-Playwright-then-remounts/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/development/integration-hydrates-publi-271bb-al-Playwright-then-remounts/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/development/integration-hydrates-publi-271bb-al-Playwright-then-remounts/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    tests/incremental.spec.ts:15:1 › rebuilds POM metadata from an imported type without restarting Next 
+    tests/integration.spec.ts:31:1 › hydrates, publishes the compiled POM, uses it and real Playwright, then remounts 
+  1 passed (37.2s)
+[ELIFECYCLE] Command failed with exit code 1.

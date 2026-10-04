@@ -1,0 +1,45 @@
+$ playwright test --config=playwright.production.config.ts
+
+Running 2 tests using 1 worker
+
+  ✓  1 tests/integration.spec.ts:14:3 › server render › includes the Ayme subtree before hydration (121ms)
+  ✘  2 tests/integration.spec.ts:31:1 › hydrates, publishes the compiled POM, uses it and real Playwright, then remounts (15.2s)
+
+
+  1) tests/integration.spec.ts:31:1 › hydrates, publishes the compiled POM, uses it and real Playwright, then remounts 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByRole('status', { name: 'Publication' })
+    Expected: "Publication: active"
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" with timeout 15000ms
+      - waiting for getByRole('status', { name: 'Publication' })
+
+
+      39 |   expect(response?.status()).toBe(200);
+      40 |
+    > 41 |   await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
+         |                                                                   ^
+      42 |     "Publication: active",
+      43 |     { timeout: 15_000 }
+      44 |   );
+        at <worktree>/apps/example-next/tests/integration.spec.ts:41:67
+
+    Error Context: test-results/production/integration-hydrates-publi-271bb-al-Playwright-then-remounts/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/production/integration-hydrates-publi-271bb-al-Playwright-then-remounts/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/production/integration-hydrates-publi-271bb-al-Playwright-then-remounts/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/integration.spec.ts:31:1 › hydrates, publishes the compiled POM, uses it and real Playwright, then remounts 
+  1 passed (16.8s)
+[ELIFECYCLE] Command failed with exit code 1.

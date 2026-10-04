@@ -1,0 +1,161 @@
+$ playwright test --config=playwright.production.config.ts
+[WebServer] $ node .output/server/index.mjs
+[WebServer] Listening on http://127.0.0.1:65236
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:65236/
+[WebServer]  SyntaxError: Invalid or unexpected token
+[WebServer]     at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]     ... 8 lines matching cause stack trace ...
+[WebServer]     at TracingChannel.tracePromise (node:diagnostics_channel:362:14) {
+[WebServer]   cause: SyntaxError: Invalid or unexpected token
+[WebServer]       at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]       at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:89:18)
+[WebServer]       at #translate (node:internal/modules/esm/loader:438:20)
+[WebServer]       at afterLoad (node:internal/modules/esm/loader:506:29)
+[WebServer]       at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:511:12)
+[WebServer]       at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:564:36)
+[WebServer]       at afterResolve (node:internal/modules/esm/loader:611:52)
+[WebServer]       at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:617:12)
+[WebServer]       at node:internal/modules/esm/loader:636:32
+[WebServer]       at TracingChannel.tracePromise (node:diagnostics_channel:362:14),
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:65236/__nuxt_error?error=true&url=%2F&statusCode=500&statusMessage=Server+Error&message=Server+Error
+[WebServer]  SyntaxError: Invalid or unexpected token
+[WebServer]     at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]     ... 8 lines matching cause stack trace ...
+[WebServer]     at TracingChannel.tracePromise (node:diagnostics_channel:362:14) {
+[WebServer]   cause: SyntaxError: Invalid or unexpected token
+[WebServer]       at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]       at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:89:18)
+[WebServer]       at #translate (node:internal/modules/esm/loader:438:20)
+[WebServer]       at afterLoad (node:internal/modules/esm/loader:506:29)
+[WebServer]       at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:511:12)
+[WebServer]       at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:564:36)
+[WebServer]       at afterResolve (node:internal/modules/esm/loader:611:52)
+[WebServer]       at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:617:12)
+[WebServer]       at node:internal/modules/esm/loader:636:32
+[WebServer]       at TracingChannel.tracePromise (node:diagnostics_channel:362:14),
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:65236/
+[WebServer]  SyntaxError: Invalid or unexpected token
+[WebServer]     at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]     ... 8 lines matching cause stack trace ...
+[WebServer]     at TracingChannel.tracePromise (node:diagnostics_channel:362:14) {
+[WebServer]   cause: SyntaxError: Invalid or unexpected token
+[WebServer]       at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]       at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:89:18)
+[WebServer]       at #translate (node:internal/modules/esm/loader:438:20)
+[WebServer]       at afterLoad (node:internal/modules/esm/loader:506:29)
+[WebServer]       at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:511:12)
+[WebServer]       at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:564:36)
+[WebServer]       at afterResolve (node:internal/modules/esm/loader:611:52)
+[WebServer]       at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:617:12)
+[WebServer]       at node:internal/modules/esm/loader:636:32
+[WebServer]       at TracingChannel.tracePromise (node:diagnostics_channel:362:14),
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:65236/__nuxt_error?error=true&url=%2F&statusCode=500&statusMessage=Server+Error&message=Server+Error
+[WebServer]  SyntaxError: Invalid or unexpected token
+[WebServer]     at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]     ... 8 lines matching cause stack trace ...
+[WebServer]     at TracingChannel.tracePromise (node:diagnostics_channel:362:14) {
+[WebServer]   cause: SyntaxError: Invalid or unexpected token
+[WebServer]       at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]       at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:89:18)
+[WebServer]       at #translate (node:internal/modules/esm/loader:438:20)
+[WebServer]       at afterLoad (node:internal/modules/esm/loader:506:29)
+[WebServer]       at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:511:12)
+... [2354 lines omitted] ...
+[WebServer]       at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:564:36)
+[WebServer]       at afterResolve (node:internal/modules/esm/loader:611:52)
+[WebServer]       at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:617:12)
+[WebServer]       at node:internal/modules/esm/loader:636:32
+[WebServer]       at TracingChannel.tracePromise (node:diagnostics_channel:362:14),
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:65236/__nuxt_error?error=true&url=%2F&statusCode=500&statusMessage=Server+Error&message=Server+Error
+[WebServer]  SyntaxError: Invalid or unexpected token
+[WebServer]     at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]     ... 8 lines matching cause stack trace ...
+[WebServer]     at TracingChannel.tracePromise (node:diagnostics_channel:362:14) {
+[WebServer]   cause: SyntaxError: Invalid or unexpected token
+[WebServer]       at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]       at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:89:18)
+[WebServer]       at #translate (node:internal/modules/esm/loader:438:20)
+[WebServer]       at afterLoad (node:internal/modules/esm/loader:506:29)
+[WebServer]       at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:511:12)
+[WebServer]       at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:564:36)
+[WebServer]       at afterResolve (node:internal/modules/esm/loader:611:52)
+[WebServer]       at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:617:12)
+[WebServer]       at node:internal/modules/esm/loader:636:32
+[WebServer]       at TracingChannel.tracePromise (node:diagnostics_channel:362:14),
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:65236/
+[WebServer]  SyntaxError: Invalid or unexpected token
+[WebServer]     at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]     ... 8 lines matching cause stack trace ...
+[WebServer]     at TracingChannel.tracePromise (node:diagnostics_channel:362:14) {
+[WebServer]   cause: SyntaxError: Invalid or unexpected token
+[WebServer]       at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]       at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:89:18)
+[WebServer]       at #translate (node:internal/modules/esm/loader:438:20)
+[WebServer]       at afterLoad (node:internal/modules/esm/loader:506:29)
+[WebServer]       at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:511:12)
+[WebServer]       at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:564:36)
+[WebServer]       at afterResolve (node:internal/modules/esm/loader:611:52)
+[WebServer]       at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:617:12)
+[WebServer]       at node:internal/modules/esm/loader:636:32
+[WebServer]       at TracingChannel.tracePromise (node:diagnostics_channel:362:14),
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+[WebServer] [request error] [unhandled] [GET] http://127.0.0.1:65236/__nuxt_error?error=true&url=%2F&statusCode=500&statusMessage=Server+Error&message=Server+Error
+[WebServer]  SyntaxError: Invalid or unexpected token
+[WebServer]     at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]     ... 8 lines matching cause stack trace ...
+[WebServer]     at TracingChannel.tracePromise (node:diagnostics_channel:362:14) {
+[WebServer]   cause: SyntaxError: Invalid or unexpected token
+[WebServer]       at compileSourceTextModule (node:internal/modules/esm/utils:319:16)
+[WebServer]       at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:89:18)
+[WebServer]       at #translate (node:internal/modules/esm/loader:438:20)
+[WebServer]       at afterLoad (node:internal/modules/esm/loader:506:29)
+[WebServer]       at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:511:12)
+[WebServer]       at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:564:36)
+[WebServer]       at afterResolve (node:internal/modules/esm/loader:611:52)
+[WebServer]       at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:617:12)
+[WebServer]       at node:internal/modules/esm/loader:636:32
+[WebServer]       at TracingChannel.tracePromise (node:diagnostics_channel:362:14),
+[WebServer]   statusCode: 500,
+[WebServer]   fatal: false,
+[WebServer]   unhandled: true,
+[WebServer]   statusMessage: undefined,
+[WebServer]   data: undefined
+[WebServer] }
+Error: Timed out waiting 60000ms from config.webServer.
+
+[ELIFECYCLE] Command failed with exit code 1.

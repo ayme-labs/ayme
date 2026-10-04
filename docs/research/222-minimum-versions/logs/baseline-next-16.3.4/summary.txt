@@ -1,0 +1,95 @@
+cwd=<worktree>/apps/example-next node=v24.21.0
+Legend: production dependency, optional only, dev only
+
+ayme <worktree> (PRIVATE)
+│
+│   devDependencies:
+└── typescript@6.0.3
+
+@ayme-dev/example-next@0.0.0 <worktree>/apps/example-next (PRIVATE)
+│
+│   dependencies:
+├── next@16.3.4
+├── react@19.2.8
+│
+│   devDependencies:
+└── typescript@6.0.3
+
+@ayme-dev/example-nuxt@0.0.0 <worktree>/apps/example-nuxt (PRIVATE)
+│
+│   dependencies:
+├── nuxt@4.5.2
+├── vue@3.5.42
+│
+│   devDependencies:
+└── typescript@6.0.3
+
+@ayme-dev/example-react@0.0.0 <worktree>/apps/example-react (PRIVATE)
+│
+│   dependencies:
+├── react@19.2.8
+│
+│   devDependencies:
+├── typescript@6.0.3
+└── vite@8.2.2
+
+@ayme-dev/example-vue@0.0.0 <worktree>/apps/example-vue (PRIVATE)
+│
+│   dependencies:
+├── vue@3.5.42
+│
+│   devDependencies:
+├── typescript@6.0.3
+└── vite@8.2.2
+
+@ayme-dev/ayme@0.1.0 <worktree>/packages/ayme
+│
+│   devDependencies:
+└── typescript@6.0.3
+
+@ayme-dev/core@0.0.0 <worktree>/packages/core (PRIVATE)
+│
+│   devDependencies:
+└── typescript@6.0.3
+
+@ayme-dev/design-system@0.0.0 <worktree>/packages/design-system (PRIVATE)
+│
+│   devDependencies:
+├── react@19.2.8
+├── typescript@6.0.3
+└── vite@8.2.2
+
+@ayme-dev/inspector@0.1.0 <worktree>/packages/inspector
+│
+│   dependencies:
+├── react@19.2.8
+│
+│   devDependencies:
+├── typescript@6.0.3
+└── vite@8.2.2
+
+@ayme-dev/react@0.1.0 <worktree>/packages/react
+│
+│   devDependencies:
+├── react@19.2.8
+└── typescript@6.0.3
+
+@ayme-dev/unplugin-ayme@0.1.0 <worktree>/packages/unplugin-ayme
+│
+│   dependencies:
+├── typescript@6.0.3
+│
+│   devDependencies:
+└── vite@8.2.2
+
+@ayme-dev/vue@0.1.0 <worktree>/packages/vue
+│
+│   devDependencies:
+├── typescript@6.0.3
+└── vue@3.5.42
+
+27 packages in 14 projects
+build rc=0
+typecheck rc=0
+test:e2e:dev rc=0
+test:e2e:prod rc=0

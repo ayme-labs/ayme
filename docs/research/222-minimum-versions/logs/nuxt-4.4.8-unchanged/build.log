@@ -1,0 +1,74 @@
+$ nuxt build
+┌  Building Nuxt for production...
+│
+●  Nuxt 4.4.8 (with Nitro 2.13.4, Vite 7.3.6 and Vue 3.5.42)
+│
+●  Nitro preset: node-server
+ℹ Building client...
+ℹ vite v7.3.6 building client environment for production...
+
+ WARN  [plugin nuxt:module-preload-polyfill] Sourcemap is likely to be incorrect: a plugin (nuxt:module-preload-polyfill) was used to transform files, but didn't generate a sourcemap for the transformation. Consult the plugin documentation for help
+
+ℹ transforming...
+ℹ ✓ 113 modules transformed.
+ℹ rendering chunks...
+ℹ computing gzip size...
+ℹ ../.nuxt/dist/client/manifest.json                   3.25 kB │ gzip:   0.52 kB
+ℹ ../.nuxt/dist/client/_nuxt/error-500.CPeFPmWs.css    1.91 kB │ gzip:   0.73 kB
+ℹ ../.nuxt/dist/client/_nuxt/error-404.XABuiQ3D.css    2.43 kB │ gzip:   0.86 kB
+ℹ ../.nuxt/dist/client/_nuxt/BgNsoG4e.js               0.41 kB │ gzip:   0.29 kB
+ℹ ../.nuxt/dist/client/_nuxt/Cnyb3YnN.js               3.48 kB │ gzip:   1.57 kB
+ℹ ../.nuxt/dist/client/_nuxt/DYNzQcb-.js               9.84 kB │ gzip:   4.01 kB
+ℹ ../.nuxt/dist/client/_nuxt/Dar7KrzY.js              37.63 kB │ gzip:  10.00 kB
+ℹ ../.nuxt/dist/client/_nuxt/CFHbuifS.js             824.25 kB │ gzip: 252.92 kB
+
+ WARN 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+ℹ ✓ built in 2.77s
+✔ Client built in 2784ms
+ℹ Building server...
+ℹ vite v7.3.6 building ssr environment for production...
+ℹ transforming...
+ℹ ✓ 83 modules transformed.
+ℹ rendering chunks...
+ℹ ✓ built in 1.59s
+✔ Server built in 1594ms
+[nitro] ✔ Generated public .output/public
+[nitro] ℹ Building Nuxt Nitro server (preset: node-server, compatibility date: 2026-09-11)
+[nitro] ✔ Nuxt Nitro server built
+  ├─ .output/server/chunks/_/error-500.mjs (5.09 kB) (2.06 kB gzip)
+  ├─ .output/server/chunks/_/error-500.mjs.map (265 B) (200 B gzip)
+  ├─ .output/server/chunks/build/_plugin-vue_export-helper-CmKukxlV.mjs (964 B) (509 B gzip)
+  ├─ .output/server/chunks/build/_plugin-vue_export-helper-CmKukxlV.mjs.map (987 B) (441 B gzip)
+  ├─ .output/server/chunks/build/_virtual_playwright-lite-mime-CpF3J5YM-CUDdQG1X-lkXBZ5b8.mjs (45.1 kB) (9.99 kB gzip)
+  ├─ .output/server/chunks/build/_virtual_playwright-lite-mime-CpF3J5YM-CUDdQG1X-lkXBZ5b8.mjs.map (32.3 kB) (2.68 kB gzip)
+  ├─ .output/server/chunks/build/client.precomputed.mjs (6.84 kB) (800 B gzip)
+  ├─ .output/server/chunks/build/client.precomputed.mjs.map (3.18 kB) (398 B gzip)
+  ├─ .output/server/chunks/build/error-404-BEqLlt63.mjs (16.3 kB) (4.98 kB gzip)
+  ├─ .output/server/chunks/build/error-404-BEqLlt63.mjs.map (12 kB) (2.81 kB gzip)
+  ├─ .output/server/chunks/build/error-404-styles.CazFwA8i.mjs (2.72 kB) (984 B gzip)
+  ├─ .output/server/chunks/build/error-404-styles.CazFwA8i.mjs.map (298 B) (194 B gzip)
+  ├─ .output/server/chunks/build/error-500-styles.BSbx2g9C.mjs (2.19 kB) (855 B gzip)
+  ├─ .output/server/chunks/build/error-500-styles.BSbx2g9C.mjs.map (298 B) (198 B gzip)
+  ├─ .output/server/chunks/build/error-500-YAfOMYCT.mjs (4.95 kB) (2.09 kB gzip)
+  ├─ .output/server/chunks/build/error-500-YAfOMYCT.mjs.map (1.68 kB) (575 B gzip)
+  ├─ .output/server/chunks/build/server.mjs (1.43 MB) (302 kB gzip)
+  ├─ .output/server/chunks/build/server.mjs.map (230 B) (166 B gzip)
+  ├─ .output/server/chunks/build/styles.mjs (688 B) (333 B gzip)
+  ├─ .output/server/chunks/build/styles.mjs.map (325 B) (186 B gzip)
+  ├─ .output/server/chunks/nitro/nitro.mjs (161 kB) (39.5 kB gzip)
+  ├─ .output/server/chunks/nitro/nitro.mjs.map (6.72 kB) (1.04 kB gzip)
+  ├─ .output/server/chunks/routes/renderer.mjs (14 kB) (4.44 kB gzip)
+  ├─ .output/server/chunks/routes/renderer.mjs.map (1.56 kB) (353 B gzip)
+  ├─ .output/server/chunks/virtual/_virtual_spa-template.mjs (94 B) (100 B gzip)
+  ├─ .output/server/chunks/virtual/_virtual_spa-template.mjs.map (88 B) (97 B gzip)
+  ├─ .output/server/index.mjs (353 B) (205 B gzip)
+  └─ .output/server/package.json (669 B) (305 B gzip)
+Σ Total size: 3.28 MB (748 kB gzip)
+[nitro] ✔ You can preview this build using node .output/server/index.mjs
+│
+└  ✨ Build complete!

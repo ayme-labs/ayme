@@ -1,0 +1,37 @@
+cwd=<worktree>/apps/example-nuxt node=v24.21.0
+Legend: production dependency, optional only, dev only
+
+@ayme-dev/example-nuxt@0.0.0 <worktree>/apps/example-nuxt (PRIVATE)
+│
+│   dependencies:
+├── nuxt@4.0.0
+├── vue@3.5.42
+│
+│   devDependencies:
+└── typescript@6.0.3
+
+3 packages
+vite@7.3.6
+├─┬ @nuxt/vite-builder@4.0.0
+│ └── nuxt@4.0.0
+├─┬ @vitejs/plugin-vue@6.0.8
+│ └── @nuxt/vite-builder@4.0.0 [deduped]
+├─┬ @vitejs/plugin-vue-jsx@5.1.6
+│ └── @nuxt/vite-builder@4.0.0 [deduped]
+├─┬ vite-node@3.2.4
+│ └── @nuxt/vite-builder@4.0.0 [deduped]
+└─┬ vite-plugin-checker@0.10.3
+  └── @nuxt/vite-builder@4.0.0 [deduped]
+
+vite@8.2.2 peer#49a2 (2 variations)
+├── @ayme-dev/design-system@0.0.0 (devDependencies)
+├── @ayme-dev/inspector@0.1.0 (devDependencies)
+├── @ayme-dev/unplugin-ayme@0.1.0 (devDependencies)
+├─┬ @vitest/mocker@4.1.11
+│ ├── @vitest/browser@4.1.11
+│ ├── @vitest/browser-playwright@4.1.11 [deduped]
+│ └── vitest@4.1.11 [deduped]
+build rc=0
+typecheck rc=0
+test:e2e:dev rc=0
+test:e2e:prod rc=1

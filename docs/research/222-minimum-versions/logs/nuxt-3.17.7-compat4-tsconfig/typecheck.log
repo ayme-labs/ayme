@@ -1,0 +1,2 @@
+$ nuxt typecheck && tsc --noEmit -p tsconfig.pom.json
+[nuxt] ℹ Running with compatibility version 4

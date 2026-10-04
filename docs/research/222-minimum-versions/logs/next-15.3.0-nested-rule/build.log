@@ -1,0 +1,39 @@
+$ next build --turbopack
+ ⚠ Invalid next.config.mjs options detected: 
+ ⚠     Unrecognized key(s) in object: 'root' at "turbopack"
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+   ▲ Next.js 15.3.0 (Turbopack)
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 6.7s
+   Linting and checking validity of types ...
+
+ ⚠ The Next.js plugin was not detected in your ESLint configuration. See https://nextjs.org/docs/app/api-reference/config/eslint#migrating-existing-config
+   Collecting page data ...
+   Generating static pages (0/4) ...
+   Generating static pages (1/4) 
+   Generating static pages (2/4) 
+   Generating static pages (3/4) 
+ ✓ Generating static pages (4/4)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                         Size  First Load JS
+┌ ○ /                             204 kB         315 kB
+└ ○ /_not-found                      0 B         112 kB
++ First Load JS shared by all     112 kB
+  └ chunks/767f2c093b72e4e7.js   20.1 kB
+  ├ chunks/84e16ee336c7f0f2.js   77.1 kB
+  └ other shared chunks (total)  14.4 kB
+
+
+○  (Static)  prerendered as static content
+
+ ⚠ Support for Turbopack builds is experimental. We don't recommend deploying mission-critical applications to production.
+
+- Turbopack currently always builds production sourcemaps for the browser. This will include project sourcecode if deployed to production.
+- It is expected that your bundle size might be different from `next build` with webpack. This will be improved as we work towards stability.
+- This build is without disk caching; subsequent builds will become faster when disk caching becomes available.
+- When comparing output to webpack builds, make sure to first clear the Next.js cache by deleting the `.next` directory.
+
+Provide feedback for Turbopack builds at https://github.com/vercel/next.js/discussions/77721

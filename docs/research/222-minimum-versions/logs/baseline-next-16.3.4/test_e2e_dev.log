@@ -1,0 +1,9 @@
+$ playwright test
+
+Running 3 tests using 1 worker
+
+  ✓  1 tests/incremental.spec.ts:15:1 › rebuilds POM metadata from an imported type without restarting Next (1.2s)
+  ✓  2 tests/integration.spec.ts:14:3 › server render › includes the Ayme subtree before hydration (351ms)
+  ✓  3 tests/integration.spec.ts:31:1 › hydrates, publishes the compiled POM, uses it and real Playwright, then remounts (1.2s)
+
+  3 passed (7.8s)

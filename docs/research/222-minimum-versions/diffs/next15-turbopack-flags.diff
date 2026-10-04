@@ -1,0 +1,37 @@
+diff --git a/apps/example-next/package.json b/apps/example-next/package.json
+index f0410f2..e03ec8d 100644
+--- a/apps/example-next/package.json
++++ b/apps/example-next/package.json
+@@ -4,8 +4,8 @@
+   "private": true,
+   "type": "module",
+   "scripts": {
+-    "dev": "next dev --hostname 127.0.0.1 --port 4192",
+-    "build": "next build",
++    "dev": "next dev --turbopack --hostname 127.0.0.1 --port 4192",
++    "build": "next build --turbopack",
+     "start": "next start --hostname 127.0.0.1 --port 4192",
+     "typecheck": "tsc --noEmit",
+     "lint": "eslint . --max-warnings 0",
+@@ -16,7 +16,7 @@
+   "dependencies": {
+     "@ayme-dev/ayme": "workspace:*",
+     "@ayme-dev/react": "workspace:*",
+-    "next": "16.3.4",
++    "next": "15.5.27",
+     "react": "^19.0.0",
+     "react-dom": "^19.0.0"
+   },
+diff --git a/apps/example-next/playwright.config.ts b/apps/example-next/playwright.config.ts
+index 835a642..77d0ea0 100644
+--- a/apps/example-next/playwright.config.ts
++++ b/apps/example-next/playwright.config.ts
+@@ -31,7 +31,7 @@ export default defineConfig({
+     trace: "retain-on-failure",
+   },
+   webServer: {
+-    command: `pnpm exec next dev --hostname 127.0.0.1 --port ${port}`,
++    command: `pnpm exec next dev --turbopack --hostname 127.0.0.1 --port ${port}`,
+     url: baseURL,
+     reuseExistingServer: false,
+     timeout: 120_000,

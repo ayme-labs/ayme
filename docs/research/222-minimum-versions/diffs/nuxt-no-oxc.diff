@@ -1,0 +1,12 @@
+diff --git a/apps/example-nuxt/nuxt.config.ts b/apps/example-nuxt/nuxt.config.ts
+index 414ebf9..cc5ca46 100644
+--- a/apps/example-nuxt/nuxt.config.ts
++++ b/apps/example-nuxt/nuxt.config.ts
+@@ -39,7 +39,6 @@ export default defineNuxtConfig({
+   },
+   vite: {
+     // POMs live outside Nuxt's generated app TypeScript project.
+-    oxc: { decorator: { legacy: true } },
+     plugins: [
+       ayme({
+         tsconfigPath: fileURLToPath(

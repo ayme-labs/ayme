@@ -1,0 +1,30 @@
+diff --git a/apps/example-nuxt/nuxt.config.ts b/apps/example-nuxt/nuxt.config.ts
+index 414ebf96..063cb5f9 100644
+--- a/apps/example-nuxt/nuxt.config.ts
++++ b/apps/example-nuxt/nuxt.config.ts
+@@ -7,6 +7,8 @@ const nitroProcessImport = "import process from 'node:process';";
+ export default defineNuxtConfig({
+   compatibilityDate: "2026-09-11",
+   ssr: true,
++  // Nuxt 3 probe only: opt into the Nuxt 4 app/ directory layout.
++  future: { compatibilityVersion: 4 },
+   devtools: { enabled: false },
+   // Apply Ayme's build defines to its published modules in the SSR graph too.
+   build: { transpile: ["@ayme-dev/ayme", "@ayme-dev/vue"] },
+diff --git a/apps/example-nuxt/tsconfig.json b/apps/example-nuxt/tsconfig.json
+index 3aa74e21..64b2c63f 100644
+--- a/apps/example-nuxt/tsconfig.json
++++ b/apps/example-nuxt/tsconfig.json
+@@ -1,10 +1,4 @@
+ {
+-  "files": [],
+-  "compilerOptions": { "experimentalDecorators": true },
+-  "references": [
+-    { "path": "./.nuxt/tsconfig.app.json" },
+-    { "path": "./.nuxt/tsconfig.server.json" },
+-    { "path": "./.nuxt/tsconfig.shared.json" },
+-    { "path": "./.nuxt/tsconfig.node.json" }
+-  ]
++  "extends": "./.nuxt/tsconfig.json",
++  "compilerOptions": { "experimentalDecorators": true }
+ }

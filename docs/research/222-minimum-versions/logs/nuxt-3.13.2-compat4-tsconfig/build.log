@@ -1,0 +1,35 @@
+$ nuxt build
+┌  Building Nuxt for production...
+
+ ERROR  Cannot use 'import.meta' outside a module
+
+    const TRANSFORM_LOADER$1 = (0, _nodePath.resolve)(import.meta.dirname, "rspack/loaders/transform.mjs");
+    ^^^^
+    
+    SyntaxError: Cannot use 'import.meta' outside a module
+    at new Script (node:vm:117:7)
+    at createScript (node:vm:269:10)
+    at Object.runInThisContext (node:vm:317:10)
+    at evalModule (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:251724)
+    at jiti (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:249841)
+    at <worktree>/packages/unplugin-ayme/dist/index.mjs:6:17
+    at evalModule (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:251913)
+    at jiti (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:249841)
+    at <worktree>/packages/unplugin-ayme/dist/vite.mjs:1:191
+    at evalModule (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:251913)
+    at jiti (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:249841)
+    at nuxt.config.ts:3:13
+    at evalModule (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:251913)
+    at Object.jiti (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:249841)
+    at resolveConfig (<worktree>/node_modules/.pnpm/c12@1.11.2_magicast@0.3.5/node_modules/c12/dist/shared/c12.cab0c9da.mjs:345:26)
+    at loadConfig (<worktree>/node_modules/.pnpm/c12@1.11.2_magicast@0.3.5/node_modules/c12/dist/shared/c12.cab0c9da.mjs:147:29)
+    at async loadNuxtConfig (<worktree>/node_modules/.pnpm/@nuxt+kit@3.13.2_magicast@0.3.5_rollup@4.63.1_supports-color@10.2.2/node_modules/@nuxt/kit/dist/index.mjs:2597:18)
+    at async loadNuxt (<worktree>/node_modules/.pnpm/nuxt@3.13.2_@netlify+blobs@9.1.2_@types+node@24.13.3_db0@0.3.4_eslint@10.9.1_jiti@2.7.0_e0666e6d7200c0fcb72aff18097bcbd0/node_modules/nuxt/dist/index.mjs:4604:19)
+    at async Module.loadNuxt (<worktree>/node_modules/.pnpm/@nuxt+kit@3.13.2_magicast@0.3.5_rollup@4.63.1_supports-color@10.2.2/node_modules/@nuxt/kit/dist/index.mjs:2664:19)
+    at async Object.run (<worktree>/node_modules/.pnpm/nuxi@3.37.0/node_modules/nuxi/dist/build-D5w3iSy1.mjs:46:17)
+    at async runCommand (<worktree>/node_modules/.pnpm/nuxi@3.37.0/node_modules/nuxi/dist/dist-DFQuaDR6.mjs:283:47)
+    at async runCommand (<worktree>/node_modules/.pnpm/nuxi@3.37.0/node_modules/nuxi/dist/dist-DFQuaDR6.mjs:272:5)
+    at async runMain (<worktree>/node_modules/.pnpm/nuxi@3.37.0/node_modules/nuxi/dist/dist-DFQuaDR6.mjs:445:10) 
+
+
+[ELIFECYCLE] Command failed with exit code 1.

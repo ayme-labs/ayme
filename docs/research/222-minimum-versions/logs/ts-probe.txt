@@ -1,0 +1,21 @@
+TS 5.9.3 apps/example-next/tsconfig.json rc=0 errors=0
+TS 5.9.3 apps/example-next/tsconfig.pom.json rc=0 errors=0
+TS 5.9.3 apps/example-nuxt/tsconfig.pom.json rc=0 errors=0
+TS 5.4.5 apps/example-next/tsconfig.json rc=2 errors=2
+packages/typescript-config/library.json(6,15): error TS6046: Argument for '--target' option must be: 'es5', 'es6', 'es2015', 'es2016', 'es2017', 'es2018', 'es2019', 'es2020', 'es2021', 'es2022', 'esnext'.
+apps/example-next/playwright.config.ts(18,46): error TS1378: Top-level 'await' expressions are only allowed when the 'module' option is set to 'es2022', 'esnext', 'system', 'node16', 'nodenext', or 'preserve', and the 'target' option is set to 'es2017' or higher.
+TS 5.4.5 apps/example-next/tsconfig.pom.json rc=2 errors=2
+packages/typescript-config/library.json(6,15): error TS6046: Argument for '--target' option must be: 'es5', 'es6', 'es2015', 'es2016', 'es2017', 'es2018', 'es2019', 'es2020', 'es2021', 'es2022', 'esnext'.
+apps/example-next/playwright.config.ts(18,46): error TS1378: Top-level 'await' expressions are only allowed when the 'module' option is set to 'es2022', 'esnext', 'system', 'node16', 'nodenext', or 'preserve', and the 'target' option is set to 'es2017' or higher.
+TS 5.4.5 apps/example-nuxt/tsconfig.pom.json rc=2 errors=2
+packages/typescript-config/library.json(6,15): error TS6046: Argument for '--target' option must be: 'es5', 'es6', 'es2015', 'es2016', 'es2017', 'es2018', 'es2019', 'es2020', 'es2021', 'es2022', 'esnext'.
+apps/example-nuxt/playwright.config.ts(18,46): error TS1378: Top-level 'await' expressions are only allowed when the 'module' option is set to 'es2022', 'esnext', 'system', 'node16', 'nodenext', or 'preserve', and the 'target' option is set to 'es2017' or higher.
+TS 5.0.4 apps/example-next/tsconfig.json rc=2 errors=2
+packages/typescript-config/library.json(6,15): error TS6046: Argument for '--target' option must be: 'es3', 'es5', 'es6', 'es2015', 'es2016', 'es2017', 'es2018', 'es2019', 'es2020', 'es2021', 'es2022', 'esnext'.
+apps/example-next/playwright.config.ts(18,46): error TS1378: Top-level 'await' expressions are only allowed when the 'module' option is set to 'es2022', 'esnext', 'system', 'node16', or 'nodenext', and the 'target' option is set to 'es2017' or higher.
+TS 5.0.4 apps/example-next/tsconfig.pom.json rc=2 errors=2
+packages/typescript-config/library.json(6,15): error TS6046: Argument for '--target' option must be: 'es3', 'es5', 'es6', 'es2015', 'es2016', 'es2017', 'es2018', 'es2019', 'es2020', 'es2021', 'es2022', 'esnext'.
+apps/example-next/playwright.config.ts(18,46): error TS1378: Top-level 'await' expressions are only allowed when the 'module' option is set to 'es2022', 'esnext', 'system', 'node16', or 'nodenext', and the 'target' option is set to 'es2017' or higher.
+TS 5.0.4 apps/example-nuxt/tsconfig.pom.json rc=2 errors=2
+packages/typescript-config/library.json(6,15): error TS6046: Argument for '--target' option must be: 'es3', 'es5', 'es6', 'es2015', 'es2016', 'es2017', 'es2018', 'es2019', 'es2020', 'es2021', 'es2022', 'esnext'.
+apps/example-nuxt/playwright.config.ts(18,46): error TS1378: Top-level 'await' expressions are only allowed when the 'module' option is set to 'es2022', 'esnext', 'system', 'node16', or 'nodenext', and the 'target' option is set to 'es2017' or higher.

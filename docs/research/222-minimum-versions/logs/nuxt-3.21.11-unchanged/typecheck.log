@@ -1,0 +1,6 @@
+$ nuxt typecheck && tsc --noEmit -p tsconfig.pom.json
+error TS5083: Cannot read file '<worktree>/apps/example-nuxt/.nuxt/tsconfig.app.json'.
+error TS5083: Cannot read file '<worktree>/apps/example-nuxt/.nuxt/tsconfig.app.json'.
+error TS5083: Cannot read file '<worktree>/apps/example-nuxt/.nuxt/tsconfig.shared.json'.
+error TS5083: Cannot read file '<worktree>/apps/example-nuxt/.nuxt/tsconfig.node.json'.
+[ELIFECYCLE] Command failed with exit code 2.

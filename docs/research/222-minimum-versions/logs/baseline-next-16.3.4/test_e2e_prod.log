@@ -1,0 +1,8 @@
+$ playwright test --config=playwright.production.config.ts
+
+Running 2 tests using 1 worker
+
+  ✓  1 tests/integration.spec.ts:14:3 › server render › includes the Ayme subtree before hydration (120ms)
+  ✓  2 tests/integration.spec.ts:31:1 › hydrates, publishes the compiled POM, uses it and real Playwright, then remounts (963ms)
+
+  2 passed (2.5s)

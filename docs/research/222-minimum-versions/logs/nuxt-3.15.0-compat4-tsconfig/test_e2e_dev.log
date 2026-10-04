@@ -1,0 +1,161 @@
+$ playwright test
+[WebServer] │
+[WebServer] ●  Nuxt 3.15.0 (with Nitro 2.13.4, Vite 6.4.3 and Vue 3.5.42)
+[WebServer] 
+[WebServer]   ➜ Local:    http://127.0.0.1:64586/
+[WebServer]   ➜ Network:  use --host to expose
+[WebServer] 
+[WebServer] ℹ Running with compatibility version 4
+[WebServer] ℹ Re-optimizing dependencies because lockfile has changed
+[WebServer] ✔ Vite client built in 22ms
+[WebServer] ✔ Vite server built in 114ms
+[WebServer] [nitro] ✔ Nuxt Nitro server built in 814ms
+[WebServer] ℹ Vite client warmed up in 1ms
+[WebServer] ℹ Vite server warmed up in 978ms
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+... [87 lines omitted] ...
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+[WebServer]  ERROR  [nuxt] [request error] [unhandled] [500] Invalid or unexpected token
+Error: Timed out waiting 120000ms from config.webServer.
+
+[ELIFECYCLE] Command failed with exit code 1.

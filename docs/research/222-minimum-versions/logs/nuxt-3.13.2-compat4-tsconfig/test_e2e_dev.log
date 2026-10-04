@@ -1,0 +1,23 @@
+$ playwright test
+[WebServer] 
+[WebServer]  ERROR  Cannot use 'import.meta' outside a module
+[WebServer] 
+[WebServer]     const TRANSFORM_LOADER$1 = (0, _nodePath.resolve)(import.meta.dirname, "rspack/loaders/transform.mjs");
+[WebServer]     ^^^^
+[WebServer]     
+[WebServer]     SyntaxError: Cannot use 'import.meta' outside a module
+[WebServer]     at new Script (node:vm:117:7)
+[WebServer]     at createScript (node:vm:269:10)
+[WebServer]     at Object.runInThisContext (node:vm:317:10)
+[WebServer]     at evalModule (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:251724)
+[WebServer]     at jiti (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:249841)
+[WebServer]     at <worktree>/packages/unplugin-ayme/dist/index.mjs:6:17
+[WebServer]     at evalModule (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:251913)
+[WebServer]     at jiti (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:249841)
+[WebServer]     at <worktree>/packages/unplugin-ayme/dist/vite.mjs:1:191
+[WebServer]     at evalModule (<worktree>/node_modules/.pnpm/jiti@1.21.7/node_modules/jiti/dist/jiti.js:1:251913) 
+[WebServer] 
+[WebServer] 
+Error: Process from config.webServer was not able to start. Exit code: 1
+
+[ELIFECYCLE] Command failed with exit code 1.

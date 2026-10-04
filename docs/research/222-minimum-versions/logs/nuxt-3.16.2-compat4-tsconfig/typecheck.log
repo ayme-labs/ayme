@@ -1,0 +1,5 @@
+$ nuxt typecheck && tsc --noEmit -p tsconfig.pom.json
+[nuxt] ℹ Running with compatibility version 4
+nuxt.config.ts(17,16): error TS2589: Type instantiation is excessively deep and possibly infinite.
+nuxt.config.ts(24,21): error TS7006: Parameter 'code' implicitly has an 'any' type.
+[ELIFECYCLE] Command failed with exit code 2.

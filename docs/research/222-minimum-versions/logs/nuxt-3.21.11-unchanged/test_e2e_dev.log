@@ -1,0 +1,90 @@
+$ playwright test
+[WebServer] │
+[WebServer] ●  Nuxt 3.21.11 (with Nitro 2.13.4, Vite 7.3.6 and Vue 3.5.42)
+[WebServer] 
+[WebServer]   ➜ Local:    http://127.0.0.1:63913/
+[WebServer]   ➜ Network:  use --host to expose
+[WebServer] 
+[WebServer] ℹ Re-optimizing dependencies because lockfile has changed
+[WebServer] ✔ Vite client built in 34ms
+[WebServer] ✔ Vite server built in 54ms
+[WebServer] [nitro] ✔ Nuxt Nitro server built in 799ms
+[WebServer] ℹ Vite server warmed up in 0ms
+[WebServer] ℹ Vite client warmed up in 1ms
+
+Running 2 tests using 1 worker
+
+  ✘  1 tests/integration.spec.ts:14:3 › server render › returns the Ayme subtree without browser registration on repeated requests (5.2s)
+  ✘  2 tests/integration.spec.ts:35:1 › hydrates, publishes the compiled POM, executes it, and cleans up on remount (15.6s)
+
+
+  1) tests/integration.spec.ts:14:3 › server render › returns the Ayme subtree without browser registration on repeated requests 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('heading', { name: 'Ayme Nuxt prototype' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for getByRole('heading', { name: 'Ayme Nuxt prototype' })
+
+
+      20 |       await expect(
+      21 |         page.getByRole("heading", { name: "Ayme Nuxt prototype" })
+    > 22 |       ).toBeVisible();
+         |         ^
+      23 |       await expect(page.getByRole("region", { name: "Counter" })).toBeVisible();
+      24 |       await expect(page.locator("output")).toHaveText("0");
+      25 |       await expect(
+        at <worktree>/apps/example-nuxt/tests/integration.spec.ts:22:9
+
+    Error Context: test-results/development/integration-server-render--b4cb0-ration-on-repeated-requests/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/development/integration-server-render--b4cb0-ration-on-repeated-requests/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/development/integration-server-render--b4cb0-ration-on-repeated-requests/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) tests/integration.spec.ts:35:1 › hydrates, publishes the compiled POM, executes it, and cleans up on remount 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByRole('status', { name: 'Publication' })
+    Expected: "Publication: active"
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" with timeout 15000ms
+      - waiting for getByRole('status', { name: 'Publication' })
+
+
+      47 |   const response = await page.goto("/");
+      48 |   expect(response?.status()).toBe(200);
+    > 49 |   await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
+         |                                                                   ^
+      50 |     "Publication: active",
+      51 |     { timeout: 15_000 }
+      52 |   );
+        at <worktree>/apps/example-nuxt/tests/integration.spec.ts:49:67
+
+    Error Context: test-results/development/integration-hydrates-publi-2d924-it-and-cleans-up-on-remount/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/development/integration-hydrates-publi-2d924-it-and-cleans-up-on-remount/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/development/integration-hydrates-publi-2d924-it-and-cleans-up-on-remount/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    tests/integration.spec.ts:14:3 › server render › returns the Ayme subtree without browser registration on repeated requests 
+    tests/integration.spec.ts:35:1 › hydrates, publishes the compiled POM, executes it, and cleans up on remount 
+[ELIFECYCLE] Command failed with exit code 1.

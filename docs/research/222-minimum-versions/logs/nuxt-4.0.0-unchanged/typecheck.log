@@ -1,0 +1,1 @@
+$ nuxt typecheck && tsc --noEmit -p tsconfig.pom.json

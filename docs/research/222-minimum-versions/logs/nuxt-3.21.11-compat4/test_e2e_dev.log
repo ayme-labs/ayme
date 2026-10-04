@@ -1,0 +1,161 @@
+$ playwright test
+[WebServer] │
+[WebServer] ●  Nuxt 3.21.11 (with Nitro 2.13.4, Vite 7.3.6 and Vue 3.5.42)
+[WebServer] 
+[WebServer]   ➜ Local:    http://127.0.0.1:64038/
+[WebServer]   ➜ Network:  use --host to expose
+[WebServer] 
+[WebServer] [nuxt] ℹ Running with compatibility version 4
+[WebServer] ℹ Re-optimizing dependencies because vite config has changed
+[WebServer] ✔ Vite client built in 27ms
+[WebServer] ✔ Vite server built in 49ms
+[WebServer] 
+[WebServer]  ERROR  Pre-transform error: parsing <worktree>/apps/example-nuxt/.nuxt/tsconfig.app.json failed: Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.nuxt/tsconfig.app.json'
+[WebServer]   Plugin: vite:vue
+[WebServer]   File: <worktree>/apps/example-nuxt/app/app.vue
+[WebServer] 
+[WebServer] [nitro] ✔ Nuxt Nitro server built in 615ms
+[WebServer] ℹ Vite server warmed up in 0ms
+[WebServer] ℹ Vite client warmed up in 2ms
+[WebServer]  ERROR  [request error] [unhandled] [GET] http://127.0.0.1:64038/
+[WebServer] 
+[WebServer]  
+[WebServer] ℹ Error: /app.vue — parsing ./.nuxt/tsconfig.app.json failed: Error: ENOENT: no such file or directory, open './.nuxt/tsconfig.app.json'
+[WebServer] 
+[WebServer]  ⁃ (<worktree>/node_modules/.pnpm/vite@7.3.6_@types+node@24.13.3_jiti@2.7.0_lightningcss@1.33.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:5719:9)
+[WebServer] 
+[WebServer]    5714 ┃  		return {
+[WebServer]    5715 ┃  			tsconfigFile,
+[WebServer]    5716 ┃  			tsconfig: normalizeTSConfig(parsed, path.dirname(tsconfigFile))
+[WebServer]    5717 ┃  		};
+[WebServer]    5718 ┃  	}).catch((e$1) => {
+[WebServer]  ❯ 5719 ┃  		throw new TSConfckParseError(parsing ${tsconfigFile} failed: ${e$1}, "PARSE_FILE", tsconfigFile, e$1);
+[WebServer]    5720 ┃  	});
+[WebServer]    5721 ┃  	if (!skipCache && (!cache$1?.hasParseResult(tsconfigFile) || !cache$1.getParseResult(tsconfigFile)._isRootFile_)) cache$1?.setParseResult(tsconfigFile, promise);
+[WebServer]    5722 ┃  	return promise;
+[WebServer]    5723 ┃  }
+[WebServer]    5724 ┃  /**
+[WebServer] 
+[WebServer] 
+[WebServer] [CAUSE]
+[WebServer] Error {
+[WebServer]   stack: "/app.vue — parsing ./.nuxt/tsconfig.app.json failed: Error: ENOENT: no such file or directory, open './.nuxt/tsconfig.app.json'\n" +
+[WebServer]   'at <worktree>/node_modules/.pnpm/vite@7.3.6_@types+node@24.13.3_jiti@2.7.0_lightningcss@1.33.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:5719:9)',
+[WebServer]   message: "/app.vue — parsing 
+[WebServer]   ./.nuxt/tsconfig.app.json 
+[WebServer]   failed: Error: ENOENT: no such file or directory, open 
+[WebServer]   './.nuxt/tsconfig.app.json'",
+[WebServer]   name: 'ViteError',
+[WebServer]   statusText: 'Vite Error',
+[WebServer]   statusMessage: 'Vite Error',
+[WebServer]   code: 'VITE_ERROR',
+[WebServer]   hint: undefined,
+[WebServer] }
+[WebServer]  ERROR  [request error] [unhandled] [GET] http://127.0.0.1:64038/__nuxt_error?error=true&url=%2F&statusCode=500&statusMessage=Vite+Error&message=%2Fapp.vue+%E2%80%94+parsing+<worktree>%2Fapps%2Fexample-nuxt%2F.nuxt%2Ftsconfig.app.json+failed:+Error:+ENOENT:+no+such+file+or+directory,+open+%27<worktree>%2Fapps%2Fexample-nuxt%2F.nuxt%2Ftsconfig.app.json%27&stack=%2Fapp.vue+%E2%80%94+parsing+<worktree>%2Fapps%2Fexample-nuxt%2F.nuxt%2Ftsconfig.app.js…
+[WebServer] 
+[WebServer]  
+[WebServer] ℹ Error: /app.vue — parsing ./.nuxt/tsconfig.app.json failed: Error: ENOENT: no such file or directory, open './.nuxt/tsconfig.app.json'
+[WebServer] 
+[WebServer]  ⁃ (<worktree>/node_modules/.pnpm/vite@7.3.6_@types+node@24.13.3_jiti@2.7.0_lightningcss@1.33.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:5719:9)
+[WebServer] 
+[WebServer]    5714 ┃  		return {
+[WebServer]    5715 ┃  			tsconfigFile,
+[WebServer]    5716 ┃  			tsconfig: normalizeTSConfig(parsed, path.dirname(tsconfigFile))
+[WebServer]    5717 ┃  		};
+[WebServer]    5718 ┃  	}).catch((e$1) => {
+[WebServer]  ❯ 5719 ┃  		throw new TSConfckParseError(parsing ${tsconfigFile} failed: ${e$1}, "PARSE_FILE", tsconfigFile, e$1);
+[WebServer]    5720 ┃  	});
+[WebServer]    5721 ┃  	if (!skipCache && (!cache$1?.hasParseResult(tsconfigFile) || !cache$1.getParseResult(tsconfigFile)._isRootFile_)) cache$1?.setParseResult(tsconfigFile, promise);
+[WebServer]    5722 ┃  	return promise;
+[WebServer]    5723 ┃  }
+[WebServer]    5724 ┃  /**
+[WebServer] 
+[WebServer] 
+[WebServer] [CAUSE]
+[WebServer] Error {
+[WebServer]   stack: "/app.vue — parsing ./.nuxt/tsconfig.app.json failed: Error: ENOENT: no such file or directory, open './.nuxt/tsconfig.app.json'\n" +
+[WebServer]   'at <worktree>/node_modules/.pnpm/vite@7.3.6_@types+node@24.13.3_jiti@2.7.0_lightningcss@1.33.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:5719:9)',
+[WebServer]   message: "/app.vue — parsing 
+[WebServer]   ./.nuxt/tsconfig.app.json 
+[WebServer]   failed: Error: ENOENT: no such file or directory, open 
+... [11184 lines omitted] ...
+[WebServer]   ./.nuxt/tsconfig.app.json 
+[WebServer]   failed: Error: ENOENT: no such file or directory, open 
+[WebServer]   './.nuxt/tsconfig.app.json'",
+[WebServer]   name: 'ViteError',
+[WebServer]   statusText: 'Vite Error',
+[WebServer]   statusMessage: 'Vite Error',
+[WebServer]   code: 'VITE_ERROR',
+[WebServer]   hint: undefined,
+[WebServer] }
+[WebServer]  ERROR  [request error] [unhandled] [GET] http://127.0.0.1:64038/__nuxt_error?error=true&url=%2F&statusCode=500&statusMessage=Vite+Error&message=%2Fapp.vue+%E2%80%94+parsing+<worktree>%2Fapps%2Fexample-nuxt%2F.nuxt%2Ftsconfig.app.json+failed:+Error:+ENOENT:+no+such+file+or+directory,+open+%27<worktree>%2Fapps%2Fexample-nuxt%2F.nuxt%2Ftsconfig.app.json%27&stack=%2Fapp.vue+%E2%80%94+parsing+<worktree>%2Fapps%2Fexample-nuxt%2F.nuxt%2Ftsconfig.app.js…
+[WebServer] 
+[WebServer]  
+[WebServer] ℹ Error: /app.vue — parsing ./.nuxt/tsconfig.app.json failed: Error: ENOENT: no such file or directory, open './.nuxt/tsconfig.app.json'
+[WebServer] 
+[WebServer]  ⁃ (<worktree>/node_modules/.pnpm/vite@7.3.6_@types+node@24.13.3_jiti@2.7.0_lightningcss@1.33.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:5719:9)
+[WebServer] 
+[WebServer]    5714 ┃  		return {
+[WebServer]    5715 ┃  			tsconfigFile,
+[WebServer]    5716 ┃  			tsconfig: normalizeTSConfig(parsed, path.dirname(tsconfigFile))
+[WebServer]    5717 ┃  		};
+[WebServer]    5718 ┃  	}).catch((e$1) => {
+[WebServer]  ❯ 5719 ┃  		throw new TSConfckParseError(parsing ${tsconfigFile} failed: ${e$1}, "PARSE_FILE", tsconfigFile, e$1);
+[WebServer]    5720 ┃  	});
+[WebServer]    5721 ┃  	if (!skipCache && (!cache$1?.hasParseResult(tsconfigFile) || !cache$1.getParseResult(tsconfigFile)._isRootFile_)) cache$1?.setParseResult(tsconfigFile, promise);
+[WebServer]    5722 ┃  	return promise;
+[WebServer]    5723 ┃  }
+[WebServer]    5724 ┃  /**
+[WebServer] 
+[WebServer] 
+[WebServer] [CAUSE]
+[WebServer] Error {
+[WebServer]   stack: "/app.vue — parsing ./.nuxt/tsconfig.app.json failed: Error: ENOENT: no such file or directory, open './.nuxt/tsconfig.app.json'\n" +
+[WebServer]   'at <worktree>/node_modules/.pnpm/vite@7.3.6_@types+node@24.13.3_jiti@2.7.0_lightningcss@1.33.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:5719:9)',
+[WebServer]   message: "/app.vue — parsing 
+[WebServer]   ./.nuxt/tsconfig.app.json 
+[WebServer]   failed: Error: ENOENT: no such file or directory, open 
+[WebServer]   './.nuxt/tsconfig.app.json'",
+[WebServer]   name: 'ViteError',
+[WebServer]   statusText: 'Vite Error',
+[WebServer]   statusMessage: 'Vite Error',
+[WebServer]   code: 'VITE_ERROR',
+[WebServer]   hint: undefined,
+[WebServer] }
+[WebServer]  ERROR  [request error] [unhandled] [GET] http://127.0.0.1:64038/
+[WebServer] 
+[WebServer]  
+[WebServer] ℹ Error: /app.vue — parsing ./.nuxt/tsconfig.app.json failed: Error: ENOENT: no such file or directory, open './.nuxt/tsconfig.app.json'
+[WebServer] 
+[WebServer]  ⁃ (<worktree>/node_modules/.pnpm/vite@7.3.6_@types+node@24.13.3_jiti@2.7.0_lightningcss@1.33.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:5719:9)
+[WebServer] 
+[WebServer]    5714 ┃  		return {
+[WebServer]    5715 ┃  			tsconfigFile,
+[WebServer]    5716 ┃  			tsconfig: normalizeTSConfig(parsed, path.dirname(tsconfigFile))
+[WebServer]    5717 ┃  		};
+[WebServer]    5718 ┃  	}).catch((e$1) => {
+[WebServer]  ❯ 5719 ┃  		throw new TSConfckParseError(parsing ${tsconfigFile} failed: ${e$1}, "PARSE_FILE", tsconfigFile, e$1);
+[WebServer]    5720 ┃  	});
+[WebServer]    5721 ┃  	if (!skipCache && (!cache$1?.hasParseResult(tsconfigFile) || !cache$1.getParseResult(tsconfigFile)._isRootFile_)) cache$1?.setParseResult(tsconfigFile, promise);
+[WebServer]    5722 ┃  	return promise;
+[WebServer]    5723 ┃  }
+[WebServer]    5724 ┃  /**
+[WebServer] 
+[WebServer] 
+[WebServer] [CAUSE]
+[WebServer] Error {
+[WebServer]   stack: "/app.vue — parsing ./.nuxt/tsconfig.app.json failed: Error: ENOENT: no such file or directory, open './.nuxt/tsconfig.app.json'\n" +
+[WebServer]   'at <worktree>/node_modules/.pnpm/vite@7.3.6_@types+node@24.13.3_jiti@2.7.0_lightningcss@1.33.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/chunks/config.js:5719:9)',
+[WebServer]   message: "/app.vue — parsing 
+[WebServer]   ./.nuxt/tsconfig.app.json 
+[WebServer]   failed: Error: ENOENT: no such file or directory, open 
+[WebServer]   './.nuxt/tsconfig.app.json'",
+[WebServer]   name: 'ViteError',
+[WebServer]   statusText: 'Vite Error',
+[WebServer]   statusMessage: 'Vite Error',
+[WebServer]   code: 'VITE_ERROR',
+[WebServer]   hint: undefined,
+[WebServer] }
+Error: Timed out waiting 120000ms from config.webServer.
+
+[ELIFECYCLE] Command failed with exit code 1.

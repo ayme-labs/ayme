@@ -1,0 +1,15 @@
+$ nuxt typecheck && tsc --noEmit -p tsconfig.pom.json
+ℹ Running with compatibility version 4
+nuxt.config.ts(17,16): error TS2589: Type instantiation is excessively deep and possibly infinite.
+nuxt.config.ts(24,21): error TS7006: Parameter 'code' implicitly has an 'any' type.
+nuxt.config.ts(46,7): error TS2322: Type 'Plugin<any> | Plugin<any>[]' is not assignable to type 'PluginOption'.
+  Type 'Plugin<any>' is not assignable to type 'PluginOption'.
+    Type 'import("<worktree>/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_esbuild@0.28.2_jiti@2.7.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/index").Plugin<any>' is not assignable to type 'import("<worktree>/node_modules/.pnpm/vite@6.4.3_@types+node@24.13.3_jiti@2.7.0_lightningcss@1.33.0_terser@5.51.2_tsx@4.23.13_yaml@2.9.0/node_modules/vite/dist/node/index").Plugin<any>'.
+      Types of property 'hotUpdate' are incompatible.
+        Type 'ObjectHook<(this: MinimalPluginContext & { environment: DevEnvironment; }, options: HotUpdateOptions) => void | EnvironmentModuleNode[] | Promise<...>> | undefined' is not assignable to type 'ObjectHook<(this: HotUpdatePluginContext, options: HotUpdateOptions) => void | EnvironmentModuleNode[] | Promise<void | EnvironmentModuleNode[]>> | undefined'.
+          Type '(this: MinimalPluginContext & { environment: DevEnvironment; }, options: HotUpdateOptions) => void | EnvironmentModuleNode[] | Promise<...>' is not assignable to type 'ObjectHook<(this: HotUpdatePluginContext, options: HotUpdateOptions) => void | EnvironmentModuleNode[] | Promise<void | EnvironmentModuleNode[]>> | undefined'.
+            Type '(this: MinimalPluginContext & { environment: DevEnvironment; }, options: HotUpdateOptions) => void | EnvironmentModuleNode[] | Promise<...>' is not assignable to type '(this: HotUpdatePluginContext, options: HotUpdateOptions) => void | EnvironmentModuleNode[] | Promise<void | EnvironmentModuleNode[]>'.
+              The 'this' types of each signature are incompatible.
+                Type 'HotUpdatePluginContext' is not assignable to type 'MinimalPluginContext & { environment: DevEnvironment; }'.
+                  Type 'HotUpdatePluginContext' is missing the following properties from type 'MinimalPluginContext': error, info, warn, debug, meta
+[ELIFECYCLE] Command failed with exit code 2.

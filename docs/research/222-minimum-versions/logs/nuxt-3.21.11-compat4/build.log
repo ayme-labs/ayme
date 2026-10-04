@@ -1,0 +1,18 @@
+$ nuxt build
+┌  Building Nuxt for production...
+│
+●  Nuxt 3.21.11 (with Nitro 2.13.4, Vite 7.3.6 and Vue 3.5.42)
+[nuxt] ℹ Running with compatibility version 4
+│
+●  Nitro preset: node-server
+ℹ Building client...
+ℹ vite v7.3.6 building client environment for production...
+ℹ transforming...
+ℹ ✓ 69 modules transformed.
+
+ ERROR  ✗ Build failed in 285ms
+
+│
+■  Nuxt build error: TSConfckParseError: [vite:vue] parsing <worktree>/apps/example-nuxt/.nuxt/tsconfig.app.json failed: Error: ENOENT: no such file or directory, open '<worktree>/apps/example-nuxt/.nuxt/tsconfig.app.json'
+│  file: <worktree>/apps/example-nuxt/app/app.vue
+[ELIFECYCLE] Command failed with exit code 1.

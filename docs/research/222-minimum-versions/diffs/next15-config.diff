@@ -1,0 +1,40 @@
+diff --git a/apps/example-next/next.config.mjs b/apps/example-next/next.config.mjs
+index 4ca59b7..11fb98b 100644
+--- a/apps/example-next/next.config.mjs
++++ b/apps/example-next/next.config.mjs
+@@ -10,21 +10,22 @@ export default function nextConfig(phase) {
+     turbopack: {
+       root: fileURLToPath(new URL("../../", import.meta.url)),
+       rules: {
++        // Next 15.x rule form: nested built-in conditions; no `condition` key or content filter.
+         "*.ts": {
+-          condition: {
+-            all: ["browser", { not: "foreign" }, { content: /@ayme|extends/ }],
+-          },
+-          loaders: [
+-            {
+-              loader: "@ayme-dev/unplugin-ayme/turbopack-loader",
+-              options: {
+-                tsconfigPath: fileURLToPath(
+-                  new URL("./tsconfig.pom.json", import.meta.url)
+-                ),
++          browser: {
++            foreign: false,
++            loaders: [
++              {
++                loader: "@ayme-dev/unplugin-ayme/turbopack-loader",
++                options: {
++                  tsconfigPath: fileURLToPath(
++                    new URL("./tsconfig.pom.json", import.meta.url)
++                  ),
++                },
+               },
+-            },
+-          ],
+-          as: "*.js",
++            ],
++            as: "*.js",
++          },
+         },
+       },
+     },

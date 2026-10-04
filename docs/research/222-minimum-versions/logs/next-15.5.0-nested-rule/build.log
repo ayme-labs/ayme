@@ -1,0 +1,29 @@
+$ next build --turbopack
+   ▲ Next.js 15.5.0 (Turbopack)
+
+   Creating an optimized production build ...
+ ✓ Finished writing to disk in 43ms
+ ✓ Compiled successfully in 5.2s
+   Linting and checking validity of types ...
+
+ ⚠ The Next.js plugin was not detected in your ESLint configuration. See https://nextjs.org/docs/app/api-reference/config/eslint#migrating-existing-config
+   Collecting page data ...
+   Generating static pages (0/4) ...
+   Generating static pages (1/4) 
+   Generating static pages (2/4) 
+   Generating static pages (3/4) 
+ ✓ Generating static pages (4/4)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                         Size  First Load JS
+┌ ○ /                             209 kB         322 kB
+└ ○ /_not-found                      0 B         113 kB
++ First Load JS shared by all     113 kB
+  ├ chunks/55f14d841ced6a9e.js   21.7 kB
+  ├ chunks/6c3b6482e79ba021.js   75.3 kB
+  └ other shared chunks (total)  16.1 kB
+
+
+○  (Static)  prerendered as static content
+
