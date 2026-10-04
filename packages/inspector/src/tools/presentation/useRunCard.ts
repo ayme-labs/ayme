@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type FormEvent } from "react";
 
-import type { ToolArguments } from "../../runs/domain/run";
+import type { ToolArguments } from "../../runs";
 import { needsInput } from "../application/needsInput";
 import {
   argumentsFromJson,

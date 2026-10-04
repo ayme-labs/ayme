@@ -1,6 +1,6 @@
 import type { Run } from "./run";
-import { runIsOnMember } from "../../structure/domain/memberSelection";
-import type { Selection } from "../../navigation/domain/selection";
+import { runIsOnMember } from "../../structure";
+import type { Selection } from "../../navigation";
 
 /** Which runs belong to the selection, and what Runs calls that scope. */
 export type RunScope = {

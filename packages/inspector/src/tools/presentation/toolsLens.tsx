@@ -1,10 +1,12 @@
 import { BracesIcon, ChevronRightIcon, ZapIcon } from "lucide-react";
 
-import { WhatTheModelSees } from "../../shared/view/WhatTheModelSees";
-import type { Lens } from "../../navigation/domain/lens";
-import { NavItem } from "../../navigation/view/NavItem";
-import type { RenderRun } from "../../navigation/domain/runSlot";
-import type { Selection } from "../../navigation/domain/selection";
+import { WhatTheModelSees } from "../../shared";
+import {
+  type Lens,
+  NavItem,
+  type RenderRun,
+  type Selection,
+} from "../../navigation";
 import { listTools, toolKindLabels, type LiveTool } from "../domain/toolGroups";
 
 /**

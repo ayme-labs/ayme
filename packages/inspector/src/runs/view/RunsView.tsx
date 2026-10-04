@@ -16,7 +16,7 @@ import {
 import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { OnHover } from "../../navigation/domain/highlight";
+import type { OnHover } from "../../navigation";
 import type { Run, RunStep } from "../domain/run";
 
 export type RunsViewProps = {

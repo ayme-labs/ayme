@@ -1,6 +1,2 @@
-export {
-  installInspectorInstrumentation,
-  mountInspector,
-} from "./app/mountInspector";
-export { getInspectorTrace } from "./runs/infrastructure/trace";
-export type { TraceEntry } from "./runs/domain/run";
+export { installInspectorInstrumentation, mountInspector } from "./app";
+export { getInspectorTrace, type TraceEntry } from "./runs";

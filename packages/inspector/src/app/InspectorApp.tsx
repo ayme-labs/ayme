@@ -1,23 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useInspectorRuntime } from "./useInspectorRuntime";
-import { Empty } from "../shared/view/common";
-import { DetailPane, InspectorBody } from "../panel/view/InspectorBody";
-import { selectionHighlight } from "../navigation/domain/highlight";
-import type { Lens, LensId } from "../navigation/domain/lens";
-import { isStaleSelection } from "../structure/application/staleSelection";
-import { Navigator } from "../navigation/view/Navigator";
-import { pageSelection, type Selection } from "../navigation/domain/selection";
-import { InspectorRoot } from "../shared/view/InspectorRoot";
-import { modelLens } from "../page-model/presentation/modelLens";
-import { structureLens } from "../structure/presentation/structureLens";
-import { attachToolModels } from "../tools/domain/toolGroups";
-import { toolsLens } from "../tools/presentation/toolsLens";
-import { InspectorShell } from "../panel/presentation/InspectorShell";
-import { useHostReservation } from "../panel/infrastructure/useHostReservation";
-import { usePreferences } from "../panel/infrastructure/usePreferences";
-import { useDarkTheme } from "../panel/presentation/useTheme";
-import { WebMcpStatus } from "../panel/view/WebMcpStatus";
+import { Empty, InspectorRoot } from "../shared";
+import {
+  DetailPane,
+  InspectorBody,
+  InspectorShell,
+  useDarkTheme,
+  useHostReservation,
+  usePreferences,
+  WebMcpStatus,
+} from "../panel";
+import {
+  type Lens,
+  type LensId,
+  Navigator,
+  pageSelection,
+  type Selection,
+  selectionHighlight,
+} from "../navigation";
+import { isStaleSelection, structureLens } from "../structure";
+import { modelLens } from "../page-model";
+import { attachToolModels, toolsLens } from "../tools";
 import { useRunning } from "./useRunning";
 
 /**

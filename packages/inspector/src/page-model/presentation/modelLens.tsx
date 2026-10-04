@@ -4,12 +4,15 @@ import {
   type PageModel,
   type PageObjectNode,
 } from "../domain/pageModel";
-import { Empty } from "../../shared/view/common";
-import type { Lens, SearchEntry } from "../../navigation/domain/lens";
-import type { RenderRun } from "../../navigation/domain/runSlot";
-import type { Selection } from "../../navigation/domain/selection";
-import type { ModelPanes } from "../../panel/domain/preferences";
-import type { OnHover } from "../../navigation/domain/highlight";
+import { Empty } from "../../shared";
+import type {
+  Lens,
+  OnHover,
+  RenderRun,
+  SearchEntry,
+  Selection,
+} from "../../navigation";
+import type { ModelPanes } from "../../panel";
 import {
   MemberDetail,
   ModelDetail,

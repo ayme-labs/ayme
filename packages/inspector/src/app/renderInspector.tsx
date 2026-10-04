@@ -1,4 +1,4 @@
-import { renderInShadowRoot } from "../shared/infrastructure/renderInShadowRoot";
+import { renderInShadowRoot } from "../shared";
 import { InspectorApp } from "./InspectorApp";
 
 /**

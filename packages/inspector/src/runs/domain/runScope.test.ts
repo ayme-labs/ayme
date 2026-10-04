@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { indexMembers } from "../../page-model/domain/memberIndex";
+import { indexMembers } from "../../page-model";
 import { collection, page } from "../../page-model/test-utils/pageModel";
 import type { Run } from "./run";
 import { runScope as scopeOf } from "./runScope";

@@ -4,11 +4,11 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { ProjectedStructuralNodeForest } from "@ayme-dev/ayme/internal";
 
-import type { ControlState } from "../../shared/domain/controlState";
+import type { ControlState } from "../../shared";
 import type { RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../structure/test-utils/projected";
-import { buildStructureTree } from "../../structure/infrastructure/structureTree";
-import type { Run } from "../../runs/domain/run";
+import { buildStructureTree } from "../../structure";
+import type { Run } from "../../runs";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
 import { RunCard } from "./RunCard";

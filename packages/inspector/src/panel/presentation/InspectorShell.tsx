@@ -25,7 +25,7 @@ import {
 } from "../domain/geometry";
 import { Header, layoutNames } from "../view/Header";
 import type { Layout, Preferences } from "../domain/preferences";
-import { usePointerDrag } from "../../shared/presentation/pointerDrag";
+import { usePointerDrag } from "../../shared";
 import { currentViewport, useViewport } from "./useViewport";
 
 type Edge = "left" | "right" | "top" | "bottom";

@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import type { ProjectedStructuralNodeForest } from "@ayme-dev/ayme/internal";
 
-import type { ControlState } from "../../shared/domain/controlState";
+import type { ControlState } from "../../shared";
 import { forest, node } from "../../structure/test-utils/projected";
-import { buildStructureTree } from "../../structure/infrastructure/structureTree";
+import { buildStructureTree } from "../../structure";
 import { changedFields, formRows, inFillOrder } from "./fillForm";
 
 // A projected page state for a form with every field type.

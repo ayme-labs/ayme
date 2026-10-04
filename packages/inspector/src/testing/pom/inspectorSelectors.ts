@@ -1,6 +1,6 @@
 import type { Selectors } from "@playwright/test";
 
-import { INSPECTOR_SHADOW_ROOT_KEY } from "../../shared/infrastructure/shadowRootHook";
+import { INSPECTOR_SHADOW_ROOT_KEY } from "../../shared";
 
 /**
  * The Playwright selector engine that reaches into the Inspector's closed

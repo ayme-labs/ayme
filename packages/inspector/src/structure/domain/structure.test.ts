@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { indexMembers } from "../../page-model/domain/memberIndex";
+import { indexMembers } from "../../page-model";
 import { forest, node } from "../test-utils/projected";
 import {
   collection,
@@ -9,7 +9,7 @@ import {
   page,
   type Contents,
 } from "../../page-model/test-utils/pageModel";
-import { mapTargetsToRefs } from "../../shared/domain/targetsByRef";
+import { mapTargetsToRefs } from "../../shared";
 import { buildStructureTree } from "../infrastructure/structureTree";
 import { type StructureNode } from "./structure";
 

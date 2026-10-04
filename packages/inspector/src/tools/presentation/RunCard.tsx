@@ -1,5 +1,5 @@
-import type { OnHover } from "../../navigation/domain/highlight";
-import type { CollectionItem, Run, ToolArguments } from "../../runs/domain/run";
+import type { OnHover } from "../../navigation";
+import type { CollectionItem, Run, ToolArguments } from "../../runs";
 import { argumentsToJson } from "../domain/fields";
 import type { RefSource } from "../domain/refTree";
 import type { RunnableTool } from "../domain/runnableTools";

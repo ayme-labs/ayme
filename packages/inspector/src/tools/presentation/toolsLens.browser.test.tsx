@@ -2,13 +2,13 @@ import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { DetailPane as DetailPaneFrame } from "../../panel/view/InspectorBody";
-import { Navigator as NavigatorFrame } from "../../navigation/view/Navigator";
-import type { RenderRun } from "../../navigation/domain/runSlot";
+import { DetailPane as DetailPaneFrame } from "../../panel";
 import {
+  Navigator as NavigatorFrame,
   pageSelection,
+  type RenderRun,
   type Selection,
-} from "../../navigation/domain/selection";
+} from "../../navigation";
 import { renderPart } from "../../testing/renderPart";
 import { DetailPane, Navigator } from "../../testing";
 import type { LiveTool } from "../domain/toolGroups";

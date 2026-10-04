@@ -1,9 +1,8 @@
 import { useRef, type Ref } from "react";
 
-import { AymeMark } from "../../shared/view/AymeMark";
+import { AymeMark, usePointerDrag } from "../../shared";
 import { fitLogo, type Viewport } from "../domain/geometry";
 import type { Point } from "../domain/preferences";
-import { usePointerDrag } from "../../shared/presentation/pointerDrag";
 
 /**
  * The collapsed Inspector: the ayme logo, draggable anywhere in the viewport.

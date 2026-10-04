@@ -4,7 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import { refFilterOf } from "../infrastructure/refPicking";
 import type { RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../structure/test-utils/projected";
-import { buildStructureTree } from "../../structure/infrastructure/structureTree";
+import { buildStructureTree } from "../../structure";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
 import type { RefSource } from "../domain/refTree";

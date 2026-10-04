@@ -3,8 +3,7 @@ import {
   listRegisteredPoms,
 } from "@ayme-dev/ayme/internal";
 
-import { indexMembers } from "../../page-model/domain/memberIndex";
-import { buildPageModel } from "../../page-model/domain/pageModel";
+import { buildPageModel, indexMembers } from "../../page-model";
 import type { RunStep, TraceEntry } from "../domain/run";
 import { traceEntryLocator } from "./trace";
 

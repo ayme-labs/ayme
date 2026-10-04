@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { Run, RunStep } from "../domain/run";
-import { RunsRegion } from "../../panel/view/InspectorBody";
+import { RunsRegion } from "../../panel";
 import { renderPart } from "../../testing/renderPart";
 import { RunsView } from "../../testing";
 import type { RunFocus } from "../domain/run";

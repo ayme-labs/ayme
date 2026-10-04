@@ -1,16 +1,16 @@
 import type { Page } from "@playwright/test";
 import { installRuntimePageInstrumentation } from "@ayme-dev/ayme/internal";
 
-import { allowPassThrough } from "../panel/infrastructure/panelPassThrough";
+import { allowPassThrough } from "../panel";
 import { renderInspector } from "./renderInspector";
-import { exposeInspectorShadowRoot } from "../shared/infrastructure/shadowRootHook";
+import { exposeInspectorShadowRoot } from "../shared";
 import {
   dispatchInspectorTrace,
   recordInspectorTrace,
   resetInspectorTrace,
   subscribeToInspectorTraceDispatcher,
-} from "../runs/infrastructure/trace";
-import { withDemoFeedback } from "../demo/infrastructure/withDemoFeedback";
+} from "../runs";
+import { withDemoFeedback } from "../demo";
 
 // The page's two highlights: solid for the Inspector's selection, dashed
 // for what the pointer is over in the panel. An element that is both shows

@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { indexMembers } from "../../page-model/domain/memberIndex";
+import { indexMembers } from "../../page-model";
 import { page } from "../../page-model/test-utils/pageModel";
 import { forest, node } from "../test-utils/projected";
 import { buildStructureTree } from "../infrastructure/structureTree";

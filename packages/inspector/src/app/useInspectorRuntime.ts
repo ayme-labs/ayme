@@ -1,24 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { useLiveTools } from "../tools/infrastructure/liveTools";
 import {
-  indexMembers,
-  type MemberIndex,
-} from "../page-model/domain/memberIndex";
-import { buildPageModel } from "../page-model/domain/pageModel";
-import {
+  listRunnableTools,
   pickPromptOf,
+  pomDefinitionText,
   refFilterOf,
-  startRefPicking,
   type RefPickingHandlers,
-} from "../tools/infrastructure/refPicking";
-import { listRunnableTools } from "../tools/domain/runnableTools";
-import { buildStructureTree } from "../structure/infrastructure/structureTree";
-import { emptyStructure } from "../structure/domain/structure";
-import { useHighlights } from "../navigation/infrastructure/useHighlights";
-import { usePageLook } from "../shared/infrastructure/usePageLook";
-import { pomDefinitionText } from "../tools/infrastructure/pomDefinitionText";
-import { useRuns } from "../runs/infrastructure/useRuns";
+  startRefPicking,
+  useLiveTools,
+} from "../tools";
+import { buildPageModel, indexMembers, type MemberIndex } from "../page-model";
+import { buildStructureTree, emptyStructure } from "../structure";
+import { useHighlights } from "../navigation";
+import { usePageLook } from "../shared";
+import { useRuns } from "../runs";
 
 /**
  * What the Inspector shows and does, composed from each slice's own reading

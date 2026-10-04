@@ -3,7 +3,7 @@ import { XIcon } from "lucide-react";
 
 import type { JsonValue } from "@ayme-dev/ayme";
 
-import type { ToolArguments } from "../../runs/domain/run";
+import type { ToolArguments } from "../../runs";
 import { initialValues, type Field } from "../domain/fields";
 import type { RefSource } from "../domain/refTree";
 

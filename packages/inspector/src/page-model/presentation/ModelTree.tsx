@@ -12,14 +12,13 @@ import {
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { PageObjectModel, PageObjectNode } from "../domain/pageModel";
-import { usePointerDrag } from "../../shared/presentation/pointerDrag";
+import { usePointerDrag } from "../../shared";
 import {
   maxModelSplit as maxSplit,
   minModelSplit as minSplit,
   type ModelPanes,
-} from "../../panel/domain/preferences";
-import type { Selection } from "../../navigation/domain/selection";
-import type { OnHover } from "../../navigation/domain/highlight";
+} from "../../panel";
+import type { OnHover, Selection } from "../../navigation";
 import { hoverHandlers } from "../view/hover";
 
 const splitStep = 0.05;

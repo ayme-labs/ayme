@@ -11,8 +11,8 @@ import {
 import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { OnHover } from "../../navigation/domain/highlight";
-import type { CollectionItem, Run } from "../../runs/domain/run";
+import type { OnHover } from "../../navigation";
+import type { CollectionItem, Run } from "../../runs";
 import type { Field } from "../domain/fields";
 import type { RunnableTool } from "../domain/runnableTools";
 

@@ -1,22 +1,12 @@
 import { useState } from "react";
 
-import {
-  pathBelowPage,
-  type MemberIndex,
-} from "../page-model/domain/memberIndex";
-import {
-  structureRows,
-  type StructureNode,
-} from "../structure/domain/structure";
-import type { CollectionItem } from "../runs/domain/run";
+import { type MemberIndex, pathBelowPage } from "../page-model";
+import { type StructureNode, structureRows } from "../structure";
+import { type CollectionItem, type RunFocus, Runs, runScope } from "../runs";
 import type { InspectorRuntime } from "./useInspectorRuntime";
-import { RunsRegion } from "../panel/view/InspectorBody";
-import type { RenderRun } from "../navigation/domain/runSlot";
-import type { Selection } from "../navigation/domain/selection";
-import { RunCard } from "../tools/presentation/RunCard";
-import type { RunFocus } from "../runs/domain/run";
-import { Runs } from "../runs/presentation/Runs";
-import { runScope } from "../runs/domain/runScope";
+import { RunsRegion } from "../panel";
+import type { RenderRun, Selection } from "../navigation";
+import { RunCard } from "../tools";
 
 /**
  * Running from the panel: the run slot's run card, and Runs scoped to the

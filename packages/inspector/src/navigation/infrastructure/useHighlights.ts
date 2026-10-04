@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import type { Look } from "../../shared/infrastructure/usePageLook";
+import type { Look } from "../../shared";
 import type { HighlightTarget } from "../domain/highlight";
 
 /**
