@@ -3,8 +3,9 @@
  * appends one JSON line per decision request to a usage file that lives for
  * the lab app's lifetime, so a run's calls are the lines whose time falls in
  * the run's window. Token counts come from those lines. Cost comes from
- * OpenRouter's own record of each generation; a call without one has an
- * unknown cost, never a cost of zero.
+ * OpenRouter's own record of each generation, which can appear minutes to an
+ * hour after the call; a call without one has an unknown cost, never a cost
+ * of zero, until the report command finds the record.
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -44,6 +45,8 @@ export type GoalLoopUsage = {
   failedCalls: number;
   /** Input and output tokens of the answered calls; the Goal Loop's model has no cache tokens. `null` without calls. */
   usage: TokenUsage | null;
+  /** OpenRouter's generation ids of the answered calls, the keys to their cost records. */
+  generationIds: string[];
   /** The answered calls' cost from OpenRouter's generation records; `null` when any is missing, or without calls. */
   costUsd: number | null;
   /** Answered calls whose generation record was found. */
@@ -54,6 +57,7 @@ export const noGoalLoop: GoalLoopUsage = {
   calls: 0,
   failedCalls: 0,
   usage: null,
+  generationIds: [],
   costUsd: null,
   callsWithCost: 0,
 };
@@ -114,6 +118,31 @@ export function selectDecisionUsage(
 const answered = (record: DecisionUsageRecord) => record.status === 200;
 
 /**
+ * The answered calls' cost from OpenRouter's records: known only when every
+ * answered call has an id and every id a record (`null` in the map means
+ * OpenRouter had none).
+ */
+export function goalLoopCost(
+  generationIds: string[],
+  answeredCalls: number,
+  costByGenerationId: ReadonlyMap<string, number | null>
+): Pick<GoalLoopUsage, "costUsd" | "callsWithCost"> {
+  if (answeredCalls === 0) return { costUsd: null, callsWithCost: 0 };
+  let costUsd: number | null = 0;
+  let callsWithCost = 0;
+  for (const id of generationIds) {
+    const cost = costByGenerationId.get(id) ?? null;
+    if (cost === null) costUsd = null;
+    else {
+      callsWithCost += 1;
+      if (costUsd !== null) costUsd += cost;
+    }
+  }
+  if (generationIds.length < answeredCalls) costUsd = null;
+  return { costUsd, callsWithCost };
+}
+
+/**
  * The run's Goal Loop usage from its records and the cost OpenRouter reports
  * for each generation id (`null` when it reports none).
  */
@@ -128,9 +157,8 @@ export function summarizeGoalLoop(
     cacheRead: 0,
     output: 0,
   };
+  const generationIds: string[] = [];
   let failedCalls = 0;
-  let callsWithCost = 0;
-  let costUsd: number | null = 0;
   for (const record of records) {
     if (!answered(record)) {
       failedCalls += 1;
@@ -138,22 +166,18 @@ export function summarizeGoalLoop(
     }
     usage.input += record.usage?.inputTokens ?? 0;
     usage.output += record.usage?.outputTokens ?? 0;
-    const cost =
-      record.generationId === null
-        ? null
-        : (costByGenerationId.get(record.generationId) ?? null);
-    if (cost === null) costUsd = null;
-    else {
-      callsWithCost += 1;
-      if (costUsd !== null) costUsd += cost;
-    }
+    if (record.generationId !== null) generationIds.push(record.generationId);
   }
   return {
     calls: records.length,
     failedCalls,
     usage,
-    costUsd: records.length === failedCalls ? null : costUsd,
-    callsWithCost,
+    generationIds,
+    ...goalLoopCost(
+      generationIds,
+      records.length - failedCalls,
+      costByGenerationId
+    ),
   };
 }
 
@@ -164,12 +188,32 @@ export function summarizeGoalLoop(
  */
 export function combinedCost(
   agentCostUsd: number | null,
-  goalLoop: GoalLoopUsage
+  goalLoop: Pick<GoalLoopUsage, "calls" | "costUsd">
 ): number | null {
   if (agentCostUsd === null) return null;
   if (goalLoop.calls === 0) return agentCostUsd;
   if (goalLoop.costUsd === null) return null;
   return agentCostUsd + goalLoop.costUsd;
+}
+
+/**
+ * A stored result's Goal Loop cost and combined cost, once OpenRouter has the
+ * records the run could not get at its end. Pure; the report command reads
+ * and writes the file.
+ */
+export function completeGoalLoopCost(
+  result: { costUsd: number | null; goalLoop: GoalLoopUsage },
+  costByGenerationId: ReadonlyMap<string, number | null>
+): { goalLoop: GoalLoopUsage; combinedCostUsd: number | null } {
+  const goalLoop: GoalLoopUsage = {
+    ...result.goalLoop,
+    ...goalLoopCost(
+      result.goalLoop.generationIds,
+      result.goalLoop.calls - result.goalLoop.failedCalls,
+      costByGenerationId
+    ),
+  };
+  return { goalLoop, combinedCostUsd: combinedCost(result.costUsd, goalLoop) };
 }
 
 /** The lines of the usage file; none when the lab app has not written one. */
@@ -187,60 +231,52 @@ export async function readDecisionUsage(
 export const generationEndpoint = "https://openrouter.ai/api/v1/generation";
 
 /**
- * OpenRouter's cost for each generation, from its generation endpoint. A
- * record can lag the response, so a missing one is asked for again a few
- * times before it counts as unknown.
+ * OpenRouter's cost for each generation, from its generation endpoint: what
+ * OpenRouter charged plus what a bring-your-own-key provider charged upstream,
+ * since Jev is billed that way. `null` for a generation OpenRouter has no
+ * record of yet.
  */
 export async function lookUpGenerationCosts(
   generationIds: string[],
   options: {
     apiKey: string;
     fetch?: typeof fetch;
-    attempts?: number;
-    delayMs?: number;
     log?: (line: string) => void;
   }
 ): Promise<Map<string, number | null>> {
-  const {
-    apiKey,
-    fetch: fetchFn = fetch,
-    attempts = 4,
-    delayMs = 3_000,
-    log = () => undefined,
-  } = options;
+  const { apiKey, fetch: fetchFn = fetch, log = () => undefined } = options;
   const costs = new Map<string, number | null>();
   for (const id of new Set(generationIds)) {
     let cost: number | null = null;
-    for (let attempt = 1; attempt <= attempts && cost === null; attempt += 1) {
-      if (attempt > 1)
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      const response = await fetchFn(
-        `${generationEndpoint}?id=${encodeURIComponent(id)}`,
-        { headers: { Authorization: `Bearer ${apiKey}` } }
-      );
-      if (response.status === 404) continue;
-      if (!response.ok) {
-        log(
-          `OpenRouter answered HTTP ${response.status} for generation ${id}; its cost is unknown.`
-        );
-        break;
-      }
+    const response = await fetchFn(
+      `${generationEndpoint}?id=${encodeURIComponent(id)}`,
+      { headers: { Authorization: `Bearer ${apiKey}` } }
+    );
+    if (response.ok) {
       const body: unknown = await response.json();
       const data = isRecord(body) && isRecord(body.data) ? body.data : null;
-      cost = numberOrNull(data?.total_cost);
-      if (cost === null) break;
+      const total = numberOrNull(data?.total_cost);
+      if (total !== null)
+        cost = total + (numberOrNull(data?.upstream_inference_cost) ?? 0);
+    } else if (response.status !== 404) {
+      log(
+        `OpenRouter answered HTTP ${response.status} for generation ${id}; its cost is unknown.`
+      );
     }
-    if (cost === null)
-      log(`OpenRouter has no cost record for generation ${id}.`);
     costs.set(id, cost);
   }
+  const missing = [...costs.values()].filter((cost) => cost === null).length;
+  if (missing > 0)
+    log(
+      `OpenRouter has no cost record yet for ${missing} of ${costs.size} Goal Loop calls; pnpm eval:report fills them in later.`
+    );
   return costs;
 }
 
 /**
  * The Goal Loop's usage for one run: the usage file's lines within the run's
- * window, with each answered call's cost looked up at OpenRouter when a key is
- * at hand. Without a key every cost is unknown.
+ * window, with each answered call's cost asked of OpenRouter once, when a key
+ * is at hand. Records OpenRouter does not have yet leave the cost unknown.
  */
 export async function measureGoalLoop(options: {
   usageFile: string;

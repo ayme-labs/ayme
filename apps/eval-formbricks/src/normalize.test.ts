@@ -88,6 +88,7 @@ const goalLoopRan = {
   calls: 3,
   failedCalls: 1,
   usage: { input: 952, cacheCreation: 0, cacheRead: 0, output: 140 },
+  generationIds: ["gen-a", "gen-b"],
   costUsd: 0.1,
   callsWithCost: 2,
 };

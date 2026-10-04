@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   combinedCost,
+  completeGoalLoopCost,
   decisionUsageFile,
   lookUpGenerationCosts,
   noGoalLoop,
@@ -43,6 +44,8 @@ const window = {
   startedAt: "2026-10-04T10:01:00.000Z",
   finishedAt: "2026-10-04T10:03:00.000Z",
 };
+const first = "gen-2026-10-04T10:01:00.000Z";
+const second = "gen-2026-10-04T10:03:00.000Z";
 
 describe("the usage file", () => {
   it("reads one record per line and skips what is not one", () => {
@@ -86,7 +89,7 @@ describe("the usage file", () => {
 describe("the Goal Loop's usage for a run", () => {
   const selected = selectDecisionUsage(records, window);
 
-  it("counts calls and failures and adds up the answered calls' tokens", () => {
+  it("counts calls and failures, adds up the answered calls' tokens and keeps their generation ids", () => {
     const usage = summarizeGoalLoop(selected, new Map());
     expect(usage.calls).toBe(3);
     expect(usage.failedCalls).toBe(1);
@@ -96,14 +99,15 @@ describe("the Goal Loop's usage for a run", () => {
       cacheRead: 0,
       output: 140,
     });
+    expect(usage.generationIds).toEqual([first, second]);
   });
 
   it("adds up the cost when OpenRouter has a record for every answered call", () => {
     const usage = summarizeGoalLoop(
       selected,
       new Map([
-        ["gen-2026-10-04T10:01:00.000Z", 0.00002],
-        ["gen-2026-10-04T10:03:00.000Z", 0.00003],
+        [first, 0.00002],
+        [second, 0.00003],
       ])
     );
     expect(usage.costUsd).toBeCloseTo(0.00005, 10);
@@ -111,15 +115,12 @@ describe("the Goal Loop's usage for a run", () => {
   });
 
   it("leaves the cost unknown, never zero, when a record is missing", () => {
-    const usage = summarizeGoalLoop(
-      selected,
-      new Map([["gen-2026-10-04T10:01:00.000Z", 0.00002]])
-    );
+    const usage = summarizeGoalLoop(selected, new Map([[first, 0.00002]]));
     expect(usage.costUsd).toBeNull();
     expect(usage.callsWithCost).toBe(1);
   });
 
-  it("leaves the cost unknown when a line has no generation id", () => {
+  it("leaves the cost unknown when an answered call has no generation id", () => {
     const withoutId: DecisionUsageRecord[] = selected.map((record) => ({
       ...record,
       generationId: null,
@@ -133,6 +134,7 @@ describe("the Goal Loop's usage for a run", () => {
       calls: 0,
       failedCalls: 0,
       usage: null,
+      generationIds: [],
       costUsd: null,
       callsWithCost: 0,
     });
@@ -160,26 +162,64 @@ describe("the combined cost", () => {
   });
 });
 
-describe("looking up generation costs", () => {
-  const generation = (id: string, total_cost: number) =>
-    Response.json({ data: { id, total_cost } });
+describe("completing a stored result's cost later", () => {
+  const stored = {
+    costUsd: 0.4321,
+    goalLoop: summarizeGoalLoop(
+      selectDecisionUsage(records, window),
+      new Map()
+    ),
+  };
 
-  it("reads each generation's total cost once, asking a missing one again", async () => {
+  it("fills in the Goal Loop's and the combined cost once every record is found", () => {
+    const completed = completeGoalLoopCost(
+      stored,
+      new Map([
+        [first, 0.00002],
+        [second, 0.00003],
+      ])
+    );
+    expect(completed.goalLoop.costUsd).toBeCloseTo(0.00005, 10);
+    expect(completed.goalLoop.callsWithCost).toBe(2);
+    expect(completed.goalLoop.calls).toBe(3);
+    expect(completed.combinedCostUsd).toBeCloseTo(0.43215, 10);
+  });
+
+  it("keeps both unknown while a record is still missing", () => {
+    const completed = completeGoalLoopCost(stored, new Map([[first, 0.00002]]));
+    expect(completed.goalLoop.costUsd).toBeNull();
+    expect(completed.goalLoop.callsWithCost).toBe(1);
+    expect(completed.combinedCostUsd).toBeNull();
+  });
+});
+
+describe("looking up generation costs", () => {
+  // OpenRouter's record of a Jev call: billed through the provider's own key, so the cost is upstream.
+  const generation = (id: string, upstream: number, total = 0) =>
+    Response.json({
+      data: {
+        id,
+        is_byok: true,
+        total_cost: total,
+        upstream_inference_cost: upstream,
+      },
+    });
+
+  it("adds OpenRouter's charge and the upstream provider's for each generation, asking once", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(generation("gen-a", 0.00002))
-      .mockResolvedValueOnce(new Response("", { status: 404 }))
-      .mockResolvedValueOnce(generation("gen-b", 0.00003));
+      .mockResolvedValueOnce(generation("gen-a", 0.00002, 0.000001))
+      .mockResolvedValueOnce(new Response("", { status: 404 }));
+    const log = vi.fn();
     const costs = await lookUpGenerationCosts(["gen-a", "gen-b", "gen-a"], {
       apiKey: "test-key",
       fetch: fetchMock,
-      delayMs: 0,
+      log,
     });
-    expect([...costs]).toEqual([
-      ["gen-a", 0.00002],
-      ["gen-b", 0.00003],
-    ]);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect([...costs.keys()]).toEqual(["gen-a", "gen-b"]);
+    expect(costs.get("gen-a")).toBeCloseTo(0.000021, 12);
+    expect(costs.get("gen-b")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toBe(
       "https://openrouter.ai/api/v1/generation?id=gen-a"
@@ -187,24 +227,19 @@ describe("looking up generation costs", () => {
     expect(new Headers(init?.headers).get("Authorization")).toBe(
       "Bearer test-key"
     );
+    expect(log).toHaveBeenCalledWith(
+      "OpenRouter has no cost record yet for 1 of 2 Goal Loop calls; pnpm eval:report fills them in later."
+    );
   });
 
-  it("records an unknown cost when OpenRouter never has the record", async () => {
+  it("records an unknown cost for a record without a total", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(new Response("", { status: 404 }));
-    const log = vi.fn();
+      .mockResolvedValue(Response.json({ data: { id: "gen-a" } }));
     const costs = await lookUpGenerationCosts(["gen-a"], {
       apiKey: "test-key",
       fetch: fetchMock,
-      attempts: 2,
-      delayMs: 0,
-      log,
     });
     expect(costs.get("gen-a")).toBeNull();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(log).toHaveBeenCalledWith(
-      "OpenRouter has no cost record for generation gen-a."
-    );
   });
 });
