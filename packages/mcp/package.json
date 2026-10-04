@@ -24,6 +24,11 @@
       "types": "./dist/client.d.mts",
       "import": "./dist/client.mjs",
       "default": "./dist/client.mjs"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.mts",
+      "import": "./dist/testing.mjs",
+      "default": "./dist/testing.mjs"
     }
   },
   "scripts": {
@@ -39,9 +44,18 @@
     "ws": "^8.22.0",
     "zod": "^4.5.4"
   },
+  "peerDependencies": {
+    "@playwright/test": ">=1.29 <1.63"
+  },
+  "peerDependenciesMeta": {
+    "@playwright/test": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.2",
     "eslint": "^10.9.1",

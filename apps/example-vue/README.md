@@ -17,7 +17,9 @@ This browser playground combines a functional list app with an Ayme inspector so
 
 ## Try with your agent
 
-Open the playground and choose **Try with your own coding agent**. The wizard explains the relay, shows the prompt to paste into the agent, and connects the page with **Relay installed — connect**. It closes itself once the relay answers, because an open dialog blocks the page for the agent. The prompts are plain copy in `src/agentPrompts.ts`. The [WebMCP local relay](https://github.com/WebMCP-org/npm-packages/tree/main/packages/webmcp-local-relay) MCP server is the only thing a visitor installs, and the page contacts it only after that click. The [Ayme setup skill](../../skills/ayme/SKILL.md) is for integrating Ayme into your own project, not for trying the playground.
+Open the playground and choose **Try with your own coding agent**. The wizard shows the prompt to paste into the agent: it registers [Ayme's MCP server](../../packages/mcp/README.md), pinned to the version of `@ayme-dev/mcp` in this repository, and asks the agent to call `ayme_connect` with the page's URL. The visitor opens the returned link in this tab, which pairs it without a reload; the wizard closes itself when the link arrives, because an open dialog blocks the page for the agent. The prompt is plain copy in `src/agentPrompts.ts`. Ayme's MCP server is the only thing a visitor installs, and the page contacts it only through a connect link. The [Ayme setup skill](../../skills/ayme/SKILL.md) is for integrating Ayme into your own project, not for trying the playground.
+
+`App.vue` turns the Agent Connection (`agentConnection` in `useAyme`) on under the same condition as the Inspector, so the hosted build has it and `--mode inspector-disabled` builds without it. The end-to-end tests run the shared [example certification](../example-certification/README.md)'s Agent Connection check: an MCP client pairs with the dev server's page through a connect link and calls a tool.
 
 The hosted bundle initializes the pinned WebMCP polyfill before the Vue app starts.
 
@@ -39,7 +41,7 @@ usePageObject(ListPage);
 
 `webMCP.enabled` turns publication on; it is off unless set. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
 
-This example passes a custom page from `useDemoTrace` to add slow typing, click cues, and trace recording. `AgentPanel.vue` holds the agent wizard: it loads the local relay embed when the visitor connects, and reports what the embed says about the relay. It also passes `ignore` to keep the site header out of Structural Page State. These helpers support the demo and are optional for applications.
+This example passes a custom page from `useDemoTrace` to add slow typing, click cues, and trace recording. `AgentPanel.vue` holds the agent wizard, which shows the prompt and loads nothing itself. `App.vue` also passes `ignore` to keep the site header out of Structural Page State. These helpers support the demo and are optional for applications.
 
 Disabling publication does not remove Ayme or Page Object code from the bundle.
 

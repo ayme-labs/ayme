@@ -41,6 +41,7 @@ export default function CounterExample() {
     <AymeProvider
       webMCP={{ enabled: true }}
       inspector={process.env.NODE_ENV === "development"}
+      agentConnection={process.env.NODE_ENV === "development"}
     >
       <Demo />
     </AymeProvider>

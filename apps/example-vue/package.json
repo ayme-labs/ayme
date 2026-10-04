@@ -17,6 +17,7 @@
     "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#e95ea4b7cadd62ff4f6d74a5101506e7e855a899",
     "@ayme-dev/ayme": "workspace:*",
     "@ayme-dev/inspector": "workspace:*",
+    "@ayme-dev/mcp": "workspace:*",
     "@ayme-dev/vue": "workspace:*",
     "@lucide/vue": "^1.47.0",
     "@mcp-b/webmcp-polyfill": "5.1.0",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/example-certification": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@ayme-dev/unplugin-ayme": "workspace:*",
     "@playwright/test": "^1.62.1",

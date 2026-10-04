@@ -34,6 +34,7 @@ Fakes, test doubles and page objects for tests ship from the package's `testing`
 | `@ayme-dev/ayme/testing`                        | The recording WebMCP driver: `recordPublishedTools`, `recordPublishedToolsLate`, `waitForPublishedTool`, `executePublishedTool` and its queries |
 | `@ayme-dev/inspector/testing`                   | The Inspector's page objects, for its own tests, its e2e tests and the example apps' smoke tests                                                |
 | `@ayme-dev/core/structural-observation/testing` | `StructuralTreeMockFactory` and `MockLiveAriaSnapshotSource`, for structural trees without a browser                                            |
+| `@ayme-dev/mcp/testing`                         | A coding agent for e2e tests: `startAgent` runs `ayme mcp` over stdio, and `connectPage` pairs a Playwright page by link                        |
 
 Consumers may use these entries to test their own integration.
 

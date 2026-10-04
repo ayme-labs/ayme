@@ -76,6 +76,9 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
       express:
         specifier: ^5.1.0
         version: 5.2.1(supports-color@10.2.2)
@@ -101,6 +104,9 @@ importers:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      "@ayme-dev/example-certification":
+        specifier: workspace:*
+        version: link:../example-certification
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -131,6 +137,9 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../../packages/ayme
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
@@ -159,6 +168,9 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
       "@ayme-dev/react":
         specifier: workspace:*
         version: link:../../packages/react
@@ -214,6 +226,9 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
       "@ayme-dev/vue":
         specifier: workspace:*
         version: link:../../packages/vue
@@ -227,6 +242,9 @@ importers:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      "@ayme-dev/example-certification":
+        specifier: workspace:*
+        version: link:../example-certification
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -260,6 +278,9 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
       "@ayme-dev/react":
         specifier: workspace:*
         version: link:../../packages/react
@@ -273,6 +294,9 @@ importers:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      "@ayme-dev/example-certification":
+        specifier: workspace:*
+        version: link:../example-certification
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -312,6 +336,9 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
       "@ayme-dev/svelte":
         specifier: workspace:*
         version: link:../../packages/svelte
@@ -370,6 +397,9 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
       "@ayme-dev/playwright-lite":
         specifier: github:ayme-labs/playwright-lite#e95ea4b7cadd62ff4f6d74a5101506e7e855a899
         version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/e95ea4b7cadd62ff4f6d74a5101506e7e855a899(@playwright/test@1.62.1)
@@ -407,6 +437,9 @@ importers:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      "@ayme-dev/example-certification":
+        specifier: workspace:*
+        version: link:../example-certification
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -860,6 +893,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@playwright/test":
+        specifier: ^1.62.1
+        version: 1.62.1
       "@types/node":
         specifier: ^24.0.0
         version: 24.13.3

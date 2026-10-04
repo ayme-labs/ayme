@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ayme-dev/ayme": "workspace:*"
+    "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/mcp": "workspace:*"
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",

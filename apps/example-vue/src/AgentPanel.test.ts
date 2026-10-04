@@ -1,18 +1,17 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { enableAutoUnmount, mount } from "@vue/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AgentPanel from "./AgentPanel.vue";
 
-const relayScript = () =>
-  document.head.querySelector<HTMLScriptElement>("script[data-ayme-relay]");
-
-// The relay embed's internal protocol, read from @mcp-b/webmcp-local-relay
-// 5.1.0. Re-verify these names whenever the pinned version changes.
-function relaySays(type: string, origin = window.location.origin) {
-  window.dispatchEvent(
-    new MessageEvent("message", { data: { type, requestId: "1" }, origin })
-  );
-}
+const mcpVersion = (
+  JSON.parse(
+    // Vitest runs from this app's directory.
+    readFileSync(join(process.cwd(), "../../packages/mcp/package.json"), "utf8")
+  ) as { version: string }
+).version;
 
 async function openWizard() {
   const wrapper = mount(AgentPanel, { attachTo: document.body });
@@ -20,201 +19,64 @@ async function openWizard() {
   return wrapper;
 }
 
-async function mountConnecting() {
-  const wrapper = await openWizard();
-  await wrapper.get('[data-action="wizard-next"]').trigger("click");
-  await wrapper.get('[data-action="connect-relay"]').trigger("click");
-  return wrapper;
-}
-
-const status = (wrapper: ReturnType<typeof mount>) =>
-  wrapper.get("[data-relay-status]").attributes("data-relay-status");
+const prompt = (wrapper: ReturnType<typeof mount>) =>
+  wrapper.get('[data-prompt="prompt"]').text();
 
 enableAutoUnmount(afterEach);
 
 describe("The agent wizard", () => {
-  beforeEach(() => {
-    // Reka's dialog animates through requestAnimationFrame, so only the
-    // component's own timers are faked here.
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-    relayScript()?.remove();
-    document.querySelector("iframe[data-webmcp-relay]")?.remove();
-  });
-
-  it("explains the relay and loads nothing until asked", async () => {
+  it("pins Ayme's MCP server to this repository's version", async () => {
     const wrapper = await openWizard();
 
-    expect(wrapper.text()).toContain("program on your computer");
-    expect(status(wrapper)).toBe("idle");
-    expect(relayScript()).toBeNull();
+    expect(prompt(wrapper)).toContain(`-y @ayme-dev/mcp@${mcpVersion} mcp`);
+    expect(prompt(wrapper)).not.toContain("@latest");
   });
 
-  it("pins one relay version and this page's origin in the prompt", async () => {
+  it("tells the agent to connect this page with ayme_connect", async () => {
     const wrapper = await openWizard();
 
-    expect(wrapper.get("pre").text()).toContain(
-      `@mcp-b/webmcp-local-relay@5.1.0 --widget-origin ${window.location.origin}`
+    expect(prompt(wrapper)).toContain(
+      `call ayme_connect with ${window.location.origin}${window.location.pathname}`
     );
   });
 
-  it("loads the pinned relay embed when the visitor connects", async () => {
-    const wrapper = await mountConnecting();
+  it("loads no script and opens no connection of its own", async () => {
+    const scripts = document.scripts.length;
+    const wrapper = await openWizard();
+    await wrapper.get('[data-action="wizard-next"]').trigger("click");
 
-    expect(relayScript()?.src).toBe(
-      "https://cdn.jsdelivr.net/npm/@mcp-b/webmcp-local-relay@5.1.0/dist/browser/embed.js"
+    expect(document.scripts.length).toBe(scripts);
+    expect(wrapper.text()).not.toMatch(/relay/i);
+  });
+
+  it("closes itself when a connect link reaches this tab, so the agent is not blocked", async () => {
+    const wrapper = await openWizard();
+    await wrapper.get('[data-action="wizard-next"]').trigger("click");
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
+
+    window.dispatchEvent(
+      new HashChangeEvent("hashchange", {
+        oldURL: window.location.href,
+        newURL: `${window.location.href}#ayme=ws://127.0.0.1:9350/token`,
+      })
     );
-    expect(status(wrapper)).toBe("searching");
-    expect(wrapper.text()).toContain("Chrome");
-  });
 
-  it("reports the connection once a relay answers and does not refuse", async () => {
-    const wrapper = await mountConnecting();
-
-    relaySays("webmcp.tools.list.request");
-    await vi.advanceTimersByTimeAsync(1_000);
-
-    expect(status(wrapper)).toBe("found");
-  });
-
-  it("ignores relay messages from another origin", async () => {
-    const wrapper = await mountConnecting();
-
-    relaySays("webmcp.tools.list.request", "https://elsewhere.example");
-    await vi.advanceTimersByTimeAsync(1_000);
-
-    expect(status(wrapper)).toBe("searching");
-  });
-
-  it("stays on the origin error while a refusing relay keeps answering", async () => {
-    const wrapper = await mountConnecting();
-
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      relaySays("webmcp.tools.list.request");
-      relaySays("webmcp.relay.rejected");
-      await vi.advanceTimersByTimeAsync(500);
-    }
-    await vi.advanceTimersByTimeAsync(1_000);
-
-    expect(status(wrapper)).toBe("rejected");
-    expect(wrapper.get('[role="alert"]').text()).toContain("refused");
-  });
-
-  it("offers a prompt that lets the agent repair a refusing relay", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
-    const wrapper = await mountConnecting();
-
-    relaySays("webmcp.relay.rejected");
-    await wrapper.vm.$nextTick();
-    await wrapper.get('[data-action="copy-fix-prompt"]').trigger("click");
-
-    const fixPrompt = wrapper.get('[data-prompt="fix-prompt"]').text();
-    expect(fixPrompt).toContain(`--widget-origin to ${window.location.origin}`);
-    expect(writeText).toHaveBeenCalledWith(fixPrompt);
-  });
-
-  it("names the likely causes and rescans when no relay turns up", async () => {
-    const wrapper = await mountConnecting();
-    const relayFrame = document.createElement("iframe");
-    relayFrame.setAttribute("data-webmcp-relay", "1");
-    document.body.append(relayFrame);
-    const rescan = vi.spyOn(relayFrame.contentWindow!, "postMessage");
-
-    await vi.advanceTimersByTimeAsync(20_000);
-    expect(status(wrapper)).toBe("not-found");
-    expect(wrapper.text()).toContain("restart");
-
-    await wrapper.get('[data-action="retry-relay"]').trigger("click");
-
-    expect(rescan).toHaveBeenCalledWith(
-      { type: "webmcp.connect" },
-      window.location.origin
+    await vi.waitFor(() =>
+      expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
     );
-    expect(status(wrapper)).toBe("searching");
   });
 
-  it("lets the visitor retry when the relay script fails to load", async () => {
-    const wrapper = await mountConnecting();
+  it("stays open on any other hash change", async () => {
+    const wrapper = await openWizard();
 
-    relayScript()?.dispatchEvent(new Event("error"));
+    window.dispatchEvent(
+      new HashChangeEvent("hashchange", {
+        oldURL: window.location.href,
+        newURL: `${window.location.href}#archived`,
+      })
+    );
     await wrapper.vm.$nextTick();
 
-    expect(status(wrapper)).toBe("load-failed");
-    expect(relayScript()).toBeNull();
-    expect(
-      wrapper.get('[data-action="connect-relay"]').attributes("disabled")
-    ).toBeUndefined();
-  });
-
-  it("closes itself and announces the connection, so the agent is not blocked", async () => {
-    const wrapper = await mountConnecting();
-
-    relaySays("webmcp.tools.list.request");
-    await vi.advanceTimersByTimeAsync(1_000);
-    await vi.waitFor(() =>
-      expect(document.body.textContent).toContain(
-        "Ask your agent to list this page’s tools."
-      )
-    );
-
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
-    expect(wrapper.get('[data-action="open-agent-wizard"]').text()).toContain(
-      "Connected"
-    );
-  });
-
-  it("keeps recovery visible when copying the connected prompt fails", async () => {
-    const writeText = vi.fn().mockRejectedValue(new Error("blocked"));
-    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
-    await mountConnecting();
-
-    relaySays("webmcp.tools.list.request");
-    await vi.advanceTimersByTimeAsync(1_000);
-    await vi.waitFor(() =>
-      expect(
-        document.querySelector('[data-action="copy-prompt-from-toast"]')
-      ).not.toBeNull()
-    );
-
-    (
-      document.querySelector(
-        '[data-action="copy-prompt-from-toast"]'
-      ) as HTMLButtonElement
-    ).click();
-
-    await vi.waitFor(() =>
-      expect(document.body.textContent).toContain(
-        "Copying is blocked. Reopen the wizard and select the prompt."
-      )
-    );
-    expect(writeText).toHaveBeenCalled();
-    expect(
-      document.querySelector('[data-action="copy-prompt-from-toast"]')
-    ).not.toBeNull();
-  });
-
-  it("reopens on the connection with nothing left to do but Done", async () => {
-    const wrapper = await mountConnecting();
-    const loadedScript = relayScript();
-    relaySays("webmcp.tools.list.request");
-    await vi.advanceTimersByTimeAsync(1_000);
-
-    await wrapper.get('[data-action="open-agent-wizard"]').trigger("click");
-
-    expect(status(wrapper)).toBe("found");
-    expect(wrapper.get('[role="dialog"]').text()).toContain(
-      "Connected to your relay."
-    );
-    expect(wrapper.find('[data-action="connect-relay"]').exists()).toBe(false);
-    expect(relayScript()).toBe(loadedScript);
-
-    await wrapper.get('[data-action="wizard-done"]').trigger("click");
-
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
   });
 });
