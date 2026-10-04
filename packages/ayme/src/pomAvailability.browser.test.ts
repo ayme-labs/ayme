@@ -285,6 +285,7 @@ describe("live Page Object availability", () => {
           "select_option",
           "fill_form",
           "press_key",
+          "generate_locator",
           "Shell.sidebar.close",
         ]);
       const rule = document.querySelector<HTMLStyleElement>(
@@ -308,6 +309,7 @@ describe("live Page Object availability", () => {
           "select_option",
           "fill_form",
           "press_key",
+          "generate_locator",
         ]);
       rule.style.visibility = "visible";
       window.dispatchEvent(new Event("transitionend"));
@@ -324,6 +326,7 @@ describe("live Page Object availability", () => {
           "select_option",
           "fill_form",
           "press_key",
+          "generate_locator",
           "Shell.sidebar.close",
         ]);
     } finally {
@@ -551,6 +554,7 @@ describe("live Page Object availability", () => {
         "select_option",
         "fill_form",
         "press_key",
+        "generate_locator",
         "SlowShell.panels.close",
       ]);
     } finally {
