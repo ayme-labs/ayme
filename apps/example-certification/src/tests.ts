@@ -204,6 +204,7 @@ export function counterTests({
         "select_option",
         "fill_form",
         "press_key",
+        "generate_locator",
       ]);
     });
 

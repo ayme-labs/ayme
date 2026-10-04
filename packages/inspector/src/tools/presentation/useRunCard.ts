@@ -10,6 +10,7 @@ import {
   withArgument,
 } from "../domain/fields";
 import type { FormField } from "../domain/fillForm";
+import type { LocatorGroup } from "../domain/locatorGroups";
 import type { RunCardProps } from "./RunCard";
 
 /**
@@ -52,6 +53,10 @@ export function useRunCard({
   const [pickedPath, setPickedPath] = useState<string>();
   const setFormFields = useCallback(
     (formFields: FormField[]) => setArgs({ fields: formFields }),
+    []
+  );
+  const setGroups = useCallback(
+    (groups: LocatorGroup[]) => setArgs({ groups }),
     []
   );
 
@@ -105,6 +110,7 @@ export function useRunCard({
     running,
     submit,
     setFormFields,
+    setGroups,
     toggleOpen: () => setOpen(!open),
     pickItem: setPickedPath,
     showJson: (shown: boolean) => setJson(shown ? {} : undefined),

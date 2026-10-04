@@ -85,7 +85,10 @@ Applications do not need this demo-only entry point.
   picker and the last result. `RefField` is the ref field's control, and
   `KeyField` records or searches the key `press_key` presses. `fill_form`
   has its own form, `FillFormFields`: every field on the page, holding the
-  value it shows, sending the ones the person changes.
+  value it shows, sending the ones the person changes. `generate_locator`
+  has `LocatorGroups`: one group per page object class, each with a
+  container and the targets picked on the page or from a structure tree
+  that opens inside the group, each showing the locator the last run gave it.
 - `runs` holds Runs, the timeline of the runs made from the panel, and
   which runs belong to the selection.
 

@@ -36,6 +36,7 @@ const BROWSER_TOOLS = [
   "uncheck",
   "select_option",
   "press_key",
+  "generate_locator",
 ];
 
 const FIXTURE = `
@@ -113,7 +114,7 @@ describe("Browser Tools in Chromium", () => {
   const checked = () =>
     document.querySelector<HTMLInputElement>("#agree")!.checked;
 
-  it("publishes the nine Browser Tools with Playwright MCP's input fields, without element", () => {
+  it("publishes the ten Browser Tools with Playwright MCP's input fields, without element", () => {
     for (const name of BROWSER_TOOLS) expect(tools.has(name), name).toBe(true);
     for (const [name, counterpart] of Object.entries(
       PLAYWRIGHT_MCP_COUNTERPARTS

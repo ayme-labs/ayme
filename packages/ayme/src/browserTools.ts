@@ -16,6 +16,7 @@ import {
   type RegisteredElementTool,
   type ResolvedTarget,
 } from "./elementTools";
+import { generateLocatorTool } from "./generateLocator";
 import { requireAymeRuntimePage } from "./registry";
 
 // --- Input schemas ---
@@ -443,6 +444,7 @@ const pressKeyTool: PublishedElementTool = {
 const PUBLISHED_ONLY_BROWSER_TOOLS: readonly PublishedElementTool[] = [
   fillFormTool,
   pressKeyTool,
+  generateLocatorTool,
 ];
 
 /** Package-internal: every Browser Tool as published, in publication order. */

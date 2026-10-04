@@ -4,7 +4,6 @@ import { decisionEndpoint } from "./decisionEndpoint";
 import type { DecisionRequest } from "./decisionTypes";
 
 const request: DecisionRequest = {
-  model: "typesafe/jev-1.13",
   state: { goal: "archive item" },
   questions: {
     operation: { type: "choice", instructions: "Pick one.", criteria: {} },

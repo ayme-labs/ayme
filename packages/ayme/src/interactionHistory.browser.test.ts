@@ -6,7 +6,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 
 import type { PomManifest, ToolManifest } from "./contracts";
-import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
+import type { DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import {
@@ -318,23 +318,22 @@ describe("Interaction history in Chromium", () => {
   it("records one action per executed Goal Loop step and keeps the agent's cursor until the Handover", async () => {
     let step = 0;
     let agentCursorDuringRun: unknown;
-    const decide: GoalLoopDecisionFunction = async (
-      request: DecisionRequest
-    ): Promise<DecisionResponse> => {
-      const first = step++ === 0;
-      if (!first) agentCursorDuringRun = history().cursor("agent");
-      return {
-        model: request.model,
-        answers: {
-          operation: {
-            type: "choice",
-            choice: first ? "App.add" : "none",
-            confidence: 1,
+    const decide: GoalLoopDecisionFunction =
+      async (): Promise<DecisionResponse> => {
+        const first = step++ === 0;
+        if (!first) agentCursorDuringRun = history().cursor("agent");
+        return {
+          model: "typesafe/jev-1.13",
+          answers: {
+            operation: {
+              type: "choice",
+              choice: first ? "App.add" : "none",
+              confidence: 1,
+            },
+            goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
           },
-          goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
-        },
+        };
       };
-    };
     await startWithAddingPom(decide);
     await readStructure();
     const agentCursor = history().cursor("agent");
@@ -368,27 +367,26 @@ describe("Interaction history in Chromium", () => {
   it("renders the agent's first action after a Handover against the Handover's page", async () => {
     let step = 0;
     let agentActionId: StructuralActionId | undefined;
-    const decide: GoalLoopDecisionFunction = async (
-      request: DecisionRequest
-    ): Promise<DecisionResponse> => {
-      const first = step++ === 0;
-      if (!first) {
-        // An agent tool call while the run is pending stays the agent's.
-        await act("App.noop", {});
-        agentActionId = lastActionId();
-      }
-      return {
-        model: request.model,
-        answers: {
-          operation: {
-            type: "choice",
-            choice: first ? "App.add" : "none",
-            confidence: 1,
+    const decide: GoalLoopDecisionFunction =
+      async (): Promise<DecisionResponse> => {
+        const first = step++ === 0;
+        if (!first) {
+          // An agent tool call while the run is pending stays the agent's.
+          await act("App.noop", {});
+          agentActionId = lastActionId();
+        }
+        return {
+          model: "typesafe/jev-1.13",
+          answers: {
+            operation: {
+              type: "choice",
+              choice: first ? "App.add" : "none",
+              confidence: 1,
+            },
+            goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
           },
-          goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
-        },
+        };
       };
-    };
     document.body.innerHTML =
       '<main><h1>List</h1><button id="mark">Mark</button></main>';
     document.querySelector("#mark")!.addEventListener("click", () => {

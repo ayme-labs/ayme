@@ -150,11 +150,12 @@ jobs:
             ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: pnpm install --frozen-lockfile
-      # The lane skips itself with a visible message when the secret is absent,
-      # as it is for a pull request from a fork. The key is only ever passed
-      # through the environment, never echoed.
+      # The lane skips itself with a visible message when no secret is set,
+      # as for a pull request from a fork, and uses the TypeSafe key when both
+      # are. Keys are only ever passed through the environment, never echoed.
       - name: Run the live goal lane
         env:
+          AYME_TYPESAFE_API_KEY: ${{ secrets.AYME_TYPESAFE_API_KEY }}
           AYME_OPENROUTER_API_KEY: ${{ secrets.AYME_OPENROUTER_API_KEY }}
         run: pnpm exec turbo run test:goals --filter=@ayme-dev/example-vue
 

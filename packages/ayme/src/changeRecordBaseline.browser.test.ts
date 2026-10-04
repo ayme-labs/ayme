@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 import type { PomManifest, ToolManifest } from "./contracts";
-import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
+import type { DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { getPageStateForElements } from "./pageState";
@@ -206,23 +206,22 @@ describe("Change Record baseline in Chromium", () => {
 
   it("counts a change made while the decision function is pending into that step's page_changed", async () => {
     let step = 0;
-    const decide: GoalLoopDecisionFunction = async (
-      request: DecisionRequest
-    ): Promise<DecisionResponse> => {
-      const first = step++ === 0;
-      if (first) document.body.insertAdjacentHTML("beforeend", TOAST);
-      return {
-        model: request.model,
-        answers: {
-          operation: {
-            type: "choice",
-            choice: first ? "App.noop" : "none",
-            confidence: 1,
+    const decide: GoalLoopDecisionFunction =
+      async (): Promise<DecisionResponse> => {
+        const first = step++ === 0;
+        if (first) document.body.insertAdjacentHTML("beforeend", TOAST);
+        return {
+          model: "typesafe/jev-1.13",
+          answers: {
+            operation: {
+              type: "choice",
+              choice: first ? "App.noop" : "none",
+              confidence: 1,
+            },
+            goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
           },
-          goal_met: { type: "noul", noul: first ? 0.1 : 0.9 },
-        },
+        };
       };
-    };
 
     await startWithNoopPom(decide);
 

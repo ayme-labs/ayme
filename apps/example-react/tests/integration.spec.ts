@@ -11,6 +11,7 @@ const browserToolNames = [
   "select_option",
   "fill_form",
   "press_key",
+  "generate_locator",
 ];
 
 test("uses the same POM with real Playwright", async ({ page }) => {

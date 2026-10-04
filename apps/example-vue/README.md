@@ -61,11 +61,11 @@ The app turns the Goal Loop on only in development, because only the dev server 
 
 `pnpm run test:goals` is a separate Playwright lane that runs real goals through `goal` against the model. It is a check that the architecture still works, not an evaluation. `pnpm run test:e2e` does not run it. Retries are on, so a test passes when one of three attempts passes.
 
-Anyone running it brings their own key: put an OpenRouter key in `AYME_OPENROUTER_API_KEY` as `.env.example` describes. Without a key the lane skips itself with a message, which is also what happens for a pull request from a fork, where no repository secret is available.
+Anyone running it brings their own key: put a TypeSafe key in `AYME_TYPESAFE_API_KEY` or an OpenRouter key in `AYME_OPENROUTER_API_KEY` as `.env.example` describes. The TypeSafe key wins when both are set. Without a key the lane skips itself with a message, which is also what happens for a pull request from a fork, where no repository secret is available.
 
 ## Goal run harness
 
-`pnpm run goals:runs --runs <N>` measures the Goal Loop instead of checking it: it runs every goal of a goal set N times against the real Decision Endpoint, with no retries, and writes one JSON file per invocation to `goal-runs/`, which Git ignores. It is run by hand only; CI and `pnpm check` never run it. It needs the same `AYME_OPENROUTER_API_KEY` as the live lane and stops without one. Run from this directory inside the repository's Devbox shell:
+`pnpm run goals:runs --runs <N>` measures the Goal Loop instead of checking it: it runs every goal of a goal set N times against the real Decision Endpoint, with no retries, and writes one JSON file per invocation to `goal-runs/`, which Git ignores. It is run by hand only; CI and `pnpm check` never run it. It needs the same key as the live lane and stops without one. Run from this directory inside the repository's Devbox shell:
 
 ```sh
 pnpm run goals:runs --runs 3
