@@ -32,6 +32,7 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 | `customTools` | `CustomTool[]`                  | Operations on one element. See [Custom Tools](../guides/custom-tools.md).                                                                                                  |
 | `goalLoop`    | `GoalLoopDecisionFunction`      | The decision function the Goal Loop calls, usually `decisionEndpoint(url)`. The `goal` tool exists only when it is set. See [Goals with Jev](../guides/goals-with-jev.md). |
 | `webMCP`      | `AymeWebMcpOptions`             | `{ enabled, toolNamePrefix }`. See [Publish tools](../guides/publish-tools.md).                                                                                            |
+| `inspector`   | `boolean`                       | Loads and mounts the [Inspector](../guides/inspector.md) when the session starts in the browser. Off unless `true`.                                                        |
 
 `ignore`, `customTools` and `goalLoop` take effect on `start()` and are cleared when the session stops.
 
