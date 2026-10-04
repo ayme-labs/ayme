@@ -3,6 +3,11 @@
 Compile annotated TypeScript POMs and their tool schemas into the browser build.
 The documented consumer integrations are Vite and the Angular CLI.
 
+It runs on Node.js 20.19 and later 20.x, or 22.12 and later, and supports
+Vite 7 and 8. The Vite entry is ESM-only, so the config must be loaded as ESM.
+The plugin compiles POMs with its own TypeScript dependency, independent of the
+TypeScript version your project uses.
+
 ## Vite setup
 
 Install this package as a development dependency alongside

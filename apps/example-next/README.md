@@ -1,10 +1,15 @@
 # Next.js / Turbopack certification fixture
 
 This certification fixture runs Ayme's POM compiler and React integration in a
-Next.js 16.3.4 App Router app. Both development and production use Turbopack.
+Next.js App Router app. Both development and production use Turbopack.
 The Ayme React subtree is server-rendered, then the browser runtime activates
 after hydration. It exercises the integration; it is not a consumer setup guide
 or general Next.js support.
+
+CI runs it on the locked Next.js 16.3 and on Next.js 16.0.0 with Node.js 20.19,
+so the integration supports Next.js 16.0 and later on Node.js 20.19 or later.
+Next.js 15 is not supported: it builds with webpack by default and does not
+accept the Turbopack rule conditions this configuration uses.
 
 There is no `webmcp-next` package, Vite process, webpack fallback or server-side
 Page Object runtime.

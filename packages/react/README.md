@@ -1,6 +1,6 @@
 # @ayme-dev/react
 
-React integration for Ayme. This first version supports React 19 in client-rendered Vite applications. Next.js and server rendering are not supported yet.
+React integration for Ayme. It supports React 18 and 19, client-rendered or server-rendered with hydration. The [Next.js example](https://github.com/ayme-labs/ayme/tree/main/apps/example-next) shows server rendering with Next.js 16 and later.
 
 ## Install
 

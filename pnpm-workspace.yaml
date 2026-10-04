@@ -8,6 +8,8 @@ allowBuilds:
   lefthook: true
   lmdb: false
   msgpackr-extract: false
+  # Next before 16.3 brings sharp 0.34, whose install script is not needed.
+  sharp: false
   unrs-resolver: false
   vue-demi: false
 minimumReleaseAgeExclude:

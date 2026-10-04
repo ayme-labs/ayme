@@ -1,11 +1,7 @@
-import {
-  act,
-  createElement as h,
-  StrictMode,
-  Suspense,
-  useEffect,
-} from "react";
-import { createRoot, type Root } from "react-dom/client";
+import * as React from "react";
+import { createElement as h, StrictMode, Suspense, useEffect } from "react";
+import { createRoot, hydrateRoot, type Root } from "react-dom/client";
+import * as TestUtils from "react-dom/test-utils";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, expect, expectTypeOf, it, vi } from "vitest";
 import { createRuntimeSession } from "@ayme-dev/ayme";
@@ -27,6 +23,11 @@ import {
   usePageObject,
   type AymeProviderProps,
 } from "./index";
+
+// React exports act from 18.3; the 18.0 compatibility lane falls back to
+// react-dom/test-utils, which React 19 deprecates.
+const act: typeof TestUtils.act =
+  (React as { act?: typeof TestUtils.act }).act ?? TestUtils.act;
 
 type PageFactory = NonNullable<AymeProviderProps["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
@@ -184,6 +185,27 @@ it("server-renders without constructing or registering a Page Object or calling 
   expect(constructions).toBe(0);
   expect(factory).not.toHaveBeenCalled();
   expect(listRegisteredPoms()).toHaveLength(0);
+});
+
+it("hydrates server output without warnings and then registers the Page Object", async () => {
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  function Child() {
+    usePageObject(Model);
+    return h("span", null, "ready");
+  }
+  const tree = () => h(AymeProvider, { pageFactory }, h(Child));
+  const container = document.createElement("div");
+  container.innerHTML = renderToString(tree());
+  const span = container.querySelector("span");
+  let app: Root | undefined;
+  await act(() => {
+    app = hydrateRoot(container, tree());
+  });
+  roots.push(app!);
+  expect(container.querySelector("span")).toBe(span);
+  expect(listRegisteredPoms()).toHaveLength(1);
+  expect(errors).not.toHaveBeenCalled();
+  errors.mockRestore();
 });
 
 it("retains a custom-page instance through StrictMode replay and rerenders, then replaces it on remount", async () => {

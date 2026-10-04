@@ -1,9 +1,13 @@
 # Nuxt / Vue SSR certification fixture
 
-This certification fixture runs Nuxt 4.5.2 with the existing Vue adapter and
+This certification fixture runs Nuxt with the existing Vue adapter and
 Vite compiler plugin. It renders the counter on the server and hydrates it in
 the browser. It exercises the integration; it is not a consumer setup guide.
-It does not establish general Nuxt support or a compatibility policy.
+
+CI runs it on the locked Nuxt 4.5 (Vite 8) and on Nuxt 4.0.1 (Vite 7) with
+Node.js 20.19, so the integration supports Nuxt 4.0.1 and later. Nuxt itself
+needs Node.js 22.12 from 4.4.6 and 22.19 from 4.5, so a current Nuxt release
+needs Node.js 22. Nuxt 3 is not supported.
 There is no Nuxt-specific runtime package and no client-only wrapper.
 
 ## Run
