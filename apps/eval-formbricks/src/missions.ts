@@ -11,22 +11,22 @@ export type SurveyState = {
 
 export type MissionDefinition = {
   id: string;
-  /** The survey as seeded, before the agent touches it. */
-  initial: (runId: string) => SurveyState;
+  /** The survey as seeded, before the agent touches it. `nonce` is short: the agent types these. */
+  initial: (nonce: string) => SurveyState;
   /** The survey as the verdict expects it after the run. */
-  expected: (runId: string) => SurveyState;
+  expected: (nonce: string) => SurveyState;
 };
 
 export const missionDefinitions: Record<string, MissionDefinition> = {
   "rename-survey-and-question": {
     id: "rename-survey-and-question",
-    initial: (runId) => ({
-      surveyName: `Onboarding draft ${runId}`,
-      questionHeadline: `What brought you here today? (${runId})`,
+    initial: (nonce) => ({
+      surveyName: `Onboarding draft ${nonce}`,
+      questionHeadline: `What brought you here today? (${nonce})`,
     }),
-    expected: (runId) => ({
-      surveyName: `Onboarding feedback ${runId}`,
-      questionHeadline: `What would make onboarding easier for you? (${runId})`,
+    expected: (nonce) => ({
+      surveyName: `Onboarding feedback ${nonce}`,
+      questionHeadline: `What would make onboarding easier for you? (${nonce})`,
     }),
   },
 };
@@ -37,6 +37,8 @@ export const defaultMissionId = "rename-survey-and-question";
 export type Mission = {
   id: string;
   runId: string;
+  /** The short random tag in the values the agent types; the run id stays in the seeded names. */
+  nonce: string;
   user: { id: string; name: string; email: string; password: string };
   organizationId: string;
   workspaceId: string;
@@ -85,6 +87,7 @@ export function parseMission(value: unknown): Mission {
   return {
     id: stringProperty(value, "id"),
     runId: stringProperty(value, "runId"),
+    nonce: stringProperty(value, "nonce"),
     user: {
       id: stringProperty(user, "id"),
       name: stringProperty(user, "name"),

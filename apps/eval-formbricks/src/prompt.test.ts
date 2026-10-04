@@ -7,6 +7,7 @@ import { createPrompt } from "./prompt.ts";
 const mission: Mission = {
   id: "rename-survey-and-question",
   runId: "run-1",
+  nonce: "run-1",
   user: {
     id: "user-1",
     name: "eval-run-1",

@@ -70,8 +70,21 @@ export function claudeArguments(invocation: {
   ];
 }
 
-export function claudeEnvironment(configDir: string): NodeJS.ProcessEnv {
-  return { ...process.env, CLAUDE_CONFIG_DIR: configDir };
+/**
+ * The environment the agent runs in: the parent's, minus every Claude Code and
+ * Anthropic variable the launcher may carry (its own settings, base URL, session
+ * ids), plus the isolated configuration directory.
+ */
+export function claudeEnvironment(
+  configDir: string,
+  parent: NodeJS.ProcessEnv = process.env
+): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(parent)) {
+    if (!/^(CLAUDE|ANTHROPIC)/.test(key)) environment[key] = value;
+  }
+  environment.CLAUDE_CONFIG_DIR = configDir;
+  return environment;
 }
 
 export function claudeVersion(): string | null {

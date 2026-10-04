@@ -63,7 +63,7 @@ The browser profile is deleted after the run; the seeded data stays.
 
 ## Missions and arms
 
-A mission is data in [`src/missions.ts`](src/missions.ts): the values to seed and the end state to expect. The one mission so far renames a survey, changes its question's headline, saves and closes, and confirms the summary page shows the new name.
+A mission is data in [`src/missions.ts`](src/missions.ts): the values to seed and the end state to expect. The values the agent has to type carry a short random nonce, so typing length does not dominate the measurement; the full run id stays in the seeded user, organization and workspace names, where uniqueness matters. The one mission so far renames a survey, changes its question's headline, saves and closes, and confirms the summary page shows the new name.
 
 An arm is an entry in [`src/arms.ts`](src/arms.ts): its one prompt line, its MCP servers, the built-in tools it leaves the agent and the permission rules that let it use its interface. Everything else is shared, in [`src/claude.ts`](src/claude.ts): Sonnet, a 600 second timeout, and an isolated Claude Code configuration with no user or project settings, no skills and no MCP servers beyond the arm's own. The agent keeps read-only file tools, so it can look at the Formbricks source but can change the app only through its browser interface. The result records the tools, MCP servers, skills and plugins the agent was given; the skills and plugins listed are the ones built into Claude Code, which an isolated configuration still has.
 

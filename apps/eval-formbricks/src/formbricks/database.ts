@@ -220,7 +220,9 @@ export async function seedMission(
     ],
   });
 
-  const initial = definition.initial(runId);
+  // What the agent types carries a short nonce, so typing length does not dominate the measurement.
+  const nonce = randomBytes(3).toString("hex");
+  const initial = definition.initial(nonce);
   const questionId = createId();
   const survey = await prisma.survey.create({
     data: {
@@ -255,13 +257,14 @@ export async function seedMission(
   return {
     id: definition.id,
     runId,
+    nonce,
     user: { id: userId, name, email, password },
     organizationId,
     workspaceId,
     surveyId,
     questionId,
     initial,
-    expected: definition.expected(runId),
+    expected: definition.expected(nonce),
     startUrl: `${baseUrl}${editorPath(workspaceId, surveyId)}`,
     summaryUrl: `${baseUrl}${summaryPath(workspaceId, surveyId)}`,
   };
