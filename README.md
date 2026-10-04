@@ -48,8 +48,8 @@ Then start Ayme in your app and register the Page Object, as your framework's pa
 
 - [Vue](docs/guide/frameworks/vue.md)
 - [React](docs/guide/frameworks/react.md)
-- [Svelte](packages/svelte/README.md)
-- [Angular](packages/angular/README.md)
+- [Svelte](docs/guide/frameworks/svelte.md)
+- [Angular](docs/guide/frameworks/angular.md)
 
 Next.js, Nuxt and SvelteKit work with the React, Vue and Svelte packages, including server rendering.
 

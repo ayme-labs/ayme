@@ -83,14 +83,7 @@ await pom.addItem("Write release notes");
 
 ## Server rendering
 
-The provider and composables run during server rendering without constructing Page Objects, starting the session, observing the DOM or publishing tools. No browser registration is shared between requests.
-
-- On the server, `usePageObject(Model)` returns an unconstructed object with the model's prototype, so rendering can reference its methods in event handlers. Do not read locators or constructor-initialized fields, or run actions, during server rendering.
-- A custom `pageFactory` runs only in the browser.
-- Hydration constructs and registers the real Page Object. No client-only wrapper is needed around the app.
-- The status starts as `waiting` when publication is enabled and `disabled` otherwise, on the server and in the browser. Only the browser publishes.
-
-With Nuxt, use the provider and the Vite plugin; the [Nuxt example](../../../apps/example-nuxt/README.md) shows the configuration, including the Page Object Models' TypeScript project.
+The provider and composables run during server rendering without starting anything, and hydration constructs the real Page Objects. [Server rendering](../guides/server-rendering.md) says what runs where, including with Nuxt.
 
 ## Limits
 

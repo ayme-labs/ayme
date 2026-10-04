@@ -16,12 +16,15 @@ How to turn your app's Page Object Models into tools that agents and tests call.
 - [Connect an agent](guides/connect-an-agent.md): try your tools from Claude Code or another MCP client through the WebMCP local relay.
 - [Test your integration](guides/test-your-integration.md): list, await and call the tools your app publishes from Playwright tests.
 - [Inspector](guides/inspector.md): turn on the in-page panel that shows your Page Objects, the page state and the tools, and run them by hand.
+- [Server rendering](guides/server-rendering.md): what Ayme does on the server and in the browser with Next.js, Nuxt, SvelteKit and Angular SSR.
 - [Goals with Jev](guides/goals-with-jev.md): let a decision model drive your page toward a goal, and read the Handover it returns.
 
 ## Frameworks
 
 - [Vue](frameworks/vue.md): the provider and standalone setup, hooks, server rendering with Nuxt, limits and API.
 - [React](frameworks/react.md): the provider, hooks, server rendering with Next.js, limits and API.
+- [Svelte](frameworks/svelte.md): SvelteKit and plain Svelte setup, root ownership, composables, limits and API.
+- [Angular](frameworks/angular.md): `ng add` and manual setup, `provideAyme`, `injectPageObject`, bundle size, limits and API.
 
 ## Reference
 

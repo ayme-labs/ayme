@@ -80,9 +80,7 @@ export default function Controls() {
 
 ## Server rendering
 
-The provider and hooks render on the server without constructing Page Objects or starting the session. During a server render, `usePageObject` returns an unconstructed object with the model's prototype and does not register it, so the same UI renders on the server without a fake DOM or Playwright. The browser constructs and registers the real Page Object during hydration, and the session starts in the provider's effect.
-
-In the Next.js App Router, put `AymeProvider` and the components that call the hooks in a `"use client"` module; the [Next.js example](../../../apps/example-next/README.md) shows the setup.
+The provider and hooks render on the server without starting anything, and hydration constructs the real Page Objects. [Server rendering](../guides/server-rendering.md) says what runs where, including the `"use client"` boundary in the Next.js App Router.
 
 ## Limits
 
