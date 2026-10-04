@@ -13,6 +13,7 @@ import {
   recordPublishedTools,
   type RecordingDriver,
 } from "@ayme-dev/ayme/testing";
+import { connectPage, startAgent } from "@ayme-dev/mcp/testing";
 
 import { render, server } from "./config";
 
@@ -303,6 +304,89 @@ export function devRebuildTests({
         // own reloads aborts ours, it reloads the page all the same.
         while (!(await publishedModeSchema()).includes('"triple"'))
           await page.reload().catch(() => {});
+      }
+    );
+  });
+}
+
+/** The sessionStorage key only the page client's code contains. */
+const agentConnectionMarker = "ayme:agent-connection";
+
+/** Collects the text of every script the page loads from now on. */
+function loadedScripts(page: Page) {
+  const scripts: Promise<string>[] = [];
+  page.on("response", (response) => {
+    if (response.request().resourceType() === "script")
+      scripts.push(response.text().catch(() => ""));
+  });
+  return () => Promise.all(scripts);
+}
+
+/**
+ * The Agent Connection, which the app turns on with its own flag. Where
+ * `enabled()` holds, a coding agent's MCP client pairs with `/` through a
+ * connect link and calls the page's `snapshot` tool, whose structure contains
+ * `snapshotText`. Elsewhere, such as a production build, the page loads no
+ * Agent Connection code and opens no WebSocket.
+ */
+export function agentConnectionTests({
+  enabled,
+  snapshotText,
+}: {
+  /** Whether the run's app turns the option on; read inside each test. */
+  enabled: () => boolean;
+  snapshotText: string;
+}) {
+  // Plain Playwright `test`: Angular's development build logs its hydration
+  // statistics, which `test` counts as a hydration warning.
+  base.describe("agent connection", () => {
+    base(
+      "pairs a coding agent through a connect link and runs a page tool",
+      async ({ page, baseURL }) => {
+        base.skip(!enabled(), "The app turns the Agent Connection off here.");
+        const scripts = loadedScripts(page);
+        const agent = await startAgent();
+        try {
+          // A dev server may compile the page on its first request, which
+          // takes over 10 s on CI.
+          await connectPage(agent, page, new URL("/", baseURL).href, {
+            timeout: 45_000,
+          });
+          // The marker the test with the option off looks for is in the client.
+          expect(
+            (await scripts()).some((script) =>
+              script.includes(agentConnectionMarker)
+            )
+          ).toBe(true);
+
+          const { text, isError } = await agent.call("snapshot");
+
+          expect(isError, text).toBe(false);
+          expect(
+            (JSON.parse(text) as { structure: string }).structure
+          ).toContain(snapshotText);
+        } finally {
+          await agent.close();
+        }
+      }
+    );
+
+    base(
+      "loads no Agent Connection code with the option off",
+      async ({ page }) => {
+        base.skip(enabled(), "The app turns the Agent Connection on here.");
+        const sockets: string[] = [];
+        page.on("websocket", (socket) => sockets.push(socket.url()));
+        const scripts = loadedScripts(page);
+
+        await page.goto("/", { waitUntil: "networkidle" });
+
+        expect(
+          (await scripts()).filter((script) =>
+            script.includes(agentConnectionMarker)
+          )
+        ).toEqual([]);
+        expect(sockets).toEqual([]);
       }
     );
   });

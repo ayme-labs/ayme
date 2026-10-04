@@ -12,8 +12,9 @@ Slices, from the bottom up:
 - `tools`: the page's tools as MCP tools, the server's own tools, and the page client's work with `ayme.tools`.
 - `server`: the composition root of `ayme mcp`. Its index is what `src/cli.ts` starts.
 - `client`: the composition root of the `./client` entry.
+- `testing`: the `./testing` entry (ADR-0026), a coding agent's side for e2e tests: it starts the built `ayme` command over stdio with the MCP SDK client and pairs a Playwright page. It uses no slice; nothing uses it.
 
-Layers: `domain` (pure rules and types), `application` (the flows and the ports they use), `infrastructure` (the MCP SDK over stdio, the WebSocket server, tRPC, sessionStorage, the address bar). `contract`, `server` and `client` aren't layered.
+Layers: `domain` (pure rules and types), `application` (the flows and the ports they use), `infrastructure` (the MCP SDK over stdio, the WebSocket server, tRPC, sessionStorage, the address bar). `contract`, `server`, `client` and `testing` aren't layered.
 
 - Every file of a layered slice sits in a layer folder, except its `index.ts`.
 - Another slice is reached through its `index.ts`.
