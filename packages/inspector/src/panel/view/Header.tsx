@@ -75,7 +75,7 @@ export function Header({
       {pageName && (
         <Badge
           variant="secondary"
-          className="bg-accent font-mono text-[11px] text-accent-foreground"
+          className="bg-accent font-mono text-xs text-accent-foreground"
         >
           {pageName}
         </Badge>
@@ -174,7 +174,7 @@ function LayoutMenu({
           aria-label="Layout"
           align="end"
           sideOffset={4}
-          className="z-50 flex min-w-47.5 flex-col rounded-[10px] border bg-popover p-1 text-popover-foreground shadow-lg"
+          className="z-50 flex min-w-47.5 flex-col rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
         >
           <DropdownMenu.RadioGroup
             value={layout}
@@ -186,7 +186,7 @@ function LayoutMenu({
                 <DropdownMenu.RadioItem
                   key={option}
                   value={option}
-                  className="flex h-7.5 cursor-pointer items-center gap-2 rounded-md px-2 text-[12.5px] outline-none data-highlighted:bg-muted"
+                  className="flex h-7.5 cursor-pointer items-center gap-2 rounded-md px-2 text-xs outline-none data-highlighted:bg-muted"
                 >
                   <OptionIcon className="size-3.5 text-muted-foreground in-data-[state=checked]:text-primary" />
                   <span className="flex-1">{layoutNames[option]}</span>

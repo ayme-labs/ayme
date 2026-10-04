@@ -54,7 +54,7 @@ export function NavigatorView({
             type="search"
             aria-label="Search page objects, actions, members and refs"
             placeholder="Search objects, actions, refs"
-            className="min-w-0 flex-1 bg-transparent text-[12.5px] text-foreground outline-none"
+            className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -62,14 +62,14 @@ export function NavigatorView({
         <div
           role="group"
           aria-label="Lens"
-          className="flex gap-0.5 rounded-[9px] bg-muted p-0.75"
+          className="flex gap-0.5 rounded-lg bg-muted p-0.75"
         >
           {lenses.map((lens) => (
             <button
               key={lens.id}
               type="button"
               aria-pressed={lens.id === activeLens}
-              className="h-6.5 flex-1 rounded-[7px] text-[12.5px] font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
+              className="h-6.5 flex-1 rounded-md text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
               onClick={() => onLensChange(lens.id)}
             >
               {lens.label}
@@ -92,7 +92,7 @@ export function NavigatorView({
                     onMouseLeave={() => onHover?.(undefined)}
                   >
                     <span className="flex max-w-full items-center gap-1.5">
-                      <span className="w-13 flex-none text-[10.5px] font-semibold tracking-wide text-muted-foreground uppercase">
+                      <span className="w-13 flex-none text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                         {result.entry.kind}
                       </span>
                       <span
@@ -103,7 +103,7 @@ export function NavigatorView({
                       </span>
                     </span>
                     {result.entry.description && (
-                      <span className="max-w-full truncate pl-14.5 text-[11.5px] text-muted-foreground">
+                      <span className="max-w-full truncate pl-14.5 text-xs text-muted-foreground">
                         {result.entry.description}
                       </span>
                     )}
@@ -148,7 +148,7 @@ function Legend({ counts }: { counts: LegendCounts }) {
       role="group"
       aria-label="Legend"
       className={cn(
-        "flex gap-3 px-0.5 text-[11.5px] text-muted-foreground",
+        "flex gap-3 px-0.5 text-xs text-muted-foreground",
         !items.length && "hidden"
       )}
     >

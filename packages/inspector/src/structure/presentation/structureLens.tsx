@@ -218,7 +218,7 @@ function NodeRow({
       )}
       {node.member && (
         <span
-          className="ml-auto max-w-[45%] min-w-0 shrink-0 truncate pl-1.5 text-[10.5px] text-muted-foreground"
+          className="ml-auto max-w-[45%] min-w-0 shrink-0 truncate pl-1.5 text-xs text-muted-foreground"
           title={node.member}
         >
           {node.tag}
@@ -245,7 +245,7 @@ function NodeDetail({
     <article aria-label="Structure node" className="grid gap-3">
       <div className="flex items-start gap-2.5">
         <div className="grid min-w-0 flex-1 gap-0.5">
-          <h2 className="font-mono text-[13.5px] font-semibold break-all">
+          <h2 className="font-mono text-sm font-semibold break-all">
             {nodeLabel(node)}
           </h2>
           <p className="text-xs text-muted-foreground">Structure node</p>
@@ -285,7 +285,7 @@ function NodeDetail({
       )}
       {tools.length > 0 && (
         <section aria-label="Tools" className="grid gap-2">
-          <h3 className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             <WrenchIcon className="size-3.5" aria-hidden />
             Tools · {tools.length}
           </h3>

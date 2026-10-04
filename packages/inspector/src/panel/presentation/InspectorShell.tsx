@@ -186,7 +186,7 @@ export function InspectorShell({
         className={cn(
           "@container pointer-events-auto absolute flex flex-col overflow-hidden border bg-background",
           {
-            float: "rounded-[14px] shadow-2xl",
+            float: "rounded-xl shadow-2xl",
             left: "border-y-0 border-l-0 shadow-lg",
             right: "border-y-0 border-r-0 shadow-lg",
             bottom: "border-x-0 border-b-0 shadow-lg",
@@ -269,7 +269,7 @@ function SnapPreview({
       className="pointer-events-none absolute grid place-items-center rounded-xl border-2 border-dashed border-primary bg-accent/55"
       style={style[dock]}
     >
-      <span className="inline-flex h-8 items-center rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground">
+      <span className="inline-flex h-8 items-center rounded-full bg-primary px-3.5 text-sm font-semibold text-primary-foreground">
         {layoutNames[dock]}
       </span>
     </div>

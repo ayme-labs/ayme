@@ -249,7 +249,7 @@ export function LiveMark({ live }: { live: boolean }) {
       aria-hidden
     />
   ) : (
-    <span className="text-[11px] whitespace-nowrap text-muted-foreground">
+    <span className="text-xs whitespace-nowrap text-muted-foreground">
       Not on page
     </span>
   );
@@ -280,7 +280,7 @@ function Pane({
       <button
         type="button"
         aria-expanded={open}
-        className="flex flex-none items-center gap-1.5 px-3.5 pt-2.25 pb-1.75 text-left text-[11px] font-semibold tracking-wide text-muted-foreground uppercase hover:text-foreground"
+        className="flex flex-none items-center gap-1.5 px-3.5 pt-2.25 pb-1.75 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase hover:text-foreground"
         onClick={onToggle}
       >
         <ChevronRightIcon

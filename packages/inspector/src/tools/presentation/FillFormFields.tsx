@@ -116,11 +116,11 @@ export function FillFormFields({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-1.5">
-        <span className="text-[11.5px] font-semibold">Fields</span>
+        <span className="text-xs font-semibold">Fields</span>
         <span
           role="status"
           aria-label="Changed fields"
-          className="text-[11px] text-muted-foreground"
+          className="text-xs text-muted-foreground"
         >
           {fields.length} changed
         </span>
@@ -128,14 +128,14 @@ export function FillFormFields({
         {edits.size > 0 && (
           <button
             type="button"
-            className="h-5.5 rounded-[5px] border px-2 text-[11px] font-medium hover:border-ring"
+            className="h-5.5 rounded-sm border px-2 text-xs font-medium hover:border-ring"
             onClick={() => setEdits(new Map())}
           >
             Undo all
           </button>
         )}
       </div>
-      <p className="m-0 text-[11.5px] text-muted-foreground">
+      <p className="m-0 text-xs text-muted-foreground">
         Every field on the page, holding what it shows now. The ones you change
         are filled, in the numbered order; drag a row to change it.
       </p>
@@ -198,7 +198,7 @@ export function FillFormFields({
                 {changed ? (
                   <span
                     aria-label="Fill order"
-                    className="mt-0.75 grid size-4.5 place-items-center rounded-full bg-primary text-[10.5px] font-bold text-primary-foreground"
+                    className="mt-0.75 grid size-4.5 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
                   >
                     {++fillOrder}
                   </span>
@@ -243,13 +243,13 @@ function FieldRow({
         <label
           htmlFor={row.type === "radio" ? undefined : id}
           className={cn(
-            "min-w-0 truncate text-[11.5px] font-semibold",
+            "min-w-0 truncate text-xs font-semibold",
             !changed && "text-muted-foreground"
           )}
         >
           {name}
         </label>
-        <span className="font-mono text-[11px] text-muted-foreground">
+        <span className="font-mono text-xs text-muted-foreground">
           {row.type}
         </span>
         <span className="flex-1" />
@@ -273,7 +273,7 @@ function FieldRow({
         onChange={onChange}
       />
       {error !== undefined && (
-        <span className="font-mono text-[11.5px] break-words text-destructive">
+        <span className="font-mono text-xs break-words text-destructive">
           {error}
         </span>
       )}
@@ -310,7 +310,7 @@ function FieldControl({
             type="button"
             role="radio"
             aria-checked={option.value === value}
-            className="rounded-[5px] px-2.5 py-1 text-xs text-muted-foreground aria-checked:bg-card aria-checked:text-foreground aria-checked:shadow-xs"
+            className="rounded-sm px-2.5 py-1 text-xs text-muted-foreground aria-checked:bg-card aria-checked:text-foreground aria-checked:shadow-xs"
             onClick={() => onChange(option.value)}
           >
             {option.label}

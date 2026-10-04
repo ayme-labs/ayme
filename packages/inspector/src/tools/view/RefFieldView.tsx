@@ -84,7 +84,7 @@ export function RefFieldView({
           onMouseLeave={onPreviewEnd}
         >
           {value ? (
-            <span className="min-w-0 truncate rounded-[5px] bg-muted px-2 py-0.5 font-mono text-[11.5px] text-foreground">
+            <span className="min-w-0 truncate rounded-sm bg-muted px-2 py-0.5 font-mono text-xs text-foreground">
               <span className={refText}>{value}</span>
               {chosen && <ChosenDetail node={chosen} />}
             </span>
@@ -118,7 +118,7 @@ export function RefFieldView({
 
       {picking && (
         <>
-          <span className="text-[11.5px] text-primary">
+          <span className="text-xs text-primary">
             {pickPrompt}. Esc cancels.
           </span>
           <PickBanner prompt={pickPrompt} onCancel={endPicking} />
@@ -127,7 +127,7 @@ export function RefFieldView({
 
       {open && (
         <div
-          className="absolute top-full right-10 left-0 z-20 mt-1 flex flex-col gap-1.5 rounded-[10px] border bg-card p-1.5 shadow-lg"
+          className="absolute top-full right-10 left-0 z-20 mt-1 flex flex-col gap-1.5 rounded-lg border bg-card p-1.5 shadow-lg"
           onKeyDown={onTreeKey}
         >
           <label className="flex h-7.5 items-center gap-1.5 rounded-md border bg-background px-2 text-muted-foreground focus-within:border-ring">
@@ -206,7 +206,7 @@ function PickBanner({
   const container = usePortalContainer();
   if (!container) return null;
   return createPortal(
-    <div className="fixed top-3.5 left-1/2 z-50 inline-flex h-9 -translate-x-1/2 items-center gap-2.5 rounded-full bg-primary pr-1.5 pl-3.5 text-[13px] font-semibold whitespace-nowrap text-primary-foreground shadow-lg">
+    <div className="fixed top-3.5 left-1/2 z-50 inline-flex h-9 -translate-x-1/2 items-center gap-2.5 rounded-full bg-primary pr-1.5 pl-3.5 text-sm font-semibold whitespace-nowrap text-primary-foreground shadow-lg">
       <CrosshairIcon className="size-3.5" aria-hidden />
       {prompt}
       <button

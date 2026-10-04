@@ -44,7 +44,7 @@ export function WhatTheModelSeesView({
         aria-expanded={open}
         aria-controls={contentId}
         onClick={onToggle}
-        className="mb-2 flex w-full items-center gap-1.5 text-left text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase hover:text-foreground"
+        className="mb-2 flex w-full items-center gap-1.5 text-left text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase hover:text-foreground"
       >
         {open ? (
           <ChevronDownIcon className="size-3.5" aria-hidden />
@@ -80,7 +80,7 @@ export function WhatTheModelSeesView({
           )}
           {schemas.map((schema) => (
             <div key={schema.name} className="grid gap-1">
-              <div className="font-mono text-[11.5px] font-semibold">
+              <div className="font-mono text-xs font-semibold">
                 {schema.name}
               </div>
               <Code
