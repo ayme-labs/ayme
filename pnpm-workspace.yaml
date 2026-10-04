@@ -8,6 +8,7 @@ allowBuilds:
   lefthook: true
   lmdb: false
   msgpackr-extract: false
+  unrs-resolver: false
   vue-demi: false
 minimumReleaseAgeExclude:
   - "@vue/compiler-core@3.5.42"
