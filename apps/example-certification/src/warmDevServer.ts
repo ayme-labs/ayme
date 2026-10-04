@@ -5,10 +5,11 @@ import {
 } from "@ayme-dev/ayme/testing";
 
 /**
- * Loads the counter page once before any test starts. The dev server
- * compiles the app's modules on their first request, and on a busy CI runner
- * that first load takes long enough to run the first test that opens a page
- * past its budget. Paying it here keeps every test's budget for its own steps.
+ * Loads the counter page and `/other` once before any test starts. The dev
+ * server compiles each page's modules on its first request, and on a busy CI
+ * runner that first load takes long enough to run the first test that opens
+ * the page past its budget. Paying it here keeps every test's budget for its
+ * own steps.
  */
 export default async function warmDevServer(config: FullConfig) {
   const browser = await chromium.launch();
@@ -22,6 +23,7 @@ export default async function warmDevServer(config: FullConfig) {
     await waitForPublishedTool(page, "CounterPage.increment", {
       timeout: 60_000,
     });
+    await page.goto("/other", { waitUntil: "networkidle", timeout: 60_000 });
   } finally {
     await browser.close();
   }
