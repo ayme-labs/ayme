@@ -87,7 +87,7 @@ describe("recording", () => {
 
     expect(await key.mode()).toBe("record");
     expect(await key.help.textContent()).toBe(
-      "Recording. Press any key or combination. Esc to search instead."
+      "Press a key or combo. Esc to search."
     );
     expect(await key.input.evaluate((input) => input.matches(":focus"))).toBe(
       true

@@ -245,7 +245,7 @@ export function KeyField({
           {recording
             ? held.length
               ? `${held.map(modifierLabel).join(" + ")} + … then a key`
-              : "Recording. Press any key or combination. Esc to search instead."
+              : "Press a key or combo. Esc to search."
             : !check.ok && check.problem}
         </span>
         {!recording && fixButton}
