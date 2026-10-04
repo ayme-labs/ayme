@@ -242,3 +242,16 @@ jobs:
         run: pnpm --filter ${{ matrix.package }} typecheck
       - name: Test ${{ matrix.package }}
         run: pnpm --filter ${{ matrix.package }} test
+
+  # Branch protection requires this job instead of the lanes, because a
+  # skipped matrix job reports under its unexpanded name.
+  compatibility-gate:
+    name: Compatibility
+    needs: compatibility
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every lane to pass or be skipped
+        env:
+          RESULT: ${{ needs.compatibility.result }}
+        run: test "$RESULT" = success -o "$RESULT" = skipped
