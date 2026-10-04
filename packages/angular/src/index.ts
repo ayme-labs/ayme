@@ -89,7 +89,6 @@ export function injectPageObject<T extends object>(
 ): T {
   assertInInjectionContext(injectPageObject);
   const { ayme } = injectAyme();
-  if (!inBrowser()) return ayme.pom.get(model);
   inject(DestroyRef).onDestroy(() => ayme.pom.unregister(model));
   return ayme.pom.register(model);
 }

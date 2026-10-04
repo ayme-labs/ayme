@@ -1,10 +1,8 @@
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
-import { getPageContextTool } from "./pageContext";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
 import {
-  describeLiveTools,
-  reportPublicationStatus,
+  listLiveTools,
   resolvePublishedTools,
   type PublishedToolInfo,
 } from "./publishedTools";
@@ -18,6 +16,7 @@ import {
   type PageObjectConstructor,
 } from "./registry";
 import {
+  settledAfter,
   synchronizeWebMcpTools,
   waitForWebMcpDriver,
   type WebMcpRegistration,
@@ -120,7 +119,7 @@ type Registration = {
   active?: { dispose(): void };
 };
 
-export function createServerPageObject<T extends object>(
+function createServerPageObject<T extends object>(
   model: PageObjectConstructor<T>
 ): T {
   const prototype = (model as unknown as { prototype: object }).prototype;
@@ -146,11 +145,11 @@ function instrumentPage(page: AymePage) {
 }
 
 let started: Ayme | undefined;
-const startedListeners = new Set<() => void>();
+const startedListeners = new Set<(ayme: Ayme | undefined) => void>();
 
 function setStarted(ayme: Ayme | undefined) {
   started = ayme;
-  for (const listener of startedListeners) listener();
+  for (const listener of startedListeners) listener(ayme);
 }
 
 /** The session started in this document, if any, for the Inspector. */
@@ -158,8 +157,10 @@ export function getStartedAyme(): Ayme | undefined {
   return started;
 }
 
-/** Calls `listener` after a session starts or stops. */
-export function subscribeToStartedAyme(listener: () => void) {
+/** Calls `listener` with the started session, or none, after a session starts or stops. */
+export function subscribeToStartedAyme(
+  listener: (ayme: Ayme | undefined) => void
+) {
   startedListeners.add(listener);
   return () => {
     startedListeners.delete(listener);
@@ -202,11 +203,10 @@ export function createAyme(options: AymeOptions = {}): Ayme {
 
   const setStatus = (next: AymeWebMcpPublicationStatus) => {
     status = Object.freeze(next);
-    reportPublicationStatus(status);
     for (const listener of subscribers) listener(status);
   };
   const refreshTools = () => {
-    const next = owner ? describeLiveTools() : NO_TOOLS;
+    const next = owner ? listLiveTools() : NO_TOOLS;
     const key = JSON.stringify(next);
     if (key === toolsKey) return;
     tools = next;
@@ -306,14 +306,13 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     const entry = resolvePublishedTools().get(name);
     if (!entry) throw new RuntimeStateError(`The tool "${name}" is not live.`);
     const { tool } = entry;
-    try {
-      return await tool.executeAs(input, "app");
-    } finally {
-      // As after an agent's call: the Page Objects are probed, so the live
-      // tools are current when the call resolves. `snapshot` only reads.
-      if (tool !== getPageContextTool)
-        await probeRegisteredPomMembers().catch(() => {});
-    }
+    // As after an agent's call, the Page Objects are probed, so the live
+    // tools are current when the call resolves.
+    return settledAfter(
+      tool,
+      () => tool.executeAs(input, "app"),
+      () => probeRegisteredPomMembers().catch(() => {})
+    );
   }
 
   const pom: AymePom = {
@@ -375,10 +374,10 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       try {
         for (const [model, registration] of registrations)
           registration.active = registerPageObject(model, pom.get(model));
-        setStarted(ayme);
         unsubscribeFromPoms = subscribeToRegisteredPoms(refreshTools);
         refreshTools();
         setStatus(initialStatus);
+        setStarted(ayme);
         void retryPublication();
       } catch (error) {
         stop();

@@ -27,9 +27,9 @@ Internal adapter packages are bundled; consumers do not install them separately.
   `decisionEndpoint`, and their types.
 - `@ayme-dev/ayme/server` is the Decision Endpoint handler,
   `createDecisionEndpoint`, for your backend.
-- `@ayme-dev/ayme/internal` serves ayme's own packages only: the code
-  `unplugin-ayme` generates into your bundle (`registerCompiledPom`) and the
-  inspector. Applications do not import it, and what it exports may change
+- `@ayme-dev/ayme/internal` serves ayme's own packages only: types the
+  framework packages share, the code `unplugin-ayme` generates into your
+  bundle (`registerCompiledPom`), and the inspector. Applications do not import it, and what it exports may change
   without notice.
 - `@ayme-dev/ayme/testing` is for Playwright tests of an integration: a
   recording WebMCP driver that `recordPublishedTools` installs into a browser
@@ -151,7 +151,8 @@ stop();
 
 `start()` claims the runtime for the current document, one owner at a time,
 and returns the function that stops it. The session, of type `Ayme`, has three
-members: `tools`, `pom` and `webMCP`.
+members: `tools` (`AymeTools`), `pom` (`AymePom`) and `webMCP`
+(`AymeWebMcp`).
 
 ### Running tools
 
@@ -175,6 +176,8 @@ const unsubscribe = ayme.tools.subscribe((tools) => render(tools));
   action result (`ActionResult`), `snapshot` with `PageContextPayload` and
   `goal` with the `Handover`. Any other name takes an object and resolves with
   `unknown`; Page Object Tools and Custom Tools resolve with an action result.
+  `BuiltInTools` maps each built-in name to its input and result, and
+  `ToolInput<Name>` and `ToolResult<Name>` read them.
 - A failure throws: `ToolInputError`, `RefResolutionError`, or
   `RuntimeStateError` when the session is not started or the tool is not live.
   An agent gets the same error as the text of an `isError` result. Errors from
@@ -182,8 +185,8 @@ const unsubscribe = ayme.tools.subscribe((tools) => render(tools));
 - Your application is a caller of its own: its actions do not move a
   connected agent's Change Record, so the agent's next action reports what
   your application changed.
-- `list()` returns every tool `run` can run now, in publication order, with
-  its `group`: `"browser"`, `"custom"`, `"pageObject"` or `"agent"`. It
+- `list()` returns every tool `run` can run now, in publication order, as
+  `ToolInfo` objects with a `group`: `"browser"`, `"custom"`, `"pageObject"` or `"agent"`. It
   returns the same array until the set changes, and `[]` while the session is
   not started, including during server rendering.
 - `subscribe(listener)` calls `listener` with the new list after the set
@@ -193,7 +196,7 @@ const unsubscribe = ayme.tools.subscribe((tools) => render(tools));
 
 ### Page Objects
 
-`ayme.pom` holds one instance of each Page Object class for the session:
+`ayme.pom` holds one Page Object of each Page Object Model for the session:
 
 ```ts
 const editor = ayme.pom.get(Editor); // the instance, created on first use

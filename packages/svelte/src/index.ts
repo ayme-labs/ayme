@@ -92,7 +92,6 @@ export function usePageObject<T extends object>(
       "usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte."
     );
   const { ayme } = runtime;
-  if (typeof window === "undefined") return ayme.pom.get(model);
   onDestroy(() => ayme.pom.unregister(model));
   return ayme.pom.register(model);
 }

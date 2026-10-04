@@ -36,14 +36,11 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { RefResolutionError } from "./errors";
 import { getPageStateForDocument } from "./pageState";
 import { listPublishedBrowserTools } from "./browserTools";
+import { ayme } from "./agentCalls.testSupport";
 
 const ref = AriaRefSchema.parse;
-const browserTool = (name: string) =>
-  listPublishedBrowserTools().find((tool) => tool.name === name)!;
-const clickRef = (target: string) =>
-  browserTool("click").executeAs({ target }, "agent");
-const fillRef = (target: string, text: string) =>
-  browserTool("fill").executeAs({ target, text }, "agent");
+const clickRef = ayme.click;
+const fillRef = ayme.fill;
 
 describe("Structural Ref interactions", () => {
   beforeEach(() => {

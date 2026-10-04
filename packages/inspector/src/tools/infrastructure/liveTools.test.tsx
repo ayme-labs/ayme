@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
-import type { Ayme, ToolInfo as PublishedToolInfo } from "@ayme-dev/ayme";
+import type { Ayme, ToolInfo } from "@ayme-dev/ayme";
 import {
   getStartedAyme,
   subscribeToStartedAyme,
@@ -22,13 +22,13 @@ vi.mock("@ayme-dev/ayme/internal", () => ({
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-const addItem: PublishedToolInfo = {
+const addItem: ToolInfo = {
   name: "ListPage.addItem",
   description: "Add an item to the list.",
   inputSchema: { type: "object" },
   group: "pageObject",
 };
-const getPageContext: PublishedToolInfo = {
+const getPageContext: ToolInfo = {
   name: "snapshot",
   description: "Read the page.",
   inputSchema: { type: "object" },
@@ -37,7 +37,7 @@ const getPageContext: PublishedToolInfo = {
 
 const unmounts: (() => void)[] = [];
 let session: Ayme | undefined = asStartedAyme();
-let announceSession = () => {};
+let announceSession: (ayme: Ayme | undefined) => void = () => {};
 vi.mocked(getStartedAyme).mockImplementation(() => session);
 vi.mocked(subscribeToStartedAyme).mockImplementation((listener) => {
   announceSession = listener;
@@ -64,7 +64,7 @@ function renderReader() {
 }
 
 function publish(
-  tools: readonly PublishedToolInfo[],
+  tools: readonly ToolInfo[],
   state: "active" | "failed" = "active",
   message = ""
 ) {
@@ -127,7 +127,7 @@ it("gives no tools while no session is started, and follows the next one", () =>
   });
 
   session = asStartedAyme();
-  act(() => announceSession());
+  act(() => announceSession(session));
   publish([getPageContext, addItem]);
   act(() => announce());
 

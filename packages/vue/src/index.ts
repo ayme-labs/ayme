@@ -21,10 +21,7 @@ import {
   type CustomTool,
   type GoalLoopDecisionFunction,
 } from "@ayme-dev/ayme";
-import {
-  getStartedAyme,
-  type PageObjectConstructor,
-} from "@ayme-dev/ayme/internal";
+import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
 
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
 export type UseAymeOptions = {
@@ -51,7 +48,11 @@ function ownRuntime(options: UseAymeOptions = {}) {
   });
   if (typeof window !== "undefined") {
     const stop = runtime.start();
-    onScopeDispose(stop);
+    started = runtime;
+    onScopeDispose(() => {
+      stop();
+      if (started === runtime) started = undefined;
+    });
   }
   if (getCurrentInstance()) provide(runtimeKey, runtime);
   return runtime;
@@ -172,22 +173,23 @@ export function usePageObject<T extends object>(
     throw new Error(
       "usePageObject must be called within an active Vue effect scope"
     );
-  // A standalone owner in this same scope is not inherited; in the browser it
-  // is the started session.
-  const runtime = inheritedRuntime() ?? getStartedAyme();
-  if (runtime) {
-    if (typeof window === "undefined") return runtime.pom.get(model);
-    const instance = runtime.pom.register(model);
-    onScopeDispose(() => runtime.pom.unregister(model));
-    return instance;
-  }
-  // Server rendering has no started session; any session's Page Object is
-  // inert there.
-  if (typeof window === "undefined")
-    return (inertSession ??= createAyme()).pom.get(model);
-  throw new Error(
-    "usePageObject requires useAyme() or an AymeProvider in this scope or an ancestor component."
-  );
+  // An owner's own scope does not inject what it provides, so the started
+  // owner stands in. On the server any session's Page Object is inert.
+  const runtime =
+    inheritedRuntime() ??
+    started ??
+    (typeof window === "undefined"
+      ? (inertSession ??= createAyme())
+      : undefined);
+  if (!runtime)
+    throw new Error(
+      "usePageObject requires useAyme() or an AymeProvider in this scope or an ancestor component."
+    );
+  const instance = runtime.pom.register(model);
+  onScopeDispose(() => runtime.pom.unregister(model));
+  return instance;
 }
 
+/** The started owner's session in the browser. */
+let started: Ayme | undefined;
 let inertSession: Ayme | undefined;

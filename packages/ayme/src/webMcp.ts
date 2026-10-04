@@ -5,7 +5,6 @@ import {
   reportPublishedTools,
   resolvePublishedTools,
 } from "./publishedTools";
-import { RuntimeStateError } from "./errors";
 import {
   subscribeToRegisteredPoms,
   probeRegisteredPomMembers,
@@ -53,44 +52,28 @@ function errorText(error: unknown): string {
  * result. `snapshot` only reads, so it does not settle.
  */
 export function asAgentCall(tool: PublishedTool, settle: () => Promise<void>) {
-  return withErrorResult(
-    tool === getPageContextTool
-      ? tool
-      : {
-          ...tool,
-          execute: async (input: unknown) => {
-            try {
-              return await tool.execute(input);
-            } finally {
-              await settle();
-            }
-          },
-        }
-  );
+  return withErrorResult({
+    ...tool,
+    execute: (input: unknown) =>
+      settledAfter(tool, () => tool.execute(input), settle),
+  });
 }
 
 /**
- * Run any live tool the way an agent's call runs, whether or not WebMCP
- * publication is active: the live tool, wrapped as publication wraps it.
- * Settling probes the Page Objects; a publication, if any, re-publishes from
- * that probe on its own. Rejects when no tool of that name is live.
+ * Run `call` of `tool`, then `settle` before resolving, unless the tool only
+ * reads (`snapshot`). Shared by an agent's call and the application's.
  */
-export function runTool(name: string, input: unknown): Promise<unknown> {
-  let live: ReturnType<typeof resolvePublishedTools>;
+export async function settledAfter<T>(
+  tool: PublishedTool,
+  call: () => Promise<T>,
+  settle: () => Promise<void>
+): Promise<T> {
+  if (tool === getPageContextTool) return call();
   try {
-    live = resolvePublishedTools();
-  } catch (error) {
-    return Promise.reject(error);
+    return await call();
+  } finally {
+    await settle();
   }
-  const entry = live.get(name);
-  if (!entry)
-    return Promise.reject(
-      new RuntimeStateError(`The tool "${name}" is not live.`)
-    );
-  return asAgentCall(entry.tool, () =>
-    // A failed probe does not change the call's own result, as for an agent.
-    probeRegisteredPomMembers().catch(() => {})
-  ).execute(input);
 }
 
 export type WebMcpDriver = Pick<

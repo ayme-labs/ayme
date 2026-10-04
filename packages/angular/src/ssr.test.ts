@@ -10,6 +10,7 @@ import {
   renderApplication,
 } from "@angular/platform-server";
 import type { Ayme } from "@ayme-dev/ayme";
+import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
 import { describe, expect, it, vi } from "vitest";
 
 const { sessions } = vi.hoisted(() => ({ sessions: [] as Ayme[] }));
@@ -20,7 +21,6 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
     createAyme: (...args: Parameters<typeof original.createAyme>) => {
       const session = original.createAyme(...args);
       vi.spyOn(session, "start");
-      vi.spyOn(session.pom, "register");
       sessions.push(session);
       return session;
     },
@@ -97,9 +97,9 @@ describe.each([false, true])(
       expect(sessions).toHaveLength(2);
       for (const session of sessions) {
         expect(session.start).not.toHaveBeenCalled();
-        expect(session.pom.register).not.toHaveBeenCalled();
         expect(session.webMCP.publicationStatus.state).toBe(status);
       }
+      expect(listRegisteredPoms()).toHaveLength(0);
       expect(pageFactory).not.toHaveBeenCalled();
       expect(constructions).toBe(0);
       expect(models).toHaveLength(2);

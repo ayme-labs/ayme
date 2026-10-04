@@ -12,7 +12,8 @@ import {
   type WebMcpRegistration,
 } from "./webMcp";
 
-vi.mock("./webMcp", () => ({
+vi.mock("./webMcp", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./webMcp")>()),
   synchronizeWebMcpTools: vi.fn(),
   waitForWebMcpDriver: vi.fn(),
 }));

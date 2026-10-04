@@ -12,13 +12,8 @@ import {
   listCustomTools,
   type PublishedElementTool,
 } from "./elementTools";
-import {
-  listCallerAwarePomTools,
-  subscribeToRegisteredPoms,
-  type CallerAwarePomTool,
-} from "./registry";
+import { listCallerAwarePomTools, type CallerAwarePomTool } from "./registry";
 import { RuntimeStateError } from "./errors";
-import type { AymeWebMcpPublicationStatus } from "./runtime";
 
 /**
  * A live tool: `execute` runs it as the calling agent, `executeAs` for the
@@ -87,72 +82,26 @@ export function resolvePublishedTools(): Map<
   return active;
 }
 
-type PublicationReadModel = {
-  status: AymeWebMcpPublicationStatus;
-  tools: readonly PublishedToolInfo[];
-};
-
-const NO_SESSION: AymeWebMcpPublicationStatus = Object.freeze({
-  state: "disposed",
-  message: "No Ayme runtime session has started.",
-});
-
-const readModel: PublicationReadModel = {
-  status: NO_SESSION,
-  tools: Object.freeze([]),
-};
-const subscribers = new Set<() => void>();
-
-function notify() {
-  for (const subscriber of subscribers) subscriber();
-}
+let publishedTools: readonly PublishedToolInfo[] = Object.freeze([]);
 
 /**
  * The tools registered with WebMCP right now, in publication order. Empty
  * while publication is disabled, waiting, unavailable, failed or disposed.
  */
 export function listPublishedTools(): readonly PublishedToolInfo[] {
-  return readModel.tools;
+  return publishedTools;
 }
 
-let liveTools: { key: string; tools: readonly PublishedToolInfo[] } = {
-  key: "[]",
-  tools: Object.freeze([]),
-};
-
 /**
- * Every live tool, published or not, in publication order: each tool
- * `runTool` can run now. The same array comes back
- * until the set changes (for `useSyncExternalStore`); subscribe with
- * `subscribeToPublishedTools`. Empty when a tool name clash leaves the
- * set unresolvable; `runTool` then rejects with that error, and an active
- * publication reports it as its failed status.
+ * Package-internal: every live tool, published or not, in publication order;
+ * empty when a tool name clash leaves the set unresolvable.
  */
 export function listLiveTools(): readonly PublishedToolInfo[] {
-  const tools = describeLiveTools();
-  const key = JSON.stringify(tools);
-  if (key !== liveTools.key) liveTools = { key, tools };
-  return liveTools.tools;
-}
-
-/**
- * Package-internal: every live tool, described, in publication order; empty
- * when a tool name clash leaves the set unresolvable.
- */
-export function describeLiveTools(): readonly PublishedToolInfo[] {
   try {
     return toInfo([...resolvePublishedTools().values()]);
   } catch {
     return Object.freeze([]);
   }
-}
-
-/**
- * The runtime session's WebMCP publication status. A failed publication's
- * `message` carries its error.
- */
-export function getPublicationStatus(): AymeWebMcpPublicationStatus {
-  return readModel.status;
 }
 
 /**
@@ -174,20 +123,6 @@ export async function listElementToolTargets(
   );
 }
 
-/**
- * Call `subscriber` whenever the published or live tools or the status may
- * have changed: a publication pass, a status change (a session starting or
- * stopping sets its Custom Tools and Goal Loop), or a Page Object change.
- */
-export function subscribeToPublishedTools(subscriber: () => void) {
-  subscribers.add(subscriber);
-  const unsubscribeFromPoms = subscribeToRegisteredPoms(subscriber);
-  return () => {
-    subscribers.delete(subscriber);
-    unsubscribeFromPoms();
-  };
-}
-
 /** Package-internal: `synchronizeWebMcpTools` registered or withdrew tools. */
 export function reportPublishedTools(
   tools: readonly {
@@ -195,8 +130,7 @@ export function reportPublishedTools(
     group: PublishedToolGroup;
   }[]
 ) {
-  readModel.tools = toInfo(tools);
-  notify();
+  publishedTools = toInfo(tools);
 }
 
 function toInfo(
@@ -212,10 +146,4 @@ function toInfo(
       })
     )
   );
-}
-
-/** Package-internal: the runtime session's publication status changed. */
-export function reportPublicationStatus(status: AymeWebMcpPublicationStatus) {
-  readModel.status = status;
-  notify();
 }

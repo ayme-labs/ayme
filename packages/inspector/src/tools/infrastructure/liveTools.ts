@@ -1,6 +1,10 @@
 import { useSyncExternalStore } from "react";
 
-import type { AymeWebMcpPublicationStatus, ToolInfo } from "@ayme-dev/ayme";
+import type {
+  Ayme,
+  AymeWebMcpPublicationStatus,
+  ToolInfo,
+} from "@ayme-dev/ayme";
 import {
   getStartedAyme,
   subscribeToStartedAyme,
@@ -42,9 +46,8 @@ function readLiveTools(): LiveTools {
 /** Follow the started session's tools and publication, across sessions. */
 function subscribe(onChange: () => void) {
   let unsubscribeFromSession = () => {};
-  const follow = () => {
+  const follow = (ayme: Ayme | undefined) => {
     unsubscribeFromSession();
-    const ayme = getStartedAyme();
     if (!ayme) {
       unsubscribeFromSession = () => {};
       return;
@@ -56,11 +59,11 @@ function subscribe(onChange: () => void) {
       unsubscribeFromStatus();
     };
   };
-  const unsubscribeFromStarted = subscribeToStartedAyme(() => {
-    follow();
+  const unsubscribeFromStarted = subscribeToStartedAyme((ayme) => {
+    follow(ayme);
     onChange();
   });
-  follow();
+  follow(getStartedAyme());
   return () => {
     unsubscribeFromStarted();
     unsubscribeFromSession();

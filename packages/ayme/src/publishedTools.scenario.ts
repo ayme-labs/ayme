@@ -18,11 +18,9 @@ import type { Page } from "@playwright/test";
 import type { PomManifest } from "./contracts";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import {
-  getPublicationStatus,
   listLiveTools,
   listPublishedTools,
   listElementToolTargets,
-  subscribeToPublishedTools,
   type PublishedToolGroup,
 } from "./publishedTools";
 import type { CustomTool } from "./elementTools";
@@ -35,7 +33,8 @@ import {
 } from "./pageState";
 import { registerCompiledPom, type PageObjectConstructor } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
-import { AymeError } from "./errors";
+import { AymeError, ToolInputError } from "./errors";
+import { withErrorResult } from "./webMcp";
 
 // --- Fixtures: one tool of each kind an agent can be given ---
 
@@ -298,16 +297,10 @@ export function describePublishedTools(
      * What the application gets from the session for this call; a failure as
      * the result an agent gets for it.
      */
-    async function appGets(name: string, input: object) {
-      try {
-        return await runtime.tools.run(name, input);
-      } catch (error) {
-        if (!(error instanceof Error)) throw error;
-        return {
-          content: [{ type: "text", text: `${error.name}: ${error.message}` }],
-          isError: true,
-        };
-      }
+    function appGets(name: string, input: object) {
+      return withErrorResult({
+        execute: (input) => runtime.tools.run(name, input as object),
+      }).execute(input);
     }
 
     /** Register `model` with the session until the test ends. */
@@ -347,21 +340,14 @@ export function describePublishedTools(
       ).toEqual(EXPECTED_GROUPS);
     });
 
-    it("tells subscribers when the published set changes, and lists the new set", async () => {
+    it("lists the new set when the published set changes", async () => {
       await startSession();
-      let notified = false;
-      cleanups.push(
-        subscribeToPublishedTools(() => {
-          notified = true;
-        })
-      );
 
       cleanups.push(registered(SettingsPage));
       await expect
         .poll(() => listPublishedTools().map(({ name }) => name))
         .toContain("SettingsPage.save");
 
-      expect(notified).toBe(true);
       expect(listed()).toEqual(await publishedOverWebMcp(context));
     });
 
@@ -374,7 +360,7 @@ export function describePublishedTools(
     it("lists nothing while publication is disabled", async () => {
       await startSession({ publish: false });
 
-      expect(getPublicationStatus().state).toBe("disabled");
+      expect(runtime.webMCP.publicationStatus.state).toBe("disabled");
       expect(listed()).toEqual([]);
       expect(await publishedOverWebMcp(context)).toEqual([]);
     });
@@ -420,7 +406,7 @@ export function describePublishedTools(
         customTools: [{ ...highlight, name: "TodoPage.addTodo" }],
       });
 
-      expect(getPublicationStatus()).toEqual({
+      expect(runtime.webMCP.publicationStatus).toEqual({
         state: "failed",
         message: expect.stringContaining(
           'Cannot publish the tool "TodoPage.addTodo"'
@@ -433,11 +419,7 @@ export function describePublishedTools(
     it("lists nothing once the session stops", async () => {
       const stop = await startSession();
       const heard: string[] = [];
-      cleanups.push(
-        subscribeToPublishedTools(() => {
-          heard.push(getPublicationStatus().state);
-        })
-      );
+      cleanups.push(runtime.webMCP.subscribe(({ state }) => heard.push(state)));
 
       stop();
 
@@ -477,6 +459,17 @@ export function describePublishedTools(
       ).rejects.toBeInstanceOf(AymeError);
       expect(await appGets("click", { target: ref })).toEqual(expected);
       expect(expected).toMatchObject({ isError: true });
+    });
+
+    it("throws a ToolInputError for input the tool's schema rejects", async () => {
+      await startSession();
+      // A name typed as any string, as an application passing user input does.
+      const click: string = "click";
+
+      await expect(runtime.tools.run(click, {})).rejects.toBeInstanceOf(
+        ToolInputError
+      );
+      expect(await appGets("click", {})).toEqual(await agentGets("click", {}));
     });
 
     it("returns the result of a call that makes its own tool unavailable, then withdraws the tool", async () => {
