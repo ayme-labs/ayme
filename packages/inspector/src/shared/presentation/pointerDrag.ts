@@ -1,13 +1,15 @@
 import { useEffect, useRef, type PointerEvent } from "react";
 
-import type { Point } from "../../panel/domain/preferences";
-
 /** A press moves this far before it counts as a drag rather than a click. */
 const DRAG_THRESHOLD = 4;
 
 export type DragHandlers = {
   /** Called for each move once the press became a drag. */
-  onMove: (deltaX: number, deltaY: number, pointer: Point) => void;
+  onMove: (
+    deltaX: number,
+    deltaY: number,
+    pointer: { x: number; y: number }
+  ) => void;
   onEnd?: (moved: boolean) => void;
 };
 

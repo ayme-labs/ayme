@@ -4,7 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { ProjectedStructuralNodeForest } from "@ayme-dev/ayme/internal";
 
-import type { ControlState } from "../../shared/infrastructure/formControls";
+import type { ControlState } from "../../shared/domain/controlState";
 import type { RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../structure/test-utils/projected";
 import { buildStructureTree } from "../../structure/domain/structure";

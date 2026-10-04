@@ -19,7 +19,8 @@ import {
 } from "@ayme-dev/ayme/internal";
 
 import type { HighlightTarget } from "../../navigation/domain/highlight";
-import { readControls, type ControlState } from "./formControls";
+import type { ControlState } from "../domain/controlState";
+import { readControls } from "./formControls";
 import { createRefreshScheduler } from "./refreshScheduler";
 import { mapTargetsToRefs } from "../../structure/domain/structure";
 

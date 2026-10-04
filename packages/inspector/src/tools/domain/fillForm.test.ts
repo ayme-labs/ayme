@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ProjectedStructuralNodeForest } from "@ayme-dev/ayme/internal";
 
-import type { ControlState } from "../../shared/infrastructure/formControls";
+import type { ControlState } from "../../shared/domain/controlState";
 import { forest, node } from "../../structure/test-utils/projected";
 import { buildStructureTree } from "../../structure/domain/structure";
 import { changedFields, formRows, inFillOrder } from "./fillForm";
