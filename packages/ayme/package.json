@@ -64,6 +64,7 @@
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/core": "workspace:*",
+    "@ayme-dev/mcp": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@mcp-b/webmcp-polyfill": "5.1.0",
     "@types/node": "^24.0.0",
