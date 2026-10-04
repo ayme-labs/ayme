@@ -26,24 +26,39 @@ const FIXTURE = `
   </div>
   <button id="settings" aria-label="Settings"><span id="icon">⚙</span></button>
   <button data-qa="submit-order">Submit</button>
-  <div id="account"><button>Save changes</button></div>
+  <div id="account" role="none"><button>Save changes</button></div>
   <button class="twin">Twin</button>
   <button class="twin">Twin</button>
+  <button id="gone">Gone</button>
 `;
 
-/** A Page Object whose root has no ref, so `snapshot` shows it as `s_…`. */
+/** A page whose account component has a root without a ref, so `snapshot` shows it as `s_…`. */
 class AccountPage {
-  readonly root;
+  readonly account;
   constructor(page: Page) {
-    this.root = page.locator("#account");
+    this.account = { root: page.locator("#account") };
   }
 }
 
 const accountManifest: PomManifest = {
   className: "AccountPage",
-  members: [{ memberName: "root", kind: "locator", access: "field" }],
+  members: [
+    {
+      memberName: "account",
+      kind: "component",
+      access: "field",
+      componentClassName: "Account",
+      collection: false,
+    },
+  ],
   tools: [],
-  components: [],
+  components: [
+    {
+      className: "Account",
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [],
+    },
+  ],
 };
 registerCompiledPom(AccountPage, accountManifest);
 
@@ -92,7 +107,7 @@ describe("generate_locator in Chromium", () => {
   /** The synthetic ref `snapshot` gives AccountPage's root. */
   async function accountRootRef() {
     const { structure } = await ayme.tools.run("snapshot", {});
-    const found = structure.match(/(s_\w+) AccountPage\.root/)?.[1];
+    const found = structure.match(/(s_\w+) AccountPage\.account\b/)?.[1];
     if (!found) throw new Error("Expected a synthetic ref for AccountPage.");
     return found;
   }
@@ -234,8 +249,8 @@ describe("generate_locator in Chromium", () => {
     const heading = await ref("heading", "Orders");
     const account = await accountRootRef();
     const cancel = await ref("button", "Cancel");
-    const removed = await ref("button", "Save changes");
-    element("#account button").remove();
+    const removed = await ref("button", "Gone");
+    element("#gone").remove();
 
     const result = await run({
       groups: [
@@ -249,7 +264,7 @@ describe("generate_locator in Chromium", () => {
     expect(errorAt(result, 0, 0)).toMatch(/"e9999"/);
     expect(errorAt(result, 0, 1)).toMatch(new RegExp(`"${removed}": removed`));
     expect(account).toMatch(/^s_/);
-    expect(errorAt(result, 0, 2)).toMatch(/Page Object AccountPage\.root/);
+    expect(errorAt(result, 0, 2)).toMatch(/Page Object AccountPage\.account\b/);
     expect(errorAt(result, 0, 3)).toMatch(/matches no element/);
     expect(errorAt(result, 0, 4)).toMatch(/matches 2 elements/);
     expect(elementsOf(page, locatorAt(result, 0, 5))).toEqual([element("h1")]);
@@ -277,7 +292,7 @@ describe("generate_locator in Chromium", () => {
     });
     expect(result.groups[1]).toEqual({
       within: account,
-      error: expect.stringMatching(/Page Object AccountPage\.root/),
+      error: expect.stringMatching(/Page Object AccountPage\.account\b/),
     });
     expect(elementsOf(page, locatorAt(result, 2, 0))).toEqual([element("h1")]);
   });
@@ -312,6 +327,44 @@ describe("generate_locator in Chromium", () => {
         groups: [{ targets: ["e1"], root: "e2" }],
       } as never)
     ).rejects.toBeInstanceOf(ToolInputError);
+  });
+});
+
+describe("generate_locator when the generator fails", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("fails the entry with the generator's reason", async () => {
+    document.body.innerHTML = "<h1>Orders</h1>";
+    // A page that is not playwright-lite's: the generator rejects it.
+    const ayme = createAyme({ pageFactory: () => ({}) as never });
+    const stop = ayme.start();
+    try {
+      const { structure } = await ayme.tools.run("snapshot", {});
+      const heading = structure.match(/(e\d+) heading "Orders"/)![1]!;
+
+      const result = await ayme.tools.run("generate_locator", {
+        groups: [{ targets: [heading] }],
+      });
+
+      expect(result).toEqual({
+        groups: [
+          {
+            locators: [
+              {
+                target: heading,
+                error: expect.stringMatching(
+                  new RegExp(`^Cannot generate a locator for "${heading}": `)
+                ),
+              },
+            ],
+          },
+        ],
+      });
+    } finally {
+      stop();
+    }
   });
 });
 

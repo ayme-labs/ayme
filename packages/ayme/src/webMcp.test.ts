@@ -208,7 +208,7 @@ describe("WebMCP publisher", () => {
     FakeMutationObserver.instance?.trigger();
     await vi.runOnlyPendingTimersAsync();
     await flushPublisher();
-    expect(registerTool).toHaveBeenCalledTimes(12);
+    expect(registerTool).toHaveBeenCalledTimes(13);
 
     rootCount = 0;
     FakeMutationObserver.instance?.trigger();
@@ -226,11 +226,11 @@ describe("WebMCP publisher", () => {
     const replacementPageRegistration =
       registry.createPageRegistration(ItemsPage);
     await flushPublisher();
-    expect(registrations[12]?.signal.aborted).toBe(false);
+    expect(registrations[13]?.signal.aborted).toBe(false);
 
     publication.dispose();
     expect(registrations[0]?.signal.aborted).toBe(true);
-    expect(registrations[12]?.signal.aborted).toBe(true);
+    expect(registrations[13]?.signal.aborted).toBe(true);
 
     replacementPageRegistration.dispose();
   });
