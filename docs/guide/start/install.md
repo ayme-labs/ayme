@@ -1,6 +1,43 @@
 # Install
 
-Which versions of each framework, Node.js, Playwright and TypeScript Ayme supports.
+Which packages to install for your framework, with which commands, and which versions of each framework, Node.js, Playwright and TypeScript Ayme supports.
+
+## Packages
+
+| Package                                                                       | Install as     | For                                                                    |
+| ----------------------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------- |
+| `@ayme-dev/ayme`                                                              | dependency     | The decorators and the runtime. Every app needs it.                    |
+| `@ayme-dev/vue`, `@ayme-dev/react`, `@ayme-dev/svelte` or `@ayme-dev/angular` | dependency     | Starting Ayme at your app's root and using Page Objects in components. |
+| `@ayme-dev/unplugin-ayme`                                                     | dev dependency | Compiling your Page Object Models into the browser build.              |
+| `@playwright/test`                                                            | dev dependency | The `Page` and `Locator` types your Page Object Models use.            |
+| `@ayme-dev/inspector`                                                         | dev dependency | The optional in-page [Inspector](../guides/inspector.md).              |
+
+## Commands
+
+Vue, React and Svelte, with your framework's package in place of `@ayme-dev/vue`:
+
+```sh
+npm install @ayme-dev/ayme @ayme-dev/vue
+npm install -D @ayme-dev/unplugin-ayme @playwright/test
+```
+
+```sh
+pnpm add @ayme-dev/ayme @ayme-dev/vue
+pnpm add -D @ayme-dev/unplugin-ayme @playwright/test
+```
+
+```sh
+yarn add @ayme-dev/ayme @ayme-dev/vue
+yarn add -D @ayme-dev/unplugin-ayme @playwright/test
+```
+
+Angular installs everything, configures the build and adds `provideAyme()` in one step:
+
+```sh
+ng add @ayme-dev/angular
+```
+
+Then follow the quickstart for your framework: [Vue](quickstart-vue.md), [React](quickstart-react.md), [Svelte](quickstart-svelte.md) or [Angular](quickstart-angular.md).
 
 ## Supported versions
 
