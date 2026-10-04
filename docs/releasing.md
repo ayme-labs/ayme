@@ -35,7 +35,7 @@ The tarballs stay in `AYME_PACKED_DIR`, which must name an empty or absent direc
 
 ## Trusted publishing
 
-Each package trusts GitHub owner `ayme-labs`, repository `ayme` and workflow `release.yml`. npm configures a trusted publisher in the package's settings on npmjs.com, so a package name that is not on npm yet must be published once by hand first: produce the tarballs locally as in the dry run, from a clean `main` checkout, and run `npm publish <tarball> --tag alpha` for each. npm never accepts a version twice, so the workflow can only publish versions after the one published by hand.
+Each package trusts GitHub owner `ayme-labs`, repository `ayme` and workflow `release.yml`, with **Allow npm publish** turned on under its allowed actions. npm's default for a new trusted publisher allows only `npm stage publish`, so without that option the dry run passes and the publish job fails. npm configures a trusted publisher in the package's settings on npmjs.com, so a package name that is not on npm yet must be published once by hand first: produce the tarballs locally as in the dry run, from a clean `main` checkout, and run `npm publish <tarball> --tag alpha` for each. npm never accepts a version twice, so the workflow can only publish versions after the one published by hand.
 
 Provenance requires each manifest's `repository` to name this repository; the packed-consumer check asserts it.
 

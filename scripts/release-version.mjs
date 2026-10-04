@@ -12,7 +12,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ALPHA_VERSION = /^\d+\.\d+\.\d+-alpha\.\d+$/;
+// SemVer forbids leading zeros in numeric identifiers, and npm rejects them.
+const NUMBER = "(?:0|[1-9]\\d*)";
+const ALPHA_VERSION = new RegExp(
+  `^${NUMBER}\\.${NUMBER}\\.${NUMBER}-alpha\\.${NUMBER}$`
+);
 
 const packagesRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
