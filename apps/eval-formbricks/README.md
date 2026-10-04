@@ -44,6 +44,48 @@ The run:
 
 The exit code is `0` for a pass, `1` for a fail and `2` when the run could not complete.
 
+## A suite
+
+From this directory inside `devbox shell`:
+
+```sh
+pnpm eval:suite -- --runs 3
+```
+
+Options: `--arms` (comma-separated, default every arm in [`src/arms.ts`](src/arms.ts)), `--runs` per arm (default `3`), `--model` (default `sonnet`), `--timeout-seconds` (default `600`), `--mission`. Every run uses the same timeout and settings and seeds its own mission. Every run calls the model and costs money; the smallest suite is one arm and one run:
+
+```sh
+pnpm eval:suite -- --arms playwright-mcp --runs 1
+```
+
+The suite:
+
+1. Checks the preconditions before it creates anything. Each run checks them again, so a lab app that goes down mid-suite is caught.
+2. Warms the lab app, outside every measured window: Turbopack compiles each route on its first visit, so it seeds a throwaway mission, signs in and visits the editor, the survey list and the summary page. This only checks that the lab app is reachable and visits it; it never starts or restarts it. The save itself compiles on its first call and cannot be warmed without changing data, so the first run of a suite can still carry that cost.
+3. Runs the arms round-robin (run 1 of each arm, then run 2, and so on), so a suite that stops early still holds comparable runs.
+4. Writes its manifest and summary to `results/suites/<suite id>/`.
+
+The first run that cannot complete (a missing precondition, an unreachable lab app, a failed seed) ends the suite. The runs stored so far are summarized and the summary says the suite stopped early. A failed verdict is a result, not an error.
+
+## The summary
+
+```sh
+pnpm eval:report                         # the newest suite
+pnpm eval:report -- --suite <suite id>
+pnpm eval:report -- --publish            # also write summaries/<date>/
+```
+
+The report command rebuilds `summary.md` and `summary.json` from the stored runs listed in the suite's manifest. It launches no agent and needs neither the lab app nor a token, so a change to the report costs nothing to re-run. The suite writes the same summary when it ends.
+
+Per arm the summary shows:
+
+- passes out of the runs stored for the arm; failed and timed-out runs count in the runs;
+- the median, lowest and highest of wall time, tokens and combined cost. Tokens are the agent's input, cache creation, cache read and output tokens added up. Combined cost is the agent's cost plus the Goal Loop's where it ran. A failed run still contributes its time, tokens and cost. A run without usage data counts in the passes and the runs but not in tokens and cost; the cell then says how many runs it rests on. With an even count the median is the mean of the two middle values.
+
+It also records what a rerun must match: the Claude Code version, the model, the pinned browser interface of each arm (Playwright CLI and Playwright MCP versions), the browser, the Ayme and Formbricks commits, the timeout and the date. If the runs of a suite differ in one of these, the summary lists every value and says so.
+
+`--publish` writes the summary, formatted with the repository's Prettier, to `summaries/<date>/summary.md` and `summary.json`, dated by the day the suite started. That folder is meant to be committed; a second summary for the same day replaces the first. `results/` stays ignored, so transcripts, prompts and run folders are never committed.
+
 ## What a run stores
 
 `results/` is ignored by git. Each run folder holds:
@@ -62,7 +104,7 @@ The exit code is `0` for a pass, `1` for a fail and `2` when the run could not c
 | `agent-files/`     | Files the agent created in the lab app folder, moved here with their relative paths (the folder exists only then)                                                                                       |
 | `summary.md`       | The result in a few lines                                                                                                                                                                               |
 
-Wall time runs from the agent's first event to its last; seeding and sign-in are outside it. Cost and tokens come from Claude Code's result event. `goalLoop` and `combinedCostUsd` are reserved for arms that run the Goal Loop; the agent's cost stands alone until then.
+Wall time runs from the agent's first event to its last; seeding and sign-in are outside it. Cost and tokens come from Claude Code's result event. `goalLoop` and `combinedCostUsd` are reserved for arms that run the Goal Loop; the agent's cost stands alone until then. A suite adds `results/suites/<suite id>/` with its manifest (`suite.json`) and summary.
 
 The browser profile is deleted after the run; the seeded data stays.
 
@@ -91,4 +133,4 @@ Set up outside the measured window, from the pinned package, with no download:
 
 ## Tests
 
-`pnpm test` runs the unit tests, which CI runs too. They cover the step from stored run artifacts to the normalized result, with recorded fixture transcripts under [`src/fixtures/`](src/fixtures) (a complete run, a result without a usage block, a timed-out run), the verdict function (mission plus survey record to pass or fail; the database read stays outside it), and the prompt. Nothing in the tests needs the lab app, a browser or a model.
+`pnpm test` runs the unit tests, which CI runs too. They cover building the summary from stored results (medians and ranges for odd and even run counts, failed runs in the pass counts, a run without usage data), the suite's options, the step from stored run artifacts to the normalized result, with recorded fixture transcripts under [`src/fixtures/`](src/fixtures) (a complete run, a result without a usage block, a timed-out run), the verdict function (mission plus survey record to pass or fail; the database read stays outside it), and the prompt. Nothing in the tests needs the lab app, a browser or a model.

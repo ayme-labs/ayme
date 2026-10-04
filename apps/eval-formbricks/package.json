@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "eval:report": "node src/report.ts",
     "eval:run": "node src/run.ts",
+    "eval:suite": "node src/suite.ts",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
