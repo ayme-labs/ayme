@@ -1,141 +1,32 @@
 # @ayme-dev/inspector
 
-Browser Inspector for Ayme Page Object Models, in an isolated closed Shadow
-Root. Its navigator has three lenses: Model (the Page Objects on the page and
-the Page Object Models it knows, with their member states), Structure (the
-Structural Page State a model sees, each node tagged with its member) and
-Tools (every published tool). Every detail runs its tools through one run
-card; a tool's page and a structure node's detail also show what the model
-sees of them. Runs lists the runs made from the panel with their arguments, steps and
-result, which can be copied.
+The in-page panel for [Ayme](https://github.com/ayme-labs/ayme): it shows your page's Page Objects, its Structural Page State and its tools, and lets you run those tools by hand.
 
-The panel floats, or docks to the left, the right or the bottom of the page,
-and collapses to the ayme logo. It remembers its layout, sizes, positions and
-theme per site in the page's `localStorage`, and falls back to its defaults
-when storage is unavailable. Its theme follows the system until it's
-overridden.
+## Install
 
-The Inspector is a React app on `@ayme-dev/design-system`. React is bundled
-into the package, so a host app of any framework, or any React version, never
-shares it. Its Tailwind stylesheet is compiled at build time and injected into
-the Shadow Root only; the host document's head receives just the page
-highlight style and, while the panel is docked, a style that pads the page's
-root on the docked side so the panel sits beside the page. That style is
-removed when the panel floats, collapses or unmounts.
+```sh
+npm install -D @ayme-dev/inspector
+```
 
-Install it beside `@ayme-dev/ayme`, which declares it as an optional peer
-dependency, and turn it on with `inspector: true` where Ayme starts: `useAyme`
-or `AymeProvider` in Vue, `AymeProvider` in React, `useAyme` in Svelte,
-`provideAyme` in Angular, or `createAyme`:
+## Turn it on
+
+Pass `inspector: true` where Ayme starts, such as `useAyme`, `AymeProvider`, `provideAyme` or `createAyme`:
 
 ```ts
 useAyme({ webMCP: { enabled: true }, inspector: import.meta.env.DEV });
 ```
 
-The option is off unless `true`, and there is no production guard: you decide
-when it is on. While it is on, the session loads the Inspector on demand when
-it starts in the browser, mounts it, and unmounts it when it stops. Server
-rendering loads nothing. With the option off, the page requests no Inspector
-code. If the package can't be loaded, the error names `@ayme-dev/inspector`.
-The Inspector reaches Page Objects constructed before it loaded. Inspector
-diagnostics work independently of WebMCP publication, so the Inspector works
-while publication is off.
+The session loads the Inspector when it starts in the browser and unmounts it when it stops. With the option off, the page requests no Inspector code.
 
-The Inspector mounts on an `<ayme-inspector>` element at the end of the body,
-so the page's `div` rules and queries never match it; it is not a registered
-custom element. Structural page-state capture temporarily hides that host from
-the accessibility snapshot. The host is otherwise visible and accessible, and
-its styles are contained by the Shadow Root.
+## Documentation
 
-The Inspector paints above the page's own UI: its host takes the highest
-z-index there is. Only the browser's top layer (modal dialogs, popovers,
-fullscreen), or page content at that same z-index after the host, covers it.
-Outside the panel and the collapsed logo, the page keeps its pointer. A
-runtime pointer action, such as an agent's click, whose target is under the
-panel passes through it: the panel ignores the pointer until that action ends.
-A person moves, docks or collapses the panel instead. While the Inspector is
-mounted, each click a tool makes shows a brief cue on its element.
+- [Inspector guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md): the lenses, running tools, the panel and what it never changes.
+- [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 
-The Shadow Root is closed, so no locator on the host page, whether
-Playwright's or the runtime's, sees inside it: a Page Object member never
-matches the Inspector's own text.
+## Supported versions
 
-The playground imports `withDemoFeedback` from
-`@ayme-dev/inspector/demo` to keep its teaching delay.
-Applications do not need this demo-only entry point.
+Any framework Ayme supports; the Inspector bundles its own React. `@playwright/test` 1.29 to 1.62 for the types.
 
-## Source layout
+## License
 
-`src/` is cut into slices named for what they do (`panel`, `page-model`,
-`structure`, `runs`, `tools` and others), with layers inside each slice.
-[AGENTS.md](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/AGENTS.md) lists them, and lint enforces them
-(`eslint.config.js`).
-
-- `shared` keeps the Inspector's look at the page live: page changes, input,
-  focus and registry changes schedule a refresh (debounced, one at a time),
-  and each refresh is one unrecorded peek at the page state, so the
-  Inspector never changes what agents see.
-- `page-model` holds the Page Objects on the page and their models, indexed
-  by member path, so members, their groups and owners resolve by lookup.
-  `structure` builds the structure tree model from the projected page state.
-- Each lens contributes its tree, its search entries, its legend counts and
-  the detail views of what it selects, through `navigation`'s `Lens`
-  contract. Detail views run tools through the run slot, which the run card
-  in `tools` fills: the typed form built from a tool's schema, the item
-  picker and the last result. `RefField` is the ref field's control, and
-  `KeyField` records or searches the key `press_key` presses. `fill_form`
-  has its own form, `FillFormFields`: every field on the page, holding the
-  value it shows, sending the ones the person changes.
-- `runs` holds Runs, the timeline of the runs made from the panel, and
-  which runs belong to the selection.
-
-Only infrastructure code, and the mount that installs the Inspector's
-instrumentation, reads `@ayme-dev/ayme` at runtime; components take props.
-
-## Testing
-
-The Inspector is tested the way Ayme asks its users to test: through a Page
-Object Model of the panel. `@ayme-dev/inspector/testing` exports it
-(ADR-0026: only tests may import a testing entry). `Inspector` takes a
-Playwright `Page` and is built from one page object per part of the panel,
-each rooted at a `Locator`. The same classes run on Playwright and on
-playwright-lite's `createPage()`. They are plain classes, never registered
-with the Ayme runtime, so their actions never become WebMCP tools.
-
-On Playwright, register the `ayme-inspector` selector engine before the page
-is created. The engine shares its name with the Inspector's host element but
-is a different thing: `ayme-inspector=<css>` is a Playwright selector. It
-reaches into the closed Shadow Root through a test-only hook the mount leaves
-on its host element; the hook is not public API.
-
-```ts
-import { selectors } from "@playwright/test";
-import {
-  Inspector,
-  registerInspectorSelectors,
-} from "@ayme-dev/inspector/testing";
-
-test.beforeAll(() => registerInspectorSelectors(selectors));
-
-const inspector = new Inspector(page);
-await inspector.open();
-const addItem = await inspector.tool("ListPage.addItem");
-await addItem.run({ text: "Milk" });
-```
-
-Run from this directory inside the repository's Devbox shell:
-
-- `pnpm test` runs the unit tests in jsdom (`*.test.ts`) and the component
-  tests in Chromium through vitest browser (`*.browser.test.tsx`). A
-  component test renders one part with fixture props into an open shadow
-  root it owns (`src/testing/renderPart.tsx`), with the Inspector's
-  stylesheet and themed root, and drives it through the page objects on
-  playwright-lite.
-- The end-to-end tests, which run the built package on fixture pages, live in
-  [`apps/inspector-fixture`](https://github.com/ayme-labs/ayme/tree/main/apps/inspector-fixture).
-  The app builds its Page Objects with the Ayme plugin, which depends on this
-  package, so the tests can't live here.
-
-playwright-lite's `page.mouse` and `dragTo` don't follow pointer capture. The
-page objects drag by dispatching pointer events to the dragged element, which
-works on both runners.
+[FSL-1.1-ALv2](https://github.com/ayme-labs/ayme/blob/main/LICENSE)
