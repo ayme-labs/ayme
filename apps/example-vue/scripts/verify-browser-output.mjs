@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { decisionEndpointPath } from "../vite/decisionEndpointPath.ts";
-import { appRoot, readDecisionProvider } from "./appEnvironment.ts";
+import { appRoot, readModelKeys } from "./appEnvironment.ts";
 
 const openRouterKeyPrefix = "sk-or-v1-";
 
@@ -15,7 +15,7 @@ function verifyBrowserOutput(directory, mode) {
     ".test.ts",
     decisionEndpointPath,
     openRouterKeyPrefix,
-    readDecisionProvider(mode)?.apiKey,
+    ...readModelKeys(mode).map(({ apiKey }) => apiKey),
   ].filter(Boolean);
   const files = fs
     .readdirSync(path.join(directory, "assets"))

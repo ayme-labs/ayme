@@ -11,17 +11,25 @@ export const appRoot = path.resolve(
   ".."
 );
 
+type ModelKey = Pick<CreateDecisionEndpointOptions, "provider" | "apiKey">;
+
+/** Every model key set in `mode`, a TypeSafe key before an OpenRouter key. */
+export function readModelKeys(mode = "development"): ModelKey[] {
+  const env = loadEnv(mode, appRoot, "");
+  const keys: ModelKey[] = [];
+  if (env.AYME_TYPESAFE_API_KEY)
+    keys.push({ provider: "typesafe", apiKey: env.AYME_TYPESAFE_API_KEY });
+  if (env.AYME_OPENROUTER_API_KEY)
+    keys.push({ provider: "openrouter", apiKey: env.AYME_OPENROUTER_API_KEY });
+  return keys;
+}
+
 /** The provider and key the dev server's Decision Endpoint uses in `mode`:
  *  a TypeSafe key when one is set, otherwise an OpenRouter key. */
 export function readDecisionProvider(
   mode = "development"
-): Pick<CreateDecisionEndpointOptions, "provider" | "apiKey"> | undefined {
-  const env = loadEnv(mode, appRoot, "");
-  if (env.AYME_TYPESAFE_API_KEY)
-    return { provider: "typesafe", apiKey: env.AYME_TYPESAFE_API_KEY };
-  if (env.AYME_OPENROUTER_API_KEY)
-    return { provider: "openrouter", apiKey: env.AYME_OPENROUTER_API_KEY };
-  return undefined;
+): ModelKey | undefined {
+  return readModelKeys(mode)[0];
 }
 
 /** Set to `1` by `scripts/goal-runs.ts` for the Playwright run it spawns; the
