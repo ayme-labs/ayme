@@ -30,7 +30,8 @@ works whether WebMCP publication is on or off.
 
 For your own end-to-end tests, `@ayme-dev/mcp/testing` starts this package's
 `ayme mcp` with an MCP client (`startAgent`) and pairs a Playwright page through
-a connect link (`connectPage`). Only test files may import it.
+a connect link (`connectPage`); `Agent.call` returns the tool's own text and
+the change note apart. Only test files may import it.
 
 ## Connecting a tab
 
@@ -50,6 +51,16 @@ After pairing, the page's built-in tools and Custom Tools are MCP tools under
 the names the page gives them, and calling one runs it on the page and returns
 its result. The server's own tools stay in the server: the page never publishes
 them through WebMCP.
+
+Page Object Tools appear and disappear as MCP tools while the page registers
+and unregisters its Page Objects, and the server sends
+`notifications/tools/list_changed` on every change. When the page's tools
+changed since the agent's previous call, the result ends with a separate text
+item such as `The page's tools changed since your previous call. Appeared:
+Basket.readHeading. ayme_list_tools lists the current tools; ayme_call runs any
+of them.` For agents that never re-read the tool list, `ayme_list_tools` lists
+the page's current tools with their input schemas and `ayme_call` runs any of
+them by name.
 
 ## Ports
 
