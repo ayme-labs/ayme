@@ -2,9 +2,11 @@
   import { onMount } from "svelte";
   import { useAyme, usePageObject } from "@ayme-dev/svelte";
   import { CounterPage } from "$lib/pom/CounterPage";
+  import { SubCounterPage } from "$lib/pom/SubCounterPage";
 
   const { ayme } = useAyme();
   const pom = usePageObject(CounterPage);
+  usePageObject(SubCounterPage);
   let count = $state(0);
   let runtimeAtMount = $state("pending");
 

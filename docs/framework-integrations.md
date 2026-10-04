@@ -55,7 +55,7 @@ The lanes, their commands and where test-only code lives are in the [testing gui
 
 Each framework is certified in a server-rendered app and in an SPA: through a config switch where the meta-framework supports both, otherwise with a separate SPA example. Each runs against its dev server and a production build. An example is a private app under `apps/` with the Turbo tag `app`; its README says what it certifies and links the package README for setup.
 
-Its Page Object Models live in the app's own source, because the build plugin compiles them only from there. The end-to-end tests call tools through the recording WebMCP driver from `@ayme-dev/ayme/testing` and check:
+Its Page Object Models live in the app's own source, because the build plugin compiles them only from there. Its end-to-end tests run the shared [example certification](../apps/example-certification/README.md), which drives the counter contract written down there, calls tools through the recording WebMCP driver from `@ayme-dev/ayme/testing`, and checks:
 
 - the server-rendered HTML and the initial publication status, across repeated requests;
 - the exact published tool schemas;
@@ -100,9 +100,8 @@ Only when the framework needs them:
 - Vue's and React's client tests run in jsdom and do not cite contract rows; React's server test renders a single request and does not check the initial status ([#384](https://github.com/ayme-labs/ayme/issues/384)).
 - Svelte's client tests run in jsdom and do not cite contract rows ([#385](https://github.com/ayme-labs/ayme/issues/385)).
 - Angular's client tests run in jsdom and do not cite contract rows ([#386](https://github.com/ayme-labs/ayme/issues/386)).
-- Each example copies its certification. Next fails on page errors but not on hydration warnings or console errors; SvelteKit does not check an undecorated subclass or Ayme's own tool list ([#377](https://github.com/ayme-labs/ayme/issues/377)).
-- Nuxt has no dev-rebuild check and does not check an undecorated subclass; Angular does not check Ayme's own tool list ([#381](https://github.com/ayme-labs/ayme/issues/381)).
-- The React SPA example uses its own fake WebMCP driver; the Vue and React SPA examples run against the dev server only, and the Vue example has no counter page ([#382](https://github.com/ayme-labs/ayme/issues/382)).
+- The Nuxt and Angular examples copy their certification instead of running the shared one. Nuxt has no dev-rebuild check and does not check an undecorated subclass; Angular does not check Ayme's own tool list ([#381](https://github.com/ayme-labs/ayme/issues/381)).
+- The Vue and React SPA examples do not run the shared certification. The React example uses its own fake WebMCP driver; both run against the dev server only, and the Vue example has no counter page ([#382](https://github.com/ayme-labs/ayme/issues/382)).
 - The SvelteKit and Angular examples have no minimum-version end-to-end lane ([#378](https://github.com/ayme-labs/ayme/issues/378), [#379](https://github.com/ayme-labs/ayme/issues/379)).
 
 ## Deferred decisions

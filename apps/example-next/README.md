@@ -70,14 +70,13 @@ pnpm --filter @ayme-dev/unplugin-ayme test
 pnpm --filter @ayme-dev/example-next test:e2e
 ```
 
-The development suite verifies server rendering, hydration, publication to a
-driver fixture, real Playwright and POM execution, removal/remounting, and
-dependency invalidation of compiled metadata. The invalidation check edits an
-imported POM type while `next dev` remains running, reloads the browser, and
-requires the published tool schema to contain the new type metadata without
-restarting Next. The production suite
-repeats the stable rendering and execution checks against `next start`; the
-source-mutation check is development-only.
+The tests are the shared [example certification](../example-certification/README.md),
+run against `next dev` and against `next start` after `next build`. They verify
+server rendering, hydration without errors or warnings, the published tool
+schemas, an undecorated subclass, Ayme's own tools, real Playwright and POM
+execution, and removal and remounting. Against `next dev` only, they also edit
+an imported POM type and require the published tool schema to contain the new
+type metadata without restarting Next.
 
 Main CI uses Turbo's affected graph to run relevant build, lint, typecheck,
 test, and development and production E2E tasks. It then runs repository format
