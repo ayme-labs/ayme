@@ -160,11 +160,50 @@ jobs:
           AYME_OPENROUTER_API_KEY: ${{ secrets.AYME_OPENROUTER_API_KEY }}
         run: pnpm exec turbo run test:goals --filter=@ayme-dev/example-vue
 
-  vue-compatibility:
-    name: Vue 3.2 compatibility
+  compatibility:
+    name: ${{ matrix.name }}
     needs: changes
     if: needs.changes.outputs.package_checks == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Vue 3.2 compatibility
+            package: "@ayme-dev/vue"
+            dir: packages/vue
+            version: "3.2.0"
+            pins: vue @vue/server-renderer
+            build: "@ayme-dev/ayme"
+          - name: Svelte 3.54.0 compatibility
+            package: "@ayme-dev/svelte"
+            dir: packages/svelte
+            version: "3.54.0"
+            pins: svelte
+            build: "@ayme-dev/ayme"
+          # @angular/animations 19.0.0, which @angular/platform-server loads,
+          # imports @angular/common without declaring it, so it would reach the
+          # workspace's hoisted Angular 22. The extension links it to 19.0.0.
+          - name: Angular 19.0 compatibility
+            package: "@ayme-dev/angular"
+            dir: packages/angular
+            version: "19.0.0"
+            pins: >-
+              @angular/core @angular/common @angular/compiler
+              @angular/platform-browser @angular/platform-server
+              @angular-devkit/schematics @schematics/angular
+            build: "@ayme-dev/angular..."
+            workspace: |
+              packageExtensions:
+                "@angular/animations@19.0.0":
+                  peerDependencies:
+                    "@angular/common": 19.0.0
+          - name: React 19.0.0 compatibility
+            package: "@ayme-dev/react"
+            dir: packages/react
+            version: "19.0.0"
+            pins: react react-dom
+            build: "@ayme-dev/ayme"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -182,91 +221,36 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
-      - name: Install with Vue 3.2.0
+      - name: Install the pinned minimum versions
+        env:
+          DIR: ${{ matrix.dir }}
+          PINS: ${{ matrix.pins }}
+          VERSION: ${{ matrix.version }}
+          WORKSPACE: ${{ matrix.workspace }}
         run: |
-          pnpm --dir packages/vue pkg set devDependencies.vue=3.2.0
-          pnpm --dir packages/vue pkg set 'devDependencies["@vue/server-renderer"]=3.2.0'
-          pnpm install --no-frozen-lockfile
-      - name: Build the main library and dependencies
-        run: pnpm exec turbo run build --filter=@ayme-dev/ayme
-      - name: Typecheck Vue package
-        run: pnpm --filter @ayme-dev/vue typecheck
-      - name: Test Vue package
-        run: pnpm --filter @ayme-dev/vue test
-
-  svelte-compatibility:
-    name: Svelte 3.54.0 compatibility
-    needs: changes
-    if: needs.changes.outputs.package_checks == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - run: corepack enable
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-      - name: Cache pnpm store
-        uses: actions/cache@v6
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
-      - name: Install with Svelte 3.54.0
-        run: |
-          pnpm --dir packages/svelte pkg set devDependencies.svelte=3.54.0
-          pnpm install --no-frozen-lockfile
-      - name: Build the main library and dependencies
-        run: pnpm exec turbo run build --filter=@ayme-dev/ayme
-      - name: Typecheck Svelte package
-        run: pnpm --filter @ayme-dev/svelte typecheck
-      - name: Test Svelte package
-        run: pnpm --filter @ayme-dev/svelte test
-
-  angular-compatibility:
-    name: Angular 19.0 compatibility
-    needs: changes
-    if: needs.changes.outputs.package_checks == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - run: corepack enable
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-      - name: Cache pnpm store
-        uses: actions/cache@v6
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
-      # @angular/animations 19.0.0, which @angular/platform-server loads,
-      # imports @angular/common without declaring it, so it would reach the
-      # workspace's hoisted Angular 22. The extension links it to 19.0.0.
-      - name: Install with Angular 19.0.0
-        run: |
-          for package in @angular/core @angular/common @angular/compiler @angular/platform-browser @angular/platform-server @angular-devkit/schematics @schematics/angular; do
-            pnpm --dir packages/angular pkg set "devDependencies[\"$package\"]=19.0.0"
+          for package in $PINS; do
+            pnpm --dir "$DIR" pkg set "devDependencies[\"$package\"]=$VERSION"
           done
-          cat >> pnpm-workspace.yaml <<'YAML'
-          packageExtensions:
-            "@angular/animations@19.0.0":
-              peerDependencies:
-                "@angular/common": 19.0.0
-          YAML
+          if [ -n "$WORKSPACE" ]; then
+            printf '%s' "$WORKSPACE" >> pnpm-workspace.yaml
+          fi
           pnpm install --no-frozen-lockfile
-      - name: Build the Angular package and its dependencies
-        run: pnpm exec turbo run build --filter=@ayme-dev/angular...
-      - name: Typecheck Angular package
-        run: pnpm --filter @ayme-dev/angular typecheck
-      - name: Test Angular package
-        run: pnpm --filter @ayme-dev/angular test
+      - name: Build ${{ matrix.build }}
+        run: pnpm exec turbo run build --filter=${{ matrix.build }}
+      - name: Typecheck ${{ matrix.package }}
+        run: pnpm --filter ${{ matrix.package }} typecheck
+      - name: Test ${{ matrix.package }}
+        run: pnpm --filter ${{ matrix.package }} test
+
+  # Branch protection requires this job instead of the lanes, because a
+  # skipped matrix job reports under its unexpanded name.
+  compatibility-gate:
+    name: Compatibility
+    needs: compatibility
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every lane to pass or be skipped
+        env:
+          RESULT: ${{ needs.compatibility.result }}
+        run: test "$RESULT" = success -o "$RESULT" = skipped

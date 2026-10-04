@@ -17,7 +17,7 @@ import {
  * Opens the playground with the Inspector collapsed, for a test that clicks
  * the archive dialog itself, as a person does. The panel paints above the
  * page's own UI and at its default place covers the dialog's confirm button.
- * Tool calls pass through the panel (#272); a person moves or collapses it.
+ * Tool calls pass through the panel; a person moves or collapses it.
  */
 async function openWithInspectorCollapsed(page: Page) {
   await page.goto("/");
@@ -270,7 +270,7 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   expect(typeof payload.pomDefinitions).toBe("string");
   if (typeof payload.pomDefinitions !== "string")
     throw new Error("Expected page context POM definitions to be a string.");
-  expect(payload.pomDefinitions).toContain("POM ListPage");
+  expect(payload.pomDefinitions).toMatch(/^ListPage\b/m);
   expect(payload.pomDefinitions).toContain("newItemInput");
   const snapshot = payload.structure;
   expect(typeof snapshot).toBe("string");
@@ -284,6 +284,8 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   expect(new Set(archiveRefs).size).toBe(2);
   // The panel is titled and labelled "ayme"; the playground never says it.
   expect(snapshot).not.toMatch(/\bayme\b/);
+  // `ignore` keeps the site header out.
+  expect(snapshot).not.toContain("Ayme WebMCP");
   expect(normalizeAppSubtree(snapshot)).toMatchSnapshot("page-state.yml");
 });
 
@@ -368,7 +370,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     {
       name: "snapshot",
       description:
-        "Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.",
+        "Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.",
       inputSchema: {
         type: "object",
         properties: {
@@ -547,7 +549,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     .toEqual(initialToolNames);
 });
 
-// The playground's Inspector smoke test (#178): the hosted Inspector opens
+// The playground's Inspector smoke test: the hosted Inspector opens
 // and runs a tool, driven through the Inspector's own Page Object Model.
 test("opens the Inspector and runs a tool from it", async ({ page }) => {
   await page.goto("/");

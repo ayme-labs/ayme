@@ -40,7 +40,7 @@
 
 /*
  * While a runtime pointer action's target is under the panel, nothing in the
- * Inspector takes pointer events, so the action reaches the page (#272).
+ * Inspector takes pointer events, so the action reaches the page.
  */
 [data-ayme-inspector-root][data-ayme-pass-through] * {
   pointer-events: none !important;

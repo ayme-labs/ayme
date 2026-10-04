@@ -335,8 +335,8 @@ an MCP tool-failure result:
   yet.
 - Only publication converts errors. The Goal Loop still records a failed
   step's message in its history.
-- The WebMCP local relay's pass-through of `isError` to the MCP client has not
-  been verified.
+- Whether an MCP client connected through the WebMCP local relay sees
+  `isError` depends on the relay.
 
 Ayme's own failures are `AymeError` subclasses, exported from
 `@ayme-dev/ayme`. Each `name` is its class name, and `kind` tells them apart:

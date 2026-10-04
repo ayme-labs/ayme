@@ -8,10 +8,14 @@ import AgentPanel from "./AgentPanel.vue";
 import { useDemoTrace } from "./ayme/useDemoTrace";
 import ListDemo from "./demo/ListDemo.vue";
 
-// Ordinary apps call useAyme() without options. This demo adds tracing and pacing.
+// Ordinary apps call useAyme() without options. This demo adds tracing and
+// pacing, and keeps its site chrome out of Structural Page State.
 const { page } = useDemoTrace();
+const isSiteChrome = (element: Element) =>
+  element.matches("[data-site-chrome]");
 useAyme({
   pageFactory: () => page,
+  ignore: isSiteChrome,
   // Only the dev server mounts a Decision Endpoint, so the Goal Loop is a
   // development feature here and the deployed build publishes no goal.
   goalLoop: import.meta.env.DEV
@@ -33,13 +37,11 @@ usePageObject(ListPage);
     >
       <div class="min-w-0">
         <!--
-          Site chrome is not part of the playground, so it borrows the
-          inspector's host marker to stay out of Structural Page State. The
-          agent wizard's dialog is teleported inside this element for the same
-          reason. Demo-only stopgap until apps can exclude elements
-          themselves: ayme-labs/ayme#74.
+          Site chrome is not part of the playground, so `ignore` keeps it out
+          of Structural Page State. The agent wizard's dialog is teleported
+          inside this element for the same reason.
         -->
-        <header class="mb-6" data-ayme-inspector-host>
+        <header class="mb-6" data-site-chrome>
           <p
             class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
           >

@@ -430,8 +430,8 @@ export class StructuralNode {
   }
 
   private static _toAriaNode(node: StructuralNode): AriaNode {
-    // `box.visible` is not encoded in the aria snapshot YAML this spike parses,
-    // so it is not modeled on StructuralNode. ariaNodesEqual ignores box.visible,
+    // `box.visible` is not encoded in the aria snapshot YAML, so it is not
+    // modeled on StructuralNode. ariaNodesEqual ignores box.visible,
     // so the value here is structurally irrelevant to equality.
     const box = node.cursorPointer
       ? { visible: true, inline: false, cursor: "pointer" as const }

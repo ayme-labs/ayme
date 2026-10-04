@@ -135,6 +135,6 @@ Run from this directory inside the repository's Devbox shell:
   The app builds its Page Objects with the Ayme plugin, which depends on this
   package, so the tests can't live here.
 
-playwright-lite's `page.mouse` and `dragTo` don't follow pointer capture
-(enekesabel/playwright-lite#258). The page objects drag by dispatching
-pointer events to the dragged element, which works on both runners.
+playwright-lite's `page.mouse` and `dragTo` don't follow pointer capture. The
+page objects drag by dispatching pointer events to the dragged element, which
+works on both runners.
