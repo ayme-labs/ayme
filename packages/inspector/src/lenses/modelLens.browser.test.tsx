@@ -2,7 +2,13 @@ import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageModel, PageObjectNode } from "../adapter/pageModel";
+import type { PageModel } from "../adapter/pageModel";
+import {
+  collection,
+  component,
+  page as pageObject,
+  type Contents,
+} from "../adapter/pageModel.testSupport";
 import { DetailPane } from "../frame/InspectorBody";
 import type { Lens, LensId } from "../frame/lens";
 import { Navigator } from "../frame/Navigator";
@@ -36,116 +42,28 @@ afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
 });
 
-const item = (index: number, label: string): PageObjectNode => ({
-  path: `TodoPage.items[${index}]`,
-  key: `todo:TodoPage.items[${index}]`,
-  name: `[${index}]`,
-  kind: "item",
-  className: "TodoItem",
-  live: true,
-  members: [
-    {
-      name: "archiveButton",
-      kind: "locator",
-      live: true,
-      state: "1 match",
-      path: `TodoPage.items[${index}].archiveButton`,
-    },
-  ],
-  actions: [
-    {
-      name: "archive",
-      description: `Archive ${label}.`,
-      signature: "()",
-      toolName: "TodoPage.items.archive",
-      live: true,
-    },
-  ],
-  children: [],
+const item = (label: string): Contents => ({
+  locators: ["archiveButton"],
+  actions: [{ name: "archive", description: `Archive ${label}.` }],
 });
 
-const items = [item(0, "Water plants"), item(1, "Pay rent")];
-
-const dialog: PageObjectNode = {
-  path: "TodoPage.archiveDialog",
-  key: "todo:TodoPage.archiveDialog",
-  name: "archiveDialog",
-  kind: "component",
-  className: "ArchiveDialog",
-  live: false,
-  members: [
-    {
-      name: "confirmButton",
-      kind: "locator",
-      live: false,
-      state: "absent",
-      path: "TodoPage.archiveDialog.confirmButton",
-    },
-  ],
-  actions: [],
-  children: [],
-};
-
-const todoPage: PageObjectNode = {
-  path: "TodoPage",
-  key: "todo:TodoPage",
-  name: "TodoPage",
-  kind: "page",
-  className: "TodoPage",
-  live: true,
-  members: [
-    {
-      name: "newItemInput",
-      kind: "locator",
-      live: true,
-      state: "1 match",
-      path: "TodoPage.newItemInput",
-    },
-    {
-      name: "items",
-      kind: "component",
-      className: "TodoItem",
-      collection: true,
-      live: true,
-      state: "2 items",
-      path: "TodoPage.items",
-      objectPath: "TodoPage.items",
-    },
-    {
-      name: "archiveDialog",
-      kind: "component",
-      className: "ArchiveDialog",
-      live: false,
-      state: "not on page",
-      path: "TodoPage.archiveDialog",
-      objectPath: "TodoPage.archiveDialog",
-    },
-  ],
+const todoPage = pageObject("TodoPage", {
+  locators: ["newItemInput"],
   actions: [
     {
       name: "addItem",
       description: "Add an item.",
       signature: "(text: string)",
-      toolName: "TodoPage.addItem",
-      live: true,
     },
   ],
   children: [
-    {
-      path: "TodoPage.items",
-      key: "todo:TodoPage.items",
-      name: "items",
-      kind: "collection",
-      className: "TodoItem",
-      live: true,
-      itemCount: 2,
-      members: [],
-      actions: items[0]!.actions,
-      children: items,
-    },
-    dialog,
+    collection("items", "TodoItem", [item("Water plants"), item("Pay rent")]),
+    component("archiveDialog", "ArchiveDialog", {
+      locators: ["confirmButton"],
+      live: false,
+    }),
   ],
-};
+});
 
 const pageModel: PageModel = {
   objects: [todoPage],
