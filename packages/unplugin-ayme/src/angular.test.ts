@@ -128,20 +128,25 @@ it("never claims a Page Object Model under node_modules", async () => {
   }
 });
 
-it("surfaces compiler diagnostics, like the error for the replaced @WebMCP", async () => {
+it("surfaces compiler diagnostics, like the error for a destructured action parameter", async () => {
   const root = await workspace({
     "tsconfig.json": tsconfig,
     "main.ts":
-      'import { LegacyPage } from "./LegacyPage";\nconsole.log(LegacyPage);\n',
-    "LegacyPage.ts": `import { WebMCP } from "@ayme-dev/ayme";
+      'import { SavePage } from "./SavePage";\nconsole.log(SavePage);\n',
+    "SavePage.ts": `import { ayme } from "@ayme-dev/ayme";
 
-@WebMCP
-export class LegacyPage {}
+@ayme
+export class SavePage {
+  @ayme.action
+  async save({ name }: { name: string }) {
+    void name;
+  }
+}
 `,
   });
   try {
     await expect(bundle("browser", root)).rejects.toThrow(
-      "LegacyPage is marked with @WebMCP, which was replaced by @ayme."
+      "Page Object Action SavePage.save needs identifier parameter names."
     );
   } finally {
     await rm(root, { recursive: true, force: true });

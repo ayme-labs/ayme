@@ -440,13 +440,12 @@ function isLocatorType(type: ts.Type) {
 
 /**
  * A class is a Page Object Model when it, or an ancestor class, carries
- * `@ayme`. Throws when one of them is still marked with a replaced decorator.
+ * `@ayme`.
  */
 function isPomClass(
   checker: ts.TypeChecker,
   declaration: ts.ClassDeclaration
 ): boolean {
-  rejectReplacedDecorators(declaration);
   return (
     findClassMarker(declaration) !== undefined ||
     baseClassDeclarations(checker, declaration).some((base) =>
@@ -534,31 +533,6 @@ function decoratorDescription(decorator: ts.Decorator) {
       return property.initializer.text;
   }
   return undefined;
-}
-
-/**
- * `@WebMCP` and `@WebMCP.tool` were replaced without aliases. A class still
- * marked with them would otherwise build and register nothing.
- */
-function rejectReplacedDecorators(declaration: ts.ClassDeclaration) {
-  const className = declaration.name?.text ?? "An anonymous class";
-  if ((ts.getDecorators(declaration) ?? []).some((d) => isMarker(d, "WebMCP")))
-    throw new Error(
-      `${className} is marked with @WebMCP, which was replaced by @ayme. Import ayme from @ayme-dev/ayme.`
-    );
-  for (const member of declaration.members) {
-    if (
-      !ts.canHaveDecorators(member) ||
-      !(ts.getDecorators(member) ?? []).some((d) =>
-        isMemberMarker(d, "WebMCP", "tool")
-      )
-    )
-      continue;
-    const memberName = member.name?.getText() ?? "a member";
-    throw new Error(
-      `${className}.${memberName} is marked with @WebMCP.tool, which was replaced by @ayme.action.`
-    );
-  }
 }
 
 function classDescription(declaration: ts.ClassDeclaration) {

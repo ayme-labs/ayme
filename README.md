@@ -57,9 +57,7 @@ underlying locators for Ayme observation. Its pauses and advisory cues run
 before the delegated action and outside that action's timeout budget.
 
 The demo's text-entry actions explicitly use `pressSequentially(text, { delay })`.
-`fill()` keeps its normal text-replacement behavior. The former `createPage`
-options `pacing` and `onTrace`, and the browser package's demo-specific types,
-are no longer supported.
+`fill()` keeps its normal text-replacement behavior.
 Start with the [main library README](packages/ayme/README.md) for consumer setup.
 
 ## Coding agent skill
