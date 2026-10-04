@@ -5,9 +5,10 @@
  * hand-edited or older file fails with its name instead of a wrong number.
  */
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 
-import { suitesRoot, runsRoot } from "./paths.ts";
+import { repoRoot, runsRoot, suitesRoot } from "./paths.ts";
 import type { SuiteSummary, SummarizedRun } from "./summary.ts";
 import { renderSummaryMarkdown } from "./summary.ts";
 
@@ -200,18 +201,36 @@ export async function readSuite(suiteId: string): Promise<{
   return { manifest, results };
 }
 
+type Prettier = {
+  resolveConfig(filePath: string): Promise<object | null>;
+  format(source: string, options: object): Promise<string>;
+};
+
+/**
+ * The summary is meant to be committed, and the repo checks formatting, so it
+ * is written the way the repo's Prettier formats it. Prettier is the root's
+ * own tool, loaded from there rather than declared as a dependency here.
+ */
+async function formatLikeTheRepo(filePath: string, source: string) {
+  const prettier = createRequire(path.join(repoRoot, "package.json"))(
+    "prettier"
+  ) as Prettier;
+  const config = await prettier.resolveConfig(filePath);
+  return prettier.format(source, { ...config, filepath: filePath });
+}
+
 /** `summary.md` and `summary.json` in `directory`, created when missing. */
 export async function writeSummaryFiles(
   directory: string,
   summary: SuiteSummary
 ) {
   await mkdir(directory, { recursive: true });
-  await writeFile(
-    path.join(directory, "summary.json"),
-    `${JSON.stringify(summary, null, 2)}\n`
-  );
-  await writeFile(
-    path.join(directory, "summary.md"),
-    renderSummaryMarkdown(summary)
-  );
+  const files = [
+    ["summary.json", `${JSON.stringify(summary, null, 2)}\n`],
+    ["summary.md", renderSummaryMarkdown(summary)],
+  ] as const;
+  for (const [name, source] of files) {
+    const filePath = path.join(directory, name);
+    await writeFile(filePath, await formatLikeTheRepo(filePath, source));
+  }
 }

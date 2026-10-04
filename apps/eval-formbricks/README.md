@@ -58,7 +58,7 @@ pnpm eval:suite -- --arms playwright-mcp --runs 1
 
 The suite:
 
-1. Checks the preconditions once, before it creates anything.
+1. Checks the preconditions before it creates anything. Each run checks them again, so a lab app that goes down mid-suite is caught.
 2. Warms the lab app, outside every measured window: Turbopack compiles each route on its first visit, so it seeds a throwaway mission, signs in and visits the editor, the survey list and the summary page. This only checks that the lab app is reachable and visits it; it never starts or restarts it. The save itself compiles on its first call and cannot be warmed without changing data, so the first run of a suite can still carry that cost.
 3. Runs the arms round-robin (run 1 of each arm, then run 2, and so on), so a suite that stops early still holds comparable runs.
 4. Writes its manifest and summary to `results/suites/<suite id>/`.
@@ -82,7 +82,7 @@ Per arm the summary shows:
 
 It also records what a rerun must match: the Claude Code version, the model, the pinned browser interface of each arm (Playwright CLI and Playwright MCP versions), the browser, the Ayme and Formbricks commits, the timeout and the date. If the runs of a suite differ in one of these, the summary lists every value and says so.
 
-`--publish` writes the summary to `summaries/<date>/summary.md` and `summary.json`, dated by the day the suite started. That folder is meant to be committed; a second summary for the same day replaces the first. `results/` stays ignored, so transcripts, prompts and run folders are never committed.
+`--publish` writes the summary, formatted with the repository's Prettier, to `summaries/<date>/summary.md` and `summary.json`, dated by the day the suite started. That folder is meant to be committed; a second summary for the same day replaces the first. `results/` stays ignored, so transcripts, prompts and run folders are never committed.
 
 ## What a run stores
 

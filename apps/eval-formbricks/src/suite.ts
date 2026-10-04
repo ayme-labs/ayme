@@ -112,14 +112,20 @@ async function main() {
   ensureDatabaseBuilt(formbricksRoot, log);
 
   log("Warming the lab app.");
-  await warmLabApp({
-    definition: options.mission,
-    suiteId,
-    formbricksRoot,
-    baseUrl: labUrl,
-    workDir: suiteDir,
-    log,
-  });
+  try {
+    await warmLabApp({
+      definition: options.mission,
+      suiteId,
+      formbricksRoot,
+      baseUrl: labUrl,
+      workDir: suiteDir,
+      log,
+    });
+  } catch (error) {
+    // No manifest yet: a folder without one would be the newest suite for the report command.
+    await rm(suiteDir, { recursive: true, force: true });
+    throw error;
+  }
 
   const manifest: SuiteManifest = {
     suiteId,
