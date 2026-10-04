@@ -4,7 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { PomManifest, RegisteredPomTool } from "@ayme-dev/ayme";
 import type { PublishedToolInfo, RegisteredPom } from "@ayme-dev/ayme/internal";
 
-import { renderInspector } from "../renderInspector";
+import { renderInspector } from "./renderInspector";
 import { Inspector } from "../testing";
 
 // Component tests through the whole panel and its adapter: whether a Model

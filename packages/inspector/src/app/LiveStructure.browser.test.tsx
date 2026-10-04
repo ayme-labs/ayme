@@ -4,9 +4,9 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { PageStatePeek } from "@ayme-dev/ayme/internal";
 import { peekPageStateForDocument } from "@ayme-dev/ayme/internal";
 
-import { forest, node } from "./structure/test-utils/projected";
+import { forest, node } from "../structure/test-utils/projected";
 import { renderInspector } from "./renderInspector";
-import { Inspector } from "./testing";
+import { Inspector } from "../testing";
 
 // Component tests: the Structure view keeps up with the page on its own,
 // with no registry change to prompt it: the mocked registry never reports

@@ -6,7 +6,7 @@
 @import "tailwindcss" source(none);
 @import "@ayme-dev/design-system/theme.css";
 
-@source "./";
+@source "../";
 
 /* The design system's base styles; theme.css leaves them to the consumer. */
 @layer base {

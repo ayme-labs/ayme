@@ -13,7 +13,7 @@ import {
 } from "@ayme-dev/ayme/internal";
 
 import { renderInspector } from "./renderInspector";
-import { Inspector } from "./testing";
+import { Inspector } from "../testing";
 
 // Component tests of the whole panel, driven through the Inspector POM on
 // playwright-lite. The runtime's
@@ -22,7 +22,7 @@ import { Inspector } from "./testing";
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
-  const { forest, node } = await import("./structure/test-utils/projected");
+  const { forest, node } = await import("../structure/test-utils/projected");
   return {
     pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),

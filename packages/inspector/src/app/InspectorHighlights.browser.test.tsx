@@ -9,9 +9,9 @@ import {
   type RegisteredPom,
 } from "@ayme-dev/ayme/internal";
 
-import { forest, node } from "./structure/test-utils/projected";
+import { forest, node } from "../structure/test-utils/projected";
 import { renderInspector } from "./renderInspector";
-import { Inspector } from "./testing";
+import { Inspector } from "../testing";
 
 // Component tests of the page's two highlights through the whole panel: the
 // dashed one follows the pointer in the panel, the solid one follows the

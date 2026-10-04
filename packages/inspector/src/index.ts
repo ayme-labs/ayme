@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { installRuntimePageInstrumentation } from "@ayme-dev/ayme/internal";
 
 import { allowPassThrough } from "./panel/infrastructure/panelPassThrough";
-import { renderInspector } from "./renderInspector";
+import { renderInspector } from "./app/renderInspector";
 import { exposeInspectorShadowRoot } from "./shared/infrastructure/shadowRootHook";
 import {
   dispatchInspectorTrace,

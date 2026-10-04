@@ -4,7 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { PageStatePeek } from "@ayme-dev/ayme/internal";
 
 import { renderInspector } from "./renderInspector";
-import { Inspector } from "./testing";
+import { Inspector } from "../testing";
 
 // Component tests: a node's single-element tools while WebMCP publishes nothing. The
 // runtime is replaced by a peek of the host page, live single-element tools that are
@@ -13,7 +13,7 @@ import { Inspector } from "./testing";
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
-  const { forest, node } = await import("./structure/test-utils/projected");
+  const { forest, node } = await import("../structure/test-utils/projected");
   const browserTool = (name: string) => ({
     name,
     description: `${name} by ref.`,

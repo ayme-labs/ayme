@@ -8,9 +8,9 @@ import {
   peekPageStateForDocument,
 } from "@ayme-dev/ayme/internal";
 
-import { forest, node } from "./structure/test-utils/projected";
+import { forest, node } from "../structure/test-utils/projected";
 import { renderInspector } from "./renderInspector";
-import { Inspector } from "./testing";
+import { Inspector } from "../testing";
 
 // Component tests: two collections over the same list items, and a locator
 // over them too. Each member's items are there to find, whichever the
