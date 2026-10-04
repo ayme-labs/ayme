@@ -7,6 +7,7 @@
     "lab:prepare": "bash scripts/prepare.sh",
     "lab:dev": "bash scripts/dev.sh",
     "lab:smoke": "bash scripts/smoke.sh",
+    "lab:qualify": "bash scripts/qualify.sh",
     "lab:stop": "bash scripts/stop.sh"
   }
 }
