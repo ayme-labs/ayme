@@ -992,7 +992,6 @@ it(
         'const main = await import("@ayme-dev/ayme");',
         'const internal = await import("@ayme-dev/ayme/internal");',
         'if (typeof main.ayme !== "function" || typeof main.ayme.action !== "function") throw new Error("missing the ayme decorators");',
-        'if ("WebMCP" in main) throw new Error("WebMCP must not be exported");',
         'if ("default" in main || "getPageState" in main.ayme) throw new Error("the helper object must not be on the main entry");',
         'if (typeof main.createPage !== "function") throw new Error("missing createPage");',
         'if (typeof main.createAyme !== "function") throw new Error("missing createAyme");',

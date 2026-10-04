@@ -62,8 +62,7 @@ export class GreetingPage {
 
 Both decorators also take the other form: `@ayme({ description })` describes
 the Page Object Model, and a bare `@ayme.action` publishes with a generated
-description. `description` is the only option. The build fails on a class or
-method still marked with the replaced `@WebMCP` or `@WebMCP.tool`.
+description. `description` is the only option.
 
 A Page Object Tool is named after its class and method, as `GreetingPage.greet`.
 Registering a Page Object while a different class with the same name is

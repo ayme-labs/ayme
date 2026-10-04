@@ -37,20 +37,6 @@ async function applyPluginConfig(
 }
 
 describe("ayme Vite integration", () => {
-  it("rejects the removed inspector option", () => {
-    expect(() => ayme({ inspector: true } as never)).toThrow(
-      "The inspector option was removed. Turn the Inspector on with inspector: true where Ayme starts"
-    );
-  });
-
-  it("rejects the removed publish option and defines no publication setting", async () => {
-    expect(() => ayme({ publish: true } as never)).toThrow(
-      "The publish option was removed. Turn WebMCP publication on with webMCP.enabled"
-    );
-    const config = await applyPluginConfig({});
-    expect(config?.define).not.toHaveProperty("__AYME_WEBMCP_PUBLISH__");
-  });
-
   it("accepts projects with omitted and explicit default test IDs", async () => {
     await expect(
       applyPluginConfig(
