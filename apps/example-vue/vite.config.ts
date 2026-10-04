@@ -6,11 +6,13 @@ import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 import { defineConfig, loadEnv } from "vite";
 
 import { decisionEndpointDev } from "./vite/decisionEndpoint.dev";
+import { mcpVersionDefine } from "./vite/mcpVersion";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
     base: process.env.VITE_BASE_PATH ?? "/",
+    define: mcpVersionDefine,
     plugins: [
       vue(),
       tailwindcss(),

@@ -28,6 +28,10 @@ when it is on. While it is on, the session loads the page client from
 when it stops. With the option off, the page requests none of its code. It
 works whether WebMCP publication is on or off.
 
+For your own end-to-end tests, `@ayme-dev/mcp/testing` starts this package's
+`ayme mcp` with an MCP client (`startAgent`) and pairs a Playwright page through
+a connect link (`connectPage`). Only test files may import it.
+
 ## Connecting a tab
 
 The agent calls `ayme_connect` with the URL of the app page and gets back that

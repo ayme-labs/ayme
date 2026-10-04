@@ -3,9 +3,9 @@
 // situation, the goal, the constraints. Literal values only where precision
 // matters.
 
-// Ayme's MCP server, pinned to the version of `@ayme-dev/mcp` in this
-// repository; AgentPanel.test.ts keeps the two in step.
-export const mcpPackage = "@ayme-dev/mcp@0.1.0";
+// Ayme's MCP server, pinned to the installed version of `@ayme-dev/mcp`,
+// which `vite/mcpVersion.ts` defines at build time.
+export const mcpPackage = `@ayme-dev/mcp@${__AYME_MCP_VERSION__}`;
 
 // Self-routing: the visitor pastes it before and after restarting the agent.
 export const setupPrompt = (pageUrl: string) =>
