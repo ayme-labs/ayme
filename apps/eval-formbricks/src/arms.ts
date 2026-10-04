@@ -95,6 +95,8 @@ export const arms: Record<ArmId, Arm> = {
           "--browser",
           "chrome",
           "--headless",
+          // The lab app publishes Ayme's tools through WebMCP; this arm gets Playwright MCP's own tools only.
+          "--no-webmcp",
           "--user-data-dir",
           profileDir,
           "--output-dir",

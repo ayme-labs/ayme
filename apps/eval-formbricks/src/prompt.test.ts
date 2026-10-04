@@ -96,12 +96,13 @@ describe("the prompt", () => {
 });
 
 describe("the playwright-mcp arm", () => {
-  it("runs the pinned Playwright MCP server, headless, on the signed-in profile", () => {
+  it("runs the pinned Playwright MCP server, headless, on the signed-in profile, without the page's WebMCP tools", () => {
     const servers = arms["playwright-mcp"].mcpServers(armContext);
     expect(Object.keys(servers)).toEqual(["playwright"]);
     expect(servers.playwright.args).toEqual(
       expect.arrayContaining([
         "--headless",
+        "--no-webmcp",
         "--user-data-dir",
         "/run/browser-profile",
         "--output-dir",
