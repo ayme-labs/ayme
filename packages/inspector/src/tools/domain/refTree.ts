@@ -83,3 +83,37 @@ function textOf(node: StructureNode): string {
     .map((child) => child.name)
     .join(" ");
 }
+
+/** Where a ref field chooses its ref from. */
+export type RefSource = {
+  /** The page's structure tree. */
+  roots: readonly StructureNode[];
+  /** Whether the tool can use a node. The ones it can't are disabled. Every node, by default. */
+  canUse?: CanUseNode;
+  /**
+   * Picks a ref by pointing at the page: `accept` tells which refs can be
+   * picked, and `onEnd` gets the ref clicked, or none when Esc cancels.
+   * Returns a function that stops picking. Without it, there's no crosshair.
+   */
+  onPick?: (handlers: {
+    accept: (ref: string) => boolean;
+    onEnd: (ref: string | undefined) => void;
+  }) => () => void;
+  /** What picking asks the person to click, e.g. "Click a text field to fill". */
+  pickPrompt?: string;
+  /** Highlights a ref's element on the page while it's hovered. */
+  onPreview?: (ref: string) => void;
+  onPreviewEnd?: () => void;
+};
+
+/** The node with a ref in the tree, if it is there. */
+export function findRefNode(
+  nodes: readonly StructureNode[],
+  ref: string
+): RefNode | undefined {
+  for (const node of nodes) {
+    if (node.ref === ref) return node as RefNode;
+    const found = findRefNode(node.children, ref);
+    if (found) return found;
+  }
+}

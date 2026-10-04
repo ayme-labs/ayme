@@ -21,7 +21,7 @@ import {
   type FormField,
   type FormRow,
 } from "../domain/fillForm";
-import type { RefSource } from "./RefField";
+import type { RefSource } from "../domain/refTree";
 
 /**
  * `fill_form`'s form: every fillable element on the page as the control it

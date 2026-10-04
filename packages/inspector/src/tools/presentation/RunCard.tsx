@@ -26,7 +26,7 @@ import {
 import type { FormField } from "../domain/fillForm";
 import { FillFormFields } from "./FillFormFields";
 import { needsInput } from "../application/needsInput";
-import type { RefSource } from "./RefField";
+import type { RefSource } from "../domain/refTree";
 
 export type RunCardProps = {
   tool: RunnableTool;

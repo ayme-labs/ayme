@@ -7,7 +7,7 @@ import { forest, node } from "../../structure/test-utils/projected";
 import { buildStructureTree } from "../../structure/infrastructure/structureTree";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
-import type { RefSource } from "./RefField";
+import type { RefSource } from "../domain/refTree";
 import { RunCard } from "./RunCard";
 
 // Component tests: a run card's ref field, with a fixture tool and a

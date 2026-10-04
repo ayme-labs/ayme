@@ -6,7 +6,8 @@ import type { JsonValue } from "@ayme-dev/ayme";
 import type { ToolArguments } from "../../runs/domain/run";
 import { initialValues, type Field } from "../domain/fields";
 import { KeyField } from "./KeyField";
-import { RefField, type RefSource } from "./RefField";
+import type { RefSource } from "../domain/refTree";
+import { RefField } from "./RefField";
 
 export const inputClass =
   "h-[30px] w-full min-w-0 rounded-md border border-input bg-background px-[9px] text-[12.5px] outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring";
