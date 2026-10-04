@@ -42,6 +42,37 @@ the names the page gives them, and calling one runs it on the page and returns
 its result. The server's own tools stay in the server: the page never publishes
 them through WebMCP.
 
+## Reloads, navigation and tabs
+
+The connection follows its tab. After a reload, or a navigation in the same
+tab to another document of the same origin, the new document pairs again from
+`sessionStorage` and reports its tools; a page's tools change with it. A
+navigation to another origin ends the connection.
+
+Every call gets one answer. When the page answers, that is the answer. When
+the page goes away first, the server answers with an error result whose text
+is a JSON object: `error` says what happened and that the call's outcome is
+unknown, and `next` what to do now. The server waits up to 3 seconds for the
+tab to reconnect, then tells the cases apart like this:
+
+- **Reloaded or navigated:** the same tab reconnected. It reloaded when the
+  page said it started a reload, or, without a word from the page, when the
+  new document has the old one's URL; otherwise it navigated. The answer has
+  `settled: false`, the new document's URL in `loading` and its tools in
+  `tools`.
+- **Started loading, not reconnected yet:** the page said it started loading
+  another document (the Navigation API's `navigate` event, for loads the page
+  starts, such as a link click or `location.reload()`), and the tab has not
+  reconnected. The answer has `settled: false` and the URL in `loading`.
+- **Closed:** the tab did not reconnect and the page said nothing, as when the
+  tab closes or the browser itself loads a document without Ayme.
+- **Another tab connected:** the newest tab wins. Pairing a second tab answers
+  the first tab's calls at once, the first tab forgets its pairing and does not
+  reconnect, and the server works with the second tab.
+
+While the page is away, no page is paired. A closed tab leaves it that way
+until a tab pairs again.
+
 ## Security
 
 The server listens on the loopback interface only, on the first free port from

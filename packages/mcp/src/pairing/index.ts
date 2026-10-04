@@ -6,6 +6,7 @@ export {
   socketUrl,
 } from "./domain/pairing";
 export type { Pairing, PairingSource } from "./domain/pairing";
+export type { StoredPairing } from "./domain/pairingStorage";
 export {
   PAIRING_STORAGE_KEY,
   parseStoredPairing,
@@ -13,3 +14,8 @@ export {
 } from "./domain/pairingStorage";
 export { listenOnFirstFreePort } from "./infrastructure/firstFreePort";
 export { pairingLinks } from "./infrastructure/pairingLinks";
+export {
+  forgetStoredPairing,
+  storedPairing,
+  storedTabId,
+} from "./infrastructure/storedPairing";

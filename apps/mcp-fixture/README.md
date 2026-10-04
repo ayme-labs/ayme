@@ -8,8 +8,10 @@ app/         the fixture page, its startup code and the Vite config
 tests/       the shared fixtures (fixtures.ts) and one spec per concern
 ```
 
-The page starts the Ayme runtime with `agentConnection: true` and a Custom Tool,
-`read_text`. WebMCP publication is off unless the URL has `?webmcp`, so the
+The page starts the Ayme runtime with `agentConnection: true` and two Custom
+Tools: `read_text` (`read_other` on `/other`, so a navigation changes the
+tools) and `hold`, which never answers, to keep a call in flight.
+`plain.html` is a document of the same origin without Ayme. WebMCP publication is off unless the URL has `?webmcp`, so the
 tests show the Agent Connection works without it.
 
 Each test starts the built `ayme mcp` command as a child process and talks to

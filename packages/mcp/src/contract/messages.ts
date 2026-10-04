@@ -38,3 +38,30 @@ export const ToolCallOutcomeSchema = z.discriminatedUnion("ok", [
   }),
 ]);
 export type ToolCallOutcome = z.infer<typeof ToolCallOutcomeSchema>;
+
+/**
+ * The page introduces itself when its channel opens: the id its tab keeps
+ * for this pairing across reloads and navigation, and the document's URL.
+ */
+export const PageHelloSchema = z.object({
+  tab: z.string().min(1),
+  url: z.string(),
+});
+export type PageHello = z.infer<typeof PageHelloSchema>;
+
+/**
+ * The page started loading a new document, which ends its channel: the URL
+ * that is loading, and whether it is a reload.
+ */
+export const PageLeavingSchema = z.object({
+  url: z.string(),
+  reload: z.boolean(),
+});
+export type PageLeaving = z.infer<typeof PageLeavingSchema>;
+
+/**
+ * The WebSocket close code the server ends a page's channel with when
+ * another tab paired in its place. The page stops reconnecting and forgets
+ * its pairing.
+ */
+export const DISCONNECTED_CLOSE_CODE = 4001;

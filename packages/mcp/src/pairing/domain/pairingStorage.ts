@@ -3,19 +3,44 @@ import type { Pairing } from "./pairing";
 /** The sessionStorage key that keeps the tab's pairing across reloads. */
 export const PAIRING_STORAGE_KEY = "ayme:agent-connection";
 
-export function serializePairing(pairing: Pairing): string {
-  return JSON.stringify({ address: pairing.address, token: pairing.token });
+/**
+ * A pairing as the tab keeps it: with the id the tab presents to the server
+ * for it, so the server can tell this tab reconnecting from another tab.
+ */
+export type StoredPairing = Pairing & Readonly<{ tab: string }>;
+
+/** A new tab id: 128 random bits as hex. */
+export function newTabId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+    ""
+  );
+}
+
+/**
+ * The stored form of `pairing`. A pairing without a tab id, such as one a
+ * connect link just gave, gets a new one.
+ */
+export function serializePairing(pairing: Pairing | StoredPairing): string {
+  const tab = "tab" in pairing ? pairing.tab : newTabId();
+  return JSON.stringify({
+    address: pairing.address,
+    token: pairing.token,
+    tab,
+  });
 }
 
 /** The stored pairing, or `undefined` when the value is not one. */
 export function parseStoredPairing(
   value: string | null | undefined
-): Pairing | undefined {
+): StoredPairing | undefined {
   if (!value) return undefined;
   try {
-    const { address, token } = JSON.parse(value) as Partial<Pairing>;
-    return typeof address === "string" && typeof token === "string"
-      ? { address, token }
+    const { address, token, tab } = JSON.parse(value) as Partial<StoredPairing>;
+    return typeof address === "string" &&
+      typeof token === "string" &&
+      typeof tab === "string"
+      ? { address, token, tab }
       : undefined;
   } catch {
     return undefined;

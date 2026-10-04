@@ -114,3 +114,36 @@ export const test = base.extend<{
     });
   },
 });
+
+/**
+ * Calls the fixture's `hold` tool, which never answers, on the "Add item"
+ * button of `page`, and waits until the page runs it. Returns the call's
+ * pending result as `answer`.
+ */
+export async function holdCall(
+  agent: Agent,
+  page: import("@playwright/test").Page
+): Promise<{ answer: ReturnType<Agent["call"]> }> {
+  const { text: snapshot } = await agent.call("snapshot");
+  const ref = /(e\d+) button "Add item"/.exec(
+    JSON.parse(snapshot).structure
+  )?.[1];
+  expect(ref, snapshot).toBeDefined();
+  const answer = agent.call("hold", { ref });
+  // A test may leave the call in flight; closing the agent then rejects it.
+  answer.catch(() => {});
+  await expect(page.locator(`html[data-holding="${ref}"]`)).toBeAttached();
+  return { answer };
+}
+
+/** The JSON answer the server gives a call its page left unanswered. */
+export function unanswered(answer: { text: string; isError: boolean }) {
+  expect(answer.isError, answer.text).toBe(true);
+  return JSON.parse(answer.text) as {
+    error: string;
+    settled?: false;
+    loading?: string;
+    tools?: string[];
+    next: string;
+  };
+}

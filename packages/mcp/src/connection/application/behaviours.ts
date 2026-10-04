@@ -1,4 +1,9 @@
-import type { PageTool, ToolCall, ToolCallOutcome } from "../../contract";
+import type {
+  PageLeaving,
+  PageTool,
+  ToolCall,
+  ToolCallOutcome,
+} from "../../contract";
 import type { AgentConnection } from "./agentConnection";
 
 /**
@@ -19,6 +24,8 @@ export type PageChannel = {
   answerCalls(
     handler: (call: ToolCall) => Promise<ToolCallOutcome>
   ): () => void;
+  /** Tells the server the page started loading a new document. */
+  reportLeaving(leaving: PageLeaving): Promise<void>;
   close(): void;
 };
 

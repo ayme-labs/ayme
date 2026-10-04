@@ -1,12 +1,34 @@
 import { createTRPCClient, createWSClient, wsLink } from "@trpc/client";
 
-import { ToolCallSchema } from "../../contract";
+import { DISCONNECTED_CLOSE_CODE, ToolCallSchema } from "../../contract";
 import type { PageChannel } from "../application/behaviours";
 import type { PageChannelRouter } from "./pageChannelRouter";
 
-/** Opens the channel to the server at `url` (its address and token). */
-export function openPageChannel(url: string): PageChannel {
-  const socket = createWSClient({ url });
+/**
+ * Opens the channel to the server at `url` (its address and token). Each
+ * time the socket opens, the page says hello with `tab` and its URL. When
+ * the server says another tab paired in its place, the channel closes for
+ * good and `onDisconnected` runs.
+ */
+export function openPageChannel(
+  url: string,
+  { tab, onDisconnected }: { tab: string; onDisconnected(): void }
+): PageChannel {
+  const socket = createWSClient({
+    url,
+    onOpen() {
+      void client.hello
+        .mutate({ tab, url: window.location.href })
+        // The channel closed before the hello went out.
+        .catch(() => {});
+    },
+    onClose(cause) {
+      if (cause?.code !== DISCONNECTED_CLOSE_CODE) return;
+      // Closing here stops the client from reconnecting.
+      void socket.close();
+      onDisconnected();
+    },
+  });
   const client = createTRPCClient<PageChannelRouter>({
     links: [wsLink({ client: socket })],
   });
@@ -25,6 +47,9 @@ export function openPageChannel(url: string): PageChannel {
         },
       });
       return () => subscription.unsubscribe();
+    },
+    async reportLeaving(leaving) {
+      await client.leaving.mutate(leaving);
     },
     close() {
       void socket.close();
