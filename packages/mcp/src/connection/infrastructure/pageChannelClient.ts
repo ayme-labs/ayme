@@ -1,12 +1,17 @@
 import { createTRPCClient, createWSClient, wsLink } from "@trpc/client";
 
-import { DISCONNECTED_CLOSE_CODE, ToolCallSchema } from "../../contract";
+import {
+  DISCONNECTED_CLOSE_CODE,
+  ToolCallSchema,
+  type PageTool,
+} from "../../contract";
 import type { PageChannel } from "../application/behaviours";
 import type { PageChannelRouter } from "./pageChannelRouter";
 
 /**
  * Opens the channel to the server at `url` (its address and token). Each
- * time the socket opens, the page says hello with `tab` and its URL. When
+ * time the socket opens, the page says hello with `tab` and its URL; when
+ * the socket reopens, it reports its tools again. When
  * the server says another tab paired in its place, the channel closes for
  * good and `onDisconnected` runs.
  */
@@ -14,11 +19,20 @@ export function openPageChannel(
   url: string,
   { tab, onDisconnected }: { tab: string; onDisconnected(): void }
 ): PageChannel {
+  // The tools last reported, which a reopened socket reports again: the
+  // server pairs each socket afresh.
+  let reported: PageTool[] | undefined;
+  let opened = false;
   const socket = createWSClient({
     url,
     onOpen() {
+      const reopened = opened;
+      opened = true;
       void client.hello
         .mutate({ tab, url: window.location.href })
+        .then(() => {
+          if (reopened && reported) return client.publishTools.mutate(reported);
+        })
         // The channel closed before the hello went out.
         .catch(() => {});
     },
@@ -34,7 +48,8 @@ export function openPageChannel(
   });
   return {
     async publishTools(tools) {
-      await client.publishTools.mutate([...tools]);
+      reported = [...tools];
+      await client.publishTools.mutate(reported);
     },
     answerCalls(handler) {
       const subscription = client.calls.subscribe(undefined, {
