@@ -115,5 +115,5 @@ imports. This favors correct invalidation over the smallest possible watch set.
 
 - [Turbopack rules and loader limitations](https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack)
 - [Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
-- [React integration](../../packages/react/README.md)
+- [React](../../docs/guide/frameworks/react.md) and [Server rendering](../../docs/guide/guides/server-rendering.md)
 - [Framework API parity decision](../../docs/adr/0017-keep-framework-integration-apis-closely-aligned.md)

@@ -42,7 +42,7 @@ export class GreetingPage {
 }
 ```
 
-Then start Ayme in your app and use the Page Object, as the quickstart for [Vue](docs/guide/start/quickstart-vue.md), [React](docs/guide/start/quickstart-react.md), [Svelte](docs/guide/start/quickstart-svelte.md) or [Angular](docs/guide/start/quickstart-angular.md) shows. A coding agent can do the setup for you: ask it to install the `ayme` skill from https://github.com/ayme-labs/ayme/tree/main/skills/ayme, including its references, and use it to set up Ayme in your project.
+Then start Ayme in your app and use the Page Object, as the quickstart for [Vue](docs/guide/start/quickstart-vue.md), [React](docs/guide/start/quickstart-react.md), [Svelte](docs/guide/start/quickstart-svelte.md) or [Angular](docs/guide/start/quickstart-angular.md) shows. A coding agent can do the setup for you with the [`ayme` skill](docs/guide/guides/coding-agent-skill.md).
 
 ## Pick your framework
 
@@ -55,7 +55,7 @@ Next.js, Nuxt and SvelteKit work with the React, Vue and Svelte packages, includ
 
 ## Documentation
 
-The [documentation](docs/guide/README.md) starts with [what Ayme is](docs/guide/start/what-is-ayme.md) and [install](docs/guide/start/install.md), which lists the supported versions. The reference covers [Playwright in the browser](docs/guide/reference/playwright-in-the-browser.md), the Playwright calls your Page Object Models can make, and the [build plugin](docs/guide/reference/build-plugin.md).
+The [documentation](docs/guide/README.md) is a folder of pages in this repository, grouped as [Start](docs/guide/README.md#start), [Guides](docs/guide/README.md#guides), [Frameworks](docs/guide/README.md#frameworks), [Reference](docs/guide/README.md#reference) and [Troubleshooting](docs/guide/troubleshooting.md).
 
 ## License
 

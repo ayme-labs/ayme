@@ -1,6 +1,6 @@
 # SvelteKit certification example
 
-This example runs SvelteKit 2 with Svelte 5, Vite 8 and adapter-node, using `@ayme-dev/svelte` and the Vite compiler plugin. The root `+layout.svelte` owns the runtime with `useAyme`, the home page renders a counter whose Page Object comes from `usePageObject`, and a second page has no Page Object. It certifies the integration; the [package README](../../packages/svelte/README.md) is the setup guide.
+This example runs SvelteKit 2 with Svelte 5, Vite 8 and adapter-node, using `@ayme-dev/svelte` and the Vite compiler plugin. The root `+layout.svelte` owns the runtime with `useAyme`, the home page renders a counter whose Page Object comes from `usePageObject`, and a second page has no Page Object. It certifies the integration; the [Svelte page](../../docs/guide/frameworks/svelte.md) is the setup guide.
 
 ## Run
 
