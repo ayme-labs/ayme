@@ -85,10 +85,4 @@ createAyme({ pageFactory: () => createPage({ actionTimeout: 500 }) });
 
 ## Errors
 
-Ayme's own failures are `AymeError` subclasses. Each `name` is its class name, and `kind` tells them apart:
-
-| Class                | `kind`       | Meaning                                                           |
-| -------------------- | ------------ | ----------------------------------------------------------------- |
-| `ToolInputError`     | `input`      | The caller's arguments are wrong.                                 |
-| `RefResolutionError` | `resolution` | A Structural Ref or Page Object instance does not match the page. |
-| `RuntimeStateError`  | `runtime`    | Ayme is not set up for this call.                                 |
+Ayme's own failures are `AymeError` subclasses: `ToolInputError`, `RefResolutionError` and `RuntimeStateError`. [Errors](errors.md) says what each means and lists the messages.
