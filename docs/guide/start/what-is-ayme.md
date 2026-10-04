@@ -37,5 +37,5 @@ Ayme has packages for Vue, React, Svelte and Angular, and works with Next.js, Nu
 
 - [Vue](../frameworks/vue.md)
 - [React](../frameworks/react.md)
-- [Svelte](../../../packages/svelte/README.md)
-- [Angular](../../../packages/angular/README.md)
+- [Svelte](../frameworks/svelte.md)
+- [Angular](../frameworks/angular.md)
