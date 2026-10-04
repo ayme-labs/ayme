@@ -52,7 +52,7 @@ them through WebMCP.
 The server listens on the first free port from 9350 to 9365, the range a page
 searches for auto-pairing. `ayme mcp --port <port>` listens on that port only,
 and fails if it is taken; its connect links carry the port, so the page needs
-no change, but a tab pairs with it only through a link.
+no change. On a port outside the range, a tab pairs with it only through a link.
 
 ## Security
 

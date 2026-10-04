@@ -46,7 +46,8 @@ function hasPairing(): boolean {
   try {
     return window.sessionStorage.getItem(PAIRING_STORAGE_KEY) !== null;
   } catch {
-    return false;
+    // Without storage the tab cannot tell whether a link paired it.
+    return true;
   }
 }
 
