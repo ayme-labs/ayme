@@ -9,7 +9,7 @@ import {
   modifierOf,
   modifiersOnly,
   suggestKeys,
-} from "./keys";
+} from "../domain/keys";
 
 type Mode = "record" | "search";
 

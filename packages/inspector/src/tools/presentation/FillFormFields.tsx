@@ -11,7 +11,7 @@ import { GripVerticalIcon, RotateCcwIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { Run } from "../runs/infrastructure/useRuns";
+import type { Run } from "../../runs/infrastructure/useRuns";
 import { inputClass } from "./ArgumentsForm";
 import {
   changedFields,
@@ -20,7 +20,7 @@ import {
   isChanged,
   type FormField,
   type FormRow,
-} from "./fillForm";
+} from "../domain/fillForm";
 import type { RefSource } from "./RefField";
 
 /**

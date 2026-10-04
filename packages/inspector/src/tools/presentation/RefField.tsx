@@ -5,8 +5,8 @@ import { ChevronDownIcon, CrosshairIcon, SearchIcon } from "lucide-react";
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { StructureNode } from "../structure/domain/structure";
-import { refTreeRows, type CanUseNode, type RefNode } from "./refTree";
+import type { StructureNode } from "../../structure/domain/structure";
+import { refTreeRows, type CanUseNode, type RefNode } from "../domain/refTree";
 
 /** Where a ref field chooses its ref from. */
 export type RefSource = {

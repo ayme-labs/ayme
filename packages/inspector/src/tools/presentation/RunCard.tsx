@@ -11,13 +11,13 @@ import {
 import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { RunnableTool } from "../adapter/runnableTools";
+import type { RunnableTool } from "../domain/runnableTools";
 import type {
   CollectionItem,
   Run,
   ToolArguments,
-} from "../runs/infrastructure/useRuns";
-import type { OnHover } from "../navigation/domain/highlight";
+} from "../../runs/infrastructure/useRuns";
+import type { OnHover } from "../../navigation/domain/highlight";
 import { ArgumentsForm } from "./ArgumentsForm";
 import {
   argumentsFromJson,
@@ -26,10 +26,10 @@ import {
   initialArguments,
   signatureOf,
   withArgument,
-} from "./fields";
-import type { FormField } from "./fillForm";
+} from "../domain/fields";
+import type { FormField } from "../domain/fillForm";
 import { FillFormFields } from "./FillFormFields";
-import { needsInput } from "./needsInput";
+import { needsInput } from "../application/needsInput";
 import type { RefSource } from "./RefField";
 
 export type RunCardProps = {

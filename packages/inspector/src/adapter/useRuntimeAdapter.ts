@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { getPomDefinitionText } from "@ayme-dev/ayme/internal";
 
-import { useLiveTools } from "./liveTools";
+import { useLiveTools } from "../tools/infrastructure/liveTools";
 import {
   indexMembers,
   type MemberIndex,
@@ -13,8 +13,8 @@ import {
   refFilterOf,
   startRefPicking,
   type RefPickingHandlers,
-} from "./refPicking";
-import { listRunnableTools } from "./runnableTools";
+} from "../tools/infrastructure/refPicking";
+import { listRunnableTools } from "../tools/domain/runnableTools";
 import {
   buildStructureTree,
   emptyStructure,

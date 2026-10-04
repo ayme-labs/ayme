@@ -1,4 +1,4 @@
-import type { StructureNode } from "../structure/domain/structure";
+import type { StructureNode } from "../../structure/domain/structure";
 
 /** The Inspector's own host element on the page. */
 const inspectorHost = "[data-ayme-inspector-host]";

@@ -2,13 +2,16 @@ import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { DetailPane as DetailPaneFrame } from "../panel/view/InspectorBody";
-import { Navigator as NavigatorFrame } from "../navigation/view/Navigator";
-import type { RenderRun } from "../navigation/domain/runSlot";
-import { pageSelection, type Selection } from "../navigation/domain/selection";
-import { renderPart } from "../testing/renderPart";
-import { DetailPane, Navigator } from "../testing";
-import type { LiveTool } from "./toolGroups";
+import { DetailPane as DetailPaneFrame } from "../../panel/view/InspectorBody";
+import { Navigator as NavigatorFrame } from "../../navigation/view/Navigator";
+import type { RenderRun } from "../../navigation/domain/runSlot";
+import {
+  pageSelection,
+  type Selection,
+} from "../../navigation/domain/selection";
+import { renderPart } from "../../testing/renderPart";
+import { DetailPane, Navigator } from "../../testing";
+import type { LiveTool } from "../domain/toolGroups";
 import { toolsLens } from "./toolsLens";
 
 // Component tests: the Tools lens in the navigator and a tool's page in the

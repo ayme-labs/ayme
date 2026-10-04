@@ -1,4 +1,4 @@
-import type { RunnableTool } from "../adapter/runnableTools";
+import type { RunnableTool } from "../domain/runnableTools";
 
 /**
  * Whether Run must open the form before it runs the tool: the tool has a

@@ -1,6 +1,6 @@
 import type { JsonPrimitive, JsonSchema, JsonValue } from "@ayme-dev/ayme";
 
-import type { ToolArguments } from "../runs/infrastructure/useRuns";
+import type { ToolArguments } from "../../runs/infrastructure/useRuns";
 
 /** A JSON Schema as the form reads it: the runtime's, with a string's format. */
 type Schema = JsonSchema & { format?: string };

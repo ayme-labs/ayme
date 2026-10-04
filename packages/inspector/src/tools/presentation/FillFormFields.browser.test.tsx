@@ -4,13 +4,13 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { ProjectedStructuralNodeForest } from "@ayme-dev/ayme/internal";
 
-import type { ControlState } from "../shared/infrastructure/formControls";
-import type { RunnableTool } from "../adapter/runnableTools";
-import { forest, node } from "../structure/test-utils/projected";
-import { buildStructureTree } from "../structure/domain/structure";
-import type { Run } from "../runs/infrastructure/useRuns";
-import { renderPart } from "../testing/renderPart";
-import { RunCard as RunCardPart } from "../testing";
+import type { ControlState } from "../../shared/infrastructure/formControls";
+import type { RunnableTool } from "../domain/runnableTools";
+import { forest, node } from "../../structure/test-utils/projected";
+import { buildStructureTree } from "../../structure/domain/structure";
+import type { Run } from "../../runs/infrastructure/useRuns";
+import { renderPart } from "../../testing/renderPart";
+import { RunCard as RunCardPart } from "../../testing";
 import { RunCard } from "./RunCard";
 
 // Component tests: fill_form's form in a run card, built from a fixture

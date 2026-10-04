@@ -1,11 +1,11 @@
 import { BracesIcon, ChevronRightIcon, ZapIcon } from "lucide-react";
 
-import { WhatTheModelSees } from "../shared/view/WhatTheModelSees";
-import type { Lens } from "../navigation/domain/lens";
-import { NavItem } from "../navigation/view/NavItem";
-import type { RenderRun } from "../navigation/domain/runSlot";
-import type { Selection } from "../navigation/domain/selection";
-import { listTools, toolKindLabels, type LiveTool } from "./toolGroups";
+import { WhatTheModelSees } from "../../shared/view/WhatTheModelSees";
+import type { Lens } from "../../navigation/domain/lens";
+import { NavItem } from "../../navigation/view/NavItem";
+import type { RenderRun } from "../../navigation/domain/runSlot";
+import type { Selection } from "../../navigation/domain/selection";
+import { listTools, toolKindLabels, type LiveTool } from "../domain/toolGroups";
 
 /**
  * The Tools lens: every live tool, the ones the panel can run now whether

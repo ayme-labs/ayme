@@ -13,7 +13,7 @@ import type { InspectorRuntime } from "./adapter/useRuntimeAdapter";
 import { RunsRegion } from "./panel/view/InspectorBody";
 import type { RenderRun } from "./navigation/domain/runSlot";
 import type { Selection } from "./navigation/domain/selection";
-import { RunCard } from "./runCard/RunCard";
+import { RunCard } from "./tools/presentation/RunCard";
 import { Runs, type RunFocus } from "./runs/presentation/Runs";
 import { runScope } from "./runs/domain/runScope";
 

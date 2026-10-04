@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { RunnableTool } from "../adapter/runnableTools";
-import { renderPart } from "../testing/renderPart";
-import { RunCard as RunCardPart } from "../testing";
+import type { RunnableTool } from "../domain/runnableTools";
+import { renderPart } from "../../testing/renderPart";
+import { RunCard as RunCardPart } from "../../testing";
 import { RunCard } from "./RunCard";
 
 // Component tests: press_key's key field in a run card, driven through the

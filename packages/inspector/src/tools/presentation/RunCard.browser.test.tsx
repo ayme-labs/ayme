@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { RunnableTool } from "../adapter/runnableTools";
-import { forest, node } from "../structure/test-utils/projected";
-import { buildStructureTree } from "../structure/domain/structure";
-import type { CollectionItem, Run } from "../runs/infrastructure/useRuns";
-import { renderPart } from "../testing/renderPart";
-import { RunCard as RunCardPart } from "../testing";
+import type { RunnableTool } from "../domain/runnableTools";
+import { forest, node } from "../../structure/test-utils/projected";
+import { buildStructureTree } from "../../structure/domain/structure";
+import type { CollectionItem, Run } from "../../runs/infrastructure/useRuns";
+import { renderPart } from "../../testing/renderPart";
+import { RunCard as RunCardPart } from "../../testing";
 import { RunCard, type RunCardProps } from "./RunCard";
 
 // Component tests: the run card with fixture tools and runs, driven through
