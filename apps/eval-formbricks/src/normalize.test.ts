@@ -76,7 +76,7 @@ function artifacts(overrides: Partial<RunArtifacts>): RunArtifacts {
       aymeCommit: "4cdac8dd",
     },
     goalLoop: { usage: null, costUsd: null },
-    labCheckoutDirty: false,
+    labCheckout: { movedFiles: [], modifiedFiles: [] },
     ...overrides,
   };
 }

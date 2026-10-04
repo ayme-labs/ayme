@@ -19,7 +19,7 @@ It runs on a Mac only, by hand. It is never part of CI or `pnpm check`; only its
 
   A `CLAUDE_CODE_OAUTH_TOKEN` already exported in the shell wins over the file. The token reaches only the agent's environment; it is never written to a run's files.
 
-The run checks these first and names whichever is missing before anything starts.
+The run checks these first and names whichever is missing before anything starts. One of them is a clean lab app folder: `apps/lab-formbricks`, submodule included, with no untracked or modified file (gitignored files do not count), because the agent would see it.
 
 ## One run
 
@@ -40,7 +40,7 @@ The run:
 4. Runs the arm's setup, if it has one: whatever its interface needs outside the measured window (see the arm table). The measured agent installs and downloads nothing.
 5. Starts Claude Code on the lab app folder with the shared prompt, the arm's interface and nothing else, from a fresh, empty configuration folder inside the run folder, which is deleted afterwards. The measured window is this step alone.
 6. Reads the survey back from the database and decides pass or fail from the mission's expected end state. The agent's final message is kept but has no say.
-7. Closes what the arm's setup started and writes everything under `results/runs/<run id>/`.
+7. Moves any file the agent created in the lab app folder into `agent-files/` (nothing is deleted; modified tracked files stay and are recorded), closes what the arm's setup started and writes everything under `results/runs/<run id>/`.
 
 The exit code is `0` for a pass, `1` for a fail and `2` when the run could not complete.
 
@@ -48,18 +48,19 @@ The exit code is `0` for a pass, `1` for a fail and `2` when the run could not c
 
 `results/` is ignored by git. Each run folder holds:
 
-| File               | Holds                                                                                                                                                       |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mission.json`     | The seeded values, ids, credentials and URLs                                                                                                                |
-| `prompt.txt`       | The prompt as sent                                                                                                                                          |
-| `mcp.json`         | The MCP servers the agent was given (none for the Playwright CLI arm)                                                                                       |
-| `init-page.cjs`    | The script that opens the editor in the agent's browser                                                                                                     |
-| `transcript.jsonl` | Claude Code's raw stream-json transcript, one event per line                                                                                                |
-| `stderr.log`       | Claude Code's standard error                                                                                                                                |
-| `final.md`         | The agent's final message                                                                                                                                   |
-| `verdict.json`     | The database check: each expectation and what was found                                                                                                     |
-| `result.json`      | The normalized result: verdict, wall time, input, cache creation, cache read and output tokens, cost, tool calls and failures per tool, versions, isolation |
-| `summary.md`       | The result in a few lines                                                                                                                                   |
+| File               | Holds                                                                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mission.json`     | The seeded values, ids, credentials and URLs                                                                                                                                                            |
+| `prompt.txt`       | The prompt as sent                                                                                                                                                                                      |
+| `mcp.json`         | The MCP servers the agent was given (none for the Playwright CLI arm)                                                                                                                                   |
+| `init-page.cjs`    | The script that opens the editor in the agent's browser                                                                                                                                                 |
+| `transcript.jsonl` | Claude Code's raw stream-json transcript, one event per line                                                                                                                                            |
+| `stderr.log`       | Claude Code's standard error                                                                                                                                                                            |
+| `final.md`         | The agent's final message                                                                                                                                                                               |
+| `verdict.json`     | The database check: each expectation and what was found                                                                                                                                                 |
+| `result.json`      | The normalized result: verdict, wall time, input, cache creation, cache read and output tokens, cost, tool calls and failures per tool, versions, isolation, files the agent left in the lab app folder |
+| `agent-files/`     | Files the agent created in the lab app folder, moved here with their relative paths (the folder exists only then)                                                                                       |
+| `summary.md`       | The result in a few lines                                                                                                                                                                               |
 
 Wall time runs from the agent's first event to its last; seeding and sign-in are outside it. Cost and tokens come from Claude Code's result event. `goalLoop` and `combinedCostUsd` are reserved for arms that run the Goal Loop; the agent's cost stands alone until then.
 

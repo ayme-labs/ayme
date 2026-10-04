@@ -20,6 +20,7 @@ import {
 import { initPageScript, signInAndOpenEditor } from "./browser.ts";
 import { claudeEnvironment, claudeVersion, runClaude } from "./claude.ts";
 import { readOauthToken } from "./environment.ts";
+import { moveFiles, readLabChanges } from "./labCheckout.ts";
 import {
   ensureDatabaseBuilt,
   openFormbricksDatabase,
@@ -47,6 +48,7 @@ import {
   dockerPrecondition,
   formbricksPreparedPrecondition,
   labAppPrecondition,
+  labCheckoutCleanPrecondition,
 } from "./preconditions.ts";
 import { createPrompt } from "./prompt.ts";
 import { judgeMission } from "./verdict.ts";
@@ -96,19 +98,6 @@ function gitOutput(cwd: string, args: string[]) {
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
-function labCheckoutDirty() {
-  const status = gitOutput(repoRoot, [
-    "status",
-    "--porcelain",
-    "--",
-    "apps/lab-formbricks",
-  ]);
-  const submodule = gitOutput(formbricksRoot, ["status", "--porcelain"]);
-  return (
-    status === null || submodule === null || status !== "" || submodule !== ""
-  );
-}
-
 async function writeJson(filePath: string, value: unknown) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
@@ -141,6 +130,7 @@ async function main() {
       dockerPrecondition,
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
+      labCheckoutCleanPrecondition(readLabChanges),
     ]);
   } catch (error) {
     await rm(runDir, { recursive: true, force: true });
@@ -211,6 +201,10 @@ async function main() {
       `Agent finished: exit ${run.exitCode ?? run.signal}, timed out ${run.timedOut}, ${run.lines.length} events.`
     );
 
+    // Whatever the agent left in the lab app folder must not reach the next run.
+    const labChanges = readLabChanges();
+    await moveFiles(labChanges.untracked, path.join(runDir, "agent-files"));
+
     log("Reading the verdict from the database.");
     const verdict = judgeMission(
       mission,
@@ -239,7 +233,10 @@ async function main() {
         aymeCommit: gitOutput(repoRoot, ["rev-parse", "HEAD"]),
       },
       goalLoop: { usage: null, costUsd: null },
-      labCheckoutDirty: labCheckoutDirty(),
+      labCheckout: {
+        movedFiles: labChanges.untracked,
+        modifiedFiles: labChanges.modified,
+      },
     });
     await writeFile(
       path.join(runDir, "final.md"),
@@ -251,7 +248,7 @@ async function main() {
     process.stdout.write(summary);
     if (result.labCheckoutDirty)
       log(
-        "Warning: the lab app checkout changed during the run. Inspect it before the next run."
+        "Warning: the agent changed the lab app checkout. Files it created are in agent-files/; tracked files it modified are still there. Inspect them before the next run."
       );
     process.exitCode = result.pass ? 0 : 1;
   } finally {
