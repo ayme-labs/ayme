@@ -150,8 +150,8 @@ export class RunCard {
       // playwright-lite's fill assigned these inputs' value directly, which
       // React's controlled input never sees; typing reaches it. Its timeout
       // covers the whole text, one render per key, so it gets expect's 5 s.
-      // Fixed in playwright-lite 0.7.0 (enekesabel/playwright-lite#242):
-      // drop this branch once the component tests pass without it.
+      // playwright-lite 0.7.0 fixes this: drop this branch once the component
+      // tests pass without it.
       await field.fill("");
       await field.pressSequentially(String(value), { timeout: 5_000 });
     } else

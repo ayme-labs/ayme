@@ -1,4 +1,4 @@
-// Runtime, not publication (#159, decision D1): the Page State Session and its
+// Runtime, not publication: the Page State Session and its
 // interaction history import nothing from the publication side (`webMcp.ts`,
 // tool schema rendering, anything touching `document.modelContext`); the
 // publication side calls in, never the reverse.

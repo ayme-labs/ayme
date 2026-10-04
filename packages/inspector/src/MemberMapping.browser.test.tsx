@@ -113,7 +113,7 @@ beforeEach(() => {
       }) as unknown as PageStatePeek
   );
   vi.mocked(listRegisteredPoms).mockReturnValue([listPage]);
-  // The later collection comes last, where it used to be hidden.
+  // Two collections hold the same items; search finds the later one's too.
   vi.mocked(listRegisteredPomTargets).mockResolvedValue([
     { path: "ListPage.rows", element: milk! },
     { path: "ListPage.rows", element: eggs! },

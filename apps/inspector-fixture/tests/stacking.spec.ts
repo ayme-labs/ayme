@@ -6,7 +6,7 @@ import { expect, test } from "./fixtures";
 
 // E2E: the Inspector stays above, and operable over, the page's own
 // positioned UI, while the rest of the page keeps its pointer. An agent's
-// clicks reach page elements under the panel (#272).
+// clicks reach page elements under the panel.
 
 /** Covers the page with a fixed widget at this z-index, counting its clicks. */
 async function coverPage(page: Page, zIndex: number) {

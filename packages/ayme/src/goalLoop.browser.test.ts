@@ -1073,7 +1073,7 @@ describe("Goal Loop goal in Chromium", () => {
     ).not.toContain(false);
   });
 
-  // --- Stage two: a ref question over the option cap (#123) ---
+  // --- Stage two: a ref question over the option cap ---
 
   /** A page whose clickable elements outnumber one question's options. */
   function setupPageWithManyClickables(count: number): string[] {
@@ -1696,8 +1696,8 @@ describe("Goal Loop goal in Chromium", () => {
       maxSteps: 5,
     })) as Record<string, unknown>;
 
-    // The cap still ends the run for instances (#130); the wording names what
-    // the operation acts on.
+    // The cap still ends the run for instances; the wording names what the
+    // operation acts on.
     expect(result).toMatchObject({
       reason: "needs_value",
       next: expect.stringContaining("acts on a collection instance"),
@@ -1995,7 +1995,7 @@ describe("Goal Loop goal in Chromium", () => {
     expect(requests).toEqual([]);
   });
 
-  // --- Option keys stay distinct within one question (#114) ---
+  // --- Option keys stay distinct within one question ---
 
   /** Register a POM whose single tool takes one closed-set parameter. */
   async function registerPomWithParameter(

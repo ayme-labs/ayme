@@ -115,7 +115,7 @@ export function getLastGoalLoopRunResult(): GoalLoopRunResult | undefined {
   return runResultStore.last;
 }
 
-// --- Public result types (match the fixed Handover interface from #82) ---
+// --- Public result types (the Handover interface) ---
 
 export type HandoverReason =
   | "done"
@@ -478,7 +478,7 @@ export async function pursueGoal(
       }
 
       // Every chunk of a ref over the cap answered "none of these": the step
-      // ran no action, so it leaves no history entry (#123).
+      // ran no action, so it leaves no history entry.
       if (argumentAnswers.kind === "none_fits") {
         return done({
           reason: "no_fitting_option",

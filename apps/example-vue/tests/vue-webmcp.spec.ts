@@ -17,7 +17,7 @@ import {
  * Opens the playground with the Inspector collapsed, for a test that clicks
  * the archive dialog itself, as a person does. The panel paints above the
  * page's own UI and at its default place covers the dialog's confirm button.
- * Tool calls pass through the panel (#272); a person moves or collapses it.
+ * Tool calls pass through the panel; a person moves or collapses it.
  */
 async function openWithInspectorCollapsed(page: Page) {
   await page.goto("/");
@@ -547,7 +547,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     .toEqual(initialToolNames);
 });
 
-// The playground's Inspector smoke test (#178): the hosted Inspector opens
+// The playground's Inspector smoke test: the hosted Inspector opens
 // and runs a tool, driven through the Inspector's own Page Object Model.
 test("opens the Inspector and runs a tool from it", async ({ page }) => {
   await page.goto("/");

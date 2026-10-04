@@ -1000,7 +1000,7 @@ describe("StructuralTree factory-identity reconciliation", () => {
   });
 });
 
-describe("spike enrichment does not affect equality", () => {
+describe("enrichment does not affect equality", () => {
   it("same node data with different enrichment is shallow-equal", () => {
     const a = expectNode(
       parse('- button "Create" [ref=e1]').root

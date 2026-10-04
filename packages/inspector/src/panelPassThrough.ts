@@ -1,8 +1,8 @@
 import type { Locator } from "@playwright/test";
 
 /*
- * Lets the runtime's pointer actions reach page elements under the panel
- * (#272). Playwright Lite hit-tests an action's target and refuses it while
+ * Lets the runtime's pointer actions reach page elements under the panel.
+ * Playwright Lite hit-tests an action's target and refuses it while
  * the Inspector host is what the pointer meets there. When that happens, the
  * Inspector's shadow root stops taking pointer events until the action ends.
  * The toggle stays inside the closed shadow root, out of the page's sight.
