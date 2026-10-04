@@ -35,17 +35,21 @@ export type CustomTool = {
   execute(target: { ref: AriaRef; element: Element }): Promise<unknown>;
 };
 
-/** A tool that acts on one element, as published. */
+/** Runs a tool for the caller it is given. */
+type CallerRun = (input: unknown, caller: Caller) => Promise<ActionResult>;
+
+/**
+ * A Browser Tool or Custom Tool, as published: `execute` runs it as the
+ * calling agent, `executeAs` for the caller given.
+ */
 export type PublishedElementTool = ModelContextTool<
   Record<string, unknown>,
   JsonValue
 > & {
   inputSchema: JsonSchema;
   execute(input: unknown): Promise<JsonValue>;
+  executeAs: CallerRun;
 };
-
-/** Runs a tool for the caller it is given. */
-type CallerRun = (input: unknown, caller: Caller) => Promise<ActionResult>;
 
 /**
  * Package-internal: a tool that acts on one element, ready to publish, with
@@ -141,6 +145,7 @@ export function registerElementTool(
       description: definition.description,
       inputSchema: definition.inputSchema,
       execute: (input: unknown) => executeAs(input, "agent"),
+      executeAs,
     },
     targetField: definition.targetField,
     loopInputSchema:

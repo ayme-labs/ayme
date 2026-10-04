@@ -453,7 +453,8 @@ ${
   version
     ? `
 import type { BrowserContext, Page, Locator } from '@playwright/test';
-import { createPageRegistration, type PageObjectConstructor } from '@ayme-dev/ayme/internal';
+import { createAyme, type ActionResult } from '@ayme-dev/ayme';
+import type { PageObjectConstructor } from '@ayme-dev/ayme/internal';
 import { usePageObject } from '@ayme-dev/vue';
 import { usePageObject as useSveltePageObject } from '@ayme-dev/svelte';
 @ayme
@@ -471,8 +472,10 @@ class Pom {
 const ctor: PageObjectConstructor<Pom> = Pom;
 const instance: Pom = usePageObject(ctor);
 const svelteInstance: Pom = useSveltePageObject(ctor);
-createPageRegistration(ctor);
-void [instance, svelteInstance];
+const session = createAyme();
+const registered: Pom = session.pom.register(ctor);
+const clicked: Promise<ActionResult> = session.tools.run('click', { target: 'e1' });
+void [instance, svelteInstance, registered, clicked];
 import {
   executePublishedTool,
   publishedToolNames,
@@ -730,7 +733,7 @@ export function inComponent() {
   const status: AymeWebMcpPublicationStatus = setup.webMCP.publicationStatus();
   const retried: Promise<void> = setup.webMCP.retryPublication();
   const pom: Pom = injectPageObject(Pom);
-  void [setup.ayme.pursueGoal, status.state, retried, pom.act()];
+  void [setup.ayme.tools.run, status.state, retried, pom.act()];
 }
 const pluginOptions: AymeAngularOptions = { tsconfigPath: 'tsconfig.app.json' };
 const name: string = aymeAngularPlugin(pluginOptions).name + aymeAngular().name;
@@ -983,8 +986,8 @@ it(
         'if ("WebMCP" in main) throw new Error("WebMCP must not be exported");',
         'if ("default" in main || "getPageState" in main.ayme) throw new Error("the helper object must not be on the main entry");',
         'if (typeof main.createPage !== "function") throw new Error("missing createPage");',
-        'if (typeof main.createRuntimeSession !== "function") throw new Error("missing createRuntimeSession");',
-        'if ("createRuntimeSession" in internal) throw new Error("createRuntimeSession must not be on /internal");',
+        'if (typeof main.createAyme !== "function") throw new Error("missing createAyme");',
+        'if ("createAyme" in internal) throw new Error("createAyme must not be on /internal");',
         'if (typeof internal.configureAymeRuntime !== "function") throw new Error("missing configureAymeRuntime");',
         'const testing = await import("@ayme-dev/ayme/testing");',
         'const testingExports = ["executePublishedTool", "publishedToolNames", "publishedToolSchema", "recordPublishedTools", "recordPublishedToolsLate", "waitForPublishedTool"];',

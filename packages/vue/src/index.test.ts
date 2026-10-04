@@ -10,7 +10,7 @@ import {
   type Component,
 } from "vue";
 import { afterEach, expect, expectTypeOf, it, vi } from "vitest";
-import { createRuntimeSession } from "@ayme-dev/ayme";
+import { createAyme } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
   registerCompiledPom,
@@ -20,7 +20,7 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
   const original = await importOriginal<typeof import("@ayme-dev/ayme")>();
   return {
     ...original,
-    createRuntimeSession: vi.fn(original.createRuntimeSession),
+    createAyme: vi.fn(original.createAyme),
   };
 });
 import {
@@ -59,7 +59,7 @@ function mount(component: Component) {
 afterEach(() => {
   for (const app of apps.splice(0)) app.unmount();
   for (const scope of scopes.splice(0)) scope.stop();
-  vi.mocked(createRuntimeSession).mockClear();
+  vi.mocked(createAyme).mockClear();
   vi.unstubAllGlobals();
 });
 
@@ -68,7 +68,7 @@ it("passes the page factory and ignore to the runtime session", () => {
   const scope = effectScope();
   scopes.push(scope);
   scope.run(() => useAyme({ pageFactory, ignore }));
-  expect(createRuntimeSession).toHaveBeenCalledWith({
+  expect(createAyme).toHaveBeenCalledWith({
     pageFactory,
     ignore,
     customTools: undefined,
@@ -87,7 +87,7 @@ it("passes customTools to the runtime session", () => {
   const scope = effectScope();
   scopes.push(scope);
   scope.run(() => useAyme({ pageFactory, customTools }));
-  expect(createRuntimeSession).toHaveBeenCalledWith({
+  expect(createAyme).toHaveBeenCalledWith({
     pageFactory,
     ignore: undefined,
     customTools,
@@ -100,7 +100,7 @@ it("passes goalLoop to the runtime session", () => {
   const scope = effectScope();
   scopes.push(scope);
   scope.run(() => useAyme({ pageFactory, goalLoop }));
-  expect(createRuntimeSession).toHaveBeenCalledWith({
+  expect(createAyme).toHaveBeenCalledWith({
     pageFactory,
     ignore: undefined,
     customTools: undefined,
@@ -117,7 +117,7 @@ it("passes webMCP to the runtime session", () => {
       webMCP: { enabled: false, toolNamePrefix: "ayme_" },
     })
   );
-  expect(createRuntimeSession).toHaveBeenCalledWith({
+  expect(createAyme).toHaveBeenCalledWith({
     pageFactory,
     ignore: undefined,
     customTools: undefined,
@@ -133,10 +133,13 @@ it("returns the session as ayme, so a goal runs through it, and its webMCP membe
   const scope = effectScope();
   scopes.push(scope);
   const { ayme, webMCP } = scope.run(() => useAyme({ pageFactory, goalLoop }))!;
-  expect(ayme).toBe(vi.mocked(createRuntimeSession).mock.results[0]?.value);
+  expect(ayme).toBe(vi.mocked(createAyme).mock.results[0]?.value);
   expect(webMCP.publicationStatus).toBe(ayme.webMCP.publicationStatus);
   expect(webMCP.retryPublication).toBe(ayme.webMCP.retryPublication);
-  const handover = await ayme.pursueGoal("Save the form", { maxSteps: 1 });
+  const handover = await ayme.tools.run("goal", {
+    goal: "Save the form",
+    maxSteps: 1,
+  });
   expect(goalLoop).toHaveBeenCalledOnce();
   expect(handover.reason).toBe("decide_failed");
 });
@@ -216,7 +219,8 @@ it.each(["provider", "standalone"])(
     visible.value = true;
     const previous = instance;
     await nextTick();
-    expect(instance).not.toBe(previous);
+    // The session keeps one instance per class.
+    expect(instance).toBe(previous);
     expect(listRegisteredPoms()).toHaveLength(1);
     app.unmount();
     expect(listRegisteredPoms()).toHaveLength(0);

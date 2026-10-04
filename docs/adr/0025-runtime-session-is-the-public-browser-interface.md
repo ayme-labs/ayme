@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0031
 ---
 
 # The runtime session is the public browser interface; `/internal` serves ayme's own packages

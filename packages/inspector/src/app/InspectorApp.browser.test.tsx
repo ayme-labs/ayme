@@ -1,18 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { RegisteredPomTool } from "@ayme-dev/ayme";
+import { ToolInputError, type RegisteredPomTool } from "@ayme-dev/ayme";
 import {
-  getPublicationStatus,
-  listLiveTools,
   listRegisteredPomTools,
   listRegisteredPoms,
-  runTool,
-  subscribeToPublishedTools,
   type RegisteredPom,
 } from "@ayme-dev/ayme/internal";
 
 import { renderInspector } from "./renderInspector";
+import { startedAyme } from "../tools/test-utils/startedAyme";
 import { Inspector } from "../testing";
 
 // Component tests of the whole panel, driven through the Inspector POM on
@@ -20,6 +17,7 @@ import { Inspector } from "../testing";
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its runtime wiring only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
+  const { asStartedAyme } = await import("../tools/test-utils/startedAyme");
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
@@ -36,13 +34,11 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
       elementsByRef: new Map(),
     })),
     listElementToolTargets: vi.fn(async () => new Map()),
-    listLiveTools: vi.fn().mockReturnValue([]),
-    getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
-    subscribeToPublishedTools: vi.fn(() => () => {}),
     getPomDefinitionText: vi.fn(() => ""),
     listRegisteredPomTargets: vi.fn(async () => []),
     listRegisteredPomTools: vi.fn(() => []),
-    runTool: vi.fn(),
+    getStartedAyme: asStartedAyme,
+    subscribeToStartedAyme: () => () => {},
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
@@ -99,7 +95,7 @@ function editor(id: string, ...tools: RegisteredPomTool[]): RegisteredPom {
 function mockRegistry(poms: RegisteredPom[], activeTools: RegisteredPomTool[]) {
   vi.mocked(listRegisteredPoms).mockReturnValue(poms);
   vi.mocked(listRegisteredPomTools).mockReturnValue(activeTools);
-  vi.mocked(listLiveTools).mockReturnValue(
+  startedAyme.tools.list.mockReturnValue(
     activeTools.map(({ name, description, inputSchema }) => ({
       name,
       description,
@@ -135,10 +131,10 @@ const publicationDisabled = {
 } as const;
 
 afterEach(() => {
-  vi.mocked(getPublicationStatus).mockReturnValue(publicationActive);
+  startedAyme.webMCP.publicationStatus = publicationActive;
   for (const unmount of unmounts.splice(0)) unmount();
   vi.clearAllMocks();
-  vi.mocked(listLiveTools).mockReturnValue([]);
+  startedAyme.reset();
   localStorage.clear();
 });
 
@@ -160,7 +156,7 @@ describe("the Inspector", () => {
   it("runs a tool with typed arguments and lists the run", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
-    vi.mocked(runTool).mockResolvedValue({ saved: true });
+    startedAyme.tools.run.mockResolvedValue({ saved: true });
     renderApp();
     const save = await inspector.tool("Editor.save");
 
@@ -175,13 +171,16 @@ describe("the Inspector", () => {
     await expect
       .poll(() => save.lastResult.textContent())
       .toContain("Succeeded");
-    expect(runTool).toHaveBeenCalledExactlyOnceWith("Editor.save", {
-      mode: "final",
-      copies: 3,
-      notify: true,
-      title: "Release notes",
-      meta: { tag: "v1" },
-    });
+    expect(startedAyme.tools.run).toHaveBeenCalledExactlyOnceWith(
+      "Editor.save",
+      {
+        mode: "final",
+        copies: 3,
+        notify: true,
+        title: "Release notes",
+        meta: { tag: "v1" },
+      }
+    );
     await expect
       .poll(() => inspector.runs.latest("Editor.save").status())
       .toBe("Succeeded");
@@ -190,7 +189,7 @@ describe("the Inspector", () => {
   it("shows a run card's last successful run in Runs, with its result", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
-    vi.mocked(runTool).mockResolvedValue({ saved: true });
+    startedAyme.tools.run.mockResolvedValue({ saved: true });
     renderApp();
     const save = await inspector.tool("Editor.save");
     await save.run({ copies: 1, title: "Notes" });
@@ -210,12 +209,9 @@ describe("the Inspector", () => {
   it("shows the last success's result after a failed run", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
-    vi.mocked(runTool)
+    startedAyme.tools.run
       .mockResolvedValueOnce({ saved: 1 })
-      .mockResolvedValueOnce({
-        content: [{ type: "text", text: "Not saved." }],
-        isError: true,
-      });
+      .mockRejectedValueOnce(new Error("Not saved."));
     renderApp();
     const save = await inspector.tool("Editor.save");
     await save.run({ copies: 1, title: "Notes" });
@@ -237,7 +233,7 @@ describe("the Inspector", () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
     const first = { saved: 1 };
-    vi.mocked(runTool)
+    startedAyme.tools.run
       .mockResolvedValueOnce(first)
       .mockResolvedValueOnce({ saved: 2 });
     const writeText = vi
@@ -265,7 +261,7 @@ describe("the Inspector", () => {
     expect(await inspector.runs.run(0).resultText()).toBe(
       JSON.stringify({ saved: 2 }, null, 2)
     );
-    expect(runTool).toHaveBeenCalledTimes(2);
+    expect(startedAyme.tools.run).toHaveBeenCalledTimes(2);
     writeText.mockRestore();
   });
 
@@ -279,7 +275,7 @@ describe("the Inspector", () => {
     };
     mockRegistry([editor("editor", save, publish)], [save, publish]);
     const settle = new Map<string, (result: unknown) => void>();
-    vi.mocked(runTool).mockImplementation(
+    startedAyme.tools.run.mockImplementation(
       (name) => new Promise((resolve) => settle.set(name, resolve))
     );
     renderApp();
@@ -312,7 +308,7 @@ describe("the Inspector", () => {
     const first = saveTool("first", vi.fn());
     const second = saveTool("second", vi.fn());
     mockRegistry([editor("first", first), editor("second", second)], [second]);
-    vi.mocked(runTool).mockResolvedValue({ saved: true });
+    startedAyme.tools.run.mockResolvedValue({ saved: true });
     renderApp();
 
     await expect
@@ -321,8 +317,8 @@ describe("the Inspector", () => {
     await inspector.navigator.model.object("Editor").last().click();
     await inspector.detail.runCard("save").run({ copies: 1, title: "Notes" });
 
-    await expect.poll(() => runTool).toHaveBeenCalledOnce();
-    expect(runTool).toHaveBeenCalledWith("Editor.save", {
+    await expect.poll(() => startedAyme.tools.run).toHaveBeenCalledOnce();
+    expect(startedAyme.tools.run).toHaveBeenCalledWith("Editor.save", {
       mode: "draft",
       copies: 1,
       title: "Notes",
@@ -335,13 +331,12 @@ describe("the Inspector", () => {
     consoleError.mockRestore();
   });
 
-  it("runs a tool the way an agent's call runs and shows its failure", async () => {
+  it("runs a tool through the session and shows its failure as an agent reads it", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
-    vi.mocked(runTool).mockResolvedValue({
-      content: [{ type: "text", text: "ToolInputError: title is required." }],
-      isError: true,
-    });
+    startedAyme.tools.run.mockRejectedValue(
+      new ToolInputError("title is required.")
+    );
     renderApp();
 
     await (await inspector.tool("Editor.save")).run({ copies: 1 });
@@ -351,16 +346,19 @@ describe("the Inspector", () => {
     expect(await run.error.textContent()).toBe(
       "ToolInputError: title is required."
     );
-    expect(runTool).toHaveBeenCalledExactlyOnceWith("Editor.save", {
-      mode: "draft",
-      copies: 1,
-    });
+    expect(startedAyme.tools.run).toHaveBeenCalledExactlyOnceWith(
+      "Editor.save",
+      {
+        mode: "draft",
+        copies: 1,
+      }
+    );
   });
 
   it("shows a tool the runtime doesn't run as a failed run", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
-    vi.mocked(runTool).mockRejectedValue(
+    startedAyme.tools.run.mockRejectedValue(
       Object.assign(new Error('The tool "Editor.save" is not live.'), {
         name: "RuntimeStateError",
       })
@@ -400,7 +398,7 @@ describe("the Inspector", () => {
   it("lists the live tools when nothing is published", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
-    vi.mocked(getPublicationStatus).mockReturnValue(publicationDisabled);
+    startedAyme.webMCP.publicationStatus = publicationDisabled;
     renderApp();
 
     await inspector.navigator.showLens("Tools");
@@ -413,11 +411,6 @@ describe("the Inspector", () => {
   it("drops an open tool that stops being live and shows the page", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
-    let republish = () => {};
-    vi.mocked(subscribeToPublishedTools).mockImplementation((subscriber) => {
-      republish = subscriber;
-      return () => {};
-    });
     renderApp();
     await inspector.tool("Editor.save");
     await expect
@@ -425,7 +418,7 @@ describe("the Inspector", () => {
       .toBe("Editor.save");
 
     mockRegistry([editor("editor", tool)], []);
-    republish();
+    startedAyme.announce();
 
     await expect
       .poll(() => inspector.navigator.tools.tool("Editor.save").count())

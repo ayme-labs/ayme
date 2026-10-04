@@ -23,15 +23,14 @@ Internal adapter packages are bundled; consumers do not install them separately.
 ## Entries
 
 - `@ayme-dev/ayme` is what a consumer uses: the `@ayme` and `@ayme.action`
-  decorators, the runtime session (`createRuntimeSession`, with `pursueGoal`
-  for the Goal Loop), `createPage`, `decisionEndpoint`, and their types.
+  decorators, the runtime session (`createAyme`), `createPage`,
+  `decisionEndpoint`, and their types.
 - `@ayme-dev/ayme/server` is the Decision Endpoint handler,
   `createDecisionEndpoint`, for your backend.
-- `@ayme-dev/ayme/internal` serves ayme's own packages only: the framework
-  packages (`vue`, `react`) for server page objects and page
-  registrations, the code `unplugin-ayme` generates into your bundle
-  (`registerCompiledPom`), and the inspector. Applications do not import it,
-  and what it exports may change without notice.
+- `@ayme-dev/ayme/internal` serves ayme's own packages only: types the
+  framework packages share, the code `unplugin-ayme` generates into your
+  bundle (`registerCompiledPom`), and the inspector. Applications do not import it, and what it exports may change
+  without notice.
 - `@ayme-dev/ayme/testing` is for Playwright tests of an integration: a
   recording WebMCP driver that `recordPublishedTools` installs into a browser
   context (or `recordPublishedToolsLate` into an already loaded page, to test
@@ -103,24 +102,23 @@ useAyme({
 The runtime records what happens in the document for as long as it lives: a
 Visit at load and at each same-document navigation, every tool call and Goal
 Loop step as an action, and every page state it captures. Each caller, the
-calling agent and the Goal Loop's model, has its own last-received page state;
-an action's Change Record is the difference between that state and the page
-after the action. A Goal Loop run leaves the agent's state alone until the
-Handover. A full page load starts a new history.
+calling agent, the Goal Loop's model and your application's `tools.run`, has
+its own last-received page state; an action's Change Record is the difference
+between that state and the page after the action. So an agent's next action
+reports what your application changed in between. A Goal Loop run leaves its
+caller's state alone until the Handover. A full page load starts a new
+history.
 
 ## Runtime session
 
-The Vue and React packages start the runtime for you. Any other consumer,
-such as a prebuilt script on a page, starts it through the runtime session:
+The framework packages create and start the runtime session for you and hand
+it out as `ayme`. Any other consumer, such as a prebuilt script on a page,
+creates it with `createAyme`:
 
 ```ts
-import {
-  createPage,
-  createRuntimeSession,
-  decisionEndpoint,
-} from "@ayme-dev/ayme";
+import { createAyme, createPage, decisionEndpoint } from "@ayme-dev/ayme";
 
-const session = createRuntimeSession({
+const ayme = createAyme({
   pageFactory: () => createPage({ actionTimeout: 500 }),
   customTools: [
     {
@@ -133,14 +131,15 @@ const session = createRuntimeSession({
   ],
   goalLoop: decisionEndpoint("/api/decisions"),
 });
-const stop = session.start();
-const handover = await session.pursueGoal("archive the oldest item", {
+const stop = ayme.start();
+const handover = await ayme.tools.run("goal", {
+  goal: "archive the oldest item",
   maxSteps: 5,
 });
 stop();
 ```
 
-`createRuntimeSession(options?)` takes one options object:
+`createAyme(options?)` takes one options object, `AymeOptions`:
 
 - `pageFactory`: a factory for the browser Page the session drives. The
   session calls it at most once, lazily, on its first use in the browser, and
@@ -151,18 +150,79 @@ stop();
   see [WebMCP publication](#webmcp-publication).
 
 `start()` claims the runtime for the current document, one owner at a time,
-and returns the function that stops it. `construct(Model)` and
-`register(Model, instance)` create and register Page Objects. During server
-rendering, `construct(Model)` returns an inert Page Object without calling
-`pageFactory`, and reading `session.page` throws. `session.webMCP` holds the
-WebMCP publication: `publicationStatus` reports its status, `subscribe()`
-reports changes to it, and `retryPublication()` retries it. The session works
-without publication. `pursueGoal(goal, { maxSteps })` runs the Goal Loop.
+and returns the function that stops it. The session, of type `Ayme`, has three
+members: `tools` (`AymeTools`), `pom` (`AymePom`) and `webMCP`
+(`AymeWebMcp`).
+
+### Running tools
+
+`ayme.tools` reaches every registered tool by its name: Browser Tools, Custom
+Tools, Page Object Tools, `snapshot` and `goal`. It works the same whether
+WebMCP publication is on, off, waiting or failed, and `toolNamePrefix` does
+not apply to it.
+
+```ts
+const { structure } = await ayme.tools.run("snapshot", {});
+await ayme.tools.run("click", { target: "e5" });
+await ayme.tools.run("TodoPage.addTodo", { title: "Milk" });
+
+ayme.tools.list(); // [{ name, description, inputSchema, group }, …]
+const unsubscribe = ayme.tools.subscribe((tools) => render(tools));
+```
+
+- `run(name, input)` runs a live tool the way an agent's call runs it: the
+  same input validation, target resolution, action recording and settling.
+  The built-in tools are typed by name: a Browser Tool resolves with its
+  action result (`ActionResult`), `snapshot` with `PageContextPayload` and
+  `goal` with the `Handover`. Any other name takes an object and resolves with
+  `unknown`; Page Object Tools and Custom Tools resolve with an action result.
+  `BuiltInTools` maps each built-in name to its input and result, and
+  `ToolInput<Name>` and `ToolResult<Name>` read them.
+- A failure throws: `ToolInputError`, `RefResolutionError`, or
+  `RuntimeStateError` when the session is not started or the tool is not live.
+  An agent gets the same error as the text of an `isError` result. Errors from
+  the browser Page pass through unchanged.
+- Your application is a caller of its own: its actions do not move a
+  connected agent's Change Record, so the agent's next action reports what
+  your application changed.
+- `list()` returns every tool `run` can run now, in publication order, as
+  `ToolInfo` objects with a `group`: `"browser"`, `"custom"`, `"pageObject"` or `"agent"`. It
+  returns the same array until the set changes, and `[]` while the session is
+  not started, including during server rendering.
+- `subscribe(listener)` calls `listener` with the new list after the set
+  changes: the session starts or stops, a Page Object class is registered for
+  the first time or unregistered for the last, or a registered Page Object
+  becomes available or unavailable. It returns the function that unsubscribes.
+
+### Page Objects
+
+`ayme.pom` holds one Page Object of each Page Object Model for the session:
+
+```ts
+const editor = ayme.pom.get(Editor); // the instance, created on first use
+ayme.pom.register(Editor); // counts a registration; returns the instance
+ayme.pom.unregister(Editor); // removes one registration
+```
+
+- `get(Model)` is safe during rendering. During server rendering it returns an
+  inert Page Object with the model's prototype and never calls `pageFactory`.
+- `register(Model)` makes the class's tools live while the session is started.
+  Registrations made before `start()` take effect on start. Each component
+  that uses a Page Object registers it, and the tools are withdrawn when the
+  last registration is removed.
+- Every registration of a class shares one instance, so a Page Object should
+  keep no per-component state in its own fields.
+
+### WebMCP status
+
+`ayme.webMCP` holds the WebMCP publication: `publicationStatus` reports its
+status, `subscribe(listener)` calls `listener` with each new status, and
+`retryPublication()` retries it.
 
 ### WebMCP publication
 
 The call that starts Ayme decides whether its tools are published through
-WebMCP: `useAyme`, `AymeProvider` or `createRuntimeSession`. The build
+WebMCP: `useAyme`, `AymeProvider` or `createAyme`. The build
 integration has no publication setting.
 
 ```ts
@@ -459,10 +519,10 @@ or pass a fake in tests.
 
 ### Running it from your own code
 
-`session.pursueGoal(goal, { maxSteps })` on the runtime session runs the same
-loop and resolves with the Handover, whether or not tools are published and
-whether or not a WebMCP driver is present. It rejects when the session is not
-started or has no `goalLoop`.
+`ayme.tools.run("goal", { goal, maxSteps })` on the runtime session runs the
+same loop and resolves with the Handover, whether or not tools are published
+and whether or not a WebMCP driver is present. It rejects when the session is
+not started or has no `goalLoop`.
 
 ### What one step asks
 
@@ -491,8 +551,8 @@ loop with `needs_value` so that the calling agent supplies it.
 
 ### The Handover
 
-`goal({ goal, maxSteps })` and `session.pursueGoal(goal, { maxSteps })`
-return a Handover:
+`goal({ goal, maxSteps })`, from an agent or from `ayme.tools.run`, returns a
+Handover:
 
 ```ts
 {

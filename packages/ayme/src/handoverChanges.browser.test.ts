@@ -11,7 +11,7 @@ import {
   type Handover,
 } from "./goalLoop";
 import { createPageRegistration, registerCompiledPom } from "./registry";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
 
 type PublishedTool = {
@@ -92,7 +92,7 @@ describe("Handover changes in Chromium", () => {
         action("archive", "Inbox.archive"),
       ])
     );
-    stop = createRuntimeSession({ pageFactory: () => page, goalLoop }).start();
+    stop = createAyme({ pageFactory: () => page, goalLoop }).start();
     createPageRegistration(Inbox);
     const publication = await synchronizeWebMcpTools({
       async registerTool(registered: PublishedTool) {

@@ -17,7 +17,7 @@ import {
   withoutElement,
 } from "./playwrightMcp.testSupport";
 import { listElementToolTargets } from "./publishedTools";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
 
 type PublishedTool = {
@@ -75,7 +75,7 @@ describe("Browser Tools in Chromium", () => {
     document.querySelector("#form")!.addEventListener("submit", (event) => {
       event.preventDefault();
     });
-    const session = createRuntimeSession({
+    const session = createAyme({
       pageFactory: () => createPage({ actionTimeout: 500 }),
     });
     stop = session.start();

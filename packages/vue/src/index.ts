@@ -13,19 +13,15 @@ import {
   type PropType,
 } from "vue";
 import {
-  createRuntimeSession,
+  createAyme,
+  type Ayme,
   type AymePage,
   type AymeWebMcp,
   type AymeWebMcpOptions,
   type CustomTool,
   type GoalLoopDecisionFunction,
-  type RuntimeSession,
 } from "@ayme-dev/ayme";
-import {
-  createServerPageObject,
-  createPageRegistration,
-  type PageObjectConstructor,
-} from "@ayme-dev/ayme/internal";
+import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
 
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
 export type UseAymeOptions = {
@@ -36,14 +32,14 @@ export type UseAymeOptions = {
   goalLoop?: GoalLoopDecisionFunction;
   webMCP?: AymeWebMcpOptions;
 };
-const runtimeKey: InjectionKey<RuntimeSession> = Symbol("Ayme runtime");
+const runtimeKey: InjectionKey<Ayme> = Symbol("Ayme runtime");
 
 function inheritedRuntime() {
   return getCurrentInstance() ? inject(runtimeKey, undefined) : undefined;
 }
 
 function ownRuntime(options: UseAymeOptions = {}) {
-  const runtime = createRuntimeSession({
+  const runtime = createAyme({
     pageFactory: options.pageFactory,
     ignore: options.ignore,
     customTools: options.customTools,
@@ -52,7 +48,11 @@ function ownRuntime(options: UseAymeOptions = {}) {
   });
   if (typeof window !== "undefined") {
     const stop = runtime.start();
-    onScopeDispose(stop);
+    started = runtime;
+    onScopeDispose(() => {
+      stop();
+      if (started === runtime) started = undefined;
+    });
   }
   if (getCurrentInstance()) provide(runtimeKey, runtime);
   return runtime;
@@ -60,18 +60,18 @@ function ownRuntime(options: UseAymeOptions = {}) {
 
 export type UseAymeResult = {
   /** The runtime session. */
-  ayme: RuntimeSession;
+  ayme: Ayme;
   /** The session's `webMCP` member, reactive and read-only. */
   webMCP: Readonly<Pick<AymeWebMcp, "publicationStatus" | "retryPublication">>;
 };
 
-function consumeRuntime(runtime: RuntimeSession): UseAymeResult {
+function consumeRuntime(runtime: Ayme): UseAymeResult {
   const webMCP = shallowReactive({
     publicationStatus: runtime.webMCP.publicationStatus,
     retryPublication: runtime.webMCP.retryPublication,
   });
-  const unsubscribe = runtime.webMCP.subscribe(() => {
-    webMCP.publicationStatus = runtime.webMCP.publicationStatus;
+  const unsubscribe = runtime.webMCP.subscribe((status) => {
+    webMCP.publicationStatus = status;
   });
   onScopeDispose(unsubscribe);
   return { ayme: runtime, webMCP: shallowReadonly(webMCP) };
@@ -173,16 +173,23 @@ export function usePageObject<T extends object>(
     throw new Error(
       "usePageObject must be called within an active Vue effect scope"
     );
-  const runtime = inheritedRuntime();
-  if (runtime) {
-    const instance = runtime.construct(model);
-    onScopeDispose(runtime.register(model, instance));
-    return instance;
-  }
-  // Preserve same-scope and effectScope usage of the standalone Vue owner. It
-  // has no session to ask, so SSR gets an inert Page Object here.
-  if (typeof window === "undefined") return createServerPageObject(model);
-  const registration = createPageRegistration(model);
-  onScopeDispose(() => registration.dispose());
-  return registration.instance;
+  // An owner's own scope does not inject what it provides, so the started
+  // owner stands in. On the server any session's Page Object is inert.
+  const runtime =
+    inheritedRuntime() ??
+    started ??
+    (typeof window === "undefined"
+      ? (inertSession ??= createAyme())
+      : undefined);
+  if (!runtime)
+    throw new Error(
+      "usePageObject requires useAyme() or an AymeProvider in this scope or an ancestor component."
+    );
+  const instance = runtime.pom.register(model);
+  onScopeDispose(() => runtime.pom.unregister(model));
+  return instance;
 }
+
+/** The started owner's session in the browser. */
+let started: Ayme | undefined;
+let inertSession: Ayme | undefined;

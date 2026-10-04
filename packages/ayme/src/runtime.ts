@@ -1,25 +1,28 @@
 import { createPage } from "./browserPage";
-import {
-  configureGoalLoop,
-  pursueGoal,
-  type GoalLoopDecisionFunction,
-  type Handover,
-} from "./goalLoop";
+import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
-import { reportPublicationStatus } from "./publishedTools";
+import {
+  listLiveTools,
+  resolvePublishedTools,
+  type PublishedToolInfo,
+} from "./publishedTools";
 import { configureCustomTools, type CustomTool } from "./elementTools";
 import {
   constructPageObject,
   createAymeRuntime,
+  probeRegisteredPomMembers,
   registerPageObject,
+  subscribeToRegisteredPoms,
   type PageObjectConstructor,
 } from "./registry";
 import {
+  settledAfter,
   synchronizeWebMcpTools,
   waitForWebMcpDriver,
   type WebMcpRegistration,
 } from "./webMcp";
 import { RuntimeStateError } from "./errors";
+import type { ToolInput, ToolResult } from "./toolTypes";
 
 export type AymeWebMcpPublicationStatus = Readonly<{
   state:
@@ -35,12 +38,60 @@ export type AymePage = ConstructorParameters<PageObjectConstructor>[0];
  */
 export type AymeWebMcp = {
   readonly publicationStatus: AymeWebMcpPublicationStatus;
-  subscribe(listener: () => void): () => void;
+  /** Calls `listener` with the new status after each change. */
+  subscribe(
+    listener: (status: AymeWebMcpPublicationStatus) => void
+  ): () => void;
   retryPublication(): Promise<void>;
+};
+
+/** A live tool: one `tools.run` can run now. */
+export type ToolInfo = PublishedToolInfo;
+
+/** Every registered tool, by its unprefixed name, whether or not WebMCP publishes it. */
+export type AymeTools = {
+  /**
+   * Every live tool, in publication order. The same array comes back until
+   * the set changes; empty while the session is not started.
+   */
+  list(): readonly ToolInfo[];
+  /** Calls `listener` with the new list after the live tool set changes. */
+  subscribe(listener: (tools: readonly ToolInfo[]) => void): () => void;
+  /**
+   * Runs a live tool as the application, through the same path as an
+   * agent's call. Throws Ayme's errors, and `RuntimeStateError` while the
+   * session is not started or when the tool is not live.
+   */
+  run<N extends string>(name: N, input: ToolInput<N>): Promise<ToolResult<N>>;
+};
+
+/** The session's Page Objects: one instance per class. */
+export type AymePom = {
+  /**
+   * The session's instance of `model`, created on first use. On the server,
+   * an inert object with the model's prototype.
+   */
+  get<T extends object>(model: PageObjectConstructor<T>): T;
+  /**
+   * Counts a registration of `model` and returns its instance. Its tools are
+   * live while the session is started and the count is above zero.
+   */
+  register<T extends object>(model: PageObjectConstructor<T>): T;
+  /** Removes one registration of `model`. */
+  unregister(model: PageObjectConstructor): void;
+};
+
+/** The runtime object application setup creates. */
+export type Ayme = {
+  readonly webMCP: AymeWebMcp;
+  readonly tools: AymeTools;
+  readonly pom: AymePom;
+  /** Starts the session; returns the function that stops it. */
+  start(): () => void;
 };
 export type { GoalLoopDecisionFunction } from "./goalLoop";
 
-export type AymeRuntimeOptions = {
+export type AymeOptions = {
   /**
    * Builds the browser Page the session drives. Called at most once, lazily,
    * on the session's first use in the browser; `createPage()` when absent.
@@ -64,11 +115,11 @@ export type AymeWebMcpOptions = {
 };
 type PageInstrumentation = (page: AymePage) => AymePage;
 type Registration = {
-  activate: () => { dispose(): void };
+  count: number;
   active?: { dispose(): void };
 };
 
-export function createServerPageObject<T extends object>(
+function createServerPageObject<T extends object>(
   model: PageObjectConstructor<T>
 ): T {
   const prototype = (model as unknown as { prototype: object }).prototype;
@@ -93,13 +144,38 @@ function instrumentPage(page: AymePage) {
   return instrumented;
 }
 
+let started: Ayme | undefined;
+const startedListeners = new Set<(ayme: Ayme | undefined) => void>();
+
+function setStarted(ayme: Ayme | undefined) {
+  started = ayme;
+  for (const listener of startedListeners) listener(ayme);
+}
+
+/** The session started in this document, if any, for the Inspector. */
+export function getStartedAyme(): Ayme | undefined {
+  return started;
+}
+
+/** Calls `listener` with the started session, or none, after a session starts or stops. */
+export function subscribeToStartedAyme(
+  listener: (ayme: Ayme | undefined) => void
+) {
+  startedListeners.add(listener);
+  return () => {
+    startedListeners.delete(listener);
+  };
+}
+
+const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
+
 /**
  * Create an inert runtime session. Its owner starts activity by calling
  * `start()`. `pageFactory` runs once, on first use in the browser; on the
- * server `construct` returns an inert Page Object and `page` throws. `ignore`,
- * `customTools` and `goalLoop` are configured on start and cleared on stop.
+ * server `pom.get` returns an inert Page Object. `ignore`, `customTools` and
+ * `goalLoop` are configured on start and cleared on stop.
  */
-export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
+export function createAyme(options: AymeOptions = {}): Ayme {
   let resolvedPage: AymePage | undefined;
   const getPage = () =>
     (resolvedPage ??= instrumentPage((options.pageFactory ?? createPage)()));
@@ -113,8 +189,13 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
       : "WebMCP publication is disabled.",
   };
   let status = Object.freeze(initialStatus);
-  const subscribers = new Set<() => void>();
-  const registrations = new Set<Registration>();
+  const subscribers = new Set<(status: AymeWebMcpPublicationStatus) => void>();
+  const instances = new Map<PageObjectConstructor, object>();
+  const registrations = new Map<PageObjectConstructor, Registration>();
+  let tools = NO_TOOLS;
+  let toolsKey = "[]";
+  const toolListeners = new Set<(tools: readonly ToolInfo[]) => void>();
+  let unsubscribeFromPoms: (() => void) | undefined;
   let owner: ReturnType<typeof createAymeRuntime> | undefined;
   let controller: AbortController | undefined;
   let publication: WebMcpRegistration | undefined;
@@ -122,8 +203,15 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
 
   const setStatus = (next: AymeWebMcpPublicationStatus) => {
     status = Object.freeze(next);
-    reportPublicationStatus(status);
-    for (const listener of subscribers) listener();
+    for (const listener of subscribers) listener(status);
+  };
+  const refreshTools = () => {
+    const next = owner ? listLiveTools() : NO_TOOLS;
+    const key = JSON.stringify(next);
+    if (key === toolsKey) return;
+    tools = next;
+    toolsKey = key;
+    for (const listener of toolListeners) listener(tools);
   };
   const failed = (error: unknown) =>
     setStatus({
@@ -181,7 +269,9 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
     publication?.dispose();
     publication = undefined;
     pending = undefined;
-    for (const registration of registrations) {
+    unsubscribeFromPoms?.();
+    unsubscribeFromPoms = undefined;
+    for (const registration of registrations.values()) {
       registration.active?.dispose();
       registration.active = undefined;
     }
@@ -190,6 +280,8 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
     configurePageStateIgnore(undefined);
     configureCustomTools(undefined);
     configureGoalLoop(undefined);
+    if (started === ayme) setStarted(undefined);
+    refreshTools();
     setStatus({ state: "disposed", message: "The Ayme runtime was disposed." });
   }
 
@@ -197,7 +289,7 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
     get publicationStatus() {
       return status;
     },
-    subscribe(listener: () => void) {
+    subscribe(listener) {
       subscribers.add(listener);
       return () => {
         subscribers.delete(listener);
@@ -206,61 +298,70 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
     retryPublication,
   };
 
-  return {
-    webMCP,
-    get page() {
-      if (typeof window === "undefined")
-        throw new RuntimeStateError(
-          "The runtime session's page is available only in the browser."
-        );
-      return getPage();
-    },
-    get goalLoop() {
-      return options.goalLoop;
-    },
-    /**
-     * Run the Goal Loop with the session's `goalLoop` and resolve with its
-     * Handover. Needs no WebMCP publication and no driver; the published
-     * `goal` tool runs the same loop.
-     */
-    async pursueGoal(
-      goal: string,
-      { maxSteps }: { maxSteps: number }
-    ): Promise<Handover> {
-      if (!owner)
-        throw new RuntimeStateError(
-          "pursueGoal requires a started runtime session."
-        );
-      if (!options.goalLoop)
-        throw new RuntimeStateError(
-          "pursueGoal requires a goalLoop on the runtime session."
-        );
-      // While started, `options.goalLoop` is the function `start()` stored for
-      // the published tool, so both paths decide with the same function.
-      const result = await pursueGoal(
-        goal,
-        maxSteps,
-        options.goalLoop,
-        document
+  async function run(name: string, input: unknown): Promise<unknown> {
+    if (!owner)
+      throw new RuntimeStateError(
+        `Cannot run the tool "${name}": the Ayme runtime session is not started.`
       );
-      return result.handover;
+    const entry = resolvePublishedTools().get(name);
+    if (!entry) throw new RuntimeStateError(`The tool "${name}" is not live.`);
+    const { tool } = entry;
+    // As after an agent's call, the Page Objects are probed, so the live
+    // tools are current when the call resolves.
+    return settledAfter(
+      tool,
+      () => tool.executeAs(input, "app"),
+      () => probeRegisteredPomMembers().catch(() => {})
+    );
+  }
+
+  const pom: AymePom = {
+    get<T extends object>(model: PageObjectConstructor<T>): T {
+      let instance = instances.get(model) as T | undefined;
+      if (!instance) {
+        // Server rendering gets an inert Page Object and never runs the
+        // factory; it is still the session's one instance of the class.
+        instance =
+          typeof window === "undefined"
+            ? createServerPageObject(model)
+            : constructPageObject(model, getPage());
+        instances.set(model, instance);
+      }
+      return instance;
     },
-    construct<T extends object>(model: PageObjectConstructor<T>): T {
-      // Server rendering gets an inert Page Object and never runs the factory.
-      if (typeof window === "undefined") return createServerPageObject(model);
-      return constructPageObject(model, getPage());
+    register<T extends object>(model: PageObjectConstructor<T>): T {
+      const instance = pom.get(model);
+      if (typeof window === "undefined") return instance;
+      const registration = registrations.get(model) ?? { count: 0 };
+      if (owner && registration.count === 0)
+        registration.active = registerPageObject(model, instance);
+      registration.count += 1;
+      registrations.set(model, registration);
+      return instance;
     },
-    register<T extends object>(model: PageObjectConstructor<T>, instance: T) {
-      const registration: Registration = {
-        activate: () => registerPageObject(model, instance),
-      };
-      if (owner) registration.active = registration.activate();
-      registrations.add(registration);
-      return () => {
-        registration.active?.dispose();
-        registrations.delete(registration);
-      };
+    unregister(model) {
+      const registration = registrations.get(model);
+      if (!registration) return;
+      registration.count -= 1;
+      if (registration.count > 0) return;
+      registration.active?.dispose();
+      registrations.delete(model);
     },
+  };
+
+  const ayme: Ayme = {
+    webMCP,
+    tools: {
+      list: () => tools,
+      subscribe(listener) {
+        toolListeners.add(listener);
+        return () => {
+          toolListeners.delete(listener);
+        };
+      },
+      run: run as AymeTools["run"],
+    },
+    pom,
     start() {
       if (owner)
         throw new RuntimeStateError(
@@ -274,9 +375,12 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
       configureGoalLoop(options.goalLoop);
       controller = new AbortController();
       try {
-        for (const registration of registrations)
-          registration.active = registration.activate();
+        for (const [model, registration] of registrations)
+          registration.active = registerPageObject(model, pom.get(model));
+        unsubscribeFromPoms = subscribeToRegisteredPoms(refreshTools);
+        refreshTools();
         setStatus(initialStatus);
+        setStarted(ayme);
         void retryPublication();
       } catch (error) {
         stop();
@@ -288,6 +392,5 @@ export function createRuntimeSession(options: AymeRuntimeOptions = {}) {
       };
     },
   };
+  return ayme;
 }
-
-export type RuntimeSession = ReturnType<typeof createRuntimeSession>;

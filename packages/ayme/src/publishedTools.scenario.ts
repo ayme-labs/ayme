@@ -2,10 +2,10 @@
  * Browser-test scenario, shared by the native WebMCP and the polyfill runs:
  * the internal list of published tools is exactly what the runtime session
  * has published to WebMCP: every tool while publication is active, nothing
- * while it is disabled, failed or stopped. Running a published tool from the
- * internal entry returns what an agent gets for the same call.
+ * while it is disabled, failed or stopped. Running a tool through the runtime
+ * session returns what an agent gets for the same call.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type {
   ChromeModelContextExtensions,
   ModelContext as WebMcpModelContext,
@@ -18,11 +18,9 @@ import type { Page } from "@playwright/test";
 import type { PomManifest } from "./contracts";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import {
-  getPublicationStatus,
   listLiveTools,
   listPublishedTools,
   listElementToolTargets,
-  subscribeToPublishedTools,
   type PublishedToolGroup,
 } from "./publishedTools";
 import type { CustomTool } from "./elementTools";
@@ -33,9 +31,10 @@ import {
   peekPageStateForDocument,
   type AriaRef,
 } from "./pageState";
-import { registerCompiledPom } from "./registry";
-import { runTool } from "./webMcp";
-import { createRuntimeSession, type RuntimeSession } from "./runtime";
+import { registerCompiledPom, type PageObjectConstructor } from "./registry";
+import { createAyme, type Ayme } from "./runtime";
+import { AymeError, ToolInputError } from "./errors";
+import { withErrorResult } from "./webMcp";
 
 // --- Fixtures: one tool of each kind an agent can be given ---
 
@@ -184,7 +183,7 @@ function byName(a: { name: string }, b: { name: string }) {
 }
 
 type ModelContext = WebMcpModelContext & ChromeModelContextExtensions;
-type SessionOptions = Parameters<typeof createRuntimeSession>[0];
+type SessionOptions = Parameters<typeof createAyme>[0];
 
 /** A stubbed System One model: no operation fits, so the loop hands over. */
 async function noFittingOperation(
@@ -217,7 +216,7 @@ const highlight: CustomTool = {
   execute: async () => undefined,
 };
 
-const TOOL_CALLS: [string, string, (ref: string) => unknown][] = [
+const TOOL_CALLS: [string, string, (ref: string) => object][] = [
   ["a Page Object tool", "TodoPage.addTodo", () => ({ title: "Milk" })],
   ["the click Browser Tool", "click", (ref) => ({ target: ref })],
   ["an app-registered Custom Tool", "highlight", (ref) => ({ ref })],
@@ -236,7 +235,7 @@ export function describePublishedTools(
 ): void {
   describe(`published tools through ${label}`, () => {
     let context: ModelContext;
-    let runtime: RuntimeSession;
+    let runtime: Ayme;
     const cleanups: (() => void)[] = [];
 
     /**
@@ -251,14 +250,14 @@ export function describePublishedTools(
       publish?: boolean;
       expectedState?: string;
     } = {}) {
-      runtime = createRuntimeSession({
+      runtime = createAyme({
         pageFactory: () => createPage({ actionTimeout: 1000 }),
         customTools: [highlight],
         goalLoop: noFittingOperation,
         webMCP: { enabled: publish },
         ...options,
       });
-      cleanups.push(runtime.register(TodoPage, runtime.construct(TodoPage)));
+      cleanups.push(registered(TodoPage));
       const stop = runtime.start();
       cleanups.push(stop);
       // Without a driver, the session waits two seconds before giving up.
@@ -294,6 +293,22 @@ export function describePublishedTools(
       ) as unknown;
     }
 
+    /**
+     * What the application gets from the session for this call; a failure as
+     * the result an agent gets for it.
+     */
+    function appGets(name: string, input: object) {
+      return withErrorResult({
+        execute: (input) => runtime.tools.run(name, input as object),
+      }).execute(input);
+    }
+
+    /** Register `model` with the session until the test ends. */
+    function registered(model: PageObjectConstructor) {
+      runtime.pom.register(model);
+      return () => runtime.pom.unregister(model);
+    }
+
     async function saveButtonRef() {
       const { structure } = (await agentGets("snapshot", {})) as {
         structure: string;
@@ -312,7 +327,7 @@ export function describePublishedTools(
     it("lists the live tools as published while publication is active", async () => {
       await startSession();
 
-      expect(listLiveTools()).toEqual(listPublishedTools());
+      expect(runtime.tools.list()).toEqual(listPublishedTools());
     });
 
     it("puts each published tool in its group", async () => {
@@ -325,23 +340,14 @@ export function describePublishedTools(
       ).toEqual(EXPECTED_GROUPS);
     });
 
-    it("tells subscribers when the published set changes, and lists the new set", async () => {
+    it("lists the new set when the published set changes", async () => {
       await startSession();
-      let notified = false;
-      cleanups.push(
-        subscribeToPublishedTools(() => {
-          notified = true;
-        })
-      );
 
-      cleanups.push(
-        runtime.register(SettingsPage, runtime.construct(SettingsPage))
-      );
+      cleanups.push(registered(SettingsPage));
       await expect
         .poll(() => listPublishedTools().map(({ name }) => name))
         .toContain("SettingsPage.save");
 
-      expect(notified).toBe(true);
       expect(listed()).toEqual(await publishedOverWebMcp(context));
     });
 
@@ -354,25 +360,24 @@ export function describePublishedTools(
     it("lists nothing while publication is disabled", async () => {
       await startSession({ publish: false });
 
-      expect(getPublicationStatus().state).toBe("disabled");
+      expect(runtime.webMCP.publicationStatus.state).toBe("disabled");
       expect(listed()).toEqual([]);
       expect(await publishedOverWebMcp(context)).toEqual([]);
     });
 
-    it("runs a Page Object Action and a goal from the application while publication is disabled", async () => {
-      document.body.innerHTML = `<button data-highlightable>Save changes</button>`;
-      await startSession({ publish: false });
-      const todos = runtime.construct(TodoPage);
-      const addTodo = vi.spyOn(todos, "addTodo");
+    it("reports to the agent what the application's action changed", async () => {
+      document.body.innerHTML = `<button onclick="this.after('Saved')">Save changes</button>`;
+      await startSession();
+      const ref = await saveButtonRef();
 
-      todos.addTodo();
-      const handover = await runtime.pursueGoal("Save the changes", {
-        maxSteps: 1,
-      });
+      const applied = (await runtime.tools.run("click", { target: ref }))
+        .changes;
+      const agentSees = (await agentGets("hover", { target: ref })) as {
+        changes?: string;
+      };
 
-      expect(addTodo).toHaveBeenCalledOnce();
-      expect(handover.reason).toBe("no_fitting_option");
-      expect(await publishedOverWebMcp(context)).toEqual([]);
+      expect(applied).toContain("Saved");
+      expect(agentSees.changes).toContain("Saved");
     });
 
     it("publishes every tool under toolNamePrefix, and the Goal Loop still runs", async () => {
@@ -401,7 +406,7 @@ export function describePublishedTools(
         customTools: [{ ...highlight, name: "TodoPage.addTodo" }],
       });
 
-      expect(getPublicationStatus()).toEqual({
+      expect(runtime.webMCP.publicationStatus).toEqual({
         state: "failed",
         message: expect.stringContaining(
           'Cannot publish the tool "TodoPage.addTodo"'
@@ -414,11 +419,7 @@ export function describePublishedTools(
     it("lists nothing once the session stops", async () => {
       const stop = await startSession();
       const heard: string[] = [];
-      cleanups.push(
-        subscribeToPublishedTools(() => {
-          heard.push(getPublicationStatus().state);
-        })
-      );
+      cleanups.push(runtime.webMCP.subscribe(({ state }) => heard.push(state)));
 
       stop();
 
@@ -440,27 +441,41 @@ export function describePublishedTools(
         const expected = await agentGets(name, input);
         // Diagnostic: the call itself succeeds for an agent.
         expect(expected).not.toMatchObject({ isError: true });
-        await agentGets("snapshot", {});
+        await appGets("snapshot", {});
 
-        expect(await runTool(name, input)).toEqual(expected);
+        expect(await appGets(name, input)).toEqual(expected);
       }
     );
 
-    it("returns a failing call's error result as an agent gets it", async () => {
+    it("throws a failing call's error with the text an agent gets", async () => {
       document.body.innerHTML = `<button id="save">Save changes</button>`;
       await startSession();
       const ref = await saveButtonRef();
       document.querySelector("#save")!.remove();
       const expected = await agentGets("click", { target: ref });
 
-      expect(await runTool("click", { target: ref })).toEqual(expected);
+      await expect(
+        runtime.tools.run("click", { target: ref })
+      ).rejects.toBeInstanceOf(AymeError);
+      expect(await appGets("click", { target: ref })).toEqual(expected);
       expect(expected).toMatchObject({ isError: true });
+    });
+
+    it("throws a ToolInputError for input the tool's schema rejects", async () => {
+      await startSession();
+      // A name typed as any string, as an application passing user input does.
+      const click: string = "click";
+
+      await expect(runtime.tools.run(click, {})).rejects.toBeInstanceOf(
+        ToolInputError
+      );
+      expect(await appGets("click", {})).toEqual(await agentGets("click", {}));
     });
 
     it("returns the result of a call that makes its own tool unavailable, then withdraws the tool", async () => {
       document.body.innerHTML = `<ul><li id="item">Draft</li></ul>`;
       await startSession();
-      cleanups.push(runtime.register(ListPage, runtime.construct(ListPage)));
+      cleanups.push(registered(ListPage));
       await expect
         .poll(async () => (await context.getTools()).map(({ name }) => name))
         .toContain("ListPage.items.archive");
@@ -470,12 +485,20 @@ export function describePublishedTools(
       const ref = structure.match(/(e\d+) ListPage\.items\[0\]/)?.[1];
       if (!ref) throw new Error("Expected a ref for ListPage.items[0].");
 
+      const heard: (readonly { name: string }[])[] = [];
+      cleanups.push(runtime.tools.subscribe((tools) => heard.push(tools)));
+
       expect(
         await agentGets("ListPage.items.archive", { ref, args: {} })
       ).toMatchObject({ result: "archived" });
       await expect
         .poll(async () => (await context.getTools()).map(({ name }) => name))
         .not.toContain("ListPage.items.archive");
+      // The item's availability changed, so the session's list changed with it.
+      expect(heard.at(-1)?.map(({ name }) => name)).not.toContain(
+        "ListPage.items.archive"
+      );
+      expect(heard.at(-1)).toBe(runtime.tools.list());
     });
 
     it("gives each single-element tool the refs the Goal Loop offers it for the same page", async () => {
@@ -537,9 +560,7 @@ export function describePublishedTools(
 
     it("gives the POM definition text snapshot returns, without reading the page", async () => {
       await startSession();
-      cleanups.push(
-        runtime.register(SettingsPage, runtime.construct(SettingsPage))
-      );
+      cleanups.push(registered(SettingsPage));
       const history = getInteractionHistory(document);
       const latest = history.latestObservation;
 
@@ -610,15 +631,15 @@ export function describePublishedTools(
           stopPublishing();
 
           const actual = await whilePublicationIsOff(mode, async () => {
-            await runTool("snapshot", {});
-            return runTool(name, input);
+            await appGets("snapshot", {});
+            return appGets(name, input);
           });
 
           expect(actual).toEqual(expected);
         }
       );
 
-      it("returns a failing call's error result as an agent gets it", async () => {
+      it("throws a failing call's error with the text an agent gets", async () => {
         document.body.innerHTML = `<button id="save">Save changes</button>`;
         const stopPublishing = await startSession();
         const ref = await saveButtonRef();
@@ -628,7 +649,7 @@ export function describePublishedTools(
         stopPublishing();
 
         const actual = await whilePublicationIsOff(mode, () =>
-          runTool("click", { target: ref })
+          appGets("click", { target: ref })
         );
 
         expect(actual).toEqual(expected);
@@ -640,7 +661,7 @@ export function describePublishedTools(
         stopPublishing();
 
         const live = await whilePublicationIsOff(mode, async () =>
-          listLiveTools()
+          runtime.tools.list()
         );
 
         expect(live).toEqual(published);
@@ -648,23 +669,25 @@ export function describePublishedTools(
 
       it("tells subscribers when a Page Object registers, and returns a new list only then", async () => {
         await whilePublicationIsOff(mode, async () => {
-          const before = listLiveTools();
-          expect(listLiveTools()).toBe(before);
-          let notified = false;
-          cleanups.push(
-            subscribeToPublishedTools(() => {
-              notified = true;
-            })
-          );
+          const before = runtime.tools.list();
+          expect(runtime.tools.list()).toBe(before);
+          const heard: (readonly { name: string }[])[] = [];
+          cleanups.push(runtime.tools.subscribe((tools) => heard.push(tools)));
 
-          cleanups.push(
-            runtime.register(SettingsPage, runtime.construct(SettingsPage))
-          );
+          runtime.pom.register(SettingsPage);
           await expect
-            .poll(() => listLiveTools().map(({ name }) => name))
+            .poll(() => runtime.tools.list().map(({ name }) => name))
             .toContain("SettingsPage.save");
-          expect(notified).toBe(true);
-          expect(listLiveTools()).not.toBe(before);
+          expect(heard).toEqual([runtime.tools.list()]);
+          expect(runtime.tools.list()).not.toBe(before);
+
+          // A second registration changes nothing; the last one withdraws it.
+          runtime.pom.register(SettingsPage);
+          runtime.pom.unregister(SettingsPage);
+          expect(heard).toHaveLength(1);
+          runtime.pom.unregister(SettingsPage);
+          expect(heard).toHaveLength(2);
+          expect(heard[1]).toEqual(before);
         });
       });
 
@@ -687,7 +710,7 @@ export function describePublishedTools(
       it("refuses to run a tool that is not live", async () => {
         await expect(
           whilePublicationIsOff(mode, () =>
-            runTool("SettingsPage.save", { title: "x" })
+            runtime.tools.run("SettingsPage.save", { title: "x" })
           )
         ).rejects.toThrow('The tool "SettingsPage.save" is not live.');
       });

@@ -68,13 +68,13 @@ export class Counter {
 
 ## API
 
-| Function                  | Returns                | Behavior                                                                                                                                                             |
-| ------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `provideAyme(options?)`   | `EnvironmentProviders` | Starts Ayme with the environment injector that receives it, before the root component is created, and stops it when that injector is destroyed.                      |
-| `injectAyme()`            | `{ ayme, webMCP }`     | `ayme` is the runtime session. `webMCP.publicationStatus` is a read-only signal and `webMCP.retryPublication()` retries publication.                                 |
-| `injectPageObject(Model)` | the Page Object        | Constructs the Page Object and registers its Page Object Tools until the caller is destroyed: component destruction, `@if` removal and router navigation all end it. |
+| Function                  | Returns                | Behavior                                                                                                                                                                                                                                                                      |
+| ------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provideAyme(options?)`   | `EnvironmentProviders` | Starts Ayme with the environment injector that receives it, before the root component is created, and stops it when that injector is destroyed.                                                                                                                               |
+| `injectAyme()`            | `{ ayme, webMCP }`     | `ayme` is the [runtime session](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#runtime-session): `ayme.tools.run(name, input)` runs any live tool. `webMCP.publicationStatus` is a read-only signal and `webMCP.retryPublication()` retries publication. |
+| `injectPageObject(Model)` | the Page Object        | Registers the class with the session and returns its instance; its Page Object Tools stay registered until the caller is destroyed: component destruction, `@if` removal and router navigation all end it.                                                                    |
 
-`provideAyme` takes the options of `createRuntimeSession` and passes them through unchanged:
+`provideAyme` takes the options of `createAyme` (`AymeOptions`) and passes them through unchanged:
 
 - `pageFactory`: builds the browser Page; called once, lazily, in the browser. Use `() => createPage({ testIdAttribute, actionTimeout, navigationTimeout })` from `@ayme-dev/ayme` for Playwright settings.
 - `ignore`: keeps matching elements out of the Structural Page State.
@@ -98,7 +98,7 @@ During `ng serve`, editing a type a Page Object Model imports updates its tool s
 
 ## Server rendering
 
-With Angular SSR, server rendering returns your ordinary UI. On the server `provideAyme` creates a runtime session per request but never starts it, `injectPageObject` returns an unconstructed object with the model's prototype and registers nothing, and `webMCP.publicationStatus` holds the initial status (`waiting` when publication is on, `disabled` when off), so the hydrated text matches. Do not read locator fields or run Page Object actions while rendering on the server; `ayme.page` and `ayme.pursueGoal` throw there. Hydration creates the real Page Objects in the browser. The plugin skips the server bundles.
+With Angular SSR, server rendering returns your ordinary UI. On the server `provideAyme` creates a runtime session per request but never starts it, `injectPageObject` returns an unconstructed object with the model's prototype and registers nothing, and `webMCP.publicationStatus` holds the initial status (`waiting` when publication is on, `disabled` when off), so the hydrated text matches. Do not read locator fields or run Page Object actions while rendering on the server; `ayme.tools.run` throws there and `ayme.tools.list()` is empty. Hydration creates the real Page Objects in the browser. The plugin skips the server bundles.
 
 ## Bundle size
 

@@ -1,7 +1,10 @@
 import { useCallback, useRef, useState } from "react";
 
-import type { JsonValue } from "@ayme-dev/ayme";
-import { listRegisteredPomTools, runTool } from "@ayme-dev/ayme/internal";
+import { RuntimeStateError, type JsonValue } from "@ayme-dev/ayme";
+import {
+  getStartedAyme,
+  listRegisteredPomTools,
+} from "@ayme-dev/ayme/internal";
 
 import type { CollectionItem, Run, ToolArguments } from "../domain/run";
 import { describeSteps } from "./runSteps";
@@ -51,12 +54,7 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
           string | undefined;
         await settle({ status: "succeeded", result });
       } catch (error) {
-        await settle({
-          status: "failed",
-          // A tool's failure result already reads as an agent gets it.
-          error:
-            error instanceof ToolFailure ? error.message : errorText(error),
-        });
+        await settle({ status: "failed", error: errorText(error) });
       } finally {
         onSettled();
       }
@@ -82,9 +80,6 @@ function errorText(error: unknown) {
   return `${error.name}: ${error.message}`;
 }
 
-/** A tool's failure, with the text an agent gets for it. */
-class ToolFailure extends Error {}
-
 type FoundTool = {
   execute: (input: ToolArguments) => Promise<JsonValue>;
   /** The Page Object Model and Page Object a Page Object tool runs on. */
@@ -92,9 +87,9 @@ type FoundTool = {
 };
 
 /**
- * The tool to run by name. Every tool runs the way an agent's call runs,
- * whether or not WebMCP publication is active: a failure comes back as the
- * text an agent gets.
+ * The tool to run by name. Every tool runs through the started session,
+ * whether or not WebMCP publication is active, and fails with the error an
+ * agent gets as text.
  */
 function findTool(toolName: string): FoundTool {
   // Tool names can collide across registrations; this is the one that is
@@ -104,12 +99,10 @@ function findTool(toolName: string): FoundTool {
   );
   return {
     execute: async (input) => {
-      const result = await runTool(toolName, input);
-      if (isErrorResult(result))
-        throw new ToolFailure(
-          result.content.map((part) => part.text).join("\n")
-        );
-      return result as JsonValue;
+      const ayme = getStartedAyme();
+      if (!ayme)
+        throw new RuntimeStateError("No Ayme runtime session has started.");
+      return (await ayme.tools.run(toolName, input)) as JsonValue;
     },
     ...(pomTool
       ? {
@@ -123,18 +116,4 @@ function findTool(toolName: string): FoundTool {
         }
       : {}),
   };
-}
-
-/** An MCP tool-failure result, which a tool call returns for a failure. */
-function isErrorResult(
-  result: unknown
-): result is { isError: true; content: { text: string }[] } {
-  return (
-    typeof result === "object" &&
-    result !== null &&
-    "isError" in result &&
-    result.isError === true &&
-    "content" in result &&
-    Array.isArray(result.content)
-  );
 }

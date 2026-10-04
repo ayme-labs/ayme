@@ -3,15 +3,15 @@
  * recording driver, and the agent's calls through the published tools.
  */
 import { createPage } from "./browserPage";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
 
 type Tool = { name: string; execute(input: unknown): Promise<unknown> };
 
 export async function startAgentSession(
-  setup: (runtime: ReturnType<typeof createRuntimeSession>) => void = () => {}
+  setup: (runtime: ReturnType<typeof createAyme>) => void = () => {}
 ) {
-  const runtime = createRuntimeSession({ pageFactory: () => createPage() });
+  const runtime = createAyme({ pageFactory: () => createPage() });
   setup(runtime);
   const stop = runtime.start();
   const tools = new Map<string, Tool>();

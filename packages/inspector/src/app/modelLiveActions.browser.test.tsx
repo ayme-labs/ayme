@@ -91,12 +91,18 @@ const runtime = vi.hoisted(() => ({
   liveTools: [] as unknown[],
   // WebMCP publication is off throughout.
   publication: {
-    state: "disabled",
+    state: "disabled" as const,
     message: "WebMCP publication is disabled.",
   },
 }));
 
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
+  const { asStartedAyme, startedAyme } =
+    await import("../tools/test-utils/startedAyme");
+  startedAyme.tools.list.mockImplementation(
+    () => runtime.liveTools as PublishedToolInfo[]
+  );
+  startedAyme.webMCP.publicationStatus = runtime.publication;
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
@@ -107,14 +113,12 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
       elementsByRef: new Map(),
     })),
     listElementToolTargets: vi.fn(async () => new Map()),
-    listLiveTools: vi.fn(() => runtime.liveTools),
-    getPublicationStatus: vi.fn(() => runtime.publication),
-    subscribeToPublishedTools: vi.fn(() => () => {}),
     getPomDefinitionText: vi.fn(() => ""),
     listRegisteredPomTargets: vi.fn(async () => []),
     listRegisteredPomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => runtime.registrations),
-    runTool: vi.fn(),
+    getStartedAyme: asStartedAyme,
+    subscribeToStartedAyme: () => () => {},
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
 });

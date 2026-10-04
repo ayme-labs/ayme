@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { PomManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { createPageRegistration, registerCompiledPom } from "./registry";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
 
 type PublishedTool = {
@@ -45,7 +45,7 @@ describe("Change Record of the first action in Chromium", () => {
     }
     registerCompiledPom(App, manifest);
 
-    const runtime = createRuntimeSession({ pageFactory: () => page });
+    const runtime = createAyme({ pageFactory: () => page });
     stop = runtime.start();
     createPageRegistration(App);
 

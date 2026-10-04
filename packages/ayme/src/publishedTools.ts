@@ -1,5 +1,5 @@
-import type { JsonSchema, RegisteredPomTool } from "./contracts";
-import { getPursueGoalTool } from "./goalLoop";
+import type { JsonSchema } from "./contracts";
+import { getPursueGoalTool, type GoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
 import {
   peekPageStateForDocument,
@@ -12,12 +12,18 @@ import {
   listCustomTools,
   type PublishedElementTool,
 } from "./elementTools";
-import { listRegisteredPomTools, subscribeToRegisteredPoms } from "./registry";
+import { listCallerAwarePomTools, type CallerAwarePomTool } from "./registry";
 import { RuntimeStateError } from "./errors";
-import type { AymeWebMcpPublicationStatus } from "./runtime";
 
+/**
+ * A live tool: `execute` runs it as the calling agent, `executeAs` for the
+ * caller given.
+ */
 export type PublishedTool =
-  RegisteredPomTool | typeof getPageContextTool | PublishedElementTool;
+  | CallerAwarePomTool
+  | typeof getPageContextTool
+  | PublishedElementTool
+  | GoalTool;
 
 /**
  * Where a published tool comes from: a Page Object (Page Object Tool), Ayme's
@@ -43,7 +49,7 @@ export function resolvePublishedTools(): Map<
   { tool: PublishedTool; group: PublishedToolGroup }
 > {
   const pursueGoal = getPursueGoalTool();
-  const pomTools = listRegisteredPomTools();
+  const pomTools = listCallerAwarePomTools();
   const active = new Map<
     string,
     { tool: PublishedTool; group: PublishedToolGroup }
@@ -72,72 +78,30 @@ export function resolvePublishedTools(): Map<
   for (const tool of pomTools)
     active.set(tool.name, { tool, group: "pageObject" });
   if (pursueGoal)
-    active.set(pursueGoal.name, {
-      tool: pursueGoal as PublishedTool,
-      group: "agent",
-    });
+    active.set(pursueGoal.name, { tool: pursueGoal, group: "agent" });
   return active;
 }
 
-type PublicationReadModel = {
-  status: AymeWebMcpPublicationStatus;
-  tools: readonly PublishedToolInfo[];
-};
-
-const NO_SESSION: AymeWebMcpPublicationStatus = Object.freeze({
-  state: "disposed",
-  message: "No Ayme runtime session has started.",
-});
-
-const readModel: PublicationReadModel = {
-  status: NO_SESSION,
-  tools: Object.freeze([]),
-};
-const subscribers = new Set<() => void>();
-
-function notify() {
-  for (const subscriber of subscribers) subscriber();
-}
+let publishedTools: readonly PublishedToolInfo[] = Object.freeze([]);
 
 /**
  * The tools registered with WebMCP right now, in publication order. Empty
  * while publication is disabled, waiting, unavailable, failed or disposed.
  */
 export function listPublishedTools(): readonly PublishedToolInfo[] {
-  return readModel.tools;
+  return publishedTools;
 }
 
-let liveTools: { key: string; tools: readonly PublishedToolInfo[] } = {
-  key: "[]",
-  tools: Object.freeze([]),
-};
-
 /**
- * Every live tool, published or not, in publication order: each tool
- * `runTool` can run now. The same array comes back
- * until the set changes (for `useSyncExternalStore`); subscribe with
- * `subscribeToPublishedTools`. Empty when a tool name clash leaves the
- * set unresolvable; `runTool` then rejects with that error, and an active
- * publication reports it as its failed status.
+ * Package-internal: every live tool, published or not, in publication order;
+ * empty when a tool name clash leaves the set unresolvable.
  */
 export function listLiveTools(): readonly PublishedToolInfo[] {
-  let tools: readonly PublishedToolInfo[];
   try {
-    tools = toInfo([...resolvePublishedTools().values()]);
+    return toInfo([...resolvePublishedTools().values()]);
   } catch {
-    tools = Object.freeze([]);
+    return Object.freeze([]);
   }
-  const key = JSON.stringify(tools);
-  if (key !== liveTools.key) liveTools = { key, tools };
-  return liveTools.tools;
-}
-
-/**
- * The runtime session's WebMCP publication status. A failed publication's
- * `message` carries its error.
- */
-export function getPublicationStatus(): AymeWebMcpPublicationStatus {
-  return readModel.status;
 }
 
 /**
@@ -159,20 +123,6 @@ export async function listElementToolTargets(
   );
 }
 
-/**
- * Call `subscriber` whenever the published or live tools or the status may
- * have changed: a publication pass, a status change (a session starting or
- * stopping sets its Custom Tools and Goal Loop), or a Page Object change.
- */
-export function subscribeToPublishedTools(subscriber: () => void) {
-  subscribers.add(subscriber);
-  const unsubscribeFromPoms = subscribeToRegisteredPoms(subscriber);
-  return () => {
-    subscribers.delete(subscriber);
-    unsubscribeFromPoms();
-  };
-}
-
 /** Package-internal: `synchronizeWebMcpTools` registered or withdrew tools. */
 export function reportPublishedTools(
   tools: readonly {
@@ -180,8 +130,7 @@ export function reportPublishedTools(
     group: PublishedToolGroup;
   }[]
 ) {
-  readModel.tools = toInfo(tools);
-  notify();
+  publishedTools = toInfo(tools);
 }
 
 function toInfo(
@@ -197,10 +146,4 @@ function toInfo(
       })
     )
   );
-}
-
-/** Package-internal: the runtime session's publication status changed. */
-export function reportPublicationStatus(status: AymeWebMcpPublicationStatus) {
-  readModel.status = status;
-  notify();
 }

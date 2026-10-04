@@ -199,7 +199,7 @@ Call `useAyme(options)` in the root `+layout.svelte` (SvelteKit) or `App.svelte`
 
 With runes, the layout declares `let { children } = $props()` and renders `{@render children()}` instead of `<slot />`, as in the setup above. The `useAyme` call is the same.
 
-The options are those of `createRuntimeSession` from `@ayme-dev/ayme`, passed to it unchanged: `pageFactory`, `ignore`, `customTools`, `goalLoop` and `webMCP: { enabled, toolNamePrefix }`. Publication is off unless `webMCP.enabled` is `true`; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#webmcp-publication). The options are read once. To change them, remount the owner.
+The options are those of `createAyme` from `@ayme-dev/ayme`, passed to it unchanged: `pageFactory`, `ignore`, `customTools`, `goalLoop` and `webMCP: { enabled, toolNamePrefix }`. Publication is off unless `webMCP.enabled` is `true`; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#webmcp-publication). The options are read once. To change them, remount the owner.
 
 | Call                                              | Behavior                                                                                                                                                                                                         |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -231,7 +231,7 @@ Descendants call `useAyme()` without options:
 {/if}
 ```
 
-`ayme` is the runtime session, so `ayme.pursueGoal(goal, { maxSteps })` runs a goal. `webMCP.publicationStatus` is a readable store of the session's status: `disabled`, `waiting`, `active`, `unavailable`, `failed` or `disposed`. It listens to the session only while it has subscribers. `$publicationStatus` needs a top-level variable, so destructure it as above; it works in legacy and runes components alike. The example above is Svelte 3 and 4 markup; with runes, the button uses `onclick={retryPublication}`. `webMCP.retryPublication` is the session's own function: it retries after unavailability or failure, shares a pending attempt and does not duplicate active publication.
+`ayme` is the [runtime session](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#runtime-session): `ayme.tools.run(name, input)` runs any live tool, `goal` included, and `ayme.tools.list()` lists them. `webMCP.publicationStatus` is a readable store of the session's status: `disabled`, `waiting`, `active`, `unavailable`, `failed` or `disposed`. It listens to the session only while it has subscribers. `$publicationStatus` needs a top-level variable, so destructure it as above; it works in legacy and runes components alike. The example above is Svelte 3 and 4 markup; with runes, the button uses `onclick={retryPublication}`. `webMCP.retryPublication` is the session's own function: it retries after unavailability or failure, shares a pending attempt and does not duplicate active publication.
 
 In a Svelte 5 `.svelte.ts` module, `fromStore` turns the store into a rune-backed value. Create it during component initialisation, as `useAyme()` requires:
 
@@ -263,7 +263,7 @@ export function usePublicationState() {
 <button on:click={() => pom.increment()}>Call Page Object</button>
 ```
 
-In the browser, `usePageObject(Model)` returns the concrete Page Object and keeps it registered until its component is destroyed. A remounted component gets a new instance. A SvelteKit page component reused across parameter changes keeps its instance. Constructors should only initialise fields and compose locators; call actions later, for example in an event handler or `onMount`.
+In the browser, `usePageObject(Model)` registers the class with the session (`ayme.pom.register`), returns its instance, and removes that registration when its component is destroyed. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialise fields and compose locators; call actions later, for example in an event handler or `onMount`.
 
 `usePageObject` needs a `useAyme` owner in an ancestor component or in the same component. Without one it throws `usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte.`
 

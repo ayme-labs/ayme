@@ -9,13 +9,13 @@ import {
   type ReactNode,
 } from "react";
 import {
-  createRuntimeSession,
+  createAyme,
+  type Ayme,
   type AymePage,
   type AymeWebMcp,
   type AymeWebMcpOptions,
   type CustomTool,
   type GoalLoopDecisionFunction,
-  type RuntimeSession,
 } from "@ayme-dev/ayme";
 import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
 
@@ -29,7 +29,7 @@ export type AymeProviderProps = {
   goalLoop?: GoalLoopDecisionFunction;
   webMCP?: AymeWebMcpOptions;
 };
-const RuntimeContext = createContext<RuntimeSession | undefined>(undefined);
+const RuntimeContext = createContext<Ayme | undefined>(undefined);
 
 export function AymeProvider({
   pageFactory,
@@ -48,7 +48,7 @@ export function AymeProvider({
       customTools,
       goalLoop,
       webMCP: fixedWebMCP,
-      runtime: createRuntimeSession({
+      runtime: createAyme({
         pageFactory,
         ignore,
         customTools,
@@ -88,7 +88,7 @@ function useRuntime() {
 
 export type UseAymeResult = {
   /** The runtime session. */
-  ayme: RuntimeSession;
+  ayme: Ayme;
   /** The session's `webMCP` member, with its status as React state. */
   webMCP: Pick<AymeWebMcp, "publicationStatus" | "retryPublication">;
 };
@@ -112,18 +112,14 @@ export function usePageObject<T extends object>(
   model: PageObjectConstructor<T>
 ): T {
   const runtime = useRuntime();
-  const [retained] = useState(() => ({
-    model,
-    runtime,
-    instance: runtime.construct(model),
-  }));
+  const [retained] = useState(() => ({ model, runtime }));
   if (retained.model !== model || retained.runtime !== runtime)
     throw new Error(
       "The Page Object model and provider must stay fixed while mounted. Remount the component to change them."
     );
-  useEffect(
-    () => runtime.register(model, retained.instance),
-    [runtime, model, retained]
-  );
-  return retained.instance;
+  useEffect(() => {
+    runtime.pom.register(model);
+    return () => runtime.pom.unregister(model);
+  }, [runtime, model]);
+  return runtime.pom.get(model);
 }

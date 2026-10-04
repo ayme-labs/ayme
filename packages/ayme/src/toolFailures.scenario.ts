@@ -13,7 +13,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { PomManifest } from "./contracts";
 import { createPageRegistration, registerCompiledPom } from "./registry";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 import { synchronizeWebMcpTools, type WebMcpDriver } from "./webMcp";
 import { toolFailure } from "./toolFailure.testSupport";
 
@@ -59,7 +59,7 @@ export function describeToolFailures(
         <button id="save">Save changes</button>
         <div style="position: fixed; inset: 0"></div>
       `;
-      const runtime = createRuntimeSession({
+      const runtime = createAyme({
         pageFactory: () => createPage({ actionTimeout: 1000 }),
       });
       cleanups.push(runtime.start());

@@ -35,9 +35,12 @@ vi.mock("@ayme-dev/core/structural-observation", async (importOriginal) => ({
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { RefResolutionError } from "./errors";
 import { getPageStateForDocument } from "./pageState";
-import { clickRef, fillRef, listPublishedBrowserTools } from "./browserTools";
+import { listPublishedBrowserTools } from "./browserTools";
+import { ayme } from "./agentCalls.testSupport";
 
 const ref = AriaRefSchema.parse;
+const clickRef = ayme.click;
+const fillRef = ayme.fill;
 
 describe("Structural Ref interactions", () => {
   beforeEach(() => {

@@ -85,11 +85,11 @@ export default function Controls() {
 }
 ```
 
-`ayme` is the runtime session, so `ayme.pursueGoal(goal, { maxSteps })` runs a goal. `webMCP` is the session's `webMCP` member as React state: `webMCP.publicationStatus` is a read-only snapshot that updates with React renders. Its state is `disabled`, `waiting`, `active`, `unavailable`, `failed`, or `disposed`. Enabled publication waits up to two seconds for a driver. Retry starts another attempt after unavailability or failure; pending attempts are shared and an active publication is not duplicated.
+`ayme` is the [runtime session](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#runtime-session): `ayme.tools.run(name, input)` runs any live tool, `goal` included, and `ayme.tools.list()` lists them. `webMCP` is the session's `webMCP` member as React state: `webMCP.publicationStatus` is a read-only snapshot that updates with React renders. Its state is `disabled`, `waiting`, `active`, `unavailable`, `failed`, or `disposed`. Enabled publication waits up to two seconds for a driver. Retry starts another attempt after unavailability or failure; pending attempts are shared and an active publication is not duplicated.
 
-`usePageObject` returns the concrete instance immediately. Constructors must only initialize fields and compose locators: do not execute actions, register listeners, or start other activity in them. React can discard render-time construction. Committed instances stay the same across rerenders and Strict Mode effect replay. A real unmount/remount creates a new instance. Changing the model class requires remounting the consuming component.
+`usePageObject` returns the session's instance of the class immediately (`ayme.pom.get`) and registers the class after commit (`ayme.pom.register`). The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not execute actions, register listeners, or start other activity in them. Changing the model class requires remounting the consuming component.
 
-Registration and publication happen after commit. Unmounting a consumer removes its registration; unmounting the provider stops publication and observation. Provider cleanup/setup replay preserves the Page and retained instances. Hooks without an ancestor provider throw. A provider returned from a component does not supply context to hooks called in that same component.
+Registration and publication happen after commit. Unmounting a consumer removes its registration; unmounting the provider stops publication and observation. Provider cleanup/setup replay preserves the Page and the instances. Hooks without an ancestor provider throw. A provider returned from a component does not supply context to hooks called in that same component.
 
 ## Framework parity
 

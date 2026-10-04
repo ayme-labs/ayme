@@ -75,9 +75,9 @@ it("returns { ayme, webMCP } with publication disabled by default, and stops Aym
   });
   root.destroy();
   expect(setup.ayme.webMCP.publicationStatus.state).toBe("disposed");
-  await expect(setup.ayme.pursueGoal("goal", { maxSteps: 1 })).rejects.toThrow(
-    "pursueGoal requires a started runtime session."
-  );
+  await expect(
+    setup.ayme.tools.run("goal", { goal: "goal", maxSteps: 1 })
+  ).rejects.toThrow("the Ayme runtime session is not started.");
 });
 
 // The runtime waits 2 s for a WebMCP driver before reporting `unavailable`.

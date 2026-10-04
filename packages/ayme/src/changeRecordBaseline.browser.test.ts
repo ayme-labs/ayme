@@ -7,7 +7,7 @@ import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { getPageStateForElements } from "./pageState";
 import { createPageRegistration, registerCompiledPom } from "./registry";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
 
 type PublishedTool = {
@@ -45,7 +45,7 @@ describe("Change Record baseline in Chromium", () => {
   });
 
   function startRuntime(goalLoop?: GoalLoopDecisionFunction) {
-    const runtime = createRuntimeSession({ pageFactory: () => page, goalLoop });
+    const runtime = createAyme({ pageFactory: () => page, goalLoop });
     stop = runtime.start();
   }
 

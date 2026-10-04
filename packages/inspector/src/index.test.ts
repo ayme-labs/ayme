@@ -1,6 +1,6 @@
 import { afterEach, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
-import { createRuntimeSession, type AymePage } from "@ayme-dev/ayme";
+import { createAyme, type AymePage } from "@ayme-dev/ayme";
 import { capturePageState, registerCompiledPom } from "@ayme-dev/ayme/internal";
 
 import {
@@ -32,8 +32,8 @@ it("instruments a supplied Page before constructing the first Page Object", asyn
     tools: [],
   });
 
-  const runtime = createRuntimeSession({ pageFactory: () => suppliedPage });
-  const instance = runtime.construct(Model);
+  const runtime = createAyme({ pageFactory: () => suppliedPage });
+  const instance = runtime.pom.get(Model);
   await instance.page
     .getByRole("button", { name: "Run" })
     .waitFor({ state: "attached" });
@@ -60,8 +60,8 @@ it("instruments the default Page before constructing the first Page Object", asy
     tools: [],
   });
 
-  const runtime = createRuntimeSession();
-  const instance = runtime.construct(DefaultModel);
+  const runtime = createAyme();
+  const instance = runtime.pom.get(DefaultModel);
   await instance.page
     .getByRole("button", { name: "Default" })
     .waitFor({ state: "attached" });
@@ -88,9 +88,7 @@ it("adds Inspector tracing to an existing feedback Page without double instrumen
     tools: [],
   });
 
-  const instance = createRuntimeSession({ pageFactory: () => page }).construct(
-    SharedModel
-  );
+  const instance = createAyme({ pageFactory: () => page }).pom.get(SharedModel);
   await instance.page
     .getByRole("button", { name: "Shared" })
     .waitFor({ state: "attached" });
@@ -112,7 +110,7 @@ it("stops tracing during disposal and resumes once after remount", async () => {
     members: [],
     tools: [],
   });
-  const instance = createRuntimeSession().construct(DisposableModel);
+  const instance = createAyme().pom.get(DisposableModel);
 
   await instance.page
     .getByRole("button", { name: "Stop" })

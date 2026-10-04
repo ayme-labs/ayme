@@ -19,6 +19,7 @@ import { Inspector } from "../testing";
 // carry their refs in the peeked page state, so the evidence covers the
 // panel and its runtime wiring only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
+  const { asStartedAyme } = await import("../tools/test-utils/startedAyme");
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
@@ -26,13 +27,11 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     peekPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),
-    listLiveTools: vi.fn().mockReturnValue([]),
-    getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
-    subscribeToPublishedTools: vi.fn(() => () => {}),
     getPomDefinitionText: vi.fn(() => ""),
     listRegisteredPomTargets: vi.fn(),
     listRegisteredPomTools: vi.fn(() => []),
-    runTool: vi.fn(),
+    getStartedAyme: asStartedAyme,
+    subscribeToStartedAyme: () => () => {},
     listRegisteredPoms: vi.fn(),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };

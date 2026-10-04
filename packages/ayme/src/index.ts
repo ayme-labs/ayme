@@ -2,16 +2,20 @@ export * from "./contracts";
 export * from "./decorators";
 export { createPage } from "./browserPage";
 export type { CreatePageOptions } from "./browserPage";
-export { createRuntimeSession } from "./runtime";
+export { createAyme } from "./runtime";
 export type {
+  Ayme,
+  AymeOptions,
   AymePage,
-  AymeRuntimeOptions,
+  AymePom,
+  AymeTools,
   AymeWebMcp,
   AymeWebMcpOptions,
   AymeWebMcpPublicationStatus,
   GoalLoopDecisionFunction,
-  RuntimeSession,
+  ToolInfo,
 } from "./runtime";
+export type { BuiltInTools, ToolInput, ToolResult } from "./toolTypes";
 export type { Handover } from "./goalLoop";
 export { decisionEndpoint } from "./decisionEndpoint";
 export type {

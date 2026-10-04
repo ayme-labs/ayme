@@ -1,5 +1,5 @@
 import {
-  createRuntimeSession,
+  createAyme,
   type DecisionRequest,
   type DecisionResponse,
   type CustomTool,
@@ -62,15 +62,12 @@ export function startAyme({
   const root = document.documentElement.dataset;
   try {
     const inspector = mountInspector();
-    const runtime = createRuntimeSession({
+    const runtime = createAyme({
       customTools: [markElement],
       goalLoop: clearTheList(),
       webMCP: { enabled: publish },
     });
-    const unregister = runtime.register(
-      PageObject,
-      runtime.construct(PageObject)
-    );
+    runtime.pom.register(PageObject);
     const reportRuntime = () => {
       const { state, message } = runtime.webMCP.publicationStatus;
       root.runtime = state;
@@ -81,7 +78,7 @@ export function startAyme({
     reportRuntime();
     root.fixture = "ready";
     return () => {
-      unregister();
+      runtime.pom.unregister(PageObject);
       stop();
       unsubscribe();
       inspector.dispose();

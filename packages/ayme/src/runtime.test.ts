@@ -3,7 +3,7 @@ import { createPage } from "./browserPage";
 import { RuntimeStateError } from "./errors";
 import * as goalLoopModule from "./goalLoop";
 import * as pageState from "./pageState";
-import { createRuntimeSession, type AymePage } from "./runtime";
+import { createAyme, type AymePage } from "./runtime";
 import { listRegisteredPoms, registerCompiledPom } from "./registry";
 import {
   synchronizeWebMcpTools,
@@ -12,7 +12,8 @@ import {
   type WebMcpRegistration,
 } from "./webMcp";
 
-vi.mock("./webMcp", () => ({
+vi.mock("./webMcp", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./webMcp")>()),
   synchronizeWebMcpTools: vi.fn(),
   waitForWebMcpDriver: vi.fn(),
 }));
@@ -20,7 +21,7 @@ vi.mock("./browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),
 }));
 const page = {} as AymePage;
-const sessions: ReturnType<typeof createRuntimeSession>[] = [];
+const sessions: ReturnType<typeof createAyme>[] = [];
 const stops: (() => void)[] = [];
 const driver = { registerTool: vi.fn() };
 const disposePublication = vi.fn();
@@ -32,14 +33,14 @@ const flush = async () => {
   for (let i = 0; i < 8; i++) await Promise.resolve();
 };
 function session(enabled = true) {
-  const runtime = createRuntimeSession({
+  const runtime = createAyme({
     pageFactory: () => page,
     webMCP: { enabled },
   });
   sessions.push(runtime);
   return runtime;
 }
-function start(runtime: ReturnType<typeof createRuntimeSession>) {
+function start(runtime: ReturnType<typeof createAyme>) {
   const stop = runtime.start();
   stops.push(stop);
   return stop;
@@ -74,7 +75,7 @@ it("threads ignore to page state capture for the session lifetime", () => {
   const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnore");
   try {
     const ignore = (element: Element) => element.matches(".assistant");
-    const runtime = createRuntimeSession({ pageFactory: () => page, ignore });
+    const runtime = createAyme({ pageFactory: () => page, ignore });
     expect(configureIgnore).not.toHaveBeenCalled();
     const stop = start(runtime);
     expect(configureIgnore).toHaveBeenLastCalledWith(ignore);
@@ -89,7 +90,7 @@ it("threads goalLoop to the goal loop configuration for the session lifetime", (
   const configureGoalLoop = vi.spyOn(goalLoopModule, "configureGoalLoop");
   try {
     const goalLoop = vi.fn();
-    const runtime = createRuntimeSession({ pageFactory: () => page, goalLoop });
+    const runtime = createAyme({ pageFactory: () => page, goalLoop });
     expect(configureGoalLoop).not.toHaveBeenCalled();
     const stop = start(runtime);
     expect(configureGoalLoop).toHaveBeenLastCalledWith(goalLoop);
@@ -102,7 +103,7 @@ it("threads goalLoop to the goal loop configuration for the session lifetime", (
 
 it("creates the default browser page lazily", () => {
   vi.stubGlobal("window", undefined);
-  const runtime = createRuntimeSession();
+  const runtime = createAyme();
   expect(runtime.webMCP.publicationStatus).toEqual({
     state: "disabled",
     message: "WebMCP publication is disabled.",
@@ -112,68 +113,61 @@ it("creates the default browser page lazily", () => {
 
 it("builds the default page with createPage() and no options, once", () => {
   const runtime = session(false);
-  const defaultRuntime = createRuntimeSession();
+  const defaultRuntime = createAyme();
   sessions.push(defaultRuntime);
   expect(createPage).not.toHaveBeenCalled();
-  expect(defaultRuntime.page).toBe(defaultRuntime.page);
   start(defaultRuntime);
   expect(createPage).toHaveBeenCalledOnce();
   expect(createPage).toHaveBeenCalledWith();
-  expect(runtime.page).toBe(page);
+  expect(runtime.pom.get(Model).page).toBe(page);
   expect(createPage).toHaveBeenCalledOnce();
 });
 
 it("never calls the page factory on the server", () => {
   vi.stubGlobal("window", undefined);
   const factory = vi.fn(() => page);
-  const runtime = createRuntimeSession({ pageFactory: factory });
+  const runtime = createAyme({ pageFactory: factory });
   sessions.push(runtime);
-  const instance = runtime.construct(Model);
+  const instance = runtime.pom.get(Model);
   expect(instance).toBeInstanceOf(Model);
   expect(instance.page).toBeUndefined();
-  expect(() => runtime.page).toThrow(
-    "The runtime session's page is available only in the browser."
-  );
-  expect(() => runtime.page).toThrow(RuntimeStateError);
+  // One instance per class on the server too, as in the browser.
+  expect(runtime.pom.get(Model)).toBe(instance);
+  expect(runtime.pom.register(Model)).toBe(instance);
+  expect(runtime.tools.list()).toEqual([]);
   expect(factory).not.toHaveBeenCalled();
   expect(createPage).not.toHaveBeenCalled();
 });
 
 it("calls the page factory at most once, lazily, on first use", () => {
   const factory = vi.fn(() => page);
-  const runtime = createRuntimeSession({ pageFactory: factory });
+  const runtime = createAyme({ pageFactory: factory });
   sessions.push(runtime);
   expect(factory).not.toHaveBeenCalled();
-  expect(runtime.construct(Model).page).toBe(page);
+  expect(runtime.pom.get(Model).page).toBe(page);
   expect(factory).toHaveBeenCalledOnce();
   const stop = start(runtime);
-  expect(runtime.page).toBe(page);
   stop();
   start(runtime);
   expect(factory).toHaveBeenCalledOnce();
   expect(createPage).not.toHaveBeenCalled();
 });
 
-it("rejects pursueGoal before start and without a goalLoop, naming the cause", async () => {
-  const withLoop = createRuntimeSession({
-    pageFactory: () => page,
-    goalLoop: vi.fn(),
-  });
-  sessions.push(withLoop);
-  await expect(withLoop.pursueGoal("save", { maxSteps: 1 })).rejects.toThrow(
-    "pursueGoal requires a started runtime session."
-  );
+it("rejects a run before start, after stop and for a tool that is not live", async () => {
+  const runtime = session(false);
   await expect(
-    withLoop.pursueGoal("save", { maxSteps: 1 })
-  ).rejects.toBeInstanceOf(RuntimeStateError);
-  const withoutLoop = session(false);
-  start(withoutLoop);
-  await expect(withoutLoop.pursueGoal("save", { maxSteps: 1 })).rejects.toThrow(
-    "pursueGoal requires a goalLoop on the runtime session."
+    runtime.tools.run("goal", { goal: "save", maxSteps: 1 })
+  ).rejects.toThrow(
+    'Cannot run the tool "goal": the Ayme runtime session is not started.'
   );
+  const stop = start(runtime);
   await expect(
-    withoutLoop.pursueGoal("save", { maxSteps: 1 })
-  ).rejects.toBeInstanceOf(RuntimeStateError);
+    runtime.tools.run("goal", { goal: "save", maxSteps: 1 })
+  ).rejects.toThrow('The tool "goal" is not live.');
+  stop();
+  await expect(runtime.tools.run("Unknown.tool", {})).rejects.toBeInstanceOf(
+    RuntimeStateError
+  );
 });
 
 it("exposes publication status and retry only under its webMCP member", () => {
@@ -185,58 +179,68 @@ it("exposes publication status and retry only under its webMCP member", () => {
     "retryPublication",
     "getSnapshot",
     "subscribe",
+    "construct",
+    "register",
+    "page",
+    "goalLoop",
+    "pursueGoal",
   ])
     expect(runtime).not.toHaveProperty(member);
 });
 
-it("forwards goal, maxSteps and the session's goalLoop to the loop", async () => {
-  const handover = { reason: "done" as const, next: "Continue.", history: [] };
-  const run = vi
-    .spyOn(goalLoopModule, "pursueGoal")
-    .mockResolvedValue({ handover, stepScores: [] });
-  try {
-    const goalLoop = vi.fn();
-    const runtime = createRuntimeSession({ pageFactory: () => page, goalLoop });
-    sessions.push(runtime);
-    start(runtime);
-    await runtime.pursueGoal("save", { maxSteps: 3 });
-    expect(run).toHaveBeenCalledWith("save", 3, goalLoop, document);
-  } finally {
-    run.mockRestore();
-  }
+it("lists the live tools while started, keeping the array until the set changes", () => {
+  const runtime = createAyme({ pageFactory: () => page, goalLoop: vi.fn() });
+  sessions.push(runtime);
+  const listener = vi.fn();
+  runtime.tools.subscribe(listener);
+  expect(runtime.tools.list()).toEqual([]);
+  const stop = start(runtime);
+  const tools = runtime.tools.list();
+  expect(tools.map(({ name }) => name)).toContain("goal");
+  expect(tools.find(({ name }) => name === "click")?.group).toBe("browser");
+  expect(listener).toHaveBeenCalledExactlyOnceWith(tools);
+  runtime.pom.register(Model);
+  expect(runtime.tools.list()).toBe(tools);
+  expect(listener).toHaveBeenCalledOnce();
+  stop();
+  expect(runtime.tools.list()).toEqual([]);
+  expect(listener).toHaveBeenLastCalledWith([]);
+  expect(listener).toHaveBeenCalledTimes(2);
 });
 
-it("resolves pursueGoal while enabled publication is unavailable", async () => {
+it("runs goal as the application while publication is unavailable", async () => {
   const handover = { reason: "done" as const, next: "Continue.", history: [] };
-  const run = vi
-    .spyOn(goalLoopModule, "pursueGoal")
-    .mockResolvedValue({ handover, stepScores: [] });
+  const executeAs = vi.fn(async () => handover);
+  const goalTool = vi
+    .spyOn(goalLoopModule, "getPursueGoalTool")
+    .mockReturnValue({
+      name: "goal",
+      description: "Drive the page toward a goal.",
+      inputSchema: { type: "object" },
+      execute: vi.fn(),
+      executeAs,
+    });
   try {
     vi.mocked(waitForWebMcpDriver).mockResolvedValue(undefined);
-    const runtime = createRuntimeSession({
-      pageFactory: () => page,
-      goalLoop: vi.fn(),
-      webMCP: { enabled: true },
-    });
-    sessions.push(runtime);
+    const runtime = session();
     start(runtime);
     await runtime.webMCP.retryPublication();
     expect(runtime.webMCP.publicationStatus.state).toBe("unavailable");
-    await expect(runtime.pursueGoal("save", { maxSteps: 1 })).resolves.toBe(
-      handover
-    );
+    const input = { goal: "save", maxSteps: 3 };
+    await expect(runtime.tools.run("goal", input)).resolves.toBe(handover);
+    expect(executeAs).toHaveBeenCalledExactlyOnceWith(input, "app");
     expect(synchronizeWebMcpTools).not.toHaveBeenCalled();
   } finally {
-    run.mockRestore();
+    goalTool.mockRestore();
   }
 });
 
-it("constructs without activation and handles registration before owner startup and replay", () => {
+it("gets without activation and handles registration before owner startup and replay", () => {
   const runtime = session(false);
-  const instance = runtime.construct(Model);
+  const instance = runtime.pom.get(Model);
   expect(instance.page).toBe(page);
   expect(listRegisteredPoms()).toHaveLength(0);
-  const unregister = runtime.register(Model, instance);
+  expect(runtime.pom.register(Model)).toBe(instance);
   expect(listRegisteredPoms()).toHaveLength(0);
   const stop = start(runtime);
   expect(listRegisteredPoms()[0]?.instance).toBe(instance);
@@ -244,9 +248,24 @@ it("constructs without activation and handles registration before owner startup 
   expect(listRegisteredPoms()).toHaveLength(0);
   start(runtime);
   expect(listRegisteredPoms()[0]?.instance).toBe(instance);
-  unregister();
+  runtime.pom.unregister(Model);
   expect(listRegisteredPoms()).toHaveLength(0);
   expect(waitForWebMcpDriver).not.toHaveBeenCalled();
+});
+
+it("shares one instance between registrations and withdraws it with the last", () => {
+  const runtime = session(false);
+  start(runtime);
+  const first = runtime.pom.register(Model);
+  expect(runtime.pom.register(Model)).toBe(first);
+  expect(listRegisteredPoms()).toHaveLength(1);
+  runtime.pom.unregister(Model);
+  expect(listRegisteredPoms()).toHaveLength(1);
+  runtime.pom.unregister(Model);
+  expect(listRegisteredPoms()).toHaveLength(0);
+  runtime.pom.unregister(Model);
+  expect(runtime.pom.register(Model)).toBe(first);
+  expect(listRegisteredPoms()).toHaveLength(1);
 });
 
 it("fails to start with two distinct classes sharing a name, and starts once one is gone", () => {
@@ -255,16 +274,13 @@ it("fails to start with two distinct classes sharing a name, and starts once one
   };
   registerCompiledPom(OtherModel, manifest);
   const runtime = session(false);
-  runtime.register(Model, runtime.construct(Model));
-  const unregisterOther = runtime.register(
-    OtherModel,
-    runtime.construct(OtherModel)
-  );
+  runtime.pom.register(Model);
+  runtime.pom.register(OtherModel);
   expect(() => runtime.start()).toThrow(
     'Cannot register the Page Object "Model"'
   );
   expect(listRegisteredPoms()).toHaveLength(0);
-  unregisterOther();
+  runtime.pom.unregister(OtherModel);
   start(runtime);
   expect(
     listRegisteredPoms().map(({ instance }) => instance.constructor)
@@ -292,7 +308,7 @@ it("publishes once, shares retries, and exposes immutable status snapshots", asy
   expect(Object.isFrozen(runtime.webMCP.publicationStatus)).toBe(true);
   await runtime.webMCP.retryPublication();
   expect(synchronizeWebMcpTools).toHaveBeenCalledOnce();
-  expect(listener).toHaveBeenCalled();
+  expect(listener).toHaveBeenLastCalledWith(runtime.webMCP.publicationStatus);
   unsubscribe();
 });
 

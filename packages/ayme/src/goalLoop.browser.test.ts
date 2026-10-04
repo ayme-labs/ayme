@@ -3,7 +3,7 @@ import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { createPageRegistration, registerCompiledPom } from "./registry";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
 import {
   configureGoalLoop,
@@ -344,7 +344,7 @@ describe("Goal Loop goal in Chromium", () => {
     goalLoop: GoalLoopDecisionFunction,
     customTools?: CustomTool[]
   ) {
-    const runtime = createRuntimeSession({
+    const runtime = createAyme({
       pageFactory: () => page,
       goalLoop,
       customTools,

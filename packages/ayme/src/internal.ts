@@ -16,21 +16,11 @@ export {
   getPomDefinitionText,
 } from "./pageContext";
 export { getPomDefinitions } from "./pomDefinitions";
-// The programmatic helper object is not on the public entry.
-export { ayme } from "./ayme";
-export type { Ayme } from "./ayme";
-export {
-  getPublicationStatus,
-  listLiveTools,
-  listPublishedTools,
-  listElementToolTargets,
-  subscribeToPublishedTools,
-} from "./publishedTools";
+export { listPublishedTools, listElementToolTargets } from "./publishedTools";
 export type { PublishedToolGroup, PublishedToolInfo } from "./publishedTools";
 export {
   configureAymeRuntime,
   createAymeRuntime,
-  createPageRegistration,
   listRegisteredPomTools,
   listRegisteredPomTargets,
   listRegisteredPoms,
@@ -44,13 +34,14 @@ export type {
   RegisteredPom,
   RegisteredPomTarget,
 } from "./registry";
-export { runTool, synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
+export { synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
 export type { WebMcpDriver, WebMcpRegistration } from "./webMcp";
-// The runtime session and its types are public (ADR-0025); this entry keeps
-// the framework packages' server page objects, the plugin's registration and
-// the inspector's instrumentation and registry read model.
+// The runtime session and its types are public (ADR-0031); this entry keeps
+// the plugin's registration and the inspector's instrumentation, its way to
+// the started session and its registry read model.
 export {
-  createServerPageObject,
+  getStartedAyme,
   installRuntimePageInstrumentation,
+  subscribeToStartedAyme,
 } from "./runtime";
 export { isPlaywrightLiteLocator as isAymeLocator } from "@ayme-dev/playwright-lite/internal";

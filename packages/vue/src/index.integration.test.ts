@@ -3,7 +3,6 @@ import { effectScope } from "vue";
 import { afterEach, expect, it, vi } from "vitest";
 
 import {
-  createPageRegistration,
   registerCompiledPom,
   type WebMcpDriver,
 } from "@ayme-dev/ayme/internal";
@@ -73,7 +72,7 @@ it("keeps a real publisher startup failure retryable", async () => {
   await flushPromises();
 
   resolveInitialRegistration();
-  queueMicrotask(() => createPageRegistration(IntegrationPage));
+  queueMicrotask(() => result?.ayme.pom.register(IntegrationPage));
   await flushPromises();
 
   expect(result?.webMCP.publicationStatus).toEqual({
