@@ -9,8 +9,6 @@ npm install @ayme-dev/ayme @ayme-dev/react
 npm install -D @ayme-dev/unplugin-ayme @playwright/test@~1.62.1
 ```
 
-Packages are not published yet; use supplied tarballs before release.
-
 ## Vite setup
 
 Use `@ayme-dev/unplugin-ayme/vite` alongside the React Vite plugin:

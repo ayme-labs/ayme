@@ -68,7 +68,7 @@ Applications do not need this demo-only entry point.
 
 `src/` is cut into slices named for what they do (`panel`, `page-model`,
 `structure`, `runs`, `tools` and others), with layers inside each slice.
-[AGENTS.md](AGENTS.md) lists them, and lint enforces them
+[AGENTS.md](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/AGENTS.md) lists them, and lint enforces them
 (`eslint.config.js`).
 
 - `shared` keeps the Inspector's look at the page live: page changes, input,

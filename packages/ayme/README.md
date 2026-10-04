@@ -5,9 +5,6 @@ remain the source of the behavior; no Ayme base class is required.
 
 ## Install
 
-These packages are not published yet. The commands below describe registry
-installation once released; before then use supplied package tarballs.
-
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/vue # or @ayme-dev/react
 npm install -D @ayme-dev/unplugin-ayme @playwright/test@~1.62.1

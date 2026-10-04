@@ -1,6 +1,6 @@
 ## Repository map
 
-- `packages/`: the Ayme WebMCP product. Each package README owns its API and setup.
+- `packages/`: the Ayme WebMCP product. Each package README is its npm entry point; the consumer docs in `docs/guide/` own its API and setup.
 - `packages/inspector/`: read [its AGENTS.md](packages/inspector/AGENTS.md) before adding or moving a source file.
 - `skills/`: skills shipped to consumers for integrating Ayme into their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
 - `apps/example-vue/`: the hosted playground where visitors try Ayme before integrating it. A visitor installs only the local relay MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
@@ -36,7 +36,7 @@ Before adding or renaming a term in `CONTEXT.md`, present the proposed wording t
 
 Canonical ADRs live under `docs/adr/`. Use them for long-lived architectural decisions and keep their rationale there.
 
-ADRs record decisions and their rationale. Do not restate API names, options or signatures; package READMEs own those.
+ADRs record decisions and their rationale. Do not restate API names, options or signatures; the consumer docs in `docs/guide/` own those.
 
 Before creating or superseding an ADR, present the complete proposed ADR to the user and wait for explicit approval. Never infer ADR approval from general agreement with a plan.
 
