@@ -25,6 +25,7 @@ export const appConfig: ApplicationConfig = {
 
 ## Documentation
 
+- [Quickstart: Angular](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/quickstart-angular.md): from an empty app to your first Page Object Tool.
 - [Angular page](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/angular.md): manual setup, `provideAyme`, `injectAyme`, `injectPageObject`, server rendering, bundle size, limits and API.
 - [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 

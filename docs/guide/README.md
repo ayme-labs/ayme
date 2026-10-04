@@ -5,7 +5,11 @@ How to turn your app's Page Object Models into tools that agents and tests call.
 ## Start
 
 - [What is Ayme](start/what-is-ayme.md): what Ayme does with your Page Object Models and what an agent gets from it.
-- [Install](start/install.md): the supported versions of each framework, Node.js, Playwright and TypeScript.
+- [Install](start/install.md): the packages, the install commands and the supported versions of each framework, Node.js, Playwright and TypeScript.
+- [Quickstart: Vue](start/quickstart-vue.md): from a Vite Vue app to your first Page Object Tool, called from a test or an agent.
+- [Quickstart: React](start/quickstart-react.md): from a Vite React app to your first Page Object Tool, called from a test or an agent.
+- [Quickstart: Svelte](start/quickstart-svelte.md): from a SvelteKit app to your first Page Object Tool, called from a test or an agent.
+- [Quickstart: Angular](start/quickstart-angular.md): from an Angular app to your first Page Object Tool, called from a test or an agent.
 
 ## Guides
 
