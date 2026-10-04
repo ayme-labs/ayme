@@ -33,13 +33,17 @@ export class Agent {
     private readonly stderr: () => string
   ) {}
 
-  /** Calls `name` and returns the result's text and whether it is an error. */
+  /**
+   * Calls `name` and returns the tool's own text, whether it is an error, and
+   * the server's note of the page's tool changes after it, if any.
+   */
   async call(name: string, input: Record<string, unknown> = {}) {
     const result = await this.client.callTool({ name, arguments: input });
-    const content = result.content as { type: string; text?: string }[];
+    const [own, change] = result.content as { type: string; text?: string }[];
     return {
-      text: content.map((part) => part.text ?? "").join("\n"),
+      text: own?.text ?? "",
       isError: result.isError === true,
+      note: change?.text,
     };
   }
 

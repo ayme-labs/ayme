@@ -2,6 +2,7 @@
   "extends": "@ayme-dev/typescript-config/library.json",
   "compilerOptions": {
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "experimentalDecorators": true,
     "types": ["node"]
   },
   "include": ["app", "tests", "*.ts"]
