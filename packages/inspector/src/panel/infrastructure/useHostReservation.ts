@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import type { Dock } from "./geometry";
+import type { Dock } from "../domain/geometry";
 
 export type HostReservation = { dock: Dock; size: number };
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { DetailPane as DetailPaneFrame } from "../frame/InspectorBody";
+import { DetailPane as DetailPaneFrame } from "../panel/view/InspectorBody";
 import { Navigator as NavigatorFrame } from "../frame/Navigator";
 import type { RenderRun } from "../frame/runSlot";
 import { pageSelection, type Selection } from "../frame/selection";

@@ -5,7 +5,7 @@ import {
   readPreferences,
   writePreferences,
   type Preferences,
-} from "./preferences";
+} from "../domain/preferences";
 
 /**
  * The panel's preferences, read from this site's storage once and written

@@ -1,10 +1,10 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { renderPart } from "../testing/renderPart";
-import { Inspector } from "../testing";
-import type { Preferences } from "./preferences";
-import { ShellHarness } from "./ShellHarness.testSupport";
+import { renderPart } from "../../testing/renderPart";
+import { Inspector } from "../../testing";
+import type { Preferences } from "../domain/preferences";
+import { ShellHarness } from "../test-utils/ShellHarness";
 
 // Component tests: the shell with fixture preferences, in a 1280×800
 // viewport, driven through the Inspector's page objects on playwright-lite.

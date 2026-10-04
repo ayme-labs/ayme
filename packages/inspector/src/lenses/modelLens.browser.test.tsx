@@ -3,14 +3,14 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { PageModel, PageObjectNode } from "../adapter/pageModel";
-import { DetailPane } from "../frame/InspectorBody";
+import { DetailPane } from "../panel/view/InspectorBody";
 import type { Lens, LensId } from "../frame/lens";
 import { Navigator } from "../frame/Navigator";
 import type { OnHover } from "../frame/highlight";
 import type { RenderRun } from "../frame/runSlot";
 import type { Selection } from "../frame/selection";
 import { renderPart } from "../testing/renderPart";
-import { defaultPreferences } from "../shell/preferences";
+import { defaultPreferences } from "../panel/domain/preferences";
 import {
   DetailPane as DetailPanePart,
   Navigator as NavigatorPart,

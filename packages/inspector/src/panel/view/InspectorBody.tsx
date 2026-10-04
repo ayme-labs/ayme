@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { Layout } from "../shell/preferences";
+import type { Layout } from "../domain/preferences";
 
 /**
  * The panel's body: the navigator beside the detail pane, with Runs below

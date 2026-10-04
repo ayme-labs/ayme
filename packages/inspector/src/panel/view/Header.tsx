@@ -19,8 +19,8 @@ import { Badge } from "@ayme-dev/design-system/components/badge";
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { AymeMark } from "../shared/view/AymeMark";
-import type { Layout, ThemePreference } from "./preferences";
+import { AymeMark } from "../../shared/view/AymeMark";
+import type { Layout, ThemePreference } from "../domain/preferences";
 
 const iconButton =
   "inline-grid size-7 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50";

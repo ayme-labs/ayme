@@ -1,10 +1,10 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { renderPart } from "../testing/renderPart";
-import { InspectorHeader } from "../testing";
+import { renderPart } from "../../testing/renderPart";
+import { InspectorHeader } from "../../testing";
 import { Header } from "./Header";
-import type { Layout, ThemePreference } from "./preferences";
+import type { Layout, ThemePreference } from "../domain/preferences";
 
 // Component tests: the header rendered alone with fixture props, driven by
 // its page object on playwright-lite. Each checks what the header shows or

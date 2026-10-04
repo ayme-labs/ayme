@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useRuntimeAdapter } from "./adapter/useRuntimeAdapter";
 import { Empty } from "./shared/view/common";
-import { DetailPane, InspectorBody } from "./frame/InspectorBody";
+import { DetailPane, InspectorBody } from "./panel/view/InspectorBody";
 import { selectionHighlight } from "./frame/highlight";
 import type { Lens, LensId } from "./frame/lens";
 import { isStaleSelection } from "./frame/staleSelection";
@@ -13,10 +13,10 @@ import { modelLens } from "./lenses/modelLens";
 import { structureLens } from "./lenses/structureLens";
 import { attachToolModels } from "./lenses/toolGroups";
 import { toolsLens } from "./lenses/toolsLens";
-import { InspectorShell } from "./shell/InspectorShell";
-import { usePreferences } from "./shell/usePreferences";
-import { useDarkTheme } from "./shell/useTheme";
-import { WebMcpStatus } from "./shell/WebMcpStatus";
+import { InspectorShell } from "./panel/presentation/InspectorShell";
+import { usePreferences } from "./panel/infrastructure/usePreferences";
+import { useDarkTheme } from "./panel/presentation/useTheme";
+import { WebMcpStatus } from "./panel/view/WebMcpStatus";
 import { useRunning } from "./useRunning";
 
 /**

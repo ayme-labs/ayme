@@ -17,7 +17,7 @@ import {
   maxModelSplit as maxSplit,
   minModelSplit as minSplit,
   type ModelPanes,
-} from "../../shell/preferences";
+} from "../../panel/domain/preferences";
 import type { Selection } from "../../frame/selection";
 import type { OnHover } from "../../frame/highlight";
 import { hoverHandlers } from "./hover";

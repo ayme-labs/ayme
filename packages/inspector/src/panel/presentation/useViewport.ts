@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-import type { Viewport } from "./geometry";
+import type { Viewport } from "../domain/geometry";
 
 let snapshot: Viewport | undefined;
 

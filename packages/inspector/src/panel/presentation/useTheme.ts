@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-import type { ThemePreference } from "./preferences";
+import type { ThemePreference } from "../domain/preferences";
 
 const darkSchemeQuery = "(prefers-color-scheme: dark)";
 

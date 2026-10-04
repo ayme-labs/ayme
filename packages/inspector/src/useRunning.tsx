@@ -4,7 +4,7 @@ import { pathBelowPage, type MemberIndex } from "./adapter/memberIndex";
 import { structureRows, type StructureNode } from "./adapter/structure";
 import type { CollectionItem } from "./adapter/useRuns";
 import type { InspectorRuntime } from "./adapter/useRuntimeAdapter";
-import { RunsRegion } from "./frame/InspectorBody";
+import { RunsRegion } from "./panel/view/InspectorBody";
 import type { RenderRun } from "./frame/runSlot";
 import type { Selection } from "./frame/selection";
 import { RunCard } from "./runCard/RunCard";

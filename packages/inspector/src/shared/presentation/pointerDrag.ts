@@ -1,6 +1,6 @@
 import { useEffect, useRef, type PointerEvent } from "react";
 
-import type { Point } from "../../shell/preferences";
+import type { Point } from "../../panel/domain/preferences";
 
 /** A press moves this far before it counts as a drag rather than a click. */
 const DRAG_THRESHOLD = 4;

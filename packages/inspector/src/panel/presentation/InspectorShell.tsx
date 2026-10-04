@@ -21,11 +21,11 @@ import {
   resizeFloatBottom,
   resizeFloatLeft,
   type Dock,
-} from "./geometry";
-import { Header, layoutNames } from "./Header";
-import type { Layout, Preferences } from "./preferences";
-import { usePointerDrag } from "../shared/presentation/pointerDrag";
-import { useHostReservation } from "./useHostReservation";
+} from "../domain/geometry";
+import { Header, layoutNames } from "../view/Header";
+import type { Layout, Preferences } from "../domain/preferences";
+import { usePointerDrag } from "../../shared/presentation/pointerDrag";
+import { useHostReservation } from "../infrastructure/useHostReservation";
 import { currentViewport, useViewport } from "./useViewport";
 
 type Edge = "left" | "right" | "top" | "bottom";

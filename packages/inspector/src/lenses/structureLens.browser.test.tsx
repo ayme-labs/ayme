@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { StructureTree } from "../adapter/structure";
-import { DetailPane } from "../frame/InspectorBody";
+import { DetailPane } from "../panel/view/InspectorBody";
 import type { OnHover } from "../frame/highlight";
 import type { Lens, LensId } from "../frame/lens";
 import { Navigator } from "../frame/Navigator";

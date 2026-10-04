@@ -1,6 +1,9 @@
 import type { Locator, Page } from "@playwright/test";
 import { isAymeLocator } from "@ayme-dev/ayme/internal";
-import { isPointerAction, passThroughWhileCovered } from "./panelPassThrough";
+import {
+  isPointerAction,
+  passThroughWhileCovered,
+} from "./panel/infrastructure/panelPassThrough";
 import type { TraceEntry } from "./trace";
 
 export type { TraceEntry } from "./trace";

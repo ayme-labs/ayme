@@ -1,8 +1,8 @@
 import { afterEach, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { renderPart } from "../testing/renderPart";
-import type { Layout } from "../shell/preferences";
+import { renderPart } from "../../testing/renderPart";
+import type { Layout } from "../domain/preferences";
 import { DetailPane, InspectorBody, RunsRegion } from "./InspectorBody";
 
 // Component tests: where the body puts Runs, rendered in a panel-sized box.

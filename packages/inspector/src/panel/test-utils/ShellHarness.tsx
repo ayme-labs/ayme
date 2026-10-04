@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { InspectorShell } from "./InspectorShell";
-import { defaultPreferences, type Preferences } from "./preferences";
+import { InspectorShell } from "../presentation/InspectorShell";
+import { defaultPreferences, type Preferences } from "../domain/preferences";
 
 /**
  * Component-test support: the shell holding its own preferences, the way

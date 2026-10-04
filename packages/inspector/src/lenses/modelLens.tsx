@@ -7,7 +7,7 @@ import { Empty } from "../shared/view/common";
 import type { Lens, SearchEntry } from "../frame/lens";
 import type { RenderRun } from "../frame/runSlot";
 import type { Selection } from "../frame/selection";
-import type { ModelPanes } from "../shell/preferences";
+import type { ModelPanes } from "../panel/domain/preferences";
 import type { OnHover } from "../frame/highlight";
 import {
   MemberDetail,
