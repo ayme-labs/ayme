@@ -1,7 +1,22 @@
 import type { DecisionRequest } from "./decisionTypes";
 import { RuntimeStateError } from "./errors";
 
-const upstreamUrl = "https://openrouter.ai/api/v1/systemone";
+/** Where each provider serves System One, and the Jev version the Goal Loop's
+ *  questions are tuned for, in that provider's model id. */
+const providers: Record<
+  CreateDecisionEndpointOptions["provider"],
+  { url: string; model: string }
+> = {
+  openrouter: {
+    url: "https://openrouter.ai/api/v1/systemone",
+    model: "typesafe/jev-1.13",
+  },
+  typesafe: {
+    url: "https://api.typesafe.ai/v1/systemone",
+    model: "jev-1.13.0",
+  },
+};
+
 const maxBodyBytes = 1024 * 1024;
 const excludedResponseHeaders = new Set([
   "connection",
@@ -19,6 +34,7 @@ const excludedResponseHeaders = new Set([
 ]);
 
 export type CreateDecisionEndpointOptions = {
+  provider: "openrouter" | "typesafe";
   apiKey: string;
   authorize: (request: Request) => void | Promise<void>;
 };
@@ -30,15 +46,10 @@ function jsonError(status: number, error: string): Response {
   });
 }
 
-function isDecisionModel(model: unknown): model is string {
-  return typeof model === "string" && model.startsWith("typesafe/jev-");
-}
-
 function isDecisionRequest(body: unknown): body is DecisionRequest {
   if (!body || typeof body !== "object") return false;
   const record = body as Record<string, unknown>;
   return (
-    typeof record.model === "string" &&
     (typeof record.state === "string" ||
       (record.state !== null && typeof record.state === "object")) &&
     record.questions !== null &&
@@ -95,6 +106,7 @@ function responseHeaders(headers: Headers): Headers {
 }
 
 export function createDecisionEndpoint({
+  provider,
   apiKey,
   authorize,
 }: CreateDecisionEndpointOptions): (request: Request) => Promise<Response> {
@@ -102,6 +114,11 @@ export function createDecisionEndpoint({
     throw new RuntimeStateError(
       "createDecisionEndpoint must run on the server."
     );
+  if (!Object.hasOwn(providers, provider))
+    throw new RuntimeStateError(
+      'The provider must be "openrouter" or "typesafe".'
+    );
+  const upstream = providers[provider];
 
   return async (request) => {
     if (request.method !== "POST")
@@ -128,27 +145,25 @@ export function createDecisionEndpoint({
     if (!isDecisionRequest(body))
       return jsonError(
         400,
-        "The request body must include model, state, and questions."
-      );
-
-    if (!isDecisionModel(body.model))
-      return jsonError(
-        400,
-        "The model must be a typesafe/jev-* System One model."
+        "The request body must include state and questions."
       );
 
     try {
-      const upstream = await fetch(upstreamUrl, {
+      const response = await fetch(upstream.url, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          model: upstream.model,
+          state: body.state,
+          questions: body.questions,
+        }),
       });
-      return new Response(await upstream.arrayBuffer(), {
-        status: upstream.status,
-        headers: responseHeaders(upstream.headers),
+      return new Response(await response.arrayBuffer(), {
+        status: response.status,
+        headers: responseHeaders(response.headers),
       });
     } catch (error) {
       console.error("Decision Endpoint upstream request failed.", error);

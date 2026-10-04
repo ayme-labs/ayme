@@ -2,9 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDecisionEndpoint } from "./server";
 
-const upstreamUrl = "https://openrouter.ai/api/v1/systemone";
 const validBody = {
-  model: "typesafe/jev-1.13",
   state: { goal: "archive item" },
   questions: {
     operation: { type: "choice", instructions: "Pick one.", criteria: {} },
@@ -41,7 +39,11 @@ describe("createDecisionEndpoint", () => {
   it("throws when a document exists", () => {
     vi.stubGlobal("document", {});
     expect(() =>
-      createDecisionEndpoint({ apiKey: "secret", authorize })
+      createDecisionEndpoint({
+        provider: "openrouter",
+        apiKey: "secret",
+        authorize,
+      })
     ).toThrow("createDecisionEndpoint must run on the server.");
   });
 
@@ -51,7 +53,11 @@ describe("createDecisionEndpoint", () => {
         status: 403,
       });
     });
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
     const response = await handler(jsonRequest(validBody));
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: "Forbidden." });
@@ -59,7 +65,11 @@ describe("createDecisionEndpoint", () => {
   });
 
   it("rejects non-POST requests with 405", async () => {
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
     const response = await handler(
       new Request("http://localhost/decisions", { method: "GET" })
     );
@@ -71,7 +81,11 @@ describe("createDecisionEndpoint", () => {
   });
 
   it("rejects bodies over 1 MB with 413", async () => {
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
     const response = await handler(
       new Request("http://localhost/decisions", {
         method: "POST",
@@ -97,7 +111,11 @@ describe("createDecisionEndpoint", () => {
         cancelled = true;
       },
     });
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
     const response = await handler(
       new Request("http://localhost/decisions", {
         method: "POST",
@@ -114,7 +132,11 @@ describe("createDecisionEndpoint", () => {
   });
 
   it("rejects non-JSON bodies with 400", async () => {
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
     const response = await handler(
       new Request("http://localhost/decisions", {
         method: "POST",
@@ -128,71 +150,92 @@ describe("createDecisionEndpoint", () => {
   });
 
   it("rejects bodies missing required fields with 400", async () => {
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
-    const response = await handler(jsonRequest({ model: "typesafe/jev-1.13" }));
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
+    const response = await handler(jsonRequest({ state: "a page" }));
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
-      error: "The request body must include model, state, and questions.",
+      error: "The request body must include state and questions.",
     });
   });
 
   it.each([
-    { ...validBody, model: null },
     { ...validBody, state: null },
     { ...validBody, questions: [] },
   ])("rejects invalid required field types with 400", async (body) => {
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
     const response = await handler(jsonRequest(body));
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
-      error: "The request body must include model, state, and questions.",
+      error: "The request body must include state and questions.",
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects models outside typesafe/jev-* with 400", async () => {
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
-    const response = await handler(
-      jsonRequest({ ...validBody, model: "openai/gpt-4" })
-    );
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({
-      error: "The model must be a typesafe/jev-* System One model.",
-    });
+  it("throws when the provider is not openrouter or typesafe", () => {
+    expect(() =>
+      createDecisionEndpoint({
+        provider: "openai" as "openrouter",
+        apiKey: "secret",
+        authorize,
+      })
+    ).toThrow('The provider must be "openrouter" or "typesafe".');
   });
 
-  it("forwards no incoming headers and adds the key for upstream requests", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(
-        JSON.stringify({ model: "typesafe/jev-1.13", answers: {} }),
-        {
+  it.each([
+    {
+      provider: "openrouter" as const,
+      upstreamUrl: "https://openrouter.ai/api/v1/systemone",
+      model: "typesafe/jev-1.13",
+    },
+    {
+      provider: "typesafe" as const,
+      upstreamUrl: "https://api.typesafe.ai/v1/systemone",
+      model: "jev-1.13.0",
+    },
+  ])(
+    "forwards to $provider with its Jev model id and the key, and no incoming headers",
+    async ({ provider, upstreamUrl, model }) => {
+      fetchMock.mockResolvedValue(
+        new Response(JSON.stringify({ model, answers: {} }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
-        }
-      )
-    );
-    const handler = createDecisionEndpoint({ apiKey: "secret-key", authorize });
-    const response = await handler(
-      jsonRequest(validBody, {
-        headers: {
-          Cookie: "session=abc",
-          "X-Custom": "keep-out",
-        },
-      })
-    );
-    expect(response.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toBe(upstreamUrl);
-    expect(init?.method).toBe("POST");
-    expect(new Headers(init?.headers)).toEqual(
-      new Headers({
-        Authorization: "Bearer secret-key",
-        "Content-Type": "application/json",
-      })
-    );
-    expect(JSON.parse(String(init?.body))).toEqual(validBody);
-  });
+        })
+      );
+      const handler = createDecisionEndpoint({
+        provider,
+        apiKey: "secret-key",
+        authorize,
+      });
+      const response = await handler(
+        jsonRequest(validBody, {
+          headers: {
+            Cookie: "session=abc",
+            "X-Custom": "keep-out",
+          },
+        })
+      );
+      expect(response.status).toBe(200);
+      expect(fetchMock).toHaveBeenCalledOnce();
+      const [url, init] = fetchMock.mock.calls[0]!;
+      expect(url).toBe(upstreamUrl);
+      expect(init?.method).toBe("POST");
+      expect(new Headers(init?.headers)).toEqual(
+        new Headers({
+          Authorization: "Bearer secret-key",
+          "Content-Type": "application/json",
+        })
+      );
+      expect(JSON.parse(String(init?.body))).toEqual({ model, ...validBody });
+    }
+  );
 
   it("passes upstream success responses through unchanged", async () => {
     const upstreamBody = {
@@ -205,7 +248,11 @@ describe("createDecisionEndpoint", () => {
         headers: { "Content-Type": "application/json" },
       })
     );
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
     const response = await handler(jsonRequest(validBody));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(upstreamBody);
@@ -218,7 +265,11 @@ describe("createDecisionEndpoint", () => {
         headers: { "Content-Type": "application/json" },
       })
     );
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
     const response = await handler(jsonRequest(validBody));
     expect(response.status).toBe(429);
     expect(await response.json()).toEqual({ error: "Rate limited." });
@@ -243,7 +294,11 @@ describe("createDecisionEndpoint", () => {
         },
       })
     );
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
     const response = await handler(jsonRequest(validBody));
     expect(await response.text()).toBe(decodedBody);
     expect(response.headers.get("content-encoding")).toBeNull();
@@ -260,7 +315,11 @@ describe("createDecisionEndpoint", () => {
       .spyOn(console, "error")
       .mockImplementation(() => {});
     fetchMock.mockRejectedValue(new Error("network down"));
-    const handler = createDecisionEndpoint({ apiKey: "secret", authorize });
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
     const response = await handler(jsonRequest(validBody));
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({

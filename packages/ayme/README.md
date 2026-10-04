@@ -419,23 +419,27 @@ gates access.
 
 ### Route contract
 
-`POST` with JSON body `{ model, state, questions }`.
+`POST` with JSON body `{ state, questions }`.
 
-- `model`, `state`, and `questions` follow the System One decisions API. The
-  endpoint accepts only `typesafe/jev-*` models.
+- `state` and `questions` follow the System One decisions API. The endpoint
+  adds the Jev model the Goal Loop's questions are tuned for.
 - Success and upstream errors: return the upstream status and body unchanged.
 - The endpoint's own rejections return `{ "error": "<one plain sentence>" }`:
   - `405` when the method is not `POST`
   - `413` when the body is over 1 MB
-  - `400` when the body is not JSON, a field is missing, or the model is not
-    `typesafe/jev-*`
+  - `400` when the body is not JSON or a field is missing
   - `502` when the upstream provider cannot be reached
 - Authorization failures return whatever `Response` your `authorize` function
   throws.
 
 The handler forwards no incoming request headers. It builds the upstream request
-from scratch with your key and `Content-Type: application/json`, posting to
-OpenRouter's System One API at `https://openrouter.ai/api/v1/systemone`.
+from scratch with your key and `Content-Type: application/json`, posting to the
+System One API of the `provider` you choose:
+
+| `provider`     | Key               | System One API                           |
+| -------------- | ----------------- | ---------------------------------------- |
+| `"typesafe"`   | a TypeSafe key    | `https://api.typesafe.ai/v1/systemone`   |
+| `"openrouter"` | an OpenRouter key | `https://openrouter.ai/api/v1/systemone` |
 
 ### Server handler
 
@@ -443,14 +447,16 @@ OpenRouter's System One API at `https://openrouter.ai/api/v1/systemone`.
 import { createDecisionEndpoint } from "@ayme-dev/ayme/server";
 
 const handleDecision = createDecisionEndpoint({
-  apiKey: process.env.YOUR_OPENROUTER_KEY!,
+  provider: "typesafe",
+  apiKey: process.env.YOUR_TYPESAFE_KEY!,
   authorize(request) {
     // Return nothing when allowed, or throw a Response to reject.
   },
 });
 ```
 
-`createDecisionEndpoint` requires both options and throws when `document` exists.
+`createDecisionEndpoint` requires all three options and throws when `document`
+exists or `provider` is not `"typesafe"` or `"openrouter"`.
 
 Mount `handleDecision` on your backend route. In Vite during local development:
 
@@ -458,7 +464,8 @@ Mount `handleDecision` on your backend route. In Vite during local development:
 import { createDecisionEndpoint } from "@ayme-dev/ayme/server";
 
 const handler = createDecisionEndpoint({
-  apiKey: process.env.YOUR_OPENROUTER_KEY!,
+  provider: "typesafe",
+  apiKey: process.env.YOUR_TYPESAFE_KEY!,
   authorize() {},
 });
 
