@@ -129,8 +129,9 @@ Run from this directory inside the repository's Devbox shell:
 - `pnpm test` runs the unit tests in jsdom (`*.test.ts`) and the component
   tests in Chromium through vitest browser (`*.browser.test.tsx`). A
   component test renders one part with fixture props into an open shadow
-  root it owns (`src/renderPart.tsx`), with the Inspector's stylesheet and
-  themed root, and drives it through the page objects on playwright-lite.
+  root it owns (`src/testing/renderPart.tsx`), with the Inspector's
+  stylesheet and themed root, and drives it through the page objects on
+  playwright-lite.
 - The end-to-end tests, which run the built package on fixture pages, live in
   [`apps/inspector-fixture`](https://github.com/ayme-labs/ayme/tree/main/apps/inspector-fixture).
   The app builds its Page Objects with the Ayme plugin, which depends on this

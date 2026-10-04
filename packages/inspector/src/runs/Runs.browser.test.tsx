@@ -5,7 +5,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { RunStep } from "../adapter/runSteps";
 import type { Run } from "../adapter/useRuns";
 import { RunsRegion } from "../frame/InspectorBody";
-import { renderPart } from "../renderPart";
+import { renderPart } from "../testing/renderPart";
 import { RunsView } from "../testing";
 import { Runs, type RunFocus, type RunsProps } from "./Runs";
 

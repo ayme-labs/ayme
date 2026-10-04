@@ -9,7 +9,7 @@ import type { Lens, LensId } from "../frame/lens";
 import { Navigator } from "../frame/Navigator";
 import type { RenderRun } from "../frame/runSlot";
 import { pageSelection, type Selection } from "../frame/selection";
-import { renderPart } from "../renderPart";
+import { renderPart } from "../testing/renderPart";
 import {
   DetailPane as DetailPanePart,
   Navigator as NavigatorPart,

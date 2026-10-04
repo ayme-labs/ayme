@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { renderPart } from "../renderPart";
+import { renderPart } from "../testing/renderPart";
 import { Inspector } from "../testing";
 import type { Preferences } from "./preferences";
 import { ShellHarness } from "./ShellHarness.testSupport";

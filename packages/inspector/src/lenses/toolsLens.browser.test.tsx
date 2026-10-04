@@ -6,7 +6,7 @@ import { DetailPane as DetailPaneFrame } from "../frame/InspectorBody";
 import { Navigator as NavigatorFrame } from "../frame/Navigator";
 import type { RenderRun } from "../frame/runSlot";
 import { pageSelection, type Selection } from "../frame/selection";
-import { renderPart } from "../renderPart";
+import { renderPart } from "../testing/renderPart";
 import { DetailPane, Navigator } from "../testing";
 import type { LiveTool } from "./toolGroups";
 import { toolsLens } from "./toolsLens";

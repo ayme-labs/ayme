@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { InspectorRoot } from "./InspectorRoot";
-import { renderInShadowRoot } from "./renderInspector";
+import { InspectorRoot } from "../InspectorRoot";
+import { renderInShadowRoot } from "../renderInspector";
 
 /**
  * Component-test support: renders one part of the panel with fixture props

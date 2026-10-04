@@ -2,7 +2,7 @@ import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { renderPart } from "../renderPart";
+import { renderPart } from "../testing/renderPart";
 import { Navigator as NavigatorPart } from "../testing";
 import type { Lens, LensId } from "./lens";
 import { Navigator } from "./Navigator";

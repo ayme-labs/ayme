@@ -1,7 +1,7 @@
 import { afterEach, expect, it } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { renderPart } from "../renderPart";
+import { renderPart } from "../testing/renderPart";
 import type { Layout } from "../shell/preferences";
 import { DetailPane, InspectorBody, RunsRegion } from "./InspectorBody";
 

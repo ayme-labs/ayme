@@ -9,7 +9,7 @@ import { Navigator } from "../frame/Navigator";
 import type { OnHover } from "../frame/highlight";
 import type { RenderRun } from "../frame/runSlot";
 import type { Selection } from "../frame/selection";
-import { renderPart } from "../renderPart";
+import { renderPart } from "../testing/renderPart";
 import { defaultPreferences } from "../shell/preferences";
 import {
   DetailPane as DetailPanePart,

@@ -5,7 +5,7 @@ import type { RunnableTool } from "../adapter/runnableTools";
 import { forest, node } from "../adapter/projected.testSupport";
 import { buildStructureTree } from "../adapter/structure";
 import type { CollectionItem, Run } from "../adapter/useRuns";
-import { renderPart } from "../renderPart";
+import { renderPart } from "../testing/renderPart";
 import { RunCard as RunCardPart } from "../testing";
 import { RunCard, type RunCardProps } from "./RunCard";
 
