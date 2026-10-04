@@ -13,8 +13,10 @@
  *    declared export subpath.
  * 4. The packed @ayme-dev/ayme does not expose private workspace packages.
  * 5. Consumers type-check and load config with and without Playwright.
- * 6. An Angular consumer type-checks at Angular's and TypeScript's floor.
- * 7. React, Vue and Svelte consumers type-check the published declarations
+ * 6. A Vite config type-checks the library declarations with only Vite
+ *    installed beside the packages.
+ * 7. An Angular consumer type-checks at Angular's and TypeScript's floor.
+ * 8. React, Vue and Svelte consumers type-check the published declarations
  *    at each adapter's framework floor.
  *
  * With `AYME_PACKED_DIR` set, the tarballs are packed into that empty
@@ -562,6 +564,84 @@ assert.throws(() => createRequire(import.meta.url).resolve('@playwright/test/pac
   }
 );
 
+// The floors of the plugin's Vite peer range.
+for (const vite of ["7.0.0", "8.0.0"])
+  it(
+    `a packed Vite config type-checks its library declarations with Vite ${vite} alone`,
+    { timeout: 120_000 },
+    () => {
+      const consumer = path.join(tmp, `vite-${vite}-consumer`);
+      fs.mkdirSync(consumer);
+      const { tarballs, workspaceYaml } = tarballDependencies([
+        "@ayme-dev/ayme",
+        "@ayme-dev/inspector",
+        "@ayme-dev/unplugin-ayme",
+      ]);
+      fs.writeFileSync(
+        path.join(consumer, "package.json"),
+        JSON.stringify({
+          name: "ayme-vite-consumer",
+          private: true,
+          type: "module",
+          dependencies: tarballs,
+          // Vite's own declarations import Node's.
+          devDependencies: {
+            typescript: "6.0.3",
+            "@types/node": "24.13.3",
+            vite,
+          },
+        })
+      );
+      fs.writeFileSync(
+        path.join(consumer, "pnpm-workspace.yaml"),
+        workspaceYaml
+      );
+      exec(
+        "pnpm",
+        [
+          "install",
+          "--ignore-scripts",
+          "--no-lockfile",
+          "--strict-peer-dependencies",
+        ],
+        consumer
+      );
+      fs.writeFileSync(
+        path.join(consumer, "tsconfig.json"),
+        JSON.stringify({
+          compilerOptions: {
+            strict: true,
+            skipLibCheck: false,
+            noEmit: true,
+            target: "ES2022",
+            module: "NodeNext",
+            moduleResolution: "NodeNext",
+            types: ["node"],
+          },
+          files: ["vite.config.ts"],
+        })
+      );
+      fs.writeFileSync(
+        path.join(consumer, "vite.config.ts"),
+        `
+import { defineConfig, type Plugin } from 'vite';
+import aymeDefault, { ayme, type AymeOptions } from '@ayme-dev/unplugin-ayme/vite';
+import turbopackLoader from '@ayme-dev/unplugin-ayme/turbopack-loader';
+const options: AymeOptions = { inspector: true, playwright: { use: { testIdAttribute: 'data-id' } } };
+const plugin: Plugin = ayme(options);
+void turbopackLoader;
+export default defineConfig({ plugins: [plugin, aymeDefault()] });
+`
+      );
+      exec("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
+      const viteDeclarations = fs.readFileSync(
+        path.join(packed["@ayme-dev/unplugin-ayme"]!.dir, "dist", "vite.d.mts"),
+        "utf8"
+      );
+      expect(viteDeclarations).not.toContain("unplugin");
+    }
+  );
+
 it(
   "packed Angular packages type-check in a consumer on Angular 19.0 and TypeScript 5.5",
   { timeout: 120_000 },
@@ -613,6 +693,7 @@ it(
         compilerOptions: {
           strict: true,
           experimentalDecorators: true,
+          skipLibCheck: false,
           noEmit: true,
           target: "ES2022",
           lib: ["ES2022", "ESNext.Disposable", "DOM"],
