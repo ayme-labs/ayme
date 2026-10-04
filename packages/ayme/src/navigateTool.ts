@@ -68,6 +68,12 @@ export const navigateTool: PublishedElementTool = {
     // The browser Page rejects an invalid URL with its own error before it
     // navigates.
     if (!destination) await page.goto(url);
+    // Only http(s) documents run this runtime; a same-origin blob: URL
+    // would pass the origin check below.
+    if (destination && !["http:", "https:"].includes(destination.protocol))
+      throw new ToolInputError(
+        `Cannot navigate to "${url}": the protocol ${destination.protocol} is not supported.`
+      );
     const { origin } = currentDocument.location;
     if (destination && destination.origin !== origin)
       throw new ToolInputError(

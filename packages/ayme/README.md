@@ -183,11 +183,11 @@ stop();
 - `navigate`: your client router's navigation, `(url: string) => void | Promise<void>`.
   The `navigate` Browser Tool calls it instead of loading a new document, so
   your app keeps its in-memory state. It gets the absolute URL of a page on
-  the document's own origin; the tool refuses other origins before calling
-  it. When it returns a promise, the tool waits for it, then for a Settled
-  Page, and answers with the Change Record; a rejection fails the call. If it
-  starts a full load after all, the call answers as in
-  [Full page loads](#full-page-loads). Without it, the tool opens the URL as
+  the document's own origin; the tool refuses other origins and protocols
+  other than `http:` and `https:` before calling it. When it returns a
+  promise, the tool waits for it, then for a Settled Page, and answers with
+  the Change Record; a rejection fails the call. If it starts a full load
+  after all, the call answers as in [Full page loads](#full-page-loads). Without it, the tool opens the URL as
   described in [Browser Tools](#browser-tools). It is configured on `start()` and cleared when the session
   stops. Most routers take a path, not a URL:
 
@@ -406,12 +406,12 @@ it would there:
   page's own origin: through your app's router when runtime setup gives a
   `navigate` function, otherwise through the browser Page's `goto`. A URL on
   another origin is refused: the new document would not run Ayme, so the
-  connection to the page would be lost. An invalid URL or an unsupported
-  protocol is refused too. When your router function, or a router that takes
-  over navigations through the browser's Navigation API, handles it, or only
-  the fragment changes, the call waits for a Settled Page and returns the
-  Change Record like a click. Otherwise the browser loads the URL as a new
-  document, and the call answers as described in
+  connection to the page would be lost. An invalid URL, or one whose protocol
+  is not `http:` or `https:`, is refused too. When your router function, or a
+  router that takes over navigations through the browser's Navigation API,
+  handles it, or only the fragment changes, the call waits for a Settled Page
+  and returns the Change Record like a click. Otherwise the browser loads the
+  URL as a new document, and the call answers as described in
   [Full page loads](#full-page-loads).
 - `fill_form` fills its fields in order and stops at the first that fails. Its
   `result` names the fields filled (`filled`) and the one that failed

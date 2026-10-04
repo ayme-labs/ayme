@@ -47,6 +47,12 @@ const otherOrigin = (url: string) =>
     `ToolInputError: Cannot navigate to "${url}": it is not on the page's own origin, ${location.origin}. Leaving the origin would lose the connection to this page; navigate to a path or a URL on ${location.origin} instead.`
   );
 
+/** The error for a URL whose protocol the tool does not open. */
+const unsupportedProtocol = (url: string, protocol: string) =>
+  failure(
+    `ToolInputError: Cannot navigate to "${url}": the protocol ${protocol} is not supported.`
+  );
+
 describe("the navigate tool, in Chromium", () => {
   let ayme: Ayme;
   let call: (name: string, input: unknown) => Promise<unknown>;
@@ -137,12 +143,30 @@ describe("the navigate tool, in Chromium", () => {
     });
   });
 
-  it.each([
-    ["another origin", "https://example.com/sign-in"],
-    ["an unsupported protocol", "javascript:alert(1)"],
-  ])("refuses a URL on %s", async (_kind, url) => {
+  it("refuses a URL on another origin", async () => {
+    const url = "https://example.com/sign-in";
     await expect(call("navigate", { url })).resolves.toEqual(otherOrigin(url));
     expect(location.href).toBe(start);
+  });
+
+  it("refuses an unsupported protocol", async () => {
+    const url = "javascript:alert(1)";
+    await expect(call("navigate", { url })).resolves.toEqual(
+      unsupportedProtocol(url, "javascript:")
+    );
+    expect(location.href).toBe(start);
+  });
+
+  it("refuses a blob URL on the page's own origin", async () => {
+    const url = URL.createObjectURL(new Blob(["<p>Blob page</p>"]));
+    try {
+      await expect(call("navigate", { url })).resolves.toEqual(
+        unsupportedProtocol(url, "blob:")
+      );
+      expect(location.href).toBe(start);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   });
 
   it("refuses an invalid URL with the browser Page's error", async () => {
