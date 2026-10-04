@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { InspectorRoot } from "../InspectorRoot";
+import { InspectorRoot } from "../shared/view/InspectorRoot";
 import { renderInShadowRoot } from "../renderInspector";
 
 /**

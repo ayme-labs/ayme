@@ -24,7 +24,7 @@ import {
 } from "./geometry";
 import { Header, layoutNames } from "./Header";
 import type { Layout, Preferences } from "./preferences";
-import { usePointerDrag } from "./pointerDrag";
+import { usePointerDrag } from "../shared/presentation/pointerDrag";
 import { useHostReservation } from "./useHostReservation";
 import { currentViewport, useViewport } from "./useViewport";
 

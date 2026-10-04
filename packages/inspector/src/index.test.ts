@@ -9,7 +9,7 @@ import {
   mountInspector,
 } from "./index";
 import { withDemoFeedback } from "./demo";
-import { inspectorShadowRoot } from "./shadowRootHook";
+import { inspectorShadowRoot } from "./shared/infrastructure/shadowRootHook";
 
 const disposals: (() => void)[] = [];
 

@@ -4,7 +4,7 @@ import {
   type ProjectedStructuralNodeForest,
 } from "@ayme-dev/ayme/internal";
 
-import type { ControlState } from "./formControls";
+import type { ControlState } from "../shared/infrastructure/formControls";
 import {
   indexMembers,
   type IndexedMember,

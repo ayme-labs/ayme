@@ -12,7 +12,7 @@ import {
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { PageObjectModel, PageObjectNode } from "../../adapter/pageModel";
-import { usePointerDrag } from "../../shell/pointerDrag";
+import { usePointerDrag } from "../../shared/presentation/pointerDrag";
 import {
   maxModelSplit as maxSplit,
   minModelSplit as minSplit,

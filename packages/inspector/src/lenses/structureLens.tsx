@@ -10,8 +10,8 @@ import {
   type StructureRow,
   type StructureTree,
 } from "../adapter/structure";
-import { Empty } from "../common";
-import { WhatTheModelSees } from "../detail/WhatTheModelSees";
+import { Empty } from "../shared/view/common";
+import { WhatTheModelSees } from "../shared/view/WhatTheModelSees";
 import type { OnHover } from "../frame/highlight";
 import type { Lens, SearchEntry } from "../frame/lens";
 import type { RenderRun } from "../frame/runSlot";

@@ -1,6 +1,6 @@
 import { BracesIcon, ChevronRightIcon, ZapIcon } from "lucide-react";
 
-import { WhatTheModelSees } from "../detail/WhatTheModelSees";
+import { WhatTheModelSees } from "../shared/view/WhatTheModelSees";
 import type { Lens } from "../frame/lens";
 import { NavItem } from "../frame/NavItem";
 import type { RenderRun } from "../frame/runSlot";

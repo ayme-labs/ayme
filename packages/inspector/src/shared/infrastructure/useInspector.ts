@@ -18,10 +18,10 @@ import {
   subscribeToRegisteredPoms,
 } from "@ayme-dev/ayme/internal";
 
-import type { HighlightTarget } from "../frame/highlight";
+import type { HighlightTarget } from "../../frame/highlight";
 import { readControls, type ControlState } from "./formControls";
 import { createRefreshScheduler } from "./refreshScheduler";
-import { mapTargetsToRefs } from "./structure";
+import { mapTargetsToRefs } from "../../adapter/structure";
 
 export type RegistrySnapshot = {
   registeredPoms: readonly RegisteredPom[];

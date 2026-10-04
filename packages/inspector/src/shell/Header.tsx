@@ -19,7 +19,7 @@ import { Badge } from "@ayme-dev/design-system/components/badge";
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import { AymeMark } from "../AymeMark";
+import { AymeMark } from "../shared/view/AymeMark";
 import type { Layout, ThemePreference } from "./preferences";
 
 const iconButton =

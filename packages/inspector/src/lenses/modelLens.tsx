@@ -3,7 +3,7 @@ import {
   type PageModel,
   type PageObjectNode,
 } from "../adapter/pageModel";
-import { Empty } from "../common";
+import { Empty } from "../shared/view/common";
 import type { Lens, SearchEntry } from "../frame/lens";
 import type { RenderRun } from "../frame/runSlot";
 import type { Selection } from "../frame/selection";

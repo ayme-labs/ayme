@@ -3,7 +3,7 @@ import { installRuntimePageInstrumentation } from "@ayme-dev/ayme/internal";
 
 import { allowPassThrough } from "./panelPassThrough";
 import { renderInspector } from "./renderInspector";
-import { exposeInspectorShadowRoot } from "./shadowRootHook";
+import { exposeInspectorShadowRoot } from "./shared/infrastructure/shadowRootHook";
 import {
   dispatchInspectorTrace,
   recordInspectorTrace,

@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useRuntimeAdapter } from "./adapter/useRuntimeAdapter";
-import { Empty } from "./common";
+import { Empty } from "./shared/view/common";
 import { DetailPane, InspectorBody } from "./frame/InspectorBody";
 import { selectionHighlight } from "./frame/highlight";
 import type { Lens, LensId } from "./frame/lens";
 import { isStaleSelection } from "./frame/staleSelection";
 import { Navigator } from "./frame/Navigator";
 import { pageSelection, type Selection } from "./frame/selection";
-import { InspectorRoot } from "./InspectorRoot";
+import { InspectorRoot } from "./shared/view/InspectorRoot";
 import { modelLens } from "./lenses/modelLens";
 import { structureLens } from "./lenses/structureLens";
 import { attachToolModels } from "./lenses/toolGroups";

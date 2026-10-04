@@ -13,7 +13,7 @@ import {
 } from "./refPicking";
 import { listRunnableTools } from "./runnableTools";
 import { buildStructureTree, emptyStructure } from "./structure";
-import { useInspector } from "./useInspector";
+import { useInspector } from "../shared/infrastructure/useInspector";
 import { useRuns } from "./useRuns";
 
 /**
