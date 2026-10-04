@@ -21,7 +21,7 @@ import {
 import type { HighlightTarget } from "../../navigation/domain/highlight";
 import { readControls, type ControlState } from "./formControls";
 import { createRefreshScheduler } from "./refreshScheduler";
-import { mapTargetsToRefs } from "../../adapter/structure";
+import { mapTargetsToRefs } from "../../structure/domain/structure";
 
 export type RegistrySnapshot = {
   registeredPoms: readonly RegisteredPom[];

@@ -2,19 +2,22 @@ import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { StructureTree } from "../adapter/structure";
-import { DetailPane } from "../panel/view/InspectorBody";
-import type { OnHover } from "../navigation/domain/highlight";
-import type { Lens, LensId } from "../navigation/domain/lens";
-import { Navigator } from "../navigation/view/Navigator";
-import type { RenderRun } from "../navigation/domain/runSlot";
-import { pageSelection, type Selection } from "../navigation/domain/selection";
-import { renderPart } from "../testing/renderPart";
+import type { StructureTree } from "../domain/structure";
+import { DetailPane } from "../../panel/view/InspectorBody";
+import type { OnHover } from "../../navigation/domain/highlight";
+import type { Lens, LensId } from "../../navigation/domain/lens";
+import { Navigator } from "../../navigation/view/Navigator";
+import type { RenderRun } from "../../navigation/domain/runSlot";
+import {
+  pageSelection,
+  type Selection,
+} from "../../navigation/domain/selection";
+import { renderPart } from "../../testing/renderPart";
 import {
   DetailPane as DetailPanePart,
   Navigator as NavigatorPart,
   StructureLens,
-} from "../testing";
+} from "../../testing";
 import { structureLens } from "./structureLens";
 
 // Component tests: the Structure lens in the navigator and the detail pane,

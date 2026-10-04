@@ -1,6 +1,6 @@
-import type { StructureTree } from "../adapter/structure";
-import { memberResolves } from "./memberSelection";
-import type { Selection } from "../navigation/domain/selection";
+import type { StructureTree } from "../domain/structure";
+import { memberResolves } from "../domain/memberSelection";
+import type { Selection } from "../../navigation/domain/selection";
 
 /**
  * Whether a selection is stale, so the frame sends it back to the page.

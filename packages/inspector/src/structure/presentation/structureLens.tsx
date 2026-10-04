@@ -9,13 +9,13 @@ import {
   type StructureNode,
   type StructureRow,
   type StructureTree,
-} from "../adapter/structure";
-import { Empty } from "../shared/view/common";
-import { WhatTheModelSees } from "../shared/view/WhatTheModelSees";
-import type { OnHover } from "../navigation/domain/highlight";
-import type { Lens, SearchEntry } from "../navigation/domain/lens";
-import type { RenderRun } from "../navigation/domain/runSlot";
-import type { Selection } from "../navigation/domain/selection";
+} from "../domain/structure";
+import { Empty } from "../../shared/view/common";
+import { WhatTheModelSees } from "../../shared/view/WhatTheModelSees";
+import type { OnHover } from "../../navigation/domain/highlight";
+import type { Lens, SearchEntry } from "../../navigation/domain/lens";
+import type { RenderRun } from "../../navigation/domain/runSlot";
+import type { Selection } from "../../navigation/domain/selection";
 
 /** Whether the structure is being captured, or why it couldn't be. */
 export type StructureCapture = {

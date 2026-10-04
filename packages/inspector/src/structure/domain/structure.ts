@@ -4,12 +4,12 @@ import {
   type ProjectedStructuralNodeForest,
 } from "@ayme-dev/ayme/internal";
 
-import type { ControlState } from "../shared/infrastructure/formControls";
+import type { ControlState } from "../../shared/infrastructure/formControls";
 import {
   indexMembers,
   type IndexedMember,
   type MemberIndex,
-} from "../page-model/domain/memberIndex";
+} from "../../page-model/domain/memberIndex";
 
 /**
  * The structure tree model: the Structural Page State an agent receives, as

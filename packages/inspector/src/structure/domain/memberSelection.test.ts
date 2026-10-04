@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { indexMembers } from "../page-model/domain/memberIndex";
-import { collection, model, page } from "../page-model/test-utils/pageModel";
-import { forest, node } from "../adapter/projected.testSupport";
-import { buildStructureTree } from "../adapter/structure";
-import { selectionHighlight } from "../navigation/domain/highlight";
+import { indexMembers } from "../../page-model/domain/memberIndex";
+import { collection, model, page } from "../../page-model/test-utils/pageModel";
+import { forest, node } from "../test-utils/projected";
+import { buildStructureTree } from "./structure";
+import { selectionHighlight } from "../../navigation/domain/highlight";
 import {
   memberResolves as resolvesIn,
   runIsOnMember as runIsOn,

@@ -22,7 +22,7 @@ import { Inspector } from "./testing";
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
-  const { forest, node } = await import("./adapter/projected.testSupport");
+  const { forest, node } = await import("./structure/test-utils/projected");
   return {
     pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),

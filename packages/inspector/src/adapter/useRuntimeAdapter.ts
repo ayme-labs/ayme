@@ -15,7 +15,10 @@ import {
   type RefPickingHandlers,
 } from "./refPicking";
 import { listRunnableTools } from "./runnableTools";
-import { buildStructureTree, emptyStructure } from "./structure";
+import {
+  buildStructureTree,
+  emptyStructure,
+} from "../structure/domain/structure";
 import { useInspector } from "../shared/infrastructure/useInspector";
 import { useRuns } from "./useRuns";
 

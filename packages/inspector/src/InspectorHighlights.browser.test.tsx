@@ -9,7 +9,7 @@ import {
   type RegisteredPom,
 } from "@ayme-dev/ayme/internal";
 
-import { forest, node } from "./adapter/projected.testSupport";
+import { forest, node } from "./structure/test-utils/projected";
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "./testing";
 

@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { indexMembers } from "../page-model/domain/memberIndex";
-import { forest, node } from "./projected.testSupport";
+import { indexMembers } from "../../page-model/domain/memberIndex";
+import { forest, node } from "../test-utils/projected";
 import {
   collection,
   component,
   model,
   page,
   type Contents,
-} from "../page-model/test-utils/pageModel";
+} from "../../page-model/test-utils/pageModel";
 import {
   buildStructureTree,
   mapTargetsToRefs,

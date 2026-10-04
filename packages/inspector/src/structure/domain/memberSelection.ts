@@ -1,4 +1,4 @@
-import type { StructureTree } from "../adapter/structure";
+import type { StructureTree } from "./structure";
 
 /**
  * Whether a member still resolves on the page: some node of the structure is
