@@ -5,13 +5,17 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import type { AgentConnection } from "../../connection";
+import { callPageTool } from "../application/callPageTool";
 import type { ServerTool } from "../application/serverTool";
-import { errorResult, pageToolResult } from "../domain/toolResult";
+import { errorResult, mcpPageTool } from "../domain/toolResult";
 
 /**
  * The MCP server an agent talks to: the server's own tools, then the paired
  * page's tools under the names the page gives them. A page tool that shares
- * a server tool's name is left out.
+ * a server tool's name is left out. While no page is paired, any other name
+ * answers that no page is connected, since it may be a page tool the agent
+ * listed before. The agent hears `notifications/tools/list_changed` whenever
+ * a page pairs, leaves or reports new tools.
  */
 export function createMcpToolServer({
   name,
@@ -28,6 +32,11 @@ export function createMcpToolServer({
     { name, version },
     { capabilities: { tools: { listChanged: true } } }
   );
+  // The connection lives as long as the server, so this never unsubscribes.
+  connection.subscribe(() => {
+    // Only while an agent is connected; the notification can't reach it otherwise.
+    if (server.transport) void server.sendToolListChanged().catch(() => {});
+  });
   const ownNames = new Set(serverTools.map((tool) => tool.name));
   const pageTools = () =>
     connection.tools.filter((tool) => !ownNames.has(tool.name));
@@ -39,11 +48,7 @@ export function createMcpToolServer({
         description,
         inputSchema,
       })),
-      ...pageTools().map(({ name, description, inputSchema }) => ({
-        name,
-        description,
-        inputSchema: { ...inputSchema, type: "object" as const },
-      })),
+      ...pageTools().map(mcpPageTool),
     ],
   }));
 
@@ -51,9 +56,9 @@ export function createMcpToolServer({
     const { name, arguments: input = {} } = request.params;
     const serverTool = serverTools.find((tool) => tool.name === name);
     if (serverTool) return serverTool.call(input);
-    if (pageTools().some((tool) => tool.name === name))
-      return pageToolResult(await connection.call(name, input));
-    return errorResult(`Unknown tool "${name}".`);
+    return callPageTool(connection, name, input, () =>
+      errorResult(`Unknown tool "${name}".`)
+    );
   });
 
   return server;

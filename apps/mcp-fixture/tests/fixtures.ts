@@ -4,12 +4,13 @@ import { fileURLToPath } from "node:url";
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { test as base, expect } from "@playwright/test";
 
 export { expect };
 
 /** The server's own tools; every other MCP tool is a page tool. */
-export const SERVER_TOOLS = ["ayme_connect"];
+export const SERVER_TOOLS = ["ayme_connect", "ayme_list_tools", "ayme_call"];
 
 /** The `ayme` command of the built `@ayme-dev/mcp`, as a consumer gets it. */
 const mcpPackage = join(
@@ -63,7 +64,11 @@ export class Agent {
 
 /** Starts the `ayme mcp` command as a child process and connects to it. */
 export async function startAgent(): Promise<
-  Agent & { close(): Promise<void> }
+  Agent & {
+    close(): Promise<void>;
+    /** How many `notifications/tools/list_changed` the server has sent. */
+    toolListChanges(): number;
+  }
 > {
   const transport = new StdioClientTransport({
     command: process.execPath,
@@ -73,14 +78,20 @@ export async function startAgent(): Promise<
   let stderr = "";
   transport.stderr?.on("data", (chunk: Buffer) => (stderr += String(chunk)));
   const client = new Client({ name: "ayme-e2e", version: "0.0.0" });
+  let toolListChanges = 0;
+  client.setNotificationHandler(
+    ToolListChangedNotificationSchema,
+    () => void toolListChanges++
+  );
   await client.connect(transport);
   return Object.assign(new Agent(client, () => stderr), {
     close: () => client.close(),
+    toolListChanges: () => toolListChanges,
   });
 }
 
 export const test = base.extend<{
-  agent: Agent;
+  agent: Awaited<ReturnType<typeof startAgent>>;
   /**
    * Asks the agent's server for a connect link to `path` on the fixture app,
    * opens it in the page and waits until the page's tools are MCP tools.
