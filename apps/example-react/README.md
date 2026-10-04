@@ -12,4 +12,4 @@ pnpm --filter @ayme-dev/example-react test:e2e
 
 The app works without a WebMCP driver through the direct Page Object button. End-to-end tests install a recording driver, execute a Page Object Tool, and check tool removal and restoration as the counter unmounts and mounts. Another test uses the same POM through real Playwright.
 
-See the [React package README](../../packages/react/README.md) for setup and lifecycle rules. The [Next.js fixture](../example-next/README.md) covers server rendering.
+See the [React package README](../../packages/react/README.md) for setup and lifecycle rules.
