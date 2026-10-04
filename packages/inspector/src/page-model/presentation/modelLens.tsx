@@ -1,22 +1,18 @@
-import {
-  walk,
-  type PageModel,
-  type PageObjectNode,
-} from "../adapter/pageModel";
-import { Empty } from "../shared/view/common";
-import type { Lens, SearchEntry } from "../navigation/domain/lens";
-import type { RenderRun } from "../navigation/domain/runSlot";
-import type { Selection } from "../navigation/domain/selection";
-import type { ModelPanes } from "../panel/domain/preferences";
-import type { OnHover } from "../navigation/domain/highlight";
+import { walk, type PageModel, type PageObjectNode } from "../domain/pageModel";
+import { Empty } from "../../shared/view/common";
+import type { Lens, SearchEntry } from "../../navigation/domain/lens";
+import type { RenderRun } from "../../navigation/domain/runSlot";
+import type { Selection } from "../../navigation/domain/selection";
+import type { ModelPanes } from "../../panel/domain/preferences";
+import type { OnHover } from "../../navigation/domain/highlight";
 import {
   MemberDetail,
   ModelDetail,
   ObjectDetail,
   PageDetail,
   type MemberView,
-} from "./model/ModelDetails";
-import { ModelTree } from "./model/ModelTree";
+} from "./ModelDetails";
+import { ModelTree } from "./ModelTree";
 
 /**
  * The Model lens: the Page Objects on the page as a tree, and the Page

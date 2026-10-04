@@ -18,10 +18,10 @@ import type {
   ObjectAction,
   PageObjectModel,
   PageObjectNode,
-} from "../../adapter/pageModel";
+} from "../domain/pageModel";
 import type { RenderRun } from "../../navigation/domain/runSlot";
 import type { OnHover } from "../../navigation/domain/highlight";
-import { hoverHandlers } from "./hover";
+import { hoverHandlers } from "../view/hover";
 
 /**
  * The page as a whole: its host, the page Page Objects on it, and the

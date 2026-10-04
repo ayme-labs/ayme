@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { indexMembers } from "./memberIndex";
+import { indexMembers } from "../page-model/domain/memberIndex";
 import { forest, node } from "./projected.testSupport";
 import {
   collection,
@@ -8,7 +8,7 @@ import {
   model,
   page,
   type Contents,
-} from "./pageModel.testSupport";
+} from "../page-model/test-utils/pageModel";
 import {
   buildStructureTree,
   mapTargetsToRefs,

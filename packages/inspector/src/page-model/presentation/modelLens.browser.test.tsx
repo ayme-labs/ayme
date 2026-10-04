@@ -2,19 +2,19 @@ import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageModel, PageObjectNode } from "../adapter/pageModel";
-import { DetailPane } from "../panel/view/InspectorBody";
-import type { Lens, LensId } from "../navigation/domain/lens";
-import { Navigator } from "../navigation/view/Navigator";
-import type { OnHover } from "../navigation/domain/highlight";
-import type { RenderRun } from "../navigation/domain/runSlot";
-import type { Selection } from "../navigation/domain/selection";
-import { renderPart } from "../testing/renderPart";
-import { defaultPreferences } from "../panel/domain/preferences";
+import type { PageModel, PageObjectNode } from "../domain/pageModel";
+import { DetailPane } from "../../panel/view/InspectorBody";
+import type { Lens, LensId } from "../../navigation/domain/lens";
+import { Navigator } from "../../navigation/view/Navigator";
+import type { OnHover } from "../../navigation/domain/highlight";
+import type { RenderRun } from "../../navigation/domain/runSlot";
+import type { Selection } from "../../navigation/domain/selection";
+import { renderPart } from "../../testing/renderPart";
+import { defaultPreferences } from "../../panel/domain/preferences";
 import {
   DetailPane as DetailPanePart,
   Navigator as NavigatorPart,
-} from "../testing";
+} from "../../testing";
 import { modelLens } from "./modelLens";
 
 // Component tests: the Model lens in the navigator and the detail pane, with

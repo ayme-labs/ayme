@@ -4,8 +4,8 @@ import {
 } from "@ayme-dev/ayme/internal";
 
 import { traceEntryLocator, type TraceEntry } from "../trace";
-import { indexMembers } from "./memberIndex";
-import { buildPageModel } from "./pageModel";
+import { indexMembers } from "../page-model/domain/memberIndex";
+import { buildPageModel } from "../page-model/domain/pageModel";
 
 /** A step of a run: a locator operation from the Inspector's own trace. */
 export type RunStep = TraceEntry & {

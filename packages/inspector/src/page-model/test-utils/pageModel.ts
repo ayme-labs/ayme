@@ -2,7 +2,7 @@ import type {
   ObjectMember,
   PageObjectModel,
   PageObjectNode,
-} from "./pageModel";
+} from "../domain/pageModel";
 
 // Hand-written page models for unit tests: every Page Object on the page,
 // with its locators and its children as members, as buildPageModel makes them.

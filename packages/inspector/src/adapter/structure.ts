@@ -9,7 +9,7 @@ import {
   indexMembers,
   type IndexedMember,
   type MemberIndex,
-} from "./memberIndex";
+} from "../page-model/domain/memberIndex";
 
 /**
  * The structure tree model: the Structural Page State an agent receives, as

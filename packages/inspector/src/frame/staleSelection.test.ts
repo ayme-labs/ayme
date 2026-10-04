@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
-import { indexMembers } from "../adapter/memberIndex";
-import { page } from "../adapter/pageModel.testSupport";
+import { indexMembers } from "../page-model/domain/memberIndex";
+import { page } from "../page-model/test-utils/pageModel";
 import { forest, node } from "../adapter/projected.testSupport";
 import { buildStructureTree, emptyStructure } from "../adapter/structure";
 import { isStaleSelection } from "./staleSelection";

@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
-import { indexMembers } from "../adapter/memberIndex";
-import { collection, page } from "../adapter/pageModel.testSupport";
+import { indexMembers } from "../page-model/domain/memberIndex";
+import { collection, page } from "../page-model/test-utils/pageModel";
 import type { Run } from "../adapter/useRuns";
 import { runScope as scopeOf } from "./runScope";
 

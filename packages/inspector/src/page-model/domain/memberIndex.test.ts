@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { indexMembers, pathBelowPage } from "./memberIndex";
-import { collection, component, model, page } from "./pageModel.testSupport";
+import { collection, component, model, page } from "../test-utils/pageModel";
 
 // Unit tests: the page model indexed by member path, for what a path stands
 // for on the page. The page model is hand-written: a list page with two

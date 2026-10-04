@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { indexMembers } from "../adapter/memberIndex";
-import { collection, model, page } from "../adapter/pageModel.testSupport";
+import { indexMembers } from "../page-model/domain/memberIndex";
+import { collection, model, page } from "../page-model/test-utils/pageModel";
 import { forest, node } from "../adapter/projected.testSupport";
 import { buildStructureTree } from "../adapter/structure";
 import { selectionHighlight } from "../navigation/domain/highlight";

@@ -1,6 +1,9 @@
 import { useState } from "react";
 
-import { pathBelowPage, type MemberIndex } from "./adapter/memberIndex";
+import {
+  pathBelowPage,
+  type MemberIndex,
+} from "./page-model/domain/memberIndex";
 import { structureRows, type StructureNode } from "./adapter/structure";
 import type { CollectionItem } from "./adapter/useRuns";
 import type { InspectorRuntime } from "./adapter/useRuntimeAdapter";

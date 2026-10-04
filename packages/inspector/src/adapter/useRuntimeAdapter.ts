@@ -3,8 +3,11 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { getPomDefinitionText } from "@ayme-dev/ayme/internal";
 
 import { useLiveTools } from "./liveTools";
-import { indexMembers, type MemberIndex } from "./memberIndex";
-import { buildPageModel } from "./pageModel";
+import {
+  indexMembers,
+  type MemberIndex,
+} from "../page-model/domain/memberIndex";
+import { buildPageModel } from "../page-model/domain/pageModel";
 import {
   pickPromptOf,
   refFilterOf,

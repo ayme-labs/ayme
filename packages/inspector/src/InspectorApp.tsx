@@ -9,7 +9,7 @@ import { isStaleSelection } from "./frame/staleSelection";
 import { Navigator } from "./navigation/view/Navigator";
 import { pageSelection, type Selection } from "./navigation/domain/selection";
 import { InspectorRoot } from "./shared/view/InspectorRoot";
-import { modelLens } from "./lenses/modelLens";
+import { modelLens } from "./page-model/presentation/modelLens";
 import { structureLens } from "./lenses/structureLens";
 import { attachToolModels } from "./lenses/toolGroups";
 import { toolsLens } from "./lenses/toolsLens";
