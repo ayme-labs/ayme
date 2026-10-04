@@ -25,7 +25,12 @@ authorization_cli() {
   formbricks_pnpm "$@" >"${output}" 2>&1 &
   local pid=$!
   set +m
+  local deadline=$((SECONDS + 600))
   while kill -0 "${pid}" 2>/dev/null && ! grep -q '^{' "${output}"; do
+    if ((SECONDS >= deadline)); then
+      kill -- "-${pid}" 2>/dev/null || true
+      fail "Formbricks authorization ${*} printed no result within 600 s. Output: ${output}"
+    fi
     sleep 0.5
   done
   kill -- "-${pid}" 2>/dev/null || true

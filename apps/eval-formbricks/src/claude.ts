@@ -203,7 +203,9 @@ export async function runClaude(
   }, invocation.timeoutMs);
   // The child runs in its own process group so the timeout can take the MCP server and browser with it;
   // an interrupted harness must do the same instead of leaving them behind.
+  let interruptedBy: NodeJS.Signals | null = null;
   const onInterrupt = (received: NodeJS.Signals) => {
+    interruptedBy = received;
     stopChild();
     process.once("exit", () => process.kill(process.pid, received));
   };
@@ -222,6 +224,9 @@ export async function runClaude(
     });
     await readerClosed;
     await Promise.all([closeStream(transcript), closeStream(stderr)]);
+    // An interrupted run is not a result: nothing is stored and a suite stops.
+    if (interruptedBy)
+      throw new Error(`The run was interrupted by ${interruptedBy}.`);
     return {
       exitCode,
       signal,

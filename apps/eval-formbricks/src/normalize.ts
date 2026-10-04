@@ -96,7 +96,11 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
   const summary = summarizeTranscript(artifacts.transcript);
   const { init, result } = summary;
   const costUsd = result?.costUsd ?? null;
-  const modelUsed = result?.modelsUsed[0] ?? init?.model ?? null;
+  // modelUsage can list helper models too, in no defined order; the session's model comes first.
+  const modelUsed =
+    init?.model ??
+    (result?.modelsUsed.length === 1 ? result.modelsUsed[0] : null) ??
+    null;
   return {
     runId: artifacts.runId,
     arm: artifacts.arm,
