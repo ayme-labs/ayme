@@ -8,6 +8,7 @@ import {
   peekPageStateForDocument,
 } from "@ayme-dev/ayme/internal";
 
+import { forest, node } from "./adapter/projected.testSupport";
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "./testing";
 
@@ -15,20 +16,25 @@ import { Inspector } from "./testing";
 // over them too. Each member's items are there to find, whichever the
 // registry lists first. The runtime is replaced by fixture targets and a
 // peek of the host page, so the evidence covers the panel and its adapter.
-vi.mock("@ayme-dev/ayme/internal", () => ({
-  getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-  peekPageStateForDocument: vi.fn(),
-  listElementToolTargets: vi.fn(async () => new Map()),
-  listLiveTools: vi.fn().mockReturnValue([]),
-  getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
-  subscribeToPublishedTools: vi.fn(() => () => {}),
-  getPomDefinitionText: vi.fn(() => ""),
-  runTool: vi.fn(),
-  listRegisteredPomTargets: vi.fn(),
-  listRegisteredPomTools: vi.fn(() => []),
-  listRegisteredPoms: vi.fn(() => []),
-  subscribeToRegisteredPoms: vi.fn(() => () => true),
-}));
+vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
+  const { pageStateNodeEntry } =
+    await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
+  return {
+    pageStateNodeEntry,
+    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
+    peekPageStateForDocument: vi.fn(),
+    listElementToolTargets: vi.fn(async () => new Map()),
+    listLiveTools: vi.fn().mockReturnValue([]),
+    getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
+    subscribeToPublishedTools: vi.fn(() => () => {}),
+    getPomDefinitionText: vi.fn(() => ""),
+    runTool: vi.fn(),
+    listRegisteredPomTargets: vi.fn(),
+    listRegisteredPomTools: vi.fn(() => []),
+    listRegisteredPoms: vi.fn(() => []),
+    subscribeToRegisteredPoms: vi.fn(() => () => true),
+  };
+});
 
 const collectionOfItems = (memberName: string) =>
   ({
@@ -92,7 +98,13 @@ beforeEach(() => {
   vi.mocked(peekPageStateForDocument).mockImplementation(
     async () =>
       ({
-        text: '- e1 list "Items":\n  - e2 listitem: Milk\n  - e3 listitem: Eggs',
+        projected: forest(
+          node(
+            { ref: "e1", role: "list", name: "Items" },
+            node({ ref: "e2", role: "listitem" }, "Milk"),
+            node({ ref: "e3", role: "listitem" }, "Eggs")
+          )
+        ),
         elementsByRef: new Map<string, Element>([
           ["e1", host],
           ["e2", milk!],

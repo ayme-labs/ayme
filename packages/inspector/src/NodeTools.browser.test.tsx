@@ -10,7 +10,10 @@ import { Inspector } from "./testing";
 // runtime is replaced by a peek of the host page, live single-element tools that are
 // not published, and the refs each can take, so the evidence covers the
 // panel and its adapter.
-vi.mock("@ayme-dev/ayme/internal", () => {
+vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
+  const { pageStateNodeEntry } =
+    await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
+  const { forest, node } = await import("./adapter/projected.testSupport");
   const browserTool = (name: string) => ({
     name,
     description: `${name} by ref.`,
@@ -18,11 +21,18 @@ vi.mock("@ayme-dev/ayme/internal", () => {
     group: "browser",
   });
   return {
+    pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     peekPageStateForDocument: vi.fn(
       async () =>
         ({
-          text: '- e1 main:\n  - e2 textbox "Name"\n  - e3 button "Save"',
+          projected: forest(
+            node(
+              { ref: "e1", role: "main" },
+              node({ ref: "e2", role: "textbox", name: "Name" }),
+              node({ ref: "e3", role: "button", name: "Save" })
+            )
+          ),
           elementsByRef: new Map(),
         }) as unknown as PageStatePeek
     ),

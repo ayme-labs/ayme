@@ -4,6 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { PageStatePeek } from "@ayme-dev/ayme/internal";
 import { peekPageStateForDocument } from "@ayme-dev/ayme/internal";
 
+import { forest, node } from "./adapter/projected.testSupport";
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "./testing";
 
@@ -11,21 +12,26 @@ import { Inspector } from "./testing";
 // with no registry change to prompt it: the mocked registry never reports
 // one. The runtime is replaced by a peek that reads the fixture host page,
 // so the evidence covers the panel and its adapter's refresh triggers only.
-vi.mock("@ayme-dev/ayme/internal", () => ({
-  getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-  peekPageStateForDocument: vi.fn(),
-  listElementToolTargets: vi.fn(async () => new Map()),
-  // One value each, as the runtime keeps them until they change.
-  listLiveTools: vi.fn().mockReturnValue([]),
-  getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
-  subscribeToPublishedTools: vi.fn(() => () => {}),
-  getPomDefinitionText: vi.fn(() => ""),
-  runTool: vi.fn(),
-  listRegisteredPomTargets: vi.fn(async () => []),
-  listRegisteredPomTools: vi.fn(() => []),
-  listRegisteredPoms: vi.fn(() => []),
-  subscribeToRegisteredPoms: vi.fn(() => () => true),
-}));
+vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
+  const { pageStateNodeEntry } =
+    await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
+  return {
+    pageStateNodeEntry,
+    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
+    peekPageStateForDocument: vi.fn(),
+    listElementToolTargets: vi.fn(async () => new Map()),
+    // One value each, as the runtime keeps them until they change.
+    listLiveTools: vi.fn().mockReturnValue([]),
+    getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
+    subscribeToPublishedTools: vi.fn(() => () => {}),
+    getPomDefinitionText: vi.fn(() => ""),
+    runTool: vi.fn(),
+    listRegisteredPomTargets: vi.fn(async () => []),
+    listRegisteredPomTools: vi.fn(() => []),
+    listRegisteredPoms: vi.fn(() => []),
+    subscribeToRegisteredPoms: vi.fn(() => () => true),
+  };
+});
 
 const page = createPage();
 const inspector = new Inspector(
@@ -34,16 +40,24 @@ const inspector = new Inspector(
 );
 const unmounts: (() => void)[] = [];
 
-/** The host page's state the way an agent reads it, rendered from its DOM. */
-function pageStateText(host: Element) {
+/** The host page's state the way an agent reads it, projected from its DOM. */
+function projectedPageState(host: Element) {
   const input = host.querySelector("input:not([type])") as HTMLInputElement;
   const checkbox = host.querySelector("[type=checkbox]") as HTMLInputElement;
   const note = host.querySelector("p")!;
-  return [
-    `- e1 textbox "Name": ${input.value}`,
-    `- e2 checkbox "Done"${checkbox.checked ? " [checked]" : ""}`,
-    `- e3 paragraph: ${note.textContent}`,
-  ].join("\n");
+  return forest(
+    node(
+      { ref: "e1", role: "textbox", name: "Name" },
+      ...(input.value ? [input.value] : [])
+    ),
+    node({
+      ref: "e2",
+      role: "checkbox",
+      name: "Done",
+      state: checkbox.checked ? { checked: true } : {},
+    }),
+    node({ ref: "e3", role: "paragraph" }, note.textContent ?? "")
+  );
 }
 
 beforeEach(() => {
@@ -57,7 +71,7 @@ beforeEach(() => {
   vi.mocked(peekPageStateForDocument).mockImplementation(
     async () =>
       ({
-        text: pageStateText(host),
+        projected: projectedPageState(host),
         elementsByRef: new Map(),
       }) as unknown as PageStatePeek
   );
@@ -102,9 +116,10 @@ it("looks at the page again when a checkbox is checked", async () => {
   await expect
     .poll(async () => {
       const looks = vi.mocked(peekPageStateForDocument).mock.results;
-      return (await looks.at(-1)?.value)?.text;
+      const checkbox = (await looks.at(-1)?.value)?.projected.roots[1];
+      return typeof checkbox === "string" ? undefined : checkbox?.state;
     })
-    .toContain('checkbox "Done" [checked]');
+    .toEqual({ checked: true });
 });
 
 it("shows text changing on the page", async () => {

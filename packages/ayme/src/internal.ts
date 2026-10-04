@@ -1,10 +1,15 @@
 export {
   capturePageState,
   getPageStateForElements,
+  pageStateNodeEntry,
   peekPageStateForDocument,
   resolvePageStateRef,
 } from "./pageState";
 export type { PageStateCapture, PageStatePeek } from "./pageState";
+export type {
+  ProjectedStructuralNode,
+  ProjectedStructuralNodeForest,
+} from "@ayme-dev/core/structural-observation";
 export {
   getPageContextForDocument,
   getPageContextTool,

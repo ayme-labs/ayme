@@ -96,23 +96,28 @@ const runtime = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@ayme-dev/ayme/internal", () => ({
-  getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-  peekPageStateForDocument: vi.fn(async () => ({
-    text: "",
-    elementsByRef: new Map(),
-  })),
-  listElementToolTargets: vi.fn(async () => new Map()),
-  listLiveTools: vi.fn(() => runtime.liveTools),
-  getPublicationStatus: vi.fn(() => runtime.publication),
-  subscribeToPublishedTools: vi.fn(() => () => {}),
-  getPomDefinitionText: vi.fn(() => ""),
-  listRegisteredPomTargets: vi.fn(async () => []),
-  listRegisteredPomTools: vi.fn(() => []),
-  listRegisteredPoms: vi.fn(() => runtime.registrations),
-  runTool: vi.fn(),
-  subscribeToRegisteredPoms: vi.fn(() => () => true),
-}));
+vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
+  const { pageStateNodeEntry } =
+    await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
+  return {
+    pageStateNodeEntry,
+    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
+    peekPageStateForDocument: vi.fn(async () => ({
+      projected: { roots: [] },
+      elementsByRef: new Map(),
+    })),
+    listElementToolTargets: vi.fn(async () => new Map()),
+    listLiveTools: vi.fn(() => runtime.liveTools),
+    getPublicationStatus: vi.fn(() => runtime.publication),
+    subscribeToPublishedTools: vi.fn(() => () => {}),
+    getPomDefinitionText: vi.fn(() => ""),
+    listRegisteredPomTargets: vi.fn(async () => []),
+    listRegisteredPomTools: vi.fn(() => []),
+    listRegisteredPoms: vi.fn(() => runtime.registrations),
+    runTool: vi.fn(),
+    subscribeToRegisteredPoms: vi.fn(() => () => true),
+  };
+});
 
 const page = createPage();
 const inspector = new Inspector(

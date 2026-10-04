@@ -3,6 +3,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import { refFilterOf } from "../adapter/refPicking";
 import type { RunnableTool } from "../adapter/runnableTools";
+import { forest, node } from "../adapter/projected.testSupport";
 import { buildStructureTree } from "../adapter/structure";
 import { renderPart } from "../renderPart";
 import { RunCard as RunCardPart } from "../testing";
@@ -35,15 +36,35 @@ const click: RunnableTool = {
 };
 
 const { roots } = buildStructureTree(
-  `- e1 main:
-  - e2 heading "Groceries" [level=1]
-  - e3 ListPage:
-    - e4 textbox "New item"
-    - e5 button "Add item" [cursor=pointer]
-  - e6 list "Items":
-    - e7 listitem: Milk
-    - e8 listitem:
-      - e9 button "Archive"`,
+  forest(
+    node(
+      { ref: "e1", role: "main" },
+      node({
+        ref: "e2",
+        role: "heading",
+        name: "Groceries",
+        state: { level: 1 },
+      }),
+      node(
+        { ref: "e3", label: "ListPage" },
+        node({ ref: "e4", role: "textbox", name: "New item" }),
+        node({
+          ref: "e5",
+          role: "button",
+          name: "Add item",
+          cursorPointer: true,
+        })
+      ),
+      node(
+        { ref: "e6", role: "list", name: "Items" },
+        node({ ref: "e7", role: "listitem" }, "Milk"),
+        node(
+          { ref: "e8", role: "listitem" },
+          node({ ref: "e9", role: "button", name: "Archive" })
+        )
+      )
+    )
+  ),
   new Map()
 );
 

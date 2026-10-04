@@ -49,7 +49,7 @@ const groceries: StructureTree = {
           ref: "e2",
           role: "heading",
           name: "Groceries",
-          states: ["level=1"],
+          state: { level: 1 },
           members: [],
           children: [],
         },

@@ -1,3 +1,9 @@
+import {
+  pageStateNodeEntry,
+  type ProjectedStructuralNode,
+  type ProjectedStructuralNodeForest,
+} from "@ayme-dev/ayme/internal";
+
 import type { ControlState } from "./formControls";
 import {
   indexMembers,
@@ -17,10 +23,10 @@ export type StructureNode = {
   /** The accessible name, or the text itself. */
   name: string;
   /**
-   * Its states as the page state lists them, e.g. "checked" or "level=1".
+   * Its states, such as `checked` or `level`, when the page state sets any.
    * Rows leave them out; "What the model sees" shows them.
    */
-  states?: string[];
+  state?: ProjectedStructuralNode["state"];
   /**
    * A native form control's state, read from the element: what the page
    * state leaves out, such as a slider's range.
@@ -87,12 +93,12 @@ export type StructureTree = {
 export const emptyStructure: StructureTree = { roots: [], refCount: 0 };
 
 /**
- * Builds the tree from the page state text an agent receives, in its compact
- * notation (`- e3 button "Add item"`), and tags each node with the members
- * whose element its ref is.
+ * Builds the tree from the projected page state, the forest the text an
+ * agent receives is rendered from, and tags each node with the members whose
+ * element its ref is.
  */
 export function buildStructureTree(
-  text: string,
+  projected: ProjectedStructuralNodeForest,
   /** The registry targets' paths whose element each ref is, by ref. */
   targetsByRef: ReadonlyMap<string, readonly string[]>,
   /** The page model's members, which the targets are. */
@@ -100,59 +106,45 @@ export function buildStructureTree(
   /** The native form controls' states, by ref. */
   controls: ReadonlyMap<string, ControlState> = new Map()
 ): StructureTree {
-  const roots: StructureNode[] = [];
-  const open: { indent: number; node: StructureNode }[] = [];
   let refCount = 0;
-
-  for (const line of text.split("\n")) {
-    const match = /^(\s*)- (.*)$/.exec(line);
-    if (!match) continue;
-    const indent = match[1]!.length;
-    while (open.length && open.at(-1)!.indent >= indent) open.pop();
-
-    const { header, value } = splitEntry(match[2]!);
-    const parent = open.at(-1)?.node;
-    // A property of its parent, such as the Page Objects rooted at it.
-    if (header.startsWith("/")) {
-      parent?.pageStateLines?.push(`  - ${match[2]!}`);
-      continue;
+  const build = (entry: ProjectedStructuralNode | string): StructureNode => {
+    if (typeof entry === "string") return textNode(entry);
+    refCount += 1;
+    const { lines, childCount } = pageStateNodeEntry(entry);
+    const hasState = Object.values(entry.state).some(
+      (value) => value !== undefined
+    );
+    const node: StructureNode = {
+      ref: entry.ref,
+      role: entry.role,
+      name: entry.name,
+      ...(hasState ? { state: entry.state } : {}),
+      members: [],
+      pageStateLines: lines,
+      childCount,
+      children: entry.children.map(build),
+    };
+    const control = controls.get(entry.ref);
+    if (control) node.control = control;
+    const members = [
+      ...new Map(
+        (targetsByRef.get(entry.ref) ?? []).flatMap((target) => {
+          const member = index.member(target);
+          return member ? [[member.path, member] as const] : [];
+        })
+      ).values(),
+    ];
+    node.members = members.map(({ path }) => path);
+    const tag = memberTag(members, index);
+    if (tag !== undefined) {
+      node.member = tag.path;
+      node.tag = shortTag(tag, index);
+      node.memberLinks = memberLinks(members, tag, index);
+      node.owner = tag.owner.path;
     }
-    if (parent?.childCount !== undefined) parent.childCount += 1;
-
-    const node =
-      header === "text" ? textNode(value ?? "") : elementNode(header);
-    if (header !== "text") {
-      node.pageStateLines = [`- ${match[2]!}`];
-      node.childCount = 0;
-    }
-    if (node.ref !== undefined) {
-      refCount += 1;
-      const control = controls.get(node.ref);
-      if (control) node.control = control;
-      const members = [
-        ...new Map(
-          (targetsByRef.get(node.ref) ?? []).flatMap((target) => {
-            const member = index.member(target);
-            return member ? [[member.path, member] as const] : [];
-          })
-        ).values(),
-      ];
-      node.members = members.map(({ path }) => path);
-      const tag = memberTag(members, index);
-      if (tag !== undefined) {
-        node.member = tag.path;
-        node.tag = shortTag(tag, index);
-        node.memberLinks = memberLinks(members, tag, index);
-        node.owner = tag.owner.path;
-      }
-    }
-    if (header !== "text" && value !== undefined)
-      node.children.push(textNode(value));
-
-    (parent?.children ?? roots).push(node);
-    open.push({ indent, node });
-  }
-
+    return node;
+  };
+  const roots = projected.roots.map(build);
   return { roots, refCount };
 }
 
@@ -217,57 +209,6 @@ export function* structureRows(
 
 function textNode(text: string): StructureNode {
   return { role: "text", name: text, members: [], children: [] };
-}
-
-/**
- * A node's header: its ref, the Page Object label of a root, the role (left
- * out when generic), the quoted name and its states in brackets.
- */
-function elementNode(header: string): StructureNode {
-  const [ref, ...tokens] = header.match(/"(?:[^"\\]|\\.)*"|\S+/g) ?? [];
-  let role = "generic";
-  let name = "";
-  const states: string[] = [];
-  for (const token of tokens) {
-    if (token.startsWith('"')) name = unquote(token);
-    else if (/^\[.+\]$/.test(token)) states.push(token.slice(1, -1));
-    // Roles are lowercase words; a Page Object label is an identifier path.
-    else if (/^[a-z]+$/.test(token)) role = token;
-  }
-  return {
-    ...(ref === undefined ? {} : { ref }),
-    role,
-    name,
-    ...(states.length ? { states } : {}),
-    members: [],
-    children: [],
-  };
-}
-
-/** Splits `header: value` at the first colon outside quotes. */
-function splitEntry(entry: string): { header: string; value?: string } {
-  let quoted = false;
-  let index = 0;
-  for (; index < entry.length; index += 1) {
-    const char = entry[index];
-    if (quoted && char === "\\") index += 1;
-    else if (char === '"') quoted = !quoted;
-    else if (char === ":" && !quoted) break;
-  }
-  const value = entry.slice(index + 1).trim();
-  return {
-    header: entry.slice(0, index).trim(),
-    ...(value ? { value: unquote(value) } : {}),
-  };
-}
-
-function unquote(text: string) {
-  if (!text.startsWith('"')) return text;
-  try {
-    return String(JSON.parse(text));
-  } catch {
-    return text.slice(1, -1);
-  }
 }
 
 /**

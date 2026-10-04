@@ -19,23 +19,34 @@ import { Inspector } from "./testing";
 // playwright-lite. The runtime's
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its adapter only.
-vi.mock("@ayme-dev/ayme/internal", () => ({
-  getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-  peekPageStateForDocument: vi.fn(async () => ({
-    text: '- e1 main:\n  - e2 button "Save"',
-    elementsByRef: new Map(),
-  })),
-  listElementToolTargets: vi.fn(async () => new Map()),
-  listLiveTools: vi.fn().mockReturnValue([]),
-  getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
-  subscribeToPublishedTools: vi.fn(() => () => {}),
-  getPomDefinitionText: vi.fn(() => ""),
-  listRegisteredPomTargets: vi.fn(async () => []),
-  listRegisteredPomTools: vi.fn(() => []),
-  runTool: vi.fn(),
-  listRegisteredPoms: vi.fn(() => []),
-  subscribeToRegisteredPoms: vi.fn(() => () => true),
-}));
+vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
+  const { pageStateNodeEntry } =
+    await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
+  const { forest, node } = await import("./adapter/projected.testSupport");
+  return {
+    pageStateNodeEntry,
+    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
+    peekPageStateForDocument: vi.fn(async () => ({
+      projected: forest(
+        node(
+          { ref: "e1", role: "main" },
+          node({ ref: "e2", role: "button", name: "Save" })
+        )
+      ),
+      elementsByRef: new Map(),
+    })),
+    listElementToolTargets: vi.fn(async () => new Map()),
+    listLiveTools: vi.fn().mockReturnValue([]),
+    getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
+    subscribeToPublishedTools: vi.fn(() => () => {}),
+    getPomDefinitionText: vi.fn(() => ""),
+    listRegisteredPomTargets: vi.fn(async () => []),
+    listRegisteredPomTools: vi.fn(() => []),
+    runTool: vi.fn(),
+    listRegisteredPoms: vi.fn(() => []),
+    subscribeToRegisteredPoms: vi.fn(() => () => true),
+  };
+});
 
 function saveTool(
   pomId: string,

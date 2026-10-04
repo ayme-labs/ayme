@@ -2,8 +2,11 @@ import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
+import type { ProjectedStructuralNodeForest } from "@ayme-dev/ayme/internal";
+
 import type { ControlState } from "../adapter/formControls";
 import type { RunnableTool } from "../adapter/runnableTools";
+import { forest, node } from "../adapter/projected.testSupport";
 import { buildStructureTree } from "../adapter/structure";
 import type { Run } from "../adapter/useRuns";
 import { renderPart } from "../renderPart";
@@ -34,25 +37,64 @@ const fillForm: RunnableTool = {
   },
 };
 
-const pageState = `- e2 main:
-  - e3 form "Sign up":
-    - e4 textbox "Name": Ada
-    - e5 textbox "Email"
-    - e6 checkbox "Agree" [checked]
-    - e7 group "Plan":
-      - e8 radio "Free" [checked]
-      - e9 radio "Pro"
-    - e10 combobox "Country":
-      - e11 option "Hungary" [selected]
-      - e12 option "Germany"
-    - e13 slider "Seats": 1
-    - e14 button "Create account"`;
+/** The sign-up form's page state, with the values and radios it shows. */
+function signUp({
+  name = "Ada",
+  email,
+  agreed = true,
+  pro = true,
+}: { name?: string; email?: string; agreed?: boolean; pro?: boolean } = {}) {
+  return forest(
+    node(
+      { ref: "e2", role: "main" },
+      node(
+        { ref: "e3", role: "form", name: "Sign up" },
+        node({ ref: "e4", role: "textbox", name: "Name" }, name),
+        node(
+          { ref: "e5", role: "textbox", name: "Email" },
+          ...(email === undefined ? [] : [email])
+        ),
+        node({
+          ref: "e6",
+          role: "checkbox",
+          name: "Agree",
+          state: agreed ? { checked: true } : {},
+        }),
+        node(
+          { ref: "e7", role: "group", name: "Plan" },
+          node({
+            ref: "e8",
+            role: "radio",
+            name: "Free",
+            state: { checked: true },
+          }),
+          ...(pro ? [node({ ref: "e9", role: "radio", name: "Pro" })] : [])
+        ),
+        node(
+          { ref: "e10", role: "combobox", name: "Country" },
+          node({
+            ref: "e11",
+            role: "option",
+            name: "Hungary",
+            state: { selected: true },
+          }),
+          node({ ref: "e12", role: "option", name: "Germany" })
+        ),
+        node({ ref: "e13", role: "slider", name: "Seats" }, "1"),
+        node({ ref: "e14", role: "button", name: "Create account" })
+      )
+    )
+  );
+}
 
 const controls = new Map<string, ControlState>([
   ["e13", { value: "1", range: { min: 1, max: 20, step: 1 } }],
 ]);
 
-type Look = { text: string; controls?: Map<string, ControlState> };
+type Look = {
+  projected: ProjectedStructuralNodeForest;
+  controls?: Map<string, ControlState>;
+};
 
 function renderCard({ runs = [] }: { runs?: Run[] } = {}) {
   const onRun = vi.fn();
@@ -61,12 +103,15 @@ function renderCard({ runs = [] }: { runs?: Run[] } = {}) {
   let showRuns: (runs: Run[]) => void = () => {};
 
   function Harness() {
-    const [look, setLook] = useState<Look>({ text: pageState, controls });
+    const [look, setLook] = useState<Look>({
+      projected: signUp(),
+      controls,
+    });
     const [shownRuns, setShownRuns] = useState(runs);
     showPage = setLook;
     showRuns = setShownRuns;
     const { roots } = buildStructureTree(
-      look.text,
+      look.projected,
       new Map(),
       undefined,
       look.controls
@@ -150,9 +195,7 @@ describe("the list", () => {
     await form.set("Email", "ada@example.com");
 
     showPage({
-      text: pageState
-        .replace('"Name": Ada', '"Name": Grace')
-        .replace('"Email"', '"Email": old@example.com'),
+      projected: signUp({ name: "Grace", email: "old@example.com" }),
       controls,
     });
 
@@ -207,9 +250,7 @@ describe("running", () => {
     await form.set("Agree", false);
 
     showPage({
-      text: pageState
-        .replace('"Name": Ada', '"Name": Grace')
-        .replace('"Agree" [checked]', '"Agree"'),
+      projected: signUp({ name: "Grace", agreed: false }),
       controls,
     });
 
@@ -226,7 +267,7 @@ describe("running", () => {
       ]),
     ]);
     showPage({
-      text: pageState.replace('"Name": Ada', '"Name": Grace'),
+      projected: signUp({ name: "Grace" }),
       controls,
     });
 
@@ -240,7 +281,7 @@ describe("running", () => {
     await form.set("Name", "Grace");
 
     showPage({
-      text: pageState.replace('      - e9 radio "Pro"\n', ""),
+      projected: signUp({ pro: false }),
       controls,
     });
 

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { PomDefinition, RegisteredPomTool } from "@ayme-dev/ayme";
 import type {
   PageStatePeek,
+  ProjectedStructuralNodeForest,
   RegisteredPom,
   RegisteredPomTarget,
 } from "@ayme-dev/ayme/internal";
@@ -31,7 +32,8 @@ export type RegistrySnapshot = {
 };
 
 export type PageStateView = {
-  text?: string;
+  /** The projected page state: the forest an agent's text is rendered from. */
+  projected?: ProjectedStructuralNodeForest;
   /** The registry targets' paths whose element each ref is, by ref. */
   targetsByRef: ReadonlyMap<string, readonly string[]>;
   /**
@@ -132,7 +134,7 @@ export function useInspector({
       latest.current = next;
       for (const layer of highlightLayers) showLayer(layer);
       setPageState({
-        text: next.peek.text,
+        projected: next.peek.projected,
         targetsByRef: next.targetsByRef,
         elementToolTargets: next.elementToolTargets,
         elementsByRef: next.peek.elementsByRef,

@@ -126,8 +126,7 @@ function elementRow(
       row.options = labels.map((label) => ({ label, value: label }));
     if (!control)
       row.value =
-        options.find((option) => option.states?.includes("selected"))?.name ??
-        textOf(node);
+        options.find((option) => option.state?.selected)?.name ?? textOf(node);
     return row;
   }
   if (!control) row.value = textOf(node);
@@ -135,7 +134,7 @@ function elementRow(
 }
 
 function isChecked(node: StructureNode) {
-  return node.states?.includes("checked") ?? false;
+  return node.state?.checked === true;
 }
 
 /** The text the page state shows after a node's name: a field's value. */
