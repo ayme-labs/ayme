@@ -206,8 +206,9 @@ jobs:
             version: "18.0.0"
             pins: react react-dom @types/react@18.3.31 @types/react-dom@18.3.7
             build: "@ayme-dev/ayme"
-          # The Next and Nuxt minima run the example apps' build, typecheck
-          # and E2E suites, with every framework process on the Node floor.
+          # The Next, Nuxt and SvelteKit minima run the example apps' build,
+          # typecheck and E2E suites, with every framework process on the Node
+          # floor.
           - name: Next 16.0 compatibility
             package: "@ayme-dev/example-next"
             dir: apps/example-next
@@ -222,6 +223,35 @@ jobs:
             version: "4.0.1"
             pins: nuxt
             build: "@ayme-dev/example-nuxt^..."
+            node: "20.19.0"
+            e2e: true
+          # SvelteKit 2.53.0 is the first release that accepts Vite 8 and
+          # vite-plugin-svelte 7, which the example runs on.
+          - name: SvelteKit 2.53.0 compatibility
+            package: "@ayme-dev/example-sveltekit"
+            dir: apps/example-sveltekit
+            version: "2.53.0"
+            pins: "@sveltejs/kit"
+            build: "@ayme-dev/example-sveltekit^..."
+            node: "20.19.0"
+            e2e: true
+          # The Angular example uses APIs and an angular.json setting from
+          # Angular 21 and @angular/build 21.1.5, so its floor is above the
+          # package's. @ayme-dev/angular resolves Angular from its own
+          # devDependencies, so `linked` pins them too, or the app would load
+          # two Angular cores.
+          - name: Angular 21.0 example compatibility
+            package: "@ayme-dev/example-angular"
+            dir: apps/example-angular
+            version: "21.0.0"
+            pins: >-
+              @angular/common @angular/compiler @angular/core
+              @angular/platform-browser @angular/platform-server
+              @angular/router @angular/ssr @angular/cli @angular/compiler-cli
+              @angular/build@21.1.5 @angular-builders/custom-esbuild@21.1.0
+              typescript@5.9.3
+            linked: packages/angular
+            build: "@ayme-dev/example-angular^..."
             node: "20.19.0"
             e2e: true
     steps:
@@ -244,6 +274,7 @@ jobs:
       - name: Install the pinned minimum versions
         env:
           DIR: ${{ matrix.dir }}
+          LINKED: ${{ matrix.linked }}
           PINS: ${{ matrix.pins }}
           VERSION: ${{ matrix.version }}
           WORKSPACE: ${{ matrix.workspace }}
@@ -259,6 +290,12 @@ jobs:
               section=dependencies
             fi
             pnpm --dir "$DIR" pkg set "$section[\"$package\"]=$version"
+            # A linked workspace package takes the pins it already lists.
+            for dir in $LINKED; do
+              if [ -n "$(jq -r --arg p "$package" '.devDependencies[$p] // empty' "$dir/package.json")" ]; then
+                pnpm --dir "$dir" pkg set "devDependencies[\"$package\"]=$version"
+              fi
+            done
           done
           if [ -n "$WORKSPACE" ]; then
             printf '%s' "$WORKSPACE" >> pnpm-workspace.yaml

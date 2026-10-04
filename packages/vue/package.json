@@ -32,13 +32,7 @@
     "@ayme-dev/ayme": "workspace:*"
   },
   "peerDependencies": {
-    "@playwright/test": ">=1.29 <1.63",
     "vue": "^3.2.0"
-  },
-  "peerDependenciesMeta": {
-    "@playwright/test": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",

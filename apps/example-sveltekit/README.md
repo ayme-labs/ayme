@@ -44,7 +44,7 @@ pnpm --filter @ayme-dev/example-sveltekit exec playwright install chromium
 pnpm --filter @ayme-dev/example-sveltekit test:e2e
 ```
 
-The same suite runs against `vite dev` and the adapter-node server, with server rendering and in SPA mode. It checks JavaScript-disabled server HTML on repeated requests (in SPA mode, that the server renders none), hydration without errors, that a descendant's `onMount` sees a started runtime, the published schema against the POM source, a tool call, the Page Object called from the page and through real Playwright, unmount and remount, and client navigation removing and restoring the page's tool while the root layout keeps the owner. In development only, it also edits a type the POM imports and checks the published schema rebuilds without restarting `vite dev`.
+The shared [example certification](../example-certification/README.md) runs against `vite dev` and the adapter-node server, with server rendering and in SPA mode, including client navigation to the other page and back. The example's own test checks that a descendant's `onMount` sees a started runtime.
 
 The tests observe tools through the recording WebMCP driver from `@ayme-dev/ayme/testing`, not through Ayme's internal registry. They do not certify a particular browser's WebMCP API.
 
@@ -53,5 +53,5 @@ The tests observe tools through the recording WebMCP driver from `@ayme-dev/ayme
 - The owner must be in the root `+layout.svelte`. SvelteKit creates the next layout before it destroys the previous one, so an owner in a route-group layout fails with "already has an active owner" on navigation.
 - POMs must be `.ts` modules. Decorators inside `.svelte` scripts are not compiled.
 - This example runs on Vite 8, where a type edit rebuilds the schema. Below Vite 6, the plugin cannot invalidate dependants, so a type edit needs a dev-server restart.
-- It certifies the current SvelteKit 2, Svelte 5 and Vite 8 on Node with adapter-node. It does not certify SvelteKit 1 or 3, other adapters, edge deployment, prerendering, streaming, form actions, or server-side Page Object execution. Older Svelte versions are covered by the package's unit tests only.
+- It certifies SvelteKit 2, from the current release down to 2.53.0 (CI's minimum-version lane, on Node.js 20.19), with Svelte 5, Vite 8 and adapter-node. It does not certify SvelteKit 1 or 3, other adapters, edge deployment, prerendering, streaming, form actions, or server-side Page Object execution. Older Svelte versions are covered by the package's unit tests only.
 - The Inspector is not wired into this example.

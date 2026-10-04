@@ -106,4 +106,4 @@ Ayme adds about 240 kB transferred (about 900 kB raw) to the initial chunk of a 
 
 ## Supported versions and limits
 
-`@ayme-dev/angular` declares `@angular/core` `>=19.0.0 <23.0.0`. It is tested on Angular 19.0.0 and on the current major. The [example app's limits](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md#limits) list what is not certified, including NgModule apps, route-level `provideAyme`, `@defer` and incremental hydration, Nx workspaces and the Inspector.
+`@ayme-dev/angular` declares `@angular/core` `>=19.0.0 <23.0.0`. Its tests run on Angular 19.0.0 and on the current major. The example app's end-to-end tests run on Angular 21.0.0 and the current major; the example uses APIs and an `angular.json` setting that Angular 19 and 20 do not have. The [example app's limits](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md#limits) list what is not certified, including NgModule apps, route-level `provideAyme`, `@defer` and incremental hydration, Nx workspaces and the Inspector.

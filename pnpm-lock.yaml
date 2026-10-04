@@ -123,6 +123,31 @@ importers:
         specifier: ~6.0.2
         version: 6.0.3
 
+  apps/example-certification:
+    dependencies:
+      "@ayme-dev/ayme":
+        specifier: workspace:*
+        version: link:../../packages/ayme
+    devDependencies:
+      "@ayme-dev/eslint-config":
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      "@ayme-dev/typescript-config":
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      "@playwright/test":
+        specifier: ~1.62.1
+        version: 1.62.1
+      "@types/node":
+        specifier: ^24.0.0
+        version: 24.13.3
+      eslint:
+        specifier: ^10.9.1
+        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   apps/example-next:
     dependencies:
       "@ayme-dev/ayme":
@@ -144,6 +169,9 @@ importers:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      "@ayme-dev/example-certification":
+        specifier: workspace:*
+        version: link:../example-certification
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -276,6 +304,9 @@ importers:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      "@ayme-dev/example-certification":
+        specifier: workspace:*
+        version: link:../example-certification
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -461,9 +492,6 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../ayme
-      "@playwright/test":
-        specifier: ">=1.29 <1.63"
-        version: 1.62.1
     devDependencies:
       "@angular-devkit/schematics":
         specifier: ^22.2.1
@@ -868,9 +896,6 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../ayme
-      "@playwright/test":
-        specifier: ">=1.29 <1.63"
-        version: 1.62.1
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
