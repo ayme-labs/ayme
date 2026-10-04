@@ -131,7 +131,9 @@ it("never calls the page factory on the server", () => {
   const instance = runtime.pom.get(Model);
   expect(instance).toBeInstanceOf(Model);
   expect(instance.page).toBeUndefined();
-  expect(runtime.pom.register(Model)).toBeInstanceOf(Model);
+  // One instance per class on the server too, as in the browser.
+  expect(runtime.pom.get(Model)).toBe(instance);
+  expect(runtime.pom.register(Model)).toBe(instance);
   expect(runtime.tools.list()).toEqual([]);
   expect(factory).not.toHaveBeenCalled();
   expect(createPage).not.toHaveBeenCalled();

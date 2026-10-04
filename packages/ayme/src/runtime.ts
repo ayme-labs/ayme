@@ -317,11 +317,14 @@ export function createAyme(options: AymeOptions = {}): Ayme {
 
   const pom: AymePom = {
     get<T extends object>(model: PageObjectConstructor<T>): T {
-      // Server rendering gets an inert Page Object and never runs the factory.
-      if (typeof window === "undefined") return createServerPageObject(model);
       let instance = instances.get(model) as T | undefined;
       if (!instance) {
-        instance = constructPageObject(model, getPage());
+        // Server rendering gets an inert Page Object and never runs the
+        // factory; it is still the session's one instance of the class.
+        instance =
+          typeof window === "undefined"
+            ? createServerPageObject(model)
+            : constructPageObject(model, getPage());
         instances.set(model, instance);
       }
       return instance;

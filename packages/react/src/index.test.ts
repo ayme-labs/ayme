@@ -208,6 +208,31 @@ it("hydrates server output without warnings and then registers the Page Object",
   errors.mockRestore();
 });
 
+it("renders the same Page Object identity on the server as in hydration", async () => {
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  function Child() {
+    const same = usePageObject(Model) === useAyme().ayme.pom.get(Model);
+    return h("output", null, String(same));
+  }
+  const tree = () => h(AymeProvider, { pageFactory }, h(Child));
+  const container = document.createElement("div");
+  vi.stubGlobal("window", undefined);
+  try {
+    container.innerHTML = renderToString(tree());
+  } finally {
+    vi.unstubAllGlobals();
+  }
+  expect(container.textContent).toBe("true");
+  let app: Root | undefined;
+  await act(() => {
+    app = hydrateRoot(container, tree());
+  });
+  roots.push(app!);
+  expect(container.textContent).toBe("true");
+  expect(errors).not.toHaveBeenCalled();
+  errors.mockRestore();
+});
+
 it("keeps one custom-page instance through StrictMode replay, rerenders and remounts", async () => {
   const factory = vi.fn(pageFactory);
   const committed: Model[] = [];
