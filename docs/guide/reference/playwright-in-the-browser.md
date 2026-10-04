@@ -10,7 +10,7 @@ It controls the current document only. It does not open tabs, create browser con
 
 ## Which calls are supported
 
-The supported `Page` and `Locator` methods and options are the ones marked implemented in playwright-lite's [compatibility ledger](https://github.com/ayme-labs/playwright-lite/blob/e95ea4b7cadd62ff4f6d74a5101506e7e855a899/compatibility/api.ts), subject to the limitations it lists. Playwright's type declarations also expose operations the browser runtime does not support, so a Page Object Model that compiles may still call one that fails at run time.
+The supported `Page` and `Locator` methods and options are the ones marked implemented in playwright-lite's [compatibility ledger](https://github.com/ayme-labs/playwright-lite/blob/cd4217e91307bb16133cd3194032686631f62af7/compatibility/api.ts), subject to the limitations it lists. Playwright's type declarations also expose operations the browser runtime does not support, so a Page Object Model that compiles may still call one that fails at run time.
 
 ## Types only
 
