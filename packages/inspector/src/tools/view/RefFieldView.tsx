@@ -6,7 +6,7 @@ import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { RefNode, RefTreeRow } from "../domain/refTree";
-import { refText, RefTreeView } from "./RefTreeView";
+import { NodeDetail, refText, RefTreeView } from "./RefTreeView";
 
 /**
  * The control of a ref field. Pressing it opens a searchable tree of the
@@ -87,7 +87,7 @@ export function RefFieldView({
           {value ? (
             <span className="min-w-0 truncate rounded-sm bg-muted px-2 py-0.5 font-mono text-xs text-foreground">
               <span className={refText}>{value}</span>
-              {chosen && <ChosenDetail node={chosen} />}
+              {chosen && <NodeDetail node={chosen} />}
             </span>
           ) : (
             <span className="px-1 text-muted-foreground">
@@ -170,28 +170,5 @@ function PickBanner({
       </button>
     </div>,
     container
-  );
-}
-
-/**
- * What the field shows after a chosen node's ref, e.g. ` button "Add item"`:
- * its role, then its name, or its text when it has none.
- */
-function ChosenDetail({ node }: { node: RefNode }) {
-  const text = node.children
-    .filter((child) => child.role === "text" && child.ref === undefined)
-    .map((child) => child.name)
-    .join(" ");
-  return (
-    <>
-      {` ${node.role}`}
-      {node.name ? (
-        <span className="text-green-700 dark:text-green-300">
-          {` ${JSON.stringify(node.name)}`}
-        </span>
-      ) : (
-        text && <span className="text-muted-foreground">{` ${text}`}</span>
-      )}
-    </>
   );
 }

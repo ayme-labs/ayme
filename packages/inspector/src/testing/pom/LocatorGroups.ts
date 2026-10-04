@@ -8,12 +8,10 @@ import { RefField } from "./RefField";
  */
 export class LocatorGroups {
   readonly list: Locator;
-  readonly groups: Locator;
   readonly addGroupButton: Locator;
 
   constructor(card: Locator) {
     this.list = card.getByRole("list", { name: "Locator groups" });
-    this.groups = this.list.getByRole("listitem", { name: /^Group \d+$/ });
     this.addGroupButton = card.getByRole("button", { name: "Add group" });
   }
 

@@ -13,7 +13,7 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 import type { StructureNode } from "../../structure";
 import type { GroupOutcome, LocatorGroup } from "../domain/locatorGroups";
 import { findRefNode, type RefTreeRow } from "../domain/refTree";
-import { refText, RefTreeView } from "./RefTreeView";
+import { NodeDetail, refText, RefTreeView } from "./RefTreeView";
 
 const smallButton =
   "flex h-6.5 items-center gap-1 rounded-md border px-2 text-xs font-medium hover:border-ring aria-expanded:border-ring aria-expanded:bg-primary/10 aria-expanded:text-primary aria-pressed:border-ring aria-pressed:bg-primary/10 aria-pressed:text-primary";
@@ -260,17 +260,10 @@ function TargetLabel({
   const node = findRefNode(roots, target);
   return (
     <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
-      <span className={refText}>{target}</span>
-      {node && (
-        <span className="min-w-0 truncate">
-          {node.role}
-          {node.name && (
-            <span className="text-green-700 dark:text-green-300">
-              {` ${JSON.stringify(node.name)}`}
-            </span>
-          )}
-        </span>
-      )}
+      <span className="min-w-0 truncate">
+        <span className={refText}>{target}</span>
+        {node && <NodeDetail node={node} />}
+      </span>
       {node?.tag && (
         <span className="ml-auto flex-none text-primary">{node.tag}</span>
       )}

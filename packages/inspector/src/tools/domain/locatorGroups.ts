@@ -1,8 +1,16 @@
+import type { ToolInput, ToolResult } from "@ayme-dev/ayme";
+
 /**
  * `generate_locator`'s input: targets grouped by the container their
  * locators are relative to. A group without a container is the page.
  */
-export type LocatorGroup = { targets: string[]; within?: string };
+export type LocatorGroup = ToolInput<"generate_locator">["groups"][number];
+
+type ResultGroup = ToolResult<"generate_locator">["groups"][number];
+type ResultEntry = Extract<
+  ResultGroup,
+  { locators: unknown }
+>["locators"][number];
 
 /** What a run gave one target: its locator, or why it has none. */
 export type LocatorOutcome = { locator: string } | { error: string };
@@ -39,7 +47,7 @@ export function addTarget(
   ref: string
 ): LocatorGroup[] {
   return groups[index]?.targets.includes(ref)
-    ? [...groups]
+    ? groups.slice()
     : toggleTarget(groups, index, ref);
 }
 
@@ -50,11 +58,7 @@ export function setContainer(
   within: string | undefined
 ): LocatorGroup[] {
   return groups.map((group, at) =>
-    at !== index
-      ? group
-      : within
-        ? { targets: group.targets, within }
-        : { targets: group.targets }
+    at !== index ? group : { targets: group.targets, ...(within && { within }) }
   );
 }
 
@@ -77,21 +81,16 @@ export function groupOutcomes(
     if ("error" in output) return { error: output.error };
     return {
       targets: new Map(
-        output.locators.map(({ target, ...outcome }) => [
-          target,
-          outcome as LocatorOutcome,
+        output.locators.map((entry: ResultEntry) => [
+          entry.target,
+          "locator" in entry
+            ? { locator: entry.locator }
+            : { error: entry.error },
         ])
       ),
     };
   });
 }
-
-type ResultGroup =
-  | { within?: string; error: string }
-  | {
-      within?: string;
-      locators: ({ target: string } & LocatorOutcome)[];
-    };
 
 function parse(run: { arguments: unknown; result?: string } | undefined) {
   if (!run?.result) return undefined;

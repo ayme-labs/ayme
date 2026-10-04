@@ -227,6 +227,35 @@ describe("generate_locator in Chromium", () => {
     expect(elementsOf(page, pageLevel)).toEqual([rowButton]);
   });
 
+  it("returns a container-relative locator where the page-level one needs .nth()", async () => {
+    document.body.innerHTML = `
+      <ul>
+        <li><button>Remove</button></li>
+        <li><button>Remove</button></li>
+      </ul>
+    `;
+    const { structure } = await ayme.tools.run("snapshot", {});
+    const refs = (pattern: RegExp) =>
+      [...structure.matchAll(pattern)].map((match) => match[1]!);
+    const [, secondRow] = refs(/(e\d+) listitem/g);
+    const [, secondButton] = refs(/(e\d+) button "Remove"/g);
+
+    const result = await run({
+      groups: [
+        { targets: [secondButton!], within: secondRow },
+        { targets: [secondButton!] },
+      ],
+    });
+
+    const button = document.querySelectorAll("button")[1];
+    const relative = locatorAt(result, 0, 0);
+    expect(relative).toBe("getByRole('button', { name: 'Remove' })");
+    expect(elementsOf(page.locator("li").nth(1), relative)).toEqual([button]);
+    const pageLevel = locatorAt(result, 1, 0);
+    expect(pageLevel).toMatch(/\.nth\(1\)$/);
+    expect(elementsOf(page, pageLevel)).toEqual([button]);
+  });
+
   it("prefers the app's test id attribute", async () => {
     const submit = await ref("button", "Submit");
     const result = await run({ groups: [{ targets: [submit] }] });

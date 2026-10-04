@@ -33,9 +33,16 @@ export function useLocatorGroups({
   const [pickingInto, setPickingInto] = useState<number>();
   const [copied, setCopied] = useState<string>();
   const stopPicking = useRef<() => void>(undefined);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => onChange(groups), [groups, onChange]);
-  useEffect(() => () => stopPicking.current?.(), []);
+  useEffect(
+    () => () => {
+      stopPicking.current?.();
+      clearTimeout(copiedTimer.current);
+    },
+    []
+  );
 
   const outcomes = useMemo(
     () => groupOutcomes(groups, lastRun),
@@ -101,10 +108,8 @@ export function useLocatorGroups({
     copy: (locator: string) => {
       void navigator.clipboard?.writeText(locator).then(() => {
         setCopied(locator);
-        setTimeout(
-          () => setCopied((now) => (now === locator ? undefined : now)),
-          1200
-        );
+        clearTimeout(copiedTimer.current);
+        copiedTimer.current = setTimeout(() => setCopied(undefined), 1200);
       });
     },
   };
