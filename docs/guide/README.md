@@ -18,6 +18,11 @@ How to turn your app's Page Object Models into tools that agents and tests call.
 - [Inspector](guides/inspector.md): turn on the in-page panel that shows your Page Objects, the page state and the tools, and run them by hand.
 - [Goals with Jev](guides/goals-with-jev.md): let a decision model drive your page toward a goal, and read the Handover it returns.
 
+## Frameworks
+
+- [Vue](frameworks/vue.md): the provider and standalone setup, hooks, server rendering with Nuxt, limits and API.
+- [React](frameworks/react.md): the provider, hooks, server rendering with Next.js, limits and API.
+
 ## Reference
 
 - [`@ayme-dev/ayme`](reference/ayme.md): the decorators, `createAyme`, the session's tools, Page Objects and publication, and the package entries.

@@ -46,8 +46,8 @@ Then start Ayme in your app and register the Page Object, as your framework's pa
 
 ## Pick your framework
 
-- [Vue](packages/vue/README.md)
-- [React](packages/react/README.md)
+- [Vue](docs/guide/frameworks/vue.md)
+- [React](docs/guide/frameworks/react.md)
 - [Svelte](packages/svelte/README.md)
 - [Angular](packages/angular/README.md)
 
