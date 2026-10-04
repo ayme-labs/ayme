@@ -52,9 +52,9 @@ const MAX_CHUNK_ELEMENTS = MAX_CHOICE_OPTIONS - 1;
 // over the cap is asked as several questions, so those carry ids of their own:
 // the parameter's name, a separator, then the chunk's ordinal or "run_off".
 // The separator is lengthened until no parameter name of the operation starts
-// with the parameter's name and it, so these ids never equal a parameter name
-// (#141). An answer is mapped back through `ArgumentQuestion.parameter`, never
-// by reading its id.
+// with the parameter's name and it, so these ids never equal a parameter name.
+// An answer is mapped back through `ArgumentQuestion.parameter`, never by
+// reading its id.
 
 /** What every chunk and run-off id of `parameter` starts with. */
 function derivedIdPrefix(
@@ -184,7 +184,7 @@ function specsOfElementToolSchema(
 }
 
 /**
- * A tool that goes through a collection takes `{ ref, args }` (#82): the ref
+ * A tool that goes through a collection takes `{ ref, args }`: the ref
  * addresses one present instance of its path, the action's own parameters sit
  * inside `args` and are classified like any other parameter.
  */
@@ -481,8 +481,8 @@ export function planArguments(
         : []),
     ]);
 
-    // A ref whose elements outnumber the cap is asked in chunks (#123). The
-    // other closed sets are not, yet: #130.
+    // A ref whose elements outnumber the cap is asked in chunks; other closed
+    // sets are not.
     if (closedSet.kind === "ref" && options.length > MAX_CHOICE_OPTIONS) {
       questions.push(...chunkedRefQuestions(tool, arg, options));
       continue;
@@ -553,8 +553,7 @@ const pageRendering: TreeRendering<
  * prunable nodes exploded, then `pageRendering`. This forest is derived for
  * serialization only; the ref options and the Change Record keep walking the
  * full capture, so the refs the model reads are the capture's.
- * (`pageState.ts` and `changeRecord.ts` still compose the stages by hand; they
- * adopt them under #119.)
+ * (`pageState.ts` and `changeRecord.ts` compose the stages by hand.)
  */
 function renderPage(pageTree: StructuralTree): JsonStructuralNodeForest {
   const shown = structuralNodeForest(pageTree.getRootNodes()).explode(

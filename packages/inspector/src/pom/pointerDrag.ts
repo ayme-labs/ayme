@@ -4,9 +4,8 @@ import type { Locator } from "@playwright/test";
  * Drags an element by an offset, as a sequence of pointer events dispatched
  * to the element a real press would land on. playwright-lite's `page.mouse`
  * and `dragTo` send each move to the element under the pointer, ignoring
- * pointer capture (enekesabel/playwright-lite#258), and don't enter closed
- * shadow roots (enekesabel/playwright-lite#259). The panel follows the drag
- * on the window, where these events bubble. This runs the same on Playwright
+ * pointer capture, and don't enter closed shadow roots. The panel follows the
+ * drag on the window, where these events bubble. This runs the same on Playwright
  * and on playwright-lite.
  */
 export async function dragBy(handle: Locator, deltaX: number, deltaY: number) {

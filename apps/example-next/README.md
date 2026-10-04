@@ -22,7 +22,7 @@ pnpm --filter @ayme-dev/example-next dev
 Open http://127.0.0.1:4192. The counter supports a normal button click and a call
 through `usePageObject(CounterPage)`. It can be removed and remounted.
 
-## What changed
+## How it works
 
 `@ayme-dev/unplugin-ayme/turbopack-loader` is an experimental ESM loader using
 the webpack loader calling convention supported by Turbopack. It calls the same
@@ -110,5 +110,5 @@ imports. This favors correct invalidation over the smallest possible watch set.
 
 - [Turbopack rules and loader limitations](https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack)
 - [Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
-- [Existing React integration](../../packages/react/README.md)
+- [React integration](../../packages/react/README.md)
 - [Framework API parity decision](../../docs/adr/0017-keep-framework-integration-apis-closely-aligned.md)

@@ -164,7 +164,7 @@ describe("the Ayme page state helper", () => {
     ]);
   });
 
-  // Pins #84 Q2 (alias continuity) and Q4 (removed ref → explicit failure, no rebind).
+  // Alias continuity; a removed ref fails explicitly and is never rebound.
   it("retargets reordered synthetic roots and does not rebind a removed root", async () => {
     document.body.innerHTML = `
       <section id="account"><button id="account-button">Account</button></section>
@@ -247,7 +247,7 @@ describe("the Ayme page state helper", () => {
     ]);
   });
 
-  // Pins #84 Q2: alias continuity for synthetic refs survives child re-renders.
+  // Alias continuity for synthetic refs survives child re-renders.
   it("retargets an earlier synthetic ref when the same root element survives a re-render", async () => {
     document.body.innerHTML = `
       <div id="account"><button id="save">Save</button></div>

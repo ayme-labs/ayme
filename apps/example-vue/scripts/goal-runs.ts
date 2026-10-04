@@ -1,6 +1,6 @@
 /**
- * The Goal Loop run harness (#121): runs a goal set N times per goal against
- * the real Decision Endpoint and writes one JSON file per invocation, or
+ * The Goal Loop run harness: runs a goal set N times per goal against the
+ * real Decision Endpoint and writes one JSON file per invocation, or
  * compares two such files. Run by hand only; see the README.
  *
  *   node scripts/goal-runs.ts --runs <N> [--live-lane]

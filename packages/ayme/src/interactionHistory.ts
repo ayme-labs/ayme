@@ -1,4 +1,4 @@
-// Runtime, not publication (#159, decision D1). This module and the Page State
+// Runtime, not publication. This module and the Page State
 // Session that owns it import nothing from the publication side: not
 // `webMcp.ts`, not tool schema rendering, nothing that touches
 // `document.modelContext`. The publication side calls in, never the reverse,
@@ -23,7 +23,7 @@ import {
  * or the `ayme` API) or the Goal Loop's System One model.
  *
  * ponytail: `goalLoop` is a reader id of its own until the Goal Loop becomes
- * a plain consumer of the history (D7, #168).
+ * a plain consumer of the history.
  */
 export type Caller = "agent" | "goalLoop";
 
@@ -51,8 +51,8 @@ let documentCount = 0;
  *
  * ponytail: everything is kept for the document's life, so memory has no
  * ceiling: it grows by one StructuralTree per observation (two per single-element tool
- * action, one per read or Goal Loop step), measured at 7 to 41 KB each on the
- * example apps. A retention rule replaces this.
+ * action, one per read or Goal Loop step), 7 to 41 KB each on the example
+ * apps. A retention rule replaces this.
  */
 export class InteractionHistory {
   readonly pageId: PageId = PageIdSchema.parse(`document_${++documentCount}`);
@@ -61,7 +61,7 @@ export class InteractionHistory {
   private readonly recorded = new Map<StructuralActionId, RecordedAction>();
   /**
    * ponytail: two remembered positions, the observation each caller last
-   * received; they become reader points with an explicit `since` (D7, #168).
+   * received; they become reader points with an explicit `since`.
    */
   private readonly cursors = new Map<Caller, StructuralObservationEntry>();
   private first: StructuralObservationEntry | undefined;
@@ -143,8 +143,7 @@ export class InteractionHistory {
    * keeps its before state as its after state, and each query replays every
    * earlier action of the Visit, quadratic per Visit.
    *
-   * ponytail: the reconcile here stands in for core's two-point reading
-   * (D8, #169).
+   * ponytail: the reconcile here stands in for core's two-point reading.
    */
   async completeAction(
     actionId: StructuralActionId,
