@@ -18,6 +18,8 @@ export type ClaudeInvocation = {
   arm: Arm;
   /** The MCP servers file, written by the caller from `arm.mcpServers`. */
   mcpConfigPath: string;
+  /** Folders outside the working root the agent may read, from the arm's setup. */
+  readableDirectories?: string[];
   prompt: string;
   timeoutMs: number;
   transcriptPath: string;
@@ -36,16 +38,20 @@ export type ClaudeRun = {
 };
 
 /**
- * The shared configuration: no settings from the user or the project, no MCP
- * servers beyond the arm's own, only the arm's built-in tools, and every
- * permission question answered by denial. The arm's interface is allowed
- * without a prompt, so the agent is never asked anything.
+ * The shared configuration: no settings from the project, and none from the
+ * user beyond the run's own fresh, empty configuration folder (which is where
+ * an arm's skill lives); no MCP servers beyond the arm's own, only the arm's
+ * built-in tools, and every permission question answered by denial. The arm's
+ * interface is allowed without a prompt, so the agent is never asked anything.
  */
 export function claudeArguments(invocation: {
   model: string;
   arm: Arm;
   mcpConfigPath: string;
+  readableDirectories?: string[];
 }) {
+  const readableDirectories = invocation.readableDirectories ?? [];
+  const disallowedTools = invocation.arm.disallowedTools ?? [];
   return [
     "-p",
     "--output-format",
@@ -54,7 +60,7 @@ export function claudeArguments(invocation: {
     "--model",
     invocation.model,
     "--setting-sources",
-    "",
+    "user",
     "--strict-mcp-config",
     "--mcp-config",
     invocation.mcpConfigPath,
@@ -65,9 +71,26 @@ export function claudeArguments(invocation: {
     "--permission-prompts",
     "none",
     "--no-session-persistence",
+    ...(readableDirectories.length === 0
+      ? []
+      : ["--add-dir", ...readableDirectories]),
     "--allowedTools",
     invocation.arm.allowedTools.join(","),
+    ...(disallowedTools.length === 0
+      ? []
+      : ["--disallowedTools", disallowedTools.join(",")]),
   ];
+}
+
+/** The environment without any Claude Code or Anthropic variable of whoever launched the eval. */
+export function withoutClaudeVariables(
+  parent: NodeJS.ProcessEnv
+): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(parent)) {
+    if (!/^(CLAUDE|ANTHROPIC)/.test(key)) environment[key] = value;
+  }
+  return environment;
 }
 
 /**
@@ -80,10 +103,7 @@ export function claudeEnvironment(
   options: { configDir: string; oauthToken: string },
   parent: NodeJS.ProcessEnv = process.env
 ): NodeJS.ProcessEnv {
-  const environment: NodeJS.ProcessEnv = {};
-  for (const [key, value] of Object.entries(parent)) {
-    if (!/^(CLAUDE|ANTHROPIC)/.test(key)) environment[key] = value;
-  }
+  const environment = withoutClaudeVariables(parent);
   environment.CLAUDE_CONFIG_DIR = options.configDir;
   environment.CLAUDE_CODE_OAUTH_TOKEN = options.oauthToken;
   return environment;

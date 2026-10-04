@@ -9,10 +9,18 @@ import { randomBytes } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { arms, armIds, isArmId, type Arm } from "./arms.ts";
+import {
+  arms,
+  armIds,
+  isArmId,
+  type Arm,
+  type ArmContext,
+  type ArmSetup,
+} from "./arms.ts";
 import { initPageScript, signInAndOpenEditor } from "./browser.ts";
 import { claudeEnvironment, claudeVersion, runClaude } from "./claude.ts";
 import { readOauthToken } from "./environment.ts";
+import { moveFiles, readLabChanges } from "./labCheckout.ts";
 import {
   ensureDatabaseBuilt,
   openFormbricksDatabase,
@@ -40,6 +48,7 @@ import {
   dockerPrecondition,
   formbricksPreparedPrecondition,
   labAppPrecondition,
+  labCheckoutCleanPrecondition,
 } from "./preconditions.ts";
 import { createPrompt } from "./prompt.ts";
 import { judgeMission } from "./verdict.ts";
@@ -89,19 +98,6 @@ function gitOutput(cwd: string, args: string[]) {
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
-function labCheckoutDirty() {
-  const status = gitOutput(repoRoot, [
-    "status",
-    "--porcelain",
-    "--",
-    "apps/lab-formbricks",
-  ]);
-  const submodule = gitOutput(formbricksRoot, ["status", "--porcelain"]);
-  return (
-    status === null || submodule === null || status !== "" || submodule !== ""
-  );
-}
-
 async function writeJson(filePath: string, value: unknown) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
@@ -134,6 +130,7 @@ async function main() {
       dockerPrecondition,
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
+      labCheckoutCleanPrecondition(readLabChanges),
     ]);
   } catch (error) {
     await rm(runDir, { recursive: true, force: true });
@@ -144,6 +141,7 @@ async function main() {
   log(`Run ${runId}: ${runDir}`);
 
   const database = await openFormbricksDatabase(formbricksRoot);
+  let armSetup: ArmSetup | undefined;
   try {
     log("Seeding the mission.");
     const mission = await seedMission(database, options.mission, runId, labUrl);
@@ -164,26 +162,36 @@ async function main() {
       log,
     });
 
+    const armContext: ArmContext = {
+      runId,
+      runDir,
+      profileDir,
+      outputDir,
+      initPagePath,
+      configDir: claudeConfigDir,
+      startUrl: mission.startUrl,
+      cwd: labRoot,
+      log,
+    };
     const prompt = createPrompt(mission, options.arm, labUrl);
     await writeFile(path.join(runDir, "prompt.txt"), prompt);
     await writeFile(initPagePath, initPageScript(mission.startUrl));
     await writeJson(mcpConfigPath, {
-      mcpServers: options.arm.mcpServers({
-        profileDir,
-        outputDir,
-        initPagePath,
-      }),
+      mcpServers: options.arm.mcpServers(armContext),
     });
+    // Whatever the arm's interface needs outside the measured window.
+    armSetup = await options.arm.setup?.(armContext);
 
     log(
       `Starting the agent (${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`
     );
     const run = await runClaude({
       cwd: labRoot,
-      environment,
+      environment: { ...environment, ...armSetup?.environment },
       model: options.model,
       arm: options.arm,
       mcpConfigPath,
+      readableDirectories: armSetup?.readableDirectories,
       prompt,
       timeoutMs: options.timeoutSeconds * 1000,
       transcriptPath: path.join(runDir, "transcript.jsonl"),
@@ -192,6 +200,10 @@ async function main() {
     log(
       `Agent finished: exit ${run.exitCode ?? run.signal}, timed out ${run.timedOut}, ${run.lines.length} events.`
     );
+
+    // Whatever the agent left in the lab app folder must not reach the next run.
+    const labChanges = readLabChanges();
+    await moveFiles(labChanges.untracked, path.join(runDir, "agent-files"));
 
     log("Reading the verdict from the database.");
     const verdict = judgeMission(
@@ -221,7 +233,10 @@ async function main() {
         aymeCommit: gitOutput(repoRoot, ["rev-parse", "HEAD"]),
       },
       goalLoop: { usage: null, costUsd: null },
-      labCheckoutDirty: labCheckoutDirty(),
+      labCheckout: {
+        movedFiles: labChanges.untracked,
+        modifiedFiles: labChanges.modified,
+      },
     });
     await writeFile(
       path.join(runDir, "final.md"),
@@ -233,10 +248,11 @@ async function main() {
     process.stdout.write(summary);
     if (result.labCheckoutDirty)
       log(
-        "Warning: the lab app checkout changed during the run. Inspect it before the next run."
+        "Warning: the agent changed the lab app checkout. Files it created are in agent-files/; tracked files it modified are still there. Inspect them before the next run."
       );
     process.exitCode = result.pass ? 0 : 1;
   } finally {
+    await armSetup?.dispose();
     await database.close();
     await rm(profileDir, { recursive: true, force: true });
     await rm(claudeConfigDir, { recursive: true, force: true });
