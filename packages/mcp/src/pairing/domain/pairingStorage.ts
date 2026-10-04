@@ -30,18 +30,22 @@ export function serializePairing(pairing: Pairing | StoredPairing): string {
   });
 }
 
-/** The stored pairing, or `undefined` when the value is not one. */
+/**
+ * The stored pairing, or `undefined` when the value is not one. Its token
+ * may be empty, and its tab id missing, as where another way of pairing
+ * stored it.
+ */
 export function parseStoredPairing(
   value: string | null | undefined
-): StoredPairing | undefined {
+): (Pairing & { tab?: string }) | undefined {
   if (!value) return undefined;
   try {
     const { address, token, tab } = JSON.parse(value) as Partial<StoredPairing>;
-    return typeof address === "string" &&
-      typeof token === "string" &&
-      typeof tab === "string"
+    if (typeof address !== "string" || typeof token !== "string")
+      return undefined;
+    return typeof tab === "string"
       ? { address, token, tab }
-      : undefined;
+      : { address, token };
   } catch {
     return undefined;
   }

@@ -3,14 +3,26 @@ import {
   PAIRING_STORAGE_KEY,
   newTabId,
   parseStoredPairing,
+  serializePairing,
   type StoredPairing,
 } from "../domain/pairingStorage";
 
+/**
+ * The tab's stored pairing. One stored without a tab id gets one, kept
+ * with it, so the tab presents the same id after a reload.
+ */
 function readStoredPairing(): StoredPairing | undefined {
   try {
-    return parseStoredPairing(
+    const stored = parseStoredPairing(
       window.sessionStorage.getItem(PAIRING_STORAGE_KEY)
     );
+    if (!stored || "tab" in stored) return stored as StoredPairing | undefined;
+    const withTab = { ...stored, tab: newTabId() };
+    window.sessionStorage.setItem(
+      PAIRING_STORAGE_KEY,
+      serializePairing(withTab)
+    );
+    return withTab;
   } catch {
     return undefined;
   }
