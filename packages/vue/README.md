@@ -2,6 +2,8 @@
 
 Vue integration for Ayme. Use a root provider or the existing standalone composable. Both own the same shared runtime behavior.
 
+It supports Vue 3.2.0 and later. With TypeScript and `skipLibCheck: false`, Vue 3.2.0 to 3.2.38 report errors inside Vue's own declarations; use Vue 3.2.39 or later, or keep `skipLibCheck: true`.
+
 ## Install and configure
 
 ```sh
