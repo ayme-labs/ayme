@@ -32,6 +32,8 @@ export type RunnableTool = {
   keyField?: "key";
   /** Whether it's the `fill_form` Browser Tool, which has its own form. */
   fillForm?: true;
+  /** Whether it's the `generate_locator` Browser Tool, which has its own form. */
+  locatorGroups?: true;
 };
 
 /** A tool the session lists as live: one its `tools.run` can run now. */
@@ -82,6 +84,9 @@ export function listRunnableTools(
           : {}),
         ...(tool.group === "browser" && tool.name === "fill_form"
           ? { fillForm: true as const }
+          : {}),
+        ...(tool.group === "browser" && tool.name === "generate_locator"
+          ? { locatorGroups: true as const }
           : {}),
       });
     }

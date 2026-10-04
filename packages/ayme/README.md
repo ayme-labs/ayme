@@ -176,8 +176,9 @@ const unsubscribe = ayme.tools.subscribe((tools) => render(tools));
 - `run(name, input)` runs a live tool the way an agent's call runs it: the
   same input validation, target resolution, action recording and settling.
   The built-in tools are typed by name: a Browser Tool resolves with its
-  action result (`ActionResult`), `snapshot` with `PageContextPayload` and
-  `goal` with the `Handover`. Any other name takes an object and resolves with
+  action result (`ActionResult`), except `generate_locator`, which resolves
+  with its locators; `snapshot` with `PageContextPayload` and `goal` with the
+  `Handover`. Any other name takes an object and resolves with
   `unknown`; Page Object Tools and Custom Tools resolve with an action result.
   `BuiltInTools` maps each built-in name to its input and result, and
   `ToolInput<Name>` and `ToolResult<Name>` read them.
@@ -317,17 +318,18 @@ A **Browser Tool** is a built-in operation on the page itself, as opposed to
 one a Page Object provides. An agent that knows Playwright MCP can use them as
 it would there:
 
-| Tool            | Playwright MCP counterpart     | Input                                             |
-| --------------- | ------------------------------ | ------------------------------------------------- |
-| `click`         | `browser_click`                | `target`, `doubleClick?`, `button?`, `modifiers?` |
-| `hover`         | `browser_hover`                | `target`                                          |
-| `type`          | `browser_type`                 | `target`, `text`, `submit?`, `slowly?`            |
-| `fill`          | none                           | `target`, `text`                                  |
-| `fill_form`     | `browser_fill_form`            | `fields`: `{ target, name, type, value }[]`       |
-| `check`         | `browser_check` (skill-only)   | `target`                                          |
-| `uncheck`       | `browser_uncheck` (skill-only) | `target`                                          |
-| `select_option` | `browser_select_option`        | `target`, `values`                                |
-| `press_key`     | `browser_press_key`            | `key`                                             |
+| Tool               | Playwright MCP counterpart     | Input                                             |
+| ------------------ | ------------------------------ | ------------------------------------------------- |
+| `click`            | `browser_click`                | `target`, `doubleClick?`, `button?`, `modifiers?` |
+| `hover`            | `browser_hover`                | `target`                                          |
+| `type`             | `browser_type`                 | `target`, `text`, `submit?`, `slowly?`            |
+| `fill`             | none                           | `target`, `text`                                  |
+| `fill_form`        | `browser_fill_form`            | `fields`: `{ target, name, type, value }[]`       |
+| `check`            | `browser_check` (skill-only)   | `target`                                          |
+| `uncheck`          | `browser_uncheck` (skill-only) | `target`                                          |
+| `select_option`    | `browser_select_option`        | `target`, `values`                                |
+| `press_key`        | `browser_press_key`            | `key`                                             |
+| `generate_locator` | `browser_generate_locator`     | `groups`: `{ targets, within? }[]`                |
 
 - The inputs follow Playwright MCP as bundled in `playwright-core` 1.62.1: the
   same field names, and the same behaviour when an option is omitted. `type`
@@ -358,7 +360,22 @@ it would there:
   `check` takes checkboxes, radio buttons and switches, and `uncheck` the
   same without radio buttons;
   `select_option` takes select elements. The loop fills only the element and
-  the required fields. `fill_form` and `press_key` are published only.
+  the required fields. `fill_form`, `press_key` and `generate_locator` are
+  published only.
+- `generate_locator` turns targets into Playwright locator strings for Page
+  Object Model code, such as `getByRole('button', { name: 'Save' })`; a
+  Structural Ref is capture-scoped and does not belong in code. It never acts
+  on the page. Each group of `targets` gets its locators relative to its
+  `within` container, ready for a component's `root`, or relative to the page
+  without one. The result mirrors the input: each group repeats its `within`
+  and lists `{ target, locator }` per target, in order. Each locator is
+  Playwright's own generator's pick, test id first, and matches exactly its
+  element, or the button or link around it, as codegen picks. A target that
+  cannot be resolved, or lies outside its container, gets `{ target, error }`
+  instead; a container that cannot be resolved gets `{ within, error }` for its
+  group. A synthetic `s_…` ref fails, naming the Page Object whose root it is.
+  Playwright MCP's `browser_generate_locator` takes one element; this tool
+  takes groups.
 
 The browser runtime differs from a real browser driven by Playwright:
 

@@ -80,7 +80,7 @@ TypeScript 6, so that combination is not supported. Versions 1.63 and later
 require compatibility review.
 
 Compatibility covers the methods and options marked implemented in the
-[existing compatibility ledger](https://github.com/ayme-labs/playwright-lite/blob/e95ea4b7cadd62ff4f6d74a5101506e7e855a899/compatibility/api.ts),
+[existing compatibility ledger](https://github.com/ayme-labs/playwright-lite/blob/cd4217e91307bb16133cd3194032686631f62af7/compatibility/api.ts),
 subject to its limitations. The full Playwright `Page` and `Locator` declarations
 also expose unsupported operations; successful TypeScript compilation does not
 establish runtime support. Browser-executed POMs must not import Playwright runtime
