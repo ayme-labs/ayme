@@ -1,12 +1,6 @@
 import type { Locator } from "@playwright/test";
 
-export type TraceEntry = {
-  operation:
-    "click" | "fill" | "press" | "pressSequentially" | "waitFor" | "expect";
-  locator: string;
-  value?: string;
-  state?: string;
-};
+import type { TraceEntry } from "../domain/run";
 
 const trace: TraceEntry[] = [];
 // The locator each entry acted on, so a run's step can find its element.

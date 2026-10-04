@@ -2,8 +2,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { RunStep } from "../infrastructure/runSteps";
-import type { Run } from "../infrastructure/useRuns";
+import type { Run, RunStep } from "../domain/run";
 import { RunsRegion } from "../../panel/view/InspectorBody";
 import { renderPart } from "../../testing/renderPart";
 import { RunsView } from "../../testing";

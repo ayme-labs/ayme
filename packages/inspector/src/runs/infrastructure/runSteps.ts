@@ -3,18 +3,10 @@ import {
   listRegisteredPoms,
 } from "@ayme-dev/ayme/internal";
 
-import { traceEntryLocator, type TraceEntry } from "./trace";
 import { indexMembers } from "../../page-model/domain/memberIndex";
 import { buildPageModel } from "../../page-model/domain/pageModel";
-
-/** A step of a run: a locator operation from the Inspector's own trace. */
-export type RunStep = TraceEntry & {
-  /**
-   * The Page Object member it acted on, e.g. "ListPage.addItemButton",
-   * when its element was still on the page as the run ended.
-   */
-  member?: string;
-};
+import type { RunStep, TraceEntry } from "../domain/run";
+import { traceEntryLocator } from "./trace";
 
 /** The elements a step's locator matches on the page now. */
 async function elementsOf(step: TraceEntry): Promise<Element[]> {

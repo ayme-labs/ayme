@@ -116,4 +116,4 @@ export function mountInspector() {
 }
 
 export { getInspectorTrace } from "./runs/infrastructure/trace";
-export type { TraceEntry } from "./runs/infrastructure/trace";
+export type { TraceEntry } from "./runs/domain/run";

@@ -8,7 +8,7 @@ import {
   structureRows,
   type StructureNode,
 } from "../structure/domain/structure";
-import type { CollectionItem } from "../runs/infrastructure/useRuns";
+import type { CollectionItem } from "../runs/domain/run";
 import type { InspectorRuntime } from "./useRuntimeAdapter";
 import { RunsRegion } from "../panel/view/InspectorBody";
 import type { RenderRun } from "../navigation/domain/runSlot";

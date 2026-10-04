@@ -1,4 +1,4 @@
-import type { Run } from "../infrastructure/useRuns";
+import type { Run } from "./run";
 import { runIsOnMember } from "../../structure/domain/memberSelection";
 import type { Selection } from "../../navigation/domain/selection";
 

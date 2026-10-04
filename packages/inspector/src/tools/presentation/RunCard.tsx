@@ -12,11 +12,7 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { RunnableTool } from "../domain/runnableTools";
-import type {
-  CollectionItem,
-  Run,
-  ToolArguments,
-} from "../../runs/infrastructure/useRuns";
+import type { CollectionItem, Run, ToolArguments } from "../../runs/domain/run";
 import type { OnHover } from "../../navigation/domain/highlight";
 import { ArgumentsForm } from "./ArgumentsForm";
 import {

@@ -4,9 +4,9 @@ import {
   isPointerAction,
   passThroughWhileCovered,
 } from "../../panel/infrastructure/panelPassThrough";
-import type { TraceEntry } from "../../runs/infrastructure/trace";
+import type { TraceEntry } from "../../runs/domain/run";
 
-export type { TraceEntry } from "../../runs/infrastructure/trace";
+export type { TraceEntry } from "../../runs/domain/run";
 
 export type DemoFeedbackOptions = {
   beforeActionMs?: number;
