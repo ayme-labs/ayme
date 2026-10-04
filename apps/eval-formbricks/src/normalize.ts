@@ -75,8 +75,8 @@ export type NormalizedResult = {
   isolation: {
     tools: string[];
     mcpServers: { name: string; status: string }[];
-    skills: number;
-    plugins: number;
+    skills: string[];
+    plugins: { name: string; source: string | null }[];
     permissionMode: string | null;
   };
   timeoutSeconds: number;
@@ -129,8 +129,8 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     isolation: {
       tools: init?.tools ?? [],
       mcpServers: init?.mcpServers ?? [],
-      skills: init?.skills ?? 0,
-      plugins: init?.plugins ?? 0,
+      skills: init?.skills ?? [],
+      plugins: init?.plugins ?? [],
       permissionMode: init?.permissionMode ?? null,
     },
     timeoutSeconds: artifacts.timeoutSeconds,
@@ -180,6 +180,7 @@ ${tools}
 - Formbricks: ${result.versions.formbricksCommit ?? "unknown"}
 - Ayme: ${result.versions.aymeCommit ?? "unknown"}
 - MCP servers: ${result.isolation.mcpServers.map((server) => `${server.name} (${server.status})`).join(", ") || "none"}
-- Skills: ${result.isolation.skills}, plugins: ${result.isolation.plugins}
+- Skills: ${result.isolation.skills.join(", ") || "none"}
+- Plugins: ${result.isolation.plugins.map((plugin) => plugin.source ?? plugin.name).join(", ") || "none"}
 `;
 }

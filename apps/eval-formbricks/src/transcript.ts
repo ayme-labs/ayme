@@ -22,8 +22,8 @@ export type TranscriptInit = {
   permissionMode: string | null;
   tools: string[];
   mcpServers: { name: string; status: string }[];
-  skills: number;
-  plugins: number;
+  skills: string[];
+  plugins: { name: string; source: string | null }[];
 };
 
 export type TranscriptResult = {
@@ -94,8 +94,17 @@ function readInit(event: Json): TranscriptInit {
       ? event.tools.filter((tool) => typeof tool === "string")
       : [],
     mcpServers,
-    skills: Array.isArray(event.skills) ? event.skills.length : 0,
-    plugins: Array.isArray(event.plugins) ? event.plugins.length : 0,
+    skills: Array.isArray(event.skills)
+      ? event.skills
+          .map(skillName)
+          .filter((name): name is string => name !== null)
+      : [],
+    plugins: Array.isArray(event.plugins)
+      ? event.plugins.filter(isRecord).map((plugin) => ({
+          name: stringOrNull(plugin.name) ?? "",
+          source: stringOrNull(plugin.source),
+        }))
+      : [],
   };
 }
 
@@ -187,4 +196,10 @@ export function summarizeTranscript(lines: string[]): TranscriptSummary {
     assistantMessages,
     unparsedLines,
   };
+}
+
+/** The init event lists skills as names or as objects with a name. */
+function skillName(skill: unknown): string | null {
+  if (typeof skill === "string") return skill;
+  return isRecord(skill) ? stringOrNull(skill.name) : null;
 }

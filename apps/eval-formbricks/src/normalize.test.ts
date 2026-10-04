@@ -151,8 +151,8 @@ describe("a completed run", () => {
         "mcp__playwright__browser_navigate",
       ],
       mcpServers: [{ name: "playwright", status: "connected" }],
-      skills: 0,
-      plugins: 0,
+      skills: [],
+      plugins: [],
       permissionMode: "dontAsk",
     });
     expect(result.unparsedTranscriptLines).toBe(0);

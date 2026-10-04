@@ -145,45 +145,63 @@ export async function runClaude(
     lines.push(line);
     transcript.write(`${line}\n`);
   });
+  // Registered before the child can close: readline closes with stdout, ahead of the child's own close.
+  const readerClosed = new Promise<void>((resolve) =>
+    reader.once("close", resolve)
+  );
 
   let timedOut = false;
   let forceKill: NodeJS.Timeout | undefined;
+  const stopChild = () => {
+    if (!child.pid) return;
+    signalProcessGroup(child.pid, "SIGTERM");
+    forceKill ??= setTimeout(() => {
+      if (child.pid) signalProcessGroup(child.pid, "SIGKILL");
+    }, 10_000);
+  };
   const timeout = setTimeout(() => {
     timedOut = true;
-    if (child.pid) {
-      signalProcessGroup(child.pid, "SIGTERM");
-      forceKill = setTimeout(() => {
-        if (child.pid) signalProcessGroup(child.pid, "SIGKILL");
-      }, 10_000);
-    }
+    stopChild();
   }, invocation.timeoutMs);
-
-  const { exitCode, signal } = await new Promise<{
-    exitCode: number | null;
-    signal: NodeJS.Signals | null;
-  }>((resolve, reject) => {
-    child.once("error", reject);
-    child.once("close", (code, closeSignal) =>
-      resolve({ exitCode: code, signal: closeSignal })
-    );
-  });
-  clearTimeout(timeout);
-  if (forceKill) clearTimeout(forceKill);
-  await new Promise<void>((resolve) => reader.once("close", resolve));
-  await Promise.all([closeStream(transcript), closeStream(stderr)]);
-
-  return {
-    exitCode,
-    signal,
-    timedOut,
-    wallTimeMs:
-      firstEventAt === null || lastEventAt === null
-        ? null
-        : lastEventAt - firstEventAt,
-    startedAt: startedAt.toISOString(),
-    finishedAt: new Date().toISOString(),
-    lines,
+  // The child runs in its own process group so the timeout can take the MCP server and browser with it;
+  // an interrupted harness must do the same instead of leaving them behind.
+  const onInterrupt = (received: NodeJS.Signals) => {
+    stopChild();
+    process.once("exit", () => process.kill(process.pid, received));
   };
+  process.once("SIGINT", onInterrupt);
+  process.once("SIGTERM", onInterrupt);
+
+  try {
+    const { exitCode, signal } = await new Promise<{
+      exitCode: number | null;
+      signal: NodeJS.Signals | null;
+    }>((resolve, reject) => {
+      child.once("error", reject);
+      child.once("close", (code, closeSignal) =>
+        resolve({ exitCode: code, signal: closeSignal })
+      );
+    });
+    await readerClosed;
+    await Promise.all([closeStream(transcript), closeStream(stderr)]);
+    return {
+      exitCode,
+      signal,
+      timedOut,
+      wallTimeMs:
+        firstEventAt === null || lastEventAt === null
+          ? null
+          : lastEventAt - firstEventAt,
+      startedAt: startedAt.toISOString(),
+      finishedAt: new Date().toISOString(),
+      lines,
+    };
+  } finally {
+    clearTimeout(timeout);
+    if (forceKill) clearTimeout(forceKill);
+    process.off("SIGINT", onInterrupt);
+    process.off("SIGTERM", onInterrupt);
+  }
 }
 
 function closeStream(stream: NodeJS.WritableStream & { closed?: boolean }) {
