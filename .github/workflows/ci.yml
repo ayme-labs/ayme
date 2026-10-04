@@ -198,12 +198,32 @@ jobs:
                 "@angular/animations@19.0.0":
                   peerDependencies:
                     "@angular/common": 19.0.0
-          - name: React 19.0.0 compatibility
+          # React 18.0.0's own @types/react needs an old @types/scheduler, so
+          # the lane pairs the runtime with the 18.3 type packages.
+          - name: React 18.0.0 compatibility
             package: "@ayme-dev/react"
             dir: packages/react
-            version: "19.0.0"
-            pins: react react-dom
+            version: "18.0.0"
+            pins: react react-dom @types/react@18.3.31 @types/react-dom@18.3.7
             build: "@ayme-dev/ayme"
+          # The Next and Nuxt minima run the example apps' build, typecheck
+          # and E2E suites, with every framework process on the Node floor.
+          - name: Next 16.0 compatibility
+            package: "@ayme-dev/example-next"
+            dir: apps/example-next
+            version: "16.0.0"
+            pins: next
+            build: "@ayme-dev/example-next^..."
+            node: "20.19.0"
+            e2e: true
+          - name: Nuxt 4.0.1 compatibility
+            package: "@ayme-dev/example-nuxt"
+            dir: apps/example-nuxt
+            version: "4.0.1"
+            pins: nuxt
+            build: "@ayme-dev/example-nuxt^..."
+            node: "20.19.0"
+            e2e: true
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -228,8 +248,17 @@ jobs:
           VERSION: ${{ matrix.version }}
           WORKSPACE: ${{ matrix.workspace }}
         run: |
-          for package in $PINS; do
-            pnpm --dir "$DIR" pkg set "devDependencies[\"$package\"]=$VERSION"
+          # A pin is a package name, set to the lane's version, or name@version.
+          for pin in $PINS; do
+            case "$pin" in
+              ?*@*) package="${pin%@*}" version="${pin##*@}" ;;
+              *) package="$pin" version="$VERSION" ;;
+            esac
+            section=devDependencies
+            if [ -n "$(jq -r --arg p "$package" '.dependencies[$p] // empty' "$DIR/package.json")" ]; then
+              section=dependencies
+            fi
+            pnpm --dir "$DIR" pkg set "$section[\"$package\"]=$version"
           done
           if [ -n "$WORKSPACE" ]; then
             printf '%s' "$WORKSPACE" >> pnpm-workspace.yaml
@@ -237,10 +266,36 @@ jobs:
           pnpm install --no-frozen-lockfile
       - name: Build ${{ matrix.build }}
         run: pnpm exec turbo run build --filter=${{ matrix.build }}
+      - name: Install Chromium
+        if: matrix.e2e
+        run: pnpm --filter ${{ matrix.package }} exec playwright install --with-deps chromium
+      # pnpm 11 needs Node 22.13, so pnpm stays on this Node 24 while the
+      # scripts it starts resolve `node` from PATH, which becomes the floor.
+      - name: Keep pnpm on Node 24
+        if: matrix.node
+        run: |
+          shim="$RUNNER_TEMP/pnpm-node24"
+          mkdir -p "$shim"
+          printf '#!/bin/sh\nexec "%s" "%s" "$@"\n' "$(command -v node)" "$(readlink -f "$(command -v pnpm)")" > "$shim/pnpm"
+          chmod +x "$shim/pnpm"
+      - uses: actions/setup-node@v7
+        if: matrix.node
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Run the framework on Node ${{ matrix.node }}
+        if: matrix.node
+        env:
+          NODE_FLOOR: ${{ matrix.node }}
+        run: |
+          echo "$RUNNER_TEMP/pnpm-node24" >> "$GITHUB_PATH"
+          test "$(node --version)" = "v$NODE_FLOOR"
+      - name: Build ${{ matrix.package }}
+        if: matrix.e2e
+        run: pnpm --filter ${{ matrix.package }} build
       - name: Typecheck ${{ matrix.package }}
         run: pnpm --filter ${{ matrix.package }} typecheck
       - name: Test ${{ matrix.package }}
-        run: pnpm --filter ${{ matrix.package }} test
+        run: pnpm --filter ${{ matrix.package }} ${{ matrix.e2e && 'test:e2e' || 'test' }}
 
   # Branch protection requires this job instead of the lanes, because a
   # skipped matrix job reports under its unexpanded name.

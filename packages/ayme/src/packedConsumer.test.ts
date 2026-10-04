@@ -14,6 +14,8 @@
  * 4. The packed @ayme-dev/ayme does not expose private workspace packages.
  * 5. Consumers type-check and load config with and without Playwright.
  * 6. An Angular consumer type-checks at Angular's and TypeScript's floor.
+ * 7. React, Vue and Svelte consumers type-check the published declarations
+ *    at each adapter's framework floor.
  */
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -335,7 +337,7 @@ it(
       "@ayme-dev/unplugin-ayme",
     ]);
 
-    for (const version of [undefined, "1.29.1", "1.62.1"]) {
+    for (const version of [undefined, "1.29.0", "1.62.1"]) {
       const consumer = path.join(tmp, version ?? "without-playwright");
       fs.mkdirSync(consumer);
       fs.writeFileSync(
@@ -347,7 +349,7 @@ it(
           dependencies: tarballs,
           devDependencies: {
             // Playwright 1.29 uses namespace syntax removed in TypeScript 6.
-            typescript: version === "1.29.1" ? "5.9.3" : "6.0.3",
+            typescript: version === "1.29.0" ? "5.9.3" : "6.0.3",
             "@types/node": "24.13.3",
             vue: "3.5.42",
             svelte: "5.57.1",
@@ -634,6 +636,150 @@ console.log("ok");
     );
   }
 );
+
+const POM_SOURCE = `
+import type { Locator, Page } from '@playwright/test';
+import { ayme } from '@ayme-dev/ayme';
+@ayme
+export class Pom {
+  readonly button: Locator;
+  constructor(page: Page) { this.button = page.getByRole('button', { name: 'Count' }); }
+  @ayme.action({ description: 'Count once.' })
+  async count() { await this.button.click(); }
+}
+`;
+
+// Floors from the adapters' peer ranges. Vue 3.2.0–3.2.38 declarations fail
+// under skipLibCheck: false in Vue's own runtime-core.d.ts, so its declaration
+// floor is 3.2.39; the Vue compatibility lane covers the 3.2.0 runtime.
+const FRAMEWORK_FLOORS = [
+  {
+    adapter: "@ayme-dev/react",
+    framework: "React 18.0.0",
+    dependencies: {
+      react: "18.0.0",
+      "react-dom": "18.0.0",
+      "@types/react": "18.3.31",
+      "@types/react-dom": "18.3.7",
+    },
+    source: `
+import { createElement } from 'react';
+import { AymeProvider, useAyme, usePageObject } from '@ayme-dev/react';
+import { Pom } from './pom.js';
+function Counter() {
+  const pom: Pom = usePageObject(Pom);
+  const { webMCP } = useAyme();
+  return createElement('button', { onClick: () => void pom.count() }, webMCP.publicationStatus.state);
+}
+export const app = createElement(AymeProvider, { webMCP: { enabled: true } }, createElement(Counter));
+// @ts-expect-error pageFactory must return a Page.
+createElement(AymeProvider, { pageFactory: () => 42 });
+`,
+  },
+  {
+    adapter: "@ayme-dev/vue",
+    framework: "Vue 3.2.39",
+    dependencies: { vue: "3.2.39", "@vue/server-renderer": "3.2.39" },
+    source: `
+import { defineComponent, h } from 'vue';
+import { AymeProvider, useAyme, usePageObject } from '@ayme-dev/vue';
+import { Pom } from './pom.js';
+const Counter = defineComponent({
+  setup() {
+    const pom: Pom = usePageObject(Pom);
+    const { webMCP } = useAyme();
+    return () => h('button', { onClick: () => void pom.count() }, webMCP.publicationStatus.state);
+  },
+});
+export const app = h(AymeProvider, { webMCP: { enabled: true } }, () => h(Counter));
+// @ts-expect-error webMCP is an options object.
+h(AymeProvider, { webMCP: 'on' });
+`,
+  },
+  {
+    adapter: "@ayme-dev/svelte",
+    framework: "Svelte 3.54.0",
+    dependencies: { svelte: "3.54.0" },
+    source: `
+import { get } from 'svelte/store';
+import { useAyme, usePageObject } from '@ayme-dev/svelte';
+import { Pom } from './pom.js';
+export function root() {
+  const { webMCP } = useAyme({ webMCP: { enabled: true } });
+  return get(webMCP.publicationStatus).state;
+}
+export function counter() {
+  const pom: Pom = usePageObject(Pom);
+  return () => pom.count();
+}
+`,
+  },
+];
+
+for (const floor of FRAMEWORK_FLOORS)
+  it(
+    `packed ${floor.adapter} type-checks in a consumer on ${floor.framework}`,
+    { timeout: 120_000 },
+    () => {
+      const consumer = path.join(
+        tmp,
+        `${floor.adapter.replace("@ayme-dev/", "")}-floor-consumer`
+      );
+      fs.mkdirSync(consumer);
+      const { tarballs, workspaceYaml } = tarballDependencies([
+        "@ayme-dev/ayme",
+        floor.adapter,
+      ]);
+      fs.writeFileSync(
+        path.join(consumer, "package.json"),
+        JSON.stringify({
+          name: "ayme-floor-consumer",
+          private: true,
+          type: "module",
+          dependencies: { ...tarballs, ...floor.dependencies },
+          devDependencies: {
+            typescript: "6.0.3",
+            "@playwright/test": "1.62.1",
+            "@types/node": "24.13.3",
+          },
+        })
+      );
+      fs.writeFileSync(
+        path.join(consumer, "pnpm-workspace.yaml"),
+        workspaceYaml
+      );
+      exec(
+        "pnpm",
+        [
+          "install",
+          "--ignore-scripts",
+          "--no-lockfile",
+          "--strict-peer-dependencies",
+        ],
+        consumer
+      );
+      fs.writeFileSync(
+        path.join(consumer, "tsconfig.json"),
+        JSON.stringify({
+          compilerOptions: {
+            strict: true,
+            experimentalDecorators: true,
+            skipLibCheck: false,
+            noEmit: true,
+            target: "ES2022",
+            lib: ["ES2022", "DOM"],
+            module: "preserve",
+            moduleResolution: "bundler",
+            types: ["node"],
+          },
+          files: ["pom.ts", "consumer.ts"],
+        })
+      );
+      fs.writeFileSync(path.join(consumer, "pom.ts"), POM_SOURCE);
+      fs.writeFileSync(path.join(consumer, "consumer.ts"), floor.source);
+      exec("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
+    }
+  );
 
 it(
   "packed @ayme-dev/ayme contains no private workspace leaks and is importable",
