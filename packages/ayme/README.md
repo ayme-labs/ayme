@@ -28,7 +28,8 @@ Internal adapter packages are bundled; consumers do not install them separately.
 - `@ayme-dev/ayme/server` is the Decision Endpoint handler,
   `createDecisionEndpoint`, for your backend.
 - `@ayme-dev/ayme/internal` serves ayme's own packages only: the framework
-  packages (`vue`, `react`) for server page objects and page
+  packages (`vue`, `react`, `svelte`, `angular`) for the Page Object
+  constructor type, and `vue` also for server page objects and page
   registrations, the code `unplugin-ayme` generates into your bundle
   (`registerCompiledPom`), and the inspector. Applications do not import it,
   and what it exports may change without notice.
