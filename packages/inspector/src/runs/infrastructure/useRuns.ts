@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import type { JsonValue } from "@ayme-dev/ayme";
 import { listRegisteredPomTools, runTool } from "@ayme-dev/ayme/internal";
 
-import { getInspectorTrace, resetInspectorTrace } from "../trace";
+import { getInspectorTrace, resetInspectorTrace } from "./trace";
 import { describeSteps, type RunStep } from "./runSteps";
 
 export type ToolArguments = Record<string, JsonValue>;

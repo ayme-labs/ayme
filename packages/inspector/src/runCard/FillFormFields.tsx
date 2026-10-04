@@ -11,7 +11,7 @@ import { GripVerticalIcon, RotateCcwIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { Run } from "../adapter/useRuns";
+import type { Run } from "../runs/infrastructure/useRuns";
 import { inputClass } from "./ArgumentsForm";
 import {
   changedFields,

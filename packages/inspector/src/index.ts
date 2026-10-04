@@ -9,7 +9,7 @@ import {
   recordInspectorTrace,
   resetInspectorTrace,
   subscribeToInspectorTraceDispatcher,
-} from "./trace";
+} from "./runs/infrastructure/trace";
 import { withDemoFeedback } from "./withDemoFeedback";
 
 // The page's two highlights: solid for the Inspector's selection, dashed
@@ -115,5 +115,5 @@ export function mountInspector() {
   };
 }
 
-export { getInspectorTrace } from "./trace";
-export type { TraceEntry } from "./trace";
+export { getInspectorTrace } from "./runs/infrastructure/trace";
+export type { TraceEntry } from "./runs/infrastructure/trace";

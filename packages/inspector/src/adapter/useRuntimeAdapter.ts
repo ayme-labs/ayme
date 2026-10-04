@@ -20,7 +20,7 @@ import {
   emptyStructure,
 } from "../structure/domain/structure";
 import { useInspector } from "../shared/infrastructure/useInspector";
-import { useRuns } from "./useRuns";
+import { useRuns } from "../runs/infrastructure/useRuns";
 
 /**
  * The runtime adapter: the one place the Inspector reads @ayme-dev/ayme and runs

@@ -2,11 +2,11 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { RunStep } from "../adapter/runSteps";
-import type { Run } from "../adapter/useRuns";
-import { RunsRegion } from "../panel/view/InspectorBody";
-import { renderPart } from "../testing/renderPart";
-import { RunsView } from "../testing";
+import type { RunStep } from "../infrastructure/runSteps";
+import type { Run } from "../infrastructure/useRuns";
+import { RunsRegion } from "../../panel/view/InspectorBody";
+import { renderPart } from "../../testing/renderPart";
+import { RunsView } from "../../testing";
 import { Runs, type RunFocus, type RunsProps } from "./Runs";
 
 // Component tests: Runs with fixture runs, driven through its page object

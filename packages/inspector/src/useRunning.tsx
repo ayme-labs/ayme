@@ -8,14 +8,14 @@ import {
   structureRows,
   type StructureNode,
 } from "./structure/domain/structure";
-import type { CollectionItem } from "./adapter/useRuns";
+import type { CollectionItem } from "./runs/infrastructure/useRuns";
 import type { InspectorRuntime } from "./adapter/useRuntimeAdapter";
 import { RunsRegion } from "./panel/view/InspectorBody";
 import type { RenderRun } from "./navigation/domain/runSlot";
 import type { Selection } from "./navigation/domain/selection";
 import { RunCard } from "./runCard/RunCard";
-import { Runs, type RunFocus } from "./runs/Runs";
-import { runScope } from "./runs/runScope";
+import { Runs, type RunFocus } from "./runs/presentation/Runs";
+import { runScope } from "./runs/domain/runScope";
 
 /**
  * Running from the panel: the run slot's run card, and Runs scoped to the

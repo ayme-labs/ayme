@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
 
-import { indexMembers } from "../page-model/domain/memberIndex";
-import { collection, page } from "../page-model/test-utils/pageModel";
-import type { Run } from "../adapter/useRuns";
+import { indexMembers } from "../../page-model/domain/memberIndex";
+import { collection, page } from "../../page-model/test-utils/pageModel";
+import type { Run } from "../infrastructure/useRuns";
 import { runScope as scopeOf } from "./runScope";
 
 // Unit tests: which runs Runs shows for the selection. The runs are
