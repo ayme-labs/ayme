@@ -237,6 +237,27 @@ describe("createDecisionEndpoint", () => {
     }
   );
 
+  it("sends its own model and drops any other field the caller posts", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ model: "jev-1.13.0", answers: {} }), {
+        status: 200,
+      })
+    );
+    const handler = createDecisionEndpoint({
+      provider: "typesafe",
+      apiKey: "secret",
+      authorize,
+    });
+    await handler(
+      jsonRequest({ ...validBody, model: "openai/gpt-4", temperature: 2 })
+    );
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(String(init?.body))).toEqual({
+      model: "jev-1.13.0",
+      ...validBody,
+    });
+  });
+
   it("passes upstream success responses through unchanged", async () => {
     const upstreamBody = {
       model: "typesafe/jev-1.13",

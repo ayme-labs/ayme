@@ -426,6 +426,7 @@ gates access.
 - Success: the upstream status and body, unchanged.
 - Upstream errors: the upstream status with `{ "error": "<the provider's message>" }`,
   or a plain sentence naming the status when the provider gives no message.
+  No upstream headers are passed on.
 - The endpoint's own rejections return `{ "error": "<one plain sentence>" }`:
   - `405` when the method is not `POST`
   - `413` when the body is over 1 MB
