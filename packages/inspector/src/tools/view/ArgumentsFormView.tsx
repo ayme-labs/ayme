@@ -1,4 +1,4 @@
-import { useId, useState, type ComponentType } from "react";
+import { useId, type ComponentType } from "react";
 import { XIcon } from "lucide-react";
 
 import type { JsonValue } from "@ayme-dev/ayme";
@@ -23,10 +23,17 @@ type ControlProps = {
   onChange: (value: string | undefined) => void;
 };
 
-/** The controls of a ref field and of a key field. */
+/** The controls of a ref field, a key field, and a value typed as JSON. */
 export type FieldControls = {
   ref: ComponentType<ControlProps & { source: RefSource }>;
   key: ComponentType<ControlProps>;
+  json: ComponentType<{
+    id?: string;
+    "aria-label": string;
+    className: string;
+    value: JsonValue | undefined;
+    onChange: (value: JsonValue | undefined) => void;
+  }>;
 };
 
 /** The typed form: one control per field, editing the arguments in place. */
@@ -239,7 +246,7 @@ function ScalarControl({
   value,
   onChange,
   refSource = noRefs,
-  controls: { ref: RefField, key: KeyField },
+  controls: { ref: RefField, key: KeyField, json: JsonControl },
 }: {
   field: Field;
   id?: string;
@@ -323,51 +330,4 @@ function ScalarControl({
     default:
       return <JsonControl {...shared} value={value} onChange={onChange} />;
   }
-}
-
-/** A value the form has no control for, typed as JSON. */
-function JsonControl({
-  value,
-  onChange,
-  ...props
-}: {
-  id?: string;
-  "aria-label": string;
-  className: string;
-  value: JsonValue | undefined;
-  onChange: (value: JsonValue | undefined) => void;
-}) {
-  const [draft, setDraft] = useState(() =>
-    value === undefined ? "" : JSON.stringify(value)
-  );
-  const [error, setError] = useState<string>();
-  return (
-    <>
-      <textarea
-        {...props}
-        rows={2}
-        spellCheck={false}
-        className={`${props.className} h-auto py-1.5 font-mono`}
-        value={draft}
-        onChange={(event) => {
-          const text = event.target.value;
-          setDraft(text);
-          if (text.trim() === "") {
-            setError(undefined);
-            onChange(undefined);
-            return;
-          }
-          try {
-            onChange(JSON.parse(text) as JsonValue);
-            setError(undefined);
-          } catch {
-            // Sent as typed: the tool's own validation reports it.
-            onChange(text);
-            setError(`${props["aria-label"]}: invalid JSON.`);
-          }
-        }}
-      />
-      {error && <span className="text-[11.5px] text-destructive">{error}</span>}
-    </>
-  );
 }
