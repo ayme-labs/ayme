@@ -72,10 +72,42 @@ const aliases: Readonly<Record<string, string>> = {
 
 const byLowerCase = new Map(names.map((name) => [name.toLowerCase(), name]));
 
+/** The characters of the layout's punctuation keys, by code: plain, then with Shift. */
+const punctuation: Readonly<Record<string, string>> = {
+  Backquote: "`~",
+  Minus: "-_",
+  Equal: "=+",
+  Backslash: "\\|",
+  BracketLeft: "[{",
+  BracketRight: "]}",
+  Semicolon: ";:",
+  Quote: "'\"",
+  Comma: ",<",
+  Period: ".>",
+  Slash: "/?",
+};
+
+/** The digits' characters with Shift, from 0 to 9. */
+const shiftedDigits = ")!@#$%^&*(";
+
+/**
+ * The character a code types on the layout, e.g. `[` for BracketLeft: as
+ * typed with or without Shift, or, in a combo, the key itself.
+ */
+function characterOfCode(code: string, as: "plain" | "shifted" | "combo") {
+  if (code === "Space") return "Space";
+  const letter = /^Key([A-Z])$/.exec(code)?.[1];
+  if (letter) return as === "plain" ? letter.toLowerCase() : letter;
+  const digit = /^Digit(\d)$/.exec(code)?.[1];
+  if (digit) return as === "shifted" ? shiftedDigits[Number(digit)] : digit;
+  return punctuation[code]?.[as === "shifted" ? 1 : 0];
+}
+
 /**
  * A key press as a key string, e.g. `ControlOrMeta+C`, `A` or `Shift+Tab`.
- * A key Playwright has no name for, such as a dead key, is kept as the
- * browser names it, and checking it says so.
+ * A key Playwright has no name for, such as a dead key or `é`, is recorded
+ * as the key in its place on Playwright's layout. One with no place there,
+ * such as F13, is kept as the browser names it, and checking it says so.
  */
 export function keyOfEvent(
   event: Pick<
@@ -83,16 +115,18 @@ export function keyOfEvent(
     "key" | "code" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey"
   >
 ): string {
+  // Windows reports AltGr as Control and Alt held with AltGraph.
+  if (event.key === "AltGraph") return "AltGraph";
   const chord = event.ctrlKey || event.metaKey || event.altKey;
-  // In a combo a letter or digit is the key itself, not what ⌥ or Shift
+  const typed = event.key === " " ? "Space" : event.key;
+  const inPlace =
+    characterOfCode(event.code, event.shiftKey ? "shifted" : "plain") ??
+    (names.includes(event.code) ? event.code : undefined);
+  // In a combo a character key is the key itself, not what ⌥ or Shift
   // composes from it; on its own it's the character as typed.
-  const fromCode = /^(?:Key([A-Z])|Digit(\d))$/.exec(event.code);
   const key =
-    chord && fromCode
-      ? (fromCode[1] ?? fromCode[2])!
-      : event.key === " "
-        ? "Space"
-        : event.key;
+    (chord && characterOfCode(event.code, "combo")) ||
+    (nameOf(typed) ? typed : (inPlace ?? typed));
   const held = [
     (event.ctrlKey || event.metaKey) && "ControlOrMeta",
     event.altKey && "Alt",

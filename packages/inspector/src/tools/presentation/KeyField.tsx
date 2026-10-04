@@ -92,6 +92,8 @@ export function KeyField({
     );
   };
   const onRecordKeyUp = (event: KeyboardEvent) => {
+    // Windows reports PrintScreen only as it's let go.
+    if (event.key === "PrintScreen") return record(keyOfEvent(event));
     // A modifier pressed and let go on its own is the key, e.g. Shift.
     if (modifierOf(event.key) && held.length) record(modifiersOnly(held));
   };
@@ -243,7 +245,7 @@ export function KeyField({
           {recording
             ? held.length
               ? `${held.map(modifierLabel).join(" + ")} + … then a key`
-              : "Recording. Press any key or combination. Esc to search instead."
+              : "Press a key or combo. Esc to search."
             : !check.ok && check.problem}
         </span>
         {!recording && fixButton}
