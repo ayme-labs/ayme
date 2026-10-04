@@ -28,6 +28,7 @@ import App from "./App.vue";
 
 ## Documentation
 
+- [Quickstart: Vue](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/quickstart-vue.md): from an empty app to your first Page Object Tool.
 - [Vue page](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/vue.md): the provider and standalone setup, root ownership, hooks, server rendering with Nuxt, limits and API.
 - [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 

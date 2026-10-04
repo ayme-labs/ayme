@@ -27,6 +27,7 @@ Start Ayme in the root `+layout.svelte`, or `App.svelte` without SvelteKit:
 
 ## Documentation
 
+- [Quickstart: Svelte](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/quickstart-svelte.md): from an empty app to your first Page Object Tool.
 - [Svelte page](https://github.com/ayme-labs/ayme/blob/main/docs/guide/frameworks/svelte.md): SvelteKit and plain Svelte setup, root ownership, composables, server rendering, limits and API.
 - [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 
