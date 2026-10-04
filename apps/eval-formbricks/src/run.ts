@@ -1,6 +1,7 @@
 /**
  * One mission, once, through one arm. Checks preconditions, seeds, signs in,
  * runs Claude Code, reads the verdict from the database and stores the run.
+ * `runOnce` is the function the suite calls; the command below wraps it.
  *
  *   node src/run.ts --arm playwright-mcp [--model sonnet] [--timeout-seconds 600] [--mission <id>]
  */
@@ -25,7 +26,11 @@ import {
   missionDefinitions,
   type MissionDefinition,
 } from "./missions.ts";
-import { normalizeRun, summarizeResult } from "./normalize.ts";
+import {
+  normalizeRun,
+  summarizeResult,
+  type NormalizedResult,
+} from "./normalize.ts";
 import {
   evalRoot,
   formbricksRoot,
@@ -44,18 +49,21 @@ import {
 import { createPrompt } from "./prompt.ts";
 import { judgeMission } from "./verdict.ts";
 
-type Options = {
+export type RunOptions = {
   arm: Arm;
   mission: MissionDefinition;
   model: string;
   timeoutSeconds: number;
 };
 
+export const defaultModel = "sonnet";
+export const defaultTimeoutSeconds = 600;
+
 function usage() {
   return `Usage: pnpm eval:run -- --arm <${armIds.join("|")}> [--model <model>] [--timeout-seconds <seconds>] [--mission <${Object.keys(missionDefinitions).join("|")}>]`;
 }
 
-function parseOptions(argv: string[]): Options {
+function parseOptions(argv: string[]): RunOptions {
   const args = argv[0] === "--" ? argv.slice(1) : argv;
   const values = new Map<string, string>();
   for (let index = 0; index < args.length; index += 2) {
@@ -69,18 +77,20 @@ function parseOptions(argv: string[]): Options {
   const missionId = values.get("mission") ?? defaultMissionId;
   const mission = missionDefinitions[missionId];
   if (mission === undefined) throw new Error(usage());
-  const timeoutSeconds = Number(values.get("timeout-seconds") ?? "600");
+  const timeoutSeconds = Number(
+    values.get("timeout-seconds") ?? defaultTimeoutSeconds
+  );
   if (!Number.isInteger(timeoutSeconds) || timeoutSeconds <= 0)
     throw new Error(usage());
   return {
     arm: arms[arm],
     mission,
-    model: values.get("model") ?? "sonnet",
+    model: values.get("model") ?? defaultModel,
     timeoutSeconds,
   };
 }
 
-function log(line: string) {
+export function log(line: string) {
   process.stderr.write(`[${new Date().toISOString()}] ${line}\n`);
 }
 
@@ -106,9 +116,13 @@ async function writeJson(filePath: string, value: unknown) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-async function main() {
-  const options = parseOptions(process.argv.slice(2));
-
+/**
+ * Runs the mission once and stores it under `results/runs/<run id>/`.
+ * Throws when the run cannot complete; a failed verdict is a result, not an error.
+ */
+export async function runOnce(
+  options: RunOptions
+): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
   const runId = `${new Date().toISOString().replace(/[:.]/g, "-")}-${options.arm.id}-${randomBytes(3).toString("hex")}`;
   const runDir = path.join(runsRoot, runId);
   const profileDir = path.join(runDir, "browser-profile");
@@ -228,14 +242,12 @@ async function main() {
       result.agent.finalMessage ?? "(the agent produced no final message)\n"
     );
     await writeJson(path.join(runDir, "result.json"), result);
-    const summary = summarizeResult(result);
-    await writeFile(path.join(runDir, "summary.md"), summary);
-    process.stdout.write(summary);
+    await writeFile(path.join(runDir, "summary.md"), summarizeResult(result));
     if (result.labCheckoutDirty)
       log(
         "Warning: the lab app checkout changed during the run. Inspect it before the next run."
       );
-    process.exitCode = result.pass ? 0 : 1;
+    return { runId, runDir, result };
   } finally {
     await database.close();
     await rm(profileDir, { recursive: true, force: true });
@@ -243,9 +255,17 @@ async function main() {
   }
 }
 
-main().catch((error: unknown) => {
-  process.stderr.write(
-    `${error instanceof Error ? error.message : String(error)}\n`
-  );
-  process.exitCode = 2;
-});
+async function main() {
+  const { result } = await runOnce(parseOptions(process.argv.slice(2)));
+  process.stdout.write(summarizeResult(result));
+  process.exitCode = result.pass ? 0 : 1;
+}
+
+if (import.meta.main) {
+  main().catch((error: unknown) => {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`
+    );
+    process.exitCode = 2;
+  });
+}

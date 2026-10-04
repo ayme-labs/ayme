@@ -72,9 +72,18 @@ export async function signInAndOpenEditor(options: {
   baseUrl: string;
   profileDir: string;
   channel: string;
+  /** Pages to open after the editor, signed in, in this order. For warming a suite's routes. */
+  alsoVisit?: string[];
   log: (line: string) => void;
 }): Promise<{ browserVersion: string | null }> {
-  const { mission, baseUrl, profileDir, channel, log } = options;
+  const {
+    mission,
+    baseUrl,
+    profileDir,
+    channel,
+    alsoVisit = [],
+    log,
+  } = options;
   const context = await playwright().chromium.launchPersistentContext(
     profileDir,
     {
@@ -103,6 +112,7 @@ export async function signInAndOpenEditor(options: {
         await page
           .getByRole("button", { name: "Save & Close" })
           .waitFor({ timeout: 60_000 });
+        for (const url of alsoVisit) await page.goto(url);
         return { browserVersion: context.browser()?.version() ?? null };
       } catch {
         log(

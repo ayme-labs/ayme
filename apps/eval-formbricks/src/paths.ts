@@ -18,3 +18,7 @@ export const resultsRoot = path.join(evalRoot, "results");
 export const runsRoot = path.join(resultsRoot, "runs");
 
 export const labUrl = "http://localhost:3000";
+/** Ignored by git. One folder per suite: its manifest and the summary built from it. */
+export const suitesRoot = path.join(resultsRoot, "suites");
+/** Committed. One dated folder per published summary. */
+export const summariesRoot = path.join(evalRoot, "summaries");
