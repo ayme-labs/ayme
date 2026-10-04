@@ -247,3 +247,20 @@ describe("a failed verdict", () => {
     expect(summary).toContain("- Cost: $0.4321");
   });
 });
+
+describe("a run whose result lists a helper model first", () => {
+  // Claude Code's modelUsage has no defined order and can include helper models.
+  const lines = transcript("complete.jsonl").map((line) =>
+    line.includes('"modelUsage"')
+      ? line.replace(
+          '"modelUsage":{',
+          '"modelUsage":{"claude-helper-fixture":{"inputTokens":1,"outputTokens":1,"cacheReadInputTokens":0,"cacheCreationInputTokens":0,"costUSD":0.0001},'
+        )
+      : line
+  );
+  const result = normalizeRun(artifacts({ transcript: lines }));
+
+  it("reports the session's model from the init event", () => {
+    expect(result.versions.model.used).toBe("claude-sonnet-fixture");
+  });
+});
