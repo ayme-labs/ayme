@@ -1,0 +1,98 @@
+# React
+
+Everything about Ayme in a React app: setup, the provider, hooks, server rendering with Next.js, limits and the API of `@ayme-dev/react`.
+
+## Setup
+
+Install Ayme, the React package and the build plugin:
+
+```sh
+npm install @ayme-dev/ayme @ayme-dev/react
+npm install -D @ayme-dev/unplugin-ayme @playwright/test
+```
+
+On Vite, add the plugin alongside the React plugin:
+
+```ts
+import react from "@vitejs/plugin-react";
+import { ayme } from "@ayme-dev/unplugin-ayme/vite";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [react(), ayme()],
+});
+```
+
+On Next.js, use the experimental Turbopack loader, as the [build plugin reference](../reference/build-plugin.md#nextjs) shows. Mark your Page Object Models as [Page Object Models](../guides/page-object-models.md) shows.
+
+## Start Ayme at the root
+
+Wrap the app in `AymeProvider`:
+
+```tsx
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { AymeProvider } from "@ayme-dev/react";
+import App from "./App";
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <AymeProvider webMCP={{ enabled: true }}>
+      <App />
+    </AymeProvider>
+  </StrictMode>
+);
+```
+
+The provider takes the [`createAyme` options](../reference/ayme.md#createayme) as props, such as `pageFactory`, `ignore` and `inspector` (`inspector={import.meta.env.DEV}` on Vite).
+
+## Root ownership
+
+The props must stay fixed while the provider is mounted; remount the provider and its consumers to change them. One owner may be active: nested providers and concurrent owners are rejected. Unmounting the provider stops publication and observation. React's Strict Mode cleanup and setup replay keeps the Page and the instances.
+
+## Hooks
+
+Call the hooks in descendants of the provider:
+
+```tsx
+import { useAyme, usePageObject } from "@ayme-dev/react";
+import { CounterPage } from "./playwright/pom/CounterPage";
+
+export default function Controls() {
+  const pom = usePageObject(CounterPage);
+  const { ayme, webMCP } = useAyme();
+
+  return (
+    <>
+      <p>{webMCP.publicationStatus.message}</p>
+      <button onClick={() => void pom.increment()}>Increment</button>
+      <button onClick={() => void webMCP.retryPublication()}>
+        Retry publication
+      </button>
+    </>
+  );
+}
+```
+
+- `usePageObject(Model)` returns the session's instance of the class immediately and registers the class after commit. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. Changing the model class requires remounting the component. Unmounting it removes its registration.
+- `useAyme()`'s `webMCP` is React state: `webMCP.publicationStatus` is a read-only snapshot that updates with renders.
+- Hooks without an ancestor provider throw. A provider returned from a component does not supply context to hooks called in that same component.
+
+## Server rendering
+
+The provider and hooks render on the server without constructing Page Objects or starting the session. During a server render, `usePageObject` returns an unconstructed object with the model's prototype and does not register it, so the same UI renders on the server without a fake DOM or Playwright. The browser constructs and registers the real Page Object during hydration, and the session starts in the provider's effect.
+
+In the Next.js App Router, put `AymeProvider` and the components that call the hooks in a `"use client"` module; the [Next.js example](../../../apps/example-next/README.md) shows the setup.
+
+## Limits
+
+- The supported React and Next.js versions are on [Install](../start/install.md#supported-versions).
+- Change the props or the model class only by remounting.
+
+## API
+
+| Export                 | Kind      | Does                                                                          |
+| ---------------------- | --------- | ----------------------------------------------------------------------------- |
+| `AymeProvider`         | Component | Starts and owns Ayme for its subtree. Props are the `createAyme` options.     |
+| `useAyme()`            | Hook      | Returns `{ ayme, webMCP }` from the provider above.                           |
+| `usePageObject(Model)` | Hook      | Returns the class's instance and registers it while the component is mounted. |
