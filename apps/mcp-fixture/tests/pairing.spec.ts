@@ -1,17 +1,22 @@
 import { expect, test } from "./fixtures";
 
-test("ayme_connect returns the app URL with the server's loopback address and token", async ({
-  agent,
-  baseURL,
-}) => {
-  const { text } = await agent.call("ayme_connect", {
-    url: `${baseURL}/?view=list`,
+test.describe("on the default port", () => {
+  // Without --port the server takes a port of the range a page scans.
+  test.use({ inScanRange: true });
+
+  test("ayme_connect returns the app URL with the server's loopback address and token", async ({
+    agent,
+    baseURL,
+  }) => {
+    const { text } = await agent.call("ayme_connect", {
+      url: `${baseURL}/?view=list`,
+    });
+    const match = /^(.+)#ayme=ws:\/\/127\.0\.0\.1:(\d+)\/[\w-]+$/.exec(text);
+    expect(match, text).not.toBeNull();
+    expect(match![1]).toBe(`${baseURL}/?view=list`);
+    expect(Number(match![2])).toBeGreaterThanOrEqual(9350);
+    expect(Number(match![2])).toBeLessThanOrEqual(9365);
   });
-  const match = /^(.+)#ayme=ws:\/\/127\.0\.0\.1:(\d+)\/[\w-]+$/.exec(text);
-  expect(match, text).not.toBeNull();
-  expect(match![1]).toBe(`${baseURL}/?view=list`);
-  expect(Number(match![2])).toBeGreaterThanOrEqual(9350);
-  expect(Number(match![2])).toBeLessThanOrEqual(9365);
 });
 
 test("opening the connect link pairs the tab, keeps the pairing for the tab and cleans the address bar", async ({

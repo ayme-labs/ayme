@@ -28,7 +28,11 @@ Add a spec file for a new concern and reuse `fixtures.ts`.
 Run from this directory inside the repository's Devbox shell. `pnpm test:e2e`
 tests the built packages, so build first; Turbo's `test:e2e` task does. The
 fixture page is served on a free port (`AYME_E2E_PORT_MCP` overrides it). Each
-test's server takes the first free port from 9350 to 9365; the suite runs two
-workers, and a test starts at most two servers, so it needs at most four of
-them. A page's auto-pair scan finds only the servers a test adds to
-`scanReaches`, so it never pairs with another test's server, or another run's.
+test's server listens on a free port outside 9350 to 9365, the range a page's
+auto-pair scan probes, so a localhost page of another suite running beside this
+one, such as an example app's, never pairs with it by itself. Only the
+auto-pair spec's servers (`inScanRange`) take the first free port of the range;
+the suite runs two workers, and a test starts at most two servers, so it needs
+at most four of them. A page's auto-pair scan finds only the servers a test
+adds to `scanReaches`, so it never pairs with another test's server, or another
+run's.

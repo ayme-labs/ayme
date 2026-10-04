@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createServer, type AddressInfo } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,8 +23,28 @@ const command = join(
   ).bin.ayme
 );
 
+/**
+ * A free port of the loopback interface that the system picks, outside the
+ * server's range of 9350 to 9365.
+ */
+function freePort() {
+  return new Promise<number>((resolve) => {
+    const server = createServer().listen(0, "127.0.0.1", () => {
+      const { port } = server.address() as AddressInfo;
+      server.close(() => resolve(port));
+    });
+  });
+}
+
 export const test = base.extend<{
+  /**
+   * The agent's server. It listens outside the range a page's auto-pair scan
+   * probes, unless a spec sets `inScanRange`, so a localhost page of another
+   * suite running beside this one never pairs with it by itself.
+   */
   agent: Awaited<ReturnType<typeof startAgent>>;
+  /** Whether the `agent` fixture's server listens in the scanned range. */
+  inScanRange: boolean;
   /**
    * Asks the agent's server for a connect link to `path` on the fixture app,
    * opens it in the page and waits until the page's tools are MCP tools.
@@ -46,10 +67,11 @@ export const test = base.extend<{
   limitScan: boolean;
 }>({
   limitScan: [true, { option: true }],
-  // Playwright reads a fixture's dependencies from this pattern.
-  // eslint-disable-next-line no-empty-pattern
-  agent: async ({}, use) => {
-    const agent = await startAgent();
+  inScanRange: [false, { option: true }],
+  agent: async ({ inScanRange }, use) => {
+    const agent = await (inScanRange
+      ? startAgent()
+      : startAgent("--port", String(await freePort())));
     try {
       await use(agent);
     } finally {

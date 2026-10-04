@@ -1,6 +1,6 @@
 import type { WebSocketRoute } from "@playwright/test";
 
-import { expect, holdCall, test, unanswered } from "./fixtures";
+import { expect, holdCall, serverAddress, test, unanswered } from "./fixtures";
 
 // Every page here pairs by link and keeps its pairing, so it never scans.
 test.use({ limitScan: false });
@@ -26,8 +26,8 @@ test("after its socket drops without a reload the page reconnects and reports it
   page,
 }) => {
   const servers: WebSocketRoute[] = [];
-  const toAymeServer = (url: URL) =>
-    Number(url.port) >= 9350 && Number(url.port) <= 9365;
+  const { port } = await serverAddress(agent);
+  const toAymeServer = (url: URL) => Number(url.port) === port;
   await page.routeWebSocket(toAymeServer, (socket) => {
     servers.push(socket.connectToServer());
   });

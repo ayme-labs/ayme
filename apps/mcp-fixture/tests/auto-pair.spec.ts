@@ -16,6 +16,8 @@ test.use({
   launchOptions: {
     args: [`--host-resolver-rules=MAP ${OTHER_HOST} 127.0.0.1`],
   },
+  // A page finds a server by itself only in the range it scans.
+  inScanRange: true,
 });
 
 /** Resolves once the page's auto-pair scan got its answer from each of `ports`. */
