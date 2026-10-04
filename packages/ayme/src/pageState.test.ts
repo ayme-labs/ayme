@@ -23,7 +23,7 @@ import {
 import {
   configurePageStateIgnore,
   getPageStateCaptureForDocument,
-  pageStateNodeLines,
+  pageStateNodeEntry,
   peekPageStateForDocument,
   resolvePageStateRefs,
 } from "./pageState";
@@ -871,17 +871,26 @@ describe("the peek's projected forest", () => {
     });
   });
 
-  it("renders a node's own lines exactly as the text has them", async () => {
+  it("renders a node's own lines exactly as the text has them, and counts what nests under it", async () => {
     const { projected } = await peek();
     const nodes = [...walk(projected.roots)];
     const node = (ref: string) =>
       nodes.find((candidate) => candidate.ref === ref)!;
 
-    expect(pageStateNodeLines(node("e4"))).toEqual([
-      '- e4 checkbox "Done" [checked]:',
-      '  - /pom: ["Done.root","Toggle.root"]',
-    ]);
-    expect(pageStateNodeLines(node("e2"))).toEqual(["- e2 listpage:"]);
-    expect(pageStateNodeLines(node("e6"))).toEqual(["- e6 listitem: Milk"]);
+    expect(pageStateNodeEntry(node("e4"))).toEqual({
+      lines: [
+        '- e4 checkbox "Done" [checked]:',
+        '  - /pom: ["Done.root","Toggle.root"]',
+      ],
+      childCount: 0,
+    });
+    expect(pageStateNodeEntry(node("e2"))).toEqual({
+      lines: ["- e2 listpage:"],
+      childCount: 3,
+    });
+    expect(pageStateNodeEntry(node("e6"))).toEqual({
+      lines: ["- e6 listitem: Milk"],
+      childCount: 0,
+    });
   });
 });

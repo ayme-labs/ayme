@@ -78,14 +78,22 @@ type CapturedPageState = PageStateCapture & {
 export type PageStatePeek = CapturedPageState;
 
 /**
- * Package-internal: a projected node's own lines of the page state text, as
- * the text renders them: its line, then its properties, without the entries
- * nested under it.
+ * Package-internal: a projected node's own entry in the page state text, as
+ * the text renders it: its lines (its line, then its properties, without the
+ * entries nested under it) and how many entries nest under it.
  */
-export function pageStateNodeLines(node: ProjectedStructuralNode): string[] {
-  return renderCompactStructuralNodeForest({ roots: [node] })
-    .split("\n")
-    .slice(0, 1 + node.properties.length);
+export function pageStateNodeEntry(node: ProjectedStructuralNode): {
+  lines: string[];
+  childCount: number;
+} {
+  const lines = renderCompactStructuralNodeForest({ roots: [node] }).split(
+    "\n"
+  );
+  return {
+    lines: lines.slice(0, 1 + node.properties.length),
+    // A node rendered on one line has its one text, if any, on that line.
+    childCount: lines.length === 1 ? 0 : node.children.length,
+  };
 }
 
 const pageStateSessions = new WeakMap<Document, PageStateSession>();

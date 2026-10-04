@@ -1,7 +1,7 @@
 export {
   capturePageState,
   getPageStateForElements,
-  pageStateNodeLines,
+  pageStateNodeEntry,
   peekPageStateForDocument,
   resolvePageStateRef,
 } from "./pageState";
