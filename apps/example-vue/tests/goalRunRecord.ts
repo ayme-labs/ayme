@@ -34,7 +34,7 @@ export type GoalRunRecord = {
   expectedSteps?: number;
   /** The Handover reason; null when `pursue` threw. */
   reason: string | null;
-  /** The model identifiers the run's decisions asked for. */
+  /** The model identifiers that answered the run's decisions. */
   models: string[];
   wallTimeMs: number;
   steps: GoalRunStep[];
@@ -42,10 +42,10 @@ export type GoalRunRecord = {
   recorderError?: string;
 };
 
-/** One Decision Endpoint call seen from the page; `answers` only when the
- *  endpoint answered with success. */
+/** One Decision Endpoint call seen from the page; `model` and `answers` only
+ *  when the endpoint answered with success. */
 export type Decision = {
-  model: unknown;
+  model?: unknown;
   state?: { page?: unknown; history?: unknown };
   questions: Record<string, { criteria?: Record<string, unknown> }>;
   answers?: Record<string, { choice?: unknown }>;
@@ -81,16 +81,21 @@ function recordDecisions(page: Page) {
   const onRequest = (request: Request) => {
     try {
       if (new URL(request.url()).pathname !== decisionEndpointPath) return;
-      const body = request.postDataJSON() as Omit<Decision, "answers">;
+      const body = request.postDataJSON() as Omit<
+        Decision,
+        "model" | "answers"
+      >;
       pending.push(
         request
           .response()
-          .then(async (response) => ({
-            ...body,
-            answers: response?.ok()
-              ? ((await response.json()) as Pick<Decision, "answers">).answers
-              : undefined,
-          }))
+          .then(async (response) => {
+            if (!response?.ok()) return body;
+            const { model, answers } = (await response.json()) as Pick<
+              Decision,
+              "model" | "answers"
+            >;
+            return { ...body, model, answers };
+          })
           .catch(asError)
       );
     } catch (error) {
@@ -181,7 +186,13 @@ export function goalRunRecordOf(
   return {
     ...base,
     reason: runResult?.handover.reason ?? base.reason,
-    models: [...new Set(decisions.map((decision) => String(decision.model)))],
+    models: [
+      ...new Set(
+        decisions.flatMap((decision) =>
+          decision.model === undefined ? [] : [String(decision.model)]
+        )
+      ),
+    ],
     steps: stepsOf(decisions, runResult?.stepScores ?? []),
   };
 }

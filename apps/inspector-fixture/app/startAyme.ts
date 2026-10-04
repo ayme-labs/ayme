@@ -33,7 +33,7 @@ function clearTheList() {
     const choice = step++ === 0 ? "ListPage.clear" : "none";
     const keys = Object.keys(operation?.criteria ?? {});
     return {
-      model: request.model,
+      model: "typesafe/jev-1.13",
       answers: {
         operation: {
           type: "choice",

@@ -154,7 +154,7 @@ function scriptedDecision(
       for (const key of keys) probabilities[key] = key === choice ? 1 : 0;
       answers[question.id] = { type: "choice", choice, probabilities };
     }
-    return { model: request.model, answers };
+    return { model: "typesafe/jev-1.13", answers };
   };
 }
 

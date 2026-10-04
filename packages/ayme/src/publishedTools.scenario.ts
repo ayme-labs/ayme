@@ -193,7 +193,7 @@ async function noFittingOperation(
     request.questions as Record<string, { criteria?: Record<string, string> }>
   ).operation!.criteria!;
   return {
-    model: request.model,
+    model: "typesafe/jev-1.13",
     answers: {
       operation: {
         type: "choice",
