@@ -17,6 +17,7 @@
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
+    "@ayme-dev/unplugin-ayme": "workspace:*",
     "@playwright/test": "^1.62.1",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",

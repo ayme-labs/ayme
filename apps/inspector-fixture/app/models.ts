@@ -1,7 +1,4 @@
-import { registerCompiledPom } from "@ayme-dev/ayme/internal";
-
+import { TodoPage } from "../pom/TodoPage";
 import { startAyme } from "./startAyme";
-import { TodoPage, todoPageManifest } from "../pom/TodoPage";
 
-registerCompiledPom(TodoPage, todoPageManifest);
 startAyme({ PageObject: TodoPage });

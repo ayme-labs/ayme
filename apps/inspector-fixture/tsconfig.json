@@ -1,6 +1,7 @@
 {
   "extends": "@ayme-dev/typescript-config/react-library.json",
   "compilerOptions": {
+    "experimentalDecorators": true,
     "types": ["node", "vite/client"]
   },
   "include": ["app", "pom", "tests", "*.ts"]

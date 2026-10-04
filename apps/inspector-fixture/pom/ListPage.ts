@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 
 import { ListItem } from "./ListItem";
@@ -8,6 +9,7 @@ import { ListItem } from "./ListItem";
  * a Page Object Tool; the e2e tests construct the same class on
  * Playwright to read the page.
  */
+@ayme
 export class ListPage {
   readonly newItemInput: Locator;
   readonly addItemButton: Locator;
@@ -29,18 +31,18 @@ export class ListPage {
     return (await this.items.all()).map((item) => new ListItem(item));
   }
 
-  /** Add an item to the list. */
+  @ayme.action({ description: "Add an item to the list." })
   async addItem(text: string) {
     await this.newItemInput.fill(text);
     await this.addItemButton.click();
   }
 
-  /** Count the items on the list. */
+  @ayme.action({ description: "Count the items on the list." })
   async countItems() {
     return this.items.count();
   }
 
-  /** Remove every item from the list. */
+  @ayme.action({ description: "Remove every item from the list." })
   async clear() {
     await this.clearButton.click();
   }

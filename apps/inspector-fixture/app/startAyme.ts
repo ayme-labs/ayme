@@ -2,105 +2,12 @@ import {
   createRuntimeSession,
   type DecisionRequest,
   type DecisionResponse,
-  type PomManifest,
   type CustomTool,
 } from "@ayme-dev/ayme";
-import {
-  registerCompiledPom,
-  type PageObjectConstructor,
-} from "@ayme-dev/ayme/internal";
+import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
 import { mountInspector } from "@ayme-dev/inspector";
 
 import { ListPage } from "../pom/ListPage";
-
-// What the Ayme compiler derives from ListPage.ts. The fixture registers it
-// by hand: the compiler's bundler plugin depends on this package.
-const listPageManifest: PomManifest = {
-  className: "ListPage",
-  members: [
-    { memberName: "newItemInput", kind: "locator", access: "field" },
-    { memberName: "addItemButton", kind: "locator", access: "field" },
-    { memberName: "clearButton", kind: "locator", access: "field" },
-    { memberName: "items", kind: "locator", access: "field" },
-    // The same elements as `items`, as Page Objects a collection action
-    // runs on.
-    {
-      memberName: "entries",
-      kind: "component",
-      access: "method",
-      componentClassName: "ListItem",
-      collection: true,
-    },
-  ],
-  components: [
-    {
-      className: "ListItem",
-      members: [{ memberName: "root", kind: "locator", access: "field" }],
-      tools: [
-        {
-          methodName: "mark",
-          toolName: "ListItem.mark",
-          description: "Mark this item done or to do.",
-          inputSchema: {
-            type: "object",
-            properties: { state: { type: "string", enum: ["done", "todo"] } },
-            required: ["state"],
-            additionalProperties: false,
-          },
-          parameters: [
-            {
-              name: "state",
-              optional: false,
-              schema: { type: "string", enum: ["done", "todo"] },
-            },
-          ],
-        },
-      ],
-    },
-  ],
-  tools: [
-    {
-      methodName: "addItem",
-      toolName: "ListPage.addItem",
-      description: "Add an item to the list.",
-      inputSchema: {
-        type: "object",
-        properties: { text: { type: "string" } },
-        required: ["text"],
-        additionalProperties: false,
-      },
-      parameters: [
-        { name: "text", optional: false, schema: { type: "string" } },
-      ],
-    },
-    {
-      methodName: "countItems",
-      toolName: "ListPage.countItems",
-      description: "Count the items on the list.",
-      inputSchema: {
-        type: "object",
-        properties: {},
-        required: [],
-        additionalProperties: false,
-      },
-      parameters: [],
-    },
-    {
-      methodName: "clear",
-      toolName: "ListPage.clear",
-      description: "Remove every item from the list.",
-      inputSchema: {
-        type: "object",
-        properties: {},
-        required: [],
-        additionalProperties: false,
-      },
-      parameters: [],
-    },
-  ],
-};
-
-registerCompiledPom(ListPage, listPageManifest);
 
 /** A Custom Tool: it marks the element it's given. */
 const markElement: CustomTool = {
