@@ -46,8 +46,9 @@ publication options, which the suite varies through the page URL.
 
 ## Limits
 
-This fixture certifies standalone Angular applications on the current major,
-client-rendered and server-rendered with hydration, on Node. It does not
+This fixture certifies standalone Angular applications from Angular 21.0 to the
+current major, on Node.js 20.19 and later, client-rendered
+and server-rendered with hydration. It does not
 certify:
 
 - NgModule-bootstrapped apps (should work, not tested)
@@ -58,6 +59,7 @@ certify:
 - Page Object Models inside prebuilt packages
 - `@defer` and incremental hydration
 - a custom `RouteReuseStrategy`
-- Angular 21, which is inside the supported range but not run
+- Angular 19 and 20, which the package supports but this example's APIs and
+  `angular.json` do not
 - Windows and Linux development hosts beyond CI
 - the Inspector
