@@ -35,6 +35,32 @@ describe("recording a key press", () => {
   it("takes the key, not the character ⌥ composes", () => {
     expect(press("ç", "KeyC", { alt: true })).toBe("Alt+C");
     expect(press("¡", "Digit1", { alt: true })).toBe("Alt+1");
+    expect(press("“", "BracketLeft", { alt: true })).toBe("Alt+[");
+    expect(press("¿", "Slash", { alt: true, shift: true })).toBe("Alt+Shift+/");
+    expect(press(" ", "Space", { alt: true })).toBe("Alt+Space");
+    expect(press("Dead", "Backquote", { alt: true })).toBe("Alt+`");
+    expect(press("?", "Slash", { ctrl: true, shift: true })).toBe(
+      "ControlOrMeta+Shift+/"
+    );
+  });
+
+  it("takes the key in its place on the layout when Playwright has no name for it", () => {
+    expect(press("Dead", "Backquote")).toBe("`");
+    expect(press("é", "Digit2")).toBe("2");
+    expect(press("Ö", "Semicolon", { shift: true })).toBe(":");
+    expect(press("Clear", "NumLock")).toBe("NumLock");
+    expect(press("Clear", "Numpad5")).toBe("Numpad5");
+  });
+
+  it("keeps a key with no place on the layout as the browser names it", () => {
+    expect(press("F13", "F13")).toBe("F13");
+    expect(checkKey("F13").ok).toBe(false);
+  });
+
+  it("records AltGr as AltGraph, not as the Control and Alt Windows adds", () => {
+    expect(press("AltGraph", "AltRight", { ctrl: true, alt: true })).toBe(
+      "AltGraph"
+    );
   });
 
   it("folds Shift into a character typed on its own", () => {

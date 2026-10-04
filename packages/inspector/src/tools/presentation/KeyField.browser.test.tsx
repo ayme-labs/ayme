@@ -67,6 +67,19 @@ describe("recording", () => {
     }
   });
 
+  it("records PrintScreen as it's let go, as Windows reports it", async () => {
+    const { key } = renderCard();
+    await key.input.focus();
+
+    await key.input.dispatchEvent("keyup", {
+      key: "PrintScreen",
+      code: "PrintScreen",
+      bubbles: true,
+    });
+
+    await expect.poll(() => key.input.inputValue()).toBe("PrintScreen");
+  });
+
   it("says it's recording, and keeps focus on Tab", async () => {
     const { key } = renderCard();
 
