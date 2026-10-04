@@ -6,7 +6,7 @@ The end-to-end certification that every framework's example app runs, written on
 
 `certificationConfig` from `@ayme-dev/example-certification/config` builds an example's Playwright config: a free port kept across Playwright's workers, and the app's server for the run's mode. The example supplies only the command that serves it on that port.
 
-The environment selects the mode, so an example has one config and its `test:e2e:*` scripts set:
+The environment selects the mode, so an example has one config and its `test:e2e:*` scripts set the variables its `webServer` honours:
 
 | Variable                     | Selects                             |
 | ---------------------------- | ----------------------------------- |
@@ -28,7 +28,7 @@ Tools are called through the recording WebMCP driver from `@ayme-dev/ayme/testin
 
 The builders drive this DOM, which each example renders on `/` beneath its runtime owner, with publication enabled:
 
-- a `region` named `Counter`, holding an `output` with the count, starting at `0`, and the buttons `Increment` and `Call Page Object`, which increments through the Page Object;
+- a `region` named `Counter`, holding the `output` with the count, starting at `0`, and the buttons `Increment` and `Call Page Object`, which increments through the Page Object;
 - a `status` named `Publication`, reading `Publication: <state>`;
 - a button `Unmount counter` that removes the region, which then reads `Mount counter` and mounts a new one;
 - with `navigation`, a link to a page without Page Objects and a link back.

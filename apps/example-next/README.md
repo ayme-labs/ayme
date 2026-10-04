@@ -71,12 +71,7 @@ pnpm --filter @ayme-dev/example-next test:e2e
 ```
 
 The tests are the shared [example certification](../example-certification/README.md),
-run against `next dev` and against `next start` after `next build`. They verify
-server rendering, hydration without errors or warnings, the published tool
-schemas, an undecorated subclass, Ayme's own tools, real Playwright and POM
-execution, and removal and remounting. Against `next dev` only, they also edit
-an imported POM type and require the published tool schema to contain the new
-type metadata without restarting Next.
+run against `next dev` and against `next start` after `next build`.
 
 Main CI uses Turbo's affected graph to run relevant build, lint, typecheck,
 test, and development and production E2E tasks. It then runs repository format

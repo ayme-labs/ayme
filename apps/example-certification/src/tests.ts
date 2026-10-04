@@ -39,6 +39,9 @@ export const test = base.extend<{ failOnPageErrors: void }>({
   ],
 });
 
+const count = (page: Page) =>
+  page.getByRole("region", { name: "Counter" }).locator("output");
+
 /** Opens the counter page with the recording driver and waits for publication. */
 async function openCounter(context: BrowserContext, page: Page) {
   await recordPublishedTools(context);
@@ -48,6 +51,7 @@ async function openCounter(context: BrowserContext, page: Page) {
     "Publication: active",
     { timeout: 15_000 }
   );
+  await expect(count(page)).toHaveText("0");
 }
 
 /** The schemas the compiler derives from the counter's Page Object Model. */
@@ -82,33 +86,33 @@ export function serverRenderTests() {
   test.describe("server render", () => {
     test.use({ javaScriptEnabled: false });
 
-    if (render === "spa")
-      test("renders no counter on the server in SPA mode", async ({ page }) => {
+    test("renders no counter on the server in SPA mode", async ({ page }) => {
+      test.skip(render !== "spa", "Server rendering is on.");
+      const response = await page.goto("/");
+      expect(response?.status()).toBe(200);
+      await expect(page.getByRole("region", { name: "Counter" })).toHaveCount(
+        0
+      );
+    });
+    test("renders the counter and the initial status on repeated requests", async ({
+      page,
+    }) => {
+      test.skip(render === "spa", "SPA mode renders no server HTML.");
+      for (let request = 0; request < 2; request += 1) {
         const response = await page.goto("/");
         expect(response?.status()).toBe(200);
-        await expect(page.getByRole("region", { name: "Counter" })).toHaveCount(
-          0
-        );
-      });
-    else
-      test("renders the counter and the initial status on repeated requests", async ({
-        page,
-      }) => {
-        for (let request = 0; request < 2; request += 1) {
-          const response = await page.goto("/");
-          expect(response?.status()).toBe(200);
-          await expect(
-            page.getByRole("region", { name: "Counter" })
-          ).toBeVisible();
-          await expect(page.locator("output")).toHaveText("0");
-          await expect(
-            page.getByRole("status", { name: "Publication" })
-          ).toHaveText("Publication: waiting");
-          await expect(
-            page.getByRole("button", { name: "Call Page Object" })
-          ).toBeVisible();
-        }
-      });
+        await expect(
+          page.getByRole("region", { name: "Counter" })
+        ).toBeVisible();
+        await expect(count(page)).toHaveText("0");
+        await expect(
+          page.getByRole("status", { name: "Publication" })
+        ).toHaveText("Publication: waiting");
+        await expect(
+          page.getByRole("button", { name: "Call Page Object" })
+        ).toBeVisible();
+      }
+    });
   });
 }
 
@@ -168,16 +172,25 @@ export function counterTests({
       ]);
     });
 
-    test("calls the Page Object from the app, through its tool and through Playwright", async ({
+    test("runs the Page Object's action when the app calls it", async ({
       page,
     }) => {
-      // The app's call runs the compiled model's action in the browser.
       await page.getByRole("button", { name: "Call Page Object" }).click();
-      await expect(page.locator("output")).toHaveText("1");
+      await expect(count(page)).toHaveText("1");
+    });
+
+    test("runs the Page Object's action through its published tool", async ({
+      page,
+    }) => {
       await executePublishedTool(page, "CounterPage.increment");
-      await expect(page.locator("output")).toHaveText("2");
+      await expect(count(page)).toHaveText("1");
+    });
+
+    test("runs the same Page Object Model through Playwright", async ({
+      page,
+    }) => {
       await new CounterPage(page).increment();
-      await expect(page.locator("output")).toHaveText("3");
+      await expect(count(page)).toHaveText("1");
     });
 
     test("removes the tools on unmount and registers a new instance on remount", async ({
@@ -197,30 +210,30 @@ export function counterTests({
         .poll(() => publishedToolNames(page))
         .toContain("CounterPage.increment");
       // The new instance acts on the new counter.
-      await expect(page.locator("output")).toHaveText("0");
+      await expect(count(page)).toHaveText("0");
       await page.getByRole("button", { name: "Call Page Object" }).click();
-      await expect(page.locator("output")).toHaveText("1");
+      await expect(count(page)).toHaveText("1");
     });
 
-    if (navigation)
-      test("removes the page's tools on navigation and restores them on return", async ({
-        page,
-      }) => {
-        await page.getByRole("link", { name: navigation.away }).click();
-        await expect(page.getByText(navigation.awayText)).toBeVisible();
-        await expect
-          .poll(() => publishedToolNames(page))
-          .not.toContain("CounterPage.increment");
-        await page.getByRole("link", { name: navigation.back }).click();
-        await expect
-          .poll(() => publishedToolNames(page))
-          .toContain("CounterPage.increment");
-        await expect(
-          page.getByRole("status", { name: "Publication" })
-        ).toHaveText("Publication: active");
-        await page.getByRole("button", { name: "Call Page Object" }).click();
-        await expect(page.locator("output")).toHaveText("1");
-      });
+    test("removes the page's tools on navigation and restores them on return", async ({
+      page,
+    }) => {
+      if (!navigation) return test.skip(true, "The app has one page.");
+      await page.getByRole("link", { name: navigation.away }).click();
+      await expect(page.getByText(navigation.awayText)).toBeVisible();
+      await expect
+        .poll(() => publishedToolNames(page))
+        .not.toContain("CounterPage.increment");
+      await page.getByRole("link", { name: navigation.back }).click();
+      await expect
+        .poll(() => publishedToolNames(page))
+        .toContain("CounterPage.increment");
+      await expect(
+        page.getByRole("status", { name: "Publication" })
+      ).toHaveText("Publication: active");
+      await page.getByRole("button", { name: "Call Page Object" }).click();
+      await expect(count(page)).toHaveText("1");
+    });
   });
 }
 
@@ -230,45 +243,50 @@ const settle = (ms: number) =>
 /**
  * On the dev server, editing a type the Page Object Model imports rebuilds
  * its published schema without a restart. `counterModePath` is the app's
- * `CounterMode.ts`. Production builds do not rebuild, so the test exists only
- * on the dev server.
+ * `CounterMode.ts`.
  */
 export function devRebuildTests({
   counterModePath,
 }: {
   counterModePath: string;
 }) {
-  if (server !== "dev") return;
   // Plain Playwright `test`: the dev server's own reloads may log errors.
-  base(
-    "rebuilds the published schema when an imported type changes",
-    async ({ context, page }) => {
-      const original = await readFile(counterModePath, "utf8");
-      const changed = original.replace('"double"', '"triple"');
-      expect(changed).not.toBe(original);
-      await recordPublishedTools(context);
-      // The dev server can reload the page at any moment, so the schema is
-      // checked inside one wait, which Playwright re-runs in each new document,
-      // rather than read after it.
-      const waitForModeSchemaWith = (value: string) =>
-        page.waitForFunction(
-          (value) => {
-            const { modelContext } = document as unknown as {
-              modelContext: RecordingDriver;
-            };
-            const tool = modelContext.tools.find(
-              (candidate) => candidate.name === "CounterPage.setMode"
-            );
-            return JSON.stringify(tool?.inputSchema ?? null).includes(value);
-          },
-          value,
-          { timeout: 30_000 }
-        );
+  base.describe("dev rebuild", () => {
+    let original: string | undefined;
+    // A hook, unlike a `finally` in the test, also runs after a timeout.
+    base.afterEach(async () => {
+      if (original !== undefined) await writeFile(counterModePath, original);
+    });
 
-      await page.goto("/");
-      await waitForModeSchemaWith('"double"');
+    base(
+      "rebuilds the published schema when an imported type changes",
+      async ({ context, page }) => {
+        base.skip(server !== "dev", "Production builds do not rebuild.");
+        original = await readFile(counterModePath, "utf8");
+        const changed = original.replace('"double"', '"triple"');
+        expect(changed).not.toBe(original);
+        await recordPublishedTools(context);
+        // The dev server can reload the page at any moment, so the schema is
+        // checked inside one wait, which Playwright re-runs in each new document,
+        // rather than read after it.
+        const waitForModeSchemaWith = (value: string) =>
+          page.waitForFunction(
+            (value) => {
+              const { modelContext } = document as unknown as {
+                modelContext: RecordingDriver;
+              };
+              const tool = modelContext.tools.find(
+                (candidate) => candidate.name === "CounterPage.setMode"
+              );
+              return JSON.stringify(tool?.inputSchema ?? null).includes(value);
+            },
+            value,
+            { timeout: 30_000 }
+          );
 
-      try {
+        await page.goto("/");
+        await waitForModeSchemaWith('"double"');
+
         await writeFile(counterModePath, changed);
         // A hot update may replace the edited module without reloading the
         // page, so the page is reloaded until it publishes the rebuilt schema.
@@ -277,9 +295,7 @@ export function devRebuildTests({
         const rebuilt = waitForModeSchemaWith('"triple"');
         while (await Promise.race([rebuilt.then(() => false), settle(500)]))
           await page.reload().catch(() => {});
-      } finally {
-        await writeFile(counterModePath, original);
       }
-    }
-  );
+    );
+  });
 }

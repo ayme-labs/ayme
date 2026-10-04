@@ -55,15 +55,13 @@ export async function certificationConfig(app: {
     reporter: "list",
     use: {
       baseURL,
-      browserName: "chromium",
       trace: "retain-on-failure",
     },
     webServer: {
       ...app.webServer({ port, server, render }),
       url: baseURL,
       stdout: "pipe",
-      reuseExistingServer: false,
-      timeout: server === "dev" ? 120_000 : 60_000,
+      timeout: 120_000,
     },
   });
 }

@@ -14,9 +14,6 @@
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*"
   },
-  "peerDependencies": {
-    "@playwright/test": "~1.62.1"
-  },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
