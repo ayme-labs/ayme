@@ -378,7 +378,7 @@ function Fact({ term, children }: { term: string; children: ReactNode }) {
     <div
       role="group"
       aria-label={term}
-      className="grid grid-cols-[110px_1fr] items-center gap-2"
+      className="grid grid-cols-[--spacing(27.5)_1fr] items-center gap-2"
     >
       <dt className="text-muted-foreground">{term}</dt>
       <dd className="min-w-0">{children}</dd>
@@ -521,7 +521,7 @@ function OffPageAction({ action }: { action: ObjectAction }) {
 }
 
 const rowClass =
-  "flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50";
+  "flex h-7.5 w-full items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50";
 
 /** A row that goes somewhere: a child Page Object, an instance or a model. */
 function LinkRow({

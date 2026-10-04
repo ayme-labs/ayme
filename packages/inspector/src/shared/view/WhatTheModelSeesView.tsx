@@ -38,7 +38,7 @@ export function WhatTheModelSeesView({
 }) {
   const contentId = useId();
   return (
-    <section aria-label="What the model sees" className="mt-[18px]">
+    <section aria-label="What the model sees" className="mt-4.5">
       <button
         type="button"
         aria-expanded={open}

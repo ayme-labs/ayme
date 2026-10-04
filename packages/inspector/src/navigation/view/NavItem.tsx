@@ -14,7 +14,7 @@ export function NavItem({
       type="button"
       aria-current={selected || undefined}
       className={cn(
-        "flex h-[30px] w-full items-center gap-[7px] rounded-md px-2 text-left hover:bg-muted",
+        "flex h-7.5 w-full items-center gap-1.75 rounded-md px-2 text-left hover:bg-muted",
         selected && "bg-accent hover:bg-accent",
         className
       )}

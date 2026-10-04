@@ -141,7 +141,7 @@ function ToolPage({
             aria-label={`Open the ${pomClassName} page object model`}
             title={`Open the ${pomClassName} page object model`}
             onClick={() => onSelect({ kind: "model", className: pomClassName })}
-            className="inline-flex h-[22px] items-center gap-1 rounded-md border bg-card px-1.5 text-[11.5px] text-primary hover:border-ring"
+            className="inline-flex h-5.5 items-center gap-1 rounded-md border bg-card px-1.5 text-[11.5px] text-primary hover:border-ring"
           >
             <BracesIcon className="size-3" aria-hidden />
             <span className="font-mono">{pomClassName}</span>

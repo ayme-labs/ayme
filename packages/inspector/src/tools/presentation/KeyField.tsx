@@ -186,7 +186,7 @@ export function KeyField({
               ? "Search key names instead (Esc)"
               : "Record a key press instead"
           }
-          className="absolute top-[3px] right-[3px] grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+          className="absolute top-0.75 right-0.75 grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted"
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => {
             // Focusing starts recording; the switch after it wins.
@@ -211,7 +211,7 @@ export function KeyField({
             id={listId}
             role="listbox"
             aria-label="Key names"
-            className="absolute top-full right-0 left-0 z-20 mt-1 flex max-h-[230px] flex-col overflow-auto rounded-[10px] border bg-card p-1 shadow-lg"
+            className="absolute top-full right-0 left-0 z-20 mt-1 flex max-h-57.5 flex-col overflow-auto rounded-[10px] border bg-card p-1 shadow-lg"
           >
             {options.map((option, at) => (
               <div

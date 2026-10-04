@@ -69,7 +69,7 @@ export function RunsView({
     <>
       <div
         className={cn(
-          "flex h-[38px] flex-none items-center gap-2 pr-2.5 pl-4 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase",
+          "flex h-region-header flex-none items-center gap-2 pr-2.5 pl-4 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase",
           open && "border-b"
         )}
       >
@@ -102,7 +102,7 @@ export function RunsView({
                   key={label}
                   type="button"
                   aria-pressed={allRuns === all}
-                  className="h-[22px] rounded-[5px] px-2 text-[11.5px] font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
+                  className="h-5.5 rounded-[5px] px-2 text-[11.5px] font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
                   onClick={() => onAllRunsChange(all)}
                 >
                   {label}
@@ -189,18 +189,18 @@ function RunRow({
       data-run-id={run.id}
       className="flex list-none gap-2.5"
     >
-      <div className="flex w-[26px] flex-none flex-col items-center">
+      <div className="flex w-6.5 flex-none flex-col items-center">
         <span
           role="img"
           aria-label={status.label}
           className={cn(
-            "grid size-[26px] flex-none place-items-center rounded-full border bg-card",
+            "grid size-6.5 flex-none place-items-center rounded-full border bg-card",
             status.className
           )}
         >
           <status.Icon className="size-3.5" aria-hidden />
         </span>
-        <span className="my-[3px] w-px flex-1 bg-border" />
+        <span className="my-0.75 w-px flex-1 bg-border" />
       </div>
       <div
         className={cn(
@@ -242,7 +242,7 @@ function RunRow({
             {Object.keys(run.arguments).length > 0 && (
               <figure
                 aria-label="Arguments"
-                className="mx-2.5 mt-0 mb-1.5 rounded-md bg-muted px-2 py-[5px] font-mono text-[11.5px] [overflow-wrap:anywhere]"
+                className="mx-2.5 mt-0 mb-1.5 rounded-md bg-muted px-2 py-1.25 font-mono text-[11.5px] [overflow-wrap:anywhere]"
               >
                 {JSON.stringify(run.arguments)}
               </figure>
@@ -324,7 +324,7 @@ function RunResult({
           <pre
             // Focusable, so a keyboard can scroll a long result.
             tabIndex={0}
-            className="m-0 max-h-[220px] overflow-auto rounded-md bg-muted px-2.5 py-2 font-mono text-[11.5px] leading-normal outline-none focus-visible:outline-2 focus-visible:outline-ring"
+            className="m-0 max-h-55 overflow-auto rounded-md bg-muted px-2.5 py-2 font-mono text-[11.5px] leading-normal outline-none focus-visible:outline-2 focus-visible:outline-ring"
           >
             {text}
           </pre>
@@ -350,7 +350,7 @@ function StepRow({ step, onHover }: { step: RunStep; onHover: OnHover }) {
   return (
     <li className="flex min-h-6 list-none items-center gap-2 text-xs">
       <Icon className="size-3.5 flex-none text-muted-foreground" aria-hidden />
-      <span className="w-[110px] flex-none text-muted-foreground">
+      <span className="w-27.5 flex-none text-muted-foreground">
         {step.operation}
       </span>
       <button
@@ -361,7 +361,7 @@ function StepRow({ step, onHover }: { step: RunStep; onHover: OnHover }) {
             ? `Not on the page when the run ended: ${step.locator}`
             : `${step.locator}. Hover to highlight it on the page.`
         }
-        className="max-w-[230px] cursor-crosshair truncate rounded-[5px] border bg-background px-1.5 py-px font-mono text-[11.5px] hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
+        className="max-w-57.5 cursor-crosshair truncate rounded-[5px] border bg-background px-1.5 py-px font-mono text-[11.5px] hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
         // The hover highlight finds the member's element while it's there.
         onMouseEnter={() => member !== undefined && onHover({ path: member })}
         onMouseLeave={() => member !== undefined && onHover(undefined)}

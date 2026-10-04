@@ -45,7 +45,7 @@ export function NavigatorView({
   return (
     <nav
       aria-label="Navigator"
-      className="flex min-h-0 w-[290px] flex-none flex-col border-r @max-[719px]:w-[230px] in-data-[layout=bottom]:w-[270px]"
+      className="flex min-h-0 w-navigator flex-none flex-col border-r @max-panel-narrow:w-navigator-narrow in-data-[layout=bottom]:w-navigator-docked"
     >
       <div className="flex flex-col gap-2 border-b px-2.5 pt-2.5 pb-1.5">
         <label className="flex h-8 items-center gap-1.5 rounded-lg border bg-card px-2.5 text-muted-foreground focus-within:border-transparent focus-within:outline-2 focus-within:outline-ring">
@@ -62,14 +62,14 @@ export function NavigatorView({
         <div
           role="group"
           aria-label="Lens"
-          className="flex gap-0.5 rounded-[9px] bg-muted p-[3px]"
+          className="flex gap-0.5 rounded-[9px] bg-muted p-0.75"
         >
           {lenses.map((lens) => (
             <button
               key={lens.id}
               type="button"
               aria-pressed={lens.id === activeLens}
-              className="h-[26px] flex-1 rounded-[7px] text-[12.5px] font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
+              className="h-6.5 flex-1 rounded-[7px] text-[12.5px] font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
               onClick={() => onLensChange(lens.id)}
             >
               {lens.label}
@@ -92,7 +92,7 @@ export function NavigatorView({
                     onMouseLeave={() => onHover?.(undefined)}
                   >
                     <span className="flex max-w-full items-center gap-1.5">
-                      <span className="w-[52px] flex-none text-[10.5px] font-semibold tracking-wide text-muted-foreground uppercase">
+                      <span className="w-13 flex-none text-[10.5px] font-semibold tracking-wide text-muted-foreground uppercase">
                         {result.entry.kind}
                       </span>
                       <span
@@ -103,7 +103,7 @@ export function NavigatorView({
                       </span>
                     </span>
                     {result.entry.description && (
-                      <span className="max-w-full truncate pl-[58px] text-[11.5px] text-muted-foreground">
+                      <span className="max-w-full truncate pl-14.5 text-[11.5px] text-muted-foreground">
                         {result.entry.description}
                       </span>
                     )}

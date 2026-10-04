@@ -31,12 +31,12 @@ import { currentViewport, useViewport } from "./useViewport";
 type Edge = "left" | "right" | "top" | "bottom";
 
 const edgeClass: Record<Edge, string> = {
-  left: "inset-y-0 left-0 w-[7px] cursor-col-resize after:inset-y-0 after:left-0 after:w-0.5",
+  left: "inset-y-0 left-0 w-1.75 cursor-col-resize after:inset-y-0 after:left-0 after:w-0.5",
   right:
-    "inset-y-0 right-0 w-[7px] cursor-col-resize after:inset-y-0 after:right-0 after:w-0.5",
-  top: "inset-x-0 top-0 h-[7px] cursor-row-resize after:inset-x-0 after:top-0 after:h-0.5",
+    "inset-y-0 right-0 w-1.75 cursor-col-resize after:inset-y-0 after:right-0 after:w-0.5",
+  top: "inset-x-0 top-0 h-1.75 cursor-row-resize after:inset-x-0 after:top-0 after:h-0.5",
   bottom:
-    "inset-x-0 bottom-0 h-[7px] cursor-row-resize after:inset-x-0 after:bottom-0 after:h-0.5",
+    "inset-x-0 bottom-0 h-1.75 cursor-row-resize after:inset-x-0 after:bottom-0 after:h-0.5",
 };
 
 /** The edges each layout resizes from. */

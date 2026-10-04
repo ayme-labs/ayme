@@ -128,7 +128,7 @@ export function FillFormFields({
         {edits.size > 0 && (
           <button
             type="button"
-            className="h-[22px] rounded-[5px] border px-2 text-[11px] font-medium hover:border-ring"
+            className="h-5.5 rounded-[5px] border px-2 text-[11px] font-medium hover:border-ring"
             onClick={() => setEdits(new Map())}
           >
             Undo all
@@ -161,7 +161,7 @@ export function FillFormFields({
                 key={row.key}
                 data-failed={failed !== undefined}
                 className={cn(
-                  "grid grid-cols-[18px_18px_minmax(0,1fr)] items-start gap-1.5 border-t py-2 pr-2.5 pl-1 first:border-t-0",
+                  "grid grid-cols-[--spacing(4.5)_--spacing(4.5)_minmax(0,1fr)] items-start gap-1.5 border-t py-2 pr-2.5 pl-1 first:border-t-0",
                   over === row.key &&
                     dragged !== row.key &&
                     "shadow-[inset_0_2px_0_var(--color-primary)]",
@@ -181,7 +181,7 @@ export function FillFormFields({
                   draggable
                   aria-label={`Move ${row.name || row.type}`}
                   title="Drag to change the fill order"
-                  className="mt-0.5 grid h-[22px] cursor-grab place-items-center rounded text-muted-foreground hover:bg-muted"
+                  className="mt-0.5 grid h-5.5 cursor-grab place-items-center rounded text-muted-foreground hover:bg-muted"
                   onDragStart={(event) => {
                     event.dataTransfer.effectAllowed = "move";
                     event.dataTransfer.setData("text/plain", row.key);
@@ -198,7 +198,7 @@ export function FillFormFields({
                 {changed ? (
                   <span
                     aria-label="Fill order"
-                    className="mt-[3px] grid size-[18px] place-items-center rounded-full bg-primary text-[10.5px] font-bold text-primary-foreground"
+                    className="mt-0.75 grid size-4.5 place-items-center rounded-full bg-primary text-[10.5px] font-bold text-primary-foreground"
                   >
                     {++fillOrder}
                   </span>
@@ -239,7 +239,7 @@ function FieldRow({
   const name = row.name || row.type;
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <div className="flex min-h-[22px] items-center gap-1.5">
+      <div className="flex min-h-5.5 items-center gap-1.5">
         <label
           htmlFor={row.type === "radio" ? undefined : id}
           className={cn(
@@ -258,7 +258,7 @@ function FieldRow({
             type="button"
             aria-label={`Undo the change to ${name}`}
             title="Undo: keep what the page shows"
-            className="grid size-[22px] place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="grid size-5.5 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={() => onChange(undefined)}
           >
             <RotateCcwIcon className="size-3.5" aria-hidden />

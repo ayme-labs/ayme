@@ -8,7 +8,7 @@ import { initialValues, type Field } from "../domain/fields";
 import type { RefSource } from "../domain/refTree";
 
 export const inputClass =
-  "h-[30px] w-full min-w-0 rounded-md border border-input bg-background px-[9px] text-[12.5px] outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring";
+  "h-7.5 w-full min-w-0 rounded-md border border-input bg-background px-2.25 text-[12.5px] outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring";
 
 type Change = (path: readonly string[], value: JsonValue | undefined) => void;
 
@@ -198,7 +198,7 @@ function FieldRow({
             <button
               type="button"
               aria-label={`Remove ${name} ${index + 1}`}
-              className="grid size-[30px] flex-none place-items-center rounded-md text-muted-foreground hover:bg-muted"
+              className="grid size-7.5 flex-none place-items-center rounded-md text-muted-foreground hover:bg-muted"
               onClick={() => setRows(rows.filter((_, at) => at !== index))}
             >
               <XIcon className="size-3.5" aria-hidden />
