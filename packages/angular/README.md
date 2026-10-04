@@ -8,7 +8,7 @@ Angular integration for Ayme: start Ayme in the application config and use Page 
 ng add @ayme-dev/angular
 ```
 
-Packages are not published yet; use supplied tarballs before release. `ng add` installs `@ayme-dev/ayme`, and as dev dependencies `@ayme-dev/unplugin-ayme`, the `@angular-builders/custom-esbuild` major that matches your Angular major, and `@playwright/test` for the types Page Object Models use, unless the project already has it. It switches the project's build and serve builders to custom-esbuild, keeping their options, adds Ayme's plugin, writes the one-line plugin file and adds `provideAyme()` to the application config. It leaves bundle budgets alone; see [Bundle size](#bundle-size). When your app uses another custom builder or bootstraps an NgModule, it changes only what it can change safely and prints the remaining steps.
+`ng add` installs `@ayme-dev/ayme`, and as dev dependencies `@ayme-dev/unplugin-ayme`, the `@angular-builders/custom-esbuild` major that matches your Angular major, and `@playwright/test` for the types Page Object Models use, unless the project already has it. It switches the project's build and serve builders to custom-esbuild, keeping their options, adds Ayme's plugin, writes the one-line plugin file and adds `provideAyme()` to the application config. It leaves bundle budgets alone; see [Bundle size](#bundle-size). When your app uses another custom builder or bootstraps an NgModule, it changes only what it can change safely and prints the remaining steps.
 
 ### Manual setup
 

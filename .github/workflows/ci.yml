@@ -25,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       package_checks: ${{ steps.detect.outputs.package_checks }}
+      docs_checks: ${{ steps.detect.outputs.docs_checks }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -66,10 +67,16 @@ jobs:
           echo "Affected package tasks: $affected"
           echo "package_checks=$([ "$affected" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
+          # Markdown outside the packages, such as docs/guide/, affects no
+          # package task but still needs the docs check.
+          docs=$(git diff --name-only "$TURBO_SCM_BASE" "$TURBO_SCM_HEAD" -- '*.md' 'scripts/check-docs*' | wc -l)
+          echo "Changed docs files: $docs"
+          echo "docs_checks=$([ "$docs" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
   check:
     name: Check
     needs: changes
-    if: needs.changes.outputs.package_checks == 'true'
+    if: needs.changes.outputs.package_checks == 'true' || needs.changes.outputs.docs_checks == 'true'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble
@@ -102,6 +109,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: pnpm run commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}"
       - run: pnpm run boundaries
+      - run: pnpm run docs:check
       - name: Run affected package checks
         if: github.event_name == 'pull_request'
         env:

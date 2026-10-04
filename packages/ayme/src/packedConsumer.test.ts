@@ -256,6 +256,19 @@ it("packed manifests name this repository, as npm provenance requires", () => {
     });
 });
 
+// The README rules live in the repository's docs check (`pnpm docs:check`),
+// which reads each package's own README.md; npm must show that file as is.
+it("packed READMEs are the ones the docs check approved", () => {
+  for (const name of PUBLISHED_PACKAGES)
+    expect(
+      fs.readFileSync(
+        path.join(packed[`@ayme-dev/${name}`]!.dir, "README.md"),
+        "utf8"
+      ),
+      name
+    ).toBe(fs.readFileSync(path.join(packagesRoot, name, "README.md"), "utf8"));
+});
+
 it("packed packages contain no workspace references or local paths", () => {
   const versions = workspaceVersions();
   for (const [name, { dir }] of Object.entries(packed))

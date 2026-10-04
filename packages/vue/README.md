@@ -11,7 +11,6 @@ npm install @ayme-dev/ayme @ayme-dev/vue
 npm install -D @ayme-dev/unplugin-ayme @playwright/test@~1.62.1
 ```
 
-Packages are not published yet; use supplied tarballs before release.
 Configure the [Vite plugin](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md)
 alongside `@vitejs/plugin-vue`, and annotate your POM as shown in the
 [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md).
@@ -105,7 +104,7 @@ Browser setup constructs and registers the real Page Object during hydration. Ex
 
 The Vite plugin skips its POM source transform for SSR while retaining shared build configuration. The initial status is `waiting` when the root setup enables publication and `disabled` otherwise, on the server and in the browser. Only the browser attempts publication.
 
-The [Nuxt example](https://github.com/ayme-labs/ayme/tree/main/apps/example-nuxt) shows the existing Vue provider and Vite plugin in an SSR app, including configuration for the built runtime packages and the POM TypeScript project. Its tests run against both Nuxt development and the production Node server. This prototype does not certify Nuxt islands, edge deployment, prerendering, or server-side POM execution.
+The [Nuxt example](https://github.com/ayme-labs/ayme/tree/main/apps/example-nuxt) shows the existing Vue provider and Vite plugin in an SSR app, including configuration for the built runtime packages and the POM TypeScript project. Its tests run against both Nuxt development and the production Node server.
 
 ## Framework parity and example
 
