@@ -75,6 +75,8 @@ const tsconfig = JSON.stringify({
   },
 });
 
+// The file's first bundle builds the fixture's TypeScript program cold: 1.5 s
+// locally, 15.2 to 15.9 s on CI beside the other Turbo tasks.
 it("claims only Page Object Model modules, relative or aliased, and leaves the rest to Angular", async () => {
   const { code, inputs } = await bundle("browser");
 
@@ -96,7 +98,7 @@ it("claims only Page Object Model modules, relative or aliased, and leaves the r
     "angular:counter.component.ts",
     "angular:main.ts",
   ]);
-});
+}, 30_000);
 
 it("leaves the server bundle to Angular", async () => {
   const { code, inputs } = await bundle("node");
