@@ -1,8 +1,5 @@
-import {
-  errorResult,
-  notConnectedResult,
-  pageToolResult,
-} from "../domain/toolResult";
+import { errorResult } from "../domain/toolResult";
+import { callPageTool } from "./callPageTool";
 import type { ServerToolFactory } from "./serverTool";
 
 /**
@@ -28,20 +25,10 @@ export const callTool: ServerToolFactory = ({ connection }) => ({
     required: ["tool"],
     additionalProperties: false,
   },
-  async call({ tool, input = {} }) {
-    if (!connection.paired) return notConnectedResult();
-    const name = String(tool);
-    if (!connection.tools.some((pageTool) => pageTool.name === name))
-      return errorResult(
+  call: ({ tool, input = {} }) =>
+    callPageTool(connection, String(tool), input, (name) =>
+      errorResult(
         `The page has no tool "${name}". Call ayme_list_tools for the page's current tools.`
-      );
-    let outcome;
-    try {
-      outcome = await connection.call(name, input);
-    } catch {
-      // The page left between the check and the call.
-      return notConnectedResult();
-    }
-    return pageToolResult(outcome);
-  },
+      )
+    ),
 });

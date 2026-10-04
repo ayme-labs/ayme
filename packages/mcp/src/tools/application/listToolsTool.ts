@@ -1,4 +1,8 @@
-import { notConnectedResult, textResult } from "../domain/toolResult";
+import {
+  mcpPageTool,
+  notConnectedResult,
+  textResult,
+} from "../domain/toolResult";
 import type { ServerToolFactory } from "./serverTool";
 
 /**
@@ -12,14 +16,6 @@ export const listToolsTool: ServerToolFactory = ({ connection }) => ({
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   async call() {
     if (!connection.paired) return notConnectedResult();
-    return textResult(
-      JSON.stringify(
-        connection.tools.map(({ name, description, inputSchema }) => ({
-          name,
-          description,
-          inputSchema: { ...inputSchema, type: "object" },
-        }))
-      )
-    );
+    return textResult(JSON.stringify(connection.tools.map(mcpPageTool)));
   },
 });

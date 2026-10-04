@@ -1,4 +1,4 @@
-import type { ToolCallOutcome } from "../../contract";
+import type { PageTool, ToolCallOutcome } from "../../contract";
 
 /** An MCP tool result. */
 export type ToolResult = {
@@ -41,4 +41,13 @@ export function notConnectedResult(): ToolResult {
   return errorResult(
     "No page is connected. Call ayme_connect with the app's URL and open the link it returns, in your browser tool or in the developer's browser."
   );
+}
+
+/** A page tool as an MCP tool listing shows it. */
+export function mcpPageTool({ name, description, inputSchema }: PageTool) {
+  return {
+    name,
+    description,
+    inputSchema: { ...inputSchema, type: "object" as const },
+  };
 }

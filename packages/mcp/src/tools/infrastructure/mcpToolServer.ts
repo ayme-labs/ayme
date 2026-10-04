@@ -5,12 +5,9 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import type { AgentConnection } from "../../connection";
+import { callPageTool } from "../application/callPageTool";
 import type { ServerTool } from "../application/serverTool";
-import {
-  errorResult,
-  notConnectedResult,
-  pageToolResult,
-} from "../domain/toolResult";
+import { errorResult, mcpPageTool } from "../domain/toolResult";
 
 /**
  * The MCP server an agent talks to: the server's own tools, then the paired
@@ -31,16 +28,15 @@ export function createMcpToolServer({
   serverTools: readonly ServerTool[];
   connection: AgentConnection;
 }): Server {
-  const stopNotifying = connection.subscribe(() => {
+  const server = new Server(
+    { name, version },
+    { capabilities: { tools: { listChanged: true } } }
+  );
+  // The connection lives as long as the server, so this never unsubscribes.
+  connection.subscribe(() => {
     // Only while an agent is connected; the notification can't reach it otherwise.
     if (server.transport) void server.sendToolListChanged().catch(() => {});
   });
-  const server = new (class extends Server {
-    override async close() {
-      stopNotifying();
-      await super.close();
-    }
-  })({ name, version }, { capabilities: { tools: { listChanged: true } } });
   const ownNames = new Set(serverTools.map((tool) => tool.name));
   const pageTools = () =>
     connection.tools.filter((tool) => !ownNames.has(tool.name));
@@ -52,11 +48,7 @@ export function createMcpToolServer({
         description,
         inputSchema,
       })),
-      ...pageTools().map(({ name, description, inputSchema }) => ({
-        name,
-        description,
-        inputSchema: { ...inputSchema, type: "object" as const },
-      })),
+      ...pageTools().map(mcpPageTool),
     ],
   }));
 
@@ -64,10 +56,9 @@ export function createMcpToolServer({
     const { name, arguments: input = {} } = request.params;
     const serverTool = serverTools.find((tool) => tool.name === name);
     if (serverTool) return serverTool.call(input);
-    if (pageTools().some((tool) => tool.name === name))
-      return pageToolResult(await connection.call(name, input));
-    if (!connection.paired) return notConnectedResult();
-    return errorResult(`Unknown tool "${name}".`);
+    return callPageTool(connection, name, input, () =>
+      errorResult(`Unknown tool "${name}".`)
+    );
   });
 
   return server;
