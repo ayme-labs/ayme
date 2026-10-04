@@ -1,6 +1,6 @@
 # Quickstart: Vue
 
-From a Vite Vue app to your first Page Object Tool, called from a Playwright test or a coding agent.
+From a Vite Vue app to a Page Object Tool your coding agent calls.
 
 ## 1. Install
 
@@ -31,83 +31,70 @@ Enable decorators in the tsconfig that covers your Page Object Models:
 ## 3. Write a Page Object Model
 
 ```ts
-// src/pom/CounterPage.ts
+// src/pom/ProjectsPage.ts
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 @ayme
-export class CounterPage {
-  readonly incrementButton: Locator;
+export class ProjectsPage {
+  constructor(private readonly page: Page) {}
 
-  constructor(page: Page) {
-    this.incrementButton = page.getByRole("button", {
-      name: "Increment",
-      exact: true,
-    });
-  }
-
-  @ayme.action({ description: "Increment the counter." })
-  async increment() {
-    await this.incrementButton.click();
+  @ayme.action({ description: "Create a project with the given name." })
+  async createProject(name: string) {
+    await this.page.getByRole("button", { name: "New project" }).click();
+    await this.page.getByRole("textbox", { name: "Project name" }).fill(name);
+    await this.page.getByRole("button", { name: "Create" }).click();
   }
 }
 ```
 
+If your Playwright tests already have a Page Object Model for this page, mark that one instead.
+
 ## 4. Start Ayme and use the Page Object
 
-Start Ayme in the root component, turn publication on, show the Inspector in development, and register the Page Object:
+Start Ayme in the root component with publication on and the Inspector in development, and use the Page Object:
 
 ```vue
 <!-- src/App.vue -->
 <script setup lang="ts">
 import { ref } from "vue";
 import { useAyme, usePageObject } from "@ayme-dev/vue";
-import { CounterPage } from "./pom/CounterPage";
+import { ProjectsPage } from "./pom/ProjectsPage";
 
 useAyme({ webMCP: { enabled: true }, inspector: import.meta.env.DEV });
-const pom = usePageObject(CounterPage);
-const count = ref(0);
+const pom = usePageObject(ProjectsPage);
+
+const projects = ref<string[]>([]);
+const creating = ref(false);
+const name = ref("");
+function create() {
+  projects.value.push(name.value);
+  name.value = "";
+  creating.value = false;
+}
 </script>
 
 <template>
-  <p>
-    Count: <output>{{ count }}</output>
-  </p>
-  <button @click="count++">Increment</button>
-  <button @click="pom.increment()">Call Page Object</button>
+  <button @click="pom.createProject('My first project')">Show me how</button>
+  <button @click="creating = true">New project</button>
+  <form v-if="creating" @submit.prevent="create">
+    <label>Project name <input v-model="name" /></label>
+    <button type="submit">Create</button>
+  </form>
+  <ul>
+    <li v-for="project in projects" :key="project">{{ project }}</li>
+  </ul>
 </template>
 ```
 
-Run the dev server. The Inspector opens on the page; its Tools lens lists `CounterPage.increment`, and running it increments the counter.
+## 5. Call it
 
-## 5. Call the tool
+Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-From a Playwright test, with a config whose `webServer` starts your dev server:
-
-```ts
-// tests/counter.spec.ts
-import { expect, test } from "@playwright/test";
-import {
-  executePublishedTool,
-  recordPublishedTools,
-  waitForPublishedTool,
-} from "@ayme-dev/ayme/testing";
-
-test("CounterPage.increment is published and runs", async ({
-  context,
-  page,
-}) => {
-  await recordPublishedTools(context);
-  await page.goto("/");
-  await waitForPublishedTool(page, "CounterPage.increment");
-  await executePublishedTool(page, "CounterPage.increment");
-  await expect(page.locator("output")).toHaveText("1");
-});
-```
-
-From a coding agent, connect it to the page through the WebMCP local relay, as [Connect an agent](../guides/connect-an-agent.md) shows, and ask it to call `CounterPage.increment`.
+To call it from your coding agent, connect the agent to the page through the WebMCP local relay, as [Connect an agent](../guides/connect-an-agent.md) shows, and ask it to create a project. It calls `ProjectsPage.createProject`.
 
 ## Next
 
-- [Vue](../frameworks/vue.md): the provider, root ownership, hooks and server rendering with Nuxt.
-- [Page Object Models](../guides/page-object-models.md): children, collections and tool names.
+- [Vue](../frameworks/vue.md): the provider, root ownership, composables and Nuxt.
+- [Page Object Models](../guides/page-object-models.md): tool names, inputs and Page Object Children.
+- [Goals with Jev](../guides/goals-with-jev.md): hand the page a goal instead of single calls.

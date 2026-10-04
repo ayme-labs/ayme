@@ -45,6 +45,18 @@ test("passes a repository that follows the rules", () => {
   assert.deepEqual(checkDocs(fixture()), []);
 });
 
+test("treats a fence line with an info string as code, not as a closing fence", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/README.md":
+          "# lib\n\n```md\n```js\n#12 [no link](gone.md)\n```\n",
+      })
+    ),
+    []
+  );
+});
+
 test("fails on a relative link that does not resolve", () => {
   assertOneProblem(
     { "apps/demo/README.md": "# demo\n\n[Setup](docs/setup.md#start)\n" },

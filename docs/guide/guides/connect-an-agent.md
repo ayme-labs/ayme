@@ -41,7 +41,7 @@ Add the relay as an MCP server in your client's configuration format, with your 
 }
 ```
 
-The client starts the relay. Reload the app once the agent is connected. The relay listens on one local port and accepts only the origin it was started with.
+The client starts the relay. Reload the app once the agent is connected.
 
 ## What the agent sees
 

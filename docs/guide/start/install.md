@@ -1,39 +1,26 @@
 # Install
 
-Which packages to install for your framework, with which commands, and which versions of each framework, Node.js, Playwright and TypeScript Ayme supports.
+Which packages Ayme publishes, what each one owns, and which versions of each framework, Node.js, Playwright and TypeScript Ayme supports.
 
 ## Packages
 
-Every app installs `@ayme-dev/ayme`, its framework's package and, as dev dependencies, `@ayme-dev/unplugin-ayme` and `@playwright/test`. [Packages](../reference/packages.md) says what each one owns.
+| Package                   | Owns                                                                                                                                                                   | Install                       |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `@ayme-dev/ayme`          | The decorators, the runtime and `createAyme`, and `@ayme-dev/ayme/server` for the Decision Endpoint. See [`@ayme-dev/ayme`](../reference/ayme.md).                     | Always                        |
+| `@ayme-dev/vue`           | Starting Ayme in a Vue app and Page Objects in components. See [Vue](../frameworks/vue.md).                                                                            | Vue, Nuxt                     |
+| `@ayme-dev/react`         | Starting Ayme in a React app and Page Objects in components. See [React](../frameworks/react.md).                                                                      | React, Next.js                |
+| `@ayme-dev/svelte`        | Starting Ayme in a Svelte app and Page Objects in components. See [Svelte](../frameworks/svelte.md).                                                                   | Svelte, SvelteKit             |
+| `@ayme-dev/angular`       | `ng add`, starting Ayme in an Angular app and Page Objects in components. See [Angular](../frameworks/angular.md).                                                     | Angular                       |
+| `@ayme-dev/unplugin-ayme` | Compiling Page Object Models and their tool schemas into the browser build, for Vite, the Angular CLI and Turbopack. See [Build plugin](../reference/build-plugin.md). | Always, as a dev dependency   |
+| `@ayme-dev/inspector`     | The in-page panel. See [Inspector](../guides/inspector.md).                                                                                                            | Optional, as a dev dependency |
 
-## Commands
+`@ayme-dev/ayme` bundles what it needs from Ayme's internal packages and from playwright-lite, so you never install those. `@playwright/test` is not an Ayme package; install it as a dev dependency for the `Page` and `Locator` types. Keep all Ayme packages on the same version.
 
-Vue, React and Svelte, with your framework's package in place of `@ayme-dev/vue`:
-
-```sh
-npm install @ayme-dev/ayme @ayme-dev/vue
-npm install -D @ayme-dev/unplugin-ayme @playwright/test
-```
-
-```sh
-pnpm add @ayme-dev/ayme @ayme-dev/vue
-pnpm add -D @ayme-dev/unplugin-ayme @playwright/test
-```
-
-```sh
-yarn add @ayme-dev/ayme @ayme-dev/vue
-yarn add -D @ayme-dev/unplugin-ayme @playwright/test
-```
-
-Angular installs everything, configures the build and adds `provideAyme()` in one step:
-
-```sh
-ng add @ayme-dev/angular
-```
-
-Then follow the quickstart for your framework: [Vue](quickstart-vue.md), [React](quickstart-react.md), [Svelte](quickstart-svelte.md) or [Angular](quickstart-angular.md).
+Each [framework page](../README.md#frameworks) has the install command for its framework, and the quickstarts start with it.
 
 ## Supported versions
+
+These are Ayme's own floors; each framework's own requirements still apply on top, such as the Node.js and TypeScript versions a new Angular or SvelteKit major needs.
 
 CI tests each lower bound together with the current release, except the
 TypeScript floor, which comes from a one-time check.

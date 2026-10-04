@@ -14,18 +14,6 @@ Ayme runs only in the browser. Your app keeps rendering on the server as it did,
 
 After hydration, the root owner starts the session in the browser, constructs and registers the real Page Objects, and publishes. No client-only wrapper is needed around your UI.
 
-## Next.js
+## Per framework
 
-Use `@ayme-dev/react` with the build plugin's [Turbopack loader](../reference/build-plugin.md#nextjs). In the App Router, put `AymeProvider` and the components that call its hooks in a `"use client"` module. The provider renders on the server, and the session starts in its effect after hydration. The [Next.js example](../../../apps/example-next/README.md) shows the setup. See [React](../frameworks/react.md).
-
-## Nuxt
-
-Use `@ayme-dev/vue`'s `AymeProvider` with the Vite plugin. The [Nuxt example](../../../apps/example-nuxt/README.md) shows the configuration, including the Page Object Models' TypeScript project. See [Vue](../frameworks/vue.md).
-
-## SvelteKit
-
-Use `@ayme-dev/svelte` with the Vite plugin. `useAyme` in the root `+layout.svelte` creates each render's session through Svelte context, so nothing sits at module scope. SvelteKit's SPA mode, `export const ssr = false` in the root `+layout.ts`, needs no change. See [Svelte](../frameworks/svelte.md).
-
-## Angular SSR
-
-Use `@ayme-dev/angular` with the Angular builder's SSR. On the server, `provideAyme` creates a session per request but never starts it. See [Angular](../frameworks/angular.md).
+Each framework page has a server-rendering example: [Next.js on React](../frameworks/react.md#server-rendering), [Nuxt on Vue](../frameworks/vue.md#server-rendering), [SvelteKit](../frameworks/svelte.md#server-rendering) and [Angular SSR](../frameworks/angular.md#server-rendering).

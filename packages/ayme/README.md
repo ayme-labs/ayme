@@ -1,6 +1,6 @@
 # @ayme-dev/ayme
 
-Ayme turns the Page Object Models your tests already use into tools that agents and tests call in your running app. Mark a model and its actions, and each action becomes a Page Object Tool, published through WebMCP and runnable from your own code and tests.
+Ayme turns the Page Object Models from your Playwright tests into tools that coding agents and your own app call in the running page. Mark a model and its actions, and each action becomes a Page Object Tool, published through WebMCP and runnable from your own code.
 
 ## Install
 
@@ -18,18 +18,19 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Page } from "@playwright/test";
 
 @ayme
-export class GreetingPage {
+export class ProjectsPage {
   constructor(private readonly page: Page) {}
 
-  @ayme.action({ description: "Greet the visitor." })
-  async greet(name: string) {
-    await this.page.getByRole("textbox", { name: "Name" }).fill(name);
-    await this.page.getByRole("button", { name: "Greet", exact: true }).click();
+  @ayme.action({ description: "Create a project with the given name." })
+  async createProject(name: string) {
+    await this.page.getByRole("button", { name: "New project" }).click();
+    await this.page.getByRole("textbox", { name: "Project name" }).fill(name);
+    await this.page.getByRole("button", { name: "Create" }).click();
   }
 }
 ```
 
-`GreetingPage.greet` is now a Page Object Tool. Enable `compilerOptions.experimentalDecorators` in the tsconfig of your Page Object Models.
+`ProjectsPage.createProject` is now a Page Object Tool. Enable `compilerOptions.experimentalDecorators` in the tsconfig of your Page Object Models.
 
 ## Start Ayme
 
@@ -41,8 +42,8 @@ import { createAyme } from "@ayme-dev/ayme";
 const ayme = createAyme({ webMCP: { enabled: true } });
 const stop = ayme.start();
 
-ayme.pom.register(GreetingPage);
-await ayme.tools.run("GreetingPage.greet", { name: "Ada" });
+ayme.pom.register(ProjectsPage);
+await ayme.tools.run("ProjectsPage.createProject", { name: "Launch plan" });
 ```
 
 ## Documentation
@@ -52,7 +53,6 @@ await ayme.tools.run("GreetingPage.greet", { name: "Ada" });
 - [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md): the Structural Page State, Structural Refs and interaction history.
 - [Custom Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/custom-tools.md): operations of your own on one element.
 - [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md): try your tools from a coding agent through the WebMCP local relay.
-- [Test your integration](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/test-your-integration.md): list and call the published tools from Playwright tests.
 - [Goals with Jev](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/goals-with-jev.md): let a decision model drive the page toward a goal, through your Decision Endpoint.
 - [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md), [errors](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/errors.md) and the [Decision Endpoint contract](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/decision-endpoint.md)
 - [`@ayme-dev/ayme` reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md)
