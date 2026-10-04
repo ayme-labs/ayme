@@ -9,7 +9,7 @@ npm install @ayme-dev/ayme @ayme-dev/vue # or react, svelte, angular
 npm install -D @ayme-dev/unplugin-ayme @playwright/test
 ```
 
-The [build plugin](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md) compiles your Page Object Models into the browser build. On Angular, `ng add @ayme-dev/angular` installs and sets up all of it.
+The [build plugin](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/build-plugin.md) compiles your Page Object Models into the browser build. On Angular, `ng add @ayme-dev/angular` installs and sets up all of it.
 
 ## Mark a Page Object Model
 

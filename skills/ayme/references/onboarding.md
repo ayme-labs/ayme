@@ -1,35 +1,20 @@
 # Onboarding
 
 1. Inspect the project's package manager, bundler, framework, and existing POMs.
-2. Read the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md)
-   for installation and explicit action exposure. Reuse an existing action.
-3. Read the [compiler README](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md)
-   for build setup. For lifecycle wiring, read the
-   [Vue README](https://github.com/ayme-labs/ayme/blob/main/packages/vue/README.md),
-   the [React README](https://github.com/ayme-labs/ayme/blob/main/packages/react/README.md)
-   or the [Svelte README](https://github.com/ayme-labs/ayme/blob/main/packages/svelte/README.md).
-   Start Ayme once at the application root with `useAyme` (Vue),
-   `AymeProvider` (React) or `useAyme` in the root `+layout.svelte` or
-   `App.svelte` (Svelte), and pass `webMCP: { enabled: true }` so its tools
-   are published. For an Angular CLI application, run `ng add @ayme-dev/angular`
-   as the [Angular README](https://github.com/ayme-labs/ayme/blob/main/packages/angular/README.md)
-   describes, follow its manual steps for what `ng add` reports it could not
-   change, pass `webMCP: { enabled: true }` to `provideAyme`, and raise the
-   production `maximumError` budget if the build fails it. Other framework
-   integrations are not documented yet; report
-   that gap rather than adapting internal runtime APIs into an unsupported
-   setup. To see the Page Objects and run their tools from a panel on the
-   page, install `@ayme-dev/inspector` and pass `inspector: true` to the same
-   root setup, typically only in development; the
-   [Inspector README](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/README.md) describes it.
-4. Follow [Browser setup](browser-setup.md) to choose native WebMCP or a local
-   polyfill and relay, then invoke the exposed action through the client.
+2. Follow the quickstart for the project's framework, linked from
+   [Install](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/install.md). Its framework page, linked from the
+   [documentation index](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md), covers what the quickstart leaves out,
+   such as server rendering and Angular's manual steps.
+3. Expose one of the project's existing actions on an existing POM, as
+   [Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md) describes, in place of
+   the quickstart's `CounterPage`.
+4. For a framework without an Ayme package, report that gap and stop at the
+   documented integrations.
+5. Follow [Browser setup](browser-setup.md), then invoke the exposed action
+   through the client.
 
-The packages are not published yet. If registry installation is unavailable,
-use supplied package tarballs or report the missing release. Keep all Ayme
-packages on a matching version. A supplied repository checkout can provide the
-README files above locally; when installing the skill elsewhere, retain the
-references directory and these upstream README links.
+When installing the skill elsewhere, keep the references directory and these
+links.
 
 Finish by reporting the packages and wiring changed, the action invoked, and
 its observed effect. If browser or client access is unavailable, distinguish
