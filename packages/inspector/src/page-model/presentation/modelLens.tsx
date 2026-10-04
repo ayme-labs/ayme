@@ -1,4 +1,9 @@
-import { walk, type PageModel, type PageObjectNode } from "../domain/pageModel";
+import {
+  modelActions,
+  walk,
+  type PageModel,
+  type PageObjectNode,
+} from "../domain/pageModel";
 import { Empty } from "../../shared/view/common";
 import type { Lens, SearchEntry } from "../../navigation/domain/lens";
 import type { RenderRun } from "../../navigation/domain/runSlot";
@@ -11,7 +16,7 @@ import {
   ObjectDetail,
   PageDetail,
   type MemberView,
-} from "./ModelDetails";
+} from "../view/ModelDetails";
 import { ModelTree } from "./ModelTree";
 
 /**
@@ -118,6 +123,7 @@ export function modelLens({
         return (
           <ModelDetail
             model={model}
+            actions={modelActions(model)}
             instances={model.instancePaths.flatMap(
               (path) => byPath.get(path) ?? []
             )}

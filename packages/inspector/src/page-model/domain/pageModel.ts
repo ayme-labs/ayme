@@ -432,3 +432,16 @@ function typeName(schema: JsonSchema): string {
 function plural(count: number, singular: string, pluralForm: string) {
   return `${count} ${count === 1 ? singular : pluralForm}`;
 }
+
+/**
+ * A Page Object Model's actions as the run slot runs them: one per live
+ * tool, or one not runnable when no Page Object of it is on the page.
+ */
+export function modelActions(model: PageObjectModel): ObjectAction[] {
+  return model.actions.flatMap((action): ObjectAction[] => {
+    const live = action.liveToolNames;
+    if (live.length)
+      return live.map((toolName) => ({ ...action, toolName, live: true }));
+    return [{ ...action, toolName: "", live: false }];
+  });
+}

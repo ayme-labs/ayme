@@ -21,7 +21,7 @@ import type {
 } from "../domain/pageModel";
 import type { RenderRun } from "../../navigation/domain/runSlot";
 import type { OnHover } from "../../navigation/domain/highlight";
-import { hoverHandlers } from "../view/hover";
+import { hoverHandlers } from "./hover";
 
 /**
  * The page as a whole: its host, the page Page Objects on it, and the
@@ -184,6 +184,7 @@ export function ObjectDetail({
  */
 export function ModelDetail({
   model,
+  actions,
   instances,
   onHover,
   renderRun,
@@ -192,6 +193,8 @@ export function ModelDetail({
   onSelectMember,
 }: {
   model: PageObjectModel;
+  /** Its actions, one per live tool, or one not runnable when none is live. */
+  actions: readonly ObjectAction[];
   /** Its Page Objects on the page now. */
   instances: readonly PageObjectNode[];
   /** Called with what the pointer is over, for the page's dashed highlight. */
@@ -238,19 +241,7 @@ export function ModelDetail({
           ))}
         </DetailSection>
       )}
-      <Actions
-        actions={model.actions.flatMap((action): ObjectAction[] => {
-          const live = action.liveToolNames;
-          if (live.length)
-            return live.map((toolName) => ({
-              ...action,
-              toolName,
-              live: true,
-            }));
-          return [{ ...action, toolName: "", live: false }];
-        })}
-        renderRun={renderRun}
-      />
+      <Actions actions={actions} renderRun={renderRun} />
       {model.members.length > 0 && (
         <DetailSection
           title="Members"
