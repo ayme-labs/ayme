@@ -71,8 +71,8 @@ For Page Object Models, install `@playwright/test` as a development dependency.
 A separate direct installation of `playwright` is unnecessary. Import `Page`
 and `Locator` with `import type`.
 
-`@ayme-dev/ayme` and `@ayme-dev/vue` declare an optional
-`@playwright/test` peer of `>=1.29 <1.63`. Playwright is unnecessary for the
+`@ayme-dev/ayme` declares an optional `@playwright/test` peer of
+`>=1.29 <1.63`; the framework packages do not declare it. Playwright is unnecessary for the
 core public API and plugin defaults or direct settings. POM registration types
 require it. Packed consumer checks exercise 1.29.0 with TypeScript 5.9.3 and
 1.62.1 with TypeScript 6.0.3, with strict declaration checking and no
