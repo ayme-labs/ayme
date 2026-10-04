@@ -311,6 +311,46 @@ export function counterTests({
       await expect.poll(() => publishedToolNames(page)).toEqual(aymeTools);
     });
 
+    test("answers navigate_back to the previous document before it loads", async ({
+      page,
+    }) => {
+      const loading = page.url();
+      await page.getByRole("link", { name: "Full page load" }).click();
+      await expect.poll(() => publishedToolNames(page)).toEqual(aymeTools);
+      const answer = await answerAcrossFullLoad(
+        page,
+        "navigate_back",
+        {},
+        count(page)
+      );
+      expect(page.url()).toBe(loading);
+      expect(answer).toMatchObject({
+        settled: false,
+        loading,
+        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
+      });
+    });
+
+    test("answers reload before the page loads anew", async ({ page }) => {
+      await page
+        .getByRole("button", { name: "Increment", exact: true })
+        .click();
+      await expect(count(page)).toHaveText("1");
+      const loading = page.url();
+      const answer = await answerAcrossFullLoad(
+        page,
+        "reload",
+        {},
+        count(page).filter({ hasText: /^0$/ })
+      );
+      expect(page.url()).toBe(loading);
+      expect(answer).toMatchObject({
+        settled: false,
+        loading,
+        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
+      });
+    });
+
     test("removes the page's tools on navigation and restores them on return", async ({
       page,
     }) => {
