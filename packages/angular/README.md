@@ -82,6 +82,7 @@ export class Counter {
 - `webMCP.enabled`: publication is off, with status `disabled`, unless it is `true`.
 - `webMCP.toolNamePrefix`: prefixes every published tool name.
 - `inspector`: `true` mounts the [Inspector](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/README.md) while Ayme runs in the browser, for example `inspector: isDevMode()`. Install `@ayme-dev/inspector` for it.
+- `navigate`: your router's navigation. The `navigate` tool calls it with an absolute URL on the app's origin instead of loading a new document, so the app keeps its in-memory state; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#runtime-session).
 
 The status signal updates templates in zone and zoneless apps. `retryPublication()` publishes once a WebMCP driver that appeared after Ayme's initial wait is available.
 

@@ -31,6 +31,8 @@ Publication is off unless the provider enables it with `webMCP={{ enabled: true 
 
 `inspector={true}` on the provider mounts the [Inspector](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/README.md) while Ayme runs, for example `inspector={import.meta.env.DEV}`. Install `@ayme-dev/inspector` for it.
 
+`navigate` on the provider is your router's navigation. The `navigate` tool calls it with an absolute URL on the app's origin instead of loading a new document, so the app keeps its in-memory state; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#runtime-session). Pass the same function while the provider is mounted: a different one is a change of options.
+
 ## Root setup
 
 ```tsx

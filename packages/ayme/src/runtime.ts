@@ -8,6 +8,7 @@ import {
 } from "./publishedTools";
 import { configureCustomTools, type CustomTool } from "./elementTools";
 import { loadInspector } from "./inspector";
+import { configureRouterNavigate } from "./navigateTool";
 import { instrumentedPage } from "./pageInstrumentation";
 import {
   constructPageObject,
@@ -108,6 +109,12 @@ export type AymeOptions = {
    * the session is started in the browser. Off unless `true`.
    */
   inspector?: boolean;
+  /**
+   * The application's router navigation. The `navigate` tool calls it with
+   * the resolved URL of a page on the document's own origin instead of
+   * loading a new document, so the router keeps its in-memory state.
+   */
+  navigate?: (url: string) => void | Promise<void>;
 };
 
 /** WebMCP publication, decided where the runtime starts (ADR-0030). */
@@ -175,8 +182,8 @@ const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 /**
  * Create an inert runtime session. Its owner starts activity by calling
  * `start()`. `pageFactory` runs once, on first use in the browser; on the
- * server `pom.get` returns an inert Page Object. `ignore`, `customTools` and
- * `goalLoop` are configured on start and cleared on stop.
+ * server `pom.get` returns an inert Page Object. `ignore`, `customTools`,
+ * `goalLoop` and `navigate` are configured on start and cleared on stop.
  */
 export function createAyme(options: AymeOptions = {}): Ayme {
   let resolvedPage: AymePage | undefined;
@@ -283,6 +290,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     configurePageStateIgnore(undefined);
     configureCustomTools(undefined);
     configureGoalLoop(undefined);
+    configureRouterNavigate(undefined);
     if (started === ayme) setStarted(undefined);
     refreshTools();
     setStatus({ state: "disposed", message: "The Ayme runtime was disposed." });
@@ -376,6 +384,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       configurePageStateIgnore(options.ignore);
       configureCustomTools(options.customTools);
       configureGoalLoop(options.goalLoop);
+      configureRouterNavigate(options.navigate);
       controller = new AbortController();
       try {
         for (const [model, registration] of registrations)
