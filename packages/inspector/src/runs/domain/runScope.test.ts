@@ -2,38 +2,18 @@ import { expect, it } from "vitest";
 
 import { indexMembers } from "../../page-model";
 import { collection, page } from "../../page-model/test-utils/pageModel";
-import type { Run } from "./run";
+import { anItem, aRun, aStep } from "../test-utils/runs";
 import { runScope as scopeOf } from "./runScope";
 
-// Unit tests: which runs Runs shows for the selection. The runs are
-// hand-written: one on the page's own action, one on an item of its list.
+// Unit tests: which runs Runs shows for the selection. The runs are one on
+// the page's own action and one on an item of its list.
 
-function run(id: number, extra: Partial<Run>): Run {
-  return {
-    id,
-    toolName: "ListPage.addItem",
-    className: "ListPage",
-    objectPath: "ListPage",
-    arguments: {},
-    status: "succeeded",
-    startedAt: 0,
-    steps: [],
-    ...extra,
-  };
-}
-
-const addItem = run(1, {});
-const archiveMilk = run(2, {
+const addItem = aRun({ id: 1 });
+const archiveMilk = aRun({
+  id: 2,
   toolName: "ListPage.items.archive",
   className: "ListItem",
-  objectPath: "ListPage.items[1]",
-  item: {
-    path: "ListPage.items[1]",
-    name: "[1]",
-    pathBelowPage: "items[1]",
-    ref: "e12",
-    label: "Milk",
-  },
+  item: anItem("ListPage.items[1]", { ref: "e12", label: "Milk" }),
   arguments: { ref: "e12", args: {} },
 });
 const runs = [archiveMilk, addItem];
@@ -82,14 +62,9 @@ it("shows the runs on a Page Object and on the objects inside it", () => {
 });
 
 it("shows the runs on a member, or whose steps acted on it", () => {
-  const withStep = run(3, {
-    steps: [
-      {
-        operation: "click",
-        locator: "getByRole('button', { name: 'Add item' })",
-        member: "ListPage.addItemButton",
-      },
-    ],
+  const withStep = aRun({
+    id: 3,
+    steps: [aStep({ member: "ListPage.addItemButton" })],
   });
   const onMember = (path: string) =>
     [archiveMilk, addItem, withStep]
@@ -114,10 +89,8 @@ it("shows the runs on a structure node's ref or on the object it maps to", () =>
 });
 
 it("shows a Browser Tool's run on the node its target names", () => {
-  const fillMilk = run(4, {
+  const fillMilk = aRun({
     toolName: "fill",
-    className: undefined,
-    objectPath: undefined,
     arguments: { target: "e12", text: "Oat milk" },
   });
 

@@ -4,7 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../structure/test-utils/projected";
 import { buildStructureTree } from "../../structure";
-import type { CollectionItem, Run } from "../../runs";
+import { anItem, aRun, aStep } from "../../runs/test-utils/runs";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
 import { RunCard, type RunCardProps } from "./RunCard";
@@ -65,35 +65,8 @@ const rename: RunnableTool = {
   collection: "ListPage.items[]",
 };
 
-const milk: CollectionItem = {
-  path: "ListPage.items[0]",
-  name: "[0]",
-  pathBelowPage: "items[0]",
-  ref: "e3",
-  label: "Milk",
-};
-const eggs: CollectionItem = {
-  path: "ListPage.items[1]",
-  name: "[1]",
-  pathBelowPage: "items[1]",
-  ref: "e6",
-  label: "Eggs",
-};
-
-function aRun(id: number, extra: Partial<Run>): Run {
-  return {
-    id,
-    toolName: "ListPage.addItem",
-    className: "ListPage",
-    objectPath: "ListPage",
-    arguments: { text: "Milk" },
-    status: "succeeded",
-    startedAt: 0,
-    durationMs: 320,
-    steps: [],
-    ...extra,
-  };
-}
+const milk = anItem("ListPage.items[0]", { ref: "e3", label: "Milk" });
+const eggs = anItem("ListPage.items[1]", { ref: "e6", label: "Eggs" });
 
 function renderCard(props: Partial<RunCardProps> & Pick<RunCardProps, "tool">) {
   const onRun = vi.fn();
@@ -324,13 +297,15 @@ describe("a collection action", () => {
 
 describe("the last result", () => {
   it("shows a success's duration and steps, leaving its result to Runs", async () => {
-    const step = {
-      operation: "click",
-      locator: "getByRole('button')",
-    } as const;
     const { card } = renderCard({
       tool: addItem,
-      runs: [aRun(1, { result: '{ "added": "Milk" }', steps: [step, step] })],
+      runs: [
+        aRun({
+          durationMs: 320,
+          result: '{ "added": "Milk" }',
+          steps: [aStep(), aStep()],
+        }),
+      ],
     });
 
     await expect
@@ -343,7 +318,7 @@ describe("the last result", () => {
     const { card } = renderCard({
       tool: addItem,
       runs: [
-        aRun(2, {
+        aRun({
           status: "failed",
           durationMs: 1004,
           error: "Timeout 1000ms exceeded.",
@@ -363,9 +338,9 @@ describe("the last result", () => {
     const { card, onShowRun } = renderCard({
       tool: addItem,
       runs: [
-        aRun(3, { status: "failed", error: "No." }),
-        aRun(2, {}),
-        aRun(1, {}),
+        aRun({ id: 3, status: "failed", error: "No." }),
+        aRun({ id: 2 }),
+        aRun({ id: 1 }),
       ],
     });
 
@@ -380,13 +355,13 @@ describe("the last result", () => {
       tool: rename,
       items: [milk, eggs],
       runs: [
-        aRun(2, {
+        aRun({
           toolName: rename.name,
           item: eggs,
           status: "failed",
           error: "Gone.",
         }),
-        aRun(1, { toolName: rename.name, item: milk }),
+        aRun({ toolName: rename.name, item: milk }),
       ],
     });
 

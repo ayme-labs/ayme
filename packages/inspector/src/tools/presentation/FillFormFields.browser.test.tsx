@@ -8,6 +8,7 @@ import type { ControlState } from "../../shared";
 import type { RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../structure/test-utils/projected";
 import { buildStructureTree } from "../../structure";
+import { aRun } from "../../runs/test-utils/runs";
 import type { Run } from "../../runs";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
@@ -153,19 +154,14 @@ function returnedRun(
   fields: { target: string; name: string; type: string; value: string }[],
   { filled = fields.length, error }: { filled?: number; error?: string } = {}
 ): Run {
-  return {
-    id: 1,
+  return aRun({
     toolName: "fill_form",
     arguments: { fields },
-    status: "succeeded",
     result: JSON.stringify({
       filled: fields.slice(0, filled).map((field) => field.name),
       ...(error ? { failed: { name: fields[filled]!.name, error } } : {}),
     }),
-    startedAt: 0,
-    durationMs: 5,
-    steps: [],
-  };
+  });
 }
 
 describe("the list", () => {
