@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 
 import { indexMembers } from "../adapter/memberIndex";
 import { page } from "../adapter/pageModel.testSupport";
+import { forest, node } from "../adapter/projected.testSupport";
 import { buildStructureTree, emptyStructure } from "../adapter/structure";
 import { isStaleSelection } from "./staleSelection";
 
@@ -13,7 +14,7 @@ const index = indexMembers({
   models: [],
 });
 const structure = buildStructureTree(
-  `- e1 textbox "New item"`,
+  forest(node({ ref: "e1", role: "textbox", name: "New item" })),
   new Map([["e1", ["ListPage.newItemInput"]]]),
   index
 );

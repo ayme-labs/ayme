@@ -43,7 +43,8 @@ export function useRuntimeAdapter({
   const { runs, invoke, clear } = useRuns({ onSettled: onRunSettled });
   const tools = useLiveTools();
 
-  const { text, targetsByRef, controls, ...pageState } = inspector.pageState;
+  const { text, projected, targetsByRef, controls, ...pageState } =
+    inspector.pageState;
   const { elementsByRef, elementToolTargets } = pageState;
   const pageModel = useMemo(
     () =>
@@ -60,10 +61,10 @@ export function useRuntimeAdapter({
   }, [members]);
   const structure = useMemo(
     () =>
-      text === undefined
+      projected === undefined
         ? emptyStructure
-        : buildStructureTree(text, targetsByRef, members, controls),
-    [text, targetsByRef, members, controls]
+        : buildStructureTree(projected, targetsByRef, members, controls),
+    [projected, targetsByRef, members, controls]
   );
   const elementTools = useMemo(
     () =>

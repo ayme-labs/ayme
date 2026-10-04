@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { RunnableTool } from "../adapter/runnableTools";
+import { forest, node } from "../adapter/projected.testSupport";
 import { buildStructureTree } from "../adapter/structure";
 import type { CollectionItem, Run } from "../adapter/useRuns";
 import { renderPart } from "../renderPart";
@@ -233,7 +234,10 @@ describe("a single-element tool", () => {
       tool: fillRef,
       head: false,
       refSource: {
-        roots: buildStructureTree('- e12 textbox "New item"', new Map()).roots,
+        roots: buildStructureTree(
+          forest(node({ ref: "e12", role: "textbox", name: "New item" })),
+          new Map()
+        ).roots,
       },
     });
 
@@ -250,7 +254,10 @@ describe("a single-element tool", () => {
       tool: fillRef,
       structuralRef: "e12",
       refSource: {
-        roots: buildStructureTree('- e12 textbox "New item"', new Map()).roots,
+        roots: buildStructureTree(
+          forest(node({ ref: "e12", role: "textbox", name: "New item" })),
+          new Map()
+        ).roots,
       },
     });
 

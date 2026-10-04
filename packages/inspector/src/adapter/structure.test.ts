@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { indexMembers } from "./memberIndex";
+import { forest, node } from "./projected.testSupport";
 import {
   collection,
   component,
@@ -14,21 +15,60 @@ import {
   type StructureNode,
 } from "./structure";
 
-// Unit tests: the structure tree model built from the page state text an
-// agent receives. The fixture is hand-written in its compact notation.
+// Unit tests: the structure tree model built from the projected page state
+// an agent's text is rendered from. The fixture is hand-written.
 
-const pageState = `- e56:
-  - e57 main:
-    - e58 heading "Groceries" [level=1]
-    - e1 ListPage:
-      - text: New item
-      - e2 textbox "New item"
-    - e3 button "Add item" [cursor=pointer]
-    - e59 list "Items":
-      - e74 listitem: Milk
-      - e75 link "Say \\"hi\\"":
-        - /pom: ["ListItem", "Other"]
-        - text: "Note: one"`;
+// As the page state text renders it:
+// - e56:
+//   - e57 main:
+//     - e58 heading "Groceries" [level=1]
+//     - e1 ListPage:
+//       - text: New item
+//       - e2 textbox "New item"
+//     - e3 button "Add item" [cursor=pointer]
+//     - e59 list "Items":
+//       - e74 listitem: Milk
+//       - e75 link "Say \"hi\"":
+//         - /pom: ["ListItem","Other"]
+//         - text: "Note: one"
+const pageState = forest(
+  node(
+    { ref: "e56" },
+    node(
+      { ref: "e57", role: "main" },
+      node({
+        ref: "e58",
+        role: "heading",
+        name: "Groceries",
+        state: { level: 1 },
+      }),
+      node(
+        { ref: "e1", label: "ListPage" },
+        "New item",
+        node({ ref: "e2", role: "textbox", name: "New item" })
+      ),
+      node({
+        ref: "e3",
+        role: "button",
+        name: "Add item",
+        cursorPointer: true,
+      }),
+      node(
+        { ref: "e59", role: "list", name: "Items" },
+        node({ ref: "e74", role: "listitem" }, "Milk"),
+        node(
+          {
+            ref: "e75",
+            role: "link",
+            name: 'Say "hi"',
+            pom: ["ListItem", "Other"],
+          },
+          "Note: one"
+        )
+      )
+    )
+  )
+);
 
 /** The tree without what an agent reads of each node, tested on its own. */
 function withoutPageStateLines(nodes: readonly StructureNode[]): unknown[] {
@@ -60,7 +100,7 @@ it("builds the tree of nodes with their refs, roles and names", () => {
               ref: "e58",
               role: "heading",
               name: "Groceries",
-              states: ["level=1"],
+              state: { level: 1 },
               members: [],
               children: [],
             },
@@ -84,7 +124,7 @@ it("builds the tree of nodes with their refs, roles and names", () => {
               ref: "e3",
               role: "button",
               name: "Add item",
-              states: ["cursor=pointer"],
+              cursorPointer: true,
               members: [],
               children: [],
             },
@@ -151,7 +191,7 @@ it("keeps what an agent reads of each node alone: its line, its properties and h
   expect(list!.children[1]).toMatchObject({
     pageStateLines: [
       '- e75 link "Say \\"hi\\"":',
-      '  - /pom: ["ListItem", "Other"]',
+      '  - /pom: ["ListItem","Other"]',
     ],
     childCount: 1,
   });
@@ -197,9 +237,13 @@ it("tags each node with the Page Object member it maps to", () => {
 describe("when several members locate the same elements", () => {
   // Two collections over the same list items, and a locator over them too,
   // as the registry lists their targets.
-  const listState = `- e1 list "Items":
-  - e2 listitem: Milk
-  - e3 listitem: Eggs`;
+  const listState = forest(
+    node(
+      { ref: "e1", role: "list", name: "Items" },
+      node({ ref: "e2", role: "listitem" }, "Milk"),
+      node({ ref: "e3", role: "listitem" }, "Eggs")
+    )
+  );
   const [milk, eggs] = [
     document.createElement("li"),
     document.createElement("li"),
@@ -291,13 +335,13 @@ describe("when several members locate the same elements", () => {
   });
 });
 
-/** The node a single ref's targets make of `- e1 button`, with its links. */
+/** The node a single ref's targets make of a button e1, with its links. */
 function nodeOf(
   targets: string[],
   objects: Parameters<typeof indexMembers>[0]["objects"]
 ) {
   const { roots } = buildStructureTree(
-    "- e1 button",
+    forest(node({ ref: "e1", role: "button" })),
     new Map([["e1", targets]]),
     indexMembers({ objects, models: [] })
   );
@@ -497,5 +541,54 @@ describe("a component whose class is also a page on the page", () => {
       { member: "ListPage.searchInput", owner: { object: "ListPage" } },
       { member: "Header.searchInput", owner: { object: "Header" } },
     ]);
+  });
+});
+
+describe("what the text parser used to misread", () => {
+  it("keeps a lowercase Page Object label out of the role", () => {
+    const { roots } = buildStructureTree(
+      forest(
+        node(
+          { ref: "e1", label: "listpage" },
+          node({ ref: "e2", role: "button" })
+        )
+      ),
+      new Map()
+    );
+
+    expect(roots[0]).toMatchObject({
+      role: "generic",
+      name: "",
+      pageStateLines: ["- e1 listpage:"],
+    });
+  });
+
+  it("keeps a name that looks like a state in the name", () => {
+    const { roots } = buildStructureTree(
+      forest(node({ ref: "e1", role: "button", name: "[checked]" })),
+      new Map()
+    );
+
+    expect(roots[0]).toMatchObject({ role: "button", name: "[checked]" });
+    expect(roots[0]).not.toHaveProperty("state");
+  });
+
+  it("reads states from the node, not its line", () => {
+    const { roots } = buildStructureTree(
+      forest(
+        node({
+          ref: "e1",
+          role: "checkbox",
+          name: "Done",
+          state: { checked: true },
+        })
+      ),
+      new Map()
+    );
+
+    expect(roots[0]).toMatchObject({
+      state: { checked: true },
+      pageStateLines: ['- e1 checkbox "Done" [checked]'],
+    });
   });
 });

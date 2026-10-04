@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { indexMembers } from "../adapter/memberIndex";
 import { collection, model, page } from "../adapter/pageModel.testSupport";
+import { forest, node } from "../adapter/projected.testSupport";
 import { buildStructureTree } from "../adapter/structure";
 import { selectionHighlight } from "./highlight";
 import {
@@ -27,10 +28,14 @@ const index = indexMembers({
   models: [model("ListItem", ["nameButton"])],
 });
 const structure = buildStructureTree(
-  `- e1 textbox "New item"
-- e2 list "Items":
-  - e3 listitem: Milk
-  - e4 listitem: Eggs`,
+  forest(
+    node({ ref: "e1", role: "textbox", name: "New item" }),
+    node(
+      { ref: "e2", role: "list", name: "Items" },
+      node({ ref: "e3", role: "listitem" }, "Milk"),
+      node({ ref: "e4", role: "listitem" }, "Eggs")
+    )
+  ),
   new Map([
     ["e1", ["ListPage.newItemInput"]],
     ["e3", ["ListPage.items[0].root"]],
@@ -62,7 +67,7 @@ describe("a member selection", () => {
     expect(
       resolvesIn(
         buildStructureTree(
-          `- e1 button "Milk"`,
+          forest(node({ ref: "e1", role: "button", name: "Milk" })),
           new Map([["e1", ["ListPage.items[1].nameButton"]]]),
           index
         ),

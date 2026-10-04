@@ -1,23 +1,44 @@
 import { expect, it } from "vitest";
 
+import { forest, node } from "../adapter/projected.testSupport";
 import { buildStructureTree } from "../adapter/structure";
 import { refTreeRows, type RefTreeRow } from "./refTree";
 
 // Unit tests: the ref field's search over the structure tree model. The page
-// state is hand-written in the compact notation an agent receives; the
+// state is hand-written as the projected nodes an agent's text renders; the
 // expected rows follow from it, not from the code under test.
 
 const { roots } = buildStructureTree(
-  `- e1 main:
-  - e2 heading "Groceries" [level=1]
-  - e3 ListPage:
-    - text: New item
-    - e4 textbox "New item"
-    - e5 button "Add item" [cursor=pointer]
-  - e6 list "Items":
-    - e7 listitem: Milk
-    - e8 listitem:
-      - e9 button "Archive"`,
+  forest(
+    node(
+      { ref: "e1", role: "main" },
+      node({
+        ref: "e2",
+        role: "heading",
+        name: "Groceries",
+        state: { level: 1 },
+      }),
+      node(
+        { ref: "e3", label: "ListPage" },
+        "New item",
+        node({ ref: "e4", role: "textbox", name: "New item" }),
+        node({
+          ref: "e5",
+          role: "button",
+          name: "Add item",
+          cursorPointer: true,
+        })
+      ),
+      node(
+        { ref: "e6", role: "list", name: "Items" },
+        node({ ref: "e7", role: "listitem" }, "Milk"),
+        node(
+          { ref: "e8", role: "listitem" },
+          node({ ref: "e9", role: "button", name: "Archive" })
+        )
+      )
+    )
+  ),
   new Map()
 );
 

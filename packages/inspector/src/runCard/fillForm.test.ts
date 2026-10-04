@@ -1,34 +1,71 @@
 import { describe, expect, it } from "vitest";
 
+import type { ProjectedStructuralNodeForest } from "@ayme-dev/ayme/internal";
+
 import type { ControlState } from "../adapter/formControls";
+import { forest, node } from "../adapter/projected.testSupport";
 import { buildStructureTree } from "../adapter/structure";
 import { changedFields, formRows, inFillOrder } from "./fillForm";
 
-// A page state as the runtime renders it for a form with every field type.
-const pageState = `- e2 main:
-  - e3 form "Sign up":
-    - e4 textbox "Name": Ada
-    - e5 textbox "Notes": line1 line2
-    - e6 checkbox "Agree" [checked]
-    - e7 button "Help"
-    - e8 group "Size":
-      - e9:
-        - e10 radio "Small"
-        - text: Small
-      - e11:
-        - e12 radio "Medium" [checked]
-        - text: Medium
-    - e13:
-      - text: Color
-      - e14 combobox "Color":
-        - e15 option "Red"
-        - e16 option "Green" [selected]
-    - e17 slider "Volume": 4
-    - e18 spinbutton "Quantity": 3`;
+// A projected page state for a form with every field type.
+const pageState = forest(
+  node(
+    { ref: "e2", role: "main" },
+    node(
+      { ref: "e3", role: "form", name: "Sign up" },
+      node({ ref: "e4", role: "textbox", name: "Name" }, "Ada"),
+      node({ ref: "e5", role: "textbox", name: "Notes" }, "line1 line2"),
+      node({
+        ref: "e6",
+        role: "checkbox",
+        name: "Agree",
+        state: { checked: true },
+      }),
+      node({ ref: "e7", role: "button", name: "Help" }),
+      node(
+        { ref: "e8", role: "group", name: "Size" },
+        node(
+          { ref: "e9" },
+          node({ ref: "e10", role: "radio", name: "Small" }),
+          "Small"
+        ),
+        node(
+          { ref: "e11" },
+          node({
+            ref: "e12",
+            role: "radio",
+            name: "Medium",
+            state: { checked: true },
+          }),
+          "Medium"
+        )
+      ),
+      node(
+        { ref: "e13" },
+        "Color",
+        node(
+          { ref: "e14", role: "combobox", name: "Color" },
+          node({ ref: "e15", role: "option", name: "Red" }),
+          node({
+            ref: "e16",
+            role: "option",
+            name: "Green",
+            state: { selected: true },
+          })
+        )
+      ),
+      node({ ref: "e17", role: "slider", name: "Volume" }, "4"),
+      node({ ref: "e18", role: "spinbutton", name: "Quantity" }, "3")
+    )
+  )
+);
 
-function rowsOf(text: string, controls = new Map<string, ControlState>()) {
+function rowsOf(
+  projected: ProjectedStructuralNodeForest,
+  controls = new Map<string, ControlState>()
+) {
   return formRows(
-    buildStructureTree(text, new Map(), undefined, controls).roots
+    buildStructureTree(projected, new Map(), undefined, controls).roots
   );
 }
 
@@ -114,10 +151,19 @@ describe("formRows", () => {
 
   it("groups radios by their name, named by their radios outside a group", () => {
     const rows = rowsOf(
-      `- e2 main:
-  - e3 radio "Free"
-  - e4 radio "Pro" [checked]
-  - e5 radio "Monthly"`,
+      forest(
+        node(
+          { ref: "e2", role: "main" },
+          node({ ref: "e3", role: "radio", name: "Free" }),
+          node({
+            ref: "e4",
+            role: "radio",
+            name: "Pro",
+            state: { checked: true },
+          }),
+          node({ ref: "e5", role: "radio", name: "Monthly" })
+        )
+      ),
       new Map<string, ControlState>([
         ["e3", { value: "false", group: "0:plan" }],
         ["e4", { value: "true", group: "0:plan" }],

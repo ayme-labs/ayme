@@ -9,6 +9,7 @@ import {
   type RegisteredPom,
 } from "@ayme-dev/ayme/internal";
 
+import { forest, node } from "./adapter/projected.testSupport";
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "./testing";
 
@@ -17,20 +18,25 @@ import { Inspector } from "./testing";
 // selection. The runtime is replaced by a fixture host page whose elements
 // carry their refs in the peeked page state, so the evidence covers the
 // panel and its adapter only.
-vi.mock("@ayme-dev/ayme/internal", () => ({
-  getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-  peekPageStateForDocument: vi.fn(),
-  listElementToolTargets: vi.fn(async () => new Map()),
-  listLiveTools: vi.fn().mockReturnValue([]),
-  getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
-  subscribeToPublishedTools: vi.fn(() => () => {}),
-  getPomDefinitionText: vi.fn(() => ""),
-  listRegisteredPomTargets: vi.fn(),
-  listRegisteredPomTools: vi.fn(() => []),
-  runTool: vi.fn(),
-  listRegisteredPoms: vi.fn(),
-  subscribeToRegisteredPoms: vi.fn(() => () => true),
-}));
+vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
+  const { pageStateNodeLines } =
+    await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
+  return {
+    pageStateNodeLines,
+    getPomDefinitions: vi.fn(() => ({ definitions: [] })),
+    peekPageStateForDocument: vi.fn(),
+    listElementToolTargets: vi.fn(async () => new Map()),
+    listLiveTools: vi.fn().mockReturnValue([]),
+    getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
+    subscribeToPublishedTools: vi.fn(() => () => {}),
+    getPomDefinitionText: vi.fn(() => ""),
+    listRegisteredPomTargets: vi.fn(),
+    listRegisteredPomTools: vi.fn(() => []),
+    runTool: vi.fn(),
+    listRegisteredPoms: vi.fn(),
+    subscribeToRegisteredPoms: vi.fn(() => () => true),
+  };
+});
 
 const page = createPage();
 // The panel renders into an open root this test owns.
@@ -46,9 +52,13 @@ const hostPage = `
     <input data-ref="e2" data-path="Editor.titleInput" aria-label="Title" />
     <button data-ref="e3" data-path="Editor.saveButton">Save</button>
   </section>`;
-const structure = `- e1 region "Editor":
-  - e2 textbox "Title"
-  - e3 button "Save"`;
+const structure = forest(
+  node(
+    { ref: "e1", role: "region", name: "Editor" },
+    node({ ref: "e2", role: "textbox", name: "Title" }),
+    node({ ref: "e3", role: "button", name: "Save" })
+  )
+);
 
 const editor: RegisteredPom = {
   id: "Editor",
@@ -89,7 +99,7 @@ beforeEach(() => {
   vi.mocked(peekPageStateForDocument).mockImplementation(
     async () =>
       ({
-        text: structure,
+        projected: structure,
         elementsByRef: new Map(
           [...host.querySelectorAll("[data-ref]")].map((target) => [
             target.getAttribute("data-ref")!,
