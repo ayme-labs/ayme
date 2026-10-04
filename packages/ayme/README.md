@@ -51,6 +51,9 @@ await ayme.tools.run("GreetingPage.greet", { name: "Ada" });
 - [Publish tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md): starting Ayme and turning WebMCP publication on.
 - [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md): the Structural Page State, Structural Refs and interaction history.
 - [Custom Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/custom-tools.md): operations of your own on one element.
+- [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md): try your tools from a coding agent through the WebMCP local relay.
+- [Test your integration](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/test-your-integration.md): list and call the published tools from Playwright tests.
+- [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md) and [errors](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/errors.md): the built-in tools and every error message.
 - [`@ayme-dev/ayme` reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md)
 - [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 
@@ -61,105 +64,6 @@ await ayme.tools.run("GreetingPage.greet", { name: "Ada" });
 ## License
 
 [FSL-1.1-ALv2](https://github.com/ayme-labs/ayme/blob/main/LICENSE). Bundled third-party code keeps its original license; see `THIRD_PARTY_NOTICES.txt` in the package.
-
-## Browser Tools
-
-A **Browser Tool** is a built-in operation on the page itself, as opposed to
-one a Page Object provides. An agent that knows Playwright MCP can use them as
-it would there:
-
-| Tool            | Playwright MCP counterpart     | Input                                             |
-| --------------- | ------------------------------ | ------------------------------------------------- |
-| `click`         | `browser_click`                | `target`, `doubleClick?`, `button?`, `modifiers?` |
-| `hover`         | `browser_hover`                | `target`                                          |
-| `type`          | `browser_type`                 | `target`, `text`, `submit?`, `slowly?`            |
-| `fill`          | none                           | `target`, `text`                                  |
-| `fill_form`     | `browser_fill_form`            | `fields`: `{ target, name, type, value }[]`       |
-| `check`         | `browser_check` (skill-only)   | `target`                                          |
-| `uncheck`       | `browser_uncheck` (skill-only) | `target`                                          |
-| `select_option` | `browser_select_option`        | `target`, `values`                                |
-| `press_key`     | `browser_press_key`            | `key`                                             |
-
-- The inputs follow Playwright MCP as bundled in `playwright-core` 1.62.1: the
-  same field names, and the same behaviour when an option is omitted. `type`
-  replaces the field's value, or types one character at a time with
-  `slowly: true`. `press_key` acts on the focused element. `check` and
-  `uncheck` take the input of Playwright MCP's skill-only `browser_check` and
-  `browser_uncheck`; `fill` has no counterpart and takes `target` and `text`.
-  Playwright MCP's `element`, the description its host shows when asking the
-  user to allow an action, is left out: Ayme has no such prompt, so a call
-  that passes it is rejected like any other undeclared option.
-- `target` is a Structural Ref from `snapshot`, or a selector: CSS, `xpath=`,
-  or a Playwright selector such as `role=button[name="Save"]` or
-  `text=Save`. A selector must match exactly one element; one that matches
-  several fails and never acts on the first. Playwright MCP also takes locator
-  expressions such as `getByRole('button', { name: 'Save' })`; this runtime
-  does not, and rejects them as an unsupported target.
-- An option a tool does not declare is rejected with an error naming it; it is
-  never ignored.
-- Every action returns the compact action result: `page_changed`, `settled`,
-  `changes` and, when it has one, the action's own `result`.
-- `fill_form` fills its fields in order and stops at the first that fails. Its
-  `result` names the fields filled (`filled`) and the one that failed
-  (`failed`, with its error). Fields filled before it stay filled.
-- The single-element tools are operations the Goal Loop may choose, each for
-  the elements its filter keeps: `click` and `hover` take
-  elements that are not disabled and have an interactive role or a pointer
-  cursor; `type` and `fill` take elements text can actually be entered into;
-  `check` takes checkboxes, radio buttons and switches, and `uncheck` the
-  same without radio buttons;
-  `select_option` takes select elements. The loop fills only the element and
-  the required fields. `fill_form` and `press_key` are published only.
-
-The browser runtime differs from a real browser driven by Playwright:
-
-- Input is synthetic. Its events are not trusted, so they grant no user
-  activation.
-- `hover` does not apply CSS `:hover`.
-- Key presses do not move focus natively; `Tab` does not move to the next
-  field.
-
-## Tool failures
-
-A published tool never throws. WebMCP drops the reason of a rejected tool call:
-native Chrome reports only a generic `UnknownError`. Every tool Ayme publishes,
-including `snapshot` and `goal`, therefore resolves a failure as
-an MCP tool-failure result:
-
-```json
-{
-  "content": [
-    {
-      "type": "text",
-      "text": "RefResolutionError: Cannot click ref \"e12\": removed."
-    }
-  ],
-  "isError": true
-}
-```
-
-- `document.modelContext.executeTool()` resolves with this result's JSON. A
-  caller must read `isError`; the call does not reject.
-- The text is the error's full message, prefixed with the error's name unless
-  the name is plain `Error`. A browser action failure keeps Playwright Lite's
-  name and call log, for example
-  `TimeoutError: page.click: Timeout 1000ms exceeded. …` followed by
-  `Call log:`.
-- The result has no `structuredContent`; no standard defines a structured error
-  yet.
-- Only publication converts errors. The Goal Loop still records a failed
-  step's message in its history.
-- Whether an MCP client connected through the WebMCP local relay sees
-  `isError` depends on the relay.
-
-Ayme's own failures are `AymeError` subclasses, exported from
-`@ayme-dev/ayme`. Each `name` is its class name, and `kind` tells them apart:
-
-| Class                | `kind`       | Meaning                                                           |
-| -------------------- | ------------ | ----------------------------------------------------------------- |
-| `ToolInputError`     | `input`      | The caller's arguments are wrong.                                 |
-| `RefResolutionError` | `resolution` | A Structural Ref or Page Object instance does not match the page. |
-| `RuntimeStateError`  | `runtime`    | Ayme is not set up for this call.                                 |
 
 ## Decision Endpoint
 
