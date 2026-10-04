@@ -37,13 +37,26 @@ keeps the pairing in `sessionStorage` for the tab and removes the fragment from
 the address bar without reloading. Pasting the link into a tab that is already
 open changes only its hash, so the page does not reload.
 
+A tab with no link and no stored pairing pairs by itself when the page is on
+`localhost` or `127.0.0.1` and exactly one Ayme MCP server runs on the
+machine. With none or several running, it stays unpaired until you open or
+paste a connect link, so it never pairs with the wrong agent.
+
 After pairing, the page's built-in tools and Custom Tools are MCP tools under
 the names the page gives them, and calling one runs it on the page and returns
 its result. The server's own tools stay in the server: the page never publishes
 them through WebMCP.
 
+## Ports
+
+The server listens on the first free port from 9350 to 9365, the range a page
+searches for auto-pairing. `ayme mcp --port <port>` listens on that port only,
+and fails if it is taken; its connect links carry the port, so the page needs
+no change. On a port outside the range, a tab pairs with it only through a link.
+
 ## Security
 
-The server listens on the loopback interface only, on the first free port from
-9350 to 9365, and accepts a page only with the token from its connect link. The
-page pairs only with a loopback address.
+The server listens on the loopback interface only. It accepts a page with the
+token from its connect link, or without a token only when the page's origin is
+`localhost` or `127.0.0.1`, so another website you have open cannot drive it.
+The page pairs only with a loopback address.

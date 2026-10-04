@@ -5,6 +5,10 @@
 export type Pairing = Readonly<{
   /** `ws://127.0.0.1:<port>`, with no path. */
   address: string;
+  /**
+   * The server's token. Empty for a tab that auto-paired: the server
+   * accepts it by its localhost origin instead.
+   */
   token: string;
 }>;
 

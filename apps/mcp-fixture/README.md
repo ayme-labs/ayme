@@ -27,4 +27,6 @@ Run from this directory inside the repository's Devbox shell. `pnpm test:e2e`
 tests the built packages, so build first; Turbo's `test:e2e` task does. The
 fixture page is served on a free port (`AYME_E2E_PORT_MCP` overrides it). Each
 test's server takes the first free port from 9350 to 9365; the suite runs two
-workers, so it needs at most two of them.
+workers, and a test starts at most two servers, so it needs at most four of
+them. A page's auto-pair scan finds only the servers a test adds to
+`scanReaches`, so it never pairs with another test's server, or another run's.

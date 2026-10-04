@@ -1,3 +1,4 @@
+export { SERVER_IDENTITY } from "./domain/admission";
 export {
   SERVER_HOST,
   SERVER_PORTS,
@@ -11,5 +12,10 @@ export {
   parseStoredPairing,
   serializePairing,
 } from "./domain/pairingStorage";
-export { listenOnFirstFreePort } from "./infrastructure/firstFreePort";
+export { admit } from "./domain/admission";
+export { autoPairing } from "./infrastructure/autoPairing";
+export {
+  listenOnFirstFreePort,
+  listenOnPort,
+} from "./infrastructure/firstFreePort";
 export { pairingLinks } from "./infrastructure/pairingLinks";
