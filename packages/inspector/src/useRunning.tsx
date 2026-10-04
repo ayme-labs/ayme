@@ -107,15 +107,14 @@ function itemsOf(
   members: MemberIndex,
   structure: InspectorRuntime["pageState"]["structure"]
 ): CollectionItem[] {
-  const refs = new Map<string, StructureNode & { ref: string }>();
-  for (const { node } of structureRows(structure.roots))
-    if (node.ref !== undefined)
-      for (const member of node.members)
-        if (!refs.has(member)) refs.set(member, { ...node, ref: node.ref });
+  const rows = [...structureRows(structure.roots)];
   return members.collectionItems(toolName).flatMap((item) => {
-    const node = refs.get(item.path);
-    return node
-      ? [
+    const node = rows.find(
+      ({ node }) => node.ref !== undefined && node.members.includes(item.path)
+    )?.node;
+    return node?.ref === undefined
+      ? []
+      : [
           {
             path: item.path,
             name: item.name,
@@ -123,8 +122,7 @@ function itemsOf(
             ref: node.ref,
             label: textOf(node),
           },
-        ]
-      : [];
+        ];
   });
 }
 

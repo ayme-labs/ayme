@@ -8,7 +8,10 @@ import type { ObjectMember, PageModel, PageObjectNode } from "./pageModel";
 export type IndexedMember = {
   /** Its path, e.g. "ListPage.items[0]" or "ListPage.items[0].nameButton". */
   path: string;
-  /** The Page Object it is, or that declares it. A collection is one too. */
+  /**
+   * The Page Object it is, or that declares it; the collection itself for a
+   * collection's path.
+   */
   owner: PageObjectNode;
   /** The locator, when it is one. */
   locator?: ObjectMember;
@@ -25,8 +28,11 @@ export type MemberIndex = {
    * reported.
    */
   member(targetPath: string): IndexedMember | undefined;
-  /** A node's parent: the Page Object or collection it is in. */
-  parent(node: PageObjectNode): PageObjectNode | undefined;
+  /**
+   * A node and the nodes it is in, nearest first, up to its page: an item's
+   * collection, that collection's Page Object, and so on.
+   */
+  ancestors(node: PageObjectNode): readonly PageObjectNode[];
   /**
    * The registry target paths of what a path names (see {@link named}): a
    * Page Object's root, a collection's items' roots, a locator's own path.
@@ -72,10 +78,9 @@ export function indexMembers({ objects, models }: PageModel): MemberIndex {
       if (node.kind === "collection") collections.push(node);
       else {
         add(byTarget, rootTarget(node), self);
-        instances.set(node.className, [
-          ...(instances.get(node.className) ?? []),
-          node,
-        ]);
+        const ofClass = instances.get(node.className) ?? [];
+        ofClass.push(node);
+        instances.set(node.className, ofClass);
         for (const locator of node.members)
           if (locator.kind === "locator") {
             const member = { path: locator.path, owner: node, locator };
@@ -118,7 +123,16 @@ export function indexMembers({ objects, models }: PageModel): MemberIndex {
 
   return {
     member: (targetPath) => byTarget.get(targetPath),
-    parent: (node) => parents.get(node),
+    ancestors: (node) => {
+      const nodes: PageObjectNode[] = [];
+      for (
+        let current: PageObjectNode | undefined = node;
+        current;
+        current = parents.get(current)
+      )
+        nodes.push(current);
+      return nodes;
+    },
     targets: (path) =>
       new Set(
         named(path).flatMap(({ owner, locator }) => {
@@ -152,18 +166,15 @@ export function indexMembers({ objects, models }: PageModel): MemberIndex {
  * "items[0].tags[1]".
  */
 export function pathBelowPage(node: PageObjectNode, index: MemberIndex) {
-  const nodes: PageObjectNode[] = [];
-  for (
-    let current: PageObjectNode | undefined = node;
-    current && current.kind !== "page";
-    current = index.parent(current)
-  )
-    nodes.unshift(current);
-  return nodes.reduce(
-    (path, { kind, name }) =>
-      kind === "item" || !path ? `${path}${name}` : `${path}.${name}`,
-    ""
-  );
+  return index
+    .ancestors(node)
+    .filter(({ kind }) => kind !== "page")
+    .reverse()
+    .reduce(
+      (path, { kind, name }) =>
+        kind === "item" || !path ? `${path}${name}` : `${path}.${name}`,
+      ""
+    );
 }
 
 /**

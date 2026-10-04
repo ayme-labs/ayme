@@ -27,15 +27,10 @@ export function useRuntimeAdapter({
   /** Whether the Structure view shows, so the page state is kept live. */
   structureVisible?: boolean;
 } = {}) {
-  // Highlights and runs resolve paths as they show or settle, against the
-  // latest page model.
+  // Highlights resolve paths as they show, against the latest page model.
   const latestMembers = useRef<MemberIndex>(undefined);
   const targetsOf = useCallback(
     (path: string) => latestMembers.current?.targets(path) ?? new Set<string>(),
-    []
-  );
-  const memberOf = useCallback(
-    (targetPath: string) => latestMembers.current?.member(targetPath)?.path,
     []
   );
   const inspector = useInspector({ structureVisible, targetsOf });
@@ -45,10 +40,7 @@ export function useRuntimeAdapter({
     () => refreshPageState(),
     [refreshPageState]
   );
-  const { runs, invoke, clear } = useRuns({
-    onSettled: onRunSettled,
-    memberOf,
-  });
+  const { runs, invoke, clear } = useRuns({ onSettled: onRunSettled });
   const tools = useLiveTools();
 
   const { text, targetsByRef, controls, ...pageState } = inspector.pageState;

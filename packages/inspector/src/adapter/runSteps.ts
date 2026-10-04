@@ -1,6 +1,11 @@
-import { listRegisteredPomTargets } from "@ayme-dev/ayme/internal";
+import {
+  listRegisteredPomTargets,
+  listRegisteredPoms,
+} from "@ayme-dev/ayme/internal";
 
 import { traceEntryLocator, type TraceEntry } from "../trace";
+import { indexMembers } from "./memberIndex";
+import { buildPageModel } from "./pageModel";
 
 /** A step of a run: a locator operation from the Inspector's own trace. */
 export type RunStep = TraceEntry & {
@@ -34,14 +39,12 @@ async function elementsOf(step: TraceEntry): Promise<Element[]> {
 }
 
 /**
- * Names the member each step acted on, where its element is still there.
- *
- * @param memberOf the member a registry target is, by the target's path,
- *   e.g. "ListPage.items[0]" for "ListPage.items[0].root".
+ * Names the member each step acted on, where its element is still there,
+ * from the registry as the run left it: a member the run added, such as a
+ * new item, is named too.
  */
 export async function describeSteps(
-  steps: readonly TraceEntry[],
-  memberOf: (targetPath: string) => string | undefined
+  steps: readonly TraceEntry[]
 ): Promise<RunStep[]> {
   if (!steps.length) return [];
   let targets: Awaited<ReturnType<typeof listRegisteredPomTargets>> = [];
@@ -50,6 +53,10 @@ export async function describeSteps(
   } catch {
     // Without the registry's targets, steps keep their locators.
   }
+  const members = indexMembers(
+    buildPageModel(listRegisteredPoms(), new Set(), [])
+  );
+  const memberOf = (targetPath: string) => members.member(targetPath)?.path;
   return await Promise.all(
     steps.map(async (step) => {
       const elements = await elementsOf(step);

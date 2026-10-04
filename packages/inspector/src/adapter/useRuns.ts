@@ -48,19 +48,8 @@ export type Run = {
   steps: readonly RunStep[];
 };
 
-/**
- * Tool invocations from the Inspector, newest first.
- *
- * @param memberOf the member a registry target is, by the target's path, to
- *   name the member each step acted on.
- */
-export function useRuns({
-  onSettled,
-  memberOf,
-}: {
-  onSettled: () => void;
-  memberOf: (targetPath: string) => string | undefined;
-}) {
+/** Tool invocations from the Inspector, newest first. */
+export function useRuns({ onSettled }: { onSettled: () => void }) {
   const [runs, setRuns] = useState<Run[]>([]);
   const nextId = useRef(1);
 
@@ -76,7 +65,7 @@ export function useRuns({
         const settled = {
           ...patch,
           durationMs,
-          steps: await describeSteps(getInspectorTrace(), memberOf),
+          steps: await describeSteps(getInspectorTrace()),
         };
         setRuns((current) =>
           current.map((run) => (run.id === id ? { ...run, ...settled } : run))
@@ -113,7 +102,7 @@ export function useRuns({
         onSettled();
       }
     },
-    [onSettled, memberOf]
+    [onSettled]
   );
 
   const clear = useCallback(() => {

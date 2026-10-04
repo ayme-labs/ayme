@@ -66,8 +66,10 @@ Applications do not need this demo-only entry point.
 ## Source layout
 
 - `src/adapter`: the runtime adapter, the only code that reads `@ayme-dev/ayme` or runs
-  tools. It provides the structure tree model (`adapter/structure.ts`) and
-  the page model of Page Objects and their models (`adapter/pageModel.ts`).
+  tools. It provides the structure tree model (`adapter/structure.ts`), the
+  page model of Page Objects and their models (`adapter/pageModel.ts`), and
+  the page model indexed by member path (`adapter/memberIndex.ts`), which
+  resolves members, their groups and owners by lookup.
   It keeps the structure live: page changes, input, focus and registry changes schedule a
   refresh (debounced, one at a time), and each refresh is one unrecorded
   peek at the page state, so the Inspector never changes what agents see.

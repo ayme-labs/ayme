@@ -1,5 +1,4 @@
 import type { ControlState } from "./formControls";
-import type { PageObjectNode } from "./pageModel";
 import {
   indexMembers,
   type IndexedMember,
@@ -190,11 +189,8 @@ export function memberLinks(
 function modelGroups(member: IndexedMember, index: MemberIndex) {
   const groups: { className: string; path: string }[] = [];
   const names = member.locator ? [member.locator.name] : [];
-  for (
-    let node: PageObjectNode | undefined = member.owner;
-    node && node.kind !== "page";
-    node = index.parent(node)
-  ) {
+  for (const node of index.ancestors(member.owner)) {
+    if (node.kind === "page") break;
     if (node.kind !== "collection")
       groups.unshift({
         className: node.className,
@@ -203,18 +199,6 @@ function modelGroups(member: IndexedMember, index: MemberIndex) {
     if (node.kind !== "item") names.unshift(node.name);
   }
   return groups;
-}
-
-/** A page model node and its ancestors, nearest first. */
-function ancestry(node: PageObjectNode, index: MemberIndex) {
-  const nodes: PageObjectNode[] = [];
-  for (
-    let current: PageObjectNode | undefined = node;
-    current;
-    current = index.parent(current)
-  )
-    nodes.push(current);
-  return nodes;
 }
 
 /** A node as a row of the tree, depth first, with its depth from a root. */
@@ -306,7 +290,7 @@ export function memberTag(
 }
 
 function specificity({ owner, locator }: IndexedMember, index: MemberIndex) {
-  const nodes = ancestry(owner, index);
+  const nodes = index.ancestors(owner);
   const items = nodes.filter(({ kind }) => kind === "item").length;
   return items * 1000 + nodes.length + (locator ? 1 : 0);
 }
@@ -316,7 +300,7 @@ function specificity({ owner, locator }: IndexedMember, index: MemberIndex) {
  * collection item as `[·]`. A page's root is the page.
  */
 function shortTag(member: IndexedMember, index: MemberIndex) {
-  const nodes = ancestry(member.owner, index).reverse().slice(1);
+  const nodes = [...index.ancestors(member.owner)].reverse().slice(1);
   if (!nodes.length && !member.locator) return member.path;
   const [first, second] = nodes;
   const segments = nodes.map(({ kind, name }) =>
