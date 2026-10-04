@@ -20,7 +20,12 @@ import {
 } from "./arms.ts";
 import { initPageScript, signInAndOpenEditor } from "./browser.ts";
 import { claudeEnvironment, claudeVersion, runClaude } from "./claude.ts";
-import { readOauthToken } from "./environment.ts";
+import {
+  openRouterKeyVariable,
+  readEnvVariable,
+  readOauthToken,
+} from "./environment.ts";
+import { decisionUsageFile, measureGoalLoop } from "./goalLoop.ts";
 import { moveFiles, readLabChanges } from "./labCheckout.ts";
 import {
   ensureDatabaseBuilt,
@@ -226,6 +231,18 @@ export async function runOnce(
     );
     await writeJson(path.join(runDir, "verdict.json"), verdict);
 
+    // The lab app's Decision Endpoint records every Goal Loop call; this run's are the ones in its window.
+    const goalLoop = await measureGoalLoop({
+      usageFile: decisionUsageFile(formbricksRoot),
+      window: { startedAt: run.startedAt, finishedAt: run.finishedAt },
+      openRouterApiKey: readEnvVariable(openRouterKeyVariable, evalRoot),
+      log,
+    });
+    if (goalLoop.calls > 0)
+      log(
+        `The Goal Loop made ${goalLoop.calls} decision calls (${goalLoop.failedCalls} failed); cost ${goalLoop.costUsd === null ? "unknown" : `$${goalLoop.costUsd}`}.`
+      );
+
     const result = normalizeRun({
       runId,
       arm: options.arm.id,
@@ -246,7 +263,8 @@ export async function runOnce(
         formbricksCommit: gitOutput(formbricksRoot, ["rev-parse", "HEAD"]),
         aymeCommit: gitOutput(repoRoot, ["rev-parse", "HEAD"]),
       },
-      goalLoop: { usage: null, costUsd: null },
+      goalLoop,
+      setup: armSetup?.evidence ?? null,
       labCheckout: {
         movedFiles: labChanges.untracked,
         modifiedFiles: labChanges.modified,

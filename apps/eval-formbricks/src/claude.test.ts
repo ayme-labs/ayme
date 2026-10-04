@@ -13,6 +13,8 @@ describe("claudeEnvironment", () => {
     CLAUDE_CODE_SESSION_ID: "session-of-the-launcher",
     ANTHROPIC_BASE_URL: "https://proxy.example",
     ANTHROPIC_MODEL: "something-else",
+    AYME_OPENROUTER_API_KEY: "the-lab-app's-model-key",
+    AYME_LAB_DECISION_USAGE_FILE: "/elsewhere/usage.jsonl",
     MCP_TIMEOUT: "30000",
   };
   const environment = claudeEnvironment(
@@ -20,10 +22,10 @@ describe("claudeEnvironment", () => {
     parent
   );
 
-  it("drops every Claude Code and Anthropic variable of the launcher", () => {
+  it("drops every Claude Code, Anthropic and Ayme variable of the launcher", () => {
     expect(
       Object.keys(environment)
-        .filter((key) => /^(CLAUDE|ANTHROPIC)/.test(key))
+        .filter((key) => /^(CLAUDE|ANTHROPIC|AYME)/.test(key))
         .sort()
     ).toEqual(["CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR"]);
   });

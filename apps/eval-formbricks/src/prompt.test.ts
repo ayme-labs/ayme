@@ -75,23 +75,70 @@ describe("the prompt", () => {
     }
   });
 
-  it("differs between the Playwright MCP and Playwright CLI arms in that one line alone", () => {
-    const mcpLines = prompt.split("\n");
-    const cliLines = createPrompt(
-      mission,
-      arms["playwright-cli"],
-      "http://localhost:3000"
-    ).split("\n");
-    expect(cliLines).toHaveLength(mcpLines.length);
-    const differing = mcpLines
-      .map((line, index) => ({ mcp: line, cli: cliLines[index] }))
-      .filter(({ mcp, cli }) => mcp !== cli);
-    expect(differing).toEqual([
-      {
-        mcp: arms["playwright-mcp"].interfaceLine,
-        cli: arms["playwright-cli"].interfaceLine,
-      },
+  it.each([
+    "playwright-cli",
+    "ayme-goal-loop-off",
+    "ayme-goal-loop-on",
+  ] as const)(
+    "differs between the Playwright MCP arm and %s in that one line alone",
+    (armId) => {
+      const mcpLines = prompt.split("\n");
+      const otherLines = createPrompt(
+        mission,
+        arms[armId],
+        "http://localhost:3000"
+      ).split("\n");
+      expect(otherLines).toHaveLength(mcpLines.length);
+      const differing = mcpLines
+        .map((line, index) => ({ mcp: line, other: otherLines[index] }))
+        .filter(({ mcp, other }) => mcp !== other);
+      expect(differing).toEqual([
+        {
+          mcp: arms["playwright-mcp"].interfaceLine,
+          other: arms[armId].interfaceLine,
+        },
+      ]);
+    }
+  );
+
+  it("names the goal tool only in the Goal Loop on arm's line", () => {
+    expect(arms["ayme-goal-loop-on"].interfaceLine).toContain("`goal`");
+    expect(arms["ayme-goal-loop-off"].interfaceLine).not.toContain("goal");
+  });
+});
+
+describe.each([
+  ["ayme-goal-loop-off", false],
+  ["ayme-goal-loop-on", true],
+] as const)("the %s arm", (armId, goalLoop) => {
+  const arm = arms[armId];
+
+  it("gives the agent the pinned WebMCP local relay on the lab app's origin and no Playwright interface", () => {
+    const servers = arm.mcpServers(armContext);
+    expect(Object.keys(servers)).toEqual(["webmcp-local-relay"]);
+    expect(servers["webmcp-local-relay"].args[0]).toMatch(
+      /@mcp-b\/webmcp-local-relay\/dist\/cli\.mjs$/
+    );
+    expect(servers["webmcp-local-relay"].args).toEqual(
+      expect.arrayContaining(["--widget-origin", "http://localhost:3000"])
+    );
+    expect(arm.browserInterface()).toEqual({
+      name: "@mcp-b/webmcp-local-relay",
+      version: "5.1.0",
+    });
+  });
+
+  it("leaves the agent read-only file tools and the relay's tools, but not its page opener", () => {
+    expect(arm.tools).toEqual(["Read", "Glob", "Grep"]);
+    expect(arm.allowedTools).toEqual(["mcp__webmcp-local-relay"]);
+    expect(arm.disallowedTools).toEqual([
+      "mcp__webmcp-local-relay__webmcp_open_page",
     ]);
+  });
+
+  it("sets the relay and the page up outside the measured window", () => {
+    expect(arm.setup).toBeTypeOf("function");
+    expect(arm.interfaceLine.includes("`goal`")).toBe(goalLoop);
   });
 });
 

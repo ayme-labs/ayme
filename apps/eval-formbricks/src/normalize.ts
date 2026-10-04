@@ -1,3 +1,4 @@
+import { combinedCost, type GoalLoopUsage } from "./goalLoop.ts";
 import {
   summarizeTranscript,
   type TokenUsage,
@@ -30,8 +31,10 @@ export type RunArtifacts = {
     formbricksCommit: string | null;
     aymeCommit: string | null;
   };
-  /** The Goal Loop's own model usage and cost, for arms that run it. Filled by later work. */
-  goalLoop: { usage: TokenUsage | null; costUsd: number | null };
+  /** The Goal Loop's own model calls, tokens and cost during the run; no calls for arms without it. */
+  goalLoop: GoalLoopUsage;
+  /** What the arm's setup established before the measured window, such as the relay's connected page; `null` for arms without a setup. */
+  setup: Record<string, unknown> | null;
   /** What the agent changed in the lab app folder during the run. */
   labCheckout: {
     /** Files it created there, moved into the run folder's `agent-files/`. */
@@ -64,8 +67,8 @@ export type NormalizedResult = {
   agentReported: { durationMs: number | null; apiDurationMs: number | null };
   tokens: TokenUsage | null;
   costUsd: number | null;
-  goalLoop: { usage: TokenUsage | null; costUsd: number | null };
-  /** The agent's cost plus the Goal Loop's where it ran; `null` while the agent's is unknown. */
+  goalLoop: GoalLoopUsage;
+  /** The agent's cost plus the Goal Loop's where it ran; `null` while either is unknown. */
   combinedCostUsd: number | null;
   toolCalls: ToolCallCounts;
   versions: {
@@ -84,6 +87,7 @@ export type NormalizedResult = {
     plugins: { name: string; source: string | null }[];
     permissionMode: string | null;
   };
+  setup: Record<string, unknown> | null;
   timeoutSeconds: number;
   startedAt: string;
   finishedAt: string;
@@ -125,8 +129,7 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     tokens: result?.usage ?? null,
     costUsd,
     goalLoop: artifacts.goalLoop,
-    combinedCostUsd:
-      costUsd === null ? null : costUsd + (artifacts.goalLoop.costUsd ?? 0),
+    combinedCostUsd: combinedCost(costUsd, artifacts.goalLoop),
     toolCalls: summary.toolCalls,
     versions: {
       claudeCode: init?.claudeCodeVersion ?? artifacts.versions.claudeCode,
@@ -143,6 +146,7 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
       plugins: init?.plugins ?? [],
       permissionMode: init?.permissionMode ?? null,
     },
+    setup: artifacts.setup,
     timeoutSeconds: artifacts.timeoutSeconds,
     startedAt: artifacts.startedAt,
     finishedAt: artifacts.finishedAt,
@@ -155,11 +159,15 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
 }
 
 function seconds(ms: number | null) {
-  return ms === null ? "unavailable" : `${(ms / 1000).toFixed(1)} s`;
+  return ms === null ? "unknown" : `${(ms / 1000).toFixed(1)} s`;
 }
 
 function count(value: number | null | undefined) {
-  return value ?? "unavailable";
+  return value ?? "unknown";
+}
+
+function dollars(value: number | null) {
+  return value === null ? "unknown" : `$${value.toFixed(4)}`;
 }
 
 /** A short human overview, written next to `result.json`. */
@@ -170,6 +178,7 @@ export function summarizeResult(result: NormalizedResult) {
         `  - ${name}: ${counts.total} (${counts.failed} failed)`
     )
     .join("\n");
+  const { goalLoop } = result;
   return `# Run ${result.runId}
 
 - Arm: ${result.arm}
@@ -181,8 +190,11 @@ export function summarizeResult(result: NormalizedResult) {
 - Cache creation tokens: ${count(result.tokens?.cacheCreation)}
 - Cache read tokens: ${count(result.tokens?.cacheRead)}
 - Output tokens: ${count(result.tokens?.output)}
-- Cost: ${result.costUsd === null ? "unavailable" : `$${result.costUsd.toFixed(4)}`}
-- Combined cost: ${result.combinedCostUsd === null ? "unavailable" : `$${result.combinedCostUsd.toFixed(4)}`}
+- Cost: ${dollars(result.costUsd)}
+- Goal Loop calls: ${goalLoop.calls} (${goalLoop.failedCalls} failed)
+- Goal Loop tokens: ${goalLoop.usage === null ? "none" : `${goalLoop.usage.input} in, ${goalLoop.usage.output} out`}
+- Goal Loop cost: ${goalLoop.calls === 0 ? "none" : dollars(goalLoop.costUsd)}
+- Combined cost: ${dollars(result.combinedCostUsd)}
 - Tool calls: ${result.toolCalls.total} (${result.toolCalls.failed} failed)
 ${tools}
 - Permission denials: ${result.agent.permissionDenials}

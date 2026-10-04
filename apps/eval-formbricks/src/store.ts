@@ -96,6 +96,11 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
     run.tokens === null || run.tokens === undefined
       ? null
       : record(run.tokens, `${what} tokens`);
+  // A result stored before the Goal Loop was measured has no calls in it.
+  const goalLoop =
+    run.goalLoop === null || run.goalLoop === undefined
+      ? null
+      : record(run.goalLoop, `${what} goalLoop`);
   return {
     runId: string(run, "runId", what),
     arm: string(run, "arm", what),
@@ -112,6 +117,16 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
             output: number(tokens, "output", `${what} tokens`),
           },
     combinedCostUsd: nullableNumber(run, "combinedCostUsd", what),
+    goalLoop: {
+      calls:
+        goalLoop === null
+          ? 0
+          : (nullableNumber(goalLoop, "calls", `${what} goalLoop`) ?? 0),
+      costUsd:
+        goalLoop === null
+          ? null
+          : nullableNumber(goalLoop, "costUsd", `${what} goalLoop`),
+    },
     timeoutSeconds: number(run, "timeoutSeconds", what),
     labCheckoutDirty: boolean(run, "labCheckoutDirty", what),
     versions: {

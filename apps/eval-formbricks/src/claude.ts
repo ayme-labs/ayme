@@ -82,22 +82,27 @@ export function claudeArguments(invocation: {
   ];
 }
 
-/** The environment without any Claude Code or Anthropic variable of whoever launched the eval. */
+/**
+ * The environment without any Claude Code, Anthropic or Ayme variable of
+ * whoever launched the eval. The Ayme variables hold the lab app's model key,
+ * which the agent must never see.
+ */
 export function withoutClaudeVariables(
   parent: NodeJS.ProcessEnv
 ): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(parent)) {
-    if (!/^(CLAUDE|ANTHROPIC)/.test(key)) environment[key] = value;
+    if (!/^(CLAUDE|ANTHROPIC|AYME_)/.test(key)) environment[key] = value;
   }
   return environment;
 }
 
 /**
- * The environment the agent runs in: the parent's, minus every Claude Code and
- * Anthropic variable the launcher may carry (its own settings, base URL, session
- * ids), plus a fresh configuration directory and the eval's own token. Nothing
- * else. The token is never written anywhere; it lives only in this environment.
+ * The environment the agent runs in: the parent's, minus every Claude Code,
+ * Anthropic and Ayme variable the launcher may carry (its own settings, base
+ * URL, session ids, the lab app's model key), plus a fresh configuration
+ * directory and the eval's own token. Nothing else. The token is never written
+ * anywhere; it lives only in this environment.
  */
 export function claudeEnvironment(
   options: { configDir: string; oauthToken: string },
