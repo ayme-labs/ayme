@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { createServer, type AddressInfo } from "node:net";
 
 import {
   test as base,
@@ -18,8 +19,23 @@ import { connectPage, startAgent } from "@ayme-dev/mcp/testing";
 import { render, server } from "./config";
 
 /**
+ * Whether a console error is Chromium reporting a refused probe of the Agent
+ * Connection's auto-pair scan: with no Ayme MCP server running, a localhost
+ * page probes `ws://127.0.0.1:<port>/probe` on each port from 9350 to 9365,
+ * and Chromium logs every refused connection, whatever the page does.
+ */
+function isRefusedAutoPairProbe(text: string) {
+  const port =
+    /^WebSocket connection to 'ws:\/\/127\.0\.0\.1:(\d+)\/probe' failed/.exec(
+      text
+    )?.[1];
+  return port !== undefined && Number(port) >= 9350 && Number(port) <= 9365;
+}
+
+/**
  * Playwright's `test`, failing any test whose page throws, logs a console
- * error or warns about hydration. An example's own specs use it too.
+ * error or warns about hydration. An example's own specs use it too. It
+ * ignores the auto-pair scan's refused probes (`isRefusedAutoPairProbe`).
  */
 export const test = base.extend<{ failOnPageErrors: void }>({
   failOnPageErrors: [
@@ -27,8 +43,10 @@ export const test = base.extend<{ failOnPageErrors: void }>({
       const errors: string[] = [];
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("console", (message) => {
-        if (message.type() === "error" || /hydrat/i.test(message.text()))
-          errors.push(message.text());
+        const text = message.text();
+        if (isRefusedAutoPairProbe(text)) return;
+        if (message.type() === "error" || /hydrat/i.test(text))
+          errors.push(text);
       });
       await use();
       expect(
@@ -345,7 +363,9 @@ export function agentConnectionTests({
       async ({ page, baseURL }) => {
         base.skip(!enabled(), "The app turns the Agent Connection off here.");
         const scripts = loadedScripts(page);
-        const agent = await startAgent();
+        // Outside the range a page's auto-pair scan probes, so another
+        // example's page running beside this one never pairs with it.
+        const agent = await startAgent("--port", String(await freePort()));
         try {
           // A dev server may compile the page on its first request, which
           // takes over 10 s on CI.
@@ -389,5 +409,18 @@ export function agentConnectionTests({
         expect(sockets).toEqual([]);
       }
     );
+  });
+}
+
+/**
+ * A free port of the loopback interface that the system picks, outside the
+ * Ayme MCP server's range of 9350 to 9365.
+ */
+function freePort() {
+  return new Promise<number>((resolve) => {
+    const server = createServer().listen(0, "127.0.0.1", () => {
+      const { port } = server.address() as AddressInfo;
+      server.close(() => resolve(port));
+    });
   });
 }
