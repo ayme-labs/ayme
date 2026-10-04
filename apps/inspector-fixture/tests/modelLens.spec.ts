@@ -17,7 +17,7 @@ async function modelsAnAgentIsTold(page: Page) {
   const { pomDefinitions } = (await executePublishedTool(page, "snapshot")) as {
     pomDefinitions: string;
   };
-  const names = [...pomDefinitions.matchAll(/^POM (\S+)/gm)].map(
+  const names = [...pomDefinitions.matchAll(/^(\S+)/gm)].map(
     (match) => match[1]!
   );
   // The fixture's point: one model is described but not on the page.

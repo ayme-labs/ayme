@@ -53,7 +53,7 @@ const pageContext: LiveTool = {
   group: "agent",
 };
 const listPageDefinition =
-  "POM ListPage\n  newItemInput\n\n  // Add an item to the list.\n  addItem(text: string)";
+  "ListPage\n  newItemInput\n\n  // Add an item to the list.\n  addItem(text: string)";
 /** The runtime's definitions: only ListPage is known. */
 const definitionText = (className: string) =>
   className === "ListPage" ? listPageDefinition : "";

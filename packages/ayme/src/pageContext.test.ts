@@ -72,7 +72,7 @@ describe("snapshot", () => {
       getPageContextTool.execute({ names: ["ProfileMenu"] })
     ).resolves.toEqual({
       structure: '- e1 button "Save changes"',
-      pomDefinitions: "POM ProfileMenu // The user profile menu.",
+      pomDefinitions: "ProfileMenu // The user profile menu.",
     });
     expect(getPomDefinitions).toHaveBeenCalledWith("ProfileMenu");
   });
@@ -172,7 +172,7 @@ describe("snapshot", () => {
 
     await expect(getPageContextTool.execute({})).resolves.toEqual({
       structure: '- e1 button "Save changes"',
-      pomDefinitions: `POM AppTopBar // Application top bar.
+      pomDefinitions: `AppTopBar // Application top bar.
   helpButton
   helpMenu: AppTopBarHelpMenu
   notifications: NotificationItem[]
@@ -185,7 +185,7 @@ describe("snapshot", () => {
 
   refresh()
 
-POM AppTopBarHelpMenu
+AppTopBarHelpMenu
   // Close the help menu.
   close(): this`,
     });
