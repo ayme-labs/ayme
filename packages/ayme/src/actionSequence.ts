@@ -20,7 +20,7 @@ export type ActionResult = {
   page_changed: boolean;
   settled: boolean;
   changes?: string;
-  /** The URL of the new document a full page load started for. */
+  /** The URL a full page load started for; a redirect target is not known yet. */
   loading?: string;
   /** With `loading`: what to do next. */
   next?: string;

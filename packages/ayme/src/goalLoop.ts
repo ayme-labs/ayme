@@ -164,8 +164,8 @@ export type Handover = {
   history: HandoverHistoryEntry[];
   needs?: HandoverNeeds;
   /**
-   * With `page_loading`: the URL of the new document the last step started
-   * to load.
+   * With `page_loading`: the URL the full page load the last step started
+   * was for.
    */
   loading?: string;
   /**
@@ -181,7 +181,7 @@ export type Handover = {
 /** What one executed step came to: its history fields and its Change Record. */
 type StepOutcome = Pick<GoalLoopStepRecord, "result" | "page_changed"> & {
   changes?: string;
-  /** The URL of the new document the step started to load. */
+  /** The URL the full page load the step started was for. */
   loading?: string;
 };
 

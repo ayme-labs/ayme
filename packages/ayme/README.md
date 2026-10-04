@@ -114,8 +114,10 @@ A tool call whose action starts loading a new document, such as a click on a
 plain link or on a form's submit button, answers at once, before the old
 document goes away and the runtime with it. The answer is the action result
 with `settled: false`, the Change Record up to that moment in `changes`, the
-URL of the new document in `loading`, and in `next` a note that the page is
-loading and that `snapshot` is the next call:
+URL the navigation started for in `loading`, and in `next` a note that the
+page is loading and that `snapshot` is the next call. For a form submit,
+`loading` is the form's `action`: where the server redirects is not known yet
+when the answer goes out.
 
 ```ts
 {
@@ -123,8 +125,8 @@ loading and that `snapshot` is the next call:
   settled: false,
   changes: `- e2 main:
   - e7 <removed> status: Saved`,
-  loading: "http://localhost:5173/signed-in",
-  next: "The page is loading http://localhost:5173/signed-in. Call snapshot next to read the new page.",
+  loading: "http://localhost:5173/session",
+  next: "The page is loading http://localhost:5173/session. Call snapshot next to read the new page.",
 }
 ```
 
@@ -133,7 +135,7 @@ navigation that stays in the document, such as your client router's route
 change, a fragment change, or going back to an entry of the same document,
 waits for a Settled Page like any other action. A Goal Loop
 step that starts a full load is the run's last; its Handover has the reason
-`page_loading` and names the new document in `loading`.
+`page_loading` and names the URL in `loading`.
 
 ## Runtime session
 
@@ -670,7 +672,7 @@ Handover:
     did: string,         // operation(description, …), for a human skimming
   }[],
   needs?:  { tool: string, parameters: string[] },  // only with needs_value
-  loading?: string,    // only with page_loading: the new document's URL
+  loading?: string,    // only with page_loading: the URL the load started for
   changes?: string,    // what the whole run changed; absent when nothing did
 }
 ```
