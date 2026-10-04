@@ -35,7 +35,7 @@ The Inspector is an in-page panel that shows your page's Page Objects, its Struc
 
 Ayme has packages for Vue, React, Svelte and Angular, and works with Next.js, Nuxt and SvelteKit, including server rendering:
 
-- [Vue](../../../packages/vue/README.md)
-- [React](../../../packages/react/README.md)
+- [Vue](../frameworks/vue.md)
+- [React](../frameworks/react.md)
 - [Svelte](../../../packages/svelte/README.md)
 - [Angular](../../../packages/angular/README.md)
