@@ -14,7 +14,8 @@ import { RunsRegion } from "../panel/view/InspectorBody";
 import type { RenderRun } from "../navigation/domain/runSlot";
 import type { Selection } from "../navigation/domain/selection";
 import { RunCard } from "../tools/presentation/RunCard";
-import { Runs, type RunFocus } from "../runs/presentation/Runs";
+import type { RunFocus } from "../runs/domain/run";
+import { Runs } from "../runs/presentation/Runs";
 import { runScope } from "../runs/domain/runScope";
 
 /**

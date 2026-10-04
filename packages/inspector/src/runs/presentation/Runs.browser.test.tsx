@@ -6,7 +6,8 @@ import type { Run, RunStep } from "../domain/run";
 import { RunsRegion } from "../../panel/view/InspectorBody";
 import { renderPart } from "../../testing/renderPart";
 import { RunsView } from "../../testing";
-import { Runs, type RunFocus, type RunsProps } from "./Runs";
+import type { RunFocus } from "../domain/run";
+import { Runs, type RunsProps } from "./Runs";
 
 // Component tests: Runs with fixture runs, driven through its page object
 // on playwright-lite. Each checks what Runs shows and which callback it

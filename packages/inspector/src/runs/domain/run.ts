@@ -59,3 +59,6 @@ export type Run = {
   /** The locator operations it performed, from the Inspector's own trace. */
   steps: readonly RunStep[];
 };
+
+/** A request to bring one run into view. A new `at` repeats it. */
+export type RunFocus = { runId: number; at: number };
