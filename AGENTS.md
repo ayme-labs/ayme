@@ -5,6 +5,7 @@
 - `skills/`: skills shipped to consumers for integrating Ayme into their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
 - `apps/example-vue/`: the hosted playground where visitors try Ayme before integrating it. A visitor installs only the local relay MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
 - `docs/testing.md`: the test lanes and where test-only code lives. Read it before adding tests or test helpers.
+- `docs/releasing.md`: how the published packages are versioned and released.
 
 ## Agent skills
 
