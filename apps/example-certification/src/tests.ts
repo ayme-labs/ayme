@@ -242,9 +242,6 @@ export function counterTests({
   });
 }
 
-const settle = (ms: number) =>
-  new Promise<true>((resolve) => setTimeout(() => resolve(true), ms));
-
 /**
  * On the dev server, editing a type the Page Object Model imports rebuilds
  * its published schema without a restart. `counterModePath` is the app's
@@ -272,33 +269,36 @@ export function devRebuildTests({
         expect(changed).not.toBe(original);
         await recordPublishedTools(context);
         // The dev server can reload the page at any moment, so the schema is
-        // checked inside one wait, which Playwright re-runs in each new document,
-        // rather than read after it.
-        const waitForModeSchemaWith = (value: string) =>
-          page.waitForFunction(
-            (value) => {
-              const { modelContext } = document as unknown as {
-                modelContext: RecordingDriver;
-              };
-              const tool = modelContext.tools.find(
-                (candidate) => candidate.name === "CounterPage.setMode"
-              );
-              return JSON.stringify(tool?.inputSchema ?? null).includes(value);
-            },
-            value,
-            { timeout: 30_000 }
-          );
+        // read inside one wait, which Playwright re-runs in each new document
+        // until one has published it.
+        const publishedModeSchema = () =>
+          page
+            .waitForFunction(
+              () => {
+                const { modelContext } = document as unknown as {
+                  modelContext: RecordingDriver;
+                };
+                const tool = modelContext.tools.find(
+                  (candidate) => candidate.name === "CounterPage.setMode"
+                );
+                return tool ? JSON.stringify(tool.inputSchema) : "";
+              },
+              undefined,
+              { timeout: 30_000 }
+            )
+            .then((schema) => schema.jsonValue());
 
         await page.goto("/");
-        await waitForModeSchemaWith('"double"');
+        expect(await publishedModeSchema()).toContain('"double"');
 
         await writeFile(counterModePath, changed);
         // A hot update may replace the edited module without reloading the
         // page, so the page is reloaded until it publishes the rebuilt schema.
-        // When one of the dev server's own reloads aborts ours, it reloads the
-        // page all the same.
-        const rebuilt = waitForModeSchemaWith('"triple"');
-        while (await Promise.race([rebuilt.then(() => false), settle(500)]))
+        // The load event fires before the app's modules run, so each document
+        // is given until it publishes; reloading on a timer instead can cut
+        // every document short on a slow runner. When one of the dev server's
+        // own reloads aborts ours, it reloads the page all the same.
+        while (!(await publishedModeSchema()).includes('"triple"'))
           await page.reload().catch(() => {});
       }
     );
