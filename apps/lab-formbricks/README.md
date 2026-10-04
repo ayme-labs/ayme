@@ -23,7 +23,7 @@ pnpm lab:dev
 
 `lab:dev` starts Formbricks's own dev stack: its services in Docker and the app at http://localhost:3000. It runs until you stop it with `Ctrl+C`. On the first start it also projects Formbricks's data into its authorization store and marks the survey scope ready, the state Formbricks's own CI calls production: a new survey starts restricted, and activating it asks who can view it. The marker lives in the Docker volume, so later starts skip this step.
 
-The Docker services belong to one Compose project named `formbricks`, so every checkout of this repo on a Mac shares one lab stack and one port `3000`. Run `lab:dev` from one checkout at a time.
+The Docker services belong to one Compose project named `formbricks`, so every checkout of this repo on a Mac shares one lab stack and one port `3000`. Run `lab:dev` from one checkout at a time. The stack's authorization service is started with the secrets in the `formbricks/.env` of the checkout that first ran it, so before preparing another checkout, copy that `.env` into its `formbricks/` folder.
 
 With `lab:dev` running, in a second Devbox shell:
 
