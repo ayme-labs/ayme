@@ -4,6 +4,9 @@ export type Viewport = { width: number; height: number };
 
 export type Dock = Exclude<Layout, "float">;
 
+/** The room a docked panel takes from the host page, on its docked side. */
+export type HostReservation = { dock: Dock; size: number };
+
 /** The header's height: a floating panel always keeps it on the page. */
 export const HEADER_HEIGHT = 50;
 /** How much of a floating panel's width stays on the page, at least. */

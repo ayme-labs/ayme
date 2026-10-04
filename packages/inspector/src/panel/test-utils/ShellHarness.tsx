@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { useHostReservation } from "../infrastructure/useHostReservation";
 import { InspectorShell } from "../presentation/InspectorShell";
 import { defaultPreferences, type Preferences } from "../domain/preferences";
 
@@ -8,6 +9,7 @@ import { defaultPreferences, type Preferences } from "../domain/preferences";
  * the Inspector holds them, so a test can drive it and watch the panel move.
  */
 export function ShellHarness({ initial }: { initial?: Partial<Preferences> }) {
+  const reserveHost = useHostReservation();
   const [preferences, setPreferences] = useState<Preferences>({
     ...defaultPreferences,
     ...initial,
@@ -18,6 +20,7 @@ export function ShellHarness({ initial }: { initial?: Partial<Preferences> }) {
       onPreferencesChange={(patch) =>
         setPreferences((current) => ({ ...current, ...patch }))
       }
+      reserveHost={reserveHost}
       pageName="ListPage"
     >
       <p>The body</p>

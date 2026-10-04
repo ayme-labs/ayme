@@ -21,11 +21,11 @@ import {
   resizeFloatBottom,
   resizeFloatLeft,
   type Dock,
+  type HostReservation,
 } from "../domain/geometry";
 import { Header, layoutNames } from "../view/Header";
 import type { Layout, Preferences } from "../domain/preferences";
 import { usePointerDrag } from "../../shared/presentation/pointerDrag";
-import { useHostReservation } from "../infrastructure/useHostReservation";
 import { currentViewport, useViewport } from "./useViewport";
 
 type Edge = "left" | "right" | "top" | "bottom";
@@ -51,16 +51,19 @@ const resizeEdges: Record<Layout, readonly Edge[]> = {
  * The panel's shell: it floats or docks, drags by its header, docks when
  * dropped on an edge, resizes, and collapses to the draggable logo. It shows
  * the preferences it's given and reports every change as a patch; its body
- * is the children.
+ * is the children. While docked, it asks the host page for room.
  */
 export function InspectorShell({
   preferences,
   onPreferencesChange,
+  reserveHost,
   pageName,
   children,
 }: {
   preferences: Preferences;
   onPreferencesChange: (patch: Partial<Preferences>) => void;
+  /** Makes room on the host page for the docked panel, or none. */
+  reserveHost: (reservation: HostReservation | undefined) => void;
   pageName?: string;
   children: ReactNode;
 }) {
@@ -71,10 +74,11 @@ export function InspectorShell({
   const float = fitFloat(preferences.float ?? defaultFloat(viewport), viewport);
   const sideWidth = fitSideWidth(preferences.sideWidth, viewport);
   const bottomHeight = fitBottomHeight(preferences.bottomHeight, viewport);
-  useHostReservation(
-    collapsed || layout === "float"
-      ? undefined
-      : { dock: layout, size: layout === "bottom" ? bottomHeight : sideWidth }
+  const docked = collapsed || layout === "float" ? undefined : layout;
+  const dockedSize = layout === "bottom" ? bottomHeight : sideWidth;
+  useEffect(
+    () => reserveHost(docked && { dock: docked, size: dockedSize }),
+    [reserveHost, docked, dockedSize]
   );
 
   // Collapsing moves focus to the logo and opening moves it back, but only

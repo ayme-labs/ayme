@@ -14,6 +14,7 @@ import { structureLens } from "../structure/presentation/structureLens";
 import { attachToolModels } from "../tools/domain/toolGroups";
 import { toolsLens } from "../tools/presentation/toolsLens";
 import { InspectorShell } from "../panel/presentation/InspectorShell";
+import { useHostReservation } from "../panel/infrastructure/useHostReservation";
 import { usePreferences } from "../panel/infrastructure/usePreferences";
 import { useDarkTheme } from "../panel/presentation/useTheme";
 import { WebMcpStatus } from "../panel/view/WebMcpStatus";
@@ -25,6 +26,7 @@ import { useRunning } from "./useRunning";
  */
 export function InspectorApp() {
   const [preferences, updatePreferences] = usePreferences();
+  const reserveHost = useHostReservation();
   const [activeLens, setActiveLens] = useState<LensId>("model");
   const runtime = useRuntimeAdapter({
     structureVisible: activeLens === "structure" && !preferences.collapsed,
@@ -108,6 +110,7 @@ export function InspectorApp() {
       <InspectorShell
         preferences={preferences}
         onPreferencesChange={updatePreferences}
+        reserveHost={reserveHost}
         pageName={runtime.pageName}
       >
         <WebMcpStatus status={runtime.tools.publication} />
