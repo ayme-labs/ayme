@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageStatePeek } from "@ayme-dev/ayme/internal";
+import type { PageStatePeek, RegisteredPom } from "@ayme-dev/ayme/internal";
 import {
   listRegisteredPomTargets,
+  listRegisteredPoms,
   peekPageStateForDocument,
 } from "@ayme-dev/ayme/internal";
 
@@ -28,6 +29,51 @@ vi.mock("@ayme-dev/ayme/internal", () => ({
   listRegisteredPoms: vi.fn(() => []),
   subscribeToRegisteredPoms: vi.fn(() => () => true),
 }));
+
+const collectionOfItems = (memberName: string) =>
+  ({
+    memberName,
+    kind: "component",
+    access: "field",
+    componentClassName: "ListItem",
+    collection: true,
+  }) as const;
+const listPage: RegisteredPom = {
+  id: "ListPage",
+  instance: {},
+  manifest: {
+    className: "ListPage",
+    members: [
+      { memberName: "rows", kind: "locator", access: "field" },
+      collectionOfItems("items"),
+      collectionOfItems("entries"),
+    ],
+    components: [
+      {
+        className: "ListItem",
+        members: [{ memberName: "root", kind: "locator", access: "field" }],
+        tools: [],
+      },
+    ],
+    tools: [],
+  },
+  memberObservations: [
+    { memberName: "rows", kind: "locator", count: 2 },
+    ...["items", "entries"].flatMap((collection) => [
+      {
+        memberName: collection,
+        kind: "component-collection" as const,
+        count: 2,
+      },
+      ...[0, 1].map((index) => ({
+        memberName: `${collection}[${index}].root`,
+        kind: "component-root" as const,
+        count: 1,
+      })),
+    ]),
+  ],
+  tools: [],
+};
 
 const page = createPage();
 const inspector = new Inspector(
@@ -54,6 +100,7 @@ beforeEach(() => {
         ]),
       }) as unknown as PageStatePeek
   );
+  vi.mocked(listRegisteredPoms).mockReturnValue([listPage]);
   // The later collection comes last, where it used to be hidden.
   vi.mocked(listRegisteredPomTargets).mockResolvedValue([
     { path: "ListPage.rows", element: milk! },
@@ -79,9 +126,10 @@ afterEach(() => {
   localStorage.clear();
 });
 
+/** The refs among the search results; the Model lens finds the objects. */
 const refsFound = async () =>
-  (await inspector.navigator.searchResults.allTextContents()).map(
-    (text) => /^Ref(e\d+)/.exec(text)?.[1]
+  (await inspector.navigator.searchResults.allTextContents()).flatMap(
+    (text) => /^Ref(e\d+)/.exec(text)?.[1] ?? []
   );
 
 it.each(["ListPage.items[1]", "ListPage.entries[1]"])(

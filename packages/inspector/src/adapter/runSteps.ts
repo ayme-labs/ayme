@@ -33,9 +33,15 @@ async function elementsOf(step: TraceEntry): Promise<Element[]> {
   }
 }
 
-/** Names the member each step acted on, where its element is still there. */
+/**
+ * Names the member each step acted on, where its element is still there.
+ *
+ * @param memberOf the member a registry target is, by the target's path,
+ *   e.g. "ListPage.items[0]" for "ListPage.items[0].root".
+ */
 export async function describeSteps(
-  steps: readonly TraceEntry[]
+  steps: readonly TraceEntry[],
+  memberOf: (targetPath: string) => string | undefined
 ): Promise<RunStep[]> {
   if (!steps.length) return [];
   let targets: Awaited<ReturnType<typeof listRegisteredPomTargets>> = [];
@@ -47,11 +53,12 @@ export async function describeSteps(
   return await Promise.all(
     steps.map(async (step) => {
       const elements = await elementsOf(step);
-      // The first path the registry lists for an element is its own member.
-      const target = targets.find(({ element }) => elements.includes(element));
-      return target
-        ? { ...step, member: target.path.replace(/\.root$/, "") }
-        : { ...step };
+      // The first member the registry lists for an element is its own.
+      const member = targets
+        .filter(({ element }) => elements.includes(element))
+        .map(({ path }) => memberOf(path))
+        .find((path) => path !== undefined);
+      return member === undefined ? { ...step } : { ...step, member };
     })
   );
 }

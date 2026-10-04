@@ -59,6 +59,7 @@ const groceries: StructureTree = {
           name: "New item",
           members: ["ListPage.newItemInput"],
           member: "ListPage.newItemInput",
+          tag: ".newItemInput",
           memberLinks: [
             { member: "ListPage.newItemInput", owner: { object: "ListPage" } },
           ],
@@ -71,6 +72,7 @@ const groceries: StructureTree = {
           name: "Add item",
           members: ["ListPage.addItemButton"],
           member: "ListPage.addItemButton",
+          tag: ".addItemButton",
           memberLinks: [
             { member: "ListPage.addItemButton", owner: { object: "ListPage" } },
           ],
@@ -89,9 +91,9 @@ const groceries: StructureTree = {
               ref: "e6",
               role: "listitem",
               name: "",
-              // The item, and the registry's aliases for it.
-              members: ["ListPage.items", "ListPage.items[0]", "ListItem"],
+              members: ["ListPage.items[0]"],
               member: "ListPage.items[0]",
+              tag: "[·]",
               memberLinks: [
                 {
                   member: "ListPage.items[0]",

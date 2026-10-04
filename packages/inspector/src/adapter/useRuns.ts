@@ -12,6 +12,10 @@ export type ToolArguments = Record<string, JsonValue>;
 export type CollectionItem = {
   /** Its path from the page, e.g. "ListPage.items[1]". */
   path: string;
+  /** Its name in its collection, e.g. "[1]". */
+  name: string;
+  /** Its path below its page, e.g. "items[1]". */
+  pathBelowPage: string;
   /** The Structural Ref of its root, which a collection action takes. */
   ref: string;
   /** What it shows, e.g. "Milk". */
@@ -44,8 +48,19 @@ export type Run = {
   steps: readonly RunStep[];
 };
 
-/** Tool invocations from the Inspector, newest first. */
-export function useRuns({ onSettled }: { onSettled: () => void }) {
+/**
+ * Tool invocations from the Inspector, newest first.
+ *
+ * @param memberOf the member a registry target is, by the target's path, to
+ *   name the member each step acted on.
+ */
+export function useRuns({
+  onSettled,
+  memberOf,
+}: {
+  onSettled: () => void;
+  memberOf: (targetPath: string) => string | undefined;
+}) {
   const [runs, setRuns] = useState<Run[]>([]);
   const nextId = useRef(1);
 
@@ -61,7 +76,7 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
         const settled = {
           ...patch,
           durationMs,
-          steps: await describeSteps(getInspectorTrace()),
+          steps: await describeSteps(getInspectorTrace(), memberOf),
         };
         setRuns((current) =>
           current.map((run) => (run.id === id ? { ...run, ...settled } : run))
@@ -98,7 +113,7 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
         onSettled();
       }
     },
-    [onSettled]
+    [onSettled, memberOf]
   );
 
   const clear = useCallback(() => {

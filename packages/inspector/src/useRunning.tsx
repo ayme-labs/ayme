@@ -1,6 +1,7 @@
 import { useState } from "react";
 
-import { collectionItems, type StructureNode } from "./adapter/structure";
+import { pathBelowPage, type MemberIndex } from "./adapter/memberIndex";
+import { structureRows, type StructureNode } from "./adapter/structure";
 import type { CollectionItem } from "./adapter/useRuns";
 import type { InspectorRuntime } from "./adapter/useRuntimeAdapter";
 import { RunsRegion } from "./frame/InspectorBody";
@@ -15,7 +16,8 @@ import { runScope } from "./runs/runScope";
  * selection. A run card's last-success link shows that run in Runs.
  */
 export function useRunning(runtime: InspectorRuntime, selection: Selection) {
-  const { runs, runnableTools, pageState, highlight, refPicking } = runtime;
+  const { runs, runnableTools, pageState, highlight, refPicking, members } =
+    runtime;
   const [allRuns, setAllRuns] = useState(false);
   const [open, setOpen] = useState(true);
   const [focus, setFocus] = useState<RunFocus>();
@@ -23,7 +25,8 @@ export function useRunning(runtime: InspectorRuntime, selection: Selection) {
   const roots = pageState.structure.roots;
   const scope = runScope(
     selection,
-    (ref) => findNode(roots, ref)?.members ?? []
+    (ref) => findNode(roots, ref)?.members ?? [],
+    (path) => members.within(path, { models: false })
   );
   const shownRuns = allRuns ? runs : runs.filter(scope.includes);
 
@@ -37,7 +40,7 @@ export function useRunning(runtime: InspectorRuntime, selection: Selection) {
     const tool = runnableTools.get(toolName);
     if (!tool) return null;
     const items = tool.collection
-      ? itemsOf(tool.collection, pageState.structure)
+      ? itemsOf(toolName, members, pageState.structure)
       : [];
     return (
       <RunCard
@@ -95,20 +98,34 @@ function findNode(
 }
 
 /**
- * A collection action's items on the page, labelled by what they show.
- *
- * @param collection where the items are, e.g. "ListPage.items[]" or, inside
- *   a collection, "ListPage.items[].tags[]".
+ * A collection action's items on the page, by its tool's name, in page
+ * order, labelled by what they show. An item with no ref in the page state
+ * is left out.
  */
 function itemsOf(
-  collection: string,
+  toolName: string,
+  members: MemberIndex,
   structure: InspectorRuntime["pageState"]["structure"]
 ): CollectionItem[] {
-  return collectionItems(structure, collection).map(({ path, ref }) => ({
-    path,
-    ref,
-    label: textOf(findNode(structure.roots, ref)),
-  }));
+  const refs = new Map<string, StructureNode & { ref: string }>();
+  for (const { node } of structureRows(structure.roots))
+    if (node.ref !== undefined)
+      for (const member of node.members)
+        if (!refs.has(member)) refs.set(member, { ...node, ref: node.ref });
+  return members.collectionItems(toolName).flatMap((item) => {
+    const node = refs.get(item.path);
+    return node
+      ? [
+          {
+            path: item.path,
+            name: item.name,
+            pathBelowPage: pathBelowPage(item, members),
+            ref: node.ref,
+            label: textOf(node),
+          },
+        ]
+      : [];
+  });
 }
 
 /** What a node shows: its name, or else its first text. */

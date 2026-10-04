@@ -1,12 +1,31 @@
 import { describe, expect, it } from "vitest";
 
+import { indexMembers } from "../adapter/memberIndex";
+import { collection, model, page } from "../adapter/pageModel.testSupport";
 import { buildStructureTree } from "../adapter/structure";
 import { selectionHighlight } from "./highlight";
-import { memberResolves, runIsOnMember } from "./memberSelection";
+import {
+  memberResolves as resolvesIn,
+  runIsOnMember as runIsOn,
+} from "./memberSelection";
 
 // Unit tests: what a member selection highlights, when it is stale, and
 // which runs are in its scope. Fixtures are hand-written.
 
+const index = indexMembers({
+  objects: [
+    page("ListPage", {
+      locators: ["newItemInput", "addItemButton"],
+      children: [
+        collection("items", "ListItem", [
+          { locators: ["nameButton"] },
+          { locators: ["nameButton"] },
+        ]),
+      ],
+    }),
+  ],
+  models: [model("ListItem", ["nameButton"])],
+});
 const structure = buildStructureTree(
   `- e1 textbox "New item"
 - e2 list "Items":
@@ -14,10 +33,15 @@ const structure = buildStructureTree(
   - e4 listitem: Eggs`,
   new Map([
     ["e1", ["ListPage.newItemInput"]],
-    ["e3", ["ListPage.items[0]", "ListPage.items", "ListItem"]],
-    ["e4", ["ListPage.items[1]", "ListPage.items", "ListItem"]],
-  ])
+    ["e3", ["ListPage.items[0].root"]],
+    ["e4", ["ListPage.items[1].root"]],
+  ]),
+  index
 );
+const memberResolves = (path: string) =>
+  resolvesIn(structure, index.within(path));
+const runIsOnMember = (path: string, run: Parameters<typeof runIsOn>[1]) =>
+  runIsOn(index.within(path, { models: false }), run);
 
 describe("a member selection", () => {
   it("highlights the member's path: a locator's element, a collection's items", () => {
@@ -30,13 +54,27 @@ describe("a member selection", () => {
   });
 
   it("resolves while the member is on the page", () => {
-    expect(memberResolves(structure, "ListPage.newItemInput")).toBe(true);
-    expect(memberResolves(structure, "ListPage.items")).toBe(true);
+    expect(memberResolves("ListPage.newItemInput")).toBe(true);
+    expect(memberResolves("ListPage.items")).toBe(true);
+  });
+
+  it("resolves a model's member while it is on one of the instances", () => {
+    expect(
+      resolvesIn(
+        buildStructureTree(
+          `- e1 button "Milk"`,
+          new Map([["e1", ["ListPage.items[1].nameButton"]]]),
+          index
+        ),
+        index.within("ListItem.nameButton")
+      )
+    ).toBe(true);
+    expect(memberResolves("ListItem.nameButton")).toBe(false);
   });
 
   it("is stale once the member is gone", () => {
-    expect(memberResolves(structure, "ListPage.archiveDialog")).toBe(false);
-    expect(memberResolves(structure, "ListPage.item")).toBe(false);
+    expect(memberResolves("ListPage.archiveDialog")).toBe(false);
+    expect(memberResolves("ListPage.item")).toBe(false);
   });
 });
 

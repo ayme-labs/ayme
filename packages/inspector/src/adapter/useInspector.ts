@@ -20,7 +20,7 @@ import {
 import type { HighlightTarget } from "../frame/highlight";
 import { readControls, type ControlState } from "./formControls";
 import { createRefreshScheduler } from "./refreshScheduler";
-import { mapMembersToRefs } from "./structure";
+import { mapTargetsToRefs } from "./structure";
 
 export type RegistrySnapshot = {
   registeredPoms: readonly RegisteredPom[];
@@ -32,8 +32,8 @@ export type RegistrySnapshot = {
 
 export type PageStateView = {
   text?: string;
-  /** Every Page Object member whose element each ref is, by ref. */
-  membersByRef: ReadonlyMap<string, readonly string[]>;
+  /** The registry targets' paths whose element each ref is, by ref. */
+  targetsByRef: ReadonlyMap<string, readonly string[]>;
   /**
    * The refs each published single-element tool can take in this page state, by tool
    * name, in tree order: what an agent is offered for that tool's ref.
@@ -83,10 +83,18 @@ function readPomDefinitions() {
  */
 export function useInspector({
   structureVisible = false,
-}: { structureVisible?: boolean } = {}) {
+  targetsOf = noTargets,
+}: {
+  structureVisible?: boolean;
+  /**
+   * The registry target paths a highlight's path stands for, read as each
+   * highlight shows, e.g. the roots of a collection's items.
+   */
+  targetsOf?: (path: string) => ReadonlySet<string>;
+} = {}) {
   const [registry, setRegistry] = useState(readRegistry);
   const [pageState, setPageState] = useState<PageStateView>({
-    membersByRef: new Map(),
+    targetsByRef: new Map(),
     elementToolTargets: new Map(),
     elementsByRef: new Map(),
     controls: new Map(),
@@ -100,12 +108,17 @@ export function useInspector({
     pinned: { elements: [] },
   });
 
+  const resolve = useRef(targetsOf);
+  useEffect(() => {
+    resolve.current = targetsOf;
+  }, [targetsOf]);
+
   /** Shows a layer's highlight on the target's elements in the latest look. */
   const showLayer = useCallback((layer: HighlightLayer) => {
     const state = layers.current[layer];
     const elements =
       state.target && latest.current
-        ? targetElements(state.target, latest.current)
+        ? targetElements(state.target, latest.current, resolve.current)
         : [];
     markElements(layer, state.elements, elements);
     state.elements = elements;
@@ -120,7 +133,7 @@ export function useInspector({
       for (const layer of highlightLayers) showLayer(layer);
       setPageState({
         text: next.peek.text,
-        membersByRef: next.membersByRef,
+        targetsByRef: next.targetsByRef,
         elementToolTargets: next.elementToolTargets,
         elementsByRef: next.peek.elementsByRef,
         controls: readControls(next.peek.elementsByRef),
@@ -229,13 +242,13 @@ type Look = {
   targets: readonly RegisteredPomTarget[];
   /** The page state's elements: only these can be highlighted. */
   elementsInState: ReadonlySet<Element>;
-  membersByRef: ReadonlyMap<string, readonly string[]>;
+  targetsByRef: ReadonlyMap<string, readonly string[]>;
   elementToolTargets: ReadonlyMap<string, readonly string[]>;
 };
 
 /**
- * Peeks at the page state and maps each ref to every Page Object member
- * whose element it is: an element's ref is its only ref in the peek.
+ * Peeks at the page state and maps each ref to every registry target whose
+ * element it is: an element's ref is its only ref in the peek.
  */
 async function lookAtPage(): Promise<Look> {
   const peek = await peekPageStateForDocument(document);
@@ -246,40 +259,44 @@ async function lookAtPage(): Promise<Look> {
 
   // Several members can hold the same element (two collections over the
   // same items, or a locator over a collection's items); none hides another.
-  const membersByRef = mapMembersToRefs(peek.elementsByRef, targets);
+  const targetsByRef = mapTargetsToRefs(peek.elementsByRef, targets);
 
   return {
     peek,
     targets,
     elementsInState: new Set(peek.elementsByRef.values()),
-    membersByRef,
+    targetsByRef,
     elementToolTargets,
   };
 }
 
 /**
- * A target's elements in a look: a ref's element, or the registry targets
- * for a path (or for its root, when it names a Page Object), as far as the
- * page state shows them.
+ * A target's elements in a look: a ref's element, or the elements of the
+ * registry targets a path stands for, as far as the page state shows them.
  */
-function targetElements(target: HighlightTarget, look: Look): Element[] {
+function targetElements(
+  target: HighlightTarget,
+  look: Look,
+  targetsOf: (path: string) => ReadonlySet<string>
+): Element[] {
   if ("ref" in target) {
     const element = [...look.peek.elementsByRef].find(
       ([ref]) => ref === target.ref
     )?.[1];
     return element ? [element] : [];
   }
+  const paths = targetsOf(target.path);
   return [
     ...new Set(
       look.targets
-        .filter(
-          ({ path }) => path === target.path || path === `${target.path}.root`
-        )
+        .filter(({ path }) => paths.has(path))
         .map(({ element }) => element)
         .filter((element) => look.elementsInState.has(element))
     ),
   ];
 }
+
+const noTargets = () => new Set<string>();
 
 type HighlightLayer = "hover" | "pinned";
 

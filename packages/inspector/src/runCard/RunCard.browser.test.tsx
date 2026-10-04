@@ -66,11 +66,15 @@ const rename: RunnableTool = {
 
 const milk: CollectionItem = {
   path: "ListPage.items[0]",
+  name: "[0]",
+  pathBelowPage: "items[0]",
   ref: "e3",
   label: "Milk",
 };
 const eggs: CollectionItem = {
   path: "ListPage.items[1]",
+  name: "[1]",
+  pathBelowPage: "items[1]",
   ref: "e6",
   label: "Eggs",
 };

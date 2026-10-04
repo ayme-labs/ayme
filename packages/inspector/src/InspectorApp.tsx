@@ -94,6 +94,7 @@ export function InspectorApp() {
     hasView: view !== undefined,
     structure: runtime.pageState.structure,
     pageStateRead: runtime.pageState.capturedAt !== undefined,
+    within: (path) => runtime.members.within(path),
   });
   useEffect(() => {
     if (stale) setSelection(pageSelection);
