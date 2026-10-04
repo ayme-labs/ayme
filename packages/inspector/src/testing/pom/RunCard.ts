@@ -2,6 +2,7 @@ import type { Locator } from "@playwright/test";
 
 import { FillForm } from "./FillForm";
 import { KeyField } from "./KeyField";
+import { LocatorGroups } from "./LocatorGroups";
 import { RefField } from "./RefField";
 
 /** A value for one argument, as a person would enter it. */
@@ -74,6 +75,11 @@ export class RunCard {
   /** `fill_form`'s form. */
   fillForm(): FillForm {
     return new FillForm(this.root);
+  }
+
+  /** `generate_locator`'s form. */
+  locatorGroups(): LocatorGroups {
+    return new LocatorGroups(this.root);
   }
 
   /** Opens the form, on a card whose form is closed. */

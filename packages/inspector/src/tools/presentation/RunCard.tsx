@@ -6,6 +6,7 @@ import type { RunnableTool } from "../domain/runnableTools";
 import { JsonEditor, RunCardView } from "../view/RunCardView";
 import { ArgumentsForm } from "./ArgumentsForm";
 import { FillFormFields } from "./FillFormFields";
+import { LocatorGroups } from "./LocatorGroups";
 import { useRunCard } from "./useRunCard";
 
 export type RunCardProps = {
@@ -53,6 +54,12 @@ export function RunCard(props: RunCardProps) {
       source={refSource ?? { roots: [] }}
       lastRun={last}
       onChange={card.setFormFields}
+    />
+  ) : tool.locatorGroups && json === undefined ? (
+    <LocatorGroups
+      source={refSource ?? { roots: [] }}
+      lastRun={last}
+      onChange={card.setGroups}
     />
   ) : json === undefined ? (
     <ArgumentsForm

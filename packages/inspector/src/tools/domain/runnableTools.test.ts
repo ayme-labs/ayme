@@ -128,6 +128,25 @@ it("names a Browser Tool's key argument, and no other tool's", () => {
   expect(tools.get("save_setting")?.keyField).toBeUndefined();
 });
 
+it("gives the generate_locator Browser Tool its own form, and no other tool", () => {
+  const grouped = (name: string, group: "browser" | "custom") => ({
+    name,
+    description: "Generate Playwright locators for elements.",
+    inputSchema: {
+      type: "object" as const,
+      properties: { groups: { type: "array" as const } },
+    },
+    group,
+  });
+  const tools = listRunnableTools([], new Map(), [
+    grouped("generate_locator", "browser"),
+    grouped("locate", "custom"),
+  ]);
+
+  expect(tools.get("generate_locator")?.locatorGroups).toBe(true);
+  expect(tools.get("locate")?.locatorGroups).toBeUndefined();
+});
+
 it("never treats a Page Object action's argument as a ref, whatever its name", () => {
   const retarget = {
     ...addItem,
