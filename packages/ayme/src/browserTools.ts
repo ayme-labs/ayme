@@ -456,20 +456,16 @@ const PUBLISHED_ONLY_BROWSER_TOOLS: readonly PublishedElementTool[] = [
 // --- Browser Tools that move the page ---
 
 /**
- * Browser Tools that move the page to another URL or history entry. They
- * take no element; each is published and the Goal Loop may choose it.
+ * Package-internal: the Browser Tools that move the page to another URL or
+ * history entry, in publication order. They take no element; each is
+ * published and the Goal Loop may choose it.
  */
-const NAVIGATION_TOOLS: readonly PublishedElementTool[] = [
+export const NAVIGATION_TOOLS: readonly PublishedElementTool[] = [
   navigateTool,
   navigateBackTool,
   navigateForwardTool,
   reloadTool,
 ];
-
-/** Package-internal: the Browser Tools that move the page, in publication order. */
-export function listNavigationTools(): readonly PublishedElementTool[] {
-  return NAVIGATION_TOOLS;
-}
 
 /** Package-internal: every Browser Tool as published, in publication order. */
 export function listPublishedBrowserTools(): readonly PublishedElementTool[] {

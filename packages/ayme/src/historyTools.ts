@@ -9,7 +9,6 @@ import {
   validatedToolInput,
   type PublishedElementTool,
 } from "./elementTools";
-import { RuntimeStateError } from "./errors";
 import { requireAymeRuntimePage } from "./registry";
 
 const noInputSchema: JsonSchema = {
@@ -43,25 +42,20 @@ function traversalTool(
       const traverse = () =>
         direction === "back" ? page.goBack() : page.goForward();
       const navigation = currentDocument.defaultView?.navigation;
-      if (!navigation) {
-        // The browser Page moves through history with the Navigation API and
-        // refuses with its own error without it.
-        await traverse();
-        throw new RuntimeStateError(`${name} requires the Navigation API.`);
-      }
       return runAction(
         currentDocument,
         caller,
         { tool: name, args: input },
         async () => {
+          // The browser Page moves through history with the Navigation API
+          // and refuses with its own error without it.
+          if (!navigation) return traverse();
           const hasEntry =
             direction === "back"
               ? navigation.canGoBack
               : navigation.canGoForward;
-          if (!hasEntry) {
-            void traverse().catch(() => {});
+          if (!hasEntry)
             return `There is no history entry to go ${direction} to; the page did not move.`;
-          }
           // A traversal happens in a later task. One within the document
           // commits a new current entry, or fails if it is cancelled; one to
           // another document starts a full load, which the action answers.

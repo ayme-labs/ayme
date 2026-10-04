@@ -14,7 +14,7 @@ import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
 import type { GoalLoopStepRecord } from "./goalLoop";
 import type { AriaRef, PageStateCapture } from "./pageState";
-import { listElementTools, listNavigationTools } from "./browserTools";
+import { listElementTools, NAVIGATION_TOOLS } from "./browserTools";
 import { acceptedRefNodes, type TargetField } from "./elementTools";
 import {
   listCollectionToolRoots,
@@ -219,15 +219,13 @@ export function buildToolOptions(): ToolOption[] {
       args: specsOfElementToolSchema(loopInputSchema, targetField, filter),
     })
   );
-  const navigationTools: ExecutableTool[] = listNavigationTools().map(
-    (tool) => ({
-      name: tool.name,
-      description: tool.description,
-      execute: (input: unknown) => tool.executeAs(input, "goalLoop"),
-      requiredParams: [...(tool.inputSchema.required ?? [])],
-      args: specsOfObjectSchema(tool.inputSchema),
-    })
-  );
+  const navigationTools: ExecutableTool[] = NAVIGATION_TOOLS.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    execute: (input: unknown) => tool.executeAs(input, "goalLoop"),
+    requiredParams: [...(tool.inputSchema.required ?? [])],
+    args: specsOfObjectSchema(tool.inputSchema),
+  }));
   const collectionRoots = listCollectionToolRoots();
   const pomTools: ExecutableTool[] = listCallerAwarePomTools().map((t) => {
     const roots = collectionRoots.get(t.name);
