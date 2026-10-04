@@ -42,6 +42,19 @@ export const test = base.extend<{ failOnPageErrors: void }>({
 const count = (page: Page) =>
   page.getByRole("region", { name: "Counter" }).locator("output");
 
+/** The published tools of the counter's Page Objects, sorted. */
+const counterTools = async (page: Page) =>
+  (await publishedToolNames(page))
+    .filter((name) => /^(Sub)?CounterPage\./.test(name))
+    .sort();
+
+const allCounterTools = [
+  "CounterPage.increment",
+  "CounterPage.setMode",
+  "SubCounterPage.increment",
+  "SubCounterPage.setMode",
+];
+
 /** Opens the counter page with the recording driver and waits for publication. */
 async function openCounter(context: BrowserContext, page: Page) {
   await recordPublishedTools(context);
@@ -200,15 +213,11 @@ export function counterTests({
       await expect(page.getByRole("region", { name: "Counter" })).toHaveCount(
         0
       );
-      await expect
-        .poll(() => publishedToolNames(page))
-        .not.toContain("CounterPage.increment");
+      await expect.poll(() => counterTools(page)).toEqual([]);
       await page
         .getByRole("button", { name: "Mount counter", exact: true })
         .click();
-      await expect
-        .poll(() => publishedToolNames(page))
-        .toContain("CounterPage.increment");
+      await expect.poll(() => counterTools(page)).toEqual(allCounterTools);
       // The new instance acts on the new counter.
       await expect(count(page)).toHaveText("0");
       await page.getByRole("button", { name: "Call Page Object" }).click();
@@ -221,13 +230,9 @@ export function counterTests({
       if (!navigation) return test.skip(true, "The app has one page.");
       await page.getByRole("link", { name: navigation.away }).click();
       await expect(page.getByText(navigation.awayText)).toBeVisible();
-      await expect
-        .poll(() => publishedToolNames(page))
-        .not.toContain("CounterPage.increment");
+      await expect.poll(() => counterTools(page)).toEqual([]);
       await page.getByRole("link", { name: navigation.back }).click();
-      await expect
-        .poll(() => publishedToolNames(page))
-        .toContain("CounterPage.increment");
+      await expect.poll(() => counterTools(page)).toEqual(allCounterTools);
       await expect(
         page.getByRole("status", { name: "Publication" })
       ).toHaveText("Publication: active");

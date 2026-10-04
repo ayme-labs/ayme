@@ -1,4 +1,5 @@
 import { createServer, type AddressInfo } from "node:net";
+import { fileURLToPath } from "node:url";
 import { defineConfig, type PlaywrightTestConfig } from "@playwright/test";
 
 /** The server a run tests: `AYME_E2E_SERVER=production` for the production build. */
@@ -49,6 +50,10 @@ export async function certificationConfig(app: {
   const baseURL = `http://127.0.0.1:${port}`;
   return defineConfig({
     testDir: "./tests",
+    globalSetup:
+      server === "dev"
+        ? fileURLToPath(new URL("./warmDevServer.ts", import.meta.url))
+        : undefined,
     outputDir: `test-results/${render === "spa" ? "spa-" : ""}${server === "dev" ? "development" : "production"}`,
     workers: 1,
     timeout: 60_000,

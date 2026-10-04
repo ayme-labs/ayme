@@ -21,11 +21,6 @@ counterTests({
     back: "Home",
   },
 });
-devRebuildTests({
-  counterModePath: fileURLToPath(
-    new URL("../src/lib/pom/CounterMode.ts", import.meta.url)
-  ),
-});
 
 test("starts the runtime before the counter mounts", async ({
   context,
@@ -36,4 +31,11 @@ test("starts the runtime before the counter mounts", async ({
   await expect(page.getByTestId("started")).toHaveText(
     "Runtime at child mount: started"
   );
+});
+
+// Last: it edits a source file, and the dev server rebuilds after it.
+devRebuildTests({
+  counterModePath: fileURLToPath(
+    new URL("../src/lib/pom/CounterMode.ts", import.meta.url)
+  ),
 });

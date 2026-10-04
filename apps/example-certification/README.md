@@ -4,7 +4,7 @@ The end-to-end certification that every framework's example app runs, written on
 
 ## Config
 
-`certificationConfig` from `@ayme-dev/example-certification/config` builds an example's Playwright config: a free port kept across Playwright's workers, and the app's server for the run's mode. The example supplies only the command that serves it on that port.
+`certificationConfig` from `@ayme-dev/example-certification/config` builds an example's Playwright config: a free port kept across Playwright's workers, and the app's server for the run's mode. The example supplies only the command that serves it on that port. Against the dev server, a global setup loads the counter page once before the tests, so the first test does not pay for the dev server's first compile.
 
 The environment selects the mode, so an example has one config and its `test:e2e:*` scripts set the variables its `webServer` honours:
 
@@ -19,7 +19,7 @@ From `@ayme-dev/example-certification/tests`, each builder defines plain Playwri
 
 - `serverRenderTests()`: the server-rendered counter and its initial publication status on repeated requests, or no counter in SPA mode.
 - `counterTests({ CounterPage, navigation? })`: the published schemas, an undecorated subclass, Ayme's own tools, the Page Object called from the app, its tool and Playwright, unmount and remount, and, with `navigation`, client navigation away and back.
-- `devRebuildTests({ counterModePath })`: on the dev server only, editing `CounterMode.ts` rebuilds the published schema.
+- `devRebuildTests({ counterModePath })`: on the dev server only, editing `CounterMode.ts` rebuilds the published schema. Call it last: it edits a source file, and the dev server rebuilds after it.
 - `test`: Playwright's `test`, failing on page errors, console errors and hydration warnings. Every builder except the dev rebuild uses it, and so do an example's own tests.
 
 Tools are called through the recording WebMCP driver from `@ayme-dev/ayme/testing`.
