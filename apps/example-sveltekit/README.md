@@ -53,5 +53,5 @@ The tests observe tools through the recording WebMCP driver from `@ayme-dev/ayme
 - The owner must be in the root `+layout.svelte`. SvelteKit creates the next layout before it destroys the previous one, so an owner in a route-group layout fails with "already has an active owner" on navigation.
 - POMs must be `.ts` modules. Decorators inside `.svelte` scripts are not compiled.
 - This example runs on Vite 8, where a type edit rebuilds the schema. Below Vite 6, the plugin cannot invalidate dependants, so a type edit needs a dev-server restart.
-- It certifies the current SvelteKit 2, Svelte 5 and Vite 8 on Node with adapter-node. It does not certify SvelteKit 1 or 3, other adapters, edge deployment, prerendering, streaming, form actions, or server-side Page Object execution. Older Svelte versions are covered by the package's unit tests only.
+- It certifies SvelteKit 2, from the current release down to 2.53.0 (CI's minimum-version lane, on Node.js 20.19), with Svelte 5, Vite 8 and adapter-node. It does not certify SvelteKit 1 or 3, other adapters, edge deployment, prerendering, streaming, form actions, or server-side Page Object execution. Older Svelte versions are covered by the package's unit tests only.
 - The Inspector is not wired into this example.

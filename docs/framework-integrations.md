@@ -102,7 +102,7 @@ Only when the framework needs them:
 - Angular's client tests run in jsdom and do not cite contract rows ([#386](https://github.com/ayme-labs/ayme/issues/386)).
 - The Nuxt and Angular examples copy their certification instead of running the shared one. Nuxt has no dev-rebuild check and does not check an undecorated subclass; Angular does not check Ayme's own tool list ([#381](https://github.com/ayme-labs/ayme/issues/381)).
 - The Vue and React SPA examples do not run the shared certification. The React example uses its own fake WebMCP driver; both run against the dev server only, and the Vue example has no counter page ([#382](https://github.com/ayme-labs/ayme/issues/382)).
-- The SvelteKit and Angular examples have no minimum-version end-to-end lane ([#378](https://github.com/ayme-labs/ayme/issues/378), [#379](https://github.com/ayme-labs/ayme/issues/379)).
+- The Angular example has no minimum-version end-to-end lane ([#379](https://github.com/ayme-labs/ayme/issues/379)).
 
 ## Deferred decisions
 
