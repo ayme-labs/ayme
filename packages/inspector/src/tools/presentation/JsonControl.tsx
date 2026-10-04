@@ -44,7 +44,7 @@ export function JsonControl({
           }
         }}
       />
-      {error && <span className="text-[11.5px] text-destructive">{error}</span>}
+      {error && <span className="text-xs text-destructive">{error}</span>}
     </>
   );
 }

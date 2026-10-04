@@ -103,9 +103,7 @@ export function RunCardView({
   const name = (
     <>
       <ZapIcon className="size-3.5 flex-none text-primary" aria-hidden />
-      <span className="font-mono text-[12.5px] font-semibold">
-        {tool.action}
-      </span>
+      <span className="font-mono text-xs font-semibold">{tool.action}</span>
       <span className="w-0 min-w-0 flex-1 truncate font-mono text-muted-foreground">
         {signature}
       </span>
@@ -117,7 +115,7 @@ export function RunCardView({
       aria-label={tool.action}
       data-available={available}
       className={cn(
-        "mb-2 flex flex-col gap-[9px] rounded-[10px] border bg-card px-3 py-2.5",
+        "mb-2 flex flex-col gap-2.25 rounded-lg border bg-card px-3 py-2.5",
         !available && "opacity-60"
       )}
       onSubmit={submit}
@@ -130,7 +128,7 @@ export function RunCardView({
                 type="button"
                 aria-expanded={open}
                 aria-label={`${open ? "Hide" : "Show"} the arguments for ${tool.action}`}
-                className="-mx-1.5 -my-[3px] flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-[3px] text-left hover:bg-muted"
+                className="-mx-1.5 -my-0.75 flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-0.75 text-left hover:bg-muted"
                 onClick={toggleOpen}
               >
                 <ChevronRightIcon
@@ -161,19 +159,19 @@ export function RunCardView({
         <>
           {fields.length > 0 && !tool.fillForm && (
             <div className="flex items-center gap-1.5">
-              <span className="text-[11.5px] font-semibold">Arguments</span>
+              <span className="text-xs font-semibold">Arguments</span>
               <span className="flex-1" />
               <div
                 role="group"
                 aria-label="Arguments editor"
-                className="flex gap-0.5 rounded-[7px] bg-muted p-0.5"
+                className="flex gap-0.5 rounded-md bg-muted p-0.5"
               >
                 {(["Form", "JSON"] as const).map((mode) => (
                   <button
                     key={mode}
                     type="button"
                     aria-pressed={(json !== undefined) === (mode === "JSON")}
-                    className="h-[22px] rounded-[5px] px-2 text-[11.5px] font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
+                    className="h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
                     onClick={() => showJson(mode === "JSON")}
                   >
                     {mode}
@@ -185,9 +183,9 @@ export function RunCardView({
 
           {picking && (
             <div className="flex flex-col gap-1">
-              <span className="flex items-baseline gap-1.5 text-[11.5px] font-semibold">
+              <span className="flex items-baseline gap-1.5 text-xs font-semibold">
                 On item
-                <span className="font-mono text-[11px] font-medium text-muted-foreground">
+                <span className="font-mono text-xs font-medium text-muted-foreground">
                   ref
                 </span>
               </span>
@@ -206,7 +204,7 @@ export function RunCardView({
                         role="radio"
                         aria-checked={on}
                         className={cn(
-                          "inline-flex h-[26px] items-center gap-[5px] rounded-full border border-input bg-background px-[9px] text-xs hover:border-ring",
+                          "inline-flex h-6.5 items-center gap-1.25 rounded-full border border-input bg-background px-2.25 text-xs hover:border-ring",
                           on &&
                             "border-primary bg-primary/10 font-semibold text-primary"
                         )}
@@ -261,10 +259,10 @@ export function JsonEditor({
     <div className="flex flex-col gap-1">
       <label
         htmlFor={id}
-        className="flex items-baseline gap-1.5 text-[11.5px] font-semibold"
+        className="flex items-baseline gap-1.5 text-xs font-semibold"
       >
         Arguments{" "}
-        <span className="font-mono text-[11px] font-medium text-muted-foreground">
+        <span className="font-mono text-xs font-medium text-muted-foreground">
           JSON
         </span>
       </label>
@@ -272,12 +270,12 @@ export function JsonEditor({
         id={id}
         aria-invalid={error !== undefined}
         spellCheck={false}
-        className="min-h-[120px] w-full resize-y rounded-md border border-input bg-muted px-[9px] py-2 font-mono text-xs leading-normal outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring"
+        className="min-h-30 w-full resize-y rounded-md border border-input bg-muted px-2.25 py-2 font-mono text-xs leading-normal outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring"
         value={text}
         onChange={(event) => onChange(event.target.value)}
       />
       {error && (
-        <span role="alert" className="text-[11.5px] text-destructive">
+        <span role="alert" className="text-xs text-destructive">
           {error}
         </span>
       )}
@@ -342,7 +340,7 @@ function LastResult({
         )}
       </div>
       {run.status === "failed" && (
-        <p className="m-0 font-mono text-[11.5px] break-words">{run.error}</p>
+        <p className="m-0 font-mono text-xs break-words">{run.error}</p>
       )}
     </div>
   );

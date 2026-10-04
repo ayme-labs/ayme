@@ -77,14 +77,14 @@ export function RefFieldView({
           title="Choose from the page structure"
           className={cn(
             className,
-            "flex h-auto min-h-[30px] cursor-pointer items-center gap-1 pr-1.5 pl-1 text-left hover:border-ring aria-expanded:border-ring"
+            "flex h-auto min-h-7.5 cursor-pointer items-center gap-1 pr-1.5 pl-1 text-left hover:border-ring aria-expanded:border-ring"
           )}
           onClick={toggleTree}
           onMouseEnter={() => value && onPreview?.(value)}
           onMouseLeave={onPreviewEnd}
         >
           {value ? (
-            <span className="min-w-0 truncate rounded-[5px] bg-muted px-2 py-0.5 font-mono text-[11.5px] text-foreground">
+            <span className="min-w-0 truncate rounded-sm bg-muted px-2 py-0.5 font-mono text-xs text-foreground">
               <span className={refText}>{value}</span>
               {chosen && <ChosenDetail node={chosen} />}
             </span>
@@ -108,7 +108,7 @@ export function RefFieldView({
             aria-label="Pick an element on the page"
             title="Pick an element on the page"
             aria-pressed={picking}
-            className="grid w-[34px] flex-none place-items-center rounded-md border border-input bg-background text-muted-foreground hover:border-ring hover:text-foreground aria-pressed:border-ring aria-pressed:bg-primary/10 aria-pressed:text-primary"
+            className="grid w-8.5 flex-none place-items-center rounded-md border border-input bg-background text-muted-foreground hover:border-ring hover:text-foreground aria-pressed:border-ring aria-pressed:bg-primary/10 aria-pressed:text-primary"
             onClick={togglePicking}
           >
             <CrosshairIcon className="size-3.5" aria-hidden />
@@ -118,7 +118,7 @@ export function RefFieldView({
 
       {picking && (
         <>
-          <span className="text-[11.5px] text-primary">
+          <span className="text-xs text-primary">
             {pickPrompt}. Esc cancels.
           </span>
           <PickBanner prompt={pickPrompt} onCancel={endPicking} />
@@ -127,10 +127,10 @@ export function RefFieldView({
 
       {open && (
         <div
-          className="absolute top-full right-10 left-0 z-20 mt-1 flex flex-col gap-1.5 rounded-[10px] border bg-card p-1.5 shadow-lg"
+          className="absolute top-full right-10 left-0 z-20 mt-1 flex flex-col gap-1.5 rounded-lg border bg-card p-1.5 shadow-lg"
           onKeyDown={onTreeKey}
         >
-          <label className="flex h-[30px] items-center gap-1.5 rounded-md border bg-background px-2 text-muted-foreground focus-within:border-ring">
+          <label className="flex h-7.5 items-center gap-1.5 rounded-md border bg-background px-2 text-muted-foreground focus-within:border-ring">
             <SearchIcon className="size-3.5 flex-none" aria-hidden />
             <input
               type="text"
@@ -147,7 +147,7 @@ export function RefFieldView({
           <div
             role="tree"
             aria-label="Page structure"
-            className="flex max-h-[230px] flex-col overflow-auto"
+            className="flex max-h-57.5 flex-col overflow-auto"
           >
             {rows.map(({ node, depth, text, match, usable }) => (
               <button
@@ -206,12 +206,12 @@ function PickBanner({
   const container = usePortalContainer();
   if (!container) return null;
   return createPortal(
-    <div className="fixed top-3.5 left-1/2 z-50 inline-flex h-9 -translate-x-1/2 items-center gap-2.5 rounded-full bg-primary pr-1.5 pl-3.5 text-[13px] font-semibold whitespace-nowrap text-primary-foreground shadow-lg">
+    <div className="fixed top-3.5 left-1/2 z-50 inline-flex h-9 -translate-x-1/2 items-center gap-2.5 rounded-full bg-primary pr-1.5 pl-3.5 text-sm font-semibold whitespace-nowrap text-primary-foreground shadow-lg">
       <CrosshairIcon className="size-3.5" aria-hidden />
       {prompt}
       <button
         type="button"
-        className="h-[26px] rounded-full bg-white/20 px-2.5 text-xs font-semibold hover:bg-white/30"
+        className="h-6.5 rounded-full bg-white/20 px-2.5 text-xs font-semibold hover:bg-white/30"
         onClick={onCancel}
       >
         Cancel picking

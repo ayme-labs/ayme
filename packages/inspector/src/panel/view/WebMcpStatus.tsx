@@ -8,7 +8,7 @@ export type PublicationStatus = Readonly<{
 }>;
 
 const code = (text: string) => (
-  <code className="rounded bg-muted px-1 font-mono text-[11px]">{text}</code>
+  <code className="rounded bg-muted px-1 font-mono text-xs">{text}</code>
 );
 
 /** Why agents can't call the tools, and how to fix it where that applies. */

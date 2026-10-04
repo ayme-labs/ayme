@@ -378,7 +378,7 @@ function Fact({ term, children }: { term: string; children: ReactNode }) {
     <div
       role="group"
       aria-label={term}
-      className="grid grid-cols-[110px_1fr] items-center gap-2"
+      className="grid grid-cols-[--spacing(27.5)_1fr] items-center gap-2"
     >
       <dt className="text-muted-foreground">{term}</dt>
       <dd className="min-w-0">{children}</dd>
@@ -403,9 +403,7 @@ function DetailHead({
   return (
     <div className="flex items-start gap-2.5">
       <div className="grid min-w-0 flex-1 gap-1">
-        <h3 className="font-mono text-[13.5px] font-semibold break-all">
-          {title}
-        </h3>
+        <h3 className="font-mono text-sm font-semibold break-all">{title}</h3>
         {(model || kind) && (
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {model && (
@@ -451,7 +449,7 @@ function DetailSection({
 }) {
   return (
     <section aria-label={title} className="grid gap-1">
-      <h4 className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+      <h4 className="mb-1 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
         <Icon className="size-3.5" aria-hidden />
         {title} · {count}
       </h4>
@@ -502,9 +500,7 @@ function OffPageAction({ action }: { action: ObjectAction }) {
     >
       <div className="flex items-center gap-1.5">
         <ZapIcon className="size-3.5 text-muted-foreground" aria-hidden />
-        <span className="font-mono text-[12.5px] font-semibold">
-          {action.name}
-        </span>
+        <span className="font-mono text-xs font-semibold">{action.name}</span>
         <span className="truncate font-mono text-xs text-muted-foreground">
           {action.signature}
         </span>
@@ -521,7 +517,7 @@ function OffPageAction({ action }: { action: ObjectAction }) {
 }
 
 const rowClass =
-  "flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50";
+  "flex h-7.5 w-full items-center gap-2 rounded-md px-2 text-left outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50";
 
 /** A row that goes somewhere: a child Page Object, an instance or a model. */
 function LinkRow({
@@ -664,7 +660,7 @@ function MemberName({
       )}
       <span
         className={cn(
-          "truncate font-mono text-[12.5px]",
+          "truncate font-mono text-xs",
           live === false && "text-muted-foreground"
         )}
       >

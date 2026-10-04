@@ -23,7 +23,7 @@ import { AymeMark } from "../../shared";
 import type { Layout, ThemePreference } from "../domain/preferences";
 
 const iconButton =
-  "inline-grid size-7 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50";
+  "inline-grid size-7 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50";
 
 /**
  * The panel's header: the ayme title, the page badge, the theme switch, the
@@ -53,7 +53,7 @@ export function Header({
   return (
     <header
       className={cn(
-        "relative z-10 flex h-[50px] flex-none touch-none items-center gap-1.5 border-b pr-2 pl-3.5 select-none",
+        "relative z-10 flex h-header flex-none touch-none items-center gap-1.5 border-b pr-2 pl-3.5 select-none",
         layout === "float"
           ? "cursor-grab active:cursor-grabbing"
           : "cursor-move"
@@ -70,12 +70,12 @@ export function Header({
           aria-hidden
         />
       )}
-      <AymeMark className="h-[18px] w-[22px] flex-none" />
+      <AymeMark className="h-4.5 w-5.5 flex-none" />
       <h2 className="text-sm font-semibold">ayme</h2>
       {pageName && (
         <Badge
           variant="secondary"
-          className="bg-accent font-mono text-[11px] text-accent-foreground"
+          className="bg-accent font-mono text-xs text-accent-foreground"
         >
           {pageName}
         </Badge>
@@ -174,7 +174,7 @@ function LayoutMenu({
           aria-label="Layout"
           align="end"
           sideOffset={4}
-          className="z-50 flex min-w-[190px] flex-col rounded-[10px] border bg-popover p-1 text-popover-foreground shadow-lg"
+          className="z-50 flex min-w-47.5 flex-col rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
         >
           <DropdownMenu.RadioGroup
             value={layout}
@@ -186,7 +186,7 @@ function LayoutMenu({
                 <DropdownMenu.RadioItem
                   key={option}
                   value={option}
-                  className="flex h-[30px] cursor-pointer items-center gap-2 rounded-md px-2 text-[12.5px] outline-none data-highlighted:bg-muted"
+                  className="flex h-7.5 cursor-pointer items-center gap-2 rounded-md px-2 text-xs outline-none data-highlighted:bg-muted"
                 >
                   <OptionIcon className="size-3.5 text-muted-foreground in-data-[state=checked]:text-primary" />
                   <span className="flex-1">{layoutNames[option]}</span>

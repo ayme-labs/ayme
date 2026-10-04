@@ -8,6 +8,23 @@
 
 @source "../";
 
+/*
+ * The panel's own sizes, which no design-system step covers: the navigator
+ * and Runs regions in each layout, the header, a region's header, and the
+ * panel width below which the navigator narrows.
+ */
+@theme {
+  --spacing-header: 50px;
+  --spacing-region-header: 38px;
+  --spacing-navigator: 290px;
+  --spacing-navigator-narrow: 230px;
+  --spacing-navigator-docked: 270px;
+  --spacing-runs: 250px;
+  --spacing-runs-docked: 420px;
+  --spacing-runs-collapsed: 150px;
+  --container-panel-narrow: 719px;
+}
+
 /* The design system's base styles; theme.css leaves them to the consumer. */
 @layer base {
   * {

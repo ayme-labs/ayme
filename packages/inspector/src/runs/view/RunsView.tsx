@@ -69,7 +69,7 @@ export function RunsView({
     <>
       <div
         className={cn(
-          "flex h-[38px] flex-none items-center gap-2 pr-2.5 pl-4 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase",
+          "flex h-region-header flex-none items-center gap-2 pr-2.5 pl-4 text-xs font-semibold tracking-wider text-muted-foreground uppercase",
           open && "border-b"
         )}
       >
@@ -92,7 +92,7 @@ export function RunsView({
             <div
               role="group"
               aria-label="Runs scope"
-              className="flex gap-0.5 rounded-[7px] bg-muted p-0.5 tracking-normal normal-case"
+              className="flex gap-0.5 rounded-md bg-muted p-0.5 tracking-normal normal-case"
             >
               {[
                 { label: scopeLabel, all: false },
@@ -102,7 +102,7 @@ export function RunsView({
                   key={label}
                   type="button"
                   aria-pressed={allRuns === all}
-                  className="h-[22px] rounded-[5px] px-2 text-[11.5px] font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
+                  className="h-5.5 rounded-sm px-2 text-xs font-medium text-muted-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-xs"
                   onClick={() => onAllRunsChange(all)}
                 >
                   {label}
@@ -189,22 +189,22 @@ function RunRow({
       data-run-id={run.id}
       className="flex list-none gap-2.5"
     >
-      <div className="flex w-[26px] flex-none flex-col items-center">
+      <div className="flex w-6.5 flex-none flex-col items-center">
         <span
           role="img"
           aria-label={status.label}
           className={cn(
-            "grid size-[26px] flex-none place-items-center rounded-full border bg-card",
+            "grid size-6.5 flex-none place-items-center rounded-full border bg-card",
             status.className
           )}
         >
           <status.Icon className="size-3.5" aria-hidden />
         </span>
-        <span className="my-[3px] w-px flex-1 bg-border" />
+        <span className="my-0.75 w-px flex-1 bg-border" />
       </div>
       <div
         className={cn(
-          "mb-2 min-w-0 flex-1 overflow-hidden rounded-[10px] border bg-card transition-shadow duration-200",
+          "mb-2 min-w-0 flex-1 overflow-hidden rounded-lg border bg-card transition-shadow duration-200",
           flashing && "ring-2 ring-ring"
         )}
       >
@@ -218,7 +218,7 @@ function RunRow({
             role="img"
             aria-label="Run by you from the panel"
             title="Run by you from the panel"
-            className="grid size-5 flex-none place-items-center rounded-[5px] bg-muted text-muted-foreground"
+            className="grid size-5 flex-none place-items-center rounded-sm bg-muted text-muted-foreground"
           >
             <UserIcon className="size-3" aria-hidden />
           </span>
@@ -226,12 +226,12 @@ function RunRow({
             {run.toolName}
           </span>
           {run.item && (
-            <span className="rounded-md border px-1.5 font-mono text-[11px] text-muted-foreground">
+            <span className="rounded-md border px-1.5 font-mono text-xs text-muted-foreground">
               {run.item.pathBelowPage}
             </span>
           )}
           <span className="flex-1" />
-          <span className="text-[11.5px] whitespace-nowrap text-muted-foreground">
+          <span className="text-xs whitespace-nowrap text-muted-foreground">
             {run.status === "running"
               ? "Running…"
               : `${run.durationMs} ms · ${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
@@ -242,7 +242,7 @@ function RunRow({
             {Object.keys(run.arguments).length > 0 && (
               <figure
                 aria-label="Arguments"
-                className="mx-2.5 mt-0 mb-1.5 rounded-md bg-muted px-2 py-[5px] font-mono text-[11.5px] [overflow-wrap:anywhere]"
+                className="mx-2.5 mt-0 mb-1.5 rounded-md bg-muted px-2 py-1.25 font-mono text-xs [overflow-wrap:anywhere]"
               >
                 {JSON.stringify(run.arguments)}
               </figure>
@@ -259,7 +259,7 @@ function RunRow({
               <p
                 role="note"
                 aria-label="Error"
-                className="mx-2.5 mt-0 mb-2 font-mono text-[11.5px] text-destructive"
+                className="mx-2.5 mt-0 mb-2 font-mono text-xs text-destructive"
               >
                 {run.error}
               </p>
@@ -299,7 +299,7 @@ function RunResult({
         <button
           type="button"
           aria-expanded={open}
-          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1 py-px text-[11.5px] font-semibold hover:bg-muted"
+          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1 py-px text-xs font-semibold hover:bg-muted"
           onClick={onToggle}
         >
           <ChevronRightIcon
@@ -324,7 +324,7 @@ function RunResult({
           <pre
             // Focusable, so a keyboard can scroll a long result.
             tabIndex={0}
-            className="m-0 max-h-[220px] overflow-auto rounded-md bg-muted px-2.5 py-2 font-mono text-[11.5px] leading-normal outline-none focus-visible:outline-2 focus-visible:outline-ring"
+            className="m-0 max-h-55 overflow-auto rounded-md bg-muted px-2.5 py-2 font-mono text-xs leading-normal outline-none focus-visible:outline-2 focus-visible:outline-ring"
           >
             {text}
           </pre>
@@ -350,7 +350,7 @@ function StepRow({ step, onHover }: { step: RunStep; onHover: OnHover }) {
   return (
     <li className="flex min-h-6 list-none items-center gap-2 text-xs">
       <Icon className="size-3.5 flex-none text-muted-foreground" aria-hidden />
-      <span className="w-[110px] flex-none text-muted-foreground">
+      <span className="w-27.5 flex-none text-muted-foreground">
         {step.operation}
       </span>
       <button
@@ -361,7 +361,7 @@ function StepRow({ step, onHover }: { step: RunStep; onHover: OnHover }) {
             ? `Not on the page when the run ended: ${step.locator}`
             : `${step.locator}. Hover to highlight it on the page.`
         }
-        className="max-w-[230px] cursor-crosshair truncate rounded-[5px] border bg-background px-1.5 py-px font-mono text-[11.5px] hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
+        className="max-w-57.5 cursor-crosshair truncate rounded-sm border bg-background px-1.5 py-px font-mono text-xs hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
         // The hover highlight finds the member's element while it's there.
         onMouseEnter={() => member !== undefined && onHover({ path: member })}
         onMouseLeave={() => member !== undefined && onHover(undefined)}
@@ -369,7 +369,7 @@ function StepRow({ step, onHover }: { step: RunStep; onHover: OnHover }) {
         {member ?? step.locator}
       </button>
       {value !== undefined && (
-        <span className="truncate font-mono text-[11.5px] text-muted-foreground">
+        <span className="truncate font-mono text-xs text-muted-foreground">
           {value}
         </span>
       )}

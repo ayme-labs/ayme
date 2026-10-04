@@ -176,7 +176,7 @@ function* treeRows(
 
 function rowClass(selected: boolean) {
   return cn(
-    "flex h-[30px] w-full items-center gap-[7px] rounded-md px-2 text-left outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50",
+    "flex h-7.5 w-full items-center gap-1.75 rounded-md px-2 text-left outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50",
     selected && "bg-accent hover:bg-accent"
   );
 }
@@ -249,7 +249,7 @@ export function LiveMark({ live }: { live: boolean }) {
       aria-hidden
     />
   ) : (
-    <span className="text-[11px] whitespace-nowrap text-muted-foreground">
+    <span className="text-xs whitespace-nowrap text-muted-foreground">
       Not on page
     </span>
   );
@@ -280,7 +280,7 @@ function Pane({
       <button
         type="button"
         aria-expanded={open}
-        className="flex flex-none items-center gap-1.5 px-3.5 pt-[9px] pb-[7px] text-left text-[11px] font-semibold tracking-wide text-muted-foreground uppercase hover:text-foreground"
+        className="flex flex-none items-center gap-1.5 px-3.5 pt-2.25 pb-1.75 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase hover:text-foreground"
         onClick={onToggle}
       >
         <ChevronRightIcon
@@ -331,7 +331,7 @@ function Divider({
       aria-valuemax={maxSplit * 100}
       aria-valuenow={Math.round(split * 100)}
       tabIndex={0}
-      className="relative z-10 -my-1 h-[9px] flex-none cursor-row-resize touch-none outline-none after:absolute after:inset-x-0 after:top-1 after:h-0.5 after:bg-ring after:opacity-0 after:transition-opacity hover:after:opacity-100 focus-visible:after:opacity-100"
+      className="relative z-10 -my-1 h-2.25 flex-none cursor-row-resize touch-none outline-none after:absolute after:inset-x-0 after:top-1 after:h-0.5 after:bg-ring after:opacity-0 after:transition-opacity hover:after:opacity-100 focus-visible:after:opacity-100"
       onKeyDown={onKeyDown}
       onPointerDown={(event) => {
         const height = handle.current?.parentElement?.offsetHeight ?? 0;

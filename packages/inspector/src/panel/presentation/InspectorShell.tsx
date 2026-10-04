@@ -31,12 +31,12 @@ import { currentViewport, useViewport } from "./useViewport";
 type Edge = "left" | "right" | "top" | "bottom";
 
 const edgeClass: Record<Edge, string> = {
-  left: "inset-y-0 left-0 w-[7px] cursor-col-resize after:inset-y-0 after:left-0 after:w-0.5",
+  left: "inset-y-0 left-0 w-1.75 cursor-col-resize after:inset-y-0 after:left-0 after:w-0.5",
   right:
-    "inset-y-0 right-0 w-[7px] cursor-col-resize after:inset-y-0 after:right-0 after:w-0.5",
-  top: "inset-x-0 top-0 h-[7px] cursor-row-resize after:inset-x-0 after:top-0 after:h-0.5",
+    "inset-y-0 right-0 w-1.75 cursor-col-resize after:inset-y-0 after:right-0 after:w-0.5",
+  top: "inset-x-0 top-0 h-1.75 cursor-row-resize after:inset-x-0 after:top-0 after:h-0.5",
   bottom:
-    "inset-x-0 bottom-0 h-[7px] cursor-row-resize after:inset-x-0 after:bottom-0 after:h-0.5",
+    "inset-x-0 bottom-0 h-1.75 cursor-row-resize after:inset-x-0 after:bottom-0 after:h-0.5",
 };
 
 /** The edges each layout resizes from. */
@@ -186,7 +186,7 @@ export function InspectorShell({
         className={cn(
           "@container pointer-events-auto absolute flex flex-col overflow-hidden border bg-background",
           {
-            float: "rounded-[14px] shadow-2xl",
+            float: "rounded-xl shadow-2xl",
             left: "border-y-0 border-l-0 shadow-lg",
             right: "border-y-0 border-r-0 shadow-lg",
             bottom: "border-x-0 border-b-0 shadow-lg",
@@ -269,7 +269,7 @@ function SnapPreview({
       className="pointer-events-none absolute grid place-items-center rounded-xl border-2 border-dashed border-primary bg-accent/55"
       style={style[dock]}
     >
-      <span className="inline-flex h-8 items-center rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground">
+      <span className="inline-flex h-8 items-center rounded-full bg-primary px-3.5 text-sm font-semibold text-primary-foreground">
         {layoutNames[dock]}
       </span>
     </div>

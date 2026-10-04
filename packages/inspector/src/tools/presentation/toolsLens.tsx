@@ -43,7 +43,7 @@ export function toolsLens({
           <section key={group} aria-labelledby={`tool-group-${group}`}>
             <h3
               id={`tool-group-${group}`}
-              className="mx-2 mt-3.5 mb-1 text-[10.5px] font-semibold tracking-[0.06em] text-muted-foreground uppercase"
+              className="mx-2 mt-3.5 mb-1 text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase"
             >
               {label} · {tools.length}
             </h3>
@@ -133,7 +133,7 @@ function ToolPage({
   const { pomClassName } = tool;
   return (
     <article aria-label={tool.name} data-tool-page>
-      <h2 className="font-mono text-[13.5px] font-semibold">{tool.name}</h2>
+      <h2 className="font-mono text-sm font-semibold">{tool.name}</h2>
       <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
         {pomClassName && (
           <button
@@ -141,7 +141,7 @@ function ToolPage({
             aria-label={`Open the ${pomClassName} page object model`}
             title={`Open the ${pomClassName} page object model`}
             onClick={() => onSelect({ kind: "model", className: pomClassName })}
-            className="inline-flex h-[22px] items-center gap-1 rounded-md border bg-card px-1.5 text-[11.5px] text-primary hover:border-ring"
+            className="inline-flex h-5.5 items-center gap-1 rounded-md border bg-card px-1.5 text-xs text-primary hover:border-ring"
           >
             <BracesIcon className="size-3" aria-hidden />
             <span className="font-mono">{pomClassName}</span>
