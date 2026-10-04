@@ -12,9 +12,9 @@
     "lint": "eslint . --max-warnings 0",
     "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod && pnpm run test:e2e:spa:dev && pnpm run test:e2e:spa:prod",
     "test:e2e:dev": "playwright test",
-    "test:e2e:prod": "playwright test --config=playwright.production.config.ts",
-    "test:e2e:spa:dev": "playwright test --config=playwright.spa.config.ts",
-    "test:e2e:spa:prod": "playwright test --config=playwright.spa.production.config.ts"
+    "test:e2e:prod": "AYME_E2E_SERVER=production playwright test",
+    "test:e2e:spa:dev": "AYME_E2E_RENDER=spa playwright test",
+    "test:e2e:spa:prod": "AYME_E2E_SERVER=production AYME_E2E_RENDER=spa playwright test"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/example-certification": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@ayme-dev/unplugin-ayme": "workspace:*",
     "@playwright/test": "~1.62.1",

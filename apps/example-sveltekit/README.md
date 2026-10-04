@@ -44,7 +44,7 @@ pnpm --filter @ayme-dev/example-sveltekit exec playwright install chromium
 pnpm --filter @ayme-dev/example-sveltekit test:e2e
 ```
 
-The same suite runs against `vite dev` and the adapter-node server, with server rendering and in SPA mode. It checks JavaScript-disabled server HTML on repeated requests (in SPA mode, that the server renders none), hydration without errors, that a descendant's `onMount` sees a started runtime, the published schema against the POM source, a tool call, the Page Object called from the page and through real Playwright, unmount and remount, and client navigation removing and restoring the page's tool while the root layout keeps the owner. In development only, it also edits a type the POM imports and checks the published schema rebuilds without restarting `vite dev`.
+The shared [example certification](../example-certification/README.md) runs against `vite dev` and the adapter-node server, with server rendering and in SPA mode, including client navigation to the other page and back. The example's own test checks that a descendant's `onMount` sees a started runtime.
 
 The tests observe tools through the recording WebMCP driver from `@ayme-dev/ayme/testing`, not through Ayme's internal registry. They do not certify a particular browser's WebMCP API.
 
