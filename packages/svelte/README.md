@@ -9,7 +9,7 @@ npm install @ayme-dev/ayme @ayme-dev/svelte
 npm install -D @ayme-dev/unplugin-ayme @playwright/test@~1.62.1
 ```
 
-Packages are not published yet; use supplied tarballs before release. The [Vite plugin](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md) compiles decorated Page Object Models; annotate them as shown in the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md). The [SvelteKit example](https://github.com/ayme-labs/ayme/tree/main/apps/example-sveltekit) is a complete SvelteKit 2 app.
+The [Vite plugin](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md) compiles decorated Page Object Models; annotate them as shown in the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md). The [SvelteKit example](https://github.com/ayme-labs/ayme/tree/main/apps/example-sveltekit) is a complete SvelteKit 2 app.
 
 ## SvelteKit 2 setup
 
