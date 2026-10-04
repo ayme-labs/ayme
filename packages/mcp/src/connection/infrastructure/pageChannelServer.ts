@@ -1,9 +1,9 @@
-import { timingSafeEqual } from "node:crypto";
 import { createServer, type Server } from "node:http";
 
 import { getWSConnectionHandler } from "@trpc/server/adapters/ws";
 import { WebSocketServer, type WebSocket } from "ws";
 
+import { SERVER_IDENTITY, admit } from "../../pairing";
 import type {
   AgentConnection,
   PageSession,
@@ -11,8 +11,9 @@ import type {
 import { pageChannelRouter } from "./pageChannelRouter";
 
 /**
- * The WebSocket server pages connect to. It accepts a connection only on the
- * path `/<token>`, and each accepted connection is a page attached to
+ * The WebSocket server pages connect to. It accepts a connection on the
+ * path `/<token>`, or without a token from a page on localhost (see
+ * `admit`), and each accepted connection is a page attached to
  * `connection`. Returns the HTTP server, not yet listening, and what closes
  * it with every page connection.
  */
@@ -34,12 +35,21 @@ export function createPageChannelServer({
     router: pageChannelRouter,
     createContext: ({ res }) => ({ page: pages.get(res)! }),
   });
-  const expected = Buffer.from(`/${token}`);
 
   server.on("upgrade", (request, socket, head) => {
-    const path = Buffer.from(request.url ?? "");
-    if (path.length !== expected.length || !timingSafeEqual(path, expected)) {
+    const admission = admit({
+      path: request.url ?? "",
+      origin: request.headers.origin,
+      token,
+    });
+    if (admission === "refused") {
       socket.end("HTTP/1.1 401 Unauthorized\r\n\r\n");
+      return;
+    }
+    if (admission === "probe") {
+      sockets.handleUpgrade(request, socket, head, (ws) =>
+        ws.close(SERVER_IDENTITY.code, SERVER_IDENTITY.reason)
+      );
       return;
     }
     sockets.handleUpgrade(request, socket, head, (ws) => {

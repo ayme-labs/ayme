@@ -8,6 +8,7 @@ import {
   SERVER_HOST,
   SERVER_PORTS,
   listenOnFirstFreePort,
+  listenOnPort,
   type Pairing,
 } from "../pairing";
 import { createMcpToolServer } from "../tools";
@@ -19,14 +20,20 @@ const log = (message: string) =>
 
 /**
  * Runs the Ayme MCP server: MCP over stdio for the agent, and a WebSocket
- * server on the loopback interface for the page. Stops when the agent closes
+ * server on the loopback interface for the page, on `port` if given, else on
+ * the first free port of the server's range. Stops when the agent closes
  * stdio.
  */
-export async function startMcpServer(): Promise<void> {
+export async function startMcpServer({
+  port: pinnedPort,
+}: { port?: number } = {}): Promise<void> {
   const connection = new AgentConnection();
   const token = randomUUID();
   const channel = createPageChannelServer({ connection, token });
-  const port = await listenOnFirstFreePort(channel.server, SERVER_PORTS);
+  const port =
+    pinnedPort === undefined
+      ? await listenOnFirstFreePort(channel.server, SERVER_PORTS)
+      : await listenOnPort(channel.server, pinnedPort);
   const pairing: Pairing = { address: `ws://${SERVER_HOST}:${port}`, token };
 
   const stopBehaviours = connectionBehaviours.map((behaviour) =>
