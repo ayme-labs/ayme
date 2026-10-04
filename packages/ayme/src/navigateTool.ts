@@ -10,6 +10,25 @@ import {
 import { ToolInputError } from "./errors";
 import { requireAymeRuntimePage } from "./registry";
 
+/** The application's own navigation, given in runtime setup as `navigate`. */
+type RouterNavigate = (url: string) => void | Promise<void>;
+
+type RouterStore = { navigate?: RouterNavigate };
+
+const routerStore: RouterStore = ((
+  globalThis as typeof globalThis & { __aymeRouterStore?: RouterStore }
+).__aymeRouterStore ??= {});
+
+/**
+ * Package-internal: store or clear the router function for the current
+ * runtime session. Called by `start()` and `stop()` in `runtime.ts`.
+ */
+export function configureRouterNavigate(
+  navigate: RouterNavigate | undefined
+): void {
+  routerStore.navigate = navigate;
+}
+
 const navigateSchema: JsonSchema = {
   type: "object",
   properties: {
@@ -26,10 +45,12 @@ const navigateSchema: JsonSchema = {
 /**
  * Open a URL on the page's own origin. A URL on another origin is refused:
  * the new document would not run this runtime, so the connection would be
- * lost. Like any action, the call answers with the Change Record once the
- * page settles, or at once when a full page load starts; `goto`'s own
- * outcome is never reported, since it waits for a load this document does
- * not see when a router takes the navigation over.
+ * lost. With a router function from runtime setup, the resolved URL goes to
+ * it, so the application's router moves the page; otherwise to `goto`. Like
+ * any action, the call answers with the Change Record once the page settles,
+ * or at once when a full page load starts; `goto`'s own outcome is never
+ * reported, since it waits for a load this document does not see when a
+ * router takes the navigation over.
  */
 export const navigateTool: PublishedElementTool = {
   name: "navigate",
@@ -52,13 +73,19 @@ export const navigateTool: PublishedElementTool = {
       throw new ToolInputError(
         `Cannot navigate to "${url}": it is not on the page's own origin, ${origin}. Leaving the origin would lose the connection to this page; navigate to a path or a URL on ${origin} instead.`
       );
+    const { navigate } = routerStore;
     return runAction(
       currentDocument,
       caller,
       { tool: "navigate", args: input },
-      async () => {
-        void page.goto(url).catch(() => {});
-      }
+      navigate
+        ? async () => {
+            // What the router function returns is not the action's result.
+            await navigate(destination!.href);
+          }
+        : async () => {
+            void page.goto(url).catch(() => {});
+          }
     );
   },
 };
