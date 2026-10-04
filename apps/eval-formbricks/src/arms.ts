@@ -76,7 +76,7 @@ const readOnlyFileTools = ["Read", "Glob", "Grep"];
 
 /** A command with and without arguments, as permission rules. */
 function bashCommand(command: string) {
-  return [`Bash(${command})`, `Bash(${command} *)`];
+  return [`Bash(${command})`, `Bash(${command}:*)`];
 }
 
 export const arms: Record<ArmId, Arm> = {
@@ -115,10 +115,10 @@ export const arms: Record<ArmId, Arm> = {
       "Use the `playwright-cli` command and its `playwright-cli` skill for every browser interaction. Its browser session is already open and signed in on the editor; start from `playwright-cli snapshot`.",
     // The skill is invoked through the Skill tool; Bash is only the CLI.
     tools: [...readOnlyFileTools, "Bash", "Skill"],
-    allowedTools: ["Bash(playwright-cli *)", "Skill(playwright-cli)"],
+    allowedTools: ["Bash(playwright-cli:*)", "Skill(playwright-cli)"],
     disallowedTools: [
       // The skill pre-approves `npx playwright`, which would run the lab app's own Playwright, or download one.
-      "Bash(npx *)",
+      "Bash(npx:*)",
       // Downloads a browser.
       ...bashCommand("playwright-cli install"),
       ...bashCommand("playwright-cli install-browser"),

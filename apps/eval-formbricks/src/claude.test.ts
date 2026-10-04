@@ -93,7 +93,7 @@ describe("claudeArguments for the playwright-cli arm", () => {
         "Read,Glob,Grep,Bash,Skill",
         "--strict-mcp-config",
         "--allowedTools",
-        "Bash(playwright-cli *),Skill(playwright-cli)",
+        "Bash(playwright-cli:*),Skill(playwright-cli)",
       ])
     );
   });
@@ -109,8 +109,8 @@ describe("claudeArguments for the playwright-cli arm", () => {
 
   it("denies npx and the CLI's install and kill-all commands", () => {
     const rules = args[args.indexOf("--disallowedTools") + 1].split(",");
-    expect(rules).toContain("Bash(npx *)");
-    expect(rules).toContain("Bash(playwright-cli kill-all *)");
+    expect(rules).toContain("Bash(npx:*)");
+    expect(rules).toContain("Bash(playwright-cli kill-all:*)");
   });
 
   it("adds neither folders nor denials to an arm that has none", () => {

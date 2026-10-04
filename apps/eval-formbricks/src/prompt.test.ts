@@ -135,7 +135,7 @@ describe("the playwright-cli arm", () => {
   it("leaves the agent read-only file tools, the skill and a Bash limited to the CLI", () => {
     expect(arm.tools).toEqual(["Read", "Glob", "Grep", "Bash", "Skill"]);
     expect(arm.allowedTools).toEqual([
-      "Bash(playwright-cli *)",
+      "Bash(playwright-cli:*)",
       "Skill(playwright-cli)",
     ]);
   });
@@ -143,10 +143,10 @@ describe("the playwright-cli arm", () => {
   it("denies what the skill would otherwise allow or what leaves the run", () => {
     expect(arm.disallowedTools).toEqual(
       expect.arrayContaining([
-        "Bash(npx *)",
+        "Bash(npx:*)",
         "Bash(playwright-cli kill-all)",
-        "Bash(playwright-cli kill-all *)",
-        "Bash(playwright-cli install-browser *)",
+        "Bash(playwright-cli kill-all:*)",
+        "Bash(playwright-cli install-browser:*)",
       ])
     );
   });
