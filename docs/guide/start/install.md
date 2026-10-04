@@ -4,13 +4,7 @@ Which packages to install for your framework, with which commands, and which ver
 
 ## Packages
 
-| Package                                                                       | Install as     | For                                                                    |
-| ----------------------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------- |
-| `@ayme-dev/ayme`                                                              | dependency     | The decorators and the runtime. Every app needs it.                    |
-| `@ayme-dev/vue`, `@ayme-dev/react`, `@ayme-dev/svelte` or `@ayme-dev/angular` | dependency     | Starting Ayme at your app's root and using Page Objects in components. |
-| `@ayme-dev/unplugin-ayme`                                                     | dev dependency | Compiling your Page Object Models into the browser build.              |
-| `@playwright/test`                                                            | dev dependency | The `Page` and `Locator` types your Page Object Models use.            |
-| `@ayme-dev/inspector`                                                         | dev dependency | The optional in-page [Inspector](../guides/inspector.md).              |
+Every app installs `@ayme-dev/ayme`, its framework's package and, as dev dependencies, `@ayme-dev/unplugin-ayme` and `@playwright/test`. [Packages](../reference/packages.md) says what each one owns.
 
 ## Commands
 
