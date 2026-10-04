@@ -11,4 +11,4 @@ export { usePointerDrag } from "./presentation/pointerDrag";
 export { AymeMark } from "./view/AymeMark";
 export { Empty } from "./view/common";
 export { InspectorRoot } from "./view/InspectorRoot";
-export { WhatTheModelSees } from "./view/WhatTheModelSees";
+export { WhatTheModelSees } from "./presentation/WhatTheModelSees";

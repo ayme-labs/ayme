@@ -1,46 +1,47 @@
-import { useState } from "react";
 import { SearchIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { OnHover } from "../domain/highlight";
-import type { LegendCounts, Lens, LensId, SearchEntry } from "../domain/lens";
-import type { Selection } from "../domain/selection";
-
-const MAX_RESULTS = 24;
+import type { HighlightTarget, OnHover } from "../domain/highlight";
+import type { LegendCounts, Lens, LensId } from "../domain/lens";
+import type { SearchResult } from "../domain/search";
 
 /**
  * The navigator: one search over every lens, the lens switcher, the legend,
  * and the active lens's tree. Search results replace the tree while there
  * is a query.
  */
-export function Navigator({
+export function NavigatorView({
   lenses,
   activeLens,
   onLensChange,
-  onSelect,
   onHover,
+  query,
+  setQuery,
+  searching,
+  results,
+  legend,
+  active,
+  pick,
+  highlightOf,
 }: {
   lenses: readonly Lens[];
   activeLens: LensId;
   onLensChange: (lens: LensId) => void;
-  onSelect: (selection: Selection) => void;
   /** Hovering a search result. */
   onHover?: OnHover;
+  query: string;
+  setQuery: (query: string) => void;
+  /** Whether results replace the tree. */
+  searching: boolean;
+  results: readonly SearchResult[];
+  legend: LegendCounts;
+  /** The active lens, whose tree shows. */
+  active: Lens | undefined;
+  pick: (result: SearchResult) => void;
+  /** What the page highlights while a result is hovered. */
+  highlightOf: (result: SearchResult) => HighlightTarget | undefined;
 }) {
-  const [query, setQuery] = useState("");
-  const searching = query.trim() !== "";
-  const results = searching ? search(lenses, query) : [];
-  const legend = mergeLegends(lenses);
-  const active = lenses.find((lens) => lens.id === activeLens);
-
-  const pick = ({ lens, entry }: (typeof results)[number]) => {
-    setQuery("");
-    onHover?.(undefined);
-    onLensChange(lens);
-    onSelect(entry.selection);
-  };
-
   return (
     <nav
       aria-label="Navigator"
@@ -87,7 +88,7 @@ export function Navigator({
                     type="button"
                     className="flex w-full flex-col items-start gap-px rounded-md px-2 py-1.5 text-left hover:bg-muted"
                     onClick={() => pick(result)}
-                    onMouseEnter={() => onHover?.(entryHighlight(result.entry))}
+                    onMouseEnter={() => onHover?.(highlightOf(result))}
                     onMouseLeave={() => onHover?.(undefined)}
                   >
                     <span className="flex max-w-full items-center gap-1.5">
@@ -154,31 +155,4 @@ function Legend({ counts }: { counts: LegendCounts }) {
       {items}
     </div>
   );
-}
-
-function entryHighlight(entry: SearchEntry) {
-  return (
-    entry.highlight ??
-    (entry.highlightPath ? { path: entry.highlightPath } : undefined)
-  );
-}
-
-function mergeLegends(lenses: readonly Lens[]): LegendCounts {
-  const merged: LegendCounts = {};
-  for (const { legend } of lenses)
-    for (const key of Object.keys(legend) as (keyof LegendCounts)[])
-      merged[key] = (merged[key] ?? 0) + (legend[key] ?? 0);
-  return merged;
-}
-
-function search(lenses: readonly Lens[], query: string) {
-  const needle = query.trim().toLowerCase();
-  return lenses
-    .flatMap((lens) =>
-      lens.searchEntries.map((entry) => ({ lens: lens.id, entry }))
-    )
-    .filter(({ entry }) =>
-      `${entry.label} ${entry.description ?? ""}`.toLowerCase().includes(needle)
-    )
-    .slice(0, MAX_RESULTS);
 }

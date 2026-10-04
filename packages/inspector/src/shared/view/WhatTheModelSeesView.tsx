@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId } from "react";
 import { ChevronDownIcon, ChevronRightIcon, CodeIcon } from "lucide-react";
 import { parse, render } from "sugar-high/core";
 import * as json from "sugar-high/lang/json";
@@ -17,21 +17,25 @@ export type NodePageState = {
 
 /**
  * "What the model sees": the Page Object definitions and tool schemas an
- * agent receives, syntax-highlighted. It starts collapsed. The highlighter's
- * colours come from the --sh-* properties on the Inspector's root.
+ * agent receives, syntax-highlighted. The highlighter's colours come from
+ * the --sh-* properties on the Inspector's root.
  */
-export function WhatTheModelSees({
+export function WhatTheModelSeesView({
   pageState,
   definitions,
   schemas,
+  open,
+  onToggle,
 }: {
   /** A structure node's part of the page state, as the agent reads it. */
   pageState?: NodePageState;
   /** Page Object definitions, as snapshot renders them. */
   definitions?: string;
   schemas: readonly ToolSchema[];
+  /** Whether it shows its content, or only its heading. */
+  open: boolean;
+  onToggle: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const contentId = useId();
   return (
     <section aria-label="What the model sees" className="mt-[18px]">
@@ -39,7 +43,7 @@ export function WhatTheModelSees({
         type="button"
         aria-expanded={open}
         aria-controls={contentId}
-        onClick={() => setOpen((current) => !current)}
+        onClick={onToggle}
         className="mb-2 flex w-full items-center gap-1.5 text-left text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase hover:text-foreground"
       >
         {open ? (
