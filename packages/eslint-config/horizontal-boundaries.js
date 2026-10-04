@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import boundariesPlugin from "eslint-plugin-boundaries";
 
 export { boundariesPlugin };
@@ -94,7 +95,11 @@ export function horizontalBoundaries({
       settings: {
         "boundaries/root-path": packageRoot,
         "boundaries/elements": layerElements(sourceRoot),
-        "import/resolver": { node: { extensions: [".ts", ".tsx", ".js"] } },
+        // TypeScript's resolution, so `./Runs.js` reaches `Runs.tsx` as the
+        // compiler does.
+        "import/resolver": {
+          typescript: { project: resolve(packageRoot, "tsconfig.json") },
+        },
       },
     },
     {

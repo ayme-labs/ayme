@@ -51,7 +51,9 @@ function deepImport(slice, { tests }) {
     (other) => other !== slice && !(tests && other === "testing")
   );
   // Tests may also use another slice's test-utils.
-  const allowed = tests ? "index(\\.tsx?)?$|test-utils/" : "index(\\.tsx?)?$";
+  const allowed = tests
+    ? "index(\\.[jt]sx?)?$|test-utils/"
+    : "index(\\.[jt]sx?)?$";
   return `(^|/)(${others.join("|")})/(?!${allowed})`;
 }
 
@@ -70,7 +72,18 @@ function frontDoors(slice, files, { tests }) {
   return {
     files,
     ...(tests ? {} : { ignores: testFiles }),
-    rules: { "no-restricted-imports": ["error", { patterns }] },
+    rules: {
+      "no-restricted-imports": ["error", { patterns }],
+      // The same rules for a dynamic import(). esquery reads `/` as the end
+      // of a regex, so selectors match it as `\x2F`.
+      "no-restricted-syntax": [
+        "error",
+        ...patterns.map(({ regex, message }) => ({
+          selector: `ImportExpression[source.value=/${regex.replaceAll("/", String.raw`\x2F`)}/]`,
+          message,
+        })),
+      ],
+    },
   };
 }
 

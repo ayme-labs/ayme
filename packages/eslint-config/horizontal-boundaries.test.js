@@ -22,6 +22,7 @@ const packageRoot = realpathSync(
 );
 after(() => rmSync(packageRoot, { recursive: true, force: true }));
 const files = {
+  "tsconfig.json": JSON.stringify({ include: ["src"] }),
   "src/runs/domain/run.ts": "export const run = 1;\n",
   "src/runs/application/startRun.ts": "export const startRun = 1;\n",
   "src/runs/infrastructure/useRuns.ts": "export const useRuns = 1;\n",
@@ -117,6 +118,13 @@ for (const [from, uses] of Object.entries(allowed))
         `${from} -> ${to}`
       );
   });
+
+test("an import written with a .js extension resolves as TypeScript does", async () => {
+  assert.equal(
+    await refused("src/runs/domain/file.ts", "../view/RunList.js"),
+    true
+  );
+});
 
 test("the rule holds across slices", async () => {
   assert.equal(
