@@ -31,9 +31,12 @@ type Page = {
   waitForTimeout(ms: number): Promise<void>;
 };
 
-type BrowserContext = {
+export type BrowserContext = {
   newPage(): Promise<Page>;
   pages(): Page[];
+  addCookies(
+    cookies: { name: string; value: string; url: string }[]
+  ): Promise<void>;
   close(): Promise<void>;
   browser(): { version(): string } | null;
 };
@@ -49,7 +52,10 @@ type Chromium = {
   ): Promise<BrowserContext>;
 };
 
-function playwright(): { chromium: Chromium } {
+export const viewport = { width: 1280, height: 720 };
+
+/** The Playwright that ships with the pinned Playwright MCP; the harness's own browser work goes through it. */
+export function playwright(): { chromium: Chromium } {
   // The Playwright the MCP server itself runs on, so profile and browser build match.
   const requireFromMcp = createRequire(`${playwrightMcpRoot}/package.json`);
   return requireFromMcp("playwright") as { chromium: Chromium };
@@ -86,11 +92,7 @@ export async function signInAndOpenEditor(options: {
   } = options;
   const context = await playwright().chromium.launchPersistentContext(
     profileDir,
-    {
-      channel,
-      headless: true,
-      viewport: { width: 1280, height: 720 },
-    }
+    { channel, headless: true, viewport }
   );
   try {
     const page = context.pages()[0] ?? (await context.newPage());

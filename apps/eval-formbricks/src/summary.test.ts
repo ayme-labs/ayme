@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { noGoalLoop } from "./goalLoop.ts";
 import { normalizeRun } from "./normalize.ts";
 import { parseStoredRun, parseSuiteManifest } from "./store.ts";
 import {
@@ -27,6 +28,7 @@ function run(overrides: Partial<SummarizedRun>): SummarizedRun {
     wallTimeMs: 100_000,
     tokens: { input: 10, cacheCreation: 1000, cacheRead: 9000, output: 90 },
     combinedCostUsd: 0.1,
+    goalLoop: { calls: 0, costUsd: null },
     timeoutSeconds: 600,
     labCheckoutDirty: false,
     versions: {
@@ -217,12 +219,47 @@ describe("a run without usage data", () => {
     );
   });
 
-  it("shows unavailable when no run has the figure", () => {
+  it("shows unknown when no run has the figure", () => {
     const none = summarize([run({ tokens: null, combinedCostUsd: null })]);
     expect(none.arms[0]?.tokens).toBeNull();
-    expect(renderSummaryMarkdown(none)).toContain(
-      "| unavailable | unavailable |"
+    expect(renderSummaryMarkdown(none)).toContain("| unknown | unknown |");
+  });
+});
+
+describe("a run whose Goal Loop cost is unknown", () => {
+  const results = [
+    run({
+      runId: "g1",
+      arm: "ayme-goal-loop-on",
+      combinedCostUsd: null,
+      goalLoop: { calls: 12, costUsd: null },
+    }),
+    run({
+      runId: "g2",
+      arm: "ayme-goal-loop-on",
+      combinedCostUsd: 0.15,
+      goalLoop: { calls: 9, costUsd: 0.05 },
+    }),
+  ];
+  const summary = summarize(results, ["ayme-goal-loop-on"]);
+
+  it("has an unknown combined cost, shown as such, and the summary says why", () => {
+    expect(summary.arms[0]?.combinedCostUsd).toEqual({
+      n: 1,
+      median: 0.15,
+      min: 0.15,
+      max: 0.15,
+    });
+    expect(renderSummaryMarkdown(summary)).toContain(
+      "$0.150 ($0.150 to $0.150), 1 of 2 runs"
     );
+    expect(summary.notes).toContain(
+      "ayme-goal-loop-on: the Goal Loop's cost is unknown in 1 of 2 runs, so their combined cost is unknown."
+    );
+  });
+
+  it("is not noted for arms whose Goal Loop made no call", () => {
+    expect(summarize(odd).notes).toEqual([]);
   });
 });
 
@@ -338,7 +375,8 @@ describe("reading stored files", () => {
       formbricksCommit: "8abe0b42",
       aymeCommit: "4cdac8dd",
     },
-    goalLoop: { usage: null, costUsd: null },
+    goalLoop: noGoalLoop,
+    setup: null,
     labCheckout: { movedFiles: [], modifiedFiles: [] },
   });
 
@@ -353,6 +391,16 @@ describe("reading stored files", () => {
     expect(arm?.combinedCostUsd?.median).toBe(0.4321);
     expect(arm?.wallTimeMs?.median).toBe(190_000);
     expect(parsed.versions.claudeCode).toBe("2.1.281");
+    expect(parsed.goalLoop).toEqual({ calls: 0, costUsd: null });
+  });
+
+  it("reads a result stored before the Goal Loop was measured as one without calls", () => {
+    // JSON drops the undefined field, as an older result.json never had it.
+    const parsed = parseStoredRun(
+      JSON.parse(JSON.stringify({ ...stored, goalLoop: undefined })),
+      "result.json"
+    );
+    expect(parsed.goalLoop).toEqual({ calls: 0, costUsd: null });
   });
 
   it("names the file and field of a result it cannot read", () => {

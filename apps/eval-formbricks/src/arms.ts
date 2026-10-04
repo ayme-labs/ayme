@@ -8,8 +8,20 @@ import { createRequire } from "node:module";
 import path from "node:path";
 
 import { playwrightCliVersion, setUpPlaywrightCli } from "./playwrightCli.ts";
+import {
+  relayMcpServer,
+  relayOpenPageTool,
+  relayPackageName,
+  relayServerName,
+  relayVersion,
+  setUpAymeRelay,
+} from "./relay.ts";
 
-export type ArmId = "playwright-mcp" | "playwright-cli";
+export type ArmId =
+  | "playwright-mcp"
+  | "playwright-cli"
+  | "ayme-goal-loop-off"
+  | "ayme-goal-loop-on";
 
 export type McpServer = { command: string; args: string[] };
 
@@ -38,6 +50,8 @@ export type ArmSetup = {
   environment: Record<string, string>;
   /** Folders outside the working root the agent may read, such as the interface's output. */
   readableDirectories: string[];
+  /** What the setup established before the measured window, recorded in the result. */
+  evidence?: Record<string, unknown>;
   /** Undoes the setup after the run, whatever its outcome. */
   dispose: () => Promise<void>;
 };
@@ -77,6 +91,33 @@ const readOnlyFileTools = ["Read", "Glob", "Grep"];
 /** A command with and without arguments, as permission rules. */
 function bashCommand(command: string) {
   return [`Bash(${command})`, `Bash(${command}:*)`];
+}
+
+/**
+ * An Ayme arm: the page's own WebMCP tools through the pinned WebMCP local
+ * relay, and nothing else. The two arms differ in the lab app's Goal Loop
+ * switch, which the setup sets before the page loads, and in the one prompt
+ * line that names the `goal` tool.
+ */
+function aymeArm(id: ArmId, goalLoop: boolean): Arm {
+  return {
+    id,
+    interfaceLine: goalLoop
+      ? "Use the page's own WebMCP tools, through the `webmcp-local-relay` MCP server, for every browser interaction: Ayme's Browser Tools, the Page Object Tools of the screen you are on, and the `goal` tool, which you may hand the goal to."
+      : "Use the page's own WebMCP tools, through the `webmcp-local-relay` MCP server, for every browser interaction: Ayme's Browser Tools and the Page Object Tools of the screen you are on.",
+    tools: readOnlyFileTools,
+    allowedTools: [`mcp__${relayServerName}`],
+    // Opens a URL in the machine's default browser, outside the run.
+    disallowedTools: [relayOpenPageTool],
+    mcpServers: ({ startUrl }) => ({
+      [relayServerName]: relayMcpServer(new URL(startUrl).origin),
+    }),
+    setup: (context) => setUpAymeRelay(context, { goalLoop }),
+    browserInterface: () => ({
+      name: relayPackageName,
+      version: relayVersion(),
+    }),
+  };
 }
 
 export const arms: Record<ArmId, Arm> = {
@@ -134,6 +175,8 @@ export const arms: Record<ArmId, Arm> = {
       version: playwrightCliVersion(),
     }),
   },
+  "ayme-goal-loop-off": aymeArm("ayme-goal-loop-off", false),
+  "ayme-goal-loop-on": aymeArm("ayme-goal-loop-on", true),
 };
 
 export const armIds = Object.keys(arms) as ArmId[];

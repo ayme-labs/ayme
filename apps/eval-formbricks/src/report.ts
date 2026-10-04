@@ -1,6 +1,8 @@
 /**
  * Rebuilds a suite's summary from its stored runs. Launches no agent and
- * needs neither the lab app nor a token.
+ * needs neither the lab app nor a Claude Code token. With the OpenRouter key
+ * at hand it first fills in the Goal Loop costs OpenRouter has recorded since
+ * the runs ended.
  *
  *   node src/report.ts [--suite <id>] [--publish]
  *
@@ -11,8 +13,10 @@
 import path from "node:path";
 
 import { parseFlags } from "./cli.ts";
-import { summariesRoot } from "./paths.ts";
+import { openRouterKeyVariable, readEnvVariable } from "./environment.ts";
+import { evalRoot, summariesRoot } from "./paths.ts";
 import {
+  completeStoredCosts,
   latestSuiteId,
   readSuite,
   suiteDirectory,
@@ -26,11 +30,25 @@ import {
 
 const usage = "Usage: pnpm eval:report -- [--suite <suite id>] [--publish]";
 
-/** Builds the summary from the suite's stored runs and writes it beside the manifest. */
+const log = (line: string) => process.stderr.write(`${line}\n`);
+
+/**
+ * Builds the summary from the suite's stored runs and writes it beside the
+ * manifest, after completing the Goal Loop costs OpenRouter can now report.
+ */
 export async function reportSuite(
   suiteId: string,
-  options: { publish: boolean }
+  options: { publish: boolean; openRouterApiKey: string | undefined }
 ): Promise<{ summary: SuiteSummary; written: string[] }> {
+  const { manifest: stored } = await readSuite(suiteId);
+  if (options.openRouterApiKey !== undefined) {
+    const completed = await completeStoredCosts(stored.runIds, {
+      openRouterApiKey: options.openRouterApiKey,
+      log,
+    });
+    if (completed.length > 0)
+      log(`Filled in the Goal Loop cost of ${completed.join(", ")}.`);
+  }
   const { manifest, results } = await readSuite(suiteId);
   const summary = buildSummary({
     suiteId,
@@ -59,6 +77,7 @@ async function main() {
     throw new Error("No stored suite. Run pnpm eval:suite first.");
   const { summary, written } = await reportSuite(suiteId, {
     publish: flags.has("publish"),
+    openRouterApiKey: readEnvVariable(openRouterKeyVariable, evalRoot),
   });
   process.stdout.write(renderSummaryMarkdown(summary));
   process.stderr.write(

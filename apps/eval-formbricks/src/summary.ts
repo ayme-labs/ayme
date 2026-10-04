@@ -20,6 +20,8 @@ export type SummarizedRun = Pick<
   | "timeoutSeconds"
   | "labCheckoutDirty"
 > & {
+  /** The Goal Loop's calls and cost; a run with calls but no cost has an unknown combined cost. */
+  goalLoop: Pick<NormalizedResult["goalLoop"], "calls" | "costUsd">;
   versions: Pick<
     NormalizedResult["versions"],
     | "claudeCode"
@@ -178,6 +180,16 @@ export function buildSummary(input: {
       if (arm.runs > 0 && value === null)
         notes.push(`${arm.arm}: no run has ${label}.`);
     }
+    const unknownGoalLoopCost = results.filter(
+      (run) =>
+        run.arm === arm.arm &&
+        run.goalLoop.calls > 0 &&
+        run.goalLoop.costUsd === null
+    ).length;
+    if (unknownGoalLoopCost > 0)
+      notes.push(
+        `${arm.arm}: the Goal Loop's cost is unknown in ${unknownGoalLoopCost} of ${arm.runs} runs, so their combined cost is unknown.`
+      );
   }
   const mixed = [
     ["Claude Code versions", versions.claudeCode],
@@ -213,7 +225,7 @@ function range(
   format: (n: number) => string,
   runs: number
 ) {
-  if (value === null) return "unavailable";
+  if (value === null) return "unknown";
   const text = `${format(value.median)} (${format(value.min)} to ${format(value.max)})`;
   return value.n < runs ? `${text}, ${value.n} of ${runs} runs` : text;
 }

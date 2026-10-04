@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { noGoalLoop } from "./goalLoop.ts";
 import {
   normalizeRun,
   summarizeResult,
@@ -75,11 +76,22 @@ function artifacts(overrides: Partial<RunArtifacts>): RunArtifacts {
       formbricksCommit: "8abe0b42",
       aymeCommit: "4cdac8dd",
     },
-    goalLoop: { usage: null, costUsd: null },
+    goalLoop: noGoalLoop,
+    setup: null,
     labCheckout: { movedFiles: [], modifiedFiles: [] },
     ...overrides,
   };
 }
+
+/** Three Goal Loop calls in the run's window, two of them answered. */
+const goalLoopRan = {
+  calls: 3,
+  failedCalls: 1,
+  usage: { input: 952, cacheCreation: 0, cacheRead: 0, output: 140 },
+  generationIds: ["gen-a", "gen-b"],
+  costUsd: 0.1,
+  callsWithCost: 2,
+};
 
 describe("a completed run", () => {
   const result = normalizeRun(artifacts({}));
@@ -93,7 +105,8 @@ describe("a completed run", () => {
     });
     expect(result.costUsd).toBe(0.4321);
     expect(result.combinedCostUsd).toBe(0.4321);
-    expect(result.goalLoop).toEqual({ usage: null, costUsd: null });
+    expect(result.goalLoop).toEqual(noGoalLoop);
+    expect(result.setup).toBeNull();
   });
 
   it("counts tool calls per tool and attributes failures to the tool that failed", () => {
@@ -159,10 +172,30 @@ describe("a completed run", () => {
   });
 
   it("adds the Goal Loop's cost into the combined cost when it is known", () => {
-    const withGoalLoop = normalizeRun(
-      artifacts({ goalLoop: { usage: null, costUsd: 0.1 } })
-    );
+    const withGoalLoop = normalizeRun(artifacts({ goalLoop: goalLoopRan }));
+    expect(withGoalLoop.goalLoop).toEqual(goalLoopRan);
     expect(withGoalLoop.combinedCostUsd).toBeCloseTo(0.5321, 10);
+    const summary = summarizeResult(withGoalLoop);
+    expect(summary).toContain("- Goal Loop calls: 3 (1 failed)");
+    expect(summary).toContain("- Goal Loop tokens: 952 in, 140 out");
+    expect(summary).toContain("- Goal Loop cost: $0.1000");
+    expect(summary).toContain("- Combined cost: $0.5321");
+  });
+
+  it("leaves the combined cost unknown when the Goal Loop ran at an unknown cost", () => {
+    const unknownCost = normalizeRun(
+      artifacts({ goalLoop: { ...goalLoopRan, costUsd: null } })
+    );
+    expect(unknownCost.costUsd).toBe(0.4321);
+    expect(unknownCost.combinedCostUsd).toBeNull();
+    const summary = summarizeResult(unknownCost);
+    expect(summary).toContain("- Goal Loop cost: unknown");
+    expect(summary).toContain("- Combined cost: unknown");
+  });
+
+  it("records what the arm's setup established before the window", () => {
+    const setup = { goalToolPublished: true, tools: ["goal"] };
+    expect(normalizeRun(artifacts({ setup })).setup).toEqual(setup);
   });
 });
 
