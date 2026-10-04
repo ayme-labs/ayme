@@ -1,0 +1,32 @@
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs --filter
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs --filter
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-next/node_modules/next/dist/bin/next build
+v20.19.0 
+v20.19.0 <worktree>/apps/example-next/.next/build/chunks/pool_entry-[turbopack-node]_transforms_webpack-loaders_ts_21971j8._.js 49539
+v20.19.0 <worktree>/apps/example-next/.next/build/chunks/pool_entry-[turbopack-node]_transforms_webpack-loaders_ts_21971j8._.js 49541
+v20.19.0 <worktree>/node_modules/.pnpm/typescript@6.0.3/node_modules/typescript/bin/tsc --showConfig
+v20.19.0 <worktree>/node_modules/.pnpm/typescript@6.0.3/node_modules/typescript/bin/tsc --project
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.3.4_@babel+core@8.0.5_@playwright+test@1.62.1_@types+node@24.13.3_react-dom@19._3b98779d17f94759f7f7c6117b7c759a/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.3.4_@babel+core@8.0.5_@playwright+test@1.62.1_@types+node@24.13.3_react-dom@19._3b98779d17f94759f7f7c6117b7c759a/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.3.4_@babel+core@8.0.5_@playwright+test@1.62.1_@types+node@24.13.3_react-dom@19._3b98779d17f94759f7f7c6117b7c759a/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.3.4_@babel+core@8.0.5_@playwright+test@1.62.1_@types+node@24.13.3_react-dom@19._3b98779d17f94759f7f7c6117b7c759a/node_modules/next/dist/compiled/jest-worker/processChild.js
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-next/node_modules/typescript/bin/tsc --noEmit
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-next/node_modules/playwright/cli.js test
+v20.19.0 
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs exec
+v20.19.0 <worktree>/apps/example-next/node_modules/next/dist/bin/next dev
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.3.4_@babel+core@8.0.5_@playwright+test@1.62.1_@types+node@24.13.3_react-dom@19._3b98779d17f94759f7f7c6117b7c759a/node_modules/next/dist/server/lib/start-server.js
+v20.19.0 <worktree>/apps/example-next/.next-dev/dev/build/chunks/pool_entry-[turbopack-node]_transforms_webpack-loaders_ts_21971j8._.js 49554
+v20.19.0 <worktree>/apps/example-next/.next-dev/dev/build/chunks/pool_entry-[turbopack-node]_transforms_webpack-loaders_ts_21971j8._.js 49556
+v20.19.0 <worktree>/node_modules/.pnpm/playwright@1.62.1/node_modules/playwright/lib/worker/workerProcessEntry.js
+v20.19.0 
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-next/node_modules/playwright/cli.js test
+v20.19.0 
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs exec
+v20.19.0 <worktree>/apps/example-next/node_modules/next/dist/bin/next start
+v20.19.0 <worktree>/node_modules/.pnpm/playwright@1.62.1/node_modules/playwright/lib/worker/workerProcessEntry.js
+v20.19.0 

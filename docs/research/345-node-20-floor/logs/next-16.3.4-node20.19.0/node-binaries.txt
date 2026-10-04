@@ -1,0 +1,7 @@
+~/.cache/devbox/bin/0.18.3_darwin_arm64/devbox
+/nix/store/…-nodejs-24.12.0/bin/node
+/nix/store/…-nodejs-slim-24.21.0/bin/node
+next-build
+next-server
+node
+sh

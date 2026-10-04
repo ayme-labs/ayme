@@ -1,0 +1,20 @@
+$ playwright test --config=playwright.production.config.ts
+[WebServer] $ node .output/server/index.mjs
+[WebServer] node:internal/modules/cjs/loader:1215
+[WebServer]   throw err;
+[WebServer]   ^
+[WebServer] 
+[WebServer] Error: Cannot find module '<worktree>/apps/example-nuxt/.output/server/index.mjs'
+[WebServer]     at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+[WebServer]     at Module._load (node:internal/modules/cjs/loader:1043:27)
+[WebServer]     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+[WebServer]     at node:internal/main/run_main_module:28:49 {
+[WebServer]   code: 'MODULE_NOT_FOUND',
+[WebServer]   requireStack: []
+[WebServer] }
+[WebServer] 
+[WebServer] Node.js v20.19.0
+[WebServer] [ELIFECYCLE] Command failed with exit code 1.
+Error: Process from config.webServer was not able to start. Exit code: 1
+
+[ELIFECYCLE] Command failed with exit code 1.

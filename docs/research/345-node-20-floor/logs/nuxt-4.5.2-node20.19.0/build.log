@@ -1,0 +1,9 @@
+$ nuxt build
+┌  Building Nuxt for production...
+│
+●  Nuxt 4.5.2 (with Nitro 2.13.4, Vite 8.2.2 and Vue 3.5.42)
+│
+●  Nitro preset: node-server
+│
+■  Nuxt build error: TypeError: trustedFunctions.difference is not a function
+[ELIFECYCLE] Command failed with exit code 1.

@@ -1,0 +1,45 @@
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs --filter
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs --filter
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-next/node_modules/next/dist/bin/next build
+v20.19.0 
+v20.19.0 <worktree>/apps/example-next/.next/build/webpack-loaders.js 49624
+v20.19.0 <worktree>/apps/example-next/.next/build/webpack-loaders.js 49626
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/compiled/jest-worker/processChild.js
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-next/node_modules/typescript/bin/tsc --noEmit
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-next/node_modules/playwright/cli.js test
+v20.19.0 
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs exec
+v20.19.0 <worktree>/apps/example-next/node_modules/next/dist/bin/next dev
+v20.19.0 <worktree>/node_modules/.pnpm/next@16.0.0_@babel+core@8.0.5_@playwright+test@1.62.1_react-dom@19.2.8_react@19.2.8__react@19.2.8_sass@1.104.1/node_modules/next/dist/server/lib/start-server.js
+v20.19.0 <worktree>/apps/example-next/.next-dev/dev/build/webpack-loaders.js 49639
+v20.19.0 <worktree>/apps/example-next/.next-dev/dev/build/webpack-loaders.js 49641
+v20.19.0 <worktree>/node_modules/.pnpm/playwright@1.62.1/node_modules/playwright/lib/worker/workerProcessEntry.js
+v20.19.0 
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-next/node_modules/playwright/cli.js test
+v20.19.0 
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs exec
+v20.19.0 <worktree>/apps/example-next/node_modules/next/dist/bin/next start
+v20.19.0 <worktree>/node_modules/.pnpm/playwright@1.62.1/node_modules/playwright/lib/worker/workerProcessEntry.js
+v20.19.0 

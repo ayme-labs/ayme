@@ -1,0 +1,23 @@
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs --filter
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs --filter
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-nuxt/node_modules/nuxt/bin/nuxt.mjs build
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-nuxt/node_modules/nuxt/bin/nuxt.mjs typecheck
+v20.19.0 <worktree>/node_modules/.pnpm/vue-tsc@3.3.11_typescript@6.0.3/node_modules/vue-tsc/bin/vue-tsc.js -b
+v20.19.0 <worktree>/apps/example-nuxt/node_modules/typescript/bin/tsc --noEmit
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-nuxt/node_modules/playwright/cli.js test
+v20.19.0 
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs exec
+v20.19.0 <worktree>/apps/example-nuxt/node_modules/nuxt/bin/nuxt.mjs dev
+v20.19.0 
+v20.19.0 <worktree>/node_modules/.pnpm/@nuxt+cli@3.37.0_@nuxt+schema@4.5.2_@parcel+watcher@2.6.0_magicast@0.5.5_supports-color@10.2.2/node_modules/@nuxt/cli/dist/dev/index.mjs --host
+v20.19.0 <worktree>/node_modules/.pnpm/@nuxt+cli@3.37.0_@nuxt+schema@4.5.2_@parcel+watcher@2.6.0_magicast@0.5.5_supports-color@10.2.2/node_modules/@nuxt/cli/dist/dev/index.mjs --host
+v20.19.0 <worktree>/node_modules/.pnpm/playwright@1.62.1/node_modules/playwright/lib/worker/workerProcessEntry.js
+v20.19.0 
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-nuxt/node_modules/playwright/cli.js test
+v20.19.0 
+v24.21.0 ~/.cache/node/corepack/v1/pnpm/11.24.0/bin/pnpm.mjs run
+v20.19.0 <worktree>/apps/example-nuxt/.output/server/index.mjs

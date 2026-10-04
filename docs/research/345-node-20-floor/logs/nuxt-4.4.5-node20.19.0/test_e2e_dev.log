@@ -1,0 +1,20 @@
+$ playwright test
+[WebServer] │
+[WebServer] ●  Nuxt 4.4.5 (with Nitro 2.13.4, Vite 7.3.6 and Vue 3.5.42)
+[WebServer] 
+[WebServer]   ➜ Local:    http://127.0.0.1:51284/
+[WebServer]   ➜ Network:  use --host to expose
+[WebServer] 
+[WebServer] ℹ Re-optimizing dependencies because lockfile has changed
+[WebServer] ✔ Vite client built in 34ms
+[WebServer] ✔ Vite server built in 12ms
+[WebServer] [nitro] ✔ Nuxt Nitro server built in 557ms
+[WebServer] ℹ Vite server warmed up in 1ms
+[WebServer] ℹ Vite client warmed up in 1ms
+
+Running 2 tests using 1 worker
+
+  ✓  1 tests/integration.spec.ts:14:3 › server render › returns the Ayme subtree without browser registration on repeated requests (479ms)
+  ✓  2 tests/integration.spec.ts:35:1 › hydrates, publishes the compiled POM, executes it, and cleans up on remount (3.3s)
+
+  2 passed (9.6s)
