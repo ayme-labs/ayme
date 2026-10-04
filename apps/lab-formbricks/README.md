@@ -46,7 +46,7 @@ pnpm lab:stop
 
 ## Ayme in the lab app
 
-One commit on the fork's `ayme-overlay` branch, the Ayme overlay, holds everything Ayme adds to Formbricks. Its code lives in [`formbricks/apps/web/ayme/`](./formbricks/apps/web/ayme):
+One commit on the fork's `ayme-overlay` branch, the Ayme overlay, holds everything Ayme adds to Formbricks. The submodule pins that commit, `a742a5b`, whose parent is the upstream revision the lab app is based on, `8abe0b42`, the fork's `main` as of 2026-10-03. Its code lives in [`formbricks/apps/web/ayme/`](./formbricks/apps/web/ayme):
 
 - The React integration owns the runtime in Formbricks's root layout, with WebMCP publication on, so the page publishes Ayme's Browser Tools and `snapshot`.
 - Page objects for the screens the eval's mission touches, in `ayme/pom/`: `SignInPage`, `SurveyNavigationPage`, `SurveyEditorPage` and `SurveySummaryPage`. Each screen registers only its own, so the page publishes only that screen's Page Object Tools. Ayme's Turbopack loader compiles them, as in the [Next.js example](../example-next/README.md). The survey editor's question text is a rich-text editor without an accessible name, so its locator goes from the `Question*` label to the editor, as Formbricks's own Playwright helper does. The survey name input's accessible name is `Survey name`.
@@ -79,5 +79,5 @@ To move the lab app to a newer Formbricks revision of the fork:
 1. In `formbricks/`, fetch the fork and rebase the overlay commit onto the new revision: `git fetch origin && git rebase --onto <new-revision> <old-revision> ayme-overlay`.
 2. Resolve conflicts. `pnpm-lock.yaml` is easiest to regenerate: take the new revision's lockfile, run `corepack pnpm@<Formbricks's pnpm> install --no-frozen-lockfile` with the Ayme packages unpacked (an earlier `lab:prepare` leaves them in `.ayme-lab/packages/`), and amend the overlay commit. Do the same when only the Ayme packages' dependencies changed.
 3. Check that the overlay is still exactly one commit on top of the new revision, and push it: `git push --force-with-lease origin ayme-overlay`.
-4. In this repository, stage the submodule at the overlay commit (`git add formbricks`) and commit it.
+4. In this repository, stage the submodule at the overlay commit (`git add formbricks`), update the two revisions named in [Ayme in the lab app](#ayme-in-the-lab-app), and commit both.
 5. Run `pnpm lab:prepare`, start `pnpm lab:dev`, and run `pnpm lab:qualify`. Fix any page object locator it reports in the overlay commit.

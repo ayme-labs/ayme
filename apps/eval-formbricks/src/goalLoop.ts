@@ -248,19 +248,26 @@ export async function lookUpGenerationCosts(
   const costs = new Map<string, number | null>();
   for (const id of new Set(generationIds)) {
     let cost: number | null = null;
-    const response = await fetchFn(
-      `${generationEndpoint}?id=${encodeURIComponent(id)}`,
-      { headers: { Authorization: `Bearer ${apiKey}` } }
-    );
-    if (response.ok) {
-      const body: unknown = await response.json();
-      const data = isRecord(body) && isRecord(body.data) ? body.data : null;
-      const total = numberOrNull(data?.total_cost);
-      if (total !== null)
-        cost = total + (numberOrNull(data?.upstream_inference_cost) ?? 0);
-    } else if (response.status !== 404) {
+    // A lookup that fails leaves the cost unknown; it never costs the run its result.
+    try {
+      const response = await fetchFn(
+        `${generationEndpoint}?id=${encodeURIComponent(id)}`,
+        { headers: { Authorization: `Bearer ${apiKey}` } }
+      );
+      if (response.ok) {
+        const body: unknown = await response.json();
+        const data = isRecord(body) && isRecord(body.data) ? body.data : null;
+        const total = numberOrNull(data?.total_cost);
+        if (total !== null)
+          cost = total + (numberOrNull(data?.upstream_inference_cost) ?? 0);
+      } else if (response.status !== 404) {
+        log(
+          `OpenRouter answered HTTP ${response.status} for generation ${id}; its cost is unknown.`
+        );
+      }
+    } catch (error) {
       log(
-        `OpenRouter answered HTTP ${response.status} for generation ${id}; its cost is unknown.`
+        `Asking OpenRouter for generation ${id} failed: ${error instanceof Error ? error.message : String(error)}; its cost is unknown.`
       );
     }
     costs.set(id, cost);

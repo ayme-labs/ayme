@@ -242,4 +242,29 @@ describe("looking up generation costs", () => {
     });
     expect(costs.get("gen-a")).toBeNull();
   });
+
+  it("keeps going with an unknown cost when a request fails or its body is not JSON", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(new Response("<html>", { status: 200 }))
+      .mockResolvedValueOnce(generation("gen-c", 0.00003));
+    const log = vi.fn();
+    const costs = await lookUpGenerationCosts(["gen-a", "gen-b", "gen-c"], {
+      apiKey: "test-key",
+      fetch: fetchMock,
+      log,
+    });
+    expect(costs.get("gen-a")).toBeNull();
+    expect(costs.get("gen-b")).toBeNull();
+    expect(costs.get("gen-c")).toBeCloseTo(0.00003, 12);
+    expect(log).toHaveBeenCalledWith(
+      "Asking OpenRouter for generation gen-a failed: fetch failed; its cost is unknown."
+    );
+    expect(log).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^Asking OpenRouter for generation gen-b failed: .+; its cost is unknown\.$/
+      )
+    );
+  });
 });
