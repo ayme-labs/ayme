@@ -206,8 +206,9 @@ jobs:
             version: "18.0.0"
             pins: react react-dom @types/react@18.3.31 @types/react-dom@18.3.7
             build: "@ayme-dev/ayme"
-          # The Next and Nuxt minima run the example apps' build, typecheck
-          # and E2E suites, with every framework process on the Node floor.
+          # The Next, Nuxt and SvelteKit minima run the example apps' build,
+          # typecheck and E2E suites, with every framework process on the Node
+          # floor.
           - name: Next 16.0 compatibility
             package: "@ayme-dev/example-next"
             dir: apps/example-next
@@ -222,6 +223,16 @@ jobs:
             version: "4.0.1"
             pins: nuxt
             build: "@ayme-dev/example-nuxt^..."
+            node: "20.19.0"
+            e2e: true
+          # SvelteKit 2.53.0 is the first release that accepts Vite 8 and
+          # vite-plugin-svelte 7, which the example runs on.
+          - name: SvelteKit 2.53.0 compatibility
+            package: "@ayme-dev/example-sveltekit"
+            dir: apps/example-sveltekit
+            version: "2.53.0"
+            pins: "@sveltejs/kit"
+            build: "@ayme-dev/example-sveltekit^..."
             node: "20.19.0"
             e2e: true
     steps:
