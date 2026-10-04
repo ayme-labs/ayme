@@ -46,8 +46,9 @@ publication options, which the suite varies through the page URL.
 
 ## Limits
 
-This fixture certifies standalone Angular applications on the current major,
-client-rendered and server-rendered with hydration, on Node. It does not
+This fixture certifies standalone Angular applications from Angular 21.0 (CI's
+minimum-version lane, on Node.js 20.19) to the current major, client-rendered
+and server-rendered with hydration, on Node. It does not
 certify:
 
 - NgModule-bootstrapped apps (should work, not tested)
