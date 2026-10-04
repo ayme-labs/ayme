@@ -1,173 +1,61 @@
-# ayme
+# Ayme
 
-## Framework integrations
+Ayme turns the Page Object Models your tests already use into tools that agents and tests call in your running app.
 
-- [Vue](packages/vue/README.md): provider setup and compatible standalone composable setup.
-- [React](packages/react/README.md): provider setup for React 18 and 19, client-rendered or server-rendered.
-- [Svelte](packages/svelte/README.md): root-component setup for Svelte 3.54+, 4 and 5, SvelteKit and plain Svelte apps.
-- [Angular](packages/angular/README.md): `ng add` setup, `provideAyme` and `injectPageObject` for standalone Angular 19 to 22 applications, with or without server rendering.
+Mark a Page Object Model and the actions to expose, and each action becomes a tool, published to agents through WebMCP and callable from your Playwright tests. An agent can also hand Ayme a goal in natural language: the Goal Loop drives the page toward it, and each step is one judgement by Jev, TypeSafe's System One model, not by the calling agent's LLM.
 
-The Vue, React and Svelte packages return Page Object instances through
-`usePageObject`, the Angular package through `injectPageObject`. All four
-share publication, retry, and runtime ownership behavior. The
-[React smoke app](apps/example-react/README.md) checks the integration with one
-counter, the [SvelteKit example](apps/example-sveltekit/README.md) certifies
-server rendering and SPA mode, and the Vue example retains its full inspector
-demo.
+<!--
+Reserved for the Goal Loop clip and the comparison table. Both are added once
+the eval work has produced them; until then this README makes no comparison.
+-->
 
-## Supported versions
+## Install
 
-CI tests each lower bound together with the current release, except the
-TypeScript floor, which comes from a one-time check.
-These are compatibility floors, not security advice: follow each framework's
-own support policy for which releases still receive fixes.
+Install Ayme, your framework's package and the build plugin. `@playwright/test` supplies the `Page` and `Locator` types your Page Object Models use:
 
-| Dependency         | Supported                                | Notes                                                                                                                                                                                                                             |
-| ------------------ | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React              | 18.0 and 19                              | Client rendering, server rendering and hydration.                                                                                                                                                                                 |
-| Vue                | 3.2.0 and later                          | With TypeScript and `skipLibCheck: false`, Vue 3.2.0 to 3.2.38 report errors inside Vue's own declarations; use 3.2.39 or later, or `skipLibCheck: true`.                                                                         |
-| Svelte             | 3.54 and later, 4 and 5                  |                                                                                                                                                                                                                                   |
-| Angular            | 19 to 22                                 | Standalone applications; see the [Angular package](packages/angular/README.md#supported-versions-and-limits). The package is tested from 19.0; the server-rendered example end to end from 21.0, the oldest release it builds on. |
-| Next.js            | 16.0 and later                           | With the experimental Turbopack loader, as in the [Next.js example](apps/example-next/README.md). Next.js 15 and webpack are not supported.                                                                                       |
-| SvelteKit          | 2.53 and later 2.x                       | With the Vite plugin, as in the [SvelteKit example](apps/example-sveltekit/README.md). 2.53 is the first release that accepts Vite 8; earlier 2.x releases on Vite 7 are not tested.                                              |
-| Nuxt               | 4.0.1 and later                          | With the Vite plugin, as in the [Nuxt example](apps/example-nuxt/README.md). Nuxt 3 is not supported.                                                                                                                             |
-| Vite               | 7 and 8                                  | The plugin is ESM-only, so the config must be loaded as ESM.                                                                                                                                                                      |
-| Node.js            | 20.19 and later 20.x, or 22.12 and later | Nuxt 4.4.6 and later need Node.js 22.12, and Nuxt 4.5 needs 22.19, so a current Nuxt release needs Node.js 22.                                                                                                                    |
-| `@playwright/test` | 1.29 to 1.62                             | Optional; see [Playwright compatibility](#playwright-compatibility).                                                                                                                                                              |
-| TypeScript         | 5.4 and later                            | 5.0 to 5.3 work with `skipLibCheck: true`. This is the version your project compiles with; the plugin brings its own compiler. Playwright 1.29's declarations need TypeScript 5.x.                                                |
-
-The Next.js, Nuxt and SvelteKit rows, and Angular from 21.0, cover the behavior the examples test: server
-rendering, hydration, tool publication, Page Object actions, removal and
-remounting, in development and production.
-
-## Browser page creation
-
-WebMCP bundles its browser controller from the exact-commit-pinned
-`@ayme-dev/playwright-lite` fork. Consumers do not install the Git dependency
-or build the runtime. It controls the current document, without opening a
-tab or creating an isolated browser context.
-
-Existing Vite plugin settings are passed to `createPage(options)` inside
-WebMCP. Browser Page construction remains lazy for server rendering.
-Page Object Models still use the standard Playwright Page and Locator types.
-
-The Vue example owns its trace collection, action pauses, and click cues in
-`apps/example-vue/src/ayme/withDemoFeedback.ts`. The wrapper preserves the
-underlying locators for Ayme observation. Its pauses and advisory cues run
-before the delegated action and outside that action's timeout budget.
-
-The demo's text-entry actions explicitly use `pressSequentially(text, { delay })`.
-`fill()` keeps its normal text-replacement behavior.
-Start with the [main library README](packages/ayme/README.md) for consumer setup.
-
-## Coding agent skill
-
-> Install the `ayme` skill from https://github.com/ayme-labs/ayme/tree/main/skills/ayme into this project's skill directory, including its references. Then use it to set up Ayme WebMCP here.
-
-## Playwright compatibility
-
-For Page Object Models, install `@playwright/test` as a development dependency.
-A separate direct installation of `playwright` is unnecessary. Import `Page`
-and `Locator` with `import type`.
-
-`@ayme-dev/ayme` declares an optional `@playwright/test` peer of
-`>=1.29 <1.63`; the framework packages do not declare it. Playwright is unnecessary for the
-core public API and plugin defaults or direct settings. POM registration types
-require it. Packed consumer checks exercise 1.29.0 with TypeScript 5.9.3 and
-1.62.1 with TypeScript 6.0.3, with strict declaration checking and no
-`skipLibCheck`. Playwright 1.29's own declarations use syntax rejected by
-TypeScript 6, so that combination is not supported. Versions 1.63 and later
-require compatibility review.
-
-Compatibility covers the methods and options marked implemented in the
-[existing compatibility ledger](https://github.com/ayme-labs/playwright-lite/blob/cd4217e91307bb16133cd3194032686631f62af7/compatibility/api.ts),
-subject to its limitations. The full Playwright `Page` and `Locator` declarations
-also expose unsupported operations; successful TypeScript compilation does not
-establish runtime support. Browser-executed POMs must not import Playwright runtime
-values such as `expect`; unused imports behind local barrels may be removed by
-the plugin, but this does not provide a browser version of Playwright Test.
-
-An older consumer's declarations need not expose newer supported capabilities:
-
-| Capability                                       | First Playwright declaration |
-| ------------------------------------------------ | ---------------------------- |
-| `Locator.all`                                    | 1.29                         |
-| `Locator.or`, negative locator filters           | 1.33                         |
-| `Locator.and`                                    | 1.34                         |
-| `Locator.pressSequentially`                      | 1.38                         |
-| `Locator.ariaSnapshot`                           | 1.49                         |
-| `Locator.filter({ visible })`                    | 1.51                         |
-| `Locator.describe`                               | 1.53                         |
-| `Locator.description`                            | 1.57                         |
-| `Page.ariaSnapshot`, snapshot `mode` and `depth` | 1.59                         |
-| Snapshot `boxes`, role `description`             | 1.60                         |
-| Query and snapshot `signal`                      | 1.62                         |
-
-These dates follow [Playwright's release history](https://playwright.dev/docs/release-notes).
-The 1.29 minimum includes `Locator.all` and the `selectOption(string)` behavior
-that matches either an option value or label. Ayme always executes its bundled
-adapter from the fixed runtime source pin, regardless of the consumer's installed
-Playwright version. It does not emulate historical releases. The current-document
-boundary excludes iframe traversal, multiple pages, and browser-process operations.
-The runtime's reviewed tests remain separate from the consumer declaration checks.
-
-The optional config loader has a narrower requirement described below. The plugin
-does not declare that requirement as a package-wide peer because it applies only
-when `playwright.config` is supplied; it validates the consumer's resolved
-Playwright version at that point.
-
-## Playwright settings
-
-The Vite plugin accepts the small part of Playwright configuration that the
-Ayme browser adapter uses:
-
-```ts
-ayme({
-  playwright: {
-    config: "./playwright.config.ts",
-    project: "chromium",
-    use: {
-      testIdAttribute: "data-testid",
-      actionTimeout: 10_000,
-      navigationTimeout: 30_000,
-    },
-  },
-});
+```sh
+npm install @ayme-dev/ayme @ayme-dev/vue # or react, svelte
+npm install -D @ayme-dev/unplugin-ayme @playwright/test
 ```
 
-`config` is optional. When it is omitted, Ayme does not search for a
-Playwright config and does not import Playwright's config loader. The supported
-values come from the explicit `use` overrides and the adapter defaults.
-Relative config paths resolve against Vite's root. Absolute paths work too.
-Consumers that relied on the old automatic discovery must now pass their
-config path explicitly.
+On Angular, one command sets it all up:
 
-If a config is supplied, Ayme loads the consumer's Playwright 1.62.x config
-loader through the matching `playwright` dependency of `@playwright/test`.
-That loader is a private Playwright module, so other versions and
-loader shapes fail with an explicit compatibility error. Ayme reads only
-`testIdAttribute`, `actionTimeout`, and `navigationTimeout`; no other config
-field enters the browser bundle.
+```sh
+ng add @ayme-dev/angular
+```
 
-Without `project`, a config with no projects uses its top-level `use` values, a
-single project is selected automatically, and multiple projects must agree on
-all three supported values. If they do not, set `project` to a project name.
-That name must identify exactly one project.
+Mark the Page Object Model and the actions to expose:
 
-Each supported field resolves independently. Explicit `use` overrides win over
-the selected project, then the top-level config, then the adapter runtime
-default. The adapter defaults are 1,000 ms for actions and 30,000 ms for
-navigation. An `undefined` value does not erase an inherited value. Action and
-navigation defaults are applied to the page returned by `createPage`, which is
-the page used by POM and ref actions. Per-call timeout options and later
-`setDefaultTimeout` or `setDefaultNavigationTimeout` calls still win, and `0`
-means no timeout. If navigation has no separate value, it inherits the general
-action timeout.
+```ts
+import { ayme } from "@ayme-dev/ayme";
+import type { Page } from "@playwright/test";
 
-The adapter supports same-document navigation and full-document navigation via
-`page.goto`. A full-document navigation replaces the controlled document and
-ends the current browser execution; it does not return a destination page to
-the old execution.
+@ayme
+export class GreetingPage {
+  constructor(private readonly page: Page) {}
+
+  @ayme.action({ description: "Greet the visitor." })
+  async greet(name: string) {
+    await this.page.getByRole("textbox", { name: "Name" }).fill(name);
+    await this.page.getByRole("button", { name: "Greet" }).click();
+  }
+}
+```
+
+Then start Ayme in your app and register the Page Object, as your framework's page shows. A coding agent can do the setup for you: ask it to install the `ayme` skill from https://github.com/ayme-labs/ayme/tree/main/skills/ayme, including its references, and use it to set up Ayme in your project.
+
+## Pick your framework
+
+- [Vue](packages/vue/README.md)
+- [React](packages/react/README.md)
+- [Svelte](packages/svelte/README.md)
+- [Angular](packages/angular/README.md)
+
+Next.js, Nuxt and SvelteKit work with the React, Vue and Svelte packages, including server rendering.
+
+## Documentation
+
+The [documentation](docs/guide/README.md) starts with [what Ayme is](docs/guide/start/what-is-ayme.md) and [install](docs/guide/start/install.md), which lists the supported versions. The reference covers [Playwright in the browser](docs/guide/reference/playwright-in-the-browser.md), the Playwright calls your Page Object Models can make, and the [build plugin](docs/guide/reference/build-plugin.md).
 
 ## License
 
