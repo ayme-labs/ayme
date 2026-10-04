@@ -146,6 +146,7 @@ const EXPECTED_GROUPS: Record<string, PublishedToolGroup> = {
   select_option: "browser",
   fill_form: "browser",
   press_key: "browser",
+  navigate: "browser",
   highlight: "custom",
   "TodoPage.addTodo": "pageObject",
 };

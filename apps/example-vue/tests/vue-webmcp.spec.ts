@@ -85,6 +85,7 @@ const browserToolNames = [
   "select_option",
   "fill_form",
   "press_key",
+  "navigate",
 ];
 
 const initialToolNames = [
