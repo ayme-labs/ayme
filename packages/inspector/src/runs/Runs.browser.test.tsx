@@ -2,8 +2,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { RunStep } from "../adapter/runSteps";
-import type { Run } from "../adapter/useRuns";
+import { anItem, aRun, aStep } from "../adapter/runs.testSupport";
 import { RunsRegion } from "../frame/InspectorBody";
 import { renderPart } from "../renderPart";
 import { RunsView } from "../testing";
@@ -22,47 +21,30 @@ afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
 });
 
-const fillText: RunStep = {
+const fillText = aStep({
   operation: "fill",
   locator: "getByRole('textbox', { name: 'New item' })",
   value: "Milk",
-};
-const clickAdd: RunStep = {
-  operation: "click",
+});
+const clickAdd = aStep({
   locator: "getByRole('button', { name: 'Add item' })",
   member: "ListPage.addItemButton",
-};
+});
 
-const addMilk: Run = {
+const addMilk = aRun({
   id: 1,
-  toolName: "ListPage.addItem",
-  className: "ListPage",
-  objectPath: "ListPage",
   arguments: { text: "Milk" },
-  status: "succeeded",
-  startedAt: 0,
   durationMs: 320,
   steps: [fillText, clickAdd],
-};
-const archiveGone: Run = {
-  id: 2,
+});
+const archiveGone = aRun({
   toolName: "ListPage.items.archive",
   className: "ListItem",
-  objectPath: "ListPage.items[0]",
-  item: {
-    path: "ListPage.items[0]",
-    name: "[0]",
-    pathBelowPage: "items[0]",
-    ref: "e3",
-    label: "Milk",
-  },
+  item: anItem("ListPage.items[0]", { ref: "e3", label: "Milk" }),
   arguments: { ref: "e3", args: {} },
   status: "failed",
   error: 'Ref "e3" does not match a present instance.',
-  startedAt: 0,
-  durationMs: 12,
-  steps: [],
-};
+});
 
 /**
  * Renders Runs in its region, keeping open and scope in state the way the
@@ -219,11 +201,6 @@ describe("Runs", () => {
   });
 });
 
-/** A successful run of addItem, with the given changes. */
-function aRun(id: number, extra: Partial<Run>): Run {
-  return { ...addMilk, id, steps: [], ...extra };
-}
-
 describe("a run's result", () => {
   beforeEach(() => {
     vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
@@ -234,7 +211,7 @@ describe("a run's result", () => {
 
   it("starts collapsed, then shows as formatted JSON", async () => {
     const result = JSON.stringify({ added: "Milk", total: 2 }, null, 2);
-    renderRuns({ runs: [aRun(1, { result })] });
+    renderRuns({ runs: [aRun({ result })] });
     const run = runsView.run(0);
 
     await expect
@@ -254,7 +231,7 @@ describe("a run's result", () => {
       null,
       2
     );
-    renderRuns({ runs: [aRun(1, { result })] });
+    renderRuns({ runs: [aRun({ result })] });
     const run = runsView.run(0);
     await run.resultToggle.click();
 
@@ -274,7 +251,7 @@ describe("a run's result", () => {
   });
 
   it("is copied while collapsed", async () => {
-    renderRuns({ runs: [aRun(1, { result: '"Milk"' })] });
+    renderRuns({ runs: [aRun({ result: '"Milk"' })] });
 
     await runsView.run(0).copyResultButton.click();
 
@@ -284,7 +261,7 @@ describe("a run's result", () => {
   });
 
   it("isn't there when the tool returned undefined", async () => {
-    renderRuns({ runs: [aRun(1, {})] });
+    renderRuns({ runs: [aRun({ durationMs: 320 })] });
     const run = runsView.run(0);
 
     await expect.poll(() => run.status()).toBe("Succeeded");
@@ -297,7 +274,7 @@ describe("a run's result", () => {
   it("is there for null, false, 0, the empty string and empty objects and arrays", async () => {
     const results = ["null", "false", "0", '""', "{}", "[]"];
     renderRuns({
-      runs: results.map((result, index) => aRun(index + 1, { result })),
+      runs: results.map((result) => aRun({ result })),
     });
 
     await expect.poll(() => runsView.runs.count()).toBe(results.length);
@@ -311,7 +288,7 @@ describe("a run's result", () => {
 
   it("isn't there for a running or failed run, which keeps its error", async () => {
     renderRuns({
-      runs: [aRun(3, { status: "running" }), archiveGone],
+      runs: [aRun({ status: "running" }), archiveGone],
     });
 
     await expect.poll(() => runsView.run(0).status()).toBe("Running");
@@ -324,7 +301,7 @@ describe("a run's result", () => {
 
   it("shows when its run is asked to show, even from a collapsed run", async () => {
     const { focusRun } = renderRuns({
-      runs: [aRun(2, { result: '"Eggs"' }), aRun(1, { result: '"Milk"' })],
+      runs: [aRun({ result: '"Eggs"' }), aRun({ id: 1, result: '"Milk"' })],
     });
     const run = runsView.run(1);
     await run.toggle.click();
@@ -339,7 +316,7 @@ describe("a run's result", () => {
 
 describe("a run's arguments", () => {
   it("aren't shown when there are none", async () => {
-    renderRuns({ runs: [aRun(1, { arguments: {} })] });
+    renderRuns({ runs: [aRun({ arguments: {} })] });
 
     await expect.poll(() => runsView.run(0).status()).toBe("Succeeded");
     expect(await runsView.run(0).arguments.count()).toBe(0);
@@ -348,7 +325,7 @@ describe("a run's arguments", () => {
 
   it("are shown with their null and falsy fields", async () => {
     const args = { text: "", copies: 0, urgent: false, note: null };
-    renderRuns({ runs: [aRun(1, { arguments: args })] });
+    renderRuns({ runs: [aRun({ arguments: args })] });
 
     await expect
       .poll(() => runsView.run(0).arguments.textContent())

@@ -1,4 +1,5 @@
 import type {
+  ObjectAction,
   ObjectMember,
   PageObjectModel,
   PageObjectNode,
@@ -7,11 +8,22 @@ import type {
 // Hand-written page models for unit tests: every Page Object on the page,
 // with its locators and its children as members, as buildPageModel makes them.
 
-/** What a Page Object holds: its locators by name, and its children. */
+/**
+ * What a Page Object holds: its locators by name, its children, and its
+ * actions, which run its tools by the path without item indices, e.g.
+ * TodoPage.items.archive. It is on the page unless it says not, and so are
+ * its locators.
+ */
 export type Contents = {
   locators?: readonly string[];
   children?: readonly Child[];
+  actions?: readonly Action[];
+  live?: boolean;
 };
+
+/** An action: its signature is "()" unless it says otherwise. */
+export type Action = Pick<ObjectAction, "name"> &
+  Partial<Pick<ObjectAction, "description" | "signature">>;
 
 /** A child Page Object or collection, built at its parent's path. */
 export type Child = (parentPath: string) => PageObjectNode;
@@ -33,7 +45,7 @@ export function component(
 
 /**
  * A collection under its parent, its items in order, and the tools of the
- * actions that run on one of its items.
+ * actions that run on one of its items: without them, its items' actions.
  */
 export function collection(
   name: string,
@@ -55,12 +67,14 @@ export function collection(
       live: children.length > 0,
       itemCount: children.length,
       members: children.map(componentMember),
-      actions: toolNames.map((toolName) => ({
-        name: toolName,
-        signature: "()",
-        toolName,
-        live: true,
-      })),
+      actions: toolNames.length
+        ? toolNames.map((toolName) => ({
+            name: toolName,
+            signature: "()",
+            toolName,
+            live: true,
+          }))
+        : (children[0]?.actions ?? []),
       children,
     };
   };
@@ -85,27 +99,33 @@ function objectNode(
   name: string,
   kind: PageObjectNode["kind"],
   className: string,
-  { locators = [], children = [] }: Contents
+  { locators = [], children = [], actions = [], live = true }: Contents
 ): PageObjectNode {
   const built = children.map((child) => child(path));
+  const toolPath = path.replace(/\[\d+\]/g, "");
   return {
     path,
     key: path,
     name,
     kind,
     className,
-    live: true,
+    live,
     members: [
       ...locators.map((locator): ObjectMember => ({
         name: locator,
         kind: "locator",
-        live: true,
-        state: "1 match",
+        live,
+        state: live ? "1 match" : "absent",
         path: `${path}.${locator}`,
       })),
       ...built.map(componentMember),
     ],
-    actions: [],
+    actions: actions.map((action) => ({
+      signature: "()",
+      ...action,
+      toolName: `${toolPath}.${action.name}`,
+      live,
+    })),
     children: built,
   };
 }
@@ -116,8 +136,13 @@ function componentMember(node: PageObjectNode): ObjectMember {
     kind: "component",
     className: node.className,
     ...(node.kind === "collection" ? { collection: true } : {}),
-    live: true,
-    state: "on page",
+    live: node.live,
+    state:
+      node.kind === "collection"
+        ? `${node.itemCount} ${node.itemCount === 1 ? "item" : "items"}`
+        : node.live
+          ? "on page"
+          : "not on page",
     path: node.path,
     objectPath: node.path,
   };
