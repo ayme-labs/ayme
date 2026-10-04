@@ -131,7 +131,8 @@ export async function seedMission(
 ): Promise<Mission> {
   const { prisma, createId, hashPassword } = database;
   const name = `eval-${runId}`;
-  const email = `${name}@example.com`;
+  // Better Auth looks emails up in lower case; run ids carry capitals.
+  const email = `${name.toLowerCase()}@example.com`;
   const password = `Eval-${randomBytes(9).toString("base64url")}`;
   const passwordHash = await hashPassword(password);
 
