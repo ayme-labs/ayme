@@ -65,33 +65,31 @@ Applications do not need this demo-only entry point.
 
 ## Source layout
 
-- `src/adapter`: the runtime adapter, the only code that reads `@ayme-dev/ayme` or runs
-  tools. It provides the structure tree model (`adapter/structure.ts`), the
-  page model of Page Objects and their models (`adapter/pageModel.ts`), and
-  the page model indexed by member path (`adapter/memberIndex.ts`), which
-  resolves members, their groups and owners by lookup.
-  It keeps the structure live: page changes, input, focus and registry changes schedule a
-  refresh (debounced, one at a time), and each refresh is one unrecorded
-  peek at the page state, so the Inspector never changes what agents see.
-- `src/shell`: the panel's frame: layouts, header, collapsed logo and
-  preferences.
-- `src/frame`: the body: the navigator, the detail pane, the Runs region, the
-  shared selection, and the `Lens` and run slot contracts.
-- `src/lenses`: one file per lens, with its parts in a folder of its name.
-  Each contributes its tree, its search entries, its legend counts and the
-  detail views of what it selects.
-- `src/detail`: parts any detail view can use, such as "What the model
-  sees", the syntax-highlighted definitions and schemas an agent receives.
-- `src/runCard`: the run card that fills the run slot: the typed form built
-  from a tool's schema, the item picker and the last result. Each field's
-  control is chosen by its kind; `RefField` is the ref field's, and
-  `KeyField` records or searches the key `press_key` presses.
-  `fill_form` has its own form, `FillFormFields`: every field on the page,
-  holding the value it shows, sending the ones the person changes.
-- `src/runs`: Runs, the timeline of the runs made from the panel, and which
-  runs belong to the selection.
+`src/` is cut into slices named for what they do (`panel`, `page-model`,
+`structure`, `runs`, `tools` and others), with layers inside each slice.
+[AGENTS.md](AGENTS.md) lists them, and lint enforces them
+(`eslint.config.js`).
 
-Below the adapter, components take only props; lint enforces it.
+- `shared` keeps the Inspector's look at the page live: page changes, input,
+  focus and registry changes schedule a refresh (debounced, one at a time),
+  and each refresh is one unrecorded peek at the page state, so the
+  Inspector never changes what agents see.
+- `page-model` holds the Page Objects on the page and their models, indexed
+  by member path, so members, their groups and owners resolve by lookup.
+  `structure` builds the structure tree model from the projected page state.
+- Each lens contributes its tree, its search entries, its legend counts and
+  the detail views of what it selects, through `navigation`'s `Lens`
+  contract. Detail views run tools through the run slot, which the run card
+  in `tools` fills: the typed form built from a tool's schema, the item
+  picker and the last result. `RefField` is the ref field's control, and
+  `KeyField` records or searches the key `press_key` presses. `fill_form`
+  has its own form, `FillFormFields`: every field on the page, holding the
+  value it shows, sending the ones the person changes.
+- `runs` holds Runs, the timeline of the runs made from the panel, and
+  which runs belong to the selection.
+
+Only infrastructure code reads `@ayme-dev/ayme` at runtime; components take
+props.
 
 ## Testing
 

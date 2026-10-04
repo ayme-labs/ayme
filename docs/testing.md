@@ -36,3 +36,5 @@ Fakes, test doubles and page objects for tests ship from the package's `testing`
 | `@ayme-dev/core/structural-observation/testing` | `StructuralTreeMockFactory` and `MockLiveAriaSnapshotSource`, for structural trees without a browser                                            |
 
 Consumers may use these entries to test their own integration.
+
+Test data a package keeps to itself, such as builders, stays out of the `testing` entry. In the Inspector it lives in the `test-utils/` folder of the slice that owns the type, which only tests may import ([`packages/inspector/AGENTS.md`](../packages/inspector/AGENTS.md)).
