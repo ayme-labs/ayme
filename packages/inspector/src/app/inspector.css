@@ -1,0 +1,64 @@
+/*
+ * The Inspector's stylesheet. It is compiled at build time by the design
+ * system's shadow-tailwind plugin and injected into the Inspector's shadow
+ * root as a string; it never reaches the host document.
+ */
+@import "tailwindcss" source(none);
+@import "@ayme-dev/design-system/theme.css";
+
+@source "../";
+
+/* The design system's base styles; theme.css leaves them to the consumer. */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+}
+
+/*
+ * The host covers the viewport without catching pointer events; the FAB, the
+ * panel and portalled content opt back in. `all: initial` stops the host
+ * page's inherited styles at the shadow boundary. The host element lives in
+ * the page, so page rules reach it; `!important` here outranks even the
+ * page's `!important` rules.
+ *
+ * Stacking policy: the Inspector paints above everything the page stacks.
+ * Its fixed host is a stacking context, so nothing inside the shadow root can
+ * escape it; the host itself takes the highest z-index there is, and the
+ * z-indices inside only order the Inspector's own parts. Only the top layer
+ * (modal dialogs, popovers, fullscreen) paints above it. The demo click cue
+ * shares this z-index and, appended after the host, paints above the panel.
+ */
+:host {
+  all: initial !important;
+  display: block !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  position: fixed !important;
+  z-index: 2147483647 !important;
+}
+
+/*
+ * While a runtime pointer action's target is under the panel, nothing in the
+ * Inspector takes pointer events, so the action reaches the page.
+ */
+[data-ayme-inspector-root][data-ayme-pass-through] * {
+  pointer-events: none !important;
+}
+
+/*
+ * The syntax highlighter's colours (sugar-high reads --sh-*), from the
+ * design system's tokens. They sit on the themed root, so they follow its
+ * light or dark theme and stay inside the shadow root.
+ */
+[data-ayme-inspector-root] {
+  --sh-class: var(--chart-3);
+  --sh-identifier: var(--foreground);
+  --sh-sign: var(--muted-foreground);
+  --sh-property: var(--chart-2);
+  --sh-entity: var(--chart-3);
+  --sh-jsxliterals: var(--chart-1);
+  --sh-string: var(--success);
+  --sh-keyword: var(--primary);
+  --sh-comment: var(--muted-foreground);
+}

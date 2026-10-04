@@ -27,7 +27,7 @@ Each package keeps its own Vitest config ([ADR-0003](adr/0003-keep-vitest-config
 
 ## Test-only code
 
-Fakes, test doubles and page objects for tests ship from the package's `testing` entry, `@ayme-dev/<package>/testing`, built from its `src/testing.ts`. Only test files may import one; lint enforces it ([`testing-entries.js`](../packages/eslint-config/testing-entries.js)). Why, and the options we rejected: [ADR-0026](adr/0026-test-seams-behind-a-testing-entry.md).
+Fakes, test doubles and page objects for tests ship from the package's `testing` entry, `@ayme-dev/<package>/testing`, built from its `src/testing.ts` or `src/testing/index.ts`. Only test files may import one; lint enforces it ([`testing-entries.js`](../packages/eslint-config/testing-entries.js)). Why, and the options we rejected: [ADR-0026](adr/0026-test-seams-behind-a-testing-entry.md).
 
 | Entry                                           | Holds                                                                                                                                           |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -36,3 +36,5 @@ Fakes, test doubles and page objects for tests ship from the package's `testing`
 | `@ayme-dev/core/structural-observation/testing` | `StructuralTreeMockFactory` and `MockLiveAriaSnapshotSource`, for structural trees without a browser                                            |
 
 Consumers may use these entries to test their own integration.
+
+Test data a package keeps to itself, such as builders, stays out of the `testing` entry. In the Inspector it lives in the `test-utils/` folder of the slice that owns the type, which only tests may import ([`packages/inspector/AGENTS.md`](../packages/inspector/AGENTS.md)).
