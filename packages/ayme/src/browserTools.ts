@@ -16,6 +16,11 @@ import {
   type RegisteredElementTool,
   type ResolvedTarget,
 } from "./elementTools";
+import {
+  navigateBackTool,
+  navigateForwardTool,
+  reloadTool,
+} from "./historyTools";
 import { navigateTool } from "./navigateTool";
 import { requireAymeRuntimePage } from "./registry";
 
@@ -452,7 +457,12 @@ const PUBLISHED_ONLY_BROWSER_TOOLS: readonly PublishedElementTool[] = [
  * Browser Tools that move the page to another URL or history entry. They
  * take no element; each is published and the Goal Loop may choose it.
  */
-const NAVIGATION_TOOLS: readonly PublishedElementTool[] = [navigateTool];
+const NAVIGATION_TOOLS: readonly PublishedElementTool[] = [
+  navigateTool,
+  navigateBackTool,
+  navigateForwardTool,
+  reloadTool,
+];
 
 /** Package-internal: the Browser Tools that move the page, in publication order. */
 export function listNavigationTools(): readonly PublishedElementTool[] {

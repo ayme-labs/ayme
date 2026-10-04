@@ -72,6 +72,9 @@ const aymeTools = [
   "fill_form",
   "press_key",
   "navigate",
+  "navigate_back",
+  "navigate_forward",
+  "reload",
 ];
 
 /** Opens the counter page with the recording driver and waits for publication. */
