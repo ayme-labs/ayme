@@ -14,9 +14,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       vue(),
       tailwindcss(),
-      ayme({
-        inspector: mode !== "inspector-disabled",
-      }),
+      ayme(),
       decisionEndpointDev(env.AYME_OPENROUTER_API_KEY),
     ],
     resolve: {

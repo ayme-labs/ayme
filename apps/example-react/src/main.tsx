@@ -41,7 +41,10 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AymeProvider webMCP={{ enabled: true }}>
+    <AymeProvider
+      webMCP={{ enabled: true }}
+      inspector={import.meta.env.MODE !== "inspector-disabled"}
+    >
       <App />
     </AymeProvider>
   </StrictMode>

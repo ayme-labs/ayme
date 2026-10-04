@@ -27,6 +27,7 @@
     "@angular/ssr": "^22.2.1",
     "@ayme-dev/angular": "workspace:*",
     "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/inspector": "workspace:*",
     "express": "^5.1.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"

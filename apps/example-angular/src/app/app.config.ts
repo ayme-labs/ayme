@@ -1,5 +1,6 @@
 import {
   ApplicationConfig,
+  isDevMode,
   provideBrowserGlobalErrorListeners,
 } from "@angular/core";
 import { provideRouter } from "@angular/router";
@@ -21,16 +22,17 @@ export function appConfig(url: URL): ApplicationConfig {
       provideBrowserGlobalErrorListeners(),
       provideRouter(routes),
       hydration,
-      provideAyme(
-        query.get("publication") === "off"
+      provideAyme({
+        inspector: isDevMode(),
+        ...(query.get("publication") === "off"
           ? {}
           : {
               webMCP: {
                 enabled: true,
                 toolNamePrefix: query.get("toolNamePrefix") ?? undefined,
               },
-            }
-      ),
+            }),
+      }),
     ],
   };
 }

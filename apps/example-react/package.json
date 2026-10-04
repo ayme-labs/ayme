@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/react": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

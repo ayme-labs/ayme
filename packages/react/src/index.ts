@@ -11,64 +11,36 @@ import {
 import {
   createAyme,
   type Ayme,
-  type AymePage,
+  type AymeOptions,
   type AymeWebMcp,
-  type AymeWebMcpOptions,
-  type CustomTool,
-  type GoalLoopDecisionFunction,
 } from "@ayme-dev/ayme";
-import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
+import {
+  sameRuntimeOptions,
+  type PageObjectConstructor,
+} from "@ayme-dev/ayme/internal";
 
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
-export type AymeProviderProps = {
-  /** Builds the browser Page; called once, in the browser, on first use. */
-  pageFactory?: () => AymePage;
-  children?: ReactNode;
-  ignore?: (element: Element) => boolean;
-  customTools?: CustomTool[];
-  goalLoop?: GoalLoopDecisionFunction;
-  webMCP?: AymeWebMcpOptions;
-};
+/** The options of `createAyme`, passed to it unchanged. */
+export type AymeProviderProps = AymeOptions & { children?: ReactNode };
 const RuntimeContext = createContext<Ayme | undefined>(undefined);
 
 export function AymeProvider({
-  pageFactory,
-  ignore,
-  customTools,
-  goalLoop,
-  webMCP,
   children,
+  ...options
 }: AymeProviderProps): ReactElement {
   const ancestor = useContext(RuntimeContext);
   const [setup] = useState(() => {
-    const fixedWebMCP = webMCP && { ...webMCP };
-    return {
-      pageFactory,
-      ignore,
-      customTools,
-      goalLoop,
-      webMCP: fixedWebMCP,
-      runtime: createAyme({
-        pageFactory,
-        ignore,
-        customTools,
-        goalLoop,
-        webMCP: fixedWebMCP,
-      }),
+    const snapshot = {
+      ...options,
+      webMCP: options.webMCP && { ...options.webMCP },
     };
+    return { options: snapshot, runtime: createAyme(snapshot) };
   });
   if (ancestor)
     throw new Error(
       "AymeProvider cannot be nested beneath another Ayme runtime owner."
     );
-  if (
-    pageFactory !== setup.pageFactory ||
-    ignore !== setup.ignore ||
-    customTools !== setup.customTools ||
-    goalLoop !== setup.goalLoop ||
-    webMCP?.enabled !== setup.webMCP?.enabled ||
-    webMCP?.toolNamePrefix !== setup.webMCP?.toolNamePrefix
-  )
+  if (!sameRuntimeOptions(options, setup.options))
     throw new Error(
       "The provider options must stay fixed while mounted. Remount the provider to change them."
     );

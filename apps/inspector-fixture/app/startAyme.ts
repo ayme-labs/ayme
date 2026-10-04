@@ -51,21 +51,29 @@ function clearTheList() {
 
 /**
  * Mounts the Inspector, then starts the runtime with a Page Object (the
- * ListPage by default), the way the Ayme integrations do. The page reports its state on
- * <html> so the e2e tests can tell a broken fixture or a runtime that never
- * published from a broken Inspector.
+ * ListPage by default), the way the Ayme integrations do. `mount: "after"`
+ * mounts the Inspector once the runtime started with its Page Object, and
+ * `mount: "session"` leaves it to the session's `inspector` option. The page
+ * reports its state on <html> so the e2e tests can tell a broken fixture or a
+ * runtime that never published from a broken Inspector.
  */
 export function startAyme({
   PageObject = ListPage,
   publish = true,
-}: { PageObject?: PageObjectConstructor; publish?: boolean } = {}) {
+  mount = "before",
+}: {
+  PageObject?: PageObjectConstructor;
+  publish?: boolean;
+  mount?: "before" | "after" | "session";
+} = {}) {
   const root = document.documentElement.dataset;
   try {
-    const inspector = mountInspector();
+    let inspector = mount === "before" ? mountInspector() : undefined;
     const runtime = createAyme({
       customTools: [markElement],
       goalLoop: clearTheList(),
       webMCP: { enabled: publish },
+      inspector: mount === "session",
     });
     runtime.pom.register(PageObject);
     const reportRuntime = () => {
@@ -75,13 +83,14 @@ export function startAyme({
     };
     const unsubscribe = runtime.webMCP.subscribe(reportRuntime);
     const stop = runtime.start();
+    if (mount === "after") inspector = mountInspector();
     reportRuntime();
     root.fixture = "ready";
     return () => {
       runtime.pom.unregister(PageObject);
       stop();
       unsubscribe();
-      inspector.dispose();
+      inspector?.dispose();
     };
   } catch (error) {
     root.fixture = "failed";

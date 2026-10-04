@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "./browserPage";
 import { RuntimeStateError } from "./errors";
 import * as goalLoopModule from "./goalLoop";
+import { loadInspector } from "./inspector";
 import * as pageState from "./pageState";
 import { createAyme, type AymePage } from "./runtime";
 import { listRegisteredPoms, registerCompiledPom } from "./registry";
@@ -17,10 +18,11 @@ vi.mock("./webMcp", async (importOriginal) => ({
   synchronizeWebMcpTools: vi.fn(),
   waitForWebMcpDriver: vi.fn(),
 }));
+vi.mock("./inspector", () => ({ loadInspector: vi.fn() }));
 vi.mock("./browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),
 }));
-const page = {} as AymePage;
+const page = { url: () => "factory page" } as unknown as AymePage;
 const sessions: ReturnType<typeof createAyme>[] = [];
 const stops: (() => void)[] = [];
 const driver = { registerTool: vi.fn() };
@@ -71,6 +73,30 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+it("mounts the Inspector while a session with inspector is started", async () => {
+  const dispose = vi.fn();
+  const mountInspector = vi.fn(() => ({ dispose }));
+  vi.mocked(loadInspector).mockResolvedValue({ mountInspector });
+  start(session(false))();
+  expect(loadInspector).not.toHaveBeenCalled();
+
+  const runtime = createAyme({
+    pageFactory: () => page,
+    inspector: true,
+  });
+  sessions.push(runtime);
+  const stop = start(runtime);
+  await flush();
+  expect(mountInspector).toHaveBeenCalledOnce();
+  stop();
+  expect(dispose).toHaveBeenCalledOnce();
+
+  // Stopped before the Inspector loaded: nothing is mounted.
+  start(runtime)();
+  await flush();
+  expect(mountInspector).toHaveBeenCalledOnce();
+});
+
 it("threads ignore to page state capture for the session lifetime", () => {
   const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnore");
   try {
@@ -119,7 +145,7 @@ it("builds the default page with createPage() and no options, once", () => {
   start(defaultRuntime);
   expect(createPage).toHaveBeenCalledOnce();
   expect(createPage).toHaveBeenCalledWith();
-  expect(runtime.pom.get(Model).page).toBe(page);
+  expect(runtime.pom.get(Model).page.url()).toBe(page.url());
   expect(createPage).toHaveBeenCalledOnce();
 });
 
@@ -144,7 +170,7 @@ it("calls the page factory at most once, lazily, on first use", () => {
   const runtime = createAyme({ pageFactory: factory });
   sessions.push(runtime);
   expect(factory).not.toHaveBeenCalled();
-  expect(runtime.pom.get(Model).page).toBe(page);
+  expect(runtime.pom.get(Model).page.url()).toBe(page.url());
   expect(factory).toHaveBeenCalledOnce();
   const stop = start(runtime);
   stop();
@@ -238,7 +264,7 @@ it("runs goal as the application while publication is unavailable", async () => 
 it("gets without activation and handles registration before owner startup and replay", () => {
   const runtime = session(false);
   const instance = runtime.pom.get(Model);
-  expect(instance.page).toBe(page);
+  expect(instance.page.url()).toBe(page.url());
   expect(listRegisteredPoms()).toHaveLength(0);
   expect(runtime.pom.register(Model)).toBe(instance);
   expect(listRegisteredPoms()).toHaveLength(0);

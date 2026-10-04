@@ -23,10 +23,10 @@ export default defineConfig({
 });
 ```
 
-The plugin compiles Page Object Models and, with `inspector: true`, injects
-the Inspector. It has no publication setting: start the runtime and turn WebMCP
-publication on with `webMCP.enabled` in your framework integration's `useAyme`
-or `AymeProvider`. Turning publication off does not strip POM code from the
+The plugin compiles Page Object Models. It has no publication or Inspector
+setting: start the runtime and turn WebMCP publication on with `webMCP.enabled`,
+and the Inspector with `inspector: true`, in your framework integration's
+`useAyme`, `AymeProvider` or `provideAyme`. Turning publication off does not strip POM code from the
 bundle; production removal is not covered by this setup.
 
 Enable `compilerOptions.experimentalDecorators: true` in the POMs' tsconfig.

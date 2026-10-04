@@ -38,7 +38,10 @@ function Demo() {
 
 export default function CounterExample() {
   return (
-    <AymeProvider webMCP={{ enabled: true }}>
+    <AymeProvider
+      webMCP={{ enabled: true }}
+      inspector={process.env.NODE_ENV === "development"}
+    >
       <Demo />
     </AymeProvider>
   );

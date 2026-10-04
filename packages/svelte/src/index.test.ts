@@ -43,7 +43,7 @@ import {
 
 type PageFactory = NonNullable<UseAymeOptions["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
-const page = {} as Page;
+const page = { url: () => "factory page" } as unknown as Page;
 const pageFactory: PageFactory = () => page;
 class Model {
   constructor(readonly page: Page) {}
@@ -233,7 +233,7 @@ it("registers the concrete Page Object while its component lives", async () => {
   });
   expect(instances).toHaveLength(1);
   expect(instances[0]).toBeInstanceOf(Model);
-  expect((instances[0] as Model).page).toBe(page);
+  expect((instances[0] as Model).page.url()).toBe(page.url());
   expect(listRegisteredPoms()).toHaveLength(1);
 
   owner.$set({ shown: false });

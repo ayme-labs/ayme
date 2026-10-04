@@ -64,7 +64,9 @@ test("publishes the compiled POM, executes it, and cleans up on remount and navi
   });
   await recordPublishedTools(context);
 
-  const response = await page.goto("/");
+  // In development the Inspector loads after the page. Its mount can hold the
+  // main thread past a Page Object action's 1 s timeout, so let it land first.
+  const response = await page.goto("/", { waitUntil: "networkidle" });
   expect(response?.status()).toBe(200);
   await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
     "Publication: active",

@@ -44,7 +44,9 @@ test("hydrates, publishes the compiled POM, executes it, and cleans up on remoun
   });
   await recordPublishedTools(context);
 
-  const response = await page.goto("/");
+  // In development the Inspector loads after the page. Its mount can hold the
+  // main thread past a Page Object action's 1 s timeout, so let it land first.
+  const response = await page.goto("/", { waitUntil: "networkidle" });
   expect(response?.status()).toBe(200);
   // nuxt dev compiles the Page Object Model on first request, one TypeScript
   // Program, which takes over 10 s on CI while other example apps build.

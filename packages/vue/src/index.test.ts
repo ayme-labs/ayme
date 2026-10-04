@@ -32,7 +32,7 @@ import {
 
 type PageFactory = NonNullable<UseAymeOptions["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
-const page = {} as Page;
+const page = { url: () => "factory page" } as unknown as Page;
 const pageFactory: PageFactory = () => page;
 class Model {
   constructor(readonly page: Page) {}
@@ -126,6 +126,26 @@ it("passes webMCP to the runtime session", () => {
   });
 });
 
+// Records the options, then starts a session without the Inspector: the
+// optional peer may not be built or installed where these tests run.
+async function withoutInspectorLoad() {
+  const { createAyme: actual } =
+    await vi.importActual<typeof import("@ayme-dev/ayme")>("@ayme-dev/ayme");
+  vi.mocked(createAyme).mockImplementationOnce((options) =>
+    actual({ ...options, inspector: false })
+  );
+}
+
+it("passes inspector to the runtime session", async () => {
+  await withoutInspectorLoad();
+  const scope = effectScope();
+  scopes.push(scope);
+  scope.run(() => useAyme({ pageFactory, inspector: true }));
+  expect(createAyme).toHaveBeenCalledWith(
+    expect.objectContaining({ inspector: true })
+  );
+});
+
 it("returns the session as ayme, so a goal runs through it, and its webMCP member", async () => {
   const goalLoop = vi.fn(async () => {
     throw new Error("No decision.");
@@ -153,7 +173,7 @@ it("calls the page factory once for the owner's runtime, on start", () => {
     expect(factory).toHaveBeenCalledOnce();
     return usePageObject(Model);
   })!;
-  expect(instance.page).toBe(page);
+  expect(instance.page.url()).toBe(page.url());
   expect(factory).toHaveBeenCalledOnce();
 });
 
@@ -166,7 +186,7 @@ it("preserves standalone effectScope setup, direct instance return and disposal"
     expectTypeOf(instance).toEqualTypeOf<Model>();
     return { runtime, instance };
   })!;
-  expect(result.instance.page).toBe(page);
+  expect(result.instance.page.url()).toBe(page.url());
   expect(result.runtime.webMCP.publicationStatus.state).toBe("disabled");
   expect(listRegisteredPoms()).toHaveLength(1);
   scope.stop();
@@ -205,7 +225,7 @@ it.each(["provider", "standalone"])(
       },
     });
     const app = mount(Root);
-    expect(instance?.page).toBe(page);
+    expect(instance?.page.url()).toBe(page.url());
     expect(state?.webMCP.publicationStatus.state).toBe("disabled");
     expect(listRegisteredPoms()).toHaveLength(1);
     visible.value = false;
@@ -252,12 +272,8 @@ it("rejects child page and ignore options and nested providers", () => {
   apps.push(app);
   app.mount(document.createElement("div"));
   expect(errors.map(String)).toEqual([
-    expect.stringContaining(
-      "Configure pageFactory, ignore, customTools, goalLoop and webMCP on the ancestor"
-    ),
-    expect.stringContaining(
-      "Configure pageFactory, ignore, customTools, goalLoop and webMCP on the ancestor"
-    ),
+    expect.stringContaining("Configure Ayme's options on the ancestor"),
+    expect.stringContaining("Configure Ayme's options on the ancestor"),
     expect.stringContaining("cannot be nested"),
   ]);
 });
@@ -289,4 +305,28 @@ it("creates the default page and reports real publication state to consumers", a
   expect(state?.webMCP.publicationStatus.state).toBe("active");
   app.unmount();
   Reflect.deleteProperty(document, "modelContext");
+});
+
+it("rejects changing a mounted provider's options", async () => {
+  const errors: unknown[] = [];
+  const prefix = ref("ayme_");
+  const app = createApp({
+    render: () =>
+      h(AymeProvider, {
+        pageFactory,
+        webMCP: { enabled: false, toolNamePrefix: prefix.value },
+      }),
+  });
+  app.config.errorHandler = (error) => errors.push(error);
+  apps.push(app);
+  app.mount(document.createElement("div"));
+  expect(errors).toEqual([]);
+
+  prefix.value = "other_";
+  await nextTick();
+  expect(errors.map(String)).toEqual([
+    expect.stringContaining(
+      "The provider options must stay fixed while mounted"
+    ),
+  ]);
 });

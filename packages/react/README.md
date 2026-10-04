@@ -29,6 +29,8 @@ Keep decorated Page Object Models in separate `.ts` files. Enable `experimentalD
 
 Publication is off unless the provider enables it with `webMCP={{ enabled: true }}`. `webMCP.toolNamePrefix` prefixes every published tool name; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#webmcp-publication). Local Page Object calls work without a WebMCP driver, including when publication is off.
 
+`inspector={true}` on the provider mounts the [Inspector](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/README.md) while Ayme runs, for example `inspector={import.meta.env.DEV}`. Install `@ayme-dev/inspector` for it.
+
 ## Root setup
 
 ```tsx

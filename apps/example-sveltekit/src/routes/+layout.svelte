@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import { dev } from "$app/environment";
   import { useAyme } from "@ayme-dev/svelte";
 
   let { children }: { children: Snippet } = $props();
@@ -7,7 +8,7 @@
   // The root layout owns the runtime: SvelteKit never swaps it on navigation.
   const {
     webMCP: { publicationStatus },
-  } = useAyme({ webMCP: { enabled: true } });
+  } = useAyme({ webMCP: { enabled: true }, inspector: dev });
 </script>
 
 <h1>Ayme SvelteKit example</h1>

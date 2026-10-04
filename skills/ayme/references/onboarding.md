@@ -18,7 +18,10 @@
    production `maximumError` budget if the build fails it. Other framework
    integrations are not documented yet; report
    that gap rather than adapting internal runtime APIs into an unsupported
-   setup.
+   setup. To see the Page Objects and run their tools from a panel on the
+   page, install `@ayme-dev/inspector` and pass `inspector: true` to the same
+   root setup, typically only in development; the
+   [Inspector README](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/README.md) describes it.
 4. Follow [Browser setup](browser-setup.md) to choose native WebMCP or a local
    polyfill and relay, then invoke the exposed action through the client.
 

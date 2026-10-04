@@ -37,36 +37,10 @@ async function applyPluginConfig(
 }
 
 describe("ayme Vite integration", () => {
-  it("injects Inspector startup through an ordered HTML transform only when enabled", async () => {
-    const disabled = ayme({ inspector: false });
-    const enabled = ayme({ inspector: true });
-    if (Array.isArray(disabled) || Array.isArray(enabled))
-      throw new Error("Expected single Vite plugins");
-
-    const enabledTransform = enabled.transformIndexHtml;
-    if (!enabledTransform || typeof enabledTransform === "function")
-      throw new Error("Expected an ordered HTML transform");
-    expect(enabledTransform.order).toBe("pre");
-    expect(
-      Reflect.apply(enabledTransform.handler, null, [
-        "<!doctype html><html><head></head><body></body></html>",
-        {
-          path: "/",
-          filename: resolve(__dirname, "fixtures/inspector/index.html"),
-        },
-      ])
-    ).toEqual([
-      {
-        tag: "script",
-        attrs: {
-          type: "module",
-        },
-        children: "import 'virtual:ayme-inspector';",
-        injectTo: "head-prepend",
-      },
-    ]);
-
-    expect(disabled.transformIndexHtml).toBeUndefined();
+  it("rejects the removed inspector option", () => {
+    expect(() => ayme({ inspector: true } as never)).toThrow(
+      "The inspector option was removed. Turn the Inspector on with inspector: true where Ayme starts"
+    );
   });
 
   it("rejects the removed publish option and defines no publication setting", async () => {

@@ -32,7 +32,7 @@ Fakes, test doubles and page objects for tests ship from the package's `testing`
 | Entry                                           | Holds                                                                                                                                           |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@ayme-dev/ayme/testing`                        | The recording WebMCP driver: `recordPublishedTools`, `recordPublishedToolsLate`, `waitForPublishedTool`, `executePublishedTool` and its queries |
-| `@ayme-dev/inspector/testing`                   | The Inspector's page objects, for its own tests, its e2e tests and example-vue's smoke test                                                     |
+| `@ayme-dev/inspector/testing`                   | The Inspector's page objects, for its own tests, its e2e tests and the example apps' smoke tests                                                |
 | `@ayme-dev/core/structural-observation/testing` | `StructuralTreeMockFactory` and `MockLiveAriaSnapshotSource`, for structural trees without a browser                                            |
 
 Consumers may use these entries to test their own integration.

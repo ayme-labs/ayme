@@ -16,22 +16,20 @@ import {
   createAyme,
   type Ayme,
   type AymePage,
+  type AymeOptions,
   type AymeWebMcp,
   type AymeWebMcpOptions,
   type CustomTool,
   type GoalLoopDecisionFunction,
 } from "@ayme-dev/ayme";
-import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
+import {
+  sameRuntimeOptions,
+  type PageObjectConstructor,
+} from "@ayme-dev/ayme/internal";
 
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
-export type UseAymeOptions = {
-  /** Builds the browser Page; called once, in the browser, on first use. */
-  pageFactory?: () => AymePage;
-  ignore?: (element: Element) => boolean;
-  customTools?: CustomTool[];
-  goalLoop?: GoalLoopDecisionFunction;
-  webMCP?: AymeWebMcpOptions;
-};
+/** The options of `createAyme`, passed to it unchanged. */
+export type UseAymeOptions = AymeOptions;
 const runtimeKey: InjectionKey<Ayme> = Symbol("Ayme runtime");
 
 function inheritedRuntime() {
@@ -39,13 +37,7 @@ function inheritedRuntime() {
 }
 
 function ownRuntime(options: UseAymeOptions = {}) {
-  const runtime = createAyme({
-    pageFactory: options.pageFactory,
-    ignore: options.ignore,
-    customTools: options.customTools,
-    goalLoop: options.goalLoop,
-    webMCP: options.webMCP,
-  });
+  const runtime = createAyme(options);
   if (typeof window !== "undefined") {
     const stop = runtime.start();
     started = runtime;
@@ -77,67 +69,51 @@ function consumeRuntime(runtime: Ayme): UseAymeResult {
   return { ayme: runtime, webMCP: shallowReadonly(webMCP) };
 }
 
+// Vue needs each prop declared; `satisfies` fails the build when a runtime
+// option is missing here.
+const providerProps = {
+  pageFactory: {
+    type: Function as PropType<() => AymePage>,
+    required: false,
+  },
+  ignore: {
+    type: Function as PropType<(element: Element) => boolean>,
+    required: false,
+  },
+  customTools: { type: Array as PropType<CustomTool[]>, required: false },
+  goalLoop: {
+    type: Function as PropType<GoalLoopDecisionFunction>,
+    required: false,
+  },
+  webMCP: {
+    type: Object as PropType<AymeWebMcpOptions>,
+    required: false,
+  },
+  // A default of undefined keeps an absent prop unset, not cast to false.
+  inspector: { type: Boolean, default: undefined },
+} satisfies Record<keyof UseAymeOptions, unknown>;
+
 // Annotated so the emitted declaration names only DefineComponent<Props>,
 // which every Vue 3.2+ release accepts; the inferred type spells out the
 // build-time Vue's full DefineComponent arity.
 export const AymeProvider: DefineComponent<UseAymeOptions> = defineComponent({
   name: "AymeProvider",
-  props: {
-    pageFactory: {
-      type: Function as PropType<() => AymePage>,
-      required: false,
-    },
-    ignore: {
-      type: Function as PropType<(element: Element) => boolean>,
-      required: false,
-    },
-    customTools: { type: Array as PropType<CustomTool[]>, required: false },
-    goalLoop: {
-      type: Function as PropType<GoalLoopDecisionFunction>,
-      required: false,
-    },
-    webMCP: {
-      type: Object as PropType<AymeWebMcpOptions>,
-      required: false,
-    },
-  },
+  props: providerProps,
   setup(props, { slots }) {
     if (inheritedRuntime())
       throw new Error(
         "AymeProvider cannot be nested beneath another Ayme runtime owner."
       );
-    const pageFactory = props.pageFactory;
-    const ignore = props.ignore;
-    const customTools = props.customTools;
-    const goalLoop = props.goalLoop;
-    const webMCP = props.webMCP && { ...props.webMCP };
-    ownRuntime({ pageFactory, ignore, customTools, goalLoop, webMCP });
+    const snapshotOptions = (): UseAymeOptions => ({
+      ...props,
+      webMCP: props.webMCP && { ...props.webMCP },
+    });
+    const options = snapshotOptions();
+    ownRuntime(options);
     watch(
-      () =>
-        [
-          props.pageFactory,
-          props.ignore,
-          props.customTools,
-          props.goalLoop,
-          props.webMCP?.enabled,
-          props.webMCP?.toolNamePrefix,
-        ] as const,
-      ([
-        nextPageFactory,
-        nextIgnore,
-        nextCustomTools,
-        nextGoalLoop,
-        nextEnabled,
-        nextToolNamePrefix,
-      ]) => {
-        if (
-          nextPageFactory !== pageFactory ||
-          nextIgnore !== ignore ||
-          nextCustomTools !== customTools ||
-          nextGoalLoop !== goalLoop ||
-          nextEnabled !== webMCP?.enabled ||
-          nextToolNamePrefix !== webMCP?.toolNamePrefix
-        )
+      snapshotOptions,
+      (next) => {
+        if (!sameRuntimeOptions(next, options))
           throw new Error(
             "The provider options must stay fixed while mounted. Remount the provider to change them."
           );
@@ -152,16 +128,9 @@ export function useAyme(options: UseAymeOptions = {}): UseAymeResult {
   if (!getCurrentScope())
     throw new Error("useAyme must be called within an active Vue effect scope");
   const inherited = inheritedRuntime();
-  if (
-    inherited &&
-    (options.pageFactory !== undefined ||
-      options.ignore !== undefined ||
-      options.customTools !== undefined ||
-      options.goalLoop !== undefined ||
-      options.webMCP !== undefined)
-  )
+  if (inherited && Object.values(options).some((value) => value !== undefined))
     throw new Error(
-      "Configure pageFactory, ignore, customTools, goalLoop and webMCP on the ancestor AymeProvider or standalone useAyme owner."
+      "Configure Ayme's options on the ancestor AymeProvider or standalone useAyme owner."
     );
   return consumeRuntime(inherited ?? ownRuntime(options));
 }

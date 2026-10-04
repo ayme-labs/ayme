@@ -22,6 +22,10 @@ The pages:
   with aggressive global CSS that must not reach the Inspector.
 - `/models.html`: a to-do list whose items are child Page Objects.
 - `/unpublished.html`: the list app with WebMCP publication off.
+- `/late.html`: the list app with the Inspector mounted after the runtime
+  started with its Page Object.
+- `/session.html`: the list app whose runtime session mounts the Inspector
+  through its `inspector` option; the tests stop and restart it.
 
 ## Running
 

@@ -46,10 +46,14 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@playwright/test": ">=1.29 <1.63"
+    "@playwright/test": ">=1.29 <1.63",
+    "@ayme-dev/inspector": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {
+      "optional": true
+    },
+    "@ayme-dev/inspector": {
       "optional": true
     }
   },

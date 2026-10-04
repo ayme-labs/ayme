@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { PlaywrightTestConfig } from "@playwright/test";
 import { expect, expectTypeOf, it } from "vitest";
 import ts from "typescript";
-import type { AymePlaywrightOptions, AymeOptions } from "./index";
+import type { AymePlaywrightOptions } from "./index";
 
 it("matches the supported subset of Playwright's exported config type", () => {
   expectTypeOf<NonNullable<AymePlaywrightOptions["use"]>>().toEqualTypeOf<
@@ -17,11 +17,6 @@ it("matches the supported subset of Playwright's exported config type", () => {
       >
     >
   >();
-});
-
-it("accepts only a boolean Inspector policy", () => {
-  expectTypeOf({ inspector: true }).toMatchTypeOf<AymeOptions>();
-  expectTypeOf({ inspector: "yes" }).not.toMatchTypeOf<AymeOptions>();
 });
 
 it(

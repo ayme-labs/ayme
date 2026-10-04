@@ -65,7 +65,9 @@ pnpm --filter @ayme-dev/example-vue test:e2e
 The same browser suite runs against `nuxt dev` and the built Nitro server.
 It checks JavaScript-disabled server HTML, repeated requests, hydration with
 publication enabled, compiled POM metadata, browser and real Playwright actions,
-and registration cleanup across removal and remounting. The publication test
+and registration cleanup across removal and remounting. Against `nuxt dev`
+only, where the app turns the Inspector on, a smoke test opens it and runs a
+tool from it. The publication test
 supplies a driver fixture; it does not certify a particular browser's WebMCP API.
 
 The Vue package has DOM-free SSR tests for provider and standalone ownership,
