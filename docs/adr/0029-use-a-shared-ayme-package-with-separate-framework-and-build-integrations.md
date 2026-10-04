@@ -19,6 +19,8 @@ Use these package names:
 - `@ayme-dev/cli`: Node CLI and recorder entry point.
 - `@ayme-dev/vue`: Vue lifecycle and Page Object integration.
 - `@ayme-dev/react`: React lifecycle and Page Object integration.
+- `@ayme-dev/svelte`: Svelte lifecycle and Page Object integration.
+- `@ayme-dev/angular`: Angular lifecycle and Page Object integration.
 - `@ayme-dev/unplugin-ayme`: compiler and bundler integration.
 - `@ayme-dev/inspector`: the Inspector.
 
