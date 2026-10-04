@@ -58,7 +58,7 @@ describe("claudeArguments", () => {
       "--model",
       "sonnet",
       "--setting-sources",
-      "",
+      "user",
       "--strict-mcp-config",
       "--mcp-config",
       "/run/mcp.json",
@@ -72,5 +72,54 @@ describe("claudeArguments", () => {
       "--allowedTools",
       "mcp__playwright",
     ]);
+  });
+});
+
+describe("claudeArguments for the playwright-cli arm", () => {
+  const args = claudeArguments({
+    model: "sonnet",
+    arm: arms["playwright-cli"],
+    mcpConfigPath: "/run/mcp.json",
+    readableDirectories: [
+      "/run/playwright-output",
+      "/run/claude-config/skills",
+    ],
+  });
+
+  it("gives the agent the skill and Bash limited to the CLI, with no MCP server file entries", () => {
+    expect(args).toEqual(
+      expect.arrayContaining([
+        "--tools",
+        "Read,Glob,Grep,Bash,Skill",
+        "--strict-mcp-config",
+        "--allowedTools",
+        "Bash(playwright-cli:*),Skill(playwright-cli)",
+      ])
+    );
+  });
+
+  it("lets the agent read the CLI's output folder and skill", () => {
+    const index = args.indexOf("--add-dir");
+    expect(args.slice(index, index + 3)).toEqual([
+      "--add-dir",
+      "/run/playwright-output",
+      "/run/claude-config/skills",
+    ]);
+  });
+
+  it("denies npx and the CLI's install and kill-all commands", () => {
+    const rules = args[args.indexOf("--disallowedTools") + 1].split(",");
+    expect(rules).toContain("Bash(npx:*)");
+    expect(rules).toContain("Bash(playwright-cli kill-all:*)");
+  });
+
+  it("adds neither folders nor denials to an arm that has none", () => {
+    const mcp = claudeArguments({
+      model: "sonnet",
+      arm: arms["playwright-mcp"],
+      mcpConfigPath: "/run/mcp.json",
+    });
+    expect(mcp).not.toContain("--add-dir");
+    expect(mcp).not.toContain("--disallowedTools");
   });
 });

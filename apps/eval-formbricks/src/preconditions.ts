@@ -8,6 +8,7 @@ import path from "node:path";
 
 import { claudeAuthStatus, claudeVersion } from "./claude.ts";
 import { envFileName, tokenVariable } from "./environment.ts";
+import type { LabChanges } from "./labCheckout.ts";
 
 export type Precondition = {
   name: string;
@@ -83,6 +84,28 @@ export function formbricksPreparedPrecondition(
       if (!existsSync(path.join(formbricksRoot, ".env")))
         return "Formbricks has no .env. Copy it from the checkout that started the lab stack.";
       return null;
+    },
+  };
+}
+
+/** The lab app folder, submodule included, has no untracked or modified file: the agent starts from the checkout as committed. */
+export function labCheckoutCleanPrecondition(
+  read: () => LabChanges
+): Precondition {
+  return {
+    name: "Lab app checkout",
+    check: () => {
+      const { untracked, modified } = read();
+      if (untracked.length === 0 && modified.length === 0) return null;
+      const list = (files: string[]) =>
+        files.slice(0, 5).join(", ") +
+        (files.length > 5 ? `, and ${files.length - 5} more` : "");
+      return `apps/lab-formbricks has changes the agent would see: ${[
+        untracked.length > 0 ? `untracked ${list(untracked)}` : null,
+        modified.length > 0 ? `modified ${list(modified)}` : null,
+      ]
+        .filter((part) => part !== null)
+        .join("; ")}. Move or restore them first.`;
     },
   };
 }

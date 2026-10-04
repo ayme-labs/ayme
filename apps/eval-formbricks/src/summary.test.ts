@@ -339,7 +339,7 @@ describe("reading stored files", () => {
       aymeCommit: "4cdac8dd",
     },
     goalLoop: { usage: null, costUsd: null },
-    labCheckoutDirty: false,
+    labCheckout: { movedFiles: [], modifiedFiles: [] },
   });
 
   it("summarizes a result.json as the run command wrote it", () => {

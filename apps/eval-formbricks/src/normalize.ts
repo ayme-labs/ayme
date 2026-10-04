@@ -32,8 +32,13 @@ export type RunArtifacts = {
   };
   /** The Goal Loop's own model usage and cost, for arms that run it. Filled by later work. */
   goalLoop: { usage: TokenUsage | null; costUsd: number | null };
-  /** Whether the lab app checkout changed during the run. */
-  labCheckoutDirty: boolean;
+  /** What the agent changed in the lab app folder during the run. */
+  labCheckout: {
+    /** Files it created there, moved into the run folder's `agent-files/`. */
+    movedFiles: string[];
+    /** Tracked files it modified, left in place. */
+    modifiedFiles: string[];
+  };
 };
 
 export type NormalizedResult = {
@@ -83,6 +88,7 @@ export type NormalizedResult = {
   startedAt: string;
   finishedAt: string;
   labCheckoutDirty: boolean;
+  labCheckout: RunArtifacts["labCheckout"];
   unparsedTranscriptLines: number;
 };
 
@@ -136,7 +142,10 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     timeoutSeconds: artifacts.timeoutSeconds,
     startedAt: artifacts.startedAt,
     finishedAt: artifacts.finishedAt,
-    labCheckoutDirty: artifacts.labCheckoutDirty,
+    labCheckoutDirty:
+      artifacts.labCheckout.movedFiles.length > 0 ||
+      artifacts.labCheckout.modifiedFiles.length > 0,
+    labCheckout: artifacts.labCheckout,
     unparsedTranscriptLines: summary.unparsedLines,
   };
 }
