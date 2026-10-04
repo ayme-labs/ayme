@@ -10,7 +10,7 @@ import {
   resetInspectorTrace,
   subscribeToInspectorTraceDispatcher,
 } from "./runs/infrastructure/trace";
-import { withDemoFeedback } from "./withDemoFeedback";
+import { withDemoFeedback } from "./demo/infrastructure/withDemoFeedback";
 
 // The page's two highlights: solid for the Inspector's selection, dashed
 // for what the pointer is over in the panel. An element that is both shows

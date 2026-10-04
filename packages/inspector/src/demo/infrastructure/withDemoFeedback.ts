@@ -3,10 +3,10 @@ import { isAymeLocator } from "@ayme-dev/ayme/internal";
 import {
   isPointerAction,
   passThroughWhileCovered,
-} from "./panel/infrastructure/panelPassThrough";
-import type { TraceEntry } from "./runs/infrastructure/trace";
+} from "../../panel/infrastructure/panelPassThrough";
+import type { TraceEntry } from "../../runs/infrastructure/trace";
 
-export type { TraceEntry } from "./runs/infrastructure/trace";
+export type { TraceEntry } from "../../runs/infrastructure/trace";
 
 export type DemoFeedbackOptions = {
   beforeActionMs?: number;
