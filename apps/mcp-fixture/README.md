@@ -8,11 +8,13 @@ app/         the fixture page, its startup code and the Vite config
 tests/       the shared fixtures (fixtures.ts) and one spec per concern
 ```
 
-The page starts the Ayme runtime with `agentConnection: true` and a Custom Tool,
-`read_text`. Its Show basket and Hide basket buttons register and unregister
-the `Basket` Page Object, so a Page Object Tool comes and goes on demand.
-WebMCP publication is off unless the URL has `?webmcp`, so the tests show the
-Agent Connection works without it.
+The page starts the Ayme runtime with `agentConnection: true` and two Custom
+Tools: `read_text` (`read_other` on `/other`, so a navigation changes the
+tools) and `hold`, which never answers, to keep a call in flight. Its Show
+basket and Hide basket buttons register and unregister the `Basket` Page
+Object, so a Page Object Tool comes and goes on demand. `plain.html` is a
+document of the same origin without Ayme. WebMCP publication is off unless the
+URL has `?webmcp`, so the tests show the Agent Connection works without it.
 
 Each test starts the built `ayme mcp` command as a child process and talks to
 it through an MCP SDK client over stdio, as a coding agent does. The `connect`

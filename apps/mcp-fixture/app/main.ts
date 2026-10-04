@@ -11,6 +11,28 @@ const readText: CustomTool = {
   },
 };
 
+/** The Custom Tool `/other` offers in place of `read_text`. */
+const readOther: CustomTool = {
+  name: "read_other",
+  description: "Read the text of one element on the other page.",
+  async execute({ element }) {
+    return element.textContent;
+  },
+};
+
+/**
+ * A Custom Tool that never answers, so a call stays in flight. The page
+ * shows the ref it holds on <html> as `data-holding`.
+ */
+const hold: CustomTool = {
+  name: "hold",
+  description: "Keep the call in flight; it never answers.",
+  execute({ ref }) {
+    document.documentElement.dataset.holding = ref;
+    return new Promise(() => {});
+  },
+};
+
 /**
  * Starts the runtime with the Agent Connection on. WebMCP publication is off
  * unless the URL has `?webmcp`, so the page shows the connection does not
@@ -20,7 +42,7 @@ const readText: CustomTool = {
 const root = document.documentElement.dataset;
 try {
   const runtime = createAyme({
-    customTools: [readText],
+    customTools: [location.pathname === "/other" ? readOther : readText, hold],
     agentConnection: true,
     webMCP: { enabled: new URLSearchParams(location.search).has("webmcp") },
   });

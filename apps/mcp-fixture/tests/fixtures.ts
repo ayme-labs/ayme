@@ -36,7 +36,16 @@ export const test = base.extend<{
    * server of another test, or of another run on this machine.
    */
   scanReaches: Set<number>;
+  /**
+   * Whether `scanReaches` routes the scan's probes; on unless a spec turns
+   * it off. Once a context routes any WebSocket, Playwright relays every
+   * WebSocket of its pages, and a message a page sends as it unloads is
+   * lost. A spec whose pages always pair by link, so never scan, turns it
+   * off to test what the page says as it leaves.
+   */
+  limitScan: boolean;
 }>({
+  limitScan: [true, { option: true }],
   // Playwright reads a fixture's dependencies from this pattern.
   // eslint-disable-next-line no-empty-pattern
   agent: async ({}, use) => {
@@ -53,8 +62,9 @@ export const test = base.extend<{
     );
   },
   scanReaches: [
-    async ({ context }, use) => {
+    async ({ context, limitScan }, use) => {
       const ports = new Set<number>();
+      if (!limitScan) return use(ports);
       // Answers every other probe of the scan as no Ayme MCP server would.
       await context.routeWebSocket(
         (url) => url.pathname === PROBE_PATH && !ports.has(Number(url.port)),
@@ -80,4 +90,37 @@ export async function serverAddress(agent: Agent) {
   const address = /#ayme=(ws:\/\/127\.0\.0\.1:(\d+))\//.exec(text);
   expect(address, text).not.toBeNull();
   return { address: address![1]!, port: Number(address![2]) };
+}
+
+/**
+ * Calls the fixture's `hold` tool, which never answers, on the "Add item"
+ * button of `page`, and waits until the page runs it. Returns the call's
+ * pending result as `answer`.
+ */
+export async function holdCall(
+  agent: Agent,
+  page: import("@playwright/test").Page
+): Promise<{ answer: ReturnType<Agent["call"]> }> {
+  const { text: snapshot } = await agent.call("snapshot");
+  const ref = /(e\d+) button "Add item"/.exec(
+    JSON.parse(snapshot).structure
+  )?.[1];
+  expect(ref, snapshot).toBeDefined();
+  const answer = agent.call("hold", { ref });
+  // A test may leave the call in flight; closing the agent then rejects it.
+  answer.catch(() => {});
+  await expect(page.locator(`html[data-holding="${ref}"]`)).toBeAttached();
+  return { answer };
+}
+
+/** The JSON answer the server gives a call its page left unanswered. */
+export function unanswered(answer: { text: string; isError: boolean }) {
+  expect(answer.isError, answer.text).toBe(true);
+  return JSON.parse(answer.text) as {
+    error: string;
+    settled?: false;
+    loading?: string;
+    tools?: string[];
+    next: string;
+  };
 }
