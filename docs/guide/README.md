@@ -15,6 +15,7 @@ How to turn your app's Page Object Models into tools that agents and tests call.
 - [Custom Tools](guides/custom-tools.md): register operations of your own on one element.
 - [Connect an agent](guides/connect-an-agent.md): try your tools from Claude Code or another MCP client through the WebMCP local relay.
 - [Test your integration](guides/test-your-integration.md): list, await and call the tools your app publishes from Playwright tests.
+- [Inspector](guides/inspector.md): turn on the in-page panel that shows your Page Objects, the page state and the tools, and run them by hand.
 - [Goals with Jev](guides/goals-with-jev.md): let a decision model drive your page toward a goal, and read the Handover it returns.
 
 ## Reference
