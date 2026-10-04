@@ -15,7 +15,7 @@ import { Inspector } from "../testing";
 // Component tests: two collections over the same list items, and a locator
 // over them too. Each member's items are there to find, whichever the
 // registry lists first. The runtime is replaced by fixture targets and a
-// peek of the host page, so the evidence covers the panel and its adapter.
+// peek of the host page, so the evidence covers the panel and its runtime wiring.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();

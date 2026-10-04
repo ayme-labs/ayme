@@ -17,7 +17,7 @@ import { Inspector } from "../testing";
 // dashed one follows the pointer in the panel, the solid one follows the
 // selection. The runtime is replaced by a fixture host page whose elements
 // carry their refs in the peeked page state, so the evidence covers the
-// panel and its adapter only.
+// panel and its runtime wiring only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();

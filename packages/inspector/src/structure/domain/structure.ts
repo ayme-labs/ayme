@@ -1,7 +1,6 @@
-import {
-  pageStateNodeEntry,
-  type ProjectedStructuralNode,
-  type ProjectedStructuralNodeForest,
+import type {
+  ProjectedStructuralNode,
+  ProjectedStructuralNodeForest,
 } from "@ayme-dev/ayme/internal";
 
 import type { ControlState } from "../../shared/domain/controlState";
@@ -93,60 +92,72 @@ export type StructureTree = {
 export const emptyStructure: StructureTree = { roots: [], refCount: 0 };
 
 /**
- * Builds the tree from the projected page state, the forest the text an
- * agent receives is rendered from, and tags each node with the members whose
- * element its ref is.
+ * What an agent reads of one node alone, as the page state renders it: its
+ * own lines and how many entries nest under it, besides properties.
  */
-export function buildStructureTree(
-  projected: ProjectedStructuralNodeForest,
-  /** The registry targets' paths whose element each ref is, by ref. */
-  targetsByRef: ReadonlyMap<string, readonly string[]>,
-  /** The page model's members, which the targets are. */
-  index: MemberIndex = noMembers,
-  /** The native form controls' states, by ref. */
-  controls: ReadonlyMap<string, ControlState> = new Map()
-): StructureTree {
-  let refCount = 0;
-  const build = (entry: ProjectedStructuralNode | string): StructureNode => {
-    if (typeof entry === "string") return textNode(entry);
-    refCount += 1;
-    const { lines, childCount } = pageStateNodeEntry(entry);
-    const hasState = Object.values(entry.state).some(
-      (value) => value !== undefined
-    );
-    const node: StructureNode = {
-      ref: entry.ref,
-      role: entry.role,
-      name: entry.name,
-      ...(hasState ? { state: entry.state } : {}),
-      members: [],
-      pageStateLines: lines,
-      childCount,
-      children: entry.children.map(build),
+export type NodeEntry = (node: ProjectedStructuralNode) => {
+  lines: string[];
+  childCount: number;
+};
+
+/**
+ * A builder of the tree from the projected page state, the forest the text
+ * an agent receives is rendered from, that tags each node with the members
+ * whose element its ref is.
+ *
+ * @param nodeEntry renders a node's own page-state lines.
+ */
+export const structureTreeBuilder = (nodeEntry: NodeEntry) =>
+  function buildStructureTree(
+    projected: ProjectedStructuralNodeForest,
+    /** The registry targets' paths whose element each ref is, by ref. */
+    targetsByRef: ReadonlyMap<string, readonly string[]>,
+    /** The page model's members, which the targets are. */
+    index: MemberIndex = noMembers,
+    /** The native form controls' states, by ref. */
+    controls: ReadonlyMap<string, ControlState> = new Map()
+  ): StructureTree {
+    let refCount = 0;
+    const build = (entry: ProjectedStructuralNode | string): StructureNode => {
+      if (typeof entry === "string") return textNode(entry);
+      refCount += 1;
+      const { lines, childCount } = nodeEntry(entry);
+      const hasState = Object.values(entry.state).some(
+        (value) => value !== undefined
+      );
+      const node: StructureNode = {
+        ref: entry.ref,
+        role: entry.role,
+        name: entry.name,
+        ...(hasState ? { state: entry.state } : {}),
+        members: [],
+        pageStateLines: lines,
+        childCount,
+        children: entry.children.map(build),
+      };
+      const control = controls.get(entry.ref);
+      if (control) node.control = control;
+      const members = [
+        ...new Map(
+          (targetsByRef.get(entry.ref) ?? []).flatMap((target) => {
+            const member = index.member(target);
+            return member ? [[member.path, member] as const] : [];
+          })
+        ).values(),
+      ];
+      node.members = members.map(({ path }) => path);
+      const tag = memberTag(members, index);
+      if (tag !== undefined) {
+        node.member = tag.path;
+        node.tag = shortTag(tag, index);
+        node.memberLinks = memberLinks(members, tag, index);
+        node.owner = tag.owner.path;
+      }
+      return node;
     };
-    const control = controls.get(entry.ref);
-    if (control) node.control = control;
-    const members = [
-      ...new Map(
-        (targetsByRef.get(entry.ref) ?? []).flatMap((target) => {
-          const member = index.member(target);
-          return member ? [[member.path, member] as const] : [];
-        })
-      ).values(),
-    ];
-    node.members = members.map(({ path }) => path);
-    const tag = memberTag(members, index);
-    if (tag !== undefined) {
-      node.member = tag.path;
-      node.tag = shortTag(tag, index);
-      node.memberLinks = memberLinks(members, tag, index);
-      node.owner = tag.owner.path;
-    }
-    return node;
+    const roots = projected.roots.map(build);
+    return { roots, refCount };
   };
-  const roots = projected.roots.map(build);
-  return { roots, refCount };
-}
 
 /**
  * The members a node's detail lists, the tag first, then in the registry's
@@ -251,27 +262,4 @@ function shortTag(member: IndexedMember, index: MemberIndex) {
     segments.splice(0, 2, "[·]");
   if (member.locator) segments.push(`.${member.locator.name}`);
   return segments.join("");
-}
-
-/**
- * Maps each ref to the path of every registry target whose element it is, in
- * the registry's order. Only an element with exactly one ref in the page
- * state maps.
- */
-export function mapTargetsToRefs(
-  elementsByRef: Iterable<readonly [string, Element]>,
-  targets: Iterable<{ path: string; element: Element }>
-): Map<string, string[]> {
-  const refsByElement = new Map<Element, string[]>();
-  for (const [ref, element] of elementsByRef)
-    refsByElement.set(element, [...(refsByElement.get(element) ?? []), ref]);
-  const targetsByRef = new Map<string, string[]>();
-  for (const { element, path } of targets) {
-    const refs = refsByElement.get(element);
-    if (refs?.length !== 1) continue;
-    const paths = targetsByRef.get(refs[0]!) ?? [];
-    if (!paths.includes(path)) paths.push(path);
-    targetsByRef.set(refs[0]!, paths);
-  }
-  return targetsByRef;
 }

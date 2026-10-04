@@ -4,7 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import { refFilterOf } from "../infrastructure/refPicking";
 import type { RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../structure/test-utils/projected";
-import { buildStructureTree } from "../../structure/domain/structure";
+import { buildStructureTree } from "../../structure/infrastructure/structureTree";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
 import type { RefSource } from "./RefField";
@@ -12,7 +12,7 @@ import { RunCard } from "./RunCard";
 
 // Component tests: a run card's ref field, with a fixture tool and a
 // hand-written page structure, driven through the run card's page object on
-// playwright-lite. Picking on the page itself is the adapter's, so here
+// playwright-lite. Picking on the page itself is ref picking's, so here
 // `onPick` is a fixture; the e2e suite picks on a real page.
 
 const page = createPage();

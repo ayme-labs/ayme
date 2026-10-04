@@ -11,7 +11,7 @@ import {
 
 import { useLiveTools, type LiveTools } from "./liveTools";
 
-// Unit tests: the adapter's one source of the tools the panel can run, over
+// Unit tests: the Inspector's one source of the tools the panel can run, over
 // a stubbed runtime read model that the test changes and announces.
 vi.mock("@ayme-dev/ayme/internal", () => ({
   getPublicationStatus: vi.fn(),

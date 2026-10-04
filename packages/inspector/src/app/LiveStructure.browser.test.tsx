@@ -11,7 +11,7 @@ import { Inspector } from "../testing";
 // Component tests: the Structure view keeps up with the page on its own,
 // with no registry change to prompt it: the mocked registry never reports
 // one. The runtime is replaced by a peek that reads the fixture host page,
-// so the evidence covers the panel and its adapter's refresh triggers only.
+// so the evidence covers the panel and its refresh triggers only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();

@@ -4,7 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import { startRefPicking } from "./refPicking";
 
 // Browser tests: picking a ref on a host page in Chromium, driven by
-// playwright-lite's pointer. The adapter's look at the page is replaced: an
+// playwright-lite's pointer. The Inspector's look at the page is replaced: an
 // element's ref is its data-ref attribute, and the hover highlight is
 // recorded. So the evidence covers picking itself, not the page state or
 // the highlight's drawing (the e2e suite covers those).

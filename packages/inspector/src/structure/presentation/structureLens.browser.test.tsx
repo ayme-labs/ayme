@@ -38,7 +38,7 @@ afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
 });
 
-// The fixture list page's structure, as the adapter hands it over.
+// The fixture list page's structure, as the app hands it over.
 const groceries: StructureTree = {
   refCount: 6,
   roots: [

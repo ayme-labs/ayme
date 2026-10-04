@@ -9,7 +9,7 @@ import {
   type StructureNode,
 } from "../structure/domain/structure";
 import type { CollectionItem } from "../runs/domain/run";
-import type { InspectorRuntime } from "./useRuntimeAdapter";
+import type { InspectorRuntime } from "./useInspectorRuntime";
 import { RunsRegion } from "../panel/view/InspectorBody";
 import type { RenderRun } from "../navigation/domain/runSlot";
 import type { Selection } from "../navigation/domain/selection";

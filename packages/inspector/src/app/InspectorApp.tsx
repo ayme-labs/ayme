@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { useRuntimeAdapter } from "./useRuntimeAdapter";
+import { useInspectorRuntime } from "./useInspectorRuntime";
 import { Empty } from "../shared/view/common";
 import { DetailPane, InspectorBody } from "../panel/view/InspectorBody";
 import { selectionHighlight } from "../navigation/domain/highlight";
@@ -21,14 +21,14 @@ import { WebMcpStatus } from "../panel/view/WebMcpStatus";
 import { useRunning } from "./useRunning";
 
 /**
- * The Inspector: the runtime adapter's data wired into the frame. It owns
+ * The Inspector: the runtime's data wired into the panel. It owns
  * the one selection the navigator, the detail pane and Runs share.
  */
 export function InspectorApp() {
   const [preferences, updatePreferences] = usePreferences();
   const reserveHost = useHostReservation();
   const [activeLens, setActiveLens] = useState<LensId>("model");
-  const runtime = useRuntimeAdapter({
+  const runtime = useInspectorRuntime({
     structureVisible: activeLens === "structure" && !preferences.collapsed,
   });
   const dark = useDarkTheme(preferences.theme);

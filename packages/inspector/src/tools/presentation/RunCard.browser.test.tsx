@@ -3,7 +3,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../structure/test-utils/projected";
-import { buildStructureTree } from "../../structure/domain/structure";
+import { buildStructureTree } from "../../structure/infrastructure/structureTree";
 import type { CollectionItem, Run } from "../../runs/domain/run";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";

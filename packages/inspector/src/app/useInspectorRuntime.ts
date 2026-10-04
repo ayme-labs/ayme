@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { getPomDefinitionText } from "@ayme-dev/ayme/internal";
-
 import { useLiveTools } from "../tools/infrastructure/liveTools";
 import {
   indexMembers,
@@ -15,19 +13,20 @@ import {
   type RefPickingHandlers,
 } from "../tools/infrastructure/refPicking";
 import { listRunnableTools } from "../tools/domain/runnableTools";
-import {
-  buildStructureTree,
-  emptyStructure,
-} from "../structure/domain/structure";
-import { useInspector } from "../shared/infrastructure/useInspector";
+import { buildStructureTree } from "../structure/infrastructure/structureTree";
+import { emptyStructure } from "../structure/domain/structure";
+import { useHighlights } from "../navigation/infrastructure/useHighlights";
+import { usePageLook } from "../shared/infrastructure/usePageLook";
+import { pomDefinitionText } from "../tools/infrastructure/pomDefinitionText";
 import { useRuns } from "../runs/infrastructure/useRuns";
 
 /**
- * The runtime adapter: the one place the Inspector reads @ayme-dev/ayme and runs
- * tools. Everything below it takes plain props, so a change to the runtime's
- * API only touches this folder.
+ * What the Inspector shows and does, composed from each slice's own reading
+ * of the runtime and the page: the page look, the page model, the structure,
+ * the live tools, the runs and the highlights. Components below the app take
+ * plain props.
  */
-export function useRuntimeAdapter({
+export function useInspectorRuntime({
   structureVisible = false,
 }: {
   /** Whether the Structure view shows, so the page state is kept live. */
@@ -39,7 +38,11 @@ export function useRuntimeAdapter({
     (path: string) => latestMembers.current?.targets(path) ?? new Set<string>(),
     []
   );
-  const inspector = useInspector({ structureVisible, targetsOf });
+  const highlight = useHighlights({ targetsOf });
+  const inspector = usePageLook({
+    structureVisible,
+    onLook: highlight.onLook,
+  });
   const { registeredPoms, activeTools, pomDefinitions, refreshPageState } =
     inspector;
   const onRunSettled = useCallback(
@@ -94,7 +97,7 @@ export function useRuntimeAdapter({
   useEffect(() => {
     refByElement.current = uniqueRefs(elementsByRef);
   }, [elementsByRef]);
-  const { hover } = inspector.highlight;
+  const { hover, pin } = highlight;
 
   return {
     /** The page's name for the header badge: its page Page Object's class. */
@@ -117,7 +120,7 @@ export function useRuntimeAdapter({
      * The POM definitions for `names` (every known one when none are given),
      * as `snapshot` renders them. Captures no page state.
      */
-    definitionText: (...names: string[]) => getPomDefinitionText(...names),
+    definitionText: pomDefinitionText,
     /**
      * The page state as an agent would receive it, kept live without ever
      * being recorded: the structure tree model, and the refs each
@@ -129,7 +132,7 @@ export function useRuntimeAdapter({
      * over in the panel, `pin` (solid) for the selection. The app pins the
      * selection; lenses only hover.
      */
-    highlight: inspector.highlight,
+    highlight: { hover, pin },
     /**
      * Every registered Page Object tool once by name, and every other live
      * tool, as the run card runs them.
@@ -167,7 +170,7 @@ export function useRuntimeAdapter({
   };
 }
 
-export type InspectorRuntime = ReturnType<typeof useRuntimeAdapter>;
+export type InspectorRuntime = ReturnType<typeof useInspectorRuntime>;
 
 /** Each element's ref, for the elements that have exactly one. */
 function uniqueRefs(elementsByRef: ReadonlyMap<string, Element>) {

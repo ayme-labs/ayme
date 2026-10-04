@@ -7,7 +7,7 @@ import type { PublishedToolInfo, RegisteredPom } from "@ayme-dev/ayme/internal";
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "../testing";
 
-// Component tests through the whole panel and its adapter: whether a Model
+// Component tests through the whole panel and its runtime wiring: whether a Model
 // lens action runs from the panel follows the live tools, not WebMCP
 // publication. The runtime is mocked with an editor page whose toolbar has a
 // "save" action, and publication is off.

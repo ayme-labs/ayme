@@ -3,7 +3,8 @@ import { expect, it } from "vitest";
 import { indexMembers } from "../../page-model/domain/memberIndex";
 import { page } from "../../page-model/test-utils/pageModel";
 import { forest, node } from "../test-utils/projected";
-import { buildStructureTree, emptyStructure } from "../domain/structure";
+import { buildStructureTree } from "../infrastructure/structureTree";
+import { emptyStructure } from "../domain/structure";
 import { isStaleSelection } from "./staleSelection";
 
 // Unit tests: which selections the frame sends back to the page. Fixtures

@@ -9,11 +9,9 @@ import {
   page,
   type Contents,
 } from "../../page-model/test-utils/pageModel";
-import {
-  buildStructureTree,
-  mapTargetsToRefs,
-  type StructureNode,
-} from "./structure";
+import { mapTargetsToRefs } from "../../shared/domain/targetsByRef";
+import { buildStructureTree } from "../infrastructure/structureTree";
+import { type StructureNode } from "./structure";
 
 // Unit tests: the structure tree model built from the projected page state
 // an agent's text is rendered from. The fixture is hand-written.

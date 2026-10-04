@@ -18,7 +18,7 @@ import { Inspector } from "../testing";
 // Component tests of the whole panel, driven through the Inspector POM on
 // playwright-lite. The runtime's
 // registry is replaced with fixture Page Objects, so the evidence covers the
-// panel and its adapter only.
+// panel and its runtime wiring only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();

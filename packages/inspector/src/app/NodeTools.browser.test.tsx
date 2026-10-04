@@ -9,7 +9,7 @@ import { Inspector } from "../testing";
 // Component tests: a node's single-element tools while WebMCP publishes nothing. The
 // runtime is replaced by a peek of the host page, live single-element tools that are
 // not published, and the refs each can take, so the evidence covers the
-// panel and its adapter.
+// panel and its runtime wiring.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
