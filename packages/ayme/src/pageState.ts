@@ -11,6 +11,8 @@ import {
   StructuralTree,
   SyntheticAriaRefFactory,
   type AriaRef,
+  type ProjectedStructuralNode,
+  type ProjectedStructuralNodeForest,
   type ProjectedStructuralProperty,
   type StructuralActionId,
   type StructuralIdentityLedger,
@@ -63,10 +65,28 @@ export type PageStateCapture = {
   readonly elementsByRef: ReadonlyMap<AriaRef, Element>;
 };
 
-type CapturedPageState = PageStateCapture & { readonly text: string };
+type CapturedPageState = PageStateCapture & {
+  readonly text: string;
+  /** The projected forest `text` is rendered from: what the model is shown. */
+  readonly projected: ProjectedStructuralNodeForest;
+};
 
-/** A capture that recorded nothing: its tree, element map and rendered text. */
+/**
+ * A capture that recorded nothing: its tree, element map, rendered text and
+ * the projected forest the text is rendered from.
+ */
 export type PageStatePeek = CapturedPageState;
+
+/**
+ * Package-internal: a projected node's own lines of the page state text, as
+ * the text renders them: its line, then its properties, without the entries
+ * nested under it.
+ */
+export function pageStateNodeLines(node: ProjectedStructuralNode): string[] {
+  return renderCompactStructuralNodeForest({ roots: [node] })
+    .split("\n")
+    .slice(0, 1 + node.properties.length);
+}
 
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
 
@@ -587,7 +607,7 @@ async function captureCurrentPageState(
     if (currentRefs.has(ref)) elementsByRef.set(ref, element);
   }
 
-  return { text, tree: currentTree, elementsByRef };
+  return { text, projected, tree: currentTree, elementsByRef };
 }
 
 function coalesceByElement(
