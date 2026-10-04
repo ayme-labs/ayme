@@ -4,7 +4,12 @@ import { getWSConnectionHandler } from "@trpc/server/adapters/ws";
 import { WebSocketServer, type WebSocket } from "ws";
 
 import { DISCONNECTED_CLOSE_CODE } from "../../contract";
-import { SERVER_IDENTITY, admit } from "../../pairing";
+import {
+  BUSY_SERVER,
+  SERVER_IDENTITY,
+  admit,
+  busyRefuses,
+} from "../../pairing";
 import type {
   AgentConnection,
   PageSession,
@@ -52,13 +57,17 @@ export function createPageChannelServer({
       return;
     }
     if (admission === "probe") {
+      // A busy server does not count for the scan; see `busyRefuses`.
+      const { code, reason } =
+        connection.busyWith === undefined ? SERVER_IDENTITY : BUSY_SERVER;
       sockets.handleUpgrade(request, socket, head, (ws) =>
-        ws.close(SERVER_IDENTITY.code, SERVER_IDENTITY.reason)
+        ws.close(code, reason)
       );
       return;
     }
+    const tokenless = admission === "tokenless";
     sockets.handleUpgrade(request, socket, head, (ws) => {
-      pages.set(ws, acceptPage(connection, ws));
+      pages.set(ws, acceptPage(connection, ws, tokenless));
       handleConnection(ws, request);
     });
   });
@@ -76,11 +85,13 @@ export function createPageChannelServer({
 /**
  * An accepted page connection: the page attaches to `connection` when it
  * says hello and detaches when its socket closes. A page another tab
- * replaced is closed with `DISCONNECTED_CLOSE_CODE`.
+ * replaced, or one that connected without a token (`tokenless`) while the
+ * server is busy with another tab, is closed with `DISCONNECTED_CLOSE_CODE`.
  */
 function acceptPage(
   connection: AgentConnection,
-  ws: WebSocket
+  ws: WebSocket,
+  tokenless: boolean
 ): PageChannelContext["page"] {
   let page: PageSession | undefined;
   let resolveSession!: (page: PageSession) => void;
@@ -104,6 +115,18 @@ function acceptPage(
     session,
     hello(hello) {
       if (page) return;
+      // Decided at hello, which names the tab, so the tab the server works
+      // with reconnects without a token after a reload or navigation.
+      if (
+        tokenless &&
+        busyRefuses({ busyWith: connection.busyWith, tab: hello.tab })
+      ) {
+        ws.close(
+          DISCONNECTED_CLOSE_CODE,
+          "This Ayme MCP server works with another tab; open its connect link to move it here."
+        );
+        return;
+      }
       page = connection.attach(hello, disconnect);
       if (page) resolveSession(page);
     },

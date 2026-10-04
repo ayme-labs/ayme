@@ -45,7 +45,10 @@ open changes only its hash, so the page does not reload.
 A tab with no link and no stored pairing pairs by itself when the page is on
 `localhost` or `127.0.0.1` and exactly one Ayme MCP server runs on the
 machine. With none or several running, it stays unpaired until you open or
-paste a connect link, so it never pairs with the wrong agent.
+paste a connect link, so it never pairs with the wrong agent. A server busy
+with a tab, paired or waiting for it to reconnect, refuses other tabs without a
+token and does not count for their scan; only its connect link moves it to
+another tab. Its own tab still reconnects after a reload or navigation.
 
 After pairing, the page's built-in tools and Custom Tools are MCP tools under
 the names the page gives them, and calling one runs it on the page and returns

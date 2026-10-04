@@ -153,6 +153,14 @@ export class AgentConnection {
   }
 
   /**
+   * The id of the tab the server works with: the paired page's, or, while
+   * no page is paired, the away tab's it waits for to reconnect.
+   */
+  get busyWith(): string | undefined {
+    return this.#page?.tab ?? this.#away?.tab;
+  }
+
+  /**
    * A page introduced itself on a channel the server accepted. It becomes
    * the paired page, unless a newer tab replaced its tab: then it is
    * disconnected and `undefined` returned.

@@ -1,11 +1,14 @@
 /**
  * How the server answers a WebSocket connection from a page:
- * - `page`: the page pairs, by the server's token or by auto-pairing;
+ * - `token`: the page pairs by the server's token, from its connect link;
+ * - `tokenless`: the page pairs without a token, by auto-pairing; the
+ *   server still refuses it when it is busy with another tab (see
+ *   `busyRefuses`);
  * - `probe`: the page's auto-pair scan asks whether this is an Ayme MCP
  *   server; the server answers by closing with {@link SERVER_IDENTITY};
  * - `refused`: anything else.
  */
-export type Admission = "page" | "probe" | "refused";
+export type Admission = "token" | "tokenless" | "probe" | "refused";
 
 /** The path a page connects to for auto-pairing, without a token. */
 export const AUTO_PAIR_PATH = "/";
@@ -17,6 +20,15 @@ export const PROBE_PATH = "/probe";
 export const SERVER_IDENTITY = Object.freeze({
   code: 4350,
   reason: "ayme-mcp",
+});
+
+/**
+ * How a busy server closes a probe: it is an Ayme MCP server, but one a
+ * page may not pair with by itself, so the scan does not count it.
+ */
+export const BUSY_SERVER = Object.freeze({
+  code: 4351,
+  reason: "ayme-mcp-busy",
 });
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"]);
@@ -60,9 +72,9 @@ export function admit({
   origin: string | undefined;
   token: string;
 }): Admission {
-  if (sameText(path, `/${token}`)) return "page";
+  if (sameText(path, `/${token}`)) return "token";
   if (!isLocalOrigin(origin)) return "refused";
-  if (path === AUTO_PAIR_PATH) return "page";
+  if (path === AUTO_PAIR_PATH) return "tokenless";
   if (path === PROBE_PATH) return "probe";
   return "refused";
 }

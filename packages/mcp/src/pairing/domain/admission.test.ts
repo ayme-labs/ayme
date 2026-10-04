@@ -10,7 +10,7 @@ it("pairs a page with the token from any origin", () => {
     "https://example.com",
     undefined,
   ])
-    expect(admit({ path: "/f00d", origin, token }), origin).toBe("page");
+    expect(admit({ path: "/f00d", origin, token }), origin).toBe("token");
 });
 
 it("pairs and probes without a token only from a page on localhost or 127.0.0.1", () => {
@@ -19,7 +19,7 @@ it("pairs and probes without a token only from a page on localhost or 127.0.0.1"
     "http://localhost:5173",
     "https://127.0.0.1:8443",
   ]) {
-    expect(admit({ path: "/", origin, token }), origin).toBe("page");
+    expect(admit({ path: "/", origin, token }), origin).toBe("tokenless");
     expect(admit({ path: "/probe", origin, token }), origin).toBe("probe");
   }
 });

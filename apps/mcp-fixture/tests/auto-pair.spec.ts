@@ -4,9 +4,11 @@ import type { Page } from "@playwright/test";
 
 import {
   expect,
+  holdCall,
   serverAddress,
   startAgent,
   test,
+  unanswered,
   type Agent,
 } from "./fixtures";
 
@@ -67,6 +69,63 @@ test("a localhost page pairs by itself when exactly one server is running", asyn
     sessionStorage.getItem("ayme:agent-connection")
   );
   expect(JSON.parse(stored!)).toMatchObject({ address });
+});
+
+test("an auto-paired tab reloads and reconnects to its own server, with or without a call in flight", async ({
+  agent,
+  page,
+  scanReaches,
+}) => {
+  const { port } = await serverAddress(agent);
+  scanReaches.add(port);
+  await page.goto("/");
+  await expect
+    .poll(() => agent.pageToolNames(), { message: agent.log })
+    .toContain("snapshot");
+  const { answer: call } = await holdCall(agent, page);
+
+  await page.reload();
+
+  const answer = unanswered(await call);
+  expect(answer.error).toMatch(/^The page reloaded/);
+  expect(answer.tools).toContain("snapshot");
+
+  await page.reload();
+  await setHeading(page, "Reloaded twice");
+  await expect
+    .poll(() => snapshotOf(agent).catch(() => ""), { message: agent.log })
+    .toContain('heading "Reloaded twice"');
+  const stored = await page.evaluate(() =>
+    sessionStorage.getItem("ayme:agent-connection")
+  );
+  expect(JSON.parse(stored!)).toMatchObject({ token: "" });
+});
+
+test("a server paired by link stays with its tab when another localhost tab loads, whose scan does not count it", async ({
+  agent,
+  connect,
+  context,
+  page,
+  scanReaches,
+}) => {
+  const { port } = await serverAddress(agent);
+  scanReaches.add(port);
+  await connect("/");
+  await setHeading(page, "Paired by link");
+  const other = await context.newPage();
+  const answered = scanAnswers(other, [port]);
+
+  await other.goto("/");
+  await answered;
+  await other.waitForTimeout(500);
+
+  expect(
+    await other.evaluate(() => sessionStorage.getItem("ayme:agent-connection"))
+  ).toBeNull();
+  expect(await snapshotOf(agent)).toContain('heading "Paired by link"');
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("ayme:agent-connection"))
+  ).not.toBeNull();
 });
 
 test("with two servers running, an open localhost page stays unpaired, and each server pairs with its own page through its link", async ({
