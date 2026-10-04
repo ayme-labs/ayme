@@ -97,7 +97,10 @@ async function openCounter(context: BrowserContext, page: Page) {
  * starts a full page load, and resolves with its answer once `loaded` shows
  * on the new page. Playwright rejects an evaluate still running when the page
  * navigates, even once the page has the answer, so the old document keeps the
- * answer where the new one can read it.
+ * answer where the new one can read it. The call starts a task after the
+ * evaluate returns: a load that needs no network, such as going back to a
+ * page the browser kept in its back/forward cache, can otherwise replace the
+ * document before the evaluate's own result arrives.
  */
 async function answerAcrossFullLoad(
   page: Page,
@@ -111,11 +114,14 @@ async function answerAcrossFullLoad(
         modelContext: RecordingDriver;
       };
       const tool = modelContext.tools.find((tool) => tool.name === name);
-      void tool!
-        .execute(input)
-        .then((answer) =>
-          sessionStorage.setItem("full-load-answer", JSON.stringify(answer))
-        );
+      if (!tool) throw new Error(`Tool ${name} was not published.`);
+      setTimeout(() => {
+        void tool
+          .execute(input)
+          .then((answer) =>
+            sessionStorage.setItem("full-load-answer", JSON.stringify(answer))
+          );
+      });
     },
     { name, input }
   );
