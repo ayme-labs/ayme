@@ -42,7 +42,7 @@ export class GreetingPage {
 }
 ```
 
-Then start Ayme in your app and register the Page Object, as your framework's page shows. A coding agent can do the setup for you: ask it to install the `ayme` skill from https://github.com/ayme-labs/ayme/tree/main/skills/ayme, including its references, and use it to set up Ayme in your project.
+Then start Ayme in your app and use the Page Object, as the quickstart for [Vue](docs/guide/start/quickstart-vue.md), [React](docs/guide/start/quickstart-react.md), [Svelte](docs/guide/start/quickstart-svelte.md) or [Angular](docs/guide/start/quickstart-angular.md) shows. A coding agent can do the setup for you: ask it to install the `ayme` skill from https://github.com/ayme-labs/ayme/tree/main/skills/ayme, including its references, and use it to set up Ayme in your project.
 
 ## Pick your framework
 
