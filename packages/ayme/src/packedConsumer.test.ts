@@ -639,7 +639,7 @@ for (const vite of ["7.0.0", "8.0.0"])
 import { defineConfig, type Plugin } from 'vite';
 import aymeDefault, { ayme, type AymeOptions } from '@ayme-dev/unplugin-ayme/vite';
 import turbopackLoader from '@ayme-dev/unplugin-ayme/turbopack-loader';
-const options: AymeOptions = { inspector: true, playwright: { use: { testIdAttribute: 'data-id' } } };
+const options: AymeOptions = { playwright: { use: { testIdAttribute: 'data-id' } } };
 const plugin: Plugin = ayme(options);
 void turbopackLoader;
 export default defineConfig({ plugins: [plugin, aymeDefault()] });

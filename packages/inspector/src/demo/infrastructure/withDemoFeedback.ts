@@ -158,6 +158,9 @@ function traceOperation(
 }
 
 async function showClickCue(locator: Locator) {
+  // Only an element that is there now gets a cue, so a click that will fail,
+  // or wait for its element, isn't held up by the cue's own wait.
+  if ((await locator.count()) !== 1) return;
   await locator.evaluate(async (element) => {
     const document = element.ownerDocument;
     const window = document.defaultView;

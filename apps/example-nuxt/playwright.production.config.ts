@@ -3,6 +3,7 @@ import config, { baseURL, port } from "./playwright.config";
 
 export default defineConfig({
   ...config,
+  testIgnore: "**/inspector.spec.ts",
   outputDir: "test-results/production",
   webServer: {
     command: "pnpm run start",

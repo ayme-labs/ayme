@@ -58,7 +58,10 @@ const allCounterTools = [
 /** Opens the counter page with the recording driver and waits for publication. */
 async function openCounter(context: BrowserContext, page: Page) {
   await recordPublishedTools(context);
-  const response = await page.goto("/");
+  // An app may turn the Inspector on in development; it loads after the page,
+  // and its mount can hold the main thread past a Page Object action's 1 s
+  // timeout, so let it land first.
+  const response = await page.goto("/", { waitUntil: "networkidle" });
   expect(response?.status()).toBe(200);
   await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
     "Publication: active",

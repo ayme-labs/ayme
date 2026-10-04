@@ -7,6 +7,8 @@ import {
   type PublishedToolInfo,
 } from "./publishedTools";
 import { configureCustomTools, type CustomTool } from "./elementTools";
+import { loadInspector } from "./inspector";
+import { instrumentedPage } from "./pageInstrumentation";
 import {
   constructPageObject,
   createAymeRuntime,
@@ -101,6 +103,11 @@ export type AymeOptions = {
   customTools?: CustomTool[];
   goalLoop?: GoalLoopDecisionFunction;
   webMCP?: AymeWebMcpOptions;
+  /**
+   * Mounts the Inspector from the optional `@ayme-dev/inspector` package while
+   * the session is started in the browser. Off unless `true`.
+   */
+  inspector?: boolean;
 };
 
 /** WebMCP publication, decided where the runtime starts (ADR-0030). */
@@ -113,35 +120,31 @@ export type AymeWebMcpOptions = {
    */
   toolNamePrefix?: string;
 };
-type PageInstrumentation = (page: AymePage) => AymePage;
 type Registration = {
   count: number;
   active?: { dispose(): void };
 };
+
+/**
+ * Whether two option objects configure the same runtime session: every option
+ * is the same value, and `webMCP` has the same fields. The framework owners
+ * use it to keep their options fixed while mounted.
+ */
+export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  return [...keys].every((key) =>
+    key === "webMCP"
+      ? a.webMCP?.enabled === b.webMCP?.enabled &&
+        a.webMCP?.toolNamePrefix === b.webMCP?.toolNamePrefix
+      : a[key as keyof AymeOptions] === b[key as keyof AymeOptions]
+  );
+}
 
 function createServerPageObject<T extends object>(
   model: PageObjectConstructor<T>
 ): T {
   const prototype = (model as unknown as { prototype: object }).prototype;
   return Object.create(prototype) as T;
-}
-
-const pageInstrumentations = new Set<PageInstrumentation>();
-
-export function installRuntimePageInstrumentation(
-  instrumentation: PageInstrumentation
-) {
-  pageInstrumentations.add(instrumentation);
-  return () => {
-    pageInstrumentations.delete(instrumentation);
-  };
-}
-
-function instrumentPage(page: AymePage) {
-  let instrumented = page;
-  for (const instrumentation of pageInstrumentations)
-    instrumented = instrumentation(instrumented);
-  return instrumented;
 }
 
 let started: Ayme | undefined;
@@ -178,7 +181,7 @@ const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 export function createAyme(options: AymeOptions = {}): Ayme {
   let resolvedPage: AymePage | undefined;
   const getPage = () =>
-    (resolvedPage ??= instrumentPage((options.pageFactory ?? createPage)()));
+    (resolvedPage ??= instrumentedPage((options.pageFactory ?? createPage)()));
   // Publication is decided once, when the session is created.
   const enabled = options.webMCP?.enabled === true;
   const toolNamePrefix = options.webMCP?.toolNamePrefix;
@@ -382,6 +385,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         setStatus(initialStatus);
         setStarted(ayme);
         void retryPublication();
+        if (options.inspector) mountInspectorUntil(controller.signal);
       } catch (error) {
         stop();
         throw error;
@@ -393,4 +397,15 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     },
   };
   return ayme;
+}
+
+// A load failure stays an unhandled rejection, so it reaches the console.
+function mountInspectorUntil(signal: AbortSignal) {
+  void loadInspector().then(({ mountInspector }) => {
+    if (signal.aborted) return;
+    const inspector = mountInspector();
+    signal.addEventListener("abort", () => inspector.dispose(), {
+      once: true,
+    });
+  });
 }

@@ -73,6 +73,9 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../../packages/ayme
+      "@ayme-dev/inspector":
+        specifier: workspace:*
+        version: link:../../packages/inspector
       express:
         specifier: ^5.1.0
         version: 5.2.1(supports-color@10.2.2)
@@ -153,6 +156,9 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../../packages/ayme
+      "@ayme-dev/inspector":
+        specifier: workspace:*
+        version: link:../../packages/inspector
       "@ayme-dev/react":
         specifier: workspace:*
         version: link:../../packages/react
@@ -205,6 +211,9 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../../packages/ayme
+      "@ayme-dev/inspector":
+        specifier: workspace:*
+        version: link:../../packages/inspector
       "@ayme-dev/vue":
         specifier: workspace:*
         version: link:../../packages/vue
@@ -248,6 +257,9 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../../packages/ayme
+      "@ayme-dev/inspector":
+        specifier: workspace:*
+        version: link:../../packages/inspector
       "@ayme-dev/react":
         specifier: workspace:*
         version: link:../../packages/react
@@ -297,6 +309,9 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../../packages/ayme
+      "@ayme-dev/inspector":
+        specifier: workspace:*
+        version: link:../../packages/inspector
       "@ayme-dev/svelte":
         specifier: workspace:*
         version: link:../../packages/svelte
@@ -544,6 +559,9 @@ importers:
 
   packages/ayme:
     dependencies:
+      "@ayme-dev/inspector":
+        specifier: workspace:*
+        version: link:../inspector
       "@mcp-b/webmcp-types":
         specifier: ^5.0.1
         version: 5.0.1
@@ -853,9 +871,6 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../ayme
-      "@ayme-dev/inspector":
-        specifier: workspace:*
-        version: link:../inspector
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

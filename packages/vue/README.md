@@ -32,6 +32,8 @@ Keep decorated Page Object Models in separate `.ts` files with `experimentalDeco
 
 Publication is off unless the root setup enables it with `webMCP: { enabled: true }` (on `AymeProvider` as `:webMCP="{ enabled: true }"`). `webMCP.toolNamePrefix` prefixes every published tool name; see the [main library README](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#webmcp-publication). Local Page Object calls remain available without publication or a WebMCP driver.
 
+`inspector: true` (on `AymeProvider` as `:inspector="true"`) mounts the [Inspector](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/README.md) while Ayme runs, for example only when `import.meta.env.DEV`. Install `@ayme-dev/inspector` for it.
+
 ## Provider setup
 
 ```vue

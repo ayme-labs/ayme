@@ -44,7 +44,7 @@ pnpm --filter @ayme-dev/example-sveltekit exec playwright install chromium
 pnpm --filter @ayme-dev/example-sveltekit test:e2e
 ```
 
-The shared [example certification](../example-certification/README.md) runs against `vite dev` and the adapter-node server, with server rendering and in SPA mode, including client navigation to the other page and back. The example's own test checks that a descendant's `onMount` sees a started runtime.
+The shared [example certification](../example-certification/README.md) runs against `vite dev` and the adapter-node server, with server rendering and in SPA mode, including client navigation to the other page and back. The example's own test checks that a descendant's `onMount` sees a started runtime. Against `vite dev`, where the app turns the Inspector on, a smoke test opens it and runs a tool from it.
 
 The tests observe tools through the recording WebMCP driver from `@ayme-dev/ayme/testing`, not through Ayme's internal registry. They do not certify a particular browser's WebMCP API.
 
@@ -54,4 +54,3 @@ The tests observe tools through the recording WebMCP driver from `@ayme-dev/ayme
 - POMs must be `.ts` modules. Decorators inside `.svelte` scripts are not compiled.
 - This example runs on Vite 8, where a type edit rebuilds the schema. Below Vite 6, the plugin cannot invalidate dependants, so a type edit needs a dev-server restart.
 - It certifies SvelteKit 2, from the current release down to 2.53.0 (CI's minimum-version lane, on Node.js 20.19), with Svelte 5, Vite 8 and adapter-node. It does not certify SvelteKit 1 or 3, other adapters, edge deployment, prerendering, streaming, form actions, or server-side Page Object execution. Older Svelte versions are covered by the package's unit tests only.
-- The Inspector is not wired into this example.

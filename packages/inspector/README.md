@@ -23,21 +23,21 @@ highlight style and, while the panel is docked, a style that pads the page's
 root on the docked side so the panel sits beside the page. That style is
 removed when the panel floats, collapses or unmounts.
 
-Enable it through the Vite integration:
+Install it beside `@ayme-dev/ayme`, which declares it as an optional peer
+dependency, and turn it on with `inspector: true` where Ayme starts: `useAyme`
+or `AymeProvider` in Vue, `AymeProvider` in React, `useAyme` in Svelte,
+`provideAyme` in Angular, or `createAyme`:
 
 ```ts
-import { ayme } from "@ayme-dev/unplugin-ayme/vite";
-
-export default {
-  plugins: [ayme({ inspector: true })],
-};
+useAyme({ webMCP: { enabled: true }, inspector: import.meta.env.DEV });
 ```
 
-The plugin starts the Inspector before application modules run, so default and
-supplied Pages are instrumented before their first Page Object is constructed.
-No component props, mount call, or custom element registration is required.
-
-`inspector: false` (the default) omits the Inspector startup module. Inspector
+The option is off unless `true`, and there is no production guard: you decide
+when it is on. While it is on, the session loads the Inspector on demand when
+it starts in the browser, mounts it, and unmounts it when it stops. Server
+rendering loads nothing. With the option off, the page requests no Inspector
+code. If the package can't be loaded, the error names `@ayme-dev/inspector`.
+The Inspector reaches Page Objects constructed before it loaded. Inspector
 diagnostics work independently of WebMCP publication, so the Inspector works
 while publication is off.
 
@@ -53,14 +53,15 @@ fullscreen), or page content at that same z-index after the host, covers it.
 Outside the panel and the collapsed logo, the page keeps its pointer. A
 runtime pointer action, such as an agent's click, whose target is under the
 panel passes through it: the panel ignores the pointer until that action ends.
-A person moves, docks or collapses the panel instead.
+A person moves, docks or collapses the panel instead. While the Inspector is
+mounted, each click a tool makes shows a brief cue on its element.
 
 The Shadow Root is closed, so no locator on the host page, whether
 Playwright's or the runtime's, sees inside it: a Page Object member never
 matches the Inspector's own text.
 
 The playground imports `withDemoFeedback` from
-`@ayme-dev/inspector/demo` to keep its teaching delay and click cue.
+`@ayme-dev/inspector/demo` to keep its teaching delay.
 Applications do not need this demo-only entry point.
 
 ## Source layout

@@ -31,7 +31,7 @@ const act: typeof TestUtils.act =
 
 type PageFactory = NonNullable<AymeProviderProps["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
-const page = {} as Page;
+const page = { url: () => "factory page" } as unknown as Page;
 const pageFactory: PageFactory = () => page;
 class Model {
   constructor(readonly page: Page) {}
@@ -254,7 +254,7 @@ it("keeps one custom-page instance through StrictMode replay, rerenders and remo
       h(AymeProvider, { pageFactory: factory }, h(Child, { key }))
     );
   await act(() => app.render(render("first")));
-  expect(current?.page).toBe(page);
+  expect(current?.page.url()).toBe(page.url());
   expect(factory).toHaveBeenCalledOnce();
   expect(committed.length).toBeGreaterThanOrEqual(2);
   expect(new Set(committed).size).toBe(1);
@@ -348,6 +348,32 @@ it("returns the session as ayme, so a goal runs through it, and its webMCP membe
   });
   expect(goalLoop).toHaveBeenCalledOnce();
   expect(handover.reason).toBe("decide_failed");
+});
+
+// Records the options, then starts a session without the Inspector: the
+// optional peer may not be built or installed where these tests run.
+async function withoutInspectorLoad() {
+  const { createAyme: actual } =
+    await vi.importActual<typeof import("@ayme-dev/ayme")>("@ayme-dev/ayme");
+  vi.mocked(createAyme).mockImplementationOnce((options) =>
+    actual({ ...options, inspector: false })
+  );
+}
+
+it("passes inspector to the runtime session and rejects changing it", async () => {
+  await withoutInspectorLoad();
+  const app = root();
+  await act(() =>
+    app.render(h(AymeProvider, { pageFactory, inspector: true }))
+  );
+  expect(createAyme).toHaveBeenCalledWith(
+    expect.objectContaining({ inspector: true })
+  );
+  await expect(
+    act(async () =>
+      app.render(h(AymeProvider, { pageFactory, inspector: false }))
+    )
+  ).rejects.toThrow("provider options must stay fixed");
 });
 
 it("requires an ancestor provider", async () => {

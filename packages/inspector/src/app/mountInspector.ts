@@ -51,7 +51,10 @@ export function installInspectorInstrumentation() {
   const unsubscribeFromTrace =
     subscribeToInspectorTraceDispatcher(recordInspectorTrace);
   const uninstall = installRuntimePageInstrumentation((page) => {
-    return withDemoFeedback(page as Page, { onTrace: dispatchInspectorTrace });
+    return withDemoFeedback(page as Page, {
+      onTrace: dispatchInspectorTrace,
+      clickCue: true,
+    });
   });
 
   return () => {

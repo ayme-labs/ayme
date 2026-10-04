@@ -1,7 +1,10 @@
 import { startAyme } from "./startAyme";
 
-/** Sets up the list app on the fixture page, then starts Ayme on it. */
-export function startListApp({ publish = true } = {}) {
+/**
+ * Sets up the list app on the fixture page, then starts Ayme on it. Returns
+ * what stops Ayme.
+ */
+export function startListApp(options: Parameters<typeof startAyme>[0] = {}) {
   const input = document.querySelector("input")!;
   const list = document.querySelector("ul")!;
   const [addButton, clearButton] = document.querySelectorAll("button");
@@ -13,5 +16,5 @@ export function startListApp({ publish = true } = {}) {
     input.value = "";
   });
 
-  startAyme({ publish });
+  return startAyme(options);
 }

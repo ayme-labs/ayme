@@ -71,7 +71,10 @@ pnpm --filter @ayme-dev/example-next test:e2e
 ```
 
 The tests are the shared [example certification](../example-certification/README.md),
-run against `next dev` and against `next start` after `next build`.
+run against `next dev` and against `next start` after `next build`. The app
+turns the Inspector on in development; against `next dev` a smoke test opens
+it and runs a tool from it, and against `next start` a test checks that the
+page loads no Inspector code.
 
 Main CI uses Turbo's affected graph to run relevant build, lint, typecheck,
 test, and development and production E2E tasks. It then runs repository format

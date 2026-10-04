@@ -19,7 +19,7 @@ import {
 } from "./index";
 
 type Page = ReturnType<NonNullable<AymeOptions["pageFactory"]>>;
-const page = {} as Page;
+const page = { url: () => "factory page" } as unknown as Page;
 const pageFactory = () => page;
 class Model {
   constructor(readonly page: Page) {}
@@ -54,7 +54,7 @@ it("starts Ayme with the environment and registers a Page Object until its injec
   const model = runInInjectionContext(scope, () => injectPageObject(Model));
 
   expect(model).toBeInstanceOf(Model);
-  expect(model.page).toBe(page);
+  expect(model.page.url()).toBe(page.url());
   expect(listRegisteredPoms().map((pom) => pom.instance)).toEqual([model]);
   scope.destroy();
   expect(listRegisteredPoms()).toEqual([]);

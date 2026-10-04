@@ -148,6 +148,10 @@ stop();
   They are configured on `start()` and cleared when the session stops.
 - `webMCP`: whether and how the session publishes its tools through WebMCP;
   see [WebMCP publication](#webmcp-publication).
+- `inspector`: `true` mounts the
+  [Inspector](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/README.md) while the session is
+  started in the browser. It loads the optional `@ayme-dev/inspector` package
+  on demand, so install it beside `@ayme-dev/ayme`. Off unless `true`.
 
 `start()` claims the runtime for the current document, one owner at a time,
 and returns the function that stops it. The session, of type `Ayme`, has three

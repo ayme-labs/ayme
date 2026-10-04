@@ -13,9 +13,6 @@ const DEFAULT_TEST_ID_ATTRIBUTE = "data-testid";
 const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
 const ACTION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_ACTION_TIMEOUT__";
 const NAVIGATION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__";
-const INSPECTOR_MODULE_ID = "virtual:ayme-inspector";
-const RESOLVED_INSPECTOR_MODULE_ID = `\0${INSPECTOR_MODULE_ID}`;
-const INSPECTOR_PACKAGE_ID = "@ayme-dev/inspector";
 const SUPPORTED_PLAYWRIGHT_VERSION = /^1\.62\.\d+(?:[-+].*)?$/;
 
 type SupportedPlaywrightSettings = NonNullable<AymePlaywrightOptions["use"]>;
@@ -46,8 +43,10 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
     throw new TypeError(
       "The publish option was removed. Turn WebMCP publication on with webMCP.enabled where Ayme starts: useAyme, AymeProvider or createAyme."
     );
-  if (options.inspector !== undefined && typeof options.inspector !== "boolean")
-    throw new TypeError("inspector must be a boolean");
+  if ("inspector" in options)
+    throw new TypeError(
+      "The inspector option was removed. Turn the Inspector on with inspector: true where Ayme starts: useAyme, AymeProvider, provideAyme or createAyme."
+    );
   const transformPom = createPomTransform(options);
   // Vite soft-invalidates static importers of a changed file and keeps their
   // previous transform result, so a Page Object compiled from a changed base
@@ -64,42 +63,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   return {
     name: "ayme",
     enforce: "pre",
-    ...(options.inspector
-      ? {
-          resolveId(id) {
-            if (id === INSPECTOR_PACKAGE_ID)
-              return createRequire(import.meta.url).resolve(
-                INSPECTOR_PACKAGE_ID
-              );
-            return id === INSPECTOR_MODULE_ID
-              ? RESOLVED_INSPECTOR_MODULE_ID
-              : null;
-          },
-          load(id) {
-            return id === RESOLVED_INSPECTOR_MODULE_ID
-              ? "import { mountInspector } from '@ayme-dev/inspector'; mountInspector();"
-              : null;
-          },
-        }
-      : {}),
     vite: {
-      ...(options.inspector
-        ? {
-            transformIndexHtml: {
-              order: "pre" as const,
-              handler() {
-                return [
-                  {
-                    tag: "script",
-                    attrs: { type: "module" },
-                    children: `import '${INSPECTOR_MODULE_ID}';`,
-                    injectTo: "head-prepend" as const,
-                  },
-                ];
-              },
-            },
-          }
-        : {}),
       transform: {
         filter: { id: /\.[cm]?[jt]sx?$/ },
         handler(code, id, transformOptions) {

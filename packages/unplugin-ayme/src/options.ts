@@ -15,6 +15,5 @@ export type AymePlaywrightOptions = {
 };
 
 export type AymeOptions = PomCompilerOptions & {
-  inspector?: boolean;
   playwright?: AymePlaywrightOptions;
 };

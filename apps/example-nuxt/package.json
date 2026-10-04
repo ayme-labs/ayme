@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/vue": "workspace:*",
     "nuxt": "4.5.2",
     "vue": "^3.5.42"

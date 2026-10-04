@@ -39,7 +39,6 @@ describe("createPage from the public entry in Chromium", () => {
     const runtime = createAyme({ pageFactory: () => page });
     stop = runtime.start();
     const app = runtime.pom.get(App);
-    expect(app.page).toBe(page);
 
     const started = performance.now();
     await expect(app.save()).rejects.toThrow("Timeout 300ms exceeded");
