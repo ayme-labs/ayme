@@ -227,6 +227,40 @@ export function counterTests({
       await expect(count(page)).toHaveText("1");
     });
 
+    test("answers a click on a full page load link before the new page loads", async ({
+      page,
+    }) => {
+      const loading = new URL("/other", page.url()).href;
+      // Playwright rejects an evaluate still running when the page navigates,
+      // even once the page has the answer, so the old document keeps the
+      // answer where the new one can read it.
+      await page.evaluate(() => {
+        const { modelContext } = document as unknown as {
+          modelContext: RecordingDriver;
+        };
+        const click = modelContext.tools.find((tool) => tool.name === "click");
+        void click!
+          .execute({ target: "role=link[name='Full page load']" })
+          .then((answer) =>
+            sessionStorage.setItem("full-load-answer", JSON.stringify(answer))
+          );
+      });
+      await expect(
+        page.getByText("Other page without Page Objects.")
+      ).toBeVisible();
+      expect(page.url()).toBe(loading);
+      const answer = await page.evaluate(() =>
+        sessionStorage.getItem("full-load-answer")
+      );
+      expect(JSON.parse(answer ?? "null")).toEqual({
+        page_changed: true,
+        settled: false,
+        changes: expect.stringContaining('link "Full page load"'),
+        loading,
+        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
+      });
+    });
+
     test("removes the page's tools on navigation and restores them on return", async ({
       page,
     }) => {
