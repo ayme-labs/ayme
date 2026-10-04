@@ -4,11 +4,11 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { PageModel, PageObjectNode } from "../adapter/pageModel";
 import { DetailPane } from "../panel/view/InspectorBody";
-import type { Lens, LensId } from "../frame/lens";
-import { Navigator } from "../frame/Navigator";
-import type { OnHover } from "../frame/highlight";
-import type { RenderRun } from "../frame/runSlot";
-import type { Selection } from "../frame/selection";
+import type { Lens, LensId } from "../navigation/domain/lens";
+import { Navigator } from "../navigation/view/Navigator";
+import type { OnHover } from "../navigation/domain/highlight";
+import type { RenderRun } from "../navigation/domain/runSlot";
+import type { Selection } from "../navigation/domain/selection";
 import { renderPart } from "../testing/renderPart";
 import { defaultPreferences } from "../panel/domain/preferences";
 import {

@@ -13,7 +13,7 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { RunnableTool } from "../adapter/runnableTools";
 import type { CollectionItem, Run, ToolArguments } from "../adapter/useRuns";
-import type { OnHover } from "../frame/highlight";
+import type { OnHover } from "../navigation/domain/highlight";
 import { ArgumentsForm } from "./ArgumentsForm";
 import {
   argumentsFromJson,

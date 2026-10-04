@@ -3,9 +3,9 @@ import { SearchIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
-import type { OnHover } from "./highlight";
-import type { LegendCounts, Lens, LensId, SearchEntry } from "./lens";
-import type { Selection } from "./selection";
+import type { OnHover } from "../domain/highlight";
+import type { LegendCounts, Lens, LensId, SearchEntry } from "../domain/lens";
+import type { Selection } from "../domain/selection";
 
 const MAX_RESULTS = 24;
 

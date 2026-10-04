@@ -17,7 +17,7 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { RunStep } from "../adapter/runSteps";
-import type { OnHover } from "../frame/highlight";
+import type { OnHover } from "../navigation/domain/highlight";
 import type { Run } from "../adapter/useRuns";
 
 /** A request to bring one run into view. A new `at` repeats it. */

@@ -1,6 +1,6 @@
 import type { Run } from "../adapter/useRuns";
 import { runIsOnMember } from "../frame/memberSelection";
-import type { Selection } from "../frame/selection";
+import type { Selection } from "../navigation/domain/selection";
 
 /** Which runs belong to the selection, and what Runs calls that scope. */
 export type RunScope = {

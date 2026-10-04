@@ -18,8 +18,8 @@ import {
   minModelSplit as minSplit,
   type ModelPanes,
 } from "../../panel/domain/preferences";
-import type { Selection } from "../../frame/selection";
-import type { OnHover } from "../../frame/highlight";
+import type { Selection } from "../../navigation/domain/selection";
+import type { OnHover } from "../../navigation/domain/highlight";
 import { hoverHandlers } from "./hover";
 
 const splitStep = 0.05;

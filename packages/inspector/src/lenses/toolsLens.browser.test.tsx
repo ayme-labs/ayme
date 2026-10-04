@@ -3,9 +3,9 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
 import { DetailPane as DetailPaneFrame } from "../panel/view/InspectorBody";
-import { Navigator as NavigatorFrame } from "../frame/Navigator";
-import type { RenderRun } from "../frame/runSlot";
-import { pageSelection, type Selection } from "../frame/selection";
+import { Navigator as NavigatorFrame } from "../navigation/view/Navigator";
+import type { RenderRun } from "../navigation/domain/runSlot";
+import { pageSelection, type Selection } from "../navigation/domain/selection";
 import { renderPart } from "../testing/renderPart";
 import { DetailPane, Navigator } from "../testing";
 import type { LiveTool } from "./toolGroups";

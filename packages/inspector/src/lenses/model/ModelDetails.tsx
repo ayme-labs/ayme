@@ -19,8 +19,8 @@ import type {
   PageObjectModel,
   PageObjectNode,
 } from "../../adapter/pageModel";
-import type { RenderRun } from "../../frame/runSlot";
-import type { OnHover } from "../../frame/highlight";
+import type { RenderRun } from "../../navigation/domain/runSlot";
+import type { OnHover } from "../../navigation/domain/highlight";
 import { hoverHandlers } from "./hover";
 
 /**

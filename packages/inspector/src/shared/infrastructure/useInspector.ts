@@ -18,7 +18,7 @@ import {
   subscribeToRegisteredPoms,
 } from "@ayme-dev/ayme/internal";
 
-import type { HighlightTarget } from "../../frame/highlight";
+import type { HighlightTarget } from "../../navigation/domain/highlight";
 import { readControls, type ControlState } from "./formControls";
 import { createRefreshScheduler } from "./refreshScheduler";
 import { mapTargetsToRefs } from "../../adapter/structure";

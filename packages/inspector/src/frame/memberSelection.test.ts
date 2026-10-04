@@ -4,7 +4,7 @@ import { indexMembers } from "../adapter/memberIndex";
 import { collection, model, page } from "../adapter/pageModel.testSupport";
 import { forest, node } from "../adapter/projected.testSupport";
 import { buildStructureTree } from "../adapter/structure";
-import { selectionHighlight } from "./highlight";
+import { selectionHighlight } from "../navigation/domain/highlight";
 import {
   memberResolves as resolvesIn,
   runIsOnMember as runIsOn,
