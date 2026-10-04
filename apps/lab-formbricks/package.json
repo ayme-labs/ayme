@@ -1,0 +1,12 @@
+{
+  "name": "@ayme-dev/lab-formbricks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lab:prepare": "bash scripts/prepare.sh",
+    "lab:dev": "bash scripts/dev.sh",
+    "lab:smoke": "bash scripts/smoke.sh",
+    "lab:stop": "bash scripts/stop.sh"
+  }
+}
