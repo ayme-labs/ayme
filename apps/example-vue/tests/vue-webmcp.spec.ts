@@ -284,6 +284,8 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   expect(new Set(archiveRefs).size).toBe(2);
   // The panel is titled and labelled "ayme"; the playground never says it.
   expect(snapshot).not.toMatch(/\bayme\b/);
+  // `ignore` keeps the site header out.
+  expect(snapshot).not.toContain("Ayme WebMCP");
   expect(normalizeAppSubtree(snapshot)).toMatchSnapshot("page-state.yml");
 });
 
