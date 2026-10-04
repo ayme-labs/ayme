@@ -151,6 +151,11 @@ stop();
   [Inspector](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/README.md) while the session is
   started in the browser. It loads the optional `@ayme-dev/inspector` package
   on demand, so install it beside `@ayme-dev/ayme`. Off unless `true`.
+- `agentConnection`: `true` lets a coding agent's Ayme MCP server pair with the
+  page and call its tools while the session is started in the browser; see
+  [`@ayme-dev/mcp`](https://github.com/ayme-labs/ayme/blob/main/packages/mcp/README.md).
+  It loads the optional `@ayme-dev/mcp` package on demand, so install it beside
+  `@ayme-dev/ayme`. Off unless `true`.
 
 `start()` claims the runtime for the current document, one owner at a time,
 and returns the function that stops it. The session, of type `Ayme`, has three

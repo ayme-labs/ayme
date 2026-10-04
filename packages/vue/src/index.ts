@@ -91,6 +91,7 @@ const providerProps = {
   },
   // A default of undefined keeps an absent prop unset, not cast to false.
   inspector: { type: Boolean, default: undefined },
+  agentConnection: { type: Boolean, default: undefined },
 } satisfies Record<keyof UseAymeOptions, unknown>;
 
 // Annotated so the emitted declaration names only DefineComponent<Props>,

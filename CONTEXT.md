@@ -65,3 +65,6 @@ _Avoid_: relay (means the WebMCP local relay), proxy.
 **Inspector**:
 The in-page panel that shows a page's Page Objects, its Structural Page State and its tools, and lets a developer run those tools by hand.
 _Avoid_: debug panel, debugger, POM inspector
+
+**Agent Connection**:
+The link between one coding agent's Ayme MCP server and one page, through which the agent calls that page's tools.
