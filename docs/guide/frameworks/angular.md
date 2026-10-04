@@ -39,18 +39,18 @@ In a component, `injectPageObject(Model)` returns the Page Object and `injectAym
 ```ts
 import { Component } from "@angular/core";
 import { injectAyme, injectPageObject } from "@ayme-dev/angular";
-import { CounterPage } from "../../playwright/pom/CounterPage";
+import { ProjectsPage } from "../../playwright/pom/ProjectsPage";
 
 @Component({
   selector: "app-counter",
   template: `
     <p>Publication: {{ webMCP.publicationStatus().state }}</p>
-    <button (click)="pom.increment()">Call Page Object</button>
+    <button (click)="pom.createProject('Launch plan')">Show me how</button>
     <button (click)="webMCP.retryPublication()">Retry publication</button>
   `,
 })
 export class Counter {
-  protected readonly pom = injectPageObject(CounterPage);
+  protected readonly pom = injectPageObject(ProjectsPage);
   protected readonly webMCP = injectAyme().webMCP;
 }
 ```
@@ -71,7 +71,23 @@ During `ng serve`, editing a type a Page Object Model imports updates its tool s
 
 ## Server rendering
 
-With Angular SSR, server rendering returns your ordinary UI and hydration creates the real Page Objects in the browser. [Server rendering](../guides/server-rendering.md) says what runs where.
+With Angular SSR, keep `provideAyme` in the shared application config; the server config merges it unchanged:
+
+```ts
+// src/app/app.config.server.ts
+import { mergeApplicationConfig, ApplicationConfig } from "@angular/core";
+import { provideServerRendering, withRoutes } from "@angular/ssr";
+import { appConfig } from "./app.config";
+import { serverRoutes } from "./app.routes.server";
+
+const serverConfig: ApplicationConfig = {
+  providers: [provideServerRendering(withRoutes(serverRoutes))],
+};
+
+export const config = mergeApplicationConfig(appConfig, serverConfig);
+```
+
+On the server, `provideAyme` creates a session per request but never starts it, and hydration creates the real Page Objects. The [Angular example](../../../apps/example-angular/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Bundle size
 
@@ -89,6 +105,16 @@ The supported Angular versions are on [Install](../start/install.md#supported-ve
 - Page Object Models inside prebuilt packages
 - `@defer` and incremental hydration
 - a custom `RouteReuseStrategy`
+
+## Troubleshooting
+
+| Error                                                                                          | Cause                                                       |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `provideAyme cannot be nested beneath another Ayme runtime owner.`                             | `provideAyme` beneath another, such as in route providers.  |
+| `Ayme requires provideAyme() in an ancestor injector.`                                         | `injectAyme` or `injectPageObject` without `provideAyme`.   |
+| `Ayme needs an Angular application project; …`                                                 | `ng add` ran in a workspace without an application project. |
+| `Ayme could not read the Angular major from the @angular/core dependency in package.json (…).` | `ng add` found no readable `@angular/core` version.         |
+| A production build fails the `initial` budget                                                  | See [Bundle size](#bundle-size).                            |
 
 ## API
 

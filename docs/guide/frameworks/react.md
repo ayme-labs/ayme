@@ -4,11 +4,11 @@ Everything about Ayme in a React app: setup, the provider, hooks, server renderi
 
 ## Setup
 
-Install Ayme, the React package and the build plugin:
+Install Ayme, the React package and the build plugin, and the Inspector if you want it:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/react
-npm install -D @ayme-dev/unplugin-ayme @playwright/test
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector
 ```
 
 On Vite, add the plugin alongside the React plugin:
@@ -56,16 +56,18 @@ Call the hooks in descendants of the provider:
 
 ```tsx
 import { useAyme, usePageObject } from "@ayme-dev/react";
-import { CounterPage } from "./playwright/pom/CounterPage";
+import { ProjectsPage } from "./playwright/pom/ProjectsPage";
 
 export default function Controls() {
-  const pom = usePageObject(CounterPage);
+  const pom = usePageObject(ProjectsPage);
   const { ayme, webMCP } = useAyme();
 
   return (
     <>
       <p>{webMCP.publicationStatus.message}</p>
-      <button onClick={() => void pom.increment()}>Increment</button>
+      <button onClick={() => void pom.createProject("Launch plan")}>
+        Increment
+      </button>
       <button onClick={() => void webMCP.retryPublication()}>
         Retry publication
       </button>
@@ -80,12 +82,60 @@ export default function Controls() {
 
 ## Server rendering
 
-The provider and hooks render on the server without starting anything, and hydration constructs the real Page Objects. [Server rendering](../guides/server-rendering.md) says what runs where, including the `"use client"` boundary in the Next.js App Router.
+The provider and hooks render on the server without starting anything, and hydration constructs the real Page Objects. In the Next.js App Router, put `AymeProvider` and the components that call its hooks in a `"use client"` module, and render it from a server component:
+
+```tsx
+// app/projects.tsx
+"use client";
+
+import { AymeProvider, usePageObject } from "@ayme-dev/react";
+import { ProjectsPage } from "../pom/ProjectsPage";
+
+function Projects() {
+  const pom = usePageObject(ProjectsPage);
+  return (
+    <button onClick={() => void pom.createProject("My first project")}>
+      Show me how
+    </button>
+  );
+}
+
+export default function ProjectsWithAyme() {
+  return (
+    <AymeProvider
+      webMCP={{ enabled: true }}
+      inspector={process.env.NODE_ENV === "development"}
+    >
+      <Projects />
+    </AymeProvider>
+  );
+}
+```
+
+```tsx
+// app/page.tsx
+import ProjectsWithAyme from "./projects";
+
+export default function Home() {
+  return <ProjectsWithAyme />;
+}
+```
+
+The build needs the Turbopack loader from the [build plugin reference](../reference/build-plugin.md#nextjs). The [Next.js example](../../../apps/example-next/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Limits
 
 - The supported React and Next.js versions are on [Install](../start/install.md#supported-versions).
 - Change the props or the model class only by remounting.
+
+## Troubleshooting
+
+| Error                                                                                                     | Cause                                                                                  |
+| --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `AymeProvider cannot be nested beneath another Ayme runtime owner.`                                       | A second provider beneath the first. Start Ayme once, at the root.                     |
+| `The provider options must stay fixed while mounted. Remount the provider to change them.`                | A provider prop changed while mounted.                                                 |
+| `Ayme hooks require an ancestor AymeProvider.`                                                            | A hook without a provider above, including in the component that renders the provider. |
+| `The Page Object model and provider must stay fixed while mounted. Remount the component to change them.` | `usePageObject` got a different model.                                                 |
 
 ## API
 

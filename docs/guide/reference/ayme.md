@@ -4,11 +4,10 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 
 ## Entries
 
-| Entry                    | For                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ayme-dev/ayme`         | Your app: the decorators, `createAyme`, `createPage`, `decisionEndpoint`, the errors and their types.                                                                                                                                                                                                                                                                                   |
-| `@ayme-dev/ayme/server`  | Your backend: `createDecisionEndpoint`, the Decision Endpoint handler.                                                                                                                                                                                                                                                                                                                  |
-| `@ayme-dev/ayme/testing` | Your Playwright tests: `recordPublishedTools(context)` or `recordPublishedToolsLate(page)` installs a recording WebMCP driver, and `publishedToolNames`, `publishedToolSchema`, `waitForPublishedTool` and `executePublishedTool` list, await and run the tools your app publishes. Application code never imports it. See [Test your integration](../guides/test-your-integration.md). |
+| Entry                   | For                                                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| `@ayme-dev/ayme`        | Your app: the decorators, `createAyme`, `createPage`, `decisionEndpoint`, the errors and their types. |
+| `@ayme-dev/ayme/server` | Your backend: `createDecisionEndpoint`, the Decision Endpoint handler.                                |
 
 `@ayme-dev/ayme/internal` serves Ayme's own packages and the code the build plugin generates. Applications do not import it, and it may change in any release.
 

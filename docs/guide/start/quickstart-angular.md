@@ -1,6 +1,6 @@
 # Quickstart: Angular
 
-From an Angular app to your first Page Object Tool, called from a Playwright test or a coding agent.
+From an Angular app to a Page Object Tool your coding agent calls.
 
 ## 1. Install and configure
 
@@ -14,31 +14,28 @@ npm install -D @ayme-dev/inspector
 ## 2. Write a Page Object Model
 
 ```ts
-// playwright/pom/CounterPage.ts
+// playwright/pom/ProjectsPage.ts
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 @ayme
-export class CounterPage {
-  readonly incrementButton: Locator;
+export class ProjectsPage {
+  constructor(private readonly page: Page) {}
 
-  constructor(page: Page) {
-    this.incrementButton = page.getByRole("button", {
-      name: "Increment",
-      exact: true,
-    });
-  }
-
-  @ayme.action({ description: "Increment the counter." })
-  async increment() {
-    await this.incrementButton.click();
+  @ayme.action({ description: "Create a project with the given name." })
+  async createProject(name: string) {
+    await this.page.getByRole("button", { name: "New project" }).click();
+    await this.page.getByRole("textbox", { name: "Project name" }).fill(name);
+    await this.page.getByRole("button", { name: "Create" }).click();
   }
 }
 ```
 
+If your Playwright tests already have a Page Object Model for this page, mark that one instead.
+
 ## 3. Start Ayme and use the Page Object
 
-Turn publication on and show the Inspector in development where `ng add` added `provideAyme()`:
+Turn publication on and the Inspector in development where `ng add` added `provideAyme()`:
 
 ```ts
 // src/app/app.config.ts
@@ -52,60 +49,52 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-Use the Page Object in a component:
+Use the Page Object in a component, and render `<app-projects />` in your app:
 
 ```ts
-// src/app/counter.ts
+// src/app/projects.ts
 import { Component, signal } from "@angular/core";
 import { injectPageObject } from "@ayme-dev/angular";
-import { CounterPage } from "../../playwright/pom/CounterPage";
+import { ProjectsPage } from "../../playwright/pom/ProjectsPage";
 
 @Component({
-  selector: "app-counter",
+  selector: "app-projects",
   template: `
-    <p>
-      Count: <output>{{ count() }}</output>
-    </p>
-    <button (click)="count.set(count() + 1)">Increment</button>
-    <button (click)="pom.increment()">Call Page Object</button>
+    <button (click)="pom.createProject('My first project')">Show me how</button>
+    <button (click)="creating.set(true)">New project</button>
+    @if (creating()) {
+      <form (submit)="$event.preventDefault(); create(name.value)">
+        <label>Project name <input #name /></label>
+        <button type="submit">Create</button>
+      </form>
+    }
+    <ul>
+      @for (project of projects(); track project) {
+        <li>{{ project }}</li>
+      }
+    </ul>
   `,
 })
-export class Counter {
-  protected readonly count = signal(0);
-  protected readonly pom = injectPageObject(CounterPage);
+export class Projects {
+  protected readonly pom = injectPageObject(ProjectsPage);
+  protected readonly projects = signal<string[]>([]);
+  protected readonly creating = signal(false);
+
+  protected create(name: string) {
+    this.projects.update((current) => [...current, name]);
+    this.creating.set(false);
+  }
 }
 ```
 
-Render `<app-counter />` in your app and run `ng serve`. The Inspector opens on the page; its Tools lens lists `CounterPage.increment`, and running it increments the counter.
+## 4. Call it
 
-## 4. Call the tool
+Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-From a Playwright test, with a config whose `webServer` starts your dev server:
-
-```ts
-// tests/counter.spec.ts
-import { expect, test } from "@playwright/test";
-import {
-  executePublishedTool,
-  recordPublishedTools,
-  waitForPublishedTool,
-} from "@ayme-dev/ayme/testing";
-
-test("CounterPage.increment is published and runs", async ({
-  context,
-  page,
-}) => {
-  await recordPublishedTools(context);
-  await page.goto("/");
-  await waitForPublishedTool(page, "CounterPage.increment");
-  await executePublishedTool(page, "CounterPage.increment");
-  await expect(page.locator("output")).toHaveText("1");
-});
-```
-
-From a coding agent, connect it to the page through the WebMCP local relay, as [Connect an agent](../guides/connect-an-agent.md) shows, and ask it to call `CounterPage.increment`.
+To call it from your coding agent, connect the agent to the page through the WebMCP local relay, as [Connect an agent](../guides/connect-an-agent.md) shows, and ask it to create a project. It calls `ProjectsPage.createProject`.
 
 ## Next
 
 - [Angular](../frameworks/angular.md): manual setup, the API, server rendering and bundle size.
-- [Page Object Models](../guides/page-object-models.md): children, collections and tool names.
+- [Page Object Models](../guides/page-object-models.md): tool names, inputs and Page Object Children.
+- [Goals with Jev](../guides/goals-with-jev.md): hand the page a goal instead of single calls.

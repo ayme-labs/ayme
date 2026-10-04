@@ -1,6 +1,6 @@
 # Quickstart: React
 
-From a Vite React app to your first Page Object Tool, called from a Playwright test or a coding agent.
+From a Vite React app to a Page Object Tool your coding agent calls.
 
 ## 1. Install
 
@@ -33,49 +33,69 @@ On Next.js, use the Turbopack loader instead, as the [build plugin reference](..
 ## 3. Write a Page Object Model
 
 ```ts
-// src/pom/CounterPage.ts
+// src/pom/ProjectsPage.ts
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 @ayme
-export class CounterPage {
-  readonly incrementButton: Locator;
+export class ProjectsPage {
+  constructor(private readonly page: Page) {}
 
-  constructor(page: Page) {
-    this.incrementButton = page.getByRole("button", {
-      name: "Increment",
-      exact: true,
-    });
-  }
-
-  @ayme.action({ description: "Increment the counter." })
-  async increment() {
-    await this.incrementButton.click();
+  @ayme.action({ description: "Create a project with the given name." })
+  async createProject(name: string) {
+    await this.page.getByRole("button", { name: "New project" }).click();
+    await this.page.getByRole("textbox", { name: "Project name" }).fill(name);
+    await this.page.getByRole("button", { name: "Create" }).click();
   }
 }
 ```
 
+If your Playwright tests already have a Page Object Model for this page, mark that one instead.
+
 ## 4. Start Ayme and use the Page Object
 
-Wrap the app in `AymeProvider`, turn publication on, show the Inspector in development, and use the Page Object in a component:
+Wrap the app in `AymeProvider` with publication on and the Inspector in development, and use the Page Object in a component:
 
 ```tsx
 // src/main.tsx
-import { StrictMode, useState } from "react";
+import { StrictMode, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { AymeProvider, usePageObject } from "@ayme-dev/react";
-import { CounterPage } from "./pom/CounterPage";
+import { ProjectsPage } from "./pom/ProjectsPage";
 
-function Counter() {
-  const [count, setCount] = useState(0);
-  const pom = usePageObject(CounterPage);
+function Projects() {
+  const pom = usePageObject(ProjectsPage);
+  const [projects, setProjects] = useState<string[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+
+  function create(event: FormEvent) {
+    event.preventDefault();
+    setProjects((current) => [...current, name]);
+    setName("");
+    setCreating(false);
+  }
+
   return (
     <>
-      <p>
-        Count: <output>{count}</output>
-      </p>
-      <button onClick={() => setCount((value) => value + 1)}>Increment</button>
-      <button onClick={() => void pom.increment()}>Call Page Object</button>
+      <button onClick={() => void pom.createProject("My first project")}>
+        Show me how
+      </button>
+      <button onClick={() => setCreating(true)}>New project</button>
+      {creating && (
+        <form onSubmit={create}>
+          <label>
+            Project name{" "}
+            <input value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <button type="submit">Create</button>
+        </form>
+      )}
+      <ul>
+        {projects.map((project) => (
+          <li key={project}>{project}</li>
+        ))}
+      </ul>
     </>
   );
 }
@@ -83,42 +103,20 @@ function Counter() {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AymeProvider webMCP={{ enabled: true }} inspector={import.meta.env.DEV}>
-      <Counter />
+      <Projects />
     </AymeProvider>
   </StrictMode>
 );
 ```
 
-Run the dev server. The Inspector opens on the page; its Tools lens lists `CounterPage.increment`, and running it increments the counter.
+## 5. Call it
 
-## 5. Call the tool
+Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-From a Playwright test, with a config whose `webServer` starts your dev server:
-
-```ts
-// tests/counter.spec.ts
-import { expect, test } from "@playwright/test";
-import {
-  executePublishedTool,
-  recordPublishedTools,
-  waitForPublishedTool,
-} from "@ayme-dev/ayme/testing";
-
-test("CounterPage.increment is published and runs", async ({
-  context,
-  page,
-}) => {
-  await recordPublishedTools(context);
-  await page.goto("/");
-  await waitForPublishedTool(page, "CounterPage.increment");
-  await executePublishedTool(page, "CounterPage.increment");
-  await expect(page.locator("output")).toHaveText("1");
-});
-```
-
-From a coding agent, connect it to the page through the WebMCP local relay, as [Connect an agent](../guides/connect-an-agent.md) shows, and ask it to call `CounterPage.increment`.
+To call it from your coding agent, connect the agent to the page through the WebMCP local relay, as [Connect an agent](../guides/connect-an-agent.md) shows, and ask it to create a project. It calls `ProjectsPage.createProject`.
 
 ## Next
 
-- [React](../frameworks/react.md): the provider, hooks and server rendering with Next.js.
-- [Page Object Models](../guides/page-object-models.md): children, collections and tool names.
+- [React](../frameworks/react.md): the provider, root ownership, hooks and Next.js.
+- [Page Object Models](../guides/page-object-models.md): tool names, inputs and Page Object Children.
+- [Goals with Jev](../guides/goals-with-jev.md): hand the page a goal instead of single calls.

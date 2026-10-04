@@ -4,11 +4,11 @@ Everything about Ayme in a Svelte or SvelteKit app: setup, starting Ayme in the 
 
 ## Setup
 
-Install Ayme, the Svelte package and the build plugin:
+Install Ayme, the Svelte package and the build plugin, and the Inspector if you want it:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/svelte
-npm install -D @ayme-dev/unplugin-ayme @playwright/test
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector
 ```
 
 Add the plugin after your Svelte plugin, `sveltekit()` or `svelte()`:
@@ -34,7 +34,7 @@ Enable `experimentalDecorators` in the tsconfig, keeping SvelteKit's generated b
 }
 ```
 
-On SvelteKit 3, which reads its configuration from the `sveltekit()` call, extend `$app/tsconfig` instead and import Page Object Models with their `.ts` extension, such as `#lib/pom/CounterPage.ts`. Keep `svelte.config.js` and its adapter as they are. Mark your Page Object Models as [Page Object Models](../guides/page-object-models.md) shows, in `.ts` modules.
+On SvelteKit 3, which reads its configuration from the `sveltekit()` call, extend `$app/tsconfig` instead and import Page Object Models with their `.ts` extension, such as `#lib/pom/ProjectsPage.ts`. Keep `svelte.config.js` and its adapter as they are. Mark your Page Object Models as [Page Object Models](../guides/page-object-models.md) shows, in `.ts` modules.
 
 ## Start Ayme at the root
 
@@ -71,16 +71,16 @@ Because the session starts while the owner initializes, a descendant's `onMount`
 ```svelte
 <script lang="ts">
   import { useAyme, usePageObject } from "@ayme-dev/svelte";
-  import { CounterPage } from "$lib/pom/CounterPage";
+  import { ProjectsPage } from "$lib/pom/ProjectsPage";
 
-  const pom = usePageObject(CounterPage);
+  const pom = usePageObject(ProjectsPage);
   const {
     webMCP: { publicationStatus, retryPublication },
   } = useAyme();
 </script>
 
 <p>Publication: {$publicationStatus.state}</p>
-<button onclick={() => pom.increment()}>Call Page Object</button>
+<button onclick={() => pom.createProject("Launch plan")}>Show me how</button>
 {#if $publicationStatus.state === "unavailable"}
   <button onclick={retryPublication}>Retry</button>
 {/if}
@@ -93,7 +93,14 @@ Because the session starts while the owner initializes, a descendant's `onMount`
 
 ## Server rendering
 
-`useAyme` and `usePageObject` run during server rendering without starting anything, and SvelteKit's SPA mode needs no change. [Server rendering](../guides/server-rendering.md) says what runs where.
+SvelteKit renders on the server by default, and the setup above needs nothing more: `useAyme` and `usePageObject` run during server rendering without starting anything, and hydration constructs the real Page Objects. The same files work in SvelteKit's SPA mode:
+
+```ts
+// src/routes/+layout.ts
+export const ssr = false;
+```
+
+The [SvelteKit example](../../../apps/example-sveltekit/README.md) runs both, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Limits
 
@@ -101,6 +108,14 @@ Because the session starts while the owner initializes, a descendant's `onMount`
 - Decorators inside `.svelte` scripts are not compiled.
 - The compiler follows SvelteKit's generated tsconfig, so Page Object Models under `src` need nothing more. Models outside `src`, such as a `playwright/` folder, need their own tsconfig with `experimentalDecorators`, passed to the plugin as `ayme({ tsconfigPath })`.
 - The supported Svelte versions are on [Install](../start/install.md#supported-versions). The [SvelteKit example](../../../apps/example-sveltekit/README.md) runs SvelteKit 2.
+
+## Troubleshooting
+
+| Error                                                                                                   | Cause                                          |
+| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `useAyme(options) already has an active owner. Call it once, in the root +layout.svelte or App.svelte.` | A second owner, often in a route-group layout. |
+| `Configure Ayme on the ancestor useAyme(options) owner, not beneath it.`                                | `useAyme(options)` beneath an owner.           |
+| `usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte.`           | No owner above.                                |
 
 ## API
 

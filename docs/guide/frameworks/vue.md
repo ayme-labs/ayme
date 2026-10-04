@@ -4,11 +4,11 @@ Everything about Ayme in a Vue app: setup, the provider and the standalone compo
 
 ## Setup
 
-Install Ayme, the Vue package and the build plugin:
+Install Ayme, the Vue package and the build plugin, and the Inspector if you want it:
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/vue
-npm install -D @ayme-dev/unplugin-ayme @playwright/test
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector
 ```
 
 Add the plugin alongside `@vitejs/plugin-vue`:
@@ -83,12 +83,55 @@ await pom.addItem("Write release notes");
 
 ## Server rendering
 
-The provider and composables run during server rendering without starting anything, and hydration constructs the real Page Objects. [Server rendering](../guides/server-rendering.md) says what runs where, including with Nuxt.
+The provider and composables render on the server without starting anything, and hydration constructs the real Page Objects. With Nuxt, add the Vite plugin and decorators in `nuxt.config.ts`:
+
+```ts
+// nuxt.config.ts
+import { defineNuxtConfig } from "nuxt/config";
+import { ayme } from "@ayme-dev/unplugin-ayme/vite";
+
+export default defineNuxtConfig({
+  build: { transpile: ["@ayme-dev/ayme", "@ayme-dev/vue"] },
+  typescript: {
+    tsConfig: { compilerOptions: { experimentalDecorators: true } },
+  },
+  vite: { plugins: [ayme()] },
+});
+```
+
+Then wrap the app in `AymeProvider` in `app.vue`, as in any Vue app:
+
+```vue
+<!-- app/app.vue -->
+<script setup lang="ts">
+import { AymeProvider } from "@ayme-dev/vue";
+
+const inspector = import.meta.dev;
+</script>
+
+<template>
+  <AymeProvider :webMCP="{ enabled: true }" :inspector="inspector">
+    <NuxtPage />
+  </AymeProvider>
+</template>
+```
+
+The [Nuxt example](../../../apps/example-nuxt/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Limits
 
 - The supported Vue and Nuxt versions are on [Install](../start/install.md#supported-versions).
 - Options are read once per owner.
+
+## Troubleshooting
+
+| Error                                                                                                                       | Cause                                                           |
+| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `AymeProvider cannot be nested beneath another Ayme runtime owner.`                                                         | A second owner beneath the first. Start Ayme once, at the root. |
+| `The provider options must stay fixed while mounted. Remount the provider to change them.`                                  | A provider prop changed while mounted.                          |
+| `Configure pageFactory, ignore, customTools, goalLoop and webMCP on the ancestor AymeProvider or standalone useAyme owner.` | `useAyme(options)` beneath an owner.                            |
+| `useAyme must be called within an active Vue effect scope`, and the same for `usePageObject`                                | Called outside `setup` or an effect scope.                      |
+| `usePageObject requires useAyme() or an AymeProvider in this scope or an ancestor component.`                               | No owner above.                                                 |
 
 ## API
 

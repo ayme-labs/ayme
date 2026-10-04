@@ -28,7 +28,7 @@ One session owns the current document at a time. `start()` returns the function 
 The call that starts Ayme decides whether its tools are published through WebMCP.
 
 - `webMCP.enabled` turns publication on. It is off unless set. Page Objects, page state and the Goal Loop work either way.
-- `webMCP.toolNamePrefix` is prepended to every published tool name: the agent's tools, Browser Tools, Custom Tools and Page Object Tools. It is empty by default. It applies at publication only: `ayme.tools`, the Goal Loop and the Inspector use the unprefixed names, and the testing entry takes the published name, prefix included.
+- `webMCP.toolNamePrefix` is prepended to every published tool name: the agent's tools, Browser Tools, Custom Tools and Page Object Tools. It is empty by default. It applies at publication only: `ayme.tools`, the Goal Loop and the Inspector use the unprefixed names.
 
 ```ts
 createAyme({ webMCP: { enabled: true, toolNamePrefix: "shop_" } });

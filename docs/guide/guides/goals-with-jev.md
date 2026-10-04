@@ -8,39 +8,73 @@ An agent connected to your page can hand Ayme a goal in natural language, such a
 
 ## Mount the Decision Endpoint
 
-The decision model needs your OpenRouter key, which must stay on your server. The Decision Endpoint is the route in your backend that adds the key to each decision model request; Ayme ships its handler:
+The decision model needs your key, from TypeSafe or from OpenRouter, which must stay on your server. The Decision Endpoint is the route in your backend that adds the key to each decision model request; Ayme ships its handler:
 
 ```ts
 import { createDecisionEndpoint } from "@ayme-dev/ayme/server";
 
 const handleDecision = createDecisionEndpoint({
-  apiKey: process.env.YOUR_OPENROUTER_KEY!,
+  provider: "typesafe", // or "openrouter"
+  apiKey: process.env.TYPESAFE_API_KEY!,
   authorize(request) {
-    // Return when allowed, or throw a Response to reject.
+    // Required in production: authenticate the user and check they may use
+    // the Goal Loop. Return to allow; throw a Response, such as a 401, to reject.
   },
 });
 ```
 
-Mount `handleDecision` on a route of your backend. It takes a Fetch API `Request` and returns a `Response`. In a Vite dev server, for local development:
+### Local development, no backend needed
+
+While you develop, mount the handler in your dev server, so you need no backend at all. In Vite, add a small plugin to `vite.config.ts`:
 
 ```ts
-server.middlewares.use("/api/decisions", async (req, res) => {
-  const request = new Request(`http://${req.headers.host}${req.url}`, {
-    method: req.method,
-    headers: req.headers as HeadersInit,
-    body:
-      req.method === "GET" || req.method === "HEAD"
-        ? undefined
-        : await readRequestBody(req),
+// vite.config.ts
+import { createDecisionEndpoint } from "@ayme-dev/ayme/server";
+import { defineConfig, loadEnv, type Plugin } from "vite";
+
+function decisionEndpoint(apiKey: string): Plugin {
+  const handle = createDecisionEndpoint({
+    provider: "typesafe",
+    apiKey,
+    authorize() {},
   });
-  const response = await handleDecision(request);
-  res.statusCode = response.status;
-  response.headers.forEach((value, key) => res.setHeader(key, value));
-  res.end(Buffer.from(await response.arrayBuffer()));
-});
+  return {
+    name: "decision-endpoint",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/api/decisions", async (req, res) => {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) chunks.push(chunk as Buffer);
+        const response = await handle(
+          new Request(`http://${req.headers.host}${req.url}`, {
+            method: req.method,
+            headers: req.headers as HeadersInit,
+            body: req.method === "POST" ? Buffer.concat(chunks) : undefined,
+          })
+        );
+        res.statusCode = response.status;
+        response.headers.forEach((value, key) => res.setHeader(key, value));
+        res.end(Buffer.from(await response.arrayBuffer()));
+      });
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    // ...your framework's plugin and ayme()
+    decisionEndpoint(loadEnv(mode, process.cwd(), "").TYPESAFE_API_KEY),
+  ],
+}));
 ```
 
-Keep the key in a server-only environment variable; in Vite, one without the `VITE_` prefix. Use `authorize` to decide who may spend it. The [Decision Endpoint reference](../reference/decision-endpoint.md) has the full route contract.
+Put `TYPESAFE_API_KEY` in your `.env` file; with an OpenRouter key, set `provider: "openrouter"`. `apply: "serve"` keeps it out of production builds, and `authorize() {}` lets every request through, which is fine on your own machine only. The [Vue example](../../../apps/example-vue/README.md) runs this setup.
+
+### In production
+
+Mount `handleDecision` on a route of your backend. It takes a Fetch API `Request` and returns a `Response`, so it fits any server that speaks the Fetch API, such as a Next.js route handler or a Hono, Express or Nuxt server route. Use `authorize` to decide who may spend your key, such as signed-in users only.
+
+Keep the key in a server-only environment variable; in Vite, one without the `VITE_` prefix. The [Decision Endpoint reference](../reference/decision-endpoint.md) has the full route contract.
 
 ## Turn the loop on
 
@@ -68,6 +102,10 @@ A step first asks which operation moves closest to the goal and whether the goal
 - One question offers at most 255 options. More elements are cut into chunks of at most 254 plus "none of these", asked side by side. When exactly one chunk names an element, the operation runs on it; when several do, one more question offers just those; when none does, the loop ends with `no_fitting_option`.
 - An optional closed-set parameter gets an extra choice that leaves it unset.
 - The model never writes a free value. An operation that needs one, such as `fill`, ends the loop with `needs_value`, so the calling agent supplies it.
+
+## What leaves the page
+
+Each step sends the pruned page state, the goal and the step's question from the browser to your Decision Endpoint, and from there, with your key, to the model. Nothing goes to Ayme, which has no backend.
 
 ## The Handover
 

@@ -11,13 +11,14 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Page } from "@playwright/test";
 
 @ayme
-export class GreetingPage {
+export class ProjectsPage {
   constructor(private readonly page: Page) {}
 
-  @ayme.action({ description: "Greet the visitor." })
-  async greet(name: string) {
-    await this.page.getByRole("textbox", { name: "Name" }).fill(name);
-    await this.page.getByRole("button", { name: "Greet", exact: true }).click();
+  @ayme.action({ description: "Create a project with the given name." })
+  async createProject(name: string) {
+    await this.page.getByRole("button", { name: "New project" }).click();
+    await this.page.getByRole("textbox", { name: "Project name" }).fill(name);
+    await this.page.getByRole("button", { name: "Create" }).click();
   }
 }
 ```
@@ -33,7 +34,7 @@ Put marked models in `.ts` files the application imports, with `experimentalDeco
 
 ## Tool names and inputs
 
-A Page Object Tool is named after its class and method: `GreetingPage.greet`. Registering a Page Object while a different class with the same name is registered throws; rename one of them.
+A Page Object Tool is named after its class and method: `ProjectsPage.createProject`. Registering a Page Object while a different class with the same name is registered throws; rename one of them.
 
 The tool's input schema comes from the method's signature: an object with one property per parameter, required unless the parameter is optional. Parameters can be strings, numbers, booleans, unions of literals of one type (an enum), and object types made of such properties. Arrays, tuples, index signatures and functions are not supported, and the build fails naming the parameter.
 

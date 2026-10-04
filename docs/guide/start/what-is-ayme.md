@@ -1,12 +1,12 @@
 # What is Ayme
 
-Ayme turns the Page Object Models your tests already use into tools that agents and tests call in your running app.
+Ayme turns the Page Object Models from your Playwright tests into tools that coding agents and your own app call in the running page.
 
 ## Your Page Object Models become tools
 
-A Page Object Model describes a page, or a part of one, through the elements and actions it provides. You mark the model and the actions to expose, and the build plugin compiles them into your app. When the app runs, each marked action becomes a Page Object Tool, named after its class and method and typed from the method's signature. The model stays the source of the behavior: the same class keeps working in your Playwright tests.
+A Page Object Model describes a page, or a part of one, through the elements and actions it provides. You mark the model and the actions to expose, and the build plugin compiles them into your app. When the app runs, each marked action becomes a Page Object Tool, named after its class and method and typed from the method's signature. The model stays the source of the behavior, and the same class keeps working in your Playwright tests.
 
-Your Page Object Models run in the browser on [playwright-lite](https://github.com/ayme-labs/playwright-lite), a fork of Playwright that drives the current document from inside the page. You write them against Playwright's own `Page` and `Locator` types.
+Your Page Object Models run in the browser on [playwright-lite](https://github.com/ayme-labs/playwright-lite), an implementation of Playwright's `Page` and `Locator` that drives the current document from inside the page. You write them against Playwright's own `Page` and `Locator` types.
 
 ## What an agent gets
 
@@ -23,13 +23,19 @@ Ayme also describes the page to the agent. The Structural Page State is a model-
 
 The calling agent can hand Ayme a goal in natural language instead of choosing every step itself. The Goal Loop drives the page toward that goal in steps, and each step is one judgement by Jev, TypeSafe's System One model, not by the calling agent's LLM. When it stops, the Goal Loop returns a Handover: why it stopped, what it did and what to do next. Requests to the model go through the Decision Endpoint, a route in your own backend that adds your key to each request.
 
-## Tests call the same tools
+## Your app calls the same actions
 
-Ayme's testing entry records the tools your app publishes, so a Playwright test can list, await and call them the way an agent does.
+Your own code runs the same Page Object Actions, through the Page Object or by tool name with `ayme.tools.run`. An onboarding checklist's "Show me how" button, or an in-app assistant, can then do a task on the page while the user watches.
+
+## Your data stays with you
+
+Ayme runs entirely in your app's page. It has no backend and no account, and it sends nothing to Ayme. Page content leaves the page in two ways, both set up by you: a coding agent you connect reads the page through the relay on your machine, and each Goal Loop step goes from your own Decision Endpoint, with your key, to the model provider you chose.
 
 ## The Inspector
 
-The Inspector is an in-page panel that shows your page's Page Objects, its Structural Page State and its tools, and lets you run those tools by hand.
+The Inspector is an in-page panel that shows your page's Page Objects, its Structural Page State and its tools, and lets you run those tools by hand. The [Inspector guide](../guides/inspector.md) shows how to turn it on.
+
+![The Ayme playground with the Inspector open on its Model lens](../images/inspector-model.png)
 
 ## Frameworks
 

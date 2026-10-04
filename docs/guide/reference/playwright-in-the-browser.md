@@ -4,7 +4,7 @@ Which Playwright calls a Page Object Model can make when Ayme runs it inside you
 
 ## What runs your Page Object Model
 
-Your Page Object Models use Playwright's own `Page` and `Locator` types, and in your app they run on [playwright-lite](https://github.com/ayme-labs/playwright-lite), a fork of Playwright that drives the current document from inside the page. `@ayme-dev/ayme` bundles it at a fixed commit, so you do not install it, and it runs the same way whichever `@playwright/test` version your project has. It does not emulate older Playwright releases.
+Your Page Object Models use Playwright's own `Page` and `Locator` types, and in your app they run on [playwright-lite](https://github.com/ayme-labs/playwright-lite), an implementation of Playwright's `Page` and `Locator` that drives the current document from inside the page. `@ayme-dev/ayme` bundles it at a fixed commit, so you do not install it, and it runs the same way whichever `@playwright/test` version your project has. It does not emulate older Playwright releases.
 
 It controls the current document only. It does not open tabs, create browser contexts, enter iframes, work across several pages, or run browser-process operations. `page.goto` and same-document navigation work; a full-document navigation replaces the document and ends the current run, so it does not return a page for the new document.
 

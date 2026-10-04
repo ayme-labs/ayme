@@ -12,7 +12,7 @@ The options of `@ayme-dev/unplugin-ayme`, which compiles your Page Object Models
 
 The plugin runs on Node.js 20.19 and later 20.x, or 22.12 and later. It compiles Page Object Models with its own TypeScript dependency, whichever TypeScript version your project uses.
 
-It has no publication setting: you turn WebMCP publication on where Ayme starts in your app. Passing the removed `publish` option fails with a pointer to that setting. Turning publication off does not remove Page Object Model code from the bundle.
+It has no publication or Inspector setting: you turn both on where Ayme starts in your app. Turning publication off does not remove Page Object Model code from the bundle.
 
 ## What it compiles
 
@@ -116,3 +116,28 @@ With a config, Ayme loads it through the config loader of your Playwright 1.62.x
 Without `project`, a config with no projects uses its top-level `use` values, a single project is selected automatically, and several projects must agree on all three values. If they do not, set `project` to the name of exactly one project.
 
 Each field resolves on its own. `use` wins over the selected project, then the top-level config, then the adapter default: 1,000 ms for actions and 30,000 ms for navigation. An `undefined` value does not erase an inherited one, and navigation without its own value inherits the action timeout. The timeouts apply to the page the runtime creates, which Page Object Models and Browser Tools act on. A timeout passed to a single call, and later `setDefaultTimeout` or `setDefaultNavigationTimeout` calls, still win, and `0` means no timeout.
+
+## Errors
+
+These fail the build or the dev server.
+
+| Message                                                                                                                                                | When                                                                                                                |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `Unsupported Page Object Tool input type for <Model>.<method>(<parameter>): <type>.`                                                                   | A parameter type the compiler cannot turn into a schema; see [Page Object Models](../guides/page-object-models.md). |
+| `Page Object Action <Model>.<method> needs identifier parameter names.`                                                                                | A destructured parameter.                                                                                           |
+| `Page Object Child "<member>" is ambiguous: <classes>.`                                                                                                | A member's type intersects several Page Object Models.                                                              |
+| `Could not find a tsconfig.json for POM source <file>.`                                                                                                | No tsconfig above the model and no `tsconfigPath`.                                                                  |
+| `Could not read TypeScript project configuration <path>: …`                                                                                            | The tsconfig the compiler found has errors.                                                                         |
+| `Could not read POM source <file>.`                                                                                                                    | The model's file could not be read.                                                                                 |
+| `A Page Object Model needs a class name.`, `Page Object Action in <Model> needs an identifier method name.`                                            | An anonymous class, or an action with a computed name.                                                              |
+| `Could not transpile Ayme POM <file>: …`                                                                                                               | TypeScript could not compile the model.                                                                             |
+| `playwright contains unsupported option(s): …`, `playwright.config must be a non-empty string`, and the other `playwright` option checks (`TypeError`) | A malformed `playwright` option; see [Playwright settings](#playwright-settings).                                   |
+| `playwright.project requires an explicit playwright.config path` (`TypeError`)                                                                         | `project` without `config`.                                                                                         |
+| `Could not load Playwright config "<path>": …`                                                                                                         | The config file is missing or failed to load.                                                                       |
+| `Unsupported Playwright config loader …`                                                                                                               | Loading a config needs Playwright 1.62; the installed loader has another version or shape.                          |
+| `Playwright project "<name>" must exist exactly once in <path>; found <count>.`                                                                        | `project` names no project, or several.                                                                             |
+| `Playwright projects have different supported settings (<fields>); set playwright.project explicitly.`                                                 | Several projects disagree and no `project` was set.                                                                 |
+| `Ayme's Angular plugin has no option(s): …` (`TypeError`)                                                                                              | An unknown Angular plugin option, or the plugin referenced as a plain string.                                       |
+| `Ayme did not compile Page Object Model <file>.`                                                                                                       | The Angular plugin could not compile a model it claimed.                                                            |
+| `tsconfigPath must be a string` (`TypeError`)                                                                                                          | A non-string Angular `tsconfigPath`.                                                                                |
+| `Ayme's Turbopack loader requires loader dependency tracking.`                                                                                         | The bundler running the loader cannot track dependencies.                                                           |
