@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 
 import { createUnplugin, type UnpluginFactory } from "unplugin";
 
-import type { PomCompilerOptions } from "./derivePomManifests";
+import type { AymeOptions, AymePlaywrightOptions } from "./options";
 import { createPomTransform } from "./transformPomModule";
 
 const PLAYWRIGHT_TEST_PACKAGE = "@playwright/test";
@@ -18,21 +18,7 @@ const RESOLVED_INSPECTOR_MODULE_ID = `\0${INSPECTOR_MODULE_ID}`;
 const INSPECTOR_PACKAGE_ID = "@ayme-dev/inspector";
 const SUPPORTED_PLAYWRIGHT_VERSION = /^1\.62\.\d+(?:[-+].*)?$/;
 
-// Keep published declarations usable without the optional Playwright peer.
-// The type contract test checks this subset against Playwright's exported type.
-type SupportedPlaywrightUse = {
-  testIdAttribute?: string;
-  actionTimeout?: number;
-  navigationTimeout?: number;
-};
-
-export type AymePlaywrightOptions = {
-  config?: string;
-  project?: string;
-  use?: SupportedPlaywrightUse;
-};
-
-type SupportedPlaywrightSettings = SupportedPlaywrightUse;
+type SupportedPlaywrightSettings = NonNullable<AymePlaywrightOptions["use"]>;
 
 type PlaywrightConfigLoader = {
   loadConfigFromFile(configFile: string): Promise<unknown>;
@@ -50,11 +36,6 @@ type PlaywrightLoaderModule = {
 type LoadedPlaywrightConfig = {
   fullConfig: unknown;
   rawConfig: unknown;
-};
-
-export type AymeOptions = PomCompilerOptions & {
-  inspector?: boolean;
-  playwright?: AymePlaywrightOptions;
 };
 
 export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
@@ -504,3 +485,4 @@ export const unplugin = /* #__PURE__ */ createUnplugin(unpluginFactory);
 
 export { createPomCompiler, derivePomManifests } from "./derivePomManifests";
 export type { PomCompiler, PomCompilerOptions } from "./derivePomManifests";
+export type { AymeOptions, AymePlaywrightOptions } from "./options";
