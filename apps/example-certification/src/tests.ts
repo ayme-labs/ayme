@@ -4,6 +4,7 @@ import {
   test as base,
   expect,
   type BrowserContext,
+  type Locator,
   type Page,
 } from "@playwright/test";
 import {
@@ -39,6 +40,9 @@ export const test = base.extend<{ failOnPageErrors: void }>({
   ],
 });
 
+const otherPage = (page: Page) =>
+  page.getByText("Other page without Page Objects.");
+
 const count = (page: Page) =>
   page.getByRole("region", { name: "Counter" }).locator("output");
 
@@ -55,6 +59,21 @@ const allCounterTools = [
   "SubCounterPage.setMode",
 ];
 
+/** Ayme's own tools, in publication order: every page that runs Ayme has them. */
+const aymeTools = [
+  "snapshot",
+  "click",
+  "hover",
+  "type",
+  "fill",
+  "check",
+  "uncheck",
+  "select_option",
+  "fill_form",
+  "press_key",
+  "navigate",
+];
+
 /** Opens the counter page with the recording driver and waits for publication. */
 async function openCounter(context: BrowserContext, page: Page) {
   await recordPublishedTools(context);
@@ -68,6 +87,40 @@ async function openCounter(context: BrowserContext, page: Page) {
     { timeout: 15_000 }
   );
   await expect(count(page)).toHaveText("0");
+}
+
+/**
+ * Calls the published tool `name` with `input` as an agent, for a call that
+ * starts a full page load, and resolves with its answer once `loaded` shows
+ * on the new page. Playwright rejects an evaluate still running when the page
+ * navigates, even once the page has the answer, so the old document keeps the
+ * answer where the new one can read it.
+ */
+async function answerAcrossFullLoad(
+  page: Page,
+  name: string,
+  input: object,
+  loaded: Locator
+): Promise<unknown> {
+  await page.evaluate(
+    ({ name, input }) => {
+      const { modelContext } = document as unknown as {
+        modelContext: RecordingDriver;
+      };
+      const tool = modelContext.tools.find((tool) => tool.name === name);
+      void tool!
+        .execute(input)
+        .then((answer) =>
+          sessionStorage.setItem("full-load-answer", JSON.stringify(answer))
+        );
+    },
+    { name, input }
+  );
+  await expect(loaded).toBeVisible();
+  const answer = await page.evaluate(() =>
+    sessionStorage.getItem("full-load-answer")
+  );
+  return JSON.parse(answer ?? "null");
 }
 
 /** The schemas the compiler derives from the counter's Page Object Model. */
@@ -174,18 +227,7 @@ export function counterTests({
       // Every published name without a Page Object's dot.
       expect(
         (await publishedToolNames(page)).filter((name) => !name.includes("."))
-      ).toEqual([
-        "snapshot",
-        "click",
-        "hover",
-        "type",
-        "fill",
-        "check",
-        "uncheck",
-        "select_option",
-        "fill_form",
-        "press_key",
-      ]);
+      ).toEqual(aymeTools);
     });
 
     test("runs the Page Object's action when the app calls it", async ({
@@ -231,34 +273,39 @@ export function counterTests({
       page,
     }) => {
       const loading = new URL("/other", page.url()).href;
-      // Playwright rejects an evaluate still running when the page navigates,
-      // even once the page has the answer, so the old document keeps the
-      // answer where the new one can read it.
-      await page.evaluate(() => {
-        const { modelContext } = document as unknown as {
-          modelContext: RecordingDriver;
-        };
-        const click = modelContext.tools.find((tool) => tool.name === "click");
-        void click!
-          .execute({ target: "role=link[name='Full page load']" })
-          .then((answer) =>
-            sessionStorage.setItem("full-load-answer", JSON.stringify(answer))
-          );
-      });
-      await expect(
-        page.getByText("Other page without Page Objects.")
-      ).toBeVisible();
-      expect(page.url()).toBe(loading);
-      const answer = await page.evaluate(() =>
-        sessionStorage.getItem("full-load-answer")
+      const answer = await answerAcrossFullLoad(
+        page,
+        "click",
+        { target: "role=link[name='Full page load']" },
+        otherPage(page)
       );
-      expect(JSON.parse(answer ?? "null")).toEqual({
+      expect(page.url()).toBe(loading);
+      expect(answer).toEqual({
         page_changed: true,
         settled: false,
         changes: expect.stringContaining('link "Full page load"'),
         loading,
         next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
       });
+    });
+
+    test("answers navigate to the other page before it loads, and the other page publishes its tools", async ({
+      page,
+    }) => {
+      const loading = new URL("/other", page.url()).href;
+      const answer = await answerAcrossFullLoad(
+        page,
+        "navigate",
+        { url: "/other" },
+        otherPage(page)
+      );
+      expect(page.url()).toBe(loading);
+      expect(answer).toMatchObject({
+        settled: false,
+        loading,
+        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
+      });
+      await expect.poll(() => publishedToolNames(page)).toEqual(aymeTools);
     });
 
     test("removes the page's tools on navigation and restores them on return", async ({

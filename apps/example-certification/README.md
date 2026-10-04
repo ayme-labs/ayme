@@ -18,7 +18,7 @@ The environment selects the mode, so an example has one config and its `test:e2e
 From `@ayme-dev/example-certification/tests`, each builder defines plain Playwright tests, one assertion story each:
 
 - `serverRenderTests()`: the server-rendered counter and its initial publication status on repeated requests, or no counter in SPA mode.
-- `counterTests({ CounterPage, navigation? })`: the published schemas, an undecorated subclass, Ayme's own tools, the Page Object called from the app, its tool and Playwright, unmount and remount, the answer to a `click` that starts a full page load, and, with `navigation`, client navigation away and back.
+- `counterTests({ CounterPage, navigation? })`: the published schemas, an undecorated subclass, Ayme's own tools, the Page Object called from the app, its tool and Playwright, unmount and remount, the answer to a `click` that starts a full page load and to `navigate` to another page, that page's published tools, and, with `navigation`, client navigation away and back.
 - `devRebuildTests({ counterModePath })`: on the dev server only, editing `CounterMode.ts` rebuilds the published schema. Call it last: it edits a source file, and the dev server rebuilds after it.
 - `test`: Playwright's `test`, failing on page errors, console errors and hydration warnings. Every builder except the dev rebuild uses it, and so do an example's own tests.
 
@@ -31,7 +31,7 @@ The builders drive this DOM, which each example renders on `/` beneath its runti
 - a `region` named `Counter`, holding the `output` with the count, starting at `0`, and the buttons `Increment` and `Call Page Object`, which increments through the Page Object;
 - a `status` named `Publication`, reading `Publication: <state>`;
 - a button `Unmount counter` that removes the region, which then reads `Mount counter` and mounts a new one;
-- a link `Full page load` to `/other`, a page reading `Other page without Page Objects.`, which the browser loads as a new document, never through the client router;
+- a link `Full page load` to `/other`, a page reading `Other page without Page Objects.`, which the browser loads as a new document, never through the client router; `/other` runs the runtime too, so it publishes Ayme's own tools;
 - with `navigation`, a link to a page without Page Objects and a link back.
 
 The Page Object Models live in the example's own source, because the build plugin compiles them only from there:
