@@ -1,7 +1,9 @@
 import { expect, it } from "vitest";
 
+import { indexMembers } from "../adapter/memberIndex";
+import { collection, page } from "../adapter/pageModel.testSupport";
 import type { Run } from "../adapter/useRuns";
-import { runScope } from "./runScope";
+import { runScope as scopeOf } from "./runScope";
 
 // Unit tests: which runs Runs shows for the selection. The runs are
 // hand-written: one on the page's own action, one on an item of its list.
@@ -25,15 +27,34 @@ const archiveMilk = run(2, {
   toolName: "ListPage.items.archive",
   className: "ListItem",
   objectPath: "ListPage.items[1]",
-  item: { path: "ListPage.items[1]", ref: "e12", label: "Milk" },
+  item: {
+    path: "ListPage.items[1]",
+    name: "[1]",
+    pathBelowPage: "items[1]",
+    ref: "e12",
+    label: "Milk",
+  },
   arguments: { ref: "e12", args: {} },
 });
 const runs = [archiveMilk, addItem];
 const members = new Map([
   ["e1", ["ListPage"]],
-  ["e10", ["ListPage.items"]],
+  ["e10", ["ListPage.items[1]"]],
 ]);
 const memberOf = (ref: string) => members.get(ref) ?? [];
+const index = indexMembers({
+  objects: [
+    page("ListPage", {
+      locators: ["addItemButton", "newItemInput"],
+      children: [collection("items", "ListItem", [{}, {}])],
+    }),
+  ],
+  models: [],
+});
+const runScope = (
+  selection: Parameters<typeof scopeOf>[0],
+  membersOf: typeof memberOf
+) => scopeOf(selection, membersOf, (path) => index.within(path));
 
 function shown(scope: ReturnType<typeof runScope>) {
   return runs.filter(scope.includes).map((shownRun) => shownRun.id);

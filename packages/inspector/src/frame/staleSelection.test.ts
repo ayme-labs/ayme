@@ -1,16 +1,24 @@
 import { expect, it } from "vitest";
 
+import { indexMembers } from "../adapter/memberIndex";
+import { page } from "../adapter/pageModel.testSupport";
 import { buildStructureTree, emptyStructure } from "../adapter/structure";
 import { isStaleSelection } from "./staleSelection";
 
 // Unit tests: which selections the frame sends back to the page. Fixtures
 // are hand-written.
 
+const index = indexMembers({
+  objects: [page("ListPage", { locators: ["newItemInput"] })],
+  models: [],
+});
 const structure = buildStructureTree(
   `- e1 textbox "New item"`,
-  new Map([["e1", ["ListPage.newItemInput"]]])
+  new Map([["e1", ["ListPage.newItemInput"]]]),
+  index
 );
-const read = { structure, pageStateRead: true };
+const within = (path: string) => index.within(path);
+const read = { structure, pageStateRead: true, within };
 
 it("keeps a member that is on the page, even when no lens shows it", () => {
   expect(
@@ -34,7 +42,12 @@ it("keeps a member until the page state has been read", () => {
   expect(
     isStaleSelection(
       { kind: "member", path: "ListPage.newItemInput" },
-      { structure: emptyStructure, pageStateRead: false, hasView: false }
+      {
+        structure: emptyStructure,
+        pageStateRead: false,
+        hasView: false,
+        within,
+      }
     )
   ).toBe(false);
 });

@@ -247,7 +247,7 @@ function RunRow({
           </span>
           {run.item && (
             <span className="rounded-md border px-1.5 font-mono text-[11px] text-muted-foreground">
-              {run.item.path.slice(run.item.path.indexOf(".") + 1)}
+              {run.item.pathBelowPage}
             </span>
           )}
           <span className="flex-1" />

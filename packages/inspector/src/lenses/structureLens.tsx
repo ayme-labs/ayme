@@ -79,8 +79,8 @@ export function structureLens({
               key: `node:${node.ref}`,
               kind: "Ref",
               label: nodeLabel(node),
-              description: node.members.length
-                ? node.members.join(", ")
+              description: node.memberLinks?.length
+                ? node.memberLinks.map(({ member }) => member).join(", ")
                 : "no member",
               selection: { kind: "node", ref: node.ref },
               highlight: { ref: node.ref },
@@ -219,7 +219,7 @@ function NodeRow({
           className="ml-auto max-w-[45%] min-w-0 shrink-0 truncate pl-1.5 text-[10.5px] text-muted-foreground"
           title={node.member}
         >
-          {shortMember(node.member)}
+          {node.tag}
         </span>
       )}
     </button>
@@ -314,15 +314,4 @@ function nodeLabel(node: StructureNode) {
   return [node.ref, node.role, node.name && JSON.stringify(node.name)]
     .filter(Boolean)
     .join(" ");
-}
-
-/**
- * The member tag in the tree, kept short: relative to the page, and a
- * collection item as `[·]`, since the node's name tells items apart. So
- * "ListPage.items[1].archiveButton" reads "[·].archiveButton".
- */
-function shortMember(member: string) {
-  const dot = member.indexOf(".");
-  if (dot < 0) return member;
-  return member.slice(dot).replace(/^\.\w+\[\d+\]/, "[·]");
 }

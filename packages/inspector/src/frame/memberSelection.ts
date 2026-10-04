@@ -2,16 +2,20 @@ import type { StructureTree } from "../adapter/structure";
 
 /**
  * Whether a member still resolves on the page: some node of the structure is
- * that member, one of its items, or inside it. A member selection that no
- * longer resolves is stale, like any other.
+ * that member, one of its items, or inside it.
+ *
+ * @param within the paths of the member and of everything inside it.
  */
-export function memberResolves(structure: StructureTree, path: string) {
-  const inside = (member: string) =>
-    member === path ||
-    member.startsWith(`${path}[`) ||
-    member.startsWith(`${path}.`);
+export function memberResolves(
+  structure: StructureTree,
+  within: ReadonlySet<string>
+) {
   const visit = (nodes: StructureTree["roots"]): boolean =>
-    nodes.some((node) => node.members.some(inside) || visit(node.children));
+    nodes.some(
+      (node) =>
+        node.members.some((member) => within.has(member)) ||
+        visit(node.children)
+    );
   return visit(structure.roots);
 }
 
@@ -27,12 +31,11 @@ export type RunPlace = {
  * Whether a run belongs to a member selection: it ran on the member (or on
  * one of a collection member's items), or one of its steps targeted the
  * member.
+ *
+ * @param within the paths of the member and of everything inside it.
  */
-export function runIsOnMember(member: string, run: RunPlace) {
-  const within = (path: string | undefined) =>
-    path !== undefined &&
-    (path === member ||
-      path.startsWith(`${member}[`) ||
-      path.startsWith(`${member}.`));
-  return within(run.objectPath) || (run.stepMembers ?? []).some(within);
+export function runIsOnMember(within: ReadonlySet<string>, run: RunPlace) {
+  const inside = (path: string | undefined) =>
+    path !== undefined && within.has(path);
+  return inside(run.objectPath) || (run.stepMembers ?? []).some(inside);
 }

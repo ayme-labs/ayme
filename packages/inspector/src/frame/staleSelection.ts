@@ -16,15 +16,18 @@ export function isStaleSelection(
     hasView,
     structure,
     pageStateRead,
+    within,
   }: {
     /** Whether some lens shows a view of the selection. */
     hasView: boolean;
     structure: StructureTree;
     pageStateRead: boolean;
+    /** The paths of what a member path names and of everything inside it. */
+    within: (path: string) => ReadonlySet<string>;
   }
 ) {
   if (selection.kind === "page") return false;
   if (selection.kind === "member")
-    return pageStateRead && !memberResolves(structure, selection.path);
+    return pageStateRead && !memberResolves(structure, within(selection.path));
   return !hasView;
 }

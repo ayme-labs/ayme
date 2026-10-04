@@ -301,6 +301,75 @@ describe("the page model", () => {
     ).toEqual([{ toolName: "TodoPage.archiveDialog.confirm", live: false }]);
   });
 
+  it("gives a collection inside a collection's items the actions that run on its items", () => {
+    // Each to-do item holds a collection of tags with a remove action.
+    const tagged: PomManifest = {
+      ...manifest,
+      components: [
+        ...manifest.components.map((component) =>
+          component.className === "TodoItem"
+            ? {
+                ...component,
+                members: [
+                  ...component.members,
+                  {
+                    memberName: "tags",
+                    kind: "component" as const,
+                    access: "field" as const,
+                    componentClassName: "Tag",
+                    collection: true,
+                  },
+                ],
+              }
+            : component
+        ),
+        {
+          className: "Tag",
+          members: [{ memberName: "root", kind: "locator", access: "field" }],
+          tools: [
+            {
+              methodName: "remove",
+              toolName: "remove",
+              description: "Remove this tag.",
+              inputSchema: noArguments,
+              parameters: [],
+            },
+          ],
+        },
+      ],
+    };
+    const { objects } = buildPageModel(
+      [
+        {
+          ...registration([
+            ...probed,
+            {
+              memberName: "items[1].tags",
+              kind: "component-collection",
+              count: 1,
+            },
+          ]),
+          manifest: tagged,
+          tools: [
+            ...tools,
+            tool("TodoPage.items.tags.remove", "remove", {
+              className: "Tag",
+              path: "items[].tags[]",
+            }),
+          ],
+        },
+      ],
+      live,
+      definitions
+    );
+
+    expect(
+      objectAt(objects, "TodoPage.items[1].tags").actions.map(
+        ({ toolName }) => toolName
+      )
+    ).toEqual(["TodoPage.items.tags.remove"]);
+  });
+
   it("lists every model snapshot describes, with its instances on the page", () => {
     const { models } = buildPageModel([registration()], live, definitions);
 

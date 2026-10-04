@@ -59,6 +59,11 @@ export type RegisteredPomRoot = {
   element: Element;
 };
 
+/**
+ * An element a Page Object member holds, at the member's concrete path, e.g.
+ * "ListPage.items[0].nameButton", or "ListPage.items[0].root" for a
+ * component's root.
+ */
 export type RegisteredPomTarget = {
   path: string;
   element: Element;
@@ -387,6 +392,11 @@ function isRootAvailable(
   return root.available && isRootPresent(root);
 }
 
+/**
+ * Package-internal: every element the registered Page Objects' members hold,
+ * one target per element and concrete member path, in registration and
+ * declaration order. Paths through collections carry their item indices.
+ */
 export async function listRegisteredPomTargets(): Promise<
   RegisteredPomTarget[]
 > {
@@ -850,23 +860,16 @@ async function collectPomTargets(
   prefix: string,
   components: ReadonlyMap<string, PomComponentManifest>,
   targets: RegisteredPomTarget[],
-  componentClasses: ReadonlySet<string> = new Set(),
-  aliasPrefixes: readonly string[] = []
+  componentClasses: ReadonlySet<string> = new Set()
 ): Promise<void> {
   for (const member of members) {
     const memberPath = `${prefix}.${member.memberName}`;
-    const memberAliasPaths = aliasPrefixes.map(
-      (aliasPrefix) => `${aliasPrefix}.${member.memberName}`
-    );
     try {
       const value = await readMember(instance, member);
       if (member.kind === "locator") {
         if (!isLocator(value)) continue;
-        for (const element of locatorElements(value)) {
+        for (const element of locatorElements(value))
           targets.push({ path: memberPath, element });
-          for (const aliasPath of memberAliasPaths)
-            targets.push({ path: aliasPath, element });
-        }
         continue;
       }
 
@@ -878,20 +881,8 @@ async function collectPomTargets(
         const componentPath = member.collection
           ? `${memberPath}[${index}]`
           : memberPath;
-        const componentAliases = [
-          memberPath,
-          ...memberAliasPaths,
-          component.className,
-        ];
-        for (const element of locatorElements(candidate.root)) {
+        for (const element of locatorElements(candidate.root))
           targets.push({ path: `${componentPath}.root`, element });
-          for (const aliasPath of componentAliases) {
-            targets.push({ path: aliasPath, element });
-            if (aliasPath !== component.className)
-              targets.push({ path: `${aliasPath}.root`, element });
-          }
-          targets.push({ path: `${component.className}.root`, element });
-        }
         if (componentClasses.has(component.className)) continue;
         await collectPomTargets(
           candidate,
@@ -902,8 +893,7 @@ async function collectPomTargets(
           componentPath,
           components,
           targets,
-          new Set(componentClasses).add(component.className),
-          componentAliases
+          new Set(componentClasses).add(component.className)
         );
       }
     } catch {

@@ -216,7 +216,7 @@ function pageObject(
     kind: "page",
     className: manifest.className,
     live: root === undefined || isPresent(root),
-    ...objectParts(context, manifest, ""),
+    ...objectParts(context, manifest, "", ""),
   };
 }
 
@@ -227,7 +227,11 @@ type Context = {
   observations: ReadonlyMap<string, PomMemberObservation>;
 };
 
-/** A Page Object's members, actions and children, at a path from its page. */
+/**
+ * A Page Object's members, actions and children, at a path from its page,
+ * e.g. "items[1]", and at its tools' path, which has no item indices, e.g.
+ * "items[]".
+ */
 function objectParts(
   context: Context,
   model: {
@@ -235,6 +239,7 @@ function objectParts(
     tools: readonly ToolManifest[];
   },
   path: string,
+  toolPath: string,
   ancestors: ReadonlySet<string> = new Set()
 ) {
   const members: ObjectMember[] = [];
@@ -244,6 +249,9 @@ function objectParts(
     if (isRootMember(member)) continue;
     const memberPath = path
       ? `${path}.${member.memberName}`
+      : member.memberName;
+    const memberToolPath = toolPath
+      ? `${toolPath}.${member.memberName}`
       : member.memberName;
     if (member.kind === "locator") {
       const observation = context.observations.get(memberPath);
@@ -259,9 +267,9 @@ function objectParts(
 
     const component = context.components.get(member.componentClassName);
     const nested = new Set(ancestors).add(member.componentClassName);
-    const childParts = (childPath: string) =>
+    const childParts = (childPath: string, childToolPath: string) =>
       component && !ancestors.has(member.componentClassName)
-        ? objectParts(context, component, childPath, nested)
+        ? objectParts(context, component, childPath, childToolPath, nested)
         : { members: [], actions: [], children: [] };
 
     if (member.collection) {
@@ -274,7 +282,7 @@ function objectParts(
           kind: "item" as const,
           className: member.componentClassName,
           live: isPresent(context.observations.get(`${itemPath}.root`)),
-          ...childParts(itemPath),
+          ...childParts(itemPath, `${memberToolPath}[]`),
         };
       });
       const collection: UnkeyedNode = {
@@ -294,7 +302,7 @@ function objectParts(
           objectPath: item.path,
         })),
         actions: component
-          ? actionsAt(context, component.tools, `${memberPath}[]`)
+          ? actionsAt(context, component.tools, `${memberToolPath}[]`)
           : [],
         children: items,
       };
@@ -319,7 +327,7 @@ function objectParts(
       kind: "component",
       className: member.componentClassName,
       live,
-      ...childParts(memberPath),
+      ...childParts(memberPath, memberToolPath),
     };
     children.push(child);
     members.push({
@@ -333,7 +341,6 @@ function objectParts(
     });
   }
 
-  const toolPath = path.replace(/\[\d+\]/g, "[]");
   return {
     members,
     actions: actionsAt(context, model.tools, path ? toolPath : undefined),

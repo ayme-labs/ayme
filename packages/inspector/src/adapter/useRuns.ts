@@ -12,6 +12,10 @@ export type ToolArguments = Record<string, JsonValue>;
 export type CollectionItem = {
   /** Its path from the page, e.g. "ListPage.items[1]". */
   path: string;
+  /** Its name in its collection, e.g. "[1]". */
+  name: string;
+  /** Its path below its page, e.g. "items[1]". */
+  pathBelowPage: string;
   /** The Structural Ref of its root, which a collection action takes. */
   ref: string;
   /** What it shows, e.g. "Milk". */

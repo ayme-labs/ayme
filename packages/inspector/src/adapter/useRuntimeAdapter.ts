@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { getPomDefinitionText } from "@ayme-dev/ayme/internal";
 
 import { useLiveTools } from "./liveTools";
+import { indexMembers, type MemberIndex } from "./memberIndex";
 import { buildPageModel } from "./pageModel";
 import {
   pickPromptOf,
@@ -11,11 +12,7 @@ import {
   type RefPickingHandlers,
 } from "./refPicking";
 import { listRunnableTools } from "./runnableTools";
-import {
-  buildStructureTree,
-  emptyStructure,
-  memberOwnersOf,
-} from "./structure";
+import { buildStructureTree, emptyStructure } from "./structure";
 import { useInspector } from "./useInspector";
 import { useRuns } from "./useRuns";
 
@@ -30,7 +27,13 @@ export function useRuntimeAdapter({
   /** Whether the Structure view shows, so the page state is kept live. */
   structureVisible?: boolean;
 } = {}) {
-  const inspector = useInspector({ structureVisible });
+  // Highlights resolve paths as they show, against the latest page model.
+  const latestMembers = useRef<MemberIndex>(undefined);
+  const targetsOf = useCallback(
+    (path: string) => latestMembers.current?.targets(path) ?? new Set<string>(),
+    []
+  );
+  const inspector = useInspector({ structureVisible, targetsOf });
   const { registeredPoms, activeTools, pomDefinitions, refreshPageState } =
     inspector;
   const onRunSettled = useCallback(
@@ -40,7 +43,7 @@ export function useRuntimeAdapter({
   const { runs, invoke, clear } = useRuns({ onSettled: onRunSettled });
   const tools = useLiveTools();
 
-  const { text, membersByRef, controls, ...pageState } = inspector.pageState;
+  const { text, targetsByRef, controls, ...pageState } = inspector.pageState;
   const { elementsByRef, elementToolTargets } = pageState;
   const pageModel = useMemo(
     () =>
@@ -51,13 +54,16 @@ export function useRuntimeAdapter({
       ),
     [registeredPoms, tools.live, pomDefinitions]
   );
-  const owners = useMemo(() => memberOwnersOf(pageModel), [pageModel]);
+  const members = useMemo(() => indexMembers(pageModel), [pageModel]);
+  useEffect(() => {
+    latestMembers.current = members;
+  }, [members]);
   const structure = useMemo(
     () =>
       text === undefined
         ? emptyStructure
-        : buildStructureTree(text, membersByRef, owners, controls),
-    [text, membersByRef, owners, controls]
+        : buildStructureTree(text, targetsByRef, members, controls),
+    [text, targetsByRef, members, controls]
   );
   const elementTools = useMemo(
     () =>
@@ -88,6 +94,11 @@ export function useRuntimeAdapter({
     pageName: registeredPoms[0]?.manifest.className,
     /** The Page Objects on the page and the Page Object Models it knows. */
     pageModel,
+    /**
+     * The page model by member path: what a member or group path stands
+     * for, and the items a collection action runs on.
+     */
+    members,
     /**
      * The tools the panel can run now: `tools.live`, every live tool in
      * publication order, published or not;

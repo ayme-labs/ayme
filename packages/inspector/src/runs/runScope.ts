@@ -16,35 +16,45 @@ export type RunScope = {
  * maps to; on a tool, that tool's runs.
  *
  * @param membersOf the Page Object members a structure node is, by ref.
+ * @param within the paths of the object or member at a path and of
+ *   everything inside it.
  */
 export function runScope(
   selection: Selection,
-  membersOf: (ref: string) => readonly string[]
+  membersOf: (ref: string) => readonly string[],
+  within: (path: string) => ReadonlySet<string>
 ): RunScope {
+  /** Whether a run's object is one of `paths`. */
+  const isOn = (paths: ReadonlySet<string>, objectPath: string | undefined) =>
+    objectPath !== undefined && paths.has(objectPath);
   switch (selection.kind) {
     case "page":
       return { label: "This page", includes: () => true };
-    case "object":
+    case "object": {
+      const paths = within(selection.path);
       return {
         label: "This object",
-        includes: (run) => within(run.objectPath, selection.path),
+        includes: (run) => isOn(paths, run.objectPath),
       };
+    }
     case "model":
       return {
         label: "This object",
         includes: (run) => run.className === selection.className,
       };
-    case "member":
+    case "member": {
+      const paths = within(selection.path);
       return {
         label: "This object",
         includes: (run) =>
-          runIsOnMember(selection.path, {
+          runIsOnMember(paths, {
             objectPath: run.objectPath,
             stepMembers: run.steps.map((step) => step.member),
           }),
       };
+    }
     case "node": {
-      const members = membersOf(selection.ref);
+      const paths = membersOf(selection.ref).map(within);
       return {
         label: "This object",
         includes: (run) =>
@@ -52,7 +62,7 @@ export function runScope(
           // A Custom Tool's `ref`, or a Browser Tool's `target`.
           run.arguments.ref === selection.ref ||
           run.arguments.target === selection.ref ||
-          members.some((member) => within(run.objectPath, member)),
+          paths.some((memberPaths) => isOn(memberPaths, run.objectPath)),
       };
     }
     case "tool":
@@ -61,14 +71,4 @@ export function runScope(
         includes: (run) => run.toolName === selection.name,
       };
   }
-}
-
-/** Whether a path is the object at `path` or inside it. */
-function within(objectPath: string | undefined, path: string) {
-  if (objectPath === undefined) return false;
-  return (
-    objectPath === path ||
-    objectPath.startsWith(`${path}.`) ||
-    objectPath.startsWith(`${path}[`)
-  );
 }

@@ -266,9 +266,7 @@ export function RunCard({
                         onMouseEnter={() => onHover?.({ path: candidate.path })}
                         onMouseLeave={() => onHover?.(undefined)}
                       >
-                        <span className="font-mono">
-                          {/\[\d+\]$/.exec(candidate.path)?.[0]}
-                        </span>{" "}
+                        <span className="font-mono">{candidate.name}</span>{" "}
                         {candidate.label}
                       </button>
                     );
