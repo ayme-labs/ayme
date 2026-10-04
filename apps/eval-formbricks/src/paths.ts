@@ -13,9 +13,8 @@ export const labRoot = path.join(repoRoot, "apps/lab-formbricks");
 /** The Formbricks submodule checkout inside the lab app. */
 export const formbricksRoot = path.join(labRoot, "formbricks");
 
-/** Ignored by git. One folder per run, plus the eval's own Claude Code configuration. */
+/** Ignored by git. One folder per run. */
 export const resultsRoot = path.join(evalRoot, "results");
 export const runsRoot = path.join(resultsRoot, "runs");
-export const claudeConfigDir = path.join(resultsRoot, "claude-config");
 
 export const labUrl = "http://localhost:3000";

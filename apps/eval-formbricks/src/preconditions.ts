@@ -7,23 +7,36 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 
 import { claudeAuthStatus, claudeVersion } from "./claude.ts";
+import { envFileName, tokenVariable } from "./environment.ts";
 
 export type Precondition = {
   name: string;
   check: () => Promise<string | null> | string | null;
 };
 
-export function claudeLoginPrecondition(configDir: string): Precondition {
+/**
+ * The eval's long-lived Claude Code token must be present, and Claude Code must
+ * accept it in the agent's environment. The token itself is never repeated.
+ */
+export function claudeTokenPrecondition(options: {
+  /** The agent's environment, or `undefined` when there is no token to build it from. */
+  environment: NodeJS.ProcessEnv | undefined;
+  /** The directory holding the env file, for the message. */
+  envDirectory: string;
+}): Precondition {
+  const envFile = path.join(options.envDirectory, envFileName);
   return {
-    name: "Claude Code login",
+    name: "Claude Code token",
     check: () => {
+      if (options.environment === undefined)
+        return `No ${tokenVariable}. Create a token with \`claude setup-token\` and put \`${tokenVariable}=<token>\` in ${envFile} (ignored by git), or export the variable.`;
       if (claudeVersion() === null)
         return "Claude Code is not installed: `claude --version` failed.";
-      const status = claudeAuthStatus(configDir);
+      const status = claudeAuthStatus(options.environment);
       if (status === null)
         return "Claude Code did not report its authentication status.";
       if (!status.loggedIn)
-        return `Claude Code is not logged in for the eval's isolated configuration. Run: CLAUDE_CONFIG_DIR=${configDir} claude auth login`;
+        return `Claude Code does not accept the ${tokenVariable} from ${envFile}. Create a new one with \`claude setup-token\`.`;
       return null;
     },
   };

@@ -12,8 +12,8 @@ import type { Arm } from "./arms.ts";
 export type ClaudeInvocation = {
   /** The agent's working root. */
   cwd: string;
-  /** The isolated Claude Code configuration directory. */
-  configDir: string;
+  /** The agent's environment, from `claudeEnvironment`. */
+  environment: NodeJS.ProcessEnv;
   model: string;
   arm: Arm;
   /** The MCP servers file, written by the caller from `arm.mcpServers`. */
@@ -73,17 +73,19 @@ export function claudeArguments(invocation: {
 /**
  * The environment the agent runs in: the parent's, minus every Claude Code and
  * Anthropic variable the launcher may carry (its own settings, base URL, session
- * ids), plus the isolated configuration directory.
+ * ids), plus a fresh configuration directory and the eval's own token. Nothing
+ * else. The token is never written anywhere; it lives only in this environment.
  */
 export function claudeEnvironment(
-  configDir: string,
+  options: { configDir: string; oauthToken: string },
   parent: NodeJS.ProcessEnv = process.env
 ): NodeJS.ProcessEnv {
   const environment: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(parent)) {
     if (!/^(CLAUDE|ANTHROPIC)/.test(key)) environment[key] = value;
   }
-  environment.CLAUDE_CONFIG_DIR = configDir;
+  environment.CLAUDE_CONFIG_DIR = options.configDir;
+  environment.CLAUDE_CODE_OAUTH_TOKEN = options.oauthToken;
   return environment;
 }
 
@@ -99,10 +101,13 @@ export type ClaudeAuthStatus = {
   configDirectory: string | null;
 };
 
-export function claudeAuthStatus(configDir: string): ClaudeAuthStatus | null {
+/** Asks Claude Code whether the environment authenticates; the answer carries no secret. */
+export function claudeAuthStatus(
+  environment: NodeJS.ProcessEnv
+): ClaudeAuthStatus | null {
   const result = spawnSync("claude", ["auth", "status"], {
     encoding: "utf8",
-    env: claudeEnvironment(configDir),
+    env: environment,
   });
   if (result.error) return null;
   try {
@@ -140,7 +145,7 @@ export async function runClaude(
   const startedAt = new Date();
   const child = spawn("claude", claudeArguments(invocation), {
     cwd: invocation.cwd,
-    env: claudeEnvironment(invocation.configDir),
+    env: invocation.environment,
     detached: true,
     stdio: ["pipe", "pipe", "pipe"],
   });

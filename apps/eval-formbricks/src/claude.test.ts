@@ -15,20 +15,26 @@ describe("claudeEnvironment", () => {
     ANTHROPIC_MODEL: "something-else",
     MCP_TIMEOUT: "30000",
   };
-  const environment = claudeEnvironment("/eval/results/claude-config", parent);
+  const environment = claudeEnvironment(
+    { configDir: "/run/claude-config", oauthToken: "token-for-the-eval" },
+    parent
+  );
 
   it("drops every Claude Code and Anthropic variable of the launcher", () => {
     expect(
-      Object.keys(environment).filter((key) => /^(CLAUDE|ANTHROPIC)/.test(key))
-    ).toEqual(["CLAUDE_CONFIG_DIR"]);
+      Object.keys(environment)
+        .filter((key) => /^(CLAUDE|ANTHROPIC)/.test(key))
+        .sort()
+    ).toEqual(["CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR"]);
   });
 
-  it("points at the isolated configuration directory and keeps the rest", () => {
+  it("adds only the fresh configuration directory and the eval's token, keeping the rest", () => {
     expect(environment).toEqual({
       PATH: "/usr/bin",
       HOME: "/Users/someone",
       MCP_TIMEOUT: "30000",
-      CLAUDE_CONFIG_DIR: "/eval/results/claude-config",
+      CLAUDE_CONFIG_DIR: "/run/claude-config",
+      CLAUDE_CODE_OAUTH_TOKEN: "token-for-the-eval",
     });
   });
 

@@ -11,7 +11,8 @@ import path from "node:path";
 
 import { arms, armIds, isArmId, type Arm } from "./arms.ts";
 import { initPageScript, signInAndOpenEditor } from "./browser.ts";
-import { claudeVersion, runClaude } from "./claude.ts";
+import { claudeEnvironment, claudeVersion, runClaude } from "./claude.ts";
+import { readOauthToken } from "./environment.ts";
 import {
   ensureDatabaseBuilt,
   openFormbricksDatabase,
@@ -26,7 +27,7 @@ import {
 } from "./missions.ts";
 import { normalizeRun, summarizeResult } from "./normalize.ts";
 import {
-  claudeConfigDir,
+  evalRoot,
   formbricksRoot,
   labRoot,
   labUrl,
@@ -35,7 +36,7 @@ import {
 } from "./paths.ts";
 import {
   checkPreconditions,
-  claudeLoginPrecondition,
+  claudeTokenPrecondition,
   dockerPrecondition,
   formbricksPreparedPrecondition,
   labAppPrecondition,
@@ -108,24 +109,38 @@ async function writeJson(filePath: string, value: unknown) {
 async function main() {
   const options = parseOptions(process.argv.slice(2));
 
-  log("Checking preconditions.");
-  await checkPreconditions([
-    claudeLoginPrecondition(claudeConfigDir),
-    dockerPrecondition,
-    labAppPrecondition(labUrl),
-    formbricksPreparedPrecondition(formbricksRoot),
-  ]);
-  ensureDatabaseBuilt(formbricksRoot, log);
-
   const runId = `${new Date().toISOString().replace(/[:.]/g, "-")}-${options.arm.id}-${randomBytes(3).toString("hex")}`;
   const runDir = path.join(runsRoot, runId);
   const profileDir = path.join(runDir, "browser-profile");
   const outputDir = path.join(runDir, "playwright-output");
   const initPagePath = path.join(runDir, "init-page.cjs");
   const mcpConfigPath = path.join(runDir, "mcp.json");
+  // A fresh, empty Claude Code configuration for this run alone; deleted with the browser profile.
+  const claudeConfigDir = path.join(runDir, "claude-config");
   await mkdir(profileDir, { recursive: true });
   await mkdir(outputDir, { recursive: true });
   await mkdir(claudeConfigDir, { recursive: true });
+
+  const oauthToken = readOauthToken(evalRoot);
+  const environment =
+    oauthToken === undefined
+      ? undefined
+      : claudeEnvironment({ configDir: claudeConfigDir, oauthToken });
+
+  log("Checking preconditions.");
+  try {
+    await checkPreconditions([
+      claudeTokenPrecondition({ environment, envDirectory: evalRoot }),
+      dockerPrecondition,
+      labAppPrecondition(labUrl),
+      formbricksPreparedPrecondition(formbricksRoot),
+    ]);
+  } catch (error) {
+    await rm(runDir, { recursive: true, force: true });
+    throw error;
+  }
+  if (environment === undefined) throw new Error("unreachable: no environment");
+  ensureDatabaseBuilt(formbricksRoot, log);
   log(`Run ${runId}: ${runDir}`);
 
   const database = await openFormbricksDatabase(formbricksRoot);
@@ -165,7 +180,7 @@ async function main() {
     );
     const run = await runClaude({
       cwd: labRoot,
-      configDir: claudeConfigDir,
+      environment,
       model: options.model,
       arm: options.arm,
       mcpConfigPath,
@@ -224,6 +239,7 @@ async function main() {
   } finally {
     await database.close();
     await rm(profileDir, { recursive: true, force: true });
+    await rm(claudeConfigDir, { recursive: true, force: true });
   }
 }
 
