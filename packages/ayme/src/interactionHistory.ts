@@ -19,13 +19,14 @@ import {
 } from "@ayme-dev/core/structural-observation";
 
 /**
- * Who receives page states and acts: the calling agent (through WebMCP Tools
- * or the `ayme` API) or the Goal Loop's System One model.
+ * Who receives page states and acts: the calling agent (through WebMCP
+ * Tools), the Goal Loop's System One model, or the application (through the
+ * runtime session's `tools.run`).
  *
  * ponytail: `goalLoop` is a reader id of its own until the Goal Loop becomes
  * a plain consumer of the history.
  */
-export type Caller = "agent" | "goalLoop";
+export type Caller = "agent" | "goalLoop" | "app";
 
 /** What core's Structural Action does not carry: the tool call behind it. */
 export type ToolCall = {
@@ -177,16 +178,16 @@ export class InteractionHistory {
   }
 
   /**
-   * The Goal Loop hands control back: the calling agent has now received the
-   * page the model last received. Returns the run's Change Record tree, the
-   * agent's previous cursor reconciled against that page; undefined when the
-   * model received nothing.
+   * The Goal Loop hands control back to `caller`, which ran it: it has now
+   * received the page the model last received. Returns the run's Change
+   * Record tree, the caller's previous cursor reconciled against that page;
+   * undefined when the model received nothing.
    */
-  async handOver(): Promise<StructuralTree | undefined> {
+  async handOver(caller: Caller): Promise<StructuralTree | undefined> {
     const received = this.cursors.get("goalLoop");
     if (!received) return undefined;
-    const before = this.cursor("agent") ?? received;
-    this.cursors.set("agent", received);
+    const before = this.cursor(caller) ?? received;
+    this.cursors.set(caller, received);
     this.cursors.delete("goalLoop");
     return StructuralTree.reconcile(
       await before.tree.resolve(),

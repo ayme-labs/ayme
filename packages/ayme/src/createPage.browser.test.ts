@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
 import { createPage, type AymePage, type CreatePageOptions } from "./index";
 import { registerCompiledPom } from "./registry";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 
 describe("createPage from the public entry in Chromium", () => {
   let stop: (() => void) | undefined;
@@ -36,9 +36,9 @@ describe("createPage from the public entry in Chromium", () => {
       members: [],
       tools: [],
     });
-    const runtime = createRuntimeSession({ pageFactory: () => page });
+    const runtime = createAyme({ pageFactory: () => page });
     stop = runtime.start();
-    const app = runtime.construct(App);
+    const app = runtime.pom.get(App);
     expect(app.page).toBe(page);
 
     const started = performance.now();

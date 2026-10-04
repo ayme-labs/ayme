@@ -2,7 +2,7 @@ import { tick } from "svelte";
 import { VERSION } from "svelte/compiler";
 import { get } from "svelte/store";
 import { afterEach, expect, it, vi } from "vitest";
-import { createRuntimeSession, RuntimeStateError } from "@ayme-dev/ayme";
+import { createAyme, RuntimeStateError } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
   registerCompiledPom,
@@ -15,18 +15,16 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
   const original = await importOriginal<typeof import("@ayme-dev/ayme")>();
   return {
     ...original,
-    createRuntimeSession: vi.fn(
-      (options: Parameters<typeof original.createRuntimeSession>[0]) => {
-        const session = original.createRuntimeSession(options);
-        const start = session.start;
-        session.start = () => {
-          const stop = start();
-          stops.push(stop);
-          return stop;
-        };
-        return session;
-      }
-    ),
+    createAyme: vi.fn((options: Parameters<typeof original.createAyme>[0]) => {
+      const session = original.createAyme(options);
+      const start = session.start;
+      session.start = () => {
+        const stop = start();
+        stops.push(stop);
+        return stop;
+      };
+      return session;
+    }),
   };
 });
 import {
@@ -94,7 +92,7 @@ function destroy(component: { $destroy(): void }) {
 afterEach(() => {
   for (const component of mounted.splice(0).reverse()) component.$destroy();
   for (const stop of stops.splice(0)) stop();
-  vi.mocked(createRuntimeSession).mockClear();
+  vi.mocked(createAyme).mockClear();
   delete (document as { modelContext?: unknown }).modelContext;
 });
 
@@ -108,10 +106,8 @@ it("passes the options to the runtime session unchanged", () => {
   };
   let result: UseAymeResult | undefined;
   mount(Owner, { options, onInit: (value) => (result = value) });
-  expect(createRuntimeSession).toHaveBeenCalledExactlyOnceWith(options);
-  expect(result?.ayme).toBe(
-    vi.mocked(createRuntimeSession).mock.results[0]?.value
-  );
+  expect(createAyme).toHaveBeenCalledExactlyOnceWith(options);
+  expect(result?.ayme).toBe(vi.mocked(createAyme).mock.results[0]?.value);
 });
 
 it("starts the runtime before descendants mount and stops it on destroy", async () => {
@@ -123,17 +119,17 @@ it("starts the runtime before descendants mount and stops it on destroy", async 
     child: Consumer,
     childProps: {
       onMounted: ({ ayme }: UseAymeResult) =>
-        ayme.pursueGoal("Check", { maxSteps: 1 }).catch((error: unknown) => {
-          goalError = error;
-        }),
+        ayme.tools
+          .run("goal", { goal: "Check", maxSteps: 1 })
+          .catch((error: unknown) => {
+            goalError = error;
+          }),
     },
   });
   await vi.waitFor(() => expect(goalError).toBeDefined());
-  // A stopped session would reject with "requires a started runtime session".
+  // A stopped session would reject with "is not started".
   expect(goalError).toEqual(
-    new RuntimeStateError(
-      "pursueGoal requires a goalLoop on the runtime session."
-    )
+    new RuntimeStateError('The tool "goal" is not live.')
   );
   const { ayme } = result!;
   expect(ayme.webMCP.publicationStatus.state).toBe("disabled");
@@ -152,7 +148,7 @@ it("gives descendants the owner's value and starts nothing more", () => {
     },
   });
   expect(descendant).toBe(owner);
-  expect(createRuntimeSession).toHaveBeenCalledOnce();
+  expect(createAyme).toHaveBeenCalledOnce();
 });
 
 it("rejects options beneath an owner", () => {
@@ -247,7 +243,8 @@ it("registers the concrete Page Object while its component lives", async () => {
   owner.$set({ shown: true });
   await tick();
   expect(instances).toHaveLength(2);
-  expect(instances[1]).not.toBe(instances[0]);
+  // The session keeps one instance per class.
+  expect(instances[1]).toBe(instances[0]);
   expect(listRegisteredPoms()).toHaveLength(1);
 
   destroy(owner);
@@ -281,5 +278,5 @@ it("leaves calls outside component initialisation to Svelte's own error", () => 
   expect(() => usePageObject(Model)).toThrow(
     /lifecycle_outside_component|outside component initiali[sz]ation/
   );
-  expect(createRuntimeSession).not.toHaveBeenCalled();
+  expect(createAyme).not.toHaveBeenCalled();
 });

@@ -96,7 +96,7 @@ describe("InteractionHistory cursors", () => {
     expect(history.actions().get(actionId)?.caller).toBe("goalLoop");
     expect(history.cursor("agent")).toBe(agentRead);
 
-    const runChanges = await history.handOver();
+    const runChanges = await history.handOver("agent");
     expect(history.cursor("agent")?.capturedForActionId).toBe(actionId);
     // The run's Change Record starts at the agent's previous cursor.
     expect(

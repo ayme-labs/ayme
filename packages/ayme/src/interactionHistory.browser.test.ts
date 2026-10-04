@@ -15,7 +15,7 @@ import {
   resolvePageStateRefs,
 } from "./pageState";
 import { createPageRegistration, registerCompiledPom } from "./registry";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
 
 type PublishedTool = {
@@ -59,7 +59,7 @@ describe("Interaction history in Chromium", () => {
   });
 
   function startRuntime(goalLoop?: GoalLoopDecisionFunction) {
-    stop = createRuntimeSession({ pageFactory: () => page, goalLoop }).start();
+    stop = createAyme({ pageFactory: () => page, goalLoop }).start();
   }
 
   async function publishTools() {

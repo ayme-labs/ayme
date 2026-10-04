@@ -2,21 +2,20 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
-import type { PublishedToolInfo } from "@ayme-dev/ayme/internal";
+import type { Ayme, ToolInfo as PublishedToolInfo } from "@ayme-dev/ayme";
 import {
-  getPublicationStatus,
-  listLiveTools,
-  subscribeToPublishedTools,
+  getStartedAyme,
+  subscribeToStartedAyme,
 } from "@ayme-dev/ayme/internal";
 
 import { useLiveTools, type LiveTools } from "./liveTools";
+import { asStartedAyme, startedAyme } from "../test-utils/startedAyme";
 
 // Unit tests: the Inspector's one source of the tools the panel can run, over
-// a stubbed runtime read model that the test changes and announces.
+// a stand-in started session that the test changes and announces.
 vi.mock("@ayme-dev/ayme/internal", () => ({
-  getPublicationStatus: vi.fn(),
-  listLiveTools: vi.fn(),
-  subscribeToPublishedTools: vi.fn(),
+  getStartedAyme: vi.fn(),
+  subscribeToStartedAyme: vi.fn(),
 }));
 
 (
@@ -36,12 +35,19 @@ const getPageContext: PublishedToolInfo = {
   group: "agent",
 };
 
-let announce = () => {};
 const unmounts: (() => void)[] = [];
+let session: Ayme | undefined = asStartedAyme();
+let announceSession = () => {};
+vi.mocked(getStartedAyme).mockImplementation(() => session);
+vi.mocked(subscribeToStartedAyme).mockImplementation((listener) => {
+  announceSession = listener;
+  return () => {};
+});
 
 afterEach(() => {
   for (const unmount of unmounts.splice(0)) act(unmount);
-  vi.clearAllMocks();
+  startedAyme.reset();
+  session = asStartedAyme();
 });
 
 /** Renders a component that reads the live tools; returns each read. */
@@ -62,14 +68,11 @@ function publish(
   state: "active" | "failed" = "active",
   message = ""
 ) {
-  vi.mocked(listLiveTools).mockReturnValue(tools);
-  vi.mocked(getPublicationStatus).mockReturnValue({ state, message });
+  startedAyme.tools.list.mockReturnValue(tools);
+  startedAyme.webMCP.publicationStatus = { state, message };
 }
 
-vi.mocked(subscribeToPublishedTools).mockImplementation((subscriber) => {
-  announce = subscriber;
-  return () => {};
-});
+const announce = () => startedAyme.announce();
 
 it("gives the live tools and the publication status", () => {
   publish([getPageContext, addItem]);
@@ -109,4 +112,24 @@ it("hands out the same value until something changes", () => {
   act(() => announce());
 
   expect(new Set(seen).size).toBe(1);
+});
+
+it("gives no tools while no session is started, and follows the next one", () => {
+  session = undefined;
+  publish([getPageContext]);
+  const seen = renderReader();
+  expect(seen.at(-1)).toEqual({
+    live: [],
+    publication: {
+      state: "disposed",
+      message: "No Ayme runtime session has started.",
+    },
+  });
+
+  session = asStartedAyme();
+  act(() => announceSession());
+  publish([getPageContext, addItem]);
+  act(() => announce());
+
+  expect(seen.at(-1)?.live).toEqual([getPageContext, addItem]);
 });

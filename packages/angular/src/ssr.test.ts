@@ -9,20 +9,18 @@ import {
   provideServerRendering,
   renderApplication,
 } from "@angular/platform-server";
-import type { RuntimeSession } from "@ayme-dev/ayme";
+import type { Ayme } from "@ayme-dev/ayme";
 import { describe, expect, it, vi } from "vitest";
 
-const { sessions } = vi.hoisted(() => ({ sessions: [] as RuntimeSession[] }));
+const { sessions } = vi.hoisted(() => ({ sessions: [] as Ayme[] }));
 vi.mock("@ayme-dev/ayme", async (importOriginal) => {
   const original = await importOriginal<typeof import("@ayme-dev/ayme")>();
   return {
     ...original,
-    createRuntimeSession: (
-      ...args: Parameters<typeof original.createRuntimeSession>
-    ) => {
-      const session = original.createRuntimeSession(...args);
+    createAyme: (...args: Parameters<typeof original.createAyme>) => {
+      const session = original.createAyme(...args);
       vi.spyOn(session, "start");
-      vi.spyOn(session, "register");
+      vi.spyOn(session.pom, "register");
       sessions.push(session);
       return session;
     },
@@ -99,7 +97,7 @@ describe.each([false, true])(
       expect(sessions).toHaveLength(2);
       for (const session of sessions) {
         expect(session.start).not.toHaveBeenCalled();
-        expect(session.register).not.toHaveBeenCalled();
+        expect(session.pom.register).not.toHaveBeenCalled();
         expect(session.webMCP.publicationStatus.state).toBe(status);
       }
       expect(pageFactory).not.toHaveBeenCalled();

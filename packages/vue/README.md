@@ -69,7 +69,7 @@ const { ayme, webMCP } = useAyme();
 await pom.addItem("Write release notes");
 ```
 
-`ayme` is the runtime session, so `ayme.pursueGoal(goal, { maxSteps })` runs a goal. `webMCP` is the session's `webMCP` member made reactive and read-only: read `webMCP.publicationStatus.state` in script or templates. States are `disabled`, `waiting`, `active`, `unavailable`, `failed`, and `disposed`. Enabled publication waits up to two seconds for a driver. `webMCP.retryPublication()` retries after unavailability or failure; it shares pending attempts and does not duplicate active publication.
+`ayme` is the [runtime session](https://github.com/ayme-labs/ayme/blob/main/packages/ayme/README.md#runtime-session): `ayme.tools.run(name, input)` runs any live tool, `goal` included, and `ayme.tools.list()` lists them. `webMCP` is the session's `webMCP` member made reactive and read-only: read `webMCP.publicationStatus.state` in script or templates. States are `disabled`, `waiting`, `active`, `unavailable`, `failed`, and `disposed`. Enabled publication waits up to two seconds for a driver. `webMCP.retryPublication()` retries after unavailability or failure; it shares pending attempts and does not duplicate active publication.
 
 ## Standalone root setup
 
@@ -93,7 +93,7 @@ Omit the options to use the default Page. In the browser, the standalone owner s
 
 Ancestor lookup follows the component tree. It does not find a provider rendered below the calling component, or automatically share a runtime between unrelated `effectScope()` calls. Call standalone root setup once in its scope. A second active owner is rejected, including nested providers. Only the creator disposes the runtime. Descendant consumer cleanup removes its own subscriptions and Page Object registrations.
 
-In the browser, `usePageObject(Model)` returns the concrete instance and disposes its registration with its Vue scope. Constructors should only initialize fields and compose locators; invoke actions later. A remount creates a new instance. The hooks require an active Vue effect scope.
+In the browser, `usePageObject(Model)` registers the class with the session (`ayme.pom.register`) and returns its instance, and removes that registration with its Vue scope. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialize fields and compose locators; invoke actions later. The hooks require an active Vue effect scope.
 
 ## Server rendering and Nuxt
 

@@ -63,7 +63,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   // Publication moved to runtime setup (ADR-0030); fail rather than ignore it.
   if ("publish" in options)
     throw new TypeError(
-      "The publish option was removed. Turn WebMCP publication on with webMCP.enabled where Ayme starts: useAyme, AymeProvider or createRuntimeSession."
+      "The publish option was removed. Turn WebMCP publication on with webMCP.enabled where Ayme starts: useAyme, AymeProvider or createAyme."
     );
   if (options.inspector !== undefined && typeof options.inspector !== "boolean")
     throw new TypeError("inspector must be a boolean");

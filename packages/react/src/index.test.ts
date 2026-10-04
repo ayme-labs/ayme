@@ -4,7 +4,7 @@ import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 import * as TestUtils from "react-dom/test-utils";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, expect, expectTypeOf, it, vi } from "vitest";
-import { createRuntimeSession } from "@ayme-dev/ayme";
+import { createAyme } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
   registerCompiledPom,
@@ -14,7 +14,7 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
   const original = await importOriginal<typeof import("@ayme-dev/ayme")>();
   return {
     ...original,
-    createRuntimeSession: vi.fn(original.createRuntimeSession),
+    createAyme: vi.fn(original.createAyme),
   };
 });
 import {
@@ -54,7 +54,7 @@ beforeEach(() => vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true));
 afterEach(async () => {
   for (const root of roots.splice(0)) await act(() => root.unmount());
   Reflect.deleteProperty(document, "modelContext");
-  vi.mocked(createRuntimeSession).mockClear();
+  vi.mocked(createAyme).mockClear();
   vi.unstubAllGlobals();
 });
 
@@ -69,7 +69,7 @@ it("passes the page factory and ignore to the runtime session", async () => {
       )
     )
   );
-  expect(createRuntimeSession).toHaveBeenCalledWith({
+  expect(createAyme).toHaveBeenCalledWith({
     pageFactory,
     ignore,
     customTools: undefined,
@@ -94,7 +94,7 @@ it("passes customTools to the runtime session", async () => {
       )
     )
   );
-  expect(createRuntimeSession).toHaveBeenCalledWith({
+  expect(createAyme).toHaveBeenCalledWith({
     pageFactory,
     ignore: undefined,
     customTools,
@@ -113,7 +113,7 @@ it("passes goalLoop to the runtime session", async () => {
       )
     )
   );
-  expect(createRuntimeSession).toHaveBeenCalledWith({
+  expect(createAyme).toHaveBeenCalledWith({
     pageFactory,
     ignore: undefined,
     customTools: undefined,
@@ -132,7 +132,7 @@ it("passes webMCP to the runtime session and accepts an equal object on rerender
       )
     )
   );
-  expect(createRuntimeSession).toHaveBeenCalledWith({
+  expect(createAyme).toHaveBeenCalledWith({
     pageFactory,
     ignore: undefined,
     customTools: undefined,
@@ -148,7 +148,7 @@ it("passes webMCP to the runtime session and accepts an equal object on rerender
       )
     )
   );
-  expect(createRuntimeSession).toHaveBeenCalledOnce();
+  expect(createAyme).toHaveBeenCalledOnce();
 });
 
 it("server-renders without constructing or registering a Page Object or calling the page factory", () => {
@@ -208,7 +208,7 @@ it("hydrates server output without warnings and then registers the Page Object",
   errors.mockRestore();
 });
 
-it("retains a custom-page instance through StrictMode replay and rerenders, then replaces it on remount", async () => {
+it("keeps one custom-page instance through StrictMode replay, rerenders and remounts", async () => {
   const factory = vi.fn(pageFactory);
   const committed: Model[] = [];
   let current: Model | undefined;
@@ -239,7 +239,8 @@ it("retains a custom-page instance through StrictMode replay and rerenders, then
   await act(() => app.render(render("first")));
   expect(current).toBe(first);
   await act(() => app.render(render("second")));
-  expect(current).not.toBe(first);
+  // The session keeps one instance per class.
+  expect(current).toBe(first);
   expect(listRegisteredPoms()).toHaveLength(1);
   expect(factory).toHaveBeenCalledOnce();
   await act(() => app.unmount());
@@ -313,10 +314,13 @@ it("returns the session as ayme, so a goal runs through it, and its webMCP membe
     root().render(h(AymeProvider, { pageFactory, goalLoop }, h(Child)))
   );
   const ayme = result!.ayme;
-  expect(ayme).toBe(vi.mocked(createRuntimeSession).mock.results[0]?.value);
+  expect(ayme).toBe(vi.mocked(createAyme).mock.results[0]?.value);
   expect(result!.webMCP.publicationStatus).toBe(ayme.webMCP.publicationStatus);
   expect(result!.webMCP.retryPublication).toBe(ayme.webMCP.retryPublication);
-  const handover = await ayme.pursueGoal("Save the form", { maxSteps: 1 });
+  const handover = await ayme.tools.run("goal", {
+    goal: "Save the form",
+    maxSteps: 1,
+  });
   expect(goalLoop).toHaveBeenCalledOnce();
   expect(handover.reason).toBe("decide_failed");
 });

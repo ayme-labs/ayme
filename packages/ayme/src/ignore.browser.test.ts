@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage } from "./browserPage";
-import { ayme } from "./ayme";
+import { ayme } from "./agentCalls.testSupport";
 import {
   createPageRegistration,
   listRegisteredPomTools,
   probeRegisteredPomMembers,
   registerCompiledPom,
 } from "./registry";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 import type { PomManifest, ToolManifest } from "./contracts";
 
 const action = (methodName: string, toolName = methodName): ToolManifest => ({
@@ -52,7 +52,7 @@ describe("ignore predicate in page state capture", () => {
   });
 
   function startRuntime(ignore?: (element: Element) => boolean) {
-    const runtime = createRuntimeSession({ pageFactory: () => page, ignore });
+    const runtime = createAyme({ pageFactory: () => page, ignore });
     stop = runtime.start();
     return runtime;
   }

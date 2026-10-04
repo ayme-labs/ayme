@@ -34,7 +34,7 @@ export type RunnableTool = {
   fillForm?: true;
 };
 
-/** A tool the runtime lists as live: one `runTool` can run now. */
+/** A tool the session lists as live: one its `tools.run` can run now. */
 export type ToolSummary = {
   name: string;
   description: string;

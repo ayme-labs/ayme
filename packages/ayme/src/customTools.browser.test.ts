@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 import { createPage } from "./browserPage";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
 import type { CustomTool } from "./elementTools";
 import { toolFailure } from "./toolFailure.testSupport";
@@ -53,7 +53,7 @@ describe("Custom Tools in Chromium", () => {
 
   /** Start a runtime session with the given Custom Tools and publish its tools. */
   async function publish(customTools?: CustomTool[]) {
-    const runtime = createRuntimeSession({
+    const runtime = createAyme({
       pageFactory: () => page,
       customTools,
     });

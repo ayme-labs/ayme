@@ -3,9 +3,7 @@
 // defaults follow Playwright MCP, without its permission-prompt `element`;
 // descriptions are Ayme's own.
 import type { JsonSchema } from "./contracts";
-import type { ActionResult } from "./actionSequence";
 import { runAction } from "./actionSequence";
-import type { AriaRef } from "./pageState";
 import {
   listCustomTools,
   locatorOf,
@@ -285,14 +283,11 @@ export function isSelectElement(element: Element): boolean {
   return element instanceof HTMLSelectElement && !isDisabled(element);
 }
 
-const click = registerElementTool(clickDefinition, isClickableElement);
-const fill = registerElementTool(fillDefinition, isFillableElement);
-
 const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
-  click,
+  registerElementTool(clickDefinition, isClickableElement),
   registerElementTool(hoverDefinition, isClickableElement),
   registerElementTool(typeDefinition, isFillableElement),
-  fill,
+  registerElementTool(fillDefinition, isFillableElement),
   registerElementTool(checkDefinition, isCheckableElement),
   registerElementTool(uncheckDefinition, isUncheckableElement),
   registerElementTool(selectOptionDefinition, isSelectElement),
@@ -305,16 +300,6 @@ const SINGLE_ELEMENT_TOOLS: readonly RegisteredElementTool[] = [
  */
 export function listElementTools(): readonly RegisteredElementTool[] {
   return [...SINGLE_ELEMENT_TOOLS, ...listCustomTools()];
-}
-
-/** Click a Structural Ref that is already parsed, for `ayme.click`. */
-export function clickRef(ref: AriaRef): Promise<ActionResult> {
-  return click.executeAs({ target: ref }, "agent");
-}
-
-/** Fill a Structural Ref that is already parsed, for `ayme.fill`. */
-export function fillRef(ref: AriaRef, text: string): Promise<ActionResult> {
-  return fill.executeAs({ target: ref, text }, "agent");
 }
 
 // --- Browser Tools that are published only ---
@@ -391,13 +376,14 @@ const fillFormTool: PublishedElementTool = {
   description:
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
   inputSchema: fillFormSchema,
-  execute: async (input: unknown) => {
+  execute: (input: unknown) => fillFormTool.executeAs(input, "agent"),
+  executeAs: async (input, caller) => {
     const fields = validatedToolInput(fillFormSchema, input)
       .fields as FormField[];
     const currentDocument = requireCurrentDocument();
     return runAction(
       currentDocument,
-      "agent",
+      caller,
       { tool: "fill_form", args: input },
       async () => {
         const filled: string[] = [];
@@ -439,13 +425,14 @@ const pressKeyTool: PublishedElementTool = {
   name: "press_key",
   description: "Press a key on the element that has focus.",
   inputSchema: pressKeySchema,
-  execute: async (input: unknown) => {
+  execute: (input: unknown) => pressKeyTool.executeAs(input, "agent"),
+  executeAs: async (input, caller) => {
     const { key } = validatedToolInput(pressKeySchema, input) as {
       key: string;
     };
     return runAction(
       requireCurrentDocument(),
-      "agent",
+      caller,
       { tool: "press_key", args: input },
       () => requireAymeRuntimePage().keyboard.press(key)
     );

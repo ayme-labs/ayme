@@ -10,17 +10,14 @@ import {
   type Signal,
 } from "@angular/core";
 import {
-  createRuntimeSession,
-  type AymeRuntimeOptions,
+  createAyme,
+  type Ayme,
+  type AymeOptions,
   type AymeWebMcpPublicationStatus,
-  type RuntimeSession,
 } from "@ayme-dev/ayme";
 import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
 
-export type { AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
-
-/** The options of `createRuntimeSession`: pageFactory, ignore, customTools, goalLoop and webMCP. */
-export type AymeOptions = AymeRuntimeOptions;
+export type { AymeOptions, AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
 
 export type AymeWebMCP = {
   /** The session's publication status; `disabled` unless `webMCP.enabled`. */
@@ -30,7 +27,7 @@ export type AymeWebMCP = {
 
 export type AymeSetup = {
   /** The runtime session. */
-  readonly ayme: RuntimeSession;
+  readonly ayme: Ayme;
   readonly webMCP: AymeWebMCP;
 };
 
@@ -53,13 +50,11 @@ export function provideAyme(options: AymeOptions = {}): EnvironmentProviders {
           throw new Error(
             "provideAyme cannot be nested beneath another Ayme runtime owner."
           );
-        const ayme = createRuntimeSession(options);
+        const ayme = createAyme(options);
         const destroyRef = inject(DestroyRef);
         const publicationStatus = signal(ayme.webMCP.publicationStatus);
         destroyRef.onDestroy(
-          ayme.webMCP.subscribe(() =>
-            publicationStatus.set(ayme.webMCP.publicationStatus)
-          )
+          ayme.webMCP.subscribe((status) => publicationStatus.set(status))
         );
         if (inBrowser()) destroyRef.onDestroy(ayme.start());
         return {
@@ -94,7 +89,7 @@ export function injectPageObject<T extends object>(
 ): T {
   assertInInjectionContext(injectPageObject);
   const { ayme } = injectAyme();
-  const instance = ayme.construct(model);
-  if (inBrowser()) inject(DestroyRef).onDestroy(ayme.register(model, instance));
-  return instance;
+  if (!inBrowser()) return ayme.pom.get(model);
+  inject(DestroyRef).onDestroy(() => ayme.pom.unregister(model));
+  return ayme.pom.register(model);
 }

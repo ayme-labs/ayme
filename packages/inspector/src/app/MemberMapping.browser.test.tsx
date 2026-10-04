@@ -17,6 +17,7 @@ import { Inspector } from "../testing";
 // registry lists first. The runtime is replaced by fixture targets and a
 // peek of the host page, so the evidence covers the panel and its runtime wiring.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
+  const { asStartedAyme } = await import("../tools/test-utils/startedAyme");
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
@@ -24,11 +25,9 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     peekPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),
-    listLiveTools: vi.fn().mockReturnValue([]),
-    getPublicationStatus: vi.fn().mockReturnValue({ state: "active" }),
-    subscribeToPublishedTools: vi.fn(() => () => {}),
     getPomDefinitionText: vi.fn(() => ""),
-    runTool: vi.fn(),
+    getStartedAyme: asStartedAyme,
+    subscribeToStartedAyme: () => () => {},
     listRegisteredPomTargets: vi.fn(),
     listRegisteredPomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => []),

@@ -28,7 +28,7 @@ import {
   resolvePageStateRefs,
 } from "./pageState";
 import { getPageStateTool } from "./pageContext";
-import { ayme } from "./ayme";
+import { ayme } from "./agentCalls.testSupport";
 
 const ref = AriaRefSchema.parse;
 

@@ -41,7 +41,7 @@ afterEach(() => {
 it("keeps the agent's first action measured from its own start after a peek", async () => {
   document.body.innerHTML = `<main><button>Act</button></main>`;
   const session = await startAgentSession((runtime) => {
-    runtime.register(AppPage, runtime.construct(AppPage));
+    runtime.pom.register(AppPage);
   });
   stop = session.stop;
   await probeRegisteredPomMembers();

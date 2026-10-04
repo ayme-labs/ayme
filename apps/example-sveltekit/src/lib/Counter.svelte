@@ -8,16 +8,10 @@
   let count = $state(0);
   let runtimeAtMount = $state("pending");
 
-  // A stopped runtime rejects pursueGoal before it checks for a goalLoop, so
-  // this error shows the runtime had started before this component mounted.
+  // A stopped runtime lists no tools, so a list shows the runtime had
+  // started before this component mounted.
   onMount(() => {
-    ayme.pursueGoal("Check the runtime", { maxSteps: 1 }).catch(
-      (error: Error) => {
-        runtimeAtMount = error.message.includes("goalLoop")
-          ? "started"
-          : "stopped";
-      }
-    );
+    runtimeAtMount = ayme.tools.list().length > 0 ? "started" : "stopped";
   });
 </script>
 

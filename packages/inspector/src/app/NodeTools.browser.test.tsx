@@ -11,15 +11,25 @@ import { Inspector } from "../testing";
 // not published, and the refs each can take, so the evidence covers the
 // panel and its runtime wiring.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
+  const { asStartedAyme, startedAyme } =
+    await import("../tools/test-utils/startedAyme");
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
   const browserTool = (name: string) => ({
     name,
     description: `${name} by ref.`,
-    inputSchema: { type: "object" },
-    group: "browser",
+    inputSchema: { type: "object" as const },
+    group: "browser" as const,
   });
+  startedAyme.tools.list.mockReturnValue([
+    browserTool("click"),
+    browserTool("fill"),
+  ]);
+  startedAyme.webMCP.publicationStatus = {
+    state: "disabled",
+    message: "WebMCP publication is disabled.",
+  };
   return {
     pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
@@ -43,16 +53,12 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
           ["fill", ["e2"]],
         ])
     ),
-    listLiveTools: vi
-      .fn()
-      .mockReturnValue([browserTool("click"), browserTool("fill")]),
-    getPublicationStatus: vi.fn().mockReturnValue({ state: "disabled" }),
-    subscribeToPublishedTools: vi.fn(() => () => {}),
     getPomDefinitionText: vi.fn(() => ""),
     listRegisteredPomTargets: vi.fn(async () => []),
     listRegisteredPomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => []),
-    runTool: vi.fn(),
+    getStartedAyme: asStartedAyme,
+    subscribeToStartedAyme: () => () => {},
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
 });

@@ -134,10 +134,12 @@ function isWithinIgnoredSubtree(element: Element): boolean {
   return false;
 }
 
+/** Capture the page state `receivedBy` receives; the calling agent by default. */
 export async function getPageStateForDocument(
-  currentDocument: Document
+  currentDocument: Document,
+  receivedBy: Caller = "agent"
 ): Promise<PageState> {
-  return getPageStateSession(currentDocument).getPageState();
+  return getPageStateSession(currentDocument).getPageState(receivedBy);
 }
 
 /**
@@ -274,8 +276,8 @@ class PageStateSession {
     );
   }
 
-  async getPageState(): Promise<PageState> {
-    return this.pageStateFor(await this.capture("agent"));
+  async getPageState(receivedBy: Caller): Promise<PageState> {
+    return this.pageStateFor(await this.capture(receivedBy));
   }
 
   async getPageStateCapture(receivedBy?: Caller): Promise<PageStateCapture> {

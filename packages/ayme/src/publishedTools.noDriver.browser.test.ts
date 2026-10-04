@@ -6,12 +6,12 @@ import {
   listPublishedTools,
   subscribeToPublishedTools,
 } from "./publishedTools";
-import { createRuntimeSession } from "./runtime";
+import { createAyme } from "./runtime";
 
 it("lists nothing, and tells subscribers publication is unavailable, when the page has no WebMCP driver", async () => {
   // Diagnostic: this file runs without native WebMCP or the polyfill.
   expect(document.modelContext).toBeUndefined();
-  const runtime = createRuntimeSession({
+  const runtime = createAyme({
     pageFactory: () => createPage(),
     webMCP: { enabled: true },
   });

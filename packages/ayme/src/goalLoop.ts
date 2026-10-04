@@ -1,8 +1,9 @@
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
-import type { JsonValue } from "./contracts";
+import type { JsonSchema, JsonValue } from "./contracts";
 import type { ActionResult } from "./actionSequence";
 import { renderChangeRecord } from "./changeRecord";
+import type { Caller } from "./interactionHistory";
 import {
   getInteractionHistory,
   getPageStateCaptureForDocument,
@@ -55,14 +56,21 @@ export function configureGoalLoop(
   goalLoopStore.decisionFn = decisionFn;
 }
 
+/** The `goal` tool; `execute` runs it for the calling agent. */
+export type GoalTool = Omit<
+  ModelContextTool<Record<string, unknown>, JsonValue>,
+  "inputSchema" | "execute"
+> & {
+  inputSchema: JsonSchema;
+  execute(input: unknown): Promise<JsonValue>;
+  executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
+};
+
 /**
  * Package-internal: returns the `goal` tool when `goalLoop` is
  * configured, `null` otherwise. Called by `synchronizeWebMcpTools`.
  */
-export function getPursueGoalTool(): ModelContextTool<
-  Record<string, unknown>,
-  JsonValue
-> | null {
+export function getPursueGoalTool(): GoalTool | null {
   const fn = goalLoopStore.decisionFn;
   if (!fn) return null;
   if (typeof document === "undefined") return null;
@@ -211,7 +219,22 @@ async function executeToolAction(
 export function createPursueGoalTool(
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document
-): ModelContextTool<Record<string, unknown>, JsonValue> {
+): GoalTool {
+  /** Runs the loop for `caller`, which the Handover hands control back to. */
+  const executeAs = async (
+    input: unknown,
+    caller: Caller
+  ): Promise<JsonValue> => {
+    const { goal, maxSteps } = readPursueGoalInput(input);
+    const result = await pursueGoal(
+      goal,
+      maxSteps,
+      decisionFn,
+      currentDocument,
+      caller
+    );
+    return result.handover as unknown as JsonValue;
+  };
   return {
     name: "goal",
     description:
@@ -225,16 +248,8 @@ export function createPursueGoalTool(
       required: ["goal", "maxSteps"],
       additionalProperties: false,
     } as const,
-    execute: async (input: unknown): Promise<JsonValue> => {
-      const { goal, maxSteps } = readPursueGoalInput(input);
-      const result = await pursueGoal(
-        goal,
-        maxSteps,
-        decisionFn,
-        currentDocument
-      );
-      return result.handover as unknown as JsonValue;
-    },
+    execute: (input: unknown) => executeAs(input, "agent"),
+    executeAs,
   };
 }
 
@@ -265,14 +280,15 @@ function readPursueGoalInput(input: unknown): {
  * condition is reached.
  *
  * Returns a `GoalLoopRunResult` containing both the public Handover and the
- * internal per-step scores, and records it as the last run. The published
- * tool and the runtime session's `pursueGoal` expose only the Handover.
+ * internal per-step scores, and records it as the last run. The `goal` tool
+ * exposes only the Handover.
  */
 export async function pursueGoal(
   goal: string,
   maxSteps: number,
   decisionFn: GoalLoopDecisionFunction,
-  currentDocument: Document
+  currentDocument: Document,
+  caller: Caller = "agent"
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];
@@ -280,11 +296,11 @@ export async function pursueGoal(
   let consecutiveFailures = 0;
 
   /**
-   * End the run. The Handover moves the agent's cursor to the page the loop
-   * last received and carries what changed since the agent's previous one.
+   * End the run. The Handover moves the caller's cursor to the page the loop
+   * last received and carries what changed since the caller's previous one.
    */
   const done = async (handover: Handover): Promise<GoalLoopRunResult> => {
-    const changes = await interactions.handOver();
+    const changes = await interactions.handOver(caller);
     if (changes?.hasAnyChanges())
       handover.changes = renderChangeRecord(changes);
     const result = { handover, stepScores };

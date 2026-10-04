@@ -18,7 +18,7 @@ vi.mock("./registry", () => ({
   listRegisteredPoms,
 }));
 
-import { ayme } from "./ayme";
+import { ayme } from "./agentCalls.testSupport";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 const ref = AriaRefSchema.parse;

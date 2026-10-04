@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createPage,
-  createRuntimeSession,
+  createAyme,
   type DecisionRequest,
   type DecisionResponse,
   type Handover,
   type CustomTool,
-  type RuntimeSession,
+  type Ayme,
 } from "./index";
 
 type Criteria = Record<string, string>;
@@ -81,7 +81,7 @@ describe("the public runtime session in Chromium", () => {
       },
     };
     const pageFactory = vi.fn(() => createPage({ actionTimeout: 500 }));
-    const session: RuntimeSession = createRuntimeSession({
+    const session: Ayme = createAyme({
       pageFactory,
       customTools: [highlight],
       goalLoop: scriptedGoalLoop(),
@@ -91,10 +91,10 @@ describe("the public runtime session in Chromium", () => {
 
     stop = session.start();
     expect(pageFactory).toHaveBeenCalledOnce();
-    const handover: Handover = await session.pursueGoal(
-      "highlight the save button",
-      { maxSteps: 3 }
-    );
+    const handover: Handover = await session.tools.run("goal", {
+      goal: "highlight the save button",
+      maxSteps: 3,
+    });
 
     expect(handover).toMatchObject({
       reason: "done",

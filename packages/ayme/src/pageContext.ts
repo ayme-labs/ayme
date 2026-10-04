@@ -8,6 +8,7 @@ import {
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { ToolInputError } from "./errors";
+import type { Caller } from "./interactionHistory";
 
 type GetPageContextInput = { names?: string[] };
 
@@ -47,24 +48,39 @@ export const getPageContextTool = {
     required: [],
     additionalProperties: false,
   } as const,
-  execute: async (input: unknown): Promise<JsonValue> => {
-    const context = await getPageContextForDocument(
-      document,
-      ...definitionNamesFrom(input)
-    );
-    const payload: PageContextPayload = {
-      structure: context.structure,
-      pomDefinitions: renderPomDefinitions(context.pomDefinitions),
-    };
-    return JSON.parse(JSON.stringify(payload)) as JsonValue;
-  },
-} satisfies ModelContextTool<GetPageContextInput, JsonValue>;
+  execute: (input: unknown) => snapshotFor(input, "agent"),
+  /** Runs it for the caller given, whose page it is. */
+  executeAs: (input: unknown, caller: Caller) => snapshotFor(input, caller),
+} satisfies ModelContextTool<GetPageContextInput, JsonValue> & {
+  executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
+};
+
+async function snapshotFor(input: unknown, caller: Caller): Promise<JsonValue> {
+  const context = await pageContextFor(
+    document,
+    caller,
+    definitionNamesFrom(input)
+  );
+  const payload: PageContextPayload = {
+    structure: context.structure,
+    pomDefinitions: renderPomDefinitions(context.pomDefinitions),
+  };
+  return JSON.parse(JSON.stringify(payload)) as JsonValue;
+}
 
 export async function getPageContextForDocument(
   currentDocument: Document,
   ...names: readonly string[]
 ): Promise<PageContext> {
-  const pageState = await getPageStateForDocument(currentDocument);
+  return pageContextFor(currentDocument, "agent", names);
+}
+
+async function pageContextFor(
+  currentDocument: Document,
+  caller: Caller,
+  names: readonly string[]
+): Promise<PageContext> {
+  const pageState = await getPageStateForDocument(currentDocument, caller);
   return Object.freeze({
     structure: pageState.text,
     pomDefinitions: getPomDefinitions(...names).definitions,

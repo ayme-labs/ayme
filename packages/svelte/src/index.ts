@@ -1,22 +1,22 @@
 import { getContext, onDestroy, setContext } from "svelte";
 import { readable, type Readable } from "svelte/store";
 import {
-  createRuntimeSession,
+  createAyme,
   RuntimeStateError,
-  type AymeRuntimeOptions,
+  type Ayme,
+  type AymeOptions,
   type AymeWebMcp,
   type AymeWebMcpPublicationStatus,
-  type RuntimeSession,
 } from "@ayme-dev/ayme";
 import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
 
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
-/** The options of `createRuntimeSession`, passed to it unchanged. */
-export type UseAymeOptions = AymeRuntimeOptions;
+/** The options of `createAyme`, passed to it unchanged. */
+export type UseAymeOptions = AymeOptions;
 
 export type UseAymeResult = {
   /** The runtime session. */
-  ayme: RuntimeSession;
+  ayme: Ayme;
   /** The session's `webMCP` member, with the status as a readable store. */
   webMCP: Readonly<{
     publicationStatus: Readable<AymeWebMcpPublicationStatus>;
@@ -27,7 +27,7 @@ export type UseAymeResult = {
 const runtimeKey = Symbol("Ayme runtime");
 
 function ownRuntime(options: UseAymeOptions | undefined): UseAymeResult {
-  const ayme = createRuntimeSession(options);
+  const ayme = createAyme(options);
   // Start during initialisation, not in onMount: a descendant's onMount runs
   // before the owner's and must already see a started runtime.
   if (typeof window !== "undefined") {
@@ -53,7 +53,7 @@ function ownRuntime(options: UseAymeOptions | undefined): UseAymeResult {
       // reads the current status before listening.
       publicationStatus: readable(webMCP.publicationStatus, (set) => {
         set(webMCP.publicationStatus);
-        return webMCP.subscribe(() => set(webMCP.publicationStatus));
+        return webMCP.subscribe(set);
       }),
       retryPublication: webMCP.retryPublication,
     },
@@ -91,8 +91,8 @@ export function usePageObject<T extends object>(
     throw new Error(
       "usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte."
     );
-  const instance = runtime.ayme.construct(model);
-  if (typeof window !== "undefined")
-    onDestroy(runtime.ayme.register(model, instance));
-  return instance;
+  const { ayme } = runtime;
+  if (typeof window === "undefined") return ayme.pom.get(model);
+  onDestroy(() => ayme.pom.unregister(model));
+  return ayme.pom.register(model);
 }

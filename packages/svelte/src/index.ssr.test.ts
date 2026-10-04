@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRuntimeSession } from "@ayme-dev/ayme";
+import { createAyme } from "@ayme-dev/ayme";
 import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
 
 vi.mock("@ayme-dev/ayme", async (importOriginal) => {
   const original = await importOriginal<typeof import("@ayme-dev/ayme")>();
   return {
     ...original,
-    createRuntimeSession: vi.fn(original.createRuntimeSession),
+    createAyme: vi.fn(original.createAyme),
   };
 });
 import {
@@ -38,7 +38,7 @@ describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",
   (enabled) => {
     it("gives each render its own inert session and Page Objects", () => {
-      vi.mocked(createRuntimeSession).mockClear();
+      vi.mocked(createAyme).mockClear();
       const owners: UseAymeResult[] = [];
       const pageObjects: object[] = [];
       // Svelte 5 renders when the result is read.
@@ -55,7 +55,7 @@ describe.each([false, true])(
       render();
       render();
 
-      expect(createRuntimeSession).toHaveBeenCalledTimes(2);
+      expect(createAyme).toHaveBeenCalledTimes(2);
       expect(owners[0]!.ayme === owners[1]!.ayme).toBe(false);
       for (const { ayme } of owners) {
         const state = enabled ? "waiting" : "disabled";

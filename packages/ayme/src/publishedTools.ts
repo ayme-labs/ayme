@@ -1,5 +1,5 @@
-import type { JsonSchema, RegisteredPomTool } from "./contracts";
-import { getPursueGoalTool } from "./goalLoop";
+import type { JsonSchema } from "./contracts";
+import { getPursueGoalTool, type GoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
 import {
   peekPageStateForDocument,
@@ -12,12 +12,23 @@ import {
   listCustomTools,
   type PublishedElementTool,
 } from "./elementTools";
-import { listRegisteredPomTools, subscribeToRegisteredPoms } from "./registry";
+import {
+  listCallerAwarePomTools,
+  subscribeToRegisteredPoms,
+  type CallerAwarePomTool,
+} from "./registry";
 import { RuntimeStateError } from "./errors";
 import type { AymeWebMcpPublicationStatus } from "./runtime";
 
+/**
+ * A live tool: `execute` runs it as the calling agent, `executeAs` for the
+ * caller given.
+ */
 export type PublishedTool =
-  RegisteredPomTool | typeof getPageContextTool | PublishedElementTool;
+  | CallerAwarePomTool
+  | typeof getPageContextTool
+  | PublishedElementTool
+  | GoalTool;
 
 /**
  * Where a published tool comes from: a Page Object (Page Object Tool), Ayme's
@@ -43,7 +54,7 @@ export function resolvePublishedTools(): Map<
   { tool: PublishedTool; group: PublishedToolGroup }
 > {
   const pursueGoal = getPursueGoalTool();
-  const pomTools = listRegisteredPomTools();
+  const pomTools = listCallerAwarePomTools();
   const active = new Map<
     string,
     { tool: PublishedTool; group: PublishedToolGroup }
@@ -72,10 +83,7 @@ export function resolvePublishedTools(): Map<
   for (const tool of pomTools)
     active.set(tool.name, { tool, group: "pageObject" });
   if (pursueGoal)
-    active.set(pursueGoal.name, {
-      tool: pursueGoal as PublishedTool,
-      group: "agent",
-    });
+    active.set(pursueGoal.name, { tool: pursueGoal, group: "agent" });
   return active;
 }
 
@@ -121,15 +129,22 @@ let liveTools: { key: string; tools: readonly PublishedToolInfo[] } = {
  * publication reports it as its failed status.
  */
 export function listLiveTools(): readonly PublishedToolInfo[] {
-  let tools: readonly PublishedToolInfo[];
-  try {
-    tools = toInfo([...resolvePublishedTools().values()]);
-  } catch {
-    tools = Object.freeze([]);
-  }
+  const tools = describeLiveTools();
   const key = JSON.stringify(tools);
   if (key !== liveTools.key) liveTools = { key, tools };
   return liveTools.tools;
+}
+
+/**
+ * Package-internal: every live tool, described, in publication order; empty
+ * when a tool name clash leaves the set unresolvable.
+ */
+export function describeLiveTools(): readonly PublishedToolInfo[] {
+  try {
+    return toInfo([...resolvePublishedTools().values()]);
+  } catch {
+    return Object.freeze([]);
+  }
 }
 
 /**
