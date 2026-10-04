@@ -22,6 +22,7 @@ export const baseURL = `http://127.0.0.1:${port}`;
 export default defineConfig({
   testDir: "./tests",
   testMatch: "vue-webmcp.spec.ts",
+  globalSetup: "./tests/warmDevServer.ts",
   workers: 1,
   reporter: "list",
   snapshotPathTemplate: "{testDir}/{testFilePath}-snapshots/{arg}{ext}",
