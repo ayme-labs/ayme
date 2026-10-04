@@ -1,3 +1,4 @@
+export { findRefNode } from "./domain/refTree";
 export { listRunnableTools } from "./domain/runnableTools";
 export { attachToolModels } from "./domain/toolGroups";
 export { useLiveTools } from "./infrastructure/liveTools";

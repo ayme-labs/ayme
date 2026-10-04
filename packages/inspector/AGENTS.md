@@ -17,6 +17,5 @@ Slices, from the bottom up:
 
 Layers, only where a slice has that kind of code: `domain` (pure rules and types), `application` (interaction policy), `infrastructure` (the runtime, the host document, storage, the trace), `presentation` (UI-logic hooks and containers), `view` (components that take props and callbacks), `test-utils` (test-only data).
 
-- Reach another slice through its `index.ts`.
 - A component with state is three files: `useX` in `presentation/` holds the logic, `XView` in `view/` the markup, and the `X` container wires them.
 - When an import runs against the slice order, move the shared part down into the lower slice.

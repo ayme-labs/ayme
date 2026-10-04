@@ -85,13 +85,14 @@ function readPomDefinitions() {
  * shows, a slow poll catches the rest.
  */
 export function usePageLook({
-  structureVisible = false,
+  structureVisible,
   onLook,
 }: {
-  structureVisible?: boolean;
+  /** Whether the Structure view shows, so the page is looked at often. */
+  structureVisible: boolean;
   /** Called with each new look, before the page state it gives shows. */
-  onLook?: (look: Look) => void;
-} = {}) {
+  onLook: (look: Look) => void;
+}) {
   const [registry, setRegistry] = useState(readRegistry);
   const [pageState, setPageState] = useState<PageStateView>({
     targetsByRef: new Map(),
@@ -112,7 +113,7 @@ export function usePageLook({
     try {
       const next = await lookAtPage();
       if (!mounted.current) return;
-      lookListener.current?.(next);
+      lookListener.current(next);
       setPageState({
         projected: next.peek.projected,
         targetsByRef: next.targetsByRef,

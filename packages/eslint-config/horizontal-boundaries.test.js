@@ -22,7 +22,6 @@ const packageRoot = realpathSync(
 );
 after(() => rmSync(packageRoot, { recursive: true, force: true }));
 const files = {
-  "tsconfig.json": JSON.stringify({ include: ["src"] }),
   "src/runs/domain/run.ts": "export const run = 1;\n",
   "src/runs/application/startRun.ts": "export const startRun = 1;\n",
   "src/runs/infrastructure/useRuns.ts": "export const useRuns = 1;\n",

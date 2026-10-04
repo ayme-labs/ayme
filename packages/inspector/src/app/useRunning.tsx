@@ -6,7 +6,7 @@ import { type CollectionItem, type RunFocus, Runs, runScope } from "../runs";
 import type { InspectorRuntime } from "./useInspectorRuntime";
 import { RunsRegion } from "../panel";
 import type { RenderRun, Selection } from "../navigation";
-import { RunCard } from "../tools";
+import { findRefNode, RunCard } from "../tools";
 
 /**
  * Running from the panel: the run slot's run card, and Runs scoped to the
@@ -22,7 +22,7 @@ export function useRunning(runtime: InspectorRuntime, selection: Selection) {
   const roots = pageState.structure.roots;
   const scope = runScope(
     selection,
-    (ref) => findNode(roots, ref)?.members ?? [],
+    (ref) => findRefNode(roots, ref)?.members ?? [],
     (path) => members.within(path, { models: false })
   );
   const shownRuns = allRuns ? runs : runs.filter(scope.includes);
@@ -81,17 +81,6 @@ export function useRunning(runtime: InspectorRuntime, selection: Selection) {
   );
 
   return { renderRun, runsRegion };
-}
-
-function findNode(
-  nodes: readonly StructureNode[],
-  ref: string
-): StructureNode | undefined {
-  for (const node of nodes) {
-    if (node.ref === ref) return node;
-    const found = findNode(node.children, ref);
-    if (found) return found;
-  }
 }
 
 /**

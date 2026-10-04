@@ -10,14 +10,14 @@ import type { HighlightTarget } from "../domain/highlight";
  * handed to `onLook`. Unmounting removes them.
  */
 export function useHighlights({
-  targetsOf = noTargets,
+  targetsOf,
 }: {
   /**
    * The registry target paths a highlight's path stands for, read as each
    * highlight shows, e.g. the roots of a collection's items.
    */
-  targetsOf?: (path: string) => ReadonlySet<string>;
-} = {}) {
+  targetsOf: (path: string) => ReadonlySet<string>;
+}) {
   const latest = useRef<Look>(undefined);
   const layers = useRef<Record<HighlightLayer, LayerState>>({
     hover: { elements: [] },
@@ -79,8 +79,6 @@ export function useHighlights({
 
   return { onLook, hover, pin };
 }
-
-const noTargets = () => new Set<string>();
 
 /**
  * A target's elements in a look: a ref's element, or the elements of the
