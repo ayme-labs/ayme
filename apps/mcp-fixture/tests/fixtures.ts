@@ -9,7 +9,7 @@ import { test as base, expect } from "@playwright/test";
 export { expect };
 
 /** The server's own tools; every other MCP tool is a page tool. */
-export const SERVER_TOOLS = ["ayme_connect"];
+export const SERVER_TOOLS = ["ayme_connect", "ayme_list_tools", "ayme_call"];
 
 /** The `ayme` command of the built `@ayme-dev/mcp`, as a consumer gets it. */
 const mcpPackage = join(

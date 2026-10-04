@@ -35,3 +35,10 @@ export function pageToolResult(outcome: ToolCallOutcome): ToolResult {
   if (typeof result === "string") return textResult(result);
   return textResult(JSON.stringify(result));
 }
+
+/** The answer of a page tool or fallback tool while no page is paired. */
+export function notConnectedResult(): ToolResult {
+  return errorResult(
+    "No page is connected. Call ayme_connect with the app's URL and open the link it returns, in your browser tool or in the developer's browser."
+  );
+}

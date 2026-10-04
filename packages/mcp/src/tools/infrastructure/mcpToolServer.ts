@@ -6,12 +6,18 @@ import {
 
 import type { AgentConnection } from "../../connection";
 import type { ServerTool } from "../application/serverTool";
-import { errorResult, pageToolResult } from "../domain/toolResult";
+import {
+  errorResult,
+  notConnectedResult,
+  pageToolResult,
+} from "../domain/toolResult";
 
 /**
  * The MCP server an agent talks to: the server's own tools, then the paired
  * page's tools under the names the page gives them. A page tool that shares
- * a server tool's name is left out.
+ * a server tool's name is left out. While no page is paired, any other name
+ * answers that no page is connected, since it may be a page tool the agent
+ * listed before.
  */
 export function createMcpToolServer({
   name,
@@ -53,6 +59,7 @@ export function createMcpToolServer({
     if (serverTool) return serverTool.call(input);
     if (pageTools().some((tool) => tool.name === name))
       return pageToolResult(await connection.call(name, input));
+    if (!connection.paired) return notConnectedResult();
     return errorResult(`Unknown tool "${name}".`);
   });
 

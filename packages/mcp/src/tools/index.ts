@@ -1,4 +1,6 @@
+export { callTool } from "./application/callTool";
 export { connectTool } from "./application/connectTool";
+export { listToolsTool } from "./application/listToolsTool";
 export type {
   ServerTool,
   ServerToolContext,
