@@ -1,19 +1,24 @@
 import { Readable } from "node:stream";
 
 import type { Plugin } from "vite";
-import { createDecisionEndpoint } from "@ayme-dev/ayme/server";
+import {
+  createDecisionEndpoint,
+  type CreateDecisionEndpointOptions,
+} from "@ayme-dev/ayme/server";
 
 import { decisionEndpointPath } from "./decisionEndpointPath";
 
-export function decisionEndpointDev(apiKey?: string): Plugin {
+export function decisionEndpointDev(
+  upstream?: Pick<CreateDecisionEndpointOptions, "provider" | "apiKey">
+): Plugin {
   return {
     name: "example-vue-decision-endpoint-dev",
     apply: "serve",
     configureServer(server) {
-      if (!apiKey) return;
+      if (!upstream) return;
 
       const handler = createDecisionEndpoint({
-        apiKey,
+        ...upstream,
         authorize() {},
       });
 

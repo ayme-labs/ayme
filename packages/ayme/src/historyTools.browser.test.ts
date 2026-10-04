@@ -154,7 +154,7 @@ function recordingOperations(steps: string[]): GoalLoopDecisionFunction {
     };
     offered = Object.keys(criteria);
     return {
-      model: request.model,
+      model: "typesafe/jev-1.13",
       answers: {
         operation: {
           type: "choice",

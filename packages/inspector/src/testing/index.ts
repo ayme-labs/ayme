@@ -19,6 +19,7 @@ export {
 } from "./pom/inspectorSelectors";
 export { FillForm } from "./pom/FillForm";
 export { KeyField } from "./pom/KeyField";
+export { LocatorGroups } from "./pom/LocatorGroups";
 export { Navigator, type LensName } from "./pom/Navigator";
 export {
   ModelDetailView,

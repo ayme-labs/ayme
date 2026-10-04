@@ -36,6 +36,7 @@ const BROWSER_TOOLS = [
   "uncheck",
   "select_option",
   "press_key",
+  "generate_locator",
   "navigate",
   "navigate_back",
   "navigate_forward",

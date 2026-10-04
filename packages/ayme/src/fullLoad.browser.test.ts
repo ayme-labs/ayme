@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
+import type { DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { registerCompiledPom } from "./registry";
@@ -205,8 +205,8 @@ describe("a tool call that starts a full page load, in Chromium", () => {
 /** A decision function that runs the listed operations, one per step. */
 function operations(steps: string[]): GoalLoopDecisionFunction {
   let step = 0;
-  return async (request: DecisionRequest): Promise<DecisionResponse> => ({
-    model: request.model,
+  return async (): Promise<DecisionResponse> => ({
+    model: "typesafe/jev-1.13",
     answers: {
       operation: {
         type: "choice",

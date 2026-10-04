@@ -146,6 +146,7 @@ const EXPECTED_GROUPS: Record<string, PublishedToolGroup> = {
   select_option: "browser",
   fill_form: "browser",
   press_key: "browser",
+  generate_locator: "browser",
   navigate: "browser",
   navigate_back: "browser",
   navigate_forward: "browser",
@@ -197,7 +198,7 @@ async function noFittingOperation(
     request.questions as Record<string, { criteria?: Record<string, string> }>
   ).operation!.criteria!;
   return {
-    model: request.model,
+    model: "typesafe/jev-1.13",
     answers: {
       operation: {
         type: "choice",

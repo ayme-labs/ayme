@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
+import type { DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { createAyme, type Ayme } from "./runtime";
@@ -263,8 +263,8 @@ describe("the navigate tool with a router function, in Chromium", () => {
 
 /** A decision function that chooses `operation` at every step. */
 function choosing(operation: string): GoalLoopDecisionFunction {
-  return async (request: DecisionRequest): Promise<DecisionResponse> => ({
-    model: request.model,
+  return async (): Promise<DecisionResponse> => ({
+    model: "typesafe/jev-1.13",
     answers: {
       operation: { type: "choice", choice: operation, confidence: 1 },
       goal_met: { type: "noul", noul: 0.1 },

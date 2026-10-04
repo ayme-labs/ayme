@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 import type { PomManifest, ToolManifest } from "./contracts";
-import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
+import type { DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
 import {
   configureGoalLoop,
@@ -210,11 +210,11 @@ describe("Handover changes in Chromium", () => {
  */
 function operations(steps: string[]): GoalLoopDecisionFunction {
   let step = 0;
-  return async (request: DecisionRequest): Promise<DecisionResponse> => {
+  return async (): Promise<DecisionResponse> => {
     const operation = steps[Math.min(step++, steps.length - 1)]!;
     const done = operation === "done";
     return {
-      model: request.model,
+      model: "typesafe/jev-1.13",
       answers: {
         operation: {
           type: "choice",

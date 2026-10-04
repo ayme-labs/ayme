@@ -27,8 +27,6 @@ import {
  * offered. The loop itself owns only the sequence of steps.
  */
 
-const DECISION_MODEL = "typesafe/jev-1.13";
-
 /** The decisions API answers a choice over at most this many options. Every
  *  question is kept within it, counted as it is sent. */
 const MAX_CHOICE_OPTIONS = 255;
@@ -623,7 +621,7 @@ export function buildOperationRequest(
     },
   };
 
-  return { model: DECISION_MODEL, state, questions };
+  return { state, questions };
 }
 
 /**
@@ -647,7 +645,7 @@ export function buildArgumentRequest(
       criteria,
     };
   }
-  return { model: DECISION_MODEL, state, questions };
+  return { state, questions };
 }
 
 // --- Answers ---

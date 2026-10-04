@@ -16,6 +16,7 @@ import {
   type RegisteredElementTool,
   type ResolvedTarget,
 } from "./elementTools";
+import { generateLocatorTool } from "./generateLocator";
 import {
   navigateBackTool,
   navigateForwardTool,
@@ -449,6 +450,7 @@ const pressKeyTool: PublishedElementTool = {
 const PUBLISHED_ONLY_BROWSER_TOOLS: readonly PublishedElementTool[] = [
   fillFormTool,
   pressKeyTool,
+  generateLocatorTool,
 ];
 
 // --- Browser Tools that move the page ---

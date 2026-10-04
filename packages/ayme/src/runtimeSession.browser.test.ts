@@ -39,7 +39,7 @@ function scriptedGoalLoop() {
     if (questions.operation?.criteria) {
       const first = step++ === 0;
       return {
-        model: request.model,
+        model: "typesafe/jev-1.13",
         answers: {
           operation: choose(
             questions.operation.criteria,
@@ -50,7 +50,7 @@ function scriptedGoalLoop() {
       };
     }
     return {
-      model: request.model,
+      model: "typesafe/jev-1.13",
       answers: {
         ref: choose(questions.ref!.criteria!, (_key, description) =>
           description.includes("Save changes")
