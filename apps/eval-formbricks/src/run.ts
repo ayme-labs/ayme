@@ -9,7 +9,14 @@ import { randomBytes } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { arms, armIds, isArmId, type Arm } from "./arms.ts";
+import {
+  arms,
+  armIds,
+  isArmId,
+  type Arm,
+  type ArmContext,
+  type ArmSetup,
+} from "./arms.ts";
 import { initPageScript, signInAndOpenEditor } from "./browser.ts";
 import { claudeEnvironment, claudeVersion, runClaude } from "./claude.ts";
 import { readOauthToken } from "./environment.ts";
@@ -144,6 +151,7 @@ async function main() {
   log(`Run ${runId}: ${runDir}`);
 
   const database = await openFormbricksDatabase(formbricksRoot);
+  let armSetup: ArmSetup | undefined;
   try {
     log("Seeding the mission.");
     const mission = await seedMission(database, options.mission, runId, labUrl);
@@ -164,26 +172,36 @@ async function main() {
       log,
     });
 
+    const armContext: ArmContext = {
+      runId,
+      runDir,
+      profileDir,
+      outputDir,
+      initPagePath,
+      configDir: claudeConfigDir,
+      startUrl: mission.startUrl,
+      cwd: labRoot,
+      log,
+    };
     const prompt = createPrompt(mission, options.arm, labUrl);
     await writeFile(path.join(runDir, "prompt.txt"), prompt);
     await writeFile(initPagePath, initPageScript(mission.startUrl));
     await writeJson(mcpConfigPath, {
-      mcpServers: options.arm.mcpServers({
-        profileDir,
-        outputDir,
-        initPagePath,
-      }),
+      mcpServers: options.arm.mcpServers(armContext),
     });
+    // Whatever the arm's interface needs outside the measured window.
+    armSetup = await options.arm.setup?.(armContext);
 
     log(
       `Starting the agent (${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`
     );
     const run = await runClaude({
       cwd: labRoot,
-      environment,
+      environment: { ...environment, ...armSetup?.environment },
       model: options.model,
       arm: options.arm,
       mcpConfigPath,
+      readableDirectories: armSetup?.readableDirectories,
       prompt,
       timeoutMs: options.timeoutSeconds * 1000,
       transcriptPath: path.join(runDir, "transcript.jsonl"),
@@ -237,6 +255,7 @@ async function main() {
       );
     process.exitCode = result.pass ? 0 : 1;
   } finally {
+    await armSetup?.dispose();
     await database.close();
     await rm(profileDir, { recursive: true, force: true });
     await rm(claudeConfigDir, { recursive: true, force: true });

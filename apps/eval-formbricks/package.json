@@ -12,6 +12,7 @@
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
+    "@playwright/cli": "0.1.22",
     "@playwright/mcp": "0.0.83",
     "@types/node": "^24.0.0",
     "eslint": "^10.9.1",
