@@ -1,45 +1,17 @@
 # @ayme-dev/ayme
 
-Expose selected Page Object Actions as Page Object Tools. Ordinary TypeScript POMs
-remain the source of the behavior; no Ayme base class is required.
+Ayme turns the Page Object Models your tests already use into tools that agents and tests call in your running app. Mark a model and its actions, and each action becomes a Page Object Tool, published through WebMCP and runnable from your own code and tests.
 
 ## Install
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/vue # or @ayme-dev/react
-npm install -D @ayme-dev/unplugin-ayme @playwright/test@~1.62.1
+npm install @ayme-dev/ayme @ayme-dev/vue # or react, svelte, angular
+npm install -D @ayme-dev/unplugin-ayme @playwright/test
 ```
 
-Use your project's package manager. Configure the
-[compiler integration](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md),
-then follow your framework integration's README:
-[Vue](https://github.com/ayme-labs/ayme/blob/main/packages/vue/README.md) or
-[React](https://github.com/ayme-labs/ayme/blob/main/packages/react/README.md).
-Internal adapter packages are bundled; consumers do not install them separately.
+The [build plugin](https://github.com/ayme-labs/ayme/blob/main/packages/unplugin-ayme/README.md) compiles your Page Object Models into the browser build. On Angular, `ng add @ayme-dev/angular` installs and sets up all of it.
 
-## Entries
-
-- `@ayme-dev/ayme` is what a consumer uses: the `@ayme` and `@ayme.action`
-  decorators, the runtime session (`createAyme`), `createPage`,
-  `decisionEndpoint`, and their types.
-- `@ayme-dev/ayme/server` is the Decision Endpoint handler,
-  `createDecisionEndpoint`, for your backend.
-- `@ayme-dev/ayme/internal` serves ayme's own packages only: types the
-  framework packages share, the code `unplugin-ayme` generates into your
-  bundle (`registerCompiledPom`), and the inspector. Applications do not import it, and what it exports may change
-  without notice.
-- `@ayme-dev/ayme/testing` is for Playwright tests of an integration: a
-  recording WebMCP driver that `recordPublishedTools` installs into a browser
-  context (or `recordPublishedToolsLate` into an already loaded page, to test
-  a driver that appears late), with queries to list, inspect, await and execute the tools the
-  runtime publishes. It uses Playwright's types and receives your test's
-  `Page` and `BrowserContext`. Only tests may import it; application code
-  never does.
-
-## Expose an action
-
-Keep the existing POM behavior. Mark the class with `@ayme` and each action to
-expose with `@ayme.action`; each becomes a Page Object Tool:
+## Mark a Page Object Model
 
 ```ts
 import { ayme } from "@ayme-dev/ayme";
@@ -57,256 +29,38 @@ export class GreetingPage {
 }
 ```
 
-Both decorators also take the other form: `@ayme({ description })` describes
-the Page Object Model, and a bare `@ayme.action` publishes with a generated
-description. `description` is the only option.
+`GreetingPage.greet` is now a Page Object Tool. Enable `compilerOptions.experimentalDecorators` in the tsconfig of your Page Object Models.
 
-A Page Object Tool is named after its class and method, as `GreetingPage.greet`.
-Registering a Page Object while a different class with the same name is
-registered throws; rename one of them. Several instances of one class can be
-registered together and share its tools.
+## Start Ayme
 
-Put annotated POMs in `.ts` files imported by the application. Enable
-`compilerOptions.experimentalDecorators` in their TypeScript configuration.
-Tool schemas come from method signatures. Public members are not automatically
-published as tools. Keep browser-imported POMs free of Node-only code and
-runtime test-runner imports, including decorators that call `test.step`.
-Type-only Playwright imports are appropriate.
-
-## Page state
-
-After runtime setup and POM registration, the runtime captures Structural Page
-State for agents and for the Goal Loop. Page state works without WebMCP
-publication. Tool invocation through a browser
-client also requires the driver and publication setup.
-
-Pass `ignore` on the Vue composable or React provider to keep parts of the DOM
-out of the Structural Page State. When the predicate returns `true` for an
-element, that element and everything inside it are dropped from page state
-capture. This affects page state only; it does not change which tools are
-published. Polarity is the opposite of a Custom Tool's `filter`: `ignore` true
-drops, `filter` true keeps.
+Your framework package starts Ayme at the root of your app: `AymeProvider` in Vue and React, `useAyme` in Svelte, `provideAyme()` in Angular. Without one, create and start the session yourself:
 
 ```ts
-useAyme({
-  ignore: (element) => element.matches("[data-assistant-panel]"),
-});
-```
+import { createAyme } from "@ayme-dev/ayme";
 
-### Interaction history
-
-The runtime records what happens in the document for as long as it lives: a
-Visit at load and at each same-document navigation, every tool call and Goal
-Loop step as an action, and every page state it captures. Each caller, the
-calling agent, the Goal Loop's model and your application's `tools.run`, has
-its own last-received page state; an action's Change Record is the difference
-between that state and the page after the action. So an agent's next action
-reports what your application changed in between. A Goal Loop run leaves its
-caller's state alone until the Handover. A full page load starts a new
-history.
-
-## Runtime session
-
-The framework packages create and start the runtime session for you and hand
-it out as `ayme`. Any other consumer, such as a prebuilt script on a page,
-creates it with `createAyme`:
-
-```ts
-import { createAyme, createPage, decisionEndpoint } from "@ayme-dev/ayme";
-
-const ayme = createAyme({
-  pageFactory: () => createPage({ actionTimeout: 500 }),
-  customTools: [
-    {
-      name: "highlight_element",
-      description: "Outline one element on the page so the user can see it.",
-      async execute({ element }) {
-        element.classList.add("highlighted");
-      },
-    },
-  ],
-  goalLoop: decisionEndpoint("/api/decisions"),
-});
+const ayme = createAyme({ webMCP: { enabled: true } });
 const stop = ayme.start();
-const handover = await ayme.tools.run("goal", {
-  goal: "archive the oldest item",
-  maxSteps: 5,
-});
-stop();
+
+ayme.pom.register(GreetingPage);
+await ayme.tools.run("GreetingPage.greet", { name: "Ada" });
 ```
 
-`createAyme(options?)` takes one options object, `AymeOptions`:
+## Documentation
 
-- `pageFactory`: a factory for the browser Page the session drives. The
-  session calls it at most once, lazily, on its first use in the browser, and
-  never during server rendering. Without it, the session calls `createPage()`.
-- `ignore`, `customTools` and `goalLoop`: described in their own sections below.
-  They are configured on `start()` and cleared when the session stops.
-- `webMCP`: whether and how the session publishes its tools through WebMCP;
-  see [WebMCP publication](#webmcp-publication).
-- `inspector`: `true` mounts the
-  [Inspector](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/README.md) while the session is
-  started in the browser. It loads the optional `@ayme-dev/inspector` package
-  on demand, so install it beside `@ayme-dev/ayme`. Off unless `true`.
+- [Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md): marking models and actions, tool names, children and collections.
+- [Publish tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md): starting Ayme and turning WebMCP publication on.
+- [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md): the Structural Page State, Structural Refs and interaction history.
+- [Custom Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/custom-tools.md): operations of your own on one element.
+- [`@ayme-dev/ayme` reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md)
+- [Ayme documentation](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md)
 
-`start()` claims the runtime for the current document, one owner at a time,
-and returns the function that stops it. The session, of type `Ayme`, has three
-members: `tools` (`AymeTools`), `pom` (`AymePom`) and `webMCP`
-(`AymeWebMcp`).
+## Supported versions
 
-### Running tools
+`@playwright/test` 1.29 to 1.62, optional, for the types your Page Object Models use. [Install](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/install.md) lists the supported frameworks, Node.js and TypeScript versions.
 
-`ayme.tools` reaches every registered tool by its name: Browser Tools, Custom
-Tools, Page Object Tools, `snapshot` and `goal`. It works the same whether
-WebMCP publication is on, off, waiting or failed, and `toolNamePrefix` does
-not apply to it.
+## License
 
-```ts
-const { structure } = await ayme.tools.run("snapshot", {});
-await ayme.tools.run("click", { target: "e5" });
-await ayme.tools.run("TodoPage.addTodo", { title: "Milk" });
-
-ayme.tools.list(); // [{ name, description, inputSchema, group }, …]
-const unsubscribe = ayme.tools.subscribe((tools) => render(tools));
-```
-
-- `run(name, input)` runs a live tool the way an agent's call runs it: the
-  same input validation, target resolution, action recording and settling.
-  The built-in tools are typed by name: a Browser Tool resolves with its
-  action result (`ActionResult`), `snapshot` with `PageContextPayload` and
-  `goal` with the `Handover`. Any other name takes an object and resolves with
-  `unknown`; Page Object Tools and Custom Tools resolve with an action result.
-  `BuiltInTools` maps each built-in name to its input and result, and
-  `ToolInput<Name>` and `ToolResult<Name>` read them.
-- A failure throws: `ToolInputError`, `RefResolutionError`, or
-  `RuntimeStateError` when the session is not started or the tool is not live.
-  An agent gets the same error as the text of an `isError` result. Errors from
-  the browser Page pass through unchanged.
-- Your application is a caller of its own: its actions do not move a
-  connected agent's Change Record, so the agent's next action reports what
-  your application changed.
-- `list()` returns every tool `run` can run now, in publication order, as
-  `ToolInfo` objects with a `group`: `"browser"`, `"custom"`, `"pageObject"` or `"agent"`. It
-  returns the same array until the set changes, and `[]` while the session is
-  not started, including during server rendering.
-- `subscribe(listener)` calls `listener` with the new list after the set
-  changes: the session starts or stops, a Page Object class is registered for
-  the first time or unregistered for the last, or a registered Page Object
-  becomes available or unavailable. It returns the function that unsubscribes.
-
-### Page Objects
-
-`ayme.pom` holds one Page Object of each Page Object Model for the session:
-
-```ts
-const editor = ayme.pom.get(Editor); // the instance, created on first use
-ayme.pom.register(Editor); // counts a registration; returns the instance
-ayme.pom.unregister(Editor); // removes one registration
-```
-
-- `get(Model)` is safe during rendering. During server rendering it returns an
-  inert Page Object with the model's prototype and never calls `pageFactory`.
-- `register(Model)` makes the class's tools live while the session is started.
-  Registrations made before `start()` take effect on start. Each component
-  that uses a Page Object registers it, and the tools are withdrawn when the
-  last registration is removed.
-- Every registration of a class shares one instance, so a Page Object should
-  keep no per-component state in its own fields.
-
-### WebMCP status
-
-`ayme.webMCP` holds the WebMCP publication: `publicationStatus` reports its
-status, `subscribe(listener)` calls `listener` with each new status, and
-`retryPublication()` retries it.
-
-### WebMCP publication
-
-The call that starts Ayme decides whether its tools are published through
-WebMCP: `useAyme`, `AymeProvider` or `createAyme`. The build
-integration has no publication setting.
-
-```ts
-useAyme({
-  webMCP: { enabled: true, toolNamePrefix: "ayme_" },
-});
-```
-
-- `webMCP.enabled` turns publication on. It is off unless set, and then
-  `webMCP.publicationStatus` reads `disabled`. Page Objects, page state and the
-  Goal Loop work either way.
-- `webMCP.toolNamePrefix` is prepended to every published tool name: the
-  agent's tools, the Browser Tools, Custom Tools and Page Object Tools. It is
-  empty by default. It applies at publication only; the Goal Loop and the
-  Inspector use the unprefixed names. The `testing` helpers take the published
-  name, prefix included.
-- A tool name that two published tools would share fails publication; the
-  status reads `failed` and names the tool.
-- When enabled, publication waits up to two seconds for a WebMCP driver.
-  `retryPublication()` tries again after `unavailable` or `failed`.
-- Turning publication off does not remove Ayme or Page Object code from the
-  bundle.
-
-### Browser Page
-
-The runtime session drives one browser Page for the current document. When it
-is given no `pageFactory`, it creates the default Page: the `testIdAttribute`,
-`actionTimeout` and `navigationTimeout` come from the Playwright settings the
-Vite plugin compiled in.
-
-`createPage(options?)` builds that same Page for you. The compiled settings
-are its defaults; each option you pass wins for that option only, so the
-result of `createPage()` is exactly the default Page.
-
-```ts
-import { createPage } from "@ayme-dev/ayme";
-
-const page = () => createPage({ actionTimeout: 500 });
-```
-
-Pass such a factory as the runtime session's `pageFactory` when you want to own
-page construction: without the Vite plugin, with a timeout that differs from
-your build, or wrapped in your own instrumentation. The Vue and React packages
-keep creating the default Page; their `pageFactory` option takes the same
-factory.
-
-## Custom Tools
-
-A **Custom Tool** is an operation your app registers that applies to one
-element. Register it through `customTools` on the Vue composable or React
-provider. One registration publishes the operation as a WebMCP tool for the
-calling agent and makes it an operation the Goal Loop may choose, as the
-single-element [Browser Tools](#browser-tools) are.
-
-```ts
-import type { CustomTool } from "@ayme-dev/ayme";
-
-const highlight: CustomTool = {
-  name: "highlight_element",
-  description: "Outline one element on the page so the user can see it.",
-  filter: (element) => element.matches("[data-highlightable]"),
-  async execute({ ref, element }) {
-    element.classList.add("highlighted");
-    return { highlighted: ref };
-  },
-};
-
-useAyme({ customTools: [highlight] });
-```
-
-- The published tool takes `{ ref }`. Ayme parses the ref, resolves it against
-  the Page State Session and calls `execute` with the current ref and its
-  element. An unknown, removed or ambiguous ref fails before `execute` runs.
-- `description` is the only instruction the model gets about the operation.
-- The call returns the same action result as every other action: a JSON value
-  returned by `execute` appears under `result`, next to `page_changed`,
-  `settled` and `changes`.
-- `filter` limits only which elements the Goal Loop may offer for this tool. It
-  is not enforced when the calling agent calls the tool with a ref. Without a
-  `filter`, every node that has a ref may be offered.
-- A Custom Tool whose name is already taken by another published tool is
-  rejected.
-- Custom Tools live for the runtime session: they are unregistered when it
-  ends.
+[FSL-1.1-ALv2](https://github.com/ayme-labs/ayme/blob/main/LICENSE). Bundled third-party code keeps its original license; see `THIRD_PARTY_NOTICES.txt` in the package.
 
 ## Browser Tools
 
