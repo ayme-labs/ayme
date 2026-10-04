@@ -423,7 +423,9 @@ gates access.
 
 - `state` and `questions` follow the System One decisions API. The endpoint
   adds the Jev model the Goal Loop's questions are tuned for.
-- Success and upstream errors: return the upstream status and body unchanged.
+- Success: the upstream status and body, unchanged.
+- Upstream errors: the upstream status with `{ "error": "<the provider's message>" }`,
+  or a plain sentence naming the status when the provider gives no message.
 - The endpoint's own rejections return `{ "error": "<one plain sentence>" }`:
   - `405` when the method is not `POST`
   - `413` when the body is over 1 MB

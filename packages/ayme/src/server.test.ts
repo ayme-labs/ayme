@@ -258,22 +258,62 @@ describe("createDecisionEndpoint", () => {
     expect(await response.json()).toEqual(upstreamBody);
   });
 
-  it("passes upstream error responses through unchanged", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ error: "Rate limited." }), {
-        status: 429,
-        headers: { "Content-Type": "application/json" },
-      })
-    );
-    const handler = createDecisionEndpoint({
-      provider: "openrouter",
-      apiKey: "secret",
-      authorize,
-    });
-    const response = await handler(jsonRequest(validBody));
-    expect(response.status).toBe(429);
-    expect(await response.json()).toEqual({ error: "Rate limited." });
-  });
+  it.each([
+    {
+      provider: "typesafe" as const,
+      status: 401,
+      upstreamBody: JSON.stringify({
+        detail: {
+          error_type: "authentication_error",
+          message: "Cannot authenticate with the server.",
+        },
+      }),
+      error: "Cannot authenticate with the server.",
+    },
+    {
+      provider: "openrouter" as const,
+      status: 429,
+      upstreamBody: JSON.stringify({
+        error: { message: "Rate limited.", code: 429 },
+        user_id: "user_1",
+      }),
+      error: "Rate limited.",
+    },
+    {
+      provider: "typesafe" as const,
+      status: 422,
+      upstreamBody: JSON.stringify({
+        detail: [{ loc: ["body", "questions"], msg: "Field required" }],
+      }),
+      error: "The model provider answered with status 422.",
+    },
+    {
+      provider: "openrouter" as const,
+      status: 503,
+      upstreamBody: "<html>Service Unavailable</html>",
+      error: "The model provider answered with status 503.",
+    },
+  ])(
+    "returns a $provider $status error as { error } with the upstream status",
+    async ({ provider, status, upstreamBody, error }) => {
+      fetchMock.mockResolvedValue(
+        new Response(upstreamBody, {
+          status,
+          headers: { "Content-Type": "application/json", "X-Upstream": "1" },
+        })
+      );
+      const handler = createDecisionEndpoint({
+        provider,
+        apiKey: "secret",
+        authorize,
+      });
+      const response = await handler(jsonRequest(validBody));
+      expect(response.status).toBe(status);
+      expect(response.headers.get("content-type")).toBe("application/json");
+      expect(response.headers.get("x-upstream")).toBeNull();
+      expect(await response.json()).toEqual({ error });
+    }
+  );
 
   it("removes compressed representation and hop-by-hop response headers", async () => {
     const decodedBody = JSON.stringify({

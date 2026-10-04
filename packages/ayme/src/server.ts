@@ -46,15 +46,34 @@ function jsonError(status: number, error: string): Response {
   });
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/** The message of a provider's error body: TypeSafe's `detail.message` or
+ *  OpenRouter's `error.message`. */
+function upstreamErrorMessage(text: string): string | undefined {
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (!isRecord(body)) return undefined;
+  for (const field of [body.detail, body.error]) {
+    if (isRecord(field) && typeof field.message === "string")
+      return field.message;
+  }
+  return undefined;
+}
+
 function isDecisionRequest(body: unknown): body is DecisionRequest {
   if (!body || typeof body !== "object") return false;
   const record = body as Record<string, unknown>;
   return (
     (typeof record.state === "string" ||
       (record.state !== null && typeof record.state === "object")) &&
-    record.questions !== null &&
-    typeof record.questions === "object" &&
-    !Array.isArray(record.questions)
+    isRecord(record.questions)
   );
 }
 
@@ -161,6 +180,12 @@ export function createDecisionEndpoint({
           questions: body.questions,
         }),
       });
+      if (!response.ok)
+        return jsonError(
+          response.status,
+          upstreamErrorMessage(await response.text()) ??
+            `The model provider answered with status ${response.status}.`
+        );
       return new Response(await response.arrayBuffer(), {
         status: response.status,
         headers: responseHeaders(response.headers),
