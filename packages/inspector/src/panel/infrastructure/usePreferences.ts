@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 
+import type { Preferences } from "../domain/preferences";
 import {
   browserStorage,
   readPreferences,
   writePreferences,
-  type Preferences,
-} from "../domain/preferences";
+} from "./preferencesStorage";
 
 /**
  * The panel's preferences, read from this site's storage once and written

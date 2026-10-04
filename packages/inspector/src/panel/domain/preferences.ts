@@ -46,25 +46,15 @@ export const defaultPreferences: Preferences = {
   modelPanes: { objectsOpen: true, modelsOpen: true, split: 0.58 },
 };
 
-/** Browser storage is per origin, so the preferences are per site. */
-export const preferencesKey = "ayme-inspector:preferences";
-
 const layouts: readonly Layout[] = ["float", "left", "right", "bottom"];
 const themes: readonly ThemePreference[] = ["system", "light", "dark"];
 
 /**
- * Reads the stored preferences. Each value that is missing, malformed or
- * unreadable falls back to its default, as does everything when storage is
- * unavailable.
+ * The preferences in a stored value. Each value that is missing or malformed
+ * falls back to its default, as does everything when nothing usable is
+ * stored.
  */
-export function readPreferences(storage: Storage | undefined): Preferences {
-  let stored: unknown;
-  try {
-    const text = storage?.getItem(preferencesKey);
-    stored = text ? JSON.parse(text) : undefined;
-  } catch {
-    stored = undefined;
-  }
+export function decodePreferences(stored: unknown): Preferences {
   if (!isRecord(stored)) return defaultPreferences;
 
   return {
@@ -101,27 +91,6 @@ function readModelPanes(stored: unknown): ModelPanes {
         ? stored.split
         : defaults.split,
   };
-}
-
-/** Stores the preferences. Without usable storage, they last for the page. */
-export function writePreferences(
-  storage: Storage | undefined,
-  preferences: Preferences
-) {
-  try {
-    storage?.setItem(preferencesKey, JSON.stringify(preferences));
-  } catch {
-    // Storage is full, blocked or gone: keep the preferences in memory only.
-  }
-}
-
-/** The page's storage, or nothing when the browser denies access to it. */
-export function browserStorage(): Storage | undefined {
-  try {
-    return window.localStorage;
-  } catch {
-    return undefined;
-  }
 }
 
 const pointKeys = ["x", "y"] as const;

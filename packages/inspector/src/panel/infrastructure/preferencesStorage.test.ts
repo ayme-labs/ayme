@@ -1,13 +1,12 @@
 import { afterEach, expect, it, vi } from "vitest";
 
+import { defaultPreferences, type Preferences } from "../domain/preferences";
 import {
   browserStorage,
-  defaultPreferences,
   preferencesKey,
   readPreferences,
   writePreferences,
-  type Preferences,
-} from "./preferences";
+} from "./preferencesStorage";
 
 // Unit tests: how the panel's preferences are remembered per site, and what
 // it falls back to when they can't be.
