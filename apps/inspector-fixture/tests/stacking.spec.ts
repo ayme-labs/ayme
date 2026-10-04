@@ -1,8 +1,8 @@
 import type { Locator, Page } from "@playwright/test";
+import type { LayoutChoice } from "@ayme-dev/inspector/testing";
 
 import { AgentView } from "./agentView";
 import { expect, test } from "./fixtures";
-import type { LayoutChoice } from "../src/testing";
 
 // E2E: the Inspector stays above, and operable over, the page's own
 // positioned UI, while the rest of the page keeps its pointer. An agent's

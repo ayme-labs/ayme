@@ -119,7 +119,6 @@ jobs:
           name: browser-test-results
           path: |
             packages/ayme/test-results
-            packages/inspector/test-results
             apps/*/test-results
           if-no-files-found: ignore
 

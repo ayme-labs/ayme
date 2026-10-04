@@ -18,7 +18,7 @@ Where each kind of test runs, what it is for, and where test-only code lives. Th
   - `packages/ayme` runs the runtime against real pages in `test:e2e` ([`vitest.browser.config.ts`](../packages/ayme/vitest.browser.config.ts)).
   - `packages/inspector` renders one part of the panel with fixture props and drives it through the Inspector's page objects on playwright-lite, in its `component` project ([`vitest.config.ts`](../packages/inspector/vitest.config.ts)).
 - **Native WebMCP** is the only lane that tests the real WebMCP transport: Chromium with `--enable-features=WebMCP,WebMCPTesting`. Every other lane that needs WebMCP uses the recording driver below.
-- **E2E** runs the built packages on fixture pages or example apps, through page objects. Tools are called through the recording WebMCP driver from `@ayme-dev/ayme/testing`. Next, Nuxt and SvelteKit run against both their dev server and a production build. Angular runs four times: its default SSR build and its `spa` configuration, each against `ng serve` and a production build.
+- **E2E** runs the built packages on fixture pages or example apps, through page objects. The Inspector's run in [`apps/inspector-fixture`](../apps/inspector-fixture/README.md), whose Page Objects the Ayme plugin compiles. Tools are called through the recording WebMCP driver from `@ayme-dev/ayme/testing`. Next, Nuxt and SvelteKit run against both their dev server and a production build. Angular runs four times: its default SSR build and its `spa` configuration, each against `ng serve` and a production build.
 - **Package verification** checks what consumers install: packed manifests, exports and type-checking in a clean consumer.
 - `packages/angular`'s `ng add` tests run Angular's `SchematicTestRunner` on the built `schematics/collection.json`, so the package's `test` task depends on its own `build`.
 - **Live goals** run real goals through `goal` against the model. It needs `AYME_OPENROUTER_API_KEY` and skips itself without one. It is a separate CI job, and `pnpm check` does not run it. See the [example-vue README](../apps/example-vue/README.md#live-goal-lane), which also covers the hand-run goal harness.
@@ -32,7 +32,7 @@ Fakes, test doubles and page objects for tests ship from the package's `testing`
 | Entry                                           | Holds                                                                                                                                           |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@ayme-dev/ayme/testing`                        | The recording WebMCP driver: `recordPublishedTools`, `recordPublishedToolsLate`, `waitForPublishedTool`, `executePublishedTool` and its queries |
-| `@ayme-dev/inspector/testing`                   | The Inspector's page objects, for its own tests and example-vue's smoke test                                                                    |
+| `@ayme-dev/inspector/testing`                   | The Inspector's page objects, for its own tests, its e2e tests and example-vue's smoke test                                                     |
 | `@ayme-dev/core/structural-observation/testing` | `StructuralTreeMockFactory` and `MockLiveAriaSnapshotSource`, for structural trees without a browser                                            |
 
 Consumers may use these entries to test their own integration.

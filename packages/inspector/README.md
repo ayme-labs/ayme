@@ -129,13 +129,10 @@ Run from this directory inside the repository's Devbox shell:
   component test renders one part with fixture props into an open shadow
   root it owns (`src/renderPart.tsx`), with the Inspector's stylesheet and
   themed root, and drives it through the page objects on playwright-lite.
-- `pnpm test:e2e` tests the built package, so build first; Turbo's
-  `test:e2e` task does. It runs Playwright on Chromium against the fixture
-  pages in `tests/fixture`, served on a free port: a real Page Object, the
-  Ayme runtime and the built Inspector. The runtime publishes to the recording
-  WebMCP driver from `@ayme-dev/ayme/testing`, and the tests call tools
-  through it. A fixture page that fails to start or a runtime that never
-  publishes fails before any test assertion, with its own message.
+- The end-to-end tests, which run the built package on fixture pages, live in
+  [`apps/inspector-fixture`](https://github.com/ayme-labs/ayme/tree/main/apps/inspector-fixture).
+  The app builds its Page Objects with the Ayme plugin, which depends on this
+  package, so the tests can't live here.
 
 playwright-lite's `page.mouse` and `dragTo` don't follow pointer capture
 (enekesabel/playwright-lite#258). The page objects drag by dispatching
