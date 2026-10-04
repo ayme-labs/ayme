@@ -355,6 +355,7 @@ it would there:
 | `uncheck`       | `browser_uncheck` (skill-only) | `target`                                          |
 | `select_option` | `browser_select_option`        | `target`, `values`                                |
 | `press_key`     | `browser_press_key`            | `key`                                             |
+| `navigate`      | `browser_navigate`             | `url`                                             |
 
 - The inputs follow Playwright MCP as bundled in `playwright-core` 1.62.1: the
   same field names, and the same behaviour when an option is omitted. `type`
@@ -377,6 +378,15 @@ it would there:
   `changes` and, when it has one, the action's own `result`. An action that
   starts a full page load answers with `loading` and `next` instead; see
   [Full page loads](#full-page-loads).
+- `navigate` opens a path relative to the current page, or a URL on the
+  page's own origin, through the browser Page's `goto`. A URL on another
+  origin is refused: the new document would not run Ayme, so the connection
+  to the page would be lost. An invalid URL or an unsupported protocol is
+  refused too. When a router that takes over navigations through the
+  browser's Navigation API handles it, or only the fragment changes, the call
+  waits for a Settled Page and returns the Change Record like a click.
+  Otherwise the browser loads the URL as a new document, and the call answers
+  as described in [Full page loads](#full-page-loads).
 - `fill_form` fills its fields in order and stops at the first that fails. Its
   `result` names the fields filled (`filled`) and the one that failed
   (`failed`, with its error). Fields filled before it stay filled.
@@ -387,7 +397,9 @@ it would there:
   `check` takes checkboxes, radio buttons and switches, and `uncheck` the
   same without radio buttons;
   `select_option` takes select elements. The loop fills only the element and
-  the required fields. `fill_form` and `press_key` are published only.
+  the required fields. `navigate` is an operation the loop may choose as
+  well; it cannot pick a URL itself, so choosing it ends the run with
+  `needs_value`. `fill_form` and `press_key` are published only.
 
 The browser runtime differs from a real browser driven by Playwright:
 

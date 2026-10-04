@@ -82,6 +82,7 @@ test("hydrates, publishes the compiled POM, executes it, and cleans up on remoun
     "select_option",
     "fill_form",
     "press_key",
+    "navigate",
   ]);
 
   await page.getByRole("button", { name: "Call Page Object" }).click();

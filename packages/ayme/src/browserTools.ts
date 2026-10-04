@@ -16,6 +16,7 @@ import {
   type RegisteredElementTool,
   type ResolvedTarget,
 } from "./elementTools";
+import { navigateTool } from "./navigateTool";
 import { requireAymeRuntimePage } from "./registry";
 
 // --- Input schemas ---
@@ -445,10 +446,24 @@ const PUBLISHED_ONLY_BROWSER_TOOLS: readonly PublishedElementTool[] = [
   pressKeyTool,
 ];
 
+// --- Browser Tools that move the page ---
+
+/**
+ * Browser Tools that move the page to another URL or history entry. They
+ * take no element; each is published and the Goal Loop may choose it.
+ */
+const NAVIGATION_TOOLS: readonly PublishedElementTool[] = [navigateTool];
+
+/** Package-internal: the Browser Tools that move the page, in publication order. */
+export function listNavigationTools(): readonly PublishedElementTool[] {
+  return NAVIGATION_TOOLS;
+}
+
 /** Package-internal: every Browser Tool as published, in publication order. */
 export function listPublishedBrowserTools(): readonly PublishedElementTool[] {
   return [
     ...SINGLE_ELEMENT_TOOLS.map(({ tool }) => tool),
     ...PUBLISHED_ONLY_BROWSER_TOOLS,
+    ...NAVIGATION_TOOLS,
   ];
 }

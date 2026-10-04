@@ -63,6 +63,7 @@ Its Page Object Models live in the app's own source, because the build plugin co
 - Ayme's own tool list;
 - that hydration warnings and console errors fail the test;
 - that a `click` that starts a full page load answers with the loading URL before the new page loads;
+- that `navigate` to another page answers with the loading URL before that page loads, and that page publishes Ayme's own tools;
 - that client navigation removes and restores a page's tools, where the app navigates;
 - that editing an imported type rebuilds the published tools on the dev server.
 

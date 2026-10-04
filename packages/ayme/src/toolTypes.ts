@@ -39,6 +39,7 @@ export type BuiltInTools = {
     result: ActionResult;
   };
   press_key: { input: { key: string }; result: ActionResult };
+  navigate: { input: { url: string }; result: ActionResult };
   snapshot: { input: { names?: string[] }; result: PageContextPayload };
   goal: { input: { goal: string; maxSteps: number }; result: Handover };
 };
