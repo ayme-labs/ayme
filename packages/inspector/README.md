@@ -88,8 +88,8 @@ Applications do not need this demo-only entry point.
 - `runs` holds Runs, the timeline of the runs made from the panel, and
   which runs belong to the selection.
 
-Only infrastructure code reads `@ayme-dev/ayme` at runtime; components take
-props.
+Only infrastructure code, and the mount that installs the Inspector's
+instrumentation, reads `@ayme-dev/ayme` at runtime; components take props.
 
 ## Testing
 

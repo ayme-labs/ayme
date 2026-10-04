@@ -26,7 +26,7 @@ import { ModelTree } from "./ModelTree";
  * The Model lens: the Page Objects on the page as a tree, and the Page
  * Object Models the page knows. It owns the page, object and model
  * selections. Rows report what the pointer is over for the page's dashed
- * highlight; the solid one follows the selection, which the frame pins.
+ * highlight; the solid one follows the selection, which the app pins.
  */
 export function modelLens({
   host,

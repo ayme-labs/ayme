@@ -3,7 +3,7 @@ import { memberResolves } from "../domain/memberSelection";
 import type { Selection } from "../../navigation";
 
 /**
- * Whether a selection is stale, so the frame sends it back to the page.
+ * Whether a selection is stale, so the app sends it back to the page.
  * - The page is never stale.
  * - A member is stale when its path no longer resolves on the page, judged
  *   only once the page state has been read. It needn't have a view.

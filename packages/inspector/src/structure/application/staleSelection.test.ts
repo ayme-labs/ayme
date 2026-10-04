@@ -7,7 +7,7 @@ import { buildStructureTree } from "../infrastructure/structureTree";
 import { emptyStructure } from "../domain/structure";
 import { isStaleSelection } from "./staleSelection";
 
-// Unit tests: which selections the frame sends back to the page. Fixtures
+// Unit tests: which selections the app sends back to the page. Fixtures
 // are hand-written.
 
 const index = indexMembers({

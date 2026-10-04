@@ -137,7 +137,7 @@ export function InspectorApp() {
   );
 }
 
-/** The selection's solid highlight: its lens's, or the frame's default. */
+/** The selection's solid highlight: its lens's, or the default one. */
 function pinTarget(lenses: readonly Lens[], selection: Selection) {
   for (const lens of lenses) {
     const target = lens.selectionHighlight?.(selection);

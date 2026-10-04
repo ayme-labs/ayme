@@ -83,7 +83,7 @@ export function toolsLens({
         .flatMap(({ tools }) => tools)
         .find((candidate) => candidate.name === selected.name);
       // A tool that is no longer live has no page: the selection is stale,
-      // and the frame falls back.
+      // and the app falls back.
       if (!tool) return undefined;
       return (
         <ToolPage

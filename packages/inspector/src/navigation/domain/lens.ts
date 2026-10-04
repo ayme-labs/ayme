@@ -30,7 +30,7 @@ export type LegendCounts = {
 };
 
 /**
- * What a lens contributes to the frame: its tree in the navigator, what
+ * What a lens contributes to the panel: its tree in the navigator, what
  * search finds through it, its legend counts, and the detail view for each
  * selection it owns.
  */

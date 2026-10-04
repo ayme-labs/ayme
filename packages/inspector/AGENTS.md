@@ -15,7 +15,9 @@ Slices, from the bottom up:
 - `app`: the composition root: mounting, the stylesheet and the wiring of every slice.
 - `testing`: the Inspector POM; its `index.ts` is the `./testing` entry.
 
-Layers, only where a slice has that kind of code: `domain` (pure rules and types), `application` (interaction policy), `infrastructure` (the runtime, the host document, storage, the trace), `presentation` (UI-logic hooks and containers), `view` (components that take props and callbacks), `test-utils` (test-only data).
+Layers, only where a slice has that kind of code: `domain` (pure rules and types), `application` (interaction policy), `infrastructure` (the runtime, the host document, storage, the trace), `presentation` (UI-logic hooks and containers), `view` (components that take props and callbacks), `test-utils` (test-only data and harnesses).
 
+- Every file of a layered slice sits in a layer folder, except its `index.ts`.
+- The layer rule holds inside a slice. Another slice is reached through its `index.ts`, which lint can't see past, so import only from the layers yours may use.
 - A component with state is three files: `useX` in `presentation/` holds the logic, `XView` in `view/` the markup, and the `X` container wires them.
 - When an import runs against the slice order, move the shared part down into the lower slice.

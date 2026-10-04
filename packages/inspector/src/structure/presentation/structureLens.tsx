@@ -41,7 +41,7 @@ type RefNode = StructureNode & { ref: string };
  * tree with each node tagged by the Page Object member it maps to. It owns
  * `node` selections. A node's detail runs the single-element tools that can take its
  * ref and shows what the model sees of it. Hovering a node highlights it on
- * the page; the frame highlights the selected one.
+ * the page; the app highlights the selected one.
  */
 export function structureLens({
   structure,

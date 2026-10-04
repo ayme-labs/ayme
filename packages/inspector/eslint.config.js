@@ -51,7 +51,7 @@ function deepImport(slice, { tests }) {
     (other) => other !== slice && !(tests && other === "testing")
   );
   // Tests may also use another slice's test-utils.
-  const allowed = tests ? "index$|test-utils/" : "index$";
+  const allowed = tests ? "index(\\.tsx?)?$|test-utils/" : "index(\\.tsx?)?$";
   return `(^|/)(${others.join("|")})/(?!${allowed})`;
 }
 

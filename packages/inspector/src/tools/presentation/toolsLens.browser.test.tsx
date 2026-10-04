@@ -197,7 +197,7 @@ it("has no page for a tool that is no longer live", () => {
     renderRun: runSlot,
   });
 
-  // No view: the frame treats the selection as stale and falls back.
+  // No view: the app treats the selection as stale and falls back.
   expect(lens.detail({ kind: "tool", name: "ListPage.addItem" })).toBe(
     undefined
   );

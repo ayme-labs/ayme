@@ -80,6 +80,8 @@ export function InspectorShell({
     () => reserveHost(docked && { dock: docked, size: dockedSize }),
     [reserveHost, docked, dockedSize]
   );
+  // The room goes back when the shell unmounts.
+  useEffect(() => () => reserveHost(undefined), [reserveHost]);
 
   // Collapsing moves focus to the logo and opening moves it back, but only
   // when the person did it, not when the panel starts collapsed.
