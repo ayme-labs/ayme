@@ -108,6 +108,33 @@ reports what your application changed in between. A Goal Loop run leaves its
 caller's state alone until the Handover. A full page load starts a new
 history.
 
+### Full page loads
+
+A tool call whose action starts loading a new document, such as a click on a
+plain link or on a form's submit button, answers at once, before the old
+document goes away and the runtime with it. The answer is the action result
+with `settled: false`, the Change Record up to that moment in `changes`, the
+URL of the new document in `loading`, and in `next` a note that the page is
+loading and that `snapshot` is the next call:
+
+```ts
+{
+  page_changed: true,
+  settled: false,
+  changes: `- e2 main:
+  - e7 <removed> status: Saved`,
+  loading: "http://localhost:5173/signed-in",
+  next: "The page is loading http://localhost:5173/signed-in. Call snapshot next to read the new page.",
+}
+```
+
+This holds for Browser Tools, Custom Tools and Page Object Tools alike. A
+navigation that stays in the document, such as your client router's route
+change, a fragment change, or going back to an entry of the same document,
+waits for a Settled Page like any other action. A Goal Loop
+step that starts a full load is the run's last; its Handover has the reason
+`page_loading` and names the new document in `loading`.
+
 ## Runtime session
 
 The framework packages create and start the runtime session for you and hand
@@ -347,7 +374,9 @@ it would there:
 - An option a tool does not declare is rejected with an error naming it; it is
   never ignored.
 - Every action returns the compact action result: `page_changed`, `settled`,
-  `changes` and, when it has one, the action's own `result`.
+  `changes` and, when it has one, the action's own `result`. An action that
+  starts a full page load answers with `loading` and `next` instead; see
+  [Full page loads](#full-page-loads).
 - `fill_form` fills its fields in order and stops at the first that fails. Its
   `result` names the fields filled (`filled`) and the one that failed
   (`failed`, with its error). Fields filled before it stay filled.
@@ -560,7 +589,8 @@ Handover:
 ```ts
 {
   reason:  "done" | "no_fitting_option" | "needs_value"
-         | "action_failed" | "step_budget" | "decide_failed",
+         | "action_failed" | "step_budget" | "decide_failed"
+         | "page_loading",
   next:    string,     // plain words: what the calling agent should do now
   history: {
     operation: string,   // the tool's name; a Page Object tool's qualified name
@@ -570,6 +600,7 @@ Handover:
     did: string,         // operation(description, …), for a human skimming
   }[],
   needs?:  { tool: string, parameters: string[] },  // only with needs_value
+  loading?: string,    // only with page_loading: the new document's URL
   changes?: string,    // what the whole run changed; absent when nothing did
 }
 ```
@@ -607,6 +638,7 @@ net result:
 | `action_failed`     | Two operations failed in a row.                                                                                   |
 | `step_budget`       | `maxSteps` exhausted before the goal was achieved.                                                                |
 | `decide_failed`     | The decision function failed (network, rejected, malformed).                                                      |
+| `page_loading`      | The last step started loading a new document, named in `loading`; call `snapshot` once it has loaded.             |
 
 The `next` field tells the calling agent what to do in plain words. History
 records each operation the loop ran: the tool in `operation`; in `chosen`,

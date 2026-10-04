@@ -131,7 +131,8 @@ export type HandoverReason =
   | "needs_value"
   | "action_failed"
   | "step_budget"
-  | "decide_failed";
+  | "decide_failed"
+  | "page_loading";
 
 /**
  * One executed step, as the loop knew it at the step. The same record is a
@@ -163,6 +164,11 @@ export type Handover = {
   history: HandoverHistoryEntry[];
   needs?: HandoverNeeds;
   /**
+   * With `page_loading`: the URL of the new document the last step started
+   * to load.
+   */
+  loading?: string;
+  /**
    * The run's Change Record: the page the calling agent last received against
    * the page the loop last received, in the notation of `ActionResult.changes`.
    * Absent when nothing changed.
@@ -175,6 +181,8 @@ export type Handover = {
 /** What one executed step came to: its history fields and its Change Record. */
 type StepOutcome = Pick<GoalLoopStepRecord, "result" | "page_changed"> & {
   changes?: string;
+  /** The URL of the new document the step started to load. */
+  loading?: string;
 };
 
 /** Record an executed step; `did` is derived, e.g. `click(button "Add item")`. */
@@ -210,6 +218,7 @@ async function executeToolAction(
     result: "ok",
     page_changed: action?.page_changed ?? false,
     ...(action?.changes ? { changes: action.changes } : {}),
+    ...(action?.loading ? { loading: action.loading } : {}),
   };
 }
 
@@ -548,6 +557,17 @@ export async function pursueGoal(
     );
     history.push(record);
     Object.assign(score, record);
+
+    // A step that started a full page load is the last: the loop ends with
+    // the document it runs in.
+    if (actionResult.loading) {
+      return done({
+        reason: "page_loading",
+        next: `${record.did} started loading ${actionResult.loading}. Call snapshot next to read the new page.`,
+        history,
+        loading: actionResult.loading,
+      });
+    }
 
     // 4. action_failed: two failed actions in a row
     if (consecutiveFailures >= 2) {
