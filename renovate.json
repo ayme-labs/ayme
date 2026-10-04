@@ -1,0 +1,42 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "security:minimumReleaseAgeNpm",
+    ":maintainLockFilesWeekly",
+    ":semanticCommits",
+    ":semanticCommitScopeDisabled"
+  ],
+  "timezone": "Europe/Vienna",
+  "schedule": ["* 22-23 * * 0", "* 0-5 * * 1"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Keep Playwright CI image tags aligned with the npm Playwright release stream.",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "(?<indentation>\\s*)image: mcr\\.microsoft\\.com/playwright:v(?<currentValue>\\d+\\.\\d+\\.\\d+)-noble"
+      ],
+      "depNameTemplate": "playwright",
+      "datasourceTemplate": "npm",
+      "autoReplaceStringTemplate": "{{{indentation}}}image: mcr.microsoft.com/playwright:v{{{newValue}}}-noble"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["mcr.microsoft.com/playwright"],
+      "enabled": false,
+      "description": "The CI image is updated by the regex manager from the npm Playwright datasource so Docker tags cannot race ahead of npm availability."
+    },
+    {
+      "matchPackageNames": ["playwright", "@playwright/test"],
+      "groupName": "Playwright"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
