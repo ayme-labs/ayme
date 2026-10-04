@@ -12,6 +12,7 @@ export default [
       "src/adapter/**",
       "src/**/infrastructure/**",
       "src/index.ts",
+      "src/app/mountInspector.ts",
       "src/withDemoFeedback.ts",
       // Until the runtime calls move into infrastructure.
       "src/app/useRuntimeAdapter.ts",
