@@ -8,6 +8,7 @@ import {
   shallowReactive,
   shallowReadonly,
   watch,
+  type DefineComponent,
   type InjectionKey,
   type PropType,
 } from "vue";
@@ -76,7 +77,10 @@ function consumeRuntime(runtime: RuntimeSession): UseAymeResult {
   return { ayme: runtime, webMCP: shallowReadonly(webMCP) };
 }
 
-export const AymeProvider = defineComponent({
+// Annotated so the emitted declaration names only DefineComponent<Props>,
+// which every Vue 3.2+ release accepts; the inferred type spells out the
+// build-time Vue's full DefineComponent arity.
+export const AymeProvider: DefineComponent<UseAymeOptions> = defineComponent({
   name: "AymeProvider",
   props: {
     pageFactory: {
