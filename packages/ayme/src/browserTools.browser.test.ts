@@ -37,6 +37,9 @@ const BROWSER_TOOLS = [
   "select_option",
   "press_key",
   "navigate",
+  "navigate_back",
+  "navigate_forward",
+  "reload",
 ];
 
 const FIXTURE = `

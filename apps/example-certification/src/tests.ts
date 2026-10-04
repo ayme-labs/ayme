@@ -72,6 +72,9 @@ const aymeTools = [
   "fill_form",
   "press_key",
   "navigate",
+  "navigate_back",
+  "navigate_forward",
+  "reload",
 ];
 
 /** Opens the counter page with the recording driver and waits for publication. */
@@ -94,7 +97,10 @@ async function openCounter(context: BrowserContext, page: Page) {
  * starts a full page load, and resolves with its answer once `loaded` shows
  * on the new page. Playwright rejects an evaluate still running when the page
  * navigates, even once the page has the answer, so the old document keeps the
- * answer where the new one can read it.
+ * answer where the new one can read it. The call starts a task after the
+ * evaluate returns: a load that needs no network, such as going back to a
+ * page the browser kept in its back/forward cache, can otherwise replace the
+ * document before the evaluate's own result arrives.
  */
 async function answerAcrossFullLoad(
   page: Page,
@@ -108,11 +114,14 @@ async function answerAcrossFullLoad(
         modelContext: RecordingDriver;
       };
       const tool = modelContext.tools.find((tool) => tool.name === name);
-      void tool!
-        .execute(input)
-        .then((answer) =>
-          sessionStorage.setItem("full-load-answer", JSON.stringify(answer))
-        );
+      if (!tool) throw new Error(`Tool ${name} was not published.`);
+      setTimeout(() => {
+        void tool
+          .execute(input)
+          .then((answer) =>
+            sessionStorage.setItem("full-load-answer", JSON.stringify(answer))
+          );
+      });
     },
     { name, input }
   );
@@ -306,6 +315,46 @@ export function counterTests({
         next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
       });
       await expect.poll(() => publishedToolNames(page)).toEqual(aymeTools);
+    });
+
+    test("answers navigate_back to the previous document before it loads", async ({
+      page,
+    }) => {
+      const loading = page.url();
+      await page.getByRole("link", { name: "Full page load" }).click();
+      await expect.poll(() => publishedToolNames(page)).toEqual(aymeTools);
+      const answer = await answerAcrossFullLoad(
+        page,
+        "navigate_back",
+        {},
+        count(page)
+      );
+      expect(page.url()).toBe(loading);
+      expect(answer).toMatchObject({
+        settled: false,
+        loading,
+        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
+      });
+    });
+
+    test("answers reload before the page loads anew", async ({ page }) => {
+      await page
+        .getByRole("button", { name: "Increment", exact: true })
+        .click();
+      await expect(count(page)).toHaveText("1");
+      const loading = page.url();
+      const answer = await answerAcrossFullLoad(
+        page,
+        "reload",
+        {},
+        count(page).filter({ hasText: /^0$/ })
+      );
+      expect(page.url()).toBe(loading);
+      expect(answer).toMatchObject({
+        settled: false,
+        loading,
+        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
+      });
     });
 
     test("removes the page's tools on navigation and restores them on return", async ({

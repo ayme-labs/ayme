@@ -361,18 +361,21 @@ A **Browser Tool** is a built-in operation on the page itself, as opposed to
 one a Page Object provides. An agent that knows Playwright MCP can use them as
 it would there:
 
-| Tool            | Playwright MCP counterpart     | Input                                             |
-| --------------- | ------------------------------ | ------------------------------------------------- |
-| `click`         | `browser_click`                | `target`, `doubleClick?`, `button?`, `modifiers?` |
-| `hover`         | `browser_hover`                | `target`                                          |
-| `type`          | `browser_type`                 | `target`, `text`, `submit?`, `slowly?`            |
-| `fill`          | none                           | `target`, `text`                                  |
-| `fill_form`     | `browser_fill_form`            | `fields`: `{ target, name, type, value }[]`       |
-| `check`         | `browser_check` (skill-only)   | `target`                                          |
-| `uncheck`       | `browser_uncheck` (skill-only) | `target`                                          |
-| `select_option` | `browser_select_option`        | `target`, `values`                                |
-| `press_key`     | `browser_press_key`            | `key`                                             |
-| `navigate`      | `browser_navigate`             | `url`                                             |
+| Tool               | Playwright MCP counterpart              | Input                                             |
+| ------------------ | --------------------------------------- | ------------------------------------------------- |
+| `click`            | `browser_click`                         | `target`, `doubleClick?`, `button?`, `modifiers?` |
+| `hover`            | `browser_hover`                         | `target`                                          |
+| `type`             | `browser_type`                          | `target`, `text`, `submit?`, `slowly?`            |
+| `fill`             | none                                    | `target`, `text`                                  |
+| `fill_form`        | `browser_fill_form`                     | `fields`: `{ target, name, type, value }[]`       |
+| `check`            | `browser_check` (skill-only)            | `target`                                          |
+| `uncheck`          | `browser_uncheck` (skill-only)          | `target`                                          |
+| `select_option`    | `browser_select_option`                 | `target`, `values`                                |
+| `press_key`        | `browser_press_key`                     | `key`                                             |
+| `navigate`         | `browser_navigate`                      | `url`                                             |
+| `navigate_back`    | `browser_navigate_back`                 | none                                              |
+| `navigate_forward` | `browser_navigate_forward` (skill-only) | none                                              |
+| `reload`           | `browser_reload` (skill-only)           | none                                              |
 
 - The inputs follow Playwright MCP as bundled in `playwright-core` 1.62.1: the
   same field names, and the same behaviour when an option is omitted. `type`
@@ -396,17 +399,27 @@ it would there:
   starts a full page load answers with `loading` and `next` instead; see
   [Full page loads](#full-page-loads).
 - `navigate` opens a path relative to the current page, or a URL on the
-  page's own origin, through the browser Page's `goto`. A URL on another
-  origin is refused: the new document would not run Ayme, so the connection
-  to the page would be lost. An invalid URL or an unsupported protocol is
-  refused too. When a router that takes over navigations through the
-  browser's Navigation API handles it, or only the fragment changes, the call
-  waits for a Settled Page and returns the Change Record like a click.
-  Otherwise the browser loads the URL as a new document, and the call answers
-  as described in [Full page loads](#full-page-loads).
+  page's own origin: through your app's router when runtime setup gives a
+  `navigate` function, otherwise through the browser Page's `goto`. A URL on
+  another origin is refused: the new document would not run Ayme, so the
+  connection to the page would be lost. An invalid URL or an unsupported
+  protocol is refused too. When your router function, or a router that takes
+  over navigations through the browser's Navigation API, handles it, or only
+  the fragment changes, the call waits for a Settled Page and returns the
+  Change Record like a click. Otherwise the browser loads the URL as a new
+  document, and the call answers as described in
+  [Full page loads](#full-page-loads).
 - `fill_form` fills its fields in order and stops at the first that fails. Its
   `result` names the fields filled (`filled`) and the one that failed
   (`failed`, with its error). Fields filled before it stay filled.
+- `navigate_back` and `navigate_forward` move one entry back or forward in
+  the page's history through the browser Page's `goBack` and `goForward`;
+  `reload` reloads the page through its `reload`. Moving to an entry of the
+  same document, such as one your client router created, waits for a Settled
+  Page and returns the Change Record like a click. With no entry to move to,
+  the page does not move and the call's `result` says so. Moving to an entry
+  of another document, and a reload, load a new document, and the call
+  answers as described in [Full page loads](#full-page-loads).
 - The single-element tools are operations the Goal Loop may choose, each for
   the elements its filter keeps: `click` and `hover` take
   elements that are not disabled and have an interactive role or a pointer
@@ -416,7 +429,9 @@ it would there:
   `select_option` takes select elements. The loop fills only the element and
   the required fields. `navigate` is an operation the loop may choose as
   well; it cannot pick a URL itself, so choosing it ends the run with
-  `needs_value`. `fill_form` and `press_key` are published only.
+  `needs_value`. `navigate_back`, `navigate_forward` and `reload` take no
+  input, so the loop runs them when it chooses them. `fill_form` and
+  `press_key` are published only.
 
 The browser runtime differs from a real browser driven by Playwright:
 
