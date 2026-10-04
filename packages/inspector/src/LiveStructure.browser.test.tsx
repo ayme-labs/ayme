@@ -13,10 +13,10 @@ import { Inspector } from "./testing";
 // one. The runtime is replaced by a peek that reads the fixture host page,
 // so the evidence covers the panel and its adapter's refresh triggers only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { pageStateNodeLines } =
+  const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
-    pageStateNodeLines,
+    pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     peekPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),

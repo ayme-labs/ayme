@@ -20,11 +20,11 @@ import { Inspector } from "./testing";
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its adapter only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { pageStateNodeLines } =
+  const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("./adapter/projected.testSupport");
   return {
-    pageStateNodeLines,
+    pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     peekPageStateForDocument: vi.fn(async () => ({
       projected: forest(

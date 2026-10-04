@@ -11,7 +11,7 @@ import { Inspector } from "./testing";
 // not published, and the refs each can take, so the evidence covers the
 // panel and its adapter.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { pageStateNodeLines } =
+  const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("./adapter/projected.testSupport");
   const browserTool = (name: string) => ({
@@ -21,7 +21,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     group: "browser",
   });
   return {
-    pageStateNodeLines,
+    pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     peekPageStateForDocument: vi.fn(
       async () =>

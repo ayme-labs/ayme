@@ -19,10 +19,10 @@ import { Inspector } from "./testing";
 // carry their refs in the peeked page state, so the evidence covers the
 // panel and its adapter only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { pageStateNodeLines } =
+  const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
-    pageStateNodeLines,
+    pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     peekPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),

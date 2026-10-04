@@ -124,7 +124,6 @@ it("builds the tree of nodes with their refs, roles and names", () => {
               ref: "e3",
               role: "button",
               name: "Add item",
-              cursorPointer: true,
               members: [],
               children: [],
             },

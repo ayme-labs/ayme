@@ -17,10 +17,10 @@ import { Inspector } from "./testing";
 // registry lists first. The runtime is replaced by fixture targets and a
 // peek of the host page, so the evidence covers the panel and its adapter.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { pageStateNodeLines } =
+  const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
-    pageStateNodeLines,
+    pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     peekPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),

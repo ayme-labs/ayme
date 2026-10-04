@@ -1,8 +1,8 @@
-import type {
-  ProjectedStructuralNode,
-  ProjectedStructuralNodeForest,
+import {
+  pageStateNodeEntry,
+  type ProjectedStructuralNode,
+  type ProjectedStructuralNodeForest,
 } from "@ayme-dev/ayme/internal";
-import { pageStateNodeLines } from "@ayme-dev/ayme/internal";
 
 import type { ControlState } from "./formControls";
 import {
@@ -27,8 +27,6 @@ export type StructureNode = {
    * Rows leave them out; "What the model sees" shows them.
    */
   state?: ProjectedStructuralNode["state"];
-  /** Whether the page state marks it `[cursor=pointer]`. */
-  cursorPointer?: true;
   /**
    * A native form control's state, read from the element: what the page
    * state leaves out, such as a slider's range.
@@ -112,6 +110,7 @@ export function buildStructureTree(
   const build = (entry: ProjectedStructuralNode | string): StructureNode => {
     if (typeof entry === "string") return textNode(entry);
     refCount += 1;
+    const { lines, childCount } = pageStateNodeEntry(entry);
     const hasState = Object.values(entry.state).some(
       (value) => value !== undefined
     );
@@ -120,10 +119,9 @@ export function buildStructureTree(
       role: entry.role,
       name: entry.name,
       ...(hasState ? { state: entry.state } : {}),
-      ...(entry.cursorPointer ? { cursorPointer: true as const } : {}),
       members: [],
-      pageStateLines: pageStateNodeLines(entry),
-      childCount: rendersInline(entry) ? 0 : entry.children.length,
+      pageStateLines: lines,
+      childCount,
       children: entry.children.map(build),
     };
     const control = controls.get(entry.ref);
@@ -148,20 +146,6 @@ export function buildStructureTree(
   };
   const roots = projected.roots.map(build);
   return { roots, refCount };
-}
-
-/**
- * Whether the page state renders a node's one text on the node's own line,
- * `- e6 listitem: Milk`: when that text is its only child and it has no
- * properties. The text then nests under it in the tree, not in the page
- * state.
- */
-function rendersInline(node: ProjectedStructuralNode) {
-  return (
-    node.properties.length === 0 &&
-    node.children.length === 1 &&
-    typeof node.children[0] === "string"
-  );
 }
 
 /**
