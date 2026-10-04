@@ -4,11 +4,11 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 
 ## Entries
 
-| Entry                    | For                                                                                                                                                                                                                                                                                                                    |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ayme-dev/ayme`         | Your app: the decorators, `createAyme`, `createPage`, `decisionEndpoint`, the errors and their types.                                                                                                                                                                                                                  |
-| `@ayme-dev/ayme/server`  | Your backend: `createDecisionEndpoint`, the Decision Endpoint handler.                                                                                                                                                                                                                                                 |
-| `@ayme-dev/ayme/testing` | Your Playwright tests: `recordPublishedTools(context)` or `recordPublishedToolsLate(page)` installs a recording WebMCP driver, and `publishedToolNames`, `publishedToolSchema`, `waitForPublishedTool` and `executePublishedTool` list, await and run the tools your app publishes. Application code never imports it. |
+| Entry                    | For                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ayme-dev/ayme`         | Your app: the decorators, `createAyme`, `createPage`, `decisionEndpoint`, the errors and their types.                                                                                                                                                                                                                                                                                   |
+| `@ayme-dev/ayme/server`  | Your backend: `createDecisionEndpoint`, the Decision Endpoint handler.                                                                                                                                                                                                                                                                                                                  |
+| `@ayme-dev/ayme/testing` | Your Playwright tests: `recordPublishedTools(context)` or `recordPublishedToolsLate(page)` installs a recording WebMCP driver, and `publishedToolNames`, `publishedToolSchema`, `waitForPublishedTool` and `executePublishedTool` list, await and run the tools your app publishes. Application code never imports it. See [Test your integration](../guides/test-your-integration.md). |
 
 `@ayme-dev/ayme/internal` serves Ayme's own packages and the code the build plugin generates. Applications do not import it, and it may change in any release.
 
@@ -25,13 +25,13 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 
 `createAyme(options?)` creates a session, of type `Ayme`.
 
-| Option        | Type                            | Meaning                                                                                                                                                          |
-| ------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pageFactory` | `() => Page`                    | Builds the browser Page the session drives. Called at most once, lazily, on first use in the browser, never during server rendering. Defaults to `createPage()`. |
-| `ignore`      | `(element: Element) => boolean` | Drops matching elements and their descendants from the Structural Page State. See [Page state](../guides/page-state.md).                                         |
-| `customTools` | `CustomTool[]`                  | Operations on one element. See [Custom Tools](../guides/custom-tools.md).                                                                                        |
-| `goalLoop`    | `GoalLoopDecisionFunction`      | The decision function the Goal Loop calls, usually `decisionEndpoint(url)`. The `goal` tool exists only when it is set.                                          |
-| `webMCP`      | `AymeWebMcpOptions`             | `{ enabled, toolNamePrefix }`. See [Publish tools](../guides/publish-tools.md).                                                                                  |
+| Option        | Type                            | Meaning                                                                                                                                                                    |
+| ------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pageFactory` | `() => Page`                    | Builds the browser Page the session drives. Called at most once, lazily, on first use in the browser, never during server rendering. Defaults to `createPage()`.           |
+| `ignore`      | `(element: Element) => boolean` | Drops matching elements and their descendants from the Structural Page State. See [Page state](../guides/page-state.md).                                                   |
+| `customTools` | `CustomTool[]`                  | Operations on one element. See [Custom Tools](../guides/custom-tools.md).                                                                                                  |
+| `goalLoop`    | `GoalLoopDecisionFunction`      | The decision function the Goal Loop calls, usually `decisionEndpoint(url)`. The `goal` tool exists only when it is set. See [Goals with Jev](../guides/goals-with-jev.md). |
+| `webMCP`      | `AymeWebMcpOptions`             | `{ enabled, toolNamePrefix }`. See [Publish tools](../guides/publish-tools.md).                                                                                            |
 
 `ignore`, `customTools` and `goalLoop` take effect on `start()` and are cleared when the session stops.
 
@@ -81,7 +81,7 @@ createAyme({ pageFactory: () => createPage({ actionTimeout: 500 }) });
 
 ## decisionEndpoint
 
-`decisionEndpoint(url, options?)` returns a decision function for `goalLoop` that posts each `DecisionRequest` to your Decision Endpoint. It resolves function `headers`, passes `credentials`, and throws on a non-2xx response with its status and error text, or on a body that is not a decision response.
+`decisionEndpoint(url, options?)` returns a decision function for `goalLoop` that posts each `DecisionRequest` to your Decision Endpoint. It resolves function `headers`, passes `credentials`, and throws on a non-2xx response with its status and error text, or on a body that is not a decision response. The [Decision Endpoint reference](decision-endpoint.md) has the route contract and `createDecisionEndpoint`.
 
 ## Errors
 
