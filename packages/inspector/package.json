@@ -50,7 +50,7 @@
   "devDependencies": {
     "@ayme-dev/design-system": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#e95ea4b7cadd62ff4f6d74a5101506e7e855a899",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#cd4217e91307bb16133cd3194032686631f62af7",
     "@ayme-dev/typescript-config": "workspace:*",
     "@playwright/test": "^1.62.1",
     "@types/node": "^24.0.0",
