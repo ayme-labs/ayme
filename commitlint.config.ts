@@ -74,6 +74,19 @@ const scopeRules: UserConfig["rules"] =
       };
 
 const config: UserConfig = {
+  // Until the first release no change is marked as breaking. Remove this
+  // plugin and its rule when the first release ships.
+  plugins: [
+    {
+      rules: {
+        "no-breaking-before-first-release": (commit) => [
+          !(commit as { breaking?: string | null }).breaking &&
+            !commit.notes.some((note) => note.title === "BREAKING CHANGE"),
+          'no "!" or BREAKING CHANGE footer before the first release',
+        ],
+      },
+    },
+  ],
   parserPreset: {
     parserOpts: {
       headerCorrespondence: ["type", "scope", "breaking", "subject"],
@@ -83,6 +96,7 @@ const config: UserConfig = {
   rules: {
     "header-max-length": [RuleConfigSeverity.Error, "always", 100],
     "header-trim": [RuleConfigSeverity.Error, "always"],
+    "no-breaking-before-first-release": [RuleConfigSeverity.Error, "always"],
     "scope-case": [RuleConfigSeverity.Error, "always", "kebab-case"],
     ...scopeRules,
     "subject-empty": [RuleConfigSeverity.Error, "never"],
