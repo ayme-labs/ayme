@@ -461,9 +461,6 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../ayme
-      "@playwright/test":
-        specifier: ">=1.29 <1.63"
-        version: 1.62.1
     devDependencies:
       "@angular-devkit/schematics":
         specifier: ^22.2.1
@@ -868,9 +865,6 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../ayme
-      "@playwright/test":
-        specifier: ">=1.29 <1.63"
-        version: 1.62.1
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*

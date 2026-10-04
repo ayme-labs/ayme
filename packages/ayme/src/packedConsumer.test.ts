@@ -360,10 +360,19 @@ it(
   "packed packages support consumer Playwright types and conditional config loading",
   { timeout: 180_000 },
   () => {
-    for (const name of ["ayme", "vue", "inspector", "unplugin-ayme"]) {
+    // Only core declares the optional peer; the inspector requires it.
+    for (const name of [
+      "ayme",
+      "vue",
+      "react",
+      "svelte",
+      "angular",
+      "inspector",
+      "unplugin-ayme",
+    ]) {
       const manifest = readManifest(path.join(packagesRoot, name));
       expect(manifest.peerDependencies?.["@playwright/test"]).toBe(
-        name === "unplugin-ayme" ? undefined : ">=1.29 <1.63"
+        ["ayme", "inspector"].includes(name) ? ">=1.29 <1.63" : undefined
       );
       expect(
         (
@@ -371,7 +380,7 @@ it(
             peerDependenciesMeta?: Record<string, { optional?: boolean }>;
           }
         ).peerDependenciesMeta?.["@playwright/test"]?.optional
-      ).toBe(["ayme", "vue"].includes(name) ? true : undefined);
+      ).toBe(name === "ayme" ? true : undefined);
     }
     const { tarballs, workspaceYaml } = tarballDependencies([
       "@ayme-dev/ayme",
