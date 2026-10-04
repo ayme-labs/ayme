@@ -6,6 +6,7 @@ import {
   publishedToolSchema,
   recordPublishedTools,
 } from "@ayme-dev/ayme/testing";
+import { isRefusedAutoPairProbe } from "@ayme-dev/example-certification/tests";
 
 // Run the same contract against ng serve and the production build, for the
 // default SSR build and the spa build configuration.
@@ -58,6 +59,7 @@ test("publishes the compiled POM, executes it, and cleans up on remount and navi
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
     const text = message.text();
+    if (isRefusedAutoPairProbe(text)) return;
     if (/Angular hydrated/.test(text)) hydration.push(text);
     else if (message.type() === "error" || /NG0\d{3}|mismatch/i.test(text))
       errors.push(text);

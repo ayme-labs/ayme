@@ -22,9 +22,10 @@ import { render, server } from "./config";
  * Whether a console error is Chromium reporting a refused probe of the Agent
  * Connection's auto-pair scan: with no Ayme MCP server running, a localhost
  * page probes `ws://127.0.0.1:<port>/probe` on each port from 9350 to 9365,
- * and Chromium logs every refused connection, whatever the page does.
+ * and Chromium logs every refused connection, whatever the page does. An
+ * example's own page-error checks use it too.
  */
-function isRefusedAutoPairProbe(text: string) {
+export function isRefusedAutoPairProbe(text: string) {
   const port =
     /^WebSocket connection to 'ws:\/\/127\.0\.0\.1:(\d+)\/probe' failed/.exec(
       text
