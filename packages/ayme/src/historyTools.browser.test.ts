@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
 import { operations, publishTools } from "./publication.testSupport";
+import { toolFailure } from "./toolFailure.testSupport";
 import { createAyme, type Ayme } from "./runtime";
 
 // The test document's first history entry: no test can go back from it.
@@ -125,4 +126,39 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
     for (const name of ["navigate_back", "navigate_forward", "reload"])
       expect(offered).toContain(name);
   });
+});
+
+describe("navigate_back and navigate_forward when the browser Page fails, in Chromium", () => {
+  let call: (name: string, input: unknown) => Promise<unknown>;
+  let stop: () => void;
+  let disposePublication: () => void;
+
+  beforeEach(async () => {
+    document.body.innerHTML = `<main><h1>Start page</h1></main>`;
+    stop = createAyme({
+      pageFactory: () => {
+        // A browser Page whose traversal fails before any navigation starts.
+        const page = createPage({ actionTimeout: 500 });
+        const fail = () => Promise.reject(new Error("The browser refused."));
+        return Object.assign(page, { goBack: fail, goForward: fail });
+      },
+    }).start();
+    ({ call, dispose: disposePublication } = await publishTools());
+  });
+
+  afterEach(() => {
+    disposePublication();
+    stop();
+    document.body.innerHTML = "";
+  });
+
+  it.each(["navigate_back", "navigate_forward"])(
+    "fails %s with the browser Page's error instead of waiting forever",
+    async (name) => {
+      await expect(call(name, {})).resolves.toEqual(
+        toolFailure("The browser refused.")
+      );
+      expect(navigation.currentEntry!.key).toBe(firstEntry.key);
+    }
+  );
 });

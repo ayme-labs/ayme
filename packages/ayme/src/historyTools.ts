@@ -22,8 +22,8 @@ const noInputSchema: JsonSchema = {
  * the call answers with the Change Record once the page settles, or at once
  * when the entry is another document and its load starts. With no entry to
  * move to, the browser Page does not move the page and the call's `result`
- * says so. A traversal's answer follows the document's navigation, never
- * how the browser Page's own promise settles.
+ * says so. A traversal's answer follows the document's navigation; the
+ * browser Page's error is the answer only when no navigation started.
  */
 function traversalTool(
   name: string,
@@ -55,12 +55,13 @@ function traversalTool(
           // another document starts a full load, which the action answers.
           // With no entry to move to, the browser Page resolves at once with
           // no navigation started and the current entry unchanged. Its
-          // rejection never decides the answer.
+          // rejection decides the answer only when no navigation started,
+          // since then no event will.
           const start = navigation.currentEntry?.key;
           let navigated = false;
           const watching = new AbortController();
           const { signal } = watching;
-          const traversed = new Promise<boolean>((resolve) => {
+          const traversed = new Promise<boolean>((resolve, reject) => {
             navigation.addEventListener("navigate", () => (navigated = true), {
               signal,
             });
@@ -68,12 +69,15 @@ function traversalTool(
               navigation.addEventListener(type, () => resolve(true), {
                 signal,
               });
+            const unmoved = () =>
+              !navigated && navigation.currentEntry?.key === start;
             void traverse().then(
               () => {
-                if (!navigated && navigation.currentEntry?.key === start)
-                  resolve(false);
+                if (unmoved()) resolve(false);
               },
-              () => {}
+              (error: unknown) => {
+                if (unmoved()) reject(error);
+              }
             );
           }).finally(() => watching.abort());
           if (!(await traversed))
