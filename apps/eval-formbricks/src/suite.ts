@@ -107,6 +107,7 @@ async function main() {
       dockerPrecondition,
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
+      ...options.arms.flatMap((armId) => arms[armId].preconditions ?? []),
     ]);
   } catch (error) {
     await rm(suiteDir, { recursive: true, force: true });
