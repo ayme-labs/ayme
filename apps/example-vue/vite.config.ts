@@ -7,12 +7,10 @@ import { defineConfig } from "vite";
 
 import { readDecisionProvider } from "./scripts/appEnvironment";
 import { decisionEndpointDev } from "./vite/decisionEndpoint.dev";
-import { mcpVersionDefine } from "./vite/mcpVersion";
 
 export default defineConfig(({ mode }) => {
   return {
     base: process.env.VITE_BASE_PATH ?? "/",
-    define: mcpVersionDefine,
     plugins: [
       vue(),
       tailwindcss(),
