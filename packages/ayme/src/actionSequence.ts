@@ -105,7 +105,8 @@ export async function runAction(
  * Resolves once the navigation starts in this document, or once the call
  * ends without starting one. A Page that defers the call, as the Inspector's
  * demo mode does, so cannot leave the action settled before its navigation
- * begins. Without the Navigation API, resolves at once.
+ * begins. Without the Navigation API, which tells when it starts, waits for
+ * the call to end; such a browser cannot answer a full load at once anyway.
  */
 export async function startNavigation(
   currentDocument: Document,
@@ -123,7 +124,7 @@ export async function startNavigation(
     () => {},
     () => {}
   );
-  if (!navigation) return;
+  if (!navigation) return ended;
   try {
     await Promise.race([started, ended]);
   } finally {

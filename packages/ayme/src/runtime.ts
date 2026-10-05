@@ -433,24 +433,37 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   return ayme;
 }
 
-// A load failure stays an unhandled rejection, so it reaches the console.
+// A load failure while the session runs stays an unhandled rejection, so it
+// reaches the console. Once the session has stopped, nothing would mount,
+// so the failure is dropped, such as an import cut short by a teardown.
 function mountInspectorUntil(signal: AbortSignal, options: { demo: boolean }) {
-  void loadInspector().then(({ mountInspector }) => {
-    if (signal.aborted) return;
-    const inspector = mountInspector(options);
-    signal.addEventListener("abort", () => inspector.dispose(), {
-      once: true,
-    });
-  });
+  void loadInspector().then(
+    ({ mountInspector }) => {
+      if (signal.aborted) return;
+      const inspector = mountInspector(options);
+      signal.addEventListener("abort", () => inspector.dispose(), {
+        once: true,
+      });
+    },
+    (error: unknown) => {
+      if (!signal.aborted) throw error;
+    }
+  );
 }
 
-// Like the Inspector: a load failure stays an unhandled rejection.
+// Like the Inspector: a load failure while the session runs stays an
+// unhandled rejection, and one after it has stopped is dropped.
 function startAgentConnectionUntil(signal: AbortSignal, ayme: Ayme) {
-  void loadAgentConnection().then(({ startAgentConnection }) => {
-    if (signal.aborted) return;
-    const connection = startAgentConnection(ayme);
-    signal.addEventListener("abort", () => connection.dispose(), {
-      once: true,
-    });
-  });
+  void loadAgentConnection().then(
+    ({ startAgentConnection }) => {
+      if (signal.aborted) return;
+      const connection = startAgentConnection(ayme);
+      signal.addEventListener("abort", () => connection.dispose(), {
+        once: true,
+      });
+    },
+    (error: unknown) => {
+      if (!signal.aborted) throw error;
+    }
+  );
 }
