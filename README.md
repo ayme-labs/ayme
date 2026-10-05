@@ -1,173 +1,69 @@
-# ayme
+# Ayme
 
-## Framework integrations
+Ayme turns the Page Object Models from your Playwright tests into tools that coding agents and your own app can call in the running page.
 
-- [Vue](packages/vue/README.md): provider setup and compatible standalone composable setup.
-- [React](packages/react/README.md): provider setup for React 18 and 19, client-rendered or server-rendered.
-- [Svelte](packages/svelte/README.md): root-component setup for Svelte 3.54+, 4 and 5, SvelteKit and plain Svelte apps.
-- [Angular](packages/angular/README.md): `ng add` setup, `provideAyme` and `injectPageObject` for standalone Angular 19 to 22 applications, with or without server rendering.
+![The Ayme playground with the Inspector open on its Model lens](docs/guide/images/inspector-model.png)
 
-The Vue, React and Svelte packages return Page Object instances through
-`usePageObject`, the Angular package through `injectPageObject`. All four
-share publication, retry, and runtime ownership behavior. The
-[React smoke app](apps/example-react/README.md) checks the integration with one
-counter, the [SvelteKit example](apps/example-sveltekit/README.md) certifies
-server rendering and SPA mode, and the Vue example retains its full inspector
-demo.
+<!--
+Reserved for the Goal Loop clip and the comparison table. Both are added once
+the eval work has produced them; until then this README makes no comparison.
+-->
 
-## Supported versions
+## What you can do with it
 
-CI tests each lower bound together with the current release, except the
-TypeScript floor, which comes from a one-time check.
-These are compatibility floors, not security advice: follow each framework's
-own support policy for which releases still receive fixes.
+- **Drive your app from your coding agent.** Claude Code, or any MCP client, calls your Page Object Actions on the page you have open, reads what is on the page and acts on it, while you develop.
+- **Hand the page a goal.** An agent says "invite Ada as an admin", and the Goal Loop works the page toward it in small steps, each one judged by Jev, TypeSafe's decision model, instead of the agent's own LLM.
+- **Build an in-app assistant.** An onboarding assistant inside your app gets your Page Object Actions and the page state as its tools, so it works the page while the user watches. A checklist's "Show me how" button can run the same actions directly. See [Build an in-app assistant](docs/guide/guides/in-app-assistant.md).
 
-| Dependency         | Supported                                | Notes                                                                                                                                                                                                                             |
-| ------------------ | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React              | 18.0 and 19                              | Client rendering, server rendering and hydration.                                                                                                                                                                                 |
-| Vue                | 3.2.0 and later                          | With TypeScript and `skipLibCheck: false`, Vue 3.2.0 to 3.2.38 report errors inside Vue's own declarations; use 3.2.39 or later, or `skipLibCheck: true`.                                                                         |
-| Svelte             | 3.54 and later, 4 and 5                  |                                                                                                                                                                                                                                   |
-| Angular            | 19 to 22                                 | Standalone applications; see the [Angular package](packages/angular/README.md#supported-versions-and-limits). The package is tested from 19.0; the server-rendered example end to end from 21.0, the oldest release it builds on. |
-| Next.js            | 16.0 and later                           | With the experimental Turbopack loader, as in the [Next.js example](apps/example-next/README.md). Next.js 15 and webpack are not supported.                                                                                       |
-| SvelteKit          | 2.53 and later 2.x                       | With the Vite plugin, as in the [SvelteKit example](apps/example-sveltekit/README.md). 2.53 is the first release that accepts Vite 8; earlier 2.x releases on Vite 7 are not tested.                                              |
-| Nuxt               | 4.0.1 and later                          | With the Vite plugin, as in the [Nuxt example](apps/example-nuxt/README.md). Nuxt 3 is not supported.                                                                                                                             |
-| Vite               | 7 and 8                                  | The plugin is ESM-only, so the config must be loaded as ESM.                                                                                                                                                                      |
-| Node.js            | 20.19 and later 20.x, or 22.12 and later | Nuxt 4.4.6 and later need Node.js 22.12, and Nuxt 4.5 needs 22.19, so a current Nuxt release needs Node.js 22.                                                                                                                    |
-| `@playwright/test` | 1.29 to 1.62                             | Optional; see [Playwright compatibility](#playwright-compatibility).                                                                                                                                                              |
-| TypeScript         | 5.4 and later                            | 5.0 to 5.3 work with `skipLibCheck: true`. This is the version your project compiles with; the plugin brings its own compiler. Playwright 1.29's declarations need TypeScript 5.x.                                                |
+## How it works
 
-The Next.js, Nuxt and SvelteKit rows, and Angular from 21.0, cover the behavior the examples test: server
-rendering, hydration, tool publication, Page Object actions, removal and
-remounting, in development and production.
+You mark a Page Object Model and the actions to expose. The build plugin compiles them into your app, and when the app runs, Ayme publishes three kinds of tools through WebMCP, the browser's way of offering tools on a page to agents:
 
-## Browser page creation
+- **Page Object Tools**: your marked actions, such as `ProjectsPage.createProject`.
+- **Browser Tools**: built-in operations on the page, such as `click` and `fill`, aimed at what `snapshot` shows.
+- **Custom Tools**: operations of your own on one element, such as highlighting it for the user.
 
-WebMCP bundles its browser controller from the exact-commit-pinned
-`@ayme-dev/playwright-lite` fork. Consumers do not install the Git dependency
-or build the runtime. It controls the current document, without opening a
-tab or creating an isolated browser context.
+The **Goal Loop** runs on top of them: `goal` takes a goal in natural language and lets Jev pick one operation per step until the goal is met or it needs the agent. Jev is reached through a **Decision Endpoint**, one route in your backend, or in your dev server while you develop, that adds your TypeSafe or OpenRouter key.
 
-Existing Vite plugin settings are passed to `createPage(options)` inside
-WebMCP. Browser Page construction remains lazy for server rendering.
-Page Object Models still use the standard Playwright Page and Locator types.
+The **Inspector** is an in-page panel that shows your Page Objects, what the agent sees and every tool, and runs them by hand.
 
-The Vue example owns its trace collection, action pauses, and click cues in
-`apps/example-vue/src/ayme/withDemoFeedback.ts`. The wrapper preserves the
-underlying locators for Ayme observation. Its pauses and advisory cues run
-before the delegated action and outside that action's timeout budget.
+![The Inspector's Tools lens listing Page Object Tools and Browser Tools](docs/guide/images/inspector-tools.png)
 
-The demo's text-entry actions explicitly use `pressSequentially(text, { delay })`.
-`fill()` keeps its normal text-replacement behavior.
-Start with the [main library README](packages/ayme/README.md) for consumer setup.
+## Install
 
-## Coding agent skill
-
-> Install the `ayme` skill from https://github.com/ayme-labs/ayme/tree/main/skills/ayme into this project's skill directory, including its references. Then use it to set up Ayme WebMCP here.
-
-## Playwright compatibility
-
-For Page Object Models, install `@playwright/test` as a development dependency.
-A separate direct installation of `playwright` is unnecessary. Import `Page`
-and `Locator` with `import type`.
-
-`@ayme-dev/ayme` declares an optional `@playwright/test` peer of
-`>=1.29 <1.63`; the framework packages do not declare it. Playwright is unnecessary for the
-core public API and plugin defaults or direct settings. POM registration types
-require it. Packed consumer checks exercise 1.29.0 with TypeScript 5.9.3 and
-1.62.1 with TypeScript 6.0.3, with strict declaration checking and no
-`skipLibCheck`. Playwright 1.29's own declarations use syntax rejected by
-TypeScript 6, so that combination is not supported. Versions 1.63 and later
-require compatibility review.
-
-Compatibility covers the methods and options marked implemented in the
-[existing compatibility ledger](https://github.com/ayme-labs/playwright-lite/blob/cd4217e91307bb16133cd3194032686631f62af7/compatibility/api.ts),
-subject to its limitations. The full Playwright `Page` and `Locator` declarations
-also expose unsupported operations; successful TypeScript compilation does not
-establish runtime support. Browser-executed POMs must not import Playwright runtime
-values such as `expect`; unused imports behind local barrels may be removed by
-the plugin, but this does not provide a browser version of Playwright Test.
-
-An older consumer's declarations need not expose newer supported capabilities:
-
-| Capability                                       | First Playwright declaration |
-| ------------------------------------------------ | ---------------------------- |
-| `Locator.all`                                    | 1.29                         |
-| `Locator.or`, negative locator filters           | 1.33                         |
-| `Locator.and`                                    | 1.34                         |
-| `Locator.pressSequentially`                      | 1.38                         |
-| `Locator.ariaSnapshot`                           | 1.49                         |
-| `Locator.filter({ visible })`                    | 1.51                         |
-| `Locator.describe`                               | 1.53                         |
-| `Locator.description`                            | 1.57                         |
-| `Page.ariaSnapshot`, snapshot `mode` and `depth` | 1.59                         |
-| Snapshot `boxes`, role `description`             | 1.60                         |
-| Query and snapshot `signal`                      | 1.62                         |
-
-These dates follow [Playwright's release history](https://playwright.dev/docs/release-notes).
-The 1.29 minimum includes `Locator.all` and the `selectOption(string)` behavior
-that matches either an option value or label. Ayme always executes its bundled
-adapter from the fixed runtime source pin, regardless of the consumer's installed
-Playwright version. It does not emulate historical releases. The current-document
-boundary excludes iframe traversal, multiple pages, and browser-process operations.
-The runtime's reviewed tests remain separate from the consumer declaration checks.
-
-The optional config loader has a narrower requirement described below. The plugin
-does not declare that requirement as a package-wide peer because it applies only
-when `playwright.config` is supplied; it validates the consumer's resolved
-Playwright version at that point.
-
-## Playwright settings
-
-The Vite plugin accepts the small part of Playwright configuration that the
-Ayme browser adapter uses:
-
-```ts
-ayme({
-  playwright: {
-    config: "./playwright.config.ts",
-    project: "chromium",
-    use: {
-      testIdAttribute: "data-testid",
-      actionTimeout: 10_000,
-      navigationTimeout: 30_000,
-    },
-  },
-});
+```sh
+npm install @ayme-dev/ayme @ayme-dev/vue # or react, svelte
+npm install -D @ayme-dev/unplugin-ayme @playwright/test
 ```
 
-`config` is optional. When it is omitted, Ayme does not search for a
-Playwright config and does not import Playwright's config loader. The supported
-values come from the explicit `use` overrides and the adapter defaults.
-Relative config paths resolve against Vite's root. Absolute paths work too.
-Consumers that relied on the old automatic discovery must now pass their
-config path explicitly.
+On Angular, `ng add @ayme-dev/angular` sets everything up. Then mark a Page Object Model:
 
-If a config is supplied, Ayme loads the consumer's Playwright 1.62.x config
-loader through the matching `playwright` dependency of `@playwright/test`.
-That loader is a private Playwright module, so other versions and
-loader shapes fail with an explicit compatibility error. Ayme reads only
-`testIdAttribute`, `actionTimeout`, and `navigationTimeout`; no other config
-field enters the browser bundle.
+```ts
+import { ayme } from "@ayme-dev/ayme";
+import type { Page } from "@playwright/test";
 
-Without `project`, a config with no projects uses its top-level `use` values, a
-single project is selected automatically, and multiple projects must agree on
-all three supported values. If they do not, set `project` to a project name.
-That name must identify exactly one project.
+@ayme
+export class ProjectsPage {
+  constructor(private readonly page: Page) {}
 
-Each supported field resolves independently. Explicit `use` overrides win over
-the selected project, then the top-level config, then the adapter runtime
-default. The adapter defaults are 1,000 ms for actions and 30,000 ms for
-navigation. An `undefined` value does not erase an inherited value. Action and
-navigation defaults are applied to the page returned by `createPage`, which is
-the page used by POM and ref actions. Per-call timeout options and later
-`setDefaultTimeout` or `setDefaultNavigationTimeout` calls still win, and `0`
-means no timeout. If navigation has no separate value, it inherits the general
-action timeout.
+  @ayme.action({ description: "Create a project with the given name." })
+  async createProject(name: string) {
+    await this.page.getByRole("button", { name: "New project" }).click();
+    await this.page.getByRole("textbox", { name: "Project name" }).fill(name);
+    await this.page.getByRole("button", { name: "Create" }).click();
+  }
+}
+```
 
-The adapter supports same-document navigation and full-document navigation via
-`page.goto`. A full-document navigation replaces the controlled document and
-ends the current browser execution; it does not return a destination page to
-the old execution.
+The quickstart for [Vue](docs/guide/start/quickstart-vue.md), [React](docs/guide/start/quickstart-react.md), [Svelte](docs/guide/start/quickstart-svelte.md) or [Angular](docs/guide/start/quickstart-angular.md) takes it from there to your agent calling `ProjectsPage.createProject`. A coding agent can do the setup for you with the [`ayme` skill](docs/guide/guides/coding-agent-skill.md).
+
+## Documentation
+
+Start with the [documentation index](docs/guide/README.md), which lists every page in reading order: what Ayme is, install and the quickstarts first, then the guides, one page per framework, the reference and troubleshooting. GitHub renders the pages in place, and the links between them work.
+
+## Your data stays with you
+
+Ayme runs entirely in your app's page. It has no backend and no account, and it sends nothing to Ayme. Page content leaves the page in two ways, both set up by you: a coding agent you connect reads the page through the relay on your machine, and each Goal Loop step goes from your own Decision Endpoint, with your key, to the model provider you chose.
 
 ## License
 

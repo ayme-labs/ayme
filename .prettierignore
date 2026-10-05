@@ -26,3 +26,6 @@ apps/example-vue/tests/vue-webmcp.spec.ts-snapshots/
 /.agents/skills/typesafe-ai/
 
 apps/example-angular/.angular/
+
+# Liquid template for the docs site, which Prettier cannot parse
+docs/guide/_layouts/

@@ -23,11 +23,12 @@
  * directory and kept, so the release workflow publishes exactly the
  * artefacts these tests checked.
  */
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
 const aymeRoot = path.resolve(
@@ -66,6 +67,14 @@ type Manifest = {
   Record<(typeof DEPENDENCY_SECTIONS)[number], Record<string, string>>
 >;
 
+function execFailure(error: unknown) {
+  const failure = error as Error & { stdout?: string; stderr?: string };
+  return new Error(
+    `${failure.message}\n${failure.stdout ?? ""}\n${failure.stderr ?? ""}`,
+    { cause: error }
+  );
+}
+
 function exec(file: string, args: string[], cwd: string) {
   try {
     return execFileSync(file, args, {
@@ -75,11 +84,21 @@ function exec(file: string, args: string[], cwd: string) {
       env: { ...process.env, NODE_PATH: "" },
     });
   } catch (error) {
-    const failure = error as Error & { stdout?: string; stderr?: string };
-    throw new Error(
-      `${failure.message}\n${failure.stdout ?? ""}\n${failure.stderr ?? ""}`,
-      { cause: error }
-    );
+    throw execFailure(error);
+  }
+}
+
+/** `exec` that leaves the event loop free, so concurrent tests overlap. */
+async function execAsync(file: string, args: string[], cwd: string) {
+  try {
+    const { stdout } = await promisify(execFile)(file, args, {
+      cwd,
+      encoding: "utf-8",
+      env: { ...process.env, NODE_PATH: "" },
+    });
+    return stdout;
+  } catch (error) {
+    throw execFailure(error);
   }
 }
 
@@ -256,6 +275,19 @@ it("packed manifests name this repository, as npm provenance requires", () => {
     });
 });
 
+// The README rules live in the repository's docs check (`pnpm docs:check`),
+// which reads each package's own README.md; npm must show that file as is.
+it("packed READMEs are the ones the docs check approved", () => {
+  for (const name of PUBLISHED_PACKAGES)
+    expect(
+      fs.readFileSync(
+        path.join(packed[`@ayme-dev/${name}`]!.dir, "README.md"),
+        "utf8"
+      ),
+      name
+    ).toBe(fs.readFileSync(path.join(packagesRoot, name, "README.md"), "utf8"));
+});
+
 it("packed packages contain no workspace references or local paths", () => {
   const versions = workspaceVersions();
   for (const [name, { dir }] of Object.entries(packed))
@@ -356,41 +388,46 @@ console.log("ok");
   }
 );
 
-it(
-  "packed packages support consumer Playwright types and conditional config loading",
-  { timeout: 180_000 },
-  () => {
-    // Only core declares the optional peer; the inspector requires it.
-    for (const name of [
-      "ayme",
-      "vue",
-      "react",
-      "svelte",
-      "angular",
-      "inspector",
-      "unplugin-ayme",
-    ]) {
-      const manifest = readManifest(path.join(packagesRoot, name));
-      expect(manifest.peerDependencies?.["@playwright/test"]).toBe(
-        ["ayme", "inspector"].includes(name) ? ">=1.29 <1.63" : undefined
-      );
-      expect(
-        (
-          manifest as {
-            peerDependenciesMeta?: Record<string, { optional?: boolean }>;
-          }
-        ).peerDependenciesMeta?.["@playwright/test"]?.optional
-      ).toBe(name === "ayme" ? true : undefined);
-    }
-    const { tarballs, workspaceYaml } = tarballDependencies([
-      "@ayme-dev/ayme",
-      "@ayme-dev/vue",
-      "@ayme-dev/svelte",
-      "@ayme-dev/inspector",
-      "@ayme-dev/unplugin-ayme",
-    ]);
+it("the Playwright peer is optional in core and required by the inspector", () => {
+  // Only core declares the optional peer; the inspector requires it.
+  for (const name of [
+    "ayme",
+    "vue",
+    "react",
+    "svelte",
+    "angular",
+    "inspector",
+    "unplugin-ayme",
+  ]) {
+    const manifest = readManifest(path.join(packagesRoot, name));
+    expect(manifest.peerDependencies?.["@playwright/test"]).toBe(
+      ["ayme", "inspector"].includes(name) ? ">=1.29 <1.63" : undefined
+    );
+    expect(
+      (
+        manifest as {
+          peerDependenciesMeta?: Record<string, { optional?: boolean }>;
+        }
+      ).peerDependenciesMeta?.["@playwright/test"]?.optional
+    ).toBe(name === "ayme" ? true : undefined);
+  }
+});
 
-    for (const version of [undefined, "1.29.0", "1.62.1"]) {
+// Each consumer installs from scratch, so they run concurrently.
+for (const version of [undefined, "1.29.0", "1.62.1"])
+  it.concurrent(
+    `packed packages support consumer Playwright types and conditional config loading ${
+      version ? `with Playwright ${version}` : "without Playwright"
+    }`,
+    { timeout: 150_000 },
+    async () => {
+      const { tarballs, workspaceYaml } = tarballDependencies([
+        "@ayme-dev/ayme",
+        "@ayme-dev/vue",
+        "@ayme-dev/svelte",
+        "@ayme-dev/inspector",
+        "@ayme-dev/unplugin-ayme",
+      ]);
       const consumer = path.join(tmp, version ?? "without-playwright");
       fs.mkdirSync(consumer);
       fs.writeFileSync(
@@ -415,7 +452,7 @@ it(
         path.join(consumer, "pnpm-workspace.yaml"),
         workspaceYaml
       );
-      exec(
+      await execAsync(
         "pnpm",
         [
           "install",
@@ -508,7 +545,7 @@ export async function recordAndRun(context: BrowserContext, page: Page): Promise
 }
 `
       );
-      exec("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
+      await execAsync("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
       fs.writeFileSync(
         path.join(consumer, "playwright.config.ts"),
         "export default { use: { testIdAttribute: 'data-config', actionTimeout: 17 } };\n"
@@ -571,10 +608,9 @@ assert.throws(() => createRequire(import.meta.url).resolve('@playwright/test/pac
 }
 `
       );
-      exec(process.execPath, ["check.mjs"], consumer);
+      await execAsync(process.execPath, ["check.mjs"], consumer);
     }
-  }
-);
+  );
 
 // The floors of the plugin's Vite peer range.
 for (const vite of ["7.0.0", "8.0.0"])
