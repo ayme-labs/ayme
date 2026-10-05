@@ -107,7 +107,10 @@ async function main() {
       dockerPrecondition,
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
-      ...options.arms.flatMap((armId) => arms[armId].preconditions ?? []),
+      // Once each: the two Ayme arms share theirs.
+      ...new Set(
+        options.arms.flatMap((armId) => arms[armId].preconditions ?? [])
+      ),
     ]);
   } catch (error) {
     await rm(suiteDir, { recursive: true, force: true });
