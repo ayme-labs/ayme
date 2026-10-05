@@ -26,6 +26,7 @@
       "dependsOn": ["^build"],
       "passThroughEnv": [
         "PLAYWRIGHT_BROWSERS_PATH",
+        "AYME_TYPESAFE_API_KEY",
         "AYME_OPENROUTER_API_KEY",
         "AYME_E2E_PORT_*"
       ],

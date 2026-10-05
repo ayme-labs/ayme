@@ -60,12 +60,11 @@ export function pomProgramDependencies(
 }
 
 /**
- * Whether source text carries a Page Object decorator: `@ayme`, or the
- * replaced `@WebMCP` so that the build can reject it. The `@ayme-dev/...`
- * import specifiers do not count.
+ * Whether source text carries the Page Object decorator `@ayme`. The
+ * `@ayme-dev/...` import specifiers do not count.
  */
 export function carriesPomMarker(source: string) {
-  return /@(?:ayme|WebMCP)\b(?!-)/.test(source);
+  return /@ayme\b(?!-)/.test(source);
 }
 
 /**

@@ -62,18 +62,6 @@ describe("derivePomManifests", () => {
         ],
       });
     });
-
-    it("rejects a class still marked with @WebMCP, naming @ayme", () => {
-      expect(() => manifestFor("legacyClassPom")).toThrow(
-        "LegacyClassPom is marked with @WebMCP, which was replaced by @ayme. Import ayme from @ayme-dev/ayme."
-      );
-    });
-
-    it("rejects a method still marked with @WebMCP.tool, naming @ayme.action", () => {
-      expect(() => manifestFor("legacyToolPom")).toThrow(
-        "LegacyToolPom.open is marked with @WebMCP.tool, which was replaced by @ayme.action."
-      );
-    });
   });
 
   it.each(["privateRootPom", "protectedRootPom"])(

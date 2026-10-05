@@ -62,8 +62,7 @@ export class GreetingPage {
 
 Both decorators also take the other form: `@ayme({ description })` describes
 the Page Object Model, and a bare `@ayme.action` publishes with a generated
-description. `description` is the only option. The build fails on a class or
-method still marked with the replaced `@WebMCP` or `@WebMCP.tool`.
+description. `description` is the only option.
 
 A Page Object Tool is named after its class and method, as `GreetingPage.greet`.
 Registering a Page Object while a different class with the same name is
@@ -177,8 +176,9 @@ const unsubscribe = ayme.tools.subscribe((tools) => render(tools));
 - `run(name, input)` runs a live tool the way an agent's call runs it: the
   same input validation, target resolution, action recording and settling.
   The built-in tools are typed by name: a Browser Tool resolves with its
-  action result (`ActionResult`), `snapshot` with `PageContextPayload` and
-  `goal` with the `Handover`. Any other name takes an object and resolves with
+  action result (`ActionResult`), except `generate_locator`, which resolves
+  with its locators; `snapshot` with `PageContextPayload` and `goal` with the
+  `Handover`. Any other name takes an object and resolves with
   `unknown`; Page Object Tools and Custom Tools resolve with an action result.
   `BuiltInTools` maps each built-in name to its input and result, and
   `ToolInput<Name>` and `ToolResult<Name>` read them.
@@ -318,17 +318,18 @@ A **Browser Tool** is a built-in operation on the page itself, as opposed to
 one a Page Object provides. An agent that knows Playwright MCP can use them as
 it would there:
 
-| Tool            | Playwright MCP counterpart     | Input                                             |
-| --------------- | ------------------------------ | ------------------------------------------------- |
-| `click`         | `browser_click`                | `target`, `doubleClick?`, `button?`, `modifiers?` |
-| `hover`         | `browser_hover`                | `target`                                          |
-| `type`          | `browser_type`                 | `target`, `text`, `submit?`, `slowly?`            |
-| `fill`          | none                           | `target`, `text`                                  |
-| `fill_form`     | `browser_fill_form`            | `fields`: `{ target, name, type, value }[]`       |
-| `check`         | `browser_check` (skill-only)   | `target`                                          |
-| `uncheck`       | `browser_uncheck` (skill-only) | `target`                                          |
-| `select_option` | `browser_select_option`        | `target`, `values`                                |
-| `press_key`     | `browser_press_key`            | `key`                                             |
+| Tool               | Playwright MCP counterpart     | Input                                             |
+| ------------------ | ------------------------------ | ------------------------------------------------- |
+| `click`            | `browser_click`                | `target`, `doubleClick?`, `button?`, `modifiers?` |
+| `hover`            | `browser_hover`                | `target`                                          |
+| `type`             | `browser_type`                 | `target`, `text`, `submit?`, `slowly?`            |
+| `fill`             | none                           | `target`, `text`                                  |
+| `fill_form`        | `browser_fill_form`            | `fields`: `{ target, name, type, value }[]`       |
+| `check`            | `browser_check` (skill-only)   | `target`                                          |
+| `uncheck`          | `browser_uncheck` (skill-only) | `target`                                          |
+| `select_option`    | `browser_select_option`        | `target`, `values`                                |
+| `press_key`        | `browser_press_key`            | `key`                                             |
+| `generate_locator` | `browser_generate_locator`     | `groups`: `{ targets, within? }[]`                |
 
 - The inputs follow Playwright MCP as bundled in `playwright-core` 1.62.1: the
   same field names, and the same behaviour when an option is omitted. `type`
@@ -359,7 +360,22 @@ it would there:
   `check` takes checkboxes, radio buttons and switches, and `uncheck` the
   same without radio buttons;
   `select_option` takes select elements. The loop fills only the element and
-  the required fields. `fill_form` and `press_key` are published only.
+  the required fields. `fill_form`, `press_key` and `generate_locator` are
+  published only.
+- `generate_locator` turns targets into Playwright locator strings for Page
+  Object Model code, such as `getByRole('button', { name: 'Save' })`; a
+  Structural Ref is capture-scoped and does not belong in code. It never acts
+  on the page. Each group of `targets` gets its locators relative to its
+  `within` container, ready for a component's `root`, or relative to the page
+  without one. The result mirrors the input: each group repeats its `within`
+  and lists `{ target, locator }` per target, in order. Each locator is
+  Playwright's own generator's pick, test id first, and matches exactly its
+  element, or the button or link around it, as codegen picks. A target that
+  cannot be resolved, or lies outside its container, gets `{ target, error }`
+  instead; a container that cannot be resolved gets `{ within, error }` for its
+  group. A synthetic `s_…` ref fails, naming the Page Object whose root it is.
+  Playwright MCP's `browser_generate_locator` takes one element; this tool
+  takes groups.
 
 The browser runtime differs from a real browser driven by Playwright:
 
@@ -419,23 +435,30 @@ gates access.
 
 ### Route contract
 
-`POST` with JSON body `{ model, state, questions }`.
+`POST` with JSON body `{ state, questions }`.
 
-- `model`, `state`, and `questions` follow the System One decisions API. The
-  endpoint accepts only `typesafe/jev-*` models.
-- Success and upstream errors: return the upstream status and body unchanged.
+- `state` and `questions` follow the System One decisions API. The endpoint
+  adds the Jev model the Goal Loop's questions are tuned for.
+- Success: the upstream status and body, unchanged.
+- Upstream errors: the upstream status with `{ "error": "<the provider's message>" }`,
+  or a plain sentence naming the status when the provider gives no message.
+  No upstream headers are passed on.
 - The endpoint's own rejections return `{ "error": "<one plain sentence>" }`:
   - `405` when the method is not `POST`
   - `413` when the body is over 1 MB
-  - `400` when the body is not JSON, a field is missing, or the model is not
-    `typesafe/jev-*`
+  - `400` when the body is not JSON or a field is missing
   - `502` when the upstream provider cannot be reached
 - Authorization failures return whatever `Response` your `authorize` function
   throws.
 
 The handler forwards no incoming request headers. It builds the upstream request
-from scratch with your key and `Content-Type: application/json`, posting to
-OpenRouter's System One API at `https://openrouter.ai/api/v1/systemone`.
+from scratch with your key and `Content-Type: application/json`, posting to the
+System One API of the `provider` you choose:
+
+| `provider`     | Key               | System One API                           |
+| -------------- | ----------------- | ---------------------------------------- |
+| `"typesafe"`   | a TypeSafe key    | `https://api.typesafe.ai/v1/systemone`   |
+| `"openrouter"` | an OpenRouter key | `https://openrouter.ai/api/v1/systemone` |
 
 ### Server handler
 
@@ -443,14 +466,16 @@ OpenRouter's System One API at `https://openrouter.ai/api/v1/systemone`.
 import { createDecisionEndpoint } from "@ayme-dev/ayme/server";
 
 const handleDecision = createDecisionEndpoint({
-  apiKey: process.env.YOUR_OPENROUTER_KEY!,
+  provider: "typesafe",
+  apiKey: process.env.YOUR_TYPESAFE_KEY!,
   authorize(request) {
     // Return nothing when allowed, or throw a Response to reject.
   },
 });
 ```
 
-`createDecisionEndpoint` requires both options and throws when `document` exists.
+`createDecisionEndpoint` requires all three options and throws when `document`
+exists or `provider` is not `"typesafe"` or `"openrouter"`.
 
 Mount `handleDecision` on your backend route. In Vite during local development:
 
@@ -458,7 +483,8 @@ Mount `handleDecision` on your backend route. In Vite during local development:
 import { createDecisionEndpoint } from "@ayme-dev/ayme/server";
 
 const handler = createDecisionEndpoint({
-  apiKey: process.env.YOUR_OPENROUTER_KEY!,
+  provider: "typesafe",
+  apiKey: process.env.YOUR_TYPESAFE_KEY!,
   authorize() {},
 });
 

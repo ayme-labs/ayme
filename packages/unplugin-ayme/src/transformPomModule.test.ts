@@ -44,18 +44,6 @@ it("registers an undecorated subclass of a decorated base", () => {
   expect(code).toContain("registerCompiledPom(UserMenu, {");
 });
 
-it("fails the build for a module still marked with @WebMCP", () => {
-  const fixturePath = fileURLToPath(
-    new URL("./fixtures/legacyClassPom.ts", import.meta.url)
-  );
-  const transform = () =>
-    createPomTransform()(readFileSync(fixturePath, "utf8"), fixturePath);
-
-  expect(transform).toThrow(
-    "LegacyClassPom is marked with @WebMCP, which was replaced by @ayme."
-  );
-});
-
 it("builds no program for a module that only imports the main library", () => {
   createPomProgram.mockClear();
   const source =

@@ -11,7 +11,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { appRoot, goalRunsVariable, readModelKey } from "./appEnvironment.ts";
+import {
+  appRoot,
+  goalRunsVariable,
+  readDecisionProvider,
+} from "./appEnvironment.ts";
 import {
   aggregate,
   specsOf,
@@ -96,9 +100,9 @@ function runGoals({
   runsPerGoal,
   goalSet,
 }: ReturnType<typeof readRunsArguments>) {
-  if (!readModelKey())
+  if (!readDecisionProvider())
     fail(
-      "Set AYME_OPENROUTER_API_KEY to your own model key: without it the goals skip and there is nothing to record."
+      "Set AYME_TYPESAFE_API_KEY or AYME_OPENROUTER_API_KEY to your own model key: without one the goals skip and there is nothing to record."
     );
 
   // The dev server needs the workspace packages built, as `test:goals` does.

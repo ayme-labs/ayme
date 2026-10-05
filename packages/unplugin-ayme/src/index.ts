@@ -38,15 +38,6 @@ type LoadedPlaywrightConfig = {
 export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   options = {}
 ) => {
-  // Publication moved to runtime setup (ADR-0030); fail rather than ignore it.
-  if ("publish" in options)
-    throw new TypeError(
-      "The publish option was removed. Turn WebMCP publication on with webMCP.enabled where Ayme starts: useAyme, AymeProvider or createAyme."
-    );
-  if ("inspector" in options)
-    throw new TypeError(
-      "The inspector option was removed. Turn the Inspector on with inspector: true where Ayme starts: useAyme, AymeProvider, provideAyme or createAyme."
-    );
   const transformPom = createPomTransform(options);
   // Vite soft-invalidates static importers of a changed file and keeps their
   // previous transform result, so a Page Object compiled from a changed base

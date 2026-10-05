@@ -5,7 +5,7 @@ import {
   type RecordingDriver,
 } from "@ayme-dev/ayme/testing";
 
-import { readModelKey } from "../scripts/appEnvironment";
+import { readDecisionProvider } from "../scripts/appEnvironment";
 import { recordGoalRun } from "./goalRunRecord";
 
 /** What the goal specs read from a Handover. */
@@ -17,8 +17,8 @@ export type Handover = { reason: string; changes?: string };
  * own. Otherwise record the published tools, so `pursueGoal` can call one.
  */
 export function useGoalLane(lane: string) {
-  const skipReason = `${lane} skipped: set AYME_OPENROUTER_API_KEY to your own model key to run it.`;
-  const modelKey = readModelKey();
+  const skipReason = `${lane} skipped: set AYME_TYPESAFE_API_KEY or AYME_OPENROUTER_API_KEY to your own model key to run it.`;
+  const modelKey = readDecisionProvider()?.apiKey;
   // The list reporter prints no skip reason, so say it once before the run.
   if (!modelKey) console.log(`\n${skipReason}\n`);
   test.skip(!modelKey, skipReason);

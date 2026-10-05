@@ -88,7 +88,7 @@ it("counts a chunk conflict and keeps the chunk choices when the run-off fails",
       answers: { ref__1: { choice: "e1" }, ref__2: { choice: "e9" } },
     },
     // The run-off was requested, and its response was not a success.
-    { model, questions: { ref__run_off: { criteria: { e1: "", e9: "" } } } },
+    { questions: { ref__run_off: { criteria: { e1: "", e9: "" } } } },
   ];
   const record = goalRunRecordOf(
     { goal: "Archive the second item", reason: "decide_failed", wallTimeMs: 1 },
@@ -109,6 +109,8 @@ it("counts a chunk conflict and keeps the chunk choices when the run-off fails",
     ],
   });
 
+  // Only answered decisions say which model answered.
+  expect(record.models).toEqual([model]);
   expect(run.reason).toBe("decide_failed");
   expect(run.steps).toEqual([
     {

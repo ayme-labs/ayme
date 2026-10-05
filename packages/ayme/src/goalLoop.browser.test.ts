@@ -253,7 +253,7 @@ function scriptedDecisionFn(
           throw new Error(`No scripted argument for "${id}"`);
         stageTwo[id] = choiceAnswer(options, keyFor(options, want));
       }
-      return { model: request.model, answers: stageTwo };
+      return { model: "typesafe/jev-1.13", answers: stageTwo };
     }
 
     const current = answers[step];
@@ -261,7 +261,7 @@ function scriptedDecisionFn(
     step++;
 
     return {
-      model: request.model,
+      model: "typesafe/jev-1.13",
       answers: {
         operation: choiceAnswer(criteria.operation, current.operation),
         goal_met: { type: "noul", noul: current.goal_met },
@@ -796,7 +796,7 @@ describe("Goal Loop goal in Chromium", () => {
         probabilities[key] = key === "none" ? 1 : 0;
       }
       return {
-        model: request.model,
+        model: "typesafe/jev-1.13",
         answers: {
           operation: {
             type: "choice",
