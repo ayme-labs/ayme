@@ -9,11 +9,12 @@
   "scripts": {
     "build": "turbo run build",
     "boundaries": "turbo boundaries",
-    "check": "pnpm run boundaries && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
+    "check": "pnpm run boundaries && pnpm run docs:check && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
     "prepare": "lefthook install",
     "release:version": "node scripts/release-version.mjs",
     "hooks:install": "lefthook install",
     "commitlint": "commitlint --verbose",
+    "docs:check": "node --test scripts/check-docs.test.mjs && node scripts/check-docs.mjs",
     "format:check": "prettier --check .",
     "lint": "turbo run lint",
     "test": "turbo run test",
