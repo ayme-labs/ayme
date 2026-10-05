@@ -393,6 +393,20 @@ it("passes agentConnection to the runtime session and rejects changing it", asyn
   ).rejects.toThrow("provider options must stay fixed");
 });
 
+it("C1, C4: passes navigate to the runtime session and rejects changing it", async () => {
+  const navigate = vi.fn();
+  const app = root();
+  await act(() => app.render(h(AymeProvider, { pageFactory, navigate })));
+  expect(createAyme).toHaveBeenCalledWith(
+    expect.objectContaining({ navigate })
+  );
+  await expect(
+    act(async () =>
+      app.render(h(AymeProvider, { pageFactory, navigate: vi.fn() }))
+    )
+  ).rejects.toThrow("provider options must stay fixed");
+});
+
 it("requires an ancestor provider", async () => {
   function Child() {
     useAyme();

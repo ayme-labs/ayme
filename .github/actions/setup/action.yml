@@ -1,0 +1,28 @@
+name: Set up the workspace
+description: Install Node 24, pnpm and the workspace dependencies from a cached pnpm store.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 24
+    - run: corepack enable
+      shell: bash
+    - name: Resolve pnpm store path
+      id: pnpm-store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+    - name: Cache pnpm store
+      uses: actions/cache@v6
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
+    # Jobs in the Playwright container check out as another user, which git
+    # refuses to read without this.
+    - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      shell: bash
+    - run: pnpm install --frozen-lockfile
+      shell: bash

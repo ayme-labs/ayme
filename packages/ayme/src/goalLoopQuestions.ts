@@ -14,7 +14,7 @@ import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
 import type { GoalLoopStepRecord } from "./goalLoop";
 import type { AriaRef, PageStateCapture } from "./pageState";
-import { listElementTools } from "./browserTools";
+import { listElementTools, NAVIGATION_TOOLS } from "./browserTools";
 import { acceptedRefNodes, type TargetField } from "./elementTools";
 import {
   listCollectionToolRoots,
@@ -206,7 +206,8 @@ function specsOfCollectionTool(
 
 /**
  * Build the flat list of tool options offered to the model each step: every
- * single-element tool, a Browser Tool or a Custom Tool (ADR-0023), and every registered POM tool.
+ * single-element tool, a Browser Tool or a Custom Tool (ADR-0023), every
+ * Browser Tool that moves the page, and every registered POM tool.
  */
 export function buildToolOptions(): ToolOption[] {
   const elementTools: ExecutableTool[] = listElementTools().map(
@@ -218,6 +219,13 @@ export function buildToolOptions(): ToolOption[] {
       args: specsOfElementToolSchema(loopInputSchema, targetField, filter),
     })
   );
+  const navigationTools: ExecutableTool[] = NAVIGATION_TOOLS.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    execute: (input: unknown) => tool.executeAs(input, "goalLoop"),
+    requiredParams: [...(tool.inputSchema.required ?? [])],
+    args: specsOfObjectSchema(tool.inputSchema),
+  }));
   const collectionRoots = listCollectionToolRoots();
   const pomTools: ExecutableTool[] = listCallerAwarePomTools().map((t) => {
     const roots = collectionRoots.get(t.name);
@@ -240,7 +248,7 @@ export function buildToolOptions(): ToolOption[] {
     };
   });
 
-  return [...elementTools, ...pomTools].map((tool) => ({
+  return [...elementTools, ...navigationTools, ...pomTools].map((tool) => ({
     key: tool.name,
     label: tool.description,
     tool,

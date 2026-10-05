@@ -48,7 +48,7 @@ import { useAyme } from "@ayme-dev/vue";
 useAyme({ webMCP: { enabled: true } });
 ```
 
-Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore` and `:inspector="isDev"`. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them.
+Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore` and `:inspector="isDev"`. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them. For the `navigate` tool to move through Vue Router, pass its `push` with the URL's path: `navigate: (url) => router.push(url.slice(location.origin.length))`, as `:navigate` on the provider; a different function on a later render is a change of options.
 
 ## Root ownership
 

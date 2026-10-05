@@ -102,7 +102,7 @@ test("a call in flight when the page navigates is answered with the new page's t
   );
 });
 
-test("a call in flight when the page starts loading a document that does not reconnect says so", async ({
+test("a call in flight when the page starts loading another document gets the page's own loading answer", async ({
   agent,
   baseURL,
   connect,
@@ -113,14 +113,16 @@ test("a call in flight when the page starts loading a document that does not rec
 
   await page.evaluate(() => setTimeout(() => location.assign("/plain.html")));
 
-  const answer = unanswered(await call);
+  // The runtime answers a call at the start of a full load (#444), before the
+  // document goes away, so the server has nothing left to answer.
+  const { text, isError } = await call;
+  expect(isError, text).toBe(false);
+  const answer = JSON.parse(text) as Record<string, unknown>;
   expect(answer).toMatchObject({
     settled: false,
     loading: `${baseURL}/plain.html`,
   });
-  expect(answer.error).toMatch(/^The page started loading .*\/plain\.html/);
-  expect(answer.next).toContain("has not reconnected yet");
-  expect(answer.tools).toBeUndefined();
+  expect(answer.next).toContain("snapshot");
 });
 
 test("a call in flight when the tab closes says the tab closed, and the connection ends", async ({

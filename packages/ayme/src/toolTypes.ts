@@ -57,6 +57,10 @@ export type BuiltInTools = {
       )[];
     };
   };
+  navigate: { input: { url: string }; result: ActionResult };
+  navigate_back: { input: Record<string, never>; result: ActionResult };
+  navigate_forward: { input: Record<string, never>; result: ActionResult };
+  reload: { input: Record<string, never>; result: ActionResult };
   snapshot: { input: { names?: string[] }; result: PageContextPayload };
   goal: { input: { goal: string; maxSteps: number }; result: Handover };
 };

@@ -59,7 +59,7 @@ The quickstart for [Vue](docs/guide/start/quickstart-vue.md), [React](docs/guide
 
 ## Documentation
 
-Start with the [documentation index](docs/guide/README.md), which lists every page in reading order: what Ayme is, install and the quickstarts first, then the guides, one page per framework, the reference and troubleshooting. GitHub renders the pages in place, and the links between them work.
+Read the docs at [ayme-labs.github.io/ayme/docs](https://ayme-labs.github.io/ayme/docs/), or here on GitHub, starting from the [documentation index](docs/guide/README.md). The index lists every page in reading order: what Ayme is, install and the quickstarts first, then the guides, one page per framework, the reference and troubleshooting. GitHub renders the pages in place, and the links between them work.
 
 ## Your data stays with you
 

@@ -87,6 +87,10 @@ const browserToolNames = [
   "fill_form",
   "press_key",
   "generate_locator",
+  "navigate",
+  "navigate_back",
+  "navigate_forward",
+  "reload",
 ];
 
 const initialToolNames = [

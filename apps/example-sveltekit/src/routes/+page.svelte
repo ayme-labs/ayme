@@ -4,6 +4,8 @@
   let mounted = $state(true);
 </script>
 
+<a href="/other" data-sveltekit-reload>Full page load</a>
+
 {#if mounted}
   <Counter />
   <button onclick={() => (mounted = false)}>Unmount counter</button>

@@ -4,8 +4,9 @@ import { loadAgentConnection } from "./agentConnection";
 import { RuntimeStateError } from "./errors";
 import * as goalLoopModule from "./goalLoop";
 import { loadInspector } from "./inspector";
+import * as navigateToolModule from "./navigateTool";
 import * as pageState from "./pageState";
-import { createAyme, type AymePage } from "./runtime";
+import { createAyme, sameRuntimeOptions, type AymePage } from "./runtime";
 import { listRegisteredPoms, registerCompiledPom } from "./registry";
 import {
   synchronizeWebMcpTools,
@@ -151,6 +152,31 @@ it("threads goalLoop to the goal loop configuration for the session lifetime", (
   } finally {
     configureGoalLoop.mockRestore();
   }
+});
+
+it("threads navigate to the navigate tool for the session lifetime", () => {
+  const configureRouterNavigate = vi.spyOn(
+    navigateToolModule,
+    "configureRouterNavigate"
+  );
+  try {
+    const navigate = vi.fn();
+    const runtime = createAyme({ pageFactory: () => page, navigate });
+    expect(configureRouterNavigate).not.toHaveBeenCalled();
+    const stop = start(runtime);
+    expect(configureRouterNavigate).toHaveBeenLastCalledWith(navigate);
+    stop();
+    expect(configureRouterNavigate).toHaveBeenLastCalledWith(undefined);
+  } finally {
+    configureRouterNavigate.mockRestore();
+  }
+});
+
+it("counts a different navigate function as a different setup", () => {
+  const navigate = () => {};
+  expect(sameRuntimeOptions({ navigate }, { navigate })).toBe(true);
+  expect(sameRuntimeOptions({ navigate }, { navigate: () => {} })).toBe(false);
+  expect(sameRuntimeOptions({ navigate }, {})).toBe(false);
 });
 
 it("creates the default browser page lazily", () => {
