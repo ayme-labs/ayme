@@ -17,6 +17,7 @@ import {
   readRunOffAnswer,
   type ArgumentQuestion,
   type ExecutableTool,
+  type GoalValues,
 } from "./goalLoopQuestions";
 
 // --- Fixtures ---
@@ -489,6 +490,32 @@ describe("Goal Values", () => {
         },
       },
     });
+  });
+
+  it("keeps a list value labelled __proto__ through the request and its answer", () => {
+    const values = JSON.parse('{ "__proto__": "urgent" }') as GoalValues;
+    const plan = planArguments(tagTool, captureOfButtons(0), values);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+
+    expect(
+      Object.keys(buildArgumentRequest({}, plan.questions).questions)
+    ).toEqual(["labels__1"]);
+    const answers = readArgumentAnswers(tagTool, plan.questions, {
+      labels__1: { type: "noul", noul: 0.9 },
+    });
+    expect(answers).toMatchObject({
+      kind: "chosen",
+      chosen: {
+        args: { labels: ["urgent"] },
+        chosen: {
+          labels: { key: "__proto__", description: "__proto__: urgent" },
+        },
+      },
+    });
+    if (answers.kind !== "chosen") return;
+    expect(Object.keys(answers.chosen.probabilities.labels__1!)).toEqual([
+      "__proto__",
+    ]);
   });
 
   it("hands a required parameter no Goal Value can fill to the calling agent", () => {

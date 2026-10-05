@@ -273,10 +273,11 @@ export function createPursueGoalTool(
   };
 }
 
-/** The `goal` tool's input, read. */
+/** The `goal` tool's input: what callers pass and what the loop reads. */
 export type GoalInput = {
   goal: string;
   maxSteps: number;
+  /** Goal Values: labelled strings or numbers the loop may pick from. */
   values?: GoalValues;
 };
 

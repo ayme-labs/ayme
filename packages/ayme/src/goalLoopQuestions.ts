@@ -814,24 +814,22 @@ export function buildArgumentRequest(
   state: StepState,
   argumentQuestions: readonly StageTwoQuestion[]
 ): DecisionRequest {
-  const questions: DecisionQuestions = {};
-  for (const question of argumentQuestions) {
-    if (question.type === "noul") {
-      questions[question.id] = {
-        type: "noul",
-        instructions: question.instructions,
-      };
-      continue;
-    }
-    const criteria: Record<string, string> = {};
-    for (const option of question.options)
-      criteria[option.key] = option.description;
-    questions[question.id] = {
-      type: "choice",
-      instructions: question.instructions,
-      criteria,
-    };
-  }
+  // Built from entries, never by assignment: a key is a Goal Value's label,
+  // which may be any string, `__proto__` included.
+  const questions: DecisionQuestions = Object.fromEntries(
+    argumentQuestions.map((question) => [
+      question.id,
+      question.type === "noul"
+        ? { type: "noul", instructions: question.instructions }
+        : {
+            type: "choice",
+            instructions: question.instructions,
+            criteria: Object.fromEntries(
+              question.options.map((option) => [option.key, option.description])
+            ),
+          },
+    ])
+  );
   return { state, questions };
 }
 

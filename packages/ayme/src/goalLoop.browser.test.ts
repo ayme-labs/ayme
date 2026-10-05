@@ -628,6 +628,47 @@ describe("Goal Loop goal in Chromium", () => {
         });
     });
 
+    it("offers a Goal Value whose label is __proto__ like any other", async () => {
+      setupDom();
+      const { requests, decide } = recording(
+        scriptedDecisionFn([
+          {
+            operation: "fill",
+            goal_met: 0.1,
+            arguments: { target: 'textbox "Name"', text: "__proto__" },
+          },
+          { operation: "none", goal_met: 0.9 },
+        ])
+      );
+      const tool = await getPublishedPursueGoal(decide);
+
+      // As JSON from an agent: an own property, not the object's prototype.
+      const values: unknown = JSON.parse('{ "__proto__": "Milk" }');
+      const result = await tool.execute({
+        goal: "Add an item called Milk",
+        maxSteps: 5,
+        values,
+      });
+
+      expect(Object.keys(criteriaOf(requests[1]!).text!)).toEqual([
+        "__proto__",
+        NONE_OF_THESE_KEY,
+      ]);
+      expect(result).toMatchObject({
+        reason: "done",
+        history: [
+          {
+            chosen: {
+              text: { key: "__proto__", description: "__proto__: Milk" },
+            },
+          },
+        ],
+      });
+      expect((document.querySelector("#name") as HTMLInputElement).value).toBe(
+        "Milk"
+      );
+    });
+
     it("hands over without asking when no Goal Value fits a required parameter", async () => {
       setupDom();
       const { requests, decide } = recording(
