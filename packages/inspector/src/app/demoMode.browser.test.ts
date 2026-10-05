@@ -4,6 +4,7 @@ import { registerCompiledPom } from "@ayme-dev/ayme/internal";
 
 import { mountInspector } from "./mountInspector";
 import { getInspectorTrace } from "../runs";
+import { hideDocument } from "../shared/test-utils/visibility";
 
 // The Inspector's demo mode on a real page: an agent's call, run through the
 // session's tools, pauses only while demo is on, and shows a click cue then
@@ -216,4 +217,16 @@ it("answers an agent's navigation once it settles when demo is on", async () => 
     settled: true,
     changes: expect.stringContaining("Section #details"),
   });
+});
+
+it("runs an agent's click without the demo pause or cue while the tab is hidden", async () => {
+  const show = hideDocument();
+  try {
+    const { elapsed, cues } = await untilActed(calls[0]!, true);
+
+    expect(elapsed).toBeLessThan(500);
+    expect(cues).toBe(0);
+  } finally {
+    show();
+  }
 });

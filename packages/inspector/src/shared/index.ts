@@ -6,6 +6,7 @@ export {
   type CallStep,
   type CallSubject,
 } from "./infrastructure/describeCall";
+export { delayWhileVisible } from "./infrastructure/delayWhileVisible";
 export { renderInShadowRoot } from "./infrastructure/renderInShadowRoot";
 export {
   exposeInspectorShadowRoot,

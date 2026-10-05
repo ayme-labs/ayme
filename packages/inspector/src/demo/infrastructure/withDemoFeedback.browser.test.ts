@@ -3,6 +3,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { Locator, Page } from "@playwright/test";
 
 import { withDemoFeedback } from "./withDemoFeedback";
+import { hideDocument } from "../../shared/test-utils/visibility";
 
 // The click cue on a real page: each action that clicks its element shows
 // one, whether it runs on a locator or on the Page by selector.
@@ -73,4 +74,13 @@ it.each([
   ["fill", (page: Page) => page.getByLabel("Name").fill("Ada")],
 ])("does not cue %s", async (_, act) => {
   expect(await cuesOf(act)).toBe(0);
+});
+
+it("does not cue a click while the document is hidden", async () => {
+  const show = hideDocument();
+  try {
+    expect(await cuesOf((page) => button(page).click())).toBe(0);
+  } finally {
+    show();
+  }
 });

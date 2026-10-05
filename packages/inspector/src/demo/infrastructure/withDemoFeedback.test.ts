@@ -3,6 +3,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import { isAymeLocator } from "@ayme-dev/ayme/internal";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { withDemoFeedback } from "./withDemoFeedback";
+import { hideDocument } from "../../shared/test-utils/visibility";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -214,4 +215,25 @@ it("paces and records a navigation", async () => {
   await vi.advanceTimersByTimeAsync(1);
   await pending;
   expect(goto).toHaveBeenCalledOnce();
+});
+
+it("does not pause while the document is hidden", async () => {
+  vi.useFakeTimers();
+  const show = hideDocument();
+  try {
+    const rawPage = createPage();
+    const rawLocator = rawPage.locator("button");
+    vi.spyOn(rawPage, "locator").mockReturnValue(rawLocator);
+    const click = vi.spyOn(rawLocator, "click").mockResolvedValue();
+    const page = withDemoFeedback(rawPage, {
+      beforeActionMs: 500,
+      onTrace: vi.fn(),
+    });
+
+    // Fake time stands still: a pause would never end.
+    await page.locator("button").click();
+    expect(click).toHaveBeenCalledOnce();
+  } finally {
+    show();
+  }
 });

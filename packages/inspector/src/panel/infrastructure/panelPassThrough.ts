@@ -1,5 +1,7 @@
 import type { Locator } from "@playwright/test";
 
+import { delayWhileVisible } from "../../shared";
+
 /*
  * Lets the runtime's pointer actions reach page elements under the panel.
  * Playwright Lite hit-tests an action's target and refuses it while
@@ -29,7 +31,9 @@ export function allowPassThrough(shadowRoot: ShadowRoot) {
 /**
  * Runs a pointer action. When one of its targets comes under the panel while
  * it runs, the panel lets pointer events through until it ends. Not
- * re-checked once on: the same hit-test then reaches the page element.
+ * re-checked once on: the same hit-test then reaches the page element. While
+ * the document is hidden, nobody uses the panel and the browser runs the
+ * poll's timer late, so the panel lets them through for the whole action.
  */
 export async function passThroughWhileCovered<T>(
   targets: readonly Locator[],
@@ -41,6 +45,11 @@ export async function passThroughWhileCovered<T>(
   let held = false;
   void (async () => {
     while (!done) {
+      if (document.visibilityState === "hidden") {
+        hold();
+        held = true;
+        return;
+      }
       for (const target of targets) {
         const covered = await target
           .evaluateAll(isUnderInspector, hostSelector)
@@ -52,7 +61,7 @@ export async function passThroughWhileCovered<T>(
           return;
         }
       }
-      await new Promise((resolve) => setTimeout(resolve, coverPollMs));
+      await delayWhileVisible(coverPollMs);
     }
   })();
   try {

@@ -2,7 +2,11 @@ import type { Locator, Page } from "@playwright/test";
 import { isAymeLocator } from "@ayme-dev/ayme/internal";
 import { passThroughWhileCovered } from "../../panel";
 import type { TraceEntry } from "../../runs";
-import { describeCall, type CallSubject } from "../../shared";
+import {
+  delayWhileVisible,
+  describeCall,
+  type CallSubject,
+} from "../../shared";
 
 type DemoFeedbackOptions = {
   beforeActionMs?: number;
@@ -80,12 +84,16 @@ export function withDemoFeedback(
             ).then(wrapResult);
           if (!call.paced) return act();
 
+          // Demo mode is for people watching: in a hidden tab, which nobody
+          // sees and whose timers run late, it neither pauses nor cues.
           return (async () => {
             if (context.options.beforeActionMs)
-              await new Promise((resolve) =>
-                setTimeout(resolve, context.options.beforeActionMs)
-              );
-            if (call.cue && context.options.clickCue)
+              await delayWhileVisible(context.options.beforeActionMs);
+            if (
+              call.cue &&
+              context.options.clickCue &&
+              document.visibilityState !== "hidden"
+            )
               await showClickCue(call.cue);
             return act();
           })();
@@ -152,7 +160,19 @@ async function showClickCue(locator: Locator) {
           fill: "forwards",
         }
       );
-      await new Promise((resolve) => window.setTimeout(resolve, 160));
+      // Ends early when the tab is hidden, whose timers run late.
+      await new Promise<void>((resolve) => {
+        const end = () => {
+          if (document.visibilityState !== "hidden") return;
+          document.removeEventListener("visibilitychange", end);
+          resolve();
+        };
+        document.addEventListener("visibilitychange", end);
+        window.setTimeout(() => {
+          document.removeEventListener("visibilitychange", end);
+          resolve();
+        }, 160);
+      });
     } finally {
       cue.remove();
     }
