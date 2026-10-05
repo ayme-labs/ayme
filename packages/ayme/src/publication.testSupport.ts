@@ -15,8 +15,14 @@ type PublishedTool = {
 export async function publishTools() {
   const published = new Map<string, PublishedTool>();
   const { dispose } = await synchronizeWebMcpTools({
-    async registerTool(tool: PublishedTool) {
+    async registerTool(
+      tool: PublishedTool,
+      { signal }: { signal: AbortSignal }
+    ) {
       published.set(tool.name, tool);
+      signal.addEventListener("abort", () => {
+        if (published.get(tool.name) === tool) published.delete(tool.name);
+      });
     },
   });
   return {
