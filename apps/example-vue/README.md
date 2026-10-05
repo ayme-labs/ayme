@@ -41,7 +41,7 @@ usePageObject(ListPage);
 
 `webMCP.enabled` turns publication on; it is off unless set. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
 
-This example passes a custom page from `useDemoTrace` to add slow typing, click cues, and trace recording. `AgentPanel.vue` holds the agent wizard, which shows the prompt and loads nothing itself. `App.vue` also passes `ignore` to keep the site header out of Structural Page State. These helpers support the demo and are optional for applications.
+This example turns the Inspector on with `inspector: { demo: true }`, so each action pauses briefly and each click shows a cue. `AgentPanel.vue` holds the agent wizard, which shows the prompt and loads nothing itself. `App.vue` also passes `ignore` to keep the site header out of Structural Page State. These helpers support the demo and are optional for applications.
 
 Disabling publication does not remove Ayme or Page Object code from the bundle.
 
@@ -75,11 +75,12 @@ pnpm run goals:runs compare goal-runs/<runA>.json goal-runs/<runB>.json
 
 By default it runs the harness's own goal set, `tests/goalHarness.spec.ts` under `playwright.harness.config.ts`: goals that are allowed to fail, so neither CI nor `pnpm run test:goals` runs them. `--live-lane` runs the live lane's goals (`playwright.goals.config.ts`) instead. Both specs share their page helpers and `pursueGoal` through `tests/goalLane.ts`.
 
-| Goal set  | Goal                                  | Expected end                                       |
-| --------- | ------------------------------------- | -------------------------------------------------- |
-| harness   | `archive Review onboarding flow`      | The item in Archived, reason `done`, after 2 steps |
-| live-lane | `Add an item called Milk`             | Reason `needs_value`, the list unchanged           |
-| live-lane | `Archive the second item in the list` | The second item in Archived, reason `done`         |
+| Goal set  | Goal                                                             | Expected end                                       |
+| --------- | ---------------------------------------------------------------- | -------------------------------------------------- |
+| harness   | `archive Review onboarding flow`                                 | The item in Archived, reason `done`, after 2 steps |
+| live-lane | `Add an item called Milk`, with the Goal Value `item name: Milk` | Milk among the active items, reason `done`         |
+| live-lane | `Add an item called Milk`                                        | Reason `needs_value`, the list unchanged           |
+| live-lane | `Archive the second item in the list`                            | The second item in Archived, reason `done`         |
 
 The script sets `AYME_GOAL_RUNS=1` for the Playwright run it starts. Only then does a goal spec record a run; without it, as in CI and `pnpm run test:goals`, the recorder passes the goal straight through.
 

@@ -12,7 +12,10 @@ export type JsonSchema = {
   enum?: readonly JsonPrimitive[];
   properties?: Record<string, JsonSchema>;
   required?: readonly string[];
-  additionalProperties?: boolean;
+  additionalProperties?: boolean | JsonSchema;
+  minProperties?: number;
+  maxProperties?: number;
+  anyOf?: readonly JsonSchema[];
   minimum?: number;
 };
 

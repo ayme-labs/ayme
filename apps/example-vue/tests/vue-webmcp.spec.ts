@@ -25,6 +25,16 @@ async function openWithInspectorCollapsed(page: Page) {
   await new Inspector(page).collapse();
 }
 
+/**
+ * Opens the playground once the Inspector is on it, for a test that calls
+ * tools as an agent. Tool calls pass through the panel once it is mounted; a
+ * call already running when it mounts over the call's target does not.
+ */
+async function openWithInspector(page: Page) {
+  await page.goto("/");
+  await new Inspector(page).open();
+}
+
 type ListActions = {
   addItem(text: string): Promise<void>;
   archiveItem(index: number): Promise<void>;
@@ -298,7 +308,7 @@ test("publishes the current page as ref-bearing ARIA state", async ({
 test("runs the same POM behavior through registered WebMCP tools", async ({
   page,
 }) => {
-  await page.goto("/");
+  await openWithInspector(page);
   await expect
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
@@ -330,7 +340,7 @@ test("runs the same POM behavior through registered WebMCP tools", async ({
 test("publishes collection tools only while a component root is live", async ({
   page,
 }) => {
-  await page.goto("/");
+  await openWithInspector(page);
   await expect
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
@@ -447,12 +457,22 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
     {
       name: "goal",
       description:
-        "Drive the page toward a goal in steps. Each step is one fast model judgement. Returns a Handover: why the loop stopped, what it did, and what to do next.",
+        "Drive the page toward a goal in steps. Each step is one fast model judgement. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.",
       inputSchema: {
         type: "object",
         properties: {
           goal: { type: "string" },
           maxSteps: { type: "integer" },
+          values: {
+            type: "object",
+            description:
+              "Passed to the Goal Loop with the goal. Where the page has nothing to pick, such as text to type or a URL to open, the loop picks one of these by its label. It never makes up a value.",
+            additionalProperties: {
+              anyOf: [{ type: "string" }, { type: "number" }],
+            },
+            minProperties: 1,
+            maxProperties: 254,
+          },
         },
         required: ["goal", "maxSteps"],
         additionalProperties: false,

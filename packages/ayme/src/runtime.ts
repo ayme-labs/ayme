@@ -107,9 +107,11 @@ export type AymeOptions = {
   webMCP?: AymeWebMcpOptions;
   /**
    * Mounts the Inspector from the optional `@ayme-dev/inspector` package while
-   * the session is started in the browser. Off unless `true`.
+   * the session is started in the browser. Off unless set. `true` mounts it
+   * with no demo; `{ demo: true }` also pauses before each action and shows a
+   * click cue, for every call, whoever makes it.
    */
-  inspector?: boolean;
+  inspector?: boolean | { demo: boolean };
   /**
    * Connects the page to a coding agent's Ayme MCP server through the page
    * client of the optional `@ayme-dev/mcp` package, while the session is
@@ -139,19 +141,29 @@ type Registration = {
   active?: { dispose(): void };
 };
 
+/** What the `inspector` option turns on: nothing, the Inspector, or its demo too. */
+function inspectorMode({ inspector }: AymeOptions) {
+  if (!inspector) return "off";
+  return inspector !== true && inspector.demo ? "demo" : "on";
+}
+
 /**
  * Whether two option objects configure the same runtime session: every option
- * is the same value, and `webMCP` has the same fields. The framework owners
- * use it to keep their options fixed while mounted.
+ * is the same value, `webMCP` has the same fields, and `inspector` turns on
+ * the same. The framework owners use it to keep their options fixed while
+ * mounted.
  */
 export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-  return [...keys].every((key) =>
-    key === "webMCP"
-      ? a.webMCP?.enabled === b.webMCP?.enabled &&
+  return [...keys].every((key) => {
+    if (key === "webMCP")
+      return (
+        a.webMCP?.enabled === b.webMCP?.enabled &&
         a.webMCP?.toolNamePrefix === b.webMCP?.toolNamePrefix
-      : a[key as keyof AymeOptions] === b[key as keyof AymeOptions]
-  );
+      );
+    if (key === "inspector") return inspectorMode(a) === inspectorMode(b);
+    return a[key as keyof AymeOptions] === b[key as keyof AymeOptions];
+  });
 }
 
 function createServerPageObject<T extends object>(
@@ -401,7 +413,11 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         setStatus(initialStatus);
         setStarted(ayme);
         void retryPublication();
-        if (options.inspector) mountInspectorUntil(controller.signal);
+        const inspector = inspectorMode(options);
+        if (inspector !== "off")
+          mountInspectorUntil(controller.signal, {
+            demo: inspector === "demo",
+          });
         if (options.agentConnection)
           startAgentConnectionUntil(controller.signal, ayme);
       } catch (error) {
@@ -417,24 +433,37 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   return ayme;
 }
 
-// A load failure stays an unhandled rejection, so it reaches the console.
-function mountInspectorUntil(signal: AbortSignal) {
-  void loadInspector().then(({ mountInspector }) => {
-    if (signal.aborted) return;
-    const inspector = mountInspector();
-    signal.addEventListener("abort", () => inspector.dispose(), {
-      once: true,
-    });
-  });
+// A load failure while the session runs stays an unhandled rejection, so it
+// reaches the console. Once the session has stopped, nothing would mount,
+// so the failure is dropped, such as an import cut short by a teardown.
+function mountInspectorUntil(signal: AbortSignal, options: { demo: boolean }) {
+  void loadInspector().then(
+    ({ mountInspector }) => {
+      if (signal.aborted) return;
+      const inspector = mountInspector(options);
+      signal.addEventListener("abort", () => inspector.dispose(), {
+        once: true,
+      });
+    },
+    (error: unknown) => {
+      if (!signal.aborted) throw error;
+    }
+  );
 }
 
-// Like the Inspector: a load failure stays an unhandled rejection.
+// Like the Inspector: a load failure while the session runs stays an
+// unhandled rejection, and one after it has stopped is dropped.
 function startAgentConnectionUntil(signal: AbortSignal, ayme: Ayme) {
-  void loadAgentConnection().then(({ startAgentConnection }) => {
-    if (signal.aborted) return;
-    const connection = startAgentConnection(ayme);
-    signal.addEventListener("abort", () => connection.dispose(), {
-      once: true,
-    });
-  });
+  void loadAgentConnection().then(
+    ({ startAgentConnection }) => {
+      if (signal.aborted) return;
+      const connection = startAgentConnection(ayme);
+      signal.addEventListener("abort", () => connection.dispose(), {
+        once: true,
+      });
+    },
+    (error: unknown) => {
+      if (!signal.aborted) throw error;
+    }
+  );
 }

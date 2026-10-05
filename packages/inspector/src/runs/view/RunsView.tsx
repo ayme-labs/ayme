@@ -1,14 +1,23 @@
 import type { RefObject } from "react";
 import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
   CheckIcon,
   ChevronRightIcon,
   CopyIcon,
   EyeIcon,
+  GlobeIcon,
   HistoryIcon,
   KeyboardIcon,
+  ListChecksIcon,
   LoaderCircleIcon,
   MousePointer2Icon,
+  MousePointerIcon,
+  MoveIcon,
+  RotateCwIcon,
+  SquareCheckIcon,
   TypeIcon,
+  UploadIcon,
   UserIcon,
   XIcon,
 } from "lucide-react";
@@ -334,11 +343,36 @@ function RunResult({
   );
 }
 
-const stepIcons: Partial<Record<RunStep["operation"], typeof EyeIcon>> = {
+// A step's operation is the method it called; the rest show a chevron.
+const stepIcons: Record<string, typeof EyeIcon> = {
   click: MousePointer2Icon,
+  dblclick: MousePointer2Icon,
+  tap: MousePointer2Icon,
+  "mouse.click": MousePointer2Icon,
+  "mouse.dblclick": MousePointer2Icon,
+  hover: MousePointerIcon,
+  "mouse.move": MousePointerIcon,
+  check: SquareCheckIcon,
+  uncheck: SquareCheckIcon,
+  setChecked: SquareCheckIcon,
+  dragTo: MoveIcon,
+  dragAndDrop: MoveIcon,
   fill: TypeIcon,
+  clear: TypeIcon,
+  type: TypeIcon,
+  "keyboard.type": TypeIcon,
+  "keyboard.insertText": TypeIcon,
   press: KeyboardIcon,
   pressSequentially: KeyboardIcon,
+  "keyboard.press": KeyboardIcon,
+  "keyboard.down": KeyboardIcon,
+  "keyboard.up": KeyboardIcon,
+  selectOption: ListChecksIcon,
+  setInputFiles: UploadIcon,
+  goto: GlobeIcon,
+  goBack: ArrowLeftIcon,
+  goForward: ArrowRightIcon,
+  reload: RotateCwIcon,
   waitFor: EyeIcon,
 };
 
@@ -353,21 +387,23 @@ function StepRow({ step, onHover }: { step: RunStep; onHover: OnHover }) {
       <span className="w-27.5 flex-none text-muted-foreground">
         {step.operation}
       </span>
-      <button
-        type="button"
-        data-gone={member === undefined || undefined}
-        title={
-          member === undefined
-            ? `Not on the page when the run ended: ${step.locator}`
-            : `${step.locator}. Hover to highlight it on the page.`
-        }
-        className="max-w-57.5 cursor-crosshair truncate rounded-sm border bg-background px-1.5 py-px font-mono text-xs hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
-        // The hover highlight finds the member's element while it's there.
-        onMouseEnter={() => member !== undefined && onHover({ path: member })}
-        onMouseLeave={() => member !== undefined && onHover(undefined)}
-      >
-        {member ?? step.locator}
-      </button>
+      {step.locator !== undefined && (
+        <button
+          type="button"
+          data-gone={member === undefined || undefined}
+          title={
+            member === undefined
+              ? `Not on the page when the run ended: ${step.locator}`
+              : `${step.locator}. Hover to highlight it on the page.`
+          }
+          className="max-w-57.5 cursor-crosshair truncate rounded-sm border bg-background px-1.5 py-px font-mono text-xs hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
+          // The hover highlight finds the member's element while it's there.
+          onMouseEnter={() => member !== undefined && onHover({ path: member })}
+          onMouseLeave={() => member !== undefined && onHover(undefined)}
+        >
+          {member ?? step.locator}
+        </button>
+      )}
       {value !== undefined && (
         <span className="truncate font-mono text-xs text-muted-foreground">
           {value}

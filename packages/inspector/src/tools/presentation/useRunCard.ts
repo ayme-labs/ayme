@@ -49,6 +49,19 @@ export function useRunCard({
       : initial;
   });
   const [json, setJson] = useState<{ text?: string; error?: string }>();
+  // The fields that can't be sent as they are; while any is, Run doesn't run.
+  const [invalid, setInvalid] = useState<ReadonlySet<string>>(new Set());
+  const setValidity = useCallback(
+    (path: string, valid: boolean) =>
+      setInvalid((current) => {
+        if (valid !== current.has(path)) return current;
+        const next = new Set(current);
+        if (valid) next.delete(path);
+        else next.add(path);
+        return next;
+      }),
+    []
+  );
   const [open, setOpen] = useState(false);
   const [pickedPath, setPickedPath] = useState<string>();
   const setFormFields = useCallback(
@@ -87,7 +100,7 @@ export function useRunCard({
       setOpen(true);
       return;
     }
-    if (json?.error) return;
+    if (json?.error || invalid.size) return;
     if (!collection) onRun(args);
     else if (target) onRun({ ref: target.ref, args }, target);
   };
@@ -108,6 +121,8 @@ export function useRunCard({
     last,
     lastSuccess,
     running,
+    invalid: invalid.size > 0,
+    setValidity,
     submit,
     setFormFields,
     setGroups,

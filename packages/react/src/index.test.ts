@@ -407,6 +407,25 @@ it("C1, C4: passes navigate to the runtime session and rejects changing it", asy
   ).rejects.toThrow("provider options must stay fixed");
 });
 
+it("C1, C4: passes an inline inspector demo setting and keeps it fixed across renders", async () => {
+  await withoutInspectorLoad();
+  const app = root();
+  await act(() =>
+    app.render(h(AymeProvider, { pageFactory, inspector: { demo: true } }))
+  );
+  await act(() =>
+    app.render(h(AymeProvider, { pageFactory, inspector: { demo: true } }))
+  );
+  expect(createAyme).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ inspector: { demo: true } })
+  );
+  await expect(
+    act(async () =>
+      app.render(h(AymeProvider, { pageFactory, inspector: true }))
+    )
+  ).rejects.toThrow("provider options must stay fixed");
+});
+
 it("requires an ancestor provider", async () => {
   function Child() {
     useAyme();

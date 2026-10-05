@@ -90,7 +90,7 @@ it("mounts the Inspector while a session with inspector is started", async () =>
   sessions.push(runtime);
   const stop = start(runtime);
   await flush();
-  expect(mountInspector).toHaveBeenCalledOnce();
+  expect(mountInspector).toHaveBeenCalledExactlyOnceWith({ demo: false });
   stop();
   expect(dispose).toHaveBeenCalledOnce();
 
@@ -98,6 +98,74 @@ it("mounts the Inspector while a session with inspector is started", async () =>
   start(runtime)();
   await flush();
   expect(mountInspector).toHaveBeenCalledOnce();
+});
+
+it.each([
+  ["Inspector", { inspector: true }],
+  ["Agent Connection", { agentConnection: true }],
+] as const)(
+  "drops a %s load failure once the session has stopped",
+  async (_, option) => {
+    let failLoad!: (error: Error) => void;
+    const failing = new Promise<never>((_, reject) => (failLoad = reject));
+    vi.mocked(loadInspector).mockReturnValue(failing);
+    vi.mocked(loadAgentConnection).mockReturnValue(failing);
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    try {
+      const runtime = createAyme({ pageFactory: () => page, ...option });
+      sessions.push(runtime);
+      start(runtime)();
+      // As when a test's environment is torn down before the import ends.
+      failLoad(new Error("Cannot load the package after teardown."));
+      await flush();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off("unhandledRejection", unhandled);
+    }
+  }
+);
+
+it("mounts the Inspector in demo mode when inspector asks for it", async () => {
+  const mountInspector = vi.fn(() => ({ dispose: vi.fn() }));
+  vi.mocked(loadInspector).mockResolvedValue({ mountInspector });
+
+  for (const demo of [true, false]) {
+    const runtime = createAyme({
+      pageFactory: () => page,
+      inspector: { demo },
+    });
+    sessions.push(runtime);
+    const stop = start(runtime);
+    await flush();
+    stop();
+  }
+
+  expect(mountInspector.mock.calls).toEqual([
+    [{ demo: true }],
+    [{ demo: false }],
+  ]);
+});
+
+it("compares the inspector option by what it turns on", () => {
+  expect(
+    sameRuntimeOptions(
+      { inspector: { demo: true } },
+      { inspector: { demo: true } }
+    )
+  ).toBe(true);
+  expect(
+    sameRuntimeOptions({ inspector: true }, { inspector: { demo: false } })
+  ).toBe(true);
+  expect(sameRuntimeOptions({ inspector: false }, {})).toBe(true);
+  expect(
+    sameRuntimeOptions({ inspector: true }, { inspector: { demo: true } })
+  ).toBe(false);
+  expect(sameRuntimeOptions({ inspector: true }, { inspector: false })).toBe(
+    false
+  );
 });
 
 it("starts the Agent Connection while a session with agentConnection is started", async () => {

@@ -16,6 +16,7 @@ import {
   buildOperationRequest,
   buildStepState,
   buildToolOptions,
+  fitListsToTarget,
   operationQuestionFits,
   parseGoalMetAnswer,
   parseOperationAnswer,
@@ -28,6 +29,8 @@ import {
   type ChosenArguments,
   type ChosenOption,
   type ExecutableTool,
+  type GoalValues,
+  MAX_GOAL_VALUES,
   type NoulAnswer,
 } from "./goalLoopQuestions";
 import { ToolInputError } from "./errors";
@@ -234,10 +237,8 @@ export function createPursueGoalTool(
     input: unknown,
     caller: Caller
   ): Promise<JsonValue> => {
-    const { goal, maxSteps } = readPursueGoalInput(input);
     const result = await pursueGoal(
-      goal,
-      maxSteps,
+      readPursueGoalInput(input),
       decisionFn,
       currentDocument,
       caller
@@ -247,12 +248,22 @@ export function createPursueGoalTool(
   return {
     name: "goal",
     description:
-      "Drive the page toward a goal in steps. Each step is one fast model judgement. Returns a Handover: why the loop stopped, what it did, and what to do next.",
+      "Drive the page toward a goal in steps. Each step is one fast model judgement. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.",
     inputSchema: {
       type: "object",
       properties: {
         goal: { type: "string" },
         maxSteps: { type: "integer" },
+        values: {
+          type: "object",
+          description:
+            "Passed to the Goal Loop with the goal. Where the page has nothing to pick, such as text to type or a URL to open, the loop picks one of these by its label. It never makes up a value.",
+          additionalProperties: {
+            anyOf: [{ type: "string" }, { type: "number" }],
+          },
+          minProperties: 1,
+          maxProperties: MAX_GOAL_VALUES,
+        },
       },
       required: ["goal", "maxSteps"],
       additionalProperties: false,
@@ -262,11 +273,31 @@ export function createPursueGoalTool(
   };
 }
 
-/** Validate and narrow the raw `goal` input to typed fields. */
-function readPursueGoalInput(input: unknown): {
+/** The `goal` tool's input: what callers pass and what the loop reads. */
+export type GoalInput = {
   goal: string;
   maxSteps: number;
-} {
+  /** Goal Values: labelled strings or numbers the loop may pick from. */
+  values?: GoalValues;
+};
+
+const isGoalValues = (values: unknown): values is GoalValues => {
+  if (typeof values !== "object" || values === null || Array.isArray(values))
+    return false;
+  const entries = Object.values(values);
+  return (
+    entries.length >= 1 &&
+    entries.length <= MAX_GOAL_VALUES &&
+    entries.every(
+      (value) =>
+        typeof value === "string" ||
+        (typeof value === "number" && Number.isFinite(value))
+    )
+  );
+};
+
+/** Validate and narrow the raw `goal` input to typed fields. */
+function readPursueGoalInput(input: unknown): GoalInput {
   if (
     typeof input === "object" &&
     input !== null &&
@@ -275,10 +306,15 @@ function readPursueGoalInput(input: unknown): {
     "maxSteps" in input &&
     typeof input.maxSteps === "number" &&
     Number.isInteger(input.maxSteps)
-  )
-    return { goal: input.goal, maxSteps: input.maxSteps };
+  ) {
+    const values = "values" in input ? input.values : undefined;
+    if (values === undefined)
+      return { goal: input.goal, maxSteps: input.maxSteps };
+    if (isGoalValues(values))
+      return { goal: input.goal, maxSteps: input.maxSteps, values };
+  }
   throw new ToolInputError(
-    "goal requires a string goal and an integer maxSteps."
+    `goal requires a string goal and an integer maxSteps, and takes values as 1 to ${MAX_GOAL_VALUES} labelled strings or numbers.`
   );
 }
 
@@ -293,8 +329,7 @@ function readPursueGoalInput(input: unknown): {
  * exposes only the Handover.
  */
 export async function pursueGoal(
-  goal: string,
-  maxSteps: number,
+  { goal, maxSteps, values }: GoalInput,
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document,
   caller: Caller = "agent"
@@ -356,6 +391,7 @@ export async function pursueGoal(
     });
     const state = buildStepState(
       goal,
+      values,
       capture.tree,
       renderPomDefinitions(getPomDefinitions().definitions),
       history
@@ -430,11 +466,11 @@ export async function pursueGoal(
     const chosenTool = chosenOption.tool;
 
     // 3. needs_value: the operation needs a value the model cannot pick
-    const plan = planArguments(chosenTool, capture);
+    const plan = planArguments(chosenTool, capture, values);
     if (plan.kind === "needs_free_value") {
       return done({
         reason: "needs_value",
-        next: `The operation "${chosenTool.name}" needs values for: ${plan.parameters.join(", ")}. Provide them and call the operation directly, or try a different approach.`,
+        next: `The operation "${chosenTool.name}" needs values for: ${plan.parameters.join(", ")}, and no Goal Value fits ${plan.unfilled.join(", ")}. Call goal again with a value for ${plan.unfilled.join(", ")} in values, or call ${chosenTool.name} directly.`,
         history,
         needs: { tool: chosenTool.name, parameters: plan.parameters },
       });
@@ -475,6 +511,7 @@ export async function pursueGoal(
       chosen: {},
       choices: {},
       probabilities: {},
+      lists: {},
     };
     if (plan.questions.length > 0) {
       // The step score shares the record's maps, so an answer that fails to
@@ -512,6 +549,19 @@ export async function pursueGoal(
         });
       }
 
+      // The model judged that no Goal Value fits a required parameter.
+      if (argumentAnswers.kind === "needs_value") {
+        return done({
+          reason: "needs_value",
+          next: `The operation "${chosenTool.name}" needs a value for "${argumentAnswers.parameter}", and the model judged that none of the Goal Values fits. Call goal again with a value for "${argumentAnswers.parameter}" in values, or call ${chosenTool.name} directly.`,
+          history,
+          needs: {
+            tool: chosenTool.name,
+            parameters: [argumentAnswers.parameter],
+          },
+        });
+      }
+
       // Several chunks each named an element: one run-off among exactly those.
       if (argumentAnswers.kind === "run_off") {
         let runOff: DecisionResponse;
@@ -533,6 +583,7 @@ export async function pursueGoal(
       } else {
         chosenArguments = argumentAnswers.chosen;
       }
+      fitListsToTarget(chosenTool, chosenArguments, capture);
       score.argumentChoices = chosenArguments.choices;
       score.argumentProbabilities = chosenArguments.probabilities;
     }

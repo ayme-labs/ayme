@@ -1,20 +1,19 @@
 import type { Locator, Page } from "@playwright/test";
 import { isAymeLocator } from "@ayme-dev/ayme/internal";
-import { isPointerAction, passThroughWhileCovered } from "../../panel";
+import { passThroughWhileCovered } from "../../panel";
 import type { TraceEntry } from "../../runs";
+import { describeCall, type CallSubject } from "../../shared";
 
-export type { TraceEntry } from "../../runs";
-
-export type DemoFeedbackOptions = {
+type DemoFeedbackOptions = {
   beforeActionMs?: number;
   clickCue?: boolean;
-  /** Called before each traced operation, with the locator it acts on. */
-  onTrace: (entry: TraceEntry, locator: Locator) => void;
+  /** Called before each recorded call, with the locator it acts on, if any. */
+  onTrace: (entry: TraceEntry, locator?: Locator) => void;
 };
 
 type FeedbackContext = {
-  listeners: Set<DemoFeedbackOptions["onTrace"]>;
-  options: Omit<DemoFeedbackOptions, "onTrace">;
+  /** The latest wrap's options. */
+  options: DemoFeedbackOptions;
   wrappers: WeakMap<object, object>;
 };
 
@@ -24,90 +23,70 @@ const wrappedPages = new WeakMap<
 >();
 
 // Diagnostic decoration. The underlying Page and its locator brands stay intact.
-// Pointer actions also pass through the Inspector panel when it covers them.
+// Each call goes as describeCall says: recorded, paced and cued in demo mode,
+// and passed through the Inspector panel when it covers a pointer action.
 export function withDemoFeedback(
   page: Page,
   options: DemoFeedbackOptions
 ): Page {
+  // Wrapped again, as each install of the Inspector does: the latest
+  // options record, pace and cue it.
   const existing = wrappedPages.get(page);
   if (existing) {
-    existing.context.listeners.add(options.onTrace);
-    existing.context.options.beforeActionMs = Math.max(
-      existing.context.options.beforeActionMs ?? 0,
-      options.beforeActionMs ?? 0
-    );
-    existing.context.options.clickCue ||= options.clickCue;
+    existing.context.options = options;
     return existing.proxy;
   }
 
-  const context: FeedbackContext = {
-    listeners: new Set([options.onTrace]),
-    options: {
-      beforeActionMs: options.beforeActionMs,
-      clickCue: options.clickCue,
-    },
-    wrappers: new WeakMap(),
-  };
+  const context: FeedbackContext = { options, wrappers: new WeakMap() };
 
   function wrapResult(result: unknown): unknown {
-    if (result === page) return wrap(page);
-    if (isAymeLocator(result)) return wrap(result as Locator);
+    if (result === page) return wrap(page, "page");
+    if (isAymeLocator(result)) return wrap(result as Locator, "locator");
     if (Array.isArray(result)) return result.map(wrapResult);
     if (result instanceof Promise) return result.then(wrapResult);
     return result;
   }
 
-  function wrap<T extends Page | Locator>(target: T): T {
+  function wrap<T extends object>(target: T, subject: CallSubject): T {
     const cached = context.wrappers.get(target);
     if (cached) return cached as T;
 
     const proxy = new Proxy(target, {
       get(target, property) {
         const member: unknown = Reflect.get(target, property, target);
+        if (
+          subject === "page" &&
+          (property === "keyboard" || property === "mouse") &&
+          typeof member === "object" &&
+          member !== null
+        )
+          return wrap(member, property);
         if (typeof member !== "function") return member;
 
         return (...args: unknown[]) => {
-          const operation = isAymeLocator(target)
-            ? traceOperation(property)
-            : undefined;
-          const targets = isPointerAction(property)
-            ? pointerTargets(target, property, args)
-            : [];
-          if (!operation && targets.length === 0)
-            return wrapResult(member.apply(target, args));
+          const call = describeCall(subject, target, property, args);
+          if (!call) return wrapResult(member.apply(target, args));
+
+          const { locator, ...step } = call.step;
+          const entry: TraceEntry = {
+            ...step,
+            ...(locator && { locator: locator.toString() }),
+          };
+          context.options.onTrace(entry, locator);
 
           const act = () =>
-            passThroughWhileCovered(targets, () =>
+            passThroughWhileCovered(call.hitTargets, () =>
               member.apply(target, args)
             ).then(wrapResult);
-          if (!operation) return act();
-
-          const locator = target as Locator;
-          const entry: TraceEntry = {
-            operation,
-            locator: locator.toString(),
-            ...(typeof args[0] === "string" && operation !== "expect"
-              ? { value: args[0] }
-              : {}),
-            ...(operation === "waitFor"
-              ? {
-                  state:
-                    (args[0] as { state?: string } | undefined)?.state ??
-                    "visible",
-                }
-              : {}),
-          };
-          for (const listener of context.listeners) listener(entry, locator);
+          if (!call.paced) return act();
 
           return (async () => {
-            if (operation !== "waitFor" && operation !== "expect") {
-              if (context.options.beforeActionMs)
-                await new Promise((resolve) =>
-                  setTimeout(resolve, context.options.beforeActionMs)
-                );
-              if (operation === "click" && context.options.clickCue)
-                await showClickCue(locator);
-            }
+            if (context.options.beforeActionMs)
+              await new Promise((resolve) =>
+                setTimeout(resolve, context.options.beforeActionMs)
+              );
+            if (call.cue && context.options.clickCue)
+              await showClickCue(call.cue);
             return act();
           })();
         };
@@ -117,44 +96,10 @@ export function withDemoFeedback(
     return proxy;
   }
 
-  const proxy = wrap(page);
+  const proxy = wrap(page, "page");
   wrappedPages.set(page, { context, proxy });
   wrappedPages.set(proxy, { context, proxy });
   return proxy;
-}
-
-// The elements a pointer action hit-tests: a locator's own and a drag's drop
-// target, or the selectors of the page's own actions, such as the single-element tools'
-// `page.click(selector)`.
-function pointerTargets(
-  target: Page | Locator,
-  property: string | symbol,
-  args: unknown[]
-): Locator[] {
-  if (isAymeLocator(target))
-    return property === "dragTo" && isAymeLocator(args[0])
-      ? [target as Locator, args[0] as Locator]
-      : [target as Locator];
-  return args
-    .slice(0, property === "dragAndDrop" ? 2 : 1)
-    .filter((arg): arg is string => typeof arg === "string")
-    .map((selector) => (target as Page).locator(selector));
-}
-
-// ponytail: only instrument locator operations used by the Inspector; extend as needed.
-function traceOperation(
-  property: string | symbol
-): TraceEntry["operation"] | undefined {
-  switch (property) {
-    case "click":
-    case "fill":
-    case "press":
-    case "pressSequentially":
-    case "waitFor":
-      return property;
-    case "_expect":
-      return "expect";
-  }
 }
 
 async function showClickCue(locator: Locator) {

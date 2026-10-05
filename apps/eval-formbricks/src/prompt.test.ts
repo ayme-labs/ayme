@@ -131,10 +131,11 @@ describe.each([
     });
   });
 
-  it("leaves the agent read-only file tools and the server's tools, with nothing denied", () => {
-    expect(arm.tools).toEqual(["Read", "Glob", "Grep"]);
-    expect(arm.allowedTools).toEqual(["mcp__ayme"]);
+  it("leaves the agent read-only file tools, the server's tools and the eval's ayme skill, with nothing denied", () => {
+    expect(arm.tools).toEqual(["Read", "Glob", "Grep", "Skill"]);
+    expect(arm.allowedTools).toEqual(["mcp__ayme", "Skill(ayme)"]);
     expect(arm.disallowedTools).toBeUndefined();
+    expect(arm.interfaceLine).toContain("its `ayme` skill");
   });
 
   it("checks the server's build and ports first, and sets the server and the page up outside the measured window", () => {

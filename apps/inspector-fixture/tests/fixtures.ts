@@ -13,8 +13,8 @@ export { expect } from "@playwright/test";
  * A fixture page: the list app with its Page Object, the runtime and the
  * Inspector. "/models.html" has other Page Objects; "/unpublished.html" is
  * the list app with WebMCP publication off; "/late.html" mounts the Inspector
- * after the runtime started; "/session.html" mounts it through the session's
- * `inspector` option.
+ * in demo mode after the runtime started; "/session.html" mounts it through
+ * the session's `inspector` option, in demo mode with "?demo".
  */
 export type FixturePage =
   | "/"
@@ -22,7 +22,8 @@ export type FixturePage =
   | "/models.html"
   | "/unpublished.html"
   | "/late.html"
-  | "/session.html";
+  | "/session.html"
+  | "/session.html?demo";
 
 /**
  * Opens a fixture page and fails with its own message, before any test

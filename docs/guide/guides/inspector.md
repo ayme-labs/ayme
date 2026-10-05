@@ -16,12 +16,22 @@ Then pass `inspector: true` where Ayme starts: `useAyme` or `AymeProvider` in Vu
 useAyme({ webMCP: { enabled: true }, inspector: import.meta.env.DEV });
 ```
 
-- The option is off unless `true`, and there is no production guard: you decide when it is on.
+- The option is off unless set, and there is no production guard: you decide when it is on.
 - While it is on, the session loads the Inspector when it starts in the browser, mounts it, and unmounts it when it stops. Server rendering loads nothing.
 - With the option off, the page requests no Inspector code.
 - If the package cannot be loaded, the error names `@ayme-dev/inspector`.
 - The Inspector reaches Page Objects constructed before it loaded.
 - It works whether WebMCP publication is on or off.
+
+## Demo mode
+
+To show people what an agent does, pass `inspector: { demo: true }`:
+
+```ts
+useAyme({ webMCP: { enabled: true }, inspector: { demo: true } });
+```
+
+Demo mode pauses briefly before each action and shows a cue where each click lands. It applies to every call while it is on, whether it comes from the panel, an agent or WebMCP. `inspector: true` turns the Inspector on without it, so calls run at full speed; Runs records them either way.
 
 ## The three lenses
 
@@ -41,7 +51,7 @@ Every detail runs its tools through the same run card, a form typed from the too
 
 The panel floats, docks to the left, right or bottom of the page, or collapses to the Ayme logo. It remembers its layout, sizes, positions and theme per site in the page's `localStorage`, and uses its defaults when storage is unavailable. Its theme follows the system until you change it. While docked, it pads the page's root on that side so the panel sits beside the page.
 
-It paints above the page's own UI; only the browser's top layer, such as modal dialogs, popovers and fullscreen, covers it. Outside the panel and the collapsed logo, the page keeps its pointer. When an agent's pointer action targets something under the panel, the action passes through it. Each click a tool makes shows a brief cue on its element, so you can follow what an agent does.
+It paints above the page's own UI; only the browser's top layer, such as modal dialogs, popovers and fullscreen, covers it. Outside the panel and the collapsed logo, the page keeps its pointer. When an agent's pointer action targets something under the panel, the action passes through it.
 
 ## What it never changes
 

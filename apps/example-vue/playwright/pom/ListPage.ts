@@ -30,7 +30,7 @@ export class ListPage {
   })
   async addItem(text: string) {
     await this.newItemInput.fill("");
-    await this.newItemInput.pressSequentially(text, { delay: 60 });
+    await this.newItemInput.pressSequentially(text);
     await this.addItemButton.click();
   }
 }

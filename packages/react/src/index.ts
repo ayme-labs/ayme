@@ -33,6 +33,10 @@ export function AymeProvider({
     const snapshot = {
       ...options,
       webMCP: options.webMCP && { ...options.webMCP },
+      inspector:
+        typeof options.inspector === "object"
+          ? { ...options.inspector }
+          : options.inspector,
     };
     return { options: snapshot, runtime: createAyme(snapshot) };
   });

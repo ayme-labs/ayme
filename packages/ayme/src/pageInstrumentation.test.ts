@@ -18,7 +18,11 @@ type FakeLocator = {
   all(): Promise<FakeLocator[]>;
   page(): FakePage;
 };
-type FakePage = { locator(selector: string): FakeLocator };
+type FakePage = {
+  locator(selector: string): FakeLocator;
+  keyboard: { press(key: string): void };
+  mouse: { click(x: number, y: number): void };
+};
 
 const clicks: string[] = [];
 // A Page whose locators record their clicks, tagged with how they were made.
@@ -34,6 +38,8 @@ function fakePage(by: string): FakePage {
       };
       return locator;
     },
+    keyboard: { press: (key) => clicks.push(`${by} keyboard ${key}`) },
+    mouse: { click: (x, y) => clicks.push(`${by} mouse ${x},${y}`) },
   };
   return page;
 }
@@ -77,4 +83,20 @@ it("routes all()'s items and a locator's page through a later instrumentation", 
   first!.click();
   owner.locator("link").click();
   expect(clicks).toEqual(["traced button >> nth=0", "traced link"]);
+});
+
+it("routes a keyboard and a mouse saved before an instrumentation was installed through it", () => {
+  const { keyboard, mouse } = instrumentedPage(page) as unknown as FakePage;
+  keyboard.press("a");
+  installTracing();
+  keyboard.press("b");
+  mouse.click(1, 2);
+  uninstall();
+  keyboard.press("c");
+  expect(clicks).toEqual([
+    "raw keyboard a",
+    "traced keyboard b",
+    "traced mouse 1,2",
+    "raw keyboard c",
+  ]);
 });

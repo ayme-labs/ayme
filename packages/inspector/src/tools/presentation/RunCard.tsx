@@ -67,6 +67,7 @@ export function RunCard(props: RunCardProps) {
       values={args}
       refSource={refSource}
       onChange={card.changeArgument}
+      onValidity={card.setValidity}
     />
   ) : (
     <JsonEditor
