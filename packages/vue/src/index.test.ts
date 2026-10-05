@@ -146,7 +146,7 @@ it("passes inspector to the runtime session", async () => {
   );
 });
 
-it("passes navigate from the provider to the runtime session", () => {
+it("C1: passes navigate from the provider to the runtime session", () => {
   const navigate = vi.fn();
   mount({ render: () => h(AymeProvider, { pageFactory, navigate }) });
   expect(createAyme).toHaveBeenCalledWith(

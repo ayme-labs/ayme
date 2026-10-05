@@ -376,7 +376,7 @@ it("passes inspector to the runtime session and rejects changing it", async () =
   ).rejects.toThrow("provider options must stay fixed");
 });
 
-it("passes navigate to the runtime session and rejects changing it", async () => {
+it("C1, C4: passes navigate to the runtime session and rejects changing it", async () => {
   const navigate = vi.fn();
   const app = root();
   await act(() => app.render(h(AymeProvider, { pageFactory, navigate })));

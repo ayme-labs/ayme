@@ -96,7 +96,7 @@ afterEach(() => {
   delete (document as { modelContext?: unknown }).modelContext;
 });
 
-it("passes the options to the runtime session unchanged", () => {
+it("C1: passes the options to the runtime session unchanged", () => {
   const options: UseAymeOptions = {
     pageFactory,
     ignore: (element) => element.matches(".assistant"),
