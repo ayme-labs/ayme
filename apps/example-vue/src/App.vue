@@ -5,16 +5,13 @@ import { ListPage } from "../playwright/pom/ListPage";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 import { Badge } from "@/components/ui/badge";
 import AgentPanel from "./AgentPanel.vue";
-import { useDemoTrace } from "./ayme/useDemoTrace";
 import ListDemo from "./demo/ListDemo.vue";
 
-// Ordinary apps call useAyme() without options. This demo adds tracing and
-// pacing, and keeps its site chrome out of Structural Page State.
-const { page } = useDemoTrace();
+// Ordinary apps call useAyme() without options. This demo keeps its site
+// chrome out of Structural Page State.
 const isSiteChrome = (element: Element) =>
   element.matches("[data-site-chrome]");
 useAyme({
-  pageFactory: () => page,
   ignore: isSiteChrome,
   // Only the dev server mounts a Decision Endpoint, so the Goal Loop is a
   // development feature here and the deployed build publishes no goal.
@@ -22,9 +19,10 @@ useAyme({
     ? decisionEndpoint(decisionEndpointPath)
     : undefined,
   webMCP: { enabled: true },
-  // The hosted playground shows the Inspector and lets a visitor's coding
-  // agent connect; `--mode inspector-disabled` builds it without either.
-  inspector: import.meta.env.MODE !== "inspector-disabled",
+  // The hosted playground shows the Inspector in demo mode, so visitors can
+  // follow each action, and lets a visitor's coding agent connect;
+  // `--mode inspector-disabled` builds it without either.
+  inspector: import.meta.env.MODE !== "inspector-disabled" && { demo: true },
   agentConnection: import.meta.env.MODE !== "inspector-disabled",
 });
 usePageObject(ListPage);

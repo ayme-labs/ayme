@@ -554,8 +554,12 @@ export function describePublishedTools(
         const offered =
           plan.kind === "ask"
             ? plan.questions
-                .find((question) => question.parameter === element)!
-                .options.flatMap((option) =>
+                .flatMap((question) =>
+                  question.type === "choice" && question.parameter === element
+                    ? question.options
+                    : []
+                )
+                .flatMap((option) =>
                   option.value === undefined ? [] : [option.value]
                 )
             : [];

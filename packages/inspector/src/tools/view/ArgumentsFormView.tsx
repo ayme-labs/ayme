@@ -1,4 +1,4 @@
-import { useId, type ComponentType } from "react";
+import { useCallback, useId, type ComponentType } from "react";
 import { XIcon } from "lucide-react";
 
 import type { JsonValue } from "@ayme-dev/ayme";
@@ -6,11 +6,17 @@ import type { JsonValue } from "@ayme-dev/ayme";
 import type { ToolArguments } from "../../runs";
 import { initialValues, type Field } from "../domain/fields";
 import type { RefSource } from "../domain/refTree";
+import type { ValueType } from "../domain/valueRows";
 
 export const inputClass =
   "h-7.5 w-full min-w-0 rounded-md border border-input bg-background px-2.25 text-xs outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring";
 
 type Change = (path: readonly string[], value: JsonValue | undefined) => void;
+
+/** Whether the field at a path can be sent as it is. */
+type Validity = (path: string, valid: boolean) => void;
+
+const alwaysValid: Validity = () => {};
 
 const noRefs: RefSource = { roots: [] };
 
@@ -23,8 +29,18 @@ type ControlProps = {
   onChange: (value: string | undefined) => void;
 };
 
-/** The controls of a ref field, a key field, and a value typed as JSON. */
+/** The controls of a ref field, a key field, a map of values, and a value typed as JSON. */
 export type FieldControls = {
+  map: ComponentType<{
+    name: string;
+    valueTypes: readonly ValueType[];
+    optional: boolean;
+    description?: string;
+    maxEntries?: number;
+    value: JsonValue | undefined;
+    onChange: (value: JsonValue | undefined) => void;
+    onValidity: (valid: boolean) => void;
+  }>;
   ref: ComponentType<ControlProps & { source: RefSource }>;
   key: ComponentType<ControlProps>;
   json: ComponentType<{
@@ -43,10 +59,13 @@ export function ArgumentsFormView({
   onChange,
   refSource = noRefs,
   controls,
+  onValidity = alwaysValid,
 }: {
   fields: readonly Field[];
   values: ToolArguments;
   onChange: Change;
+  /** Reports a field that can't be sent as it is, such as a map with a bad row. */
+  onValidity?: Validity;
   /** Where a ref field chooses its ref from. */
   refSource?: RefSource;
   controls: FieldControls;
@@ -60,6 +79,7 @@ export function ArgumentsFormView({
           path={[field.name]}
           value={values[field.name]}
           onChange={onChange}
+          onValidity={onValidity}
           refSource={refSource}
           controls={controls}
         />
@@ -76,9 +96,11 @@ function FieldLabel({ field, htmlFor }: { field: Field; htmlFor?: string }) {
       className="flex items-baseline gap-1.5 text-xs font-semibold"
     >
       {field.name}
-      <span className="font-mono text-xs font-medium text-muted-foreground">
-        {field.typeLabel}
-      </span>
+      {field.typeLabel && (
+        <span className="font-mono text-xs font-medium text-muted-foreground">
+          {field.typeLabel}
+        </span>
+      )}
       {field.optional && (
         <span className="text-xs font-medium text-muted-foreground">
           optional
@@ -93,6 +115,7 @@ function FieldRow({
   path,
   value,
   onChange,
+  onValidity,
   refSource,
   controls,
 }: {
@@ -100,6 +123,7 @@ function FieldRow({
   path: readonly string[];
   value: JsonValue | undefined;
   onChange: Change;
+  onValidity: Validity;
   refSource: RefSource;
   controls: FieldControls;
 }) {
@@ -107,6 +131,10 @@ function FieldRow({
   // The control's name: its path, e.g. "details.due".
   const name = path.join(".");
   const set = (next: JsonValue | undefined) => onChange(path, next);
+  const reportValidity = useCallback(
+    (valid: boolean) => onValidity(name, valid),
+    [onValidity, name]
+  );
 
   if (field.kind === "boolean")
     return (
@@ -129,6 +157,25 @@ function FieldRow({
         </span>
       </label>
     );
+
+  if (field.kind === "map") {
+    const { map: MapControl } = controls;
+    return (
+      <div className="flex flex-col gap-1">
+        <FieldLabel field={field} />
+        <MapControl
+          name={name}
+          valueTypes={field.valueTypes}
+          optional={field.optional}
+          description={field.description}
+          maxEntries={field.maxEntries}
+          value={value}
+          onChange={set}
+          onValidity={reportValidity}
+        />
+      </div>
+    );
+  }
 
   if (field.kind === "object") {
     const on = value !== undefined && value !== null;
@@ -165,6 +212,7 @@ function FieldRow({
               path={[...path, child.name]}
               value={entries[child.name]}
               onChange={onChange}
+              onValidity={onValidity}
               refSource={refSource}
               controls={controls}
             />

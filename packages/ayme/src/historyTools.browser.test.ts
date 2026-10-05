@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createPage } from "./browserPage";
 import { operations, publishTools } from "./publication.testSupport";
+import { requireAymeRuntimePage } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
 
 // The test document's first history entry: no test can go back from it.
@@ -81,6 +82,19 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
         "There is no history entry to go forward to; the page did not move.",
       page_changed: false,
       settled: true,
+    });
+    expect(heading()).toBe("Settings");
+  });
+
+  it("fails with the browser Page's error when it refuses before any navigation starts", async () => {
+    open("Settings");
+    await call("snapshot", {});
+    vi.spyOn(requireAymeRuntimePage(), "goBack").mockRejectedValue(
+      new Error("Timeout 500ms exceeded.")
+    );
+    await expect(call("navigate_back", {})).resolves.toEqual({
+      content: [{ type: "text", text: "Timeout 500ms exceeded." }],
+      isError: true,
     });
     expect(heading()).toBe("Settings");
   });

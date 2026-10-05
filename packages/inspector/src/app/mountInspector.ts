@@ -46,14 +46,31 @@ const highlightStyleText = `
 }
 `;
 
-export function installInspectorInstrumentation() {
+/** How long demo mode pauses before each action. */
+const DEMO_PAUSE_MS = 500;
+
+export type InspectorOptions = {
+  /**
+   * Pauses before each action and shows a cue where a click lands, for every
+   * call, whoever makes it. Off by default: calls run at full speed.
+   */
+  demo?: boolean;
+};
+
+/**
+ * Records every action on the runtime's Pages for Runs, and in demo mode
+ * paces them and cues their clicks.
+ */
+export function installInspectorInstrumentation({
+  demo = false,
+}: InspectorOptions = {}) {
   resetInspectorTrace();
   const unsubscribeFromTrace =
     subscribeToInspectorTraceDispatcher(recordInspectorTrace);
   const uninstall = installRuntimePageInstrumentation((page) => {
     return withDemoFeedback(page as Page, {
       onTrace: dispatchInspectorTrace,
-      clickCue: true,
+      ...(demo && { beforeActionMs: DEMO_PAUSE_MS, clickCue: true }),
     });
   });
 
@@ -71,9 +88,13 @@ type MountedInspector = {
 
 let mounted: MountedInspector | undefined;
 
-export function mountInspector() {
+/**
+ * Mounts the Inspector once per document; each call returns its own dispose.
+ * The first of overlapping mounts decides `demo`.
+ */
+export function mountInspector(options: InspectorOptions = {}) {
   if (!mounted) {
-    const disposeInstrumentation = installInspectorInstrumentation();
+    const disposeInstrumentation = installInspectorInstrumentation(options);
     const highlightStyle = document.createElement("style");
     highlightStyle.dataset.aymeInspectorHighlightStyle = "";
     highlightStyle.textContent = highlightStyleText;

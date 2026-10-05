@@ -3,7 +3,7 @@
 // `goForward` and `reload`, mirroring Playwright MCP's `browser_navigate_back`,
 // `browser_navigate_forward` and `browser_reload`.
 import type { JsonSchema } from "./contracts";
-import { runAction } from "./actionSequence";
+import { runAction, startNavigation } from "./actionSequence";
 import {
   requireCurrentDocument,
   validatedToolInput,
@@ -55,12 +55,13 @@ function traversalTool(
           // another document starts a full load, which the action answers.
           // With no entry to move to, the browser Page resolves at once with
           // no navigation started and the current entry unchanged. Its
-          // rejection never decides the answer.
+          // rejection is the answer only while no navigation has started;
+          // after that, the navigation answers.
           const start = navigation.currentEntry?.key;
           let navigated = false;
           const watching = new AbortController();
           const { signal } = watching;
-          const traversed = new Promise<boolean>((resolve) => {
+          const traversed = new Promise<boolean>((resolve, reject) => {
             navigation.addEventListener("navigate", () => (navigated = true), {
               signal,
             });
@@ -73,7 +74,10 @@ function traversalTool(
                 if (!navigated && navigation.currentEntry?.key === start)
                   resolve(false);
               },
-              () => {}
+              (error: unknown) => {
+                if (!navigated && navigation.currentEntry?.key === start)
+                  reject(error);
+              }
             );
           }).finally(() => watching.abort());
           if (!(await traversed))
@@ -115,9 +119,7 @@ export const reloadTool: PublishedElementTool = {
       currentDocument,
       caller,
       { tool: "reload", args: input },
-      () => {
-        void page.reload().catch(() => {});
-      }
+      () => startNavigation(currentDocument, () => page.reload())
     );
   },
 };

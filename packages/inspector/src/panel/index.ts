@@ -6,7 +6,6 @@ export {
 } from "./domain/preferences";
 export {
   allowPassThrough,
-  isPointerAction,
   passThroughWhileCovered,
 } from "./infrastructure/panelPassThrough";
 export { useHostReservation } from "./infrastructure/useHostReservation";

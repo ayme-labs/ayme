@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
+import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { operations, publishTools } from "./publication.testSupport";
 import { createAyme, type Ayme } from "./runtime";
 import { toolFailure } from "./toolFailure.testSupport";
@@ -28,10 +30,12 @@ describe("the navigate tool, in Chromium", () => {
   let stop: () => void;
   let disposePublication: () => void;
   let listening: AbortController;
+  let decide: GoalLoopDecisionFunction;
   const start = location.href;
 
   beforeEach(async () => {
     document.body.innerHTML = `<main><h1>Start page</h1></main>`;
+    decide = operations(["navigate"]);
     listening = new AbortController();
     const { signal } = listening;
     const main = document.querySelector("main")!;
@@ -58,7 +62,7 @@ describe("the navigate tool, in Chromium", () => {
     );
     ayme = createAyme({
       pageFactory: () => createPage({ actionTimeout: 500 }),
-      goalLoop: operations(["navigate"]),
+      goalLoop: (request) => decide(request),
     });
     stop = ayme.start();
     ({ call, dispose: disposePublication } = await publishTools());
@@ -171,6 +175,49 @@ describe("the navigate tool, in Chromium", () => {
       needs: { tool: "navigate", parameters: ["url"] },
     });
   });
+
+  it("is chosen by the Goal Loop with a URL from the Goal Values", async () => {
+    const requests: DecisionRequest[] = [];
+    const navigate = navigatingWith("settings page");
+    decide = (request) => {
+      requests.push(request);
+      return navigate(request);
+    };
+    await expect(
+      call("goal", {
+        goal: "open the settings",
+        maxSteps: 3,
+        values: { "settings page": "/routes/settings", tab: 2 },
+      })
+    ).resolves.toMatchObject({
+      reason: "done",
+      history: [
+        {
+          operation: "navigate",
+          chosen: {
+            url: {
+              key: "settings page",
+              description: "settings page: /routes/settings",
+            },
+          },
+          result: "ok",
+          page_changed: true,
+        },
+      ],
+    });
+    expect(location.pathname).toBe("/routes/settings");
+    // The number is never offered as a URL.
+    expect(requests[1]!.questions).toEqual({
+      url: {
+        type: "choice",
+        instructions: expect.any(String),
+        criteria: {
+          "settings page": "settings page: /routes/settings",
+          none_of_these: expect.any(String),
+        },
+      },
+    });
+  });
 });
 
 describe("the navigate tool with a router function, in Chromium", () => {
@@ -272,3 +319,92 @@ describe("the navigate tool with a router function, in Chromium", () => {
     expect(location.href).toBe(start);
   });
 });
+
+describe("the navigate tool on a Page that navigates late, in Chromium", () => {
+  let call: (name: string, input: unknown) => Promise<unknown>;
+  let stop: () => void;
+  let disposePublication: () => void;
+  let listening: AbortController;
+  const start = location.href;
+
+  /**
+   * A Page whose goto starts 500 ms after it is called, as the Inspector's
+   * demo mode delays it: longer than the quiet window a settle waits for.
+   */
+  function lateGoto(page: ReturnType<typeof createPage>) {
+    return new Proxy(page, {
+      get(target, property) {
+        const member: unknown = Reflect.get(target, property, target);
+        if (property !== "goto" || typeof member !== "function") return member;
+        return async (...args: unknown[]) => {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          return member.apply(target, args);
+        };
+      },
+    });
+  }
+
+  beforeEach(async () => {
+    document.body.innerHTML = `<main><h1>Start page</h1></main>`;
+    listening = new AbortController();
+    window.addEventListener(
+      "hashchange",
+      () => document.querySelector("main")!.append(`Section ${location.hash}`),
+      { signal: listening.signal }
+    );
+    stop = createAyme({
+      pageFactory: () => lateGoto(createPage({ actionTimeout: 500 })),
+    }).start();
+    ({ call, dispose: disposePublication } = await publishTools());
+    await call("snapshot", {});
+  });
+
+  afterEach(() => {
+    listening.abort();
+    disposePublication();
+    stop();
+    history.replaceState(null, "", start);
+    document.body.innerHTML = "";
+  });
+
+  it("answers with the loading URL once the full load starts", async () => {
+    await expect(call("navigate", { url: "/__no-content" })).resolves.toEqual({
+      page_changed: false,
+      settled: false,
+      loading: NO_CONTENT,
+      next: `The page is loading ${NO_CONTENT}. Call snapshot next to read the new page.`,
+    });
+  });
+
+  it("answers with the Change Record once the fragment change settles", async () => {
+    await expect(call("navigate", { url: "#details" })).resolves.toEqual({
+      page_changed: true,
+      settled: true,
+      changes: expect.stringContaining("Section #details"),
+    });
+  });
+});
+
+/**
+ * A decision function that navigates to the Goal Value labelled `label`, then
+ * judges the goal met.
+ */
+function navigatingWith(label: string): GoalLoopDecisionFunction {
+  let navigated = false;
+  return async (request): Promise<DecisionResponse> => {
+    if (!("operation" in request.questions)) {
+      navigated = true;
+      return {
+        model: "typesafe/jev-1.13",
+        answers: { url: { type: "choice", choice: label, confidence: 1 } },
+      };
+    }
+    return {
+      model: "typesafe/jev-1.13",
+      answers: {
+        operation: { type: "choice", choice: "navigate", confidence: 1 },
+        goal_met: { type: "noul", noul: navigated ? 0.9 : 0.1 },
+      },
+    };
+  };
+}
