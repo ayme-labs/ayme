@@ -9,24 +9,12 @@ export const PAIRING_STORAGE_KEY = "ayme:agent-connection";
  */
 export type StoredPairing = Pairing & Readonly<{ tab: string }>;
 
-/** A new tab id: 128 random bits as hex. */
-export function newTabId(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
-    ""
-  );
-}
-
-/**
- * The stored form of `pairing`. A pairing without a tab id, such as one a
- * connect link just gave, gets a new one.
- */
-export function serializePairing(pairing: Pairing | StoredPairing): string {
-  const tab = "tab" in pairing ? pairing.tab : newTabId();
+/** The stored form of `pairing`. */
+export function serializePairing(pairing: StoredPairing): string {
   return JSON.stringify({
     address: pairing.address,
     token: pairing.token,
-    tab,
+    tab: pairing.tab,
   });
 }
 

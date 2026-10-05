@@ -1,11 +1,18 @@
 import type { Pairing, PairingSource } from "../domain/pairing";
 import {
   PAIRING_STORAGE_KEY,
-  newTabId,
   parseStoredPairing,
   serializePairing,
   type StoredPairing,
 } from "../domain/pairingStorage";
+
+/** A new tab id: 128 random bits as hex. */
+function newTabId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+    ""
+  );
+}
 
 /**
  * The tab's stored pairing. One stored without a tab id gets one, kept
@@ -26,14 +33,16 @@ function readStoredPairing(): StoredPairing | undefined {
 }
 
 /**
- * Keeps `pairing` in sessionStorage for the tab. Without storage, the
- * pairing still holds for the document.
+ * Keeps `pairing` in sessionStorage for the tab. A pairing without a tab
+ * id, such as one a connect link just gave, gets a new one. Without
+ * storage, the pairing still holds for the document.
  */
 export function storePairing(pairing: Pairing | StoredPairing) {
+  const tab = "tab" in pairing ? pairing.tab : newTabId();
   try {
     window.sessionStorage.setItem(
       PAIRING_STORAGE_KEY,
-      serializePairing(pairing)
+      serializePairing({ address: pairing.address, token: pairing.token, tab })
     );
   } catch {
     // Storage is unavailable; the pairing still holds for this document.
