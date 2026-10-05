@@ -96,16 +96,12 @@ export function readRows(
   const problems = rows.map((row) => {
     const label = row.label.trim();
     if (label === "" && row.value === "") return undefined;
-    if (label === "")
-      return "Add a label so the loop can tell this value apart.";
-    if (seen.has(label))
-      return `"${label}" is already used. Each label must be different.`;
+    if (label === "") return "Add a label.";
+    if (seen.has(label)) return "This label is already used.";
     seen.add(label);
     if (typeOf(row, types) === "number") {
       if (!NUMBER.test(row.value.trim()))
-        return row.value === ""
-          ? "Enter a number, such as 2 or 2.5."
-          : `"${row.value}" is not a number. Enter one such as 2 or 2.5${types.includes("string") ? ", or switch the type to text" : ""}.`;
+        return row.value === "" ? "Enter a number." : "Not a number.";
       entries.push([label, Number(row.value.trim())]);
     } else entries.push([label, row.value]);
     return undefined;

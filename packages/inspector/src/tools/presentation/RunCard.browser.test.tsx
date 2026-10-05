@@ -278,9 +278,7 @@ describe("a map of labelled values", () => {
     await rows.type(1).click();
 
     await expect.poll(() => rows.typeState(1)).toBe("number");
-    expect(await rows.problem(1).textContent()).toBe(
-      '"Milk" is not a number. Enter one such as 2 or 2.5, or switch the type to text.'
-    );
+    expect(await rows.problem(1).textContent()).toBe("Not a number.");
     await expect.poll(() => card.runButton.isDisabled()).toBe(true);
 
     await rows.value(1).fill("3");
@@ -297,14 +295,12 @@ describe("a map of labelled values", () => {
     await rows.fill({ name: "Milk" });
     await rows.addButton.click();
     await rows.value(2).fill("Eggs");
-    await expect
-      .poll(() => rows.problem(2).textContent())
-      .toBe("Add a label so the loop can tell this value apart.");
+    await expect.poll(() => rows.problem(2).textContent()).toBe("Add a label.");
     await rows.label(2).fill("name");
 
     await expect
       .poll(() => rows.problem(2).textContent())
-      .toBe('"name" is already used. Each label must be different.');
+      .toBe("This label is already used.");
     await expect.poll(() => card.runButton.isDisabled()).toBe(true);
     await rows.removeButton(2).click();
     await card.runButton.click();

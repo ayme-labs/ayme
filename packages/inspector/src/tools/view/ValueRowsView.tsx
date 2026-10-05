@@ -111,7 +111,7 @@ export function ValueRowsView({
                   }
                   disabled={!switchable}
                   className={cn(
-                    "absolute top-1/2 right-1 h-5 -translate-y-1/2 rounded px-1 font-mono text-[0.625rem] leading-none",
+                    "absolute inset-y-1 right-1 flex items-center rounded px-1 font-mono text-[0.625rem] leading-none",
                     guessed
                       ? "text-muted-foreground/70 hover:bg-muted"
                       : "bg-primary/15 font-semibold text-primary"
