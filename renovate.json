@@ -5,7 +5,8 @@
     "security:minimumReleaseAgeNpm",
     ":maintainLockFilesWeekly",
     ":semanticCommits",
-    ":semanticCommitScopeDisabled"
+    ":semanticCommitScopeDisabled",
+    "group:allNonMajor"
   ],
   "timezone": "Europe/Vienna",
   "schedule": ["* 22-23 * * 0", "* 0-5 * * 1"],
@@ -17,19 +18,13 @@
       "description": "Keep Playwright CI image tags aligned with the npm Playwright release stream.",
       "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
       "matchStrings": [
-        "(?<indentation>\\s*)image: mcr\\.microsoft\\.com/playwright:v(?<currentValue>\\d+\\.\\d+\\.\\d+)-noble"
+        "image: mcr\\.microsoft\\.com/playwright:v(?<currentValue>\\d+\\.\\d+\\.\\d+)-noble"
       ],
       "depNameTemplate": "playwright",
-      "datasourceTemplate": "npm",
-      "autoReplaceStringTemplate": "{{{indentation}}}image: mcr.microsoft.com/playwright:v{{{newValue}}}-noble"
+      "datasourceTemplate": "npm"
     }
   ],
   "packageRules": [
-    {
-      "description": "Bundle every non-major update not grouped below into one PR.",
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "Other dependencies"
-    },
     {
       "description": "Each framework keeps its own PR, so a break points at one framework.",
       "matchPackageNames": ["vue", "@vue/**"],
@@ -48,12 +43,12 @@
       "groupName": "Angular"
     },
     {
-      "matchPackageNames": ["next", "@next/**"],
+      "matchPackageNames": ["next"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "Next.js"
     },
     {
-      "matchPackageNames": ["nuxt", "@nuxt/**"],
+      "matchPackageNames": ["nuxt"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "Nuxt"
     },
@@ -76,7 +71,6 @@
       "matchPackageNames": [
         "typescript",
         "tsdown",
-        "rolldown",
         "vite",
         "@vitejs/**",
         "vitest",
@@ -135,6 +129,11 @@
     {
       "description": "Playwright Lite is pinned to an immutable ayme-<date> fork tag and repinned by hand with its build approval (ADR-0021).",
       "matchPackageNames": ["@ayme-dev/playwright-lite"],
+      "enabled": false
+    },
+    {
+      "description": "Workspace overrides pin known-good versions on purpose, such as rolldown 1.2.8 for the Nuxt typecheck; they change by hand.",
+      "matchDepTypes": ["pnpm-workspace.overrides"],
       "enabled": false
     }
   ]
