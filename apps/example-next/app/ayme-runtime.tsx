@@ -9,6 +9,7 @@ export default function AymeRuntime({ children }: { children: ReactNode }) {
     <AymeProvider
       webMCP={{ enabled: true }}
       inspector={process.env.NODE_ENV === "development"}
+      agentConnection={process.env.NODE_ENV === "development"}
     >
       {children}
     </AymeProvider>

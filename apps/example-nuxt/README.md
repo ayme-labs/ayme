@@ -67,7 +67,10 @@ It checks JavaScript-disabled server HTML, repeated requests, hydration with
 publication enabled, compiled POM metadata, browser and real Playwright actions,
 and registration cleanup across removal and remounting. Against `nuxt dev`
 only, where the app turns the Inspector on, a smoke test opens it and runs a
-tool from it. The publication test
+tool from it. The app turns the Agent Connection (`agentConnection`) on in
+development too: against `nuxt dev` an MCP client pairs with the page through
+a connect link and calls a tool, and against the built server the page loads
+no Agent Connection code and opens no WebSocket. The publication test
 supplies a driver fixture; it does not certify a particular browser's WebMCP API.
 
 The Vue package has DOM-free SSR tests for provider and standalone ownership,

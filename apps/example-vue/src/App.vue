@@ -22,9 +22,10 @@ useAyme({
     ? decisionEndpoint(decisionEndpointPath)
     : undefined,
   webMCP: { enabled: true },
-  // The hosted playground shows the Inspector; `--mode inspector-disabled`
-  // builds it without.
+  // The hosted playground shows the Inspector and lets a visitor's coding
+  // agent connect; `--mode inspector-disabled` builds it without either.
   inspector: import.meta.env.MODE !== "inspector-disabled",
+  agentConnection: import.meta.env.MODE !== "inspector-disabled",
 });
 usePageObject(ListPage);
 </script>

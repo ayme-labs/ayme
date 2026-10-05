@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "./browserPage";
+import { loadAgentConnection } from "./agentConnection";
 import { RuntimeStateError } from "./errors";
 import * as goalLoopModule from "./goalLoop";
 import { loadInspector } from "./inspector";
@@ -20,6 +21,7 @@ vi.mock("./webMcp", async (importOriginal) => ({
   waitForWebMcpDriver: vi.fn(),
 }));
 vi.mock("./inspector", () => ({ loadInspector: vi.fn() }));
+vi.mock("./agentConnection", () => ({ loadAgentConnection: vi.fn() }));
 vi.mock("./browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),
 }));
@@ -96,6 +98,30 @@ it("mounts the Inspector while a session with inspector is started", async () =>
   start(runtime)();
   await flush();
   expect(mountInspector).toHaveBeenCalledOnce();
+});
+
+it("starts the Agent Connection while a session with agentConnection is started", async () => {
+  const dispose = vi.fn();
+  const startAgentConnection = vi.fn(() => ({ dispose }));
+  vi.mocked(loadAgentConnection).mockResolvedValue({ startAgentConnection });
+  start(session(false))();
+  expect(loadAgentConnection).not.toHaveBeenCalled();
+
+  const runtime = createAyme({
+    pageFactory: () => page,
+    agentConnection: true,
+  });
+  sessions.push(runtime);
+  const stop = start(runtime);
+  await flush();
+  expect(startAgentConnection).toHaveBeenCalledExactlyOnceWith(runtime);
+  stop();
+  expect(dispose).toHaveBeenCalledOnce();
+
+  // Stopped before the page client loaded: no connection starts.
+  start(runtime)();
+  await flush();
+  expect(startAgentConnection).toHaveBeenCalledOnce();
 });
 
 it("threads ignore to page state capture for the session lifetime", () => {

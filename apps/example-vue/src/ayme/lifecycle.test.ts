@@ -47,7 +47,7 @@ describe("example lifecycle", () => {
     expect(registerTool).not.toHaveBeenCalled();
   });
 
-  it("publishes the demo's tools without loading the relay", async () => {
+  it("publishes the demo's tools", async () => {
     const registerTool = vi.fn(async (tool: { name: string }) => {
       void tool;
     });
@@ -62,7 +62,6 @@ describe("example lifecycle", () => {
     expect(registerTool.mock.calls.map(([tool]) => tool.name)).toContain(
       "ListPage.addItem"
     );
-    expect(document.head.querySelector("script[data-ayme-relay]")).toBeNull();
     wrapper.unmount();
   });
 });

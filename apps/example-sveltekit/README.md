@@ -44,7 +44,7 @@ pnpm --filter @ayme-dev/example-sveltekit exec playwright install chromium
 pnpm --filter @ayme-dev/example-sveltekit test:e2e
 ```
 
-The shared [example certification](../example-certification/README.md) runs against `vite dev` and the adapter-node server, with server rendering and in SPA mode, including client navigation to the other page and back. The example's own test checks that a descendant's `onMount` sees a started runtime. Against `vite dev`, where the app turns the Inspector on, a smoke test opens it and runs a tool from it.
+The shared [example certification](../example-certification/README.md) runs against `vite dev` and the adapter-node server, with server rendering and in SPA mode, including client navigation to the other page and back. The example's own test checks that a descendant's `onMount` sees a started runtime. Against `vite dev`, where the app turns the Inspector on, a smoke test opens it and runs a tool from it. The app turns the Agent Connection (`agentConnection`) on in development too: against `vite dev` an MCP client pairs with the page through a connect link and calls a tool, and against the adapter-node server the page loads no Agent Connection code and opens no WebSocket.
 
 The tests observe tools through the recording WebMCP driver from `@ayme-dev/ayme/testing`, not through Ayme's internal registry. They do not certify a particular browser's WebMCP API.
 

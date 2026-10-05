@@ -3,6 +3,7 @@ import {
   recordPublishedTools,
   waitForPublishedTool,
 } from "@ayme-dev/ayme/testing";
+import { ignoreAutoPairScan } from "@ayme-dev/mcp/testing";
 
 /**
  * Loads the playground once before any test starts. Vite compiles the app's
@@ -17,10 +18,10 @@ export default async function warmDevServer(config: FullConfig) {
       baseURL: config.projects[0]!.use.baseURL,
     });
     await recordPublishedTools(context);
+    await ignoreAutoPairScan(context);
     const page = await context.newPage();
-    // Network idle also covers the modules the app imports lazily, such as
-    // the Inspector's.
-    await page.goto("/", { waitUntil: "networkidle", timeout: 60_000 });
+    // The published tool shows the app's modules loaded.
+    await page.goto("/", { timeout: 60_000 });
     await waitForPublishedTool(page, "ListPage.addItem", { timeout: 60_000 });
   } finally {
     await browser.close();

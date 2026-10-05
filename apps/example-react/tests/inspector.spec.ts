@@ -1,4 +1,5 @@
-import { expect, selectors, test } from "@playwright/test";
+import { expect, selectors } from "@playwright/test";
+import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 import {
   Inspector,
   registerInspectorSelectors,
