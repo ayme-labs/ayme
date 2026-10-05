@@ -36,7 +36,9 @@ Layers, only where a slice has that kind of code: `domain` (pure rules and types
   contract. Detail views run tools through the run slot, which the run card
   in `tools` fills: the typed form built from a tool's schema, the item
   picker and the last result. `RefField` is the ref field's control, and
-  `KeyField` records or searches the key `press_key` presses. `fill_form`
+  `KeyField` records or searches the key `press_key` presses. `ValueRows`
+  edits a map of labelled strings or numbers, such as `goal`'s `values`, as
+  rows whose type is guessed until the person fixes it. `fill_form`
   has its own form, `FillFormFields`: every field on the page, holding the
   value it shows, sending the ones the person changes. `generate_locator`
   has `LocatorGroups`: one group per page object class, each with a

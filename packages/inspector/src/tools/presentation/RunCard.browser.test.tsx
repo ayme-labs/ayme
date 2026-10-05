@@ -188,6 +188,183 @@ describe("the typed form", () => {
   });
 });
 
+describe("a map of labelled values", () => {
+  const VALUES_DESCRIPTION =
+    "Passed to the Goal Loop with the goal. Where the page has nothing to pick, such as text to type or a URL to open, the loop picks one of these by its label. It never makes up a value.";
+
+  // The goal tool's schema: its `values` map takes strings or numbers.
+  const goal: RunnableTool = {
+    name: "goal",
+    action: "goal",
+    description: "Drive the page toward a goal in steps.",
+    available: true,
+    argumentsSchema: {
+      type: "object",
+      properties: {
+        goal: { type: "string" },
+        maxSteps: { type: "integer" },
+        values: {
+          type: "object",
+          description: VALUES_DESCRIPTION,
+          additionalProperties: {
+            anyOf: [{ type: "string" }, { type: "number" }],
+          },
+          minProperties: 1,
+          maxProperties: 254,
+        },
+      },
+      required: ["goal", "maxSteps"],
+    },
+  };
+
+  async function openGoal() {
+    const rendered = renderCard({ tool: goal });
+    await rendered.card.fill({ goal: "Add an item called Milk", maxSteps: 5 });
+    return { ...rendered, rows: rendered.card.valueRows("values") };
+  }
+
+  it("edits the map as rows, guessing each value's type as it is typed", async () => {
+    const { card, onRun, rows } = await openGoal();
+
+    expect(await rows.description.textContent()).toBe(VALUES_DESCRIPTION);
+    await rows.addButton.click();
+    await rows.label(1).fill("item name");
+    await rows.value(1).fill("Milk");
+    await rows.addButton.click();
+    await rows.label(2).fill("quantity");
+    await rows.value(2).fill("2");
+    await rows.addButton.click();
+    await rows.label(3).fill("zip");
+    await rows.value(3).fill("02134");
+
+    await expect.poll(() => rows.type(1).textContent()).toBe("auto · text");
+    expect(await rows.type(2).textContent()).toBe("auto · number");
+    // A leading zero is kept: the value stays text.
+    expect(await rows.type(3).textContent()).toBe("auto · text");
+    expect(await rows.count.textContent()).toBe("3 / 254");
+
+    await card.runButton.click();
+    expect(onRun).toHaveBeenCalledExactlyOnceWith({
+      goal: "Add an item called Milk",
+      maxSteps: 5,
+      values: { "item name": "Milk", quantity: 2, zip: "02134" },
+    });
+  });
+
+  it("keeps a fixed type while the value changes", async () => {
+    const { card, onRun, rows } = await openGoal();
+
+    await rows.addButton.click();
+    await rows.label(1).fill("code");
+    await rows.value(1).fill("7");
+    // The guess is number; a click fixes the other type.
+    await rows.type(1).click();
+    await expect.poll(() => rows.type(1).textContent()).toBe("text");
+    await rows.value(1).fill("42");
+
+    expect(await rows.type(1).textContent()).toBe("text");
+    await card.runButton.click();
+    expect(onRun).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ values: { code: "42" } })
+    );
+  });
+
+  it("flags a value that is not a number under a fixed number type, and doesn't run", async () => {
+    const { card, onRun, rows } = await openGoal();
+
+    await rows.addButton.click();
+    await rows.label(1).fill("quantity");
+    await rows.value(1).fill("Milk");
+    await rows.type(1).click();
+
+    await expect.poll(() => rows.type(1).textContent()).toBe("number");
+    expect(await rows.problem(1).textContent()).toBe(
+      '"Milk" is not a number. Enter one such as 2 or 2.5, or switch the type to text.'
+    );
+    await expect.poll(() => card.runButton.isDisabled()).toBe(true);
+
+    await rows.value(1).fill("3");
+    await expect.poll(() => card.runButton.isDisabled()).toBe(false);
+    await card.runButton.click();
+    expect(onRun).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ values: { quantity: 3 } })
+    );
+  });
+
+  it("flags a missing or repeated label, and doesn't run", async () => {
+    const { card, onRun, rows } = await openGoal();
+
+    await rows.fill({ name: "Milk" });
+    await rows.addButton.click();
+    await rows.value(2).fill("Eggs");
+    await expect
+      .poll(() => rows.problem(2).textContent())
+      .toBe("Add a label so the loop can tell this value apart.");
+    await rows.label(2).fill("name");
+
+    await expect
+      .poll(() => rows.problem(2).textContent())
+      .toBe('"name" is already used. Each label must be different.');
+    await expect.poll(() => card.runButton.isDisabled()).toBe(true);
+    await rows.removeButton(2).click();
+    await card.runButton.click();
+    expect(onRun).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ values: { name: "Milk" } })
+    );
+  });
+
+  it("leaves the map out while no row is filled", async () => {
+    const { card, onRun, rows } = await openGoal();
+
+    await rows.addButton.click();
+    await card.runButton.click();
+
+    expect(onRun).toHaveBeenCalledExactlyOnceWith({
+      goal: "Add an item called Milk",
+      maxSteps: 5,
+    });
+  });
+
+  it("adds a row on Enter in the last value, and removes an empty one on Backspace", async () => {
+    const { rows } = await openGoal();
+
+    await rows.addButton.click();
+    await rows.label(1).press("Enter");
+    await rows.value(1).fill("Milk");
+    await rows.value(1).press("Enter");
+    await expect.poll(() => rows.rows().count()).toBe(2);
+    await rows.label(2).press("Backspace");
+
+    await expect.poll(() => rows.rows().count()).toBe(1);
+  });
+
+  it("keeps the rows and the JSON editor in step", async () => {
+    const { card, rows } = await openGoal();
+
+    await rows.fill({ name: "Milk", count: 2 });
+    await card.jsonSwitch.click();
+    await expect
+      .poll(async () =>
+        JSON.parse((await card.jsonEditor.inputValue()) || "{}")
+      )
+      .toEqual({
+        goal: "Add an item called Milk",
+        maxSteps: 5,
+        values: { name: "Milk", count: 2 },
+      });
+    await card.jsonEditor.fill(
+      '{ "goal": "Add Milk", "maxSteps": 5, "values": { "code": "7", "count": 3 } }'
+    );
+    await card.formSwitch.click();
+
+    expect(await rows.label(1).inputValue()).toBe("code");
+    expect(await rows.value(1).inputValue()).toBe("7");
+    // A string that reads as a number comes back fixed to text.
+    expect(await rows.type(1).textContent()).toBe("text");
+    expect(await rows.type(2).textContent()).toBe("auto · number");
+  });
+});
+
 describe("a single-element tool", () => {
   const fillRef: RunnableTool = {
     name: "fill",

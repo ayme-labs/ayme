@@ -133,6 +133,48 @@ describe("schema to fields", () => {
     expect(time).toMatchObject({ inputType: "text", typeLabel: "time" });
   });
 
+  it("edits a map of strings or numbers under any label as rows", () => {
+    const values = {
+      type: "object",
+      description: "Passed to the Goal Loop with the goal.",
+      additionalProperties: {
+        anyOf: [{ type: "string" }, { type: "number" }],
+      },
+      maxProperties: 254,
+    } as const;
+    const tags = {
+      type: "object",
+      additionalProperties: { type: "string" },
+    } as const;
+    const nested = {
+      type: "object",
+      additionalProperties: { type: "object" },
+    } as const;
+
+    expect(
+      fieldsOf({ type: "object", properties: { values, tags, nested } })
+    ).toEqual([
+      {
+        name: "values",
+        optional: true,
+        kind: "map",
+        valueTypes: ["string", "number"],
+        maxEntries: 254,
+        description: "Passed to the Goal Loop with the goal.",
+        typeLabel: "",
+      },
+      {
+        name: "tags",
+        optional: true,
+        kind: "map",
+        valueTypes: ["string"],
+        typeLabel: "",
+      },
+      // Values of any other type stay JSON.
+      { name: "nested", optional: true, kind: "json", typeLabel: "object" },
+    ]);
+  });
+
   it("starts a form from the first choice of a required choice", () => {
     expect(initialArguments(addItem)).toEqual({ priority: "low" });
   });
