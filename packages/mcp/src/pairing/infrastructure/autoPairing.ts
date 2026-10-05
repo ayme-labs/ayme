@@ -17,9 +17,13 @@ const PROBE_TIMEOUT_MS = 2000;
  * without a token; the server then hands the page its token, which the
  * tab keeps like a connect link's. Until the tab pairs, it scans again
  * each time the tab gains focus or becomes visible, one scan at a time, so
- * a tab opened before its agent's server started still finds it.
+ * a tab opened before its agent's server started still finds it. With
+ * `lookNow: false` it scans only from the tab's next focus.
  */
-export const autoPairing: PairingSource = (onPairing) => {
+export const autoPairing: PairingSource = (
+  onPairing,
+  { lookNow = true } = {}
+) => {
   if (!isLocalHost(window.location.hostname) || hasPairing()) return () => {};
   let stopped = false;
   let scanning = false;
@@ -46,7 +50,7 @@ export const autoPairing: PairingSource = (onPairing) => {
   };
   window.addEventListener("focus", scan);
   document.addEventListener("visibilitychange", scanWhenVisible);
-  scan();
+  if (lookNow) scan();
   return stop;
 };
 

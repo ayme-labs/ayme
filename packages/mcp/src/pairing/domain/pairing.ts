@@ -65,7 +65,10 @@ export function pairingFromFragment(hash: string): Pairing | undefined {
 /**
  * A way the page client learns a pairing, such as a connect link. It calls
  * `onPairing` with each pairing it finds and returns what stops it.
+ * `lookNow: false`, as after a server refused the tab's pairing, asks it to
+ * wait for the tab's next focus before it looks for a server.
  */
 export type PairingSource = (
-  onPairing: (pairing: Pairing) => void
+  onPairing: (pairing: Pairing) => void,
+  options?: { lookNow?: boolean }
 ) => () => void;

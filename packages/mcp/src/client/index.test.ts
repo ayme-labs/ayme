@@ -9,7 +9,13 @@ const channels = vi.hoisted(
       onDisconnected(): void;
     }[]
 );
-const sourceStarts = vi.hoisted(() => [] as ((pairing: Pairing) => void)[]);
+const sourceStarts = vi.hoisted(
+  () =>
+    [] as {
+      onPairing: (pairing: Pairing) => void;
+      lookNow: boolean | undefined;
+    }[]
+);
 
 vi.mock("../connection", () => ({
   openPageChannel: (
@@ -29,8 +35,11 @@ vi.mock("../pairing", () => ({
 vi.mock("./clientBehaviours", () => ({ clientBehaviours: [] }));
 vi.mock("./pairingSources", () => ({
   pairingSources: [
-    (onPairing: (pairing: Pairing) => void) => {
-      sourceStarts.push(onPairing);
+    (
+      onPairing: (pairing: Pairing) => void,
+      options?: { lookNow?: boolean }
+    ) => {
+      sourceStarts.push({ onPairing, lookNow: options?.lookNow });
       return () => {};
     },
   ],
@@ -53,19 +62,19 @@ afterEach(() => {
 });
 
 describe("startAgentConnection", () => {
-  it("looks for a server again when a busy server refuses its pairing without a token", () => {
+  it("looks for a server again from the tab's next focus when a busy server refuses its pairing without a token", () => {
     startAgentConnection({ tools: {} as never });
-    sourceStarts[0]!({ address: ADDRESS, token: "" });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "" });
 
     channels[0]!.onWelcome({});
     channels[0]!.onDisconnected();
 
-    expect(sourceStarts).toHaveLength(2);
+    expect(sourceStarts.map(({ lookNow }) => lookNow)).toEqual([true, false]);
   });
 
   it("stays unpaired when another tab takes the server it had a token for", () => {
     startAgentConnection({ tools: {} as never });
-    sourceStarts[0]!({ address: ADDRESS, token: "" });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "" });
 
     channels[0]!.onWelcome({ token: "handed-over" });
     channels[0]!.onDisconnected();

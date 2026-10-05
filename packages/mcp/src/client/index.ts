@@ -20,9 +20,9 @@ export type AgentConnectionRuntime = { readonly tools: PageTools };
  * one. A page that paired without a token keeps the token the server hands
  * it, and reconnects with it. When the server says another tab paired in
  * this tab's place, the tab forgets its pairing; when it does not know the
- * pairing, the tab forgets it and looks for a server again, as it does
- * when a busy server refuses its pairing without a token. Returns what ends
- * the connection.
+ * pairing, the tab forgets it and looks for a server again. When a busy
+ * server refuses its pairing without a token, it looks again from its next
+ * focus. Returns what ends the connection.
  */
 export function startAgentConnection(ayme: AgentConnectionRuntime): {
   dispose(): void;
@@ -30,9 +30,9 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
   if (typeof window === "undefined") return { dispose() {} };
   let open: { key: string; close(): void } | undefined;
   let stopSources: (() => void)[] = [];
-  const startSources = () => {
+  const startSources = (lookNow = true) => {
     for (const stop of stopSources) stop();
-    stopSources = pairingSources.map((source) => source(pair));
+    stopSources = pairingSources.map((source) => source(pair, { lookNow }));
   };
   const pair = (pairing: Pairing) => {
     const tab = storedTabId(pairing);
@@ -60,8 +60,9 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
         opened.close();
         open = undefined;
         forgetStoredPairing(tab);
-        // A busy server refused the tokenless pairing: the tab has none.
-        if (!current.token) return startSources();
+        // A busy server refused the tokenless pairing: the tab has none,
+        // and looks again from its next focus.
+        if (!current.token) return startSources(false);
         console.info(
           "[ayme] This tab is no longer connected to the coding agent: another tab connected to its Ayme MCP server."
         );

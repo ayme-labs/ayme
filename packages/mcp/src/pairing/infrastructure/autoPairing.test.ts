@@ -91,6 +91,16 @@ describe("autoPairing", () => {
     expect(FakeProbe.opened).toHaveLength(PORT_COUNT);
   });
 
+  it("with lookNow false, waits for the tab's next focus before it scans", async () => {
+    autoPairing(() => {}, { lookNow: false });
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(FakeProbe.opened).toHaveLength(0);
+
+    page.dispatchEvent(new Event("focus"));
+
+    expect(FakeProbe.opened).toHaveLength(PORT_COUNT);
+  });
+
   it("runs one scan at a time", () => {
     autoPairing(() => {});
 
