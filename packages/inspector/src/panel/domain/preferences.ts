@@ -28,6 +28,8 @@ export type Preferences = {
   layout: Layout;
   collapsed: boolean;
   theme: ThemePreference;
+  /** Whether the panel and the logo are glass or solid. */
+  glass: boolean;
   float?: Rect;
   /** The width of the left or right dock. */
   sideWidth: number;
@@ -41,6 +43,7 @@ export const defaultPreferences: Preferences = {
   layout: "float",
   collapsed: false,
   theme: "system",
+  glass: true,
   sideWidth: 640,
   bottomHeight: 360,
   modelPanes: { objectsOpen: true, modelsOpen: true, split: 0.58 },
@@ -64,6 +67,10 @@ export function decodePreferences(stored: unknown): Preferences {
         ? stored.collapsed
         : defaultPreferences.collapsed,
     theme: oneOf(stored.theme, themes) ?? defaultPreferences.theme,
+    glass:
+      typeof stored.glass === "boolean"
+        ? stored.glass
+        : defaultPreferences.glass,
     float: isRect(stored.float) ? pick(stored.float, rectKeys) : undefined,
     sideWidth: isSize(stored.sideWidth)
       ? stored.sideWidth

@@ -7,6 +7,7 @@ export { Inspector } from "./pom/Inspector";
 export { CollapsedLogo } from "./pom/CollapsedLogo";
 export { DetailPane } from "./pom/DetailPane";
 export {
+  GlassSwitch,
   InspectorHeader,
   LayoutMenu,
   ThemeSwitch,

@@ -25,6 +25,9 @@
   --container-panel-narrow: 719px;
 }
 
+/* Styles that apply only while the panel is glass (see the glass look below). */
+@custom-variant glass (&:is([data-glass] *));
+
 /* The design system's base styles; theme.css leaves them to the consumer. */
 @layer base {
   * {
@@ -78,4 +81,77 @@
   --sh-string: var(--success);
   --sh-keyword: var(--primary);
   --sh-comment: var(--muted-foreground);
+}
+
+/*
+ * The glass look, on while the themed root carries `data-glass`: the panel,
+ * the logo and the portalled menus are frosted panes over a blurred backdrop.
+ * Before the pane is laid on top, the backdrop's contrast is squeezed and its
+ * brightness pushed towards the theme's side, so text always sits on an even,
+ * theme-coloured smear however busy the page behind is. Off, everything is
+ * the design system's solid look.
+ *
+ * The rules are unlayered so they outrank the components' utilities. Inside
+ * the panel and the portal, the surface tokens become translucent mixes of
+ * their solid values, which the themed root captures first.
+ */
+[data-ayme-inspector-root] {
+  --solid-background: var(--background);
+  --solid-card: var(--card);
+  --solid-popover: var(--popover);
+  --solid-muted: var(--muted);
+  --glass-panel: 62%;
+  --glass-card: 55%;
+  --glass-blur: 32px;
+  --glass-saturate: 140%;
+  --glass-tame: contrast(0.5) brightness(1.3);
+  --glass-edge: rgb(255 255 255 / 0.55);
+  --glass-sheen: rgb(255 255 255 / 0.7);
+  --glass-shadow: 0 24px 60px -16px rgb(15 15 30 / 0.35);
+}
+
+/* A dark pane usually sits over a light page, so it keeps more of its body. */
+[data-ayme-inspector-root].dark {
+  --glass-panel: 70%;
+  --glass-card: 58%;
+  --glass-tame: contrast(0.6) brightness(0.55);
+  --glass-edge: rgb(255 255 255 / 0.12);
+  --glass-sheen: rgb(255 255 255 / 0.14);
+  --glass-shadow: 0 24px 60px -12px rgb(0 0 0 / 0.6);
+}
+
+[data-glass] :is([data-glass-pane="panel"], [data-ayme-inspector-portal]) {
+  --background: color-mix(
+    in oklab,
+    var(--solid-background) var(--glass-panel),
+    transparent
+  );
+  --card: color-mix(in oklab, var(--solid-card) var(--glass-card), transparent);
+  --popover: color-mix(in oklab, var(--solid-popover) 72%, transparent);
+  --muted: color-mix(in oklab, var(--solid-muted) 60%, transparent);
+  --accent: color-mix(in oklab, var(--solid-muted) 60%, transparent);
+  --border: color-mix(in oklab, var(--foreground) 11%, transparent);
+  --input: color-mix(in oklab, var(--foreground) 14%, transparent);
+}
+
+/* The panel and the logo share a thin light edge with an inner highlight. */
+[data-glass] [data-glass-pane] {
+  border-color: var(--glass-edge);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-sheen),
+    var(--glass-shadow);
+}
+
+[data-glass] [data-glass-pane="panel"] {
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate))
+    var(--glass-tame);
+}
+
+[data-glass] [data-glass-pane="logo"] {
+  background-color: color-mix(
+    in oklab,
+    var(--solid-background) 45%,
+    transparent
+  );
+  backdrop-filter: blur(16px) saturate(180%) var(--glass-tame);
 }

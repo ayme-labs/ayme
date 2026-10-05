@@ -110,7 +110,7 @@ export function InspectorApp() {
   );
 
   return (
-    <InspectorRoot dark={dark}>
+    <InspectorRoot dark={dark} glass={preferences.glass}>
       <InspectorShell
         preferences={preferences}
         onPreferencesChange={updatePreferences}

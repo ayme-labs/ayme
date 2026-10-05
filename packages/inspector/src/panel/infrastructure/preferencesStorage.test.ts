@@ -36,12 +36,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it("remembers the layout, sizes, positions, theme and Model lens panes it was left with", () => {
+it("remembers the layout, sizes, positions, theme, glass and Model lens panes it was left with", () => {
   const storage = memoryStorage();
   const left: Preferences = {
     layout: "bottom",
     collapsed: true,
     theme: "dark",
+    glass: false,
     float: { x: 40, y: 30, width: 600, height: 560 },
     sideWidth: 700,
     bottomHeight: 300,
@@ -59,6 +60,7 @@ it("opens with the defaults when nothing is stored yet", () => {
     layout: "float",
     collapsed: false,
     theme: "system",
+    glass: true,
     sideWidth: 640,
     bottomHeight: 360,
     modelPanes: { objectsOpen: true, modelsOpen: true, split: 0.58 },
@@ -70,6 +72,7 @@ it("keeps each valid stored value and defaults the malformed ones", () => {
     [preferencesKey]: JSON.stringify({
       layout: "diagonal",
       theme: "dark",
+      glass: "on",
       sideWidth: 700,
       bottomHeight: -5,
       float: { x: "left", y: 0, width: 600, height: 500 },
@@ -82,6 +85,7 @@ it("keeps each valid stored value and defaults the malformed ones", () => {
     layout: "float",
     collapsed: false,
     theme: "dark",
+    glass: true,
     sideWidth: 700,
     bottomHeight: 360,
     logo: { x: 10, y: 12 },

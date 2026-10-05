@@ -10,6 +10,7 @@ import {
   PanelLeftIcon,
   PanelRightIcon,
   PictureInPicture2Icon,
+  SparklesIcon,
   SunIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -26,14 +27,16 @@ const iconButton =
   "inline-grid size-7 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50";
 
 /**
- * The panel's header: the ayme title, the page badge, the theme switch, the
- * layout menu and collapse. The panel drags by it.
+ * The panel's header: the ayme title, the page badge, the glass switch, the
+ * theme switch, the layout menu and collapse. The panel drags by it.
  */
 export function Header({
   pageName,
   layout,
   theme,
+  glass,
   onThemeChange,
+  onGlassChange,
   onLayoutChange,
   onCollapse,
   onPointerDown,
@@ -43,7 +46,9 @@ export function Header({
   pageName?: string;
   layout: Layout;
   theme: ThemePreference;
+  glass: boolean;
   onThemeChange: (theme: ThemePreference) => void;
+  onGlassChange: (glass: boolean) => void;
   onLayoutChange: (layout: Layout) => void;
   onCollapse: () => void;
   /** A press on the header outside its controls: the start of a drag. */
@@ -81,6 +86,18 @@ export function Header({
         </Badge>
       )}
       <span className="flex-1" />
+      <button
+        type="button"
+        aria-label="Glass"
+        aria-pressed={glass}
+        title={
+          glass ? "Glass: on. Switch to solid." : "Glass: off. Switch to glass."
+        }
+        className={cn(iconButton, "aria-pressed:text-foreground")}
+        onClick={() => onGlassChange(!glass)}
+      >
+        <SparklesIcon className="size-3.5" />
+      </button>
       <ThemeSwitch theme={theme} onChange={onThemeChange} />
       <LayoutMenu layout={layout} onChange={onLayoutChange} />
       <button
@@ -174,7 +191,7 @@ function LayoutMenu({
           aria-label="Layout"
           align="end"
           sideOffset={4}
-          className="z-50 flex min-w-47.5 flex-col rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
+          className="z-50 flex min-w-47.5 flex-col rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg glass:backdrop-blur-[20px] glass:backdrop-saturate-180"
         >
           <DropdownMenu.RadioGroup
             value={layout}

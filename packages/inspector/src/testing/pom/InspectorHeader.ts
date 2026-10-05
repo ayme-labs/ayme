@@ -33,6 +33,24 @@ export class ThemeSwitch {
   }
 }
 
+/** The glass switch: pressed while the panel is glass, else it's solid. */
+export class GlassSwitch {
+  readonly button: Locator;
+
+  constructor(root: Locator) {
+    this.button = root.getByRole("button", { name: "Glass", exact: true });
+  }
+
+  /** Whether the panel is glass. */
+  async isOn(): Promise<boolean> {
+    return (await this.button.getAttribute("aria-pressed")) === "true";
+  }
+
+  async set(on: boolean) {
+    if ((await this.isOn()) !== on) await this.button.click();
+  }
+}
+
 /** The layout menu. It opens in the Inspector's portal. */
 export class LayoutMenu {
   readonly trigger: Locator;
@@ -64,14 +82,15 @@ export class LayoutMenu {
 }
 
 /**
- * The panel's header: the title, the page badge, the theme switch, the
- * layout menu and collapse. The panel drags by it.
+ * The panel's header: the title, the page badge, the glass switch, the theme
+ * switch, the layout menu and collapse. The panel drags by it.
  */
 export class InspectorHeader {
   readonly root: Locator;
   readonly title: Locator;
   /** The page's name, e.g. ListPage. */
   readonly pageBadge: Locator;
+  readonly glassSwitch: GlassSwitch;
   readonly themeSwitch: ThemeSwitch;
   readonly layoutMenu: LayoutMenu;
   readonly collapseButton: Locator;
@@ -85,6 +104,7 @@ export class InspectorHeader {
     this.root = root;
     this.title = root.getByRole("heading", { name: "ayme", exact: true });
     this.pageBadge = root.locator("[data-slot=badge]");
+    this.glassSwitch = new GlassSwitch(root);
     this.themeSwitch = new ThemeSwitch(root);
     this.layoutMenu = new LayoutMenu(root, portalRoot);
     this.collapseButton = root.getByRole("button", {

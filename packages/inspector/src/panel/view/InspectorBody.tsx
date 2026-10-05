@@ -55,7 +55,7 @@ export function RunsRegion({
     <section
       aria-label="Runs"
       data-collapsed={collapsed || undefined}
-      className="flex h-runs min-h-0 flex-none flex-col border-t bg-background data-collapsed:h-region-header in-data-[layout=bottom]:h-auto in-data-[layout=bottom]:w-runs-docked in-data-[layout=bottom]:border-t-0 in-data-[layout=bottom]:border-l in-data-[layout=bottom]:data-collapsed:w-runs-collapsed"
+      className="flex h-runs min-h-0 flex-none flex-col border-t bg-background glass:bg-transparent data-collapsed:h-region-header in-data-[layout=bottom]:h-auto in-data-[layout=bottom]:w-runs-docked in-data-[layout=bottom]:border-t-0 in-data-[layout=bottom]:border-l in-data-[layout=bottom]:data-collapsed:w-runs-collapsed"
     >
       {children}
     </section>

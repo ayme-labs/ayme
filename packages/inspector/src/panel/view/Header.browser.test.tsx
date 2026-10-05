@@ -24,13 +24,17 @@ afterEach(() => {
 function renderHeader({
   theme = "system",
   layout = "float",
+  glass = true,
   onThemeChange = vi.fn(),
+  onGlassChange = vi.fn(),
   onLayoutChange = vi.fn(),
   onCollapse = vi.fn(),
 }: {
   theme?: ThemePreference;
   layout?: Layout;
+  glass?: boolean;
   onThemeChange?: (theme: ThemePreference) => void;
+  onGlassChange?: (glass: boolean) => void;
   onLayoutChange?: (layout: Layout) => void;
   onCollapse?: () => void;
 } = {}) {
@@ -40,7 +44,9 @@ function renderHeader({
         pageName="ListPage"
         layout={layout}
         theme={theme}
+        glass={glass}
         onThemeChange={onThemeChange}
+        onGlassChange={onGlassChange}
         onLayoutChange={onLayoutChange}
         onCollapse={onCollapse}
       />
@@ -75,6 +81,27 @@ it("shows the theme it's set to", async () => {
   renderHeader({ theme: "dark" });
 
   await expect.poll(() => header.themeSwitch.current()).toBe("Dark");
+});
+
+it.each([true, false])(
+  "shows whether the panel is glass (%s)",
+  async (glass) => {
+    renderHeader({ glass });
+
+    await expect.poll(() => header.glassSwitch.isOn()).toBe(glass);
+  }
+);
+
+it.each([
+  [true, false],
+  [false, true],
+])("the glass switch turns glass from %s to %s", async (glass, next) => {
+  const onGlassChange = vi.fn();
+  renderHeader({ glass, onGlassChange });
+
+  await header.glassSwitch.button.click();
+
+  expect(onGlassChange).toHaveBeenCalledExactlyOnceWith(next);
 });
 
 it.each([

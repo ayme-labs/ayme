@@ -9,12 +9,15 @@ import { InspectorRoot, renderInShadowRoot } from "../shared";
  * it (the mounted Inspector's root is closed). The part takes pointer events,
  * as it does inside the panel. Returns the unmount function.
  */
-export function renderPart(node: ReactNode, { dark = false } = {}) {
+export function renderPart(
+  node: ReactNode,
+  { dark = false, glass = false } = {}
+) {
   const host = document.createElement("div");
   document.body.append(host);
   const unmount = renderInShadowRoot(
     host.attachShadow({ mode: "open" }),
-    <InspectorRoot dark={dark}>
+    <InspectorRoot dark={dark} glass={glass}>
       <div className="pointer-events-auto">{node}</div>
     </InspectorRoot>
   );

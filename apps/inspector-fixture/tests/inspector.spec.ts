@@ -59,6 +59,23 @@ test("the layout and its sizes survive a reload", async ({
   await expect.poll(() => shell.box()).toEqual(floating);
 });
 
+test("the panel is glass until it's switched to solid, which survives a reload", async ({
+  page,
+  inspector,
+}) => {
+  const backdrop = () =>
+    inspector.panel.evaluate((panel) => getComputedStyle(panel).backdropFilter);
+  await expect.poll(backdrop).toContain("blur(");
+
+  await inspector.header.glassSwitch.set(false);
+  await expect.poll(backdrop).toBe("none");
+
+  await openFixture(page, "/", { reload: true });
+
+  await expect.poll(() => inspector.header.glassSwitch.isOn()).toBe(false);
+  await expect.poll(backdrop).toBe("none");
+});
+
 test("a collapsed panel stays collapsed after a reload", async ({
   page,
   inspector,

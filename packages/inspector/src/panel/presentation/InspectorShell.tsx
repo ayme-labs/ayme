@@ -183,6 +183,7 @@ export function InspectorShell({
     <>
       <aside
         aria-label="ayme"
+        data-glass-pane="panel"
         className={cn(
           "@container pointer-events-auto absolute flex flex-col overflow-hidden border bg-background",
           {
@@ -214,7 +215,9 @@ export function InspectorShell({
           pageName={pageName}
           layout={layout}
           theme={preferences.theme}
+          glass={preferences.glass}
           onThemeChange={(theme) => onPreferencesChange({ theme })}
+          onGlassChange={(glass) => onPreferencesChange({ glass })}
           onLayoutChange={(next) => onPreferencesChange({ layout: next })}
           onCollapse={() => setCollapsed(true)}
           onPointerDown={startMove}

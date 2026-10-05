@@ -49,7 +49,7 @@ export function WebMcpStatus({ status }: { status: PublicationStatus }) {
       role="status"
       aria-label="WebMCP publication"
       title={textOf(explanation)}
-      className="flex-none truncate border-b bg-background px-3.5 py-1.5 text-xs text-muted-foreground"
+      className="flex-none truncate border-b bg-background px-3.5 glass:bg-transparent py-1.5 text-xs text-muted-foreground"
     >
       {explanation}
     </p>

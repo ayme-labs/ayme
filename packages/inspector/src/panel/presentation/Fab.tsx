@@ -31,6 +31,7 @@ export function Fab({
       aria-label="Open ayme"
       title="Drag to move. Click to open."
       aria-expanded={false}
+      data-glass-pane="logo"
       className="pointer-events-auto absolute flex size-12 cursor-grab touch-none items-center justify-center rounded-full border border-primary bg-background p-2.5 shadow-lg active:cursor-grabbing"
       style={{ left: position.x, top: position.y }}
       onPointerDown={(event) => {
