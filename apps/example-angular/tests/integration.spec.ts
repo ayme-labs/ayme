@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { CounterPage } from "../playwright/pom/CounterPage";
 import {
   executePublishedTool,
@@ -6,7 +6,10 @@ import {
   publishedToolSchema,
   recordPublishedTools,
 } from "@ayme-dev/ayme/testing";
-import { isRefusedAutoPairProbe } from "@ayme-dev/example-certification/tests";
+import {
+  exampleTest as test,
+  isRefusedAutoPairProbe,
+} from "@ayme-dev/example-certification/tests";
 
 // Run the same contract against ng serve and the production build, for the
 // default SSR build and the spa build configuration.

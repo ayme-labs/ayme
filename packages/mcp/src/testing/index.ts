@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 
 /** The server's own tools; every other MCP tool is a page tool. */
 export const SERVER_TOOLS = ["ayme_connect", "ayme_list_tools", "ayme_call"];
@@ -32,6 +32,30 @@ export function freePort(): Promise<number> {
       server.close(() => resolve(port));
     });
   });
+}
+
+/**
+ * Answers the auto-pair scan of every page in `context` as if no Ayme MCP
+ * server ran, except on the ports in `reachable`, which a test may add to
+ * later. A localhost page under test then never pairs by itself with a
+ * server another test or suite runs on this machine. The scan probes
+ * `ws://127.0.0.1:<port>/probe` on each port from 9350 to 9365. Once a
+ * context routes any WebSocket, Playwright relays all of its pages'
+ * WebSockets, and a message a page sends as it unloads is lost.
+ */
+export async function ignoreAutoPairScan(
+  context: BrowserContext,
+  reachable: ReadonlySet<number> = new Set()
+): Promise<void> {
+  await context.routeWebSocket(
+    (url) =>
+      url.hostname === "127.0.0.1" &&
+      url.pathname === "/probe" &&
+      Number(url.port) >= 9350 &&
+      Number(url.port) <= 9365 &&
+      !reachable.has(Number(url.port)),
+    (socket) => socket.close()
+  );
 }
 
 /** A coding agent's view of its Ayme MCP server: an MCP client over stdio. */

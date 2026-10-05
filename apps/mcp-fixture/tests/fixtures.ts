@@ -2,6 +2,7 @@ import {
   type Agent,
   connectPage,
   freePort,
+  ignoreAutoPairScan,
   startAgent,
 } from "@ayme-dev/mcp/testing";
 import { test as base, expect, type Page } from "@playwright/test";
@@ -67,18 +68,12 @@ export const test = base.extend<{
       const ports = new Set<number>();
       if (!limitScan) return use(ports);
       // Answers every other probe of the scan as no Ayme MCP server would.
-      await context.routeWebSocket(
-        (url) => url.pathname === PROBE_PATH && !ports.has(Number(url.port)),
-        (socket) => socket.close()
-      );
+      await ignoreAutoPairScan(context, ports);
       await use(ports);
     },
     { auto: true },
   ],
 });
-
-/** The path the page's auto-pair scan probes on each port of the range. */
-const PROBE_PATH = "/probe";
 
 /** The WebSocket address and port of the agent's server, from its link. */
 export async function serverAddress(agent: Agent) {

@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 import { CounterPage } from "../playwright/pom/CounterPage";
 
 const browserToolNames = [
