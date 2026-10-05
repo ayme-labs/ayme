@@ -4,7 +4,7 @@ The end-to-end certification that every framework's example app runs, written on
 
 ## Config
 
-`certificationConfig` from `@ayme-dev/example-certification/config` builds an example's Playwright config: a free port kept across Playwright's workers, and the app's server for the run's mode. The example supplies only the command that serves it on that port. Against the dev server, a global setup loads the counter page once before the tests, so the first test does not pay for the dev server's first compile.
+`certificationConfig` from `@ayme-dev/example-certification/config` builds an example's Playwright config: a free port kept across Playwright's workers, and the app's server for the run's mode. The example supplies only the command that serves it on that port. Against the dev server, a global setup loads the counter page and `/other` once before the tests, so no test pays for the dev server's first compile of a page.
 
 The environment selects the mode, so an example has one config and its `test:e2e:*` scripts set the variables its `webServer` honours:
 
