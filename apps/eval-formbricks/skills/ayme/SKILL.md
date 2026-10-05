@@ -5,7 +5,7 @@ description: Drive the open web page through Ayme's MCP server, with the page's 
 
 # Driving the page through Ayme
 
-The `ayme` MCP server is already connected to the open tab. Its tools act on that page.
+The `ayme` MCP server is already connected to the open tab. Its tools act on that page, and they are already in your tool list, so `ayme_list_tools` is not needed.
 
 ## Prefer the Page Object Tools
 
