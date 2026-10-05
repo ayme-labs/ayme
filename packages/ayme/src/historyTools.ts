@@ -21,9 +21,9 @@ const noInputSchema: JsonSchema = {
  * A tool that moves one history entry `back` or `forward`. Like any action,
  * the call answers with the Change Record once the page settles, or at once
  * when the entry is another document and its load starts. With no entry to
- * move to, the page does not move and the call's `result` says so. The
- * browser Page's own promise is never waited on: the answer follows the
- * document's navigation.
+ * move to, the browser Page does not move the page and the call's `result`
+ * says so. A traversal's answer follows the document's navigation, never
+ * how the browser Page's own promise settles.
  */
 function traversalTool(
   name: string,
@@ -50,24 +50,34 @@ function traversalTool(
           // The browser Page moves through history with the Navigation API
           // and refuses with its own error without it.
           if (!navigation) return traverse();
-          const hasEntry =
-            direction === "back"
-              ? navigation.canGoBack
-              : navigation.canGoForward;
-          if (!hasEntry)
-            return `There is no history entry to go ${direction} to; the page did not move.`;
           // A traversal happens in a later task. One within the document
           // commits a new current entry, or fails if it is cancelled; one to
           // another document starts a full load, which the action answers.
+          // With no entry to move to, the browser Page resolves at once with
+          // no navigation started and the current entry unchanged. Its
+          // rejection never decides the answer.
+          const start = navigation.currentEntry?.key;
+          let navigated = false;
           const watching = new AbortController();
-          const traversed = new Promise<void>((resolve) => {
+          const { signal } = watching;
+          const traversed = new Promise<boolean>((resolve) => {
+            navigation.addEventListener("navigate", () => (navigated = true), {
+              signal,
+            });
             for (const type of ["currententrychange", "navigateerror"])
-              navigation.addEventListener(type, () => resolve(), {
-                signal: watching.signal,
+              navigation.addEventListener(type, () => resolve(true), {
+                signal,
               });
+            void traverse().then(
+              () => {
+                if (!navigated && navigation.currentEntry?.key === start)
+                  resolve(false);
+              },
+              () => {}
+            );
           }).finally(() => watching.abort());
-          void traverse().catch(() => {});
-          await traversed;
+          if (!(await traversed))
+            return `There is no history entry to go ${direction} to; the page did not move.`;
         }
       );
     },
