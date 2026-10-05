@@ -1,0 +1,140 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "security:minimumReleaseAgeNpm",
+    ":maintainLockFilesWeekly",
+    ":semanticCommits",
+    ":semanticCommitScopeDisabled",
+    "group:allNonMajor"
+  ],
+  "timezone": "Europe/Vienna",
+  "schedule": ["* 22-23 * * 0", "* 0-5 * * 1"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Keep Playwright CI image tags aligned with the npm Playwright release stream.",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "image: mcr\\.microsoft\\.com/playwright:v(?<currentValue>\\d+\\.\\d+\\.\\d+)-noble"
+      ],
+      "depNameTemplate": "playwright",
+      "datasourceTemplate": "npm"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Each framework keeps its own PR, so a break points at one framework.",
+      "matchPackageNames": ["vue", "@vue/**"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Vue"
+    },
+    {
+      "matchPackageNames": [
+        "@angular/**",
+        "@angular-devkit/**",
+        "@schematics/angular",
+        "@angular-builders/**",
+        "zone.js"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Angular"
+    },
+    {
+      "matchPackageNames": ["next"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Next.js"
+    },
+    {
+      "matchPackageNames": ["nuxt"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Nuxt"
+    },
+    {
+      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "React"
+    },
+    {
+      "matchPackageNames": ["svelte", "@sveltejs/**", "svelte-check"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Svelte"
+    },
+    {
+      "matchPackageNames": [
+        "typescript",
+        "tsdown",
+        "vite",
+        "@vitejs/**",
+        "vitest",
+        "@vitest/**",
+        "jsdom",
+        "unplugin",
+        "vue-tsc",
+        "turbo"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Build and test tooling"
+    },
+    {
+      "matchPackageNames": [
+        "eslint",
+        "@eslint/**",
+        "eslint-*",
+        "typescript-eslint",
+        "@typescript-eslint/**",
+        "globals",
+        "prettier",
+        "@commitlint/**",
+        "lint-staged",
+        "lefthook"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Repository tooling"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "matchPackageNames": ["node", "pnpm"],
+      "groupName": "Node and pnpm"
+    },
+    {
+      "matchPackageNames": ["mcr.microsoft.com/playwright"],
+      "enabled": false,
+      "description": "The CI image is updated by the regex manager from the npm Playwright datasource so Docker tags cannot race ahead of npm availability."
+    },
+    {
+      "matchPackageNames": ["playwright", "@playwright/test"],
+      "groupName": "Playwright"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "config:recommended makes production dependency updates fix: commits; every Renovate commit is chore: here.",
+      "matchPackageNames": ["*"],
+      "semanticCommitType": "chore"
+    },
+    {
+      "description": "Playwright Lite is pinned to an immutable ayme-<date> fork tag and repinned by hand with its build approval (ADR-0021).",
+      "matchPackageNames": ["@ayme-dev/playwright-lite"],
+      "enabled": false
+    },
+    {
+      "description": "Workspace overrides pin known-good versions on purpose, such as rolldown 1.2.8 for the Nuxt typecheck; they change by hand.",
+      "matchDepTypes": ["pnpm-workspace.overrides"],
+      "enabled": false
+    }
+  ]
+}

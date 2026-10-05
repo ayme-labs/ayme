@@ -1,3 +1,4 @@
+import type { PlaywrightLocatorString } from "@ayme-dev/core/structural-observation";
 import type { ActionResult } from "./actionSequence";
 import type { Handover } from "./goalLoop";
 import type { PageContextPayload } from "./pageContext";
@@ -39,6 +40,23 @@ export type BuiltInTools = {
     result: ActionResult;
   };
   press_key: { input: { key: string }; result: ActionResult };
+  generate_locator: {
+    input: { groups: { targets: string[]; within?: string }[] };
+    result: {
+      /** The groups in input order, each repeating its container. */
+      groups: (
+        | {
+            within?: string;
+            /** The targets in input order, each repeating its target. */
+            locators: (
+              | { target: string; locator: PlaywrightLocatorString }
+              | { target: string; error: string }
+            )[];
+          }
+        | { within: string; error: string }
+      )[];
+    };
+  };
   snapshot: { input: { names?: string[] }; result: PageContextPayload };
   goal: { input: { goal: string; maxSteps: number }; result: Handover };
 };

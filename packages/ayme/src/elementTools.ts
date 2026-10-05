@@ -48,7 +48,7 @@ export type PublishedElementTool = ModelContextTool<
 > & {
   inputSchema: JsonSchema;
   execute(input: unknown): Promise<JsonValue>;
-  executeAs: CallerRun;
+  executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
 };
 
 /**

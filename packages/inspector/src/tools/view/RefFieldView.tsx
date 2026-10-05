@@ -1,11 +1,12 @@
 import type { KeyboardEvent, RefObject } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDownIcon, CrosshairIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon, CrosshairIcon } from "lucide-react";
 
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { RefNode, RefTreeRow } from "../domain/refTree";
+import { NodeDetail, refText, RefTreeView } from "./RefTreeView";
 
 /**
  * The control of a ref field. Pressing it opens a searchable tree of the
@@ -86,7 +87,7 @@ export function RefFieldView({
           {value ? (
             <span className="min-w-0 truncate rounded-sm bg-muted px-2 py-0.5 font-mono text-xs text-foreground">
               <span className={refText}>{value}</span>
-              {chosen && <ChosenDetail node={chosen} />}
+              {chosen && <NodeDetail node={chosen} />}
             </span>
           ) : (
             <span className="px-1 text-muted-foreground">
@@ -130,65 +131,16 @@ export function RefFieldView({
           className="absolute top-full right-10 left-0 z-20 mt-1 flex flex-col gap-1.5 rounded-lg border bg-card p-1.5 shadow-lg"
           onKeyDown={onTreeKey}
         >
-          <label className="flex h-7.5 items-center gap-1.5 rounded-md border bg-background px-2 text-muted-foreground focus-within:border-ring">
-            <SearchIcon className="size-3.5 flex-none" aria-hidden />
-            <input
-              type="text"
-              autoFocus
-              spellCheck={false}
-              aria-label="Search the page structure"
-              placeholder="Search refs, roles and names"
-              className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={onSearchKey}
-            />
-          </label>
-          <div
-            role="tree"
-            aria-label="Page structure"
-            className="flex max-h-57.5 flex-col overflow-auto"
-          >
-            {rows.map(({ node, depth, text, match, usable }) => (
-              <button
-                key={node.ref}
-                type="button"
-                role="treeitem"
-                aria-level={depth + 1}
-                aria-selected={node.ref === value}
-                disabled={!usable}
-                className={cn(
-                  "flex w-full flex-none items-baseline gap-1.5 rounded py-1 pr-1.5 text-left font-mono text-xs whitespace-nowrap hover:bg-muted aria-selected:bg-primary/10",
-                  !match && "opacity-55",
-                  "disabled:cursor-default disabled:bg-transparent disabled:opacity-45"
-                )}
-                style={{ paddingLeft: 6 + depth * 12 }}
-                onClick={() => choose(node.ref)}
-                onMouseEnter={() => onPreview?.(node.ref)}
-                onMouseLeave={onPreviewEnd}
-              >
-                <span className={refText}>{node.ref}</span>
-                <span>{node.role}</span>
-                {(node.name || text) && (
-                  <span
-                    className={cn(
-                      "min-w-0 truncate",
-                      node.name
-                        ? "text-green-700 dark:text-green-300"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {node.name ? JSON.stringify(node.name) : text}
-                  </span>
-                )}
-              </button>
-            ))}
-            {rows.length === 0 && (
-              <p className="m-0 p-2 text-center text-xs text-muted-foreground">
-                No element matches.
-              </p>
-            )}
-          </div>
+          <RefTreeView
+            query={query}
+            setQuery={setQuery}
+            onSearchKey={onSearchKey}
+            rows={rows}
+            selected={(ref) => ref === value}
+            choose={choose}
+            onPreview={onPreview}
+            onPreviewEnd={onPreviewEnd}
+          />
         </div>
       )}
     </div>
@@ -218,31 +170,5 @@ function PickBanner({
       </button>
     </div>,
     container
-  );
-}
-
-/** A ref as the field shows it: purple, light enough to read on dark. */
-const refText = "text-primary dark:text-purple-300";
-
-/**
- * What the field shows after a chosen node's ref, e.g. ` button "Add item"`:
- * its role, then its name, or its text when it has none.
- */
-function ChosenDetail({ node }: { node: RefNode }) {
-  const text = node.children
-    .filter((child) => child.role === "text" && child.ref === undefined)
-    .map((child) => child.name)
-    .join(" ");
-  return (
-    <>
-      {` ${node.role}`}
-      {node.name ? (
-        <span className="text-green-700 dark:text-green-300">
-          {` ${JSON.stringify(node.name)}`}
-        </span>
-      ) : (
-        text && <span className="text-muted-foreground">{` ${text}`}</span>
-      )}
-    </>
   );
 }

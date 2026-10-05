@@ -43,6 +43,10 @@ Whether a live Page Object is currently available for interaction through its ro
 **Browser Tool**:
 A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose.
 
+**Locator Recommendation**:
+A Playwright locator string derived for one element, optionally relative to a container element. It matches exactly that element and never contains a Structural Ref. It is code for a Page Object Model, not an address for a later tool call.
+_Avoid_: selector suggestion
+
 **Custom Tool**:
 An operation an app registers that applies to one element. One registration makes it a published tool and an operation the Goal Loop may choose.
 
