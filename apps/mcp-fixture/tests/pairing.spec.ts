@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, test, storedPairing } from "./fixtures";
 
 test.describe("on the default port", () => {
   // Without --port the server takes a port of the range a page scans.
@@ -27,9 +27,7 @@ test("opening the connect link pairs the tab, keeps the pairing for the tab and 
   const link = await connect("/?view=list");
 
   expect(page.url()).toBe(`${baseURL}/?view=list`);
-  const stored = await page.evaluate(() =>
-    sessionStorage.getItem("ayme:agent-connection")
-  );
+  const stored = await storedPairing(page);
   const { address, token } = JSON.parse(stored!) as Record<string, string>;
   expect(link).toBe(`${baseURL}/?view=list#ayme=${address}/${token}`);
 });

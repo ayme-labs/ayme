@@ -3,7 +3,7 @@ import {
   recordPublishedTools,
 } from "@ayme-dev/ayme/testing";
 
-import { SERVER_TOOLS, expect, test } from "./fixtures";
+import { SERVER_TOOLS, addItemRef, expect, test } from "./fixtures";
 
 test("the page's built-in tools and Custom Tools are MCP tools under the page's names", async ({
   agent,
@@ -37,11 +37,7 @@ test("calling a Custom Tool runs it on the page and returns its result", async (
   connect,
 }) => {
   await connect();
-  const { text: snapshot } = await agent.call("snapshot");
-  const ref = /(e\d+) button "Add item"/.exec(
-    JSON.parse(snapshot).structure
-  )?.[1];
-  expect(ref, snapshot).toBeDefined();
+  const ref = await addItemRef(agent);
 
   const { text, isError } = await agent.call("read_text", { ref });
 

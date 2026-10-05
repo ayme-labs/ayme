@@ -2,6 +2,7 @@
 // for Playwright tests, which only tests may import. It starts this package's
 // own `ayme mcp` command and uses Playwright's types only; `connectPage`
 // receives the test's own `Page`.
+import { createServer, type AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -12,8 +13,26 @@ import type { Page } from "@playwright/test";
 /** The server's own tools; every other MCP tool is a page tool. */
 export const SERVER_TOOLS = ["ayme_connect", "ayme_list_tools", "ayme_call"];
 
-/** The built `ayme` command beside this entry, as a consumer gets it. */
-const command = fileURLToPath(new URL("./cli.mjs", import.meta.url));
+/**
+ * The file of the built `ayme` command beside this entry, as a consumer gets
+ * it, for tests that run it without an MCP client.
+ */
+export const aymeCommand = fileURLToPath(new URL("./cli.mjs", import.meta.url));
+
+/**
+ * A free port of the loopback interface, which the system picks outside the
+ * Ayme MCP server's range of 9350 to 9365, the range a page's auto-pair scan
+ * probes. `startAgent("--port", String(await freePort()))` starts a server
+ * that no page pairs with by itself.
+ */
+export function freePort(): Promise<number> {
+  return new Promise((resolve) => {
+    const server = createServer().listen(0, "127.0.0.1", () => {
+      const { port } = server.address() as AddressInfo;
+      server.close(() => resolve(port));
+    });
+  });
+}
 
 /** A coding agent's view of its Ayme MCP server: an MCP client over stdio. */
 export class Agent {
@@ -68,7 +87,7 @@ export async function startAgent(...options: string[]): Promise<
 > {
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: [command, "mcp", ...options],
+    args: [aymeCommand, "mcp", ...options],
     stderr: "pipe",
   });
   let stderr = "";

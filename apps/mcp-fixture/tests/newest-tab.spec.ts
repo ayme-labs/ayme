@@ -1,4 +1,4 @@
-import { expect, holdCall, test, unanswered } from "./fixtures";
+import { expect, holdCall, test, unanswered, storedPairing } from "./fixtures";
 
 test("pairing a second tab switches to it, answers the first tab's calls and disconnects it", async ({
   agent,
@@ -20,11 +20,7 @@ test("pairing a second tab switches to it, answers the first tab's calls and dis
   await expect
     .poll(() => agent.pageToolNames())
     .toEqual(expect.arrayContaining(["read_other"]));
-  await expect
-    .poll(() =>
-      first.evaluate(() => sessionStorage.getItem("ayme:agent-connection"))
-    )
-    .toBeNull();
+  await expect.poll(() => storedPairing(first)).toBeNull();
 
   // The first tab does not take the connection back when it reloads.
   await first.reload();
@@ -56,10 +52,6 @@ test("a tab that reloads while another tab pairs does not take the connection ba
   expect(unanswered(await call).error).toMatch(/^Another tab connected/);
   await reloaded;
   await expect(first.locator("html[data-fixture=ready]")).toBeAttached();
-  await expect
-    .poll(() =>
-      first.evaluate(() => sessionStorage.getItem("ayme:agent-connection"))
-    )
-    .toBeNull();
+  await expect.poll(() => storedPairing(first)).toBeNull();
   expect(await agent.pageToolNames()).toContain("read_other");
 });

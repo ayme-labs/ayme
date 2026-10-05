@@ -1,40 +1,19 @@
-import { readFileSync } from "node:fs";
-import { createServer, type AddressInfo } from "node:net";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-import { type Agent, connectPage, startAgent } from "@ayme-dev/mcp/testing";
-import { test as base, expect } from "@playwright/test";
+import {
+  type Agent,
+  connectPage,
+  freePort,
+  startAgent,
+} from "@ayme-dev/mcp/testing";
+import { test as base, expect, type Page } from "@playwright/test";
 
 export { expect };
-export { Agent, SERVER_TOOLS, startAgent } from "@ayme-dev/mcp/testing";
-
-/** The `ayme` command of the built `@ayme-dev/mcp`, as a consumer gets it. */
-const mcpPackage = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../node_modules/@ayme-dev/mcp"
-);
-const command = join(
-  mcpPackage,
-  (
-    JSON.parse(readFileSync(join(mcpPackage, "package.json"), "utf8")) as {
-      bin: { ayme: string };
-    }
-  ).bin.ayme
-);
-
-/**
- * A free port of the loopback interface that the system picks, outside the
- * server's range of 9350 to 9365.
- */
-function freePort() {
-  return new Promise<number>((resolve) => {
-    const server = createServer().listen(0, "127.0.0.1", () => {
-      const { port } = server.address() as AddressInfo;
-      server.close(() => resolve(port));
-    });
-  });
-}
+export {
+  Agent,
+  SERVER_TOOLS,
+  aymeCommand,
+  freePort,
+  startAgent,
+} from "@ayme-dev/mcp/testing";
 
 export const test = base.extend<{
   /**
@@ -101,9 +80,6 @@ export const test = base.extend<{
 /** The path the page's auto-pair scan probes on each port of the range. */
 const PROBE_PATH = "/probe";
 
-/** The `ayme` command's file, for tests that run it without an MCP client. */
-export { command as aymeCommand };
-
 /** The WebSocket address and port of the agent's server, from its link. */
 export async function serverAddress(agent: Agent) {
   const { text } = await agent.call("ayme_connect", {
@@ -114,6 +90,21 @@ export async function serverAddress(agent: Agent) {
   return { address: address![1]!, port: Number(address![2]) };
 }
 
+/** The ref of the page's "Add item" button, from its snapshot, as an agent finds one. */
+export async function addItemRef(agent: Agent) {
+  const { text: snapshot } = await agent.call("snapshot");
+  const ref = /(e\d+) button "Add item"/.exec(
+    JSON.parse(snapshot).structure
+  )?.[1];
+  expect(ref, snapshot).toBeDefined();
+  return ref!;
+}
+
+/** The pairing `page`'s tab keeps in sessionStorage, as stored, or `null`. */
+export function storedPairing(page: Page) {
+  return page.evaluate(() => sessionStorage.getItem("ayme:agent-connection"));
+}
+
 /**
  * Calls the fixture's `hold` tool, which never answers, on the "Add item"
  * button of `page`, and waits until the page runs it. Returns the call's
@@ -121,13 +112,9 @@ export async function serverAddress(agent: Agent) {
  */
 export async function holdCall(
   agent: Agent,
-  page: import("@playwright/test").Page
+  page: Page
 ): Promise<{ answer: ReturnType<Agent["call"]> }> {
-  const { text: snapshot } = await agent.call("snapshot");
-  const ref = /(e\d+) button "Add item"/.exec(
-    JSON.parse(snapshot).structure
-  )?.[1];
-  expect(ref, snapshot).toBeDefined();
+  const ref = await addItemRef(agent);
   const answer = agent.call("hold", { ref });
   // A test may leave the call in flight; closing the agent then rejects it.
   answer.catch(() => {});

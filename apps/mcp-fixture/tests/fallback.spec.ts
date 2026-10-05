@@ -1,12 +1,4 @@
-import { SERVER_TOOLS, expect, test, type Agent } from "./fixtures";
-
-/** A ref from the page's snapshot, as an agent finds one. */
-async function addItemRef(agent: Agent) {
-  const { text } = await agent.call("snapshot");
-  const ref = /(e\d+) button "Add item"/.exec(JSON.parse(text).structure)?.[1];
-  expect(ref, text).toBeDefined();
-  return ref;
-}
+import { SERVER_TOOLS, addItemRef, expect, test } from "./fixtures";
 
 test("ayme_list_tools lists the page's tools as the MCP tool list does", async ({
   agent,

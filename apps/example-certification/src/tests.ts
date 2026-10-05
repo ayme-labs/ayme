@@ -1,5 +1,4 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { createServer, type AddressInfo } from "node:net";
 
 import {
   test as base,
@@ -14,7 +13,7 @@ import {
   recordPublishedTools,
   type RecordingDriver,
 } from "@ayme-dev/ayme/testing";
-import { connectPage, startAgent } from "@ayme-dev/mcp/testing";
+import { connectPage, freePort, startAgent } from "@ayme-dev/mcp/testing";
 
 import { render, server } from "./config";
 
@@ -411,18 +410,5 @@ export function agentConnectionTests({
         expect(sockets).toEqual([]);
       }
     );
-  });
-}
-
-/**
- * A free port of the loopback interface that the system picks, outside the
- * Ayme MCP server's range of 9350 to 9365.
- */
-function freePort() {
-  return new Promise<number>((resolve) => {
-    const server = createServer().listen(0, "127.0.0.1", () => {
-      const { port } = server.address() as AddressInfo;
-      server.close(() => resolve(port));
-    });
   });
 }

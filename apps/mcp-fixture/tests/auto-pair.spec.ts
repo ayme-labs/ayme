@@ -10,6 +10,7 @@ import {
   test,
   unanswered,
   type Agent,
+  storedPairing,
 } from "./fixtures";
 
 /** A host that is not localhost, which the browser resolves to this machine. */
@@ -65,9 +66,7 @@ test("a localhost page pairs by itself when exactly one server is running", asyn
     .toContain("snapshot");
   await setHeading(page, "Paired by itself");
   expect(await snapshotOf(agent)).toContain('heading "Paired by itself"');
-  const stored = await page.evaluate(() =>
-    sessionStorage.getItem("ayme:agent-connection")
-  );
+  const stored = await storedPairing(page);
   expect(JSON.parse(stored!)).toMatchObject({ address });
 });
 
@@ -95,9 +94,7 @@ test("an auto-paired tab reloads and reconnects to its own server, with or witho
   await expect
     .poll(() => snapshotOf(agent).catch(() => ""), { message: agent.log })
     .toContain('heading "Reloaded twice"');
-  const stored = await page.evaluate(() =>
-    sessionStorage.getItem("ayme:agent-connection")
-  );
+  const stored = await storedPairing(page);
   // The server handed the tab its token, which the tab reconnects with.
   expect(JSON.parse(stored!).token).toMatch(/^[\w-]+$/);
 });
@@ -127,9 +124,7 @@ test("an auto-paired tab whose server another one replaced on its port stays unp
 
     expect(await third.pageToolNames()).toEqual([]);
     expect(await second.pageToolNames()).toEqual([]);
-    expect(
-      await page.evaluate(() => sessionStorage.getItem("ayme:agent-connection"))
-    ).toBeNull();
+    expect(await storedPairing(page)).toBeNull();
   } finally {
     await second.close();
     await third.close();
@@ -178,9 +173,7 @@ test("while an auto-paired tab reloads, another localhost tab that loads does no
     .poll(() => snapshotOf(agent).catch(() => ""), { message: agent.log })
     .toContain('heading "Back after the reload"');
   expect(pairingSockets).toEqual([]);
-  expect(
-    await other.evaluate(() => sessionStorage.getItem("ayme:agent-connection"))
-  ).toBeNull();
+  expect(await storedPairing(other)).toBeNull();
 });
 
 test("a server paired by link stays with its tab when another localhost tab loads, whose scan does not count it", async ({
@@ -201,13 +194,9 @@ test("a server paired by link stays with its tab when another localhost tab load
   await answered;
   await other.waitForTimeout(500);
 
-  expect(
-    await other.evaluate(() => sessionStorage.getItem("ayme:agent-connection"))
-  ).toBeNull();
+  expect(await storedPairing(other)).toBeNull();
   expect(await snapshotOf(agent)).toContain('heading "Paired by link"');
-  expect(
-    await page.evaluate(() => sessionStorage.getItem("ayme:agent-connection"))
-  ).not.toBeNull();
+  expect(await storedPairing(page)).not.toBeNull();
 });
 
 test("with two servers running, an open localhost page stays unpaired, and each server pairs with its own page through its link", async ({
@@ -233,9 +222,7 @@ test("with two servers running, an open localhost page stays unpaired, and each 
 
     expect(await agent.pageToolNames()).toEqual([]);
     expect(await other.pageToolNames()).toEqual([]);
-    expect(
-      await page.evaluate(() => sessionStorage.getItem("ayme:agent-connection"))
-    ).toBeNull();
+    expect(await storedPairing(page)).toBeNull();
 
     await connect("/");
     const otherPage = await context.newPage();

@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { createServer, type AddressInfo, type Server } from "node:net";
 
-import { aymeCommand, expect, startAgent, test } from "./fixtures";
+import { aymeCommand, expect, freePort, startAgent, test } from "./fixtures";
 
 /** Listens on a free port of the loopback interface, outside the server's range. */
 function occupyPort() {
@@ -16,9 +16,7 @@ test("--port makes the server listen on that port, and its connect link pairs th
   page,
   baseURL,
 }) => {
-  const placeholder = await occupyPort();
-  const port = portOf(placeholder);
-  await new Promise((resolve) => placeholder.close(resolve));
+  const port = await freePort();
   const agent = await startAgent("--port", String(port));
   try {
     const { text: link } = await agent.call("ayme_connect", {
