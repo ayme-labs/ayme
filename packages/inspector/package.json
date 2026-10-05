@@ -21,11 +21,6 @@
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
     },
-    "./demo": {
-      "types": "./dist/demo.d.mts",
-      "import": "./dist/demo.mjs",
-      "default": "./dist/demo.mjs"
-    },
     "./testing": {
       "types": "./dist/testing.d.mts",
       "import": "./dist/testing.mjs",

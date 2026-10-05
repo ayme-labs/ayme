@@ -1,7 +1,7 @@
 // The `navigate` Browser Tool: opens a URL on the page's own origin through
 // the browser Page's `goto`, mirroring Playwright MCP's `browser_navigate`.
 import type { JsonSchema } from "./contracts";
-import { runAction } from "./actionSequence";
+import { runAction, startNavigation } from "./actionSequence";
 import {
   requireCurrentDocument,
   validatedToolInput,
@@ -89,11 +89,10 @@ export const navigateTool: PublishedElementTool = {
             // What the router function returns is not the action's result.
             await navigate(destination!.href);
           }
-        : async () => {
+        : () =>
             // The URL the checks above passed, resolved against the
             // document's base URL.
-            void page.goto(destination!.href).catch(() => {});
-          }
+            startNavigation(currentDocument, () => page.goto(destination!.href))
     );
   },
 };
