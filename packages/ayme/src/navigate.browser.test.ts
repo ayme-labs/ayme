@@ -1,55 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
-import type { GoalLoopDecisionFunction } from "./goalLoop";
+import { operations, publishTools } from "./publication.testSupport";
 import { createAyme, type Ayme } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
+import { toolFailure } from "./toolFailure.testSupport";
 
 // The test server answers `/__no-content` with 204 (vitest.browser.config.ts),
 // so a load starts and is then dropped: the test document stays, and what the
 // tool answered can be read.
 const NO_CONTENT = new URL("/__no-content", location.href).href;
 
-type PublishedTool = {
-  name: string;
-  execute(input: unknown): Promise<unknown>;
-};
-
-/** Publish the started session's tools, as the calling agent sees them. */
-async function publishTools() {
-  const published = new Map<string, PublishedTool>();
-  const { dispose } = await synchronizeWebMcpTools({
-    async registerTool(tool: PublishedTool) {
-      published.set(tool.name, tool);
-    },
-  });
-  return {
-    /** Call a published tool as the calling agent. */
-    call(name: string, input: unknown) {
-      const tool = published.get(name);
-      if (!tool) throw new Error(`Tool ${name} was not published.`);
-      return tool.execute(input);
-    },
-    dispose,
-  };
-}
-
-/** The answer an agent gets for a call that failed with `text`. */
-const failure = (text: string) => ({
-  content: [{ type: "text", text }],
-  isError: true,
-});
-
 /** The error for a URL that is not on the test page's origin. */
 const otherOrigin = (url: string) =>
-  failure(
+  toolFailure(
     `ToolInputError: Cannot navigate to "${url}": it is not on the page's own origin, ${location.origin}. Leaving the origin would lose the connection to this page; navigate to a path or a URL on ${location.origin} instead.`
   );
 
 /** The error for a URL whose protocol the tool does not open. */
 const unsupportedProtocol = (url: string, protocol: string) =>
-  failure(
+  toolFailure(
     `ToolInputError: Cannot navigate to "${url}": the protocol ${protocol} is not supported.`
   );
 
@@ -89,7 +58,7 @@ describe("the navigate tool, in Chromium", () => {
     );
     ayme = createAyme({
       pageFactory: () => createPage({ actionTimeout: 500 }),
-      goalLoop: choosing("navigate"),
+      goalLoop: operations(["navigate"]),
     });
     stop = ayme.start();
     ({ call, dispose: disposePublication } = await publishTools());
@@ -171,7 +140,7 @@ describe("the navigate tool, in Chromium", () => {
 
   it("refuses an invalid URL with the browser Page's error", async () => {
     await expect(call("navigate", { url: "http://" })).resolves.toEqual(
-      failure("page.goto: Cannot navigate to invalid URL")
+      toolFailure("page.goto: Cannot navigate to invalid URL")
     );
     expect(location.href).toBe(start);
   });
@@ -274,7 +243,7 @@ describe("the navigate tool with a router function, in Chromium", () => {
       throw new Error("No route matches /app/missing.");
     };
     await expect(call("navigate", { url: "/app/missing" })).resolves.toEqual(
-      failure("No route matches /app/missing.")
+      toolFailure("No route matches /app/missing.")
     );
   });
 
@@ -285,14 +254,3 @@ describe("the navigate tool with a router function, in Chromium", () => {
     expect(location.href).toBe(start);
   });
 });
-
-/** A decision function that chooses `operation` at every step. */
-function choosing(operation: string): GoalLoopDecisionFunction {
-  return async (): Promise<DecisionResponse> => ({
-    model: "typesafe/jev-1.13",
-    answers: {
-      operation: { type: "choice", choice: operation, confidence: 1 },
-      goal_met: { type: "noul", noul: 0.1 },
-    },
-  });
-}

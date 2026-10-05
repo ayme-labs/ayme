@@ -1,11 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
-import type { GoalLoopDecisionFunction } from "./goalLoop";
+import { operations, publishTools } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
 
 // The test server answers `/__no-content` with 204 and `/__redirect` with a
 // 303 to it (vitest.browser.config.ts), so a load starts and is then dropped:
@@ -14,11 +12,6 @@ const NO_CONTENT = new URL("/__no-content", location.href).href;
 const REDIRECT = new URL("/__redirect", location.href).href;
 const loadingNote = (url: string) =>
   `The page is loading ${url}. Call snapshot next to read the new page.`;
-
-type PublishedTool = {
-  name: string;
-  execute(input: unknown): Promise<unknown>;
-};
 
 class Leaver {
   leave() {
@@ -47,7 +40,7 @@ registerCompiledPom(Leaver, {
 
 describe("a tool call that starts a full page load, in Chromium", () => {
   let ayme: Ayme;
-  let published: Map<string, PublishedTool>;
+  let call: (name: string, input: unknown) => Promise<unknown>;
   let stop: () => void;
   let disposePublication: () => void;
   const start = location.href;
@@ -84,14 +77,7 @@ describe("a tool call that starts a full page load, in Chromium", () => {
     });
     stop = ayme.start();
     ayme.pom.register(Leaver);
-    published = new Map();
-    disposePublication = (
-      await synchronizeWebMcpTools({
-        async registerTool(tool: PublishedTool) {
-          published.set(tool.name, tool);
-        },
-      })
-    ).dispose;
+    ({ call, dispose: disposePublication } = await publishTools());
     await call("snapshot", {});
   });
 
@@ -102,13 +88,6 @@ describe("a tool call that starts a full page load, in Chromium", () => {
     history.replaceState(null, "", start);
     document.body.innerHTML = "";
   });
-
-  /** Call a published tool as the calling agent. */
-  function call(name: string, input: unknown) {
-    const tool = published.get(name);
-    if (!tool) throw new Error(`Tool ${name} was not published.`);
-    return tool.execute(input);
-  }
 
   it("answers a click on a link to another document with the changes so far and the loading URL", async () => {
     await expect(call("click", { target: "#away" })).resolves.toEqual({
@@ -201,19 +180,3 @@ describe("a tool call that starts a full page load, in Chromium", () => {
     }
   );
 });
-
-/** A decision function that runs the listed operations, one per step. */
-function operations(steps: string[]): GoalLoopDecisionFunction {
-  let step = 0;
-  return async (): Promise<DecisionResponse> => ({
-    model: "typesafe/jev-1.13",
-    answers: {
-      operation: {
-        type: "choice",
-        choice: steps[Math.min(step++, steps.length - 1)]!,
-        confidence: 1,
-      },
-      goal_met: { type: "noul", noul: 0.1 },
-    },
-  });
-}

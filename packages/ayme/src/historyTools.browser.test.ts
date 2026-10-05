@@ -1,15 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
-import type { GoalLoopDecisionFunction } from "./goalLoop";
+import { operations, publishTools } from "./publication.testSupport";
 import { createAyme, type Ayme } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
-
-type PublishedTool = {
-  name: string;
-  execute(input: unknown): Promise<unknown>;
-};
 
 // The test document's first history entry: no test can go back from it.
 const firstEntry = navigation.currentEntry!;
@@ -19,7 +12,7 @@ let offered: string[] = [];
 
 describe("navigate_back, navigate_forward and reload, in Chromium", () => {
   let ayme: Ayme;
-  let published: Map<string, PublishedTool>;
+  let call: (name: string, input: unknown) => Promise<unknown>;
   let stop: () => void;
   let disposePublication: () => void;
   let listening: AbortController;
@@ -44,19 +37,18 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
       },
       { signal: listening.signal }
     );
+    const decide = operations(["navigate_back", "navigate_forward"]);
     ayme = createAyme({
       pageFactory: () => createPage({ actionTimeout: 500 }),
-      goalLoop: recordingOperations(["navigate_back", "navigate_forward"]),
+      goalLoop: (request) => {
+        offered = Object.keys(
+          (request.questions.operation as { criteria: object }).criteria
+        );
+        return decide(request);
+      },
     });
     stop = ayme.start();
-    published = new Map();
-    disposePublication = (
-      await synchronizeWebMcpTools({
-        async registerTool(tool: PublishedTool) {
-          published.set(tool.name, tool);
-        },
-      })
-    ).dispose;
+    ({ call, dispose: disposePublication } = await publishTools());
   });
 
   afterEach(async () => {
@@ -67,13 +59,6 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
       await navigation.traverseTo(firstEntry.key).finished;
     document.body.innerHTML = "";
   });
-
-  /** Call a published tool as the calling agent. */
-  function call(name: string, input: unknown) {
-    const tool = published.get(name);
-    if (!tool) throw new Error(`Tool ${name} was not published.`);
-    return tool.execute(input);
-  }
 
   const heading = () => document.querySelector("h1")!.textContent;
 
@@ -141,28 +126,3 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
       expect(offered).toContain(name);
   });
 });
-
-/**
- * A decision function that runs the listed operations, one per step, and
- * records the operations it was offered.
- */
-function recordingOperations(steps: string[]): GoalLoopDecisionFunction {
-  let step = 0;
-  return async (request: DecisionRequest): Promise<DecisionResponse> => {
-    const { criteria } = request.questions.operation as {
-      criteria: Record<string, string>;
-    };
-    offered = Object.keys(criteria);
-    return {
-      model: "typesafe/jev-1.13",
-      answers: {
-        operation: {
-          type: "choice",
-          choice: steps[Math.min(step++, steps.length - 1)]!,
-          confidence: 1,
-        },
-        goal_met: { type: "noul", noul: 0.1 },
-      },
-    };
-  };
-}
