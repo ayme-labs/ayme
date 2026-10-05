@@ -29,6 +29,7 @@ jobs:
     outputs:
       package_checks: ${{ steps.detect.outputs.package_checks }}
       affected: ${{ steps.detect.outputs.affected }}
+      uncached_builds: ${{ steps.detect.outputs.uncached_builds }}
       e2e_suites: ${{ steps.detect.outputs.e2e_suites }}
       docs_checks: ${{ steps.compatibility.outputs.docs_checks }}
       compatibility_packages: ${{ steps.compatibility.outputs.packages }}
@@ -64,6 +65,13 @@ jobs:
             | {name: (.directory | split("/") | last), package, dir: .directory}]' <<< "$tasks")
           echo "E2E suites: $suites"
           echo "e2e_suites=$suites" >> "$GITHUB_OUTPUT"
+
+          # Builds Turbo does not cache, such as Next's, only run again on the
+          # jobs that need them, so Build leaves them out.
+          uncached=$(jq -r '[.[] | select(.task == "build" and .resolvedTaskDefinition.cache == false)
+            | "--filter=!\(.package)"] | join(" ")' <<< "$tasks")
+          echo "Builds left out of Build: $uncached"
+          echo "uncached_builds=$uncached" >> "$GITHUB_OUTPUT"
       # A lane runs when a change reaches its package: the package itself or
       # anything it depends on. A change to this workflow runs every lane, so
       # an edited lane is tested before it merges.
@@ -110,17 +118,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
-      # Builds Turbo does not cache, such as Next's, would only run again on
-      # the jobs that need them, so this job leaves them out.
-      - name: Build the cached packages
-        env:
-          AFFECTED: ${{ needs.changes.outputs.affected }}
-        shell: bash
-        run: |
-          set -eo pipefail
-          uncached=$(pnpm exec turbo run build $AFFECTED --dry=json \
-            | jq -r '.tasks[] | select(.task == "build" and .resolvedTaskDefinition.cache == false) | "--filter=!\(.package)"')
-          pnpm exec turbo run build $AFFECTED $uncached
+      - run: pnpm exec turbo run build ${{ needs.changes.outputs.affected }} ${{ needs.changes.outputs.uncached_builds }}
 
   static:
     name: Static checks
