@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       package_checks: ${{ steps.detect.outputs.package_checks }}
+      affected: ${{ steps.detect.outputs.affected }}
       e2e_suites: ${{ steps.detect.outputs.e2e_suites }}
       docs_checks: ${{ steps.compatibility.outputs.docs_checks }}
       compatibility_packages: ${{ steps.compatibility.outputs.packages }}
@@ -40,11 +41,15 @@ jobs:
         run: |
           set -eo pipefail
 
+          # A change to the workflow or its setup action runs every check, so
+          # an edited job is tested before it merges.
           affected=--affected
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Manual dispatch: running all package checks."
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+            || ! git diff --quiet "$TURBO_SCM_BASE...$TURBO_SCM_HEAD" -- .github/workflows/ci.yml .github/actions/; then
+            echo "Running all package checks."
             affected=
           fi
+          echo "affected=$affected" >> "$GITHUB_OUTPUT"
 
           tasks=$(pnpm exec turbo run build lint typecheck test test:e2e $affected --dry=json \
             | jq '[.tasks[] | select(.command != "<NONEXISTENT>")]')
@@ -108,7 +113,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
-      - run: pnpm exec turbo run build ${{ github.event_name == 'pull_request' && '--affected' || '' }}
+      - run: pnpm exec turbo run build ${{ needs.changes.outputs.affected }}
 
   static:
     name: Static checks
@@ -134,7 +139,7 @@ jobs:
         run: pnpm run commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}"
       - run: pnpm run boundaries
       - run: pnpm run docs:check
-      - run: pnpm exec turbo run lint typecheck ${{ github.event_name == 'pull_request' && '--affected' || '' }} --continue=dependencies-successful
+      - run: pnpm exec turbo run lint typecheck ${{ needs.changes.outputs.affected }} --continue=dependencies-successful
       - run: pnpm run format:check
 
   unit:
@@ -155,7 +160,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
-      - run: pnpm exec turbo run test ${{ github.event_name == 'pull_request' && '--affected' || '' }} --continue=dependencies-successful
+      - run: pnpm exec turbo run test ${{ needs.changes.outputs.affected }} --continue=dependencies-successful
 
   e2e:
     name: E2E ${{ matrix.name }}
