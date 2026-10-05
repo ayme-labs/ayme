@@ -39,15 +39,26 @@ export class ValueRows {
   }
 
   /**
-   * The row's type: it shows "auto · text" or "auto · number" while it is
-   * guessed from the value, "text" or "number" once fixed. A click fixes it,
-   * or switches a fixed one.
+   * The row's type, inside its value: "abc" or "123", pressed once fixed.
+   * A click fixes a guessed type to the other one, or switches a fixed one.
    */
   type(row: number): Locator {
     return this.root.getByRole("button", {
       name: `${this.path} type ${row}`,
       exact: true,
     });
+  }
+
+  /**
+   * What the row is sent as: "auto · text" or "auto · number" while the type
+   * is guessed from the value, "text" or "number" once fixed.
+   */
+  async typeState(row: number): Promise<string> {
+    const type = this.type(row);
+    const shown = (await type.textContent()) === "123" ? "number" : "text";
+    return (await type.getAttribute("aria-pressed")) === "true"
+      ? shown
+      : `auto · ${shown}`;
   }
 
   /** What's wrong with the row, when anything is. */
@@ -81,9 +92,9 @@ export class ValueRows {
       const row = await this.rows().count();
       await this.label(row).fill(label);
       await this.value(row).fill(String(value));
-      const shown = await this.type(row).textContent();
       const wanted = typeof value === "number" ? "number" : "text";
-      if (!shown?.endsWith(wanted)) await this.type(row).click();
+      if (!(await this.typeState(row)).endsWith(wanted))
+        await this.type(row).click();
     }
   }
 }

@@ -9,11 +9,11 @@ const inputClass =
   "h-7.5 w-full min-w-0 rounded-md border border-input bg-background px-2.25 font-mono text-xs outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-destructive";
 
 const columns =
-  "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_3.5rem_1.625rem] gap-1";
+  "grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_1.625rem] gap-1";
 
 type Part = "label" | "value";
 
-/** A map of labelled values as rows: label, value, type, and remove. */
+/** A map of labelled values as rows: label, and value with its type, and remove. */
 export function ValueRowsView({
   name,
   description,
@@ -67,7 +67,6 @@ export function ValueRowsView({
         >
           <span>Label</span>
           <span>Value</span>
-          <span>Type</span>
         </div>
       )}
       {rows.map((row, index) => {
@@ -86,42 +85,42 @@ export function ValueRowsView({
                 onChange={(event) => setLabel(index, event.target.value)}
                 onKeyDown={(event) => keyDown(index, "label", event)}
               />
-              <input
-                ref={register("value", index)}
-                aria-label={`${name} value ${n}`}
-                aria-invalid={row.problem !== undefined}
-                placeholder="value"
-                className={inputClass}
-                value={row.value}
-                onChange={(event) => setValue(index, event.target.value)}
-                onKeyDown={(event) => keyDown(index, "value", event)}
-              />
-              <button
-                type="button"
-                aria-label={`${name} type ${n}`}
-                title={
-                  !switchable
-                    ? undefined
-                    : guessed
-                      ? "Guessed from the value. Click to fix the other type."
-                      : "Fixed. Click to switch between text and number."
-                }
-                disabled={!switchable}
-                className={cn(
-                  "h-6.5 w-full rounded-md border px-1.5 font-mono text-[0.6875rem] whitespace-nowrap",
-                  shown === "number"
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-input bg-muted text-foreground",
-                  guessed && switchable && "border-dashed"
-                )}
-                onClick={() => switchType(index)}
-              >
-                {/* A dashed border shows a guess; the word says so to a screen reader. */}
-                {guessed && switchable && (
-                  <span className="sr-only">auto · </span>
-                )}
-                {shown}
-              </button>
+              <div className="relative min-w-0">
+                <input
+                  ref={register("value", index)}
+                  aria-label={`${name} value ${n}`}
+                  aria-invalid={row.problem !== undefined}
+                  placeholder="value"
+                  className={cn(inputClass, "pr-9")}
+                  value={row.value}
+                  onChange={(event) => setValue(index, event.target.value)}
+                  onKeyDown={(event) => keyDown(index, "value", event)}
+                />
+                {/* The type: faint while guessed from the value, in the
+                    accent once fixed. Pressed means fixed. */}
+                <button
+                  type="button"
+                  aria-label={`${name} type ${n}`}
+                  aria-pressed={!guessed}
+                  title={
+                    !switchable
+                      ? `Sent as ${shown}.`
+                      : guessed
+                        ? `Guessed: sent as ${shown}. Click to fix the other type.`
+                        : `Fixed: sent as ${shown}. Click to switch.`
+                  }
+                  disabled={!switchable}
+                  className={cn(
+                    "absolute top-1/2 right-1 h-5 -translate-y-1/2 rounded px-1 font-mono text-[0.625rem] leading-none",
+                    guessed
+                      ? "text-muted-foreground/70 hover:bg-muted"
+                      : "bg-primary/15 font-semibold text-primary"
+                  )}
+                  onClick={() => switchType(index)}
+                >
+                  {shown === "number" ? "123" : "abc"}
+                </button>
+              </div>
               <button
                 type="button"
                 aria-label={`Remove ${name} ${n}`}

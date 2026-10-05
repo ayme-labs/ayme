@@ -237,10 +237,10 @@ describe("a map of labelled values", () => {
     await rows.label(3).fill("zip");
     await rows.value(3).fill("02134");
 
-    await expect.poll(() => rows.type(1).textContent()).toBe("auto · text");
-    expect(await rows.type(2).textContent()).toBe("auto · number");
+    await expect.poll(() => rows.typeState(1)).toBe("auto · text");
+    expect(await rows.typeState(2)).toBe("auto · number");
     // A leading zero is kept: the value stays text.
-    expect(await rows.type(3).textContent()).toBe("auto · text");
+    expect(await rows.typeState(3)).toBe("auto · text");
     expect(await rows.count.textContent()).toBe("3 / 254");
 
     await card.runButton.click();
@@ -259,10 +259,10 @@ describe("a map of labelled values", () => {
     await rows.value(1).fill("7");
     // The guess is number; a click fixes the other type.
     await rows.type(1).click();
-    await expect.poll(() => rows.type(1).textContent()).toBe("text");
+    await expect.poll(() => rows.typeState(1)).toBe("text");
     await rows.value(1).fill("42");
 
-    expect(await rows.type(1).textContent()).toBe("text");
+    expect(await rows.typeState(1)).toBe("text");
     await card.runButton.click();
     expect(onRun).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ values: { code: "42" } })
@@ -277,7 +277,7 @@ describe("a map of labelled values", () => {
     await rows.value(1).fill("Milk");
     await rows.type(1).click();
 
-    await expect.poll(() => rows.type(1).textContent()).toBe("number");
+    await expect.poll(() => rows.typeState(1)).toBe("number");
     expect(await rows.problem(1).textContent()).toBe(
       '"Milk" is not a number. Enter one such as 2 or 2.5, or switch the type to text.'
     );
@@ -360,8 +360,8 @@ describe("a map of labelled values", () => {
     expect(await rows.label(1).inputValue()).toBe("code");
     expect(await rows.value(1).inputValue()).toBe("7");
     // A string that reads as a number comes back fixed to text.
-    expect(await rows.type(1).textContent()).toBe("text");
-    expect(await rows.type(2).textContent()).toBe("auto · number");
+    expect(await rows.typeState(1)).toBe("text");
+    expect(await rows.typeState(2)).toBe("auto · number");
   });
 });
 
