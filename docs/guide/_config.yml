@@ -1,0 +1,5 @@
+# The docs site, served at ayme-labs.github.io/ayme/docs next to the playground
+# at ayme-labs.github.io/ayme. Pages renders the Markdown with its defaults; the
+# sidebar comes from _layouts/default.html.
+title: Ayme docs
+baseurl: /ayme/docs
