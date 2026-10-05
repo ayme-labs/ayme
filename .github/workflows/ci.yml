@@ -24,6 +24,7 @@ jobs:
     outputs:
       package_checks: ${{ steps.detect.outputs.package_checks }}
       docs_checks: ${{ steps.detect.outputs.docs_checks }}
+      compatibility_packages: ${{ steps.compatibility.outputs.packages }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -64,6 +65,27 @@ jobs:
 
           echo "Affected package tasks: $affected"
           echo "package_checks=$([ "$affected" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      # A lane runs when a change reaches its package: the package itself or
+      # anything it depends on. A change to this workflow runs every lane, so
+      # an edited lane is tested before it merges.
+      - name: Detect affected compatibility lanes
+        id: compatibility
+        env:
+          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
+          TURBO_SCM_HEAD: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -eo pipefail
+
+          affected=--affected
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+            || ! git diff --quiet "$TURBO_SCM_BASE...$TURBO_SCM_HEAD" -- .github/workflows/ci.yml; then
+            affected=
+          fi
+
+          packages=$(pnpm exec turbo ls $affected --output=json | jq -c '[.packages.items[].name]')
+          echo "Packages the compatibility lanes check: $packages"
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
 
           # Markdown outside the packages, such as docs/guide/, affects no
           # package task but still needs the docs check.
@@ -170,8 +192,10 @@ jobs:
   compatibility:
     name: ${{ matrix.name }}
     needs: changes
-    if: needs.changes.outputs.package_checks == 'true'
+    if: needs.changes.outputs.compatibility_packages != '[]'
     runs-on: ubuntu-latest
+    env:
+      AFFECTED: ${{ contains(fromJSON(needs.changes.outputs.compatibility_packages), matrix.package) }}
     strategy:
       fail-fast: false
       matrix:
@@ -262,16 +286,24 @@ jobs:
             node: "20.19.0"
             e2e: true
     steps:
+      - name: Skip, no change reaches ${{ matrix.package }}
+        if: env.AFFECTED != 'true'
+        run: echo "No change in this pull request reaches ${{ matrix.package }}."
       - uses: actions/checkout@v7
+        if: env.AFFECTED == 'true'
       - uses: actions/setup-node@v7
+        if: env.AFFECTED == 'true'
         with:
           node-version: 24
       - run: corepack enable
+        if: env.AFFECTED == 'true'
       - name: Resolve pnpm store path
+        if: env.AFFECTED == 'true'
         id: pnpm-store
         shell: bash
         run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
       - name: Cache pnpm store
+        if: env.AFFECTED == 'true'
         uses: actions/cache@v6
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
@@ -279,6 +311,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
       - name: Install the pinned minimum versions
+        if: env.AFFECTED == 'true'
         env:
           DIR: ${{ matrix.dir }}
           LINKED: ${{ matrix.linked }}
@@ -309,36 +342,39 @@ jobs:
           fi
           pnpm install --no-frozen-lockfile
       - name: Build ${{ matrix.build }}
+        if: env.AFFECTED == 'true'
         run: pnpm exec turbo run build --filter=${{ matrix.build }}
       - name: Install Chromium
-        if: matrix.e2e
+        if: env.AFFECTED == 'true' && matrix.e2e
         run: pnpm --filter ${{ matrix.package }} exec playwright install --with-deps chromium
       # pnpm 11 needs Node 22.13, so pnpm stays on this Node 24 while the
       # scripts it starts resolve `node` from PATH, which becomes the floor.
       - name: Keep pnpm on Node 24
-        if: matrix.node
+        if: env.AFFECTED == 'true' && matrix.node
         run: |
           shim="$RUNNER_TEMP/pnpm-node24"
           mkdir -p "$shim"
           printf '#!/bin/sh\nexec "%s" "%s" "$@"\n' "$(command -v node)" "$(readlink -f "$(command -v pnpm)")" > "$shim/pnpm"
           chmod +x "$shim/pnpm"
       - uses: actions/setup-node@v7
-        if: matrix.node
+        if: env.AFFECTED == 'true' && matrix.node
         with:
           node-version: ${{ matrix.node }}
       - name: Run the framework on Node ${{ matrix.node }}
-        if: matrix.node
+        if: env.AFFECTED == 'true' && matrix.node
         env:
           NODE_FLOOR: ${{ matrix.node }}
         run: |
           echo "$RUNNER_TEMP/pnpm-node24" >> "$GITHUB_PATH"
           test "$(node --version)" = "v$NODE_FLOOR"
       - name: Build ${{ matrix.package }}
-        if: matrix.e2e
+        if: env.AFFECTED == 'true' && matrix.e2e
         run: pnpm --filter ${{ matrix.package }} build
       - name: Typecheck ${{ matrix.package }}
+        if: env.AFFECTED == 'true'
         run: pnpm --filter ${{ matrix.package }} typecheck
       - name: Test ${{ matrix.package }}
+        if: env.AFFECTED == 'true'
         run: pnpm --filter ${{ matrix.package }} ${{ matrix.e2e && 'test:e2e' || 'test' }}
 
   # Branch protection requires this job instead of the lanes, because a
