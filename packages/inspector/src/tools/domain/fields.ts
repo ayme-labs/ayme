@@ -1,6 +1,7 @@
 import type { JsonPrimitive, JsonSchema, JsonValue } from "@ayme-dev/ayme";
 
 import type { ToolArguments } from "../../runs";
+import { mapValueTypes, type ValueType } from "./valueRows";
 
 /** A JSON Schema as the form reads it: the runtime's, with a string's format. */
 type Schema = JsonSchema & { format?: string };
@@ -28,6 +29,16 @@ export type FieldKind =
   /** A list of text, numbers or choices, one row per entry. */
   | { kind: "list"; item: Field }
   | { kind: "object"; fields: readonly Field[] }
+  /**
+   * Values under labels the person chooses, such as `goal`'s `values`, one
+   * row per value. `description` is the schema's, shown above the rows.
+   */
+  | {
+      kind: "map";
+      valueTypes: readonly ValueType[];
+      maxEntries?: number;
+      description?: string;
+    }
   /** Anything the form has no control for, edited as JSON. */
   | { kind: "json" };
 
@@ -96,7 +107,7 @@ function fieldOf(name: string, schema: Schema, optional: boolean): Field {
         };
       break;
     }
-    case "object":
+    case "object": {
       if (schema.properties)
         return {
           ...base,
@@ -104,6 +115,20 @@ function fieldOf(name: string, schema: Schema, optional: boolean): Field {
           fields: fieldsOf(schema),
           typeLabel: "object",
         };
+      const valueTypes = mapValueTypes(schema);
+      if (valueTypes)
+        return {
+          ...base,
+          kind: "map",
+          valueTypes,
+          ...(schema.maxProperties !== undefined
+            ? { maxEntries: schema.maxProperties }
+            : {}),
+          ...(schema.description ? { description: schema.description } : {}),
+          // The rows name their own columns.
+          typeLabel: "",
+        };
+    }
   }
   return { ...base, kind: "json", typeLabel: schema.type ?? "JSON" };
 }

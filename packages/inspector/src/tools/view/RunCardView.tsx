@@ -39,6 +39,7 @@ export function RunCardView({
   last,
   lastSuccess,
   running,
+  invalid,
   submit,
   toggleOpen,
   pickItem,
@@ -77,6 +78,8 @@ export function RunCardView({
   last: Run | undefined;
   lastSuccess: Run | undefined;
   running: boolean;
+  /** Whether a field can't be sent as it is, so Run is off. */
+  invalid: boolean;
   submit: (event: FormEvent) => void;
   toggleOpen: () => void;
   pickItem: (path: string) => void;
@@ -89,7 +92,7 @@ export function RunCardView({
       type="submit"
       size="sm"
       className="h-7 px-2.5 text-xs"
-      disabled={running}
+      disabled={running || invalid}
       title={
         head && needs && !open
           ? "Fill in the arguments, then run"

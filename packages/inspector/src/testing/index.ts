@@ -33,6 +33,7 @@ export { RunCard, type ArgumentValue } from "./pom/RunCard";
 export { RunEntry, RunsView, type RunStep } from "./pom/RunsView";
 export { StructureLens } from "./pom/StructureLens";
 export { ToolPage } from "./pom/ToolPage";
+export { ValueRows } from "./pom/ValueRows";
 export { ToolsLens, type ToolGroupLabel } from "./pom/ToolsLens";
 export { WhatTheModelSees } from "./pom/WhatTheModelSees";
 export { WebMcpStatus } from "./pom/WebMcpStatus";

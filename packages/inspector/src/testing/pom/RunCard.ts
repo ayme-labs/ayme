@@ -4,6 +4,7 @@ import { FillForm } from "./FillForm";
 import { KeyField } from "./KeyField";
 import { LocatorGroups } from "./LocatorGroups";
 import { RefField } from "./RefField";
+import { ValueRows } from "./ValueRows";
 
 /** A value for one argument, as a person would enter it. */
 export type ArgumentValue =
@@ -72,6 +73,11 @@ export class RunCard {
     return new KeyField(this.root, path);
   }
 
+  /** A map of labelled values, by its path, e.g. "values". */
+  valueRows(path: string): ValueRows {
+    return new ValueRows(this.root, path);
+  }
+
   /** `fill_form`'s form. */
   fillForm(): FillForm {
     return new FillForm(this.root);
@@ -130,6 +136,11 @@ export class RunCard {
       }
       return;
     }
+    const rows = this.valueRows(path);
+    if (typeof value === "object" && (await rows.root.count()))
+      return await rows.fill(
+        value as Readonly<Record<string, string | number>>
+      );
     const field = this.field(path);
     const kind = (await field.count())
       ? await field.evaluate((element) =>
