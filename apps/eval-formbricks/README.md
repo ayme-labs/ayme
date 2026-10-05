@@ -17,7 +17,7 @@ It runs on a Mac only, by hand. It is never part of CI or `pnpm check`; only its
   CLAUDE_CODE_OAUTH_TOKEN=<the token>
   ```
 
-  A `CLAUDE_CODE_OAUTH_TOKEN` already exported in the shell wins over the file. The token reaches only the agent's environment; it is never written to a run's files.
+  A `CLAUDE_CODE_OAUTH_TOKEN` already exported in the shell wins over the file. The token reaches only the agent's environment; it is never written to a run's files. Claude Code itself keeps it out of the MCP servers and Bash commands it starts: with Claude Code 2.1.281, neither a stdio MCP server nor a Bash command sees `CLAUDE_CODE_OAUTH_TOKEN`.
 
 - For the Ayme arms, the lab app started with `AYME_OPENROUTER_API_KEY` exported (see [the lab README](../lab-formbricks/README.md#decision-endpoint)), and the same key in this package's `.env.local`, so a run can ask OpenRouter what the Goal Loop's calls cost. Without it the Goal Loop's cost is recorded as unknown. The key never reaches the agent: every `AYME_*` variable is stripped from its environment.
 

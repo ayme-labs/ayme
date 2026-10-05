@@ -182,5 +182,5 @@ export const arms: Record<ArmId, Arm> = {
 export const armIds = Object.keys(arms) as ArmId[];
 
 export function isArmId(value: string): value is ArmId {
-  return value in arms;
+  return Object.hasOwn(arms, value);
 }

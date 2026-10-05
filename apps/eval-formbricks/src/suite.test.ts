@@ -30,6 +30,7 @@ describe("the suite options", () => {
 
   it.each([
     ["an unknown arm", ["--arms", "nope"]],
+    ["an inherited property as an arm", ["--arms", "toString"]],
     ["a run count of zero", ["--runs", "0"]],
     ["a fractional run count", ["--runs", "1.5"]],
     ["an unknown mission", ["--mission", "nope"]],
