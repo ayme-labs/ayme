@@ -12,6 +12,10 @@ const browserToolNames = [
   "fill_form",
   "press_key",
   "generate_locator",
+  "navigate",
+  "navigate_back",
+  "navigate_forward",
+  "reload",
 ];
 
 test("uses the same POM with real Playwright", async ({ page }) => {

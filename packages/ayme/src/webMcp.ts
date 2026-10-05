@@ -61,7 +61,9 @@ export function asAgentCall(tool: PublishedTool, settle: () => Promise<void>) {
 
 /**
  * Run `call` of `tool`, then `settle` before resolving, unless the tool only
- * reads (`snapshot`). Shared by an agent's call and the application's.
+ * reads (`snapshot`) or its answer says a full page load started: that answer
+ * goes out at once, before the document goes away. Shared by an agent's call
+ * and the application's.
  */
 export async function settledAfter<T>(
   tool: PublishedTool,
@@ -69,11 +71,24 @@ export async function settledAfter<T>(
   settle: () => Promise<void>
 ): Promise<T> {
   if (tool === getPageContextTool) return call();
+  let result: T;
   try {
-    return await call();
-  } finally {
+    result = await call();
+  } catch (error) {
     await settle();
+    throw error;
   }
+  if (!startedFullLoad(result)) await settle();
+  return result;
+}
+
+/** Whether an answer, an action result or a Handover, names a loading URL. */
+function startedFullLoad(answer: unknown): boolean {
+  return (
+    typeof answer === "object" &&
+    answer !== null &&
+    typeof (answer as { loading?: unknown }).loading === "string"
+  );
 }
 
 export type WebMcpDriver = Pick<

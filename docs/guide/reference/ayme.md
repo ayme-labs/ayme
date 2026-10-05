@@ -32,8 +32,15 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 | `goalLoop`    | `GoalLoopDecisionFunction`      | The decision function the Goal Loop calls, usually `decisionEndpoint(url)`. The `goal` tool exists only when it is set. See [Goals with Jev](../guides/goals-with-jev.md). |
 | `webMCP`      | `AymeWebMcpOptions`             | `{ enabled, toolNamePrefix }`. See [Publish tools](../guides/publish-tools.md).                                                                                            |
 | `inspector`   | `boolean`                       | Loads and mounts the [Inspector](../guides/inspector.md) when the session starts in the browser. Off unless `true`.                                                        |
+| `navigate`    | `(url: string) => unknown`      | Your client router's navigation, which the [`navigate` Browser Tool](browser-tools.md) calls instead of loading a new document. See below.                                 |
 
-`ignore`, `customTools` and `goalLoop` take effect on `start()` and are cleared when the session stops.
+`ignore`, `customTools`, `goalLoop` and `navigate` take effect on `start()` and are cleared when the session stops.
+
+With `navigate`, the `navigate` tool moves through your router, so your app keeps its in-memory state. The function gets the absolute URL of a page on the document's own origin; the tool refuses other origins, and protocols other than `http:` and `https:`, before calling it. When it returns a promise, the tool waits for it and ignores its value, then waits for a Settled Page and answers with the Change Record; a rejection fails the call. If it starts a full load after all, the call answers as a [full page load](../guides/page-state.md#full-page-loads). A router that takes a path, such as Vue Router, gets the URL without its origin:
+
+```ts
+navigate: (url) => router.push(url.slice(location.origin.length)),
+```
 
 `ayme.start()` claims the runtime for the current document, one owner at a time, and returns the function that stops it.
 

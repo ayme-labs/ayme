@@ -52,7 +52,7 @@ Call `useAyme(options)` in the root `+layout.svelte`, or `App.svelte` without Sv
 {@render children()}
 ```
 
-Svelte 3 and 4, or Svelte 5 without runes, render `<slot />` instead; the `useAyme` call is the same. The options are the [`createAyme` options](../reference/ayme.md#createayme), passed through unchanged, such as `inspector: dev` from `$app/environment`. They are read once; to change them, remount the owner.
+Svelte 3 and 4, or Svelte 5 without runes, render `<slot />` instead; the `useAyme` call is the same. The options are the [`createAyme` options](../reference/ayme.md#createayme), passed through unchanged, such as `inspector: dev` from `$app/environment`, or `navigate: (url) => goto(url)` with `goto` from `$app/navigation`, so the `navigate` tool moves through SvelteKit's router. They are read once; to change them, remount the owner.
 
 ## Root ownership
 

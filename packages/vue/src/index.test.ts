@@ -146,6 +146,14 @@ it("passes inspector to the runtime session", async () => {
   );
 });
 
+it("C1: passes navigate from the provider to the runtime session", () => {
+  const navigate = vi.fn();
+  mount({ render: () => h(AymeProvider, { pageFactory, navigate }) });
+  expect(createAyme).toHaveBeenCalledWith(
+    expect.objectContaining({ navigate })
+  );
+});
+
 it("returns the session as ayme, so a goal runs through it, and its webMCP member", async () => {
   const goalLoop = vi.fn(async () => {
     throw new Error("No decision.");
