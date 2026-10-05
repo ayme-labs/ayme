@@ -1,0 +1,64 @@
+<!doctype html>
+<!-- The docs site's page layout for GitHub Pages: GitHub's default theme with a
+     sidebar built from the docs index, docs/guide/README.md. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {% seo %}
+    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}" />
+    <style>
+      body { margin: 0; }
+      .docs { display: flex; min-height: 100vh; }
+      .docs-nav {
+        flex: 0 0 260px; box-sizing: border-box; padding: 24px 20px;
+        border-right: 1px solid #d0d7de; background: #f6f8fa;
+        position: sticky; top: 0; height: 100vh; overflow-y: auto; font-size: 14px;
+      }
+      .docs-nav .home { display: block; font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #1f2328; }
+      .docs-nav h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #59636e; border: 0; margin: 20px 0 6px; padding: 0; }
+      .docs-nav ul { list-style: none; margin: 0; padding: 0; }
+      .docs-nav li { margin: 0; }
+      .docs-nav li a { display: block; padding: 4px 8px; border-radius: 6px; color: #1f2328; }
+      .docs-nav li a:hover { background: #eaeef2; text-decoration: none; }
+      .docs-nav li a.current { background: #ddf4ff; color: #0969da; font-weight: 600; }
+      .docs-main { flex: 1; min-width: 0; }
+      .docs-main .markdown-body { max-width: 860px; margin: 0 auto; padding: 32px 40px; }
+      @media (max-width: 800px) {
+        .docs { display: block; }
+        .docs-nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid #d0d7de; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="docs">
+      <nav class="docs-nav">
+        <a class="home" href="{{ '/' | relative_url }}">Ayme docs</a>
+        {%- assign index = site.pages | where: "path", "README.md" | first -%}
+        {%- assign lines = index.content | split: "
+" -%}
+        {%- assign open = false -%}
+        {%- for line in lines -%}
+          {%- if line contains "## " -%}
+            {%- if open -%}</ul>{%- endif -%}
+            <h2>{{ line | remove: "## " }}</h2><ul>
+            {%- assign open = true -%}
+          {%- elsif line contains "- [" -%}
+            {%- assign label = line | split: "](" | first | remove: "- [" -%}
+            {%- assign target = line | split: "](" | last | split: ")" | first | replace: ".md", ".html" -%}
+            {%- unless target contains site.baseurl -%}{%- assign target = '/' | append: target | relative_url -%}{%- endunless -%}
+            <li><a href="{{ target }}">{{ label | markdownify | remove: "<p>" | remove: "</p>" | strip }}</a></li>
+          {%- endif -%}
+        {%- endfor -%}
+        {%- if open -%}</ul>{%- endif -%}
+      </nav>
+      <div class="docs-main">
+        <main class="markdown-body">{{ content }}</main>
+      </div>
+    </div>
+    <script>
+      for (const link of document.querySelectorAll(".docs-nav li a"))
+        if (link.pathname === location.pathname) link.classList.add("current");
+    </script>
+  </body>
+</html>
