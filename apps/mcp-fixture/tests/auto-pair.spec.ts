@@ -101,6 +101,53 @@ test("an auto-paired tab reloads and reconnects to its own server, with or witho
   expect(JSON.parse(stored!)).toMatchObject({ token: "" });
 });
 
+test("while an auto-paired tab reloads, another localhost tab that loads does not pair, and the first tab reconnects", async ({
+  agent,
+  context,
+  page,
+  scanReaches,
+}) => {
+  const { port } = await serverAddress(agent);
+  scanReaches.add(port);
+  await page.goto("/");
+  await expect
+    .poll(() => agent.pageToolNames(), { message: agent.log })
+    .toContain("snapshot");
+  // Holds the reloaded document's startup, so the tab stays away while the
+  // other tab loads and scans.
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/main.ts*", async (route) => {
+    await held;
+    await route.continue();
+  });
+  const other = await context.newPage();
+  // The other tab's sockets to the server, besides its scan's probe.
+  const pairingSockets: string[] = [];
+  other.on("websocket", (socket) => {
+    const url = new URL(socket.url());
+    if (Number(url.port) === port && url.pathname !== "/probe")
+      pairingSockets.push(socket.url());
+  });
+  const answered = scanAnswers(other, [port]);
+
+  const reloaded = page.reload();
+  await expect.poll(() => agent.pageToolNames()).toEqual([]);
+  await other.goto("/");
+  await answered;
+  release();
+  await reloaded;
+  await setHeading(page, "Back after the reload");
+
+  await expect
+    .poll(() => snapshotOf(agent).catch(() => ""), { message: agent.log })
+    .toContain('heading "Back after the reload"');
+  expect(pairingSockets).toEqual([]);
+  expect(
+    await other.evaluate(() => sessionStorage.getItem("ayme:agent-connection"))
+  ).toBeNull();
+});
+
 test("a server paired by link stays with its tab when another localhost tab loads, whose scan does not count it", async ({
   agent,
   connect,

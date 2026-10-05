@@ -53,6 +53,17 @@ describe("AgentConnection", () => {
     });
   });
 
+  it("stays busy with a tab that went away, calls or not, until the wait ends", () => {
+    vi.useFakeTimers();
+    const connection = new AgentConnection();
+    const page = connection.attach(hello("a"), () => {})!;
+    connection.detach(page);
+
+    expect(connection.busyWith).toBe("a");
+    vi.advanceTimersByTime(RECONNECT_WAIT_MS);
+    expect(connection.busyWith).toBeUndefined();
+  });
+
   it("ignores the page's answer to a call the server already answered", async () => {
     const connection = new AgentConnection();
     const page = connection.attach(hello("a"), () => {})!;

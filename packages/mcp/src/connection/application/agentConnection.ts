@@ -199,8 +199,10 @@ export class AgentConnection {
   }
 
   /**
-   * A page's channel closed. Its unanswered calls wait up to
-   * `RECONNECT_WAIT_MS` for the tab to reconnect.
+   * A page's channel closed. The server waits up to `RECONNECT_WAIT_MS` for
+   * its tab to reconnect, calls in flight or not, and stays busy with that
+   * tab meanwhile; the calls are answered when it reconnects or the wait
+   * ends.
    */
   detach(page: PageSession) {
     if (this.#page !== page) return;
@@ -213,7 +215,6 @@ export class AgentConnection {
       away.leaving = page.leaving ?? away.leaving;
       return;
     }
-    if (calls.size === 0) return;
     const { tab, url, leaving } = page;
     const timer = setTimeout(() => {
       const left = this.#away?.leaving;
