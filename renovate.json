@@ -126,6 +126,16 @@
     {
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true
+    },
+    {
+      "description": "config:recommended makes production dependency updates fix: commits; every Renovate commit is chore: here.",
+      "matchPackageNames": ["*"],
+      "semanticCommitType": "chore"
+    },
+    {
+      "description": "Playwright Lite is pinned to an immutable ayme-<date> fork tag and repinned by hand with its build approval (ADR-0021).",
+      "matchPackageNames": ["@ayme-dev/playwright-lite"],
+      "enabled": false
     }
   ]
 }
