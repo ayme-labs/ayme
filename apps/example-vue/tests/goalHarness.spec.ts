@@ -20,12 +20,9 @@ test("archive Review onboarding flow", async ({ page }) => {
   );
 
   // Expected: one step archives the item, the next judges the goal met.
-  const handover = await pursueGoal(
-    page,
-    "archive Review onboarding flow",
-    5,
-    2
-  );
+  const handover = await pursueGoal(page, "archive Review onboarding flow", 5, {
+    expectedSteps: 2,
+  });
 
   expect(handover.reason).toBe("done");
   expect(await itemIds(archivedItems(page))).toEqual([reviewId]);
