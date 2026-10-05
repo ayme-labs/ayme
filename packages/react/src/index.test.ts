@@ -390,7 +390,7 @@ it("C1, C4: passes navigate to the runtime session and rejects changing it", asy
   ).rejects.toThrow("provider options must stay fixed");
 });
 
-it("keeps an inline inspector demo setting fixed across renders", async () => {
+it("C1, C4: passes an inline inspector demo setting and keeps it fixed across renders", async () => {
   await withoutInspectorLoad();
   const app = root();
   await act(() =>

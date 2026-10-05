@@ -154,7 +154,7 @@ it("C1: passes navigate from the provider to the runtime session", () => {
   );
 });
 
-it("passes the provider's inspector demo setting and keeps it fixed across renders", async () => {
+it("C1, C4: passes the provider's inspector demo setting and keeps it fixed across renders", async () => {
   await withoutInspectorLoad();
   const errors: unknown[] = [];
   const count = ref(0);
