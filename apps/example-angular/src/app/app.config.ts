@@ -24,6 +24,7 @@ export function appConfig(url: URL): ApplicationConfig {
       hydration,
       provideAyme({
         inspector: isDevMode(),
+        agentConnection: isDevMode(),
         ...(query.get("publication") === "off"
           ? {}
           : {

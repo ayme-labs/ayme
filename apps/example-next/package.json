@@ -16,6 +16,7 @@
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
     "@ayme-dev/inspector": "workspace:*",
+    "@ayme-dev/mcp": "workspace:*",
     "@ayme-dev/react": "workspace:*",
     "next": "16.3.4",
     "react": "^19.0.0",

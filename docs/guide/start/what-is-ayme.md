@@ -10,7 +10,7 @@ Your Page Object Models run in the browser on [playwright-lite](https://github.c
 
 ## What an agent gets
 
-Ayme publishes its tools through WebMCP, the browser's standard for offering tools on a page to agents. You turn publication on when you start Ayme. An agent connected to the page sees:
+A coding agent such as Claude Code, Codex or Cursor connects to the page through Ayme's MCP server, which the agent starts; you turn the page side on when you start Ayme, as [Connect an agent](../guides/connect-an-agent.md) shows. Agents that run in the browser get the same tools through WebMCP, the browser's standard for offering tools on a page to agents, when you turn publication on. An agent connected to the page sees:
 
 - the Page Object Tools of every Page Object currently on the page;
 - Browser Tools, built-in operations on the page itself, such as reading the page, clicking an element or filling a field;
@@ -29,7 +29,7 @@ Your own code runs the same Page Object Actions, through the Page Object or by t
 
 ## Your data stays with you
 
-Ayme runs entirely in your app's page. It has no backend and no account, and it sends nothing to Ayme. Page content leaves the page in two ways, both set up by you: a coding agent you connect reads the page through the relay on your machine, and each Goal Loop step goes from your own Decision Endpoint, with your key, to the model provider you chose.
+Ayme runs entirely in your app's page. It has no backend and no account, and it sends nothing to Ayme. Page content leaves the page in two ways, both set up by you: a coding agent you connect reads the page through Ayme's MCP server, which runs on your machine, and each Goal Loop step goes from your own Decision Endpoint, with your key, to the model provider you chose.
 
 ## The Inspector
 

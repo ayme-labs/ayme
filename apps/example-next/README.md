@@ -74,7 +74,10 @@ The tests are the shared [example certification](../example-certification/README
 run against `next dev` and against `next start` after `next build`. The app
 turns the Inspector on in development; against `next dev` a smoke test opens
 it and runs a tool from it, and against `next start` a test checks that the
-page loads no Inspector code.
+page loads no Inspector code. It turns the Agent Connection
+(`agentConnection`) on the same way: against `next dev` an MCP client pairs
+with the page through a connect link and calls a tool, and against
+`next start` the page loads no Agent Connection code and opens no WebSocket.
 
 Main CI uses Turbo's affected graph to run relevant build, lint, typecheck,
 test, and development and production E2E tasks. It then runs repository format

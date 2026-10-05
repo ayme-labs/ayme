@@ -1,7 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 import {
   publishedToolSchema,
   recordPublishedTools,

@@ -7,6 +7,7 @@ import {
   type PublishedToolInfo,
 } from "./publishedTools";
 import { configureCustomTools, type CustomTool } from "./elementTools";
+import { loadAgentConnection } from "./agentConnection";
 import { loadInspector } from "./inspector";
 import { configureRouterNavigate } from "./navigateTool";
 import { instrumentedPage } from "./pageInstrumentation";
@@ -111,6 +112,12 @@ export type AymeOptions = {
    * click cue, for every call, whoever makes it.
    */
   inspector?: boolean | { demo: boolean };
+  /**
+   * Connects the page to a coding agent's Ayme MCP server through the page
+   * client of the optional `@ayme-dev/mcp` package, while the session is
+   * started in the browser. Off unless `true`.
+   */
+  agentConnection?: boolean;
   /**
    * The application's router navigation. The `navigate` tool calls it with
    * the resolved URL of a page on the document's own origin instead of
@@ -411,6 +418,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
           mountInspectorUntil(controller.signal, {
             demo: inspector === "demo",
           });
+        if (options.agentConnection)
+          startAgentConnectionUntil(controller.signal, ayme);
       } catch (error) {
         stop();
         throw error;
@@ -430,6 +439,17 @@ function mountInspectorUntil(signal: AbortSignal, options: { demo: boolean }) {
     if (signal.aborted) return;
     const inspector = mountInspector(options);
     signal.addEventListener("abort", () => inspector.dispose(), {
+      once: true,
+    });
+  });
+}
+
+// Like the Inspector: a load failure stays an unhandled rejection.
+function startAgentConnectionUntil(signal: AbortSignal, ayme: Ayme) {
+  void loadAgentConnection().then(({ startAgentConnection }) => {
+    if (signal.aborted) return;
+    const connection = startAgentConnection(ayme);
+    signal.addEventListener("abort", () => connection.dispose(), {
       once: true,
     });
   });

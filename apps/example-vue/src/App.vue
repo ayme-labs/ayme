@@ -20,8 +20,10 @@ useAyme({
     : undefined,
   webMCP: { enabled: true },
   // The hosted playground shows the Inspector in demo mode, so visitors can
-  // follow each action; `--mode inspector-disabled` builds it without.
+  // follow each action, and lets a visitor's coding agent connect;
+  // `--mode inspector-disabled` builds it without either.
   inspector: import.meta.env.MODE !== "inspector-disabled" && { demo: true },
+  agentConnection: import.meta.env.MODE !== "inspector-disabled",
 });
 usePageObject(ListPage);
 </script>

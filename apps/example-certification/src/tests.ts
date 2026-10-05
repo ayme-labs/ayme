@@ -14,21 +14,61 @@ import {
   recordPublishedTools,
   type RecordingDriver,
 } from "@ayme-dev/ayme/testing";
+import {
+  connectPage,
+  freePort,
+  ignoreAutoPairScan,
+  startAgent,
+} from "@ayme-dev/mcp/testing";
 
 import { render, server } from "./config";
 
 /**
- * Playwright's `test`, failing any test whose page throws, logs a console
- * error or warns about hydration. An example's own specs use it too.
+ * Whether a console error is Chromium reporting a refused probe of the Agent
+ * Connection's auto-pair scan: with no Ayme MCP server running, a localhost
+ * page probes `ws://127.0.0.1:<port>/probe` on each port from 9350 to 9365,
+ * and Chromium logs every refused connection, whatever the page does. An
+ * example's own page-error checks use it too.
  */
-export const test = base.extend<{ failOnPageErrors: void }>({
+export function isRefusedAutoPairProbe(text: string) {
+  const port =
+    /^WebSocket connection to 'ws:\/\/127\.0\.0\.1:(\d+)\/probe' failed/.exec(
+      text
+    )?.[1];
+  return port !== undefined && Number(port) >= 9350 && Number(port) <= 9365;
+}
+
+/**
+ * Playwright's `test`, whose pages never pair by themselves with an Ayme MCP
+ * server that runs on this machine, such as another suite's: it answers
+ * their auto-pair scan as if none ran (`ignoreAutoPairScan`). Every example
+ * spec uses it, or `test`, which builds on it.
+ */
+export const exampleTest = base.extend<{ ignoreAutoPairScan: void }>({
+  ignoreAutoPairScan: [
+    async ({ context }, use) => {
+      await ignoreAutoPairScan(context);
+      await use();
+    },
+    { auto: true },
+  ],
+});
+
+/**
+ * `exampleTest`, failing any test whose page throws, logs a console error
+ * or warns about hydration. An example's own specs use it too. It ignores
+ * the auto-pair scan's refused probes (`isRefusedAutoPairProbe`).
+ */
+export const test = exampleTest.extend<{ failOnPageErrors: void }>({
   failOnPageErrors: [
     async ({ page }, use) => {
       const errors: string[] = [];
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("console", (message) => {
-        if (message.type() === "error" || /hydrat/i.test(message.text()))
-          errors.push(message.text());
+        const text = message.text();
+        if (isRefusedAutoPairProbe(text)) return;
+        if (message.type() === "error" || /hydrat/i.test(text))
+          errors.push(text);
       });
       await use();
       expect(
@@ -386,18 +426,18 @@ export function devRebuildTests({
 }: {
   counterModePath: string;
 }) {
-  // Plain Playwright `test`: the dev server's own reloads may log errors.
-  base.describe("dev rebuild", () => {
+  // `exampleTest`, not `test`: the dev server's own reloads may log errors.
+  exampleTest.describe("dev rebuild", () => {
     let original: string | undefined;
     // A hook, unlike a `finally` in the test, also runs after a timeout.
-    base.afterEach(async () => {
+    exampleTest.afterEach(async () => {
       if (original !== undefined) await writeFile(counterModePath, original);
     });
 
-    base(
+    exampleTest(
       "rebuilds the published schema when an imported type changes",
       async ({ context, page }) => {
-        base.skip(server !== "dev", "Production builds do not rebuild.");
+        exampleTest.skip(server !== "dev", "Production builds do not rebuild.");
         original = await readFile(counterModePath, "utf8");
         const changed = original.replace('"double"', '"triple"');
         expect(changed).not.toBe(original);
@@ -434,6 +474,97 @@ export function devRebuildTests({
         // own reloads aborts ours, it reloads the page all the same.
         while (!(await publishedModeSchema()).includes('"triple"'))
           await page.reload().catch(() => {});
+      }
+    );
+  });
+}
+
+/** The sessionStorage key only the page client's code contains. */
+const agentConnectionMarker = "ayme:agent-connection";
+
+/** Collects the text of every script the page loads from now on. */
+function loadedScripts(page: Page) {
+  const scripts: Promise<string>[] = [];
+  page.on("response", (response) => {
+    if (response.request().resourceType() === "script")
+      scripts.push(response.text().catch(() => ""));
+  });
+  return () => Promise.all(scripts);
+}
+
+/**
+ * The Agent Connection, which the app turns on with its own flag. Where
+ * `enabled()` holds, a coding agent's MCP client pairs with `/` through a
+ * connect link and calls the page's `snapshot` tool, whose structure contains
+ * `snapshotText`. Elsewhere, such as a production build, the page loads no
+ * Agent Connection code and opens no WebSocket.
+ */
+export function agentConnectionTests({
+  enabled,
+  snapshotText,
+}: {
+  /** Whether the run's app turns the option on; read inside each test. */
+  enabled: () => boolean;
+  snapshotText: string;
+}) {
+  // `exampleTest`, not `test`: Angular's development build logs its
+  // hydration statistics, which `test` counts as a hydration warning.
+  exampleTest.describe("agent connection", () => {
+    exampleTest(
+      "pairs a coding agent through a connect link and runs a page tool",
+      async ({ page, baseURL }) => {
+        exampleTest.skip(
+          !enabled(),
+          "The app turns the Agent Connection off here."
+        );
+        const scripts = loadedScripts(page);
+        // Outside the range a page's auto-pair scan probes, so another
+        // example's page running beside this one never pairs with it.
+        const agent = await startAgent("--port", String(await freePort()));
+        try {
+          // A dev server may compile the page on its first request, which
+          // takes over 10 s on CI.
+          await connectPage(agent, page, new URL("/", baseURL).href, {
+            timeout: 45_000,
+          });
+          // The marker the test with the option off looks for is in the client.
+          expect(
+            (await scripts()).some((script) =>
+              script.includes(agentConnectionMarker)
+            )
+          ).toBe(true);
+
+          const { text, isError } = await agent.call("snapshot");
+
+          expect(isError, text).toBe(false);
+          expect(
+            (JSON.parse(text) as { structure: string }).structure
+          ).toContain(snapshotText);
+        } finally {
+          await agent.close();
+        }
+      }
+    );
+
+    exampleTest(
+      "loads no Agent Connection code with the option off",
+      async ({ page }) => {
+        exampleTest.skip(
+          enabled(),
+          "The app turns the Agent Connection on here."
+        );
+        const sockets: string[] = [];
+        page.on("websocket", (socket) => sockets.push(socket.url()));
+        const scripts = loadedScripts(page);
+
+        await page.goto("/", { waitUntil: "networkidle" });
+
+        expect(
+          (await scripts()).filter((script) =>
+            script.includes(agentConnectionMarker)
+          )
+        ).toEqual([]);
+        expect(sockets).toEqual([]);
       }
     );
   });
