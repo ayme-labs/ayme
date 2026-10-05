@@ -17,6 +17,7 @@ import {
   readRunOffAnswer,
   type ArgumentQuestion,
   type ExecutableTool,
+  type GoalValues,
 } from "./goalLoopQuestions";
 
 // --- Fixtures ---
@@ -102,7 +103,11 @@ function askedQuestions(
 ): ArgumentQuestion[] {
   const plan = planArguments(tool, capture);
   if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
-  return plan.questions;
+  return plan.questions.map((question) => {
+    if (question.type !== "choice")
+      throw new Error(`Unexpected ${question.type} question ${question.id}`);
+    return question;
+  });
 }
 
 /** The refs a question offers, in the order it offers them. */
@@ -410,6 +415,127 @@ describe("collection instances over the option cap", () => {
       kind: "needs_instance_choice",
       parameter: "ref",
       optionCount: 256,
+    });
+  });
+});
+
+describe("Goal Values", () => {
+  /** A tool with a list parameter and one named like its first list question. */
+  const tagTool: ExecutableTool = {
+    name: "tag",
+    description: "Tag the item.",
+    execute: async () => null,
+    requiredParams: ["labels"],
+    args: [
+      {
+        name: "labels",
+        path: ["labels"],
+        optional: false,
+        closedSet: null,
+        free: "string_list",
+      },
+      {
+        name: "labels_1",
+        path: ["labels_1"],
+        optional: true,
+        closedSet: null,
+        free: "integer",
+      },
+      { name: "options", path: ["options"], optional: true, closedSet: null },
+    ],
+  };
+
+  it("asks one noul per string Goal Value of a list, with ids apart from every parameter", () => {
+    const plan = planArguments(tagTool, captureOfButtons(0), {
+      first: "urgent",
+      count: 2,
+      second: "billing",
+    });
+
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    expect(
+      plan.questions.map(({ type, id, parameter }) => ({ type, id, parameter }))
+    ).toEqual([
+      { type: "noul", id: "labels__1", parameter: "labels" },
+      { type: "noul", id: "labels__2", parameter: "labels" },
+      { type: "choice", id: "labels_1", parameter: "labels_1" },
+    ]);
+  });
+
+  it("keeps the list's included values in map order, and their scores", () => {
+    const values = { first: "urgent", second: "billing", third: "spam" };
+    const plan = planArguments(tagTool, captureOfButtons(0), values);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+
+    const answers = readArgumentAnswers(tagTool, plan.questions, {
+      labels__1: { type: "noul", noul: 0.5 },
+      labels__2: { type: "noul", noul: 0.49 },
+      labels__3: { type: "noul", noul: 0.8 },
+    });
+
+    expect(answers).toMatchObject({
+      kind: "chosen",
+      chosen: {
+        args: { labels: ["urgent", "spam"] },
+        chosen: {
+          labels: {
+            key: "first, third",
+            description: "first: urgent, third: spam",
+          },
+        },
+        probabilities: {
+          labels__1: { first: 0.5 },
+          labels__2: { second: 0.49 },
+          labels__3: { third: 0.8 },
+        },
+      },
+    });
+  });
+
+  it("keeps a list value labelled __proto__ through the request and its answer", () => {
+    const values = JSON.parse('{ "__proto__": "urgent" }') as GoalValues;
+    const plan = planArguments(tagTool, captureOfButtons(0), values);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+
+    expect(
+      Object.keys(buildArgumentRequest({}, plan.questions).questions)
+    ).toEqual(["labels__1"]);
+    const answers = readArgumentAnswers(tagTool, plan.questions, {
+      labels__1: { type: "noul", noul: 0.9 },
+    });
+    expect(answers).toMatchObject({
+      kind: "chosen",
+      chosen: {
+        args: { labels: ["urgent"] },
+        chosen: {
+          labels: { key: "__proto__", description: "__proto__: urgent" },
+        },
+      },
+    });
+    if (answers.kind !== "chosen") return;
+    expect(Object.keys(answers.chosen.probabilities.labels__1!)).toEqual([
+      "__proto__",
+    ]);
+  });
+
+  it("hands a required parameter no Goal Value can fill to the calling agent", () => {
+    const tool: ExecutableTool = {
+      ...tagTool,
+      requiredParams: ["options"],
+      args: [
+        {
+          name: "options",
+          path: ["options"],
+          optional: false,
+          closedSet: null,
+        },
+      ],
+    };
+
+    expect(planArguments(tool, captureOfButtons(0), { name: "Milk" })).toEqual({
+      kind: "needs_free_value",
+      parameters: ["options"],
+      unfilled: ["options"],
     });
   });
 });

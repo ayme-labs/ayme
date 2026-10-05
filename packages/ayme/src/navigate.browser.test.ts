@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
+import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { operations, publishTools } from "./publication.testSupport";
 import { createAyme, type Ayme } from "./runtime";
 import { toolFailure } from "./toolFailure.testSupport";
@@ -28,10 +30,12 @@ describe("the navigate tool, in Chromium", () => {
   let stop: () => void;
   let disposePublication: () => void;
   let listening: AbortController;
+  let decide: GoalLoopDecisionFunction;
   const start = location.href;
 
   beforeEach(async () => {
     document.body.innerHTML = `<main><h1>Start page</h1></main>`;
+    decide = operations(["navigate"]);
     listening = new AbortController();
     const { signal } = listening;
     const main = document.querySelector("main")!;
@@ -58,7 +62,7 @@ describe("the navigate tool, in Chromium", () => {
     );
     ayme = createAyme({
       pageFactory: () => createPage({ actionTimeout: 500 }),
-      goalLoop: operations(["navigate"]),
+      goalLoop: (request) => decide(request),
     });
     stop = ayme.start();
     ({ call, dispose: disposePublication } = await publishTools());
@@ -169,6 +173,49 @@ describe("the navigate tool, in Chromium", () => {
     ).resolves.toMatchObject({
       reason: "needs_value",
       needs: { tool: "navigate", parameters: ["url"] },
+    });
+  });
+
+  it("is chosen by the Goal Loop with a URL from the Goal Values", async () => {
+    const requests: DecisionRequest[] = [];
+    const navigate = navigatingWith("settings page");
+    decide = (request) => {
+      requests.push(request);
+      return navigate(request);
+    };
+    await expect(
+      call("goal", {
+        goal: "open the settings",
+        maxSteps: 3,
+        values: { "settings page": "/routes/settings", tab: 2 },
+      })
+    ).resolves.toMatchObject({
+      reason: "done",
+      history: [
+        {
+          operation: "navigate",
+          chosen: {
+            url: {
+              key: "settings page",
+              description: "settings page: /routes/settings",
+            },
+          },
+          result: "ok",
+          page_changed: true,
+        },
+      ],
+    });
+    expect(location.pathname).toBe("/routes/settings");
+    // The number is never offered as a URL.
+    expect(requests[1]!.questions).toEqual({
+      url: {
+        type: "choice",
+        instructions: expect.any(String),
+        criteria: {
+          "settings page": "settings page: /routes/settings",
+          none_of_these: expect.any(String),
+        },
+      },
     });
   });
 });
@@ -337,3 +384,27 @@ describe("the navigate tool on a Page that navigates late, in Chromium", () => {
     });
   });
 });
+
+/**
+ * A decision function that navigates to the Goal Value labelled `label`, then
+ * judges the goal met.
+ */
+function navigatingWith(label: string): GoalLoopDecisionFunction {
+  let navigated = false;
+  return async (request): Promise<DecisionResponse> => {
+    if (!("operation" in request.questions)) {
+      navigated = true;
+      return {
+        model: "typesafe/jev-1.13",
+        answers: { url: { type: "choice", choice: label, confidence: 1 } },
+      };
+    }
+    return {
+      model: "typesafe/jev-1.13",
+      answers: {
+        operation: { type: "choice", choice: "navigate", confidence: 1 },
+        goal_met: { type: "noul", noul: navigated ? 0.9 : 0.1 },
+      },
+    };
+  };
+}

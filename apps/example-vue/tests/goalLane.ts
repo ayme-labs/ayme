@@ -41,27 +41,30 @@ export function itemIds(items: Locator) {
 }
 
 /**
- * Pursue the goal; under `pnpm run goals:runs` also record what the run did.
- * `expectedSteps` is the step count of a run that ends `done` as intended,
- * the step that judges the goal met included; the harness reports how often
- * a run ends there.
+ * Pursue the goal, with the Goal Values in `values` when given; under
+ * `pnpm run goals:runs` also record what the run did. `expectedSteps` is the
+ * step count of a run that ends `done` as intended, the step that judges the
+ * goal met included; the harness reports how often a run ends there.
  */
 export async function pursueGoal(
   page: Page,
   goal: string,
   maxSteps: number,
-  expectedSteps?: number
+  {
+    values,
+    expectedSteps,
+  }: { values?: Record<string, string | number>; expectedSteps?: number } = {}
 ) {
   return recordGoalRun(page, test.info(), { goal, expectedSteps }, async () => {
     return (await page.evaluate(
-      async ({ goal, maxSteps }) => {
+      async (input) => {
         const tool = (
           document.modelContext as unknown as RecordingDriver
         ).tools.find((candidate) => candidate.name === "goal");
         if (!tool) throw new Error("goal tool was not published.");
-        return await tool.execute({ goal, maxSteps });
+        return await tool.execute(input);
       },
-      { goal, maxSteps }
+      { goal, maxSteps, values }
     )) as Handover;
   });
 }

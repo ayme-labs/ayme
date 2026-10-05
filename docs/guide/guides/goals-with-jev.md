@@ -90,7 +90,7 @@ createAyme({
 
 The `goal` tool is published only when `goalLoop` is set. `goalLoop` accepts any function from a `DecisionRequest` to a `Promise<DecisionResponse>`, so a test can pass a fake one.
 
-Your own code runs the same loop with `ayme.tools.run("goal", { goal, maxSteps })`, whether or not tools are published and whether or not a WebMCP driver is present. It throws when the session is not started or has no `goalLoop`.
+Your own code runs the same loop with `ayme.tools.run("goal", { goal, maxSteps, values })`, whether or not tools are published and whether or not a WebMCP driver is present. It throws when the session is not started or has no `goalLoop`.
 
 ## What one step asks
 
@@ -101,7 +101,27 @@ A step first asks which operation moves closest to the goal and whether the goal
 - The ref options are the elements the operation's filter keeps, one per element in document order; nothing is merged or ranked.
 - One question offers at most 255 options. More elements are cut into chunks of at most 254 plus "none of these", asked side by side. When exactly one chunk names an element, the operation runs on it; when several do, one more question offers just those; when none does, the loop ends with `no_fitting_option`.
 - An optional closed-set parameter gets an extra choice that leaves it unset.
-- The model never writes a free value. An operation that needs one, such as `fill`, ends the loop with `needs_value`, so the calling agent supplies it.
+- The model never writes a free value: it picks one from the [Goal Values](#goal-values), or the loop ends with `needs_value` so that the calling agent supplies it.
+
+## Goal Values
+
+Text the page does not hold, such as the name to type into `fill`, the URL for `navigate` or the options for `select_option`, comes from the calling agent. It passes it with the goal as `values`: strings or numbers, each labelled in its own words.
+
+```ts
+goal({
+  goal: "Rename the survey to Q4 Feedback",
+  maxSteps: 6,
+  values: { "survey name": "Q4 Feedback" },
+});
+```
+
+The values are candidates, not instructions. At any step, a parameter the loop cannot fill from the page is offered the values whose type fits it: strings for a string or a list of strings, any number for a `number`, whole numbers for an `integer`. Booleans, objects and lists of other types are never filled from values. One value may be used at several steps and for several parameters. `values` takes 1 to 254 entries; anything else is refused as invalid input before the loop starts. Both stages of every step see the values as passed, in their state.
+
+- **Required parameter.** One question offers each fitting value as `label: value`, plus "none of these". With no fitting value the loop ends with `needs_value` without asking, naming the operation and its required parameters; when the model answers "none of these", it ends with `needs_value` naming the operation and that parameter.
+- **Optional parameter.** One question offers the fitting values plus "leave unset". With no fitting value it stays unset.
+- **List of strings.** Each fitting value is a yes-or-no question of its own, asked in the same request; every value scored 0.5 or more is included, in the order of `values`. A select that holds one option at a time receives only the value scored highest. A required list that includes nothing ends with `needs_value`; an optional one stays unset.
+
+The history shows the value a step used as `label: value`, such as `fill(textbox "Survey name", survey name: Q4 Feedback)`. After a `needs_value`, call `goal` again with the missing value added; the steps already taken stay done, and the new run continues from the current page.
 
 ## What leaves the page
 
@@ -109,7 +129,7 @@ Each step sends the pruned page state, the goal and the step's question from the
 
 ## The Handover
 
-`goal({ goal, maxSteps })` returns a Handover:
+`goal({ goal, maxSteps, values })` returns a Handover:
 
 ```ts
 {
@@ -134,7 +154,7 @@ Each step sends the pruned page state, the goal and the step's question from the
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `done`              | The model judged the goal achieved (goal_met ≥ 0.5).                                                                                 |
 | `no_fitting_option` | The model chose "none", as no available operation fits, or every chunk of a ref question answered "none of these".                   |
-| `needs_value`       | The chosen operation needs values the loop cannot fill. `needs` names the tool and its parameters.                                   |
+| `needs_value`       | The chosen operation needs values the loop cannot fill, from the page or the Goal Values. `needs` names the tool and its parameters. |
 | `action_failed`     | Two operations failed in a row.                                                                                                      |
 | `step_budget`       | `maxSteps` ran out before the goal was achieved.                                                                                     |
 | `decide_failed`     | The decision function failed: network, rejected or malformed.                                                                        |

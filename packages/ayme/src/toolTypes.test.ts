@@ -22,6 +22,15 @@ it("checks built-in tool inputs and results by name", () => {
   >();
   // @ts-expect-error fill requires its text.
   void run("fill", { target: "e1" });
+  expectTypeOf(
+    run("goal", {
+      goal: "Add an item called Milk",
+      maxSteps: 3,
+      values: { "item name": "Milk", quantity: 2 },
+    })
+  ).toEqualTypeOf<Promise<Handover>>();
+  // @ts-expect-error a Goal Value is a string or a number, not a boolean.
+  void run("goal", { goal: "Save", maxSteps: 3, values: { confirm: true } });
   // @ts-expect-error goal requires maxSteps.
   void run("goal", { goal: "Save" });
   // @ts-expect-error click takes a target, not a ref.

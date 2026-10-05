@@ -32,10 +32,10 @@ Every built-in tool Ayme publishes, with its input.
 
 ## snapshot and goal
 
-| Tool       | Input              |
-| ---------- | ------------------ |
-| `snapshot` | `names?`           |
-| `goal`     | `goal`, `maxSteps` |
+| Tool       | Input                         |
+| ---------- | ----------------------------- |
+| `snapshot` | `names?`                      |
+| `goal`     | `goal`, `maxSteps`, `values?` |
 
 `snapshot` returns the page state, as [Page state](../guides/page-state.md) describes; `names` limits the Page Object Model definitions it includes. `goal` runs the Goal Loop and is published only when the Goal Loop is configured.
 
@@ -51,6 +51,6 @@ The single-element Browser Tools are operations the Goal Loop may choose, each f
 | `uncheck`        | Checkboxes and switches.                                    |
 | `select_option`  | Select elements.                                            |
 
-The loop fills only the element and the required fields. `navigate` is an operation the loop may choose as well; it cannot pick a URL itself, so choosing it ends the run with `needs_value`. `navigate_back`, `navigate_forward` and `reload` take no input, so the loop runs them when it chooses them. `fill_form`, `press_key` and `generate_locator` are published only.
+The loop picks the element from the page. It fills text, such as `fill`'s `text` or `select_option`'s `values`, only from the [Goal Values](../guides/goals-with-jev.md#goal-values) the calling agent passed; with none that fits a required field, choosing the tool ends the run with `needs_value`. `navigate` is an operation the loop may choose as well, with its `url` from the Goal Values in the same way. `navigate_back`, `navigate_forward` and `reload` take no input, so the loop runs them when it chooses them. `fill_form`, `press_key` and `generate_locator` are published only.
 
 The tools act through playwright-lite inside the page; [Playwright in the browser](playwright-in-the-browser.md#synthetic-input) says how that differs from a real browser.
