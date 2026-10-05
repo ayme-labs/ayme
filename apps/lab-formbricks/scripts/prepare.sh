@@ -19,7 +19,7 @@ verify_checkout
 
 # Pack the Ayme packages from this checkout as they would be published, and unpack them
 # where the Ayme overlay's package.json and pnpm overrides point. The overlay ignores the folder.
-readonly AYME_PACKAGES=(ayme react unplugin-ayme)
+readonly AYME_PACKAGES=(ayme react unplugin-ayme mcp)
 readonly PACKED_DIR="${FORMBRICKS_DIR}/.ayme-lab/packages"
 readonly TARBALL_DIR="${FORMBRICKS_DIR}/.ayme-lab/tarballs"
 
