@@ -1,15 +1,16 @@
 import type { JsonValue } from "@ayme-dev/ayme";
 
-/** A locator operation the Inspector's instrumentation records. */
+/** A call on the runtime's Page that the Inspector's instrumentation records. */
 export type TraceEntry = {
-  operation:
-    "click" | "fill" | "press" | "pressSequentially" | "waitFor" | "expect";
-  locator: string;
+  /** The method, e.g. "click", or "keyboard.press" for the keyboard's. */
+  operation: string;
+  /** The locator it acted on; absent for the keyboard, the mouse and navigations. */
+  locator?: string;
   value?: string;
   state?: string;
 };
 
-/** A step of a run: a locator operation from the Inspector's own trace. */
+/** A step of a run: a call from the Inspector's own trace. */
 export type RunStep = TraceEntry & {
   /**
    * The Page Object member it acted on, e.g. "ListPage.addItemButton",
@@ -56,7 +57,7 @@ export type Run = {
   /** When it started, in epoch milliseconds. */
   startedAt: number;
   durationMs?: number;
-  /** The locator operations it performed, from the Inspector's own trace. */
+  /** The calls it made on the page, from the Inspector's own trace. */
   steps: readonly RunStep[];
 };
 

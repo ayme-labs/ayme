@@ -1,5 +1,11 @@
 export type { ControlState } from "./domain/controlState";
 export { mapTargetsToRefs } from "./domain/targetsByRef";
+export {
+  describeCall,
+  type CallDescription,
+  type CallStep,
+  type CallSubject,
+} from "./infrastructure/describeCall";
 export { renderInShadowRoot } from "./infrastructure/renderInShadowRoot";
 export {
   exposeInspectorShadowRoot,

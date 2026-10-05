@@ -4,7 +4,7 @@
 
 Slices, from the bottom up:
 
-- `shared`: the look at the page, rendering into the shadow root, shared UI bits.
+- `shared`: the look at the page, what each Playwright call does, rendering into the shadow root, shared UI bits.
 - `panel`: the dockable panel, its preferences and its body layout.
 - `navigation`: the selection, the lens contract, the run slot, the navigator and the page highlights.
 - `page-model`: the Page Object tree and the Model lens.
@@ -44,6 +44,13 @@ Layers, only where a slice has that kind of code: `domain` (pure rules and types
   that opens inside the group, each showing the locator the last run gave it.
 - `runs` holds Runs, the timeline of the runs made from the panel, and
   which runs belong to the selection.
+- `shared`'s `describeCall` says what a call on the runtime's Page does:
+  whether it acts, clicks or waits, which elements it hit-tests, and the step
+  Runs records. Its tables classify every method of Playwright's Locator,
+  Page, Keyboard and Mouse, so a Playwright release that adds one fails
+  typecheck until it is classified. The `demo` wrapper only applies that:
+  it records the step, lets hit-tested elements pass through the panel, and
+  in demo mode pauses before each action and cues each click.
 
 Only infrastructure code, and the mount that installs the Inspector's
 instrumentation, reads `@ayme-dev/ayme` at runtime; components take props.

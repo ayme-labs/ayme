@@ -6,7 +6,8 @@ import { mountInspector } from "./mountInspector";
 import { getInspectorTrace } from "../runs";
 
 // The Inspector's demo mode on a real page: an agent's call, run through the
-// session's tools, pauses and shows its click cue only while demo is on.
+// session's tools, pauses only while demo is on, and shows a click cue then
+// for the actions that click.
 // setTimeout is fake, so the pause is measured in fake time, never
 // wall-clock; animation frames stay real for the click's stability check.
 
@@ -15,27 +16,61 @@ class Toolbar {
   async go() {
     await this.page.getByRole("button", { name: "Go" }).click();
   }
+  async point() {
+    await this.page.getByRole("button", { name: "Go" }).hover();
+  }
+  async tick() {
+    await this.page.getByRole("checkbox").check();
+  }
 }
+
+const noInput = {
+  type: "object",
+  properties: {},
+  required: [],
+  additionalProperties: false,
+} as const;
 
 const manifest: Parameters<typeof registerCompiledPom>[1] = {
   className: "Toolbar",
   components: [],
   members: [],
-  tools: [
-    {
-      methodName: "go",
-      toolName: "Toolbar.go",
-      description: "Go.",
-      inputSchema: {
-        type: "object",
-        properties: {},
-        required: [],
-        additionalProperties: false,
-      },
-      parameters: [],
-    },
-  ],
+  tools: (["go", "point", "tick"] as const).map((methodName) => ({
+    methodName,
+    toolName: `Toolbar.${methodName}`,
+    description: `${methodName}.`,
+    inputSchema: noInput,
+    parameters: [],
+  })),
 };
+
+/** A tool call, the event it fires, the step Runs records and its cues. */
+type Call = {
+  tool: string;
+  input: object;
+  event: string;
+  step: string;
+  cues: number;
+};
+
+const calls: Call[] = [
+  { tool: "Toolbar.go", input: {}, event: "click", step: "click", cues: 1 },
+  {
+    tool: "Toolbar.point",
+    input: {},
+    event: "mouseover",
+    step: "hover",
+    cues: 0,
+  },
+  { tool: "Toolbar.tick", input: {}, event: "change", step: "check", cues: 1 },
+  {
+    tool: "press_key",
+    input: { key: "a" },
+    event: "keydown",
+    step: "keyboard.press",
+    cues: 0,
+  },
+];
 
 const disposals: (() => void)[] = [];
 
@@ -46,17 +81,24 @@ afterEach(() => {
 });
 
 /**
- * Mounts the Inspector, starts a session with the Toolbar's tool and calls
- * it through the session's tools, the path an agent's call takes. Returns
- * the call, and the clicks and click cues the page has seen so far.
+ * Mounts the Inspector, starts a session with the Toolbar's tools and makes
+ * `call` through the session's tools, the path an agent's call takes.
+ * Returns the call, and the events and click cues the page has seen so far.
  */
-function callTool({ demo }: { demo: boolean }) {
+function callTool({ tool, input, event }: Call, { demo }: { demo: boolean }) {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-  document.body.innerHTML = "<button>Go</button>";
-  let clicks = 0;
+  document.body.innerHTML = `
+    <button>Go</button>
+    <label><input type="checkbox" /> Done</label>
+    <input aria-label="Name" />
+  `;
+  // press_key presses on the element that has focus.
+  document.querySelector<HTMLInputElement>("[aria-label=Name]")!.focus();
+  let events = 0;
   let cues = 0;
-  document.querySelector("button")!.addEventListener("click", () => {
-    clicks += 1;
+  document.addEventListener(event, () => (events += 1), {
+    capture: true,
+    once: true,
   });
   const observer = new MutationObserver((records) => {
     for (const record of records)
@@ -77,8 +119,8 @@ function callTool({ demo }: { demo: boolean }) {
     observer.disconnect();
   });
   return {
-    call: runtime.tools.run("Toolbar.go", {}),
-    clicks: () => clicks,
+    call: runtime.tools.run(tool as never, input as never),
+    events: () => events,
     cues: () => cues,
   };
 }
@@ -98,31 +140,37 @@ async function pumpUntil(done: () => boolean) {
   return elapsed;
 }
 
-/** Runs `callTool` to the end; returns the fake time until its click. */
-async function untilClicked(demo: boolean) {
-  const { call, clicks, cues } = callTool({ demo });
+/** Makes `call` to the end; returns the fake time until its event. */
+async function untilActed(call: Call, demo: boolean) {
+  const { call: running, events, cues } = callTool(call, { demo });
   let settled = false;
-  void call.finally(() => (settled = true));
-  const elapsed = await pumpUntil(() => clicks() === 1);
+  void running.finally(() => (settled = true));
+  const elapsed = await pumpUntil(() => events() === 1);
   await pumpUntil(() => settled);
-  await call;
+  await running;
   return { elapsed, cues: cues() };
 }
 
-it("runs an agent's call without a pause or a click cue when demo is off", async () => {
-  const { elapsed, cues } = await untilClicked(false);
+it.each(calls)(
+  "runs an agent's $tool without a pause or a click cue when demo is off",
+  async (call) => {
+    const { elapsed, cues } = await untilActed(call, false);
 
-  expect(elapsed).toBeLessThan(500);
-  expect(cues).toBe(0);
-  // The Runs view still records it.
-  expect(getInspectorTrace().map(({ operation }) => operation)).toEqual([
-    "click",
-  ]);
-});
+    expect(elapsed).toBeLessThan(500);
+    expect(cues).toBe(0);
+    // The Runs view still records it.
+    expect(getInspectorTrace().map(({ operation }) => operation)).toContain(
+      call.step
+    );
+  }
+);
 
-it("pauses before an agent's call and shows its click cue when demo is on", async () => {
-  const { elapsed, cues } = await untilClicked(true);
+it.each(calls)(
+  "pauses before an agent's $tool when demo is on",
+  async (call) => {
+    const { elapsed, cues } = await untilActed(call, true);
 
-  expect(elapsed).toBeGreaterThanOrEqual(500);
-  expect(cues).toBe(1);
-});
+    expect(elapsed).toBeGreaterThanOrEqual(500);
+    expect(cues).toBe(call.cues);
+  }
+);

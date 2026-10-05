@@ -8,18 +8,6 @@ import type { Locator } from "@playwright/test";
  * The toggle stays inside the closed shadow root, out of the page's sight.
  */
 
-// The locator and page actions Playwright Lite hit-tests.
-const pointerActions = new Set<string | symbol>([
-  "check",
-  "click",
-  "dblclick",
-  "dragAndDrop",
-  "dragTo",
-  "hover",
-  "setChecked",
-  "tap",
-  "uncheck",
-]);
 const hostSelector = "[data-ayme-inspector-host]";
 // Playwright Lite retries a failed hit-target check after 0, 20, 100, 100,
 // then 500ms; polling at 25ms keeps detection ahead of the early retries.
@@ -27,11 +15,6 @@ const coverPollMs = 25;
 
 let root: ShadowRoot | undefined;
 let holds = 0;
-
-/** Whether this method is an action Playwright Lite hit-tests. */
-export function isPointerAction(property: string | symbol) {
-  return pointerActions.has(property);
-}
 
 /** Lets pointer actions pass through the panel in this shadow root. */
 export function allowPassThrough(shadowRoot: ShadowRoot) {
