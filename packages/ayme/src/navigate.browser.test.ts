@@ -193,19 +193,20 @@ describe("the navigate tool with a router function, in Chromium", () => {
   let heading: HTMLHeadingElement;
   // What the app's router was asked to open; it lives only in this document.
   let routed: string[];
-  let route: (url: string) => Promise<void>;
+  let route: (url: string) => Promise<unknown>;
   const start = location.href;
 
   beforeEach(async () => {
     document.body.innerHTML = `<main><h1>Start page</h1></main>`;
     heading = document.querySelector("h1")!;
     routed = [];
-    // The app's client router: it moves the URL in the document and renders
-    // the route after a moment.
+    // The app's client router: it moves the URL in the document, renders
+    // the route after a moment and, like many routers, resolves to a value.
     route = async (url) => {
       history.pushState(null, "", url);
       await new Promise((resolve) => setTimeout(resolve, 50));
       heading.textContent = `Route ${new URL(url).pathname}`;
+      return new URL(url).pathname;
     };
     stop = createAyme({
       pageFactory: () => createPage({ actionTimeout: 500 }),

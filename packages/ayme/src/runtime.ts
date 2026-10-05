@@ -114,7 +114,7 @@ export type AymeOptions = {
    * the resolved URL of a page on the document's own origin instead of
    * loading a new document, so the router keeps its in-memory state.
    */
-  navigate?: (url: string) => void | Promise<void>;
+  navigate?: (url: string) => unknown;
 };
 
 /** WebMCP publication, decided where the runtime starts (ADR-0030). */

@@ -180,22 +180,20 @@ stop();
   [Inspector](https://github.com/ayme-labs/ayme/blob/main/packages/inspector/README.md) while the session is
   started in the browser. It loads the optional `@ayme-dev/inspector` package
   on demand, so install it beside `@ayme-dev/ayme`. Off unless `true`.
-- `navigate`: your client router's navigation, `(url: string) => void | Promise<void>`.
+- `navigate`: your client router's navigation, `(url: string) => unknown`.
   The `navigate` Browser Tool calls it instead of loading a new document, so
   your app keeps its in-memory state. It gets the absolute URL of a page on
   the document's own origin; the tool refuses other origins and protocols
   other than `http:` and `https:` before calling it. When it returns a
-  promise, the tool waits for it, then for a Settled Page, and answers with
+  promise, the tool waits for it and ignores its value, then for a Settled Page, and answers with
   the Change Record; a rejection fails the call. If it starts a full load
   after all, the call answers as in [Full page loads](#full-page-loads). Without it, the tool opens the URL as
   described in [Browser Tools](#browser-tools). It is configured on `start()` and cleared when the session
-  stops. Most routers take a path, not a URL:
+  stops. A router that takes a path, such as Vue Router, gets the URL
+  without its origin:
 
   ```ts
-  navigate: async (url) => {
-    const { pathname, search, hash } = new URL(url);
-    await router.push(pathname + search + hash);
-  },
+  navigate: (url) => router.push(url.slice(location.origin.length)),
   ```
 
 `start()` claims the runtime for the current document, one owner at a time,

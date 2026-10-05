@@ -11,7 +11,7 @@ import { ToolInputError } from "./errors";
 import { requireAymeRuntimePage } from "./registry";
 
 /** The application's own navigation, given in runtime setup as `navigate`. */
-type RouterNavigate = (url: string) => void | Promise<void>;
+type RouterNavigate = (url: string) => unknown;
 
 type RouterStore = { navigate?: RouterNavigate };
 
