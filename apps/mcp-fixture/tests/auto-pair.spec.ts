@@ -70,6 +70,90 @@ test("a localhost page pairs by itself when exactly one server is running", asyn
   expect(JSON.parse(stored!)).toMatchObject({ address });
 });
 
+/**
+ * The URLs of the auto-pair probes `page` opens from now on, to the ports in
+ * `scanReaches` or not. A routed WebSocket raises no `websocket` event, so
+ * this answers the others itself, as the `scanReaches` fixture does.
+ */
+async function probesOf(page: Page, scanReaches: ReadonlySet<number>) {
+  const probes: string[] = [];
+  const isProbe = (url: URL) => url.pathname === "/probe";
+  page.on("websocket", (socket) => {
+    if (isProbe(new URL(socket.url()))) probes.push(socket.url());
+  });
+  await page.routeWebSocket(
+    (url) => isProbe(url) && !scanReaches.has(Number(url.port)),
+    (socket) => {
+      probes.push(socket.url());
+      socket.close();
+    }
+  );
+  return probes;
+}
+
+/** Tells the page its tab gained focus and became visible. */
+async function focusTab(page: Page) {
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+}
+
+test("a localhost tab opened before its server started pairs when it gains focus, and scans no more once paired", async ({
+  page,
+  scanReaches,
+}) => {
+  const probes = await probesOf(page, scanReaches);
+  await page.goto("/");
+  // The scan at load probed every port of the range, and found no server.
+  await expect.poll(() => probes.length).toBe(16);
+  const agent = await startAgent();
+  try {
+    const { port } = await serverAddress(agent);
+    scanReaches.add(port);
+    expect(await agent.pageToolNames()).toEqual([]);
+
+    await focusTab(page);
+
+    await expect
+      .poll(() => agent.pageToolNames(), { message: agent.log })
+      .toContain("snapshot");
+    await setHeading(page, "Paired on focus");
+    expect(await snapshotOf(agent)).toContain('heading "Paired on focus"');
+
+    probes.length = 0;
+    await focusTab(page);
+    await page.waitForTimeout(500);
+    expect(probes).toEqual([]);
+  } finally {
+    await agent.close();
+  }
+});
+
+test("a tab paired by link does not scan when it gains focus", async ({
+  agent,
+  connect,
+  page,
+  scanReaches,
+}) => {
+  await connect("/");
+  const other = await startAgent();
+  try {
+    scanReaches.add((await serverAddress(other)).port);
+    const probes = await probesOf(page, scanReaches);
+
+    await focusTab(page);
+    await page.waitForTimeout(500);
+
+    expect(probes).toEqual([]);
+    expect(await other.pageToolNames()).toEqual([]);
+    await setHeading(page, "Still paired by link");
+    expect(await snapshotOf(agent)).toContain('heading "Still paired by link"');
+  } finally {
+    await other.close();
+  }
+});
+
 test("an auto-paired tab reloads and reconnects to its own server, with or without a call in flight", async ({
   agent,
   page,

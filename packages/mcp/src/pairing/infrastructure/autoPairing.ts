@@ -1,5 +1,5 @@
 import { PROBE_PATH, SERVER_IDENTITY, isLocalHost } from "../domain/admission";
-import type { Pairing, PairingSource } from "../domain/pairing";
+import type { PairingSource } from "../domain/pairing";
 import {
   SERVER_HOST,
   SERVER_PORTS,
@@ -15,19 +15,39 @@ const PROBE_TIMEOUT_MS = 2000;
  * connect link and no stored pairing: it probes every port of the server's
  * range and pairs only when exactly one Ayme MCP server answers. It pairs
  * without a token; the server then hands the page its token, which the
- * tab keeps like a connect link's.
+ * tab keeps like a connect link's. Until the tab pairs, it scans again
+ * each time the tab gains focus or becomes visible, one scan at a time, so
+ * a tab opened before its agent's server started still finds it.
  */
 export const autoPairing: PairingSource = (onPairing) => {
+  if (!isLocalHost(window.location.hostname) || hasPairing()) return () => {};
   let stopped = false;
-  if (isLocalHost(window.location.hostname) && !hasPairing())
+  let scanning = false;
+  const scan = () => {
+    if (stopped || scanning) return;
+    if (hasPairing()) return stop();
+    scanning = true;
     void findOnlyServer().then((address) => {
-      if (stopped || !address || hasPairing()) return;
-      const pairing: Pairing = { address, token: "" };
-      onPairing(pairing);
+      scanning = false;
+      if (stopped) return;
+      if (hasPairing()) return stop();
+      if (!address) return;
+      stop();
+      onPairing({ address, token: "" });
     });
-  return () => {
-    stopped = true;
   };
+  const scanWhenVisible = () => {
+    if (document.visibilityState === "visible") scan();
+  };
+  const stop = () => {
+    stopped = true;
+    window.removeEventListener("focus", scan);
+    document.removeEventListener("visibilitychange", scanWhenVisible);
+  };
+  window.addEventListener("focus", scan);
+  document.addEventListener("visibilitychange", scanWhenVisible);
+  scan();
+  return stop;
 };
 
 /** Whether the tab has a connect link or a stored pairing. */

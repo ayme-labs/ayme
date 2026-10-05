@@ -47,7 +47,9 @@ open changes only its hash, so the page does not reload.
 A tab with no link and no stored pairing pairs by itself when the page is on
 `localhost` or `127.0.0.1` and exactly one Ayme MCP server runs on the
 machine. With none or several running, it stays unpaired until you open or
-paste a connect link, so it never pairs with the wrong agent. A server busy
+paste a connect link, so it never pairs with the wrong agent. Until it pairs,
+it looks again each time the tab gains focus, so a tab opened before the
+agent's server started pairs once you switch back to it. A server busy
 with a tab, paired or waiting for it to reconnect, refuses other tabs without a
 token and does not count for their scan; only its connect link moves it to
 another tab. The server hands an auto-paired tab its token, which the tab keeps
