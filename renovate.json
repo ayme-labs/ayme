@@ -26,6 +26,95 @@
   ],
   "packageRules": [
     {
+      "description": "Bundle every non-major update not grouped below into one PR.",
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Other dependencies"
+    },
+    {
+      "description": "Each framework keeps its own PR, so a break points at one framework.",
+      "matchPackageNames": ["vue", "@vue/**"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Vue"
+    },
+    {
+      "matchPackageNames": [
+        "@angular/**",
+        "@angular-devkit/**",
+        "@schematics/angular",
+        "@angular-builders/**",
+        "zone.js"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Angular"
+    },
+    {
+      "matchPackageNames": ["next", "@next/**"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Next.js"
+    },
+    {
+      "matchPackageNames": ["nuxt", "@nuxt/**"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Nuxt"
+    },
+    {
+      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "React"
+    },
+    {
+      "matchPackageNames": ["svelte", "@sveltejs/**", "svelte-check"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Svelte"
+    },
+    {
+      "matchPackageNames": [
+        "typescript",
+        "tsdown",
+        "rolldown",
+        "vite",
+        "@vitejs/**",
+        "vitest",
+        "@vitest/**",
+        "jsdom",
+        "unplugin",
+        "vue-tsc",
+        "turbo"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Build and test tooling"
+    },
+    {
+      "matchPackageNames": [
+        "eslint",
+        "@eslint/**",
+        "eslint-*",
+        "typescript-eslint",
+        "@typescript-eslint/**",
+        "globals",
+        "prettier",
+        "@commitlint/**",
+        "lint-staged",
+        "lefthook"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "Repository tooling"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "matchPackageNames": ["node", "pnpm"],
+      "groupName": "Node and pnpm"
+    },
+    {
       "matchPackageNames": ["mcr.microsoft.com/playwright"],
       "enabled": false,
       "description": "The CI image is updated by the regex manager from the npm Playwright datasource so Docker tags cannot race ahead of npm availability."
