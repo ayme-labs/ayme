@@ -5,10 +5,8 @@ import {
   SERVER_PORTS,
   pairingFromFragment,
 } from "../domain/pairing";
-import {
-  PAIRING_STORAGE_KEY,
-  serializePairing,
-} from "../domain/pairingStorage";
+import { PAIRING_STORAGE_KEY } from "../domain/pairingStorage";
+import { storePairing } from "./storedPairing";
 
 /** How long a probe waits for a port to answer. */
 const PROBE_TIMEOUT_MS = 2000;
@@ -25,14 +23,7 @@ export const autoPairing: PairingSource = (onPairing) => {
     void findOnlyServer().then((address) => {
       if (stopped || !address || hasPairing()) return;
       const pairing: Pairing = { address, token: "" };
-      try {
-        window.sessionStorage.setItem(
-          PAIRING_STORAGE_KEY,
-          serializePairing(pairing)
-        );
-      } catch {
-        // Storage may be unavailable; the pairing still holds for this document.
-      }
+      storePairing(pairing);
       onPairing(pairing);
     });
   return () => {

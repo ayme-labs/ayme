@@ -72,18 +72,9 @@ export function admit({
   origin: string | undefined;
   token: string;
 }): Admission {
-  if (sameText(path, `/${token}`)) return "token";
+  if (path === `/${token}`) return "token";
   if (!isLocalOrigin(origin)) return "refused";
   if (path === AUTO_PAIR_PATH) return "tokenless";
   if (path === PROBE_PATH) return "probe";
   return "refused";
-}
-
-/** Compares in time that does not depend on where the texts differ. */
-function sameText(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let difference = 0;
-  for (let index = 0; index < a.length; index += 1)
-    difference |= a.charCodeAt(index) ^ b.charCodeAt(index);
-  return difference === 0;
 }

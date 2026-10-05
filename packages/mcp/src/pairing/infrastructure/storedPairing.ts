@@ -18,13 +18,25 @@ function readStoredPairing(): StoredPairing | undefined {
     );
     if (!stored || "tab" in stored) return stored as StoredPairing | undefined;
     const withTab = { ...stored, tab: newTabId() };
-    window.sessionStorage.setItem(
-      PAIRING_STORAGE_KEY,
-      serializePairing(withTab)
-    );
+    storePairing(withTab);
     return withTab;
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Keeps `pairing` in sessionStorage for the tab. Without storage, the
+ * pairing still holds for the document.
+ */
+export function storePairing(pairing: Pairing | StoredPairing) {
+  try {
+    window.sessionStorage.setItem(
+      PAIRING_STORAGE_KEY,
+      serializePairing(pairing)
+    );
+  } catch {
+    // Storage is unavailable; the pairing still holds for this document.
   }
 }
 

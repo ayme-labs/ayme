@@ -11,4 +11,4 @@ export { createMcpToolServer } from "./infrastructure/mcpToolServer";
 export {
   answerToolCalls,
   publishPageTools,
-} from "./infrastructure/pageToolBehaviours";
+} from "./application/pageToolBehaviours";
