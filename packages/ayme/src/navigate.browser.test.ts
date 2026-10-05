@@ -112,6 +112,24 @@ describe("the navigate tool, in Chromium", () => {
     });
   });
 
+  it("opens a relative URL against the document's base URL", async () => {
+    // The test server answers every path under /__no-content/ with 204 too.
+    const base = document.createElement("base");
+    base.href = "/__no-content/";
+    document.head.append(base);
+    try {
+      const loading = new URL("/__no-content/settings", location.href).href;
+      await expect(call("navigate", { url: "settings" })).resolves.toEqual({
+        page_changed: false,
+        settled: false,
+        loading,
+        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
+      });
+    } finally {
+      base.remove();
+    }
+  });
+
   it("refuses a URL on another origin", async () => {
     const url = "https://example.com/sign-in";
     await expect(call("navigate", { url })).resolves.toEqual(otherOrigin(url));

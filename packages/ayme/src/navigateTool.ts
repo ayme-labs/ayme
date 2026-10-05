@@ -90,7 +90,9 @@ export const navigateTool: PublishedElementTool = {
             await navigate(destination!.href);
           }
         : async () => {
-            void page.goto(url).catch(() => {});
+            // The URL the checks above passed, resolved against the
+            // document's base URL.
+            void page.goto(destination!.href).catch(() => {});
           }
     );
   },
