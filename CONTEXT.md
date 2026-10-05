@@ -59,6 +59,9 @@ What changed around an action: the difference between the Structural Page State 
 **Goal Loop**:
 Drives the page toward a natural-language goal in steps. Each step is one judgement by a System One model (a fast model that picks among given options, currently Jev), not by the calling agent's LLM. The calling agent starts it and receives a Handover.
 
+**Goal Values**:
+Labelled strings or numbers the calling agent passes with a goal. At any step the Goal Loop may pick one for a parameter it cannot fill from the page; it never writes a value itself.
+
 **Handover**:
 The Goal Loop returning control to the calling agent, with the reason it stopped, what it did, and what to do next.
 
