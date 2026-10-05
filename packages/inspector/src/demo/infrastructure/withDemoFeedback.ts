@@ -12,8 +12,8 @@ type DemoFeedbackOptions = {
 };
 
 type FeedbackContext = {
-  listeners: Set<DemoFeedbackOptions["onTrace"]>;
-  options: Omit<DemoFeedbackOptions, "onTrace">;
+  /** The latest wrap's options. */
+  options: DemoFeedbackOptions;
   wrappers: WeakMap<object, object>;
 };
 
@@ -30,25 +30,14 @@ export function withDemoFeedback(
   options: DemoFeedbackOptions
 ): Page {
   // Wrapped again, as each install of the Inspector does: the latest
-  // options pace and cue it.
+  // options record, pace and cue it.
   const existing = wrappedPages.get(page);
   if (existing) {
-    existing.context.listeners.add(options.onTrace);
-    existing.context.options = {
-      beforeActionMs: options.beforeActionMs,
-      clickCue: options.clickCue,
-    };
+    existing.context.options = options;
     return existing.proxy;
   }
 
-  const context: FeedbackContext = {
-    listeners: new Set([options.onTrace]),
-    options: {
-      beforeActionMs: options.beforeActionMs,
-      clickCue: options.clickCue,
-    },
-    wrappers: new WeakMap(),
-  };
+  const context: FeedbackContext = { options, wrappers: new WeakMap() };
 
   function wrapResult(result: unknown): unknown {
     if (result === page) return wrap(page, "page");
@@ -83,7 +72,7 @@ export function withDemoFeedback(
             ...step,
             ...(locator && { locator: locator.toString() }),
           };
-          for (const listener of context.listeners) listener(entry, locator);
+          context.options.onTrace(entry, locator);
 
           const act = () =>
             passThroughWhileCovered(call.hitTargets, () =>

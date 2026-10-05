@@ -12,7 +12,11 @@ import { getInspectorTrace } from "../runs";
 // wall-clock; animation frames stay real for the click's stability check.
 
 class Toolbar {
-  constructor(readonly page: AymePage) {}
+  readonly keyboard: AymePage["keyboard"];
+  constructor(readonly page: AymePage) {
+    // Saved as the Toolbar is built, before the Inspector mounts.
+    this.keyboard = page.keyboard;
+  }
   async go() {
     await this.page.getByRole("button", { name: "Go" }).click();
   }
@@ -21,6 +25,9 @@ class Toolbar {
   }
   async tick() {
     await this.page.getByRole("checkbox").check();
+  }
+  async key() {
+    await this.keyboard.press("a");
   }
 }
 
@@ -35,7 +42,7 @@ const manifest: Parameters<typeof registerCompiledPom>[1] = {
   className: "Toolbar",
   components: [],
   members: [],
-  tools: (["go", "point", "tick"] as const).map((methodName) => ({
+  tools: (["go", "point", "tick", "key"] as const).map((methodName) => ({
     methodName,
     toolName: `Toolbar.${methodName}`,
     description: `${methodName}.`,
@@ -64,6 +71,13 @@ const calls: Call[] = [
   },
   { tool: "Toolbar.tick", input: {}, event: "change", step: "check", cues: 1 },
   {
+    tool: "Toolbar.key",
+    input: {},
+    event: "keydown",
+    step: "keyboard.press",
+    cues: 0,
+  },
+  {
     tool: "press_key",
     input: { key: "a" },
     event: "keydown",
@@ -81,8 +95,9 @@ afterEach(() => {
 });
 
 /**
- * Mounts the Inspector, starts a session with the Toolbar's tools and makes
- * `call` through the session's tools, the path an agent's call takes.
+ * Builds the Toolbar, then mounts the Inspector, as on a page whose Inspector
+ * loads late. Starts the session and makes `call` through its tools, the path
+ * an agent's call takes.
  * Returns the call, and the events and click cues the page has seen so far.
  */
 function callTool({ tool, input, event }: Call, { demo }: { demo: boolean }) {
@@ -108,9 +123,9 @@ function callTool({ tool, input, event }: Call, { demo }: { demo: boolean }) {
   });
   observer.observe(document.body, { childList: true });
   registerCompiledPom(Toolbar, manifest);
-  const inspector = mountInspector({ demo });
   const runtime = createAyme();
   runtime.pom.register(Toolbar);
+  const inspector = mountInspector({ demo });
   const stop = runtime.start();
   disposals.push(() => {
     stop();
@@ -174,3 +189,31 @@ it.each(calls)(
     expect(cues).toBe(call.cues);
   }
 );
+
+it("answers an agent's navigation once it settles when demo is on", async () => {
+  document.body.innerHTML = "<main><h1>Start page</h1></main>";
+  const start = location.href;
+  const onHashChange = () =>
+    document.querySelector("main")!.append(`Section ${location.hash}`);
+  window.addEventListener("hashchange", onHashChange);
+  const inspector = mountInspector({ demo: true });
+  const runtime = createAyme();
+  const stop = runtime.start();
+  disposals.push(() => {
+    stop();
+    inspector.dispose();
+    window.removeEventListener("hashchange", onHashChange);
+    history.replaceState(null, "", start);
+  });
+  await runtime.tools.run("snapshot", {});
+
+  // Demo mode starts the navigation after its pause, past the quiet window
+  // a settle waits for.
+  await expect(
+    runtime.tools.run("navigate", { url: "#details" })
+  ).resolves.toEqual({
+    page_changed: true,
+    settled: true,
+    changes: expect.stringContaining("Section #details"),
+  });
+});

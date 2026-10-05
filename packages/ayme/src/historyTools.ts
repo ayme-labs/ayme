@@ -3,7 +3,7 @@
 // `goForward` and `reload`, mirroring Playwright MCP's `browser_navigate_back`,
 // `browser_navigate_forward` and `browser_reload`.
 import type { JsonSchema } from "./contracts";
-import { runAction } from "./actionSequence";
+import { runAction, startNavigation } from "./actionSequence";
 import {
   requireCurrentDocument,
   validatedToolInput,
@@ -115,9 +115,7 @@ export const reloadTool: PublishedElementTool = {
       currentDocument,
       caller,
       { tool: "reload", args: input },
-      () => {
-        void page.reload().catch(() => {});
-      }
+      () => startNavigation(currentDocument, () => page.reload())
     );
   },
 };

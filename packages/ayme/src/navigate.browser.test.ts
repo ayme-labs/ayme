@@ -272,3 +272,68 @@ describe("the navigate tool with a router function, in Chromium", () => {
     expect(location.href).toBe(start);
   });
 });
+
+describe("the navigate tool on a Page that navigates late, in Chromium", () => {
+  let call: (name: string, input: unknown) => Promise<unknown>;
+  let stop: () => void;
+  let disposePublication: () => void;
+  let listening: AbortController;
+  const start = location.href;
+
+  /**
+   * A Page whose goto starts 500 ms after it is called, as the Inspector's
+   * demo mode delays it: longer than the quiet window a settle waits for.
+   */
+  function lateGoto(page: ReturnType<typeof createPage>) {
+    return new Proxy(page, {
+      get(target, property) {
+        const member: unknown = Reflect.get(target, property, target);
+        if (property !== "goto" || typeof member !== "function") return member;
+        return async (...args: unknown[]) => {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          return member.apply(target, args);
+        };
+      },
+    });
+  }
+
+  beforeEach(async () => {
+    document.body.innerHTML = `<main><h1>Start page</h1></main>`;
+    listening = new AbortController();
+    window.addEventListener(
+      "hashchange",
+      () => document.querySelector("main")!.append(`Section ${location.hash}`),
+      { signal: listening.signal }
+    );
+    stop = createAyme({
+      pageFactory: () => lateGoto(createPage({ actionTimeout: 500 })),
+    }).start();
+    ({ call, dispose: disposePublication } = await publishTools());
+    await call("snapshot", {});
+  });
+
+  afterEach(() => {
+    listening.abort();
+    disposePublication();
+    stop();
+    history.replaceState(null, "", start);
+    document.body.innerHTML = "";
+  });
+
+  it("answers with the loading URL once the full load starts", async () => {
+    await expect(call("navigate", { url: "/__no-content" })).resolves.toEqual({
+      page_changed: false,
+      settled: false,
+      loading: NO_CONTENT,
+      next: `The page is loading ${NO_CONTENT}. Call snapshot next to read the new page.`,
+    });
+  });
+
+  it("answers with the Change Record once the fragment change settles", async () => {
+    await expect(call("navigate", { url: "#details" })).resolves.toEqual({
+      page_changed: true,
+      settled: true,
+      changes: expect.stringContaining("Section #details"),
+    });
+  });
+});

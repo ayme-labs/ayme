@@ -4,6 +4,9 @@ import type { AymePage } from "./runtime";
 
 type PageInstrumentation = (page: AymePage) => AymePage;
 
+// The Page's input devices, which a Page Object may save as properties.
+const inputDevices = new Set<string | symbol>(["keyboard", "mouse"]);
+
 const instrumentations = new Set<PageInstrumentation>();
 // Changes on every install and uninstall, so late-bound targets re-derive.
 let generation = 0;
@@ -25,7 +28,8 @@ export function installRuntimePageInstrumentation(
  * change, and a Page a locator returns is the wrapped Page again. So a Page
  * Object constructed before an instrumentation was installed, such as a
  * late-loaded Inspector's, still reaches it. A method read from the Page or a
- * locator resolves its target when it is called, so a saved method does too.
+ * locator resolves its target when it is called, so a saved method does too,
+ * and so does a saved keyboard or mouse.
  */
 export function instrumentedPage(page: AymePage): AymePage {
   const derivePage = () => {
@@ -36,6 +40,17 @@ export function instrumentedPage(page: AymePage): AymePage {
   };
   let resolvePage = derivePage;
   const isPage = (value: unknown) => value === page || value === resolvePage();
+  const devices = new Map<string | symbol, object>();
+  const device = (property: string | symbol) => {
+    let bound = devices.get(property);
+    if (!bound) {
+      bound = lateBound(
+        () => Reflect.get(resolvePage(), property) as object
+      ).proxy;
+      devices.set(property, bound);
+    }
+    return bound;
+  };
 
   function lateBound<T extends object>(
     derive: () => T,
@@ -79,7 +94,15 @@ export function instrumentedPage(page: AymePage): AymePage {
     };
     const proxy = new Proxy(initial.target, {
       get(_, property) {
-        const member: unknown = Reflect.get(resolve(), property);
+        const target = resolve();
+        const member: unknown = Reflect.get(target, property);
+        if (
+          inputDevices.has(property) &&
+          typeof member === "object" &&
+          member !== null &&
+          isPage(target)
+        )
+          return device(property);
         if (typeof member !== "function") return member;
         return (...args: unknown[]) =>
           bindResult(call(resolve(), property, args), property, args);
