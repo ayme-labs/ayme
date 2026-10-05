@@ -248,7 +248,7 @@ export function createPursueGoalTool(
   return {
     name: "goal",
     description:
-      "Drive the page toward a goal in steps. Each step is one fast model judgement. Returns a Handover: why the loop stopped, what it did, and what to do next.",
+      "Drive the page toward a goal in steps. Each step is one fast model judgement. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.",
     inputSchema: {
       type: "object",
       properties: {
@@ -257,7 +257,7 @@ export function createPursueGoalTool(
         values: {
           type: "object",
           description:
-            "Goal Values: labelled strings or numbers the goal needs typed in, such as a name or a URL. The loop may pick one wherever the page offers nothing to pick.",
+            "Passed to the Goal Loop with the goal. Where the page has nothing to pick, such as text to type or a URL to open, the loop picks one of these by its label. It never makes up a value.",
           additionalProperties: {
             anyOf: [{ type: "string" }, { type: "number" }],
           },
