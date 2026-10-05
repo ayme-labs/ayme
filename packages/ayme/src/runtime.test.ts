@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "./browserPage";
+import { loadAgentConnection } from "./agentConnection";
 import { RuntimeStateError } from "./errors";
 import * as goalLoopModule from "./goalLoop";
 import { loadInspector } from "./inspector";
+import * as navigateToolModule from "./navigateTool";
 import * as pageState from "./pageState";
-import { createAyme, type AymePage } from "./runtime";
+import { createAyme, sameRuntimeOptions, type AymePage } from "./runtime";
 import { listRegisteredPoms, registerCompiledPom } from "./registry";
 import {
   synchronizeWebMcpTools,
@@ -19,6 +21,7 @@ vi.mock("./webMcp", async (importOriginal) => ({
   waitForWebMcpDriver: vi.fn(),
 }));
 vi.mock("./inspector", () => ({ loadInspector: vi.fn() }));
+vi.mock("./agentConnection", () => ({ loadAgentConnection: vi.fn() }));
 vi.mock("./browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),
 }));
@@ -97,6 +100,30 @@ it("mounts the Inspector while a session with inspector is started", async () =>
   expect(mountInspector).toHaveBeenCalledOnce();
 });
 
+it("starts the Agent Connection while a session with agentConnection is started", async () => {
+  const dispose = vi.fn();
+  const startAgentConnection = vi.fn(() => ({ dispose }));
+  vi.mocked(loadAgentConnection).mockResolvedValue({ startAgentConnection });
+  start(session(false))();
+  expect(loadAgentConnection).not.toHaveBeenCalled();
+
+  const runtime = createAyme({
+    pageFactory: () => page,
+    agentConnection: true,
+  });
+  sessions.push(runtime);
+  const stop = start(runtime);
+  await flush();
+  expect(startAgentConnection).toHaveBeenCalledExactlyOnceWith(runtime);
+  stop();
+  expect(dispose).toHaveBeenCalledOnce();
+
+  // Stopped before the page client loaded: no connection starts.
+  start(runtime)();
+  await flush();
+  expect(startAgentConnection).toHaveBeenCalledOnce();
+});
+
 it("threads ignore to page state capture for the session lifetime", () => {
   const configureIgnore = vi.spyOn(pageState, "configurePageStateIgnore");
   try {
@@ -125,6 +152,31 @@ it("threads goalLoop to the goal loop configuration for the session lifetime", (
   } finally {
     configureGoalLoop.mockRestore();
   }
+});
+
+it("threads navigate to the navigate tool for the session lifetime", () => {
+  const configureRouterNavigate = vi.spyOn(
+    navigateToolModule,
+    "configureRouterNavigate"
+  );
+  try {
+    const navigate = vi.fn();
+    const runtime = createAyme({ pageFactory: () => page, navigate });
+    expect(configureRouterNavigate).not.toHaveBeenCalled();
+    const stop = start(runtime);
+    expect(configureRouterNavigate).toHaveBeenLastCalledWith(navigate);
+    stop();
+    expect(configureRouterNavigate).toHaveBeenLastCalledWith(undefined);
+  } finally {
+    configureRouterNavigate.mockRestore();
+  }
+});
+
+it("counts a different navigate function as a different setup", () => {
+  const navigate = () => {};
+  expect(sameRuntimeOptions({ navigate }, { navigate })).toBe(true);
+  expect(sameRuntimeOptions({ navigate }, { navigate: () => {} })).toBe(false);
+  expect(sameRuntimeOptions({ navigate }, {})).toBe(false);
 });
 
 it("creates the default browser page lazily", () => {

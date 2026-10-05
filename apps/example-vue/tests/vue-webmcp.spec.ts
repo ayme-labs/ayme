@@ -1,6 +1,7 @@
 import path from "node:path";
 
-import { expect, selectors, test, type Page } from "@playwright/test";
+import { expect, selectors, type Page } from "@playwright/test";
+import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 
 import { ListPage } from "../playwright/pom/ListPage";
 import { derivePomManifests } from "@ayme-dev/unplugin-ayme";
@@ -86,6 +87,10 @@ const browserToolNames = [
   "fill_form",
   "press_key",
   "generate_locator",
+  "navigate",
+  "navigate_back",
+  "navigate_forward",
+  "reload",
 ];
 
 const initialToolNames = [

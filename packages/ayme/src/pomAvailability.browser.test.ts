@@ -286,6 +286,10 @@ describe("live Page Object availability", () => {
           "fill_form",
           "press_key",
           "generate_locator",
+          "navigate",
+          "navigate_back",
+          "navigate_forward",
+          "reload",
           "Shell.sidebar.close",
         ]);
       const rule = document.querySelector<HTMLStyleElement>(
@@ -310,6 +314,10 @@ describe("live Page Object availability", () => {
           "fill_form",
           "press_key",
           "generate_locator",
+          "navigate",
+          "navigate_back",
+          "navigate_forward",
+          "reload",
         ]);
       rule.style.visibility = "visible";
       window.dispatchEvent(new Event("transitionend"));
@@ -327,6 +335,10 @@ describe("live Page Object availability", () => {
           "fill_form",
           "press_key",
           "generate_locator",
+          "navigate",
+          "navigate_back",
+          "navigate_forward",
+          "reload",
           "Shell.sidebar.close",
         ]);
     } finally {
@@ -555,6 +567,10 @@ describe("live Page Object availability", () => {
         "fill_form",
         "press_key",
         "generate_locator",
+        "navigate",
+        "navigate_back",
+        "navigate_forward",
+        "reload",
         "SlowShell.panels.close",
       ]);
     } finally {

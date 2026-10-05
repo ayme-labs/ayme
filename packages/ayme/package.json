@@ -47,7 +47,8 @@
   },
   "peerDependencies": {
     "@playwright/test": ">=1.29 <1.63",
-    "@ayme-dev/inspector": "workspace:*"
+    "@ayme-dev/inspector": "workspace:*",
+    "@ayme-dev/mcp": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {
@@ -55,11 +56,15 @@
     },
     "@ayme-dev/inspector": {
       "optional": true
+    },
+    "@ayme-dev/mcp": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/core": "workspace:*",
+    "@ayme-dev/mcp": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@mcp-b/webmcp-polyfill": "5.1.0",
     "@types/node": "^24.0.0",

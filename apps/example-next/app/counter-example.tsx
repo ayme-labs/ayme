@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AymeProvider, useAyme, usePageObject } from "@ayme-dev/react";
+import { useAyme, usePageObject } from "@ayme-dev/react";
 import { CounterPage } from "../playwright/pom/CounterPage";
 import { SubCounterPage } from "../playwright/pom/SubCounterPage";
 
@@ -20,7 +20,7 @@ function Counter() {
   );
 }
 
-function Demo() {
+export default function CounterExample() {
   const [visible, setVisible] = useState(true);
   const { webMCP } = useAyme();
   return (
@@ -33,16 +33,5 @@ function Demo() {
       </button>
       {visible && <Counter />}
     </>
-  );
-}
-
-export default function CounterExample() {
-  return (
-    <AymeProvider
-      webMCP={{ enabled: true }}
-      inspector={process.env.NODE_ENV === "development"}
-    >
-      <Demo />
-    </AymeProvider>
   );
 }

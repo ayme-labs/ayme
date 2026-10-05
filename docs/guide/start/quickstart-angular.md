@@ -6,7 +6,7 @@ From an Angular app to a Page Object Tool your coding agent calls.
 
 ```sh
 ng add @ayme-dev/angular
-npm install -D @ayme-dev/inspector
+npm install -D @ayme-dev/inspector @ayme-dev/mcp
 ```
 
 `ng add` installs Ayme, the build plugin and `@playwright/test`, switches the build and serve builders to `@angular-builders/custom-esbuild`, adds the plugin, and adds `provideAyme()` to the application config. New Angular workspaces already enable `experimentalDecorators`. [Angular](../frameworks/angular.md) lists the manual steps.
@@ -35,7 +35,7 @@ If your Playwright tests already have a Page Object Model for this page, mark th
 
 ## 3. Start Ayme and use the Page Object
 
-Turn publication on and the Inspector in development where `ng add` added `provideAyme()`:
+Turn the Inspector and the Agent Connection on in development where `ng add` added `provideAyme()`:
 
 ```ts
 // src/app/app.config.ts
@@ -44,7 +44,7 @@ import { provideAyme } from "@ayme-dev/angular";
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideAyme({ webMCP: { enabled: true }, inspector: isDevMode() }),
+    provideAyme({ inspector: isDevMode(), agentConnection: isDevMode() }),
   ],
 };
 ```
@@ -91,10 +91,11 @@ export class Projects {
 
 Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-To call it from your coding agent, connect the agent to the page through the WebMCP local relay, as [Connect an agent](../guides/connect-an-agent.md) shows, and ask it to create a project. It calls `ProjectsPage.createProject`.
+To call it from your coding agent, register Ayme's MCP server in the agent and connect it to the page, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
 
 ## Next
 
 - [Angular](../frameworks/angular.md): manual setup, the API, server rendering and bundle size.
 - [Page Object Models](../guides/page-object-models.md): tool names, inputs and Page Object Children.
 - [Goals with Jev](../guides/goals-with-jev.md): hand the page a goal instead of single calls.
+- [Publish tools](../guides/publish-tools.md): publish the same tools through WebMCP for agents that run in the browser.

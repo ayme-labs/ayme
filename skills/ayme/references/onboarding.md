@@ -11,7 +11,7 @@
 4. For a framework without an Ayme package, report that gap and stop at the
    documented integrations.
 5. Follow [Browser setup](browser-setup.md), then invoke the exposed action
-   through the client.
+   through Ayme's MCP server.
 
 When installing the skill elsewhere, keep the references directory and these
 links.

@@ -1,6 +1,6 @@
 # Releasing
 
-Maintainer instructions for releasing the alpha package set: `@ayme-dev/ayme`, `@ayme-dev/vue`, `@ayme-dev/react`, `@ayme-dev/svelte`, `@ayme-dev/angular`, `@ayme-dev/unplugin-ayme` and `@ayme-dev/inspector`, the packages under `packages/` that are not private. They carry one shared version and are released together under the `alpha` dist-tag, so a consumer never combines versions that were not tested together.
+Maintainer instructions for releasing the alpha package set: `@ayme-dev/ayme`, `@ayme-dev/vue`, `@ayme-dev/react`, `@ayme-dev/svelte`, `@ayme-dev/angular`, `@ayme-dev/unplugin-ayme`, `@ayme-dev/inspector` and `@ayme-dev/mcp`, the packages under `packages/` that are not private. They carry one shared version and are released together under the `alpha` dist-tag, so a consumer never combines versions that were not tested together.
 
 ## Release an alpha
 

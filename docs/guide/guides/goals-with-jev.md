@@ -114,7 +114,8 @@ Each step sends the pruned page state, the goal and the step's question from the
 ```ts
 {
   reason:  "done" | "no_fitting_option" | "needs_value"
-         | "action_failed" | "step_budget" | "decide_failed",
+         | "action_failed" | "step_budget" | "decide_failed"
+         | "page_loading",
   next:    string,     // plain words: what the calling agent should do now
   history: {
     operation: string,   // the tool's name; a Page Object Tool's qualified name
@@ -124,18 +125,20 @@ Each step sends the pruned page state, the goal and the step's question from the
     did: string,         // operation(description, …), for a human skimming
   }[],
   needs?:  { tool: string, parameters: string[] },  // only with needs_value
+  loading?: string,    // only with page_loading: the URL the load started for
   changes?: string,    // what the whole run changed; absent when nothing did
 }
 ```
 
-| Reason              | Meaning                                                                                                            |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `done`              | The model judged the goal achieved (goal_met ≥ 0.5).                                                               |
-| `no_fitting_option` | The model chose "none", as no available operation fits, or every chunk of a ref question answered "none of these". |
-| `needs_value`       | The chosen operation needs values the loop cannot fill. `needs` names the tool and its parameters.                 |
-| `action_failed`     | Two operations failed in a row.                                                                                    |
-| `step_budget`       | `maxSteps` ran out before the goal was achieved.                                                                   |
-| `decide_failed`     | The decision function failed: network, rejected or malformed.                                                      |
+| Reason              | Meaning                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `done`              | The model judged the goal achieved (goal_met ≥ 0.5).                                                                                 |
+| `no_fitting_option` | The model chose "none", as no available operation fits, or every chunk of a ref question answered "none of these".                   |
+| `needs_value`       | The chosen operation needs values the loop cannot fill. `needs` names the tool and its parameters.                                   |
+| `action_failed`     | Two operations failed in a row.                                                                                                      |
+| `step_budget`       | `maxSteps` ran out before the goal was achieved.                                                                                     |
+| `decide_failed`     | The decision function failed: network, rejected or malformed.                                                                        |
+| `page_loading`      | The last step started a [full page load](page-state.md#full-page-loads) of the URL in `loading`; call `snapshot` once it has loaded. |
 
 `history` records each operation the loop ran: the tool in `operation`; in `chosen`, per parameter asked, the key of the option the model chose and its description exactly as offered, a choice to leave it unset included; `"ok"` or an error message in `result`; whether the page changed in `page_changed`; and `did`, a one-line label such as `click(button "Add item")`. A step that hands over before acting records nothing. The model is sent the same entries as its history.
 

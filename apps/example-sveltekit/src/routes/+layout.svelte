@@ -8,7 +8,11 @@
   // The root layout owns the runtime: SvelteKit never swaps it on navigation.
   const {
     webMCP: { publicationStatus },
-  } = useAyme({ webMCP: { enabled: true }, inspector: dev });
+  } = useAyme({
+    webMCP: { enabled: true },
+    inspector: dev,
+    agentConnection: dev,
+  });
 </script>
 
 <h1>Ayme SvelteKit example</h1>

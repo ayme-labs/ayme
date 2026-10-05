@@ -96,13 +96,14 @@ afterEach(() => {
   delete (document as { modelContext?: unknown }).modelContext;
 });
 
-it("passes the options to the runtime session unchanged", () => {
+it("C1: passes the options to the runtime session unchanged", () => {
   const options: UseAymeOptions = {
     pageFactory,
     ignore: (element) => element.matches(".assistant"),
     customTools: [],
     goalLoop: vi.fn(),
     webMCP: { enabled: false, toolNamePrefix: "ayme_" },
+    navigate: vi.fn(),
   };
   let result: UseAymeResult | undefined;
   mount(Owner, { options, onInit: (value) => (result = value) });

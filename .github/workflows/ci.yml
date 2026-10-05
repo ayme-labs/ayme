@@ -16,6 +16,11 @@ concurrency:
 permissions:
   contents: read
 
+# The commits a pull request's --affected checks compare. Empty on dispatch.
+env:
+  TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
+  TURBO_SCM_HEAD: ${{ github.event.pull_request.head.sha }}
+
 jobs:
   changes:
     name: Detect affected package checks
@@ -23,58 +28,127 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       package_checks: ${{ steps.detect.outputs.package_checks }}
-      docs_checks: ${{ steps.detect.outputs.docs_checks }}
+      affected: ${{ steps.detect.outputs.affected }}
+      uncached_builds: ${{ steps.detect.outputs.uncached_builds }}
+      e2e_suites: ${{ steps.detect.outputs.e2e_suites }}
+      docs_checks: ${{ steps.compatibility.outputs.docs_checks }}
+      compatibility_packages: ${{ steps.compatibility.outputs.packages }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - run: corepack enable
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-      - name: Cache pnpm store
-        uses: actions/cache@v6
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - name: Detect affected package tasks
         id: detect
-        env:
-          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
-          TURBO_SCM_HEAD: ${{ github.event.pull_request.head.sha }}
         shell: bash
         run: |
           set -eo pipefail
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Manual dispatch: running all package checks."
-            echo "package_checks=true" >> "$GITHUB_OUTPUT"
-            exit 0
+          # A change to the workflow or its setup action runs every check, so
+          # an edited job is tested before it merges.
+          affected=--affected
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+            || ! git diff --quiet "$TURBO_SCM_BASE...$TURBO_SCM_HEAD" -- .github/workflows/ci.yml .github/actions/; then
+            echo "Running all package checks."
+            affected=
+          fi
+          echo "affected=$affected" >> "$GITHUB_OUTPUT"
+
+          tasks=$(pnpm exec turbo run build lint typecheck test test:e2e $affected --dry=json \
+            | jq '[.tasks[] | select(.command != "<NONEXISTENT>")]')
+
+          echo "Affected package tasks: $(jq length <<< "$tasks")"
+          echo "package_checks=$(jq 'length > 0' <<< "$tasks")" >> "$GITHUB_OUTPUT"
+
+          # Each E2E suite runs on its own runner, named after its directory.
+          suites=$(jq -c '[.[] | select(.task == "test:e2e")
+            | {name: (.directory | split("/") | last), package, dir: .directory}]' <<< "$tasks")
+          echo "E2E suites: $suites"
+          echo "e2e_suites=$suites" >> "$GITHUB_OUTPUT"
+
+          # Builds Turbo does not cache, such as Next's, only run again on the
+          # jobs that need them, so Build leaves them out.
+          uncached=$(jq -r '[.[] | select(.task == "build" and .resolvedTaskDefinition.cache == false)
+            | "--filter=!\(.package)"] | join(" ")' <<< "$tasks")
+          echo "Builds left out of Build: $uncached"
+          echo "uncached_builds=$uncached" >> "$GITHUB_OUTPUT"
+      # A lane runs when a change reaches its package: the package itself or
+      # anything it depends on. A change to this workflow runs every lane, so
+      # an edited lane is tested before it merges.
+      - name: Detect affected compatibility lanes
+        id: compatibility
+        shell: bash
+        run: |
+          set -eo pipefail
+
+          affected=--affected
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+            || ! git diff --quiet "$TURBO_SCM_BASE...$TURBO_SCM_HEAD" -- .github/workflows/ci.yml; then
+            affected=
           fi
 
-          affected=$(pnpm exec turbo run build lint typecheck test test:e2e --affected --dry=json \
-            | jq '[.tasks[] | select(.command != "<NONEXISTENT>")] | length')
-
-          echo "Affected package tasks: $affected"
-          echo "package_checks=$([ "$affected" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          packages=$(pnpm exec turbo ls $affected --output=json | jq -c '[.packages.items[].name]')
+          echo "Packages the compatibility lanes check: $packages"
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
 
           # Markdown outside the packages, such as docs/guide/, affects no
           # package task but still needs the docs check.
-          docs=$(git diff --name-only "$TURBO_SCM_BASE" "$TURBO_SCM_HEAD" -- '*.md' 'scripts/check-docs*' | wc -l)
+          docs=1
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            docs=$(git diff --name-only "$TURBO_SCM_BASE" "$TURBO_SCM_HEAD" -- '*.md' 'scripts/check-docs*' | wc -l)
+          fi
           echo "Changed docs files: $docs"
           echo "docs_checks=$([ "$docs" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-  check:
-    name: Check
+  # Check is split across runners so each E2E suite's dev server and browser
+  # get a machine of their own. Build fills Turbo's remote cache, and the jobs
+  # after it replay those builds instead of rebuilding them.
+  build:
+    name: Build
     needs: changes
-    if: needs.changes.outputs.package_checks == 'true' || needs.changes.outputs.docs_checks == 'true'
+    if: needs.changes.outputs.package_checks == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    env:
+      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - run: pnpm exec turbo run build ${{ needs.changes.outputs.affected }} ${{ needs.changes.outputs.uncached_builds }}
+
+  static:
+    name: Static checks
+    needs: [changes, build]
+    if: >-
+      !cancelled() && needs.build.result != 'failure'
+      && (needs.changes.outputs.package_checks == 'true' || needs.changes.outputs.docs_checks == 'true')
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    env:
+      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Lint commits
+        if: github.event_name == 'pull_request'
+        run: pnpm run commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}"
+      - run: pnpm run boundaries
+      - run: pnpm run docs:check
+      - run: pnpm exec turbo run lint typecheck ${{ needs.changes.outputs.affected }} --continue=dependencies-successful
+      - run: pnpm run format:check
+
+  unit:
+    name: Unit tests
+    needs: [changes, build]
+    if: needs.changes.outputs.package_checks == 'true'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.62.1-noble
@@ -86,47 +160,48 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - run: corepack enable
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-      - name: Cache pnpm store
-        uses: actions/cache@v6
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
-      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - run: pnpm install --frozen-lockfile
-      - name: Lint commits
-        if: github.event_name == 'pull_request'
-        run: pnpm run commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}"
-      - run: pnpm run boundaries
-      - run: pnpm run docs:check
-      - name: Run affected package checks
-        if: github.event_name == 'pull_request'
-        env:
-          TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha }}
-          TURBO_SCM_HEAD: ${{ github.event.pull_request.head.sha }}
-        run: pnpm exec turbo run build lint typecheck test test:e2e --affected --continue=dependencies-successful
-      - name: Run full package checks
-        if: github.event_name != 'pull_request'
-        run: pnpm exec turbo run build lint typecheck test test:e2e --continue=dependencies-successful
-      - run: pnpm run format:check
+      - uses: ./.github/actions/setup
+      - run: pnpm exec turbo run test ${{ needs.changes.outputs.affected }} --continue=dependencies-successful
+
+  e2e:
+    name: E2E ${{ matrix.name }}
+    needs: [changes, build]
+    if: needs.changes.outputs.e2e_suites != '[]'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.e2e_suites) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm exec turbo run test:e2e --filter=${{ matrix.package }}
       - name: Upload browser test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-test-results
-          path: |
-            packages/ayme/test-results
-            apps/*/test-results
+          name: browser-test-results-${{ matrix.name }}
+          path: ${{ matrix.dir }}/test-results
           if-no-files-found: ignore
+
+  # Branch protection requires this job instead of the jobs above, because
+  # skipped and matrix jobs report under names that change with the run.
+  check:
+    name: Check
+    needs: [changes, build, static, unit, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every check to pass or be skipped
+        env:
+          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: test "$FAILED" = false
 
   live-goals:
     name: Live goals
@@ -141,23 +216,7 @@ jobs:
       TURBO_TEAM: ${{ vars.TURBO_TEAM }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - run: corepack enable
-      - name: Resolve pnpm store path
-        id: pnpm-store
-        shell: bash
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-      - name: Cache pnpm store
-        uses: actions/cache@v6
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: ${{ runner.os }}-${{ runner.arch }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
-      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       # The lane skips itself with a visible message when no secret is set,
       # as for a pull request from a fork, and uses the TypeSafe key when both
       # are. Keys are only ever passed through the environment, never echoed.
@@ -170,8 +229,10 @@ jobs:
   compatibility:
     name: ${{ matrix.name }}
     needs: changes
-    if: needs.changes.outputs.package_checks == 'true'
+    if: needs.changes.outputs.compatibility_packages != '[]'
     runs-on: ubuntu-latest
+    env:
+      AFFECTED: ${{ contains(fromJSON(needs.changes.outputs.compatibility_packages), matrix.package) }}
     strategy:
       fail-fast: false
       matrix:
@@ -262,16 +323,24 @@ jobs:
             node: "20.19.0"
             e2e: true
     steps:
+      - name: Skip, no change reaches ${{ matrix.package }}
+        if: env.AFFECTED != 'true'
+        run: echo "No change in this pull request reaches ${{ matrix.package }}."
       - uses: actions/checkout@v7
+        if: env.AFFECTED == 'true'
       - uses: actions/setup-node@v7
+        if: env.AFFECTED == 'true'
         with:
           node-version: 24
       - run: corepack enable
+        if: env.AFFECTED == 'true'
       - name: Resolve pnpm store path
+        if: env.AFFECTED == 'true'
         id: pnpm-store
         shell: bash
         run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
       - name: Cache pnpm store
+        if: env.AFFECTED == 'true'
         uses: actions/cache@v6
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
@@ -279,6 +348,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ runner.arch }}-pnpm-store-
       - name: Install the pinned minimum versions
+        if: env.AFFECTED == 'true'
         env:
           DIR: ${{ matrix.dir }}
           LINKED: ${{ matrix.linked }}
@@ -309,36 +379,39 @@ jobs:
           fi
           pnpm install --no-frozen-lockfile
       - name: Build ${{ matrix.build }}
+        if: env.AFFECTED == 'true'
         run: pnpm exec turbo run build --filter=${{ matrix.build }}
       - name: Install Chromium
-        if: matrix.e2e
+        if: env.AFFECTED == 'true' && matrix.e2e
         run: pnpm --filter ${{ matrix.package }} exec playwright install --with-deps chromium
       # pnpm 11 needs Node 22.13, so pnpm stays on this Node 24 while the
       # scripts it starts resolve `node` from PATH, which becomes the floor.
       - name: Keep pnpm on Node 24
-        if: matrix.node
+        if: env.AFFECTED == 'true' && matrix.node
         run: |
           shim="$RUNNER_TEMP/pnpm-node24"
           mkdir -p "$shim"
           printf '#!/bin/sh\nexec "%s" "%s" "$@"\n' "$(command -v node)" "$(readlink -f "$(command -v pnpm)")" > "$shim/pnpm"
           chmod +x "$shim/pnpm"
       - uses: actions/setup-node@v7
-        if: matrix.node
+        if: env.AFFECTED == 'true' && matrix.node
         with:
           node-version: ${{ matrix.node }}
       - name: Run the framework on Node ${{ matrix.node }}
-        if: matrix.node
+        if: env.AFFECTED == 'true' && matrix.node
         env:
           NODE_FLOOR: ${{ matrix.node }}
         run: |
           echo "$RUNNER_TEMP/pnpm-node24" >> "$GITHUB_PATH"
           test "$(node --version)" = "v$NODE_FLOOR"
       - name: Build ${{ matrix.package }}
-        if: matrix.e2e
+        if: env.AFFECTED == 'true' && matrix.e2e
         run: pnpm --filter ${{ matrix.package }} build
       - name: Typecheck ${{ matrix.package }}
+        if: env.AFFECTED == 'true'
         run: pnpm --filter ${{ matrix.package }} typecheck
       - name: Test ${{ matrix.package }}
+        if: env.AFFECTED == 'true'
         run: pnpm --filter ${{ matrix.package }} ${{ matrix.e2e && 'test:e2e' || 'test' }}
 
   # Branch protection requires this job instead of the lanes, because a

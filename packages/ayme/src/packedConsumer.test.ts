@@ -41,6 +41,7 @@ const repoRoot = path.dirname(packagesRoot);
 const PUBLISHED_PACKAGES = [
   "ayme",
   "inspector",
+  "mcp",
   "vue",
   "react",
   "angular",

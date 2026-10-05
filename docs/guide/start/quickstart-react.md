@@ -6,7 +6,7 @@ From a Vite React app to a Page Object Tool your coding agent calls.
 
 ```sh
 npm install @ayme-dev/ayme @ayme-dev/react
-npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
 ```
 
 ## 2. Add the build plugin
@@ -54,7 +54,7 @@ If your Playwright tests already have a Page Object Model for this page, mark th
 
 ## 4. Start Ayme and use the Page Object
 
-Wrap the app in `AymeProvider` with publication on and the Inspector in development, and use the Page Object in a component:
+Wrap the app in `AymeProvider` with the Inspector and the Agent Connection in development, and use the Page Object in a component:
 
 ```tsx
 // src/main.tsx
@@ -102,7 +102,10 @@ function Projects() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AymeProvider webMCP={{ enabled: true }} inspector={import.meta.env.DEV}>
+    <AymeProvider
+      inspector={import.meta.env.DEV}
+      agentConnection={import.meta.env.DEV}
+    >
       <Projects />
     </AymeProvider>
   </StrictMode>
@@ -113,10 +116,11 @@ createRoot(document.getElementById("root")!).render(
 
 Run the dev server. The Inspector opens on the page: its Tools lens lists `ProjectsPage.createProject`, and running it with a name creates the project while you watch. The "Show me how" button does the same from your own code, the way an onboarding checklist would.
 
-To call it from your coding agent, connect the agent to the page through the WebMCP local relay, as [Connect an agent](../guides/connect-an-agent.md) shows, and ask it to create a project. It calls `ProjectsPage.createProject`.
+To call it from your coding agent, register Ayme's MCP server in the agent and connect it to the page, as [Connect an agent](../guides/connect-an-agent.md) shows. Then ask it to create a project: it calls `ProjectsPage.createProject`.
 
 ## Next
 
 - [React](../frameworks/react.md): the provider, root ownership, hooks and Next.js.
 - [Page Object Models](../guides/page-object-models.md): tool names, inputs and Page Object Children.
 - [Goals with Jev](../guides/goals-with-jev.md): hand the page a goal instead of single calls.
+- [Publish tools](../guides/publish-tools.md): publish the same tools through WebMCP for agents that run in the browser.

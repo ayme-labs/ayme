@@ -4,6 +4,7 @@ import config, { baseURL, port } from "./playwright.config";
 export default defineConfig({
   ...config,
   testIgnore: "**/inspector.spec.ts",
+  metadata: { server: "production" },
   outputDir: "test-results/production",
   webServer: {
     command: "pnpm run start",

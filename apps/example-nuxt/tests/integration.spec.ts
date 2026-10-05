@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 import { CounterPage } from "../playwright/pom/CounterPage";
 import {
   executePublishedTool,
@@ -83,6 +84,10 @@ test("hydrates, publishes the compiled POM, executes it, and cleans up on remoun
     "fill_form",
     "press_key",
     "generate_locator",
+    "navigate",
+    "navigate_back",
+    "navigate_forward",
+    "reload",
   ]);
 
   await page.getByRole("button", { name: "Call Page Object" }).click();

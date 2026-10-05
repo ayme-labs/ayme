@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 import { CounterPage } from "../playwright/pom/CounterPage";
 
 const browserToolNames = [
@@ -12,6 +13,10 @@ const browserToolNames = [
   "fill_form",
   "press_key",
   "generate_locator",
+  "navigate",
+  "navigate_back",
+  "navigate_forward",
+  "reload",
 ];
 
 test("uses the same POM with real Playwright", async ({ page }) => {

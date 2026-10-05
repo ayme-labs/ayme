@@ -1,8 +1,9 @@
 // The input schemas of Playwright MCP's tools at the revision the README pins:
 // the MCP backend bundled in playwright-core 1.62.1
 // (lib/coreBundle.js: elementSchema, clickSchema, typeSchema, selectOptionSchema,
-// browser_fill_form, browser_press_key, and the skill-only browser_check and
-// browser_uncheck). Transcribed by hand from their zod
+// browser_fill_form, browser_press_key, browser_navigate, browser_navigate_back,
+// and the skill-only browser_check, browser_uncheck, browser_navigate_forward
+// and browser_reload). Transcribed by hand from their zod
 // definitions, keeping field names, types, enums and which fields are required;
 // descriptions are left out. Playwright MCP declares no explicit defaults: an
 // omitted option keeps Playwright's own (left button, no double click, fill at
@@ -39,6 +40,10 @@ export const PLAYWRIGHT_MCP_COUNTERPARTS = {
   press_key: "browser_press_key",
   check: "browser_check",
   uncheck: "browser_uncheck",
+  navigate: "browser_navigate",
+  navigate_back: "browser_navigate_back",
+  navigate_forward: "browser_navigate_forward",
+  reload: "browser_reload",
 } as const;
 
 /** The input schema of each Playwright MCP counterpart. */
@@ -116,6 +121,14 @@ export const PLAYWRIGHT_MCP_SCHEMAS: Record<
     properties: { ...element },
     required: ["target"],
   },
+  browser_navigate: {
+    type: "object",
+    properties: { url: { type: "string" } },
+    required: ["url"],
+  },
+  browser_navigate_back: { type: "object", properties: {} },
+  browser_navigate_forward: { type: "object", properties: {} },
+  browser_reload: { type: "object", properties: {} },
 };
 
 /** The shape of `fill`, which has no counterpart: `target` and `text`. */

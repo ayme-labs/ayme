@@ -44,6 +44,7 @@ createRoot(document.getElementById("root")!).render(
     <AymeProvider
       webMCP={{ enabled: true }}
       inspector={import.meta.env.MODE !== "inspector-disabled"}
+      agentConnection={import.meta.env.MODE !== "inspector-disabled"}
     >
       <App />
     </AymeProvider>

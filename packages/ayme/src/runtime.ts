@@ -7,7 +7,9 @@ import {
   type PublishedToolInfo,
 } from "./publishedTools";
 import { configureCustomTools, type CustomTool } from "./elementTools";
+import { loadAgentConnection } from "./agentConnection";
 import { loadInspector } from "./inspector";
+import { configureRouterNavigate } from "./navigateTool";
 import { instrumentedPage } from "./pageInstrumentation";
 import {
   constructPageObject,
@@ -108,6 +110,18 @@ export type AymeOptions = {
    * the session is started in the browser. Off unless `true`.
    */
   inspector?: boolean;
+  /**
+   * Connects the page to a coding agent's Ayme MCP server through the page
+   * client of the optional `@ayme-dev/mcp` package, while the session is
+   * started in the browser. Off unless `true`.
+   */
+  agentConnection?: boolean;
+  /**
+   * The application's router navigation. The `navigate` tool calls it with
+   * the resolved URL of a page on the document's own origin instead of
+   * loading a new document, so the router keeps its in-memory state.
+   */
+  navigate?: (url: string) => unknown;
 };
 
 /** WebMCP publication, decided where the runtime starts (ADR-0030). */
@@ -175,8 +189,8 @@ const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 /**
  * Create an inert runtime session. Its owner starts activity by calling
  * `start()`. `pageFactory` runs once, on first use in the browser; on the
- * server `pom.get` returns an inert Page Object. `ignore`, `customTools` and
- * `goalLoop` are configured on start and cleared on stop.
+ * server `pom.get` returns an inert Page Object. `ignore`, `customTools`,
+ * `goalLoop` and `navigate` are configured on start and cleared on stop.
  */
 export function createAyme(options: AymeOptions = {}): Ayme {
   let resolvedPage: AymePage | undefined;
@@ -283,6 +297,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     configurePageStateIgnore(undefined);
     configureCustomTools(undefined);
     configureGoalLoop(undefined);
+    configureRouterNavigate(undefined);
     if (started === ayme) setStarted(undefined);
     refreshTools();
     setStatus({ state: "disposed", message: "The Ayme runtime was disposed." });
@@ -376,6 +391,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       configurePageStateIgnore(options.ignore);
       configureCustomTools(options.customTools);
       configureGoalLoop(options.goalLoop);
+      configureRouterNavigate(options.navigate);
       controller = new AbortController();
       try {
         for (const [model, registration] of registrations)
@@ -386,6 +402,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         setStarted(ayme);
         void retryPublication();
         if (options.inspector) mountInspectorUntil(controller.signal);
+        if (options.agentConnection)
+          startAgentConnectionUntil(controller.signal, ayme);
       } catch (error) {
         stop();
         throw error;
@@ -405,6 +423,17 @@ function mountInspectorUntil(signal: AbortSignal) {
     if (signal.aborted) return;
     const inspector = mountInspector();
     signal.addEventListener("abort", () => inspector.dispose(), {
+      once: true,
+    });
+  });
+}
+
+// Like the Inspector: a load failure stays an unhandled rejection.
+function startAgentConnectionUntil(signal: AbortSignal, ayme: Ayme) {
+  void loadAgentConnection().then(({ startAgentConnection }) => {
+    if (signal.aborted) return;
+    const connection = startAgentConnection(ayme);
+    signal.addEventListener("abort", () => connection.dispose(), {
       once: true,
     });
   });

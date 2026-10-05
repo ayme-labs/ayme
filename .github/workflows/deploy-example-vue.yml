@@ -1,20 +1,59 @@
-name: Deploy example Vue playground
+name: Deploy the playground and the docs
 
 on:
   push:
     branches:
       - main
+  # Builds the site on pull requests that change it, without deploying.
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pages
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
   cancel-in-progress: true
 
 jobs:
+  # The site changed when turbo finds the playground or a package it builds
+  # from affected, or when the docs or this workflow changed. A manual run
+  # always builds and deploys.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      site: ${{ steps.detect.outputs.site }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Detect whether the site changed
+        id: detect
+        shell: bash
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -eo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "site=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          playground=$(TURBO_SCM_BASE="$BASE" TURBO_SCM_HEAD="$HEAD" pnpm exec turbo run build \
+            --filter=@ayme-dev/example-vue... --affected --dry=json \
+            | jq '[.tasks[] | select(.command != "<NONEXISTENT>")] | length')
+          docs=$(git diff --name-only "$BASE" "$HEAD" -- docs/guide .github/workflows/deploy-example-vue.yml | wc -l)
+          echo "Affected playground tasks: $playground, changed docs files: $docs"
+          echo "site=$([ "$playground" -gt 0 ] || [ "$docs" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
@@ -31,7 +70,15 @@ jobs:
         run: pnpm exec turbo run build --filter=@ayme-dev/example-vue... --env-mode=strict
         env:
           VITE_BASE_PATH: /ayme/
+      - name: Build the docs into the Pages artifact
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./docs/guide
+          destination: ./apps/example-vue/dist/docs
+      - name: Check the docs links point at /ayme/docs
+        run: grep -q 'href="/ayme/docs/start/what-is-ayme.html"' apps/example-vue/dist/docs/index.html
       - name: Configure Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
@@ -40,6 +87,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pages: write

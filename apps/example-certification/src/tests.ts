@@ -4,6 +4,7 @@ import {
   test as base,
   expect,
   type BrowserContext,
+  type Locator,
   type Page,
 } from "@playwright/test";
 import {
@@ -13,21 +14,61 @@ import {
   recordPublishedTools,
   type RecordingDriver,
 } from "@ayme-dev/ayme/testing";
+import {
+  connectPage,
+  freePort,
+  ignoreAutoPairScan,
+  startAgent,
+} from "@ayme-dev/mcp/testing";
 
 import { render, server } from "./config";
 
 /**
- * Playwright's `test`, failing any test whose page throws, logs a console
- * error or warns about hydration. An example's own specs use it too.
+ * Whether a console error is Chromium reporting a refused probe of the Agent
+ * Connection's auto-pair scan: with no Ayme MCP server running, a localhost
+ * page probes `ws://127.0.0.1:<port>/probe` on each port from 9350 to 9365,
+ * and Chromium logs every refused connection, whatever the page does. An
+ * example's own page-error checks use it too.
  */
-export const test = base.extend<{ failOnPageErrors: void }>({
+export function isRefusedAutoPairProbe(text: string) {
+  const port =
+    /^WebSocket connection to 'ws:\/\/127\.0\.0\.1:(\d+)\/probe' failed/.exec(
+      text
+    )?.[1];
+  return port !== undefined && Number(port) >= 9350 && Number(port) <= 9365;
+}
+
+/**
+ * Playwright's `test`, whose pages never pair by themselves with an Ayme MCP
+ * server that runs on this machine, such as another suite's: it answers
+ * their auto-pair scan as if none ran (`ignoreAutoPairScan`). Every example
+ * spec uses it, or `test`, which builds on it.
+ */
+export const exampleTest = base.extend<{ ignoreAutoPairScan: void }>({
+  ignoreAutoPairScan: [
+    async ({ context }, use) => {
+      await ignoreAutoPairScan(context);
+      await use();
+    },
+    { auto: true },
+  ],
+});
+
+/**
+ * `exampleTest`, failing any test whose page throws, logs a console error
+ * or warns about hydration. An example's own specs use it too. It ignores
+ * the auto-pair scan's refused probes (`isRefusedAutoPairProbe`).
+ */
+export const test = exampleTest.extend<{ failOnPageErrors: void }>({
   failOnPageErrors: [
     async ({ page }, use) => {
       const errors: string[] = [];
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("console", (message) => {
-        if (message.type() === "error" || /hydrat/i.test(message.text()))
-          errors.push(message.text());
+        const text = message.text();
+        if (isRefusedAutoPairProbe(text)) return;
+        if (message.type() === "error" || /hydrat/i.test(text))
+          errors.push(text);
       });
       await use();
       expect(
@@ -38,6 +79,9 @@ export const test = base.extend<{ failOnPageErrors: void }>({
     { auto: true },
   ],
 });
+
+const otherPage = (page: Page) =>
+  page.getByText("Other page without Page Objects.");
 
 const count = (page: Page) =>
   page.getByRole("region", { name: "Counter" }).locator("output");
@@ -55,6 +99,25 @@ const allCounterTools = [
   "SubCounterPage.setMode",
 ];
 
+/** Ayme's own tools, in publication order: every page that runs Ayme has them. */
+const aymeTools = [
+  "snapshot",
+  "click",
+  "hover",
+  "type",
+  "fill",
+  "check",
+  "uncheck",
+  "select_option",
+  "fill_form",
+  "press_key",
+  "generate_locator",
+  "navigate",
+  "navigate_back",
+  "navigate_forward",
+  "reload",
+];
+
 /** Opens the counter page with the recording driver and waits for publication. */
 async function openCounter(context: BrowserContext, page: Page) {
   await recordPublishedTools(context);
@@ -68,6 +131,46 @@ async function openCounter(context: BrowserContext, page: Page) {
     { timeout: 15_000 }
   );
   await expect(count(page)).toHaveText("0");
+}
+
+/**
+ * Calls the published tool `name` with `input` as an agent, for a call that
+ * starts a full page load, and resolves with its answer once `loaded` shows
+ * on the new page. Playwright rejects an evaluate still running when the page
+ * navigates, even once the page has the answer, so the old document keeps the
+ * answer where the new one can read it. The call starts a task after the
+ * evaluate returns: a load that needs no network, such as going back to a
+ * page the browser kept in its back/forward cache, can otherwise replace the
+ * document before the evaluate's own result arrives.
+ */
+async function answerAcrossFullLoad(
+  page: Page,
+  name: string,
+  input: object,
+  loaded: Locator
+): Promise<unknown> {
+  await page.evaluate(
+    ({ name, input }) => {
+      const { modelContext } = document as unknown as {
+        modelContext: RecordingDriver;
+      };
+      const tool = modelContext.tools.find((tool) => tool.name === name);
+      if (!tool) throw new Error(`Tool ${name} was not published.`);
+      setTimeout(() => {
+        void tool
+          .execute(input)
+          .then((answer) =>
+            sessionStorage.setItem("full-load-answer", JSON.stringify(answer))
+          );
+      });
+    },
+    { name, input }
+  );
+  await expect(loaded).toBeVisible();
+  const answer = await page.evaluate(() =>
+    sessionStorage.getItem("full-load-answer")
+  );
+  return JSON.parse(answer ?? "null");
 }
 
 /** The schemas the compiler derives from the counter's Page Object Model. */
@@ -174,19 +277,7 @@ export function counterTests({
       // Every published name without a Page Object's dot.
       expect(
         (await publishedToolNames(page)).filter((name) => !name.includes("."))
-      ).toEqual([
-        "snapshot",
-        "click",
-        "hover",
-        "type",
-        "fill",
-        "check",
-        "uncheck",
-        "select_option",
-        "fill_form",
-        "press_key",
-        "generate_locator",
-      ]);
+      ).toEqual(aymeTools);
     });
 
     test("runs the Page Object's action when the app calls it", async ({
@@ -228,6 +319,85 @@ export function counterTests({
       await expect(count(page)).toHaveText("1");
     });
 
+    test("answers a click on a full page load link before the new page loads", async ({
+      page,
+    }) => {
+      const loading = new URL("/other", page.url()).href;
+      const answer = await answerAcrossFullLoad(
+        page,
+        "click",
+        { target: "role=link[name='Full page load']" },
+        otherPage(page)
+      );
+      expect(page.url()).toBe(loading);
+      expect(answer).toEqual({
+        page_changed: true,
+        settled: false,
+        changes: expect.stringContaining('link "Full page load"'),
+        loading,
+        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
+      });
+    });
+
+    test("answers navigate to the other page before it loads, and the other page publishes its tools", async ({
+      page,
+    }) => {
+      const loading = new URL("/other", page.url()).href;
+      const answer = await answerAcrossFullLoad(
+        page,
+        "navigate",
+        { url: "/other" },
+        otherPage(page)
+      );
+      expect(page.url()).toBe(loading);
+      expect(answer).toMatchObject({
+        settled: false,
+        loading,
+        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
+      });
+      await expect.poll(() => publishedToolNames(page)).toEqual(aymeTools);
+    });
+
+    test("answers navigate_back to the previous document before it loads", async ({
+      page,
+    }) => {
+      const loading = page.url();
+      await page.getByRole("link", { name: "Full page load" }).click();
+      await expect.poll(() => publishedToolNames(page)).toEqual(aymeTools);
+      const answer = await answerAcrossFullLoad(
+        page,
+        "navigate_back",
+        {},
+        count(page)
+      );
+      expect(page.url()).toBe(loading);
+      expect(answer).toMatchObject({
+        settled: false,
+        loading,
+        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
+      });
+    });
+
+    test("answers reload before the page loads anew", async ({ page }) => {
+      await page
+        .getByRole("button", { name: "Increment", exact: true })
+        .click();
+      await expect(count(page)).toHaveText("1");
+      const loading = page.url();
+      const answer = await answerAcrossFullLoad(
+        page,
+        "reload",
+        {},
+        count(page).filter({ hasText: /^0$/ })
+      );
+      expect(page.url()).toBe(loading);
+      expect(answer).toMatchObject({
+        settled: false,
+        loading,
+        next: `The page is loading ${loading}. Call snapshot next to read the new page.`,
+      });
+    });
+
     test("removes the page's tools on navigation and restores them on return", async ({
       page,
     }) => {
@@ -256,18 +426,18 @@ export function devRebuildTests({
 }: {
   counterModePath: string;
 }) {
-  // Plain Playwright `test`: the dev server's own reloads may log errors.
-  base.describe("dev rebuild", () => {
+  // `exampleTest`, not `test`: the dev server's own reloads may log errors.
+  exampleTest.describe("dev rebuild", () => {
     let original: string | undefined;
     // A hook, unlike a `finally` in the test, also runs after a timeout.
-    base.afterEach(async () => {
+    exampleTest.afterEach(async () => {
       if (original !== undefined) await writeFile(counterModePath, original);
     });
 
-    base(
+    exampleTest(
       "rebuilds the published schema when an imported type changes",
       async ({ context, page }) => {
-        base.skip(server !== "dev", "Production builds do not rebuild.");
+        exampleTest.skip(server !== "dev", "Production builds do not rebuild.");
         original = await readFile(counterModePath, "utf8");
         const changed = original.replace('"double"', '"triple"');
         expect(changed).not.toBe(original);
@@ -304,6 +474,97 @@ export function devRebuildTests({
         // own reloads aborts ours, it reloads the page all the same.
         while (!(await publishedModeSchema()).includes('"triple"'))
           await page.reload().catch(() => {});
+      }
+    );
+  });
+}
+
+/** The sessionStorage key only the page client's code contains. */
+const agentConnectionMarker = "ayme:agent-connection";
+
+/** Collects the text of every script the page loads from now on. */
+function loadedScripts(page: Page) {
+  const scripts: Promise<string>[] = [];
+  page.on("response", (response) => {
+    if (response.request().resourceType() === "script")
+      scripts.push(response.text().catch(() => ""));
+  });
+  return () => Promise.all(scripts);
+}
+
+/**
+ * The Agent Connection, which the app turns on with its own flag. Where
+ * `enabled()` holds, a coding agent's MCP client pairs with `/` through a
+ * connect link and calls the page's `snapshot` tool, whose structure contains
+ * `snapshotText`. Elsewhere, such as a production build, the page loads no
+ * Agent Connection code and opens no WebSocket.
+ */
+export function agentConnectionTests({
+  enabled,
+  snapshotText,
+}: {
+  /** Whether the run's app turns the option on; read inside each test. */
+  enabled: () => boolean;
+  snapshotText: string;
+}) {
+  // `exampleTest`, not `test`: Angular's development build logs its
+  // hydration statistics, which `test` counts as a hydration warning.
+  exampleTest.describe("agent connection", () => {
+    exampleTest(
+      "pairs a coding agent through a connect link and runs a page tool",
+      async ({ page, baseURL }) => {
+        exampleTest.skip(
+          !enabled(),
+          "The app turns the Agent Connection off here."
+        );
+        const scripts = loadedScripts(page);
+        // Outside the range a page's auto-pair scan probes, so another
+        // example's page running beside this one never pairs with it.
+        const agent = await startAgent("--port", String(await freePort()));
+        try {
+          // A dev server may compile the page on its first request, which
+          // takes over 10 s on CI.
+          await connectPage(agent, page, new URL("/", baseURL).href, {
+            timeout: 45_000,
+          });
+          // The marker the test with the option off looks for is in the client.
+          expect(
+            (await scripts()).some((script) =>
+              script.includes(agentConnectionMarker)
+            )
+          ).toBe(true);
+
+          const { text, isError } = await agent.call("snapshot");
+
+          expect(isError, text).toBe(false);
+          expect(
+            (JSON.parse(text) as { structure: string }).structure
+          ).toContain(snapshotText);
+        } finally {
+          await agent.close();
+        }
+      }
+    );
+
+    exampleTest(
+      "loads no Agent Connection code with the option off",
+      async ({ page }) => {
+        exampleTest.skip(
+          enabled(),
+          "The app turns the Agent Connection on here."
+        );
+        const sockets: string[] = [];
+        page.on("websocket", (socket) => sockets.push(socket.url()));
+        const scripts = loadedScripts(page);
+
+        await page.goto("/", { waitUntil: "networkidle" });
+
+        expect(
+          (await scripts()).filter((script) =>
+            script.includes(agentConnectionMarker)
+          )
+        ).toEqual([]);
+        expect(sockets).toEqual([]);
       }
     );
   });
