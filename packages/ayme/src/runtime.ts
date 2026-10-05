@@ -106,9 +106,11 @@ export type AymeOptions = {
   webMCP?: AymeWebMcpOptions;
   /**
    * Mounts the Inspector from the optional `@ayme-dev/inspector` package while
-   * the session is started in the browser. Off unless `true`.
+   * the session is started in the browser. Off unless set. `true` mounts it
+   * with no demo; `{ demo: true }` also pauses before each action and shows a
+   * click cue, for every call, whoever makes it.
    */
-  inspector?: boolean;
+  inspector?: boolean | { demo: boolean };
   /**
    * The application's router navigation. The `navigate` tool calls it with
    * the resolved URL of a page on the document's own origin instead of
@@ -132,19 +134,29 @@ type Registration = {
   active?: { dispose(): void };
 };
 
+/** What the `inspector` option turns on: nothing, the Inspector, or its demo too. */
+function inspectorMode({ inspector }: AymeOptions) {
+  if (!inspector) return "off";
+  return inspector !== true && inspector.demo ? "demo" : "on";
+}
+
 /**
  * Whether two option objects configure the same runtime session: every option
- * is the same value, and `webMCP` has the same fields. The framework owners
- * use it to keep their options fixed while mounted.
+ * is the same value, `webMCP` has the same fields, and `inspector` turns on
+ * the same. The framework owners use it to keep their options fixed while
+ * mounted.
  */
 export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-  return [...keys].every((key) =>
-    key === "webMCP"
-      ? a.webMCP?.enabled === b.webMCP?.enabled &&
+  return [...keys].every((key) => {
+    if (key === "webMCP")
+      return (
+        a.webMCP?.enabled === b.webMCP?.enabled &&
         a.webMCP?.toolNamePrefix === b.webMCP?.toolNamePrefix
-      : a[key as keyof AymeOptions] === b[key as keyof AymeOptions]
-  );
+      );
+    if (key === "inspector") return inspectorMode(a) === inspectorMode(b);
+    return a[key as keyof AymeOptions] === b[key as keyof AymeOptions];
+  });
 }
 
 function createServerPageObject<T extends object>(
@@ -394,7 +406,11 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         setStatus(initialStatus);
         setStarted(ayme);
         void retryPublication();
-        if (options.inspector) mountInspectorUntil(controller.signal);
+        const inspector = inspectorMode(options);
+        if (inspector !== "off")
+          mountInspectorUntil(controller.signal, {
+            demo: inspector === "demo",
+          });
       } catch (error) {
         stop();
         throw error;
@@ -409,10 +425,10 @@ export function createAyme(options: AymeOptions = {}): Ayme {
 }
 
 // A load failure stays an unhandled rejection, so it reaches the console.
-function mountInspectorUntil(signal: AbortSignal) {
+function mountInspectorUntil(signal: AbortSignal, options: { demo: boolean }) {
   void loadInspector().then(({ mountInspector }) => {
     if (signal.aborted) return;
-    const inspector = mountInspector();
+    const inspector = mountInspector(options);
     signal.addEventListener("abort", () => inspector.dispose(), {
       once: true,
     });

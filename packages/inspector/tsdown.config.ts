@@ -7,7 +7,6 @@ export default defineConfig({
   dts: true,
   entry: {
     index: "src/index.ts",
-    demo: "src/demo/index.ts",
     testing: "src/testing/index.ts",
   },
   format: ["esm"],

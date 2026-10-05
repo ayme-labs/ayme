@@ -24,6 +24,16 @@ async function openWithInspectorCollapsed(page: Page) {
   await new Inspector(page).collapse();
 }
 
+/**
+ * Opens the playground once the Inspector is on it, for a test that calls
+ * tools as an agent. Tool calls pass through the panel once it is mounted; a
+ * call already running when it mounts over the call's target does not.
+ */
+async function openWithInspector(page: Page) {
+  await page.goto("/");
+  await new Inspector(page).open();
+}
+
 type ListActions = {
   addItem(text: string): Promise<void>;
   archiveItem(index: number): Promise<void>;
@@ -297,7 +307,7 @@ test("publishes the current page as ref-bearing ARIA state", async ({
 test("runs the same POM behavior through registered WebMCP tools", async ({
   page,
 }) => {
-  await page.goto("/");
+  await openWithInspector(page);
   await expect
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);
@@ -329,7 +339,7 @@ test("runs the same POM behavior through registered WebMCP tools", async ({
 test("publishes collection tools only while a component root is live", async ({
   page,
 }) => {
-  await page.goto("/");
+  await openWithInspector(page);
   await expect
     .poll(async () => await recordedToolNames(page))
     .toEqual(initialToolNames);

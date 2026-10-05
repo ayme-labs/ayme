@@ -75,3 +75,16 @@ it("delays the delegated action without changing its timeout option", async () =
   await pending;
   expect(click).toHaveBeenCalledExactlyOnceWith({ timeout: 10 });
 });
+
+it("paces a Page wrapped again by the latest options only", async () => {
+  vi.useFakeTimers();
+  const rawPage = createPage();
+  const rawLocator = rawPage.locator("button");
+  vi.spyOn(rawPage, "locator").mockReturnValue(rawLocator);
+  const click = vi.spyOn(rawLocator, "click").mockResolvedValue();
+  withDemoFeedback(rawPage, { beforeActionMs: 50, onTrace: vi.fn() });
+  const page = withDemoFeedback(rawPage, { onTrace: vi.fn() });
+
+  await page.locator("button").click();
+  expect(click).toHaveBeenCalledOnce();
+});

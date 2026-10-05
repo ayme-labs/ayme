@@ -39,7 +39,7 @@ usePageObject(ListPage);
 
 `webMCP.enabled` turns publication on; it is off unless set. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
 
-This example passes a custom page from `useDemoTrace` to add slow typing, click cues, and trace recording. `AgentPanel.vue` holds the agent wizard: it loads the local relay embed when the visitor connects, and reports what the embed says about the relay. It also passes `ignore` to keep the site header out of Structural Page State. These helpers support the demo and are optional for applications.
+This example turns the Inspector on with `inspector: { demo: true }`, so each action pauses briefly and each click shows a cue. `AgentPanel.vue` holds the agent wizard: it loads the local relay embed when the visitor connects, and reports what the embed says about the relay. It also passes `ignore` to keep the site header out of Structural Page State. These helpers support the demo and are optional for applications.
 
 Disabling publication does not remove Ayme or Page Object code from the bundle.
 

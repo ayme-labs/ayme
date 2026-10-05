@@ -154,6 +154,31 @@ it("C1: passes navigate from the provider to the runtime session", () => {
   );
 });
 
+it("passes the provider's inspector demo setting and keeps it fixed across renders", async () => {
+  await withoutInspectorLoad();
+  const errors: unknown[] = [];
+  const count = ref(0);
+  const app = createApp({
+    render: () =>
+      h(
+        AymeProvider,
+        { pageFactory, inspector: { demo: true } },
+        { default: () => count.value }
+      ),
+  });
+  app.config.errorHandler = (error) => errors.push(error);
+  app.config.warnHandler = (message) => errors.push(message);
+  apps.push(app);
+  app.mount(document.createElement("div"));
+
+  count.value += 1;
+  await nextTick();
+  expect(errors).toEqual([]);
+  expect(createAyme).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ inspector: { demo: true } })
+  );
+});
+
 it("returns the session as ayme, so a goal runs through it, and its webMCP member", async () => {
   const goalLoop = vi.fn(async () => {
     throw new Error("No decision.");

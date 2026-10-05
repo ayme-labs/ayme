@@ -88,7 +88,7 @@ it("mounts the Inspector while a session with inspector is started", async () =>
   sessions.push(runtime);
   const stop = start(runtime);
   await flush();
-  expect(mountInspector).toHaveBeenCalledOnce();
+  expect(mountInspector).toHaveBeenCalledExactlyOnceWith({ demo: false });
   stop();
   expect(dispose).toHaveBeenCalledOnce();
 
@@ -96,6 +96,46 @@ it("mounts the Inspector while a session with inspector is started", async () =>
   start(runtime)();
   await flush();
   expect(mountInspector).toHaveBeenCalledOnce();
+});
+
+it("mounts the Inspector in demo mode when inspector asks for it", async () => {
+  const mountInspector = vi.fn(() => ({ dispose: vi.fn() }));
+  vi.mocked(loadInspector).mockResolvedValue({ mountInspector });
+
+  for (const demo of [true, false]) {
+    const runtime = createAyme({
+      pageFactory: () => page,
+      inspector: { demo },
+    });
+    sessions.push(runtime);
+    const stop = start(runtime);
+    await flush();
+    stop();
+  }
+
+  expect(mountInspector.mock.calls).toEqual([
+    [{ demo: true }],
+    [{ demo: false }],
+  ]);
+});
+
+it("compares the inspector option by what it turns on", () => {
+  expect(
+    sameRuntimeOptions(
+      { inspector: { demo: true } },
+      { inspector: { demo: true } }
+    )
+  ).toBe(true);
+  expect(
+    sameRuntimeOptions({ inspector: true }, { inspector: { demo: false } })
+  ).toBe(true);
+  expect(sameRuntimeOptions({ inspector: false }, {})).toBe(true);
+  expect(
+    sameRuntimeOptions({ inspector: true }, { inspector: { demo: true } })
+  ).toBe(false);
+  expect(sameRuntimeOptions({ inspector: true }, { inspector: false })).toBe(
+    false
+  );
 });
 
 it("threads ignore to page state capture for the session lifetime", () => {

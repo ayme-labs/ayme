@@ -8,7 +8,6 @@ import {
   installInspectorInstrumentation,
   mountInspector,
 } from "./index";
-import { withDemoFeedback } from "./demo";
 import { inspectorShadowRoot } from "./shared";
 
 const disposals: (() => void)[] = [];
@@ -66,34 +65,6 @@ it("instruments the default Page before constructing the first Page Object", asy
     .getByRole("button", { name: "Default" })
     .waitFor({ state: "attached" });
 
-  expect(getInspectorTrace()).toHaveLength(1);
-});
-
-it("adds Inspector tracing to an existing feedback Page without double instrumentation", async () => {
-  document.body.innerHTML = "<button>Shared</button>";
-  const demoTrace: unknown[] = [];
-  const page = withDemoFeedback(createPage(), {
-    onTrace(entry) {
-      demoTrace.push(entry);
-    },
-  });
-  disposals.push(installInspectorInstrumentation());
-  class SharedModel {
-    constructor(readonly page: AymePage) {}
-  }
-  registerCompiledPom(SharedModel, {
-    className: "SharedModel",
-    components: [],
-    members: [],
-    tools: [],
-  });
-
-  const instance = createAyme({ pageFactory: () => page }).pom.get(SharedModel);
-  await instance.page
-    .getByRole("button", { name: "Shared" })
-    .waitFor({ state: "attached" });
-
-  expect(demoTrace).toHaveLength(1);
   expect(getInspectorTrace()).toHaveLength(1);
 });
 

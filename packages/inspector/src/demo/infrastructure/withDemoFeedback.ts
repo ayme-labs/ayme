@@ -3,9 +3,7 @@ import { isAymeLocator } from "@ayme-dev/ayme/internal";
 import { isPointerAction, passThroughWhileCovered } from "../../panel";
 import type { TraceEntry } from "../../runs";
 
-export type { TraceEntry } from "../../runs";
-
-export type DemoFeedbackOptions = {
+type DemoFeedbackOptions = {
   beforeActionMs?: number;
   clickCue?: boolean;
   /** Called before each traced operation, with the locator it acts on. */
@@ -29,14 +27,15 @@ export function withDemoFeedback(
   page: Page,
   options: DemoFeedbackOptions
 ): Page {
+  // Wrapped again, as each install of the Inspector does: the latest
+  // options pace and cue it.
   const existing = wrappedPages.get(page);
   if (existing) {
     existing.context.listeners.add(options.onTrace);
-    existing.context.options.beforeActionMs = Math.max(
-      existing.context.options.beforeActionMs ?? 0,
-      options.beforeActionMs ?? 0
-    );
-    existing.context.options.clickCue ||= options.clickCue;
+    existing.context.options = {
+      beforeActionMs: options.beforeActionMs,
+      clickCue: options.clickCue,
+    };
     return existing.proxy;
   }
 

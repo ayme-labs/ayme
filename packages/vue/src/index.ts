@@ -90,7 +90,10 @@ const providerProps = {
     required: false,
   },
   // A default of undefined keeps an absent prop unset, not cast to false.
-  inspector: { type: Boolean, default: undefined },
+  inspector: {
+    type: [Boolean, Object] as PropType<AymeOptions["inspector"]>,
+    default: undefined,
+  },
   navigate: {
     type: Function as PropType<NonNullable<UseAymeOptions["navigate"]>>,
     required: false,
@@ -111,6 +114,10 @@ export const AymeProvider: DefineComponent<UseAymeOptions> = defineComponent({
     const snapshotOptions = (): UseAymeOptions => ({
       ...props,
       webMCP: props.webMCP && { ...props.webMCP },
+      inspector:
+        typeof props.inspector === "object"
+          ? { ...props.inspector }
+          : props.inspector,
     });
     const options = snapshotOptions();
     ownRuntime(options);

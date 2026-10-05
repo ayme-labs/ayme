@@ -11,7 +11,7 @@ Slices, from the bottom up:
 - `structure`: the page state tree, member selection and the Structure lens.
 - `runs`: running a tool, its steps and the trace, and Runs.
 - `tools`: the tool list, the run card and its fields, and ref picking.
-- `demo`: demo feedback on the host page; its `index.ts` is the `./demo` entry.
+- `demo`: the wrapper on the runtime's Pages: the trace Runs records, and demo mode's pause and click cue.
 - `app`: the composition root: mounting, the stylesheet and the wiring of every slice.
 - `testing`: the Inspector POM; its `index.ts` is the `./testing` entry.
 
@@ -47,10 +47,6 @@ Layers, only where a slice has that kind of code: `domain` (pure rules and types
 
 Only infrastructure code, and the mount that installs the Inspector's
 instrumentation, reads `@ayme-dev/ayme` at runtime; components take props.
-
-The playground imports `withDemoFeedback` from `@ayme-dev/inspector/demo` to
-keep its teaching delay and click cue. Applications do not need this
-demo-only entry point.
 
 ## Testing
 
