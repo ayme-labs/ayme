@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 
 /**
  * The messages between the Ayme MCP server and the page client. Both sides
@@ -7,7 +7,7 @@ import { z } from "zod";
 
 /** A tool the page offers, as the page names and describes it. */
 export const PageToolSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().check(z.minLength(1)),
   description: z.string(),
   inputSchema: z.record(z.string(), z.unknown()),
 });
@@ -18,8 +18,8 @@ export const PageToolListSchema = z.array(PageToolSchema);
 
 /** The server asks the page to run one of its tools. */
 export const ToolCallSchema = z.object({
-  callId: z.string().min(1),
-  name: z.string().min(1),
+  callId: z.string().check(z.minLength(1)),
+  name: z.string().check(z.minLength(1)),
   input: z.unknown(),
 });
 export type ToolCall = z.infer<typeof ToolCallSchema>;
@@ -27,12 +27,12 @@ export type ToolCall = z.infer<typeof ToolCallSchema>;
 /** The page's answer to one call: the tool's result, or why it failed. */
 export const ToolCallOutcomeSchema = z.discriminatedUnion("ok", [
   z.object({
-    callId: z.string().min(1),
+    callId: z.string().check(z.minLength(1)),
     ok: z.literal(true),
     result: z.unknown(),
   }),
   z.object({
-    callId: z.string().min(1),
+    callId: z.string().check(z.minLength(1)),
     ok: z.literal(false),
     error: z.string(),
   }),
@@ -44,7 +44,7 @@ export type ToolCallOutcome = z.infer<typeof ToolCallOutcomeSchema>;
  * for this pairing across reloads and navigation, and the document's URL.
  */
 export const PageHelloSchema = z.object({
-  tab: z.string().min(1),
+  tab: z.string().check(z.minLength(1)),
   url: z.string(),
 });
 export type PageHello = z.infer<typeof PageHelloSchema>;
@@ -55,7 +55,7 @@ export type PageHello = z.infer<typeof PageHelloSchema>;
  * reconnects with the full pairing, as a connect link gives it.
  */
 export const PageWelcomeSchema = z.object({
-  token: z.string().min(1).optional(),
+  token: z.optional(z.string().check(z.minLength(1))),
 });
 export type PageWelcome = z.infer<typeof PageWelcomeSchema>;
 

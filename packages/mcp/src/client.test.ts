@@ -38,3 +38,12 @@ it("the built client entry carries no Node built-ins and no server code", () => 
     )
   ).toEqual([]);
 });
+
+it("the built client entry validates with zod/mini, not zod's full build", () => {
+  // `zod` bundles to about 450 kB minified in the browser; `zod/mini` to
+  // about 20 kB.
+  const imports = importsOf("client.mjs");
+  expect(imports.filter((specifier) => specifier.startsWith("zod"))).toEqual([
+    "zod/mini",
+  ]);
+});
