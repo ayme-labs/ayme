@@ -44,11 +44,19 @@ export const NONE_OF_THESE_KEY = "none_of_these";
 /** A chunk holds at most this many elements, leaving room for "none of these". */
 const MAX_CHUNK_ELEMENTS = MAX_CHOICE_OPTIONS - 1;
 
+/**
+ * At most this many Goal Values, so that a question offering every one plus
+ * "none of these" or "leave unset" stays within the cap.
+ */
+export const MAX_GOAL_VALUES = MAX_CHOICE_OPTIONS - 1;
+
 // --- Question ids ---
 //
 // A question is normally identified by its parameter's name. A ref parameter
 // over the cap is asked as several questions, so those carry ids of their own:
-// the parameter's name, a separator, then the chunk's ordinal or "run_off".
+// the parameter's name, a separator, then the chunk's ordinal or "run_off". A
+// list parameter filled from Goal Values asks one question per value, with the
+// value's ordinal; a ref is never a list, so the two never meet.
 // The separator is lengthened until no parameter name of the operation starts
 // with the parameter's name and it, so these ids never equal a parameter name.
 // An answer is mapped back through `ArgumentQuestion.parameter`, never by
@@ -87,6 +95,19 @@ export function runOffQuestionId(
   return `${derivedIdPrefix(parameter, parameterNames)}run_off`;
 }
 
+/**
+ * The id of the question whether the `ordinal`-th Goal Value (1-based) that
+ * fits a list parameter belongs in it, given the names of every parameter of
+ * the operation.
+ */
+export function listValueQuestionId(
+  parameter: string,
+  ordinal: number,
+  parameterNames: readonly string[]
+): string {
+  return `${derivedIdPrefix(parameter, parameterNames)}${ordinal}`;
+}
+
 const parameterNamesOf = (tool: ExecutableTool) =>
   tool.args.map((arg) => arg.name);
 
@@ -99,6 +120,15 @@ type ClosedSet =
   | { kind: "instance"; roots: readonly RegisteredPomRoot[] }
   | { kind: "values"; values: readonly JsonPrimitive[] };
 
+/**
+ * Goal Values: labelled strings or numbers the calling agent passes with a
+ * goal, for the model to pick from where the page offers nothing to pick.
+ */
+export type GoalValues = Readonly<Record<string, string | number>>;
+
+/** The Goal Values a parameter outside the closed sets can take. */
+type FreeKind = "string" | "number" | "integer" | "string_list";
+
 /** One parameter of an operation, classified by what the model may fill. */
 type ArgumentSpec = {
   /** The parameter's name, dotted inside a nested object. */
@@ -110,6 +140,11 @@ type ArgumentSpec = {
   description?: string;
   /** null = a value the model cannot pick from a closed set. */
   closedSet: ClosedSet | null;
+  /**
+   * Outside the closed sets: the Goal Values that fit the parameter. Absent
+   * when none ever can, such as for an object.
+   */
+  free?: FreeKind;
 };
 
 export type ExecutableTool = {
@@ -136,11 +171,26 @@ function closedSetOf(schema: JsonSchema): ClosedSet | null {
   return null;
 }
 
+function freeKindOf(schema: JsonSchema): FreeKind | undefined {
+  switch (schema.type) {
+    case "string":
+    case "number":
+    case "integer":
+      return schema.type;
+    case "array":
+      return schema.items?.type === "string" ? "string_list" : undefined;
+    default:
+      return undefined;
+  }
+}
+
 function specOf(
   parameter: ToolParameter,
-  prefix: readonly string[] = []
+  prefix: readonly string[] = [],
+  closedSet = closedSetOf(parameter.schema)
 ): ArgumentSpec {
   const path = [...prefix, parameter.name];
+  const free = closedSet ? undefined : freeKindOf(parameter.schema);
   return {
     name: path.join("."),
     path,
@@ -148,8 +198,21 @@ function specOf(
     ...(parameter.schema.description
       ? { description: parameter.schema.description }
       : {}),
-    closedSet: closedSetOf(parameter.schema),
+    closedSet,
+    ...(free ? { free } : {}),
   };
+}
+
+/** The parameters of an object schema, each a `ToolParameter`. */
+function parametersOfObjectSchema(schema: JsonSchema): ToolParameter[] {
+  const required = new Set(schema.required ?? []);
+  return Object.entries(schema.properties ?? {}).map(
+    ([name, propertySchema]) => ({
+      name,
+      optional: !required.has(name),
+      schema: propertySchema,
+    })
+  );
 }
 
 /** Read an object schema as the parameters the loop may fill, under `prefix`. */
@@ -157,12 +220,8 @@ function specsOfObjectSchema(
   schema: JsonSchema,
   prefix: readonly string[] = []
 ): ArgumentSpec[] {
-  const required = new Set(schema.required ?? []);
-  return Object.entries(schema.properties ?? {}).map(([name, propertySchema]) =>
-    specOf(
-      { name, optional: !required.has(name), schema: propertySchema },
-      prefix
-    )
+  return parametersOfObjectSchema(schema).map((parameter) =>
+    specOf(parameter, prefix)
   );
 }
 
@@ -172,12 +231,12 @@ function specsOfElementToolSchema(
   targetField: TargetField,
   refFilter: (element: Element) => boolean
 ): ArgumentSpec[] {
-  return specsOfObjectSchema(schema).map((spec) =>
+  return parametersOfObjectSchema(schema).map((parameter) =>
     // Its `ref` or `target` is the Structural Ref it acts on; the elements its
     // filter keeps are the closed set (ADR-0023).
-    spec.name === targetField
-      ? { ...spec, closedSet: { kind: "ref", filter: refFilter } }
-      : spec
+    parameter.name === targetField
+      ? specOf(parameter, [], { kind: "ref", filter: refFilter })
+      : specOf(parameter)
   );
 }
 
@@ -269,12 +328,14 @@ export type ArgumentOption = {
   value?: AriaRef | JsonPrimitive;
 };
 
-export type ArgumentQuestion = {
+type QuestionBase = {
   /**
    * The question id in the request. It is the parameter's name, except for a
    * ref parameter whose elements outnumber the cap: each chunk of its options
    * is one question (`chunkQuestionId`), and a run-off among the chunks'
-   * answers is another (`runOffQuestionId`). Neither equals a parameter name.
+   * answers is another (`runOffQuestionId`); and for a list parameter, whose
+   * every Goal Value is one question (`listValueQuestionId`). None equals a
+   * parameter name.
    */
   id: string;
   /** The parameter the answer fills: its name, dotted inside a nested object. */
@@ -282,15 +343,37 @@ export type ArgumentQuestion = {
   /** Where the chosen value goes in the operation's input. */
   path: readonly string[];
   instructions: string;
+};
+
+/** One option to choose for a parameter, or for a chunk or run-off of a ref. */
+export type ArgumentQuestion = QuestionBase & {
+  type: "choice";
   options: ArgumentOption[];
 };
+
+/** Whether one Goal Value belongs in a list parameter. */
+export type ListValueQuestion = QuestionBase & {
+  type: "noul";
+  option: ArgumentOption;
+};
+
+export type StageTwoQuestion = ArgumentQuestion | ListValueQuestion;
 
 /** What the loop does with the chosen operation once its schema is read. */
 export type ArgumentPlan =
   /** Run it, after the model answered these questions (none = run it now). */
-  | { kind: "ask"; questions: ArgumentQuestion[] }
-  /** A required value outside the closed sets: the calling agent supplies it. */
-  | { kind: "needs_free_value"; parameters: string[] }
+  | { kind: "ask"; questions: StageTwoQuestion[] }
+  /**
+   * A required value outside the closed sets that no Goal Value fits: the
+   * calling agent supplies it.
+   */
+  | {
+      kind: "needs_free_value";
+      /** Every required parameter, for a direct call. */
+      parameters: string[];
+      /** The required parameters no Goal Value fits. */
+      unfilled: string[];
+    }
   /** No element on the page is one the operation's ref may address. */
   | { kind: "needs_ref_choice"; parameter: string }
   /** The instances of a collection do not make a choice the model can answer. */
@@ -350,6 +433,36 @@ function valueOptions(values: readonly JsonPrimitive[]): ArgumentOption[] {
   }));
 }
 
+function fits(kind: FreeKind, value: string | number): boolean {
+  switch (kind) {
+    case "string":
+    case "string_list":
+      return typeof value === "string";
+    case "number":
+      return typeof value === "number";
+    case "integer":
+      return Number.isInteger(value);
+  }
+}
+
+/**
+ * One option per Goal Value that fits the parameter, in the order of the
+ * values map, keyed by its label. The model reads `label: value`.
+ */
+function goalValueOptions(
+  kind: FreeKind | undefined,
+  values: GoalValues
+): ArgumentOption[] {
+  if (!kind) return [];
+  return Object.entries(values)
+    .filter(([, value]) => fits(kind, value))
+    .map(([label, value]) => ({
+      key: label,
+      description: `${label}: ${value}`,
+      value,
+    }));
+}
+
 /**
  * An answer is matched back by key, so two options of one question must not
  * share one. Keys are read by the model, so a value keeps its own text and
@@ -389,6 +502,8 @@ function argumentInstructions(tool: ExecutableTool, arg: ArgumentSpec): string {
       return `${pickElementSentence(parameter)} ${operation}`;
     case "instance":
       return `Pick the instance this operation acts on as its ${parameter} parameter. ${operation}`;
+    case undefined:
+      return `Pick the Goal Value to use as the ${parameter} parameter of this operation. ${operation}`;
     default:
       return `Pick the value for the ${parameter} parameter of this operation. ${operation}`;
   }
@@ -413,6 +528,7 @@ function chunkedRefQuestions(
     const from = index * size;
     const chunk = options.slice(from, from + size);
     return {
+      type: "choice" as const,
       id: chunkQuestionId(arg.name, index + 1, parameterNamesOf(tool)),
       parameter: arg.name,
       path: arg.path,
@@ -443,6 +559,7 @@ function runOffQuestion(
   named: readonly ArgumentOption[]
 ): ArgumentQuestion {
   return {
+    type: "choice",
     id: runOffQuestionId(chunk.parameter, parameterNamesOf(tool)),
     parameter: chunk.parameter,
     path: chunk.path,
@@ -454,22 +571,88 @@ function runOffQuestion(
   };
 }
 
+/** The extra option of an optional parameter: leave it unset. */
+const leaveUnsetOption = (arg: ArgumentSpec): ArgumentOption => ({
+  key: LEAVE_UNSET_KEY,
+  description: `Leave "${arg.name}" unset; the operation uses its default.`,
+});
+
+/**
+ * One question per Goal Value that fits a list parameter, asked side by side:
+ * does this value belong in the list?
+ */
+function listValueQuestions(
+  tool: ExecutableTool,
+  arg: ArgumentSpec,
+  options: readonly ArgumentOption[]
+): ListValueQuestion[] {
+  return options.map((option, index) => ({
+    type: "noul",
+    id: listValueQuestionId(arg.name, index + 1, parameterNamesOf(tool)),
+    parameter: arg.name,
+    path: arg.path,
+    instructions:
+      `Does the Goal Value "${option.description}" belong in the list ${describeParameter(arg)} of this operation? ` +
+      describeOperation(tool),
+    option,
+  }));
+}
+
 /**
  * Decide what the chosen operation still needs: questions the model can
- * answer from closed sets, or a value only the calling agent can supply.
+ * answer from closed sets and Goal Values, or a value only the calling agent
+ * can supply.
  */
 export function planArguments(
   tool: ExecutableTool,
-  capture: PageStateCapture
+  capture: PageStateCapture,
+  values: GoalValues = {}
 ): ArgumentPlan {
-  if (tool.args.some((arg) => !arg.optional && arg.closedSet === null))
-    return { kind: "needs_free_value", parameters: tool.requiredParams };
+  const unfilled = tool.args
+    .filter(
+      (arg) =>
+        !arg.optional &&
+        arg.closedSet === null &&
+        goalValueOptions(arg.free, values).length === 0
+    )
+    .map((arg) => arg.name);
+  if (unfilled.length > 0)
+    return {
+      kind: "needs_free_value",
+      parameters: tool.requiredParams,
+      unfilled,
+    };
 
-  const questions: ArgumentQuestion[] = [];
+  const questions: StageTwoQuestion[] = [];
   for (const arg of tool.args) {
     const closedSet = arg.closedSet;
-    // An optional parameter outside the closed sets is left out.
-    if (!closedSet) continue;
+    if (!closedSet) {
+      const candidates = goalValueOptions(arg.free, values);
+      // An optional parameter no Goal Value fits is left out.
+      if (candidates.length === 0) continue;
+      if (arg.free === "string_list") {
+        questions.push(...listValueQuestions(tool, arg, candidates));
+        continue;
+      }
+      // MAX_GOAL_VALUES leaves room for the extra option within the cap.
+      questions.push({
+        type: "choice",
+        id: arg.name,
+        parameter: arg.name,
+        path: arg.path,
+        instructions: argumentInstructions(tool, arg),
+        options: withUniqueKeys([
+          ...candidates,
+          arg.optional
+            ? leaveUnsetOption(arg)
+            : {
+                key: NONE_OF_THESE_KEY,
+                description: `None of these Goal Values fits "${arg.name}".`,
+              },
+        ]),
+      });
+      continue;
+    }
 
     const options = withUniqueKeys([
       ...(closedSet.kind === "ref"
@@ -477,14 +660,7 @@ export function planArguments(
         : closedSet.kind === "instance"
           ? instanceOptions(closedSet.roots, capture)
           : valueOptions(closedSet.values)),
-      ...(arg.optional
-        ? [
-            {
-              key: LEAVE_UNSET_KEY,
-              description: `Leave "${arg.name}" unset; the operation uses its default.`,
-            },
-          ]
-        : []),
+      ...(arg.optional ? [leaveUnsetOption(arg)] : []),
     ]);
 
     // A ref whose elements outnumber the cap is asked in chunks; other closed
@@ -512,6 +688,7 @@ export function planArguments(
     }
 
     questions.push({
+      type: "choice",
       id: arg.name,
       parameter: arg.name,
       path: arg.path,
@@ -573,15 +750,20 @@ export type StepState = Record<string, unknown>;
 /** The option the model chose for one parameter, exactly as it was offered. */
 export type ChosenOption = { key: string; description: string };
 
-/** The state both stages of one step are decided on. */
+/**
+ * The state both stages of one step are decided on. It carries the Goal
+ * Values as passed, when the calling agent passed them.
+ */
 export function buildStepState(
   goal: string,
+  values: GoalValues | undefined,
   pageTree: StructuralTree,
   pomDefinitionsText: string,
   history: readonly GoalLoopStepRecord[]
 ): StepState {
   return {
     goal,
+    ...(values ? { values } : {}),
     page: renderPage(pageTree),
     page_objects: pomDefinitionsText,
     history,
@@ -624,16 +806,23 @@ export function buildOperationRequest(
 
 /**
  * Stage two: the chosen operation's arguments, asked in parallel. The chunks of
- * a ref over the cap are questions like any other, so they travel in the same
- * request with the page state sent once. A run-off is the same request shape
- * with its one question.
+ * a ref over the cap and the Goal Values of a list are questions like any
+ * other, so they travel in the same request with the page state sent once. A
+ * run-off is the same request shape with its one question.
  */
 export function buildArgumentRequest(
   state: StepState,
-  argumentQuestions: readonly ArgumentQuestion[]
+  argumentQuestions: readonly StageTwoQuestion[]
 ): DecisionRequest {
   const questions: DecisionQuestions = {};
   for (const question of argumentQuestions) {
+    if (question.type === "noul") {
+      questions[question.id] = {
+        type: "noul",
+        instructions: question.instructions,
+      };
+      continue;
+    }
     const criteria: Record<string, string> = {};
     for (const option of question.options)
       criteria[option.key] = option.description;
@@ -682,19 +871,26 @@ export function parseOperationAnswer(
   return readChoiceAnswer(answers, "operation");
 }
 
-/** Extract and validate the `goal_met` noul answer from the model response. */
-export function parseGoalMetAnswer(
-  answers: Record<string, unknown>
+function readNoulAnswer(
+  answers: Record<string, unknown>,
+  id: string
 ): NoulAnswer {
-  const raw = answers.goal_met;
+  const raw = answers[id];
   if (
     !raw ||
     typeof raw !== "object" ||
     (raw as Record<string, unknown>).type !== "noul" ||
     !Number.isFinite((raw as Record<string, unknown>).noul)
   )
-    throw new Error("Invalid goal_met answer from decision function.");
+    throw new Error(`Invalid ${id} answer from decision function.`);
   return raw as NoulAnswer;
+}
+
+/** Extract and validate the `goal_met` noul answer from the model response. */
+export function parseGoalMetAnswer(
+  answers: Record<string, unknown>
+): NoulAnswer {
+  return readNoulAnswer(answers, "goal_met");
 }
 
 export type ChosenArguments = {
@@ -707,9 +903,20 @@ export type ChosenArguments = {
   chosen: Record<string, ChosenOption>;
   /** Per question id: the key of the option the model chose. */
   choices: Record<string, string>;
-  /** Per question id: the scores, when the decision function supplied them. */
+  /**
+   * Per question id: the scores, when the decision function supplied them. A
+   * list question's score is under the key of the Goal Value it asked about.
+   */
   probabilities: Record<string, Record<string, number>>;
+  /**
+   * Per list parameter: the Goal Values it holds, in the order of the values
+   * map, each with the score it was included with.
+   */
+  lists: Record<string, ListValuePick[]>;
 };
+
+/** A Goal Value the model included in a list, and its score. */
+type ListValuePick = { question: ListValueQuestion; score: number };
 
 /** What was answered, per question id, whether or not an action follows. */
 export type AnswerRecord = Pick<ChosenArguments, "choices" | "probabilities">;
@@ -724,7 +931,9 @@ export type ArgumentAnswers =
    */
   | { kind: "run_off"; chosen: ChosenArguments; question: ArgumentQuestion }
   /** Every chunk of one parameter answered "none of these". */
-  | ({ kind: "none_fits"; parameter: string } & AnswerRecord);
+  | ({ kind: "none_fits"; parameter: string } & AnswerRecord)
+  /** No Goal Value fits a required parameter, by the model's answer. */
+  | ({ kind: "needs_value"; parameter: string } & AnswerRecord);
 
 /**
  * The option the model picked for one question. Model output is never read as
@@ -751,6 +960,42 @@ function readPick(
   return chosen;
 }
 
+/**
+ * Read whether a Goal Value belongs in its list. The score is recorded under
+ * the question id, keyed by the value's label.
+ */
+function readListValue(
+  question: ListValueQuestion,
+  answers: Record<string, unknown>,
+  record: AnswerRecord
+): number {
+  const { noul } = readNoulAnswer(answers, question.id);
+  record.probabilities[question.id] = { [question.option.key]: noul };
+  return noul;
+}
+
+/**
+ * Fill a list parameter with the Goal Values included, in order. Its chosen
+ * option joins theirs, as offered.
+ */
+function chooseList(
+  into: ChosenArguments,
+  parameter: string,
+  picks: readonly ListValuePick[]
+): void {
+  const options = picks.map((pick) => pick.question.option);
+  assignAt(
+    into.args,
+    picks[0]!.question.path,
+    options.map((option) => option.value)
+  );
+  into.chosen[parameter] = {
+    key: options.map((option) => option.key).join(", "),
+    description: options.map((option) => option.description).join(", "),
+  };
+  into.lists[parameter] = [...picks];
+}
+
 /** Record the option chosen for a parameter; one without a value leaves it unset. */
 function choose(
   into: ChosenArguments,
@@ -768,6 +1013,9 @@ function choose(
  * Map each answer back to one of the options that question offered. The
  * chunks of one parameter answer together: the one chunk that named an
  * element decides, several call for a run-off, none means no element fits.
+ * The Goal Values of a list answer together too: every one scored at least
+ * 0.5 is included. A required parameter left without a value, by "none of
+ * these" or by an empty list, needs a value from the calling agent.
  * Every answer is read first, so the choice and scores of every question are
  * recorded even when the step ends without an action. They are recorded into
  * `record`, whose maps the result shares, as each is read: an answer that
@@ -775,7 +1023,7 @@ function choose(
  */
 export function readArgumentAnswers(
   tool: ExecutableTool,
-  argumentQuestions: readonly ArgumentQuestion[],
+  argumentQuestions: readonly StageTwoQuestion[],
   answers: Record<string, unknown>,
   record: AnswerRecord = { choices: {}, probabilities: {} }
 ): ArgumentAnswers {
@@ -784,25 +1032,42 @@ export function readArgumentAnswers(
     chosen: {},
     choices: record.choices,
     probabilities: record.probabilities,
+    lists: {},
   };
-  const picks = argumentQuestions.map((question) => ({
-    question,
-    option: readPick(question, answers, chosen),
-  }));
-
-  const byParameter = new Map<string, typeof picks>();
-  for (const pick of picks) {
-    const group = byParameter.get(pick.question.parameter) ?? [];
-    group.push(pick);
-    byParameter.set(pick.question.parameter, group);
+  const choicePicks: { question: ArgumentQuestion; option: ArgumentOption }[] =
+    [];
+  const listPicks: ListValuePick[] = [];
+  for (const question of argumentQuestions) {
+    if (question.type === "noul")
+      listPicks.push({
+        question,
+        score: readListValue(question, answers, chosen),
+      });
+    else
+      choicePicks.push({
+        question,
+        option: readPick(question, answers, chosen),
+      });
   }
+
+  const required = (parameter: string) =>
+    tool.args.some((arg) => arg.name === parameter && !arg.optional);
+  const needsValue = (parameter: string): ArgumentAnswers => ({
+    kind: "needs_value",
+    parameter,
+    choices: chosen.choices,
+    probabilities: chosen.probabilities,
+  });
 
   // Only a `ref` is chunked and an operation has one, so at most one run-off.
   let runOff: ArgumentQuestion | undefined;
-  for (const [parameter, group] of byParameter) {
+  for (const [parameter, group] of groupByParameter(choicePicks)) {
     const named = group.filter((pick) => "value" in pick.option);
-    // A lone question: an option without a value leaves the parameter unset.
+    // A lone question: an option without a value leaves the parameter unset,
+    // or, for a required one, says no Goal Value fits it.
     if (group.length === 1) {
+      if (named.length === 0 && required(parameter))
+        return needsValue(parameter);
       choose(chosen, group[0]!.question, group[0]!.option);
       continue;
     }
@@ -823,9 +1088,28 @@ export function readArgumentAnswers(
       );
   }
 
+  for (const [parameter, group] of groupByParameter(listPicks)) {
+    const included = group.filter((pick) => pick.score >= 0.5);
+    if (included.length > 0) chooseList(chosen, parameter, included);
+    // An optional list nothing belongs in stays unset.
+    else if (required(parameter)) return needsValue(parameter);
+  }
+
   return runOff
     ? { kind: "run_off", chosen, question: runOff }
     : { kind: "chosen", chosen };
+}
+
+function groupByParameter<T extends { question: QuestionBase }>(
+  picks: readonly T[]
+): Map<string, T[]> {
+  const byParameter = new Map<string, T[]>();
+  for (const pick of picks) {
+    const group = byParameter.get(pick.question.parameter) ?? [];
+    group.push(pick);
+    byParameter.set(pick.question.parameter, group);
+  }
+  return byParameter;
 }
 
 /** Read the run-off's answer and complete the arguments with it. */
@@ -838,10 +1122,35 @@ export function readRunOffAnswer(
     chosen: { ...runOff.chosen.chosen },
     choices: { ...runOff.chosen.choices },
     probabilities: { ...runOff.chosen.probabilities },
+    lists: { ...runOff.chosen.lists },
   };
   const option = readPick(runOff.question, answers, chosen);
   choose(chosen, runOff.question, option);
   return chosen;
+}
+
+/**
+ * A select element that holds one option at a time is sent one value: of a
+ * list sent to it, only the Goal Value scored highest is kept, the first of
+ * them on a tie. Applied once the element the operation acts on is chosen.
+ * `select_option` is the Browser Tool this is for.
+ */
+export function fitListsToTarget(
+  tool: ExecutableTool,
+  chosen: ChosenArguments,
+  capture: PageStateCapture
+): void {
+  const target = tool.args.find((arg) => arg.closedSet?.kind === "ref");
+  const ref = target && chosen.args[target.name];
+  const element =
+    ref === undefined ? undefined : capture.elementsByRef.get(ref as AriaRef);
+  if (!(element instanceof HTMLSelectElement) || element.multiple) return;
+  for (const [parameter, picks] of Object.entries(chosen.lists)) {
+    const top = picks.reduce((best, pick) =>
+      pick.score > best.score ? pick : best
+    );
+    chooseList(chosen, parameter, [top]);
+  }
 }
 
 /** Put a chosen value where the operation's input expects it. */

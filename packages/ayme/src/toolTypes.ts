@@ -1,6 +1,7 @@
 import type { PlaywrightLocatorString } from "@ayme-dev/core/structural-observation";
 import type { ActionResult } from "./actionSequence";
 import type { Handover } from "./goalLoop";
+import type { GoalValues } from "./goalLoopQuestions";
 import type { PageContextPayload } from "./pageContext";
 
 /** A Structural Ref from the page snapshot, or a selector that matches exactly one element. */
@@ -62,7 +63,15 @@ export type BuiltInTools = {
   navigate_forward: { input: Record<string, never>; result: ActionResult };
   reload: { input: Record<string, never>; result: ActionResult };
   snapshot: { input: { names?: string[] }; result: PageContextPayload };
-  goal: { input: { goal: string; maxSteps: number }; result: Handover };
+  goal: {
+    input: {
+      goal: string;
+      maxSteps: number;
+      /** Goal Values: labelled strings or numbers the loop may pick from. */
+      values?: GoalValues;
+    };
+    result: Handover;
+  };
 };
 
 /** A tool's input: typed for a built-in tool, any object for the others. */

@@ -12,7 +12,20 @@ import {
  *  fail belong to the run harness's own set, `goalHarness.spec.ts`. */
 useGoalLane("Live goal lane");
 
-test("a goal that names a value the model cannot choose hands over", async ({
+test("a goal given the value it needs adds the item", async ({ page }) => {
+  await page.goto("/");
+  await expect(activeItems(page)).toHaveCount(2);
+
+  const handover = await pursueGoal(page, "Add an item called Milk", 5, {
+    values: { "item name": "Milk" },
+  });
+
+  expect(handover.reason).toBe("done");
+  await expect(activeItems(page)).toHaveCount(3);
+  await expect(activeItems(page).filter({ hasText: "Milk" })).toHaveCount(1);
+});
+
+test("a goal that needs a value it was not given hands over", async ({
   page,
 }) => {
   await page.goto("/");

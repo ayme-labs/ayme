@@ -452,6 +452,15 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
         properties: {
           goal: { type: "string" },
           maxSteps: { type: "integer" },
+          values: {
+            type: "object",
+            description: expect.stringContaining("Goal Values"),
+            additionalProperties: {
+              anyOf: [{ type: "string" }, { type: "number" }],
+            },
+            minProperties: 1,
+            maxProperties: 254,
+          },
         },
         required: ["goal", "maxSteps"],
         additionalProperties: false,

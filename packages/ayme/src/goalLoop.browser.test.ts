@@ -13,6 +13,7 @@ import {
 import type { CustomTool } from "./elementTools";
 import {
   NONE_OF_THESE_KEY,
+  listValueQuestionId,
   chunkQuestionId,
   runOffQuestionId,
 } from "./goalLoopQuestions";
@@ -30,6 +31,13 @@ import {
 
 /** The parameters of the click Browser Tool. */
 const CLICK_PARAMETERS = ["target"];
+
+/** The parameters of the select_option Browser Tool. */
+const SELECT_OPTION_PARAMETERS = ["target", "values"];
+
+/** The id of the list question about select_option's `ordinal`-th Goal Value. */
+const optionValueQuestion = (ordinal: number) =>
+  listValueQuestionId("values", ordinal, SELECT_OPTION_PARAMETERS);
 
 // --- Fixtures ---
 
@@ -121,11 +129,17 @@ type ScriptedChoice = string | { nth: number } | { raw: string };
  */
 type ScriptedArgument = ScriptedChoice | ScriptedChoice[];
 
+/** The score a list question about one Goal Value answers with. */
+type ScriptedNoul = { noul: number };
+
 type ScriptedAnswer = {
   operation: string;
   goal_met: number;
-  /** Per parameter of the chosen operation, or per question id (a run-off). */
-  arguments?: Record<string, ScriptedArgument>;
+  /**
+   * Per parameter of the chosen operation, or per question id (a run-off, or
+   * a list question about one Goal Value).
+   */
+  arguments?: Record<string, ScriptedArgument | ScriptedNoul>;
 };
 
 const asList = (
@@ -139,18 +153,24 @@ const asList = (
  * chunks here, so chunk ids are those of click's parameters.
  */
 function scriptFor(
-  wanted: Record<string, ScriptedArgument>,
+  wanted: Record<string, ScriptedArgument | ScriptedNoul>,
   questionId: string,
   questionCount: number
-): ScriptedArgument | undefined {
+): ScriptedArgument | ScriptedNoul | undefined {
   if (wanted[questionId] !== undefined) return wanted[questionId];
   const parameter = Object.keys(wanted).find((candidate) =>
     Array.from({ length: questionCount }, (_, index) =>
       chunkQuestionId(candidate, index + 1, CLICK_PARAMETERS)
     ).includes(questionId)
   );
-  return parameter === undefined ? undefined : asList(wanted[parameter]);
+  return parameter === undefined
+    ? undefined
+    : asList(wanted[parameter] as ScriptedArgument);
 }
+
+const isNoul = (
+  wanted: ScriptedArgument | ScriptedNoul
+): wanted is ScriptedNoul => typeof wanted === "object" && "noul" in wanted;
 
 /** Answer every argument question without the optional probabilities. */
 function withoutArgumentProbabilities(
@@ -179,6 +199,15 @@ function criteriaOf(request: DecisionRequest): Record<string, Criteria> {
       id,
       question.criteria ?? {},
     ])
+  );
+}
+
+/** The type of every question of a request, by id. */
+function questionTypesOf(request: DecisionRequest): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(request.questions as Record<string, { type: string }>).map(
+      ([id, question]) => [id, question.type]
+    )
   );
 }
 
@@ -241,7 +270,8 @@ function scriptedDecisionFn(
     const criteria = criteriaOf(request);
 
     // Stage two: one choice question per parameter of the chosen operation,
-    // or per chunk of a parameter over the option cap.
+    // or per chunk of a parameter over the option cap, and one noul per Goal
+    // Value of a list parameter.
     if (!criteria.operation) {
       const current = answers[step - 1];
       const wanted = current?.arguments ?? {};
@@ -251,7 +281,9 @@ function scriptedDecisionFn(
         const want = scriptFor(wanted, id, Object.keys(criteria).length);
         if (want === undefined)
           throw new Error(`No scripted argument for "${id}"`);
-        stageTwo[id] = choiceAnswer(options, keyFor(options, want));
+        stageTwo[id] = isNoul(want)
+          ? { type: "noul", noul: want.noul }
+          : choiceAnswer(options, keyFor(options, want));
       }
       return { model: "typesafe/jev-1.13", answers: stageTwo };
     }
@@ -542,6 +574,543 @@ describe("Goal Loop goal in Chromium", () => {
     });
     // No second request: the loop never asks for a tool it cannot fill.
     expect(requests).toHaveLength(1);
+  });
+
+  // --- Goal Values ---
+
+  describe("with Goal Values", () => {
+    it("fills a required string parameter with the Goal Value the model picks", async () => {
+      setupDom();
+      const { requests, decide } = recording(
+        scriptedDecisionFn([
+          {
+            operation: "fill",
+            goal_met: 0.1,
+            arguments: { target: 'textbox "Name"', text: "item name" },
+          },
+          { operation: "none", goal_met: 0.9 },
+        ])
+      );
+      const tool = await getPublishedPursueGoal(decide);
+
+      const result = await tool.execute({
+        goal: "Add an item called Milk",
+        maxSteps: 5,
+        values: { "item name": "Milk", quantity: 2 },
+      });
+
+      expect(result).toMatchObject({
+        reason: "done",
+        history: [
+          {
+            operation: "fill",
+            chosen: {
+              text: { key: "item name", description: "item name: Milk" },
+            },
+            result: "ok",
+            did: 'fill(textbox "Name", item name: Milk)',
+          },
+        ],
+      });
+      expect((document.querySelector("#name") as HTMLInputElement).value).toBe(
+        "Milk"
+      );
+      // The number is never offered to a string parameter.
+      expect(criteriaOf(requests[1]!).text).toEqual({
+        "item name": "item name: Milk",
+        [NONE_OF_THESE_KEY]: expect.any(String),
+      });
+      // Both stages are decided on a state that carries the values as passed.
+      for (const request of requests)
+        expect((request.state as Record<string, unknown>).values).toEqual({
+          "item name": "Milk",
+          quantity: 2,
+        });
+    });
+
+    it("hands over without asking when no Goal Value fits a required parameter", async () => {
+      setupDom();
+      const { requests, decide } = recording(
+        scriptedDecisionFn([{ operation: "fill", goal_met: 0.1 }])
+      );
+      const tool = await getPublishedPursueGoal(decide);
+
+      const result = await tool.execute({
+        goal: "Add an item called Milk",
+        maxSteps: 5,
+        values: { quantity: 2 },
+      });
+
+      expect(withoutChanges(result)).toEqual({
+        reason: "needs_value",
+        next: expect.stringMatching(/goal again .* values/),
+        history: [],
+        needs: { tool: "fill", parameters: ["target", "text"] },
+      });
+      expect(requests).toHaveLength(1);
+    });
+
+    it("hands over, naming the parameter, when the model picks none of the Goal Values", async () => {
+      setupDom();
+      const { requests, decide } = recording(
+        scriptedDecisionFn([
+          {
+            operation: "fill",
+            goal_met: 0.1,
+            arguments: { target: 'textbox "Name"', text: NONE_OF_THESE_KEY },
+          },
+        ])
+      );
+      const tool = await getPublishedPursueGoal(decide);
+
+      const result = await tool.execute({
+        goal: "Add an item called Milk",
+        maxSteps: 5,
+        values: { "list name": "Groceries" },
+      });
+
+      expect(withoutChanges(result)).toEqual({
+        reason: "needs_value",
+        next: 'The operation "fill" needs a value for "text", and the model judged that none of the Goal Values fits. Call goal again with a value for "text" in values, or call fill directly.',
+        history: [],
+        needs: { tool: "fill", parameters: ["text"] },
+      });
+      expect(criteriaOf(requests[1]!).text).toEqual({
+        "list name": "list name: Groceries",
+        [NONE_OF_THESE_KEY]: expect.any(String),
+      });
+      expect((document.querySelector("#name") as HTMLInputElement).value).toBe(
+        ""
+      );
+    });
+
+    async function registerSurveyPom(decide: GoalLoopDecisionFunction) {
+      setupDom();
+      const calls: unknown[][] = [];
+      class App {
+        root = page.locator("main");
+        create(name: string, description?: string) {
+          calls.push([name, description]);
+        }
+      }
+      registerCompiledPom(
+        App,
+        manifest(
+          "App",
+          [root()],
+          [
+            actionWithParameters("create", "App.create", [
+              { name: "name", optional: false, schema: { type: "string" } },
+              {
+                name: "description",
+                optional: true,
+                schema: { type: "string" },
+              },
+            ]),
+          ]
+        )
+      );
+      const tool = await getPublishedPursueGoal(decide);
+      createPageRegistration(App);
+      return { tool, calls };
+    }
+
+    it.each([
+      ["fills", "survey description", "Weekly check-in"],
+      ["leaves unset", "leave_unset", undefined],
+    ])(
+      "%s an optional string parameter from the Goal Values",
+      async (_, description, expected) => {
+        const { requests, decide } = recording(
+          scriptedDecisionFn([
+            {
+              operation: "App.create",
+              goal_met: 0.1,
+              arguments: { name: "survey name", description },
+            },
+            { operation: "none", goal_met: 0.9 },
+          ])
+        );
+        const { tool, calls } = await registerSurveyPom(decide);
+
+        await tool.execute({
+          goal: "Create a survey called Q4 Feedback",
+          maxSteps: 5,
+          values: {
+            "survey name": "Q4 Feedback",
+            "survey description": "Weekly check-in",
+          },
+        });
+
+        expect(Object.keys(criteriaOf(requests[1]!).description!)).toEqual([
+          "survey name",
+          "survey description",
+          "leave_unset",
+        ]);
+        expect(calls).toEqual([["Q4 Feedback", expected]]);
+      }
+    );
+
+    it("leaves an optional parameter unset without asking when no Goal Value fits", async () => {
+      setupDom();
+      const calls: unknown[][] = [];
+      class App {
+        root = page.locator("main");
+        rate(name: string, stars?: number) {
+          calls.push([name, stars]);
+        }
+      }
+      registerCompiledPom(
+        App,
+        manifest(
+          "App",
+          [root()],
+          [
+            actionWithParameters("rate", "App.rate", [
+              { name: "name", optional: false, schema: { type: "string" } },
+              { name: "stars", optional: true, schema: { type: "integer" } },
+            ]),
+          ]
+        )
+      );
+      const { requests, decide } = recording(
+        scriptedDecisionFn([
+          {
+            operation: "App.rate",
+            goal_met: 0.1,
+            arguments: { name: "survey name" },
+          },
+          { operation: "none", goal_met: 0.9 },
+        ])
+      );
+      const tool = await getPublishedPursueGoal(decide);
+      createPageRegistration(App);
+
+      await tool.execute({
+        goal: "Rate the Q4 Feedback survey",
+        maxSteps: 5,
+        values: { "survey name": "Q4 Feedback", score: 4.5 },
+      });
+
+      expect(Object.keys(criteriaOf(requests[1]!))).toEqual(["name"]);
+      expect(calls).toEqual([["Q4 Feedback", undefined]]);
+    });
+
+    it("offers a number parameter any number and an integer parameter whole numbers only", async () => {
+      setupDom();
+      const calls: unknown[][] = [];
+      class App {
+        root = page.locator("main");
+        order(quantity: number, price: number) {
+          calls.push([quantity, price]);
+        }
+      }
+      registerCompiledPom(
+        App,
+        manifest(
+          "App",
+          [root()],
+          [
+            actionWithParameters("order", "App.order", [
+              {
+                name: "quantity",
+                optional: false,
+                schema: { type: "integer" },
+              },
+              { name: "price", optional: false, schema: { type: "number" } },
+            ]),
+          ]
+        )
+      );
+      const { requests, decide } = recording(
+        scriptedDecisionFn([
+          {
+            operation: "App.order",
+            goal_met: 0.1,
+            arguments: { quantity: "count", price: "price" },
+          },
+          { operation: "none", goal_met: 0.9 },
+        ])
+      );
+      const tool = await getPublishedPursueGoal(decide);
+      createPageRegistration(App);
+
+      await tool.execute({
+        goal: "Order three at 2.5 each",
+        maxSteps: 5,
+        values: { product: "Milk", count: 3, price: 2.5 },
+      });
+
+      const stageTwo = criteriaOf(requests[1]!);
+      expect(Object.keys(stageTwo.quantity!)).toEqual([
+        "count",
+        NONE_OF_THESE_KEY,
+      ]);
+      expect(Object.keys(stageTwo.price!)).toEqual([
+        "count",
+        "price",
+        NONE_OF_THESE_KEY,
+      ]);
+      expect(calls).toEqual([[3, 2.5]]);
+    });
+
+    function setupSelect(multiple: boolean) {
+      document.body.innerHTML = `
+        <main>
+          <label>Tags
+            <select id="tags" ${multiple ? "multiple" : ""}>
+              <option>urgent</option>
+              <option>billing</option>
+              <option>spam</option>
+            </select>
+          </label>
+        </main>
+      `;
+      return document.querySelector("#tags") as HTMLSelectElement;
+    }
+
+    const selected = (select: HTMLSelectElement) =>
+      Array.from(select.selectedOptions, (option) => option.value);
+
+    const TAGS = { first: "urgent", second: "billing", third: "spam" };
+
+    it("fills a list parameter with every Goal Value the model includes, in map order", async () => {
+      const select = setupSelect(true);
+      const { requests, decide } = recording(
+        scriptedDecisionFn([
+          {
+            operation: "select_option",
+            goal_met: 0.1,
+            arguments: {
+              target: 'listbox "Tags"',
+              [optionValueQuestion(1)]: { noul: 0.6 },
+              [optionValueQuestion(2)]: { noul: 0.2 },
+              [optionValueQuestion(3)]: { noul: 0.9 },
+            },
+          },
+          { operation: "none", goal_met: 0.9 },
+        ])
+      );
+      const tool = await getPublishedPursueGoal(decide);
+
+      const result = await tool.execute({
+        goal: "Tag it as urgent and spam",
+        maxSteps: 5,
+        values: { ...TAGS, count: 2 },
+      });
+
+      // One noul per string Goal Value, in the same request as the target.
+      const questions = requests[1]!.questions as Record<
+        string,
+        { type: string; instructions: string }
+      >;
+      expect(Object.keys(questions)).toEqual([
+        "target",
+        optionValueQuestion(1),
+        optionValueQuestion(2),
+        optionValueQuestion(3),
+      ]);
+      expect(questions[optionValueQuestion(2)]).toEqual({
+        type: "noul",
+        instructions: expect.stringContaining('"second: billing"'),
+      });
+      expect(selected(select)).toEqual(["urgent", "spam"]);
+      expect(result).toMatchObject({
+        reason: "done",
+        history: [
+          {
+            operation: "select_option",
+            chosen: {
+              values: {
+                key: "first, third",
+                description: "first: urgent, third: spam",
+              },
+            },
+          },
+        ],
+      });
+    });
+
+    it("sends a single select only the Goal Value the model scored highest", async () => {
+      const select = setupSelect(false);
+      const { requests, decide } = recording(
+        scriptedDecisionFn([
+          {
+            operation: "select_option",
+            goal_met: 0.1,
+            arguments: {
+              target: 'combobox "Tags"',
+              [optionValueQuestion(1)]: { noul: 0.6 },
+              [optionValueQuestion(2)]: { noul: 0.95 },
+              [optionValueQuestion(3)]: { noul: 0.7 },
+            },
+          },
+          { operation: "none", goal_met: 0.9 },
+        ])
+      );
+      const tool = await getPublishedPursueGoal(decide);
+
+      const result = await tool.execute({
+        goal: "Tag it as billing",
+        maxSteps: 5,
+        values: TAGS,
+      });
+
+      expect(selected(select)).toEqual(["billing"]);
+      // The target and one noul per Goal Value, in one stage-two request.
+      expect(questionTypesOf(requests[1]!)).toEqual({
+        target: "choice",
+        [optionValueQuestion(1)]: "noul",
+        [optionValueQuestion(2)]: "noul",
+        [optionValueQuestion(3)]: "noul",
+      });
+      expect(result).toMatchObject({
+        history: [
+          {
+            chosen: {
+              values: { key: "second", description: "second: billing" },
+            },
+          },
+        ],
+      });
+    });
+
+    it("hands over when the model includes no Goal Value in a required list", async () => {
+      const select = setupSelect(true);
+      const { requests, decide } = recording(
+        scriptedDecisionFn([
+          {
+            operation: "select_option",
+            goal_met: 0.1,
+            arguments: {
+              target: 'listbox "Tags"',
+              [optionValueQuestion(1)]: { noul: 0.1 },
+              [optionValueQuestion(2)]: { noul: 0.4 },
+              [optionValueQuestion(3)]: { noul: 0.2 },
+            },
+          },
+        ])
+      );
+      const tool = await getPublishedPursueGoal(decide);
+
+      const result = await tool.execute({
+        goal: "Tag it as important",
+        maxSteps: 5,
+        values: TAGS,
+      });
+
+      expect(withoutChanges(result)).toEqual({
+        reason: "needs_value",
+        next: expect.stringContaining(
+          'Call goal again with a value for "values" in values'
+        ),
+        history: [],
+        needs: { tool: "select_option", parameters: ["values"] },
+      });
+      expect(selected(select)).toEqual([]);
+      expect(requests).toHaveLength(2);
+      // The target and one noul per Goal Value, in one stage-two request.
+      expect(questionTypesOf(requests[1]!)).toEqual({
+        target: "choice",
+        [optionValueQuestion(1)]: "noul",
+        [optionValueQuestion(2)]: "noul",
+        [optionValueQuestion(3)]: "noul",
+      });
+    });
+
+    it("leaves an optional list unset when the model includes no Goal Value", async () => {
+      setupDom();
+      const calls: unknown[] = [];
+      class App {
+        root = page.locator("main");
+        tag(labels?: string[]) {
+          calls.push(labels);
+        }
+      }
+      registerCompiledPom(
+        App,
+        manifest(
+          "App",
+          [root()],
+          [
+            actionWithParameters("tag", "App.tag", [
+              {
+                name: "labels",
+                optional: true,
+                schema: { type: "array", items: { type: "string" } },
+              },
+            ]),
+          ]
+        )
+      );
+      const { requests, decide } = recording(
+        scriptedDecisionFn([
+          {
+            operation: "App.tag",
+            goal_met: 0.1,
+            arguments: {
+              [listValueQuestionId("labels", 1, ["labels"])]: { noul: 0.3 },
+            },
+          },
+          { operation: "none", goal_met: 0.9 },
+        ])
+      );
+      const tool = await getPublishedPursueGoal(decide);
+      createPageRegistration(App);
+
+      const result = await tool.execute({
+        goal: "Tag it",
+        maxSteps: 5,
+        values: { label: "urgent" },
+      });
+
+      expect(questionTypesOf(requests[1]!)).toEqual({
+        [listValueQuestionId("labels", 1, ["labels"])]: "noul",
+      });
+      expect(calls).toEqual([undefined]);
+      expect(result).toMatchObject({
+        reason: "done",
+        history: [{ operation: "App.tag", chosen: {}, did: "App.tag()" }],
+      });
+    });
+
+    it("runs without Goal Values when values is undefined", async () => {
+      const { requests, decide } = recording(
+        scriptedDecisionFn([{ operation: "none", goal_met: 0.9 }])
+      );
+      const tool = await registerPom(decide);
+
+      await expect(
+        tool.execute({ goal: "save changes", maxSteps: 5, values: undefined })
+      ).resolves.toMatchObject({ reason: "done" });
+      expect(requests[0]!.state).not.toHaveProperty("values");
+    });
+
+    it.each([
+      ["an empty map", {}],
+      [
+        "more than 254 values",
+        Object.fromEntries(
+          Array.from({ length: 255 }, (_, index) => [`v${index}`, index])
+        ),
+      ],
+      ["a boolean value", { confirm: true }],
+      ["an object value", { item: { name: "Milk" } }],
+      ["a list of values", ["Milk"]],
+    ])(
+      "refuses %s as invalid input before the loop starts",
+      async (_, values) => {
+        const { requests, decide } = recording(scriptedDecisionFn([]));
+        const tool = await registerPom(decide);
+
+        await expect(
+          tool.execute({ goal: "Add Milk", maxSteps: 5, values })
+        ).resolves.toEqual(
+          toolFailure(expect.stringMatching(/^ToolInputError: .*values/))
+        );
+        expect(requests).toEqual([]);
+      }
+    );
   });
 
   // --- Handover reason: action_failed ---
