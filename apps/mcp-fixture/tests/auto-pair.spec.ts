@@ -98,7 +98,42 @@ test("an auto-paired tab reloads and reconnects to its own server, with or witho
   const stored = await page.evaluate(() =>
     sessionStorage.getItem("ayme:agent-connection")
   );
-  expect(JSON.parse(stored!)).toMatchObject({ token: "" });
+  // The server handed the tab its token, which the tab reconnects with.
+  expect(JSON.parse(stored!).token).toMatch(/^[\w-]+$/);
+});
+
+test("an auto-paired tab whose server another one replaced on its port stays unpaired when two servers run", async ({
+  agent,
+  page,
+  scanReaches,
+}) => {
+  const { port } = await serverAddress(agent);
+  scanReaches.add(port);
+  await page.goto("/");
+  await expect
+    .poll(() => agent.pageToolNames(), { message: agent.log })
+    .toContain("snapshot");
+  const second = await startAgent();
+  await agent.close();
+  const third = await startAgent("--port", String(port));
+  try {
+    const secondPort = (await serverAddress(second)).port;
+    scanReaches.add(secondPort);
+    const answered = scanAnswers(page, [port, secondPort]);
+
+    await page.reload();
+    await answered;
+    await page.waitForTimeout(500);
+
+    expect(await third.pageToolNames()).toEqual([]);
+    expect(await second.pageToolNames()).toEqual([]);
+    expect(
+      await page.evaluate(() => sessionStorage.getItem("ayme:agent-connection"))
+    ).toBeNull();
+  } finally {
+    await second.close();
+    await third.close();
+  }
 });
 
 test("while an auto-paired tab reloads, another localhost tab that loads does not pair, and the first tab reconnects", async ({

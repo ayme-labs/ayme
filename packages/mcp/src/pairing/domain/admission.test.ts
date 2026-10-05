@@ -41,8 +41,18 @@ it("refuses a tokenless connection from any other origin", () => {
   }
 });
 
-it("refuses a wrong token and any other path", () => {
+it("tells a page on localhost that its token is not this server's", () => {
+  for (const path of ["/f00e", "/f00", "/other"])
+    expect(admit({ path, origin: "http://localhost:5173", token }), path).toBe(
+      "unknownPairing"
+    );
+});
+
+it("refuses a wrong token from any other origin, and any other path", () => {
+  expect(admit({ path: "/f00e", origin: "https://example.com", token })).toBe(
+    "refused"
+  );
   const origin = "http://localhost:5173";
-  for (const path of ["/f00e", "/f00", "/f00d/", "/other", ""])
+  for (const path of ["/f00d/", "/a/b", ""])
     expect(admit({ path, origin, token }), path).toBe("refused");
 });

@@ -4,11 +4,15 @@
  * - `tokenless`: the page pairs without a token, by auto-pairing; the
  *   server still refuses it when it is busy with another tab (see
  *   `busyRefuses`);
+ * - `unknownPairing`: a page on localhost presents a token that is not this
+ *   server's, as when another server took the port of the one it paired
+ *   with; the server tells it so it forgets that pairing;
  * - `probe`: the page's auto-pair scan asks whether this is an Ayme MCP
  *   server; the server answers by closing with {@link SERVER_IDENTITY};
  * - `refused`: anything else.
  */
-export type Admission = "token" | "tokenless" | "probe" | "refused";
+export type Admission =
+  "token" | "tokenless" | "unknownPairing" | "probe" | "refused";
 
 /** The path a page connects to for auto-pairing, without a token. */
 export const AUTO_PAIR_PATH = "/";
@@ -76,5 +80,6 @@ export function admit({
   if (!isLocalOrigin(origin)) return "refused";
   if (path === AUTO_PAIR_PATH) return "tokenless";
   if (path === PROBE_PATH) return "probe";
+  if (/^\/[^/]+$/.test(path)) return "unknownPairing";
   return "refused";
 }

@@ -50,6 +50,16 @@ export const PageHelloSchema = z.object({
 export type PageHello = z.infer<typeof PageHelloSchema>;
 
 /**
+ * The server's answer to the page's hello. A page that paired without a
+ * token, by auto-pairing, gets the server's token, so the tab keeps and
+ * reconnects with the full pairing, as a connect link gives it.
+ */
+export const PageWelcomeSchema = z.object({
+  token: z.string().min(1).optional(),
+});
+export type PageWelcome = z.infer<typeof PageWelcomeSchema>;
+
+/**
  * The page started loading a new document, which ends its channel: the URL
  * that is loading, and whether it is a reload.
  */
@@ -65,3 +75,11 @@ export type PageLeaving = z.infer<typeof PageLeavingSchema>;
  * its pairing.
  */
 export const DISCONNECTED_CLOSE_CODE = 4001;
+
+/**
+ * The WebSocket close code the server ends a localhost page's channel with
+ * when the page presents a token that is not this server's, as when another
+ * server took the port of the one the tab paired with. The page forgets its
+ * pairing.
+ */
+export const UNKNOWN_PAIRING_CLOSE_CODE = 4002;

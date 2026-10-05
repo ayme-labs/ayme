@@ -23,6 +23,7 @@ export {
 export { pairingLinks } from "./infrastructure/pairingLinks";
 export {
   forgetStoredPairing,
+  storePairing,
   storedPairing,
   storedTabId,
 } from "./infrastructure/storedPairing";

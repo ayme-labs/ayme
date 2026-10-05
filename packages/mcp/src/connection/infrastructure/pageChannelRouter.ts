@@ -7,6 +7,7 @@ import {
   ToolCallOutcomeSchema,
   ToolCallSchema,
   type PageHello,
+  type PageWelcome,
 } from "../../contract";
 import type { PageSession } from "../application/agentConnection";
 
@@ -16,7 +17,7 @@ import type { PageSession } from "../application/agentConnection";
  */
 export type PageChannelContext = {
   page: {
-    hello(hello: PageHello): void;
+    hello(hello: PageHello): PageWelcome;
     /** Resolves once the page said hello and the server paired it. */
     session: Promise<PageSession>;
   };

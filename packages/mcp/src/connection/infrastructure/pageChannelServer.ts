@@ -3,7 +3,11 @@ import { createServer, type Server } from "node:http";
 import { getWSConnectionHandler } from "@trpc/server/adapters/ws";
 import { WebSocketServer, type WebSocket } from "ws";
 
-import { DISCONNECTED_CLOSE_CODE } from "../../contract";
+import {
+  DISCONNECTED_CLOSE_CODE,
+  UNKNOWN_PAIRING_CLOSE_CODE,
+  type PageWelcome,
+} from "../../contract";
 import {
   BUSY_SERVER,
   SERVER_IDENTITY,
@@ -65,9 +69,18 @@ export function createPageChannelServer({
       );
       return;
     }
+    if (admission === "unknownPairing") {
+      sockets.handleUpgrade(request, socket, head, (ws) =>
+        ws.close(
+          UNKNOWN_PAIRING_CLOSE_CODE,
+          "This Ayme MCP server does not know this pairing."
+        )
+      );
+      return;
+    }
     const tokenless = admission === "tokenless";
     sockets.handleUpgrade(request, socket, head, (ws) => {
-      pages.set(ws, acceptPage(connection, ws, tokenless));
+      pages.set(ws, acceptPage(connection, ws, tokenless ? token : undefined));
       handleConnection(ws, request);
     });
   });
@@ -85,13 +98,15 @@ export function createPageChannelServer({
 /**
  * An accepted page connection: the page attaches to `connection` when it
  * says hello and detaches when its socket closes. A page another tab
- * replaced, or one that connected without a token (`tokenless`) while the
- * server is busy with another tab, is closed with `DISCONNECTED_CLOSE_CODE`.
+ * replaced, or one that connected without a token while the server is busy
+ * with another tab, is closed with `DISCONNECTED_CLOSE_CODE`. A page that
+ * connected without a token gets `handOver`, the server's token, in reply
+ * to its hello.
  */
 function acceptPage(
   connection: AgentConnection,
   ws: WebSocket,
-  tokenless: boolean
+  handOver: string | undefined
 ): PageChannelContext["page"] {
   let page: PageSession | undefined;
   let resolveSession!: (page: PageSession) => void;
@@ -113,22 +128,25 @@ function acceptPage(
   });
   return {
     session,
-    hello(hello) {
-      if (page) return;
+    hello(hello): PageWelcome {
+      if (page) return {};
       // Decided at hello, which names the tab, so the tab the server works
-      // with reconnects without a token after a reload or navigation.
+      // with may still connect without a token, as before its token
+      // reached it.
       if (
-        tokenless &&
+        handOver !== undefined &&
         busyRefuses({ busyWith: connection.busyWith, tab: hello.tab })
       ) {
         ws.close(
           DISCONNECTED_CLOSE_CODE,
           "This Ayme MCP server works with another tab; open its connect link to move it here."
         );
-        return;
+        return {};
       }
       page = connection.attach(hello, disconnect);
-      if (page) resolveSession(page);
+      if (!page) return {};
+      resolveSession(page);
+      return handOver === undefined ? {} : { token: handOver };
     },
   };
 }

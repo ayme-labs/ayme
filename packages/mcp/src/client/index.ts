@@ -2,6 +2,7 @@ import { openPageChannel, type PageTools } from "../connection";
 import {
   forgetStoredPairing,
   socketUrl,
+  storePairing,
   storedTabId,
   type Pairing,
 } from "../pairing";
@@ -16,25 +17,46 @@ export type AgentConnectionRuntime = { readonly tools: PageTools };
  * Ayme's setup returns. Ayme calls it for the `agentConnection` option.
  * Each pairing the page learns, such as from a connect link or the tab's
  * stored pairing, opens a channel to that server in place of the previous
- * one. When the server says another tab paired in this tab's place, the
- * tab forgets its pairing. Returns what ends the connection.
+ * one. A page that paired without a token keeps the token the server hands
+ * it, and reconnects with it. When the server says another tab paired in
+ * this tab's place, the tab forgets its pairing; when it does not know the
+ * pairing, the tab forgets it and looks for a server again. Returns what
+ * ends the connection.
  */
 export function startAgentConnection(ayme: AgentConnectionRuntime): {
   dispose(): void;
 } {
   if (typeof window === "undefined") return { dispose() {} };
   let open: { key: string; close(): void } | undefined;
+  let stopSources: (() => void)[] = [];
+  const startSources = () => {
+    for (const stop of stopSources) stop();
+    stopSources = pairingSources.map((source) => source(pair));
+  };
   const pair = (pairing: Pairing) => {
     const tab = storedTabId(pairing);
     const key = `${socketUrl(pairing)} ${tab}`;
     // A connect link and the pairing it stored name the same channel.
     if (open?.key === key) return;
     open?.close();
-    const channel = openPageChannel(socketUrl(pairing), {
+    let current: Pairing = pairing;
+    const channel = openPageChannel(() => socketUrl(current), {
       tab,
+      onWelcome({ token }) {
+        if (!token || current.token) return;
+        current = { address: pairing.address, token };
+        storePairing({ ...current, tab });
+      },
+      onUnknownPairing() {
+        if (open !== opened) return;
+        opened.close();
+        open = undefined;
+        forgetStoredPairing(tab);
+        startSources();
+      },
       onDisconnected() {
-        if (open !== current) return;
-        current.close();
+        if (open !== opened) return;
+        opened.close();
         open = undefined;
         forgetStoredPairing(tab);
         console.info(
@@ -45,16 +67,16 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
     const stops = clientBehaviours.map((behaviour) =>
       behaviour({ tools: ayme.tools, channel })
     );
-    const current = {
+    const opened = {
       key,
       close() {
         for (const stop of stops) stop();
         channel.close();
       },
     };
-    open = current;
+    open = opened;
   };
-  const stopSources = pairingSources.map((source) => source(pair));
+  startSources();
   return {
     dispose() {
       for (const stop of stopSources) stop();

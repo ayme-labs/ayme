@@ -6,7 +6,6 @@ import {
   pairingFromFragment,
 } from "../domain/pairing";
 import { PAIRING_STORAGE_KEY } from "../domain/pairingStorage";
-import { storePairing } from "./storedPairing";
 
 /** How long a probe waits for a port to answer. */
 const PROBE_TIMEOUT_MS = 2000;
@@ -14,8 +13,9 @@ const PROBE_TIMEOUT_MS = 2000;
 /**
  * Pairs a page on `localhost` or `127.0.0.1` by itself when the tab has no
  * connect link and no stored pairing: it probes every port of the server's
- * range and pairs only when exactly one Ayme MCP server answers. The tab
- * keeps the pairing in sessionStorage, without a token.
+ * range and pairs only when exactly one Ayme MCP server answers. It pairs
+ * without a token; the server then hands the page its token, which the
+ * tab keeps like a connect link's.
  */
 export const autoPairing: PairingSource = (onPairing) => {
   let stopped = false;
@@ -23,7 +23,6 @@ export const autoPairing: PairingSource = (onPairing) => {
     void findOnlyServer().then((address) => {
       if (stopped || !address || hasPairing()) return;
       const pairing: Pairing = { address, token: "" };
-      storePairing(pairing);
       onPairing(pairing);
     });
   return () => {
