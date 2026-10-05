@@ -21,10 +21,8 @@ export default async function warmDevServer(config: FullConfig) {
     await ignoreAutoPairScan(context);
     const page = await context.newPage();
     // The published tool shows the app's modules loaded.
-    // 180 s: setup absorbing CI runner load until the e2e suites run as
-    // their own CI stage (#452).
-    await page.goto("/", { timeout: 180_000 });
-    await waitForPublishedTool(page, "ListPage.addItem", { timeout: 180_000 });
+    await page.goto("/", { timeout: 60_000 });
+    await waitForPublishedTool(page, "ListPage.addItem", { timeout: 60_000 });
   } finally {
     await browser.close();
   }
