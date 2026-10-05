@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { arms, type ArmContext } from "./arms.ts";
+import { arms, goalFirstSentence, type ArmContext } from "./arms.ts";
+import { agentSocketPath, aymeMcpVersion } from "./ayme.ts";
 import type { Mission } from "./missions.ts";
 import { createPrompt } from "./prompt.ts";
 
@@ -116,32 +117,44 @@ describe.each([
 ] as const)("the %s arm", (armId, goalLoop) => {
   const arm = arms[armId];
 
-  it("gives the agent the pinned WebMCP local relay on the lab app's origin and no Playwright interface", () => {
+  it("gives the agent Ayme's MCP server, through the proxy to the one the setup starts, and no Playwright interface", () => {
     const servers = arm.mcpServers(armContext);
-    expect(Object.keys(servers)).toEqual(["webmcp-local-relay"]);
-    expect(servers["webmcp-local-relay"].args[0]).toMatch(
-      /@mcp-b\/webmcp-local-relay\/dist\/cli\.mjs$/
-    );
-    expect(servers["webmcp-local-relay"].args).toEqual(
-      expect.arrayContaining(["--widget-origin", "http://localhost:3000"])
-    );
+    expect(Object.keys(servers)).toEqual(["ayme"]);
+    expect(servers.ayme.command).toBe(process.execPath);
+    expect(servers.ayme.args).toEqual([
+      "/run/ayme-mcp-proxy.cjs",
+      agentSocketPath("run-1"),
+    ]);
     expect(arm.browserInterface()).toEqual({
-      name: "@mcp-b/webmcp-local-relay",
-      version: "5.1.0",
+      name: "@ayme-dev/mcp",
+      version: aymeMcpVersion(),
     });
   });
 
-  it("leaves the agent read-only file tools and the relay's tools, but not its page opener", () => {
+  it("leaves the agent read-only file tools and the server's tools, with nothing denied", () => {
     expect(arm.tools).toEqual(["Read", "Glob", "Grep"]);
-    expect(arm.allowedTools).toEqual(["mcp__webmcp-local-relay"]);
-    expect(arm.disallowedTools).toEqual([
-      "mcp__webmcp-local-relay__webmcp_open_page",
-    ]);
+    expect(arm.allowedTools).toEqual(["mcp__ayme"]);
+    expect(arm.disallowedTools).toBeUndefined();
   });
 
-  it("sets the relay and the page up outside the measured window", () => {
+  it("checks the server's build and ports first, and sets the server and the page up outside the measured window", () => {
+    expect(arm.preconditions?.map((p) => p.name)).toEqual([
+      "Ayme MCP server",
+      "Ayme MCP ports",
+    ]);
     expect(arm.setup).toBeTypeOf("function");
     expect(arm.interfaceLine.includes("`goal`")).toBe(goalLoop);
+  });
+});
+
+describe("the Ayme arms' interface lines", () => {
+  it("differ in the goal-first sentence alone", () => {
+    expect(arms["ayme-goal-loop-on"].interfaceLine).toBe(
+      `${arms["ayme-goal-loop-off"].interfaceLine} ${goalFirstSentence}`
+    );
+    expect(goalFirstSentence).toBe(
+      "Hand the goal to the `goal` tool first; use the other tools only if it can't finish."
+    );
   });
 });
 

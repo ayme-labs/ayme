@@ -20,6 +20,10 @@ type Page = {
     options?: { waitUntil?: "load" | "domcontentloaded" }
   ): Promise<unknown>;
   url(): string;
+  evaluate<T, A = undefined>(
+    pageFunction: (argument: A) => T | Promise<T>,
+    argument?: A
+  ): Promise<T>;
   getByRole(role: string, options: { name: string }): Locator;
   getByPlaceholder(text: string): Locator;
   request: {

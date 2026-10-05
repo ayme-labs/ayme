@@ -150,6 +150,7 @@ export async function runOnce(
       labAppPrecondition(labUrl),
       formbricksPreparedPrecondition(formbricksRoot),
       labCheckoutCleanPrecondition(readLabChanges),
+      ...(options.arm.preconditions ?? []),
     ]);
   } catch (error) {
     await rm(runDir, { recursive: true, force: true });

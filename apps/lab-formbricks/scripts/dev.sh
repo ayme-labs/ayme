@@ -51,7 +51,7 @@ if ! survey_scope_ready; then
   survey_scope_ready || fail "The Formbricks survey readiness marker is not set."
 fi
 
-# Lab mode: the page loads the WebMCP local relay embed without a click.
+# Lab mode: the page pairs with a coding agent's Ayme MCP server (the Agent Connection).
 export AYME_LAB=1
 [[ -n "${AYME_OPENROUTER_API_KEY:-}" ]] ||
   printf "AYME_OPENROUTER_API_KEY is not set, so the Goal Loop's Decision Endpoint answers 503.\n"

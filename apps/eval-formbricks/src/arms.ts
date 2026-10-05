@@ -2,20 +2,22 @@
  * The arms: the browser interfaces the same mission is run through. Every arm
  * shares the prompt, model, timeout and isolated Claude Code configuration;
  * an arm contributes only its interface line, its MCP servers, the built-in
- * tools it leaves the agent and the permission rules that let it use them.
+ * tools it leaves the agent, the permission rules that let it use them, and
+ * what it needs checked and set up outside the measured window.
  */
 import { createRequire } from "node:module";
 import path from "node:path";
 
-import { playwrightCliVersion, setUpPlaywrightCli } from "./playwrightCli.ts";
 import {
-  relayMcpServer,
-  relayOpenPageTool,
-  relayPackageName,
-  relayServerName,
-  relayVersion,
-  setUpAymeRelay,
-} from "./relay.ts";
+  aymeMcpPackageName,
+  aymeMcpPreconditions,
+  aymeMcpServer,
+  aymeMcpVersion,
+  aymeServerName,
+  setUpAymeAgent,
+} from "./ayme.ts";
+import { playwrightCliVersion, setUpPlaywrightCli } from "./playwrightCli.ts";
+import type { Precondition } from "./preconditions.ts";
 
 export type ArmId =
   | "playwright-mcp"
@@ -67,6 +69,8 @@ export type Arm = {
   /** Permission rules that stay denied, whatever the interface's own skill allows. */
   disallowedTools?: string[];
   mcpServers: (context: ArmContext) => Record<string, McpServer>;
+  /** What the interface needs before a run starts, checked with the shared preconditions. */
+  preconditions?: Precondition[];
   /**
    * Runs once, after the harness has signed in and before the measured window:
    * installs or materialises what the interface needs outside it.
@@ -94,28 +98,36 @@ function bashCommand(command: string) {
 }
 
 /**
- * An Ayme arm: the page's own WebMCP tools through the pinned WebMCP local
- * relay, and nothing else. The two arms differ in the lab app's Goal Loop
- * switch, which the setup sets before the page loads, and in the one prompt
- * line that names the `goal` tool.
+ * The "on" arm's interface line adds this sentence to the "off" arm's; the
+ * two arms differ in nothing else the agent reads.
+ */
+export const goalFirstSentence =
+  "Hand the goal to the `goal` tool first; use the other tools only if it can't finish.";
+
+/**
+ * An Ayme arm: the page's own tools through Ayme's MCP server, paired with
+ * the page before the agent starts, and nothing else. The two arms differ in
+ * the lab app's Goal Loop switch, which the setup sets before the page loads,
+ * and in the goal-first sentence of the prompt's interface line. The server's
+ * own tools stay: `ayme_connect` only returns a link, which the agent has no
+ * way to open, and the server, busy with its tab, ignores any other tab's
+ * scan, so the agent cannot leave the harness's tab.
  */
 function aymeArm(id: ArmId, goalLoop: boolean): Arm {
+  const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, for every browser interaction: \`snapshot\`, Ayme's Browser Tools and the Page Object Tools of the screen you are on.`;
   return {
     id,
     interfaceLine: goalLoop
-      ? "Use the page's own WebMCP tools, through the `webmcp-local-relay` MCP server, for every browser interaction: Ayme's Browser Tools, the Page Object Tools of the screen you are on, and the `goal` tool. Hand the goal to the `goal` tool first; use the other tools only if it can't finish."
-      : "Use the page's own WebMCP tools, through the `webmcp-local-relay` MCP server, for every browser interaction: Ayme's Browser Tools and the Page Object Tools of the screen you are on.",
+      ? `${interfaceLine} ${goalFirstSentence}`
+      : interfaceLine,
     tools: readOnlyFileTools,
-    allowedTools: [`mcp__${relayServerName}`],
-    // Opens a URL in the machine's default browser, outside the run.
-    disallowedTools: [relayOpenPageTool],
-    mcpServers: ({ startUrl }) => ({
-      [relayServerName]: relayMcpServer(new URL(startUrl).origin),
-    }),
-    setup: (context) => setUpAymeRelay(context, { goalLoop }),
+    allowedTools: [`mcp__${aymeServerName}`],
+    mcpServers: (context) => ({ [aymeServerName]: aymeMcpServer(context) }),
+    preconditions: aymeMcpPreconditions,
+    setup: (context) => setUpAymeAgent(context, { goalLoop }),
     browserInterface: () => ({
-      name: relayPackageName,
-      version: relayVersion(),
+      name: aymeMcpPackageName,
+      version: aymeMcpVersion(),
     }),
   };
 }
