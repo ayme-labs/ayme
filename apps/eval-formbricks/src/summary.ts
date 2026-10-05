@@ -5,7 +5,7 @@
  * files are the callers' job.
  */
 import type { NormalizedResult } from "./normalize.ts";
-import type { TokenUsage } from "./transcript.ts";
+import { totalTokens, type TokenUsage } from "./transcript.ts";
 
 /** The part of a stored result the summary reads. */
 export type SummarizedRun = Pick<
@@ -83,10 +83,6 @@ export type SuiteSummary = {
   /** Things a reader must know before trusting the numbers. */
   notes: string[];
 };
-
-export function totalTokens(usage: TokenUsage) {
-  return usage.input + usage.cacheCreation + usage.cacheRead + usage.output;
-}
 
 /** The mean of the two middle values when the count is even. */
 export function spread(values: (number | null)[]): Spread | null {
@@ -255,7 +251,7 @@ export function renderSummaryMarkdown(summary: SuiteSummary) {
     "",
     `Suite \`${summary.suiteId}\`. Mission: ${list(summary.missions)}. Timeout: ${list(summary.timeoutSeconds.map((s) => `${s} s`))}.`,
     "",
-    "Passes are out of the runs stored for the arm. Each cell is the median, then the lowest and highest in parentheses. Tokens are the agent's input, cache creation, cache read and output tokens added up. Combined cost is the agent's cost plus the Goal Loop's where it ran.",
+    "Passes are out of the runs stored for the arm. Each cell is the median, then the lowest and highest in parentheses. Wall time, tokens and cost are the task turn's alone: the setup turn before it, where Claude Code starts up and loads the arm's skill, is not counted. Tokens are the agent's input, cache creation, cache read and output tokens added up. Combined cost is the agent's cost plus the Goal Loop's where it ran.",
     "",
     "| Arm | Passes | Wall time | Tokens | Combined cost |",
     "| --- | --- | --- | --- | --- |",

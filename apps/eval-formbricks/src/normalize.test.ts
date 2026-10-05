@@ -64,10 +64,17 @@ function artifacts(overrides: Partial<RunArtifacts>): RunArtifacts {
     timeoutSeconds: 600,
     transcript: transcript("complete.jsonl"),
     exitCode: 0,
-    timedOut: false,
-    wallTimeMs: 190000,
-    startedAt: "2026-10-04T10:00:00.000Z",
-    finishedAt: "2026-10-04T10:03:15.000Z",
+    setupTurn: {
+      sentAt: "2026-10-04T10:00:00.000Z",
+      wallTimeMs: 6500,
+      timedOut: false,
+    },
+    taskTurn: {
+      sentAt: "2026-10-04T10:00:06.500Z",
+      wallTimeMs: 190000,
+      timedOut: false,
+    },
+    finishedAt: "2026-10-04T10:03:20.000Z",
     verdict: passed,
     versions: {
       claudeCode: "2.1.200",
@@ -93,23 +100,50 @@ const goalLoopRan = {
   callsWithCost: 2,
 };
 
+// The fixture's two turns: the setup turn (a Skill call, 8,065 tokens, $0.0312) ends with the first
+// result event; the task turn (four browser calls, 48,920 tokens, $0.4633 cumulative) ends with the second.
 describe("a completed run", () => {
   const result = normalizeRun(artifacts({}));
 
-  it("takes tokens and cost from the result event", () => {
+  it("takes tokens from the task turn's result event alone", () => {
     expect(result.tokens).toEqual({
       input: 120,
       cacheCreation: 3000,
       cacheRead: 45000,
       output: 800,
     });
-    expect(result.costUsd).toBe(0.4321);
-    expect(result.combinedCostUsd).toBe(0.4321);
     expect(result.goalLoop).toEqual(noGoalLoop);
     expect(result.setup).toBeNull();
   });
 
-  it("counts tool calls per tool and attributes failures to the tool that failed", () => {
+  it("takes the task turn's cost as the difference of the cumulative costs", () => {
+    expect(result.costUsd).toBeCloseTo(0.4633 - 0.0312, 10);
+    expect(result.combinedCostUsd).toBe(result.costUsd);
+    // The difference is stored free of float noise.
+    expect(String(result.costUsd)).toBe("0.4321");
+  });
+
+  it("keeps the setup turn apart, with its own time, tokens, cost and tool calls", () => {
+    expect(result.setupTurn).toEqual({
+      sentAt: "2026-10-04T10:00:00.000Z",
+      wallTimeMs: 6500,
+      agentReported: { durationMs: 6100, apiDurationMs: 5200 },
+      tokens: { input: 5, cacheCreation: 8000, cacheRead: 0, output: 60 },
+      costUsd: 0.0312,
+      numTurns: 2,
+      toolCalls: {
+        total: 1,
+        failed: 0,
+        byTool: { Skill: { total: 1, failed: 0 } },
+      },
+      finalMessage: "ready",
+    });
+    expect(result.startedAt).toBe("2026-10-04T10:00:06.500Z");
+    expect(result.finishedAt).toBe("2026-10-04T10:03:20.000Z");
+  });
+
+  it("counts the tool calls made after the task message, per tool, with failures attributed to the tool that failed", () => {
+    expect(result.toolCalls.byTool).not.toHaveProperty("Skill");
     expect(result.toolCalls).toEqual({
       total: 4,
       failed: 1,
@@ -164,11 +198,20 @@ describe("a completed run", () => {
         "mcp__playwright__browser_navigate",
       ],
       mcpServers: [{ name: "playwright", status: "connected" }],
-      skills: [],
+      skills: ["playwright-cli"],
       plugins: [],
       permissionMode: "dontAsk",
     });
     expect(result.unparsedTranscriptLines).toBe(0);
+  });
+
+  it("names the setup turn in the summary without adding it to the figures", () => {
+    const summary = summarizeResult(result);
+    expect(summary).toContain("- Wall time: 190.0 s");
+    expect(summary).toContain("- Cost: $0.4321");
+    expect(summary).toContain(
+      "- Setup turn, not counted above: 6.5 s, 8065 tokens, $0.0312, tool calls 1 (0 failed)"
+    );
   });
 
   it("adds the Goal Loop's cost into the combined cost when it is known", () => {
@@ -208,6 +251,8 @@ describe("a run whose result has no usage block", () => {
     expect(result.tokens).toBeNull();
     expect(result.costUsd).toBeNull();
     expect(result.combinedCostUsd).toBeNull();
+    // The setup turn completed as usual; its figures stay.
+    expect(result.setupTurn.costUsd).toBe(0.0312);
   });
 
   it("marks the agent as not completed and keeps the error and the denial", () => {
@@ -224,21 +269,24 @@ describe("a run whose result has no usage block", () => {
   });
 });
 
-describe("a timed-out run", () => {
+describe("a run whose task turn timed out", () => {
   const result = normalizeRun(
     artifacts({
       transcript: transcript("timed-out.jsonl"),
-      timedOut: true,
-      exitCode: 143,
-      wallTimeMs: 600000,
+      taskTurn: {
+        sentAt: "2026-10-04T10:00:06.500Z",
+        wallTimeMs: null,
+        timedOut: true,
+      },
+      exitCode: null,
       verdict: failed,
     })
   );
 
-  it("has no result event, so usage, cost, turns and final message are unavailable", () => {
+  it("has no result event for the task, so its usage, cost, turns and final message are unavailable", () => {
     expect(result.agent.completed).toBe(false);
     expect(result.agent.timedOut).toBe(true);
-    expect(result.agent.exitCode).toBe(143);
+    expect(result.agent.exitCode).toBeNull();
     expect(result.agent.numTurns).toBeNull();
     expect(result.agent.finalMessage).toBeNull();
     expect(result.tokens).toBeNull();
@@ -249,7 +297,7 @@ describe("a timed-out run", () => {
     });
   });
 
-  it("still counts the tool calls made before the timeout", () => {
+  it("still counts the task's tool calls made before the timeout, and keeps the setup turn's apart", () => {
     expect(result.toolCalls).toEqual({
       total: 3,
       failed: 1,
@@ -258,8 +306,16 @@ describe("a timed-out run", () => {
         mcp__playwright__browser_snapshot: { total: 2, failed: 0 },
       },
     });
-    expect(result.wallTimeMs).toBe(600000);
+    expect(result.wallTimeMs).toBeNull();
     expect(result.pass).toBe(false);
+    expect(result.setupTurn.wallTimeMs).toBe(6500);
+    expect(result.setupTurn.tokens).toEqual({
+      input: 5,
+      cacheCreation: 8000,
+      cacheRead: 0,
+      output: 60,
+    });
+    expect(result.setupTurn.toolCalls.total).toBe(1);
   });
 });
 

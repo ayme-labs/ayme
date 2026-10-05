@@ -347,10 +347,17 @@ describe("reading stored files", () => {
       "utf8"
     ).split("\n"),
     exitCode: 0,
-    timedOut: false,
-    wallTimeMs: 190_000,
-    startedAt: "2026-10-04T10:00:00.000Z",
-    finishedAt: "2026-10-04T10:03:15.000Z",
+    setupTurn: {
+      sentAt: "2026-10-04T10:00:00.000Z",
+      wallTimeMs: 6500,
+      timedOut: false,
+    },
+    taskTurn: {
+      sentAt: "2026-10-04T10:00:06.500Z",
+      wallTimeMs: 190_000,
+      timedOut: false,
+    },
+    finishedAt: "2026-10-04T10:03:20.000Z",
     verdict: {
       pass: true,
       checks: {
@@ -385,10 +392,10 @@ describe("reading stored files", () => {
       JSON.parse(JSON.stringify(stored)),
       "result.json"
     );
-    // Recorded in the fixture transcript: 120 + 3000 + 45000 + 800 tokens, $0.4321.
+    // Recorded in the fixture's task turn: 120 + 3000 + 45000 + 800 tokens, $0.4633 cumulative after a $0.0312 setup turn.
     const [arm] = summarize([parsed]).arms;
     expect(arm?.tokens?.median).toBe(48_920);
-    expect(arm?.combinedCostUsd?.median).toBe(0.4321);
+    expect(arm?.combinedCostUsd?.median).toBeCloseTo(0.4321, 10);
     expect(arm?.wallTimeMs?.median).toBe(190_000);
     expect(parsed.versions.claudeCode).toBe("2.1.281");
     expect(parsed.goalLoop).toEqual({ calls: 0, costUsd: null });

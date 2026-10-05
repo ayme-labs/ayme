@@ -60,7 +60,7 @@ import {
   labAppPrecondition,
   labCheckoutCleanPrecondition,
 } from "./preconditions.ts";
-import { createPrompt } from "./prompt.ts";
+import { createPrompt, setupPrompt } from "./prompt.ts";
 import { judgeMission } from "./verdict.ts";
 
 export type RunOptions = {
@@ -111,6 +111,10 @@ export function log(line: string) {
 function gitOutput(cwd: string, args: string[]) {
   const result = spawnSync("git", args, { cwd, encoding: "utf8" });
   return result.status === 0 ? result.stdout.trim() : null;
+}
+
+function seconds(ms: number | null) {
+  return ms === null ? "no result" : `${(ms / 1000).toFixed(1)} s`;
 }
 
 async function writeJson(filePath: string, value: unknown) {
@@ -194,6 +198,7 @@ export async function runOnce(
       log,
     };
     const prompt = createPrompt(mission, options.arm, labUrl);
+    await writeFile(path.join(runDir, "setup-prompt.txt"), setupPrompt);
     await writeFile(path.join(runDir, "prompt.txt"), prompt);
     await writeFile(initPagePath, initPageScript(mission.startUrl));
     await writeJson(mcpConfigPath, {
@@ -212,13 +217,19 @@ export async function runOnce(
       arm: options.arm,
       mcpConfigPath,
       readableDirectories: armSetup?.readableDirectories,
+      setupPrompt,
       prompt,
       timeoutMs: options.timeoutSeconds * 1000,
       transcriptPath: path.join(runDir, "transcript.jsonl"),
       stderrPath: path.join(runDir, "stderr.log"),
     });
+    // Without a completed setup turn there is no measured turn, so there is no result; the transcript stays in the run folder.
+    if (run.task === null)
+      throw new Error(
+        `The run could not complete: ${run.setupFailure ?? "the task was never sent"}. The transcript is in ${runDir}.`
+      );
     log(
-      `Agent finished: exit ${run.exitCode ?? run.signal}, timed out ${run.timedOut}, ${run.lines.length} events.`
+      `Agent finished: exit ${run.exitCode ?? run.signal}, setup turn ${seconds(run.setup.wallTimeMs)}, task turn ${seconds(run.task.wallTimeMs)}, timed out ${run.task.timedOut}, ${run.lines.length} events.`
     );
 
     // Whatever the agent left in the lab app folder must not reach the next run.
@@ -233,9 +244,10 @@ export async function runOnce(
     await writeJson(path.join(runDir, "verdict.json"), verdict);
 
     // The lab app's Decision Endpoint records every Goal Loop call; this run's are the ones in its window.
+    // Calls the Goal Loop made before the task message would be the setup turn's; the window starts with the task.
     const goalLoop = await measureGoalLoop({
       usageFile: decisionUsageFile(formbricksRoot),
-      window: { startedAt: run.startedAt, finishedAt: run.finishedAt },
+      window: { startedAt: run.task.sentAt, finishedAt: run.finishedAt },
       openRouterApiKey: readEnvVariable(openRouterKeyVariable, evalRoot),
       log,
     });
@@ -252,9 +264,8 @@ export async function runOnce(
       timeoutSeconds: options.timeoutSeconds,
       transcript: run.lines,
       exitCode: run.exitCode,
-      timedOut: run.timedOut,
-      wallTimeMs: run.wallTimeMs,
-      startedAt: run.startedAt,
+      setupTurn: run.setup,
+      taskTurn: run.task,
       finishedAt: run.finishedAt,
       verdict,
       versions: {
