@@ -375,8 +375,17 @@ console.log("ok");
   }
 );
 
-it("only core and the inspector declare the Playwright peer, optional in core", () => {
-  for (const name of PUBLISHED_PACKAGES) {
+it("the Playwright peer is optional in core and required by the inspector", () => {
+  // Only core declares the optional peer; the inspector requires it.
+  for (const name of [
+    "ayme",
+    "vue",
+    "react",
+    "svelte",
+    "angular",
+    "inspector",
+    "unplugin-ayme",
+  ]) {
     const manifest = readManifest(path.join(packagesRoot, name));
     expect(manifest.peerDependencies?.["@playwright/test"]).toBe(
       ["ayme", "inspector"].includes(name) ? ">=1.29 <1.63" : undefined
