@@ -32,3 +32,6 @@ apps/example-angular/.angular/
 
 # The Formbricks eval's run artifacts and Claude Code configuration
 /apps/eval-formbricks/results/
+
+# Liquid template for the docs site, which Prettier cannot parse
+docs/guide/_layouts/
