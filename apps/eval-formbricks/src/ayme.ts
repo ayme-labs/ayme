@@ -17,11 +17,12 @@
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { ArmContext, ArmSetup, McpServer } from "./arms.ts";
 import { playwright, viewport, type BrowserContext } from "./browser.ts";
@@ -45,6 +46,17 @@ export function aymeMcpVersion(): string {
 
 /** The MCP server's name in the agent's configuration; its tools are `mcp__ayme__<tool>`. */
 export const aymeServerName = "ayme";
+
+/** The eval's skill for the Ayme arms: how to drive a page through Ayme's MCP server. */
+export const aymeSkillName = "ayme";
+const aymeSkillSource = fileURLToPath(
+  new URL(`../skills/${aymeSkillName}`, import.meta.url)
+);
+
+/** Where Claude Code loads user skills from, inside the run's configuration folder. */
+export function aymeSkillDirectory(configDir: string) {
+  return path.join(configDir, "skills", aymeSkillName);
+}
 
 /**
  * The lab app's Goal Loop switch: with this cookie set before the page loads,
@@ -351,6 +363,11 @@ export async function setUpAymeAgent(
   context: ArmContext,
   options: { goalLoop: boolean }
 ): Promise<ArmSetup> {
+  // The eval's own skill for the Ayme arms, read from the fresh configuration folder, as the
+  // Playwright CLI arm's skill is.
+  const skillDir = aymeSkillDirectory(context.configDir);
+  await cp(aymeSkillSource, skillDir, { recursive: true });
+
   const origin = new URL(context.startUrl).origin;
   const socketPath = agentSocketPath(context.runId);
   const logPath = path.join(context.runDir, "ayme-mcp.log");
@@ -449,7 +466,7 @@ export async function setUpAymeAgent(
     return {
       // Claude Code's own per-call limit must outlast a goal call.
       environment: { MCP_TOOL_TIMEOUT: String(mcpToolTimeoutMs) },
-      readableDirectories: [],
+      readableDirectories: [skillDir],
       evidence,
       dispose,
     };

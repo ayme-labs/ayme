@@ -14,6 +14,7 @@ import {
   aymeMcpServer,
   aymeMcpVersion,
   aymeServerName,
+  aymeSkillName,
   setUpAymeAgent,
 } from "./ayme.ts";
 import { playwrightCliVersion, setUpPlaywrightCli } from "./playwrightCli.ts";
@@ -114,14 +115,15 @@ export const goalFirstSentence =
  * scan, so the agent cannot leave the harness's tab.
  */
 function aymeArm(id: ArmId, goalLoop: boolean): Arm {
-  const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, for every browser interaction: \`snapshot\`, Ayme's Browser Tools and the Page Object Tools of the screen you are on.`;
+  const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, and its \`${aymeSkillName}\` skill for every browser interaction: \`snapshot\`, Ayme's Browser Tools and the Page Object Tools of the screen you are on.`;
   return {
     id,
     interfaceLine: goalLoop
       ? `${interfaceLine} ${goalFirstSentence}`
       : interfaceLine,
-    tools: readOnlyFileTools,
-    allowedTools: [`mcp__${aymeServerName}`],
+    // The skill is invoked through the Skill tool.
+    tools: [...readOnlyFileTools, "Skill"],
+    allowedTools: [`mcp__${aymeServerName}`, `Skill(${aymeSkillName})`],
     mcpServers: (context) => ({ [aymeServerName]: aymeMcpServer(context) }),
     preconditions: aymeMcpPreconditions,
     setup: (context) => setUpAymeAgent(context, { goalLoop }),
