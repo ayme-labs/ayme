@@ -1,6 +1,6 @@
 # Publish tools
 
-How to start Ayme in your app and turn on WebMCP publication, so agents connected to the page see your tools.
+How to start Ayme in your app and turn on WebMCP publication, so agents that run in the browser see your tools.
 
 ## Start Ayme
 
@@ -33,6 +33,12 @@ The call that starts Ayme decides whether its tools are published through WebMCP
 ```ts
 createAyme({ webMCP: { enabled: true, toolNamePrefix: "shop_" } });
 ```
+
+WebMCP publication is for agents that run in the browser and read the page's `document.modelContext`. A coding agent such as Claude Code, Codex or Cursor connects through Ayme's MCP server instead, with or without publication; see [Connect an agent](connect-an-agent.md).
+
+## Give the page WebMCP
+
+Chrome with the WebMCP flag supplies `document.modelContext` natively: open `chrome://flags/#enable-webmcp-testing`, enable the flag and relaunch, as [Chrome's WebMCP guide](https://developer.chrome.com/docs/ai/webmcp) describes. In any other browser, load a WebMCP polyfill, such as [`@mcp-b/global`](https://www.npmjs.com/package/@mcp-b/global) pinned to a version, before your app's entry module. If it loads after Ayme's initial wait, retry publication as [Publication status](#publication-status) describes.
 
 ## What gets published
 

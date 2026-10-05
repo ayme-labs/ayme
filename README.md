@@ -17,7 +17,7 @@ the eval work has produced them; until then this README makes no comparison.
 
 ## How it works
 
-You mark a Page Object Model and the actions to expose. The build plugin compiles them into your app, and when the app runs, Ayme publishes three kinds of tools through WebMCP, the browser's way of offering tools on a page to agents:
+You mark a Page Object Model and the actions to expose. The build plugin compiles them into your app, and when the app runs, Ayme offers three kinds of tools to agents: to a coding agent through Ayme's MCP server, and to agents in the browser through WebMCP, the browser's way of offering tools on a page:
 
 - **Page Object Tools**: your marked actions, such as `ProjectsPage.createProject`.
 - **Browser Tools**: built-in operations on the page, such as `click` and `fill`, aimed at what `snapshot` shows.
@@ -63,7 +63,7 @@ Read the docs at [ayme-labs.github.io/ayme/docs](https://ayme-labs.github.io/aym
 
 ## Your data stays with you
 
-Ayme runs entirely in your app's page. It has no backend and no account, and it sends nothing to Ayme. Page content leaves the page in two ways, both set up by you: a coding agent you connect reads the page through the relay on your machine, and each Goal Loop step goes from your own Decision Endpoint, with your key, to the model provider you chose.
+Ayme runs entirely in your app's page. It has no backend and no account, and it sends nothing to Ayme. Page content leaves the page in two ways, both set up by you: a coding agent you connect reads the page through Ayme's MCP server, which runs on your machine, and each Goal Loop step goes from your own Decision Endpoint, with your key, to the model provider you chose.
 
 ## License
 

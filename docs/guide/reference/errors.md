@@ -34,7 +34,7 @@ A published tool never throws, because WebMCP drops the reason of a rejected cal
 - The text is the error's full message, prefixed with the error's name unless the name is plain `Error`. A browser action failure keeps playwright-lite's name and call log, such as `TimeoutError: locator.click: Timeout 1000ms exceeded.` followed by `Call log:`.
 - The result has no `structuredContent`.
 - Inside the Goal Loop, a failed step does not end the call: the loop records its message in the Handover's history.
-- Whether an MCP client connected through the WebMCP local relay sees `isError` depends on the relay.
+- A coding agent connected through [Ayme's MCP server](../guides/connect-an-agent.md) gets the same text in an MCP result with `isError: true`.
 
 ## Messages
 
