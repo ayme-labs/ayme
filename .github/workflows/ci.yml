@@ -115,6 +115,7 @@ jobs:
       - name: Build the cached packages
         env:
           AFFECTED: ${{ needs.changes.outputs.affected }}
+        shell: bash
         run: |
           set -eo pipefail
           uncached=$(pnpm exec turbo run build $AFFECTED --dry=json \
