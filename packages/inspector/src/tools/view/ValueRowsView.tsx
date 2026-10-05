@@ -91,7 +91,7 @@ export function ValueRowsView({
                   aria-label={`${name} value ${n}`}
                   aria-invalid={row.problem !== undefined}
                   placeholder="value"
-                  className={cn(inputClass, "pr-9")}
+                  className={cn(inputClass, "pr-8")}
                   value={row.value}
                   onChange={(event) => setValue(index, event.target.value)}
                   onKeyDown={(event) => keyDown(index, "value", event)}
@@ -111,7 +111,7 @@ export function ValueRowsView({
                   }
                   disabled={!switchable}
                   className={cn(
-                    "absolute inset-y-1 right-1 flex items-center rounded px-1 font-mono text-[0.625rem] leading-none",
+                    "absolute inset-y-2 right-1.5 flex items-center rounded-sm px-0.75 pt-px font-mono text-[0.5625rem] leading-none",
                     guessed
                       ? "text-muted-foreground/70 hover:bg-muted"
                       : "bg-primary/15 font-semibold text-primary"
