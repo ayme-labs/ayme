@@ -103,7 +103,7 @@ function aymeArm(id: ArmId, goalLoop: boolean): Arm {
   return {
     id,
     interfaceLine: goalLoop
-      ? "Use the page's own WebMCP tools, through the `webmcp-local-relay` MCP server, for every browser interaction: Ayme's Browser Tools, the Page Object Tools of the screen you are on, and the `goal` tool, which you may hand the goal to."
+      ? "Use the page's own WebMCP tools, through the `webmcp-local-relay` MCP server, for every browser interaction: Ayme's Browser Tools, the Page Object Tools of the screen you are on, and the `goal` tool. Hand the goal to the `goal` tool first; use the other tools only if it can't finish."
       : "Use the page's own WebMCP tools, through the `webmcp-local-relay` MCP server, for every browser interaction: Ayme's Browser Tools and the Page Object Tools of the screen you are on.",
     tools: readOnlyFileTools,
     allowedTools: [`mcp__${relayServerName}`],

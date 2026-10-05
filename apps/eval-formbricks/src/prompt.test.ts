@@ -103,6 +103,9 @@ describe("the prompt", () => {
 
   it("names the goal tool only in the Goal Loop on arm's line", () => {
     expect(arms["ayme-goal-loop-on"].interfaceLine).toContain("`goal`");
+    expect(arms["ayme-goal-loop-on"].interfaceLine).toContain(
+      "Hand the goal to the `goal` tool first"
+    );
     expect(arms["ayme-goal-loop-off"].interfaceLine).not.toContain("goal");
   });
 });
