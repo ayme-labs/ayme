@@ -32,8 +32,11 @@ export function openPageChannel(
     onDisconnected,
     onUnknownPairing,
     onClose,
+    WebSocket: WebSocketClass,
   }: {
     hello(): Hello;
+    /** The WebSocket class to connect with; the global one unless given. */
+    WebSocket?: typeof WebSocket;
     onWelcome(welcome: PageWelcome): void;
     onDisconnected(): void;
     onUnknownPairing(): void;
@@ -46,6 +49,7 @@ export function openPageChannel(
   let opened = false;
   const socket = createWSClient({
     url,
+    ...(WebSocketClass ? { WebSocket: WebSocketClass } : {}),
     onOpen() {
       const reopened = opened;
       opened = true;

@@ -55,7 +55,6 @@ it("the built process entry carries no server code", () => {
   expect(
     imports.filter(
       (specifier) =>
-        specifier === "ws" ||
         specifier.startsWith("@modelcontextprotocol/") ||
         specifier.startsWith("@trpc/server")
     )
