@@ -99,6 +99,22 @@ it("shows a Browser Tool's run on the node its target names", () => {
   ).toBe(true);
 });
 
+it("leaves a run from before the page loaded off a node its old refs named", () => {
+  const fillMilk = aRun({
+    toolName: "fill",
+    arguments: { target: "e12", text: "Oat milk" },
+    earlierDocument: true,
+  });
+  const archiveMilkBefore = { ...archiveMilk, earlierDocument: true as const };
+
+  expect(
+    runScope({ kind: "node", ref: "e12" }, memberOf).includes(fillMilk)
+  ).toBe(false);
+  expect(
+    runScope({ kind: "node", ref: "e10" }, memberOf).includes(archiveMilkBefore)
+  ).toBe(true);
+});
+
 it("shows a tool's runs", () => {
   const scope = runScope({ kind: "tool", name: "ListPage.addItem" }, memberOf);
 

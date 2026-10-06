@@ -243,7 +243,7 @@ function RunRow({
           <span className="text-xs whitespace-nowrap text-muted-foreground">
             {run.status === "running"
               ? "Running…"
-              : `${run.durationMs} ms · ${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
+              : `${run.durationMs === undefined ? "" : `${run.durationMs} ms · `}${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
           </span>
         </button>
         {open && (

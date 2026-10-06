@@ -13,7 +13,9 @@ export type RunScope = {
  * runs on it or on the objects inside it; on a Page Object Model, the runs of
  * its actions; on a member, the runs on it or whose steps acted on it; on a
  * structure node, the runs on its ref or on the object it
- * maps to; on a tool, that tool's runs.
+ * maps to; on a tool, that tool's runs. A ref names an element of one
+ * document only, so a run from an earlier document is never on a node by
+ * its refs.
  *
  * @param membersOf the Page Object members a structure node is, by ref.
  * @param within the paths of the object or member at a path and of
@@ -58,10 +60,11 @@ export function runScope(
       return {
         label: "This object",
         includes: (run) =>
-          run.item?.ref === selection.ref ||
-          // A Custom Tool's `ref`, or a Browser Tool's `target`.
-          run.arguments.ref === selection.ref ||
-          run.arguments.target === selection.ref ||
+          (!run.earlierDocument &&
+            (run.item?.ref === selection.ref ||
+              // A Custom Tool's `ref`, or a Browser Tool's `target`.
+              run.arguments.ref === selection.ref ||
+              run.arguments.target === selection.ref)) ||
           paths.some((memberPaths) => isOn(memberPaths, run.objectPath)),
       };
     }

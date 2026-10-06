@@ -44,14 +44,16 @@ const failedOnItem: Run = {
   steps: [],
 };
 
+const before = (run: Run): Run => ({ ...run, earlierDocument: true });
+
 function reloaded(runs: readonly Run[]) {
   return decodeRuns(JSON.parse(JSON.stringify(encodeRuns(runs))));
 }
 
 it("still shows the runs, newest first, with their results and steps", () => {
   expect(reloaded([succeeded, failedOnItem])).toEqual([
-    succeeded,
-    failedOnItem,
+    before(succeeded),
+    before(failedOnItem),
   ]);
 });
 
@@ -66,12 +68,20 @@ it(`keeps only the newest ${keptRuns} runs`, () => {
   );
 });
 
-it("shows a run that was still running as failed with the reload", () => {
-  const running: Run = { ...succeeded, status: "running", result: undefined };
+it("shows a run that was still running as failed with the reload, after an unknown time", () => {
+  const running: Run = {
+    ...succeeded,
+    status: "running",
+    result: undefined,
+    durationMs: undefined,
+  };
 
-  expect(reloaded([running])).toEqual([
-    { ...running, status: "failed", error: reloadedError },
-  ]);
+  const [interrupted] = reloaded([running]);
+
+  expect(interrupted).toEqual(
+    before({ ...running, status: "failed", error: reloadedError })
+  );
+  expect(interrupted).not.toHaveProperty("durationMs");
 });
 
 it("shows nothing when nothing is stored yet", () => {
@@ -86,5 +96,5 @@ it("leaves out a malformed run", () => {
       { ...succeeded, steps: [{ operation: "click", member: 42 }] },
       succeeded,
     ])
-  ).toEqual([succeeded]);
+  ).toEqual([before(succeeded)]);
 });

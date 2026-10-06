@@ -306,12 +306,15 @@ function LastResult({
   onShowRun: (runId: number) => void;
 }) {
   const steps = `${run.steps.length} ${run.steps.length === 1 ? "step" : "steps"}`;
+  // A run interrupted by a reload has no known duration.
+  const duration =
+    run.durationMs === undefined ? "" : ` · ${run.durationMs} ms`;
   const label =
     run.status === "running"
       ? "Running…"
       : run.status === "succeeded"
-        ? `Succeeded · ${run.durationMs} ms · ${steps}`
-        : `Failed · ${run.durationMs} ms`;
+        ? `Succeeded${duration} · ${steps}`
+        : `Failed${duration}`;
   return (
     <div
       role="status"

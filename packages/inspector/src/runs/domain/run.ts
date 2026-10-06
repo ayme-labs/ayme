@@ -59,6 +59,12 @@ export type Run = {
   durationMs?: number;
   /** The calls it made on the page, from the Inspector's own trace. */
   steps: readonly RunStep[];
+  /**
+   * Made before the page last loaded, so the refs it names (its item's, its
+   * `ref` or `target` argument) named elements of that document, not this
+   * one.
+   */
+  earlierDocument?: true;
 };
 
 /** A request to bring one run into view. A new `at` repeats it. */

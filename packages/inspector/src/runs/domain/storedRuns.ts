@@ -15,8 +15,9 @@ export function encodeRuns(runs: readonly Run[]): readonly Run[] {
 }
 
 /**
- * The run history in a stored value, newest first. A malformed run is left
- * out, and one that was still running failed with the reload.
+ * The run history in a stored value, newest first, from an earlier document.
+ * A malformed run is left out, and one that was still running failed with the
+ * reload, after an unknown time.
  */
 export function decodeRuns(stored: unknown): Run[] {
   if (!Array.isArray(stored)) return [];
@@ -49,16 +50,17 @@ function decodeRun(stored: unknown): Run | undefined {
     ...(isItem(stored.item) ? { item: stored.item } : {}),
     arguments: stored.arguments as ToolArguments,
     startedAt: stored.startedAt,
-    ...(typeof stored.durationMs === "number"
-      ? { durationMs: stored.durationMs }
-      : {}),
     steps: stored.steps,
+    earlierDocument: true,
     ...(status === "running"
       ? { status: "failed", error: reloadedError }
       : {
           status,
           ...text("result", stored.result),
           ...text("error", stored.error),
+          ...(typeof stored.durationMs === "number"
+            ? { durationMs: stored.durationMs }
+            : {}),
         }),
   };
 }
