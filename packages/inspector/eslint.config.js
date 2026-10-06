@@ -137,10 +137,12 @@ export default [
   frontDoors(undefined, ["src/*.test.{ts,tsx}"], { tests: true }),
   {
     files: [sourceFiles],
-    // Infrastructure, and the instrumentation that mounts the Inspector.
+    // Infrastructure, the instrumentation that mounts the Inspector, and the
+    // Inspector's own Page Object, which carries the runtime's decorators.
     ignores: [
       "src/**/infrastructure/**",
       "src/app/mountInspector.ts",
+      "src/testing/pom/**",
       ...testFiles,
     ],
     rules: {

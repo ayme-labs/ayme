@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 /** How the Tools lens labels its groups. */
@@ -12,6 +13,7 @@ const groupLabels: readonly ToolGroupLabel[] = [
 ];
 
 /** The Tools lens's tree: the live tools, grouped. */
+@ayme
 export class ToolsLens {
   readonly root: Locator;
 

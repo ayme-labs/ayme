@@ -491,6 +491,9 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../../packages/inspector
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
       react:
         specifier: ^19.0.0
         version: 19.2.8

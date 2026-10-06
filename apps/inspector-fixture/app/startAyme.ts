@@ -5,7 +5,10 @@ import {
   type CustomTool,
 } from "@ayme-dev/ayme";
 import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
-import { mountInspector } from "@ayme-dev/inspector";
+import {
+  INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
+  mountInspector,
+} from "@ayme-dev/inspector";
 
 import { ListPage } from "../pom/ListPage";
 
@@ -49,12 +52,17 @@ function clearTheList() {
   };
 }
 
+const rendersThePage = (element: Element) =>
+  element.hasAttribute(INSPECTOR_PAGE_RENDERING_ATTRIBUTE);
+
 /**
  * Mounts the Inspector, then starts the runtime with a Page Object (the
  * ListPage by default), the way the Ayme integrations do. `mount: "after"`
  * mounts the Inspector once the runtime started with its Page Object, and
  * `mount: "session"` leaves it to the session's `inspector` option. `demo`
- * mounts it in demo mode. The page
+ * mounts it in demo mode. `dogfood` mounts it for dogfooding, turns the
+ * Agent Connection on and registers `alsoRegister`, the Inspector's own
+ * Page Object compiled by the plugin. The page
  * reports its state on <html> so the e2e tests can tell a broken fixture or a
  * runtime that never published from a broken Inspector.
  */
@@ -63,22 +71,32 @@ export function startAyme({
   publish = true,
   mount = "before",
   demo = false,
+  dogfood = false,
+  alsoRegister = [],
 }: {
   PageObject?: PageObjectConstructor;
   publish?: boolean;
   mount?: "before" | "after" | "session";
   demo?: boolean;
+  dogfood?: boolean;
+  alsoRegister?: readonly PageObjectConstructor[];
 } = {}) {
   const root = document.documentElement.dataset;
   try {
-    let inspector = mount === "before" ? mountInspector({ demo }) : undefined;
+    let inspector =
+      mount === "before" ? mountInspector({ demo, dogfood }) : undefined;
     const runtime = createAyme({
       customTools: [markElement],
       goalLoop: clearTheList(),
       webMCP: { enabled: publish },
       inspector: mount === "session" && (demo ? { demo } : true),
+      agentConnection: dogfood,
+      // The Structure lens and the search results render the page state; in
+      // page state they would render themselves, over and over.
+      ignore: dogfood ? rendersThePage : undefined,
     });
     runtime.pom.register(PageObject);
+    for (const Other of alsoRegister) runtime.pom.register(Other);
     const reportRuntime = () => {
       const { state, message } = runtime.webMCP.publicationStatus;
       root.runtime = state;
@@ -86,10 +104,11 @@ export function startAyme({
     };
     const unsubscribe = runtime.webMCP.subscribe(reportRuntime);
     const stop = runtime.start();
-    if (mount === "after") inspector = mountInspector({ demo });
+    if (mount === "after") inspector = mountInspector({ demo, dogfood });
     reportRuntime();
     root.fixture = "ready";
     return () => {
+      for (const Other of alsoRegister) runtime.pom.unregister(Other);
       runtime.pom.unregister(PageObject);
       stop();
       unsubscribe();

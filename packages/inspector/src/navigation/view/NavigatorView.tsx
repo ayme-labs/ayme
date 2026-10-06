@@ -2,6 +2,8 @@ import { SearchIcon } from "lucide-react";
 
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
+import { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "../../shared";
+
 import type { HighlightTarget, OnHover } from "../domain/highlight";
 import type { LegendCounts, Lens, LensId } from "../domain/lens";
 import type { SearchResult } from "../domain/search";
@@ -81,7 +83,11 @@ export function NavigatorView({
       <div className="min-h-0 flex-1 overflow-auto p-1.5">
         {searching ? (
           results.length ? (
-            <ul aria-label="Search results" className="flex flex-col">
+            <ul
+              aria-label="Search results"
+              {...{ [INSPECTOR_PAGE_RENDERING_ATTRIBUTE]: "" }}
+              className="flex flex-col"
+            >
               {results.map((result) => (
                 <li key={result.entry.key}>
                   <button

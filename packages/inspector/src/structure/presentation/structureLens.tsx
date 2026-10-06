@@ -10,7 +10,11 @@ import {
   type StructureRow,
   type StructureTree,
 } from "../domain/structure";
-import { Empty, WhatTheModelSees } from "../../shared";
+import {
+  Empty,
+  INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
+  WhatTheModelSees,
+} from "../../shared";
 import type {
   Lens,
   OnHover,
@@ -134,7 +138,12 @@ function StructureTreeView({
         </p>
       )}
       {rows.length ? (
-        <div role="tree" aria-label="Page structure" className="flex flex-col">
+        <div
+          role="tree"
+          aria-label="Page structure"
+          {...{ [INSPECTOR_PAGE_RENDERING_ATTRIBUTE]: "" }}
+          className="flex flex-col"
+        >
           {rows.map(({ node, depth }, index) =>
             hasRef(node) ? (
               <NodeRow

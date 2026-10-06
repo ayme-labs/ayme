@@ -1,0 +1,8 @@
+{
+  // The Inspector's Page Object alone, for the Ayme build plugin: a page that
+  // dogfoods the Inspector compiles these classes from source, and the plugin
+  // builds a TypeScript Program from the nearest tsconfig for each one. The
+  // package's own tsconfig would make every Program cover all of src/.
+  "extends": "../../../tsconfig.json",
+  "include": ["."]
+}

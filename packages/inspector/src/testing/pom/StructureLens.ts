@@ -1,9 +1,11 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 /**
  * The Structure lens in the navigator: the page's structure as a tree of
  * nodes, each tagged with the Page Object member it maps to.
  */
+@ayme
 export class StructureLens {
   readonly root: Locator;
   readonly tree: Locator;
@@ -41,12 +43,18 @@ export class StructureLens {
   }
 
   /** The member a node is tagged with, in full. */
+  @ayme.action({
+    description: "Reads the Page Object member a node is tagged with, in full.",
+  })
   async memberOf(ref: string): Promise<string | null> {
     const tag = this.node(ref).getByTitle(/./);
     return (await tag.count()) ? tag.getAttribute("title") : null;
   }
 
   /** Selects a node; the page highlights the selected node. */
+  @ayme.action({
+    description: "Selects a node by its ref; the page highlights it.",
+  })
   async pick(ref: string) {
     await this.node(ref).click();
   }

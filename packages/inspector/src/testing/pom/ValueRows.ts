@@ -1,9 +1,11 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 /**
  * A run card's map of labelled values, such as `goal`'s `values`: one row
  * per value, with its label, its value and its type. Rows count from 1.
  */
+@ayme
 export class ValueRows {
   readonly root: Locator;
   /** The schema's description of the map, shown above the rows. */
@@ -53,6 +55,10 @@ export class ValueRows {
    * What the row is sent as: "auto · text" or "auto · number" while the type
    * is guessed from the value, "text" or "number" once fixed.
    */
+  @ayme.action({
+    description:
+      "Reads what a row is sent as: text or number, guessed or fixed.",
+  })
   async typeState(row: number): Promise<string> {
     const type = this.type(row);
     const shown = (await type.textContent()) === "123" ? "number" : "text";

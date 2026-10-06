@@ -2,7 +2,9 @@
 // only tests may import. It uses Playwright's types only and runs on the
 // test's own Playwright `Page` or on playwright-lite's `createPage()`. On
 // Playwright, register its selector engine first: the mounted Inspector
-// lives in a closed shadow root.
+// lives in a closed shadow root. Its classes carry `@ayme`, so a page that
+// dogfoods the Inspector can compile and register it like its own Page
+// Objects; this entry ships without that compiler output.
 export { Inspector } from "./pom/Inspector";
 export { CollapsedLogo } from "./pom/CollapsedLogo";
 export { DetailPane } from "./pom/DetailPane";

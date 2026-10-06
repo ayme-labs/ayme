@@ -1,9 +1,11 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { RunCard } from "./RunCard";
 import { WhatTheModelSees } from "./WhatTheModelSees";
 
 /** A structure node's detail: what it is, who owns it, and its single-element tools. */
+@ayme
 export class NodeView {
   readonly root: Locator;
   /** The node as the page state lists it, e.g. `e3 button "Add item"`. */
@@ -39,6 +41,9 @@ export class NodeView {
   }
 
   /** Opens the Page Object that owns one of its members. */
+  @ayme.action({
+    description: "Opens the Page Object that owns one of the node's members.",
+  })
   async openOwnerOf(member: string) {
     await this.memberLinks.filter({ hasText: member }).first().click();
   }

@@ -1,4 +1,5 @@
 export {
+  INSPECTOR_DOGFOOD_ATTRIBUTE,
   capturePageState,
   getPageStateForElements,
   pageStateNodeEntry,

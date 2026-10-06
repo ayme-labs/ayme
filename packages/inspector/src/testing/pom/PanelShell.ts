@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { dragBy } from "./pointerDrag";
@@ -7,6 +8,7 @@ export type PanelCorner =
   "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
 /** The expanded panel's frame: where it sits and how it resizes. */
+@ayme
 export class PanelShell {
   readonly root: Locator;
 
@@ -22,6 +24,10 @@ export class PanelShell {
     });
   }
 
+  @ayme.action({
+    description:
+      "Resizes the panel from one edge or corner by a distance in pixels.",
+  })
   async resizeBy(
     handle: PanelEdge | PanelCorner,
     deltaX: number,
