@@ -18,7 +18,6 @@ export class ThemeSwitch {
   }
 
   /** The theme it's set to. */
-  @ayme.action({ description: "Reads the theme: System, Light or Dark." })
   async current(): Promise<ThemeChoice> {
     const name = (await this.button.getAttribute("aria-label")) ?? "";
     const current = /^Theme: (\w+)\./.exec(name)?.[1];
@@ -53,7 +52,6 @@ export class LayoutMenu {
   }
 
   /** The layout the panel is in. */
-  @ayme.action({ description: "Reads the layout the panel is in." })
   async current(): Promise<LayoutChoice> {
     const name = (await this.trigger.getAttribute("aria-label")) ?? "";
     return name.replace(/^Layout: /, "") as LayoutChoice;

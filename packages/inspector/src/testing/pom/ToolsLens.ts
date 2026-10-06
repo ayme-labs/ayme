@@ -32,7 +32,6 @@ export class ToolsLens {
   }
 
   /** The listed tools' names, by group, for the groups that list any. */
-  @ayme.action({ description: "Lists the tools' names, by group." })
   async listed(): Promise<Partial<Record<ToolGroupLabel, string[]>>> {
     const listed: Partial<Record<ToolGroupLabel, string[]>> = {};
     for (const label of groupLabels) {

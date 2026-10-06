@@ -34,7 +34,6 @@ export class FillForm {
   }
 
   /** The rows' names, in fill order. */
-  @ayme.action({ description: "Lists the rows' names, in fill order." })
   async names(): Promise<string[]> {
     return Promise.all(
       (await this.rows.all()).map(
@@ -44,7 +43,6 @@ export class FillForm {
   }
 
   /** The changed rows' names, in fill order. */
-  @ayme.action({ description: "Lists the changed rows' names, in fill order." })
   async changed(): Promise<string[]> {
     const changed = this.rows.filter({
       has: this.rows.page().getByLabel("Fill order", { exact: true }),

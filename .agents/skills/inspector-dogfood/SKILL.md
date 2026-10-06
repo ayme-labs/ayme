@@ -63,7 +63,7 @@ Run every command inside the repository's Devbox shell.
 
 5. Drive the panel through its tools and read what comes back:
    - `Inspector.open`, `Inspector.navigator.showLens` (Model, Structure,
-     Tools), `Inspector.navigator.search`, `Inspector.navigator.tools.listed`;
+     Tools), `Inspector.navigator.search`;
    - `Inspector.tool` opens a run card; `Inspector.detail.toolPage.card.*`
      fills it; the generic `click` on the card's Run button runs the tool;
    - `Inspector.runs.showAll` and a `snapshot` show the Runs timeline with
@@ -87,8 +87,12 @@ Run every command inside the repository's Devbox shell.
 ## What the page does not show
 
 - The Structure lens's tree and the search results stay out of the page
-  state, since they render that state. Read them through the tools instead.
-  A ref chooser's tree on a run card is a capture of the page, and stays in.
+  state, since they render that state. `Inspector.structure.memberOf` reads
+  the tree; it is the one read-only method that is a tool, because the
+  page state does not show its answer. The other reads of the Page Object
+  (the tool list, the run's steps, the theme) are plain test methods, since
+  a `snapshot` already shows what they return. A ref chooser's tree on a
+  run card is a capture of the page, and stays in.
 - Actions whose parameters the build plugin cannot schema (a `Record`, a rest
   parameter, a `string | boolean` union) are not tools. Use the generic
   Browser Tools on the run card for those.

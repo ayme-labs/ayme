@@ -37,7 +37,6 @@ export class PanelShell {
   }
 
   /** Where the panel is, in viewport pixels. */
-  @ayme.action({ description: "Reads where the panel is, in viewport pixels." })
   async box() {
     const box = await this.root.boundingBox();
     if (!box) throw new Error("The panel is not visible.");

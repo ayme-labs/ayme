@@ -56,10 +56,6 @@ export class ModelDetailView {
   }
 
   /** "Locator" or "Page object": what a member's icon says it is. */
-  @ayme.action({
-    description:
-      "Reads what a member's icon says it is: Locator or Page object.",
-  })
   async memberIcon(name: string) {
     return this.member(name)
       .locator("svg[aria-label]")
@@ -67,9 +63,6 @@ export class ModelDetailView {
   }
 
   /** What a member is and what the page probe found, e.g. "locator · 1 match". */
-  @ayme.action({
-    description: "Reads what a member is and what the page probe found.",
-  })
   async memberDescription(name: string) {
     return this.member(name).getAttribute("aria-description");
   }

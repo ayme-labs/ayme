@@ -53,10 +53,6 @@ export class WhatTheModelSees {
   }
 
   /** A tool's input schema, parsed from what the block shows. */
-  @ayme.action({
-    description:
-      "Reads a tool's input schema, parsed from what the block shows.",
-  })
   async schemaValue(toolName: string): Promise<unknown> {
     return JSON.parse((await this.schema(toolName).textContent()) ?? "");
   }

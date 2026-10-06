@@ -74,7 +74,6 @@ export class RunEntry {
   }
 
   /** Its steps, in order. */
-  @ayme.action({ description: "Lists the run's steps, in order." })
   async stepList(): Promise<RunStep[]> {
     return await this.steps.evaluateAll((items) =>
       items.map((item) => {

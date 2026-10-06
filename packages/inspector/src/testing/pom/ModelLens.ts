@@ -57,9 +57,6 @@ export class ModelLens {
   }
 
   /** The class names in the model list, in order. */
-  @ayme.action({
-    description: "Lists the class names in the model list, in order.",
-  })
   async modelNames(): Promise<string[]> {
     const names = await Promise.all(
       (await this.models.all()).map((model) => model.getAttribute("aria-label"))

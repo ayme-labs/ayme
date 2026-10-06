@@ -32,7 +32,6 @@ export class RefField {
   }
 
   /** The ref chosen, as the field shows it, e.g. `e6 button "Add item"`. */
-  @ayme.action({ description: "Reads the ref chosen, as the field shows it." })
   async value(): Promise<string | undefined> {
     const text = await this.chooser.textContent();
     return text === "Choose an element" ? undefined : (text ?? undefined);
@@ -89,7 +88,6 @@ export class RefField {
   }
 
   /** Whether it's picking on the page. */
-  @ayme.action({ description: "Whether it is picking on the page." })
   async isPicking() {
     return (await this.pickButton.getAttribute("aria-pressed")) === "true";
   }
