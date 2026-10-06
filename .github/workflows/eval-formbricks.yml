@@ -58,7 +58,7 @@ jobs:
             echo "| --- | --- | --- | --- |"
             echo "| $(. /etc/os-release && echo "$PRETTY_NAME") | ${ImageOS:-unknown} ${ImageVersion:-} | $(nproc) | $(free -h | awk '/^Mem:/ {print $2}') |"
             echo
-          } | tee apps/eval-formbricks/results/machine.md >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a apps/eval-formbricks/results/machine.md "$GITHUB_STEP_SUMMARY"
           google-chrome --version
           docker version --format 'Docker {{.Server.Version}}'
 
