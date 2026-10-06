@@ -12,9 +12,18 @@ export type CreatePageOptions = {
   navigationTimeout?: number;
 };
 
+// Playwright Lite's element reads, such as `boundingBox`, wait without limit
+// unless a default timeout is set, so an action awaiting one on a locator
+// that matches nothing would never answer. Setting the action timeout bounds
+// them too; navigation keeps Playwright Lite's own limit, which that setting
+// would otherwise replace.
+const DEFAULT_ACTION_TIMEOUT = 1_000;
+const DEFAULT_NAVIGATION_TIMEOUT = 30_000;
+
 /**
  * Create the browser Page the runtime session drives by default. The compiler
- * settings are the defaults; an option the caller gives wins for that option.
+ * settings are the defaults, over Ayme's own timeouts; an option the caller
+ * gives wins for that option.
  * Resolve compiler settings at browser Page creation, never during SSR import.
  */
 export function createPage(options: CreatePageOptions = {}): Page {
@@ -28,11 +37,11 @@ export function createPage(options: CreatePageOptions = {}): Page {
       options.actionTimeout ??
       (typeof __AYME_PLAYWRIGHT_ACTION_TIMEOUT__ === "number"
         ? __AYME_PLAYWRIGHT_ACTION_TIMEOUT__
-        : undefined),
+        : DEFAULT_ACTION_TIMEOUT),
     navigationTimeout:
       options.navigationTimeout ??
       (typeof __AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__ === "number"
         ? __AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__
-        : undefined),
+        : DEFAULT_NAVIGATION_TIMEOUT),
   });
 }

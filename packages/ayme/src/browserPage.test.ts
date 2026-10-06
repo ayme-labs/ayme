@@ -13,12 +13,12 @@ afterEach(() => {
 it("does not create a browser Page during import", () => {
   expect(createBrowserPage).not.toHaveBeenCalled();
 });
-it("uses runtime defaults without compiler settings", () => {
+it("bounds actions and element reads by default without compiler settings", () => {
   createPage();
   expect(createBrowserPage).toHaveBeenCalledWith({
     testIdAttribute: undefined,
-    actionTimeout: undefined,
-    navigationTimeout: undefined,
+    actionTimeout: 1_000,
+    navigationTimeout: 30_000,
   });
 });
 it("passes configured test IDs and explicit zero timeouts without losing them", () => {
@@ -60,6 +60,6 @@ it("uses caller options without compiler settings", () => {
   expect(createBrowserPage).toHaveBeenCalledWith({
     testIdAttribute: "data-caller",
     actionTimeout: 5,
-    navigationTimeout: undefined,
+    navigationTimeout: 30_000,
   });
 });
