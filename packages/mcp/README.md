@@ -1,8 +1,9 @@
 # @ayme-dev/mcp
 
-Ayme's MCP server for coding agents, and the page client it pairs with. A
-coding agent runs its own server over stdio; the server pairs with one browser
-tab of your app, and the page's tools become MCP tools the agent can call.
+Ayme's MCP server for coding agents, and the page client and App Process side
+it pairs with. A coding agent runs its own server over stdio; the server pairs
+with one browser tab of your app, and with the app's own Node processes beside
+it, and their tools become MCP tools the agent can call.
 
 ## Setup
 
@@ -67,11 +68,45 @@ Page Object Tools appear and disappear as MCP tools while the page registers
 and unregisters its Page Objects, and the server sends
 `notifications/tools/list_changed` on every change. When the page's tools
 changed since the agent's previous call, the result ends with a separate text
-item such as `The page's tools changed since your previous call. Appeared:
+item such as `The connected tools changed since your previous call. Appeared:
 Basket.readHeading. ayme_list_tools lists the current tools; ayme_call runs any
 of them.` For agents that never re-read the tool list, `ayme_list_tools` lists
 the page's current tools with their input schemas and `ayme_call` runs any of
 them by name.
+
+## App Processes
+
+An App Process is a Node process of your app, such as its dev server or an
+Express backend, that pairs with the agent's server beside the tab. Its tools,
+such as the Peek Tools of its server-side state, are MCP tools next to the
+page's. `@ayme-dev/mcp/process` is its side of the connection:
+`startAgentConnection(ayme, options)` takes the runtime object's `tools` (a
+`{ list, subscribe, run }` object, as the page client takes) and returns
+`{ dispose }`.
+
+- **Finding the server:** it probes the ports from 9350 to 9365 and pairs only
+  when exactly one Ayme MCP server answers, as a tab's auto-pairing does.
+  `port` makes it look on that one port instead, for a server started with
+  `--port`. `link`, a connect link from `ayme_connect`, names one server
+  instead of looking; it throws when the link is not one.
+- **Waiting for the agent:** while unpaired it looks again every 3 seconds,
+  and it looks again when its server goes away, so a dev server started
+  before the agent pairs once the agent's server is up, and again after it
+  restarts. The wait never keeps a process running that is otherwise done.
+- **Beside the tab:** it never replaces the tab or another App Process, and
+  the tab never replaces it. A server busy with a tab still answers its scan
+  and accepts it. It pairs without a token; the server hands it its token,
+  which it reconnects with while that server runs, even beside another one.
+  It reports no navigation.
+- **Tool names:** the agent sees one tool per name. The page's tool keeps its
+  name; of two App Processes that offer one name, the one that connected first
+  keeps it. The agent's next tool result says the other's tool is hidden, and
+  the other process logs it in its terminal: `[ayme] peek.node.jobs is hidden:
+another App Process offers a tool with the same name. Rename one.`
+- **Leaving:** when it exits, its tools go at once, and a call still waiting
+  for it gets an error result that says so.
+
+The server logs each App Process that connects and disconnects on stderr.
 
 ## Ports
 
@@ -116,4 +151,8 @@ until a tab pairs again.
 The server listens on the loopback interface only. It accepts a page with the
 token from its connect link, or without a token only when the page's origin is
 `localhost` or `127.0.0.1`, so another website you have open cannot drive it.
-The page pairs only with a loopback address.
+A connection that sends no `Origin` is accepted without a token too: browsers
+always send one, so it comes from a local program, which can already act as
+you (ADR-0033). Only such a connection may pair as an App Process. Any local
+program can therefore offer tools to the agent. The page and App Processes
+pair only with a loopback address.

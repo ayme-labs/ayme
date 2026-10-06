@@ -42,7 +42,7 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
     open?.close();
     let current: Pairing = pairing;
     const channel = openPageChannel(() => socketUrl(current), {
-      tab,
+      hello: () => ({ tab, url: window.location.href }),
       onWelcome({ token }) {
         if (!token || current.token) return;
         current = { address: pairing.address, token };

@@ -10,6 +10,8 @@ export default defineConfig({
     cli: "src/cli.ts",
     // The page client, which runs in the browser.
     client: "src/client/index.ts",
+    // An App Process's side of the Agent Connection, which runs in Node.
+    process: "src/process/index.ts",
     // Test-only helpers (ADR-0026), which start the built `ayme` command.
     testing: "src/testing/index.ts",
   },

@@ -20,6 +20,7 @@ export {
   listenOnPort,
 } from "./infrastructure/firstFreePort";
 export { pairingLinks } from "./infrastructure/pairingLinks";
+export { findServers } from "./infrastructure/serverScan";
 export {
   forgetStoredPairing,
   storePairing,
