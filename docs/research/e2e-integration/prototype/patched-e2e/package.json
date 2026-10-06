@@ -1,0 +1,24 @@
+{
+  "name": "@e2e-dev/ayme-spike",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local experiment: replay Ayme page object calls from the e2e cache",
+  "type": "module",
+  "scripts": {
+    "stock": "node node_modules/e2e/dist/cli/bin.js run --config e2e.stock.config.ts",
+    "ayme": "node node_modules/e2e/dist/cli/bin.js run --config e2e.ayme.config.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "3.0.53",
+    "@anthropic-ai/claude-agent-sdk": "0.3.291",
+    "@ayme-dev/unplugin-ayme": "link:../../../ayme-e2e-spike/packages/unplugin-ayme",
+    "@e2e-dev/web": "workspace:*",
+    "ai": "7.0.107",
+    "e2e": "workspace:*",
+    "zod": "4.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.2",
+    "typescript": "7.0.2"
+  }
+}

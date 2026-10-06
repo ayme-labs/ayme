@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "repair-1",
+  "createdAt": "2026-10-06T10:26:15.375Z",
+  "keyHash": "9357981cddfb34871705b5fe5b9869c786e97331fe7d44d674889c5714e977b7",
+  "recordedFor": {
+    "testId": "tests/projects.e2e.ts::creates%20a%20third%20project",
+    "targetId": "web",
+    "instructionDigest": "c6190de796e3d6baeda64bcc900a791337717673cbf375149320193432e1b3be",
+    "paramsDigest": "fe0ec8977efb238a3e5162352b4795a58c1c48aba3db662213434916bb6b17cc",
+    "callIndex": 0,
+    "agent": "default"
+  },
+  "tool": "ProjectsPage_createProject",
+  "args": {
+    "name": "E2E third muwj9uei"
+  },
+  "error": "locator.click: Timeout 5000ms exceeded.",
+  "fallback": [
+    {
+      "name": "tool",
+      "summary": "tool ProjectsPage_createProject"
+    },
+    {
+      "name": "tap",
+      "summary": "tap button \"Add project\"",
+      "target": {
+        "role": "button",
+        "name": "Add project"
+      }
+    },
+    {
+      "name": "type",
+      "summary": "type \"{{param:/name}}\" into textbox \"Project name\" in \"Add project\"",
+      "target": {
+        "role": "textbox",
+        "name": "Project name",
+        "within": "Add project"
+      },
+      "value": "{{param:/name}}"
+    },
+    {
+      "name": "tap",
+      "summary": "tap button \"Create\" in \"Add project\"",
+      "target": {
+        "role": "button",
+        "name": "Create",
+        "within": "Add project"
+      }
+    }
+  ]
+}

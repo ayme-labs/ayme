@@ -1,0 +1,89 @@
+{
+  "source": {
+    "cacheDir": ".e2e/cache-claude-stock",
+    "entries": 3,
+    "distinctFlows": 1
+  },
+  "classes": [
+    {
+      "name": "ProjectsPage",
+      "startPath": "/",
+      "members": [
+        {
+          "name": "addProjectButton",
+          "role": "button",
+          "accessibleName": "Add project",
+          "locator": "getByRole(\"button\", { name: \"Add project\", exact: true })"
+        }
+      ],
+      "children": [
+        {
+          "name": "addProjectContainer",
+          "containerKey": "Add project",
+          "root": null,
+          "members": [
+            {
+              "name": "projectNameField",
+              "role": "textbox",
+              "accessibleName": "Project name",
+              "locator": "getByRole(\"textbox\", { name: \"Project name\", exact: true })"
+            },
+            {
+              "name": "createButton",
+              "role": "button",
+              "accessibleName": "Create",
+              "locator": "getByRole(\"button\", { name: \"Create\", exact: true })"
+            }
+          ]
+        }
+      ],
+      "methods": [
+        {
+          "name": "createProject",
+          "instruction": "create a project named {name}",
+          "parameters": [
+            {
+              "name": "name",
+              "type": "string"
+            }
+          ],
+          "steps": [
+            {
+              "call": "this.addProjectButton.click()",
+              "recorded": "tap button \"Add project\""
+            },
+            {
+              "call": "this.addProjectContainer.projectNameField.fill(name)",
+              "recorded": "type \"{{param:/name}}\" into textbox \"Project name\" in \"Add project\""
+            },
+            {
+              "call": "this.addProjectContainer.createButton.click()",
+              "recorded": "tap button \"Create\" in \"Add project\""
+            }
+          ],
+          "waitFor": "this.page.getByRole(\"listitem\").filter({ hasText: name }).waitFor()",
+          "endPath": "/",
+          "sharedBy": [
+            "tests/projects.e2e.ts::creates%20a%20second%20project",
+            "tests/projects.e2e.ts::creates%20a%20first%20project",
+            "tests/projects.e2e.ts::creates%20a%20third%20project"
+          ],
+          "actionsHash": "82a468a09e44",
+          "entries": [
+            "1f348f1d4fadbbccbfa0a5d8d89a364f31e5b5eae24ab963afea47fdefa9b316.json",
+            "70d9e9cc76ca41b98c5e7933fe670c2cf82e2a0ca63e73f64a7fc3ddfd4aadc5.json",
+            "a210d447d4e2fc31ded0d66bca15a59bda4a82f75b81a5cf8084daa11bf8bbb8.json"
+          ]
+        }
+      ]
+    }
+  ],
+  "judgment": [
+    "start path \"/\" names no page: class \"ProjectsPage\" is guessed from the instruction's object",
+    "createProject: 2 end anchors were recorded; the wait uses {\"role\":\"listitem\",\"name\":\"{{param:/name}}\"} (it spells a parameter), the rest look incidental: [{\"role\":\"status\",\"name\":\"Publication\",\"text\":\"Publication: unavailable\"}]",
+    "ProjectsPage.addProjectContainer: the recording names this container only by its first text (\"Add project\"), not by its role or label; its root locator and its name need the app"
+  ],
+  "findings": [
+    "recordedFor keeps only instructionDigest: the instruction text was recovered from the test file by digesting every agent.act string in it. Storing the instruction text (redacted) in recordedFor would make the cache self-describing."
+  ]
+}

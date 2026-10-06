@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-10-06T09:54:53.106Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tool",
+        "summary": "tool ProjectsPage_createProject {\"name\":\"{{param:/name}}\"}",
+        "tool": "ProjectsPage_createProject",
+        "args": {
+          "name": "{{param:/name}}"
+        }
+      }
+    ],
+    "executor": {
+      "name": "scripted-ayme",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/projects.e2e.ts::creates%20a%20third%20project",
+      "targetId": "web",
+      "instructionDigest": "c6190de796e3d6baeda64bcc900a791337717673cbf375149320193432e1b3be",
+      "paramsDigest": "fe0ec8977efb238a3e5162352b4795a58c1c48aba3db662213434916bb6b17cc",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "created project E2E third muwi5m0z (page-object)",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "listitem",
+        "name": "{{param:/name}}"
+      }
+    ],
+    "endWaitMs": 10100
+  }
+}

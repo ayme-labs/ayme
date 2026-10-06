@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- Scratch pilot fallback: the DOM of apps/example-react/src/main.tsx without
+     React or Ayme, for when the Vite dev server may not be started. -->
+<html>
+  <body>
+    <main>
+      <h1>React integration check</h1>
+      <p>One Page Object, direct calls, and Page Object Tools.</p>
+      <button id="toggle">Unmount counter</button>
+      <section aria-label="Counter" id="counter">
+        <p>Count: <output>0</output></p>
+        <button id="increment">Increment</button>
+        <button>Call Page Object</button>
+      </section>
+    </main>
+    <script>
+      const main = document.querySelector("main");
+      const toggle = document.getElementById("toggle");
+      let section = document.getElementById("counter");
+      const template = section.cloneNode(true);
+      toggle.addEventListener("click", () => {
+        if (section) {
+          section.remove();
+          section = null;
+          toggle.textContent = "Mount counter";
+        } else {
+          section = template.cloneNode(true);
+          section.querySelector("output").textContent = "0";
+          main.append(section);
+          wire(section);
+          toggle.textContent = "Unmount counter";
+        }
+      });
+      function wire(root) {
+        root.querySelector("#increment").addEventListener("click", () => {
+          const output = root.querySelector("output");
+          output.textContent = String(Number(output.textContent) + 1);
+        });
+      }
+      wire(section);
+    </script>
+  </body>
+</html>

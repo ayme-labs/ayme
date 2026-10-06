@@ -1,0 +1,15 @@
+{
+  "pageObject": "apps/example-react/src/pom/ProjectsPage.ts",
+  "proposals": 3,
+  "changes": [
+    {
+      "tool": "ProjectsPage_createProject",
+      "role": "button",
+      "from": "New project",
+      "to": "Add project",
+      "votes": 3,
+      "error": "locator.click: Timeout 5000ms exceeded.",
+      "patch": "- getByRole(\"button\", { name: \"New project\" })\n+ getByRole(\"button\", { name: \"Add project\" })"
+    }
+  ]
+}

@@ -1,0 +1,1155 @@
+diff --git a/packages/e2e/schema/report-v1.schema.json b/packages/e2e/schema/report-v1.schema.json
+index 0e9e4c17..a7153070 100644
+--- a/packages/e2e/schema/report-v1.schema.json
++++ b/packages/e2e/schema/report-v1.schema.json
+@@ -221,6 +221,7 @@
+         },
+         "derived": { "enum": ["pixels", "whole-node", "minted-token", "date"] },
+         "notRecorded": { "enum": ["param-collision"] },
++        "repairProposal": { "type": "string", "maxLength": 1024 },
+         "replayedActions": { "type": "integer", "minimum": 0 },
+         "totalActions": { "type": "integer", "minimum": 0 }
+       },
+diff --git a/packages/e2e/src/agent/act.ts b/packages/e2e/src/agent/act.ts
+index 4e24042b..9c943a9e 100644
+--- a/packages/e2e/src/agent/act.ts
++++ b/packages/e2e/src/agent/act.ts
+@@ -37,10 +37,19 @@ import { recordPolicyEvent } from './phases.ts';
+ import type { ObservedScreen } from './replay.ts';
+ import { appLocation } from '../cache/route.ts';
+ import { OperationQueue } from './operation-queue.ts';
++import { toolAppliesTo, withToolContext } from './tool.ts';
++import type { Tool } from 'ai';
+ import { StepAccounting } from './step-accounting.ts';
+ import { failedStepOutcome, StepTraceSession, type StepCacheHost, type StepOutcome } from './step-cache.ts';
+ import type { ParamTemplate } from '../cache/template.ts';
+ 
++/**
++ * How long a replayed project-tool call has before replay gives up on it. A
++ * recorded call either works as it did or is broken; waiting out a tool's
++ * own longer timeout (30 s for a Playwright locator) only delays the hand-off.
++ */
++const REPLAY_TOOL_TIMEOUT_MS = 5_000;
++
+ /** What a dispatch needs of the agent a step runs with; an interactive step supplies its own. */
+ export type DispatchAgent = Pick<AgentSelection, 'name' | 'config' | 'executor' | 'agentContext'>;
+ 
+@@ -265,6 +274,7 @@ class ActDispatch {
+     );
+     this.accounting.metrics.ledgerBytes = ledger.bytes;
+     const replayedPrefix = this.stepCache?.replayedPrefix;
++    const replayedToolFailure = this.stepCache?.replayedToolFailure;
+     return {
+       step: {
+         kind: this.spec.kind,
+@@ -279,6 +289,7 @@ class ActDispatch {
+       target: this.runtime.target,
+       attempt: this.runtime.attempt,
+       ...(replayedPrefix === undefined ? {} : { replayedPrefix }),
++      ...(replayedToolFailure === undefined ? {} : { replayedToolFailure }),
+       signal: this.accounting.signal,
+       // Resolved on first read, so executors that bring their own model (or
+       // none) never pay for — or fail on — config model resolution.
+@@ -483,6 +494,7 @@ class ActDispatch {
+       get traceEligible() { return feed.traceEligible; },
+       observe: async (mode) => screenOf(await this.feed.probe(mode), this.runtime.app.base?.origin),
+       actions: this.dispatcher.actions,
++      runTool: (tool, args) => this.replayTool(tool, args),
+       signal: this.accounting.signal,
+       remainingMs: () => this.accounting.remainingMs(),
+       replaying: (active) => {
+@@ -505,6 +517,48 @@ class ActDispatch {
+    * returns its id. The pixels are the engine's redacted capture, so the file
+    * is masked as every screenshot artifact is.
+    */
++  /**
++   * Runs one recorded project-tool call again, with its recorded input, under
++   * the same accounting a live call gets (`ActionDispatcher.runTool`). Only a
++   * mutating tool of this step's agent, or of its executor's `replayTools`,
++   * that still declares `replay: 'call'`
++   * and applies to the platform runs; anything else throws, which replay
++   * hands off as a failed action.
++   */
++  private async replayTool(name: string, args: JsonValue): Promise<unknown> {
++    const own = this.agent.executor.replayTools;
++    const defined = Object.hasOwn(this.agent.config.tools, name)
++      ? this.agent.config.tools[name]
++      : own !== undefined && Object.hasOwn(own, name)
++        ? own[name]
++        : undefined;
++    if (
++      defined === undefined ||
++      !defined.annotations.mutates ||
++      defined.annotations.replay !== 'call' ||
++      !toolAppliesTo(defined, this.runtime.target.platform)
++    ) {
++      throw new AgentError('ACTION_FAILED', `the recorded tool "${name}" is not offered for replay in this step`);
++    }
++    const tool = defined.tool as Tool;
++    const options = withToolContext(
++      {
++        toolCallId: `replay-${name}`,
++        messages: [],
++        abortSignal: AbortSignal.any([this.accounting.signal, AbortSignal.timeout(REPLAY_TOOL_TIMEOUT_MS)]),
++        context: undefined,
++      },
++      {
++        replayTimeoutMs: REPLAY_TOOL_TIMEOUT_MS,
++        observe: () => {
++          throw new AgentError('POLICY_DENIED', 'only read-only tools may request observations; observe in a separate tool call');
++        },
++        attachScreenshot: (pixels, label) => this.attachScreenshot(pixels, label),
++      },
++    );
++    return this.dispatcher.runTool({ name, mutates: true, replay: 'call', args }, async () => tool.execute!(args as never, options));
++  }
++
+   private async attachScreenshot(pixels: ExecutorPixels, label: string): Promise<string> {
+     const name = `${label.replace(/[^A-Za-z0-9_-]+/g, '-')}.png`;
+     await writeFile(join(this.runtime.artifacts.dir, name), pixels.data);
+diff --git a/packages/e2e/src/agent/action-dispatcher.ts b/packages/e2e/src/agent/action-dispatcher.ts
+index b91b7e0e..3cbe37da 100644
+--- a/packages/e2e/src/agent/action-dispatcher.ts
++++ b/packages/e2e/src/agent/action-dispatcher.ts
+@@ -22,7 +22,7 @@ import { describePosition } from '../cache/relocate.ts';
+ import type { NodeActionName, PointActionName, RecordedAction } from '../cache/trace.ts';
+ import { derivedReason } from './derived.ts';
+ import { AgentError } from './error.ts';
+-import type { ExecutorActions, ExecutorTarget, PointHit, PointTapResult } from './executor.ts';
++import type { ExecutorActions, ExecutorTarget, PointHit, PointTapResult, ToolCall } from './executor.ts';
+ import type { AgentContext } from './invocation.ts';
+ import type { ObservationFeed, Resolved } from './observation-feed.ts';
+ import { resolveScrollTarget } from './scroll-target.ts';
+@@ -244,20 +244,34 @@ export class ActionDispatcher {
+     });
+   }
+ 
+-  /** Records project tools through the same budget and operation queue as grammar actions. */
+-  runTool<T>(call: { name: string; mutates: boolean }, body: () => Promise<T>): Promise<T> {
++  /**
++   * Records project tools through the same budget and operation queue as
++   * grammar actions. A mutating call is a gap in the trace, except a call of
++   * a `replay: 'call'` tool that resolved, which is recorded with its input
++   * once it has, as a grammar action is: a call that threw is a gap, so a
++   * replay never re-runs a call the recording run then worked around.
++   */
++  runTool<T>(call: ToolCall, body: () => Promise<T>): Promise<T> {
++    const replayable = call.mutates && call.replay === 'call' && call.args !== undefined;
+     const run = async (): Promise<T> => {
+       this.accounting.checkpoint();
+       if (this.accounting.closed) throw new AgentError('CANCELLED', 'the step has ended');
+       if (call.mutates) {
+         this.accounting.reserveAction();
+-        this.options.trace()?.recordGap(call.name);
++        if (!replayable) this.options.trace()?.recordGap(call.name);
+       }
+-      const value = await instrumentPhase(
+-        this.runtime,
+-        { api: this.accounting.api, kind: 'engine', phase: 'agent.action', name: `${PROJECT_TOOL_EVENT_PREFIX}${call.name}` },
+-        body,
+-      );
++      let value: T;
++      try {
++        value = await instrumentPhase(
++          this.runtime,
++          { api: this.accounting.api, kind: 'engine', phase: 'agent.action', name: `${PROJECT_TOOL_EVENT_PREFIX}${call.name}` },
++          body,
++        );
++      } catch (cause) {
++        if (replayable) this.options.trace()?.recordGap(call.name);
++        throw cause;
++      }
++      if (replayable) this.options.trace()?.recordToolCall(call.name, call.args!);
+       if (call.mutates) this.armAfter('tool');
+       return value;
+     };
+diff --git a/packages/e2e/src/agent/actions.ts b/packages/e2e/src/agent/actions.ts
+index 68d9455e..a24757c3 100644
+--- a/packages/e2e/src/agent/actions.ts
++++ b/packages/e2e/src/agent/actions.ts
+@@ -23,6 +23,7 @@ import {
+ } from '../cache/trace.ts';
+ import { sanitizeText } from '../internal/errors.ts';
+ import { collapseText } from '../internal/text.ts';
++import { isRunDataText } from '../cache/run-data.ts';
+ import type { ScrollDirection } from '../types.ts';
+ 
+ /** One committed grammar action, addressed by the node it actually ran against. */
+@@ -86,13 +87,22 @@ export interface Placement {
+ 
+ /** Roles whose first text names the thing a control belongs to: a row's key, a list item's title. */
+ const CONTAINER_ROLES: ReadonlySet<string> = new Set(['row', 'listitem', 'article', 'group', 'region', 'dialog', 'tabpanel']);
++/**
++ * Containers an author labels as a whole (`<section aria-label="Counter">`,
++ * a titled dialog): their own label names them, and their first text is
++ * whatever happens to come first inside, a live count or the container's
++ * own first button. Rows, list items, and articles keep first text: that is
++ * what tells one row from the next.
++ */
++const LABELLED_CONTAINER_ROLES: ReadonlySet<string> = new Set(['group', 'region', 'dialog', 'tabpanel']);
+ /** Longest container key kept. */
+ const MAX_WITHIN_CHARS = 80;
+ 
+ /**
+- * The key of the nearest named container a node sits in, the first text of
+- * its row or list item or else the container's own label, when that key says
+- * more than the node's own name. Ten rows each with a "Delete" button are ten
++ * The key of the nearest named container a node sits in, when that key says
++ * more than the node's own name: the first text of its row or list item, or
++ * else the row's own label; for a labelled region, dialog, group, or tab
++ * panel, its label first. Text that reads as run data is never a key. Ten rows each with a "Delete" button are ten
+  * identical descriptors; "Delete in the row that starts with Budget draft" is
+  * one. A row whose only text is its own (`<li>Alpha <button><svg/></li>`)
+  * is keyed by it. Only the nearest container counts: the list around a row
+@@ -109,7 +119,13 @@ export function containerKey(
+   while (cursor !== undefined) {
+     const container = nodes.get(cursor);
+     if (container !== undefined && CONTAINER_ROLES.has(container.role ?? '')) {
+-      const key = firstLeafText(container) ?? ownLabel(container);
++      const label = ownLabel(container);
++      const first = firstLeafText(container);
++      // A candidate that reads as run data (a count, an id, a date) is passed
++      // over: the next run shows other data, and the key would no longer match.
++      const key = (LABELLED_CONTAINER_ROLES.has(container.role ?? '') ? [label, first] : [first, label]).find(
++        (candidate) => candidate !== undefined && !isRunDataText(candidate),
++      );
+       const clean = key === undefined ? '' : bound(collapseText(key), MAX_WITHIN_CHARS);
+       return clean === '' || squash(clean) === own ? undefined : clean;
+     }
+diff --git a/packages/e2e/src/agent/default-agent.ts b/packages/e2e/src/agent/default-agent.ts
+index 1937f674..c06ce59f 100644
+--- a/packages/e2e/src/agent/default-agent.ts
++++ b/packages/e2e/src/agent/default-agent.ts
+@@ -19,7 +19,7 @@ import { compactScreenHistory, compactScreenshotHistory } from './transcript-com
+ import { createToolLoopExecutor, type ToolLoopHelpers } from './tool-loop.ts';
+ import { toolAppliesTo, withToolContext } from './tool.ts';
+ import { boundToolOutput } from './tool-output.ts';
+-import type { AgentTool } from '../types.ts';
++import type { AgentTool, JsonValue } from '../types.ts';
+ 
+ const BASE_RULES = `You are an autonomous end-to-end testing agent executing exactly one test step against a real application.
+ 
+@@ -159,10 +159,12 @@ export function projectTools(
+     const tool = defined.tool as Tool;
+     const execute = tool.execute!.bind(tool);
+     const mutates = defined.annotations.mutates;
++    const replay = defined.annotations.replay;
+     wrapped[name] = {
+       ...tool,
+       execute: async (input: never, executionOptions: ToolExecutionOptions<unknown>) => {
+-        const result: unknown = await context.budgets.runTool({ name, mutates }, async () =>
++        const call = { name, mutates, ...(replay === undefined ? {} : { replay, args: input as JsonValue }) };
++        const result: unknown = await context.budgets.runTool(call, async () =>
+           execute(input, withToolContext(executionOptions, {
+             observe: (options) => {
+               if (mutates) {
+diff --git a/packages/e2e/src/agent/executor.ts b/packages/e2e/src/agent/executor.ts
+index 51587178..b06a35ae 100644
+--- a/packages/e2e/src/agent/executor.ts
++++ b/packages/e2e/src/agent/executor.ts
+@@ -21,6 +21,7 @@ import type { ObservationPixels, SemanticNode, ViewportPoint, ViewportSize } fro
+ import type { VisionDegradation, StepTurn } from '../run/steps.ts';
+ import type {
+   AgentErrorCode,
++  AgentTool,
+   JsonValue,
+   ModelInstance,
+   ProviderOptions,
+@@ -329,7 +330,17 @@ export interface ExecutorBudgets {
+    * may throw `STEP_BUDGET_EXHAUSTED`; mutations are serialized with grammar
+    * actions; every call is recorded as a step event.
+    */
+-  runTool<T>(call: { name: string; mutates: boolean }, body: () => Promise<T>): Promise<T>;
++  runTool<T>(call: ToolCall, body: () => Promise<T>): Promise<T>;
++}
++
++/** One project-tool call as the step's accounting sees it. */
++export interface ToolCall {
++  readonly name: string;
++  readonly mutates: boolean;
++  /** The tool's `replay` annotation; with `args`, the call is recorded for replay instead of as a gap. */
++  readonly replay?: 'call';
++  /** The input the call passed the tool. */
++  readonly args?: JsonValue;
+ }
+ 
+ /**
+@@ -373,6 +384,13 @@ export type ExecutorVerb = keyof ExecutorActions;
+ 
+ export interface StepExecutorContext {
+   readonly step: ExecutorStep;
++  /**
++   * Set when a recorded project-tool call of this step failed on replay: the
++   * call and its error. The recording is kept for the tool to
++   * be fixed; the executor should reach the goal another way rather than
++   * repeat the call.
++   */
++  readonly replayedToolFailure?: { readonly tool: string; readonly args: JsonValue; readonly error: string };
+   /** The attempt this step runs in: identity, end-of-attempt signal, and scratch memory. */
+   readonly attempt: ExecutorAttempt;
+   /**
+@@ -496,6 +514,13 @@ export interface StepExecutor {
+    * `INVALID_CONFIG` when both are set and differ.
+    */
+   readonly judge?: ModelInstance;
++  /**
++   * The `defineTool` tools this executor calls through `budgets.runTool`
++   * with `replay: 'call'`, by the name it records them under. Trace replay
++   * runs a recorded call of one of them again instead of handing the step
++   * back; a recorded call of any other name hands off.
++   */
++  readonly replayTools?: Readonly<Record<string, AgentTool>>;
+   runStep(context: StepExecutorContext): Promise<StepVerdict>;
+ }
+ 
+diff --git a/packages/e2e/src/agent/replay.ts b/packages/e2e/src/agent/replay.ts
+index ad7de137..d1b0b954 100644
+--- a/packages/e2e/src/agent/replay.ts
++++ b/packages/e2e/src/agent/replay.ts
+@@ -19,7 +19,7 @@ import type { RedactedNode } from './observation.ts';
+ import { hasCause } from '../internal/errors.ts';
+ import { containsPoint, type Box } from '../internal/geometry.ts';
+ import { sleep } from '../internal/time.ts';
+-import type { ScrollDirection } from '../types.ts';
++import type { JsonValue, ScrollDirection } from '../types.ts';
+ import {
+   isRuntimeHardStop,
+   type ExecutorActions,
+@@ -66,6 +66,12 @@ export interface ReplayHost {
+   observe(mode: SettleMode): Promise<ObservedScreen>;
+   /** The step's policed action grammar; targets are fresh-observation ids. */
+   readonly actions: ExecutorActions;
++  /**
++   * Runs one recorded project-tool call under the step's accounting, with
++   * the recorded input. Absent, a recorded call is a gap. Throws when the
++   * tool is not one the step offers for replay, or when it fails.
++   */
++  readonly runTool?: (tool: string, args: JsonValue) => Promise<unknown>;
+   readonly signal: AbortSignal;
+   remainingMs(): number;
+ }
+@@ -83,6 +89,16 @@ export interface ReplayOutcome {
+   readonly uncertainAction?: string;
+   /** On a `gap` at a typed value: the rule that made the value this run's data. */
+   readonly derived?: DerivedReason;
++  /** On `action-failed` at a recorded tool call: the call and why it failed. */
++  readonly failedTool?: FailedToolCall;
++}
++
++/** A recorded project-tool call that failed when replay ran it again. */
++export interface FailedToolCall {
++  readonly tool: string;
++  readonly args: JsonValue;
++  /** The first line of the failure's message, as the tool threw it. */
++  readonly error: string;
+ }
+ 
+ /** The list a recorded scroll moved, and the share of the viewport it covered. */
+@@ -98,6 +114,8 @@ interface ScrolledList {
+  */
+ type PlannedCall =
+   | { readonly kind: 'gap'; readonly derived?: DerivedReason }
++  /** A project tool run again with its recorded input; reads no screen, like a free action. */
++  | { readonly kind: 'tool'; readonly tool: string; readonly args: JsonValue }
+   | {
+       readonly kind: 'targeted';
+       readonly descriptor: TraceTargetDescriptor;
+@@ -150,6 +168,7 @@ function planCall(action: RecordedAction, actions: ExecutorActions): PlannedCall
+   if (isNodeAction(action)) return { kind: 'targeted', descriptor: action.target, invoke: (t) => actions[action.name](t) };
+   switch (action.name) {
+     case 'tool':
++      if (action.tool !== undefined && action.args !== undefined) return { kind: 'tool', tool: action.tool, args: action.args };
+       return { kind: 'gap', ...(action.derived === undefined ? {} : { derived: action.derived }) };
+     case 'check':
+       return { kind: 'targeted', descriptor: action.target, invoke: (t) => actions.check(t, action.checked) };
+@@ -264,6 +283,7 @@ export async function replayTrace(
+     if (planned.kind === 'gap') {
+       return { ...stop('gap'), ...(planned.derived === undefined ? {} : { derived: planned.derived }) };
+     }
++    if (planned.kind === 'tool' && host.runTool === undefined) return stop('gap');
+     // The look before this action: the start capture serves the first one;
+     // after that, the previous action's settle policy says how far a fresh
+     // capture settles.
+@@ -291,6 +311,10 @@ export async function replayTrace(
+           if (previous !== undefined && options.looksBeforeFree?.() === true) await firstLook(host, look);
+           await planned.invoke();
+           break;
++        case 'tool':
++          if (previous !== undefined && options.looksBeforeFree?.() === true) await firstLook(host, look);
++          await host.runTool!(planned.tool, planned.args);
++          break;
+         case 'scroll': {
+           // A scroll on a list is paced by the relocation before each repeat.
+           // A viewport scroll relocates nothing, so each later repeat takes a
+@@ -354,6 +378,10 @@ export async function replayTrace(
+         // the runner never repeats an unknown-commit operation itself.
+         return { ...stop('action-uncertain', partial()), uncertainAction: action.summary };
+       }
++      if (planned.kind === 'tool') {
++        const error = (cause instanceof Error ? cause.message : String(cause)).split('\n')[0] ?? '';
++        return { ...stop('action-failed'), failedTool: { tool: planned.tool, args: planned.args, error } };
++      }
+       return stop('action-failed', partial());
+     }
+     summaries.push(action.summary);
+diff --git a/packages/e2e/src/agent/step-cache.ts b/packages/e2e/src/agent/step-cache.ts
+index 857149b6..b3198334 100644
+--- a/packages/e2e/src/agent/step-cache.ts
++++ b/packages/e2e/src/agent/step-cache.ts
+@@ -20,6 +20,9 @@ import type { CacheAgentIdentity } from '../cache/identity.ts';
+ import { recordedProvenance, TraceRecorder } from '../cache/recorder.ts';
+ import { expandTrace, templateParams, templatesCollide, templateTrace, type ParamTemplate } from '../cache/template.ts';
+ import { readTraceEntry, type ActionTrace, type DerivedReason, type TraceEntry, type TraceTargetDescriptor } from '../cache/trace.ts';
++import { mkdir, writeFile } from 'node:fs/promises';
++import path from 'node:path';
++import { timestamp } from '../internal/ids.ts';
+ import { sleep } from '../internal/time.ts';
+ import type { StepCacheInfo } from '../run/steps.ts';
+ import type { JsonValue } from '../types.ts';
+@@ -31,6 +34,7 @@ import {
+   verifyEndState,
+   type ObservedNodes,
+   type ObservedScreen,
++  type FailedToolCall,
+   type ReplayHost,
+   type ReplayOutcome,
+   type SemanticScreen,
+@@ -170,6 +174,8 @@ export class StepTraceSession {
+   private readEntryHit = false;
+   /** True once `cache.strict` failed the step on its recording, which is then kept for review rather than evicted. */
+   private failedStale = false;
++  /** The recorded tool call that failed when this step replayed it; its entry is kept, not overwritten. */
++  private failedTool: FailedToolCall | undefined;
+   /** Grammar actions recorded so far when an end-mismatch hand-off happened. */
+   private actionsAtEndMismatch: number | undefined;
+ 
+@@ -195,6 +201,11 @@ export class StepTraceSession {
+     return this.info;
+   }
+ 
++  /** The recorded tool call that failed on replay, for the executor to work around rather than call again. */
++  get replayedToolFailure(): FailedToolCall | undefined {
++    return this.failedTool;
++  }
++
+   /** The mid-step hand-off, when a replay diverged after real progress. */
+   get replayedPrefix(): ReplayedPrefix | undefined {
+     return this.prefix;
+@@ -210,6 +221,11 @@ export class StepTraceSession {
+     this.recorder?.recordGap(toolName);
+   }
+ 
++  /** Records one call of a `replay: 'call'` tool with its input, which replay runs again. */
++  recordToolCall(toolName: string, args: JsonValue): void {
++    this.recorder?.recordToolCall(toolName, args);
++  }
++
+   /** Records a fill whose value was this run's data as a replay-ending gap, with the rule that said so. */
+   recordDerivedGap(reason: DerivedReason): void {
+     this.recorder?.recordDerivedGap(reason);
+@@ -336,7 +352,12 @@ export class StepTraceSession {
+         return;
+       case 'passed':
+         if (this.repairedAfterEndMismatch(recorder)) await this.evict();
+-        else if (this.replayedWhole) {
++        else if (this.replayedWhole || this.failedTool !== undefined) {
++          // A recorded tool call that failed and a live flow that passed
++          // around it is a broken tool, not a stale recording: the entry is
++          // kept, so fixing the tool restores the replay, and the live flow
++          // is written beside it as a repair proposal.
++          if (this.failedTool !== undefined) await this.proposeRepair(recorder, this.failedTool, verdictSummary);
+           this.cache.staged.push({
+             kind: 'keep',
+             keyHash: this.keyHash,
+@@ -425,6 +446,7 @@ export class StepTraceSession {
+         return screen;
+       },
+       actions: host.actions,
++      ...(host.runTool === undefined ? {} : { runTool: host.runTool }),
+       signal: host.signal,
+       remainingMs: () => host.remainingMs(),
+     };
+@@ -433,6 +455,7 @@ export class StepTraceSession {
+       looksBeforeFree: () => !onEndRoute(screens.at(-1)),
+     });
+     this.consumedReplay = true;
++    this.failedTool = outcome.failedTool;
+     const stopReason: HandOffReason | undefined = outcome.completed
+       ? start?.kind === 'semantic' && (await this.endStateMatches(trace, start, screens))
+         ? undefined
+@@ -612,6 +635,47 @@ export class StepTraceSession {
+     return this.actionsAtEndMismatch !== undefined && recorder.recordedCount > this.actionsAtEndMismatch;
+   }
+ 
++  /**
++   * Writes the live flow of a step whose recorded tool call failed as a
++   * repair proposal: the call, its error, and the actions that passed in its
++   * place, with each `unique()` value as its slot. Never read back by the
++   * runner; a store without a directory (a custom store) writes none.
++   */
++  private async proposeRepair(recorder: TraceRecorder, failed: FailedToolCall, verdictSummary: string | undefined): Promise<void> {
++    const { repairsDir } = this.cache;
++    if (repairsDir === undefined || this.info === undefined) return;
++    const live = recorder.finalize({
++      executor: this.options.executor,
++      recordedFor: this.claim.step,
++      summary: verdictSummary ?? 'step passed',
++    });
++    const fallback = live === undefined ? undefined : (templateTrace(live, this.options.templates) ?? live);
++    const file = path.join(repairsDir, `${failed.tool}-${this.keyHash}.json`);
++    try {
++      await mkdir(repairsDir, { recursive: true });
++      await writeFile(
++        file,
++        `${JSON.stringify(
++          {
++            schemaVersion: 'repair-1',
++            createdAt: timestamp(),
++            keyHash: this.keyHash,
++            recordedFor: recordedProvenance(this.claim.step, this.options.redact),
++            tool: failed.tool,
++            args: failed.args,
++            error: this.options.redact(failed.error),
++            fallback: fallback?.actions ?? [],
++          },
++          null,
++          2,
++        )}\n`,
++      );
++      this.info = { ...this.info, repairProposal: file };
++    } catch {
++      // A proposal is advice: failing to write it never fails the step.
++    }
++  }
++
+   private missed(reason: TraceReplayMissReason | HandOffReason, totalActions: number, derived?: DerivedReason): StepCacheInfo {
+     return {
+       mode: 'missed',
+diff --git a/packages/e2e/src/agent/tool.ts b/packages/e2e/src/agent/tool.ts
+index 90731456..e554ce56 100644
+--- a/packages/e2e/src/agent/tool.ts
++++ b/packages/e2e/src/agent/tool.ts
+@@ -20,6 +20,14 @@ export interface ToolAnnotations {
+    * configs.
+    */
+   readonly platforms?: readonly string[];
++  /**
++   * How trace replay treats a call of this mutating tool. Absent, the call
++   * is a gap: replay hands the step to the executor there. `'call'` records
++   * the tool name and its input, and replay runs the tool again with that
++   * input (its `unique()` values filled from the current call) instead of
++   * handing off. Only for a tool whose effect is a function of its input.
++   */
++  readonly replay?: 'call';
+ }
+ 
+ export interface DefinedTool {
+@@ -49,11 +57,15 @@ export function defineTool(tool: Tool, annotations: ToolAnnotations): DefinedToo
+       'annotations.platforms must be a non-empty array of platform names when present',
+     );
+   }
++  if (annotations.replay !== undefined && annotations.replay !== 'call') {
++    throw new TestError('INVALID_ARGUMENT', "annotations.replay must be 'call' when present");
++  }
+   const defined: DefinedTool = {
+     tool,
+     annotations: {
+       mutates: annotations.mutates,
+       ...(annotations.platforms === undefined ? {} : { platforms: [...annotations.platforms] }),
++      ...(annotations.replay === undefined ? {} : { replay: annotations.replay }),
+     },
+   };
+   Object.defineProperty(defined, DEFINED_TOOL_MARKER, { value: true });
+@@ -75,7 +87,15 @@ export function isDefinedTool(value: unknown): value is DefinedTool {
+  * observing the screen (read-only tools only) and keeping what it saw as a
+  * screenshot artifact of the step.
+  */
+-export type ToolContext = Pick<StepExecutorContext, 'observe' | 'attachScreenshot'>;
++export type ToolContext = Pick<StepExecutorContext, 'observe' | 'attachScreenshot'> & {
++  /**
++   * Set when trace replay runs this call again: how long the tool has before
++   * the replay gives up on it. A tool that waits on the screen (a page
++   * object's locator) should time out within it rather than its own longer
++   * default, so a broken call hands the step back fast.
++   */
++  readonly replayTimeoutMs?: number;
++};
+ 
+ /** The capabilities the built-in agent supplied to the running tool. */
+ export function getToolContext(options: object): ToolContext {
+@@ -83,7 +103,11 @@ export function getToolContext(options: object): ToolContext {
+   if (context === undefined || typeof context.observe !== 'function') {
+     throw new TestError('INVALID_ARGUMENT', 'this tool needs the observation context the built-in agent supplies');
+   }
+-  return { observe: context.observe, attachScreenshot: context.attachScreenshot };
++  return {
++    observe: context.observe,
++    attachScreenshot: context.attachScreenshot,
++    ...(context.replayTimeoutMs === undefined ? {} : { replayTimeoutMs: context.replayTimeoutMs }),
++  };
+ }
+ 
+ const TOOL_CONTEXT = Symbol.for('e2e.tool-context.v1');
+diff --git a/packages/e2e/src/cache/anchors.ts b/packages/e2e/src/cache/anchors.ts
+index fef10716..535159c5 100644
+--- a/packages/e2e/src/cache/anchors.ts
++++ b/packages/e2e/src/cache/anchors.ts
+@@ -26,6 +26,7 @@
+ import type { RedactedNode } from '../agent/observation.ts';
+ import { describeTarget } from '../agent/actions.ts';
+ import { collapseText } from '../internal/text.ts';
++import { VOLATILE_TEXT } from './run-data.ts';
+ import { descriptorTiers, fieldsEqual, type DescriptorField } from './relocate.ts';
+ import {
+   bound,
+@@ -138,23 +139,6 @@ function deltaSide(
+   return (stable.length > 0 ? stable : all).slice(0, MAX_TRACE_ANCHORS).map((anchor) => anchor.descriptor);
+ }
+ 
+-/**
+- * Text that cannot read the same on the next run: a minted key prefix or id,
+- * a countdown or age, a date, a clock time, a timing in milliseconds. An
+- * anchor made of it hands every replay off, so it is skipped while some
+- * stable anchor exists; with nothing else, the volatile ones stay, because a
+- * replay that always hands off is still safer than one that passes on
+- * mechanics alone. An alert keeps it, and is compared with these parts read
+- * as placeholders (`alertShape`).
+- */
+-const VOLATILE_TEXT: readonly RegExp[] = [
+-  /\b(?=[A-Za-z0-9_-]*\d)(?=[A-Za-z0-9_-]*[A-Za-z])[A-Za-z0-9_-]{12,}\b/,
+-  /\b\d+\s*(?:ms|s|secs?|seconds?|m|mins?|minutes?|h|hrs?|hours?|d|days?|weeks?|months?|years?)\b/i,
+-  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:,?\s+\d{4})?\b/i,
+-  /\b\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?(?:\s+\d{4})?\b/i,
+-  /\b\d{4}-\d{2}-\d{2}\b/,
+-  /\b\d{1,2}:\d{2}(?::\d{2})?\b/,
+-];
+ 
+ /**
+  * A count that names what it counts: a pagination range, `12 items`, `3
+@@ -182,6 +166,7 @@ function isBareNumber(anchor: TraceTargetDescriptor): boolean {
+   return label !== undefined && /^\d+$/.test(label) && anchor.testId === undefined && (anchor.name === undefined || anchor.text === undefined || anchor.name === anchor.text);
+ }
+ 
++
+ /** Whether an anchor's text cannot read the same on the next run; `countIsData` decides an anchor holding a count. */
+ function isVolatileAnchor(anchor: TraceTargetDescriptor, countIsData: (anchor: TraceTargetDescriptor) => boolean): boolean {
+   const texts = [anchor.text, anchor.name, anchor.value].filter((value): value is string => value !== undefined);
+diff --git a/packages/e2e/src/cache/context.ts b/packages/e2e/src/cache/context.ts
+index 1ac473ac..adfd3815 100644
+--- a/packages/e2e/src/cache/context.ts
++++ b/packages/e2e/src/cache/context.ts
+@@ -89,6 +89,12 @@ export interface AgentCacheContext {
+    * `flushStagedTraces`.
+    */
+   readonly staged: StagedTrace[];
++  /**
++   * Where repair proposals go: a step whose recorded tool call failed on
++   * replay and that then passed live writes its live flow here instead of
++   * over the recording. Set for the file store only.
++   */
++  readonly repairsDir?: string;
+ }
+ 
+ /**
+@@ -224,6 +230,9 @@ export function createAgentCacheContext(options: {
+     mode,
+     store,
+     replayEligible: options.attemptIndex === 0,
++    ...(options.cache.store === undefined
++      ? { repairsDir: path.join(path.dirname(path.resolve(options.projectRoot, options.cache.dir)), 'repairs') }
++      : {}),
+     strict:
+       options.cache.strict === false
+         ? false
+diff --git a/packages/e2e/src/cache/recorder.ts b/packages/e2e/src/cache/recorder.ts
+index b08435f7..1957acde 100644
+--- a/packages/e2e/src/cache/recorder.ts
++++ b/packages/e2e/src/cache/recorder.ts
+@@ -17,6 +17,7 @@
+  */
+ 
+ import { describeAction, type DescribedAction, type RecordableAction } from '../agent/actions.ts';
++import type { JsonValue } from '../types.ts';
+ import { isRelocatableDescriptor } from './relocate.ts';
+ import {
+   bound,
+@@ -87,6 +88,20 @@ export class TraceRecorder {
+     this.lastActionAt = Date.now();
+   }
+ 
++  /**
++   * Records one call of a tool annotated `replay: 'call'`: its name and its
++   * input, which replay passes to the tool again. The input follows the
++   * replay-input rule: a string the redactor alters, or an input too large to
++   * keep whole, poisons the trace instead of being stored bent.
++   */
++  recordToolCall(toolName: string, args: JsonValue): void {
++    const kept = this.verbatimJson(args);
++    if (JSON.stringify(kept).length > MAX_TRACE_INPUT_CHARS) this.truncated = true;
++    const summary = bound(`tool ${this.redact(toolName)} ${this.redact(JSON.stringify(args))}`, MAX_TRACE_SUMMARY_CHARS);
++    this.push({ name: 'tool', summary, tool: toolName, args: kept });
++    this.lastActionAt = Date.now();
++  }
++
+   /**
+    * Records a fill whose value was this run's data as a gap, with the rule
+    * that said so (`agent/derived.ts`). Replay hands the step over before it,
+@@ -248,6 +263,16 @@ export class TraceRecorder {
+     return bound(redacted, MAX_TRACE_INPUT_CHARS);
+   }
+ 
++  /** `verbatim` over every string leaf of a tool input. */
++  private verbatimJson(value: JsonValue): JsonValue {
++    if (typeof value === 'string') return this.verbatim(value);
++    if (value === null || typeof value !== 'object') return value;
++    if (Array.isArray(value)) return (value as readonly JsonValue[]).map((item) => this.verbatimJson(item));
++    return Object.fromEntries(
++      Object.entries(value as Readonly<Record<string, JsonValue>>).map(([key, item]) => [key, this.verbatimJson(item)]),
++    );
++  }
++
+   private push(action: RecordedAction): void {
+     // A scroll repeated in the same direction on the same target is one
+     // action that ran several times, not several actions: a long list paged
+diff --git a/packages/e2e/src/cache/relocate.ts b/packages/e2e/src/cache/relocate.ts
+index 267dfe50..1f155604 100644
+--- a/packages/e2e/src/cache/relocate.ts
++++ b/packages/e2e/src/cache/relocate.ts
+@@ -25,7 +25,7 @@ import type { TracePosition, TraceTargetDescriptor } from './trace.ts';
+  * change, because an entry recorded under different rules could relocate to a
+  * different node.
+  */
+-export const REPLAY_POLICY_VERSION = 'conservative/6';
++export const REPLAY_POLICY_VERSION = 'conservative/7';
+ 
+ /**
+  * The share of the viewport a scrolled node must have covered when it was
+diff --git a/packages/e2e/src/cache/trace.ts b/packages/e2e/src/cache/trace.ts
+index eabab07c..b90c72b0 100644
+--- a/packages/e2e/src/cache/trace.ts
++++ b/packages/e2e/src/cache/trace.ts
+@@ -17,7 +17,8 @@
+  */
+ 
+ import { timestamp } from '../internal/ids.ts';
+-import type { ScrollDirection } from '../types.ts';
++import { validateJsonValue } from '../internal/json-value.ts';
++import type { JsonValue, ScrollDirection } from '../types.ts';
+ 
+ export const TRACE_SCHEMA_VERSION = 'trace-1';
+ 
+@@ -328,16 +329,29 @@ export type DerivedReason = 'pixels' | 'whole-node' | 'minted-token' | 'date';
+ const isDerivedReason = oneOf(['pixels', 'whole-node', 'minted-token', 'date'] as const satisfies readonly DerivedReason[]);
+ 
+ /**
+- * A gap that ends any replay rather than silently skipping what the grammar
+- * cannot reproduce: a project-tool mutation, or a fill whose value was this
+- * run's data, which carries the rule that said so. The wire name stays
+- * `tool` for both, as the entries already recorded spell it.
++ * A project-tool call, or a gap that ends any replay rather than silently
++ * skipping what the grammar cannot reproduce: a project-tool mutation, or a
++ * fill whose value was this run's data, which carries the rule that said so.
++ * The wire name stays `tool` for all three, as the entries already recorded
++ * spell it. A call of a tool annotated `replay: 'call'` carries the tool's
++ * name and its input, and replay runs the tool again instead of stopping; a
++ * runner that does not know the fields drops them and reads a gap.
+  */
+ export interface ToolGapAction extends ActionBase {
+   readonly name: 'tool';
+   readonly derived?: DerivedReason;
++  /** The project tool that ran; present exactly when `args` is. */
++  readonly tool?: string;
++  /** The tool's input as the call passed it; a replay input like a typed value. */
++  readonly args?: JsonValue;
+ }
+ 
++/** Tool names as model providers accept them. */
++const TOOL_NAME = /^[A-Za-z0-9_-]{1,128}$/u;
++
++/** Deepest nesting a recorded tool input may have. */
++const MAX_TOOL_ARGS_DEPTH = 16;
++
+ export type RecordedAction =
+   | NodeAction
+   | TypeAction
+@@ -633,13 +647,47 @@ function readRecordedAction(document: unknown): RecordedAction | undefined {
+     case 'tool': {
+       const derived = raw['derived'];
+       if (derived !== undefined && !isDerivedReason(derived)) return undefined;
+-      return { name: 'tool', summary, ...(derived === undefined ? {} : { derived }) };
++      const tool = raw['tool'];
++      if (tool === undefined && raw['args'] === undefined) {
++        return { name: 'tool', summary, ...(derived === undefined ? {} : { derived }) };
++      }
++      const args = readToolArgs(raw['args']);
++      if (derived !== undefined || typeof tool !== 'string' || !TOOL_NAME.test(tool) || args === undefined) return undefined;
++      return { name: 'tool', summary, tool, args };
+     }
+     default:
+       return undefined;
+   }
+ }
+ 
++/**
++ * A recorded tool input: plain JSON, bounded like a typed value once
++ * serialized, so a replay passes the tool exactly what the recording did.
++ */
++function readToolArgs(document: unknown): JsonValue | undefined {
++  if (document === undefined) return undefined;
++  try {
++    validateJsonValue(document, 'tool args', { maxDepth: MAX_TOOL_ARGS_DEPTH });
++  } catch {
++    return undefined;
++  }
++  return JSON.stringify(document).length <= MAX_TRACE_INPUT_CHARS ? (document as JsonValue) : undefined;
++}
++
++/** Applies `map` to every string leaf of a tool input; keys are the tool's vocabulary and stay. */
++function mapJsonText(value: JsonValue, map: TraceTextMap): JsonValue | undefined {
++  if (typeof value === 'string') return map(value);
++  if (value === null || typeof value !== 'object') return value;
++  if (Array.isArray(value)) return each(value as readonly JsonValue[], (item) => mapJsonText(item, map));
++  const out: Record<string, JsonValue> = {};
++  for (const [key, item] of Object.entries(value as Readonly<Record<string, JsonValue>>)) {
++    const mapped = mapJsonText(item, map);
++    if (mapped === undefined) return undefined;
++    out[key] = mapped;
++  }
++  return out;
++}
++
+ function readPoint(document: unknown): PointAction['point'] | undefined {
+   const raw = readObject(document);
+   const x = raw?.['x'];
+@@ -772,10 +820,16 @@ function mapActionText(action: RecordedAction, map: TraceTextMap): RecordedActio
+       const mapped = target(action.within.target);
+       return mapped === undefined ? undefined : withSummary({ ...action, within: { ...action.within, target: mapped } });
+     }
++    case 'tool': {
++      // Tool input is replay input: a `unique()` value passed to the tool
++      // becomes a slot and is filled from each run's value.
++      if (action.args === undefined) return withSummary(action);
++      const args = mapJsonText(action.args, map);
++      return args === undefined ? undefined : withSummary({ ...action, args });
++    }
+     case 'back':
+     case 'pressKey':
+     case 'dismissKeyboard':
+-    case 'tool':
+       return withSummary(action);
+   }
+ }
+diff --git a/packages/e2e/src/run/steps.ts b/packages/e2e/src/run/steps.ts
+index db8ab4a9..ccf22074 100644
+--- a/packages/e2e/src/run/steps.ts
++++ b/packages/e2e/src/run/steps.ts
+@@ -121,6 +121,12 @@ export interface StepCacheInfo {
+    * recording could not tell which param a recorded input came from.
+    */
+   notRecorded?: 'param-collision';
++  /**
++   * After a recorded project-tool call failed on replay and the step then
++   * passed live: where the live flow was written as a repair proposal. The
++   * recording itself is kept, so fixing the tool restores the replay.
++   */
++  repairProposal?: string;
+   replayedActions: number;
+   totalActions: number;
+ }
+diff --git a/packages/e2e/src/types.ts b/packages/e2e/src/types.ts
+index d044246a..82644d76 100644
+--- a/packages/e2e/src/types.ts
++++ b/packages/e2e/src/types.ts
+@@ -1265,7 +1265,7 @@ export type ProviderOptions = Readonly<Record<string, Readonly<Record<string, un
+  */
+ export interface AgentTool {
+   readonly tool: object;
+-  readonly annotations: { readonly mutates: boolean; readonly platforms?: readonly string[] };
++  readonly annotations: { readonly mutates: boolean; readonly platforms?: readonly string[]; readonly replay?: 'call' };
+ }
+ 
+ /** The options every agent takes, whichever brain runs its `act` steps. */
+diff --git a/packages/e2e/tests/unit/relocate-within.test.ts b/packages/e2e/tests/unit/relocate-within.test.ts
+index 22442824..e80b95c4 100644
+--- a/packages/e2e/tests/unit/relocate-within.test.ts
++++ b/packages/e2e/tests/unit/relocate-within.test.ts
+@@ -96,3 +96,76 @@ describe('container keys', () => {
+     expect(containerKey('l', nodes, parents)).toBeUndefined();
+   });
+ });
++
++describe('container keys for labelled containers and run data', () => {
++  /** Builds a node map and parent index from a list of nodes with their parent. */
++  function screenOf(entries: readonly [id: string, node: Omit<SemanticNode, 'ref' | 'children'>, parent?: string][]) {
++    const built = new Map<string, SemanticNode>();
++    const parents = new Map<string, string>();
++    for (const [id, node, parent] of entries) {
++      built.set(id, { ref: { id, revision: 'r' }, ...node });
++      if (parent !== undefined) parents.set(id, parent);
++    }
++    for (const [id, parent] of parents) {
++      const owner = built.get(parent)!;
++      built.set(parent, { ...owner, children: [...(owner.children ?? []), built.get(id)!] });
++    }
++    // Children are built bottom-up above; re-read them so every level carries its final children.
++    const resolve = (node: SemanticNode): SemanticNode => ({ ...node, ...(node.children === undefined ? {} : { children: node.children.map((child) => resolve(built.get(child.ref.id)!)) }) });
++    const nodes = new Map<string, RedactedNode>([...built].map(([id, node]) => [id, redacted(resolve(node))]));
++    return { nodes, parents };
++  }
++
++  /** `<section aria-label="Counter"><p>Count: <output>{count}</output></p><button>Increment</button></section>` */
++  const counter = (count: string) =>
++    screenOf([
++      ['s', { role: 'region', name: 'Counter' }],
++      ['p', { role: 'paragraph', text: 'Count:' }, 's'],
++      ['o', { role: 'status', name: count, text: count }, 'p'],
++      ['b', { role: 'button', name: 'Increment' }, 's'],
++    ]);
++
++  it('keys a control in a labelled region by the region\'s label, not by the live count that comes first in it', () => {
++    const at0 = counter('0');
++    const at5 = counter('5');
++    expect(containerKey('b', at0.nodes, at0.parents)).toBe('Counter');
++    // The same control at another count: same key, so a recording replays whatever the count.
++    expect(containerKey('b', at5.nodes, at5.parents)).toBe('Counter');
++    expect(relocateDescriptor({ role: 'button', name: 'Increment', within: 'Counter' }, at5.nodes)).toEqual({ kind: 'found', id: 'b' });
++  });
++
++  it('keys the controls of a labelled section by its label, not by its own first button', () => {
++    // `<section aria-label="Projects"><button>Add project</button><form><label>Project name <input/></label><button>Create</button></form></section>`
++    const { nodes, parents } = screenOf([
++      ['s', { role: 'region', name: 'Projects' }],
++      ['add', { role: 'button', name: 'Add project' }, 's'],
++      ['f', { role: 'form' }, 's'],
++      ['name', { role: 'textbox', name: 'Project name' }, 'f'],
++      ['create', { role: 'button', name: 'Create' }, 'f'],
++    ]);
++    expect(containerKey('name', nodes, parents)).toBe('Projects');
++    expect(containerKey('create', nodes, parents)).toBe('Projects');
++    expect(containerKey('add', nodes, parents)).toBe('Projects');
++  });
++
++  it('keeps first text for a row, but passes over a first text that is run data', () => {
++    const named = screenOf([
++      ['r', { role: 'row', name: 'Order' }],
++      ['c', { role: 'cell', text: 'Budget draft' }, 'r'],
++      ['d', { role: 'button', name: 'Delete' }, 'r'],
++    ]);
++    expect(containerKey('d', named.nodes, named.parents)).toBe('Budget draft');
++    const counted = screenOf([
++      ['r', { role: 'row', name: 'Order' }],
++      ['c', { role: 'cell', text: '42' }, 'r'],
++      ['d', { role: 'button', name: 'Delete' }, 'r'],
++    ]);
++    expect(containerKey('d', counted.nodes, counted.parents)).toBe('Order');
++    const unnamed = screenOf([
++      ['g', { role: 'group' }],
++      ['t', { role: 'status', text: '2026-10-06' }, 'g'],
++      ['b', { role: 'button', name: 'Refresh' }, 'g'],
++    ]);
++    expect(containerKey('b', unnamed.nodes, unnamed.parents)).toBeUndefined();
++  });
++});
+diff --git a/packages/e2e/tests/unit/step-cache.test.ts b/packages/e2e/tests/unit/step-cache.test.ts
+index e5626f9c..228001e8 100644
+--- a/packages/e2e/tests/unit/step-cache.test.ts
++++ b/packages/e2e/tests/unit/step-cache.test.ts
+@@ -1171,3 +1171,39 @@ describe('cache.strict and a step whose key changed under its recording', () =>
+     await expect(failure).rejects.not.toThrow('hunter2');
+   });
+ });
++
++describe('a recorded tool call that fails on replay', () => {
++  const failing = { name: 'tool', summary: 'tool P_create {"name":"Acme"}', tool: 'P_create', args: { name: 'Acme' } } as const;
++
++  it('keeps the entry, tells the executor, and writes the passing live flow as a repair proposal', async () => {
++    const repairsDir = await mkdtemp(join(tmpdir(), 'e2e-repairs-'));
++    const context: AgentCacheContext = { ...entryContext({ actions: [failing], startPath: '/' }), repairsDir };
++    const host = { ...makeHost(['/', '/']), runTool: () => Promise.reject(new Error('locator.click: Timeout 5000ms exceeded.\nCall log:')) };
++    const session = makeSession(context, host);
++    expect(await session.begin()).toBeUndefined();
++    expect(session.cacheInfo).toMatchObject({ mode: 'missed', reason: 'action-failed' });
++    expect(session.replayedToolFailure).toEqual({ tool: 'P_create', args: { name: 'Acme' }, error: 'locator.click: Timeout 5000ms exceeded.' });
++    session.record({ name: 'navigate', url: '/customers' });
++    await session.conclude('passed', 'created');
++    expect(context.staged).toEqual([{ kind: 'keep', keyHash: 'a'.repeat(64), stepIndex: 1, recordedFor: exampleStep }]);
++    const file = join(repairsDir, `P_create-${'a'.repeat(64)}.json`);
++    expect(session.cacheInfo?.repairProposal).toBe(file);
++    expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({
++      schemaVersion: 'repair-1',
++      tool: 'P_create',
++      args: { name: 'Acme' },
++      error: 'locator.click: Timeout 5000ms exceeded.',
++      fallback: [{ name: 'navigate', url: '/customers' }],
++    });
++  });
++
++  it('still evicts the entry when the step then fails', async () => {
++    const deleted: string[] = [];
++    const base = entryContext({ actions: [failing], startPath: '/' });
++    const context: AgentCacheContext = { ...base, store: { ...base.store, delete: async (key) => { deleted.push(key); } } };
++    const session = makeSession(context, { ...makeHost(['/']), runTool: () => Promise.reject(new Error('gone')) });
++    await session.begin();
++    await session.conclude('failed', undefined);
++    expect(deleted).toEqual(['a'.repeat(64)]);
++  });
++});
+diff --git a/packages/e2e/tests/unit/tool.test.ts b/packages/e2e/tests/unit/tool.test.ts
+index c175c516..07a0846f 100644
+--- a/packages/e2e/tests/unit/tool.test.ts
++++ b/packages/e2e/tests/unit/tool.test.ts
+@@ -20,3 +20,24 @@ describe('defineTool platforms', () => {
+     expect(() => defineTool(tool, { mutates: false, platforms: [''] })).toThrow(/platforms/);
+   });
+ });
++
++describe('defineTool replay', () => {
++  it("keeps replay: 'call' and leaves it out when absent", () => {
++    expect(defineTool(tool, { mutates: true, replay: 'call' }).annotations.replay).toBe('call');
++    expect(defineTool(tool, { mutates: true }).annotations).not.toHaveProperty('replay');
++  });
++
++  it('rejects any other replay mode', () => {
++    expect(() => defineTool(tool, { mutates: true, replay: 'skip' as 'call' })).toThrow(/replay/);
++  });
++});
++
++describe('getToolContext replayTimeoutMs', () => {
++  it('passes the replay timeout through, and leaves it out on a live call', async () => {
++    const { getToolContext, withToolContext } = await import('../../src/agent/tool.ts');
++    const base = { toolCallId: 't', messages: [], context: undefined } as unknown as Parameters<typeof withToolContext>[0];
++    const harness = { observe: async () => ({}) as never, attachScreenshot: async () => 'id' };
++    expect(getToolContext(withToolContext(base, { ...harness, replayTimeoutMs: 5000 })).replayTimeoutMs).toBe(5000);
++    expect(getToolContext(withToolContext(base, harness))).not.toHaveProperty('replayTimeoutMs');
++  });
++});
+diff --git a/packages/e2e/tests/unit/trace-recorder.test.ts b/packages/e2e/tests/unit/trace-recorder.test.ts
+index 877a0a96..4a071ee0 100644
+--- a/packages/e2e/tests/unit/trace-recorder.test.ts
++++ b/packages/e2e/tests/unit/trace-recorder.test.ts
+@@ -315,3 +315,47 @@ describe('TraceRecorder: bare-point taps', () => {
+     expect(broken((action) => { action['point'] = { x: 'left', y: 60 }; })).toBeUndefined();
+   });
+ });
++
++describe('TraceRecorder tool calls', () => {
++  it('records a replayable tool call with its input, and reads it back', () => {
++    const recorder = makeRecorder();
++    recorder.recordToolCall('ProjectsPage_createProject', { name: 'Acme', tags: ['a', 1, true, null] });
++    const trace = recorder.finalize(conclusion)!;
++    expect(trace.truncated).toBeUndefined();
++    expect(trace.actions).toEqual([
++      {
++        name: 'tool',
++        summary: 'tool ProjectsPage_createProject {"name":"Acme","tags":["a",1,true,null]}',
++        tool: 'ProjectsPage_createProject',
++        args: { name: 'Acme', tags: ['a', 1, true, null] },
++      },
++    ]);
++    expect(readTraceEntry(JSON.parse(JSON.stringify(buildTraceEntry(trace))))?.payload.actions).toEqual(trace.actions);
++  });
++
++  it('poisons the trace when a tool input carries a registered secret', () => {
++    const recorder = makeRecorder({ secrets: new Map([['token', 'hunter2-secret']]) });
++    recorder.recordToolCall('Login_signIn', { password: 'hunter2-secret' });
++    const trace = recorder.finalize(conclusion)!;
++    expect(trace.truncated).toBe(true);
++    expect(JSON.stringify(trace)).not.toContain('hunter2-secret');
++  });
++
++  it('poisons the trace when a tool input is too large to keep whole', () => {
++    const recorder = makeRecorder();
++    recorder.recordToolCall('Notes_write', { a: 'x'.repeat(MAX_TRACE_INPUT_CHARS - 100), b: 'y'.repeat(200) });
++    expect(recorder.finalize(conclusion)?.truncated).toBe(true);
++  });
++
++  it('reads a tool action without a tool name as the gap it always was, and rejects a malformed call', () => {
++    const entry = (action: object) =>
++      readTraceEntry({ schemaVersion: 'trace-1', createdAt: '2026-01-01T00:00:00Z', payload: { actions: [action], executor: { name: 'e' }, summary: 'done' } });
++    expect(entry({ name: 'tool', summary: 'tool x' })?.payload.actions[0]).toEqual({ name: 'tool', summary: 'tool x' });
++    expect(entry({ name: 'tool', summary: 's', tool: 'A_b', args: { n: 1 } })?.payload.actions[0]).toEqual({ name: 'tool', summary: 's', tool: 'A_b', args: { n: 1 } });
++    expect(entry({ name: 'tool', summary: 's', tool: 'A.b', args: {} })).toBeUndefined();
++    expect(entry({ name: 'tool', summary: 's', tool: 'A_b' })).toBeUndefined();
++    expect(entry({ name: 'tool', summary: 's', args: {} })).toBeUndefined();
++    expect(entry({ name: 'tool', summary: 's', tool: 'A_b', args: {}, derived: 'date' })).toBeUndefined();
++    expect(entry({ name: 'tool', summary: 's', tool: 'A_b', args: { n: 'x'.repeat(MAX_TRACE_INPUT_CHARS) } })).toBeUndefined();
++  });
++});
+diff --git a/packages/e2e/tests/unit/trace-replay.test.ts b/packages/e2e/tests/unit/trace-replay.test.ts
+index 8329d9b8..87e76f6e 100644
+--- a/packages/e2e/tests/unit/trace-replay.test.ts
++++ b/packages/e2e/tests/unit/trace-replay.test.ts
+@@ -638,3 +638,40 @@ describe('replayTrace: bare-point taps', () => {
+   });
+ 
+ });
++
++describe('replayTrace tool calls', () => {
++  const createProject: RecordedAction = { name: 'tool', summary: 'tool P_create {"name":"Acme"}', tool: 'P_create', args: { name: 'Acme' } };
++
++  it('runs a recorded tool call through the host with its recorded input, then the rest of the trace', async () => {
++    const ran: unknown[] = [];
++    const host = { ...makeHost({}), runTool: async (tool: string, args: unknown) => void ran.push([tool, args]) };
++    const outcome = await replayTrace(host, trace([createProject, tapUpgrade]));
++    expect(outcome).toMatchObject({ completed: true, executed: 2 });
++    expect(ran).toEqual([['P_create', { name: 'Acme' }]]);
++    expect(host.calls).toEqual(['tap']);
++  });
++
++  it('hands off as a failed action when the tool throws', async () => {
++    const host = { ...makeHost({}), runTool: () => Promise.reject(new Error('locator not found')) };
++    const outcome = await replayTrace(host, trace([tapUpgrade, createProject]));
++    expect(outcome).toMatchObject({ completed: false, executed: 1, stopReason: 'action-failed' });
++  });
++
++  it('stops at a recorded call as a gap when the host runs no tools, and at a bare gap whatever it runs', async () => {
++    await expect(replayTrace(makeHost({}), trace([createProject]))).resolves.toMatchObject({ completed: false, stopReason: 'gap' });
++    const host = { ...makeHost({}), runTool: () => Promise.resolve() };
++    await expect(replayTrace(host, trace([{ name: 'tool', summary: 'tool X' }]))).resolves.toMatchObject({ stopReason: 'gap' });
++  });
++});
++
++describe('replayTrace failed tool calls', () => {
++  it('names the failed call and the first line of its error', async () => {
++    const call: RecordedAction = { name: 'tool', summary: 'tool P_create', tool: 'P_create', args: { name: 'Acme' } };
++    const host = { ...makeHost({}), runTool: () => Promise.reject(new Error('Timeout 5000ms exceeded.\nwaiting for getByRole')) };
++    await expect(replayTrace(host, trace([call]))).resolves.toMatchObject({
++      stopReason: 'action-failed',
++      executed: 0,
++      failedTool: { tool: 'P_create', args: { name: 'Acme' }, error: 'Timeout 5000ms exceeded.' },
++    });
++  });
++});
+diff --git a/packages/e2e/tests/unit/trace-template.test.ts b/packages/e2e/tests/unit/trace-template.test.ts
+index 833425c6..67f70356 100644
+--- a/packages/e2e/tests/unit/trace-template.test.ts
++++ b/packages/e2e/tests/unit/trace-template.test.ts
+@@ -250,3 +250,28 @@ describe('templateTrace and expandTrace', () => {
+     expect(expandText('/x/{{param:/name|base64}}', values(name('Acme')))).toBeUndefined();
+   });
+ });
++
++describe('tool call input', () => {
++  it("turns a unique() value passed to a tool into a slot and fills it from the next call's value", () => {
++    const recorded: ActionTrace = {
++      actions: [{ name: 'tool', summary: 'tool ProjectsPage_createProject {"name":"E2E abc"}', tool: 'ProjectsPage_createProject', args: { name: 'E2E abc', tags: ['E2E abc', 3] } }],
++      executor: { name: 'test' },
++      summary: 'created',
++      endAnchors: [{ role: 'cell', name: 'E2E abc' }],
++    };
++    const templated = templateTrace(recorded, [{ pointer: '/name', value: 'E2E abc' }])!;
++    expect(templated.actions[0]).toMatchObject({ args: { name: '{{param:/name}}', tags: ['{{param:/name}}', 3] } });
++    const replayed = expandTrace(templated, [{ pointer: '/name', value: 'E2E xyz' }])!;
++    expect(replayed.actions[0]).toMatchObject({ tool: 'ProjectsPage_createProject', args: { name: 'E2E xyz', tags: ['E2E xyz', 3] } });
++    expect(replayed.endAnchors).toEqual([{ role: 'cell', name: 'E2E xyz' }]);
++  });
++
++  it('refuses a tool input slot the call cannot fill', () => {
++    const recorded: ActionTrace = {
++      actions: [{ name: 'tool', summary: 'tool T', tool: 'T', args: { name: '{{param:/other}}' } }],
++      executor: { name: 'test' },
++      summary: 'done',
++    };
++    expect(expandTrace(recorded, [{ pointer: '/name', value: 'x' }])).toBeUndefined();
++  });
++});
