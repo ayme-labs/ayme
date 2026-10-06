@@ -39,6 +39,21 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
       Object.values(await inspector.navigator.tools.listed()).flat()
     )
     .toContain("Inspector.navigator.showLens");
+
+  // A search in progress does not stop the agent from opening a run card,
+  // and the card's own actions come alive with it.
+  await executePublishedTool(page, "Inspector.navigator.search", {
+    query: "addItem",
+  });
+  await executePublishedTool(page, "Inspector.tool", {
+    name: "ListPage.addItem",
+  });
+  await expect(inspector.detail.toolPage.title).toHaveText("ListPage.addItem");
+  await expect
+    .poll(async () =>
+      (await new AgentView(page).tools()).map(({ name }) => name)
+    )
+    .toContain("Inspector.detail.toolPage.card.fillJson");
 });
 
 test("the page state an agent reads includes the panel", async ({

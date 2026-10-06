@@ -93,12 +93,16 @@ export class Inspector {
     await this.header.collapse();
   }
 
-  /** Selects a tool in the Tools lens and returns its run card. */
+  /**
+   * Selects a tool in the Tools lens and returns its run card. A search in
+   * progress is cleared first: its results replace the lens's tree.
+   */
   @ayme.action({
     description: "Selects a tool in the Tools lens and opens its run card.",
   })
   async tool(name: string): Promise<RunCard> {
     await this.navigator.showLens("Tools");
+    await this.navigator.search("");
     await this.navigator.item(name).click();
     return this.detail.runCard();
   }

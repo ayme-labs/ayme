@@ -1,6 +1,7 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
+import { RunCard } from "./RunCard";
 import { WhatTheModelSees } from "./WhatTheModelSees";
 
 /** A tool's page in the detail pane. */
@@ -13,6 +14,8 @@ export class ToolPage {
   /** A Page object tool's link to its Page Object Model. */
   readonly modelLink: Locator;
   readonly modelSees: WhatTheModelSees;
+  /** The tool's run card. */
+  readonly card: RunCard;
 
   constructor(detail: Locator) {
     this.root = detail.locator("article[data-tool-page]");
@@ -22,5 +25,6 @@ export class ToolPage {
       name: /page object model$/,
     });
     this.modelSees = new WhatTheModelSees(this.root);
+    this.card = new RunCard(this.root.getByRole("form"));
   }
 }
