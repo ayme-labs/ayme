@@ -30,7 +30,9 @@ The pages:
 - `/dogfood.html`: the list app with the Inspector mounted for dogfooding: an
   open shadow root, the Agent Connection on, and the Inspector's own Page
   Object registered, so an agent drives the panel through Page Object Tools.
-  `pnpm dev` serves it for a coding agent connected through `ayme mcp`.
+  The Structure lens's own tree is kept out of the page state, since it
+  renders that state. `pnpm dev` serves it for a coding agent connected
+  through `ayme mcp`.
 
 ## Running
 

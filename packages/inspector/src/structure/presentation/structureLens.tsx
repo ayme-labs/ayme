@@ -134,7 +134,14 @@ function StructureTreeView({
         </p>
       )}
       {rows.length ? (
-        <div role="tree" aria-label="Page structure" className="flex flex-col">
+        // Marked so a page dogfooding the Inspector can keep this rendering of
+        // the page's structure out of the structure it renders.
+        <div
+          role="tree"
+          aria-label="Page structure"
+          data-ayme-inspector-structure=""
+          className="flex flex-col"
+        >
           {rows.map(({ node, depth }, index) =>
             hasRef(node) ? (
               <NodeRow

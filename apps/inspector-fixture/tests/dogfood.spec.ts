@@ -66,3 +66,16 @@ test("the page state an agent reads includes the panel", async ({
   };
   expect(structure).toContain('complementary "ayme"');
 });
+
+test("the Structure lens's own tree stays out of the page state", async ({
+  page,
+  inspector,
+}) => {
+  await inspector.navigator.showLens("Structure");
+  await expect(inspector.structure.tree).toBeVisible();
+  const { structure } = (await new AgentView(page).call("snapshot", {})) as {
+    structure: string;
+  };
+  expect(structure).toContain('button "Structure"');
+  expect(structure).not.toContain('tree "Page structure"');
+});

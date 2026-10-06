@@ -60,6 +60,9 @@ function clearTheList() {
  * reports its state on <html> so the e2e tests can tell a broken fixture or a
  * runtime that never published from a broken Inspector.
  */
+const isInspectorStructureTree = (element: Element) =>
+  element.hasAttribute("data-ayme-inspector-structure");
+
 export function startAyme({
   PageObject = ListPage,
   publish = true,
@@ -85,6 +88,9 @@ export function startAyme({
       webMCP: { enabled: publish },
       inspector: mount === "session" && (demo ? { demo } : true),
       agentConnection: dogfood,
+      // The Structure lens renders the page state; in page state it would
+      // render itself, over and over.
+      ignore: dogfood ? isInspectorStructureTree : undefined,
     });
     runtime.pom.register(PageObject);
     for (const Other of alsoRegister) runtime.pom.register(Other);
