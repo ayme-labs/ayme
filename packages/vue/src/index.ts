@@ -3,10 +3,13 @@ import {
   getCurrentInstance,
   getCurrentScope,
   inject,
+  onMounted,
   onScopeDispose,
+  onUnmounted,
   provide,
   shallowReactive,
   shallowReadonly,
+  unref,
   watch,
   type DefineComponent,
   type InjectionKey,
@@ -94,7 +97,10 @@ const providerProps = {
     type: [Boolean, Object] as PropType<AymeOptions["inspector"]>,
     default: undefined,
   },
-  agentConnection: { type: Boolean, default: undefined },
+  agentConnection: {
+    type: [Boolean, Object] as PropType<AymeOptions["agentConnection"]>,
+    default: undefined,
+  },
   navigate: {
     type: Function as PropType<NonNullable<UseAymeOptions["navigate"]>>,
     required: false,
@@ -169,6 +175,43 @@ export function usePageObject<T extends object>(
   const instance = runtime.pom.register(model);
   onScopeDispose(() => runtime.pom.unregister(model));
   return instance;
+}
+
+/**
+ * Adds this component's instance of the Peek `name` while it is mounted,
+ * through `ayme.peek`. `values` may be a ref, a reactive object or an object
+ * of refs; the agent reads their current values. `id` defaults to one per
+ * component instance.
+ */
+export function usePeek(values: unknown, name: string, id?: string): void {
+  const component = getCurrentInstance();
+  if (!component)
+    throw new Error("usePeek must be called in a component's setup");
+  // The server never mounts, so it needs no session.
+  const runtime = inheritedRuntime() ?? started;
+  if (!runtime && typeof window !== "undefined")
+    throw new Error(
+      "usePeek requires useAyme() or an AymeProvider in this component or an ancestor."
+    );
+  let remove: (() => void) | undefined;
+  onMounted(() => {
+    remove = runtime?.peek(
+      () => read(values),
+      name,
+      id ?? String(component.uid)
+    );
+  });
+  onUnmounted(() => remove?.());
+}
+
+function read(values: unknown) {
+  const value = unref(values);
+  if (value === null || typeof value !== "object") return value;
+  const prototype: unknown = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, unref(entry)])
+  );
 }
 
 /** The started owner's session in the browser. */

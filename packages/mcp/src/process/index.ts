@@ -63,6 +63,16 @@ export function startAgentConnection(
   // its own earlier session and keeps its place among the App Processes.
   const id = crypto.randomUUID();
   let disposed = false;
+  // Node has its own WebSocket from version 22; before, the ws package's.
+  // Neither sends an Origin, which is how the server knows a local process.
+  let WebSocketClass = globalThis.WebSocket as typeof WebSocket | undefined;
+  const withWebSocket = (use: (WebSocketClass: typeof WebSocket) => void) => {
+    if (WebSocketClass) return use(WebSocketClass);
+    void import("ws").then(({ WebSocket }) => {
+      WebSocketClass = WebSocket as unknown as typeof globalThis.WebSocket;
+      if (!disposed) use(WebSocketClass);
+    });
+  };
   let open: { close(): void } | undefined;
   let retry: ReturnType<typeof setTimeout> | undefined;
   // The pairing with the server it last paired with, once that server
@@ -75,19 +85,23 @@ export function startAgentConnection(
     (retry as { unref?: () => void }).unref?.();
   };
 
-  const scan = () => {
-    if (disposed) return;
-    void findServers(ports).then((servers) => {
+  const scan = () =>
+    withWebSocket((WebSocketClass) => {
       if (disposed) return;
-      if (known && servers.includes(known.address)) return pair(known);
-      if (servers.length === 1)
-        return pair({ address: servers[0]!, token: "" });
-      later(scan);
+      void findServers(ports, WebSocketClass).then((servers) => {
+        if (disposed) return;
+        if (known && servers.includes(known.address)) return pair(known);
+        if (servers.length === 1)
+          return pair({ address: servers[0]!, token: "" });
+        later(scan);
+      });
     });
-  };
   const lookAgain = linked ? () => later(() => pair(linked)) : scan;
 
-  const pair = (pairing: Pairing) => {
+  const pair = (pairing: Pairing) =>
+    withWebSocket((WebSocketClass) => connect(pairing, WebSocketClass));
+  const connect = (pairing: Pairing, WebSocketClass: typeof WebSocket) => {
+    if (disposed) return;
     let current = pairing;
     const ended = () => {
       if (open !== opened) return false;
@@ -96,6 +110,7 @@ export function startAgentConnection(
       return true;
     };
     const channel = openPageChannel(() => socketUrl(current), {
+      WebSocket: WebSocketClass,
       hello: () => ({ process: id }),
       onWelcome({ token }) {
         if (!token || current.token) return;

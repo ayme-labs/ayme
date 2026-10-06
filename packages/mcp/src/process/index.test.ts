@@ -5,6 +5,7 @@ import type { Hello, ToolReportAnswer } from "../contract";
 /** A channel the App Process opened, which the test drives. */
 type FakeChannel = {
   url(): string;
+  WebSocket?: unknown;
   hello(): Hello;
   onWelcome(welcome: { token?: string }): void;
   onUnknownPairing(): void;
@@ -20,6 +21,7 @@ const scans = vi.hoisted(
   () =>
     [] as {
       ports: { first: number; last: number };
+      WebSocket: unknown;
       answer(servers: string[]): Promise<void>;
     }[]
 );
@@ -45,10 +47,11 @@ vi.mock("../connection", async (importOriginal) => ({
 }));
 vi.mock("../pairing", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../pairing")>()),
-  findServers: (ports: { first: number; last: number }) =>
+  findServers: (ports: { first: number; last: number }, WebSocket: unknown) =>
     new Promise<string[]>((resolve) =>
       scans.push({
         ports,
+        WebSocket,
         async answer(servers) {
           resolve(servers);
           await vi.advanceTimersByTimeAsync(0);
@@ -212,6 +215,21 @@ describe("startAgentConnection in an App Process", () => {
     expect(warn).toHaveBeenCalledExactlyOnceWith(
       "[ayme] peek.node.jobs is hidden: another App Process offers a tool with the same name. Rename one."
     );
+  });
+
+  it("uses the ws package's WebSocket where Node has none of its own, as before Node 22", async () => {
+    vi.stubGlobal("WebSocket", undefined);
+    const { WebSocket } = await import("ws");
+    try {
+      start();
+      await vi.waitFor(() => expect(scans).toHaveLength(1));
+      await scans[0]!.answer([SERVER]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    expect(scans[0]!.WebSocket).toBe(WebSocket);
+    expect(channels[0]!.WebSocket).toBe(WebSocket);
   });
 
   it("stops scanning and closes its channel once disposed", async () => {

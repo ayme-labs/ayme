@@ -18,6 +18,9 @@ import { synchronizeWebMcpTools } from "./webMcp";
 // and a real page client would scan for an agent's Ayme MCP server.
 const connected = vi.hoisted(() => ({ sessions: [] as unknown[] }));
 vi.mock("./agentConnection", () => ({
+  loadProcessConnection: async () => {
+    throw new Error("A page never loads an App Process's connection.");
+  },
   loadAgentConnection: async () => ({
     startAgentConnection: (ayme: unknown) => {
       connected.sessions.push(ayme);

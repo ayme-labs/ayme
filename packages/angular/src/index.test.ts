@@ -14,6 +14,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import {
   injectAyme,
   injectPageObject,
+  injectPeek,
   provideAyme,
   type AymeOptions,
 } from "./index";
@@ -109,22 +110,24 @@ it("rejects provideAyme beneath another provideAyme", () => {
   );
 });
 
-it("rejects injectAyme and injectPageObject without provideAyme above", () => {
+it("rejects the inject functions without provideAyme above", () => {
   const root = environment();
 
   for (const inject of [
     injectAyme,
     () => injectPageObject(Model),
+    () => injectPeek({}, "peek"),
   ] as (() => unknown)[])
     expect(() => runInInjectionContext(root, inject)).toThrow(
       "Ayme requires provideAyme() in an ancestor injector."
     );
 });
 
-it("rejects injectAyme and injectPageObject outside an injection context", () => {
+it("rejects the inject functions outside an injection context", () => {
   for (const inject of [
     injectAyme,
     () => injectPageObject(Model),
+    () => injectPeek({}, "peek"),
   ] as (() => unknown)[])
     expect(inject).toThrow(/NG0203/);
 });

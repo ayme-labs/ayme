@@ -5,4 +5,5 @@ import { agentConnectionTests } from "@ayme-dev/example-certification/tests";
 agentConnectionTests({
   enabled: () => test.info().config.metadata.server === "development",
   snapshotText: 'button "Increment"',
+  peek: true,
 });
