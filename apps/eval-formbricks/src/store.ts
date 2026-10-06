@@ -123,6 +123,12 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
             output: number(tokens, "output", `${what} tokens`),
           },
     combinedCostUsd: nullableNumber(run, "combinedCostUsd", what),
+    toolCallTotal:
+      typeof run.toolCalls === "object" &&
+      run.toolCalls !== null &&
+      typeof (run.toolCalls as Record<string, unknown>).total === "number"
+        ? ((run.toolCalls as Record<string, unknown>).total as number)
+        : null,
     goalLoop: {
       calls:
         goalLoop === null
