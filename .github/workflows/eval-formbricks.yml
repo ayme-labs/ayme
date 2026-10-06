@@ -46,6 +46,10 @@ jobs:
     name: Eval ${{ (github.event_name != 'workflow_dispatch' || inputs.qualify_only) && 'qualify only' || inputs.mission }}
     runs-on: ubuntu-latest
     timeout-minutes: 340
+    # A run that calls the model gets its secrets from the evals environment,
+    # whose required reviewer approves every such run. A qualify-only run uses
+    # no environment and gets no secrets.
+    environment: ${{ (github.event_name == 'workflow_dispatch' && !inputs.qualify_only) && 'evals' || '' }}
     env:
       # Anything but a dispatch that asks for agents only qualifies the lab app.
       QUALIFY_ONLY: ${{ github.event_name != 'workflow_dispatch' || inputs.qualify_only }}
@@ -144,6 +148,15 @@ jobs:
         with:
           name: eval-formbricks-results
           path: apps/eval-formbricks/results
+          if-no-files-found: ignore
+
+      - name: Upload the qualification results
+        if: ${{ failure() && env.QUALIFY_ONLY == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab-formbricks-qualification
+          path: apps/lab-formbricks/formbricks/apps/web/.ayme-lab/qualification-results
+          include-hidden-files: true
           if-no-files-found: ignore
 
       - name: Upload the lab app log
