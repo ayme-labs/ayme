@@ -25,9 +25,6 @@ on:
         description: Prepare and qualify the lab app only, with no agent and no model call
         type: boolean
         default: false
-  # TEMPORARY shake-out trigger, qualify only; removed before review.
-  push:
-    branches: [claude/evals-on-ci-6uhyke]
 
 # One eval at a time, so runs never share a runner's load.
 concurrency:
@@ -43,16 +40,9 @@ env:
 
 jobs:
   eval:
-    name: Eval ${{ (github.event_name != 'workflow_dispatch' || inputs.qualify_only) && 'qualify only' || inputs.mission }}
+    name: Eval ${{ inputs.qualify_only && 'qualify only' || inputs.mission }}
     runs-on: ubuntu-latest
     timeout-minutes: 340
-    # A run that calls the model gets its secrets from the evals environment,
-    # whose required reviewer approves every such run. A qualify-only run uses
-    # no environment and gets no secrets.
-    environment: ${{ (github.event_name == 'workflow_dispatch' && !inputs.qualify_only) && 'evals' || '' }}
-    env:
-      # Anything but a dispatch that asks for agents only qualifies the lab app.
-      QUALIFY_ONLY: ${{ github.event_name != 'workflow_dispatch' || inputs.qualify_only }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -73,7 +63,7 @@ jobs:
           docker version --format 'Docker {{.Server.Version}}'
 
       - name: Install Claude Code
-        if: env.QUALIFY_ONLY != 'true'
+        if: ${{ !inputs.qualify_only }}
         run: |
           npm install --global "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
           claude --version
@@ -109,7 +99,7 @@ jobs:
           echo "The lab app answers after ${SECONDS} s."
 
       - name: Qualify the lab app
-        if: env.QUALIFY_ONLY == 'true'
+        if: ${{ inputs.qualify_only }}
         working-directory: apps/lab-formbricks
         run: |
           # The qualification runs Formbricks's own Playwright, which needs its
@@ -118,7 +108,7 @@ jobs:
           pnpm lab:qualify
 
       - name: Run the suite
-        if: env.QUALIFY_ONLY != 'true'
+        if: ${{ !inputs.qualify_only }}
         working-directory: apps/eval-formbricks
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -132,7 +122,7 @@ jobs:
           pnpm eval:suite -- "${args[@]}"
 
       - name: Write the summary
-        if: ${{ !cancelled() && env.QUALIFY_ONLY != 'true' }}
+        if: ${{ !cancelled() && !inputs.qualify_only }}
         working-directory: apps/eval-formbricks
         run: |
           summary=$(ls -t results/suites/*/summary.md 2>/dev/null | head -n 1)
@@ -143,7 +133,7 @@ jobs:
           fi
 
       - name: Upload the results
-        if: ${{ !cancelled() && env.QUALIFY_ONLY != 'true' }}
+        if: ${{ !cancelled() && !inputs.qualify_only }}
         uses: actions/upload-artifact@v4
         with:
           name: eval-formbricks-results
@@ -151,7 +141,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload the qualification results
-        if: ${{ failure() && env.QUALIFY_ONLY == 'true' }}
+        if: ${{ failure() && inputs.qualify_only }}
         uses: actions/upload-artifact@v4
         with:
           name: lab-formbricks-qualification
