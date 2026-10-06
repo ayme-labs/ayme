@@ -36,7 +36,7 @@ const hold: CustomTool = {
 /**
  * Starts the runtime with the Agent Connection on. WebMCP publication is off
  * unless the URL has `?webmcp`, so the page shows the connection does not
- * need it. The Basket Page Object is registered only while shown. The page
+ * need it. `?inspector` mounts the Inspector. The Basket Page Object is registered only while shown. The page
  * reports its state on <html> for the e2e tests.
  */
 const root = document.documentElement.dataset;
@@ -45,6 +45,7 @@ try {
     customTools: [location.pathname === "/other" ? readOther : readText, hold],
     agentConnection: true,
     webMCP: { enabled: new URLSearchParams(location.search).has("webmcp") },
+    inspector: new URLSearchParams(location.search).has("inspector"),
   });
   runtime.start();
   // `?peek=<name>` adds a Peek of that name, which reads "page".

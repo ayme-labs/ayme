@@ -63,6 +63,19 @@ export const ToolCallOutcomeSchema = z.discriminatedUnion("ok", [
 export type ToolCallOutcome = z.infer<typeof ToolCallOutcomeSchema>;
 
 /**
+ * The page asks the server to run one of the App Processes' tools, as its
+ * Inspector does. The server sends the call to the App Process that offers
+ * it, and answers with that process's outcome. The server sends the page
+ * the App Processes' tools as a `PageToolListSchema` list, at once and
+ * after every change.
+ */
+export const ProcessToolCallSchema = z.object({
+  name: z.string().check(z.minLength(1)),
+  input: z.unknown(),
+});
+export type ProcessToolCall = z.infer<typeof ProcessToolCallSchema>;
+
+/**
  * The page introduces itself when its channel opens: the id its tab keeps
  * for this pairing across reloads and navigation, and the document's URL.
  */

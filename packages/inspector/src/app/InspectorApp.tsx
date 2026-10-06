@@ -47,11 +47,19 @@ export function InspectorApp() {
     view: viewState.runs,
     onViewChange: (runs) => setViewState((current) => ({ ...current, runs })),
   });
-  const { live } = runtime.tools;
+  const { live, appProcess } = runtime.tools;
   const tools = useMemo(
     () =>
       attachToolModels(
-        live,
+        [
+          ...live,
+          // An App Process offers Peek tools only, read in a Node process.
+          ...appProcess.map((tool) => ({
+            ...tool,
+            group: "peek" as const,
+            side: "node" as const,
+          })),
+        ],
         runtime.pageModel.models.map((model) => ({
           className: model.className,
           tools: model.actions.flatMap((action) =>
@@ -59,7 +67,7 @@ export function InspectorApp() {
           ),
         }))
       ),
-    [live, runtime.pageModel]
+    [live, appProcess, runtime.pageModel]
   );
 
   const lenses: Lens[] = [

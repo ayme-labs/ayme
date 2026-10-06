@@ -62,6 +62,14 @@ const cartPeek: LiveTool = {
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   group: "peek",
 };
+const jobsPeek: LiveTool = {
+  name: "peek.node.jobs",
+  description:
+    'Read the current values of the Peek "jobs" from each live instance.',
+  inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  group: "peek",
+  side: "node",
+};
 const listPageDefinition =
   "ListPage\n  newItemInput\n\n  // Add an item to the list.\n  addItem(text: string)";
 /** The runtime's definitions: only ListPage is known. */
@@ -142,6 +150,39 @@ it("lists Peek Tools in their own group, before the Agent tools", async () => {
       .getByRole("form", { name: "Run peek.cart" })
       .count()
   ).toBe(1);
+});
+
+it("lists the page's Peek tools in a Browser section and the App Processes' in a Node section, each row with its side's badge", async () => {
+  renderTools({ tools: [pageContext, jobsPeek, cartPeek] });
+
+  await expect
+    .poll(() => navigator.tools.peekSections())
+    .toEqual({ Browser: ["peek.cart"], Node: ["peek.node.jobs"] });
+  expect(await navigator.tools.listed()).toEqual({
+    "Peek tools": ["peek.cart", "peek.node.jobs"],
+    "Agent tools": ["snapshot"],
+  });
+  expect(await navigator.tools.separatorBefore("peek.node.jobs")).toBe(true);
+  expect(await navigator.tools.separatorBefore("peek.cart")).toBe(false);
+  await navigator.tools.tool("peek.node.jobs").click();
+  await expect
+    .poll(() => detail.toolPage.title.textContent())
+    .toBe("peek.node.jobs");
+  expect(await detail.toolPage.kind.textContent()).toBe("Node Peek tool");
+  expect(
+    await detail.toolPage.root
+      .getByRole("form", { name: "Run peek.node.jobs" })
+      .count()
+  ).toBe(1);
+});
+
+it("lists no Node section while no App Process offers a Peek tool", async () => {
+  renderTools({ tools: [pageContext, cartPeek] });
+
+  await expect
+    .poll(() => navigator.tools.peekSections())
+    .toEqual({ Browser: ["peek.cart"] });
+  expect(await navigator.tools.separatorBefore("peek.cart")).toBe(false);
 });
 
 it("opens a tool's page with its description, then the run slot", async () => {

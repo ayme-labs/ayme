@@ -42,9 +42,11 @@ export type { WebMcpDriver, WebMcpRegistration } from "./webMcp";
 // the inspector's instrumentation, its way to the started session and its
 // registry read model.
 export {
+  getAppProcessTools,
   getStartedAyme,
   sameRuntimeOptions,
   subscribeToStartedAyme,
 } from "./runtime";
+export type { AppProcessTool, AppProcessTools } from "./runtime";
 export { installRuntimePageInstrumentation } from "./pageInstrumentation";
 export { isPlaywrightLiteLocator as isAymeLocator } from "@ayme-dev/playwright-lite/internal";

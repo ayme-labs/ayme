@@ -30,6 +30,19 @@ export type PageChannel = {
   ): () => void;
   /** Tells the server the page started loading a new document. */
   reportLeaving(leaving: PageLeaving): Promise<void>;
+  /**
+   * Calls `listener` with the App Processes' tools the server sends the
+   * page, at once and after every change, and with none when the channel
+   * closes. A page only; returns what stops it.
+   */
+  followProcessTools(
+    listener: (tools: readonly PageTool[]) => void
+  ): () => void;
+  /**
+   * Asks the server to run an App Process's tool, and resolves with that
+   * process's outcome. A page only.
+   */
+  callProcessTool(name: string, input: unknown): Promise<ToolCallOutcome>;
   close(): void;
 };
 

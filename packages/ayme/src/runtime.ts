@@ -225,6 +225,80 @@ function createServerPageObject<T extends object>(
   return Object.create(prototype) as T;
 }
 
+/** A tool an App Process paired beside the page offers. */
+export type AppProcessTool = Readonly<{
+  name: string;
+  description: string;
+  inputSchema: Readonly<Record<string, unknown>>;
+}>;
+
+/**
+ * The tools of the App Processes paired with the session's Agent
+ * Connection, which its page client hears of from the agent's Ayme MCP
+ * server, for the Inspector. None while no server is paired.
+ */
+export type AppProcessTools = {
+  /** The same array comes back until the list changes. */
+  list(): readonly AppProcessTool[];
+  /** Calls `listener` with the new list after each change. */
+  subscribe(listener: (tools: readonly AppProcessTool[]) => void): () => void;
+  /**
+   * Runs one in its App Process, through the agent's Ayme MCP server.
+   * Throws its error, or when no server is paired.
+   */
+  run(name: string, input: unknown): Promise<unknown>;
+};
+
+const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
+const appProcessToolsBySession = new WeakMap<Ayme, AppProcessTools>();
+
+/** The App Process tools of the session `ayme`, for the Inspector. */
+export function getAppProcessTools(ayme: Ayme): AppProcessTools {
+  return appProcessToolsBySession.get(ayme) ?? createAppProcessTools().tools;
+}
+
+/**
+ * The session's App Process tools: those of the page client it follows,
+ * and none while it follows none.
+ */
+function createAppProcessTools() {
+  let followed: AppProcessTools | undefined;
+  let unfollow = () => {};
+  const listeners = new Set<(tools: readonly AppProcessTool[]) => void>();
+  const list = () => followed?.list() ?? NO_PROCESS_TOOLS;
+  const announce = () => {
+    const tools = list();
+    for (const listener of listeners) listener(tools);
+  };
+  const tools: AppProcessTools = {
+    list,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    async run(name, input) {
+      if (!followed)
+        throw new RuntimeStateError(
+          "No Ayme MCP server is paired with this page."
+        );
+      return followed.run(name, input);
+    },
+  };
+  return {
+    tools,
+    /** Follows the page client's App Process tools, or none. */
+    follow(next: AppProcessTools | undefined) {
+      unfollow();
+      const before = list();
+      followed = next;
+      unfollow = next?.subscribe(announce) ?? (() => {});
+      if (list() !== before) announce();
+    },
+  };
+}
+
 let started: Ayme | undefined;
 const startedListeners = new Set<(ayme: Ayme | undefined) => void>();
 
@@ -288,6 +362,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   let controller: AbortController | undefined;
   let publication: WebMcpRegistration | undefined;
   let pending: Promise<void> | undefined;
+  const appProcessTools = createAppProcessTools();
 
   const setStatus = (next: AymeWebMcpPublicationStatus) => {
     status = Object.freeze(next);
@@ -502,14 +577,22 @@ export function createAyme(options: AymeOptions = {}): Ayme {
           mountInspectorUntil(controller.signal, {
             demo: inspector === "demo",
           });
-        if (options.agentConnection)
-          startAgentConnectionUntil(controller.signal, () =>
-            loadAgentConnection().then(
-              ({ startAgentConnection }) =>
-                () =>
-                  startAgentConnection(ayme)
-            )
+        if (options.agentConnection) {
+          const signal = controller.signal;
+          startAgentConnectionUntil(signal, () =>
+            loadAgentConnection().then(({ startAgentConnection }) => () => {
+              const connection = startAgentConnection(ayme);
+              // A page client from before App Processes hands over none.
+              appProcessTools.follow(connection.processTools);
+              signal.addEventListener(
+                "abort",
+                () => appProcessTools.follow(undefined),
+                { once: true }
+              );
+              return connection;
+            })
           );
+        }
       } catch (error) {
         stop();
         throw error;
@@ -553,6 +636,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     return stopInProcess;
   }
 
+  appProcessToolsBySession.set(ayme, appProcessTools.tools);
   return ayme;
 }
 

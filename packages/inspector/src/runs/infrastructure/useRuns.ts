@@ -2,6 +2,7 @@ import { useCallback, useRef } from "react";
 
 import { RuntimeStateError, type JsonValue } from "@ayme-dev/ayme";
 import {
+  getAppProcessTools,
   getStartedAyme,
   listRegisteredPomTools,
 } from "@ayme-dev/ayme/internal";
@@ -96,7 +97,8 @@ type FoundTool = {
 /**
  * The tool to run by name. Every tool runs through the started session,
  * whether or not WebMCP publication is active, and fails with the error an
- * agent gets as text.
+ * agent gets as text. An App Process's tool runs in that process, through
+ * the agent's Ayme MCP server the session's page is paired with.
  */
 function findTool(toolName: string): FoundTool {
   // Tool names can collide across registrations; this is the one that is
@@ -109,6 +111,9 @@ function findTool(toolName: string): FoundTool {
       const ayme = getStartedAyme();
       if (!ayme)
         throw new RuntimeStateError("No Ayme runtime session has started.");
+      const appProcessTools = getAppProcessTools(ayme);
+      if (appProcessTools.list().some(({ name }) => name === toolName))
+        return (await appProcessTools.run(toolName, input)) as JsonValue;
       return (await ayme.tools.run(toolName, input)) as JsonValue;
     },
     ...(pomTool

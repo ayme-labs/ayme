@@ -173,7 +173,10 @@ it("compares the inspector option by what it turns on", () => {
 
 it("starts the Agent Connection while a session with agentConnection is started", async () => {
   const dispose = vi.fn();
-  const startAgentConnection = vi.fn(() => ({ dispose }));
+  const startAgentConnection = vi.fn(() => ({
+    dispose,
+    processTools: { list: () => [], subscribe: () => () => {}, run: vi.fn() },
+  }));
   vi.mocked(loadAgentConnection).mockResolvedValue({ startAgentConnection });
   start(session(false))();
   expect(loadAgentConnection).not.toHaveBeenCalled();

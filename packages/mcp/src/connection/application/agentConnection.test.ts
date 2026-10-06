@@ -242,6 +242,9 @@ describe("AgentConnection with App Processes", () => {
   });
 });
 
+/** Lets every pending callback and microtask run. */
+const tick = () => new Promise((resolve) => setTimeout(resolve));
+
 /** The names of the calls the server has sent `session` so far. */
 async function sentCalls(session: {
   calls(signal: AbortSignal): AsyncGenerator<{ name: string }>;
@@ -252,3 +255,75 @@ async function sentCalls(session: {
   for await (const call of session.calls(stop.signal)) names.push(call.name);
   return names;
 }
+
+describe("AgentConnection's App Process tools, as the page reads and runs them", () => {
+  it("lists the App Processes' tools the agent sees, without the page's", () => {
+    const connection = new AgentConnection();
+    connection.attach(hello("a"), () => {})!.publishTools([tool("snapshot")]);
+    connection
+      .attachProcess({ process: "server" })
+      .publishTools([tool("peek.node.session"), tool("snapshot")]);
+    connection
+      .attachProcess({ process: "worker" })
+      .publishTools([tool("peek.node.session"), tool("peek.node.jobs")]);
+
+    expect(connection.processTools.map(({ name }) => name)).toEqual([
+      "peek.node.session",
+      "peek.node.jobs",
+    ]);
+  });
+
+  it("gives the App Processes' tools at once and after each change to them, until stopped", async () => {
+    const connection = new AgentConnection();
+    const server = connection.attachProcess({ process: "server" });
+    server.publishTools([tool("peek.node.session")]);
+    const stop = new AbortController();
+    const lists: string[][] = [];
+    const following = (async () => {
+      for await (const tools of connection.processToolLists(stop.signal))
+        lists.push(tools.map(({ name }) => name));
+    })();
+
+    await tick();
+    connection.attach(hello("a"), () => {})!.publishTools([tool("snapshot")]);
+    const worker = connection.attachProcess({ process: "worker" });
+    worker.publishTools([tool("peek.node.jobs")]);
+    await tick();
+    connection.detach(server);
+    await tick();
+    stop.abort();
+    await following;
+
+    expect(lists).toEqual([
+      ["peek.node.session"],
+      ["peek.node.session", "peek.node.jobs"],
+      ["peek.node.jobs"],
+    ]);
+  });
+
+  it("sends a page's call to the App Process that offers the tool", async () => {
+    const connection = new AgentConnection();
+    const page = connection.attach(hello("a"), () => {})!;
+    const server = connection.attachProcess({ process: "server" });
+    server.publishTools([tool("peek.node.jobs")]);
+
+    void connection.callProcess("peek.node.jobs", {});
+
+    expect(await sentCalls(server)).toEqual(["peek.node.jobs"]);
+    expect(await sentCalls(page)).toEqual([]);
+  });
+
+  it("never sends a page's call to the page, even for a tool the page offers", async () => {
+    const connection = new AgentConnection();
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("snapshot")]);
+
+    const outcome = await connection.callProcess("snapshot", {});
+
+    expect(outcome).toMatchObject({
+      ok: false,
+      error: 'No App Process offers the tool "snapshot".',
+    });
+    expect(await sentCalls(page)).toEqual([]);
+  });
+});

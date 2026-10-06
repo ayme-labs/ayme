@@ -12,6 +12,21 @@ export type LiveTool = {
   group: ToolGroup;
   /** For a Page object tool: the Page Object Model whose action it is. */
   pomClassName?: string;
+  /**
+   * For a Peek tool: where its Peek lives. `node` is an App Process's, a
+   * Node process of the app paired beside the page, which the panel runs
+   * through the agent's Ayme MCP server. The page's otherwise.
+   */
+  side?: PeekSide;
+};
+
+/** Where a Peek tool's Peek lives: the page, or an App Process. */
+export type PeekSide = "browser" | "node";
+
+/** The Inspector's label for each side's Peek tools. UI labels too. */
+export const peekSideLabels: Record<PeekSide, string> = {
+  browser: "Browser",
+  node: "Node",
 };
 
 /** The Inspector's label for each group. They are UI labels, not glossary terms. */
@@ -40,24 +55,52 @@ const groupOrder: readonly ToolGroup[] = [
   "agent",
 ];
 
+/** The Peek tools of one side, a section of the Peek tools group. */
+export type PeekSection = {
+  side: PeekSide;
+  label: string;
+  tools: LiveTool[];
+};
+
 /** One group of the Tools lens. */
 export type ToolGroupListing = {
   group: ToolGroup;
   label: string;
   tools: LiveTool[];
+  /**
+   * The Peek tools group's sections: the page's (Browser), then the App
+   * Processes' (Node). A section without tools is left out.
+   */
+  sections?: PeekSection[];
 };
+
+const sideOrder: readonly PeekSide[] = ["browser", "node"];
 
 /**
  * The live tools, grouped in a fixed order and keeping the runtime's order
- * within a group. A group without tools is left out.
+ * within a group. A group without tools is left out. The Peek tools group
+ * lists the page's Peek tools, then the App Processes', in its sections.
  */
 export function listTools(tools: readonly LiveTool[]): ToolGroupListing[] {
   return groupOrder
-    .map((group) => ({
-      group,
-      label: toolGroupLabels[group],
-      tools: tools.filter((tool) => tool.group === group),
-    }))
+    .map((group): ToolGroupListing => {
+      const inGroup = tools.filter((tool) => tool.group === group);
+      const label = toolGroupLabels[group];
+      if (group !== "peek") return { group, label, tools: inGroup };
+      const sections = sideOrder
+        .map((side) => ({
+          side,
+          label: peekSideLabels[side],
+          tools: inGroup.filter((tool) => (tool.side ?? "browser") === side),
+        }))
+        .filter(({ tools }) => tools.length > 0);
+      return {
+        group,
+        label,
+        tools: sections.flatMap(({ tools }) => tools),
+        sections,
+      };
+    })
     .filter(({ tools }) => tools.length > 0);
 }
 

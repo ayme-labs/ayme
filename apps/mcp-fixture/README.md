@@ -16,7 +16,8 @@ basket and Hide basket buttons register and unregister the `Basket` Page
 Object, so a Page Object Tool comes and goes on demand. `plain.html` is a
 document of the same origin without Ayme. WebMCP publication is off unless the
 URL has `?webmcp`, so the tests show the Agent Connection works without it.
-`?peek=<name>` adds a Peek of that name, which reads `{ "value": "page" }`.
+`?peek=<name>` adds a Peek of that name, which reads `{ "value": "page" }`. `?inspector` mounts the Inspector, whose
+spec drives it through `@ayme-dev/inspector/testing`.
 
 Each test starts the built `ayme mcp` command as a child process and talks to
 it through an MCP SDK client over stdio, as a coding agent does. The `connect`
