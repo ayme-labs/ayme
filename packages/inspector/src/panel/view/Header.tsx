@@ -70,7 +70,7 @@ export function Header({
           aria-hidden
         />
       )}
-      <AymeMark className="h-4.5 w-5.5 flex-none" />
+      <AymeMark className="h-4.5 w-5.5 flex-none dark:fill-foreground" />
       <h2 className="text-sm font-semibold">ayme</h2>
       {pageName && (
         <Badge
