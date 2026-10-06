@@ -21,6 +21,7 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
     createAyme: (...args: Parameters<typeof original.createAyme>) => {
       const session = original.createAyme(...args);
       vi.spyOn(session, "start");
+      vi.spyOn(session, "peek");
       sessions.push(session);
       return session;
     },
@@ -29,6 +30,7 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
 import {
   injectAyme,
   injectPageObject,
+  injectPeek,
   provideAyme,
   type AymeOptions,
 } from "./index";
@@ -43,7 +45,7 @@ const bootstrap = bootstrapApplication as (
 describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",
   (enabled) => {
-    it("renders concurrent requests without starting Ayme, calling the page factory, or constructing or registering Page Objects", async () => {
+    it("renders concurrent requests without starting Ayme, calling the page factory, constructing or registering Page Objects, or adding Peeks", async () => {
       sessions.length = 0;
       const pageFactory = vi.fn<PageFactory>(() => {
         throw new Error("The page factory must not run on the server.");
@@ -70,6 +72,7 @@ describe.each([false, true])(
           readonly model = injectPageObject(ServerModel);
           readonly webMCP = injectAyme().webMCP;
           constructor() {
+            injectPeek({ count: 0 }, "counter");
             models.push(this.model);
           }
         }
@@ -82,7 +85,12 @@ describe.each([false, true])(
               {
                 providers: [
                   provideServerRendering(),
-                  provideAyme({ pageFactory, webMCP: { enabled } }),
+                  // agentConnection on, so ayme.peek would add the instance.
+                  provideAyme({
+                    pageFactory,
+                    webMCP: { enabled },
+                    agentConnection: true,
+                  }),
                 ],
               },
               context
@@ -97,6 +105,7 @@ describe.each([false, true])(
       expect(sessions).toHaveLength(2);
       for (const session of sessions) {
         expect(session.start).not.toHaveBeenCalled();
+        expect(session.peek).not.toHaveBeenCalled();
         expect(session.webMCP.publicationStatus.state).toBe(status);
       }
       expect(listRegisteredPoms()).toHaveLength(0);

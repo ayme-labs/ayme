@@ -57,7 +57,7 @@ export class Counter {
 
 `provideAyme` takes the [`createAyme` options](../reference/ayme.md#createayme) and passes them through unchanged. For Playwright settings, pass `pageFactory: () => createPage({ testIdAttribute, actionTimeout, navigationTimeout })` from `@ayme-dev/ayme`; for the Inspector, `inspector: isDevMode()`. The status signal updates templates in zone and zoneless apps.
 
-`injectAyme` and `injectPageObject` need an injection context, such as a field initializer or a constructor, and `provideAyme` in an ancestor injector; each throws when either is missing.
+`injectAyme`, `injectPageObject` and `injectPeek` need an injection context, such as a field initializer or a constructor, and `provideAyme` in an ancestor injector; each throws when either is missing.
 
 ## Root ownership
 
@@ -87,7 +87,7 @@ const serverConfig: ApplicationConfig = {
 export const config = mergeApplicationConfig(appConfig, serverConfig);
 ```
 
-On the server, `provideAyme` creates a session per request but never starts it, and hydration creates the real Page Objects. The [Angular example](../../../apps/example-angular/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
+On the server, `provideAyme` creates a session per request but never starts it, and hydration creates the real Page Objects. `injectPeek` adds its instance in `afterNextRender`, which never runs on the server. The [Angular example](../../../apps/example-angular/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Bundle size
 
@@ -111,15 +111,16 @@ The supported Angular versions are on [Install](../start/install.md#supported-ve
 | Error                                                                                          | Cause                                                       |
 | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | `provideAyme cannot be nested beneath another Ayme runtime owner.`                             | `provideAyme` beneath another, such as in route providers.  |
-| `Ayme requires provideAyme() in an ancestor injector.`                                         | `injectAyme` or `injectPageObject` without `provideAyme`.   |
+| `Ayme requires provideAyme() in an ancestor injector.`                                         | An inject function without `provideAyme`.                   |
 | `Ayme needs an Angular application project; …`                                                 | `ng add` ran in a workspace without an application project. |
 | `Ayme could not read the Angular major from the @angular/core dependency in package.json (…).` | `ng add` found no readable `@angular/core` version.         |
 | A production build fails the `initial` budget                                                  | See [Bundle size](#bundle-size).                            |
 
 ## API
 
-| Function                  | Returns                | Behavior                                                                                                                                                                                                   |
-| ------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `provideAyme(options?)`   | `EnvironmentProviders` | Starts Ayme with the environment injector that receives it, before the root component is created, and stops it when that injector is destroyed.                                                            |
-| `injectAyme()`            | `{ ayme, webMCP }`     | `ayme` is the [session](../reference/ayme.md). `webMCP.publicationStatus` is a read-only signal.                                                                                                           |
-| `injectPageObject(Model)` | the Page Object        | Registers the class with the session and returns its instance; its Page Object Tools stay registered until the caller is destroyed: component destruction, `@if` removal and router navigation all end it. |
+| Function                        | Returns                | Behavior                                                                                                                                                                                                   |
+| ------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provideAyme(options?)`         | `EnvironmentProviders` | Starts Ayme with the environment injector that receives it, before the root component is created, and stops it when that injector is destroyed.                                                            |
+| `injectAyme()`                  | `{ ayme, webMCP }`     | `ayme` is the [session](../reference/ayme.md). `webMCP.publicationStatus` is a read-only signal.                                                                                                           |
+| `injectPageObject(Model)`       | the Page Object        | Registers the class with the session and returns its instance; its Page Object Tools stay registered until the caller is destroyed: component destruction, `@if` removal and router navigation all end it. |
+| `injectPeek(values, name, id?)` | `void`                 | Adds the caller's instance of the Peek `name` after its first render, until the caller is destroyed. The agent reads `values`, with its signals, when it asks.                                             |
