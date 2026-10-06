@@ -92,6 +92,7 @@ afterEach(() => {
   for (const dispose of disposals.splice(0)) dispose();
   vi.useRealTimers();
   document.body.innerHTML = "";
+  sessionStorage.clear();
 });
 
 /**

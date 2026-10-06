@@ -83,6 +83,7 @@ beforeEach(() => {
 afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 it("offers a node its live single-element tools while nothing is published", async () => {

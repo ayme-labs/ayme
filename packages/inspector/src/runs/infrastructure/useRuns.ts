@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 
 import { RuntimeStateError, type JsonValue } from "@ayme-dev/ayme";
 import {
@@ -6,14 +6,21 @@ import {
   listRegisteredPomTools,
 } from "@ayme-dev/ayme/internal";
 
+import { useTabState } from "../../shared";
 import type { CollectionItem, Run, ToolArguments } from "../domain/run";
+import { decodeRuns, encodeRuns, runsKey } from "../domain/storedRuns";
 import { describeSteps } from "./runSteps";
 import { getInspectorTrace, resetInspectorTrace } from "./trace";
 
-/** Tool invocations from the Inspector, newest first. */
+/**
+ * Tool invocations from the Inspector, newest first. The newest are kept for
+ * the tab, so a reload still shows them.
+ */
 export function useRuns({ onSettled }: { onSettled: () => void }) {
-  const [runs, setRuns] = useState<Run[]>([]);
-  const nextId = useRef(1);
+  const [runs, setRuns] = useTabState(runsKey, decodeRuns, encodeRuns);
+  const nextId = useRef(
+    runs.reduce((newest, run) => Math.max(newest, run.id), 0) + 1
+  );
 
   const invoke = useCallback(
     async (toolName: string, args: ToolArguments, item?: CollectionItem) => {
@@ -59,13 +66,13 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
         onSettled();
       }
     },
-    [onSettled]
+    [onSettled, setRuns]
   );
 
   const clear = useCallback(() => {
     setRuns([]);
     resetInspectorTrace();
-  }, []);
+  }, [setRuns]);
 
   return { runs, invoke, clear };
 }

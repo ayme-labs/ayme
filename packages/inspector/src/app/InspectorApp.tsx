@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useInspectorRuntime } from "./useInspectorRuntime";
-import { Empty, InspectorRoot } from "../shared";
+import { Empty, InspectorRoot, useTabState } from "../shared";
 import {
   DetailPane,
   InspectorBody,
@@ -23,21 +23,30 @@ import { isStaleSelection, structureLens } from "../structure";
 import { modelLens } from "../page-model";
 import { attachToolModels, toolsLens } from "../tools";
 import { useRunning } from "./useRunning";
+import { decodeViewState, viewStateKey } from "./viewState";
 
 /**
  * The Inspector: the runtime's data wired into the panel. It owns
- * the one selection the navigator, the detail pane and Runs share.
+ * the one selection the navigator, the detail pane and Runs share, and
+ * keeps where the person was in it for the tab.
  */
 export function InspectorApp() {
   const [preferences, updatePreferences] = usePreferences();
   const reserveHost = useHostReservation();
-  const [activeLens, setActiveLens] = useState<LensId>("model");
+  const [viewState, setViewState] = useTabState(viewStateKey, decodeViewState);
+  const { lens: activeLens, selection } = viewState;
+  const setActiveLens = (lens: LensId) =>
+    setViewState((current) => ({ ...current, lens }));
+  const setSelection = (selection: Selection) =>
+    setViewState((current) => ({ ...current, selection }));
   const runtime = useInspectorRuntime({
     structureVisible: activeLens === "structure" && !preferences.collapsed,
   });
   const dark = useDarkTheme(preferences.theme);
-  const [selection, setSelection] = useState<Selection>(pageSelection);
-  const { renderRun, runsRegion } = useRunning(runtime, selection);
+  const { renderRun, runsRegion } = useRunning(runtime, selection, {
+    view: viewState.runs,
+    onViewChange: (runs) => setViewState((current) => ({ ...current, runs })),
+  });
   const { live } = runtime.tools;
   const tools = useMemo(
     () =>
@@ -95,16 +104,20 @@ export function InspectorApp() {
       .find((view) => view !== undefined);
   const view = viewOf(selection);
   // A stale selection goes back to the page. This render already shows the
-  // page; the effect makes it the selection.
+  // page; the effect makes it the selection. A selection restored after a
+  // reload waits for the first look at the page, until what it names is
+  // there.
+  const pageStateRead = runtime.pageState.capturedAt !== undefined;
   const stale = isStaleSelection(selection, {
     hasView: view !== undefined,
     structure: runtime.pageState.structure,
-    pageStateRead: runtime.pageState.capturedAt !== undefined,
+    pageStateRead,
     within: (path) => runtime.members.within(path),
   });
   useEffect(() => {
-    if (stale) setSelection(pageSelection);
-  }, [stale]);
+    if (stale && pageStateRead)
+      setViewState((current) => ({ ...current, selection: pageSelection }));
+  }, [stale, pageStateRead, setViewState]);
   const detail = (stale ? viewOf(pageSelection) : view) ?? (
     <Empty>Nothing to show for this selection.</Empty>
   );

@@ -135,6 +135,7 @@ afterEach(() => {
   for (const unmount of unmounts.splice(0).reverse()) unmount();
   vi.clearAllMocks();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 /** The refs among the search results; the Model lens finds the objects. */
