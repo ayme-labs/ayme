@@ -14,7 +14,7 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#cd4217e91307bb16133cd3194032686631f62af7",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e",
     "@ayme-dev/ayme": "workspace:*",
     "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
