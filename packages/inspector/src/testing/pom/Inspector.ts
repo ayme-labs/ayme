@@ -53,7 +53,8 @@ export class Inspector {
     });
     this.shell = new PanelShell(this.panel);
     this.header = new InspectorHeader(
-      this.panel.locator(":scope > header"),
+      // The panel header, inside the frame that clips the panel's content.
+      this.panel.locator(":scope > div > header"),
       this.root
     );
     this.webMcpStatus = new WebMcpStatus(this.panel);

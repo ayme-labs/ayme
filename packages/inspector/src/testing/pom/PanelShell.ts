@@ -3,6 +3,8 @@ import type { Locator } from "@playwright/test";
 import { dragBy } from "./pointerDrag";
 
 export type PanelEdge = "left" | "right" | "top" | "bottom";
+export type PanelCorner =
+  "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
 /** The expanded panel's frame: where it sits and how it resizes. */
 export class PanelShell {
@@ -12,15 +14,20 @@ export class PanelShell {
     this.root = root;
   }
 
-  /** The handle that resizes the panel from one of its edges. */
-  resizeHandle(edge: PanelEdge): Locator {
+  /** The handle that resizes the panel from one of its edges or corners. */
+  resizeHandle(handle: PanelEdge | PanelCorner): Locator {
+    const kind = handle.includes("-") ? "corner" : "edge";
     return this.root.getByRole("separator", {
-      name: `Resize from the ${edge} edge`,
+      name: `Resize from the ${handle} ${kind}`,
     });
   }
 
-  async resizeBy(edge: PanelEdge, deltaX: number, deltaY: number) {
-    await dragBy(this.resizeHandle(edge), deltaX, deltaY);
+  async resizeBy(
+    handle: PanelEdge | PanelCorner,
+    deltaX: number,
+    deltaY: number
+  ) {
+    await dragBy(this.resizeHandle(handle), deltaX, deltaY);
   }
 
   /** Where the panel is, in viewport pixels. */
