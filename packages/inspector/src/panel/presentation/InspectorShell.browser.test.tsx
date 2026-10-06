@@ -52,22 +52,30 @@ describe("floating", () => {
       .toEqual({ ...floating, x: 250, y: 100 });
   });
 
-  it("resizes from its left edge, keeping its right edge", async () => {
+  // Each handle drags its own sides; the opposite sides stay put.
+  it.each([
+    ["left", -100, 0, { x: 300, width: 800 }],
+    ["right", 100, 0, { width: 800 }],
+    ["top", 0, -30, { y: 10, height: 630 }],
+    ["bottom", 0, 80, { height: 680 }],
+    ["top-left", -100, -30, { x: 300, y: 10, width: 800, height: 630 }],
+    ["top-right", 100, -30, { y: 10, width: 800, height: 630 }],
+    ["bottom-left", -100, 80, { x: 300, width: 800, height: 680 }],
+    ["bottom-right", 100, 80, { width: 800, height: 680 }],
+  ] as const)("resizes from its %s", async (handle, deltaX, deltaY, change) => {
     renderShell({ layout: "float", float: floating });
 
-    await shell.resizeBy("left", -100, 0);
+    await shell.resizeBy(handle, deltaX, deltaY);
 
-    await expect
-      .poll(() => shell.box())
-      .toEqual({ ...floating, x: 300, width: 800 });
+    await expect.poll(() => shell.box()).toEqual({ ...floating, ...change });
   });
 
-  it("resizes from its bottom edge", async () => {
+  it("keeps a resized edge inside the viewport", async () => {
     renderShell({ layout: "float", float: floating });
 
-    await shell.resizeBy("bottom", 0, 80);
+    await shell.resizeBy("right", 400, 0);
 
-    await expect.poll(() => shell.box()).toEqual({ ...floating, height: 680 });
+    await expect.poll(() => shell.box()).toEqual({ ...floating, width: 880 });
   });
 });
 
