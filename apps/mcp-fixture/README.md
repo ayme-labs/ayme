@@ -5,7 +5,8 @@ It is private and never published.
 
 ```
 app/         the fixture page, its startup code and the Vite config
-tests/       the shared fixtures (fixtures.ts) and one spec per concern
+tests/       the shared fixtures (fixtures.ts), one spec per concern, and
+             appProcess.ts, a stand-in App Process
 ```
 
 The page starts the Ayme runtime with `agentConnection: true` and two Custom
@@ -22,6 +23,12 @@ fixture calls `ayme_connect`, opens the link in the Playwright page and waits
 until the page's tools are MCP tools. Assertions go through the MCP client, and
 through the page only for what the page itself shows, such as its address bar.
 Add a spec file for a new concern and reuse `fixtures.ts`.
+
+`appProcess.ts` stands in for an App Process: a Node script that offers one
+tool through `@ayme-dev/mcp/process`, with a hand-built tools object. The
+`startAppProcess` fixture runs it and ends it with the test. Each one looks for
+a server on its test's port only, or pairs by link, so it never pairs with a
+server another test or run has on the machine.
 
 ## Running
 
