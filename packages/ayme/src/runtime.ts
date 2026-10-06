@@ -371,7 +371,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   const refreshTools = () => {
     const next = owner
       ? listLiveTools({ peeks })
-      : processStop
+      : processStop && peeks
         ? listPeekToolInfo()
         : NO_TOOLS;
     const key = JSON.stringify(next);
@@ -470,7 +470,11 @@ export function createAyme(options: AymeOptions = {}): Ayme {
 
   async function run(name: string, input: unknown): Promise<unknown> {
     if (processStop) {
-      const peekTool = listPeekTools().find((tool) => tool.name === name);
+      // The Peek registry is shared by the process, so a session without
+      // Peeks runs none another session added.
+      const peekTool = peeks
+        ? listPeekTools().find((tool) => tool.name === name)
+        : undefined;
       if (!peekTool)
         throw new RuntimeStateError(`The tool "${name}" is not live.`);
       return peekTool.executeAs(input, "app");

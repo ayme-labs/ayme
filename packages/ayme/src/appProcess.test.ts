@@ -128,4 +128,16 @@ describe("createAyme in an App Process", () => {
     expect(ayme.tools.list()).toEqual([]);
     expect(processConnections).toEqual([]);
   });
+
+  it("offers and runs none of the Peeks another session adds without the agentConnection option", async () => {
+    const gatedOn = started();
+    peek(gatedOn, () => 1, "jobs");
+    const gatedOff = started({});
+    await loaded();
+
+    expect(gatedOff.tools.list()).toEqual([]);
+    await expect(gatedOff.tools.run("peek.node.jobs", {})).rejects.toThrow(
+      "not live"
+    );
+  });
 });

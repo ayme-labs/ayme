@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Hello, ToolReportAnswer } from "../contract";
+import type { Hello, HiddenTool } from "../contract";
 
 /** A channel the App Process opened, which the test drives. */
 type FakeChannel = {
@@ -11,11 +11,11 @@ type FakeChannel = {
   onUnknownPairing(): void;
   onClose?(): void;
   closed: boolean;
+  /** Sends the App Process the tools the server hides, as the server does. */
+  hide(hidden: HiddenTool[]): void;
 };
 
 const channels = vi.hoisted(() => [] as FakeChannel[]);
-/** How the server answers the App Process's next tool reports. */
-const reportAnswers = vi.hoisted(() => [] as ToolReportAnswer[]);
 /** The scans the App Process started, which the test answers. */
 const scans = vi.hoisted(
   () =>
@@ -29,16 +29,24 @@ const scans = vi.hoisted(
 vi.mock("../connection", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../connection")>()),
   openPageChannel: (url: () => string, callbacks: FakeChannel) => {
+    const hiddenListeners = new Set<(hidden: HiddenTool[]) => void>();
     const channel: FakeChannel = {
       ...callbacks,
       url,
       closed: false,
+      hide(hidden) {
+        for (const listener of hiddenListeners) listener(hidden);
+      },
     };
     channels.push(channel);
     return {
-      publishTools: async () => reportAnswers.shift() ?? {},
+      publishTools: async () => {},
       answerCalls: () => () => {},
       reportLeaving: async () => {},
+      followHiddenTools(listener: (hidden: HiddenTool[]) => void) {
+        hiddenListeners.add(listener);
+        return () => hiddenListeners.delete(listener);
+      },
       close() {
         channel.closed = true;
       },
@@ -83,7 +91,6 @@ beforeEach(() => {
   vi.useFakeTimers();
   channels.length = 0;
   scans.length = 0;
-  reportAnswers.length = 0;
   stops = [];
   vi.spyOn(console, "info").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -191,30 +198,22 @@ describe("startAgentConnection in an App Process", () => {
     ]);
   });
 
-  it("logs each tool the server hides in the process's terminal, once while it stays hidden", async () => {
+  it("logs each tool the server hides in the process's terminal whenever it becomes hidden, once while it stays hidden", async () => {
     const warn = vi.mocked(console.warn);
-    const listeners: ((list: (typeof tool)[]) => void)[] = [];
-    const changing = {
-      ...tools,
-      subscribe(listener: (list: (typeof tool)[]) => void) {
-        listeners.push(listener);
-        return () => {};
-      },
-    };
-    const stop = startAgentConnection({ tools: changing });
-    stops.push(() => stop.dispose());
-    const hidden: ToolReportAnswer = {
-      hidden: [{ name: "peek.node.jobs", offeredBy: "process" }],
-    };
-    reportAnswers.push(hidden, hidden);
-
+    const jobs = { name: "peek.node.jobs", offeredBy: "process" } as const;
+    start();
     await scans[0]!.answer([SERVER]);
-    for (const listener of listeners) listener([tool]);
-    await vi.advanceTimersByTimeAsync(0);
 
+    channels[0]!.hide([]);
+    channels[0]!.hide([jobs]);
+    channels[0]!.hide([jobs]);
     expect(warn).toHaveBeenCalledExactlyOnceWith(
       "[ayme] peek.node.jobs is hidden: another App Process offers a tool with the same name. Rename one."
     );
+
+    channels[0]!.hide([]);
+    channels[0]!.hide([jobs]);
+    expect(warn).toHaveBeenCalledTimes(2);
   });
 
   it("uses the ws package's WebSocket where Node has none of its own, as before Node 22", async () => {

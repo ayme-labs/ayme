@@ -7,10 +7,10 @@ import {
 
 /**
  * Runs the tool `name` of the page or App Process that offers it, as an MCP
- * result. A name no connection offers gets `unknown(name)` while a page is
- * paired; otherwise, or when the connection leaves before the call goes
- * out, it answers that no page is connected, since the name may be a page
- * tool the agent listed before.
+ * result. A name no connection offers gets `unknown(name)` while a page or
+ * App Process is paired; otherwise, or when the connection leaves before
+ * the call goes out, it answers that no page is connected, since the name
+ * may be a page tool the agent listed before.
  */
 export async function callPageTool(
   connection: AgentConnection,
@@ -19,7 +19,7 @@ export async function callPageTool(
   unknown: (name: string) => ToolResult
 ): Promise<ToolResult> {
   if (!connection.offers(name))
-    return connection.paired ? unknown(name) : notConnectedResult();
+    return connection.connected ? unknown(name) : notConnectedResult();
   let outcome;
   try {
     outcome = await connection.call(name, input);

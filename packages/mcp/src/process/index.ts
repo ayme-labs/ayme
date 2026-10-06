@@ -1,9 +1,4 @@
-import {
-  openPageChannel,
-  type PageChannel,
-  type PageTools,
-} from "../connection";
-import type { HiddenTool } from "../contract";
+import { openPageChannel, type PageTools } from "../connection";
 import {
   SERVER_PORTS,
   findServers,
@@ -32,11 +27,6 @@ export type AppProcessOptions = {
    */
   port?: number;
 };
-
-const HIDDEN_BECAUSE = {
-  page: "the page offers a tool with the same name",
-  process: "another App Process offers a tool with the same name",
-} as const;
 
 /**
  * Starts an App Process's side of the Agent Connection, in a Node process
@@ -138,7 +128,7 @@ export function startAgentConnection(
       },
     });
     const stops = processBehaviours.map((behaviour) =>
-      behaviour({ tools: ayme.tools, channel: logHidden(channel) })
+      behaviour({ tools: ayme.tools, channel })
     );
     const opened = {
       close() {
@@ -177,26 +167,4 @@ function linkPairing(link: string): Pairing {
       `Expected a connect link from the agent's ayme_connect, such as http://localhost:5173/#ayme=ws://127.0.0.1:9350/<token>, got "${link}".`
     );
   return pairing;
-}
-
-/**
- * `channel`, logging each reported tool the server hides, once while it
- * stays hidden, for the developer reading the process's terminal.
- */
-function logHidden(channel: PageChannel): PageChannel {
-  let logged = new Set<string>();
-  return {
-    ...channel,
-    async publishTools(tools) {
-      const answer = await channel.publishTools(tools);
-      const hidden: readonly HiddenTool[] = answer.hidden ?? [];
-      for (const { name, offeredBy } of hidden)
-        if (!logged.has(name))
-          console.warn(
-            `[ayme] ${name} is hidden: ${HIDDEN_BECAUSE[offeredBy]}. Rename one.`
-          );
-      logged = new Set(hidden.map(({ name }) => name));
-      return answer;
-    },
-  };
 }

@@ -2,17 +2,18 @@ import { initTRPC } from "@trpc/server";
 
 import {
   HelloSchema,
+  HiddenToolListSchema,
   PageLeavingSchema,
   PageToolListSchema,
   ProcessToolCallSchema,
   ToolCallOutcomeSchema,
   ToolCallSchema,
-  ToolReportAnswerSchema,
   type Hello,
   type PageWelcome,
 } from "../../contract";
 import {
   PageSession,
+  ProcessSession,
   type AgentConnection,
   type ChannelSession,
 } from "../application/agentConnection";
@@ -36,7 +37,8 @@ const t = initTRPC.context<PageChannelContext>().create();
 /**
  * The channel's procedures, which the page client and the App Process call:
  * it says hello, reports its tools, receives calls through a subscription,
- * answers each one, and, a page only, says when it starts loading a new
+ * answers each one, and, an App Process only, hears which of its tools the
+ * agent does not see; a page only, says when it starts loading a new
  * document, follows the App Processes' tools and runs one of them, as its
  * Inspector does.
  */
@@ -47,7 +49,7 @@ export const pageChannelRouter = t.router({
   publishTools: t.procedure
     .input(PageToolListSchema)
     .mutation(async ({ ctx, input }) =>
-      ToolReportAnswerSchema.parse((await ctx.page.session).publishTools(input))
+      (await ctx.page.session).publishTools(input)
     ),
   calls: t.procedure.subscription(async function* ({ ctx, signal }) {
     const session = await ctx.page.session;
@@ -69,6 +71,13 @@ export const pageChannelRouter = t.router({
     if (!((await ctx.page.session) instanceof PageSession)) return;
     for await (const tools of ctx.connection.processToolLists(signal))
       yield PageToolListSchema.parse(tools);
+  }),
+  hiddenTools: t.procedure.subscription(async function* ({ ctx, signal }) {
+    const session = await ctx.page.session;
+    // Only an App Process hears which of its tools the agent does not see.
+    if (!(session instanceof ProcessSession)) return;
+    for await (const hidden of ctx.connection.hiddenToolLists(session, signal))
+      yield HiddenToolListSchema.parse(hidden);
   }),
   callProcessTool: t.procedure
     .input(ProcessToolCallSchema)

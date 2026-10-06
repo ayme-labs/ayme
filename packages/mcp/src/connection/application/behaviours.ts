@@ -1,9 +1,9 @@
 import type {
+  HiddenTool,
   PageLeaving,
   PageTool,
   ToolCall,
   ToolCallOutcome,
-  ToolReportAnswer,
 } from "../../contract";
 import type { AgentConnection } from "./agentConnection";
 
@@ -19,11 +19,8 @@ export type PageTools = {
 
 /** The page's or App Process's end of the channel to its paired server. */
 export type PageChannel = {
-  /**
-   * Reports the tools to the server, which answers with those the agent
-   * does not see.
-   */
-  publishTools(tools: readonly PageTool[]): Promise<ToolReportAnswer>;
+  /** Reports the tools to the server. */
+  publishTools(tools: readonly PageTool[]): Promise<void>;
   /** Runs `handler` for every call the server sends and answers with its outcome. */
   answerCalls(
     handler: (call: ToolCall) => Promise<ToolCallOutcome>
@@ -37,6 +34,14 @@ export type PageChannel = {
    */
   followProcessTools(
     listener: (tools: readonly PageTool[]) => void
+  ): () => void;
+  /**
+   * Calls `listener` with the App Process's tools the agent does not see,
+   * which the server sends at once and after every change. An App Process
+   * only; returns what stops it.
+   */
+  followHiddenTools(
+    listener: (hidden: readonly HiddenTool[]) => void
   ): () => void;
   /**
    * Asks the server to run an App Process's tool, and resolves with that

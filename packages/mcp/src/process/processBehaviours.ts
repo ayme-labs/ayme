@@ -1,5 +1,6 @@
 import type { ClientBehaviour } from "../connection";
 import { answerToolCalls, publishPageTools } from "../tools";
+import { logHiddenTools } from "./logHiddenTools";
 
 /**
  * What an App Process does while its channel to the server is open. It
@@ -8,4 +9,5 @@ import { answerToolCalls, publishPageTools } from "../tools";
 export const processBehaviours: readonly ClientBehaviour[] = [
   publishPageTools,
   answerToolCalls,
+  logHiddenTools,
 ];

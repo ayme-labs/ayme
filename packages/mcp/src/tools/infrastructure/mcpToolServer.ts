@@ -18,7 +18,7 @@ import {
  * The MCP server an agent talks to: the server's own tools, then the tools
  * of the paired page and App Processes under the names they give them (see
  * `AgentConnection` for which of two same-named tools the agent sees). A
- * tool that shares a server tool's name is left out. While no page is paired, any other name
+ * tool that shares a server tool's name is left out. While nothing is paired, any other name
  * answers that no page is connected, since it may be a page tool the agent
  * listed before. The agent hears `notifications/tools/list_changed` whenever
  * a page or App Process pairs, leaves or reports new tools, such as when a

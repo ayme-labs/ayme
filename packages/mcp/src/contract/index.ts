@@ -1,6 +1,7 @@
 export {
   DISCONNECTED_CLOSE_CODE,
   HelloSchema,
+  HiddenToolListSchema,
   PageLeavingSchema,
   PageToolListSchema,
   PageToolSchema,
@@ -8,7 +9,6 @@ export {
   ProcessToolCallSchema,
   ToolCallOutcomeSchema,
   ToolCallSchema,
-  ToolReportAnswerSchema,
   UNKNOWN_PAIRING_CLOSE_CODE,
 } from "./messages";
 export type {
@@ -22,5 +22,4 @@ export type {
   ProcessToolCall,
   ToolCall,
   ToolCallOutcome,
-  ToolReportAnswer,
 } from "./messages";

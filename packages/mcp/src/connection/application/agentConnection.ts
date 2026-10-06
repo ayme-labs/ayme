@@ -6,7 +6,6 @@ import type {
   ProcessHello,
   ToolCall,
   ToolCallOutcome,
-  ToolReportAnswer,
 } from "../../contract";
 import { mergeToolOffers, type ToolOffer } from "../domain/toolOffers";
 import { unansweredCallText, type PageExit } from "../domain/unansweredCall";
@@ -57,11 +56,9 @@ export class ChannelSession {
   readonly #outbox: ToolCall[] = [];
   #wake: (() => void) | undefined;
   #pending = new Map<string, Answer>();
-  readonly #onToolsChanged: (tools: readonly PageTool[]) => ToolReportAnswer;
+  readonly #onToolsChanged: (tools: readonly PageTool[]) => void;
 
-  constructor(
-    onToolsChanged: (tools: readonly PageTool[]) => ToolReportAnswer
-  ) {
+  constructor(onToolsChanged: (tools: readonly PageTool[]) => void) {
     this.#onToolsChanged = onToolsChanged;
   }
 
@@ -69,13 +66,10 @@ export class ChannelSession {
     return this.#tools;
   }
 
-  /**
-   * The page or App Process reports its tools; the answer says which of
-   * them the agent does not see.
-   */
-  publishTools(tools: readonly PageTool[]): ToolReportAnswer {
+  /** The page or App Process reports its tools. */
+  publishTools(tools: readonly PageTool[]) {
     this.#tools = tools;
-    return this.#onToolsChanged(tools);
+    this.#onToolsChanged(tools);
   }
 
   /** Sends `call` to the other end and resolves with its answer. */
@@ -144,7 +138,7 @@ export class PageSession extends ChannelSession {
   constructor(
     hello: PageHello,
     disconnect: () => void,
-    onToolsChanged: (tools: readonly PageTool[]) => ToolReportAnswer
+    onToolsChanged: (tools: readonly PageTool[]) => void
   ) {
     super(onToolsChanged);
     this.tab = hello.tab;
@@ -160,7 +154,7 @@ export class ProcessSession extends ChannelSession {
 
   constructor(
     hello: ProcessHello,
-    onToolsChanged: (tools: readonly PageTool[]) => ToolReportAnswer
+    onToolsChanged: (tools: readonly PageTool[]) => void
   ) {
     super(onToolsChanged);
     this.id = hello.process;
@@ -272,7 +266,7 @@ export class AgentConnection {
     }
 
     const page = new PageSession(hello, disconnect, (tools) => {
-      if (this.#page !== page) return {};
+      if (this.#page !== page) return;
       const away = this.#away;
       if (away?.tab === page.tab) {
         const reload = away.leaving?.reload ?? page.url === away.url;
@@ -283,7 +277,6 @@ export class AgentConnection {
         });
       }
       this.#emit({ type: "toolsChanged", tools: this.tools });
-      return {};
     });
     this.#page = page;
     this.#emit({ type: "paired" });
@@ -294,24 +287,16 @@ export class AgentConnection {
    * An App Process introduced itself on a channel the server accepted. It
    * pairs beside the page and the other App Processes; an earlier session
    * of the same App Process, whose channel may not have closed yet, is
-   * gone. The answer to each of its tool reports names the tools the agent
-   * does not see.
+   * gone. `hiddenToolLists` tells it which of its tools the agent does not
+   * see.
    */
   attachProcess(hello: ProcessHello): ProcessSession {
     const previous = this.#processes.get(hello.process);
     if (previous) this.detach(previous);
-    const session: ProcessSession = new ProcessSession(
-      hello,
-      (): ToolReportAnswer => {
-        if (this.#processes.get(session.id) !== session) return {};
-        this.#emit({ type: "toolsChanged", tools: this.tools });
-        return {
-          hidden: this.#merged()
-            .hidden.filter(({ owner }) => owner === session)
-            .map(hiddenTool),
-        };
-      }
-    );
+    const session: ProcessSession = new ProcessSession(hello, () => {
+      if (this.#processes.get(session.id) !== session) return;
+      this.#emit({ type: "toolsChanged", tools: this.tools });
+    });
     this.#processes.set(session.id, session);
     this.#emit({ type: "processPaired" });
     return session;
@@ -368,9 +353,37 @@ export class AgentConnection {
    * `signal` aborts. Changes that come faster than they are taken give
    * only the newest list.
    */
-  async *processToolLists(
+  processToolLists(
     signal: AbortSignal | undefined
   ): AsyncGenerator<readonly PageTool[]> {
+    return this.#follow(() => this.processTools, signal);
+  }
+
+  /**
+   * The tools of `session`, an App Process, that the agent does not see,
+   * at once and after each change to them, until `signal` aborts: whether
+   * it reported them after the App Process that keeps their names, or
+   * that one reported them later. Changes that come faster than they are
+   * taken give only the newest list.
+   */
+  hiddenToolLists(
+    session: ProcessSession,
+    signal: AbortSignal | undefined
+  ): AsyncGenerator<readonly HiddenTool[]> {
+    return this.#follow(
+      () =>
+        this.#merged()
+          .hidden.filter(({ owner }) => owner === session)
+          .map(hiddenTool),
+      signal
+    );
+  }
+
+  /** What `read` gives, at once and after each change, until `signal` aborts. */
+  async *#follow<T>(
+    read: () => T,
+    signal: AbortSignal | undefined
+  ): AsyncGenerator<T> {
     let wake: (() => void) | undefined;
     const rouse = () => {
       const resolve = wake;
@@ -382,11 +395,11 @@ export class AgentConnection {
     try {
       let given: string | undefined;
       while (!signal?.aborted) {
-        const tools = this.processTools;
-        const key = JSON.stringify(tools);
+        const value = read();
+        const key = JSON.stringify(value);
         if (key !== given) {
           given = key;
-          yield tools;
+          yield value;
         } else await new Promise<void>((resolve) => (wake = resolve));
       }
     } finally {

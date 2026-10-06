@@ -2,11 +2,11 @@ import { createTRPCClient, createWSClient, wsLink } from "@trpc/client";
 
 import {
   DISCONNECTED_CLOSE_CODE,
+  HiddenToolListSchema,
   PageToolListSchema,
   PageWelcomeSchema,
   ToolCallOutcomeSchema,
   ToolCallSchema,
-  ToolReportAnswerSchema,
   UNKNOWN_PAIRING_CLOSE_CODE,
   type Hello,
   type PageTool,
@@ -86,10 +86,7 @@ export function openPageChannel(
   return {
     async publishTools(tools) {
       reported = [...tools];
-      // A server from before App Processes answers nothing.
-      return ToolReportAnswerSchema.parse(
-        (await client.publishTools.mutate(reported)) ?? {}
-      );
+      await client.publishTools.mutate(reported);
     },
     answerCalls(handler) {
       const subscription = client.calls.subscribe(undefined, {
@@ -120,6 +117,16 @@ export function openPageChannel(
         processToolListeners.delete(listener);
         subscription.unsubscribe();
       };
+    },
+    followHiddenTools(listener) {
+      const subscription = client.hiddenTools.subscribe(undefined, {
+        onData(data) {
+          listener(HiddenToolListSchema.parse(data));
+        },
+        // A server from before App Processes has no such subscription.
+        onError() {},
+      });
+      return () => subscription.unsubscribe();
     },
     async callProcessTool(name, input) {
       return ToolCallOutcomeSchema.parse(

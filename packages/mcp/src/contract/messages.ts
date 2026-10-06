@@ -31,13 +31,10 @@ export const HiddenToolSchema = z.object({
 export type HiddenTool = z.infer<typeof HiddenToolSchema>;
 
 /**
- * The server's answer to a tool report: the reported tools the agent does
- * not see. Only an App Process's report gets them; a page's has none.
+ * The tools of an App Process the agent does not see. The server sends the
+ * App Process the list at once and after every change to it.
  */
-export const ToolReportAnswerSchema = z.object({
-  hidden: z.optional(z.array(HiddenToolSchema)),
-});
-export type ToolReportAnswer = z.infer<typeof ToolReportAnswerSchema>;
+export const HiddenToolListSchema = z.array(HiddenToolSchema);
 
 /** The server asks the page to run one of its tools. */
 export const ToolCallSchema = z.object({
