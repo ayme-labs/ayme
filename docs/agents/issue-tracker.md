@@ -35,7 +35,7 @@ Run `gh issue view <number> --json number,title,body,labels,comments`.
 
 ## Research notes
 
-Research (`/research` or any agent's investigation) is an input to a decision, not a document this repository keeps. Open it as a PR so it is reviewable and citable, link it from the issue it informs, and close the PR **unmerged** once the decision it fed is recorded in an ADR, `CONTEXT.md`, or the ticket. A closed PR stays readable, so the link remains the primary source. Nothing lands under `docs/` for research alone.
+Research (`/research` or any agent's investigation) is an input to a decision, not a document this repository keeps. Open it as a PR so it is reviewable and citable, link it from the issue it informs, and close the PR **unmerged** once the decision it fed is recorded in an ADR, `GLOSSARY.md`, or the ticket. A closed PR stays readable, so the link remains the primary source. Nothing lands under `docs/` for research alone.
 
 ## Wayfinding operations
 

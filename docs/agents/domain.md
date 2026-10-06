@@ -4,8 +4,8 @@ How the engineering skills should consume this repo's domain documentation when 
 
 ## Before exploring, read these
 
-- `CONTEXT.md` at the repo root, or
-- `CONTEXT-MAP.md` at the repo root if it exists
+- `GLOSSARY.md` at the repo root, or
+- `GLOSSARY-MAP.md` at the repo root if it exists
 - `docs/adr/` for decisions touching the area being explored
 
 If these files do not exist, proceed silently. Do not suggest creating them upfront. The domain-modeling skill creates them when terms or decisions actually get resolved.
@@ -16,14 +16,14 @@ This is a single-context repository:
 
 ```text
 /
-├── CONTEXT.md
+├── GLOSSARY.md
 ├── docs/adr/
 └── src/
 ```
 
 ## Use the glossary's vocabulary
 
-When output names a domain concept, use the term defined in `CONTEXT.md`. If the concept is missing, treat that as a domain-modeling signal.
+When output names a domain concept, use the term defined in `GLOSSARY.md`. If the concept is missing, treat that as a domain-modeling signal.
 
 ## Flag ADR conflicts
 

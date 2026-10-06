@@ -29,9 +29,9 @@ Use the default triage label vocabulary. See `docs/agents/triage-labels.md`.
 
 This repository uses a single-context domain-doc layout. See `docs/agents/domain.md`.
 
-Treat `CONTEXT.md` as the canonical domain glossary.
+Treat `GLOSSARY.md` as the canonical domain glossary.
 
-Before adding or renaming a term in `CONTEXT.md`, present the proposed wording to the user and wait for explicit approval.
+Before adding or renaming a term in `GLOSSARY.md`, present the proposed wording to the user and wait for explicit approval.
 
 ### Architectural decisions
 
