@@ -91,7 +91,7 @@ The [Formbricks eval workflow](../../.github/workflows/eval-formbricks.yml) runs
 
 The job installs the pinned Claude Code, runs `lab:prepare`, starts `lab:dev` in the background and waits for the sign-in page, then runs `pnpm eval:suite`. It reads two repository secrets: `CLAUDE_CODE_OAUTH_TOKEN`, the agent's Claude Code login, and `AYME_OPENROUTER_API_KEY`, which only the lab app's Decision Endpoint and the Goal Loop's cost lookup use. Only people with write access to the repository can start it, and runs from forks never get the secrets. The job summary holds the machine (OS, runner image, CPUs, memory) and the suite summary; the `eval-formbricks-results` artifact holds `results/` with the same machine record, and `lab-formbricks-log` holds the lab app's output. The repository is public, so its Actions logs and artifacts are too.
 
-A runner is not a Mac, so its timings are not comparable with a Mac's: compare runs from the same kind of machine only. One eval runs at a time.
+A runner is not a Mac, so its timings are not comparable with a Mac's: compare runs from the same kind of machine only. One eval runs at a time. A runner's summary is committed in a folder of its own, with the machine beside it, so it never replaces a Mac's summary of the same day: the first is [`summaries/2026-10-06-hosted-runner/`](summaries/2026-10-06-hosted-runner/summary.md).
 
 ## The summary
 
