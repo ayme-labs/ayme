@@ -17,7 +17,7 @@ type Locator = {
 type Page = {
   goto(
     url: string,
-    options?: { waitUntil?: "load" | "domcontentloaded" }
+    options?: { waitUntil?: "load" | "domcontentloaded"; timeout?: number }
   ): Promise<unknown>;
   url(): string;
   evaluate<T, A = undefined>(
@@ -111,14 +111,21 @@ export async function signInAndOpenEditor(options: {
         `Formbricks rejected the seeded credentials with HTTP ${response.status()}.`
       );
 
+    // A dev server compiles a route on its first visit, slower still on a busy machine; this all
+    // happens before the measured window, so a page gets far longer than Playwright's 30 s default.
+    const navigationTimeoutMs = 180_000;
     const attempts = 6;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      await page.goto(mission.startUrl, { waitUntil: "domcontentloaded" });
+      await page.goto(mission.startUrl, {
+        waitUntil: "domcontentloaded",
+        timeout: navigationTimeoutMs,
+      });
       try {
         await page
           .getByRole("button", { name: "Save & Close" })
           .waitFor({ timeout: 60_000 });
-        for (const url of alsoVisit) await page.goto(url);
+        for (const url of alsoVisit)
+          await page.goto(url, { timeout: navigationTimeoutMs });
         return { browserVersion: context.browser()?.version() ?? null };
       } catch {
         log(

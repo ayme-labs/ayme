@@ -2,7 +2,15 @@ import type { Arm } from "./arms.ts";
 import type { Mission } from "./missions.ts";
 
 /**
- * The prompt every arm gets. Only `arm.interfaceLine` differs between arms.
+ * The first message of every run, the same for every arm: it names no app
+ * and no task, and keeps the agent off the page. Starting up and loading the
+ * arm's skill happen in this turn, outside the measured one.
+ */
+export const setupPrompt = `Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. If a skill for your browser interface is in your skill list, load it. Otherwise don't look for one. Don't read files and don't use the browser; just reply ready.
+`;
+
+/**
+ * The task, sent as the second message. Only `arm.interfaceLine` differs between arms.
  * It never carries the mission's credentials: the browser is signed in before
  * the agent's first turn.
  */

@@ -1,8 +1,11 @@
+import type { Turn } from "./claude.ts";
 import { combinedCost, type GoalLoopUsage } from "./goalLoop.ts";
 import {
   summarizeTranscript,
+  totalTokens,
   type TokenUsage,
   type ToolCallCounts,
+  type TranscriptTurn,
 } from "./transcript.ts";
 import type { Verdict } from "./verdict.ts";
 
@@ -14,13 +17,14 @@ export type RunArtifacts = {
   /** The model as requested; the model as used comes from the transcript. */
   requestedModel: string;
   timeoutSeconds: number;
-  /** The raw transcript, one stream-json event per line. */
+  /** The raw transcript, one stream-json event per line: the setup turn's events, then the task turn's. */
   transcript: string[];
   exitCode: number | null;
-  timedOut: boolean;
-  /** From the agent's first event to its last, measured by the harness. `null` when no event arrived. */
-  wallTimeMs: number | null;
-  startedAt: string;
+  /** The setup turn's timing, measured by the harness. It completed, or the run could not. */
+  setupTurn: Turn;
+  /** The task turn's timing, measured by the harness. */
+  taskTurn: Turn;
+  /** When the agent's process ended. */
   finishedAt: string;
   verdict: Verdict;
   versions: {
@@ -51,8 +55,9 @@ export type NormalizedResult = {
   /** The verdict's outcome, from the database alone. */
   pass: boolean;
   verdict: Verdict;
+  /** The task turn: everything from the task message on. */
   agent: {
-    /** The run ended with a result event, within the timeout, without an error. */
+    /** The task turn ended with a result event, within the timeout, without an error. */
     completed: boolean;
     timedOut: boolean;
     exitCode: number | null;
@@ -62,10 +67,13 @@ export type NormalizedResult = {
     permissionDenials: number;
     finalMessage: string | null;
   };
+  /** From sending the task message to its result event. */
   wallTimeMs: number | null;
-  /** Claude Code's own timing of the run and of its API calls. */
+  /** Claude Code's own timing of the task turn and of its API calls. */
   agentReported: { durationMs: number | null; apiDurationMs: number | null };
+  /** The task turn's tokens. */
   tokens: TokenUsage | null;
+  /** The task turn's cost: the session's cumulative cost at its end minus the setup turn's. */
   costUsd: number | null;
   goalLoop: GoalLoopUsage;
   /** The agent's cost plus the Goal Loop's where it ran; `null` while either is unknown. */
@@ -88,18 +96,57 @@ export type NormalizedResult = {
     permissionMode: string | null;
   };
   setup: Record<string, unknown> | null;
+  /**
+   * The setup turn, before the task message: Claude Code's start-up and the
+   * arm's skill load. Kept apart; never added to the figures above.
+   */
+  setupTurn: {
+    /** When the agent was started and the setup message sent. */
+    sentAt: string;
+    wallTimeMs: number | null;
+    agentReported: { durationMs: number | null; apiDurationMs: number | null };
+    tokens: TokenUsage | null;
+    costUsd: number | null;
+    numTurns: number | null;
+    toolCalls: ToolCallCounts;
+    finalMessage: string | null;
+  };
   timeoutSeconds: number;
+  /** When the task message was sent: the start of the measured window. */
   startedAt: string;
+  /** When the agent's process ended. */
   finishedAt: string;
   labCheckoutDirty: boolean;
   labCheckout: RunArtifacts["labCheckout"];
   unparsedTranscriptLines: number;
 };
 
+const noTurn: TranscriptTurn = {
+  init: null,
+  result: null,
+  toolCalls: { total: 0, failed: 0, byTool: {} },
+  assistantMessages: 0,
+};
+
+/** Claude Code's cost is cumulative over the session; a turn's own is the difference, free of float noise. */
+function turnCost(
+  cumulativeAtEnd: number | null,
+  cumulativeBefore: number | null
+) {
+  if (cumulativeAtEnd === null || cumulativeBefore === null) return null;
+  return Math.round((cumulativeAtEnd - cumulativeBefore) * 1e10) / 1e10;
+}
+
 export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
   const summary = summarizeTranscript(artifacts.transcript);
-  const { init, result } = summary;
-  const costUsd = result?.costUsd ?? null;
+  // The setup message is answered first; everything after its result event is the task turn's.
+  const [setup = noTurn, task = noTurn] = summary.turns;
+  const { result } = task;
+  const init = task.init ?? setup.init;
+  const costUsd = turnCost(
+    result?.cumulativeCostUsd ?? null,
+    setup.result?.cumulativeCostUsd ?? null
+  );
   // modelUsage can list helper models too, in no defined order; the session's model comes first.
   const modelUsed =
     init?.model ??
@@ -112,16 +159,17 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     pass: artifacts.verdict.pass,
     verdict: artifacts.verdict,
     agent: {
-      completed: !artifacts.timedOut && result !== null && !result.isError,
-      timedOut: artifacts.timedOut,
+      completed:
+        !artifacts.taskTurn.timedOut && result !== null && !result.isError,
+      timedOut: artifacts.taskTurn.timedOut,
       exitCode: artifacts.exitCode,
       isError: result?.isError ?? false,
       numTurns: result?.numTurns ?? null,
-      assistantMessages: summary.assistantMessages,
+      assistantMessages: task.assistantMessages,
       permissionDenials: result?.permissionDenials ?? 0,
       finalMessage: result?.finalMessage ?? null,
     },
-    wallTimeMs: artifacts.wallTimeMs,
+    wallTimeMs: artifacts.taskTurn.wallTimeMs,
     agentReported: {
       durationMs: result?.durationMs ?? null,
       apiDurationMs: result?.apiDurationMs ?? null,
@@ -130,7 +178,7 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     costUsd,
     goalLoop: artifacts.goalLoop,
     combinedCostUsd: combinedCost(costUsd, artifacts.goalLoop),
-    toolCalls: summary.toolCalls,
+    toolCalls: task.toolCalls,
     versions: {
       claudeCode: init?.claudeCodeVersion ?? artifacts.versions.claudeCode,
       model: { requested: artifacts.requestedModel, used: modelUsed },
@@ -147,8 +195,21 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
       permissionMode: init?.permissionMode ?? null,
     },
     setup: artifacts.setup,
+    setupTurn: {
+      sentAt: artifacts.setupTurn.sentAt,
+      wallTimeMs: artifacts.setupTurn.wallTimeMs,
+      agentReported: {
+        durationMs: setup.result?.durationMs ?? null,
+        apiDurationMs: setup.result?.apiDurationMs ?? null,
+      },
+      tokens: setup.result?.usage ?? null,
+      costUsd: setup.result?.cumulativeCostUsd ?? null,
+      numTurns: setup.result?.numTurns ?? null,
+      toolCalls: setup.toolCalls,
+      finalMessage: setup.result?.finalMessage ?? null,
+    },
     timeoutSeconds: artifacts.timeoutSeconds,
-    startedAt: artifacts.startedAt,
+    startedAt: artifacts.taskTurn.sentAt,
     finishedAt: artifacts.finishedAt,
     labCheckoutDirty:
       artifacts.labCheckout.movedFiles.length > 0 ||
@@ -178,7 +239,7 @@ export function summarizeResult(result: NormalizedResult) {
         `  - ${name}: ${counts.total} (${counts.failed} failed)`
     )
     .join("\n");
-  const { goalLoop } = result;
+  const { goalLoop, setupTurn } = result;
   return `# Run ${result.runId}
 
 - Arm: ${result.arm}
@@ -198,6 +259,7 @@ export function summarizeResult(result: NormalizedResult) {
 - Tool calls: ${result.toolCalls.total} (${result.toolCalls.failed} failed)
 ${tools}
 - Permission denials: ${result.agent.permissionDenials}
+- Setup turn, not counted above: ${seconds(setupTurn.wallTimeMs)}, ${count(setupTurn.tokens === null ? null : totalTokens(setupTurn.tokens))} tokens, ${dollars(setupTurn.costUsd)}, tool calls ${setupTurn.toolCalls.total} (${setupTurn.toolCalls.failed} failed)
 - Claude Code: ${result.versions.claudeCode ?? "unknown"}
 - Model: ${result.versions.model.used ?? "unknown"} (requested ${result.versions.model.requested})
 - Browser interface: ${result.versions.browserInterface.name} ${result.versions.browserInterface.version}

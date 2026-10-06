@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { arms, goalFirstSentence, type ArmContext } from "./arms.ts";
 import { agentSocketPath, aymeMcpVersion } from "./ayme.ts";
 import type { Mission } from "./missions.ts";
-import { createPrompt } from "./prompt.ts";
+import { createPrompt, setupPrompt } from "./prompt.ts";
 
 const mission: Mission = {
   id: "rename-survey-and-question",
@@ -108,6 +108,31 @@ describe("the prompt", () => {
       "Hand the goal to the `goal` tool first"
     );
     expect(arms["ayme-goal-loop-off"].interfaceLine).not.toContain("goal");
+  });
+});
+
+describe("the setup message", () => {
+  it("names no app, no task and no arm, and keeps the agent off the page", () => {
+    for (const word of [
+      "Formbricks",
+      "survey",
+      "ayme",
+      "playwright",
+      "goal",
+      "localhost",
+    ])
+      expect(setupPrompt.toLowerCase()).not.toContain(word.toLowerCase());
+    expect(setupPrompt).toContain("Don't read files and don't use the browser");
+    expect(setupPrompt).toContain(
+      "If a skill for your browser interface is in your skill list, load it."
+    );
+    expect(setupPrompt).toContain("Otherwise don't look for one.");
+  });
+
+  it("is not part of the task prompt", () => {
+    expect(
+      createPrompt(mission, arms["playwright-mcp"], "http://localhost:3000")
+    ).not.toContain(setupPrompt.trim());
   });
 });
 

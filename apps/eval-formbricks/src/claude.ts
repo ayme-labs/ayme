@@ -1,13 +1,26 @@
 /**
- * Runs Claude Code in headless print mode with stream-json output and the
- * isolated configuration every arm shares. The caller supplies only what the
- * arm contributes.
+ * Runs Claude Code in headless print mode with stream-json input and output
+ * and the isolated configuration every arm shares. The caller supplies only
+ * what the arm contributes.
+ *
+ * The agent gets two user messages over stdin, each its own turn: a setup
+ * message, so that starting up and loading the arm's skill happen before the
+ * task, and then the task. The task turn is the measured one; its timing is
+ * taken from sending its message to its `result` event. The setup turn has
+ * its own, shorter timeout, and the task is sent only after it completed.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import { createInterface } from "node:readline";
 
 import type { Arm } from "./arms.ts";
+import { resultEvent } from "./transcript.ts";
+
+/** How long the setup turn may take; a setup that runs out of it ends the run. */
+export const setupTimeoutMs = 120_000;
+
+/** How long Claude Code may take to exit once its input is closed before it is stopped. */
+const exitGraceMs = 30_000;
 
 export type ClaudeInvocation = {
   /** The agent's working root. */
@@ -20,19 +33,39 @@ export type ClaudeInvocation = {
   mcpConfigPath: string;
   /** Folders outside the working root the agent may read, from the arm's setup. */
   readableDirectories?: string[];
+  /** The first message: get ready, without touching the page. */
+  setupPrompt: string;
+  /** The second message: the task. */
   prompt: string;
+  /** The task turn's timeout. */
   timeoutMs: number;
+  /** The setup turn's timeout; `setupTimeoutMs` by default. */
+  setupTimeoutMs?: number;
   transcriptPath: string;
   stderrPath: string;
+};
+
+/** One user message and the agent's answer to it. */
+export type Turn = {
+  /** When the message was sent. */
+  sentAt: string;
+  /** Wall clock from sending the message to its `result` event; `null` when none arrived. */
+  wallTimeMs: number | null;
+  /** The turn ran out of its timeout and the agent was stopped. */
+  timedOut: boolean;
 };
 
 export type ClaudeRun = {
   exitCode: number | null;
   signal: NodeJS.Signals | null;
-  timedOut: boolean;
-  /** Wall clock from the first stream-json event to the last; `null` when none arrived. */
-  wallTimeMs: number | null;
+  setup: Turn;
+  /** Why the setup turn did not complete; the task is sent only after a completed setup turn. */
+  setupFailure: string | null;
+  /** The measured turn; `null` when the task was never sent. */
+  task: Turn | null;
+  /** When the agent was started. */
   startedAt: string;
+  /** When the agent's process ended. */
   finishedAt: string;
   lines: string[];
 };
@@ -54,6 +87,8 @@ export function claudeArguments(invocation: {
   const disallowedTools = invocation.arm.disallowedTools ?? [];
   return [
     "-p",
+    "--input-format",
+    "stream-json",
     "--output-format",
     "stream-json",
     "--verbose",
@@ -161,7 +196,19 @@ function signalProcessGroup(pid: number, signal: NodeJS.Signals) {
   }
 }
 
-/** Spawns Claude Code, streams its events to the transcript and kills the whole process group on timeout. */
+/** A user message as one line of Claude Code's stream-json input. */
+export function userMessageLine(text: string) {
+  return `${JSON.stringify({
+    type: "user",
+    message: { role: "user", content: [{ type: "text", text }] },
+  })}\n`;
+}
+
+/**
+ * Spawns Claude Code, sends the setup message and then the task, streams the
+ * events to the transcript, and kills the whole process group when a turn
+ * runs out of its timeout.
+ */
 export async function runClaude(
   invocation: ClaudeInvocation
 ): Promise<ClaudeRun> {
@@ -175,25 +222,38 @@ export async function runClaude(
     stdio: ["pipe", "pipe", "pipe"],
   });
   child.stderr.pipe(stderr);
-  child.stdin.end(invocation.prompt);
+  // A message sent to an agent that has already exited must not take the harness down.
+  child.stdin.on("error", (error) =>
+    stderr.write(`harness: writing to the agent failed: ${error.message}\n`)
+  );
 
   const lines: string[] = [];
-  let firstEventAt: number | null = null;
-  let lastEventAt: number | null = null;
+  let onResult: ((event: { isError: boolean }) => void) | null = null;
   const reader = createInterface({ input: child.stdout });
   reader.on("line", (line) => {
-    const now = Date.now();
-    firstEventAt ??= now;
-    lastEventAt = now;
     lines.push(line);
     transcript.write(`${line}\n`);
+    const result = resultEvent(line);
+    if (result !== null) onResult?.(result);
   });
   // Registered before the child can close: readline closes with stdout, ahead of the child's own close.
   const readerClosed = new Promise<void>((resolve) =>
     reader.once("close", resolve)
   );
+  const closed = new Promise<{
+    exitCode: number | null;
+    signal: NodeJS.Signals | null;
+  }>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", (code, closeSignal) =>
+      resolve({ exitCode: code, signal: closeSignal })
+    );
+  });
+  const ended = closed.then(
+    () => undefined,
+    () => undefined
+  );
 
-  let timedOut = false;
   let forceKill: NodeJS.Timeout | undefined;
   const stopChild = () => {
     if (!child.pid) return;
@@ -202,11 +262,7 @@ export async function runClaude(
       if (child.pid) signalProcessGroup(child.pid, "SIGKILL");
     }, 10_000);
   };
-  const timeout = setTimeout(() => {
-    timedOut = true;
-    stopChild();
-  }, invocation.timeoutMs);
-  // The child runs in its own process group so the timeout can take the MCP server and browser with it;
+  // The child runs in its own process group so a timeout can take the MCP server and browser with it;
   // an interrupted harness must do the same instead of leaving them behind.
   let interruptedBy: NodeJS.Signals | null = null;
   const onInterrupt = (received: NodeJS.Signals) => {
@@ -217,16 +273,55 @@ export async function runClaude(
   process.once("SIGINT", onInterrupt);
   process.once("SIGTERM", onInterrupt);
 
-  try {
-    const { exitCode, signal } = await new Promise<{
-      exitCode: number | null;
-      signal: NodeJS.Signals | null;
-    }>((resolve, reject) => {
-      child.once("error", reject);
-      child.once("close", (code, closeSignal) =>
-        resolve({ exitCode: code, signal: closeSignal })
-      );
+  /** Sends one message and waits for its result event, the turn's timeout or the agent's end. */
+  const turn = async (text: string, timeoutMs: number) => {
+    const sentAt = Date.now();
+    child.stdin.write(userMessageLine(text));
+    let timedOut = false;
+    let timer: NodeJS.Timeout | undefined;
+    const result = await new Promise<{ isError: boolean } | null>((resolve) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        stopChild();
+        resolve(null);
+      }, timeoutMs);
+      onResult = resolve;
+      void ended.then(() => resolve(null));
     });
+    clearTimeout(timer);
+    onResult = null;
+    const timing: Turn = {
+      sentAt: new Date(sentAt).toISOString(),
+      wallTimeMs: result === null ? null : Date.now() - sentAt,
+      timedOut,
+    };
+    return { turn: timing, result };
+  };
+
+  let linger: NodeJS.Timeout | undefined;
+  try {
+    const setupTimeout = invocation.setupTimeoutMs ?? setupTimeoutMs;
+    const { turn: setup, result: setupResult } = await turn(
+      invocation.setupPrompt,
+      setupTimeout
+    );
+    const setupFailure = setup.timedOut
+      ? `the setup turn ran out of its ${setupTimeout / 1000} s timeout`
+      : setupResult === null
+        ? "the agent ended before answering the setup message"
+        : setupResult.isError
+          ? "the setup turn ended with an error"
+          : child.exitCode !== null
+            ? "the agent ended right after the setup turn"
+            : null;
+    const task =
+      setupFailure === null
+        ? (await turn(invocation.prompt, invocation.timeoutMs)).turn
+        : null;
+    child.stdin.end();
+    // Claude Code exits once its input ends; one that lingers is stopped so the run can end.
+    linger = setTimeout(stopChild, exitGraceMs);
+    const { exitCode, signal } = await closed;
     await readerClosed;
     await Promise.all([closeStream(transcript), closeStream(stderr)]);
     // An interrupted run is not a result: nothing is stored and a suite stops.
@@ -235,17 +330,15 @@ export async function runClaude(
     return {
       exitCode,
       signal,
-      timedOut,
-      wallTimeMs:
-        firstEventAt === null || lastEventAt === null
-          ? null
-          : lastEventAt - firstEventAt,
+      setup,
+      setupFailure,
+      task,
       startedAt: startedAt.toISOString(),
       finishedAt: new Date().toISOString(),
       lines,
     };
   } finally {
-    clearTimeout(timeout);
+    if (linger) clearTimeout(linger);
     if (forceKill) clearTimeout(forceKill);
     process.off("SIGINT", onInterrupt);
     process.off("SIGTERM", onInterrupt);
