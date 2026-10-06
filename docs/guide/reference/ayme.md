@@ -52,8 +52,8 @@ navigate: (url) => router.push(url.slice(location.origin.length)),
 | Member                | Behavior                                                                                                                                                                                                                                                                                                       |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `run(name, input)`    | Runs the tool the way an agent's call runs it. Browser Tools resolve with an `ActionResult`, except `generate_locator`, which resolves with its locators; `snapshot` with a `PageContextPayload`, `goal` with a `Handover`. Page Object Tools and Custom Tools resolve with an action result, typed `unknown`. |
-| `list()`              | Every tool `run` can run now, in publication order, as `ToolInfo` objects (`name`, `description`, `inputSchema`, `group`). `group` is `"browser"`, `"custom"`, `"pageObject"` or `"agent"`. Returns the same array until the set changes, and `[]` while the session is not started.                           |
-| `subscribe(listener)` | Calls `listener` with the new list after the set changes: the session starts or stops, a class is registered for the first time or unregistered for the last, or a Page Object becomes available or unavailable. Returns the function that unsubscribes.                                                       |
+| `list()`              | Every tool `run` can run now, in publication order, as `ToolInfo` objects (`name`, `description`, `inputSchema`, `group`). `group` is `"browser"`, `"custom"`, `"pageObject"`, `"peek"` or `"agent"`. Returns the same array until the set changes, and `[]` while the session is not started.                 |
+| `subscribe(listener)` | Calls `listener` with the new list after the set changes: the session starts or stops, a class is registered for the first time or unregistered for the last, a Page Object becomes available or unavailable, or a Peek Tool appears or goes. Returns the function that unsubscribes.                          |
 
 `run` throws `ToolInputError` for wrong input, `RefResolutionError` when a ref or instance does not match the page, and `RuntimeStateError` when the session is not started or the tool is not live. Errors from the browser Page pass through unchanged. `BuiltInTools` maps each built-in tool name to its input and result; `ToolInput<Name>` and `ToolResult<Name>` read them.
 
@@ -68,6 +68,17 @@ navigate: (url) => router.push(url.slice(location.origin.length)),
 | `unregister(Model)` | Removes one registration. The tools are withdrawn when the last one is removed.                                                                                       |
 
 Every registration of a class shares one instance, so a Page Object should keep no per-component state in its own fields.
+
+## ayme.peek
+
+`ayme.peek(read, name, id?)` adds a Peek: a named view of app state that a coding agent reads on demand. It returns the function that removes it.
+
+- `read` returns the values when an agent asks, and may be async. The values go out as JSON.
+- `name` is required; an empty name throws `RuntimeStateError`, and so does a name whose Peek Tool name another live tool already uses. A tool that takes the name later wins, and the console warns that the Peek Tool is hidden. Each name has one Peek Tool, `peek.<name>`, with characters outside `[A-Za-z0-9_.-]` replaced by `_`. It takes no input and returns `{ name, instances }`: per live instance, its `id` and either its `values` or the `error` its read threw.
+- There is one instance per (`name`, `id`). A later call with the same `id` updates that instance's `read`. Without an `id` there is one instance per name, and a later call replaces the earlier one, so a module that runs again replaces its Peek.
+- The tool goes when its last instance is removed. An instance removed and added again in one go, such as by React StrictMode's remount, keeps it.
+
+Peek Tools are in `ayme.tools` and reach coding agents through the Agent Connection and the Inspector. WebMCP never publishes them, and the Goal Loop never offers them. A call answers at once, without waiting for a Settled Page. `ayme.peek` does nothing unless the session has `agentConnection` or `inspector` on.
 
 ## ayme.webMCP
 

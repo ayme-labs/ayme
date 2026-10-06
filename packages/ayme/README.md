@@ -46,6 +46,20 @@ ayme.pom.register(ProjectsPage);
 await ayme.tools.run("ProjectsPage.createProject", { name: "Launch plan" });
 ```
 
+## Peek at app state
+
+While a coding agent or the Inspector is connected, `ayme.peek` lets the agent read state the page does not show. Each name becomes a Peek Tool, `peek.<name>`, which reads the values when the agent calls it:
+
+```ts
+const ayme = createAyme({ agentConnection: true });
+ayme.start();
+
+const removeCart = ayme.peek(() => cartStore.getState(), "cart");
+await ayme.tools.run("peek.cart", {}); // { name: "cart", instances: [{ values: … }] }
+```
+
+`read` may be async. Pass an id as the third argument for one instance per id, such as one per mounted component; without one, a later call replaces the earlier one. The returned function removes the instance. Peeks do nothing unless the session has `agentConnection` or `inspector` on, and WebMCP never publishes them. The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek) has the details.
+
 ## Documentation
 
 - [Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md): marking models and actions, tool names, children and collections.

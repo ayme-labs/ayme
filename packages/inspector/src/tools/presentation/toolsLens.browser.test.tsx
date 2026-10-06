@@ -55,6 +55,13 @@ const pageContext: LiveTool = {
   inputSchema: { type: "object", properties: {} },
   group: "agent",
 };
+const cartPeek: LiveTool = {
+  name: "peek.cart",
+  description:
+    'Read the current values of the Peek "cart" from each live instance.',
+  inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  group: "peek",
+};
 const listPageDefinition =
   "ListPage\n  newItemInput\n\n  // Add an item to the list.\n  addItem(text: string)";
 /** The runtime's definitions: only ListPage is known. */
@@ -113,6 +120,28 @@ it("lists the live tools as Page object, Ref and Agent tools", async () => {
       "Browser tools": ["click"],
       "Agent tools": ["snapshot"],
     });
+});
+
+it("lists Peek Tools in their own group, before the Agent tools", async () => {
+  renderTools({ tools: [pageContext, click, addItem, cartPeek] });
+
+  await expect
+    .poll(() => navigator.tools.listed())
+    .toEqual({
+      "Page object tools": ["ListPage.addItem"],
+      "Browser tools": ["click"],
+      "Peek tools": ["peek.cart"],
+      "Agent tools": ["snapshot"],
+    });
+  await navigator.tools.tool("peek.cart").click();
+  await expect
+    .poll(() => detail.toolPage.title.textContent())
+    .toBe("peek.cart");
+  expect(
+    await detail.toolPage.root
+      .getByRole("form", { name: "Run peek.cart" })
+      .count()
+  ).toBe(1);
 });
 
 it("opens a tool's page with its description, then the run slot", async () => {

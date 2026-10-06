@@ -15,6 +15,7 @@ export type {
   GoalLoopDecisionFunction,
   ToolInfo,
 } from "./runtime";
+export type { PeekRead, PeekResult } from "./peek";
 export type { BuiltInTools, ToolInput, ToolResult } from "./toolTypes";
 export type { Handover } from "./goalLoop";
 export { decisionEndpoint } from "./decisionEndpoint";

@@ -14,6 +14,7 @@ import {
 } from "./elementTools";
 import { listCallerAwarePomTools, type CallerAwarePomTool } from "./registry";
 import { RuntimeStateError } from "./errors";
+import { listPeekTools, type PeekTool } from "./peek";
 
 /**
  * A live tool: `execute` runs it as the calling agent, `executeAs` for the
@@ -23,14 +24,16 @@ export type PublishedTool =
   | CallerAwarePomTool
   | typeof getPageContextTool
   | PublishedElementTool
+  | PeekTool
   | GoalTool;
 
 /**
- * Where a published tool comes from: a Page Object (Page Object Tool), Ayme's
- * Browser Tools, the app's Custom Tools, or the agent's own tools
- * (`snapshot`, `goal`).
+ * Where a live tool comes from: a Page Object (Page Object Tool), Ayme's
+ * Browser Tools, the app's Custom Tools, the app's Peeks (Peek Tools), or the
+ * agent's own tools (`snapshot`, `goal`). WebMCP never publishes a Peek Tool.
  */
-export type PublishedToolGroup = "pageObject" | "browser" | "custom" | "agent";
+export type PublishedToolGroup =
+  "pageObject" | "browser" | "custom" | "peek" | "agent";
 
 /** A published tool as an agent sees it, for reading only. */
 export type PublishedToolInfo = Readonly<{
@@ -92,13 +95,44 @@ export function listPublishedTools(): readonly PublishedToolInfo[] {
   return publishedTools;
 }
 
+// The Peek Tools already warned about, so a clash is logged once.
+const warnedClashes = new WeakSet<PeekTool>();
+
+/**
+ * Package-internal: every live tool by name: the tools WebMCP publication
+ * registers and, when `peeks` is on, the Peek Tools after them. A Peek Tool
+ * whose name a tool that came after it uses is left out with a console
+ * warning, so a Peek never hides one of the app's tools; `ayme.peek` refuses
+ * a clash that exists when it is called. Throws when two published tools
+ * would share a name.
+ */
+export function resolveLiveTools({
+  peeks,
+}: {
+  peeks: boolean;
+}): Map<string, { tool: PublishedTool; group: PublishedToolGroup }> {
+  const live = resolvePublishedTools();
+  if (peeks)
+    for (const tool of listPeekTools())
+      if (!live.has(tool.name)) live.set(tool.name, { tool, group: "peek" });
+      else if (!warnedClashes.has(tool)) {
+        warnedClashes.add(tool);
+        console.warn(
+          `[ayme] ${tool.name} is hidden: another tool uses that name. Rename the Peek.`
+        );
+      }
+  return live;
+}
+
 /**
  * Package-internal: every live tool, published or not, in publication order;
  * empty when a tool name clash leaves the set unresolvable.
  */
-export function listLiveTools(): readonly PublishedToolInfo[] {
+export function listLiveTools(options: {
+  peeks: boolean;
+}): readonly PublishedToolInfo[] {
   try {
-    return toInfo([...resolvePublishedTools().values()]);
+    return toInfo([...resolveLiveTools(options).values()]);
   } catch {
     return Object.freeze([]);
   }
