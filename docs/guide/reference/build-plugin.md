@@ -115,7 +115,7 @@ With a config, Ayme loads it through the config loader of your Playwright 1.62.x
 
 Without `project`, a config with no projects uses its top-level `use` values, a single project is selected automatically, and several projects must agree on all three values. If they do not, set `project` to the name of exactly one project.
 
-Each field resolves on its own. `use` wins over the selected project, then the top-level config, then the adapter default: 1,000 ms for actions and 30,000 ms for navigation. An `undefined` value does not erase an inherited one, and navigation without its own value inherits the action timeout. The timeouts apply to the page the runtime creates, which Page Object Models and Browser Tools act on. A timeout passed to a single call, and later `setDefaultTimeout` or `setDefaultNavigationTimeout` calls, still win, and `0` means no timeout.
+Each field resolves on its own. `use` wins over the selected project, then the top-level config, then the adapter default: 1,000 ms for actions and 30,000 ms for navigation. An `undefined` value does not erase an inherited one. Navigation has its own default and does not follow `actionTimeout`; set `navigationTimeout` to change it. The timeouts apply to the page the runtime creates, which Page Object Models and Browser Tools act on. A timeout passed to a single call, and later `setDefaultTimeout` or `setDefaultNavigationTimeout` calls, still win, and `0` means no timeout.
 
 ## Errors
 
