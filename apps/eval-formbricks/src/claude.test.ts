@@ -73,6 +73,8 @@ describe("claudeArguments", () => {
       "--verbose",
       "--model",
       "sonnet",
+      "--effort",
+      "medium",
       "--setting-sources",
       "user",
       "--strict-mcp-config",

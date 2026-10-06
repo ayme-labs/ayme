@@ -33,7 +33,11 @@ function run(overrides: Partial<SummarizedRun>): SummarizedRun {
     labCheckoutDirty: false,
     versions: {
       claudeCode: "2.1.281",
-      model: { requested: "sonnet", used: "claude-sonnet-fixture" },
+      model: {
+        requested: "sonnet",
+        used: "claude-sonnet-fixture",
+        effort: "medium",
+      },
       browserInterface: { name: "@playwright/mcp", version: "0.0.83" },
       browser: "Chrome/154.0.0.0",
       formbricksCommit: "8abe0b42",
@@ -299,7 +303,7 @@ describe("the versions a rerun must match", () => {
     expect(markdown).toContain("- Date: 2026-10-04");
     expect(markdown).toContain("- Claude Code: 2.1.281");
     expect(markdown).toContain(
-      "- Model: claude-sonnet-fixture (requested sonnet)"
+      "- Model: claude-sonnet-fixture (requested sonnet, effort medium)"
     );
     expect(markdown).toContain("- @playwright/mcp 0.0.83 (playwright-mcp)");
     expect(markdown).toContain("- Ayme commit: 4cdac8dd");
@@ -341,6 +345,7 @@ describe("reading stored files", () => {
     arm: "playwright-mcp",
     missionId: "rename-survey-and-question",
     requestedModel: "sonnet",
+    effort: "medium",
     timeoutSeconds: 600,
     transcript: readFileSync(
       path.join(fixturesDir, "complete.jsonl"),

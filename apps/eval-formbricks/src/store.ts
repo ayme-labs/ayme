@@ -140,6 +140,8 @@ export function parseStoredRun(value: unknown, what: string): SummarizedRun {
       model: {
         requested: string(model, "requested", `${what} model`),
         used: nullableString(model, "used", `${what} model`),
+        // Results stored before the effort was pinned have none.
+        effort: typeof model.effort === "string" ? model.effort : null,
       },
       browserInterface: {
         name: string(browserInterface, "name", `${what} browserInterface`),

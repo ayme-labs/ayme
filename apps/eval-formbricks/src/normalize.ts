@@ -16,6 +16,8 @@ export type RunArtifacts = {
   missionId: string;
   /** The model as requested; the model as used comes from the transcript. */
   requestedModel: string;
+  /** The thinking effort the agent ran with, the same for every arm. */
+  effort: string;
   timeoutSeconds: number;
   /** The raw transcript, one stream-json event per line: the setup turn's events, then the task turn's. */
   transcript: string[];
@@ -81,7 +83,7 @@ export type NormalizedResult = {
   toolCalls: ToolCallCounts;
   versions: {
     claudeCode: string | null;
-    model: { requested: string; used: string | null };
+    model: { requested: string; used: string | null; effort: string | null };
     browserInterface: { name: string; version: string };
     browser: string | null;
     formbricksCommit: string | null;
@@ -181,7 +183,11 @@ export function normalizeRun(artifacts: RunArtifacts): NormalizedResult {
     toolCalls: task.toolCalls,
     versions: {
       claudeCode: init?.claudeCodeVersion ?? artifacts.versions.claudeCode,
-      model: { requested: artifacts.requestedModel, used: modelUsed },
+      model: {
+        requested: artifacts.requestedModel,
+        used: modelUsed,
+        effort: artifacts.effort,
+      },
       browserInterface: artifacts.versions.browserInterface,
       browser: artifacts.versions.browser,
       formbricksCommit: artifacts.versions.formbricksCommit,
@@ -261,7 +267,7 @@ ${tools}
 - Permission denials: ${result.agent.permissionDenials}
 - Setup turn, not counted above: ${seconds(setupTurn.wallTimeMs)}, ${count(setupTurn.tokens === null ? null : totalTokens(setupTurn.tokens))} tokens, ${dollars(setupTurn.costUsd)}, tool calls ${setupTurn.toolCalls.total} (${setupTurn.toolCalls.failed} failed)
 - Claude Code: ${result.versions.claudeCode ?? "unknown"}
-- Model: ${result.versions.model.used ?? "unknown"} (requested ${result.versions.model.requested})
+- Model: ${result.versions.model.used ?? "unknown"} (requested ${result.versions.model.requested}, effort ${result.versions.model.effort ?? "unknown"})
 - Browser interface: ${result.versions.browserInterface.name} ${result.versions.browserInterface.version}
 - Browser: ${result.versions.browser ?? "unknown"}
 - Formbricks: ${result.versions.formbricksCommit ?? "unknown"}

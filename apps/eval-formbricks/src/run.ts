@@ -19,7 +19,12 @@ import {
   type ArmSetup,
 } from "./arms.ts";
 import { initPageScript, signInAndOpenEditor } from "./browser.ts";
-import { claudeEnvironment, claudeVersion, runClaude } from "./claude.ts";
+import {
+  agentEffort,
+  claudeEnvironment,
+  claudeVersion,
+  runClaude,
+} from "./claude.ts";
 import {
   openRouterKeyVariable,
   readEnvVariable,
@@ -261,6 +266,7 @@ export async function runOnce(
       arm: options.arm.id,
       missionId: mission.id,
       requestedModel: options.model,
+      effort: agentEffort,
       timeoutSeconds: options.timeoutSeconds,
       transcript: run.lines,
       exitCode: run.exitCode,
