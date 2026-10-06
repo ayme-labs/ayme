@@ -1,9 +1,11 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 /**
  * A run card's ref field: it chooses a ref from a searchable tree of the
  * page's structure, or by pointing at the page. A card has one ref field.
  */
+@ayme
 export class RefField {
   /** Shows the ref chosen, e.g. `e6 button "Add item"`, and opens the tree. */
   readonly chooser: Locator;
@@ -30,6 +32,7 @@ export class RefField {
   }
 
   /** The ref chosen, as the field shows it, e.g. `e6 button "Add item"`. */
+  @ayme.action({ description: "Reads the ref chosen, as the field shows it." })
   async value(): Promise<string | undefined> {
     const text = await this.chooser.textContent();
     return text === "Choose an element" ? undefined : (text ?? undefined);
@@ -50,18 +53,21 @@ export class RefField {
   }
 
   /** Opens the tree, when it's closed. */
+  @ayme.action({ description: "Opens the tree, when it is closed." })
   async open() {
     if ((await this.chooser.getAttribute("aria-expanded")) !== "true")
       await this.chooser.click();
   }
 
   /** Searches the tree. */
+  @ayme.action({ description: "Searches the tree." })
   async find(query: string) {
     await this.open();
     await this.search.fill(query);
   }
 
   /** Chooses a ref from the tree. */
+  @ayme.action({ description: "Chooses a ref from the tree." })
   async choose(ref: string) {
     await this.find(ref);
     await this.node(ref).click();
@@ -71,6 +77,10 @@ export class RefField {
    * Starts picking on the page; the next click on the page picks. Picking
    * reads the panel's look at the page, so it waits for the structure first.
    */
+  @ayme.action({
+    description:
+      "Starts picking on the page; the next click on the page picks.",
+  })
   async pickOnPage() {
     if ((await this.pickButton.getAttribute("aria-pressed")) === "true") return;
     await this.open();
@@ -79,6 +89,7 @@ export class RefField {
   }
 
   /** Whether it's picking on the page. */
+  @ayme.action({ description: "Whether it is picking on the page." })
   async isPicking() {
     return (await this.pickButton.getAttribute("aria-pressed")) === "true";
   }

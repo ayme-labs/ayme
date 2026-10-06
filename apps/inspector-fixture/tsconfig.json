@@ -2,7 +2,15 @@
   "extends": "@ayme-dev/typescript-config/react-library.json",
   "compilerOptions": {
     "experimentalDecorators": true,
-    "types": ["node"]
+    "types": ["node"],
+    // The Inspector's Page Object from source, as the Vite config resolves
+    // it: the Ayme plugin reads its decorators, which the shipped
+    // declarations drop.
+    "paths": {
+      "@ayme-dev/inspector/testing": [
+        "../../packages/inspector/src/testing/index.ts"
+      ]
+    }
   },
   "include": ["app", "pom", "tests", "*.ts"]
 }

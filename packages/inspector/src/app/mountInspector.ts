@@ -55,6 +55,14 @@ export type InspectorOptions = {
    * call, whoever makes it. Off by default: calls run at full speed.
    */
   demo?: boolean;
+  /**
+   * Dogfooding: mounts the panel in an open shadow root, so the runtime's
+   * page state and locators see it like any part of the page. With the
+   * Inspector's own Page Object registered, agents drive the panel through
+   * Page Object Tools. Off by default: the root is closed and the panel
+   * stays out of what agents see.
+   */
+  dogfood?: boolean;
 };
 
 /**
@@ -90,9 +98,10 @@ let mounted: MountedInspector | undefined;
 
 /**
  * Mounts the Inspector once per document; each call returns its own dispose.
- * The first of overlapping mounts decides `demo`.
+ * The first of overlapping mounts decides `demo` and `dogfood`.
  */
 export function mountInspector(options: InspectorOptions = {}) {
+  const { dogfood = false } = options;
   if (!mounted) {
     const disposeInstrumentation = installInspectorInstrumentation(options);
     const highlightStyle = document.createElement("style");
@@ -105,8 +114,10 @@ export function mountInspector(options: InspectorOptions = {}) {
     host.dataset.aymeInspectorHost = "";
     host.style.pointerEvents = "none";
     // Closed, so the host page's locators and page-state capture never match
-    // the Inspector's own text. Tests reach the root through the hook.
-    const shadowRoot = host.attachShadow({ mode: "closed" });
+    // the Inspector's own text. Tests reach the root through the hook. Open
+    // when dogfooding, and marked so the runtime's page state keeps it.
+    if (dogfood) host.dataset.aymeInspectorDogfood = "";
+    const shadowRoot = host.attachShadow({ mode: dogfood ? "open" : "closed" });
     exposeInspectorShadowRoot(host, shadowRoot);
     document.body.append(host);
     const unmountUi = renderInspector(shadowRoot);

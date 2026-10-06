@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { ModelLens } from "./ModelLens";
@@ -9,6 +10,7 @@ export type LensName = "Model" | "Structure" | "Tools";
  * The navigator: search, the lens switcher, the legend and the active lens's
  * tree. Each lens's own page object works inside {@link Navigator.root}.
  */
+@ayme
 export class Navigator {
   readonly root: Locator;
   readonly searchBox: Locator;
@@ -38,10 +40,12 @@ export class Navigator {
       .getByRole("button", { name, exact: true });
   }
 
+  @ayme.action({ description: "Shows a lens: Model, Structure or Tools." })
   async showLens(name: LensName) {
     await this.lens(name).click();
   }
 
+  @ayme.action({ description: "Searches the active lens." })
   async search(query: string) {
     await this.searchBox.fill(query);
   }

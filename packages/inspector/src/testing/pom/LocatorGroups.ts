@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { RefField } from "./RefField";
@@ -6,6 +7,7 @@ import { RefField } from "./RefField";
  * `generate_locator`'s form in a run card: one group per page object class,
  * each with a container and its targets, by group number from 1.
  */
+@ayme
 export class LocatorGroups {
   readonly list: Locator;
   readonly addGroupButton: Locator;
@@ -28,6 +30,7 @@ export class LocatorGroups {
   }
 
   /** Sets a group's container back to the page. */
+  @ayme.action({ description: "Sets a group's container back to the page." })
   async usePage(number: number) {
     await this.group(number)
       .getByRole("button", { name: "Use the page" })
@@ -42,6 +45,9 @@ export class LocatorGroups {
   }
 
   /** The refs of a group's targets, in order. */
+  @ayme.action({
+    description: "Lists the refs of a group's targets, in order.",
+  })
   async targetRefs(number: number): Promise<string[]> {
     return Promise.all(
       (await this.targets(number).all()).map(
@@ -73,12 +79,14 @@ export class LocatorGroups {
     return this.group(number).getByRole("alert");
   }
 
+  @ayme.action({ description: "Removes a target from a group." })
   async removeTarget(number: number, ref: string) {
     await this.group(number)
       .getByRole("button", { name: `Remove ${ref}`, exact: true })
       .click();
   }
 
+  @ayme.action({ description: "Removes a group." })
   async removeGroup(number: number) {
     await this.group(number)
       .getByRole("button", { name: `Remove group ${number}` })

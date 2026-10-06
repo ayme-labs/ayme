@@ -456,7 +456,7 @@ describe("the Inspector", () => {
     await inspector.header.themeSwitch.choose("Dark");
 
     await expect
-      .poll(() => inspector.root.getAttribute("class"))
+      .poll(() => inspector.container.getAttribute("class"))
       .toMatch(/\bdark\b/);
   });
 });

@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { FillForm } from "./FillForm";
@@ -18,6 +19,7 @@ export type ArgumentValue =
  * The run card: runs one tool. Run is always there; when the tool needs
  * input, the first press opens the typed form.
  */
+@ayme
 export class RunCard {
   readonly root: Locator;
   readonly runButton: Locator;
@@ -89,6 +91,9 @@ export class RunCard {
   }
 
   /** Opens the form, on a card whose form is closed. */
+  @ayme.action({
+    description: "Opens the form, on a card whose form is closed.",
+  })
   async openArguments() {
     if (
       (await this.argumentsToggle.count()) &&
@@ -98,6 +103,10 @@ export class RunCard {
   }
 
   /** Chooses the item a collection action runs on, by what it shows. */
+  @ayme.action({
+    description:
+      "Chooses the item a collection action runs on, by what it shows.",
+  })
   async pickItem(label: string) {
     await this.items.filter({ hasText: label }).click();
   }
@@ -110,6 +119,9 @@ export class RunCard {
   }
 
   /** Types the arguments into the JSON editor. */
+  @ayme.action({
+    description: "Types the arguments into the JSON editor, as JSON text.",
+  })
   async fillJson(text: string) {
     await this.openArguments();
     await this.jsonSwitch.click();

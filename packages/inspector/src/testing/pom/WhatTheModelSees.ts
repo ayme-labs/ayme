@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 /**
@@ -5,6 +6,7 @@ import type { Locator } from "@playwright/test";
  * Page Object definitions and the tool schemas an agent receives. It starts
  * collapsed.
  */
+@ayme
 export class WhatTheModelSees {
   readonly root: Locator;
   readonly toggle: Locator;
@@ -33,11 +35,13 @@ export class WhatTheModelSees {
     this.childCount = this.root.getByText(/^\d+ child(ren)?$/);
   }
 
+  @ayme.action({ description: "Expands What the model sees." })
   async open() {
     if ((await this.toggle.getAttribute("aria-expanded")) !== "true")
       await this.toggle.click();
   }
 
+  @ayme.action({ description: "Collapses What the model sees." })
   async close() {
     if ((await this.toggle.getAttribute("aria-expanded")) === "true")
       await this.toggle.click();
@@ -49,6 +53,10 @@ export class WhatTheModelSees {
   }
 
   /** A tool's input schema, parsed from what the block shows. */
+  @ayme.action({
+    description:
+      "Reads a tool's input schema, parsed from what the block shows.",
+  })
   async schemaValue(toolName: string): Promise<unknown> {
     return JSON.parse((await this.schema(toolName).textContent()) ?? "");
   }

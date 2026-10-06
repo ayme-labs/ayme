@@ -1,8 +1,10 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { WhatTheModelSees } from "./WhatTheModelSees";
 
 /** A tool's page in the detail pane. */
+@ayme
 export class ToolPage {
   readonly root: Locator;
   /** The tool's name. */

@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 /** How the Tools lens labels its groups. */
@@ -12,6 +13,7 @@ const groupLabels: readonly ToolGroupLabel[] = [
 ];
 
 /** The Tools lens's tree: the live tools, grouped. */
+@ayme
 export class ToolsLens {
   readonly root: Locator;
 
@@ -30,6 +32,7 @@ export class ToolsLens {
   }
 
   /** The listed tools' names, by group, for the groups that list any. */
+  @ayme.action({ description: "Lists the tools' names, by group." })
   async listed(): Promise<Partial<Record<ToolGroupLabel, string[]>>> {
     const listed: Partial<Record<ToolGroupLabel, string[]>> = {};
     for (const label of groupLabels) {

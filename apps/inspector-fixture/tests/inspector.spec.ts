@@ -232,7 +232,7 @@ test.describe("on a React host with aggressive global CSS", () => {
   test("there is exactly one Inspector under React StrictMode", async ({
     inspector,
   }) => {
-    await expect(inspector.root).toHaveCount(1);
+    await expect(inspector.container).toHaveCount(1);
     await expect(inspector.panel).toBeVisible();
   });
 

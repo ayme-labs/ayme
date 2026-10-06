@@ -65,9 +65,12 @@ export async function passThroughWhileCovered<T>(
 
 // Whether the Inspector host is what the pointer meets at an element's
 // action point: the centre of its first client rect inside the viewport, as
-// Playwright Lite picks it.
+// Playwright Lite picks it. An element of the panel itself is never under it:
+// a page that dogfoods the Inspector drives the panel through these actions.
 function isUnderInspector(elements: Element[], hostSelector: string) {
   return elements.some((element) => {
+    const rootNode = element.getRootNode() as Partial<ShadowRoot>;
+    if (rootNode.host?.matches(hostSelector)) return false;
     const document = element.ownerDocument;
     const width = document.documentElement.clientWidth;
     const height = document.documentElement.clientHeight;

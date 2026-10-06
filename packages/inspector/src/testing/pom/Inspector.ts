@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 
 import { CollapsedLogo } from "./CollapsedLogo";
@@ -14,12 +15,19 @@ import { WebMcpStatus } from "./WebMcpStatus";
 /**
  * The Inspector, as a person sees it on the page. It is built from one page
  * object per part of the panel and runs on Playwright and on playwright-lite.
- * It is for tests only: it is never registered with the Ayme runtime, so its
- * actions never become WebMCP tools.
+ * Tests drive the panel through it. An app never registers it with the Ayme
+ * runtime, so its actions never become tools; only a page mounted with
+ * `dogfood` does, so agents drive the panel the way tests do.
  */
+@ayme
 export class Inspector {
-  /** The Inspector's root inside its shadow root. One per mounted Inspector. */
-  readonly root: Locator;
+  /**
+   * The Inspector's themed container inside its shadow root. One per mounted
+   * Inspector. It is not named `root`: it has no size of its own (the panel
+   * and the logo are fixed), and a Page Object Root must be visible for its
+   * tools to be live when a dogfooding page registers this Page Object.
+   */
+  readonly container: Locator;
   /** The expanded panel. */
   readonly panel: Locator;
   readonly shell: PanelShell;
@@ -36,29 +44,29 @@ export class Inspector {
   /**
    * @param page a Playwright page with `registerInspectorSelectors` applied,
    *   which reaches into the Inspector's closed shadow root.
-   * @param root where the Inspector's root is, when it is not behind the
+   * @param container where the Inspector's container is, when it is not behind the
    *   mount's closed shadow root: a component test renders the panel into an
    *   open root it owns.
    */
   constructor(
     page: Page,
-    root: Locator = page.locator(
+    container: Locator = page.locator(
       `${INSPECTOR_SELECTOR_ENGINE}=[data-ayme-inspector-root]`
     )
   ) {
-    this.root = root;
-    this.panel = this.root.getByRole("complementary", {
+    this.container = container;
+    this.panel = this.container.getByRole("complementary", {
       name: "ayme",
       exact: true,
     });
     this.shell = new PanelShell(this.panel);
     this.header = new InspectorHeader(
       this.panel.locator(":scope > header"),
-      this.root
+      this.container
     );
     this.webMcpStatus = new WebMcpStatus(this.panel);
     this.logo = new CollapsedLogo(
-      this.root.getByRole("button", { name: "Open ayme" })
+      this.container.getByRole("button", { name: "Open ayme" })
     );
     this.navigator = new Navigator(
       this.panel.getByRole("navigation", { name: "Navigator" })
@@ -71,17 +79,24 @@ export class Inspector {
   }
 
   /** Expands the panel if it is collapsed to the logo. */
+  @ayme.action({
+    description: "Expands the panel if it is collapsed to the logo.",
+  })
   async open() {
     await this.panel.or(this.logo.root).waitFor();
     if (await this.logo.root.isVisible()) await this.logo.open();
     await this.panel.waitFor();
   }
 
+  @ayme.action({ description: "Collapses the panel to its logo." })
   async collapse() {
     await this.header.collapse();
   }
 
   /** Selects a tool in the Tools lens and returns its run card. */
+  @ayme.action({
+    description: "Selects a tool in the Tools lens and opens its run card.",
+  })
   async tool(name: string): Promise<RunCard> {
     await this.navigator.showLens("Tools");
     await this.navigator.item(name).click();

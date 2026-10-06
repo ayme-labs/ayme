@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 export type ModelDetailSection =
@@ -9,6 +10,7 @@ export type ModelDetailSection =
  * actions (run through the run slot) and the members; the page shows its
  * page-wide tools.
  */
+@ayme
 export class ModelDetailView {
   readonly root: Locator;
   readonly title: Locator;
@@ -54,6 +56,10 @@ export class ModelDetailView {
   }
 
   /** "Locator" or "Page object": what a member's icon says it is. */
+  @ayme.action({
+    description:
+      "Reads what a member's icon says it is: Locator or Page object.",
+  })
   async memberIcon(name: string) {
     return this.member(name)
       .locator("svg[aria-label]")
@@ -61,6 +67,9 @@ export class ModelDetailView {
   }
 
   /** What a member is and what the page probe found, e.g. "locator · 1 match". */
+  @ayme.action({
+    description: "Reads what a member is and what the page probe found.",
+  })
   async memberDescription(name: string) {
     return this.member(name).getAttribute("aria-description");
   }

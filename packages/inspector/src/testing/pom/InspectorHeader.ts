@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { dragBy } from "./pointerDrag";
@@ -8,6 +9,7 @@ export type LayoutChoice =
   "Floating" | "Dock left" | "Dock right" | "Dock to bottom";
 
 /** The System / Light / Dark switch. Each press moves to the next theme. */
+@ayme
 export class ThemeSwitch {
   readonly button: Locator;
 
@@ -16,6 +18,7 @@ export class ThemeSwitch {
   }
 
   /** The theme it's set to. */
+  @ayme.action({ description: "Reads the theme: System, Light or Dark." })
   async current(): Promise<ThemeChoice> {
     const name = (await this.button.getAttribute("aria-label")) ?? "";
     const current = /^Theme: (\w+)\./.exec(name)?.[1];
@@ -24,6 +27,7 @@ export class ThemeSwitch {
     return current;
   }
 
+  @ayme.action({ description: "Switches to a theme." })
   async choose(choice: ThemeChoice) {
     for (let presses = 0; presses < 3; presses += 1) {
       if ((await this.current()) === choice) return;
@@ -34,6 +38,7 @@ export class ThemeSwitch {
 }
 
 /** The layout menu. It opens in the Inspector's portal. */
+@ayme
 export class LayoutMenu {
   readonly trigger: Locator;
   readonly menu: Locator;
@@ -48,6 +53,7 @@ export class LayoutMenu {
   }
 
   /** The layout the panel is in. */
+  @ayme.action({ description: "Reads the layout the panel is in." })
   async current(): Promise<LayoutChoice> {
     const name = (await this.trigger.getAttribute("aria-label")) ?? "";
     return name.replace(/^Layout: /, "") as LayoutChoice;
@@ -57,6 +63,7 @@ export class LayoutMenu {
     return this.menu.getByRole("menuitemradio", { name: choice, exact: true });
   }
 
+  @ayme.action({ description: "Moves the panel to a layout." })
   async choose(choice: LayoutChoice) {
     await this.trigger.click();
     await this.option(choice).click();
@@ -67,6 +74,7 @@ export class LayoutMenu {
  * The panel's header: the title, the page badge, the theme switch, the
  * layout menu and collapse. The panel drags by it.
  */
+@ayme
 export class InspectorHeader {
   readonly root: Locator;
   readonly title: Locator;
@@ -92,16 +100,24 @@ export class InspectorHeader {
     });
   }
 
+  @ayme.action({ description: "Collapses the panel." })
   async collapse() {
     await this.collapseButton.click();
   }
 
   /** Drags the panel by its header. */
+  @ayme.action({
+    description: "Drags the panel by its header by a distance in pixels.",
+  })
   async dragBy(deltaX: number, deltaY: number) {
     await dragBy(this.title, deltaX, deltaY);
   }
 
   /** Drags the panel by its header and drops it with the pointer here. */
+  @ayme.action({
+    description:
+      "Drags the panel by its header and drops it at viewport coordinates.",
+  })
   async dropAt(x: number, y: number) {
     const box = await this.title.boundingBox();
     if (!box) throw new Error("The header is not visible.");

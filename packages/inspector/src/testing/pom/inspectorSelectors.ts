@@ -1,6 +1,10 @@
 import type { Selectors } from "@playwright/test";
 
-import { INSPECTOR_SHADOW_ROOT_KEY } from "../../shared";
+// The hook's module itself, not shared's index: that index renders the panel
+// and imports its stylesheet, which a dogfooding page's bundler, compiling
+// this Page Object from source, has no way to resolve.
+// eslint-disable-next-line no-restricted-imports
+import { INSPECTOR_SHADOW_ROOT_KEY } from "../../shared/infrastructure/shadowRootHook";
 
 /**
  * The Playwright selector engine that reaches into the Inspector's closed

@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { dragBy } from "./pointerDrag";
@@ -8,6 +9,7 @@ export type ModelPaneName = "On this page" | "Page object models";
  * The Model lens's tree in the navigator: the Page Objects on this page and
  * the Page Object Models the page knows, in two collapsible panes.
  */
+@ayme
 export class ModelLens {
   readonly root: Locator;
   /** The object tree, "On this page". */
@@ -39,6 +41,7 @@ export class ModelLens {
     });
   }
 
+  @ayme.action({ description: "Collapses or expands one of the two panes." })
   async togglePane(name: ModelPaneName) {
     await this.paneToggle(name).click();
   }
@@ -54,6 +57,9 @@ export class ModelLens {
   }
 
   /** The class names in the model list, in order. */
+  @ayme.action({
+    description: "Lists the class names in the model list, in order.",
+  })
   async modelNames(): Promise<string[]> {
     const names = await Promise.all(
       (await this.models.all()).map((model) => model.getAttribute("aria-label"))
@@ -66,6 +72,10 @@ export class ModelLens {
     return (await item.getAttribute("aria-description")) === "Not on page";
   }
 
+  @ayme.action({
+    description:
+      "Drags the divider between the two panes by a distance in pixels.",
+  })
   async dragDivider(deltaY: number) {
     await dragBy(this.divider, 0, deltaY);
   }

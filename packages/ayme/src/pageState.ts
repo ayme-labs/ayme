@@ -98,7 +98,10 @@ export function pageStateNodeEntry(node: ProjectedStructuralNode): {
 
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
 
-const INSPECTOR_HOST_SELECTOR = "[data-ayme-inspector-host]";
+// The Inspector's host, unless it is mounted for dogfooding: then the panel is
+// part of the page agents see.
+const INSPECTOR_HOST_SELECTOR =
+  "[data-ayme-inspector-host]:not([data-ayme-inspector-dogfood])";
 
 type PageStateIgnorePredicate = (element: Element) => boolean;
 
