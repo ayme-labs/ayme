@@ -107,7 +107,11 @@ jobs:
       - name: Qualify the lab app
         if: env.QUALIFY_ONLY == 'true'
         working-directory: apps/lab-formbricks
-        run: pnpm lab:qualify
+        run: |
+          # The qualification runs Formbricks's own Playwright, which needs its
+          # own Chromium; the eval's arms use the runner's Chrome.
+          (cd formbricks && corepack "$(node -p "require('./package.json').packageManager")" exec playwright install --with-deps chromium)
+          pnpm lab:qualify
 
       - name: Run the suite
         if: env.QUALIFY_ONLY != 'true'
