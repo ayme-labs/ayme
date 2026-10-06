@@ -17,7 +17,8 @@ import { Inspector } from "../testing";
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its runtime wiring only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { asStartedAyme } = await import("../tools/test-utils/startedAyme");
+  const { appProcessToolsOf, asStartedAyme } =
+    await import("../tools/test-utils/startedAyme");
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
@@ -38,6 +39,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listRegisteredPomTargets: vi.fn(async () => []),
     listRegisteredPomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
+    getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
@@ -89,6 +91,20 @@ function editor(id: string, ...tools: RegisteredPomTool[]): RegisteredPom {
       { memberName: "saveButton", kind: "locator", count: 1 },
     ],
     tools,
+  };
+}
+
+/** A Peek tool, as the session or an App Process lists it. */
+function peekTool(name: string) {
+  return {
+    name,
+    description: "Read the current values of a Peek.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+      additionalProperties: false,
+    },
+    group: "peek" as const,
   };
 }
 
@@ -394,6 +410,73 @@ describe("the Inspector", () => {
     await expect
       .poll(() => inspector.navigator.legend.textContent())
       .toContain("2 refs");
+  });
+
+  it("lists an App Process's Peek tool in the Node section, beside the page's, and runs it through the agent's server", async () => {
+    startedAyme.tools.list.mockReturnValue([peekTool("peek.cart")]);
+    startedAyme.appProcessTools.list.mockReturnValue([
+      peekTool("peek.node.jobs"),
+    ]);
+    startedAyme.appProcessTools.run.mockResolvedValue({
+      name: "jobs",
+      instances: [{ values: { value: "server" } }],
+    });
+    renderApp();
+    await inspector.navigator.showLens("Tools");
+    await expect
+      .poll(() => inspector.navigator.tools.peekSections())
+      .toEqual({ Browser: ["peek.cart"], Node: ["peek.node.jobs"] });
+
+    await (await inspector.tool("peek.node.jobs")).run();
+
+    const run = inspector.runs.latest("peek.node.jobs");
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(JSON.parse((await run.resultText()) ?? "")).toEqual({
+      name: "jobs",
+      instances: [{ values: { value: "server" } }],
+    });
+    expect(startedAyme.appProcessTools.run).toHaveBeenCalledExactlyOnceWith(
+      "peek.node.jobs",
+      {}
+    );
+    expect(startedAyme.tools.run).not.toHaveBeenCalled();
+  });
+
+  it("shows an App Process's Peek tool failure as a failed run", async () => {
+    startedAyme.appProcessTools.list.mockReturnValue([
+      peekTool("peek.node.jobs"),
+    ]);
+    startedAyme.appProcessTools.run.mockRejectedValue(
+      new Error("The App Process exited before it answered.")
+    );
+    renderApp();
+
+    await (await inspector.tool("peek.node.jobs")).run();
+
+    const run = inspector.runs.latest("peek.node.jobs");
+    await expect.poll(() => run.status()).toBe("Failed");
+    expect(await run.error.textContent()).toBe(
+      "The App Process exited before it answered."
+    );
+  });
+
+  it("drops the Node section once no App Process offers a Peek tool", async () => {
+    startedAyme.tools.list.mockReturnValue([peekTool("peek.cart")]);
+    startedAyme.appProcessTools.list.mockReturnValue([
+      peekTool("peek.node.jobs"),
+    ]);
+    renderApp();
+    await inspector.navigator.showLens("Tools");
+    await expect
+      .poll(() => inspector.navigator.tools.peekSections())
+      .toEqual({ Browser: ["peek.cart"], Node: ["peek.node.jobs"] });
+
+    startedAyme.appProcessTools.list.mockReturnValue([]);
+    startedAyme.announce();
+
+    await expect
+      .poll(() => inspector.navigator.tools.peekSections())
+      .toEqual({ Browser: ["peek.cart"] });
   });
 
   it("lists the live tools when nothing is published", async () => {

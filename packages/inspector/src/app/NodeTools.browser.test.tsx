@@ -11,7 +11,7 @@ import { Inspector } from "../testing";
 // not published, and the refs each can take, so the evidence covers the
 // panel and its runtime wiring.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { asStartedAyme, startedAyme } =
+  const { appProcessToolsOf, asStartedAyme, startedAyme } =
     await import("../tools/test-utils/startedAyme");
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
@@ -58,6 +58,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listRegisteredPomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
+    getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };

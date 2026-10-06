@@ -49,6 +49,26 @@ describe("listTools", () => {
   it("lists nothing when no tool is live", () => {
     expect(listTools([])).toEqual([]);
   });
+
+  it("splits the Peek tools into a Browser and a Node section, the page's before the App Processes'", () => {
+    const jobs: LiveTool = { ...tool("peek.node.jobs", "peek"), side: "node" };
+
+    const [peeks] = listTools([jobs, tool("peek.cart", "peek")]);
+
+    expect(names(peeks!.tools)).toEqual(["peek.cart", "peek.node.jobs"]);
+    expect(
+      peeks!.sections?.map(({ label, tools }) => [label, names(tools)])
+    ).toEqual([
+      ["Browser", ["peek.cart"]],
+      ["Node", ["peek.node.jobs"]],
+    ]);
+  });
+
+  it("leaves out the Node section while no App Process offers a Peek tool", () => {
+    const [peeks] = listTools([tool("peek.cart", "peek")]);
+
+    expect(peeks!.sections?.map(({ label }) => label)).toEqual(["Browser"]);
+  });
 });
 
 describe("attachToolModels", () => {

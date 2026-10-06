@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
+import type { JsonSchema } from "@ayme-dev/ayme";
+
 import {
   listRunnableTools,
   pickPromptOf,
@@ -83,8 +85,16 @@ export function useInspectorRuntime({
     [tools.live, elementToolTargets]
   );
   const runnableTools = useMemo(
-    () => listRunnableTools(registeredPoms, activeTools, tools.live),
-    [registeredPoms, activeTools, tools.live]
+    () =>
+      listRunnableTools(registeredPoms, activeTools, [
+        ...tools.live,
+        ...tools.appProcess.map((tool) => ({
+          ...tool,
+          inputSchema: tool.inputSchema as JsonSchema,
+          group: "peek" as const,
+        })),
+      ]),
+    [registeredPoms, activeTools, tools.live, tools.appProcess]
   );
 
   // Picking reads the latest look at the page as the pointer moves.
@@ -106,7 +116,9 @@ export function useInspectorRuntime({
     members,
     /**
      * The tools the panel can run now: `tools.live`, every live tool in
-     * publication order, published or not;
+     * publication order, published or not; `tools.appProcess`, the tools of
+     * the App Processes paired beside the page, run through the agent's
+     * Ayme MCP server;
      * and `tools.publication`, the WebMCP publication status (a failure
      * carries its error in `message`).
      */

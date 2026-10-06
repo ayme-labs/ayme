@@ -13,7 +13,8 @@ import { Inspector } from "../testing";
 // one. The runtime is replaced by a look that reads the fixture host page,
 // so the evidence covers the panel and its refresh triggers only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { asStartedAyme } = await import("../tools/test-utils/startedAyme");
+  const { appProcessToolsOf, asStartedAyme } =
+    await import("../tools/test-utils/startedAyme");
   const { pageStateNodeEntry } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
@@ -23,6 +24,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
     getStartedAyme: asStartedAyme,
+    getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     listRegisteredPomTargets: vi.fn(async () => []),
     listRegisteredPomTools: vi.fn(() => []),
