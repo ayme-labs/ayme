@@ -1,5 +1,5 @@
 import { Component, signal } from "@angular/core";
-import { injectPageObject } from "@ayme-dev/angular";
+import { injectPageObject, injectPeek } from "@ayme-dev/angular";
 import { CounterPage } from "../../playwright/pom/CounterPage";
 import { SubCounterPage } from "../../playwright/pom/SubCounterPage";
 
@@ -20,4 +20,8 @@ export class Counter {
   protected readonly pom = injectPageObject(CounterPage);
   // Publishes the inherited tools of an undecorated subclass.
   protected readonly subPom = injectPageObject(SubCounterPage);
+
+  constructor() {
+    injectPeek({ count: this.count }, "counter");
+  }
 }
