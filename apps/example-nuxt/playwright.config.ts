@@ -1,5 +1,6 @@
 import { createServer, type AddressInfo } from "node:net";
 import { defineConfig } from "@playwright/test";
+import { agentPort } from "@ayme-dev/example-certification/config";
 
 // ponytail: the port is released before the server binds it, so another
 //   process could take it in between; Nuxt dev has no strict-port flag and
@@ -33,6 +34,8 @@ export default defineConfig({
   },
   webServer: {
     command: `pnpm exec nuxt dev --host 127.0.0.1 --port ${port}`,
+    // Read only by `server/plugins/ayme.ts`, where the App Process starts.
+    env: { AYME_EXAMPLE_AGENT_PORT: String(agentPort) },
     url: baseURL,
     stdout: "pipe",
     reuseExistingServer: false,

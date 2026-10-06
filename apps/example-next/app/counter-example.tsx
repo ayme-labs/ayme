@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAyme, usePageObject } from "@ayme-dev/react";
+import { useAyme, usePageObject, usePeek } from "@ayme-dev/react";
 import { CounterPage } from "../playwright/pom/CounterPage";
 import { SubCounterPage } from "../playwright/pom/SubCounterPage";
 
@@ -9,6 +9,7 @@ function Counter() {
   const [count, setCount] = useState(0);
   const pom = usePageObject(CounterPage);
   usePageObject(SubCounterPage);
+  usePeek({ count }, "counter");
   return (
     <section aria-label="Counter">
       <p>
