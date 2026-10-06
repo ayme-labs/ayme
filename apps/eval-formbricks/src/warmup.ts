@@ -3,9 +3,10 @@
  * each route on its first visit, which takes seconds; left to the first run
  * it would land inside that run's measured window. This seeds a throwaway
  * user without a survey and walks the screens the missions touch: the
- * sign-in page, signed out; then, signed in, the screen where a new
- * organization creates its first survey, from which it starts a survey from
- * scratch to reach the editor; then the survey list and the summary page.
+ * sign-in page, signed out; then, signed in, the root the sign-in form sends
+ * the browser to and the screen where a new organization creates its first
+ * survey, from which it starts a survey from scratch to reach the editor;
+ * then the survey list and the summary page.
  * It only visits; it never starts or restarts the lab app.
  */
 import { mkdir, rm } from "node:fs/promises";
@@ -71,7 +72,10 @@ export async function warmLabApp(options: {
         .waitFor({ timeout: 60_000 });
       await signInThroughApi(page, baseUrl, mission.user);
 
-      // The screen sign-in lands on without a survey; once the workspace holds one it redirects away.
+      // The sign-in form sends the browser to the root, which redirects to the screen below while
+      // the workspace holds no survey; both compile here, and the screen is visited by its own
+      // address too, since once the workspace holds a survey it redirects away.
+      await visit(`${baseUrl}/`);
       await visit(`${baseUrl}${newSurveyPath(mission.organizationId)}`);
       const startFromScratch = page.getByRole("button", {
         name: "Start from scratch Create your own survey questions",

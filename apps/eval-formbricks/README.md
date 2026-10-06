@@ -60,7 +60,7 @@ Every measured figure is the task turn's. Wall time runs from sending the task m
 
 The setup turn has its own 120 second timeout. A setup turn that runs out of it, or ends with an error, is a run that could not complete: nothing is measured and the transcript stays in the run folder. The run's `--timeout-seconds` covers the task turn.
 
-With a task this small, the agent's start-up and skill load would otherwise be a large share of every number, and a share that differs between arms. Longer, real tasks, where the setup matters less, are a later follow-up.
+With a task as small as the default mission's, the agent's start-up and skill load would otherwise be a large share of every number, and a share that differs between arms. The longer mission (see [missions and arms](#missions-and-arms)) is where the setup matters less.
 
 ## A suite
 
@@ -79,7 +79,7 @@ pnpm eval:suite -- --arms playwright-mcp --runs 1
 The suite:
 
 1. Checks the preconditions before it creates anything. Each run checks them again, so a lab app that goes down mid-suite is caught.
-2. Warms the lab app, outside every measured window: Turbopack compiles each route on its first visit, so it seeds a throwaway user without a survey and walks the screens the missions touch: the sign-in page, signed out; then, signed in, the screen where a new organization creates its first survey, from which it starts a survey from scratch to reach the editor; then the survey list and the summary page. This only checks that the lab app is reachable and visits it; it never starts or restarts it. The save itself compiles on its first call and cannot be warmed without changing data, so the first run of a suite can still carry that cost.
+2. Warms the lab app, outside every measured window: Turbopack compiles each route on its first visit, so it seeds a throwaway user without a survey and walks the screens the missions touch: the sign-in page, signed out; then, signed in, the root the sign-in form sends the browser to and the screen where a new organization creates its first survey, from which it starts a survey from scratch to reach the editor; then the survey list and the summary page. This only checks that the lab app is reachable and visits it; it never starts or restarts it. The save itself compiles on its first call and cannot be warmed without changing data, so the first run of a suite can still carry that cost.
 3. Runs the arms round-robin (run 1 of each arm, then run 2, and so on), so a suite that stops early still holds comparable runs.
 4. Writes its manifest and summary to `results/suites/<suite id>/`.
 
