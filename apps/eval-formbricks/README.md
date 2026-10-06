@@ -53,7 +53,7 @@ The exit code is `0` for a pass, `1` for a fail and `2` when the run could not c
 
 The agent gets two messages in one Claude Code session, over its stream-json input, and answers each as its own turn:
 
-1. The setup message, the same for every arm (`setup-prompt.txt`): get ready to work in the open page, load the skill the browser interface comes with, if it has one, reply ready, and do not use the browser yet. It names no app, no task and no arm. Claude Code's start-up, the MCP server's tool list and the skill load land in this turn.
+1. The setup message, the same for every arm (`setup-prompt.txt`): get ready to work in the open page; load the browser interface's skill if one is in the skill list, and otherwise don't look for one; read no files, don't use the browser, and reply ready. It names no app, no task and no arm. Claude Code's start-up, the MCP server's tool list and the skill load land in this turn.
 2. The task message (`prompt.txt`): the shared mission text with the arm's interface line, unchanged from a single-message run.
 
 Every measured figure is the task turn's. Wall time runs from sending the task message to its `result` event. Tokens are that turn's usage. Cost is the session's cumulative cost at the end of the task turn minus its value at the end of the setup turn, since Claude Code's `total_cost_usd` accumulates over the session. Tool calls are those made after the task message. The Goal Loop's window starts with the task message too. The setup turn's own time, tokens, cost and tool calls are kept in the result's `setupTurn` and are never added to the measured figures.

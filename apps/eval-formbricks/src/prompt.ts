@@ -6,7 +6,7 @@ import type { Mission } from "./missions.ts";
  * and no task, and keeps the agent off the page. Starting up and loading the
  * arm's skill happen in this turn, outside the measured one.
  */
-export const setupPrompt = `Get ready to work in the web page that is already open in your browser interface: load the skill your browser interface comes with, if it has one, and reply with the word ready. Do not use the browser yet; the task follows in the next message.
+export const setupPrompt = `Get ready to work in the web page that is already open in your browser interface; the task follows in the next message. If a skill for your browser interface is in your skill list, load it. Otherwise don't look for one. Don't read files and don't use the browser; just reply ready.
 `;
 
 /**

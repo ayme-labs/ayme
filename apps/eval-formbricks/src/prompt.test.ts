@@ -122,8 +122,11 @@ describe("the setup message", () => {
       "localhost",
     ])
       expect(setupPrompt.toLowerCase()).not.toContain(word.toLowerCase());
-    expect(setupPrompt).toContain("Do not use the browser yet");
-    expect(setupPrompt).toContain("load the skill");
+    expect(setupPrompt).toContain("Don't read files and don't use the browser");
+    expect(setupPrompt).toContain(
+      "If a skill for your browser interface is in your skill list, load it."
+    );
+    expect(setupPrompt).toContain("Otherwise don't look for one.");
   });
 
   it("is not part of the task prompt", () => {
