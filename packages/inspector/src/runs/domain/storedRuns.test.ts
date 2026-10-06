@@ -83,6 +83,7 @@ it("leaves out a malformed run", () => {
     decodeRuns([
       { id: "3", toolName: "click" },
       { ...succeeded, status: "done" },
+      { ...succeeded, steps: [{ operation: "click", member: 42 }] },
       succeeded,
     ])
   ).toEqual([succeeded]);

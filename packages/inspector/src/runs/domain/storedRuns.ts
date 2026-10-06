@@ -64,7 +64,13 @@ function decodeRun(stored: unknown): Run | undefined {
 }
 
 function isStep(value: unknown): value is RunStep {
-  return isRecord(value) && typeof value.operation === "string";
+  return (
+    isRecord(value) &&
+    typeof value.operation === "string" &&
+    ["locator", "value", "state", "member"].every(
+      (key) => value[key] === undefined || typeof value[key] === "string"
+    )
+  );
 }
 
 function isItem(value: unknown): value is CollectionItem {
