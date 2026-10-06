@@ -12,14 +12,14 @@ Reserved for the Goal Loop clip, added once it is recorded.
 
 The same task on [Formbricks](https://github.com/formbricks/formbricks), a real survey app, done by Claude Code through four browser interfaces: rename a survey, change its question, save it and confirm the summary page. Three runs each; every cell is the median, with the lowest and highest in parentheses.
 
-| Browser interface                     | Passes | Wall time             | Tool calls   | Tokens, input and output | Cost                                  |
-| ------------------------------------- | ------ | --------------------- | ------------ | ------------------------ | ------------------------------------- |
-| Playwright MCP                        | 3 of 3 | 46.9 s (45.1 – 54.7)  | 13 (11 – 14) | 1,546 (1,463 – 1,806)    | $0.155 ($0.126 – $0.166)              |
-| Playwright CLI, with its skill        | 3 of 3 | 60.8 s (56.7 – 137.3) | 14 (13 – 20) | 1,557 (1,459 – 2,575)    | $0.140 ($0.140 – $0.225)              |
-| Ayme's MCP server                     | 3 of 3 | 38.1 s (23.2 – 38.9)  | 6 (5 – 6)    | 755 (752 – 763)          | $0.129 ($0.126 – $0.171)              |
-| Ayme's MCP server, with the Goal Loop | 3 of 3 | 56.7 s (25.5 – 63.3)  | 5 (5 – 9)    | 1,055 (904 – 1,679)      | $0.151 ($0.103 – $0.198), over 2 runs |
+| Browser interface                     | Passes | Wall time             | Tool calls   | Tokens, input and output | Tokens, all                 | Cost                                  |
+| ------------------------------------- | ------ | --------------------- | ------------ | ------------------------ | --------------------------- | ------------------------------------- |
+| Playwright MCP                        | 3 of 3 | 46.9 s (45.1 – 54.7)  | 13 (11 – 14) | 1,546 (1,463 – 1,806)    | 381,043 (306,340 – 406,431) | $0.155 ($0.126 – $0.166)              |
+| Playwright CLI, with its skill        | 3 of 3 | 60.8 s (56.7 – 137.3) | 14 (13 – 20) | 1,557 (1,459 – 2,575)    | 473,416 (449,694 – 743,024) | $0.140 ($0.140 – $0.225)              |
+| Ayme's MCP server                     | 3 of 3 | 38.1 s (23.2 – 38.9)  | 6 (5 – 6)    | 755 (752 – 763)          | 142,361 (119,833 – 166,395) | $0.129 ($0.126 – $0.171)              |
+| Ayme's MCP server, with the Goal Loop | 3 of 3 | 56.7 s (25.5 – 63.3)  | 5 (5 – 9)    | 1,055 (904 – 1,679)      | 136,070 (133,330 – 316,723) | $0.151 ($0.103 – $0.198), over 2 runs |
 
-Measured on 2026-10-06 with Claude Code 2.1.281 on Sonnet (`claude-sonnet-5`) at medium effort, on Formbricks at the lab overlay [`8535b46`](https://github.com/ayme-labs/formbricks/tree/8535b463970d3f1d5c33ba6e4fe539a78b56c88c). Time, tokens, cost and calls are the task's alone: each run first gets the agent ready in a message of its own, which is not counted. Tokens are the agent's input and output tokens; reads and writes of its prompt cache are left out of that column but are in the cost, which is Claude Code's own figure. The Goal Loop row adds the Goal Loop's own model cost; one of its runs has no cost record yet. The full results, with every version a rerun must match, are in [the dated summary](apps/eval-formbricks/summaries/2026-10-06/summary.md), and [the eval](apps/eval-formbricks/README.md) reruns them.
+Measured on 2026-10-06 with Claude Code 2.1.281 on Sonnet (`claude-sonnet-5`) at medium effort, on Formbricks at the lab overlay [`8535b46`](https://github.com/ayme-labs/formbricks/tree/8535b463970d3f1d5c33ba6e4fe539a78b56c88c). Time, tokens, cost and calls are the task's alone: each run first gets the agent ready in a message of its own, which is not counted. Tokens, input and output, are the agent's own input and output tokens. Tokens, all, add the reads and writes of its prompt cache, which carries the page state and tool results from turn to turn. The cost is Claude Code's own figure. The Goal Loop row adds the Goal Loop's own model cost; one of its runs has no cost record yet. The full results, with every version a rerun must match, are in [the dated summary](apps/eval-formbricks/summaries/2026-10-06/summary.md), and [the eval](apps/eval-formbricks/README.md) reruns them.
 
 ## What you can do with it
 
