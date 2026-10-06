@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0033
 ---
 
 # Coding agents connect through Ayme's own MCP server, one per agent, each paired with one tab, and page tools are always reachable through fixed fallback tools
