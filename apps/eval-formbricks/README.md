@@ -104,7 +104,7 @@ Per arm the summary shows:
 
 It also records what a rerun must match: the Claude Code version, the model, the pinned browser interface of each arm (the Playwright CLI, Playwright MCP and `@ayme-dev/mcp` versions), the browser, the Ayme and Formbricks commits, the timeout and the date. If the runs of a suite differ in one of these, the summary lists every value and says so.
 
-`--publish` writes the summary, formatted with the repository's Prettier, to `summaries/<date>/summary.md` and `summary.json`, dated by the day the suite started. That folder is meant to be committed; a second summary for the same day replaces the first. `results/` stays ignored, so transcripts, prompts and run folders are never committed.
+`--publish` writes the summary, formatted with the repository's Prettier, to `summaries/<date>/summary.md` and `summary.json`, dated by the day the suite started; a suite of a mission other than the default one goes to `summaries/<date>-<mission>/`. That folder is meant to be committed; a second summary for the same day replaces the first. `results/` stays ignored, so transcripts, prompts and run folders are never committed.
 
 ## What a run stores
 
