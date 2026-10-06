@@ -121,6 +121,7 @@ afterEach(() => {
   for (const unmount of unmounts.splice(0).reverse()) unmount();
   vi.clearAllMocks();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 /** Which highlight each host element shows: "hover", "selection", both or none. */

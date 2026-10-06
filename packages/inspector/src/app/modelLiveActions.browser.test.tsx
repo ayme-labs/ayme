@@ -151,6 +151,7 @@ function renderApp({
 afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 it("runs a live action from the panel while WebMCP publication is off", async () => {

@@ -136,6 +136,7 @@ afterEach(() => {
   vi.clearAllMocks();
   startedAyme.reset();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe("the Inspector", () => {
@@ -448,6 +449,35 @@ describe("the Inspector", () => {
       )
       .toBe("true");
     await expect.poll(() => inspector.detail.runCard().root.count()).toBe(1);
+  });
+
+  it("comes back to the lens, the open tool and its runs after a reload", async () => {
+    const tool = saveTool("editor", vi.fn());
+    mockRegistry([editor("editor", tool)], [tool]);
+    startedAyme.tools.run.mockResolvedValue({ saved: true });
+    renderApp();
+    const save = await inspector.tool("Editor.save");
+    await save.run({ copies: 1, title: "Notes" });
+    await expect
+      .poll(() => inspector.runs.latest("Editor.save").status())
+      .toBe("Succeeded");
+
+    for (const unmount of unmounts.splice(0)) unmount();
+    renderApp();
+
+    await expect
+      .poll(() =>
+        inspector.navigator.lens("Tools").getAttribute("aria-pressed")
+      )
+      .toBe("true");
+    await expect
+      .poll(() =>
+        inspector.navigator.item("Editor.save").getAttribute("aria-current")
+      )
+      .toBe("true");
+    await expect
+      .poll(() => inspector.runs.latest("Editor.save").status())
+      .toBe("Succeeded");
   });
 
   it("switches the panel to dark from the header", async () => {

@@ -49,7 +49,7 @@ Every detail runs its tools through the same run card, a form typed from the too
 
 ## The panel
 
-The panel floats, docks to the left, right or bottom of the page, or collapses to the Ayme logo. It remembers its layout, sizes, positions and theme per site in the page's `localStorage`, and uses its defaults when storage is unavailable. Its theme follows the system until you change it. While docked, it pads the page's root on that side so the panel sits beside the page.
+The panel floats, docks to the left, right or bottom of the page, or collapses to the Ayme logo. It remembers its layout, sizes, positions and theme per site in the page's `localStorage`, and uses its defaults when storage is unavailable. Within a tab, it also keeps the open lens, the selection, the Runs region and the newest 50 runs in `sessionStorage`, so a reload comes back to them. A selected structure node goes back to the page, because its ref can name another element after a reload. Its theme follows the system until you change it. While docked, it pads the page's root on that side so the panel sits beside the page.
 
 It paints above the page's own UI; only the browser's top layer, such as modal dialogs, popovers and fullscreen, covers it. Outside the panel and the collapsed logo, the page keeps its pointer. When an agent's pointer action targets something under the panel, the action passes through it.
 

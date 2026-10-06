@@ -87,6 +87,7 @@ afterEach(() => {
   for (const unmount of unmounts.splice(0).reverse()) unmount();
   vi.clearAllMocks();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 const structure = () => inspector.structure.rows.allTextContents();

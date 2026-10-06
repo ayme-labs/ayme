@@ -13,6 +13,7 @@ export {
   inspectorShadowRoot,
 } from "./infrastructure/shadowRootHook";
 export { type Look, usePageLook } from "./infrastructure/usePageLook";
+export { useTabState } from "./infrastructure/tabStorage";
 export { usePointerDrag } from "./presentation/pointerDrag";
 export { AymeMark } from "./view/AymeMark";
 export { Empty } from "./view/common";
