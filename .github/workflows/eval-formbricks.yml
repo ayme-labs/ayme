@@ -26,7 +26,8 @@ on:
         type: boolean
         default: false
 
-# One eval at a time, so runs never share a runner's load.
+# One eval at a time: every paid run uses the same Claude Code login, and two
+# at once would share its usage limits.
 concurrency:
   group: eval-formbricks
   cancel-in-progress: false
@@ -81,7 +82,8 @@ jobs:
       - name: Start the lab app
         working-directory: apps/lab-formbricks
         env:
-          AYME_OPENROUTER_API_KEY: ${{ secrets.AYME_OPENROUTER_API_KEY }}
+          # The qualification never calls the Decision Endpoint, so it runs without the key.
+          AYME_OPENROUTER_API_KEY: ${{ !inputs.qualify_only && secrets.AYME_OPENROUTER_API_KEY || '' }}
         run: |
           nohup pnpm lab:dev > "$LAB_LOG" 2>&1 &
           echo $! > "$RUNNER_TEMP/lab-dev.pid"
