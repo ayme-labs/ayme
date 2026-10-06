@@ -1,6 +1,7 @@
 /**
- * One mission, once, through one arm. Checks preconditions, seeds, signs in,
- * runs Claude Code, reads the verdict from the database and stores the run.
+ * One mission, once, through one arm. Checks preconditions, seeds, opens the
+ * mission's start page, runs Claude Code, reads the verdict from the database
+ * and stores the run.
  * `runOnce` is the function the suite calls; the command below wraps it.
  *
  *   node src/run.ts --arm playwright-mcp [--model sonnet] [--timeout-seconds 600] [--mission <id>]
@@ -18,7 +19,7 @@ import {
   type ArmContext,
   type ArmSetup,
 } from "./arms.ts";
-import { initPageScript, signInAndOpenEditor } from "./browser.ts";
+import { initPageScript, openStartPage } from "./browser.ts";
 import {
   agentEffort,
   claudeEnvironment,
@@ -35,7 +36,8 @@ import { moveFiles, readLabChanges } from "./labCheckout.ts";
 import {
   ensureDatabaseBuilt,
   openFormbricksDatabase,
-  readSurvey,
+  readWorkspaceSurveys,
+  seededIds,
   seedMission,
   waitForAuthorizationProjection,
 } from "./formbricks/database.ts";
@@ -175,15 +177,21 @@ export async function runOnce(
     log("Seeding the mission.");
     const mission = await seedMission(database, options.mission, runId, labUrl);
     await writeJson(path.join(runDir, "mission.json"), mission);
-    const projection = await waitForAuthorizationProjection(database, mission, {
-      timeoutMs: 60_000,
-    });
+    const projection = await waitForAuthorizationProjection(
+      database,
+      seededIds(mission),
+      { timeoutMs: 60_000 }
+    );
     log(
       `Authorization projection processed ${projection.rows} rows in ${projection.waitedMs} ms.`
     );
 
-    log("Signing in and opening the editor.");
-    const { browserVersion } = await signInAndOpenEditor({
+    log(
+      mission.start.signedIn
+        ? "Signing in and opening the editor."
+        : "Opening the sign-in page, signed out."
+    );
+    const { browserVersion } = await openStartPage({
       mission,
       baseUrl: labUrl,
       profileDir,
@@ -198,14 +206,14 @@ export async function runOnce(
       outputDir,
       initPagePath,
       configDir: claudeConfigDir,
-      startUrl: mission.startUrl,
+      start: mission.start,
       cwd: labRoot,
       log,
     };
     const prompt = createPrompt(mission, options.arm, labUrl);
     await writeFile(path.join(runDir, "setup-prompt.txt"), setupPrompt);
     await writeFile(path.join(runDir, "prompt.txt"), prompt);
-    await writeFile(initPagePath, initPageScript(mission.startUrl));
+    await writeFile(initPagePath, initPageScript(mission.start.url));
     await writeJson(mcpConfigPath, {
       mcpServers: options.arm.mcpServers(armContext),
     });
@@ -244,7 +252,7 @@ export async function runOnce(
     log("Reading the verdict from the database.");
     const verdict = judgeMission(
       mission,
-      await readSurvey(database, mission.surveyId)
+      await readWorkspaceSurveys(database, mission.workspaceId)
     );
     await writeJson(path.join(runDir, "verdict.json"), verdict);
 
