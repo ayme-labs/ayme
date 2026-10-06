@@ -13,6 +13,15 @@ describe("the suite options", () => {
     expect(options.mission.id).toBe("rename-survey-and-question");
   });
 
+  it("take the mission from the flags", () => {
+    const options = parseSuiteOptions([
+      "--mission",
+      "sign-in-create-and-revise-survey",
+    ]);
+    expect(options.mission.id).toBe("sign-in-create-and-revise-survey");
+    expect(options.mission.start).toBe("sign-in");
+  });
+
   it("take the arms, run count and model from the flags", () => {
     const options = parseSuiteOptions([
       "--",

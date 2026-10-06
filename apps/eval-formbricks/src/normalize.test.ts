@@ -25,22 +25,24 @@ const passed: Verdict = {
   pass: true,
   checks: {
     surveyExists: true,
-    workspaceMatches: true,
     surveyNameMatches: true,
     questionExists: true,
     questionHeadlineMatches: true,
   },
   expected: {
+    workspaceId: "workspace-1",
+    surveyId: "survey-1",
+    questionId: "question-1",
     surveyName: "Onboarding feedback run-1",
     questionHeadline: "What would make onboarding easier for you? (run-1)",
-    workspaceId: "workspace-1",
   },
   actual: {
+    surveyNames: ["Onboarding feedback run-1"],
+    surveyId: "survey-1",
     surveyName: "Onboarding feedback run-1",
     questionHeadline: "What would make onboarding easier for you? (run-1)",
     questionHeadlineStored:
       "What would make onboarding easier for you? (run-1)",
-    workspaceId: "workspace-1",
   },
 };
 

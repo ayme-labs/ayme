@@ -17,6 +17,7 @@ import {
   aymeSkillName,
   setUpAymeAgent,
 } from "./ayme.ts";
+import type { Mission } from "./missions.ts";
 import { playwrightCliVersion, setUpPlaywrightCli } from "./playwrightCli.ts";
 import type { Precondition } from "./preconditions.ts";
 
@@ -32,7 +33,7 @@ export type McpServer = { command: string; args: string[] };
 export type ArmContext = {
   runId: string;
   runDir: string;
-  /** The browser profile the harness signed in to. */
+  /** The browser profile the harness prepared: signed in for a mission that starts on the editor, fresh otherwise. */
   profileDir: string;
   /** Where the interface writes files it names itself, such as screenshots. */
   outputDir: string;
@@ -40,8 +41,8 @@ export type ArmContext = {
   initPagePath: string;
   /** The run's fresh Claude Code configuration folder. */
   configDir: string;
-  /** The mission's start URL: the survey editor. */
-  startUrl: string;
+  /** Where the agent starts, and whether the browser is signed in there. */
+  start: Mission["start"];
   /** The agent's working root. */
   cwd: string;
   log: (line: string) => void;
@@ -61,8 +62,8 @@ export type ArmSetup = {
 
 export type Arm = {
   id: ArmId;
-  /** The one prompt line that differs between arms. */
-  interfaceLine: string;
+  /** The one prompt line that differs between arms; it may say where the browser is. */
+  interfaceLine: (start: Mission["start"]) => string;
   /** Built-in Claude Code tools the agent keeps. Read-only file tools; the arm's interface does the rest. */
   tools: string[];
   /** Permission rules letting the agent call the arm's interface without a prompt. */
@@ -73,7 +74,7 @@ export type Arm = {
   /** What the interface needs before a run starts, checked with the shared preconditions. */
   preconditions?: Precondition[];
   /**
-   * Runs once, after the harness has signed in and before the measured window:
+   * Runs once, after the harness has opened the start page and before the measured window:
    * installs or materialises what the interface needs outside it.
    */
   setup?: (context: ArmContext) => Promise<ArmSetup>;
@@ -118,9 +119,8 @@ function aymeArm(id: ArmId, goalLoop: boolean): Arm {
   const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, and its \`${aymeSkillName}\` skill for every browser interaction: \`snapshot\`, Ayme's Browser Tools and the Page Object Tools of the screen you are on.`;
   return {
     id,
-    interfaceLine: goalLoop
-      ? `${interfaceLine} ${goalFirstSentence}`
-      : interfaceLine,
+    interfaceLine: () =>
+      goalLoop ? `${interfaceLine} ${goalFirstSentence}` : interfaceLine,
     // The skill is invoked through the Skill tool.
     tools: [...readOnlyFileTools, "Skill"],
     allowedTools: [`mcp__${aymeServerName}`, `Skill(${aymeSkillName})`],
@@ -137,7 +137,7 @@ function aymeArm(id: ArmId, goalLoop: boolean): Arm {
 export const arms: Record<ArmId, Arm> = {
   "playwright-mcp": {
     id: "playwright-mcp",
-    interfaceLine:
+    interfaceLine: () =>
       "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction.",
     tools: readOnlyFileTools,
     allowedTools: ["mcp__playwright"],
@@ -146,7 +146,7 @@ export const arms: Record<ArmId, Arm> = {
         command: process.execPath,
         args: [
           path.join(playwrightMcpRoot, "cli.js"),
-          // The system Chrome, Playwright MCP's default; the harness signs in with the same browser.
+          // The system Chrome, Playwright MCP's default; the harness prepares the profile with the same browser.
           "--browser",
           "chrome",
           "--headless",
@@ -168,8 +168,8 @@ export const arms: Record<ArmId, Arm> = {
   },
   "playwright-cli": {
     id: "playwright-cli",
-    interfaceLine:
-      "Use the `playwright-cli` command and its `playwright-cli` skill for every browser interaction. Its browser session is already open and signed in on the editor; start from `playwright-cli snapshot`.",
+    interfaceLine: (start) =>
+      `Use the \`playwright-cli\` command and its \`playwright-cli\` skill for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}; start from \`playwright-cli snapshot\`.`,
     // The skill is invoked through the Skill tool; Bash is only the CLI.
     tools: [...readOnlyFileTools, "Bash", "Skill"],
     allowedTools: ["Bash(playwright-cli:*)", "Skill(playwright-cli)"],

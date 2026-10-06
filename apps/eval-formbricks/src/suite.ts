@@ -122,7 +122,6 @@ async function main() {
   log("Warming the lab app.");
   try {
     await warmLabApp({
-      definition: options.mission,
       suiteId,
       formbricksRoot,
       baseUrl: labUrl,

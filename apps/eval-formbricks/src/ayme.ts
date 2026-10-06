@@ -1,8 +1,9 @@
 /**
  * Everything the Ayme arms set up before the measured window: the Ayme MCP
  * server the agent talks to, `ayme mcp` from `@ayme-dev/mcp`, paired with a
- * headless browser holding the signed-in survey editor, with the Goal Loop
- * switch set for the arm.
+ * headless browser holding the mission's start page, with the Goal Loop
+ * switch set for the arm. The pairing follows the tab through the screens
+ * the task moves it to: the server tells the agent each time the tools change.
  *
  * A coding agent normally starts its own `ayme mcp` over stdio, and a tab of
  * the app on localhost pairs with it by itself: it looks for a server when it
@@ -27,6 +28,7 @@ import { fileURLToPath } from "node:url";
 import type { ArmContext, ArmSetup, McpServer } from "./arms.ts";
 import { playwright, viewport, type BrowserContext } from "./browser.ts";
 import { withoutClaudeVariables } from "./claude.ts";
+import type { StartScreen } from "./missions.ts";
 import type { Precondition } from "./preconditions.ts";
 
 export const aymeMcpPackageName = "@ayme-dev/mcp";
@@ -74,8 +76,11 @@ export const mcpToolTimeoutMs = 320_000;
 /** The ports a page's auto-pair scan probes; the server listens on one of them. */
 export const serverPorts = { first: 9350, last: 9365 };
 
-/** The Page Object Tool the editor publishes: proof that the paired page is the editor with Ayme's tools. */
-const editorTool = "SurveyEditorPage.setSurveyName";
+/** A Page Object Tool each start screen publishes: proof that the paired page is that screen with Ayme's tools. */
+export const startScreenTool: Record<StartScreen, string> = {
+  editor: "SurveyEditorPage.setSurveyName",
+  "sign-in": "SignInPage.fillEmail",
+};
 
 /** The sessionStorage key under which a tab keeps its pairing, as `@ayme-dev/mcp` stores it. */
 const pairingStorageKey = "ayme:agent-connection";
@@ -176,7 +181,7 @@ export type AymeEvidence = {
   /** The page paired with the server before the agent started. */
   paired: boolean;
   pairedAt: string;
-  /** From opening the editor to the pairing. */
+  /** From opening the start page to the pairing. */
   pairingMs: number;
   /** The page's tool names, as the agent sees them without the server prefix. */
   tools: string[];
@@ -355,9 +360,9 @@ class HarnessedServer {
 }
 
 /**
- * Starts the Ayme MCP server, opens the signed-in editor with the Goal Loop
- * switch set for the arm, waits until the page has paired with the server
- * and published the editor's tools, and hands the server to the agent.
+ * Starts the Ayme MCP server, opens the mission's start page with the Goal
+ * Loop switch set for the arm, waits until the page has paired with the
+ * server and published the screen's tools, and hands the server to the agent.
  */
 export async function setUpAymeAgent(
   context: ArmContext,
@@ -368,7 +373,8 @@ export async function setUpAymeAgent(
   const skillDir = aymeSkillDirectory(context.configDir);
   await cp(aymeSkillSource, skillDir, { recursive: true });
 
-  const origin = new URL(context.startUrl).origin;
+  const origin = new URL(context.start.url).origin;
+  const screenTool = startScreenTool[context.start.screen];
   const socketPath = agentSocketPath(context.runId);
   const logPath = path.join(context.runDir, "ayme-mcp.log");
 
@@ -415,10 +421,10 @@ export async function setUpAymeAgent(
       await browser.addCookies([{ ...goalLoopCookie, url: origin }]);
     const page = browser.pages()[0] ?? (await browser.newPage());
     const opened = Date.now();
-    await page.goto(context.startUrl);
+    await page.goto(context.start.url);
     // The page scans the range as it loads and finds this run's server alone.
     const pairing = await waitFor(
-      "Pairing the editor with the Ayme MCP server",
+      "Pairing the start page with the Ayme MCP server",
       90_000,
       () => storedPairing(page),
       () =>
@@ -434,12 +440,12 @@ export async function setUpAymeAgent(
         `The page stored a pairing but the server did not report it. Server log:\n${server.log.join("\n")}`
       );
     const tools = await waitFor(
-      `Publishing ${options.goalLoop ? `${editorTool} and goal` : editorTool}`,
+      `Publishing ${options.goalLoop ? `${screenTool} and goal` : screenTool}`,
       60_000,
       async () => {
         const names = await publishedToolNames(page);
         const complete =
-          names.includes(editorTool) &&
+          names.includes(screenTool) &&
           (!options.goalLoop || names.includes("goal"));
         return complete ? names : null;
       },
@@ -451,7 +457,7 @@ export async function setUpAymeAgent(
         `The page publishes goal although the Goal Loop should be off for ${context.runId}.`
       );
     context.log(
-      `The editor paired with the Ayme MCP server ${pairedAt.getTime() - opened} ms after opening, with ${tools.length} tools; goal ${goalToolPublished ? "is" : "is not"} published.`
+      `The start page paired with the Ayme MCP server ${pairedAt.getTime() - opened} ms after opening, with ${tools.length} tools; goal ${goalToolPublished ? "is" : "is not"} published.`
     );
     await writeLog();
     const evidence: AymeEvidence = {
