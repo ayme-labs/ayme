@@ -19,6 +19,13 @@ import type {
   Selection,
 } from "../../navigation";
 
+/**
+ * Marks the Structure lens's tree, a rendering of the page's structure. A
+ * page dogfooding the Inspector keeps it out of the structure it renders.
+ */
+export const INSPECTOR_STRUCTURE_TREE_ATTRIBUTE =
+  "data-ayme-inspector-structure";
+
 /** Whether the structure is being captured, or why it couldn't be. */
 export type StructureCapture = {
   error?: string;
@@ -134,12 +141,10 @@ function StructureTreeView({
         </p>
       )}
       {rows.length ? (
-        // Marked so a page dogfooding the Inspector can keep this rendering of
-        // the page's structure out of the structure it renders.
         <div
           role="tree"
           aria-label="Page structure"
-          data-ayme-inspector-structure=""
+          {...{ [INSPECTOR_STRUCTURE_TREE_ATTRIBUTE]: "" }}
           className="flex flex-col"
         >
           {rows.map(({ node, depth }, index) =>

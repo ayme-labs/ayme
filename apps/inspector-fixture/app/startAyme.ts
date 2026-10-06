@@ -5,7 +5,10 @@ import {
   type CustomTool,
 } from "@ayme-dev/ayme";
 import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
-import { mountInspector } from "@ayme-dev/inspector";
+import {
+  INSPECTOR_STRUCTURE_TREE_ATTRIBUTE,
+  mountInspector,
+} from "@ayme-dev/inspector";
 
 import { ListPage } from "../pom/ListPage";
 
@@ -61,7 +64,7 @@ function clearTheList() {
  * runtime that never published from a broken Inspector.
  */
 const isInspectorStructureTree = (element: Element) =>
-  element.hasAttribute("data-ayme-inspector-structure");
+  element.hasAttribute(INSPECTOR_STRUCTURE_TREE_ATTRIBUTE);
 
 export function startAyme({
   PageObject = ListPage,
