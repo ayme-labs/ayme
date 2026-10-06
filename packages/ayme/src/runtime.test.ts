@@ -21,7 +21,10 @@ vi.mock("./webMcp", async (importOriginal) => ({
   waitForWebMcpDriver: vi.fn(),
 }));
 vi.mock("./inspector", () => ({ loadInspector: vi.fn() }));
-vi.mock("./agentConnection", () => ({ loadAgentConnection: vi.fn() }));
+vi.mock("./agentConnection", () => ({
+  loadAgentConnection: vi.fn(),
+  loadProcessConnection: vi.fn(),
+}));
 vi.mock("./browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),
 }));
