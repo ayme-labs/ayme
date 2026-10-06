@@ -19,11 +19,20 @@ async function listed(agent: Agent, name: string) {
     .toContain(name);
 }
 
-/** The value the stand-in App Process's tool returned. */
+/** The value a Peek Tool read from its one instance. */
 async function valueOf(agent: Agent, name = TOOL) {
   const { text, isError } = await agent.call(name);
   expect(isError, text).toBe(false);
-  return (JSON.parse(text) as { value: string }).value;
+  return valueIn(text);
+}
+
+/** The value in a Peek Tool's result text. */
+function valueIn(text: string) {
+  const { instances } = JSON.parse(text) as {
+    instances: { values: { value: string } }[];
+  };
+  expect(instances, text).toHaveLength(1);
+  return instances[0]!.values.value;
 }
 
 test("an App Process pairs beside the paired page, the agent lists and calls both sides' tools, and the page stays paired", async ({
@@ -121,11 +130,27 @@ test("of two App Processes that offer one tool name, the agent gets the first on
       `[ayme] ${TOOL} is hidden: another App Process offers a tool with the same name. Rename one.`
     );
   const { text, note } = await agent.call(TOOL);
-  expect(JSON.parse(text)).toEqual({ value: "server" });
+  expect(valueIn(text)).toBe("server");
   expect(note).toContain(
     `Hidden: ${TOOL}, because another App Process offers a tool with the same name`
   );
 
   await first.exit();
   await expect.poll(() => valueOf(agent).catch(() => "")).toBe("worker");
+});
+
+test("a Peek the page and an App Process add under one name gives peek.<name> and peek.node.<name>, each reading its own side", async ({
+  agent,
+  connect,
+  startAppProcess,
+}) => {
+  await connect("/?peek=jobs");
+  const { port } = await serverAddress(agent);
+
+  startAppProcess({ port, peek: "jobs", value: "server" });
+
+  await listed(agent, TOOL);
+  expect(await agent.toolNames()).toContain("peek.jobs");
+  expect(await valueOf(agent, "peek.jobs")).toBe("page");
+  expect(await valueOf(agent, TOOL)).toBe("server");
 });

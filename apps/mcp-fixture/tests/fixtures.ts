@@ -33,9 +33,9 @@ export type AppProcessOptions = {
   port?: number;
   /** A connect link that names the server. */
   link?: string;
-  /** The name of its one tool; `peek.node.jobs` by default. */
-  tool?: string;
-  /** What its tool returns, as `{ value }`. */
+  /** The name of its one Peek; `jobs`, read as `peek.node.jobs`, by default. */
+  peek?: string;
+  /** What its Peek reads, as `{ value }`. */
   value?: string;
 };
 
@@ -176,13 +176,13 @@ export function unanswered(answer: { text: string; isError: boolean }) {
 function startAppProcess({
   port,
   link,
-  tool,
+  peek,
   value,
 }: AppProcessOptions): AppProcess {
   const env: NodeJS.ProcessEnv = { ...process.env };
   if (port !== undefined) env.AYME_PROCESS_PORT = String(port);
   if (link !== undefined) env.AYME_PROCESS_LINK = link;
-  if (tool !== undefined) env.AYME_PROCESS_TOOL = tool;
+  if (peek !== undefined) env.AYME_PROCESS_PEEK = peek;
   if (value !== undefined) env.AYME_PROCESS_VALUE = value;
   const child = spawn(process.execPath, [APP_PROCESS], {
     env,

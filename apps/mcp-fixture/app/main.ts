@@ -47,6 +47,9 @@ try {
     webMCP: { enabled: new URLSearchParams(location.search).has("webmcp") },
   });
   runtime.start();
+  // `?peek=<name>` adds a Peek of that name, which reads "page".
+  const peekName = new URLSearchParams(location.search).get("peek");
+  if (peekName) runtime.peek(() => ({ value: "page" }), peekName);
   // The Basket Page Object comes and goes with these buttons, as a
   // component's Page Object does when it mounts and unmounts.
   document

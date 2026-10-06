@@ -16,6 +16,7 @@ basket and Hide basket buttons register and unregister the `Basket` Page
 Object, so a Page Object Tool comes and goes on demand. `plain.html` is a
 document of the same origin without Ayme. WebMCP publication is off unless the
 URL has `?webmcp`, so the tests show the Agent Connection works without it.
+`?peek=<name>` adds a Peek of that name, which reads `{ "value": "page" }`.
 
 Each test starts the built `ayme mcp` command as a child process and talks to
 it through an MCP SDK client over stdio, as a coding agent does. The `connect`
@@ -24,8 +25,8 @@ until the page's tools are MCP tools. Assertions go through the MCP client, and
 through the page only for what the page itself shows, such as its address bar.
 Add a spec file for a new concern and reuse `fixtures.ts`.
 
-`appProcess.ts` stands in for an App Process: a Node script that offers one
-tool through `@ayme-dev/mcp/process`, with a hand-built tools object. The
+`appProcess.ts` stands in for an App Process: a Node script that starts Ayme
+with `createAyme({ agentConnection })` and adds one Peek with `ayme.peek`. The
 `startAppProcess` fixture runs it and ends it with the test. Each one looks for
 a server on its test's port only, or pairs by link, so it never pairs with a
 server another test or run has on the machine.
