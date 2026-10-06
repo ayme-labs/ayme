@@ -381,17 +381,23 @@ describe("reading stored files", () => {
       pass: true,
       checks: {
         surveyExists: true,
-        workspaceMatches: true,
         surveyNameMatches: true,
         questionExists: true,
         questionHeadlineMatches: true,
       },
-      expected: { surveyName: "n", questionHeadline: "h", workspaceId: "w" },
+      expected: {
+        workspaceId: "w",
+        surveyId: "s",
+        questionId: "q",
+        surveyName: "n",
+        questionHeadline: "h",
+      },
       actual: {
+        surveyNames: ["n"],
+        surveyId: "s",
         surveyName: "n",
         questionHeadline: "h",
         questionHeadlineStored: "h",
-        workspaceId: "w",
       },
     },
     versions: {

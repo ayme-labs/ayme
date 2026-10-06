@@ -14,6 +14,7 @@ import path from "node:path";
 
 import { parseFlags } from "./cli.ts";
 import { openRouterKeyVariable, readEnvVariable } from "./environment.ts";
+import { defaultMissionId } from "./missions.ts";
 import { evalRoot, summariesRoot } from "./paths.ts";
 import {
   completeStoredCosts,
@@ -29,6 +30,17 @@ import {
 } from "./summary.ts";
 
 const usage = "Usage: pnpm eval:report -- [--suite <suite id>] [--publish]";
+
+/**
+ * The published summary's folder: the date for the default mission, so its
+ * dated tables keep their paths, and the date with the mission for any other.
+ */
+export function publishedFolder(summary: { date: string; missions: string[] }) {
+  const [mission] = summary.missions;
+  return summary.missions.length === 1 && mission !== defaultMissionId
+    ? `${summary.date}-${mission}`
+    : summary.date;
+}
 
 const log = (line: string) => process.stderr.write(`${line}\n`);
 
@@ -63,7 +75,7 @@ export async function reportSuite(
   const written = [suiteFolder];
   await writeSummaryFiles(suiteFolder, summary);
   if (options.publish) {
-    const published = path.join(summariesRoot, summary.date);
+    const published = path.join(summariesRoot, publishedFolder(summary));
     await writeSummaryFiles(published, summary);
     written.push(published);
   }

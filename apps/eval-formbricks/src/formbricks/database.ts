@@ -11,9 +11,11 @@ import path from "node:path";
 
 import {
   editorPath,
+  missionStart,
   summaryPath,
   type Mission,
   type MissionDefinition,
+  type SeededSurvey,
 } from "../missions.ts";
 import type { SurveyRecord } from "../verdict.ts";
 
@@ -119,9 +121,9 @@ export async function openFormbricksDatabase(
 }
 
 /**
- * Seeds an isolated user, organization, workspace and survey for one run,
- * following the shapes Formbricks's own seed writes at this revision. Earlier
- * data is never touched.
+ * Seeds an isolated user, organization and workspace for one run, and the
+ * survey when the mission has one, following the shapes Formbricks's own seed
+ * writes at this revision. Earlier data is never touched.
  */
 export async function seedMission(
   database: FormbricksDatabase,
@@ -129,7 +131,7 @@ export async function seedMission(
   runId: string,
   baseUrl: string
 ): Promise<Mission> {
-  const { prisma, createId, hashPassword } = database;
+  const { prisma, hashPassword } = database;
   const name = `eval-${runId}`;
   // Better Auth looks emails up in lower case; run ids carry capitals.
   const email = `${name.toLowerCase()}@example.com`;
@@ -223,13 +225,46 @@ export async function seedMission(
 
   // What the agent types carries a short nonce, so typing length does not dominate the measurement.
   const nonce = randomBytes(3).toString("hex");
-  const initial = definition.initial(nonce);
+  const survey =
+    definition.initial === null
+      ? null
+      : await seedSurvey(database, {
+          initial: definition.initial(nonce),
+          workspaceId,
+          userId,
+          baseUrl,
+        });
+
+  return {
+    id: definition.id,
+    runId,
+    nonce,
+    user: { id: userId, name, email, password },
+    organizationId,
+    workspaceId,
+    survey,
+    expected: definition.expected(nonce),
+    start: missionStart(definition, baseUrl, survey),
+  };
+}
+
+/** A running survey with one open-text question; the editor then offers Save & Close and closes to the summary. */
+async function seedSurvey(
+  database: FormbricksDatabase,
+  options: {
+    initial: SeededSurvey["initial"];
+    workspaceId: string;
+    userId: string;
+    baseUrl: string;
+  }
+): Promise<SeededSurvey> {
+  const { prisma, createId } = database;
+  const { initial, workspaceId, userId, baseUrl } = options;
   const questionId = createId();
   const survey = await prisma.survey.create({
     data: {
       name: initial.surveyName,
       type: "link",
-      // Running, not a draft: the editor then offers Save & Close and closes to the summary.
       status: "inProgress",
       workspaceId,
       createdBy: userId,
@@ -254,39 +289,36 @@ export async function seedMission(
     },
   });
   const surveyId = requireString(survey, "id");
-
   return {
-    id: definition.id,
-    runId,
-    nonce,
-    user: { id: userId, name, email, password },
-    organizationId,
-    workspaceId,
-    surveyId,
+    id: surveyId,
     questionId,
     initial,
-    expected: definition.expected(nonce),
-    startUrl: `${baseUrl}${editorPath(workspaceId, surveyId)}`,
+    editorUrl: `${baseUrl}${editorPath(workspaceId, surveyId)}`,
     summaryUrl: `${baseUrl}${summaryPath(workspaceId, surveyId)}`,
   };
 }
 
-/**
- * Formbricks decides access through SpiceDB, which a background worker fills
- * from Postgres with a lag of seconds. Waits until every outbox row the seed
- * produced is processed, so sign-in does not land on "create organization".
- */
-export async function waitForAuthorizationProjection(
-  database: FormbricksDatabase,
-  mission: Mission,
-  options: { timeoutMs: number; pollMs?: number }
-): Promise<{ rows: number; waitedMs: number }> {
-  const ids = [
+/** The seeded rows Formbricks projects into its authorization store. */
+export function seededIds(mission: Mission): string[] {
+  return [
     mission.user.id,
     mission.organizationId,
     mission.workspaceId,
-    mission.surveyId,
+    ...(mission.survey === null ? [] : [mission.survey.id]),
   ];
+}
+
+/**
+ * Formbricks decides access through SpiceDB, which a background worker fills
+ * from Postgres with a lag of seconds. Waits until every outbox row about
+ * `ids`, the seed's rows, is processed, so sign-in does not land on "create
+ * organization" and a new survey's editor opens.
+ */
+export async function waitForAuthorizationProjection(
+  database: FormbricksDatabase,
+  ids: string[],
+  options: { timeoutMs: number; pollMs?: number }
+): Promise<{ rows: number; waitedMs: number }> {
   const startedAt = Date.now();
   const pollMs = options.pollMs ?? 500;
   for (;;) {
@@ -322,19 +354,21 @@ export async function waitForAuthorizationProjection(
   }
 }
 
-/** The read-only query behind the verdict. */
-export async function readSurvey(
+/** The read-only query behind the verdict: the seeded workspace's surveys, in creation order. */
+export async function readWorkspaceSurveys(
   database: FormbricksDatabase,
-  surveyId: string
-): Promise<SurveyRecord> {
-  const survey = await database.prisma.survey.findUnique({
-    where: { id: surveyId },
-    select: { name: true, workspaceId: true, blocks: true },
+  workspaceId: string
+): Promise<SurveyRecord[]> {
+  const surveys = await database.prisma.survey.findMany({
+    where: { workspaceId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, name: true, blocks: true },
   });
-  if (survey === null) return null;
-  return {
+  if (!Array.isArray(surveys))
+    throw new TypeError("Formbricks returned no survey rows");
+  return surveys.map((survey: unknown) => ({
+    id: requireString(survey, "id"),
     name: requireString(survey, "name"),
-    workspaceId: requireString(survey, "workspaceId"),
     blocks: isRecord(survey) ? survey.blocks : undefined,
-  };
+  }));
 }

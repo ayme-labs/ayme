@@ -1,8 +1,8 @@
 /**
  * Everything the Playwright CLI arm sets up before the measured window: the
  * `playwright-cli` command on the agent's PATH, the CLI's official skill in the
- * run's Claude Code configuration folder, and a browser session already open,
- * signed in, on the survey editor. The measured agent installs and downloads
+ * run's Claude Code configuration folder, and a browser session already open
+ * on the mission's start page. The measured agent installs and downloads
  * nothing.
  */
 import { execFile } from "node:child_process";
@@ -49,8 +49,8 @@ export function shimScript() {
 /**
  * The CLI's configuration, from the environment: its daemon reads these when a
  * session starts, so the setup and the agent share them. The session is named
- * after the run, so the plain command reaches it. The profile is the signed-in
- * one, even if the agent restarts the browser. The page's WebMCP tools stay
+ * after the run, so the plain command reaches it. The profile is the one the
+ * harness prepared, even if the agent restarts the browser. The page's WebMCP tools stay
  * off: the lab app registers Ayme's, and this arm is the CLI alone.
  */
 export function playwrightCliEnvironment(
@@ -62,7 +62,7 @@ export function playwrightCliEnvironment(
     NO_UPDATE_NOTIFIER: "1",
     PATH: `${shimDirectory(context.runDir)}${path.delimiter}${parentPath}`,
     PLAYWRIGHT_CLI_SESSION: context.runId,
-    // The system Chrome, like the other arms. Its Playwright is the one that signed in, from the same pinned build.
+    // The system Chrome, like the other arms. Its Playwright is the one that prepared the profile, from the same pinned build.
     PLAYWRIGHT_MCP_BROWSER: "chrome",
     PLAYWRIGHT_MCP_USER_DATA_DIR: context.profileDir,
     PLAYWRIGHT_MCP_OUTPUT_DIR: context.outputDir,
@@ -123,15 +123,15 @@ export async function setUpPlaywrightCli(
   try {
     const output = await runCli(context, environment, [
       "open",
-      context.startUrl,
+      context.start.url,
     ]);
     const pageUrl = parsePageUrl(output);
     if (
       pageUrl === null ||
-      new URL(pageUrl).pathname !== new URL(context.startUrl).pathname
+      new URL(pageUrl).pathname !== new URL(context.start.url).pathname
     )
       throw new Error(
-        `The Playwright CLI opened ${pageUrl ?? "no page"} instead of the editor at ${context.startUrl}.`
+        `The Playwright CLI opened ${pageUrl ?? "no page"} instead of the start page at ${context.start.url}.`
       );
   } catch (error) {
     await dispose();
