@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Liveness fixture</title>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+  main { padding: 16px; }
+  section { border: 1px solid #ccc; padding: 8px; margin: 8px 0; }
+  aside { position: fixed; left: 0; top: 0; width: 240px; height: 100%; background: #eee; transform: translateX(-100%); }
+  aside.open { transform: none; }
+</style></head>
+<body>
+<main>
+  <h1>Liveness fixture (mimics apps/example-react)</h1>
+  <p role="status" aria-label="Publication">Publication: active</p>
+  <button id="toggle-counter">Unmount counter</button>
+  <button id="toggle-sidebar">Open sidebar</button>
+  <button id="open-dialog">Archive</button>
+  <div id="counter-slot">
+    <section aria-label="Counter"><p>Count: <output>0</output></p><button>Increment</button></section>
+  </div>
+  <section aria-label="Projects"><button>New project</button></section>
+</main>
+<aside aria-label="Sidebar" id="sidebar"><button>Close</button></aside>
+<dialog aria-label="Archive item" id="dialog"><p>Archive this item?</p><button>Confirm</button></dialog>
+<script>
+  const slot = document.getElementById("counter-slot");
+  const counterHtml = slot.innerHTML;
+  document.getElementById("toggle-counter").onclick = (e) => {
+    if (slot.innerHTML.trim()) { slot.innerHTML = ""; e.target.textContent = "Mount counter"; }
+    else { slot.innerHTML = counterHtml; e.target.textContent = "Unmount counter"; }
+  };
+  document.getElementById("toggle-sidebar").onclick = () => document.getElementById("sidebar").classList.toggle("open");
+  document.getElementById("open-dialog").onclick = () => document.getElementById("dialog").showModal();
+</script>
+</body></html>
