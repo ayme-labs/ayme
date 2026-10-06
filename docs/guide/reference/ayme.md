@@ -81,7 +81,7 @@ Every registration of a class shares one instance, so a Page Object should keep 
 
 ## createPage
 
-`createPage(options?)` builds the browser Page the session drives by default. Its defaults are the Playwright settings the [build plugin](build-plugin.md) compiled in; each option you pass, `testIdAttribute`, `actionTimeout` or `navigationTimeout`, wins for that option only, so `createPage()` is exactly the default Page. Pass a factory as `pageFactory` to own page construction: without the Vite plugin, with a timeout that differs from your build, or wrapped in your own instrumentation. A wrapper must keep the locators the runtime observes.
+`createPage(options?)` builds the browser Page the session drives by default. Its defaults are the Playwright settings the [build plugin](build-plugin.md) compiled in; each option you pass, `testIdAttribute`, `actionTimeout` or `navigationTimeout`, wins for that option only, so `createPage()` is exactly the default Page. Without either, `actionTimeout` is 1 second and `navigationTimeout` 30 seconds. `actionTimeout` also bounds element reads such as `boundingBox`, so an action on a locator that matches nothing fails instead of waiting forever, and it bounds navigation when `navigationTimeout` is not set. Pass a factory as `pageFactory` to own page construction: without the Vite plugin, with a timeout that differs from your build, or wrapped in your own instrumentation. A wrapper must keep the locators the runtime observes.
 
 ```ts
 createAyme({ pageFactory: () => createPage({ actionTimeout: 500 }) });
