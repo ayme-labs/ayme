@@ -131,6 +131,8 @@ export function InspectorApp() {
           }
           detail={<DetailPane>{detail}</DetailPane>}
           runs={runsRegion}
+          regions={preferences.regions}
+          onRegionsChange={(regions) => updatePreferences({ regions })}
         />
       </InspectorShell>
     </InspectorRoot>

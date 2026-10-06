@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import {
   BoxIcon,
   BracesIcon,
@@ -12,8 +12,9 @@ import {
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { PageObjectModel, PageObjectNode } from "../domain/pageModel";
-import { usePointerDrag } from "../../shared";
+import { Divider } from "../../shared";
 import {
+  defaultPreferences,
   maxModelSplit as maxSplit,
   minModelSplit as minSplit,
   type ModelPanes,
@@ -116,7 +117,7 @@ export function ModelTree({
         </div>
       </Pane>
       {bothOpen && (
-        <Divider
+        <SplitDivider
           split={split}
           onSplitChange={(next) => onPanesChange({ ...panes, split: next })}
         />
@@ -298,50 +299,36 @@ function Pane({
   );
 }
 
-/** The divider between the panes: drag it, or use the arrow keys. */
-function Divider({
+/**
+ * The divider between the panes, on the second pane's top border: drag it,
+ * use the arrow keys, or double-click it for the default share.
+ */
+function SplitDivider({
   split,
   onSplitChange,
 }: {
   split: number;
   onSplitChange: (split: number) => void;
 }) {
-  const drag = usePointerDrag();
   const handle = useRef<HTMLDivElement>(null);
-  const clamp = (value: number) =>
-    Math.min(maxSplit, Math.max(minSplit, value));
-  const onKeyDown = (event: KeyboardEvent) => {
-    const step =
-      event.key === "ArrowUp"
-        ? -splitStep
-        : event.key === "ArrowDown"
-          ? splitStep
-          : 0;
-    if (!step) return;
-    event.preventDefault();
-    onSplitChange(clamp(split + step));
-  };
+  // The divider works in percent, so its value reads as one.
   return (
-    <div
-      ref={handle}
-      role="separator"
-      aria-orientation="horizontal"
-      aria-label="Resize the two lists"
-      aria-valuemin={minSplit * 100}
-      aria-valuemax={maxSplit * 100}
-      aria-valuenow={Math.round(split * 100)}
-      tabIndex={0}
-      className="relative z-10 -my-1 h-2.25 flex-none cursor-row-resize touch-none outline-none after:absolute after:inset-x-0 after:top-1 after:h-0.5 after:bg-ring after:opacity-0 after:transition-opacity hover:after:opacity-100 focus-visible:after:opacity-100"
-      onKeyDown={onKeyDown}
-      onPointerDown={(event) => {
-        const height = handle.current?.parentElement?.offsetHeight ?? 0;
-        if (!height) return;
-        const start = split;
-        drag(event, {
-          onMove: (_deltaX, deltaY) =>
-            onSplitChange(clamp(start + deltaY / height)),
-        });
-      }}
-    />
+    <div ref={handle} className="contents">
+      <Divider
+        orientation="horizontal"
+        border="after"
+        label="Resize the two lists"
+        value={split * 100}
+        min={minSplit * 100}
+        max={maxSplit * 100}
+        step={splitStep * 100}
+        perPixel={() => {
+          const height = handle.current?.parentElement?.offsetHeight ?? 0;
+          return height ? 100 / height : 0;
+        }}
+        onChange={(percent) => onSplitChange(percent / 100)}
+        onReset={() => onSplitChange(defaultPreferences.modelPanes.split)}
+      />
+    </div>
   );
 }
