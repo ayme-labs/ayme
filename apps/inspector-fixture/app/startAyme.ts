@@ -104,7 +104,7 @@ export function startAyme({
     };
     const unsubscribe = runtime.webMCP.subscribe(reportRuntime);
     const stop = runtime.start();
-    if (mount === "after") inspector = mountInspector({ demo });
+    if (mount === "after") inspector = mountInspector({ demo, dogfood });
     reportRuntime();
     root.fixture = "ready";
     return () => {
