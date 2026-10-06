@@ -25,23 +25,20 @@ import {
 } from "../domain/geometry";
 import { Header, layoutNames } from "../view/Header";
 import type { Layout, Preferences } from "../domain/preferences";
-import { usePointerDrag } from "../../shared";
+import { resizeGrip, usePointerDrag } from "../../shared";
 import { currentViewport, useViewport } from "./useViewport";
 
 type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 type Handle = Side | Corner;
 
-// Each handle straddles the panel's border. It shows a short grip in the
-// border's colour on hover, a pill centred on its edge or an arc along its
-// corner. While pressed it takes a stronger colour, and a pill stretches.
+// Each handle straddles the panel's border and shows a resize grip: a pill
+// centred on its edge, or an arc along its corner; a pressed pill stretches.
 // Offsets count from the panel's padding edge and its 1px border lies just
 // outside it, so an edge handle (8px) sits 4.5px out to centre on the border
 // line. Grips are 3px thick, so they land on whole pixels either side of it,
 // and are placed by offsets: a centring transform rounds them half a pixel off;
 // a corner arc sits 2px out, with the border's radius plus its stroke's
 // overhang.
-const grip =
-  "after:absolute after:border-border after:bg-border after:opacity-0 after:transition-[opacity,background-color,border-color,scale] after:duration-(--duration-fast) after:ease-(--ease-out) hover:after:opacity-100 active:after:border-muted-foreground active:after:bg-muted-foreground active:after:opacity-100";
 const edgeGrip = "after:rounded-full";
 const cornerGrip =
   "z-30 size-5 after:size-4 after:border-0 after:bg-transparent active:after:bg-transparent";
@@ -246,7 +243,7 @@ export function InspectorShell({
             title="Drag to resize"
             className={cn(
               "absolute z-20 touch-none",
-              grip,
+              resizeGrip,
               handleClass[handle]
             )}
             onPointerDown={(event) => startResize(event, handle)}
