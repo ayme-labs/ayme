@@ -10,7 +10,11 @@ import {
   type StructureRow,
   type StructureTree,
 } from "../domain/structure";
-import { Empty, WhatTheModelSees } from "../../shared";
+import {
+  Empty,
+  INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
+  WhatTheModelSees,
+} from "../../shared";
 import type {
   Lens,
   OnHover,
@@ -18,13 +22,6 @@ import type {
   SearchEntry,
   Selection,
 } from "../../navigation";
-
-/**
- * Marks the Structure lens's tree, a rendering of the page's structure. A
- * page dogfooding the Inspector keeps it out of the structure it renders.
- */
-export const INSPECTOR_STRUCTURE_TREE_ATTRIBUTE =
-  "data-ayme-inspector-structure";
 
 /** Whether the structure is being captured, or why it couldn't be. */
 export type StructureCapture = {
@@ -144,7 +141,7 @@ function StructureTreeView({
         <div
           role="tree"
           aria-label="Page structure"
-          {...{ [INSPECTOR_STRUCTURE_TREE_ATTRIBUTE]: "" }}
+          {...{ [INSPECTOR_PAGE_RENDERING_ATTRIBUTE]: "" }}
           className="flex flex-col"
         >
           {rows.map(({ node, depth }, index) =>

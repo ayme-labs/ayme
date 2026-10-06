@@ -67,15 +67,28 @@ test("the page state an agent reads includes the panel", async ({
   expect(structure).toContain('complementary "ayme"');
 });
 
-test("the Structure lens's own tree stays out of the page state", async ({
+test("the panel's renderings of the page stay out of the page state", async ({
   page,
   inspector,
 }) => {
+  const agent = new AgentView(page);
+  const snapshot = async () =>
+    ((await agent.call("snapshot", {})) as { structure: string }).structure;
+
   await inspector.navigator.showLens("Structure");
   await expect(inspector.structure.tree).toBeVisible();
-  const { structure } = (await new AgentView(page).call("snapshot", {})) as {
-    structure: string;
-  };
+  let structure = await snapshot();
   expect(structure).toContain('button "Structure"');
   expect(structure).not.toContain('tree "Page structure"');
+
+  // Search results carry refs too. Were they in the page state, every look
+  // (one every two seconds while the Structure lens shows) would find the
+  // previous results and the list would grow until its limit.
+  await inspector.navigator.search("Groceries");
+  const results = inspector.navigator.searchResults;
+  await expect(results).toHaveCount(1);
+  structure = await snapshot();
+  expect(structure).not.toContain('list "Search results"');
+  await page.waitForTimeout(2_500);
+  await expect(results).toHaveCount(1);
 });

@@ -86,9 +86,9 @@ Run every command inside the repository's Devbox shell.
 
 ## What the page does not show
 
-- The Structure lens's own tree stays out of the page state, since it
-  renders that state. Read the lens through its tools instead. A ref
-  chooser's tree on a run card is a capture of the page, and stays in.
+- The Structure lens's tree and the search results stay out of the page
+  state, since they render that state. Read them through the tools instead.
+  A ref chooser's tree on a run card is a capture of the page, and stays in.
 - Actions whose parameters the build plugin cannot schema (a `Record`, a rest
   parameter, a `string | boolean` union) are not tools. Use the generic
   Browser Tools on the run card for those.

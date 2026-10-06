@@ -6,7 +6,7 @@ import {
 } from "@ayme-dev/ayme";
 import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
 import {
-  INSPECTOR_STRUCTURE_TREE_ATTRIBUTE,
+  INSPECTOR_PAGE_RENDERING_ATTRIBUTE,
   mountInspector,
 } from "@ayme-dev/inspector";
 
@@ -52,8 +52,8 @@ function clearTheList() {
   };
 }
 
-const isInspectorStructureTree = (element: Element) =>
-  element.hasAttribute(INSPECTOR_STRUCTURE_TREE_ATTRIBUTE);
+const rendersThePage = (element: Element) =>
+  element.hasAttribute(INSPECTOR_PAGE_RENDERING_ATTRIBUTE);
 
 /**
  * Mounts the Inspector, then starts the runtime with a Page Object (the
@@ -91,9 +91,9 @@ export function startAyme({
       webMCP: { enabled: publish },
       inspector: mount === "session" && (demo ? { demo } : true),
       agentConnection: dogfood,
-      // The Structure lens renders the page state; in page state it would
-      // render itself, over and over.
-      ignore: dogfood ? isInspectorStructureTree : undefined,
+      // The Structure lens and the search results render the page state; in
+      // page state they would render themselves, over and over.
+      ignore: dogfood ? rendersThePage : undefined,
     });
     runtime.pom.register(PageObject);
     for (const Other of alsoRegister) runtime.pom.register(Other);
