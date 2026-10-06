@@ -99,7 +99,7 @@ describe.each([false, true])(
 );
 
 it.each(["provider", "standalone"])(
-  "adds no Peek instance while server rendering with a %s owner",
+  "C12: adds no Peek instance while server rendering with a %s owner",
   async (kind) => {
     const Counter = defineComponent({
       setup() {

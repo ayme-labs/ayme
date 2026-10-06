@@ -32,7 +32,7 @@ function hiddenTool({
   keptBy,
 }: {
   name: string;
-  keptBy: Owner;
+  keptBy: ToolHolder;
 }): HiddenTool {
   return {
     name,
@@ -161,8 +161,8 @@ export class ProcessSession extends ChannelSession {
   }
 }
 
-/** Who a call goes to: the page, or an App Process. */
-type Owner = PageSession | ProcessSession;
+/** What holds a tool and takes its calls: the page, or an App Process. */
+type ToolHolder = PageSession | ProcessSession;
 
 /** Calls whose page went away, waiting for its tab to reconnect. */
 type Away = {
@@ -234,7 +234,7 @@ export class AgentConnection {
 
   /** Whether the agent sees a tool `name`. */
   offers(name: string): boolean {
-    return this.#owner(name) !== undefined;
+    return this.#holderOf(name) !== undefined;
   }
 
   /**
@@ -342,10 +342,10 @@ export class AgentConnection {
    * no connection offers it and no page is paired.
    */
   call(name: string, input: unknown): Promise<ToolCallOutcome> {
-    const owner = this.#owner(name) ?? this.#page;
-    if (!owner) throw new Error(`No connection offers the tool "${name}".`);
+    const holder = this.#holderOf(name) ?? this.#page;
+    if (!holder) throw new Error(`No connection offers the tool "${name}".`);
     const callId = String(this.#nextCallId++);
-    return owner.call({ callId, name, input });
+    return holder.call({ callId, name, input });
   }
 
   /**
@@ -416,14 +416,14 @@ export class AgentConnection {
    */
   callProcess(name: string, input: unknown): Promise<ToolCallOutcome> {
     const callId = String(this.#nextCallId++);
-    const owner = this.#owner(name);
-    if (!(owner instanceof ProcessSession))
+    const holder = this.#holderOf(name);
+    if (!(holder instanceof ProcessSession))
       return Promise.resolve({
         callId,
         ok: false,
         error: `No App Process offers the tool "${name}".`,
       });
-    return owner.call({ callId, name, input });
+    return holder.call({ callId, name, input });
   }
 
   /**
@@ -462,14 +462,14 @@ export class AgentConnection {
   }
 
   #merged() {
-    const offers: ToolOffer<Owner>[] = [];
+    const offers: ToolOffer<ToolHolder>[] = [];
     if (this.#page) offers.push({ owner: this.#page, tools: this.#page.tools });
     for (const process of this.#processes.values())
       offers.push({ owner: process, tools: process.tools });
     return mergeToolOffers(offers);
   }
 
-  #owner(name: string): Owner | undefined {
+  #holderOf(name: string): ToolHolder | undefined {
     return this.#merged().shown.find(({ tool }) => tool.name === name)?.owner;
   }
 

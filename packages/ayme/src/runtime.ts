@@ -356,9 +356,9 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   let unsubscribeFromPoms: (() => void) | undefined;
   let unsubscribeFromPeeks: (() => void) | undefined;
   let owner: ReturnType<typeof createAymeRuntime> | undefined;
-  // Started in a Node process of the app, which has no page: it offers its
-  // Peek Tools only.
-  let processStop: (() => void) | undefined;
+  // The session while it is started in a Node process of the app, which has
+  // no page: it offers its Peek Tools only.
+  let inProcess: { stop(): void } | undefined;
   let controller: AbortController | undefined;
   let publication: WebMcpRegistration | undefined;
   let pending: Promise<void> | undefined;
@@ -371,7 +371,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   const refreshTools = () => {
     const next = owner
       ? listLiveTools({ peeks })
-      : processStop && peeks
+      : inProcess && peeks
         ? listPeekToolInfo()
         : NO_TOOLS;
     const key = JSON.stringify(next);
@@ -469,7 +469,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   };
 
   async function run(name: string, input: unknown): Promise<unknown> {
-    if (processStop) {
+    if (inProcess) {
       // The Peek registry is shared by the process, so a session without
       // Peeks runs none another session added.
       const peekTool = peeks
@@ -554,7 +554,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       return addPeek(read, name, id);
     },
     start() {
-      if (owner || processStop)
+      if (owner || inProcess)
         throw new RuntimeStateError(
           "The Ayme runtime already has an active owner."
         );
@@ -617,14 +617,16 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   function startInProcess(): () => void {
     const processController = new AbortController();
     const unsubscribe = peeks ? subscribeToPeekTools(refreshTools) : undefined;
-    const stopInProcess = () => {
-      if (processStop !== stopInProcess) return;
-      processStop = undefined;
-      processController.abort();
-      unsubscribe?.();
-      refreshTools();
+    const session = {
+      stop() {
+        if (inProcess !== session) return;
+        inProcess = undefined;
+        processController.abort();
+        unsubscribe?.();
+        refreshTools();
+      },
     };
-    processStop = stopInProcess;
+    inProcess = session;
     refreshTools();
     const { agentConnection } = options;
     if (agentConnection) {
@@ -637,7 +639,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         )
       );
     }
-    return stopInProcess;
+    return () => session.stop();
   }
 
   appProcessToolsBySession.set(ayme, appProcessTools.tools);

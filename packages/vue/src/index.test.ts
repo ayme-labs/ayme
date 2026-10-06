@@ -428,7 +428,7 @@ describe("usePeek", () => {
       setup: () => () => h(AymeProvider, { pageFactory }, { default: content }),
     });
 
-  it("adds one instance per mounted component, under its own id", () => {
+  it("C12: adds one instance per mounted component, under its own id", () => {
     mount(provided(() => [h(Counter), h(Counter, { start: 5 })]));
 
     expect(calls.map(({ name }) => name)).toEqual(["counter", "counter"]);
@@ -481,7 +481,7 @@ describe("usePeek", () => {
     ]);
   });
 
-  it("removes the instance on unmount", async () => {
+  it("C12: removes the instance on unmount", async () => {
     const visible = ref(true);
     mount(provided(() => (visible.value ? h(Counter) : null)));
 

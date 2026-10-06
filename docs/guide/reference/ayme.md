@@ -80,7 +80,22 @@ Every registration of a class shares one instance, so a Page Object should keep 
 
 Peek Tools are in `ayme.tools` and reach coding agents through the Agent Connection and the Inspector. WebMCP never publishes them, and the Goal Loop never offers them. A call answers at once, without waiting for a Settled Page. `ayme.peek` does nothing unless the session has `agentConnection` or `inspector` on.
 
-In Node, `start()` needs no page. The session's tools are its Peek Tools alone, and with `agentConnection` the process pairs with the agent's Ayme MCP server as an App Process beside the page.
+### In Node
+
+In Node, `start()` needs no page. The session's tools are its Peek Tools alone, and with `agentConnection` the process pairs with the agent's Ayme MCP server as an App Process beside the page. Start it in the server's entry point; in Next.js, that is `instrumentation.ts`, which runs once when the server starts:
+
+```ts
+export async function register() {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  if (process.env.NODE_ENV === "production") return;
+  const { createAyme } = await import("@ayme-dev/ayme");
+  const ayme = createAyme({ agentConnection: true });
+  ayme.start();
+  ayme.peek(async () => ({ users: await db.user.count() }), "users");
+}
+```
+
+The process finds the agent's server the way a tab does: it pairs only when exactly one Ayme MCP server answers on the ports from 9350 to 9365. While unpaired it looks again every few seconds, and again when its server goes away, so a dev server started before the agent pairs once the agent is up. With several servers running, name one with `agentConnection: { link }` or `{ port }`. Read these from your own environment if you need them; Ayme reads none. Component Peeks register only after mount in the browser, so server rendering adds none to the process. While the tab is paired with that server too, its Inspector lists the process's Peek Tools in the Node section of its Peek tools and runs them through the server. The [`@ayme-dev/mcp` README](../../../packages/mcp/README.md#app-processes) covers the pairing and what happens when two App Processes offer one name.
 
 ## ayme.webMCP
 

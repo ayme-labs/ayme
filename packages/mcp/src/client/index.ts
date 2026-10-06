@@ -119,6 +119,8 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
     const stops = clientBehaviours.map((behaviour) =>
       behaviour({ tools: ayme.tools, channel })
     );
+    // Not a ClientBehaviour: it feeds `processTools`, which this function
+    // returns, and a behaviour's context carries no such sink.
     stops.push(channel.followProcessTools(setProcessTools));
     const opened = {
       key,

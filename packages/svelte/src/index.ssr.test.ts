@@ -98,7 +98,7 @@ it("requires an owner for a Page Object", () => {
   );
 });
 
-it("adds no Peek instance during server rendering", () => {
+it("C12: adds no Peek instance during server rendering", () => {
   const peeks: unknown[] = [];
   void Owner.render({
     options: { agentConnection: true },

@@ -306,7 +306,7 @@ describe("peek", () => {
     });
   };
 
-  it("adds one instance per mounted component, under its own id", () => {
+  it("C12: adds one instance per mounted component, under its own id", () => {
     mount(Owner, {
       options: { pageFactory },
       onInit: spyOnPeek,
@@ -350,7 +350,7 @@ describe("peek", () => {
     expect(calls[0]!.read()).toEqual({ count: 1 });
   });
 
-  it("removes the instance on destroy", async () => {
+  it("C12: removes the instance on destroy", async () => {
     const owner = mount(Owner, {
       options: { pageFactory },
       onInit: spyOnPeek,

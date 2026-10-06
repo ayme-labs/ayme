@@ -45,7 +45,7 @@ const bootstrap = bootstrapApplication as (
 describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",
   (enabled) => {
-    it("renders concurrent requests without starting Ayme, calling the page factory, constructing or registering Page Objects, or adding Peeks", async () => {
+    it("C12: renders concurrent requests without starting Ayme, calling the page factory, constructing or registering Page Objects, or adding Peeks", async () => {
       sessions.length = 0;
       const pageFactory = vi.fn<PageFactory>(() => {
         throw new Error("The page factory must not run on the server.");

@@ -59,7 +59,7 @@ const Counter = Component({ selector: "test-counter", template: "" })(
   }
 );
 
-it("adds one instance per component after it renders, under its own id, reading its signals when asked", () => {
+it("C12: adds one instance per component after it renders, under its own id, reading its signals when asked", () => {
   const first = mount(Counter);
   mount(Counter);
   expect(calls).toEqual([]);
@@ -97,7 +97,7 @@ it("uses the id it is given and reads a signal passed as the values", () => {
   expect(calls[0]!.read()).toEqual(["apple", "pear"]);
 });
 
-it("removes the instance when the component is destroyed", () => {
+it("C12: removes the instance when the component is destroyed", () => {
   const counter = mount(Counter);
   app.tick();
 

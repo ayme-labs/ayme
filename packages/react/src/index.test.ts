@@ -517,7 +517,7 @@ describe("usePeek", () => {
     return null;
   }
 
-  it("adds one instance per mounted component, under its own id", async () => {
+  it("C12: adds one instance per mounted component, under its own id", async () => {
     await act(() =>
       root().render(
         h(
@@ -561,7 +561,7 @@ describe("usePeek", () => {
     expect(calls[0]!.read()).toEqual({ count: 1 });
   });
 
-  it("removes the instance on unmount", async () => {
+  it("C12: removes the instance on unmount", async () => {
     const app = root();
     await act(() =>
       app.render(h(AymeProvider, { pageFactory }, h(Counter, { count: 0 })))
@@ -589,7 +589,7 @@ describe("usePeek", () => {
     expect(live[0]!.read()).toEqual({ count: 3 });
   });
 
-  it("adds nothing during server rendering", () => {
+  it("C12: adds nothing during server rendering", () => {
     renderToString(h(AymeProvider, { pageFactory }, h(Counter, { count: 0 })));
 
     expect(createAyme).toHaveBeenCalled();
