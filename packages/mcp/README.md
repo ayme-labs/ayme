@@ -100,7 +100,7 @@ page's. `@ayme-dev/mcp/process` is its side of the connection:
   It reports no navigation.
 - **Tool names:** the agent sees one tool per name. The page's tool keeps its
   name; of two App Processes that offer one name, the one that connected first
-  keeps it. The agent's next tool result says the other's tool is hidden, and
+  keeps it, counting from each one's current connection. The agent's next tool result says the other's tool is hidden, and
   the other process logs it in its terminal: `[ayme] peek.node.jobs is hidden:
 another App Process offers a tool with the same name. Rename one.`
 - **Leaving:** when it exits, its tools go at once, and a call still waiting

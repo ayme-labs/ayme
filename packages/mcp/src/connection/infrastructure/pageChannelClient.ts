@@ -76,8 +76,9 @@ export function openPageChannel(
   return {
     async publishTools(tools) {
       reported = [...tools];
+      // A server from before App Processes answers nothing.
       return ToolReportAnswerSchema.parse(
-        await client.publishTools.mutate(reported)
+        (await client.publishTools.mutate(reported)) ?? {}
       );
     },
     answerCalls(handler) {
