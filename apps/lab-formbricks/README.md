@@ -2,7 +2,7 @@
 
 [Formbricks](https://github.com/formbricks/formbricks) as a lab app: a real product with hard UI to measure agents on, with Ayme in the page. The `ayme-labs/formbricks` fork is a git submodule at [`formbricks/`](./formbricks), pinned to an exact commit. It stays outside the pnpm workspace, and neither `git clone` (even with `--recurse-submodules`) nor `pnpm install` fetches it. Only `pnpm lab:prepare` does.
 
-This lab app runs on a Mac only, by hand. It is never part of CI or `pnpm check`.
+This lab app runs by hand, on a Mac or in the [Formbricks eval workflow](../../.github/workflows/eval-formbricks.yml) on a hosted runner (see [the eval README](../eval-formbricks/README.md#on-a-hosted-runner)). It is never part of CI or `pnpm check`.
 
 ## Prerequisites
 

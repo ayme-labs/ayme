@@ -4,7 +4,7 @@ Runs one mission on the [Formbricks lab app](../lab-formbricks/README.md) throug
 
 This package is separate from the lab app on purpose. The agent's working root is `apps/lab-formbricks` and nothing else; missions, results and transcripts live here, where the agent cannot read them.
 
-It runs on a Mac only, by hand. It is never part of CI or `pnpm check`; only its unit tests are.
+It runs by hand, on a Mac or [on a hosted runner](#on-a-hosted-runner). It is never part of CI or `pnpm check`; only its unit tests are.
 
 ## Prerequisites
 
@@ -84,6 +84,14 @@ The suite:
 4. Writes its manifest and summary to `results/suites/<suite id>/`.
 
 The first run that cannot complete (a missing precondition, an unreachable lab app, a failed seed) ends the suite. The runs stored so far are summarized and the summary says the suite stopped early. A failed verdict is a result, not an error.
+
+## On a hosted runner
+
+The [Formbricks eval workflow](../../.github/workflows/eval-formbricks.yml) runs a suite on a standard GitHub-hosted Ubuntu runner, started by hand only (Actions, Formbricks eval, Run workflow). It never runs on pull requests or pushes. Its inputs are the mission, the arms (empty for every arm), the runs per arm, and `qualify_only`, which prepares the lab app and runs `lab:qualify` without starting an agent, so it calls no model and costs nothing.
+
+The job installs the pinned Claude Code, runs `lab:prepare`, starts `lab:dev` in the background and waits for the sign-in page, then runs `pnpm eval:suite`. It reads two repository secrets: `CLAUDE_CODE_OAUTH_TOKEN`, the agent's Claude Code login, and `AYME_OPENROUTER_API_KEY`, which only the lab app's Decision Endpoint and the Goal Loop's cost lookup use. The job summary holds the machine (OS, runner image, CPUs, memory) and the suite summary; the `eval-formbricks-results` artifact holds `results/` with the same machine record, and `lab-formbricks-log` holds the lab app's output. The repository is public, so its Actions logs and artifacts are too.
+
+A runner is not a Mac, so its timings are not comparable with a Mac's: compare runs from the same kind of machine only. One eval runs at a time.
 
 ## The summary
 
