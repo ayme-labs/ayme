@@ -3,6 +3,7 @@ import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
 import {
   listLiveTools,
+  resolveLiveTools,
   resolvePublishedTools,
   type PublishedToolInfo,
 } from "./publishedTools";
@@ -26,6 +27,12 @@ import {
   type WebMcpRegistration,
 } from "./webMcp";
 import { RuntimeStateError } from "./errors";
+import {
+  addPeek,
+  peekToolName,
+  subscribeToPeekTools,
+  type PeekRead,
+} from "./peek";
 import type { ToolInput, ToolResult } from "./toolTypes";
 
 export type AymeWebMcpPublicationStatus = Readonly<{
@@ -90,6 +97,17 @@ export type Ayme = {
   readonly webMCP: AymeWebMcp;
   readonly tools: AymeTools;
   readonly pom: AymePom;
+  /**
+   * Adds a Peek: `read` returns the values of state an agent can read, and
+   * may be async. Its Peek Tool, `peek.<name>`, reads every live instance
+   * when called. There is one instance per (`name`, `id`): a later call with
+   * the same id gives that instance the new `read`, and without an id a later
+   * call replaces the earlier one. Returns what removes the instance. Throws
+   * `RuntimeStateError` when `name` is empty, or when another live tool
+   * already uses the Peek Tool's name. Does nothing unless the session has
+   * `agentConnection` or `inspector` on.
+   */
+  peek(read: PeekRead, name: string, id?: string): () => void;
   /** Starts the session; returns the function that stops it. */
   start(): () => void;
 };
@@ -166,6 +184,15 @@ export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
   });
 }
 
+/** The names of the tools WebMCP would publish now; none while they clash. */
+function publishedToolNames(): Set<string> {
+  try {
+    return new Set(resolvePublishedTools().keys());
+  } catch {
+    return new Set();
+  }
+}
+
 function createServerPageObject<T extends object>(
   model: PageObjectConstructor<T>
 ): T {
@@ -210,6 +237,9 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     (resolvedPage ??= instrumentedPage((options.pageFactory ?? createPage)()));
   // Publication is decided once, when the session is created.
   const enabled = options.webMCP?.enabled === true;
+  // Peeks reach coding agents and the Inspector only (ADR-0034).
+  const peeks =
+    options.agentConnection === true || inspectorMode(options) !== "off";
   const toolNamePrefix = options.webMCP?.toolNamePrefix;
   const initialStatus: AymeWebMcpPublicationStatus = {
     state: enabled ? "waiting" : "disabled",
@@ -225,6 +255,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   let toolsKey = "[]";
   const toolListeners = new Set<(tools: readonly ToolInfo[]) => void>();
   let unsubscribeFromPoms: (() => void) | undefined;
+  let unsubscribeFromPeeks: (() => void) | undefined;
   let owner: ReturnType<typeof createAymeRuntime> | undefined;
   let controller: AbortController | undefined;
   let publication: WebMcpRegistration | undefined;
@@ -235,7 +266,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     for (const listener of subscribers) listener(status);
   };
   const refreshTools = () => {
-    const next = owner ? listLiveTools() : NO_TOOLS;
+    const next = owner ? listLiveTools({ peeks }) : NO_TOOLS;
     const key = JSON.stringify(next);
     if (key === toolsKey) return;
     tools = next;
@@ -300,6 +331,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     pending = undefined;
     unsubscribeFromPoms?.();
     unsubscribeFromPoms = undefined;
+    unsubscribeFromPeeks?.();
+    unsubscribeFromPeeks = undefined;
     for (const registration of registrations.values()) {
       registration.active?.dispose();
       registration.active = undefined;
@@ -333,7 +366,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       throw new RuntimeStateError(
         `Cannot run the tool "${name}": the Ayme runtime session is not started.`
       );
-    const entry = resolvePublishedTools().get(name);
+    const entry = resolveLiveTools({ peeks }).get(name);
     if (!entry) throw new RuntimeStateError(`The tool "${name}" is not live.`);
     const { tool } = entry;
     // As after an agent's call, the Page Objects are probed, so the live
@@ -392,6 +425,17 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       run: run as AymeTools["run"],
     },
     pom,
+    peek(read, name, id) {
+      if (typeof name !== "string" || name === "")
+        throw new RuntimeStateError("A Peek needs a name.");
+      if (!peeks) return () => {};
+      const toolName = peekToolName(name);
+      if (publishedToolNames().has(toolName))
+        throw new RuntimeStateError(
+          `Cannot add the Peek "${name}": another tool already uses the name ${toolName}. Rename the Peek.`
+        );
+      return addPeek(read, name, id);
+    },
     start() {
       if (owner)
         throw new RuntimeStateError(
@@ -409,6 +453,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         for (const [model, registration] of registrations)
           registration.active = registerPageObject(model, pom.get(model));
         unsubscribeFromPoms = subscribeToRegisteredPoms(refreshTools);
+        if (peeks) unsubscribeFromPeeks = subscribeToPeekTools(refreshTools);
         refreshTools();
         setStatus(initialStatus);
         setStarted(ayme);

@@ -1,5 +1,5 @@
 /** Where a tool comes from, as the runtime groups it. */
-export type ToolGroup = "pageObject" | "browser" | "custom" | "agent";
+export type ToolGroup = "pageObject" | "browser" | "custom" | "peek" | "agent";
 
 /**
  * A live tool: one the panel can run now, because its Page Object or
@@ -19,6 +19,7 @@ export const toolGroupLabels: Record<ToolGroup, string> = {
   pageObject: "Page object tools",
   browser: "Browser tools",
   custom: "Custom tools",
+  peek: "Peek tools",
   agent: "Agent tools",
 };
 
@@ -27,6 +28,7 @@ export const toolKindLabels: Record<ToolGroup, string> = {
   pageObject: "Page object tool",
   browser: "Browser tool",
   custom: "Custom tool",
+  peek: "Peek tool",
   agent: "Agent tool",
 };
 
@@ -34,6 +36,7 @@ const groupOrder: readonly ToolGroup[] = [
   "pageObject",
   "custom",
   "browser",
+  "peek",
   "agent",
 ];
 

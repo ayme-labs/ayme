@@ -3,12 +3,17 @@ import type { Locator } from "@playwright/test";
 
 /** How the Tools lens labels its groups. */
 export type ToolGroupLabel =
-  "Page object tools" | "Custom tools" | "Browser tools" | "Agent tools";
+  | "Page object tools"
+  | "Custom tools"
+  | "Browser tools"
+  | "Peek tools"
+  | "Agent tools";
 
 const groupLabels: readonly ToolGroupLabel[] = [
   "Page object tools",
   "Custom tools",
   "Browser tools",
+  "Peek tools",
   "Agent tools",
 ];
 

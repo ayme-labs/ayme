@@ -87,7 +87,7 @@ class ListPage {
           // Return only once the page change has reached publication, so the
           // tool goes unavailable while its own call is still running.
           while (
-            listLiveTools().some(
+            listLiveTools({ peeks: false }).some(
               ({ name }) => name === "ListPage.items.archive"
             )
           )

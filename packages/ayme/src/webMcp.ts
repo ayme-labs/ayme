@@ -1,4 +1,5 @@
 import { getPageContextTool } from "./pageContext";
+import { isPeekTool } from "./peek";
 import {
   type PublishedTool,
   type PublishedToolGroup,
@@ -61,7 +62,7 @@ export function asAgentCall(tool: PublishedTool, settle: () => Promise<void>) {
 
 /**
  * Run `call` of `tool`, then `settle` before resolving, unless the tool only
- * reads (`snapshot`) or its answer says a full page load started: that answer
+ * reads (`snapshot`, a Peek Tool) or its answer says a full page load started: that answer
  * goes out at once, before the document goes away. Shared by an agent's call
  * and the application's.
  */
@@ -70,7 +71,7 @@ export async function settledAfter<T>(
   call: () => Promise<T>,
   settle: () => Promise<void>
 ): Promise<T> {
-  if (tool === getPageContextTool) return call();
+  if (tool === getPageContextTool || isPeekTool(tool)) return call();
   let result: T;
   try {
     result = await call();
