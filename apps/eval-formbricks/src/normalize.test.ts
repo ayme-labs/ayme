@@ -61,6 +61,7 @@ function artifacts(overrides: Partial<RunArtifacts>): RunArtifacts {
     arm: "playwright-mcp",
     missionId: "rename-survey-and-question",
     requestedModel: "sonnet",
+    effort: "medium",
     timeoutSeconds: 600,
     transcript: transcript("complete.jsonl"),
     exitCode: 0,
@@ -178,7 +179,11 @@ describe("a completed run", () => {
   it("records the versions, preferring the transcript's own Claude Code version", () => {
     expect(result.versions).toEqual({
       claudeCode: "2.1.281",
-      model: { requested: "sonnet", used: "claude-sonnet-fixture" },
+      model: {
+        requested: "sonnet",
+        used: "claude-sonnet-fixture",
+        effort: "medium",
+      },
       browserInterface: { name: "@playwright/mcp", version: "0.0.83" },
       browser: "Chrome/154.0.0.0",
       formbricksCommit: "8abe0b42",
@@ -266,6 +271,7 @@ describe("a run whose result has no usage block", () => {
 
   it("falls back to the init event's model when nothing was billed", () => {
     expect(result.versions.model.used).toBe("claude-sonnet-fixture");
+    expect(result.versions.model.effort).toBe("medium");
   });
 });
 

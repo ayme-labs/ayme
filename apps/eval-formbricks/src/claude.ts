@@ -77,6 +77,13 @@ export type ClaudeRun = {
  * built-in tools, and every permission question answered by denial. The arm's
  * interface is allowed without a prompt, so the agent is never asked anything.
  */
+/**
+ * The agent's thinking effort, the same for every arm. Claude Code's default let the model pause
+ * for minutes before a single step of a five-step task, which made wall time measure think time
+ * rather than the browser interface. `medium` keeps step-by-step reasoning without those pauses.
+ */
+export const agentEffort = "medium";
+
 export function claudeArguments(invocation: {
   model: string;
   arm: Arm;
@@ -94,6 +101,8 @@ export function claudeArguments(invocation: {
     "--verbose",
     "--model",
     invocation.model,
+    "--effort",
+    agentEffort,
     "--setting-sources",
     "user",
     "--strict-mcp-config",

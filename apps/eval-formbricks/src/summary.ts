@@ -73,6 +73,8 @@ export type SuiteSummary = {
     claudeCode: string[];
     modelRequested: string[];
     modelUsed: string[];
+    /** The agent's thinking effort; one value when every run used the same. */
+    effort: string[];
     /** The pinned browser interface of each arm. */
     browserInterfaces: { arm: string; name: string; version: string }[];
     browser: string[];
@@ -151,6 +153,7 @@ export function buildSummary(input: {
     claudeCode: distinct(results.map((r) => r.versions.claudeCode)),
     modelRequested: distinct(results.map((r) => r.versions.model.requested)),
     modelUsed: distinct(results.map((r) => r.versions.model.used)),
+    effort: distinct(results.map((r) => r.versions.model.effort ?? null)),
     browserInterfaces: [...interfaces.values()],
     browser: distinct(results.map((r) => r.versions.browser)),
     aymeCommit: distinct(results.map((r) => r.versions.aymeCommit)),
@@ -190,6 +193,7 @@ export function buildSummary(input: {
   const mixed = [
     ["Claude Code versions", versions.claudeCode],
     ["models", versions.modelUsed],
+    ["thinking efforts", versions.effort],
     ["Ayme commits", versions.aymeCommit],
     ["Formbricks commits", versions.formbricksCommit],
     ["timeouts", timeoutSeconds.map(String)],
@@ -261,7 +265,7 @@ export function renderSummaryMarkdown(summary: SuiteSummary) {
     "",
     `- Date: ${summary.date}`,
     `- Claude Code: ${list(versions.claudeCode)}`,
-    `- Model: ${list(versions.modelUsed)} (requested ${list(versions.modelRequested)})`,
+    `- Model: ${list(versions.modelUsed)} (requested ${list(versions.modelRequested)}, effort ${list(versions.effort)})`,
     ...versions.browserInterfaces.map(
       ({ arm, name, version }) => `- ${name} ${version} (${arm})`
     ),
