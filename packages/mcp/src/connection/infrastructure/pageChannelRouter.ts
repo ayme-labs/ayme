@@ -4,6 +4,7 @@ import {
   HelloSchema,
   PageLeavingSchema,
   PageToolListSchema,
+  ProcessToolCallSchema,
   ToolCallOutcomeSchema,
   ToolCallSchema,
   ToolReportAnswerSchema,
@@ -12,14 +13,17 @@ import {
 } from "../../contract";
 import {
   PageSession,
+  type AgentConnection,
   type ChannelSession,
 } from "../application/agentConnection";
 
 /**
- * One WebSocket connection's context: the page or App Process on its other
- * end, which is known once it said hello.
+ * One WebSocket connection's context: the server's Agent Connection, and
+ * the page or App Process on its other end, which is known once it said
+ * hello.
  */
 export type PageChannelContext = {
+  connection: AgentConnection;
   page: {
     hello(hello: Hello): PageWelcome;
     /** Resolves once the other end said hello and the server paired it. */
@@ -33,7 +37,8 @@ const t = initTRPC.context<PageChannelContext>().create();
  * The channel's procedures, which the page client and the App Process call:
  * it says hello, reports its tools, receives calls through a subscription,
  * answers each one, and, a page only, says when it starts loading a new
- * document.
+ * document, follows the App Processes' tools and runs one of them, as its
+ * Inspector does.
  */
 export const pageChannelRouter = t.router({
   hello: t.procedure
@@ -58,6 +63,22 @@ export const pageChannelRouter = t.router({
       const session = await ctx.page.session;
       // An App Process has no document to leave.
       if (session instanceof PageSession) session.leaving = input;
+    }),
+  processTools: t.procedure.subscription(async function* ({ ctx, signal }) {
+    // An App Process does not see the other App Processes' tools.
+    if (!((await ctx.page.session) instanceof PageSession)) return;
+    for await (const tools of ctx.connection.processToolLists(signal))
+      yield PageToolListSchema.parse(tools);
+  }),
+  callProcessTool: t.procedure
+    .input(ProcessToolCallSchema)
+    .mutation(async ({ ctx, input }) => {
+      const session = await ctx.page.session;
+      if (!(session instanceof PageSession))
+        throw new Error("Only the page runs the App Processes' tools.");
+      return ToolCallOutcomeSchema.parse(
+        await ctx.connection.callProcess(input.name, input.input)
+      );
     }),
 });
 

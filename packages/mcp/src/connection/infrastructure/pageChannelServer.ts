@@ -44,7 +44,7 @@ export function createPageChannelServer({
   const handleConnection = getWSConnectionHandler({
     wss: sockets,
     router: pageChannelRouter,
-    createContext: ({ res }) => ({ page: pages.get(res)! }),
+    createContext: ({ res }) => ({ connection, page: pages.get(res)! }),
   });
 
   server.on("upgrade", (request, socket, head) => {

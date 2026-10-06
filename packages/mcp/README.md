@@ -108,6 +108,13 @@ that `start()` loads in Node:
 another App Process offers a tool with the same name. Rename one.`
 - **Leaving:** when it exits, its tools go at once, and a call still waiting
   for it gets an error result that says so.
+- **In the Inspector:** the server sends the paired tab the App Processes'
+  tools the agent sees, and again after every change, so the page's
+  Inspector lists them in its Node Peek tools and runs one through the
+  server, which sends the call to its App Process. The page client's
+  `startAgentConnection(ayme)` returns them beside `dispose`, as
+  `processTools`: `list` and `subscribe` follow them, none while no server
+  is paired, and `run` resolves with the tool's result or throws its error.
 
 The server logs each App Process that connects and disconnects on stderr.
 

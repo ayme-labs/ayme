@@ -211,6 +211,16 @@ export class AgentConnection {
   }
 
   /**
+   * The App Processes' tools the agent sees, without the page's, as the
+   * page's Inspector shows them.
+   */
+  get processTools(): readonly PageTool[] {
+    return this.#merged()
+      .shown.filter(({ owner }) => owner instanceof ProcessSession)
+      .map(({ tool }) => tool);
+  }
+
+  /**
    * The reported tools the agent does not see, because the page or an
    * earlier App Process offers the same name.
    */
@@ -350,6 +360,56 @@ export class AgentConnection {
     const owner = this.#owner(name) ?? this.#page;
     if (!owner) throw new Error(`No connection offers the tool "${name}".`);
     const callId = String(this.#nextCallId++);
+    return owner.call({ callId, name, input });
+  }
+
+  /**
+   * The App Processes' tools, at once and after each change to them, until
+   * `signal` aborts. Changes that come faster than they are taken give
+   * only the newest list.
+   */
+  async *processToolLists(
+    signal: AbortSignal | undefined
+  ): AsyncGenerator<readonly PageTool[]> {
+    let wake: (() => void) | undefined;
+    const rouse = () => {
+      const resolve = wake;
+      wake = undefined;
+      resolve?.();
+    };
+    const unsubscribe = this.subscribe(rouse);
+    signal?.addEventListener("abort", rouse, { once: true });
+    try {
+      let given: string | undefined;
+      while (!signal?.aborted) {
+        const tools = this.processTools;
+        const key = JSON.stringify(tools);
+        if (key !== given) {
+          given = key;
+          yield tools;
+        } else await new Promise<void>((resolve) => (wake = resolve));
+      }
+    } finally {
+      unsubscribe();
+      signal?.removeEventListener("abort", rouse);
+    }
+  }
+
+  /**
+   * Runs the tool `name` on the App Process that offers it, for the page,
+   * whose Inspector runs App Process tools through the server. It never
+   * goes to the page itself; with no App Process offering `name`, it
+   * answers that none does.
+   */
+  callProcess(name: string, input: unknown): Promise<ToolCallOutcome> {
+    const callId = String(this.#nextCallId++);
+    const owner = this.#owner(name);
+    if (!(owner instanceof ProcessSession))
+      return Promise.resolve({
+        callId,
+        ok: false,
+        error: `No App Process offers the tool "${name}".`,
+      });
     return owner.call({ callId, name, input });
   }
 

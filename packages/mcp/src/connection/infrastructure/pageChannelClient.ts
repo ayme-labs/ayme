@@ -2,7 +2,9 @@ import { createTRPCClient, createWSClient, wsLink } from "@trpc/client";
 
 import {
   DISCONNECTED_CLOSE_CODE,
+  PageToolListSchema,
   PageWelcomeSchema,
+  ToolCallOutcomeSchema,
   ToolCallSchema,
   ToolReportAnswerSchema,
   UNKNOWN_PAIRING_CLOSE_CODE,
@@ -44,6 +46,9 @@ export function openPageChannel(
   // server pairs each socket afresh.
   let reported: PageTool[] | undefined;
   let opened = false;
+  // Who follows the App Processes' tools: they hear of none once the
+  // socket closes, and the subscription gives them again once it reopens.
+  const processToolListeners = new Set<(tools: readonly PageTool[]) => void>();
   const socket = createWSClient({
     url,
     onOpen() {
@@ -59,6 +64,7 @@ export function openPageChannel(
         .catch(() => {});
     },
     onClose(cause) {
+      for (const listener of processToolListeners) listener([]);
       const code = cause?.code;
       const known =
         code === DISCONNECTED_CLOSE_CODE || code === UNKNOWN_PAIRING_CLOSE_CODE;
@@ -95,6 +101,26 @@ export function openPageChannel(
     },
     async reportLeaving(leaving) {
       await client.leaving.mutate(leaving);
+    },
+    followProcessTools(listener) {
+      processToolListeners.add(listener);
+      const subscription = client.processTools.subscribe(undefined, {
+        onData(data) {
+          listener(PageToolListSchema.parse(data));
+        },
+        // A server from before App Processes has no such subscription: the
+        // page hears of no App Process tools.
+        onError() {},
+      });
+      return () => {
+        processToolListeners.delete(listener);
+        subscription.unsubscribe();
+      };
+    },
+    async callProcessTool(name, input) {
+      return ToolCallOutcomeSchema.parse(
+        await client.callProcessTool.mutate({ name, input })
+      );
     },
     close() {
       void socket.close();
