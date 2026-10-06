@@ -1,0 +1,163 @@
+name: Formbricks eval
+
+# Runs the Formbricks agent eval on a hosted runner, by hand only: the lab app
+# (apps/lab-formbricks) comes up in Docker, then `pnpm eval:suite` runs the
+# mission through each arm (apps/eval-formbricks). It never runs on pull
+# requests or pushes. Every run but a qualify-only one calls the model and
+# costs money. Runner timings are not comparable with a Mac's, so the summary
+# names the machine.
+on:
+  workflow_dispatch:
+    inputs:
+      mission:
+        description: Mission id from apps/eval-formbricks/src/missions.ts
+        type: string
+        default: rename-survey-and-question
+      arms:
+        description: Comma-separated arm ids from apps/eval-formbricks/src/arms.ts; empty runs every arm
+        type: string
+        default: ""
+      runs:
+        description: Runs per arm
+        type: number
+        default: 3
+      qualify_only:
+        description: Prepare and qualify the lab app only, with no agent and no model call
+        type: boolean
+        default: false
+
+# One eval at a time: every paid run uses the same Claude Code login, and two
+# at once would share its usage limits.
+concurrency:
+  group: eval-formbricks
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # The Claude Code the agent runs, recorded in every result.
+  CLAUDE_CODE_VERSION: 2.1.281
+
+jobs:
+  eval:
+    name: Eval ${{ inputs.qualify_only && 'qualify only' || inputs.mission }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      # The Formbricks submodule is public, so no step needs the checkout token.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+
+      - name: Record the machine
+        run: |
+          echo "LAB_LOG=$RUNNER_TEMP/lab-dev.log" >> "$GITHUB_ENV"
+          mkdir -p apps/eval-formbricks/results
+          {
+            echo "### Machine"
+            echo
+            echo "| OS | Runner image | CPUs | Memory |"
+            echo "| --- | --- | --- | --- |"
+            echo "| $(. /etc/os-release && echo "$PRETTY_NAME") | ${ImageOS:-unknown} ${ImageVersion:-} | $(nproc) | $(free -h | awk '/^Mem:/ {print $2}') |"
+            echo
+          } | tee -a apps/eval-formbricks/results/machine.md "$GITHUB_STEP_SUMMARY"
+          google-chrome --version
+          docker version --format 'Docker {{.Server.Version}}'
+
+      - name: Install Claude Code
+        if: ${{ !inputs.qualify_only }}
+        run: |
+          npm install --global "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+          claude --version
+
+      - name: Prepare the lab app
+        working-directory: apps/lab-formbricks
+        run: pnpm lab:prepare
+
+      # lab:dev runs until stopped, so it runs in the background and this step
+      # waits for the sign-in page. Its first start projects Formbricks's data
+      # into the authorization store and compiles the page.
+      - name: Start the lab app
+        working-directory: apps/lab-formbricks
+        env:
+          # The qualification never calls the Decision Endpoint, so it runs without the key.
+          AYME_OPENROUTER_API_KEY: ${{ !inputs.qualify_only && secrets.AYME_OPENROUTER_API_KEY || '' }}
+        run: |
+          nohup pnpm lab:dev > "$LAB_LOG" 2>&1 &
+          echo $! > "$RUNNER_TEMP/lab-dev.pid"
+          deadline=$((SECONDS + 1500))
+          until curl -fsS -o /dev/null --max-time 120 http://localhost:3000/auth/login; do
+            if ! kill -0 "$(cat "$RUNNER_TEMP/lab-dev.pid")" 2>/dev/null; then
+              echo "::error::lab:dev exited before the lab app answered."
+              tail -n 100 "$LAB_LOG"
+              exit 1
+            fi
+            if ((SECONDS >= deadline)); then
+              echo "::error::The lab app did not answer within 25 minutes."
+              tail -n 100 "$LAB_LOG"
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "The lab app answers after ${SECONDS} s."
+
+      - name: Qualify the lab app
+        if: ${{ inputs.qualify_only }}
+        working-directory: apps/lab-formbricks
+        run: |
+          # The qualification runs Formbricks's own Playwright, which needs its
+          # own Chromium; the eval's arms use the runner's Chrome.
+          (cd formbricks && corepack "$(node -p "require('./package.json').packageManager")" exec playwright install --with-deps chromium)
+          pnpm lab:qualify
+
+      - name: Run the suite
+        if: ${{ !inputs.qualify_only }}
+        working-directory: apps/eval-formbricks
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          AYME_OPENROUTER_API_KEY: ${{ secrets.AYME_OPENROUTER_API_KEY }}
+          MISSION: ${{ inputs.mission }}
+          ARMS: ${{ inputs.arms }}
+          RUNS: ${{ inputs.runs }}
+        run: |
+          args=(--mission "$MISSION" --runs "$RUNS")
+          if [ -n "$ARMS" ]; then args+=(--arms "$ARMS"); fi
+          pnpm eval:suite -- "${args[@]}"
+
+      - name: Write the summary
+        if: ${{ !cancelled() && !inputs.qualify_only }}
+        working-directory: apps/eval-formbricks
+        run: |
+          summary=$(ls -t results/suites/*/summary.md 2>/dev/null | head -n 1)
+          if [ -z "$summary" ]; then
+            echo "No suite summary was written." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload the results
+        if: ${{ !cancelled() && !inputs.qualify_only }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-formbricks-results
+          path: apps/eval-formbricks/results
+          if-no-files-found: ignore
+
+      - name: Upload the qualification results
+        if: ${{ failure() && inputs.qualify_only }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab-formbricks-qualification
+          path: apps/lab-formbricks/formbricks/apps/web/.ayme-lab/qualification-results
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+      - name: Upload the lab app log
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab-formbricks-log
+          path: ${{ runner.temp }}/lab-dev.log
+          if-no-files-found: ignore
