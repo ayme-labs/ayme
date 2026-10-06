@@ -55,27 +55,52 @@ export function fitFloat(rect: Rect, viewport: Viewport): Rect {
   };
 }
 
-/** Resizes a floating panel from its left edge; its right edge stays put. */
-export function resizeFloatLeft(start: Rect, deltaX: number): Rect {
-  const right = start.x + start.width;
-  const width = clamp(start.width - deltaX, MIN_FLOAT.width, right);
-  return { ...start, x: right - width, width };
-}
+export type Side = "left" | "right" | "top" | "bottom";
 
-/** Resizes a floating panel from its bottom edge. */
-export function resizeFloatBottom(
+/**
+ * Resizes a floating panel by dragging the given sides: one for an edge, two
+ * for a corner. The opposite sides stay put, and the panel stays within the
+ * viewport on the sides being dragged, even where the viewport is narrower
+ * than the panel's minimum size.
+ */
+export function resizeFloat(
   start: Rect,
-  deltaY: number,
+  sides: readonly Side[],
+  delta: Point,
   viewport: Viewport
 ): Rect {
-  return {
-    ...start,
-    height: clamp(
-      start.height + deltaY,
-      MIN_FLOAT.height,
+  let { x, y, width, height } = start;
+  if (sides.includes("left")) {
+    const right = start.x + start.width;
+    width = clamp(
+      start.width - delta.x,
+      Math.min(MIN_FLOAT.width, right),
+      right
+    );
+    x = right - width;
+  }
+  if (sides.includes("right"))
+    width = clamp(
+      start.width + delta.x,
+      Math.min(MIN_FLOAT.width, viewport.width - start.x),
+      viewport.width - start.x
+    );
+  if (sides.includes("top")) {
+    const bottom = start.y + start.height;
+    height = clamp(
+      start.height - delta.y,
+      Math.min(MIN_FLOAT.height, bottom),
+      bottom
+    );
+    y = bottom - height;
+  }
+  if (sides.includes("bottom"))
+    height = clamp(
+      start.height + delta.y,
+      Math.min(MIN_FLOAT.height, viewport.height - start.y),
       viewport.height - start.y
-    ),
-  };
+    );
+  return { x, y, width, height };
 }
 
 export function fitSideWidth(width: number, viewport: Viewport) {

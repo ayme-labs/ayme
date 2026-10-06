@@ -16,5 +16,6 @@ export { type Look, usePageLook } from "./infrastructure/usePageLook";
 export { usePointerDrag } from "./presentation/pointerDrag";
 export { AymeMark } from "./view/AymeMark";
 export { Empty } from "./view/common";
+export { Divider, resizeGrip } from "./presentation/Divider";
 export { InspectorRoot } from "./view/InspectorRoot";
 export { WhatTheModelSees } from "./presentation/WhatTheModelSees";

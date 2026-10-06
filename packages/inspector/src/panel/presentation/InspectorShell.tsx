@@ -18,34 +18,62 @@ import {
   fitFloat,
   fitLogo,
   fitSideWidth,
-  resizeFloatBottom,
-  resizeFloatLeft,
+  resizeFloat,
   type Dock,
   type HostReservation,
+  type Side,
 } from "../domain/geometry";
 import { Header, layoutNames } from "../view/Header";
 import type { Layout, Preferences } from "../domain/preferences";
-import { usePointerDrag } from "../../shared";
+import { resizeGrip, usePointerDrag } from "../../shared";
 import { currentViewport, useViewport } from "./useViewport";
 
-type Edge = "left" | "right" | "top" | "bottom";
+type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+type Handle = Side | Corner;
 
-const edgeClass: Record<Edge, string> = {
-  left: "inset-y-0 left-0 w-1.75 cursor-col-resize after:inset-y-0 after:left-0 after:w-0.5",
-  right:
-    "inset-y-0 right-0 w-1.75 cursor-col-resize after:inset-y-0 after:right-0 after:w-0.5",
-  top: "inset-x-0 top-0 h-1.75 cursor-row-resize after:inset-x-0 after:top-0 after:h-0.5",
-  bottom:
-    "inset-x-0 bottom-0 h-1.75 cursor-row-resize after:inset-x-0 after:bottom-0 after:h-0.5",
+// Each handle straddles the panel's border and shows a resize grip: a pill
+// centred on its edge, or an arc along its corner; a pressed pill stretches.
+// Offsets count from the panel's padding edge and its 1px border lies just
+// outside it, so an edge handle (8px) sits 4.5px out to centre on the border
+// line. Grips are 3px thick, so they land on whole pixels either side of it,
+// and are placed by offsets: a centring transform rounds them half a pixel off;
+// a corner arc sits 2px out, with the border's radius plus its stroke's
+// overhang.
+const edgeGrip = "after:rounded-full";
+const cornerGrip =
+  "z-30 size-5 after:size-4 after:border-0 after:bg-transparent active:after:bg-transparent";
+
+const handleClass: Record<Handle, string> = {
+  left: `${edgeGrip} inset-y-0 -left-[4.5px] w-2 cursor-ew-resize after:top-[calc(50%-20px)] after:left-[calc(50%-1.5px)] after:h-10 after:w-[3px] active:after:scale-y-125`,
+  right: `${edgeGrip} inset-y-0 -right-[4.5px] w-2 cursor-ew-resize after:top-[calc(50%-20px)] after:left-[calc(50%-1.5px)] after:h-10 after:w-[3px] active:after:scale-y-125`,
+  top: `${edgeGrip} inset-x-0 -top-[4.5px] h-2 cursor-ns-resize after:top-[calc(50%-1.5px)] after:left-[calc(50%-20px)] after:h-[3px] after:w-10 active:after:scale-x-125`,
+  bottom: `${edgeGrip} inset-x-0 -bottom-[4.5px] h-2 cursor-ns-resize after:top-[calc(50%-1.5px)] after:left-[calc(50%-20px)] after:h-[3px] after:w-10 active:after:scale-x-125`,
+  "top-left": `${cornerGrip} -top-2 -left-2 cursor-nwse-resize after:top-[6px] after:left-[6px] after:rounded-tl-[15px] after:border-t-3 after:border-l-3`,
+  "top-right": `${cornerGrip} -top-2 -right-2 cursor-nesw-resize after:top-[6px] after:right-[6px] after:rounded-tr-[15px] after:border-t-3 after:border-r-3`,
+  "bottom-left": `${cornerGrip} -bottom-2 -left-2 cursor-nesw-resize after:bottom-[6px] after:left-[6px] after:rounded-bl-[15px] after:border-b-3 after:border-l-3`,
+  "bottom-right": `${cornerGrip} -right-2 -bottom-2 cursor-nwse-resize after:right-[6px] after:bottom-[6px] after:rounded-br-[15px] after:border-r-3 after:border-b-3`,
 };
 
-/** The edges each layout resizes from. */
-const resizeEdges: Record<Layout, readonly Edge[]> = {
-  float: ["left", "bottom"],
+/** The handles each layout resizes from: a floating panel from every side. */
+const resizeHandles: Record<Layout, readonly Handle[]> = {
+  float: [
+    "left",
+    "right",
+    "top",
+    "bottom",
+    "top-left",
+    "top-right",
+    "bottom-left",
+    "bottom-right",
+  ],
   left: ["right"],
   right: ["left"],
   bottom: ["top"],
 };
+
+function isCorner(handle: Handle): handle is Corner {
+  return handle.includes("-");
+}
 
 /**
  * The panel's shell: it floats or docks, drags by its header, docks when
@@ -142,16 +170,21 @@ export function InspectorShell({
     });
   };
 
-  const startResize = (event: PointerEvent, edge: Edge) =>
+  const startResize = (event: PointerEvent, handle: Handle) => {
+    // Without this, a press that lands on a text selection starts the
+    // browser's own drag of it, which cancels the resize.
+    event.preventDefault();
     drag(event, {
       onMove: (deltaX, deltaY) => {
         const viewportNow = currentViewport();
         if (layout === "float")
           onPreferencesChange({
-            float:
-              edge === "left"
-                ? resizeFloatLeft(float, deltaX)
-                : resizeFloatBottom(float, deltaY, viewportNow),
+            float: resizeFloat(
+              float,
+              handle.split("-") as Side[],
+              { x: deltaX, y: deltaY },
+              viewportNow
+            ),
           });
         else if (layout === "bottom")
           onPreferencesChange({
@@ -166,6 +199,7 @@ export function InspectorShell({
           });
       },
     });
+  };
 
   const placement: Record<Layout, CSSProperties> = {
     float: {
@@ -184,7 +218,7 @@ export function InspectorShell({
       <aside
         aria-label="ayme"
         className={cn(
-          "@container pointer-events-auto absolute flex flex-col overflow-hidden border bg-background",
+          "@container pointer-events-auto absolute border bg-background",
           {
             float: "rounded-xl shadow-2xl",
             left: "border-y-0 border-l-0 shadow-lg",
@@ -194,33 +228,42 @@ export function InspectorShell({
         )}
         style={placement[layout]}
       >
-        {resizeEdges[layout].map((edge) => (
+        {resizeHandles[layout].map((handle) => (
           <div
-            key={edge}
+            key={handle}
             role="separator"
             aria-orientation={
-              edge === "left" || edge === "right" ? "vertical" : "horizontal"
+              isCorner(handle)
+                ? undefined
+                : handle === "left" || handle === "right"
+                  ? "vertical"
+                  : "horizontal"
             }
-            aria-label={`Resize from the ${edge} edge`}
+            aria-label={`Resize from the ${handle} ${isCorner(handle) ? "corner" : "edge"}`}
             title="Drag to resize"
             className={cn(
-              "absolute z-20 touch-none after:absolute after:bg-primary after:opacity-0 after:transition-opacity hover:after:opacity-100",
-              edgeClass[edge]
+              "absolute z-20 touch-none",
+              resizeGrip,
+              handleClass[handle]
             )}
-            onPointerDown={(event) => startResize(event, edge)}
+            onPointerDown={(event) => startResize(event, handle)}
           />
         ))}
-        <Header
-          pageName={pageName}
-          layout={layout}
-          theme={preferences.theme}
-          onThemeChange={(theme) => onPreferencesChange({ theme })}
-          onLayoutChange={(next) => onPreferencesChange({ layout: next })}
-          onCollapse={() => setCollapsed(true)}
-          onPointerDown={startMove}
-          collapseRef={collapseButton}
-        />
-        {children}
+        {/* The panel's content clips to its rounded frame; the handles, outside
+            this, straddle the border. */}
+        <div className="flex size-full flex-col overflow-hidden rounded-[inherit]">
+          <Header
+            pageName={pageName}
+            layout={layout}
+            theme={preferences.theme}
+            onThemeChange={(theme) => onPreferencesChange({ theme })}
+            onLayoutChange={(next) => onPreferencesChange({ layout: next })}
+            onCollapse={() => setCollapsed(true)}
+            onPointerDown={startMove}
+            collapseRef={collapseButton}
+          />
+          {children}
+        </div>
       </aside>
       {snap && (
         <SnapPreview

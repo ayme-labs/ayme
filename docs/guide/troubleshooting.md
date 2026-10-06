@@ -28,6 +28,7 @@ These are for a coding agent connected through Ayme's MCP server, as [Connect an
 - **`No free port for the Ayme MCP server between 9350 and 9365.`**: other programs hold the range. Add `--port <port>` after `mcp` in the registration, with a free port. The connect link carries it, so the page needs no change.
 - **`The agentConnection option could not load @ayme-dev/mcp.`**: install `@ayme-dev/mcp` beside `@ayme-dev/ayme`, or turn the option off.
 - **The page is on a deployed preview or another non-local origin**: open the connect link there, and allow Chrome's local network access prompt if it asks.
+- **A tool call times out just after the app's tab went to the background**: while the machine is under heavy CPU load, the first call after the tab is hidden can stall and fail with `Timeout … exceeded`. The calls after it run normally, so retry it, or keep the tab visible.
 
 ## In-browser agents see no tools
 
