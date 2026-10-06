@@ -29,6 +29,7 @@ function run(overrides: Partial<SummarizedRun>): SummarizedRun {
     tokens: { input: 10, cacheCreation: 1000, cacheRead: 9000, output: 90 },
     combinedCostUsd: 0.1,
     goalLoop: { calls: 0, costUsd: null },
+    toolCallTotal: 10,
     timeoutSeconds: 600,
     labCheckoutDirty: false,
     versions: {
@@ -57,7 +58,8 @@ function summarize(results: SummarizedRun[], arms = ["playwright-mcp"]) {
   });
 }
 
-// Three runs: wall 100, 200 and 150 s; totals 10 100, 20 200 and 15 150 tokens; $0.10, $0.30 and $0.20.
+// Three runs: wall 100, 200 and 150 s; 10, 14 and 12 tool calls; input and output 100, 200 and 150
+// tokens of totals 10 100, 20 200 and 15 150; $0.10, $0.30 and $0.20.
 const odd = [
   run({ runId: "a" }),
   run({
@@ -65,12 +67,14 @@ const odd = [
     wallTimeMs: 200_000,
     tokens: { input: 20, cacheCreation: 2000, cacheRead: 18000, output: 180 },
     combinedCostUsd: 0.3,
+    toolCallTotal: 14,
   }),
   run({
     runId: "c",
     wallTimeMs: 150_000,
     tokens: { input: 15, cacheCreation: 1500, cacheRead: 13500, output: 135 },
     combinedCostUsd: 0.2,
+    toolCallTotal: 12,
   }),
 ];
 
@@ -127,9 +131,19 @@ describe("a suite of three runs", () => {
     });
   });
 
+  it("takes the spread of tool calls and of input and output tokens without the cache", () => {
+    expect(arm?.toolCalls).toEqual({ n: 3, median: 12, min: 10, max: 14 });
+    expect(arm?.inputOutputTokens).toEqual({
+      n: 3,
+      median: 150,
+      min: 100,
+      max: 200,
+    });
+  });
+
   it("renders the arm's row", () => {
     expect(renderSummaryMarkdown(summarize(odd))).toContain(
-      "| playwright-mcp | 3 of 3 | 150.0 s (100.0 s to 200.0 s) | 15,150 (10,100 to 20,200) | $0.200 ($0.100 to $0.300) |"
+      "| playwright-mcp | 3 of 3 | 150.0 s (100.0 s to 200.0 s) | 12 (10 to 14) | 150 (100 to 200) | 15,150 (10,100 to 20,200) | $0.200 ($0.100 to $0.300) |"
     );
   });
 });

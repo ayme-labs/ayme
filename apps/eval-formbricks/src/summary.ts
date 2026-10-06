@@ -22,6 +22,8 @@ export type SummarizedRun = Pick<
 > & {
   /** The Goal Loop's calls and cost; a run with calls but no cost has an unknown combined cost. */
   goalLoop: Pick<NormalizedResult["goalLoop"], "calls" | "costUsd">;
+  /** The agent's tool calls in the task turn; `null` for a result stored without them. */
+  toolCallTotal: number | null;
   versions: Pick<
     NormalizedResult["versions"],
     | "claudeCode"
@@ -52,6 +54,10 @@ export type ArmSummary = {
   wallTimeMs: Spread | null;
   /** Input, cache creation, cache read and output tokens of the agent, added up. */
   tokens: Spread | null;
+  /** The agent's input and output tokens alone, without cache reads and writes. */
+  inputOutputTokens: Spread | null;
+  /** The agent's tool calls in the task turn. */
+  toolCalls: Spread | null;
   combinedCostUsd: Spread | null;
   runList: {
     runId: string;
@@ -128,6 +134,12 @@ export function buildSummary(input: {
       tokens: spread(
         runs.map((run) => (run.tokens ? totalTokens(run.tokens) : null))
       ),
+      inputOutputTokens: spread(
+        runs.map((run) =>
+          run.tokens ? run.tokens.input + run.tokens.output : null
+        )
+      ),
+      toolCalls: spread(runs.map((run) => run.toolCallTotal)),
       combinedCostUsd: spread(runs.map((run) => run.combinedCostUsd)),
       runList: runs.map((run) => ({
         runId: run.runId,
@@ -170,6 +182,7 @@ export function buildSummary(input: {
     for (const [label, value] of [
       ["wall time", arm.wallTimeMs],
       ["tokens", arm.tokens],
+      ["tool calls", arm.toolCalls],
       ["combined cost", arm.combinedCostUsd],
     ] as const) {
       if (arm.runs > 0 && value !== null && value.n < arm.runs)
@@ -245,6 +258,8 @@ export function renderSummaryMarkdown(summary: SuiteSummary) {
       arm.arm,
       `${arm.passes} of ${arm.runs}`,
       range(arm.wallTimeMs, seconds, arm.runs),
+      range(arm.toolCalls, count, arm.runs),
+      range(arm.inputOutputTokens, count, arm.runs),
       range(arm.tokens, count, arm.runs),
       range(arm.combinedCostUsd, dollars, arm.runs),
     ].join(" | ")
@@ -255,10 +270,10 @@ export function renderSummaryMarkdown(summary: SuiteSummary) {
     "",
     `Suite \`${summary.suiteId}\`. Mission: ${list(summary.missions)}. Timeout: ${list(summary.timeoutSeconds.map((s) => `${s} s`))}.`,
     "",
-    "Passes are out of the runs stored for the arm. Each cell is the median, then the lowest and highest in parentheses. Wall time, tokens and cost are the task turn's alone: the setup turn before it, where Claude Code starts up and loads the arm's skill, is not counted. Tokens are the agent's input, cache creation, cache read and output tokens added up. Combined cost is the agent's cost plus the Goal Loop's where it ran.",
+    "Passes are out of the runs stored for the arm. Each cell is the median, then the lowest and highest in parentheses. Wall time, tokens and cost are the task turn's alone: the setup turn before it, where Claude Code starts up and loads the arm's skill, is not counted. Input and output tokens are the agent's own, without the prompt cache; all tokens add the cache's reads and writes, which Claude Code bills at a fraction and a premium of the input price. Combined cost is the agent's cost plus the Goal Loop's where it ran.",
     "",
-    "| Arm | Passes | Wall time | Tokens | Combined cost |",
-    "| --- | --- | --- | --- | --- |",
+    "| Arm | Passes | Wall time | Tool calls | Input and output tokens | All tokens | Combined cost |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
     ...rows.map((row) => `| ${row} |`),
     "",
     "## Versions a rerun must match",
