@@ -79,3 +79,29 @@
   --sh-keyword: var(--primary);
   --sh-comment: var(--muted-foreground);
 }
+
+/*
+ * Stronger borders than the design system's, so the panel's regions, cards
+ * and controls stay distinct in both themes. Inputs reach 3:1 against the
+ * panel (WCAG non-text contrast); dividers and outlines stay quieter. The
+ * palette has no step between 500 and 600 that reaches 3:1, so inputs mix one.
+ */
+[data-ayme-inspector-root] {
+  --border: var(--color-neutral-500);
+  --sidebar-border: var(--color-neutral-500);
+  --input: color-mix(
+    in oklab,
+    var(--color-neutral-500),
+    var(--color-neutral-600) 65%
+  );
+}
+
+[data-ayme-inspector-root].dark {
+  --border: var(--color-neutral-700);
+  --sidebar-border: var(--color-neutral-700);
+  --input: color-mix(
+    in oklab,
+    var(--color-neutral-700),
+    var(--color-neutral-600) 60%
+  );
+}
