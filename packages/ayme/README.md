@@ -60,6 +60,40 @@ await ayme.tools.run("peek.cart", {}); // { name: "cart", instances: [{ values: 
 
 `read` may be async. Pass an id as the third argument for one instance per id, such as one per mounted component; without one, a later call replaces the earlier one. The returned function removes the instance. Peeks do nothing unless the session has `agentConnection` or `inspector` on, and WebMCP never publishes them. The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek) has the details.
 
+## Peek at server state
+
+Your app's own Node processes, such as its dev server or an Express backend, can offer Peeks too. Start Ayme in the server's entry point with the same `createAyme` and `start()`. In Node, `start()` needs no page: it pairs the process with the agent's Ayme MCP server as an App Process, beside the tab, and its Peek Tools are named `peek.node.<name>`, so a Peek the browser and the server both add under one name gives two tools. Install `@ayme-dev/mcp` beside `@ayme-dev/ayme` there too.
+
+An Express backend, in `server/ayme.ts`, imported from the server's entry point:
+
+```ts
+import { createAyme } from "@ayme-dev/ayme";
+
+import { sessions } from "./sessions";
+
+export const ayme = createAyme({
+  agentConnection: process.env.NODE_ENV !== "production",
+});
+ayme.start();
+
+ayme.peek(() => ({ active: sessions.size }), "sessions"); // peek.node.sessions
+```
+
+Next.js, in `instrumentation.ts`, which runs once when the server starts:
+
+```ts
+export async function register() {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  if (process.env.NODE_ENV === "production") return;
+  const { createAyme } = await import("@ayme-dev/ayme");
+  const ayme = createAyme({ agentConnection: true });
+  ayme.start();
+  ayme.peek(async () => ({ users: await db.user.count() }), "users");
+}
+```
+
+The process finds the agent's server the way a tab does: it pairs only when exactly one Ayme MCP server answers on the ports from 9350 to 9365. While unpaired it looks again every few seconds, and again when its server goes away, so a dev server started before the agent pairs once the agent is up. With several servers running, name one: `agentConnection: { link }` takes a connect link from the agent's `ayme_connect`, and `agentConnection: { port }` looks on one port only, as for `ayme mcp --port`. Read these from your own environment if you need them; Ayme reads none. Component Peeks register only after mount in the browser, so server rendering adds none to the process. The [`@ayme-dev/mcp` README](https://github.com/ayme-labs/ayme/blob/main/packages/mcp/README.md#app-processes) covers the pairing and what happens when two App Processes offer one name.
+
 ## Documentation
 
 - [Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md): marking models and actions, tool names, children and collections.

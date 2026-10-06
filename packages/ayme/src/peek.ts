@@ -89,9 +89,15 @@ export function isPeekTool(tool: object): boolean {
   return [...registry.peeks.values()].some((peek) => peek.tool === tool);
 }
 
-/** Package-internal: the Peek Tool name for a Peek name. */
+/**
+ * Package-internal: the Peek Tool name for a Peek name: `peek.<name>` in the
+ * browser, and `peek.node.<name>` in a Node process of the app (an App
+ * Process), so the agent tells the two sides apart and a Peek both
+ * register under one name gives two tools.
+ */
 export function peekToolName(name: string) {
-  return `peek.${name.replace(/[^A-Za-z0-9_.-]/g, "_")}`;
+  const side = typeof window === "undefined" ? "peek.node." : "peek.";
+  return side + name.replace(/[^A-Za-z0-9_.-]/g, "_");
 }
 
 function peekNamed(name: string): Peek {

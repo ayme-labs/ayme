@@ -139,6 +139,14 @@ export function listLiveTools(options: {
 }
 
 /**
+ * Package-internal: the Peek Tools alone, the live tools of a Node process
+ * of the app, which has no page.
+ */
+export function listPeekToolInfo(): readonly PublishedToolInfo[] {
+  return toInfo(listPeekTools().map((tool) => ({ tool, group: "peek" })));
+}
+
+/**
  * The refs each live single-element tool can take in `capture` (a look at the current
  * page when absent), by tool name, in tree order: the same closed set the Goal
  * Loop offers for that tool's ref. Pass the look the Inspector shows,

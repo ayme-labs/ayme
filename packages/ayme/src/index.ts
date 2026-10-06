@@ -5,6 +5,7 @@ export type { CreatePageOptions } from "./browserPage";
 export { createAyme } from "./runtime";
 export type {
   Ayme,
+  AgentConnectionOptions,
   AymeOptions,
   AymePage,
   AymePom,
