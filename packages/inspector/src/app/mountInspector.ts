@@ -104,7 +104,6 @@ let mounted: MountedInspector | undefined;
  * The first of overlapping mounts decides `demo` and `dogfood`.
  */
 export function mountInspector(options: InspectorOptions = {}) {
-  const { dogfood = false } = options;
   if (!mounted) {
     const disposeInstrumentation = installInspectorInstrumentation(options);
     const highlightStyle = document.createElement("style");
@@ -119,8 +118,10 @@ export function mountInspector(options: InspectorOptions = {}) {
     // Closed, so the host page's locators and page-state capture never match
     // the Inspector's own text. Tests reach the root through the hook. Open
     // when dogfooding, and marked so the runtime's page state keeps it.
-    if (dogfood) host.setAttribute(INSPECTOR_DOGFOOD_ATTRIBUTE, "");
-    const shadowRoot = host.attachShadow({ mode: dogfood ? "open" : "closed" });
+    if (options.dogfood) host.setAttribute(INSPECTOR_DOGFOOD_ATTRIBUTE, "");
+    const shadowRoot = host.attachShadow({
+      mode: options.dogfood ? "open" : "closed",
+    });
     exposeInspectorShadowRoot(host, shadowRoot);
     document.body.append(host);
     const unmountUi = renderInspector(shadowRoot);

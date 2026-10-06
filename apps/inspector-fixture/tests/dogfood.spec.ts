@@ -58,9 +58,9 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
 
 test("the page state an agent reads includes the panel", async ({
   page,
-  opened,
+  inspector,
 }) => {
-  void opened;
+  await expect(inspector.panel).toBeVisible();
   const { structure } = (await new AgentView(page).call("snapshot", {})) as {
     structure: string;
   };

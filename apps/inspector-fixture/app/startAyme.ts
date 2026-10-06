@@ -52,6 +52,9 @@ function clearTheList() {
   };
 }
 
+const isInspectorStructureTree = (element: Element) =>
+  element.hasAttribute(INSPECTOR_STRUCTURE_TREE_ATTRIBUTE);
+
 /**
  * Mounts the Inspector, then starts the runtime with a Page Object (the
  * ListPage by default), the way the Ayme integrations do. `mount: "after"`
@@ -63,9 +66,6 @@ function clearTheList() {
  * reports its state on <html> so the e2e tests can tell a broken fixture or a
  * runtime that never published from a broken Inspector.
  */
-const isInspectorStructureTree = (element: Element) =>
-  element.hasAttribute(INSPECTOR_STRUCTURE_TREE_ATTRIBUTE);
-
 export function startAyme({
   PageObject = ListPage,
   publish = true,

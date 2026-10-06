@@ -49,7 +49,7 @@ Run every command inside the repository's Devbox shell.
    repository root, so the server matches the page client the fixture uses:
 
    ```sh
-   claude mcp add ayme -- node packages/mcp/dist/cli.mjs mcp
+   claude mcp add ayme -- node "$PWD/packages/mcp/dist/cli.mjs" mcp
    ```
 
    Any other MCP client takes the same command and arguments. Restart the
@@ -63,7 +63,7 @@ Run every command inside the repository's Devbox shell.
 
 5. Drive the panel through its tools and read what comes back:
    - `Inspector.open`, `Inspector.navigator.showLens` (Model, Structure,
-     Tools), `Inspector.navigator.search`, `Inspector.tools.listed`;
+     Tools), `Inspector.navigator.search`, `Inspector.navigator.tools.listed`;
    - `Inspector.tool` opens a run card; `Inspector.detail.toolPage.card.*`
      fills it; the generic `click` on the card's Run button runs the tool;
    - `Inspector.runs.showAll` and a `snapshot` show the Runs timeline with
@@ -87,7 +87,8 @@ Run every command inside the repository's Devbox shell.
 ## What the page does not show
 
 - The Structure lens's own tree stays out of the page state, since it
-  renders that state. Read the lens through its tools instead.
+  renders that state. Read the lens through its tools instead. A ref
+  chooser's tree on a run card is a capture of the page, and stays in.
 - Actions whose parameters the build plugin cannot schema (a `Record`, a rest
   parameter, a `string | boolean` union) are not tools. Use the generic
   Browser Tools on the run card for those.

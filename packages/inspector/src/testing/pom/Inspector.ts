@@ -22,10 +22,9 @@ import { WebMcpStatus } from "./WebMcpStatus";
 @ayme
 export class Inspector {
   /**
-   * The Inspector's themed container inside its shadow root. One per mounted
-   * Inspector. It is not named `root`: it has no size of its own (the panel
-   * and the logo are fixed), and a Page Object Root must be visible for its
-   * tools to be live when a dogfooding page registers this Page Object.
+   * The Inspector's themed container inside its shadow root. Not `root`: a
+   * Page Object Root must be visible for its tools to be live, and this
+   * element has no size of its own.
    */
   readonly container: Locator;
   /** The expanded panel. */
