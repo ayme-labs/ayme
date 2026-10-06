@@ -13,8 +13,31 @@ export const PageToolSchema = z.object({
 });
 export type PageTool = z.infer<typeof PageToolSchema>;
 
-/** Every tool the page offers right now. The page sends it on every change. */
+/**
+ * Every tool the page or App Process offers right now. It sends the list on
+ * every change.
+ */
 export const PageToolListSchema = z.array(PageToolSchema);
+
+/**
+ * A reported tool the agent does not see, because a connection the server
+ * keeps first offers a tool with the same name: the page, or an App Process
+ * that reported it earlier.
+ */
+export const HiddenToolSchema = z.object({
+  name: z.string().check(z.minLength(1)),
+  offeredBy: z.enum(["page", "process"]),
+});
+export type HiddenTool = z.infer<typeof HiddenToolSchema>;
+
+/**
+ * The server's answer to a tool report: the reported tools the agent does
+ * not see. Only an App Process's report gets them; a page's has none.
+ */
+export const ToolReportAnswerSchema = z.object({
+  hidden: z.optional(z.array(HiddenToolSchema)),
+});
+export type ToolReportAnswer = z.infer<typeof ToolReportAnswerSchema>;
 
 /** The server asks the page to run one of its tools. */
 export const ToolCallSchema = z.object({
@@ -50,9 +73,23 @@ export const PageHelloSchema = z.object({
 export type PageHello = z.infer<typeof PageHelloSchema>;
 
 /**
- * The server's answer to the page's hello. A page that paired without a
- * token, by auto-pairing, gets the server's token, so the tab keeps and
- * reconnects with the full pairing, as a connect link gives it.
+ * An App Process introduces itself when its channel opens: the id it keeps
+ * for this connection across reconnects. It has no URL and never reports a
+ * navigation.
+ */
+export const ProcessHelloSchema = z.object({
+  process: z.string().check(z.minLength(1)),
+});
+export type ProcessHello = z.infer<typeof ProcessHelloSchema>;
+
+/** What opens a channel: a page's hello or an App Process's. */
+export const HelloSchema = z.union([PageHelloSchema, ProcessHelloSchema]);
+export type Hello = z.infer<typeof HelloSchema>;
+
+/**
+ * The server's answer to a hello. A page or App Process that paired without
+ * a token, by auto-pairing, gets the server's token, so it reconnects with
+ * the full pairing, as a connect link gives it.
  */
 export const PageWelcomeSchema = z.object({
   token: z.optional(z.string().check(z.minLength(1))),

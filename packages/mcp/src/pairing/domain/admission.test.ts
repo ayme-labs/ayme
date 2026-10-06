@@ -24,9 +24,8 @@ it("pairs and probes without a token only from a page on localhost or 127.0.0.1"
   }
 });
 
-it("refuses a tokenless connection from any other origin", () => {
+it("refuses a tokenless connection from any other origin, or an empty one", () => {
   for (const origin of [
-    undefined,
     "",
     "null",
     "https://example.com",
@@ -39,6 +38,17 @@ it("refuses a tokenless connection from any other origin", () => {
     expect(admit({ path: "/", origin, token }), origin).toBe("refused");
     expect(admit({ path: "/probe", origin, token }), origin).toBe("refused");
   }
+});
+
+it("pairs and probes a local process, which sends no Origin, without a token", () => {
+  expect(admit({ path: "/", origin: undefined, token })).toBe("tokenless");
+  expect(admit({ path: "/probe", origin: undefined, token })).toBe("probe");
+});
+
+it("tells a local process that its token is not this server's", () => {
+  expect(admit({ path: "/f00e", origin: undefined, token })).toBe(
+    "unknownPairing"
+  );
 });
 
 it("tells a page on localhost that its token is not this server's", () => {

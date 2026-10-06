@@ -6,16 +6,17 @@ import {
 import type { ServerToolFactory } from "./serverTool";
 
 /**
- * `ayme_list_tools`: the paired page's current tools, for agents that read
- * the MCP tool list once and never see the page's tools arrive.
+ * `ayme_list_tools`: the current tools of the paired page and App
+ * Processes, for agents that read the MCP tool list once and never see the
+ * page's tools arrive.
  */
 export const listToolsTool: ServerToolFactory = ({ connection }) => ({
   name: "ayme_list_tools",
   description:
-    "Lists the connected page's current tools with their name, description and input schema. Run any of them with ayme_call. Use it when the page's tools are missing from your tool list.",
+    "Lists the current tools of the connected page and of the app's own processes (App Processes), with their name, description and input schema. Run any of them with ayme_call. Use it when these tools are missing from your tool list.",
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   async call() {
-    if (!connection.paired) return notConnectedResult();
+    if (!connection.connected) return notConnectedResult();
     return textResult(JSON.stringify(connection.tools.map(mcpPageTool)));
   },
 });
