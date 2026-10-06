@@ -3,10 +3,28 @@ import { createSSRApp, defineComponent, h } from "vue";
 import { renderToString } from "@vue/server-renderer";
 import { describe, expect, it, vi } from "vitest";
 import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
+import type { Ayme } from "@ayme-dev/ayme";
+
+const peekCalls = vi.hoisted(() => [] as string[]);
+vi.mock("@ayme-dev/ayme", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@ayme-dev/ayme")>();
+  return {
+    ...original,
+    createAyme: (...args: Parameters<typeof original.createAyme>) => {
+      const ayme: Ayme = original.createAyme(...args);
+      ayme.peek = (_read, name) => {
+        peekCalls.push(name);
+        return () => {};
+      };
+      return ayme;
+    },
+  };
+});
 import {
   AymeProvider,
   useAyme,
   usePageObject,
+  usePeek,
   type UseAymeOptions,
 } from "./index";
 
@@ -77,5 +95,28 @@ describe.each([false, true])(
         expect(listRegisteredPoms()).toHaveLength(0);
       }
     );
+  }
+);
+
+it.each(["provider", "standalone"])(
+  "adds no Peek instance while server rendering with a %s owner",
+  async (kind) => {
+    const Counter = defineComponent({
+      setup() {
+        usePeek({ count: 0 }, "counter");
+        return () => h("output", "0");
+      },
+    });
+    const Root = defineComponent({
+      setup() {
+        if (kind === "standalone") useAyme();
+        return kind === "provider"
+          ? () => h(AymeProvider, null, { default: () => h(Counter) })
+          : () => h(Counter);
+      },
+    });
+
+    expect(await renderToString(createSSRApp(Root))).toContain("<output>0");
+    expect(peekCalls).toEqual([]);
   }
 );
