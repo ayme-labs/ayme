@@ -1,4 +1,4 @@
-import { getContext, onDestroy, setContext } from "svelte";
+import { getContext, onDestroy, onMount, setContext } from "svelte";
 import { readable, type Readable } from "svelte/store";
 import {
   createAyme,
@@ -94,4 +94,23 @@ export function usePageObject<T extends object>(
   const { ayme } = runtime;
   onDestroy(() => ayme.pom.unregister(model));
   return ayme.pom.register(model);
+}
+
+let instances = 0;
+
+/**
+ * Call during component initialisation, beneath a `useAyme` owner. After
+ * mount, adds this component's instance of the Peek `name` through
+ * `ayme.peek` and removes it when the component is destroyed. The agent reads
+ * the values `read` returns when it asks. `id` defaults to one per mounted
+ * component. On the server, adds nothing.
+ */
+export function peek(read: () => unknown, name: string, id?: string): void {
+  const runtime = getContext<UseAymeResult | undefined>(runtimeKey);
+  if (!runtime)
+    throw new Error(
+      "peek requires useAyme() in an ancestor component, such as the root +layout.svelte."
+    );
+  const { ayme } = runtime;
+  onMount(() => ayme.peek(read, name, id ?? `svelte-${(instances += 1)}`));
 }
