@@ -44,7 +44,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 340
     steps:
+      # The Formbricks submodule is public, so no step needs the checkout token.
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup
 
       - name: Record the machine
