@@ -16,6 +16,7 @@
 Skills for agents working on this repository live in `.agents/skills/` (agent-agnostic; `.claude/skills` is a symlink to it). They are separate from `skills/`, which holds the skills ayme ships to consumers.
 
 - `typesafe-ai`: copied from [typesafe-ai/skills](https://github.com/typesafe-ai/skills) at tag v0.5.7 (`skills/typesafe-ai/`). To refresh it, copy `SKILL.md` and `LICENSE` from a newer tag and update the tag here.
+- `inspector-dogfood`: verify a change to the Inspector by driving the Inspector itself through `ayme mcp`, on the inspector-fixture app's dogfood page. Use it for any change under `packages/inspector` before showing the change to the user.
 
 ### Issue tracker
 
