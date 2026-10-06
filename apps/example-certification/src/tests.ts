@@ -502,10 +502,13 @@ function loadedScripts(page: Page) {
 export function agentConnectionTests({
   enabled,
   snapshotText,
+  peek = false,
 }: {
   /** Whether the run's app turns the option on; read inside each test. */
   enabled: () => boolean;
   snapshotText: string;
+  /** Whether the counter adds the Peek `counter` with its `{ count }`. */
+  peek?: boolean;
 }) {
   // `exampleTest`, not `test`: Angular's development build logs its
   // hydration statistics, which `test` counts as a hydration warning.
@@ -540,6 +543,46 @@ export function agentConnectionTests({
           expect(
             (JSON.parse(text) as { structure: string }).structure
           ).toContain(snapshotText);
+        } finally {
+          await agent.close();
+        }
+      }
+    );
+
+    exampleTest(
+      "lets a coding agent read the counter's Peek while it is mounted",
+      async ({ page, baseURL }) => {
+        exampleTest.skip(!peek, "The counter adds no Peek here.");
+        exampleTest.skip(
+          !enabled(),
+          "The app turns the Agent Connection off here."
+        );
+        const agent = await startAgent("--port", String(await freePort()));
+        try {
+          await connectPage(agent, page, new URL("/", baseURL).href, {
+            timeout: 45_000,
+          });
+          const readCounter = async () => {
+            const { text, isError } = await agent.call("peek.counter");
+            expect(isError, text).toBe(false);
+            return JSON.parse(text) as unknown;
+          };
+          const counter = (count: number) => ({
+            name: "counter",
+            instances: [{ id: expect.any(String), values: { count } }],
+          });
+
+          await expect.poll(() => agent.toolNames()).toContain("peek.counter");
+          expect(await readCounter()).toEqual(counter(0));
+
+          await page.getByRole("button", { name: "Increment" }).click();
+          await expect(count(page)).toHaveText("1");
+          expect(await readCounter()).toEqual(counter(1));
+
+          await page.getByRole("button", { name: "Unmount counter" }).click();
+          await expect
+            .poll(() => agent.toolNames())
+            .not.toContain("peek.counter");
         } finally {
           await agent.close();
         }

@@ -26,6 +26,23 @@ createRoot(document.getElementById("root")!).render(
 );
 ```
 
+## Peek at component state
+
+While a coding agent or the Inspector is connected, `usePeek(values, name, id?)` lets the agent read a component's state through the Peek Tool `peek.<name>`:
+
+```tsx
+import { useState } from "react";
+import { usePeek } from "@ayme-dev/react";
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  usePeek({ count }, "counter");
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+}
+```
+
+Each mounted component is one instance of the Peek, under the `id` you pass or one from `useId`. The agent reads `values` from the component's latest committed render. The instance is added after mount, so server rendering adds none, and it is removed on unmount; a StrictMode remount keeps the tool. `usePeek` calls [`ayme.peek`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek), so it does nothing unless the provider has `agentConnection` or `inspector` on.
+
 ## Documentation
 
 - [Quickstart: React](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/quickstart-react.md): from an empty app to your first Page Object Tool.

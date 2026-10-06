@@ -13,6 +13,7 @@ import {
   Owner,
   OwnerAndPageObject,
   PageObjectUser,
+  PeekUser,
   Status,
 } from "./fixtures/components.js";
 import type { UseAymeOptions, UseAymeResult } from "./index";
@@ -94,5 +95,26 @@ it("lets the owner use a Page Object in its own component", () => {
 it("requires an owner for a Page Object", () => {
   expect(() => PageObjectUser.render({ model: ServerModel }).html).toThrow(
     "usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte."
+  );
+});
+
+it("adds no Peek instance during server rendering", () => {
+  const peeks: unknown[] = [];
+  void Owner.render({
+    options: { agentConnection: true },
+    onInit: ({ ayme }) => {
+      vi.spyOn(ayme, "peek").mockImplementation((...args) => {
+        peeks.push(args);
+        return () => {};
+      });
+    },
+    child: PeekUser,
+  }).html;
+  expect(peeks).toEqual([]);
+});
+
+it("requires an owner for a Peek", () => {
+  expect(() => PeekUser.render({}).html).toThrow(
+    "peek requires useAyme() in an ancestor component, such as the root +layout.svelte."
   );
 });
