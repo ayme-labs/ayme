@@ -17,7 +17,7 @@ Status: done (2026-10-06, evening). All three agents work through one ACP driver
 |---|---|---|---|
 | Model asked for | sonnet = Sonnet 5.5, selected | non-max Opus 4.6: `claude-opus-4-6[thinking=true,context=200k,effort=high]`, selected | two Luna models offered, gpt-6-luna and gpt-5.6-luna; a plain "luna" is refused; gpt-6-luna chosen |
 | Session close | yes | no, the driver kills the process | yes |
-| Auth | session/new works; the Evals token is passed at run time | logged in | ChatGPT Plus login reported |
+| Auth | session/new works; the Evals token is passed at run time | logged in | the user's Codex login login reported |
 
 Risk accepted by Abel for Codex: the adapter's bundled Codex 0.159.3 runs against `~/.codex` while the installed Codex is 0.154.0; a newer version can migrate shared state so the older one can't read it. A file-name and size snapshot of `~/.codex` is taken before the run (no secrets read).
 
