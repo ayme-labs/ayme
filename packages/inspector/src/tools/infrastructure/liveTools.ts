@@ -24,15 +24,38 @@ export type LiveTools = Readonly<{
   /**
    * The tools of the App Processes paired beside the page, which the
    * panel runs through the agent's Ayme MCP server: none while no server
-   * is paired.
+   * is paired. An App Process offers Peek tools only, read in Node.
    */
-  appProcess: readonly AppProcessTool[];
+  appProcess: readonly NodePeekTool[];
   /** WebMCP publication; a failure carries its error in `message`. */
   publication: AymeWebMcpPublicationStatus;
 }>;
 
+/** An App Process's tool, a Peek tool whose Peek lives in Node. */
+export type NodePeekTool = ToolInfo & { group: "peek"; side: "node" };
+
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
+
+// The App Processes' list as last read, and its tools as Node Peek tools,
+// so the same list gives the same array.
+let processTools: readonly AppProcessTool[] = NO_PROCESS_TOOLS;
+let nodePeekTools: readonly NodePeekTool[] = Object.freeze([]);
+
+function asNodePeekTools(tools: readonly AppProcessTool[]) {
+  if (tools !== processTools) {
+    processTools = tools;
+    nodePeekTools = Object.freeze(
+      tools.map((tool) => ({
+        ...tool,
+        inputSchema: tool.inputSchema as ToolInfo["inputSchema"],
+        group: "peek" as const,
+        side: "node" as const,
+      }))
+    );
+  }
+  return nodePeekTools;
+}
 const NO_SESSION: AymeWebMcpPublicationStatus = Object.freeze({
   state: "disposed",
   message: "No Ayme runtime session has started.",
@@ -46,7 +69,9 @@ let snapshot: LiveTools | undefined;
 function readLiveTools(): LiveTools {
   const ayme = getStartedAyme();
   const live = ayme?.tools.list() ?? NO_TOOLS;
-  const appProcess = ayme ? getAppProcessTools(ayme).list() : NO_PROCESS_TOOLS;
+  const appProcess = asNodePeekTools(
+    ayme ? getAppProcessTools(ayme).list() : NO_PROCESS_TOOLS
+  );
   const publication = ayme?.webMCP.publicationStatus ?? NO_SESSION;
   if (
     snapshot?.live !== live ||

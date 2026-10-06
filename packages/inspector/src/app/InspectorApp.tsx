@@ -51,15 +51,7 @@ export function InspectorApp() {
   const tools = useMemo(
     () =>
       attachToolModels(
-        [
-          ...live,
-          // An App Process offers Peek tools only, read in a Node process.
-          ...appProcess.map((tool) => ({
-            ...tool,
-            group: "peek" as const,
-            side: "node" as const,
-          })),
-        ],
+        [...live, ...appProcess],
         runtime.pageModel.models.map((model) => ({
           className: model.className,
           tools: model.actions.flatMap((action) =>

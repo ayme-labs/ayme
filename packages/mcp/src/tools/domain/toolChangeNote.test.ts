@@ -4,7 +4,7 @@ import { toolChangeNote } from "./toolChangeNote";
 
 const state = (names: string[], hidden: string[] = []) => ({
   names,
-  hidden: hidden.map((name) => ({ name, offeredBy: "process" as const })),
+  hidden,
 });
 
 it("names the tools that appeared and disappeared", () => {
@@ -47,15 +47,4 @@ it("says which App Process tool is newly hidden, and why", () => {
       state(["peek.node.jobs"], ["peek.node.jobs"])
     )
   ).toBeUndefined();
-});
-
-it("says when the page keeps the name of an App Process's tool", () => {
-  expect(
-    toolChangeNote(state(["snapshot"]), {
-      names: ["snapshot"],
-      hidden: [{ name: "snapshot", offeredBy: "page" }],
-    })
-  ).toContain(
-    "Hidden: snapshot, because the page offers a tool with the same name; you reach the page's."
-  );
 });

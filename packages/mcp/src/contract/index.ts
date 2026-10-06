@@ -1,5 +1,6 @@
 export {
   DISCONNECTED_CLOSE_CODE,
+  HIDDEN_BECAUSE,
   HelloSchema,
   HiddenToolListSchema,
   PageLeavingSchema,
@@ -13,7 +14,6 @@ export {
 } from "./messages";
 export type {
   Hello,
-  HiddenTool,
   PageHello,
   PageLeaving,
   PageTool,

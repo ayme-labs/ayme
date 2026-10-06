@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Hello, HiddenTool } from "../contract";
+import type { Hello } from "../contract";
 
 /** A channel the App Process opened, which the test drives. */
 type FakeChannel = {
@@ -12,7 +12,7 @@ type FakeChannel = {
   onClose?(): void;
   closed: boolean;
   /** Sends the App Process the tools the server hides, as the server does. */
-  hide(hidden: HiddenTool[]): void;
+  hide(hidden: string[]): void;
 };
 
 const channels = vi.hoisted(() => [] as FakeChannel[]);
@@ -29,7 +29,7 @@ const scans = vi.hoisted(
 vi.mock("../connection", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../connection")>()),
   openPageChannel: (url: () => string, callbacks: FakeChannel) => {
-    const hiddenListeners = new Set<(hidden: HiddenTool[]) => void>();
+    const hiddenListeners = new Set<(hidden: string[]) => void>();
     const channel: FakeChannel = {
       ...callbacks,
       url,
@@ -43,7 +43,7 @@ vi.mock("../connection", async (importOriginal) => ({
       publishTools: async () => {},
       answerCalls: () => () => {},
       reportLeaving: async () => {},
-      followHiddenTools(listener: (hidden: HiddenTool[]) => void) {
+      followHiddenTools(listener: (hidden: string[]) => void) {
         hiddenListeners.add(listener);
         return () => hiddenListeners.delete(listener);
       },
@@ -80,9 +80,12 @@ const tools = {
 };
 
 let stops: (() => void)[];
-const start = (options?: Parameters<typeof startAgentConnection>[1]) => {
+/** Lets the App Process's next lookup or pairing start. */
+const settle = () => vi.advanceTimersByTimeAsync(0);
+const start = async (options?: Parameters<typeof startAgentConnection>[1]) => {
   const connection = startAgentConnection({ tools }, options);
   stops.push(() => connection.dispose());
+  await settle();
   return connection;
 };
 const openChannels = () => channels.filter(({ closed }) => !closed);
@@ -104,7 +107,7 @@ afterEach(() => {
 
 describe("startAgentConnection in an App Process", () => {
   it("pairs with the one server that answers on the port range, without a token, saying hello as a process", async () => {
-    start();
+    await start();
 
     expect(scans.map(({ ports }) => ports)).toEqual([
       { first: 9350, last: 9365 },
@@ -117,7 +120,7 @@ describe("startAgentConnection in an App Process", () => {
   });
 
   it("stays unpaired while no server or several answer, and scans again every few seconds until one does", async () => {
-    start();
+    await start();
     await scans[0]!.answer([]);
     await vi.advanceTimersByTimeAsync(SCAN_INTERVAL_MS - 1);
     expect(scans).toHaveLength(1);
@@ -133,16 +136,16 @@ describe("startAgentConnection in an App Process", () => {
     ]);
   });
 
-  it("scans only the port it is given", () => {
-    start({ port: 41234 });
+  it("scans only the port it is given", async () => {
+    await start({ port: 41234 });
 
     expect(scans.map(({ ports }) => ports)).toEqual([
       { first: 41234, last: 41234 },
     ]);
   });
 
-  it("pairs with the server a connect link names, without scanning", () => {
-    start({ link: `http://localhost:5173/#ayme=${SERVER}/f00d` });
+  it("pairs with the server a connect link names, without scanning", async () => {
+    await start({ link: `http://localhost:5173/#ayme=${SERVER}/f00d` });
 
     expect(scans).toEqual([]);
     expect(openChannels().map((channel) => channel.url())).toEqual([
@@ -157,10 +160,12 @@ describe("startAgentConnection in an App Process", () => {
   });
 
   it("scans again after its server goes away, and pairs with the one it finds", async () => {
-    start();
+    await start();
     await scans[0]!.answer([SERVER]);
 
     channels[0]!.onClose!();
+
+    await settle();
     await scans[1]!.answer([OTHER]);
 
     expect(channels[0]!.closed).toBe(true);
@@ -170,11 +175,13 @@ describe("startAgentConnection in an App Process", () => {
   });
 
   it("reconnects to its server with the token the server handed it, as the same process, even beside another server", async () => {
-    start();
+    await start();
     await scans[0]!.answer([SERVER]);
     channels[0]!.onWelcome({ token: "handed-over" });
 
     channels[0]!.onClose!();
+
+    await settle();
     await scans[1]!.answer([SERVER, OTHER]);
 
     expect(openChannels().map((channel) => channel.url())).toEqual([
@@ -184,13 +191,16 @@ describe("startAgentConnection in an App Process", () => {
   });
 
   it("forgets the token and scans again when its server's port has another server, which does not know it", async () => {
-    start();
+    await start();
     await scans[0]!.answer([SERVER]);
     channels[0]!.onWelcome({ token: "handed-over" });
     channels[0]!.onClose!();
+    await settle();
     await scans[1]!.answer([SERVER]);
 
     channels[1]!.onUnknownPairing();
+
+    await settle();
     await scans[2]!.answer([SERVER]);
 
     expect(openChannels().map((channel) => channel.url())).toEqual([
@@ -200,8 +210,8 @@ describe("startAgentConnection in an App Process", () => {
 
   it("logs each tool the server hides in the process's terminal whenever it becomes hidden, once while it stays hidden", async () => {
     const warn = vi.mocked(console.warn);
-    const jobs = { name: "peek.node.jobs", offeredBy: "process" } as const;
-    start();
+    const jobs = "peek.node.jobs";
+    await start();
     await scans[0]!.answer([SERVER]);
 
     channels[0]!.hide([]);
@@ -220,7 +230,7 @@ describe("startAgentConnection in an App Process", () => {
     vi.stubGlobal("WebSocket", undefined);
     const { WebSocket } = await import("ws");
     try {
-      start();
+      await start();
       await vi.waitFor(() => expect(scans).toHaveLength(1));
       await scans[0]!.answer([SERVER]);
     } finally {
@@ -232,7 +242,7 @@ describe("startAgentConnection in an App Process", () => {
   });
 
   it("stops scanning and closes its channel once disposed", async () => {
-    const connection = start();
+    const connection = await start();
     await scans[0]!.answer([SERVER]);
 
     connection.dispose();

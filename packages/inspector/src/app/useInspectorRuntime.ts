@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import type { JsonSchema } from "@ayme-dev/ayme";
-
 import {
   listRunnableTools,
   pickPromptOf,
@@ -88,11 +86,7 @@ export function useInspectorRuntime({
     () =>
       listRunnableTools(registeredPoms, activeTools, [
         ...tools.live,
-        ...tools.appProcess.map((tool) => ({
-          ...tool,
-          inputSchema: tool.inputSchema as JsonSchema,
-          group: "peek" as const,
-        })),
+        ...tools.appProcess,
       ]),
     [registeredPoms, activeTools, tools.live, tools.appProcess]
   );

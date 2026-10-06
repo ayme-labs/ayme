@@ -1,5 +1,4 @@
 import type {
-  HiddenTool,
   PageHello,
   PageLeaving,
   PageTool,
@@ -7,7 +6,6 @@ import type {
   ToolCall,
   ToolCallOutcome,
 } from "../../contract";
-import { mergeToolOffers, type ToolOffer } from "../domain/toolOffers";
 import { unansweredCallText, type PageExit } from "../domain/unansweredCall";
 
 /**
@@ -25,20 +23,6 @@ export type ConnectionEvent =
   | { type: "toolsChanged"; tools: readonly PageTool[] };
 
 type Answer = (outcome: ToolCallOutcome) => void;
-
-/** A hidden offer as the agent and the App Process hear of it. */
-function hiddenTool({
-  name,
-  keptBy,
-}: {
-  name: string;
-  keptBy: ToolHolder;
-}): HiddenTool {
-  return {
-    name,
-    offeredBy: keptBy instanceof PageSession ? "page" : "process",
-  };
-}
 
 /** Answers every call in `calls` for a page that left as `exit` says. */
 function answerUnanswered(calls: Map<string, Answer>, exit: PageExit) {
@@ -210,16 +194,16 @@ export class AgentConnection {
    */
   get processTools(): readonly PageTool[] {
     return this.#merged()
-      .shown.filter(({ owner }) => owner instanceof ProcessSession)
+      .shown.filter(({ holder }) => holder instanceof ProcessSession)
       .map(({ tool }) => tool);
   }
 
   /**
-   * The reported tools the agent does not see, because the page or an
+   * The names of the reported tools the agent does not see, because an
    * earlier App Process offers the same name.
    */
-  get hidden(): readonly HiddenTool[] {
-    return this.#merged().hidden.map(hiddenTool);
+  get hidden(): readonly string[] {
+    return this.#merged().hidden.map(({ name }) => name);
   }
 
   /** Whether a page is paired. */
@@ -369,12 +353,12 @@ export class AgentConnection {
   hiddenToolLists(
     session: ProcessSession,
     signal: AbortSignal | undefined
-  ): AsyncGenerator<readonly HiddenTool[]> {
+  ): AsyncGenerator<readonly string[]> {
     return this.#follow(
       () =>
         this.#merged()
-          .hidden.filter(({ owner }) => owner === session)
-          .map(hiddenTool),
+          .hidden.filter(({ holder }) => holder === session)
+          .map(({ name }) => name),
       signal
     );
   }
@@ -461,16 +445,30 @@ export class AgentConnection {
     this.#emit({ type: "processUnpaired" });
   }
 
+  /**
+   * The tools the agent sees, each with the connection a call to it goes
+   * to, and the offers it does not see. Each name goes to the first
+   * connection that offers it: the page, then the App Processes in the
+   * order they connected.
+   */
   #merged() {
-    const offers: ToolOffer<ToolHolder>[] = [];
-    if (this.#page) offers.push({ owner: this.#page, tools: this.#page.tools });
-    for (const process of this.#processes.values())
-      offers.push({ owner: process, tools: process.tools });
-    return mergeToolOffers(offers);
+    const shown: { tool: PageTool; holder: ToolHolder }[] = [];
+    const hidden: { name: string; holder: ToolHolder }[] = [];
+    const taken = new Set<string>();
+    const holders = [this.#page, ...this.#processes.values()];
+    for (const holder of holders)
+      for (const tool of holder?.tools ?? [])
+        if (taken.has(tool.name))
+          hidden.push({ name: tool.name, holder: holder! });
+        else {
+          taken.add(tool.name);
+          shown.push({ tool, holder: holder! });
+        }
+    return { shown, hidden };
   }
 
   #holderOf(name: string): ToolHolder | undefined {
-    return this.#merged().shown.find(({ tool }) => tool.name === name)?.owner;
+    return this.#merged().shown.find(({ tool }) => tool.name === name)?.holder;
   }
 
   /** Another tab connected: answers `page`'s calls and disconnects it. */

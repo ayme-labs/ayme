@@ -1,5 +1,4 @@
 import type {
-  HiddenTool,
   PageLeaving,
   PageTool,
   ToolCall,
@@ -36,13 +35,12 @@ export type PageChannel = {
     listener: (tools: readonly PageTool[]) => void
   ): () => void;
   /**
-   * Calls `listener` with the App Process's tools the agent does not see,
+   * Calls `listener` with the names of the App Process's tools the agent
+   * does not see,
    * which the server sends at once and after every change. An App Process
    * only; returns what stops it.
    */
-  followHiddenTools(
-    listener: (hidden: readonly HiddenTool[]) => void
-  ): () => void;
+  followHiddenTools(listener: (hidden: readonly string[]) => void): () => void;
   /**
    * Asks the server to run an App Process's tool, and resolves with that
    * process's outcome. A page only.

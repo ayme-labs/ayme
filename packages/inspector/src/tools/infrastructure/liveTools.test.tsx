@@ -108,7 +108,7 @@ it("gives the App Processes' tools beside the page's, and follows them", () => {
 
   expect(seen.at(-1)).toMatchObject({
     live: [getPageContext],
-    appProcess: [jobsPeek],
+    appProcess: [{ ...jobsPeek, group: "peek", side: "node" }],
   });
 });
 

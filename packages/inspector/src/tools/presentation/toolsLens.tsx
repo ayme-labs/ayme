@@ -15,8 +15,6 @@ import {
   peekSideLabels,
   toolKindLabels,
   type LiveTool,
-  type PeekSide,
-  type ToolGroupListing,
 } from "../domain/toolGroups";
 
 /**
@@ -51,7 +49,7 @@ export function toolsLens({
     label: "Tools",
     tree: (
       <div className="flex flex-col">
-        {listed.map(({ group, label, tools, sections }) => (
+        {listed.map(({ group, label, tools }) => (
           <section key={group} aria-labelledby={`tool-group-${group}`}>
             <h3
               id={`tool-group-${group}`}
@@ -60,38 +58,49 @@ export function toolsLens({
               {label} · {tools.length}
             </h3>
             <ul aria-label={label}>
-              {rowsOf({ tools, sections }).map(({ tool, side, separated }) => (
-                <li key={tool.name} className="relative">
-                  {separated && (
-                    <Separator
-                      data-peek-separator
-                      className="mx-2 my-1 w-auto!"
-                    />
-                  )}
-                  <NavItem
-                    selected={tool.name === selectedTool}
-                    onClick={() => onSelect({ kind: "tool", name: tool.name })}
-                    className={side && "pr-20"}
-                  >
-                    <ZapIcon
-                      className="size-3.5 flex-none text-muted-foreground"
-                      aria-hidden
-                    />
-                    <span className="truncate font-mono">{tool.name}</span>
-                  </NavItem>
-                  {side && (
-                    // Beside the row's button, so the tool's name stays the
-                    // button's name.
-                    <Badge
-                      variant={side === "node" ? "default" : "secondary"}
-                      data-peek-side
-                      className="pointer-events-none absolute right-2 bottom-1.5"
+              {tools.map((tool, index) => {
+                const side =
+                  tool.group === "peek" ? (tool.side ?? "browser") : undefined;
+                // The App Processes' Peek tools come after the page's.
+                const separated =
+                  side === "node" &&
+                  index > 0 &&
+                  tools[index - 1]!.side !== "node";
+                return (
+                  <li key={tool.name} className="relative">
+                    {separated && (
+                      <Separator
+                        data-peek-separator
+                        className="mx-2 my-1 w-auto!"
+                      />
+                    )}
+                    <NavItem
+                      selected={tool.name === selectedTool}
+                      onClick={() =>
+                        onSelect({ kind: "tool", name: tool.name })
+                      }
+                      className={side && "pr-20"}
                     >
-                      {peekSideLabels[side]}
-                    </Badge>
-                  )}
-                </li>
-              ))}
+                      <ZapIcon
+                        className="size-3.5 flex-none text-muted-foreground"
+                        aria-hidden
+                      />
+                      <span className="truncate font-mono">{tool.name}</span>
+                    </NavItem>
+                    {side && (
+                      // Beside the row's button, so the tool's name stays the
+                      // button's name.
+                      <Badge
+                        variant={side === "node" ? "default" : "secondary"}
+                        data-peek-side
+                        className="pointer-events-none absolute right-2 bottom-1.5"
+                      >
+                        {peekSideLabels[side]}
+                      </Badge>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
         ))}
@@ -129,28 +138,6 @@ export function toolsLens({
       );
     },
   };
-}
-
-/**
- * A group's rows: its tools, and in the Peek tools group each one's side,
- * the first row of every section after the first set apart.
- */
-function rowsOf({
-  tools,
-  sections,
-}: Pick<ToolGroupListing, "tools" | "sections">): {
-  tool: LiveTool;
-  side?: PeekSide;
-  separated?: boolean;
-}[] {
-  if (!sections) return tools.map((tool) => ({ tool }));
-  return sections.flatMap(({ side, tools }, section) =>
-    tools.map((tool, index) => ({
-      tool,
-      side,
-      separated: section > 0 && index === 0,
-    }))
-  );
 }
 
 /** The model's definition, or none when the runtime can't give one. */

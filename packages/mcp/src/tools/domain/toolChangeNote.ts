@@ -1,19 +1,13 @@
-import type { HiddenTool } from "../../contract";
+import { HIDDEN_BECAUSE } from "../../contract";
 
 /**
- * The tools the agent sees, by name, and the reported tools it does not
- * see because another connection keeps their names.
+ * The tools the agent sees, by name, and the names of the reported tools
+ * it does not see because an earlier App Process keeps them.
  */
 export type ToolState = {
   names: readonly string[];
-  hidden: readonly HiddenTool[];
+  hidden: readonly string[];
 };
-
-const HIDDEN_BECAUSE = {
-  page: "because the page offers a tool with the same name; you reach the page's",
-  process:
-    "because another App Process offers a tool with the same name; you reach the first App Process's",
-} as const;
 
 /**
  * The note on a tool result that tells the agent which tools of the page
@@ -31,11 +25,8 @@ export function toolChangeNote(
   const disappeared = previous.names.filter(
     (name) => !current.names.includes(name)
   );
-  const wasHidden = new Set(
-    previous.hidden.map(({ name, offeredBy }) => `${offeredBy} ${name}`)
-  );
   const hidden = current.hidden.filter(
-    ({ name, offeredBy }) => !wasHidden.has(`${offeredBy} ${name}`)
+    (name) => !previous.hidden.includes(name)
   );
   if (appeared.length === 0 && disappeared.length === 0 && hidden.length === 0)
     return undefined;
@@ -46,7 +37,8 @@ export function toolChangeNote(
       ? `Disappeared: ${disappeared.join(", ")}.`
       : undefined,
     ...hidden.map(
-      ({ name, offeredBy }) => `Hidden: ${name}, ${HIDDEN_BECAUSE[offeredBy]}.`
+      (name) =>
+        `Hidden: ${name}, because ${HIDDEN_BECAUSE}; you reach the first App Process's.`
     ),
     "ayme_list_tools lists the current tools; ayme_call runs any of them.",
   ]

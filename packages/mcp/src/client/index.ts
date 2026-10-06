@@ -76,7 +76,6 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
       return outcome.result;
     },
   };
-  if (typeof window === "undefined") return { dispose() {}, processTools };
   let stopSources: (() => void)[] = [];
   const startSources = (lookNow = true) => {
     for (const stop of stopSources) stop();

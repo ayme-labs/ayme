@@ -55,50 +55,27 @@ const groupOrder: readonly ToolGroup[] = [
   "agent",
 ];
 
-/** The Peek tools of one side, a section of the Peek tools group. */
-export type PeekSection = {
-  side: PeekSide;
-  label: string;
-  tools: LiveTool[];
-};
-
 /** One group of the Tools lens. */
 export type ToolGroupListing = {
   group: ToolGroup;
   label: string;
   tools: LiveTool[];
-  /**
-   * The Peek tools group's sections: the page's (Browser), then the App
-   * Processes' (Node). A section without tools is left out.
-   */
-  sections?: PeekSection[];
 };
-
-const sideOrder: readonly PeekSide[] = ["browser", "node"];
 
 /**
  * The live tools, grouped in a fixed order and keeping the runtime's order
  * within a group. A group without tools is left out. The Peek tools group
- * lists the page's Peek tools, then the App Processes', in its sections.
+ * lists the page's Peek tools, then the App Processes'.
  */
 export function listTools(tools: readonly LiveTool[]): ToolGroupListing[] {
   return groupOrder
     .map((group): ToolGroupListing => {
       const inGroup = tools.filter((tool) => tool.group === group);
-      const label = toolGroupLabels[group];
-      if (group !== "peek") return { group, label, tools: inGroup };
-      const sections = sideOrder
-        .map((side) => ({
-          side,
-          label: peekSideLabels[side],
-          tools: inGroup.filter((tool) => (tool.side ?? "browser") === side),
-        }))
-        .filter(({ tools }) => tools.length > 0);
+      const onNode = inGroup.filter((tool) => tool.side === "node");
       return {
         group,
-        label,
-        tools: sections.flatMap(({ tools }) => tools),
-        sections,
+        label: toolGroupLabels[group],
+        tools: [...inGroup.filter((tool) => tool.side !== "node"), ...onNode],
       };
     })
     .filter(({ tools }) => tools.length > 0);

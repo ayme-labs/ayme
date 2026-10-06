@@ -20,21 +20,16 @@ export type PageTool = z.infer<typeof PageToolSchema>;
 export const PageToolListSchema = z.array(PageToolSchema);
 
 /**
- * A reported tool the agent does not see, because a connection the server
- * keeps first offers a tool with the same name: the page, or an App Process
- * that reported it earlier.
+ * The names of an App Process's tools the agent does not see, because an
+ * App Process that connected earlier offers a tool with the same name. The
+ * server sends the App Process the list at once and after every change to
+ * it.
  */
-export const HiddenToolSchema = z.object({
-  name: z.string().check(z.minLength(1)),
-  offeredBy: z.enum(["page", "process"]),
-});
-export type HiddenTool = z.infer<typeof HiddenToolSchema>;
+export const HiddenToolListSchema = z.array(z.string().check(z.minLength(1)));
 
-/**
- * The tools of an App Process the agent does not see. The server sends the
- * App Process the list at once and after every change to it.
- */
-export const HiddenToolListSchema = z.array(HiddenToolSchema);
+/** Why the agent does not see a hidden tool, as the agent and the App Process are told. */
+export const HIDDEN_BECAUSE =
+  "another App Process offers a tool with the same name";
 
 /** The server asks the page to run one of its tools. */
 export const ToolCallSchema = z.object({

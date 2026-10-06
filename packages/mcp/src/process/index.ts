@@ -53,16 +53,6 @@ export function startAgentConnection(
   // its own earlier session and keeps its place among the App Processes.
   const id = crypto.randomUUID();
   let disposed = false;
-  // Node has its own WebSocket from version 22; before, the ws package's.
-  // Neither sends an Origin, which is how the server knows a local process.
-  let WebSocketClass = globalThis.WebSocket as typeof WebSocket | undefined;
-  const withWebSocket = (use: (WebSocketClass: typeof WebSocket) => void) => {
-    if (WebSocketClass) return use(WebSocketClass);
-    void import("ws").then(({ WebSocket }) => {
-      WebSocketClass = WebSocket as unknown as typeof globalThis.WebSocket;
-      if (!disposed) use(WebSocketClass);
-    });
-  };
   let open: { close(): void } | undefined;
   let retry: ReturnType<typeof setTimeout> | undefined;
   // The pairing with the server it last paired with, once that server
@@ -75,21 +65,17 @@ export function startAgentConnection(
     (retry as { unref?: () => void }).unref?.();
   };
 
-  const scan = () =>
-    withWebSocket((WebSocketClass) => {
-      if (disposed) return;
-      void findServers(ports, WebSocketClass).then((servers) => {
-        if (disposed) return;
-        if (known && servers.includes(known.address)) return pair(known);
-        if (servers.length === 1)
-          return pair({ address: servers[0]!, token: "" });
-        later(scan);
-      });
-    });
+  const scan = async () => {
+    const servers = await findServers(ports, await webSocketClass());
+    if (disposed) return;
+    if (known && servers.includes(known.address)) return pair(known);
+    if (servers.length === 1) return pair({ address: servers[0]!, token: "" });
+    later(scan);
+  };
   const lookAgain = linked ? () => later(() => pair(linked)) : scan;
 
-  const pair = (pairing: Pairing) =>
-    withWebSocket((WebSocketClass) => connect(pairing, WebSocketClass));
+  const pair = async (pairing: Pairing) =>
+    connect(pairing, await webSocketClass());
   const connect = (pairing: Pairing, WebSocketClass: typeof WebSocket) => {
     if (disposed) return;
     let current = pairing;
@@ -114,17 +100,17 @@ export function startAgentConnection(
             `[ayme] The Ayme MCP server at ${linked.address} does not know this connect link. Ask the agent for a new one with ayme_connect.`
           );
         known = undefined;
-        scan();
+        void scan();
       },
       onDisconnected() {
-        if (ended()) lookAgain();
+        if (ended()) void lookAgain();
       },
       onClose() {
         if (!ended()) return;
         console.info(
           "[ayme] This process lost its connection to the coding agent's Ayme MCP server, and looks for one again."
         );
-        lookAgain();
+        void lookAgain();
       },
     });
     const stops = processBehaviours.map((behaviour) =>
@@ -142,8 +128,8 @@ export function startAgentConnection(
     );
   };
 
-  if (linked) pair(linked);
-  else scan();
+  if (linked) void pair(linked);
+  else void scan();
   return {
     dispose() {
       disposed = true;
@@ -152,6 +138,17 @@ export function startAgentConnection(
       open = undefined;
     },
   };
+}
+
+/**
+ * Node's own WebSocket, from version 22, or before that the ws package's.
+ * Neither sends an Origin, which is how the server knows a local process.
+ */
+async function webSocketClass(): Promise<typeof WebSocket> {
+  return (
+    globalThis.WebSocket ??
+    ((await import("ws")).WebSocket as unknown as typeof WebSocket)
+  );
 }
 
 /** The pairing `link` names; throws when it is not a connect link. */

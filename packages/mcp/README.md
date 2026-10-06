@@ -104,7 +104,7 @@ that `start()` loads in Node:
 - **Tool names:** the agent sees one tool per name. The page's tool keeps its
   name; of two App Processes that offer one name, the one that connected first
   keeps it, counting from each one's current connection. The agent's next tool result says the other's tool is hidden, and
-  the other process logs it in its terminal: `[ayme] peek.node.jobs is hidden:
+  the other process logs it in its terminal, also when the first one offers the name only later: `[ayme] peek.node.jobs is hidden:
 another App Process offers a tool with the same name. Rename one.`
 - **Leaving:** when it exits, its tools go at once, and a call still waiting
   for it gets an error result that says so.

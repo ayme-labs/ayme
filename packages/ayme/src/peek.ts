@@ -38,6 +38,8 @@ type Peek = {
 type PeekRegistry = {
   /** By Peek name. A Peek stays here while it has an instance. */
   peeks: Map<string, Peek>;
+  /** Every Peek Tool made, live or not. */
+  tools: WeakSet<object>;
   listeners: Set<() => void>;
 };
 
@@ -45,7 +47,11 @@ type PeekRegistry = {
 // set of Peeks.
 const registry: PeekRegistry = ((
   globalThis as typeof globalThis & { __aymePeekRegistry?: PeekRegistry }
-).__aymePeekRegistry ??= { peeks: new Map(), listeners: new Set() });
+).__aymePeekRegistry ??= {
+  peeks: new Map(),
+  tools: new WeakSet(),
+  listeners: new Set(),
+});
 
 /**
  * Package-internal: adds the instance (`name`, `id`) of a Peek. With an id,
@@ -86,7 +92,7 @@ export function subscribeToPeekTools(listener: () => void): () => void {
 
 /** Package-internal: whether `tool` is a Peek Tool, which only reads. */
 export function isPeekTool(tool: object): boolean {
-  return [...registry.peeks.values()].some((peek) => peek.tool === tool);
+  return registry.tools.has(tool);
 }
 
 /**
@@ -110,6 +116,7 @@ function peekNamed(name: string): Peek {
         `The Peek "${name}" would be read through ${toolName}, which the Peek "${otherName}" already uses. Rename one.`
       );
   const peek: Peek = { tool: createPeekTool(name), instances: new Map() };
+  registry.tools.add(peek.tool);
   registry.peeks.set(name, peek);
   return peek;
 }

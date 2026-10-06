@@ -169,9 +169,7 @@ describe("AgentConnection with App Processes", () => {
     second.publishTools([tool("peek.node.jobs"), tool("z")]);
     void connection.call("peek.node.jobs", {});
 
-    expect(connection.hidden).toEqual([
-      { name: "peek.node.jobs", offeredBy: "process" },
-    ]);
+    expect(connection.hidden).toEqual(["peek.node.jobs"]);
     expect(connection.tools.map(({ name }) => name)).toEqual([
       "peek.node.jobs",
       "z",
@@ -206,7 +204,7 @@ describe("AgentConnection with App Processes", () => {
         second,
         stop.signal
       ))
-        lists.push(hidden.map(({ name }) => name));
+        lists.push([...hidden]);
     })();
 
     await tick();
@@ -218,19 +216,6 @@ describe("AgentConnection with App Processes", () => {
     await following;
 
     expect(lists).toEqual([[], ["peek.node.jobs"], []]);
-  });
-
-  it("keeps the page's tool of a name an App Process offers too", () => {
-    const connection = new AgentConnection();
-    connection.attach(hello("a"), () => {})!.publishTools([tool("snapshot")]);
-
-    connection
-      .attachProcess({ process: "server" })
-      .publishTools([tool("snapshot")]);
-
-    expect(connection.hidden).toEqual([
-      { name: "snapshot", offeredBy: "page" },
-    ]);
   });
 
   it("tells its listeners when an App Process pairs, reports tools and leaves", () => {
