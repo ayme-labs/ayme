@@ -28,7 +28,7 @@ import { buildToolOptions, planArguments } from "./goalLoopQuestions";
 import { getPomDefinitionText } from "./pageContext";
 import {
   getInteractionHistory,
-  peekPageStateForDocument,
+  lookAtPageStateForDocument,
   type AriaRef,
 } from "./pageState";
 import { registerCompiledPom, type PageObjectConstructor } from "./registry";
@@ -514,7 +514,7 @@ export function describePublishedTools(
         <p data-highlightable>Draft</p>
       `;
       await startSession();
-      const capture = await peekPageStateForDocument(document);
+      const capture = await lookAtPageStateForDocument(document);
       const described = (refs: readonly AriaRef[] = []) =>
         refs.map((ref) => {
           const element = capture.elementsByRef.get(ref)!;
@@ -707,10 +707,10 @@ export function describePublishedTools(
           listElementToolTargets()
         );
 
-        const peek = await peekPageStateForDocument(document);
+        const look = await lookAtPageStateForDocument(document);
         const described = (name: string) =>
           (targets.get(name) ?? []).map(
-            (ref) => peek.elementsByRef.get(ref)?.textContent
+            (ref) => look.elementsByRef.get(ref)?.textContent
           );
         expect(described("click")).toEqual(["Save"]);
         expect(described("highlight")).toEqual(["Draft"]);

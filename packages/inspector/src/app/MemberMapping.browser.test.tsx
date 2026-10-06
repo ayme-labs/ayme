@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageStatePeek, RegisteredPom } from "@ayme-dev/ayme/internal";
+import type { PageStateLook, RegisteredPom } from "@ayme-dev/ayme/internal";
 import {
   listRegisteredPomTargets,
   listRegisteredPoms,
-  peekPageStateForDocument,
+  lookAtPageStateForDocument,
 } from "@ayme-dev/ayme/internal";
 
 import { forest, node } from "../structure/test-utils/projected";
@@ -15,7 +15,7 @@ import { Inspector } from "../testing";
 // Component tests: two collections over the same list items, and a locator
 // over them too. Each member's items are there to find, whichever the
 // registry lists first. The runtime is replaced by fixture targets and a
-// peek of the host page, so the evidence covers the panel and its runtime wiring.
+// look at the host page, so the evidence covers the panel and its runtime wiring.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { asStartedAyme } = await import("../tools/test-utils/startedAyme");
   const { pageStateNodeEntry } =
@@ -23,7 +23,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   return {
     pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    peekPageStateForDocument: vi.fn(),
+    lookAtPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
     getStartedAyme: asStartedAyme,
@@ -94,7 +94,7 @@ beforeEach(() => {
   unmounts.push(() => host.remove());
   const [milk, eggs] = host.querySelectorAll("li");
 
-  vi.mocked(peekPageStateForDocument).mockImplementation(
+  vi.mocked(lookAtPageStateForDocument).mockImplementation(
     async () =>
       ({
         projected: forest(
@@ -109,7 +109,7 @@ beforeEach(() => {
           ["e2", milk!],
           ["e3", eggs!],
         ]),
-      }) as unknown as PageStatePeek
+      }) as unknown as PageStateLook
   );
   vi.mocked(listRegisteredPoms).mockReturnValue([listPage]);
   // Two collections hold the same items; search finds the later one's too.

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageStatePeek } from "@ayme-dev/ayme/internal";
-import { peekPageStateForDocument } from "@ayme-dev/ayme/internal";
+import type { PageStateLook } from "@ayme-dev/ayme/internal";
+import { lookAtPageStateForDocument } from "@ayme-dev/ayme/internal";
 
 import { forest, node } from "../structure/test-utils/projected";
 import { renderInspector } from "./renderInspector";
@@ -10,7 +10,7 @@ import { Inspector } from "../testing";
 
 // Component tests: the Structure view keeps up with the page on its own,
 // with no registry change to prompt it: the mocked registry never reports
-// one. The runtime is replaced by a peek that reads the fixture host page,
+// one. The runtime is replaced by a look that reads the fixture host page,
 // so the evidence covers the panel and its refresh triggers only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { asStartedAyme } = await import("../tools/test-utils/startedAyme");
@@ -19,7 +19,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   return {
     pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    peekPageStateForDocument: vi.fn(),
+    lookAtPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
     getStartedAyme: asStartedAyme,
@@ -66,12 +66,12 @@ beforeEach(() => {
     <p>Draft</p>`;
   document.body.append(host);
   unmounts.push(() => host.remove());
-  vi.mocked(peekPageStateForDocument).mockImplementation(
+  vi.mocked(lookAtPageStateForDocument).mockImplementation(
     async () =>
       ({
         projected: projectedPageState(host),
         elementsByRef: new Map(),
-      }) as unknown as PageStatePeek
+      }) as unknown as PageStateLook
   );
 
   const inspectorHost = document.createElement("div");
@@ -114,7 +114,7 @@ it("looks at the page again when a checkbox is checked", async () => {
   // state it read has the checkbox checked.
   await expect
     .poll(async () => {
-      const looks = vi.mocked(peekPageStateForDocument).mock.results;
+      const looks = vi.mocked(lookAtPageStateForDocument).mock.results;
       const checkbox = (await looks.at(-1)?.value)?.projected.roots[1];
       return typeof checkbox === "string" ? undefined : checkbox?.state;
     })

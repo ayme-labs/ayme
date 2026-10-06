@@ -3,10 +3,10 @@ export {
   capturePageState,
   getPageStateForElements,
   pageStateNodeEntry,
-  peekPageStateForDocument,
+  lookAtPageStateForDocument,
   resolvePageStateRef,
 } from "./pageState";
-export type { PageStateCapture, PageStatePeek } from "./pageState";
+export type { PageStateCapture, PageStateLook } from "./pageState";
 export type {
   ProjectedStructuralNode,
   ProjectedStructuralNodeForest,

@@ -1,8 +1,8 @@
 import { afterEach, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
-import { getInteractionHistory, peekPageStateForDocument } from "./pageState";
-import { refsIn, startAgentSession } from "./peekPageState.testSupport";
+import { getInteractionHistory, lookAtPageStateForDocument } from "./pageState";
+import { refsIn, startAgentSession } from "./lookAtPageState.testSupport";
 
 let stop = () => {};
 afterEach(() => {
@@ -22,13 +22,13 @@ function refOf(structure: string, name: string) {
   return AriaRefSchema.parse(ref);
 }
 
-it("lets the agent's ref reach an identical replacement even when a peek saw the gap", async () => {
+it("lets the agent's ref reach an identical replacement even when a look saw the gap", async () => {
   document.body.innerHTML = `<main><button id="old">Save</button></main>`;
   const { call, read } = await agent();
   const save = refOf(await read(), "Save");
   document.querySelector("#old")!.remove();
 
-  await peekPageStateForDocument(document);
+  await lookAtPageStateForDocument(document);
   document
     .querySelector("main")!
     .insertAdjacentHTML("beforeend", `<button id="new">Save</button>`);
@@ -53,10 +53,10 @@ it("gives each element the ref the agent's next read shows it with", async () =>
       `<button>One</button><input aria-label="Title" />`
     );
 
-  const peek = await peekPageStateForDocument(document);
+  const look = await lookAtPageStateForDocument(document);
   const next = await read();
 
-  expect(refsIn(peek.text)).toEqual(refsIn(next));
+  expect(refsIn(look.text)).toEqual(refsIn(next));
   // Diagnostic: the comparison covers the elements added since the last read.
   expect(refsIn(next).join("\n")).toMatch(/button One[\s\S]*textbox Title/);
 });
@@ -70,7 +70,7 @@ it("adds nothing to the interaction history", async () => {
   const agentCursor = history.cursor("agent");
   document.body.insertAdjacentHTML("beforeend", `<p>Changed</p>`);
 
-  await peekPageStateForDocument(document);
+  await lookAtPageStateForDocument(document);
 
   expect(history.latestObservation).toBe(latest);
   expect(history.cursor("agent")).toBe(agentCursor);

@@ -2,7 +2,7 @@ import type { JsonSchema } from "./contracts";
 import { getPursueGoalTool, type GoalTool } from "./goalLoop";
 import { getPageContextTool } from "./pageContext";
 import {
-  peekPageStateForDocument,
+  lookAtPageStateForDocument,
   type AriaRef,
   type PageStateCapture,
 } from "./pageState";
@@ -105,16 +105,16 @@ export function listLiveTools(): readonly PublishedToolInfo[] {
 }
 
 /**
- * The refs each live single-element tool can take in `capture` (a peek of the current
+ * The refs each live single-element tool can take in `capture` (a look at the current
  * page when absent), by tool name, in tree order: the same closed set the Goal
- * Loop offers for that tool's ref. Pass the peek the Inspector shows,
+ * Loop offers for that tool's ref. Pass the look the Inspector shows,
  * so the refs match its structure.
  */
 export async function listElementToolTargets(
   capture?: PageStateCapture
 ): Promise<Map<string, AriaRef[]>> {
   const elementTools = listElementTools();
-  const current = capture ?? (await peekPageStateForDocument(document));
+  const current = capture ?? (await lookAtPageStateForDocument(document));
   return new Map(
     elementTools.map(({ tool, filter }) => [
       tool.name,

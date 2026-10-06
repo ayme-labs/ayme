@@ -108,7 +108,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   return {
     pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    peekPageStateForDocument: vi.fn(async () => ({
+    lookAtPageStateForDocument: vi.fn(async () => ({
       projected: { roots: [] },
       elementsByRef: new Map(),
     })),
