@@ -54,6 +54,7 @@ afterEach(async () => {
   for (const root of roots.splice(0)) await act(() => root.unmount());
   Reflect.deleteProperty(document, "modelContext");
   vi.mocked(createAyme).mockClear();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -170,7 +171,6 @@ it("C10: hydrates the server's initial status without warnings and then register
   expect(span?.textContent).toBe("disabled");
   expect(listRegisteredPoms()).toHaveLength(1);
   expect(errors).not.toHaveBeenCalled();
-  errors.mockRestore();
 });
 
 it("C10: hydrates the server's waiting status without warnings when publication is enabled", async () => {
@@ -190,7 +190,6 @@ it("C10: hydrates the server's waiting status without warnings when publication 
   });
   roots.push(app!);
   expect(errors).not.toHaveBeenCalled();
-  errors.mockRestore();
 });
 
 it("C10: renders the same Page Object identity in hydration as on the server", async () => {
@@ -208,7 +207,6 @@ it("C10: renders the same Page Object identity in hydration as on the server", a
   roots.push(app!);
   expect(container.textContent).toBe("true");
   expect(errors).not.toHaveBeenCalled();
-  errors.mockRestore();
 });
 
 it("C2, C6: keeps one custom-page instance through StrictMode replay, rerenders and remounts", async () => {
