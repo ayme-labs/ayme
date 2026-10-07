@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { Page } from "@playwright/test";
+import { expect as expectOnPage } from "@ayme-dev/playwright-lite";
 
 import type { PomManifest, ToolManifest } from "./contracts";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
@@ -43,6 +44,15 @@ class ListPage {
   async save() {
     await this.saveButton.click();
   }
+  /** Waits for, scrolls to, focuses and checks the item before it saves. */
+  async check() {
+    await this.item.waitFor();
+    await this.item.scrollIntoViewIfNeeded();
+    await this.item.focus();
+    await expectOnPage(this.item).toBeVisible();
+    await this.item.blur();
+    await this.saveButton.click();
+  }
 }
 
 registerCompiledPom(ListPage, {
@@ -57,6 +67,7 @@ registerCompiledPom(ListPage, {
       { name: "value", optional: false, schema: { type: "string" } },
     ]),
     tool("save", "ListPage.save"),
+    tool("check", "ListPage.check"),
   ],
   components: [],
 });
@@ -104,6 +115,20 @@ describe("a Run's Interactions, in Chromium", () => {
           { operation: "fill", locator: ITEM, value: "Milk" },
           { operation: "click", locator: ADD },
         ],
+      }),
+    ]);
+  });
+
+  it("lists only the inputs a Run gave the page as its Interactions, not its waits, checks, scrolls or focus changes", async () => {
+    await start();
+    const before = ayme.runs.list();
+
+    await ayme.tools.run("ListPage.check", {});
+
+    expect(runsSince(before)).toEqual([
+      expect.objectContaining({
+        tool: "ListPage.check",
+        interactions: [{ operation: "click", locator: SAVE }],
       }),
     ]);
   });
