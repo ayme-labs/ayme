@@ -21,7 +21,6 @@ export function ShellHarness({ initial }: { initial?: Partial<Preferences> }) {
         setPreferences((current) => ({ ...current, ...patch }))
       }
       reserveHost={reserveHost}
-      pageName="ListPage"
     >
       <p>The body</p>
     </InspectorShell>

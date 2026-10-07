@@ -85,14 +85,12 @@ export function InspectorShell({
   preferences,
   onPreferencesChange,
   reserveHost,
-  pageName,
   children,
 }: {
   preferences: Preferences;
   onPreferencesChange: (patch: Partial<Preferences>) => void;
   /** Makes room on the host page for the docked panel, or none. */
   reserveHost: (reservation: HostReservation | undefined) => void;
-  pageName?: string;
   children: ReactNode;
 }) {
   const viewport = useViewport();
@@ -253,7 +251,6 @@ export function InspectorShell({
             this, straddle the border. */}
         <div className="flex size-full flex-col overflow-hidden rounded-[inherit]">
           <Header
-            pageName={pageName}
             layout={layout}
             theme={preferences.theme}
             onThemeChange={(theme) => onPreferencesChange({ theme })}
