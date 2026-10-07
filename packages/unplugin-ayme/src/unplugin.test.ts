@@ -11,7 +11,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { unpluginFactory, type AymeOptions } from "./index";
+import type { AymeOptions } from "./options";
+import { unpluginFactory } from "./unplugin";
 
 const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
 const ACTION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_ACTION_TIMEOUT__";
