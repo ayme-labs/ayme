@@ -7,7 +7,7 @@ import { expect, INSPECTOR, openFixture, test } from "./fixtures";
 // E2E: running tools from the panel, on the fixture page with the real
 // ListPage Page Object, the Ayme runtime and a recording WebMCP driver.
 
-test("a Tools panel run shows in Runs as the Inspector's, with its steps", async ({
+test("a Page Object Tool run from the panel shows in Runs as the Inspector's, with its Interactions", async ({
   inspector,
 }) => {
   await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
@@ -16,10 +16,12 @@ test("a Tools panel run shows in Runs as the Inspector's, with its steps", async
   await expect.poll(() => run.status()).toBe("Succeeded");
   expect(await run.caller()).toEqual(INSPECTOR);
   // ListPage.addItem fills the new item's text, then presses Add item.
-  expect(await run.stepList()).toEqual([
-    { operation: "fill", target: "ListPage.newItemInput", value: '"Milk"' },
-    { operation: "click", target: "ListPage.addItemButton" },
-  ]);
+  await expect
+    .poll(() => run.interactionList())
+    .toEqual([
+      { operation: "fill", target: "ListPage.newItemInput", value: '"Milk"' },
+      { operation: "click", target: "ListPage.addItemButton" },
+    ]);
 });
 
 test("an agent's call over WebMCP shows in Runs as the agent's", async ({
@@ -34,9 +36,15 @@ test("an agent's call over WebMCP shows in Runs as the agent's", async ({
     icon: "Run by an agent through WebMCP",
   });
   expect(await run.arguments.textContent()).toBe('{"text":"Milk"}');
+  await expect
+    .poll(() => run.interactionList())
+    .toEqual([
+      { operation: "fill", target: "ListPage.newItemInput", value: '"Milk"' },
+      { operation: "click", target: "ListPage.addItemButton" },
+    ]);
 });
 
-test("hovering a run's step highlights its element on the page", async ({
+test("hovering a run's Interaction highlights its element on the page", async ({
   inspector,
   listPage,
 }) => {
@@ -44,7 +52,11 @@ test("hovering a run's step highlights its element on the page", async ({
   const run = inspector.runs.latest("ListPage.addItem");
   await expect.poll(() => run.status()).toBe("Succeeded");
 
-  await run.stepTarget(1).hover();
+  await expect
+    .poll(() => run.interactionTarget(1).textContent())
+    .toBe("ListPage.addItemButton");
+
+  await run.interactionTarget(1).hover();
 
   // The dashed hover highlight.
   await expect(listPage.addItemButton).toHaveAttribute("data-ayme-hover");
@@ -131,7 +143,7 @@ test("Runs switches between the selection's runs and all runs with the mouse", a
 
 // The fixture stubs the Goal Loop's decision (clear the list, then judge the
 // goal met), so this covers the panel's run, not the model's judgement.
-test("goal runs from the panel and shows in Runs with its steps and Handover result", async ({
+test("goal runs from the panel and shows in Runs with the Runs its steps executed and its Handover result", async ({
   inspector,
   listPage,
 }) => {
@@ -143,10 +155,11 @@ test("goal runs from the panel and shows in Runs with its steps and Handover res
   const run = inspector.runs.latest("goal");
   await expect.poll(() => run.status()).toBe("Succeeded");
   expect(await run.caller()).toEqual(INSPECTOR);
-  expect(await run.stepList()).toContainEqual({
-    operation: "click",
-    target: "ListPage.clearButton",
-  });
+  // Its one step cleared the list: a child Run, whose click is its own.
+  expect(await run.childTools()).toEqual(["ListPage.clear"]);
+  await expect
+    .poll(() => run.child("ListPage.clear").interactionList())
+    .toEqual([{ operation: "click", target: "ListPage.clearButton" }]);
   await expect(listPage.items).toHaveCount(0);
   const handover = JSON.parse((await run.resultText()) ?? "");
   expect(handover).toMatchObject({ reason: "done" });
