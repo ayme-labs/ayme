@@ -71,8 +71,15 @@ export function aymeExecutor(options: {
   availability?: () => Promise<ReadonlySet<string>>;
   /** Where one JSON line per step goes (source: store or solver, calls, timing); `SPIKE_LOG` when unset. */
   logFile?: string;
+  /**
+   * `read-only` replays and proposes repairs but records nothing: no new
+   * entries for solved steps, no adoption of shared entries. Pass e2e's own
+   * cache mode so a check of a committed recording leaves it as it is.
+   */
+  mode?: "read-write" | "read-only";
 }): StepExecutor {
   const store = new PageObjectStore(options.storeDir);
+  const recording = options.mode !== "read-only";
   const logFile = options.logFile ?? process.env.SPIKE_LOG;
   const occurrences = (ctx: StepExecutorContext, shape: string): number => {
     const key = `ayme-e2e.occurrence:${shape}`;
@@ -157,7 +164,8 @@ export function aymeExecutor(options: {
             }
           }
           // A shared entry that served this test becomes the test's own as well.
-          if (hit.source === "shared") store.adopt(keys.test, hit.entry);
+          if (hit.source === "shared" && recording)
+            store.adopt(keys.test, hit.entry);
           log(logFile, ctx, {
             source: `store-${hit.source}`,
             calls: hit.entry.calls.map((call) => call.tool),
@@ -212,7 +220,7 @@ export function aymeExecutor(options: {
       if (verdict.status === "passed") {
         if (failed !== undefined)
           repair = store.proposeRepair(keys.test, failed, actions);
-        else stored = store.record(keys, step, actions);
+        else if (recording) stored = store.record(keys, step, actions);
       }
       log(logFile, ctx, {
         source: "solver",

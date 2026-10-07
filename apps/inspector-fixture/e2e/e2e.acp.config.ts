@@ -9,7 +9,7 @@ import {
   aymeTools,
   type AcpDriverOptions,
 } from "@ayme-dev/e2e";
-import { config, dirs, engine, POM_FILES } from "./base.config.ts";
+import { cacheMode, config, dirs, engine, POM_FILES } from "./base.config.ts";
 
 /**
  * An ACP agent, one session per test. `AYME_E2E_AGENT=claude|cursor` (Claude
@@ -85,6 +85,7 @@ export default config(name, {
       ? { availability: aymeAvailability({ engine, files: POM_FILES }) }
       : {}),
     storeDir: dirs(name).ayme,
+    mode: cacheMode(),
     solver: agentSolver(
       acpDriver({
         name: `acp-${agent}`,

@@ -86,7 +86,9 @@ e2e's cache (`e2e/.e2e/cache-<name>`) and the Ayme store
 mode is `read-write` by default: a run records what the agent did and the
 next run replays it. `AYME_E2E_CACHE=read-only` replays what is there and
 hands a miss to the agent without recording, for checking a committed
-recording. `--no-cache` turns e2e's cache off for one run.
+recording; it applies to e2e's cache and the Ayme store alike (the store
+still writes repair proposals, which sit beside the recording and leave it
+unchanged). `--no-cache` turns e2e's cache off for one run.
 
 ## The two arms
 

@@ -40,6 +40,13 @@ export function dirs(name: string) {
   };
 }
 
+/** The cache mode for e2e's cache and the Ayme store alike. */
+export function cacheMode(): "read-write" | "read-only" {
+  return process.env.AYME_E2E_CACHE === "read-only"
+    ? "read-only"
+    : "read-write";
+}
+
 export function config(
   name: string,
   agent: NonNullable<E2EConfig["agents"]>[string]
@@ -60,8 +67,7 @@ export function config(
     workers: 1,
     cache: {
       dir: dirs(name).cache,
-      mode:
-        process.env.AYME_E2E_CACHE === "read-only" ? "read-only" : "read-write",
+      mode: cacheMode(),
     },
     agents: { default: agent },
   };

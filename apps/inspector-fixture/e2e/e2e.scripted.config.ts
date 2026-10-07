@@ -1,5 +1,5 @@
 import { aymeAvailability, aymeExecutor, aymeTools } from "@ayme-dev/e2e";
-import { config, dirs, engine, POM_FILES } from "./base.config.ts";
+import { cacheMode, config, dirs, engine, POM_FILES } from "./base.config.ts";
 import { scriptedSolver } from "./scripted-solver.ts";
 
 /**
@@ -13,6 +13,7 @@ export default config(name, {
   executor: aymeExecutor({
     tools: arm === "ayme" ? aymeTools({ engine, files: POM_FILES }) : {},
     storeDir: dirs(name).ayme,
+    mode: cacheMode(),
     solver: scriptedSolver(arm),
     ...(process.env.AYME_E2E_ROUTE === "direct"
       ? { route: "direct" as const }
