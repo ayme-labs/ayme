@@ -3,8 +3,7 @@ import { defineConfig } from "@playwright/test";
 import { agentPort } from "@ayme-dev/example-certification/config";
 
 // ponytail: the port is released before the server binds it, so another
-//   process could take it in between; Nuxt dev has no strict-port flag and
-//   would move to another port; the production server fails loudly.
+//   process could take it in between; both servers then fail loudly.
 const freePort = () =>
   new Promise<number>((resolve) => {
     const server = createServer().listen(0, "127.0.0.1", () => {
@@ -33,7 +32,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `pnpm exec nuxt dev --host 127.0.0.1 --port ${port}`,
+    command: `pnpm run dev --port ${port}`,
     // Read only by `server/plugins/ayme.ts`, where the App Process starts.
     env: { AYME_EXAMPLE_AGENT_PORT: String(agentPort) },
     url: baseURL,
