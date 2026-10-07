@@ -14,10 +14,11 @@ import { Inspector } from "../testing";
 // so the evidence covers the panel and its refresh triggers only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { asStartedAyme } = await import("../tools/test-utils/startedAyme");
-  const { pageStateNodeEntry } =
+  const { pageStateNodeEntry, toolInputViolations } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     pageStateNodeEntry,
+    toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     peekPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),

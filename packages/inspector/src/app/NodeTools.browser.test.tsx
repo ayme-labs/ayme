@@ -13,7 +13,7 @@ import { Inspector } from "../testing";
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { asStartedAyme, startedAyme } =
     await import("../tools/test-utils/startedAyme");
-  const { pageStateNodeEntry } =
+  const { pageStateNodeEntry, toolInputViolations } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
   const browserTool = (name: string) => ({
@@ -32,6 +32,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   };
   return {
     pageStateNodeEntry,
+    toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     peekPageStateForDocument: vi.fn(
       async () =>

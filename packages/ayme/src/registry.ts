@@ -8,7 +8,11 @@ import type {
   RegisteredPomTool,
   ToolManifest,
 } from "./contracts";
-import { isJsonPrimitive } from "./contracts";
+import {
+  schemaViolations,
+  throwFirstViolation,
+  toolInputViolations,
+} from "./schemaValidation";
 import { createPage } from "./browserPage";
 import {
   isPlaywrightLiteLocator,
@@ -20,11 +24,7 @@ import { probePomRootState } from "./pomReachability";
 import { resolvePageStateRefs, type AriaRef } from "./pageState";
 import type { Caller } from "./interactionHistory";
 import { runAction, type ActionResult } from "./actionSequence";
-import {
-  RefResolutionError,
-  RuntimeStateError,
-  ToolInputError,
-} from "./errors";
+import { RefResolutionError, RuntimeStateError } from "./errors";
 
 export type PageObjectConstructor<T extends object = object> = new (
   page: Page
@@ -1046,26 +1046,11 @@ function requireCurrentDocument(): Document {
 }
 
 function validatedArguments(tool: ToolManifest, args: unknown) {
-  const input = asRecord(args);
-  const knownParameterNames = new Set(
-    tool.parameters.map((parameter) => parameter.name)
+  throwFirstViolation(
+    toolInputViolations(inputSchemaFor(tool.parameters), args)
   );
-  for (const name of Object.keys(input)) {
-    if (!knownParameterNames.has(name))
-      throw new ToolInputError(`Unexpected input property ${name}.`);
-  }
-
-  return tool.parameters.map((parameter) => {
-    const value = input[parameter.name];
-    if (value === undefined) {
-      if (parameter.optional) return undefined;
-      throw new ToolInputError(
-        `Missing required input property ${parameter.name}.`
-      );
-    }
-    validateValue(parameter.name, parameter.schema, value);
-    return value;
-  });
+  const input = args as Record<string, unknown>;
+  return tool.parameters.map((parameter) => input[parameter.name]);
 }
 
 /** Package-internal: check one input value against its schema, or throw a ToolInputError naming it. */
@@ -1074,66 +1059,7 @@ export function validateValue(
   schema: JsonSchema,
   value: unknown
 ) {
-  if (schema.type === "array") {
-    if (!Array.isArray(value))
-      throw new ToolInputError(`Input property ${name} must be an array.`);
-    if (schema.items)
-      value.forEach((item, index) =>
-        validateValue(`${name}[${index}]`, schema.items!, item)
-      );
-    return;
-  }
-  if (schema.type === "object") {
-    const object = asRecord(value);
-    const properties = schema.properties ?? {};
-    if (schema.additionalProperties === false) {
-      for (const propertyName of Object.keys(object)) {
-        if (!properties[propertyName])
-          throw new ToolInputError(
-            `Input property ${name}.${propertyName} is not supported.`
-          );
-      }
-    }
-    for (const requiredProperty of schema.required ?? []) {
-      if (object[requiredProperty] === undefined) {
-        throw new ToolInputError(
-          `Input property ${name}.${requiredProperty} is required.`
-        );
-      }
-    }
-    for (const [propertyName, propertySchema] of Object.entries(properties)) {
-      const propertyValue = object[propertyName];
-      if (propertyValue !== undefined)
-        validateValue(`${name}.${propertyName}`, propertySchema, propertyValue);
-    }
-    return;
-  }
-
-  if (schema.type === "integer") {
-    if (!Number.isInteger(value) || typeof value !== "number") {
-      throw new ToolInputError(`Input property ${name} must be an integer.`);
-    }
-  } else if (schema.type && typeof value !== schema.type) {
-    throw new ToolInputError(
-      `Input property ${name} must be a ${schema.type}.`
-    );
-  }
-  if (
-    schema.minimum !== undefined &&
-    (typeof value !== "number" || value < schema.minimum)
-  ) {
-    throw new ToolInputError(
-      `Input property ${name} must be at least ${schema.minimum}.`
-    );
-  }
-  if (
-    schema.enum &&
-    (!isJsonPrimitive(value) || !schema.enum.includes(value))
-  ) {
-    throw new ToolInputError(
-      `Input property ${name} must be one of ${schema.enum.join(", ")}.`
-    );
-  }
+  throwFirstViolation(schemaViolations(schema, value, name));
 }
 
 function inputSchemaFor(
@@ -1173,11 +1099,6 @@ function asComponents(value: unknown): unknown[] {
   if (!Array.isArray(value))
     throw new RuntimeStateError("Expected a component collection array.");
   return value;
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  if (isRecord(value)) return value;
-  throw new ToolInputError("Tool input must be an object.");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

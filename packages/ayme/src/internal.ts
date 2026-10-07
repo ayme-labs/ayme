@@ -35,6 +35,10 @@ export type {
   RegisteredPom,
   RegisteredPomTarget,
 } from "./registry";
+// The runtime's own input validation, so the Inspector's run card reports
+// every violation before Run that the call would fail on.
+export { toolInputViolations } from "./schemaValidation";
+export type { SchemaViolation } from "./schemaValidation";
 export { synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
 export type { WebMcpDriver, WebMcpRegistration } from "./webMcp";
 // The runtime session and its types are public (ADR-0031); this entry keeps

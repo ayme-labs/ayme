@@ -215,11 +215,19 @@ describe("Form and JSON", () => {
     expect(argumentsFromJson(text)).toEqual({ ok: true, arguments: args });
   });
 
-  it("reports invalid JSON", () => {
-    const parsed = argumentsFromJson('{ "text": ');
-
-    expect(parsed.ok).toBe(false);
-    expect(!parsed.ok && parsed.error).toMatch(/^Invalid JSON: /);
+  it("reports where invalid JSON goes wrong", () => {
+    expect(argumentsFromJson('{\n  "text": "Milk"\n  "count": 2\n}')).toEqual({
+      ok: false,
+      error:
+        "Invalid JSON at line 3, column 3: expected ',' or '}', found '\"'.",
+      position: { line: 3, column: 3 },
+    });
+    expect(argumentsFromJson('{ "text": ')).toEqual({
+      ok: false,
+      error:
+        "Invalid JSON at line 1, column 11: expected a value, found the end of the text.",
+      position: { line: 1, column: 11 },
+    });
   });
 
   it("reports JSON that isn't an object", () => {

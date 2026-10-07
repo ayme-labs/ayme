@@ -18,11 +18,12 @@ import { Inspector } from "../testing";
 // panel and its runtime wiring only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { asStartedAyme } = await import("../tools/test-utils/startedAyme");
-  const { pageStateNodeEntry } =
+  const { pageStateNodeEntry, toolInputViolations } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
   return {
     pageStateNodeEntry,
+    toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     peekPageStateForDocument: vi.fn(async () => ({
       projected: forest(
