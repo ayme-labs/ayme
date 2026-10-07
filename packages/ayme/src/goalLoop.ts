@@ -3,7 +3,7 @@ import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { JsonSchema, JsonValue } from "./contracts";
 import type { ActionResult } from "./actionSequence";
 import { renderChangeRecord } from "./changeRecord";
-import type { ChildRun, RunContext } from "./run";
+import type { StartChildRun, RunContext } from "./run";
 import {
   getInteractionHistory,
   getPageStateCaptureForDocument,
@@ -28,7 +28,7 @@ import {
   type ChoiceAnswer,
   type ChosenArguments,
   type ChosenOption,
-  type ExecutableTool,
+  type GoalLoopOperation,
   type GoalValues,
   MAX_GOAL_VALUES,
   type NoulAnswer,
@@ -215,9 +215,9 @@ function stepRecord(
  * `runAction` internally, so we just forward and interpret the result.
  */
 async function executeToolAction(
-  tool: ExecutableTool,
+  tool: GoalLoopOperation,
   args: Record<string, unknown>,
-  run: ChildRun
+  run: StartChildRun
 ): Promise<StepOutcome> {
   const raw = await tool.execute(args, run);
   const action = raw as ActionResult | undefined;

@@ -37,15 +37,16 @@ export type ToolRunOptions = {
 export type RunContext = {
   readonly reader: Reader;
   /** Starts a child Run of this Run. */
-  readonly run: ChildRun;
+  readonly run: StartChildRun;
 };
 
 /**
  * Package-internal: starts the live tool `name` as a child Run of the
- * current Run, inside its turn: it never waits on the page's queue. Its
- * Change Record moves `reader`'s cursor, the parent Run's by default.
+ * current Run, inside its turn, after the child Runs it started before: it
+ * never waits on the page's queue. Its Change Record moves `reader`'s
+ * cursor, the parent Run's by default.
  */
-export type ChildRun = (
+export type StartChildRun = (
   name: string,
   input: unknown,
   reader?: Reader
@@ -67,18 +68,6 @@ export function callerOf(options: ToolRunOptions | undefined): Caller {
       "A Run needs a Caller: pass a non-empty name as `by`, or leave it out to run as the app."
     );
   return by;
-}
-
-/**
- * Package-internal: the one path every tool execution takes, a top-level
- * Run's and a child Run's alike.
- */
-export function executeTool<T>(
-  tool: ExecutableTool<T>,
-  input: unknown,
-  context: RunContext
-): Promise<T> {
-  return tool.execute(input, context);
 }
 
 /** Package-internal: whose cursor a top-level Run for `by` moves. */
@@ -107,16 +96,17 @@ export function createRunQueue(): RunQueue {
 }
 
 /**
- * Package-internal: run `tool` as a top-level Run, then `settle`. The
- * context's reader is the Caller's (`readerOf`).
+ * Package-internal: execute `tool` for a top-level Run, then `settle`; a
+ * child Run adds no settle wait of its own. The context's reader is the
+ * Caller's (`readerOf`).
  */
-export function runTool<T>(
+export function executeTopLevelRun<T>(
   tool: ExecutableTool<T>,
   input: unknown,
   context: RunContext,
   settle: () => Promise<void>
 ): Promise<T> {
-  return settledAfter(tool, () => executeTool(tool, input, context), settle);
+  return settledAfter(tool, () => tool.execute(input, context), settle);
 }
 
 /**

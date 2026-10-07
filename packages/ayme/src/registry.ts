@@ -35,9 +35,6 @@ type LiveRegisteredPomTool = RegisteredPomTool & {
   componentPath?: string;
 };
 
-/** Runs a Page Object tool for the reader it is given. */
-type ReaderRun = (input: unknown, reader: Reader) => Promise<ActionResult>;
-
 /**
  * Package-internal: a live Page Object tool as the registry holds it. Its
  * `execute` runs it for a Run, whose context names the reader its Change
@@ -561,8 +558,6 @@ function createRegisteredTool(
   instance: object,
   tool: ToolManifest
 ): CallerAwarePomTool {
-  const run: ReaderRun = async (args, reader) =>
-    await executeTool(instance, tool, args, reader);
   return {
     pomId,
     methodName: tool.methodName,
@@ -570,7 +565,8 @@ function createRegisteredTool(
     description: tool.description,
     inputSchema: tool.inputSchema,
     parameters: tool.parameters,
-    execute: (args, context) => run(args, context.reader),
+    execute: (args, { reader }) =>
+      performPageObjectAction(instance, tool, args, reader),
   };
 }
 
@@ -623,7 +619,7 @@ function createComponentTool(
     );
 
   const wrapper = refComponentToolManifest(pomId, path, action);
-  const run: ReaderRun = async (input, reader) => {
+  const execute: CallerAwarePomTool["execute"] = async (input, { reader }) => {
     const values = validatedArguments(wrapper, input);
     const ref = AriaRefSchema.parse(values[0] as string);
     const args = values[1];
@@ -640,7 +636,12 @@ function createComponentTool(
         `Ref "${ref}" does not match a present ${component.className} instance at ${toolPath} (tool ${wrapper.toolName}).`
       );
     }
-    return await executeTool(componentInstance, action, args, reader);
+    return await performPageObjectAction(
+      componentInstance,
+      action,
+      args,
+      reader
+    );
   };
   return {
     pomId,
@@ -651,7 +652,7 @@ function createComponentTool(
     description: action.description,
     inputSchema: wrapper.inputSchema,
     parameters: wrapper.parameters,
-    execute: (input, context) => run(input, context.reader),
+    execute,
   };
 }
 
@@ -663,7 +664,7 @@ function createSingularComponentTool(
   action: ToolManifest,
   componentPath: string
 ): CallerAwarePomTool {
-  const run: ReaderRun = async (input, reader) => {
+  const execute: CallerAwarePomTool["execute"] = async (input, { reader }) => {
     const componentInstance = await resolveSingularComponent(
       pageInstance,
       path
@@ -673,7 +674,12 @@ function createSingularComponentTool(
         `No ${component.className} instance exists at ${pomId}.${publicComponentPath(path)}.`
       );
     }
-    return await executeTool(componentInstance, action, input, reader);
+    return await performPageObjectAction(
+      componentInstance,
+      action,
+      input,
+      reader
+    );
   };
   return {
     pomId,
@@ -684,7 +690,7 @@ function createSingularComponentTool(
     description: action.description,
     inputSchema: action.inputSchema,
     parameters: action.parameters,
-    execute: (input, context) => run(input, context.reader),
+    execute,
   };
 }
 
@@ -1024,7 +1030,8 @@ async function readMember(instance: object, member: PomMemberManifest) {
   return await value;
 }
 
-async function executeTool(
+/** Performs a Page Object Action for a Run whose Change Record is `reader`'s. */
+async function performPageObjectAction(
   instance: object,
   tool: ToolManifest,
   args: unknown,

@@ -39,11 +39,10 @@ import {
   callerOf,
   callers,
   createRunQueue,
-  executeTool,
   readerOf,
-  runTool,
+  executeTopLevelRun,
   type Caller,
-  type ChildRun,
+  type StartChildRun,
   type ToolRunOptions,
 } from "./run";
 import type { Reader } from "./interactionHistory";
@@ -477,7 +476,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
           toolNamePrefix,
           signal,
           run: (name, input, settle) =>
-            runAs(name, input, callers.webmcp, settle),
+            queueTopLevelRun(name, input, callers.webmcp, settle),
           onError(error) {
             attemptFailed = true;
             if (signal.aborted) return;
@@ -545,26 +544,31 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     input: unknown,
     options?: ToolRunOptions
   ): Promise<unknown> {
-    return runAs(name, input, callerOf(options));
+    return queueTopLevelRun(name, input, callerOf(options));
   }
 
   /**
-   * Runs the live tool `name` as a top-level Run for `by`, in its turn on
-   * the page's queue. `settle` runs after an action, within the Run's turn:
+   * Queues a top-level Run of the live tool `name` for `by`, which runs in
+   * its turn on the page's queue. `settle` runs after an action, within the Run's turn:
    * by default the Page Objects are probed, as after an agent's call, so the
    * live tools are current. `name` is resolved when the turn starts, against
    * the tools live then.
    */
-  function runAs(
+  function queueTopLevelRun(
     name: string,
     input: unknown,
     by: Caller,
     settle = () => probeRegisteredPomMembers().catch(() => {})
   ): Promise<unknown> {
-    return takeTurn(() => runLiveTool(name, input, by, settle));
+    return takeTurn(() => recordTopLevelRun(name, input, by, settle));
   }
 
-  async function runLiveTool(
+  /**
+   * Records a top-level Run of the live tool `name` for `by` in the log and
+   * executes it, in its turn. A session that runs an App Process keeps no
+   * log: it runs its Peek Tools only.
+   */
+  async function recordTopLevelRun(
     name: string,
     input: unknown,
     by: Caller,
@@ -583,20 +587,20 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     }
     const reader = readerOf(by);
     return runLog.record(name, input, { by }, (id) =>
-      runTool(
-        liveTool(name),
+      executeTopLevelRun(
+        lookUpLiveTool(name),
         input,
-        { reader, run: childRun(id, reader) },
+        { reader, run: startChildRunOf(id, reader) },
         settle
       )
     );
   }
 
   /**
-   * The live tool `name`. Throws when there is none, inside the Run that
-   * asked for it, so the log records that Run as failed.
+   * Looks up the live tool `name` for a Run. Throws when there is none,
+   * inside the Run that asked for it, so the log records that Run as failed.
    */
-  function liveTool(name: string) {
+  function lookUpLiveTool(name: string) {
     if (!owner)
       throw new RuntimeStateError(
         `Cannot run the tool "${name}": the Ayme runtime session is not started.`
@@ -607,7 +611,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   }
 
   /**
-   * What starts the child Runs of the Run `parent`: each runs the live tool
+   * Starts the child Runs of the Run `parent`: each runs the live tool
    * it names inside the parent's turn, never on the page's queue, and
    * starts its own children the same way. The parent's children run one
    * after the other, in the order it starts them, so two started together
@@ -615,14 +619,17 @@ export function createAyme(options: AymeOptions = {}): Ayme {
    * Run adds no settle wait of its own; the parent's turn ends with the
    * parent's.
    */
-  function childRun(parent: string, parentReader: Reader): ChildRun {
+  function startChildRunOf(
+    parent: string,
+    parentReader: Reader
+  ): StartChildRun {
     const takeChildTurn = createRunQueue();
     return (name, input, reader = parentReader) =>
       takeChildTurn(() =>
         runLog.record(name, input, { parent }, (id) =>
-          executeTool(liveTool(name), input, {
+          lookUpLiveTool(name).execute(input, {
             reader,
-            run: childRun(id, reader),
+            run: startChildRunOf(id, reader),
           })
         )
       );

@@ -85,7 +85,7 @@ function browserTool(
   name: string,
   description: string,
   inputSchema: JsonSchema,
-  run: (target: ResolvedTarget, input: Fields) => Promise<unknown>
+  perform: (target: ResolvedTarget, input: Fields) => Promise<unknown>
 ): ElementToolDefinition {
   return {
     name,
@@ -95,8 +95,8 @@ function browserTool(
     targetField: "target",
     // An action's own result would appear under `result`; Browser Tools have
     // none, as in Playwright MCP, so `selectOption`'s values are dropped.
-    run: async (target, input) => {
-      await run(target, input);
+    perform: async (target, input) => {
+      await perform(target, input);
     },
   };
 }

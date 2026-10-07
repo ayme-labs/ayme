@@ -10,7 +10,7 @@ import { getPageContextForDocument } from "./pageContext";
 import { getPageStateForDocument, type AriaRef } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
 import { resolveLiveTools, resolvePublishedTools } from "./publishedTools";
-import { runTool, type RunContext } from "./run";
+import { executeTopLevelRun, type RunContext } from "./run";
 
 /**
  * The Run context for a tool a test executes itself, outside a runtime
@@ -40,7 +40,7 @@ export function runPublished(
 ): Promise<unknown> {
   const published = resolvePublishedTools().get(name);
   if (!published) throw new Error(`No published tool "${name}".`);
-  return runTool(published.tool, input, runContext(), settle);
+  return executeTopLevelRun(published.tool, input, runContext(), settle);
 }
 
 function browserTool(name: string) {

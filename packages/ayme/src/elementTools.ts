@@ -4,7 +4,7 @@ import {
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
-import { runAction, type ActionResult } from "./actionSequence";
+import { runAction } from "./actionSequence";
 import type { JsonSchema, JsonValue } from "./contracts";
 import type { RunContext } from "./run";
 import type { ToolInput, ToolResult } from "./toolTypes";
@@ -54,12 +54,6 @@ export type CustomToolContext = {
    */
   run<N extends string>(name: N, input: ToolInput<N>): Promise<ToolResult<N>>;
 };
-
-/** Runs a tool for the Run context it is given. */
-type ContextRun = (
-  input: unknown,
-  context: RunContext
-) => Promise<ActionResult>;
 
 /**
  * A Browser Tool or Custom Tool, as published: `execute` runs it for a Run,
@@ -113,7 +107,7 @@ export type ElementToolDefinition = {
   label: string;
   inputSchema: JsonSchema;
   targetField: TargetField;
-  run(
+  perform(
     target: ResolvedTarget,
     input: Record<string, unknown>,
     context: RunContext
@@ -130,12 +124,14 @@ const REF_INPUT_SCHEMA: JsonSchema = {
 // --- The shared mechanism ---
 
 /**
- * Run a tool that acts on one element: check the input against the schema,
- * resolve the element (a ref through the identity ledger, ADR-0028) and hand
- * `run` the element. Finishes with the shared action sequence, so every such
- * tool returns the same action result.
+ * How a tool that acts on one element executes for a Run: check the input
+ * against the schema, resolve the element (a ref through the identity
+ * ledger, ADR-0028) and hand `perform` the element. Finishes with the
+ * shared action sequence, so every such tool returns the same action result.
  */
-function elementToolRun(definition: ElementToolDefinition): ContextRun {
+function elementToolExecution(
+  definition: ElementToolDefinition
+): PublishedElementTool["execute"] {
   return async (input, context) => {
     const fields = validatedToolInput(definition.inputSchema, input);
     const currentDocument = requireCurrentDocument();
@@ -152,7 +148,7 @@ function elementToolRun(definition: ElementToolDefinition): ContextRun {
         args: input,
         ...(target.ref ? { targetRef: target.ref } : {}),
       },
-      () => definition.run(target, fields, context)
+      () => definition.perform(target, fields, context)
     );
   };
 }
@@ -167,7 +163,7 @@ export function registerElementTool(
       name: definition.name,
       description: definition.description,
       inputSchema: definition.inputSchema,
-      execute: elementToolRun(definition),
+      execute: elementToolExecution(definition),
     },
     targetField: definition.targetField,
     loopInputSchema:
@@ -327,7 +323,7 @@ export function configureCustomTools(
         label: `run "${customTool.name}" on`,
         inputSchema: REF_INPUT_SCHEMA,
         targetField: "ref",
-        run: ({ ref, element }, _input, { run }) =>
+        perform: ({ ref, element }, _input, { run }) =>
           customTool.execute(
             { ref: ref!, element },
             {

@@ -16,7 +16,7 @@ import {
   readArgumentAnswers,
   readRunOffAnswer,
   type ArgumentQuestion,
-  type ExecutableTool,
+  type GoalLoopOperation,
   type GoalValues,
 } from "./goalLoopQuestions";
 
@@ -48,7 +48,7 @@ const refArg = {
   closedSet: { kind: "ref", filter: () => true },
 } as const;
 
-const clickTool: ExecutableTool = {
+const clickTool: GoalLoopOperation = {
   name: "click",
   description: "Click an element.",
   execute: async () => null,
@@ -57,7 +57,7 @@ const clickTool: ExecutableTool = {
 };
 
 /** A single-element tool with a boolean parameter next to its ref. */
-const clickWithForceTool: ExecutableTool = {
+const clickWithForceTool: GoalLoopOperation = {
   ...clickTool,
   name: "force_click",
   requiredParams: ["ref", "force"],
@@ -76,7 +76,7 @@ const clickWithForceTool: ExecutableTool = {
  * A single-element tool whose other closed-set parameters are named like the first chunk
  * and the run-off of its `ref` would be under a naive `<parameter>_<suffix>`.
  */
-const clickWithLookalikeParametersTool: ExecutableTool = {
+const clickWithLookalikeParametersTool: GoalLoopOperation = {
   ...clickTool,
   name: "lookalike_click",
   requiredParams: ["ref", "ref_1", "ref_run_off"],
@@ -98,7 +98,7 @@ const clickWithLookalikeParametersTool: ExecutableTool = {
 };
 
 function askedQuestions(
-  tool: ExecutableTool,
+  tool: GoalLoopOperation,
   capture: PageStateCapture
 ): ArgumentQuestion[] {
   const plan = planArguments(tool, capture);
@@ -165,7 +165,7 @@ function scriptedDecision(
 
 /** Plan, ask, and read the stage-two answers for a tool on a capture. */
 async function askStageTwo(
-  tool: ExecutableTool,
+  tool: GoalLoopOperation,
   capture: PageStateCapture,
   script: Script
 ) {
@@ -396,7 +396,7 @@ describe("collection instances over the option cap", () => {
       label: `items[${index}]`,
       element,
     }));
-    const tool: ExecutableTool = {
+    const tool: GoalLoopOperation = {
       name: "List.archive",
       description: "Archive an item.",
       execute: async () => null,
@@ -421,7 +421,7 @@ describe("collection instances over the option cap", () => {
 
 describe("Goal Values", () => {
   /** A tool with a list parameter and one named like its first list question. */
-  const tagTool: ExecutableTool = {
+  const tagTool: GoalLoopOperation = {
     name: "tag",
     description: "Tag the item.",
     execute: async () => null,
@@ -519,7 +519,7 @@ describe("Goal Values", () => {
   });
 
   it("hands a required parameter no Goal Value can fill to the calling agent", () => {
-    const tool: ExecutableTool = {
+    const tool: GoalLoopOperation = {
       ...tagTool,
       requiredParams: ["options"],
       args: [

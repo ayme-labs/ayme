@@ -65,16 +65,15 @@ it("takes any Caller name as by, keeping the built-in names for suggestions", ()
 });
 
 it("types a Custom Tool's run as ayme.tools.run, without a Caller", () => {
-  const childRun = (() =>
-    Promise.resolve()) as unknown as CustomToolContext["run"];
-  expectTypeOf(childRun("click", { target: "e1" })).toEqualTypeOf<
+  const run = (() => Promise.resolve()) as unknown as CustomToolContext["run"];
+  expectTypeOf(run("click", { target: "e1" })).toEqualTypeOf<
     Promise<ActionResult>
   >();
-  expectTypeOf(childRun("TodoPage.addTodo", { title: "Milk" })).toEqualTypeOf<
+  expectTypeOf(run("TodoPage.addTodo", { title: "Milk" })).toEqualTypeOf<
     Promise<unknown>
   >();
   // @ts-expect-error fill requires its text.
-  void childRun("fill", { target: "e1" });
+  void run("fill", { target: "e1" });
   // @ts-expect-error a child Run has its parent, not a Caller.
-  void childRun("click", { target: "e1" }, { by: "app" });
+  void run("click", { target: "e1" }, { by: "app" });
 });
