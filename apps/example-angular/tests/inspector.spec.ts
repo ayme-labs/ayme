@@ -1,5 +1,6 @@
 import { expect, selectors } from "@playwright/test";
 import { exampleTest as test } from "@ayme-dev/example-certification/tests";
+import { server } from "@ayme-dev/example-certification/config";
 import {
   Inspector,
   registerInspectorSelectors,
@@ -11,7 +12,7 @@ test.beforeAll(() => registerInspectorSelectors(selectors));
 
 test("opens the Inspector and runs a tool from it", async ({ page }) => {
   test.skip(
-    test.info().config.metadata.server !== "development",
+    server !== "dev",
     "The app turns the Inspector on in dev mode only"
   );
   await page.goto("/");
