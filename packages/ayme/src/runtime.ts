@@ -333,13 +333,19 @@ function createAppProcessTools() {
     async run(name, input, options) {
       const by = callerOf(options);
       const paired = followed;
-      if (!paired)
-        throw new RuntimeStateError(
-          "No Ayme MCP server is paired with this page."
-        );
-      return runLog.record(name, input, { by }, () => paired.run(name, input), {
-        offPage: true,
-      });
+      return runLog.record(
+        name,
+        input,
+        { by },
+        () => {
+          if (!paired)
+            throw new RuntimeStateError(
+              "No Ayme MCP server is paired with this page."
+            );
+          return paired.run(name, input);
+        },
+        { offPage: true }
+      );
     },
   };
   return {
@@ -574,16 +580,29 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         throw new RuntimeStateError(`The tool "${name}" is not live.`);
       return runTool(peekTool, input, { reader: readerOf(by) }, settle);
     }
+    const reader = readerOf(by);
+    return runLog.record(name, input, { by }, (id) =>
+      runTool(
+        liveTool(name),
+        input,
+        { reader, run: childRun(id, reader) },
+        settle
+      )
+    );
+  }
+
+  /**
+   * The live tool `name`. Throws when there is none, inside the Run that
+   * asked for it, so the log records that Run as failed.
+   */
+  function liveTool(name: string) {
     if (!owner)
       throw new RuntimeStateError(
         `Cannot run the tool "${name}": the Ayme runtime session is not started.`
       );
     const entry = resolveLiveTools({ peeks }).get(name);
     if (!entry) throw new RuntimeStateError(`The tool "${name}" is not live.`);
-    const reader = readerOf(by);
-    return runLog.record(name, input, { by }, (id) =>
-      runTool(entry.tool, input, { reader, run: childRun(id, reader) }, settle)
-    );
+    return entry.tool;
   }
 
   /**
@@ -593,18 +612,13 @@ export function createAyme(options: AymeOptions = {}): Ayme {
    * settle wait of its own; the parent's turn ends with the parent's.
    */
   function childRun(parent: string, parentReader: Reader): ChildRun {
-    return async (name, input, reader = parentReader) => {
-      if (!owner)
-        throw new RuntimeStateError(
-          `Cannot run the tool "${name}": the Ayme runtime session is not started.`
-        );
-      const entry = resolveLiveTools({ peeks }).get(name);
-      if (!entry)
-        throw new RuntimeStateError(`The tool "${name}" is not live.`);
-      return runLog.record(name, input, { parent }, (id) =>
-        executeTool(entry.tool, input, { reader, run: childRun(id, reader) })
+    return async (name, input, reader = parentReader) =>
+      runLog.record(name, input, { parent }, (id) =>
+        executeTool(liveTool(name), input, {
+          reader,
+          run: childRun(id, reader),
+        })
       );
-    };
   }
 
   /**

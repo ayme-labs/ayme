@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { callers, createAyme, createPage, type Ayme, type Run } from "./index";
+import {
+  callers,
+  createAyme,
+  createPage,
+  RuntimeStateError,
+  type Ayme,
+  type Run,
+} from "./index";
 
 const SAVE = { target: "role=button[name='Save']" };
 
@@ -115,6 +122,47 @@ describe("The Run log, ayme.runs, in Chromium", () => {
       }),
     ]);
     expect(runsSince(before)[0]).not.toHaveProperty("result");
+  });
+
+  it("records a Run of a tool that is not live as failed, and still throws", async () => {
+    const before = ayme.runs.list();
+
+    const error = await ayme.tools
+      .run("Nowhere.save", {}, { by: "support-assistant" })
+      .catch((thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(RuntimeStateError);
+    expect(runsSince(before)).toEqual([
+      expect.objectContaining({
+        tool: "Nowhere.save",
+        input: {},
+        by: "support-assistant",
+        status: "failed",
+        error: 'RuntimeStateError: The tool "Nowhere.save" is not live.',
+        durationMs: expect.any(Number),
+      }),
+    ]);
+  });
+
+  it("records a Run started while the session is stopped as failed, and still throws", async () => {
+    stop();
+    const before = ayme.runs.list();
+
+    const error = await ayme.tools
+      .run("click", SAVE)
+      .catch((thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(RuntimeStateError);
+    expect(runsSince(before)).toEqual([
+      expect.objectContaining({
+        tool: "click",
+        input: SAVE,
+        by: callers.app,
+        status: "failed",
+        error:
+          'RuntimeStateError: Cannot run the tool "click": the Ayme runtime session is not started.',
+      }),
+    ]);
   });
 
   it("keeps the result as it returned, whatever happens to the returned value later", async () => {

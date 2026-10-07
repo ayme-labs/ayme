@@ -113,6 +113,30 @@ describe("child Runs, in Chromium", () => {
     ]);
   });
 
+  it("records a child Run of a tool that is not live as failed, under its parent", async () => {
+    const saveElsewhere: CustomTool = {
+      name: "save_elsewhere",
+      description: "Save on a page that is not here.",
+      async execute(_target, { run }) {
+        return run("Nowhere.save", {});
+      },
+    };
+    start({ customTools: [saveElsewhere] });
+    const ref = await refOf("Save");
+    const before = ayme.runs.list();
+
+    await ayme.tools.run("save_elsewhere", { ref }).catch(() => {});
+
+    const [parent, child] = runsSince(before);
+    expect(parent).toMatchObject({ tool: "save_elsewhere", status: "failed" });
+    expect(child).toMatchObject({
+      tool: "Nowhere.save",
+      parent: parent!.id,
+      status: "failed",
+      error: 'RuntimeStateError: The tool "Nowhere.save" is not live.',
+    });
+  });
+
   it("keeps the newest 200 top-level Runs with their children, and drops an older one with its children", async () => {
     const saveTwice: CustomTool = {
       name: "save_twice",
