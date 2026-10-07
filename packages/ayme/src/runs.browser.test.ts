@@ -57,7 +57,7 @@ describe("The Run log, ayme.runs, in Chromium", () => {
     }
   });
 
-  it("lists a Run as running when its turn starts, and tells subscribers when it starts and ends", async () => {
+  it("lists a Run as running when its turn starts, and tells subscribers when it starts, gains an Interaction and ends", async () => {
     const before = ayme.runs.list();
     const heard: (readonly Run[])[] = [];
     const unsubscribe = ayme.runs.subscribe(() =>
@@ -68,8 +68,8 @@ describe("The Run log, ayme.runs, in Chromium", () => {
     unsubscribe();
     await ayme.tools.run("click", SAVE);
 
-    expect(heard).toHaveLength(2);
-    const [started, ended] = heard;
+    expect(heard).toHaveLength(3);
+    const [started, clicked, ended] = heard;
     expect(started).toEqual([
       expect.objectContaining({
         tool: "click",
@@ -78,6 +78,13 @@ describe("The Run log, ayme.runs, in Chromium", () => {
       }),
     ]);
     expect(started![0]).not.toHaveProperty("durationMs");
+    expect(clicked).toEqual([
+      expect.objectContaining({
+        id: started![0]!.id,
+        status: "running",
+        interactions: [expect.objectContaining({ operation: "click" })],
+      }),
+    ]);
     expect(ended).toEqual([
       expect.objectContaining({
         id: started![0]!.id,

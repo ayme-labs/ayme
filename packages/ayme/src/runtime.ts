@@ -387,7 +387,10 @@ const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 export function createAyme(options: AymeOptions = {}): Ayme {
   let resolvedPage: AymePage | undefined;
   const getPage = () =>
-    (resolvedPage ??= instrumentedPage((options.pageFactory ?? createPage)()));
+    (resolvedPage ??= instrumentedPage(
+      (options.pageFactory ?? createPage)(),
+      runLog.interact
+    ));
   // Publication is decided once, when the session is created.
   const enabled = options.webMCP?.enabled === true;
   // Peeks reach coding agents and the Inspector only (ADR-0034). The

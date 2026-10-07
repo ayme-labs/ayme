@@ -1,5 +1,6 @@
 import type { JsonValue } from "./contracts";
 import { errorText } from "./errors";
+import type { Interaction } from "./interactions";
 import type { Caller } from "./run";
 
 /**
@@ -42,6 +43,11 @@ type RunFields = {
   startedAt: number;
   /** How long it took; absent while it runs. */
   durationMs?: number;
+  /**
+   * The Interactions it performed itself on the runtime's Page, in order:
+   * its child Runs' are theirs, not its own.
+   */
+  interactions: readonly Interaction[];
 };
 
 /** Package-internal: who starts a Run, its Caller or its parent Run. */
@@ -52,9 +58,12 @@ export type RunOrigin = { by: Caller } | { parent: string };
  * Run that started it.
  */
 export type AymeRuns = {
-  /** The same array comes back until a Run starts or ends. */
+  /** The same array comes back until a Run starts, gains an Interaction, or ends. */
   list(): readonly Run[];
-  /** Calls `listener` with the new list after a Run starts or ends. */
+  /**
+   * Calls `listener` with the new list after a Run starts, gains an
+   * Interaction, or ends.
+   */
   subscribe(listener: (runs: readonly Run[]) => void): () => void;
 };
 
@@ -65,6 +74,7 @@ export type AymeRuns = {
 const KEPT_RUNS = 200;
 
 const NO_RUNS: readonly Run[] = Object.freeze([]);
+const NO_INTERACTIONS: readonly Interaction[] = Object.freeze([]);
 
 /**
  * Package-internal: the document's Run log. A module instance lives as long
@@ -77,6 +87,12 @@ function createRunLog() {
   let nextId = 1;
   /** The top-level Run each Run belongs to, by id: itself for a top-level Run. */
   const roots = new Map<string, string>();
+  /**
+   * The ids of the Runs running now, outermost first. Top-level Runs take
+   * turns and a child Run runs inside its parent's turn, so the last one is
+   * the Run whose code is running: the innermost.
+   */
+  const running: string[] = [];
   const listeners = new Set<(runs: readonly Run[]) => void>();
 
   function publish(next: Run[]) {
@@ -113,6 +129,11 @@ function createRunLog() {
       origin: RunOrigin,
       execute: (id: string) => Promise<T>
     ): Promise<T>;
+    /**
+     * Records `interaction` as the innermost running Run's. Outside every
+     * Run it is no one's, and is not recorded.
+     */
+    interact(interaction: Interaction): void;
   } = {
     list: () => runs,
     subscribe(listener) {
@@ -129,13 +150,22 @@ function createRunLog() {
         retained([
           ...runs,
           withJson(
-            { id, tool, ...origin, status: "running", startedAt: Date.now() },
+            {
+              id,
+              tool,
+              ...origin,
+              status: "running",
+              startedAt: Date.now(),
+              interactions: NO_INTERACTIONS,
+            },
             "input",
             input
           ) as Run,
         ])
       );
-      const end = (ended: Partial<RunFields>) =>
+      running.push(id);
+      const end = (ended: Partial<RunFields>) => {
+        running.splice(running.lastIndexOf(id), 1);
         publish(
           runs.map((run) =>
             run.id === id
@@ -147,6 +177,7 @@ function createRunLog() {
               : run
           )
         );
+      };
       let answer;
       try {
         answer = await execute(id);
@@ -156,6 +187,21 @@ function createRunLog() {
       }
       end(withJson({ status: "succeeded" }, "result", answer));
       return answer;
+    },
+    interact(interaction) {
+      const id = running.at(-1);
+      if (id === undefined) return;
+      const recorded = Object.freeze({ ...interaction });
+      publish(
+        runs.map((run) =>
+          run.id === id
+            ? Object.freeze({
+                ...run,
+                interactions: Object.freeze([...run.interactions, recorded]),
+              })
+            : run
+        )
+      );
     },
   };
   return log;
