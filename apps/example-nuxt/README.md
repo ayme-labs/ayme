@@ -50,6 +50,18 @@ Publication is enabled. The initial status is `waiting` on both the server and
 browser. A browser with a WebMCP driver activates publication. Without a driver,
 publication becomes unavailable; local POM actions remain usable.
 
+## Peeks
+
+The counter adds the Peek `counter` with `usePeek`, read as `peek.counter`.
+In development, the Nitro server plugin `server/plugins/ayme.ts` starts an
+App Process: the server pairs with the agent's Ayme MCP server beside the tab
+and offers the Peek `renders`, how many pages it rendered, read as
+`peek.node.renders`. The plugin does nothing in a production build. It looks
+for the agent's server on the port range, or only on the port in
+`AYME_EXAMPLE_AGENT_PORT` when set, which the e2e tests set; Ayme itself
+reads no environment variable. `usePeek` registers after mount, in the
+browser, so server rendering adds no `counter` instance to the App Process.
+
 ## Verify
 
 After building, with no manually started server:
@@ -62,7 +74,7 @@ pnpm --filter @ayme-dev/example-nuxt test:e2e
 pnpm --filter @ayme-dev/example-vue test:e2e
 ```
 
-The browser suite is the shared [example certification](../example-certification/README.md), run against `nuxt dev` and the built Nitro server (`AYME_E2E_SERVER=production`). The app renders the certification's counter contract: a second page, `/other`, reached by a full page load, and an undecorated `SubCounterPage`. Against `nuxt dev` only, where the app turns the Inspector on, a smoke test opens it and runs a tool from it, and the Agent Connection (`agentConnection`) is on too: an MCP client pairs with the page through a connect link and calls a tool, while the built server loads no Agent Connection code and opens no WebSocket. The certification supplies a driver fixture; it does not certify a particular browser's WebMCP API.
+The browser suite is the shared [example certification](../example-certification/README.md), run against `nuxt dev` and the built Nitro server (`AYME_E2E_SERVER=production`). The app renders the certification's counter contract: a second page, `/other`, reached by a full page load, and an undecorated `SubCounterPage`. Against `nuxt dev` only, where the app turns the Inspector on, a smoke test opens it and runs a tool from it, and the Agent Connection (`agentConnection`) is on too: an MCP client pairs with the page through a connect link calls a tool and reads the counter's Peek, while the built server loads no Agent Connection code and opens no WebSocket. Against `nuxt dev`, with the App Process paired, a server-rendered page load leaves `peek.counter` with exactly one instance, from the browser, and the server offers `peek.node.renders` but no `peek.node.counter`; against the built server no App Process pairs. The certification supplies a driver fixture; it does not certify a particular browser's WebMCP API.
 
 The Vue package has DOM-free SSR tests for provider and standalone ownership,
 with publication enabled and disabled. The existing Vue/Vite example remains

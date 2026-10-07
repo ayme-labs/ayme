@@ -26,6 +26,26 @@ import App from "./App.vue";
 </template>
 ```
 
+## Peek at component state
+
+While a coding agent or the Inspector is connected, `usePeek(values, name, id?)` lets the agent read a component's state through the Peek Tool `peek.<name>`:
+
+```vue
+<script setup lang="ts">
+import { ref } from "vue";
+import { usePeek } from "@ayme-dev/vue";
+
+const count = ref(0);
+usePeek({ count }, "counter");
+</script>
+
+<template>
+  <button @click="count += 1">{{ count }}</button>
+</template>
+```
+
+`values` may be a ref, a reactive object or an object of refs; the agent reads their current values when it calls the tool. Each mounted component is one instance of the Peek, under the `id` you pass or one from the component instance. The instance is added in `onMounted`, so server rendering adds none, and it is removed on unmount. `usePeek` calls [`ayme.peek`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek), so it does nothing unless the owner has `agentConnection` or `inspector` on.
+
 ## Documentation
 
 - [Quickstart: Vue](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/quickstart-vue.md): from an empty app to your first Page Object Tool.

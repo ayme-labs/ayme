@@ -540,6 +540,9 @@ importers:
       "@ayme-dev/ayme":
         specifier: workspace:*
         version: link:../../packages/ayme
+      "@ayme-dev/inspector":
+        specifier: workspace:*
+        version: link:../../packages/inspector
       "@ayme-dev/mcp":
         specifier: workspace:*
         version: link:../../packages/mcp

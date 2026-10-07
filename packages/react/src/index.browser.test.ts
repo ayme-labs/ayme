@@ -2,7 +2,15 @@ import * as React from "react";
 import { createElement as h, StrictMode, Suspense, useEffect } from "react";
 import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 import * as TestUtils from "react-dom/test-utils";
-import { afterEach, beforeEach, expect, expectTypeOf, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  expectTypeOf,
+  it,
+  vi,
+} from "vitest";
 import { createAyme } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
@@ -20,6 +28,7 @@ import {
   AymeProvider,
   useAyme,
   usePageObject,
+  usePeek,
   type AymeProviderProps,
 } from "./index";
 
@@ -541,4 +550,117 @@ it("C8: rejects a Page Object Model the compiler did not reach", async () => {
   ).rejects.toThrow(
     "The imported page object has no compiler-derived Ayme metadata."
   );
+});
+
+// usePeek seam: the hook's contract with `ayme.peek`, which it adapts
+// (ADR-0031). The Peek Tool an agent reads is covered by the runtime's
+// browser tests and the examples' Agent Connection suite; here the dev gate
+// stays off, so no Agent Connection loads or scans.
+describe("usePeek", () => {
+  type PeekCall = { read: () => unknown; name: string; id?: string };
+  let calls: PeekCall[];
+  let removed: PeekCall[];
+  beforeEach(async () => {
+    calls = [];
+    removed = [];
+    const { createAyme: actual } =
+      await vi.importActual<typeof import("@ayme-dev/ayme")>("@ayme-dev/ayme");
+    vi.mocked(createAyme).mockImplementation((options) => {
+      const ayme = actual(options);
+      vi.spyOn(ayme, "peek").mockImplementation((read, name, id) => {
+        const call = { read, name, id };
+        calls.push(call);
+        return () => void removed.push(call);
+      });
+      return ayme;
+    });
+  });
+  afterEach(async () => {
+    const { createAyme: actual } =
+      await vi.importActual<typeof import("@ayme-dev/ayme")>("@ayme-dev/ayme");
+    vi.mocked(createAyme).mockImplementation(actual);
+  });
+
+  function Counter({ count, id }: { count: number; id?: string }) {
+    usePeek({ count }, "counter", id);
+    return null;
+  }
+
+  it("C12: adds one instance per mounted component, under its own id", async () => {
+    await act(() =>
+      root().render(
+        h(
+          AymeProvider,
+          { pageFactory },
+          h(Counter, { count: 0 }),
+          h(Counter, { count: 5 })
+        )
+      )
+    );
+
+    expect(calls.map(({ name }) => name)).toEqual(["counter", "counter"]);
+    expect(calls[0]!.id).toEqual(expect.any(String));
+    expect(calls[1]!.id).toEqual(expect.any(String));
+    expect(calls[0]!.id).not.toBe(calls[1]!.id);
+    expect(calls.map(({ read }) => read())).toEqual([
+      { count: 0 },
+      { count: 5 },
+    ]);
+  });
+
+  it("uses the id it is given", async () => {
+    await act(() =>
+      root().render(
+        h(AymeProvider, { pageFactory }, h(Counter, { count: 0, id: "cart-7" }))
+      )
+    );
+
+    expect(calls.map(({ id }) => id)).toEqual(["cart-7"]);
+  });
+
+  it("reads the latest render's values without adding the instance again", async () => {
+    const app = root();
+    const tree = (count: number) =>
+      h(AymeProvider, { pageFactory }, h(Counter, { count }));
+    await act(() => app.render(tree(0)));
+
+    await act(() => app.render(tree(1)));
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.read()).toEqual({ count: 1 });
+  });
+
+  it("C12: removes the instance on unmount", async () => {
+    const app = root();
+    await act(() =>
+      app.render(h(AymeProvider, { pageFactory }, h(Counter, { count: 0 })))
+    );
+
+    await act(() => app.render(h(AymeProvider, { pageFactory })));
+
+    expect(removed).toEqual(calls);
+  });
+
+  it("keeps one live instance through StrictMode's remount", async () => {
+    await act(() =>
+      root().render(
+        h(
+          StrictMode,
+          null,
+          h(AymeProvider, { pageFactory }, h(Counter, { count: 3 }))
+        )
+      )
+    );
+
+    const live = calls.filter((call) => !removed.includes(call));
+    expect(live).toHaveLength(1);
+    expect(new Set(calls.map(({ id }) => id))).toEqual(new Set([live[0]!.id]));
+    expect(live[0]!.read()).toEqual({ count: 3 });
+  });
+
+  it("requires an ancestor provider", async () => {
+    await expect(
+      act(async () => root().render(h(Counter, { count: 0 })))
+    ).rejects.toThrow("ancestor AymeProvider");
+  });
 });

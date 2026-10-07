@@ -39,4 +39,9 @@ export declare const OwnerAndPageObject: TestComponent<{
   model: PageObjectConstructor<object>;
   onInit?: (result: UseAymeResult & { pageObject: object }) => void;
 }>;
+export declare const PeekUser: TestComponent<{
+  count?: number;
+  id?: string;
+}>;
+export declare const PeekUsers: TestComponent<{ counts?: number[] }>;
 export declare const Status: TestComponent<Record<string, never>>;

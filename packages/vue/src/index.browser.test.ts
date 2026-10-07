@@ -4,11 +4,20 @@ import {
   effectScope,
   h,
   nextTick,
+  reactive,
   ref,
   type App,
   type Component,
 } from "vue";
-import { afterEach, expect, expectTypeOf, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  expectTypeOf,
+  it,
+  vi,
+} from "vitest";
 import { createAyme } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
@@ -26,6 +35,7 @@ import {
   AymeProvider,
   useAyme,
   usePageObject,
+  usePeek,
   type UseAymeOptions,
 } from "./index";
 
@@ -580,4 +590,139 @@ it("C5: keeps a real publisher startup failure retryable", async () => {
   failRegistration = false;
   await result?.webMCP.retryPublication();
   expect(result?.webMCP.publicationStatus.state).toBe("active");
+});
+
+// usePeek seam: the composable's contract with `ayme.peek`, which it adapts
+// (ADR-0031). The Peek Tool an agent reads is covered by the runtime's
+// browser tests and the examples' Agent Connection suite; here the dev gate
+// stays off, so no Agent Connection loads or scans.
+describe("usePeek", () => {
+  type PeekCall = { read: () => unknown; name: string; id?: string };
+  let calls: PeekCall[];
+  let removed: PeekCall[];
+  beforeEach(async () => {
+    calls = [];
+    removed = [];
+    const { createAyme: actual } =
+      await vi.importActual<typeof import("@ayme-dev/ayme")>("@ayme-dev/ayme");
+    vi.mocked(createAyme).mockImplementation((options) => {
+      const ayme = actual(options);
+      vi.spyOn(ayme, "peek").mockImplementation((read, name, id) => {
+        const call = { read, name, id };
+        calls.push(call);
+        return () => void removed.push(call);
+      });
+      return ayme;
+    });
+  });
+  afterEach(async () => {
+    const { createAyme: actual } =
+      await vi.importActual<typeof import("@ayme-dev/ayme")>("@ayme-dev/ayme");
+    vi.mocked(createAyme).mockImplementation(actual);
+  });
+
+  const Counter = defineComponent({
+    props: { start: { type: Number, default: 0 }, id: String },
+    setup(props) {
+      const count = ref(props.start);
+      usePeek({ count }, "counter", props.id);
+      return () =>
+        h("button", { onClick: () => (count.value += 1) }, count.value);
+    },
+  });
+  const provided = (content: () => unknown) =>
+    defineComponent({
+      setup: () => () => h(AymeProvider, { pageFactory }, { default: content }),
+    });
+
+  it("C12: adds one instance per mounted component, under its own id", () => {
+    mount(provided(() => [h(Counter), h(Counter, { start: 5 })]));
+
+    expect(calls.map(({ name }) => name)).toEqual(["counter", "counter"]);
+    expect(calls[0]!.id).toEqual(expect.any(String));
+    expect(calls[1]!.id).toEqual(expect.any(String));
+    expect(calls[0]!.id).not.toBe(calls[1]!.id);
+    expect(calls.map(({ read }) => read())).toEqual([
+      { count: 0 },
+      { count: 5 },
+    ]);
+  });
+
+  it("uses the id it is given", () => {
+    mount(provided(() => h(Counter, { id: "cart-7" })));
+
+    expect(calls.map(({ id }) => id)).toEqual(["cart-7"]);
+  });
+
+  it("reads refs' current values without adding the instance again", async () => {
+    const host = document.createElement("div");
+    const app = createApp(provided(() => h(Counter)));
+    apps.push(app);
+    app.mount(host);
+
+    host.querySelector("button")!.click();
+    await nextTick();
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.read()).toEqual({ count: 1 });
+  });
+
+  it("reads a ref or a reactive object given as the values", () => {
+    const total = ref(3);
+    const cart = reactive({ items: ["tea"] });
+    const Peeks = defineComponent({
+      setup() {
+        usePeek(total, "total");
+        usePeek(cart, "cart");
+        return () => null;
+      },
+    });
+    mount(provided(() => h(Peeks)));
+
+    total.value = 4;
+    cart.items.push("milk");
+
+    expect(calls.map(({ read }) => read())).toEqual([
+      4,
+      { items: ["tea", "milk"] },
+    ]);
+  });
+
+  it("C12: removes the instance on unmount", async () => {
+    const visible = ref(true);
+    mount(provided(() => (visible.value ? h(Counter) : null)));
+
+    visible.value = false;
+    await nextTick();
+
+    expect(calls).toHaveLength(1);
+    expect(removed).toEqual(calls);
+  });
+
+  it("adds the instance only once mounted", () => {
+    let callsInSetup: number | undefined;
+    const Probe = defineComponent({
+      setup() {
+        usePeek({}, "probe");
+        callsInSetup = calls.length;
+        return () => null;
+      },
+    });
+    mount(provided(() => h(Probe)));
+
+    expect(callsInSetup).toBe(0);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("requires an owner above", () => {
+    const errors: unknown[] = [];
+    const app = createApp(Counter);
+    app.config.errorHandler = (error) => errors.push(error);
+    apps.push(app);
+    app.mount(document.createElement("div"));
+
+    expect(errors.map(String)).toEqual([
+      expect.stringContaining("usePeek requires useAyme()"),
+    ]);
+  });
 });

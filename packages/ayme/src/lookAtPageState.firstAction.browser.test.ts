@@ -1,9 +1,9 @@
 import { afterEach, expect, it } from "vitest";
 
 import type { PomManifest } from "./contracts";
-import { peekPageStateForDocument } from "./pageState";
+import { lookAtPageStateForDocument } from "./pageState";
 import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
-import { startAgentSession } from "./peekPageState.testSupport";
+import { startAgentSession } from "./lookAtPageState.testSupport";
 
 // Its own file: the agent's first action must be the document's first
 // recorded observation, and each browser test file gets its own document.
@@ -38,7 +38,7 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-it("keeps the agent's first action measured from its own start after a peek", async () => {
+it("keeps the agent's first action measured from its own start after a look", async () => {
   document.body.innerHTML = `<main><button>Act</button></main>`;
   const session = await startAgentSession((runtime) => {
     runtime.pom.register(AppPage);
@@ -46,7 +46,7 @@ it("keeps the agent's first action measured from its own start after a peek", as
   stop = session.stop;
   await probeRegisteredPomMembers();
 
-  await peekPageStateForDocument(document);
+  await lookAtPageStateForDocument(document);
   document.body.insertAdjacentHTML(
     "beforeend",
     `<div role="status">Saved</div>`

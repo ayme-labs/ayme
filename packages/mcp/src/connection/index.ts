@@ -1,6 +1,8 @@
 export {
   AgentConnection,
+  ChannelSession,
   PageSession,
+  ProcessSession,
   RECONNECT_WAIT_MS,
 } from "./application/agentConnection";
 export type { ConnectionEvent } from "./application/agentConnection";

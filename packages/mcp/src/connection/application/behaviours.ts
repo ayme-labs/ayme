@@ -7,8 +7,8 @@ import type {
 import type { AgentConnection } from "./agentConnection";
 
 /**
- * The page's tools, as the page client reaches them: the `tools` member of
- * the runtime object Ayme's setup returns.
+ * The page's or App Process's tools, as its client reaches them: the
+ * `tools` member of the runtime object Ayme's setup returns.
  */
 export type PageTools = {
   list(): readonly PageTool[];
@@ -16,9 +16,9 @@ export type PageTools = {
   run(name: string, input: unknown): Promise<unknown>;
 };
 
-/** The page's end of the channel to its paired server. */
+/** The page's or App Process's end of the channel to its paired server. */
 export type PageChannel = {
-  /** Reports the page's tools to the server. */
+  /** Reports the tools to the server. */
   publishTools(tools: readonly PageTool[]): Promise<void>;
   /** Runs `handler` for every call the server sends and answers with its outcome. */
   answerCalls(
@@ -26,11 +26,31 @@ export type PageChannel = {
   ): () => void;
   /** Tells the server the page started loading a new document. */
   reportLeaving(leaving: PageLeaving): Promise<void>;
+  /**
+   * Calls `listener` with the App Processes' tools the server sends the
+   * page, at once and after every change, and with none when the channel
+   * closes. A page only; returns what stops it.
+   */
+  followProcessTools(
+    listener: (tools: readonly PageTool[]) => void
+  ): () => void;
+  /**
+   * Calls `listener` with the names of the App Process's tools the agent
+   * does not see,
+   * which the server sends at once and after every change. An App Process
+   * only; returns what stops it.
+   */
+  followHiddenTools(listener: (hidden: readonly string[]) => void): () => void;
+  /**
+   * Asks the server to run an App Process's tool, and resolves with that
+   * process's outcome. A page only.
+   */
+  callProcessTool(name: string, input: unknown): Promise<ToolCallOutcome>;
   close(): void;
 };
 
 /**
- * Something the page client does while its channel is open. It starts when
+ * Something the page client or App Process does while its channel is open. It starts when
  * the channel opens and returns what stops it.
  */
 export type ClientBehaviour = (context: {

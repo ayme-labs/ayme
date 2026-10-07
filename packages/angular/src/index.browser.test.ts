@@ -16,6 +16,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import {
   injectAyme,
   injectPageObject,
+  injectPeek,
   provideAyme,
   type AymeOptions,
 } from "./index";
@@ -171,22 +172,24 @@ it("C6: keeps a Page Object registered while any consumer of its model lives", (
   expect(listRegisteredPoms()).toEqual([]);
 });
 
-it("C7: rejects injectAyme and injectPageObject without provideAyme above", () => {
+it("C7: rejects injectAyme, injectPageObject and injectPeek without provideAyme above", () => {
   const root = environment();
 
   for (const inject of [
     injectAyme,
     () => injectPageObject(Model),
+    () => injectPeek({}, "peek"),
   ] as (() => unknown)[])
     expect(() => runInInjectionContext(root, inject)).toThrow(
       "Ayme requires provideAyme() in an ancestor injector."
     );
 });
 
-it("C7: rejects injectAyme and injectPageObject outside an injection context", () => {
+it("C7: rejects injectAyme, injectPageObject and injectPeek outside an injection context", () => {
   for (const inject of [
     injectAyme,
     () => injectPageObject(Model),
+    () => injectPeek({}, "peek"),
   ] as (() => unknown)[])
     expect(inject).toThrow(/NG0203/);
 });

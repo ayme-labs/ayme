@@ -21,7 +21,7 @@ import {
   startAgent,
 } from "@ayme-dev/mcp/testing";
 
-import { counterPath, render, server } from "./config";
+import { agentPort, counterPath, render, server } from "./config";
 
 /**
  * Whether a console error is Chromium reporting a refused probe of the Agent
@@ -534,10 +534,20 @@ function loadedScripts(page: Page) {
 export function agentConnectionTests({
   enabled,
   snapshotText,
+  peek = false,
+  appProcess,
 }: {
   /** Whether the run's app turns the option on; read inside each test. */
   enabled: () => boolean;
   snapshotText: string;
+  /** Whether the counter adds the Peek `counter` with its `{ count }`. */
+  peek?: boolean;
+  /**
+   * Where the app's server runs an App Process wherever it turns the Agent
+   * Connection on, and none elsewhere: its server start reads `agentPort`
+   * from `AYME_EXAMPLE_AGENT_PORT` and adds the one Peek `peek`.
+   */
+  appProcess?: { peek: string };
 }) {
   // `exampleTest`, not `test`: Angular's development build logs its
   // hydration statistics, which `test` counts as a hydration warning.
@@ -572,6 +582,113 @@ export function agentConnectionTests({
           expect(
             (JSON.parse(text) as { structure: string }).structure
           ).toContain(snapshotText);
+        } finally {
+          await agent.close();
+        }
+      }
+    );
+
+    exampleTest(
+      "lets a coding agent read the counter's Peek while it is mounted",
+      async ({ page, baseURL }) => {
+        exampleTest.skip(!peek, "The counter adds no Peek here.");
+        exampleTest.skip(
+          !enabled(),
+          "The app turns the Agent Connection off here."
+        );
+        const agent = await startAgent("--port", String(await freePort()));
+        try {
+          await connectPage(agent, page, new URL("/", baseURL).href, {
+            timeout: 45_000,
+          });
+          const readCounter = async () => {
+            const { text, isError } = await agent.call("peek.counter");
+            expect(isError, text).toBe(false);
+            return JSON.parse(text) as unknown;
+          };
+          const counter = (count: number) => ({
+            name: "counter",
+            instances: [{ id: expect.any(String), values: { count } }],
+          });
+
+          await expect.poll(() => agent.toolNames()).toContain("peek.counter");
+          expect(await readCounter()).toEqual(counter(0));
+
+          await page.getByRole("button", { name: "Increment" }).click();
+          await expect(count(page)).toHaveText("1");
+          expect(await readCounter()).toEqual(counter(1));
+
+          await page.getByRole("button", { name: "Unmount counter" }).click();
+          await expect
+            .poll(() => agent.toolNames())
+            .not.toContain("peek.counter");
+        } finally {
+          await agent.close();
+        }
+      }
+    );
+
+    exampleTest(
+      "server rendering leaves the counter's Peek to the browser while the App Process is paired",
+      async ({ page, baseURL }) => {
+        exampleTest.skip(!appProcess, "The server runs no App Process.");
+        exampleTest.skip(
+          !enabled(),
+          "The app turns the Agent Connection off here."
+        );
+        const serverPeek = `peek.node.${appProcess!.peek}`;
+        const agent = await startAgent("--port", String(agentPort));
+        try {
+          // The App Process started with the server, before this agent, and
+          // looks for it again every 3 s.
+          await expect
+            .poll(() => agent.toolNames(), {
+              message: agent.log,
+              timeout: 15_000,
+            })
+            .toContain(serverPeek);
+          const serverRead = await agent.call(serverPeek);
+          expect(serverRead.isError, serverRead.text).toBe(false);
+          expect(JSON.parse(serverRead.text)).toEqual({
+            name: appProcess!.peek,
+            instances: [{ values: expect.anything() }],
+          });
+
+          // The server renders the page; the link's fragment stays in the browser.
+          await connectPage(agent, page, new URL("/", baseURL).href, {
+            timeout: 45_000,
+          });
+          await expect.poll(() => agent.toolNames()).toContain("peek.counter");
+          const { text, isError } = await agent.call("peek.counter");
+          expect(isError, text).toBe(false);
+          expect(JSON.parse(text)).toEqual({
+            name: "counter",
+            instances: [{ id: expect.any(String), values: { count: 0 } }],
+          });
+          // A call to the App Process answers after any tool change it sent
+          // before, so the render's would be listed by now.
+          expect((await agent.call(serverPeek)).isError).toBe(false);
+          expect(await agent.toolNames()).not.toContain("peek.node.counter");
+        } finally {
+          await agent.close();
+        }
+      }
+    );
+
+    exampleTest(
+      "runs no App Process on the server with the option off",
+      async ({ page }) => {
+        exampleTest.skip(!appProcess, "The server runs no App Process.");
+        exampleTest.skip(
+          enabled(),
+          "The app turns the Agent Connection on here."
+        );
+        const agent = await startAgent("--port", String(agentPort));
+        try {
+          await page.goto("/");
+          // Over two of the 3 s rescans an App Process would pair within.
+          await page.waitForTimeout(7_000);
+          expect(await agent.pageToolNames()).toEqual([]);
         } finally {
           await agent.close();
         }

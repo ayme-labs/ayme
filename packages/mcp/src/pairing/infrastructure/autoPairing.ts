@@ -1,14 +1,8 @@
-import { PROBE_PATH, SERVER_IDENTITY, isLocalHost } from "../domain/admission";
+import { isLocalHost } from "../domain/admission";
 import type { PairingSource } from "../domain/pairing";
-import {
-  SERVER_HOST,
-  SERVER_PORTS,
-  pairingFromFragment,
-} from "../domain/pairing";
+import { SERVER_PORTS, pairingFromFragment } from "../domain/pairing";
 import { PAIRING_STORAGE_KEY } from "../domain/pairingStorage";
-
-/** How long a probe waits for a port to answer. */
-const PROBE_TIMEOUT_MS = 2000;
+import { findServers } from "./serverScan";
 
 /**
  * Pairs a page on `localhost` or `127.0.0.1` by itself when the tab has no
@@ -67,27 +61,6 @@ function hasPairing(): boolean {
 
 /** The address of the one server in the range, or `undefined`. */
 async function findOnlyServer(): Promise<string | undefined> {
-  const addresses: string[] = [];
-  for (let port = SERVER_PORTS.first; port <= SERVER_PORTS.last; port += 1)
-    addresses.push(`ws://${SERVER_HOST}:${port}`);
-  const found = await Promise.all(addresses.map(isAymeServer));
-  const servers = addresses.filter((_address, index) => found[index]);
+  const servers = await findServers(SERVER_PORTS);
   return servers.length === 1 ? servers[0] : undefined;
-}
-
-/** Whether an Ayme MCP server answers the probe at `address`. */
-function isAymeServer(address: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const socket = new WebSocket(address + PROBE_PATH);
-    const timeout = setTimeout(() => {
-      socket.close();
-      resolve(false);
-    }, PROBE_TIMEOUT_MS);
-    socket.addEventListener("close", ({ code, reason }) => {
-      clearTimeout(timeout);
-      resolve(
-        code === SERVER_IDENTITY.code && reason === SERVER_IDENTITY.reason
-      );
-    });
-  });
 }

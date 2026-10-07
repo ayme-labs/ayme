@@ -1,14 +1,17 @@
 /**
- * How the server answers a WebSocket connection from a page:
- * - `token`: the page pairs by the server's token, from its connect link;
- * - `tokenless`: the page pairs without a token, by auto-pairing; the
- *   server still refuses it when it is busy with another tab (see
+ * How the server answers a WebSocket connection from a page or an App
+ * Process:
+ * - `token`: it pairs by the server's token, from its connect link;
+ * - `tokenless`: it pairs without a token, by auto-pairing; the server
+ *   still refuses a page when it is busy with another tab (see
  *   `busyRefuses`);
- * - `unknownPairing`: a page on localhost presents a token that is not this
- *   server's, as when another server took the port of the one it paired
- *   with; the server tells it so it forgets that pairing;
- * - `probe`: the page's auto-pair scan asks whether this is an Ayme MCP
- *   server; the server answers by closing with {@link SERVER_IDENTITY};
+ * - `unknownPairing`: a page on localhost, or an App Process, presents a
+ *   token that is not this server's, as when another server took the port
+ *   of the one it paired with; the server tells it so it forgets that
+ *   pairing;
+ * - `probe`: an auto-pair scan asks whether this is an Ayme MCP server; the
+ *   server answers by closing with {@link SERVER_IDENTITY} (see
+ *   `probeAnswer`);
  * - `refused`: anything else.
  */
 export type Admission =
@@ -62,10 +65,20 @@ export function isLocalOrigin(origin: string | undefined): boolean {
 }
 
 /**
+ * Whether a connection whose handshake carries `origin` comes from a local
+ * process, such as an App Process: browsers always send `Origin`, and the
+ * server listens on loopback only (ADR-0033).
+ */
+export function isLocalProcess(origin: string | undefined): boolean {
+  return origin === undefined;
+}
+
+/**
  * The server's answer to a connection on `path` from `origin`. The token's
- * path pairs from any origin. Without a token, only a page on localhost
- * pairs or probes, so another website the developer has open cannot drive
- * the server or learn that it runs.
+ * path pairs from any origin. Without a token, only a page on localhost or
+ * a local process, which sends no `Origin`, pairs or probes, so another
+ * website the developer has open cannot drive the server or learn that it
+ * runs.
  */
 export function admit({
   path,
@@ -77,7 +90,7 @@ export function admit({
   token: string;
 }): Admission {
   if (path === `/${token}`) return "token";
-  if (!isLocalOrigin(origin)) return "refused";
+  if (!isLocalProcess(origin) && !isLocalOrigin(origin)) return "refused";
   if (path === AUTO_PAIR_PATH) return "tokenless";
   if (path === PROBE_PATH) return "probe";
   if (/^\/[^/]+$/.test(path)) return "unknownPairing";

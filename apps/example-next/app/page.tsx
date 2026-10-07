@@ -1,6 +1,8 @@
 import CounterExample from "./counter-example";
+import { countRender } from "./renders";
 
 export default function Home() {
+  countRender();
   return (
     <main>
       <h1>Ayme Next.js prototype</h1>

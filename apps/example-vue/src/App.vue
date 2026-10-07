@@ -6,13 +6,15 @@ import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 import { Badge } from "@/components/ui/badge";
 import AgentPanel from "./AgentPanel.vue";
 import ListDemo from "./demo/ListDemo.vue";
+import PeekCheck from "./peek/PeekCheck.vue";
 
 // Ordinary apps call useAyme() without options. This demo keeps its site
-// chrome out of Structural Page State.
-const isSiteChrome = (element: Element) =>
-  element.matches("[data-site-chrome]");
+// chrome and the dev server's Peek check out of Structural Page State.
+const isNotPlayground = (element: Element) =>
+  element.matches("[data-site-chrome], [data-peek-check]");
+const peekCheck = import.meta.env.DEV;
 useAyme({
-  ignore: isSiteChrome,
+  ignore: isNotPlayground,
   // Only the dev server mounts a Decision Endpoint, so the Goal Loop is a
   // development feature here and the deployed build publishes no goal.
   goalLoop: import.meta.env.DEV
@@ -76,6 +78,7 @@ usePageObject(ListPage);
           </div>
           <ListDemo />
         </main>
+        <PeekCheck v-if="peekCheck" />
       </div>
     </div>
   </div>

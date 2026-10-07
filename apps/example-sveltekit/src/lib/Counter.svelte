@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { useAyme, usePageObject } from "@ayme-dev/svelte";
+  import { peek, useAyme, usePageObject } from "@ayme-dev/svelte";
   import { CounterPage } from "$lib/pom/CounterPage";
   import { SubCounterPage } from "$lib/pom/SubCounterPage";
 
@@ -8,6 +8,7 @@
   const pom = usePageObject(CounterPage);
   usePageObject(SubCounterPage);
   let count = $state(0);
+  peek(() => ({ count }), "counter");
   let runtimeAtMount = $state("pending");
 
   // A stopped runtime lists no tools, so a list shows the runtime had

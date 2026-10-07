@@ -75,7 +75,7 @@ type CapturedPageState = PageStateCapture & {
  * A capture that recorded nothing: its tree, element map, rendered text and
  * the projected forest the text is rendered from.
  */
-export type PageStatePeek = CapturedPageState;
+export type PageStateLook = CapturedPageState;
 
 /**
  * Package-internal: a projected node's own entry in the page state text, as
@@ -167,10 +167,10 @@ export async function getPageStateCaptureForDocument(
  * Capture `currentDocument`'s page state without recording it in the
  * interaction history, for a reader that is not a caller (the Inspector).
  */
-export async function peekPageStateForDocument(
+export async function lookAtPageStateForDocument(
   currentDocument: Document
-): Promise<PageStatePeek> {
-  return getPageStateSession(currentDocument).peek();
+): Promise<PageStateLook> {
+  return getPageStateSession(currentDocument).look();
 }
 
 /**
@@ -298,7 +298,7 @@ class PageStateSession {
    * elements; a fresh synthetic-ref factory keeps the `s_` refs a caller
    * sees next from shifting.
    */
-  async peek(): Promise<PageStatePeek> {
+  async look(): Promise<PageStateLook> {
     return captureCurrentPageState(
       this.currentDocument.body,
       new SyntheticAriaRefFactory()

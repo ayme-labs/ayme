@@ -5,6 +5,9 @@ import {
   ignoreAutoPairScan,
   startAgent,
 } from "@ayme-dev/mcp/testing";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
 import { test as base, expect, type Page } from "@playwright/test";
 
 export { expect };
@@ -16,7 +19,34 @@ export {
   startAgent,
 } from "@ayme-dev/mcp/testing";
 
+/** A stand-in App Process the test started, see `appProcess.ts`. */
+export type AppProcess = {
+  /** What it wrote to stdout and stderr so far. */
+  output(): string;
+  /** Ends it and resolves once it exited. */
+  exit(): Promise<void>;
+};
+
+/** Where the App Process looks for the server, and the tool it offers. */
+export type AppProcessOptions = {
+  /** The one port it scans. */
+  port?: number;
+  /** A connect link that names the server. */
+  link?: string;
+  /** The name of its one Peek; `jobs`, read as `peek.node.jobs`, by default. */
+  peek?: string;
+  /** What its Peek reads, as `{ value }`. */
+  value?: string;
+};
+
+const APP_PROCESS = fileURLToPath(new URL("./appProcess.ts", import.meta.url));
+
 export const test = base.extend<{
+  /**
+   * Starts a stand-in App Process; every one the test started exits when
+   * the test ends.
+   */
+  startStandInAppProcess: (options: AppProcessOptions) => AppProcess;
   /**
    * The agent's server. It listens outside the range a page's auto-pair scan
    * probes, unless a spec sets `inScanRange`, so a localhost page of another
@@ -47,6 +77,20 @@ export const test = base.extend<{
   limitScan: boolean;
 }>({
   limitScan: [true, { option: true }],
+  // Playwright reads a fixture's dependencies from its first parameter.
+  // eslint-disable-next-line no-empty-pattern
+  startStandInAppProcess: async ({}, use) => {
+    const started: AppProcess[] = [];
+    try {
+      await use((options) => {
+        const appProcess = startStandInAppProcess(options);
+        started.push(appProcess);
+        return appProcess;
+      });
+    } finally {
+      await Promise.all(started.map((appProcess) => appProcess.exit()));
+    }
+  },
   inScanRange: [false, { option: true }],
   agent: async ({ inScanRange }, use) => {
     const agent = await (inScanRange
@@ -126,5 +170,35 @@ export function unanswered(answer: { text: string; isError: boolean }) {
     loading?: string;
     tools?: string[];
     next: string;
+  };
+}
+
+function startStandInAppProcess({
+  port,
+  link,
+  peek,
+  value,
+}: AppProcessOptions): AppProcess {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  if (port !== undefined) env.AYME_PROCESS_PORT = String(port);
+  if (link !== undefined) env.AYME_PROCESS_LINK = link;
+  if (peek !== undefined) env.AYME_PROCESS_PEEK = peek;
+  if (value !== undefined) env.AYME_PROCESS_VALUE = value;
+  const child = spawn(process.execPath, [APP_PROCESS], {
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let output = "";
+  child.stdout.on("data", (chunk: Buffer) => (output += String(chunk)));
+  child.stderr.on("data", (chunk: Buffer) => (output += String(chunk)));
+  const exited = new Promise<void>((resolve) =>
+    child.once("exit", () => resolve())
+  );
+  return {
+    output: () => output,
+    exit() {
+      if (child.exitCode === null && child.signalCode === null) child.kill();
+      return exited;
+    },
   };
 }

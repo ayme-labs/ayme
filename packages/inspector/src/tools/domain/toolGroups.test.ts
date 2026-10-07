@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { attachToolModels, listTools, type LiveTool } from "./toolGroups";
 
 // Unit: what the Tools lens lists, from the runtime's live tools. The expected groups come from the runtime's grouping:
-// Page Object Tools, Custom Tools, Browser Tools, and snapshot and goal.
+// Page Object Tools, Custom Tools, Browser Tools, Peek Tools, and snapshot and goal.
 
 function tool(name: string, group: LiveTool["group"]): LiveTool {
   return { name, description: "", inputSchema: {}, group };
@@ -17,19 +17,21 @@ const live = [
   tool("highlight", "custom"),
   tool("ListPage.addItem", "pageObject"),
   tool("ListPage.items.rename", "pageObject"),
+  tool("peek.cart", "peek"),
   tool("goal", "agent"),
 ];
 
 const names = (tools: readonly LiveTool[]) => tools.map((t) => t.name);
 
 describe("listTools", () => {
-  it("groups the tools as Page object, Custom, Browser and Agent tools, in the runtime's order", () => {
+  it("groups the tools as Page object, Custom, Browser, Peek and Agent tools, in the runtime's order", () => {
     expect(
       listTools(live).map(({ label, tools }) => [label, names(tools)])
     ).toEqual([
       ["Page object tools", ["ListPage.addItem", "ListPage.items.rename"]],
       ["Custom tools", ["highlight"]],
       ["Browser tools", ["click", "fill"]],
+      ["Peek tools", ["peek.cart"]],
       ["Agent tools", ["snapshot", "goal"]],
     ]);
   });
@@ -46,6 +48,14 @@ describe("listTools", () => {
 
   it("lists nothing when no tool is live", () => {
     expect(listTools([])).toEqual([]);
+  });
+
+  it("lists the page's Peek tools before the App Processes'", () => {
+    const jobs: LiveTool = { ...tool("peek.node.jobs", "peek"), side: "node" };
+
+    const [peeks] = listTools([jobs, tool("peek.cart", "peek")]);
+
+    expect(names(peeks!.tools)).toEqual(["peek.cart", "peek.node.jobs"]);
   });
 });
 
@@ -68,6 +78,7 @@ describe("attachToolModels", () => {
       ["highlight", undefined],
       ["ListPage.addItem", "ListPage"],
       ["ListPage.items.rename", "ListItem"],
+      ["peek.cart", undefined],
       ["goal", undefined],
     ]);
   });

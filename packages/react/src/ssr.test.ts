@@ -1,6 +1,7 @@
 import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createAyme, type Ayme } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
   registerCompiledPom,
@@ -9,11 +10,36 @@ import {
   AymeProvider,
   useAyme,
   usePageObject,
+  usePeek,
   type AymeProviderProps,
 } from "./index";
 
+const peekCalls = vi.hoisted(() => [] as string[]);
+vi.mock("@ayme-dev/ayme", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@ayme-dev/ayme")>();
+  return {
+    ...original,
+    createAyme: (...args: Parameters<typeof original.createAyme>) => {
+      const ayme: Ayme = original.createAyme(...args);
+      ayme.peek = (_read, name) => {
+        peekCalls.push(name);
+        return () => {};
+      };
+      return ayme;
+    },
+  };
+});
+
 type PageFactory = NonNullable<AymeProviderProps["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
+
+// The server's own session holds the process as its App Process, as in a
+// dev server with Peeks: a render whose session claimed it too would throw.
+let stopAppProcess = () => {};
+beforeEach(() => {
+  stopAppProcess = createAyme().start();
+});
+afterEach(() => stopAppProcess());
 
 describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",
@@ -83,3 +109,15 @@ describe.each([false, true])(
     });
   }
 );
+
+it("C12: adds no Peek instance while server rendering", () => {
+  function Counter() {
+    usePeek({ count: 0 }, "counter");
+    return h("output", null, "0");
+  }
+
+  expect(renderToString(h(AymeProvider, null, h(Counter)))).toContain(
+    ">0</output>"
+  );
+  expect(peekCalls).toEqual([]);
+});

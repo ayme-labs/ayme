@@ -26,7 +26,7 @@ Layers, only where a slice has that kind of code: `domain` (pure rules and types
 
 - `shared` keeps the Inspector's look at the page live: page changes, input,
   focus and registry changes schedule a refresh (debounced, one at a time),
-  and each refresh is one unrecorded peek at the page state, so the
+  and each refresh is one unrecorded look at the page state, so the
   Inspector never changes what agents see.
 - `page-model` holds the Page Objects on the page and their models, indexed
   by member path, so members, their groups and owners resolve by lookup.

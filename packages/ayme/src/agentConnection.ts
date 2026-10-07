@@ -16,3 +16,22 @@ export async function loadAgentConnection(): Promise<
     );
   }
 }
+
+/**
+ * Loads an App Process's side of the Agent Connection for the
+ * `agentConnection` option in Node. Like the page client, it is imported
+ * only when the option is on.
+ */
+export async function loadProcessConnection(): Promise<
+  Pick<typeof import("@ayme-dev/mcp/process"), "startAgentConnection">
+> {
+  try {
+    // @boundaries-ignore An optional peer dependency, which Turbo doesn't count.
+    return await import("@ayme-dev/mcp/process");
+  } catch (error) {
+    throw new Error(
+      `The agentConnection option could not load @ayme-dev/mcp. Install it beside @ayme-dev/ayme, or turn the option off. Cause: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error }
+    );
+  }
+}
