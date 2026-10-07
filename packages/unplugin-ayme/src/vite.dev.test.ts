@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { createServer, type ViteDevServer } from "vite";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 
 import { ayme } from "./vite";
 
@@ -234,7 +234,10 @@ export class CounterPage {
   });
   writeMode(`"up" | "down" | "reset"`);
   await changed;
-  await new Promise((resolve) => setTimeout(resolve, 100));
 
-  expect(normalize(await modeValues())).toBe(`["up","down","reset"]`);
+  await vi.waitFor(
+    async () =>
+      expect(normalize(await modeValues())).toBe(`["up","down","reset"]`),
+    { timeout: 10_000 }
+  );
 }, 30_000);
