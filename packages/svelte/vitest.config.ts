@@ -1,4 +1,5 @@
 import { compile, VERSION } from "svelte/compiler";
+import { playwright } from "@vitest/browser-playwright";
 import { defineConfig, type Plugin } from "vitest/config";
 
 const legacyCompiler = Number(VERSION.split(".")[0]) < 5;
@@ -24,17 +25,36 @@ function svelteTestComponents(target: "client" | "server"): Plugin {
   };
 }
 
+// The compiled components import these. Prebundling them up front keeps Vite
+// from discovering them mid-run and reloading the page.
+const clientDependencies = [
+  "svelte",
+  "svelte/store",
+  ...(legacyCompiler
+    ? ["svelte/internal"]
+    : [
+        "svelte/legacy",
+        "svelte/internal/client",
+        "svelte/internal/disclose-version",
+        "svelte/internal/flags/legacy",
+      ]),
+];
+
 export default defineConfig({
   test: {
     projects: [
       {
         plugins: [svelteTestComponents("client")],
-        resolve: { conditions: ["browser"] },
+        optimizeDeps: { include: clientDependencies },
         test: {
           name: "browser",
-          environment: "jsdom",
-          include: ["src/**/*.test.ts"],
-          exclude: ["src/**/*.ssr.test.ts"],
+          include: ["src/**/*.browser.test.ts"],
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            instances: [{ browser: "chromium" }],
+          },
         },
       },
       {

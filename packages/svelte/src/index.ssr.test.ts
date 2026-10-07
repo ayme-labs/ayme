@@ -1,3 +1,5 @@
+// Server tests of the owner and consumer API in Node. Test names cite the rows
+// of the behaviour contract in docs/framework-integrations.md.
 import { describe, expect, it, vi } from "vitest";
 import { createAyme } from "@ayme-dev/ayme";
 import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
@@ -37,7 +39,7 @@ class ServerModel {
 describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",
   (enabled) => {
-    it("gives each render its own inert session and Page Objects", () => {
+    it("C9: gives each render its own inert session and Page Objects", () => {
       vi.mocked(createAyme).mockClear();
       const owners: UseAymeResult[] = [];
       const pageObjects: object[] = [];
@@ -69,7 +71,7 @@ describe.each([false, true])(
       expect(listRegisteredPoms()).toHaveLength(0);
     });
 
-    it("renders the initial publication status", () => {
+    it("C10: renders the initial publication status", () => {
       const { html } = Owner.render({
         options: { webMCP: { enabled } },
         child: Status,
@@ -79,7 +81,7 @@ describe.each([false, true])(
   }
 );
 
-it("lets the owner use a Page Object in its own component", () => {
+it("C9: lets the owner use a Page Object in its own component", () => {
   let result: (UseAymeResult & { pageObject: object }) | undefined;
   void OwnerAndPageObject.render({
     options: { pageFactory },
@@ -91,7 +93,7 @@ it("lets the owner use a Page Object in its own component", () => {
   expect(listRegisteredPoms()).toHaveLength(0);
 });
 
-it("requires an owner for a Page Object", () => {
+it("C7: requires an owner for a Page Object", () => {
   expect(() => PageObjectUser.render({ model: ServerModel }).html).toThrow(
     "usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte."
   );
