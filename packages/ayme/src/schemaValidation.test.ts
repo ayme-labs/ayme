@@ -91,6 +91,23 @@ describe("toolInputViolations", () => {
     ).toEqual([{ path: "constructor", message: "is not supported" }]);
   });
 
+  it("applies a schema's own keywords beside its anyOf", () => {
+    const schema: JsonSchema = {
+      type: "object",
+      properties: {
+        count: {
+          type: "number",
+          minimum: 1,
+          anyOf: [{ type: "integer" }, { type: "number" }],
+        },
+      },
+    };
+    expect(toolInputViolations(schema, { count: 0 })).toEqual([
+      { path: "count", message: "must be at least 1" },
+    ]);
+    expect(toolInputViolations(schema, { count: 2 })).toEqual([]);
+  });
+
   it("rejects input that isn't an object", () => {
     expect(toolInputViolations(goalSchema, [])).toEqual([
       { path: "", message: "must be an object" },

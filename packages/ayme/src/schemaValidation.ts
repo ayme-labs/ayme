@@ -38,25 +38,11 @@ export function schemaViolations(
 ): SchemaViolation[] {
   const at = (message: string): SchemaViolation[] => [{ path, message }];
 
-  if (schema.anyOf?.length) {
-    const results = schema.anyOf.map((variant) =>
-      schemaViolations(variant, value, path)
-    );
-    if (results.some((violations) => violations.length === 0)) return [];
-    // Only one variant has the value's type: its own violations say more.
-    const sameType = schema.anyOf.flatMap((variant, index) =>
-      variant.type !== undefined && hasType(value, variant.type)
-        ? [results[index]!]
-        : []
-    );
-    if (sameType.length === 1) return sameType[0]!;
-    return at(`must be ${schema.anyOf.map(describe).join(" or ")}`);
-  }
-
+  // anyOf narrows the value; the schema's other keywords still apply.
+  const violations = anyOfViolations(schema, value, path);
   if (schema.type !== undefined && !hasType(value, schema.type))
-    return at(`must be ${describe({ type: schema.type })}`);
+    return [...violations, ...at(`must be ${describe({ type: schema.type })}`)];
 
-  const violations: SchemaViolation[] = [];
   if (schema.type === "array" && Array.isArray(value) && schema.items)
     value.forEach((item, index) =>
       violations.push(
@@ -73,6 +59,28 @@ export function schemaViolations(
   if (schema.enum && (!isJsonPrimitive(value) || !schema.enum.includes(value)))
     violations.push(...at(`must be ${describe({ enum: schema.enum })}`));
   return violations;
+}
+
+function anyOfViolations(
+  schema: JsonSchema,
+  value: unknown,
+  path: string
+): SchemaViolation[] {
+  if (!schema.anyOf?.length) return [];
+  const results = schema.anyOf.map((variant) =>
+    schemaViolations(variant, value, path)
+  );
+  if (results.some((violations) => violations.length === 0)) return [];
+  // Only one variant has the value's type: its own violations say more.
+  const sameType = schema.anyOf.flatMap((variant, index) =>
+    variant.type !== undefined && hasType(value, variant.type)
+      ? [results[index]!]
+      : []
+  );
+  if (sameType.length === 1) return sameType[0]!;
+  return [
+    { path, message: `must be ${schema.anyOf.map(describe).join(" or ")}` },
+  ];
 }
 
 function objectViolations(

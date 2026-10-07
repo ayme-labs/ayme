@@ -26,6 +26,15 @@ describe("jsonSyntaxError", () => {
     expect(jsonSyntaxError(text)).toEqual({ line, column, message });
   });
 
+  it("takes only JSON's whitespace, so a leading BOM is an error", () => {
+    expect(jsonSyntaxError('\uFEFF{"a": 1}')).toEqual({
+      line: 1,
+      column: 1,
+      message: "expected a value, found '\uFEFF'",
+    });
+    expect(jsonSyntaxError('{"a":\u00A01}')).toBeDefined();
+  });
+
   it("finds an error wherever JSON.parse fails", () => {
     for (const text of ["{x}", "[1,]", "01", "-", "1.", '{"a":1,}', "nul"])
       expect(jsonSyntaxError(text), text).toBeDefined();

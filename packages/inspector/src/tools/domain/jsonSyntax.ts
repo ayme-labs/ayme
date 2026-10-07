@@ -14,7 +14,8 @@ export function jsonSyntaxError(text: string): JsonSyntaxError | undefined {
     throw new SyntaxAt(at, `expected ${expected}, found ${found}`);
   };
   const space = () => {
-    while (/\s/.test(text[at] ?? "")) at++;
+    // Only the four characters JSON takes as whitespace, not all of \s.
+    while (/[ \t\n\r]/.test(text[at] ?? "")) at++;
   };
   const take = (char: string, expected = `'${char}'`) => {
     if (text[at] !== char) fail(expected);
