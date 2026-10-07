@@ -36,7 +36,7 @@ export function toolsLens({
   const selectedTool = selection.kind === "tool" ? selection.name : undefined;
   return {
     id: "tools",
-    label: "Tools",
+    label: "Toolbox",
     tree: (
       <div className="flex flex-col">
         {listed.map(({ group, label, tools }) => (

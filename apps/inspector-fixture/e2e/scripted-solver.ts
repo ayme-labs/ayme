@@ -151,7 +151,7 @@ const SCRIPTS: readonly Script[] = [
       await tap(
         step,
         "Tools lens button",
-        byRole("button", "Tools"),
+        byRole("button", "Toolbox"),
         inLensGroup
       );
       await type(

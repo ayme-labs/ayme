@@ -15,7 +15,7 @@ test("the Tools lens lists the page's Page Object tools", async ({
 
   await agent.act("show the {lens} lens", { params: { lens: "Tools" } });
 
-  await expect(lensButton(screen, "Tools")).toHaveAttribute(
+  await expect(lensButton(screen, "Toolbox")).toHaveAttribute(
     "aria-pressed",
     "true"
   );
