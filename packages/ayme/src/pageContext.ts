@@ -8,7 +8,8 @@ import {
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { ToolInputError } from "./errors";
-import type { Caller } from "./interactionHistory";
+import type { Reader } from "./interactionHistory";
+import type { RunContext } from "./run";
 
 type GetPageContextInput = { names?: string[] };
 
@@ -48,17 +49,20 @@ export const getPageContextTool = {
     required: [],
     additionalProperties: false,
   } as const,
-  execute: (input: unknown) => snapshotFor(input, "agent"),
-  /** Runs it for the caller given, whose page it is. */
-  executeAs: (input: unknown, caller: Caller) => snapshotFor(input, caller),
-} satisfies ModelContextTool<GetPageContextInput, JsonValue> & {
-  executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
+  /** Reads the page for the Run's reader, whose page it then is. */
+  execute: (input: unknown, context?: RunContext) =>
+    snapshotFor(input, context?.reader ?? "agent"),
+} satisfies Omit<
+  ModelContextTool<GetPageContextInput, JsonValue>,
+  "execute"
+> & {
+  execute(input: unknown, context?: RunContext): Promise<JsonValue>;
 };
 
-async function snapshotFor(input: unknown, caller: Caller): Promise<JsonValue> {
+async function snapshotFor(input: unknown, reader: Reader): Promise<JsonValue> {
   const context = await pageContextFor(
     document,
-    caller,
+    reader,
     definitionNamesFrom(input)
   );
   const payload: PageContextPayload = {
@@ -77,10 +81,10 @@ export async function getPageContextForDocument(
 
 async function pageContextFor(
   currentDocument: Document,
-  caller: Caller,
+  reader: Reader,
   names: readonly string[]
 ): Promise<PageContext> {
-  const pageState = await getPageStateForDocument(currentDocument, caller);
+  const pageState = await getPageStateForDocument(currentDocument, reader);
   return Object.freeze({
     structure: pageState.text,
     pomDefinitions: getPomDefinitions(...names).definitions,

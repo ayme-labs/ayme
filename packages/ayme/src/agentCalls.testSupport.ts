@@ -2,6 +2,7 @@
  * Test support: the calling agent's reads and Structural Ref actions, without
  * a runtime session or a WebMCP driver.
  */
+import type { ActionResult } from "./actionSequence";
 import { listElementTools } from "./browserTools";
 import { getPageContextForDocument } from "./pageContext";
 import { getPageStateForDocument, type AriaRef } from "./pageState";
@@ -21,7 +22,10 @@ export const ayme = {
   getPageState: () => getPageStateForDocument(document),
   getPomDefinitions,
   click: (ref: AriaRef) =>
-    browserTool("click").executeAs({ target: ref }, "agent"),
+    browserTool("click").tool.execute({ target: ref }) as Promise<ActionResult>,
   fill: (ref: AriaRef, text: string) =>
-    browserTool("fill").executeAs({ target: ref, text }, "agent"),
+    browserTool("fill").tool.execute({
+      target: ref,
+      text,
+    }) as Promise<ActionResult>,
 };

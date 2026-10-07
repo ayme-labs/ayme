@@ -17,8 +17,8 @@ import { RuntimeStateError } from "./errors";
 import { listPeekTools, type PeekTool } from "./peek";
 
 /**
- * A live tool: `execute` runs it as the calling agent, `executeAs` for the
- * caller given.
+ * A live tool: `execute` runs it for a Run, whose context names the reader
+ * its Change Record is for.
  */
 export type PublishedTool =
   | CallerAwarePomTool

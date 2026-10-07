@@ -46,6 +46,18 @@ ayme.pom.register(ProjectsPage);
 await ayme.tools.run("ProjectsPage.createProject", { name: "Launch plan" });
 ```
 
+Every call of a tool is a Run, started by a Caller. `ayme.tools.run` runs as the app by default; pass `by` to name another Caller, such as your in-app assistant:
+
+```ts
+await ayme.tools.run(
+  "ProjectsPage.createProject",
+  { name: "Launch plan" },
+  { by: "support-assistant" }
+);
+```
+
+A Caller name is any non-empty string; an empty one throws a `RuntimeStateError`. Name yours in lowercase kebab-case; Ayme does not enforce it. Ayme's own Callers use the names in `callers`: `app`, `webmcp` (WebMCP publication), `ayme-mcp` (the Ayme MCP server) and `inspector`.
+
 ## Peek at app state
 
 While a coding agent or the Inspector is connected, `ayme.peek` lets the agent read state the page does not show. Each name becomes a Peek Tool, `peek.<name>`, which reads the values when the agent calls it:

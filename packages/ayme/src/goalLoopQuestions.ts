@@ -15,6 +15,7 @@ import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
 import type { GoalLoopStepRecord } from "./goalLoop";
 import type { AriaRef, PageStateCapture } from "./pageState";
 import { listElementTools, NAVIGATION_TOOLS } from "./browserTools";
+import { executeTool } from "./run";
 import { acceptedRefNodes, type TargetField } from "./elementTools";
 import {
   listCollectionToolRoots,
@@ -150,7 +151,7 @@ type ArgumentSpec = {
 export type ExecutableTool = {
   name: string;
   description: string;
-  /** Runs the tool as the Goal Loop's model, the caller of every step. */
+  /** Runs the tool as a step: the Goal Loop's model reads its page. */
   execute(input: unknown): Promise<unknown>;
   /** Parameter names a caller must pass; empty when the tool takes none. */
   requiredParams: string[];
@@ -270,10 +271,10 @@ function specsOfCollectionTool(
  */
 export function buildToolOptions(): ToolOption[] {
   const elementTools: ExecutableTool[] = listElementTools().map(
-    ({ tool, targetField, loopInputSchema, filter, executeAs }) => ({
+    ({ tool, targetField, loopInputSchema, filter }) => ({
       name: tool.name,
       description: tool.description,
-      execute: (input: unknown) => executeAs(input, "goalLoop"),
+      execute: (input: unknown) => executeTool(tool, input, "goalLoop"),
       requiredParams: [...(loopInputSchema.required ?? [])],
       args: specsOfElementToolSchema(loopInputSchema, targetField, filter),
     })
@@ -281,7 +282,7 @@ export function buildToolOptions(): ToolOption[] {
   const navigationTools: ExecutableTool[] = NAVIGATION_TOOLS.map((tool) => ({
     name: tool.name,
     description: tool.description,
-    execute: (input: unknown) => tool.executeAs(input, "goalLoop"),
+    execute: (input: unknown) => executeTool(tool, input, "goalLoop"),
     requiredParams: [...(tool.inputSchema.required ?? [])],
     args: specsOfObjectSchema(tool.inputSchema),
   }));
@@ -296,7 +297,8 @@ export function buildToolOptions(): ToolOption[] {
       description: t.description,
       // An action without parameters of its own still takes the empty `args`.
       execute: (input: unknown) =>
-        t.executeAs(
+        executeTool(
+          t,
           roots ? { args: {}, ...(input as Record<string, unknown>) } : input,
           "goalLoop"
         ),

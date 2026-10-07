@@ -1,5 +1,3 @@
-import { getPageContextTool } from "./pageContext";
-import { isPeekTool } from "./peek";
 import {
   type PublishedTool,
   type PublishedToolGroup,
@@ -10,6 +8,7 @@ import {
   subscribeToRegisteredPoms,
   probeRegisteredPomMembers,
 } from "./registry";
+import { callers, runTool } from "./run";
 
 /** The MCP tool-failure result a published tool returns instead of throwing. */
 type ToolErrorResult = {
@@ -47,51 +46,6 @@ function errorText(error: unknown): string {
   return `${error.name}: ${error.message}`;
 }
 
-/**
- * A tool as WebMCP runs it for an agent: after a call that can change the
- * page, `settle` runs before the call resolves; a failure is an `isError`
- * result. `snapshot` only reads, so it does not settle.
- */
-export function asAgentCall(tool: PublishedTool, settle: () => Promise<void>) {
-  return withErrorResult({
-    ...tool,
-    execute: (input: unknown) =>
-      settledAfter(tool, () => tool.execute(input), settle),
-  });
-}
-
-/**
- * Run `call` of `tool`, then `settle` before resolving, unless the tool only
- * reads (`snapshot`, a Peek Tool) or its answer says a full page load started: that answer
- * goes out at once, before the document goes away. Shared by an agent's call
- * and the application's.
- */
-export async function settledAfter<T>(
-  tool: PublishedTool,
-  call: () => Promise<T>,
-  settle: () => Promise<void>
-): Promise<T> {
-  if (tool === getPageContextTool || isPeekTool(tool)) return call();
-  let result: T;
-  try {
-    result = await call();
-  } catch (error) {
-    await settle();
-    throw error;
-  }
-  if (!startedFullLoad(result)) await settle();
-  return result;
-}
-
-/** Whether an answer, an action result or a Handover, names a loading URL. */
-function startedFullLoad(answer: unknown): boolean {
-  return (
-    typeof answer === "object" &&
-    answer !== null &&
-    typeof (answer as { loading?: unknown }).loading === "string"
-  );
-}
-
 export type WebMcpDriver = Pick<
   NonNullable<typeof document.modelContext>,
   "registerTool"
@@ -107,6 +61,17 @@ export type WebMcpSynchronizationOptions = {
   /** Prepended to every name the driver registers; the registry's are unprefixed. */
   toolNamePrefix?: string;
   onError?: (error: unknown) => void;
+  /**
+   * Runs an agent's call of a published tool, by its unprefixed name, as a
+   * `webmcp` Run that awaits `settle` before it resolves: a started
+   * session's `ayme.tools.run` path. Without it, the published tool runs
+   * itself as a `webmcp` Run.
+   */
+  run?: (
+    name: string,
+    input: unknown,
+    settle: () => Promise<void>
+  ) => Promise<unknown>;
 };
 
 /**
@@ -230,10 +195,19 @@ export async function synchronizeWebMcpTools(
             keptForCall: false,
           };
           published.set(name, registration);
+          // A read (`snapshot`, a Peek Tool) does not settle, and a failure
+          // is an `isError` result.
+          const call = (input: unknown) =>
+            options.run
+              ? options.run(name, input, settle)
+              : runTool(tool, input, callers.webmcp, settle);
           try {
             await driver.registerTool(
               {
-                ...trackCall(registration, asAgentCall(tool, settle)),
+                ...trackCall(
+                  registration,
+                  withErrorResult({ ...tool, execute: call })
+                ),
                 name: prefix + name,
               },
               { signal: controller.signal }

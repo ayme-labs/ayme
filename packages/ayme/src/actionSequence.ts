@@ -6,7 +6,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import { isJsonValue, type JsonValue } from "./contracts";
 import { browserMonotonicClock } from "./browserMonotonicClock";
-import type { Caller, ToolCall } from "./interactionHistory";
+import type { Reader, ToolCall } from "./interactionHistory";
 import { getBrowserPageActivitySource } from "./pageActivitySource";
 import {
   completeActionForDocument,
@@ -52,7 +52,7 @@ export type ActionResult = {
  */
 export async function runAction(
   currentDocument: Document,
-  caller: Caller,
+  caller: Reader,
   call: ToolCall,
   perform: () => unknown
 ): Promise<ActionResult> {

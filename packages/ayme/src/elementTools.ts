@@ -6,7 +6,8 @@ import {
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import { runAction, type ActionResult } from "./actionSequence";
 import type { JsonSchema, JsonValue } from "./contracts";
-import type { Caller } from "./interactionHistory";
+import type { Reader } from "./interactionHistory";
+import type { RunContext } from "./run";
 import {
   resolvePageStateRefs,
   type AriaRef,
@@ -35,20 +36,19 @@ export type CustomTool = {
   execute(target: { ref: AriaRef; element: Element }): Promise<unknown>;
 };
 
-/** Runs a tool for the caller it is given. */
-type CallerRun = (input: unknown, caller: Caller) => Promise<ActionResult>;
+/** Runs a tool for the reader it is given. */
+type ReaderRun = (input: unknown, reader: Reader) => Promise<ActionResult>;
 
 /**
- * A Browser Tool or Custom Tool, as published: `execute` runs it as the
- * calling agent, `executeAs` for the caller given.
+ * A Browser Tool or Custom Tool, as published: `execute` runs it for a Run,
+ * whose context names the reader its Change Record is for.
  */
-export type PublishedElementTool = ModelContextTool<
-  Record<string, unknown>,
-  JsonValue
+export type PublishedElementTool = Omit<
+  ModelContextTool<Record<string, unknown>, JsonValue>,
+  "execute"
 > & {
   inputSchema: JsonSchema;
-  execute(input: unknown): Promise<JsonValue>;
-  executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
+  execute(input: unknown, context?: RunContext): Promise<JsonValue>;
 };
 
 /**
@@ -57,7 +57,7 @@ export type PublishedElementTool = ModelContextTool<
  * Browser Tool (ADR-0023).
  */
 export type RegisteredElementTool = {
-  /** As published, its `execute` runs it as the calling agent. */
+  /** As published; the Goal Loop executes it too. */
   readonly tool: PublishedElementTool;
   /** The input field that addresses the element: `ref` or `target`. */
   readonly targetField: TargetField;
@@ -65,8 +65,6 @@ export type RegisteredElementTool = {
   readonly loopInputSchema: JsonSchema;
   /** true = the Goal Loop may offer this element; not enforced on direct calls. */
   readonly filter: (element: Element) => boolean;
-  /** Runs it as the caller given; the Goal Loop runs it as its model. */
-  readonly executeAs: CallerRun;
 };
 
 /**
@@ -111,8 +109,8 @@ const REF_INPUT_SCHEMA: JsonSchema = {
  * `run` the element. Finishes with the shared action sequence, so every such
  * tool returns the same action result.
  */
-function elementToolRun(definition: ElementToolDefinition): CallerRun {
-  return async (input, caller) => {
+function elementToolRun(definition: ElementToolDefinition): ReaderRun {
+  return async (input, reader) => {
     const fields = validatedToolInput(definition.inputSchema, input);
     const currentDocument = requireCurrentDocument();
     const target = await resolveElementTarget(
@@ -122,7 +120,7 @@ function elementToolRun(definition: ElementToolDefinition): CallerRun {
     );
     return runAction(
       currentDocument,
-      caller,
+      reader,
       {
         tool: definition.name,
         args: input,
@@ -138,14 +136,14 @@ export function registerElementTool(
   definition: ElementToolDefinition,
   filter: (element: Element) => boolean
 ): RegisteredElementTool {
-  const executeAs = elementToolRun(definition);
+  const run = elementToolRun(definition);
   return {
     tool: {
       name: definition.name,
       description: definition.description,
       inputSchema: definition.inputSchema,
-      execute: (input: unknown) => executeAs(input, "agent"),
-      executeAs,
+      execute: (input: unknown, context?: RunContext) =>
+        run(input, context?.reader ?? "agent"),
     },
     targetField: definition.targetField,
     loopInputSchema:
@@ -153,7 +151,6 @@ export function registerElementTool(
         ? requiredInputOnly(definition.inputSchema)
         : definition.inputSchema,
     filter,
-    executeAs,
   };
 }
 

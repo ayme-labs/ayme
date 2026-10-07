@@ -57,8 +57,8 @@ export const navigateTool: PublishedElementTool = {
   description:
     "Open a URL on the page's own origin, or a path relative to the current page.",
   inputSchema: navigateSchema,
-  execute: (input: unknown) => navigateTool.executeAs(input, "agent"),
-  executeAs: async (input, caller) => {
+  execute: async (input, context) => {
+    const reader = context?.reader ?? "agent";
     const { url } = validatedToolInput(navigateSchema, input) as {
       url: string;
     };
@@ -82,7 +82,7 @@ export const navigateTool: PublishedElementTool = {
     const { navigate } = routerStore;
     return runAction(
       currentDocument,
-      caller,
+      reader,
       { tool: "navigate", args: input },
       navigate
         ? async () => {

@@ -3,7 +3,8 @@ import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { JsonSchema, JsonValue } from "./contracts";
 import type { ActionResult } from "./actionSequence";
 import { renderChangeRecord } from "./changeRecord";
-import type { Caller } from "./interactionHistory";
+import type { Reader } from "./interactionHistory";
+import type { RunContext } from "./run";
 import {
   getInteractionHistory,
   getPageStateCaptureForDocument,
@@ -59,14 +60,16 @@ export function configureGoalLoop(
   goalLoopStore.decisionFn = decisionFn;
 }
 
-/** The `goal` tool; `execute` runs it for the calling agent. */
+/**
+ * The `goal` tool; `execute` runs the loop for a Run, whose reader the
+ * Handover hands control back to.
+ */
 export type GoalTool = Omit<
   ModelContextTool<Record<string, unknown>, JsonValue>,
   "inputSchema" | "execute"
 > & {
   inputSchema: JsonSchema;
-  execute(input: unknown): Promise<JsonValue>;
-  executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
+  execute(input: unknown, context?: RunContext): Promise<JsonValue>;
 };
 
 /**
@@ -232,16 +235,16 @@ export function createPursueGoalTool(
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document
 ): GoalTool {
-  /** Runs the loop for `caller`, which the Handover hands control back to. */
-  const executeAs = async (
+  /** Runs the loop for the Run's reader, which the Handover hands control back to. */
+  const execute = async (
     input: unknown,
-    caller: Caller
+    context?: RunContext
   ): Promise<JsonValue> => {
     const result = await pursueGoal(
       readPursueGoalInput(input),
       decisionFn,
       currentDocument,
-      caller
+      context?.reader ?? "agent"
     );
     return result.handover as unknown as JsonValue;
   };
@@ -268,8 +271,7 @@ export function createPursueGoalTool(
       required: ["goal", "maxSteps"],
       additionalProperties: false,
     } as const,
-    execute: (input: unknown) => executeAs(input, "agent"),
-    executeAs,
+    execute,
   };
 }
 
@@ -332,7 +334,7 @@ export async function pursueGoal(
   { goal, maxSteps, values }: GoalInput,
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document,
-  caller: Caller = "agent"
+  caller: Reader = "agent"
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];

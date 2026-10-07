@@ -19,14 +19,14 @@ import {
 } from "@ayme-dev/core/structural-observation";
 
 /**
- * Who receives page states and acts: the calling agent (through WebMCP
- * Tools), the Goal Loop's System One model, or the application (through the
- * runtime session's `tools.run`).
+ * Whose cursor a Run moves: the agent's (a `webmcp` Run), the Goal Loop's
+ * System One model's (a Goal Loop step), or the app's (every other Caller).
+ * The capture layer never learns which Caller started a Run.
  *
  * ponytail: `goalLoop` is a reader id of its own until the Goal Loop becomes
  * a plain consumer of the history.
  */
-export type Caller = "agent" | "goalLoop" | "app";
+export type Reader = "agent" | "goalLoop" | "app";
 
 /** What core's Structural Action does not carry: the tool call behind it. */
 export type ToolCall = {
@@ -38,7 +38,7 @@ export type ToolCall = {
 
 /** A tool call as recorded beside its Structural Action. */
 export type RecordedAction = ToolCall & {
-  readonly caller: Caller;
+  readonly caller: Reader;
   /** Set when the tool call threw; the action still completed. */
   readonly failed?: true;
 };
@@ -64,7 +64,7 @@ export class InteractionHistory {
    * ponytail: two remembered positions, the observation each caller last
    * received; they become reader points with an explicit `since`.
    */
-  private readonly cursors = new Map<Caller, StructuralObservationEntry>();
+  private readonly cursors = new Map<Reader, StructuralObservationEntry>();
   private first: StructuralObservationEntry | undefined;
   private latest: StructuralObservationEntry | undefined;
 
@@ -102,7 +102,7 @@ export class InteractionHistory {
   observe(
     tree: StructuralTree,
     at: MonotonicTimeMs,
-    receivedBy?: Caller
+    receivedBy?: Reader
   ): StructuralObservationEntry {
     const entry = this.record(tree, at);
     if (receivedBy) this.cursors.set(receivedBy, entry);
@@ -115,12 +115,12 @@ export class InteractionHistory {
   }
 
   /** The observation `caller` last received; the first observation while it has received none. */
-  cursor(caller: Caller): StructuralObservationEntry | undefined {
+  cursor(caller: Reader): StructuralObservationEntry | undefined {
     return this.cursors.get(caller) ?? this.first;
   }
 
   /** Start a Structural Action for `caller`'s tool call. */
-  startAction(caller: Caller, call: ToolCall): StructuralActionId {
+  startAction(caller: Reader, call: ToolCall): StructuralActionId {
     const actionId = this.actionIds.create();
     this.recorded.set(actionId, { ...call, caller });
     this.observations.recordActionStarted({
@@ -183,7 +183,7 @@ export class InteractionHistory {
    * Record tree, the caller's previous cursor reconciled against that page;
    * undefined when the model received nothing.
    */
-  async handOver(caller: Caller): Promise<StructuralTree | undefined> {
+  async handOver(caller: Reader): Promise<StructuralTree | undefined> {
     const received = this.cursors.get("goalLoop");
     if (!received) return undefined;
     const before = this.cursor(caller) ?? received;

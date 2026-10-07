@@ -22,7 +22,6 @@ import {
   type PageObjectConstructor,
 } from "./registry";
 import {
-  settledAfter,
   synchronizeWebMcpTools,
   waitForWebMcpDriver,
   type WebMcpRegistration,
@@ -36,6 +35,13 @@ import {
   type PeekRead,
 } from "./peek";
 import type { ToolInput, ToolResult } from "./toolTypes";
+import {
+  callerOf,
+  callers,
+  runTool,
+  type Caller,
+  type ToolRunOptions,
+} from "./run";
 
 export type AymeWebMcpPublicationStatus = Readonly<{
   state:
@@ -71,11 +77,17 @@ export type AymeTools = {
   /** Calls `listener` with the new list after the live tool set changes. */
   subscribe(listener: (tools: readonly ToolInfo[]) => void): () => void;
   /**
-   * Runs a live tool as the application, through the same path as an
-   * agent's call. Throws Ayme's errors, and `RuntimeStateError` while the
-   * session is not started or when the tool is not live.
+   * Starts a Run of a live tool for the Caller `by` names, `"app"` by
+   * default: every Caller, WebMCP and the Ayme MCP server included, starts
+   * its Runs here. Throws Ayme's errors, and `RuntimeStateError` for an
+   * empty `by`, while the session is not started, or when the tool is not
+   * live.
    */
-  run<N extends string>(name: N, input: ToolInput<N>): Promise<ToolResult<N>>;
+  run<N extends string>(
+    name: N,
+    input: ToolInput<N>,
+    options?: ToolRunOptions
+  ): Promise<ToolResult<N>>;
 };
 
 /** The session's Page Objects: one instance per class. */
@@ -432,6 +444,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         const registration = await synchronizeWebMcpTools(driver, {
           toolNamePrefix,
           signal,
+          run: (name, input, settle) =>
+            runAs(name, input, callers.webmcp, settle),
           onError(error) {
             attemptFailed = true;
             if (signal.aborted) return;
@@ -494,7 +508,25 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     retryPublication,
   };
 
-  async function run(name: string, input: unknown): Promise<unknown> {
+  async function run(
+    name: string,
+    input: unknown,
+    options?: ToolRunOptions
+  ): Promise<unknown> {
+    return runAs(name, input, callerOf(options));
+  }
+
+  /**
+   * Runs the live tool `name` as a top-level Run for `by`. `settle` runs
+   * after an action, before the Run resolves: by default the Page Objects
+   * are probed, as after an agent's call, so the live tools are current.
+   */
+  async function runAs(
+    name: string,
+    input: unknown,
+    by: Caller,
+    settle = () => probeRegisteredPomMembers().catch(() => {})
+  ): Promise<unknown> {
     if (inProcess) {
       // The Peek registry is shared by the process, so a session without
       // Peeks runs none another session added.
@@ -503,7 +535,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         : undefined;
       if (!peekTool)
         throw new RuntimeStateError(`The tool "${name}" is not live.`);
-      return peekTool.executeAs(input, "app");
+      return runTool(peekTool, input, by, settle);
     }
     if (!owner)
       throw new RuntimeStateError(
@@ -511,15 +543,20 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       );
     const entry = resolveLiveTools({ peeks }).get(name);
     if (!entry) throw new RuntimeStateError(`The tool "${name}" is not live.`);
-    const { tool } = entry;
-    // As after an agent's call, the Page Objects are probed, so the live
-    // tools are current when the call resolves.
-    return settledAfter(
-      tool,
-      () => tool.executeAs(input, "app"),
-      () => probeRegisteredPomMembers().catch(() => {})
-    );
+    return runTool(entry.tool, input, by, settle);
   }
+
+  /**
+   * The session's tools as the Ayme MCP server's client reaches them: its
+   * Runs are `ayme-mcp`'s, so `@ayme-dev/mcp` names no Caller.
+   */
+  const aymeMcpTools = {
+    list: () => ayme.tools.list(),
+    subscribe: (listener: (tools: readonly ToolInfo[]) => void) =>
+      ayme.tools.subscribe(listener),
+    run: (name: string, input: unknown) =>
+      ayme.tools.run(name, input as never, { by: callers.aymeMcp }),
+  };
 
   const pom: AymePom = {
     get<T extends object>(model: PageObjectConstructor<T>): T {
@@ -612,7 +649,9 @@ export function createAyme(options: AymeOptions = {}): Ayme {
           const signal = controller.signal;
           startAgentConnectionUntil(signal, () =>
             loadAgentConnection().then(({ startAgentConnection }) => () => {
-              const connection = startAgentConnection(ayme);
+              const connection = startAgentConnection({
+                tools: aymeMcpTools,
+              });
               // A page client from before App Processes hands over none.
               appProcessTools.follow(connection.processTools);
               signal.addEventListener(

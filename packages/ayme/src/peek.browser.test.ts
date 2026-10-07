@@ -382,8 +382,9 @@ describe("where Peek Tools appear", () => {
     const ayme = started({ agentConnection: true });
     peek(ayme, () => ({ open: true }), "menu");
 
-    await expect.poll(() => connected.sessions).toEqual([ayme]);
-    expect(toolNames(ayme)).toContain("peek.menu");
+    await expect.poll(() => connected.sessions).toHaveLength(1);
+    const [client] = connected.sessions as Pick<Ayme, "tools">[];
+    expect(client!.tools.list().map(({ name }) => name)).toContain("peek.menu");
   });
 
   it("leaves them out of WebMCP publication", async () => {

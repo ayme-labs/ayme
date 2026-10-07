@@ -8,6 +8,7 @@ import * as navigateToolModule from "./navigateTool";
 import * as pageState from "./pageState";
 import {
   createAyme,
+  type Ayme,
   markRenderSession,
   sameRuntimeOptions,
   type AymePage,
@@ -193,7 +194,21 @@ it("starts the Agent Connection while a session with agentConnection is started"
   sessions.push(runtime);
   const stop = start(runtime);
   await flush();
-  expect(startAgentConnection).toHaveBeenCalledExactlyOnceWith(runtime);
+  expect(startAgentConnection).toHaveBeenCalledOnce();
+  // The page client reaches the session's tools, and runs them as ayme-mcp.
+  const [{ tools }] = startAgentConnection.mock.calls[0] as unknown as [
+    { tools: Ayme["tools"] },
+  ];
+  expect(tools.list()).toBe(runtime.tools.list());
+  const run = vi.spyOn(runtime.tools, "run").mockResolvedValue("ran");
+  await expect(tools.run("snapshot", {})).resolves.toBe("ran");
+  expect(run).toHaveBeenCalledExactlyOnceWith(
+    "snapshot",
+    {},
+    {
+      by: "ayme-mcp",
+    }
+  );
   stop();
   expect(dispose).toHaveBeenCalledOnce();
 
@@ -394,15 +409,14 @@ it("lists the live tools while started, keeping the array until the set changes"
 
 it("runs goal as the application while publication is unavailable", async () => {
   const handover = { reason: "done" as const, next: "Continue.", history: [] };
-  const executeAs = vi.fn(async () => handover);
+  const execute = vi.fn(async () => handover);
   const goalTool = vi
     .spyOn(goalLoopModule, "getPursueGoalTool")
     .mockReturnValue({
       name: "goal",
       description: "Drive the page toward a goal.",
       inputSchema: { type: "object" },
-      execute: vi.fn(),
-      executeAs,
+      execute,
     });
   try {
     vi.mocked(waitForWebMcpDriver).mockResolvedValue(undefined);
@@ -412,7 +426,7 @@ it("runs goal as the application while publication is unavailable", async () => 
     expect(runtime.webMCP.publicationStatus.state).toBe("unavailable");
     const input = { goal: "save", maxSteps: 3 };
     await expect(runtime.tools.run("goal", input)).resolves.toBe(handover);
-    expect(executeAs).toHaveBeenCalledExactlyOnceWith(input, "app");
+    expect(execute).toHaveBeenCalledExactlyOnceWith(input, { reader: "app" });
     expect(synchronizeWebMcpTools).not.toHaveBeenCalled();
   } finally {
     goalTool.mockRestore();

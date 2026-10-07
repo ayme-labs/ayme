@@ -191,8 +191,7 @@ export const generateLocatorTool: PublishedElementTool = {
     "Each locator is checked to match exactly its element. A target that cannot be resolved fails on its own entry, and a container on its own group.",
   ].join(" "),
   inputSchema,
-  execute: (input: unknown) => generateLocatorTool.executeAs(input, "agent"),
-  executeAs: async (input) => {
+  execute: async (input) => {
     const { groups } = validatedToolInput(inputSchema, input) as {
       groups: { targets: string[]; within?: string }[];
     };
