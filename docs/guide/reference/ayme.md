@@ -43,7 +43,7 @@ With `navigate`, the `navigate` tool moves through your router, so your app keep
 navigate: (url) => router.push(url.slice(location.origin.length)),
 ```
 
-`ayme.start()` claims the runtime for the current document, one owner at a time, and returns the function that stops it.
+`ayme.start()` claims the runtime for the current document, one owner at a time, and returns the function that stops it. A second start while another session owns the document throws a `RuntimeStateError` with `code: "active-owner"`. On the server, `start()` starts nothing and returns a stop function that does nothing, so server rendering needs no guard.
 
 ## ayme.tools
 
@@ -61,11 +61,11 @@ navigate: (url) => router.push(url.slice(location.origin.length)),
 
 `ayme.pom` (`AymePom`) holds one Page Object of each Page Object Model for the session.
 
-| Member              | Behavior                                                                                                                                                              |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get(Model)`        | Returns the instance, created on first use. Safe during rendering: on the server it returns an inert object with the model's prototype and never calls `pageFactory`. |
-| `register(Model)`   | Counts a registration and returns the instance. The class's tools are live while the session is started; registrations made before `start()` take effect on start.    |
-| `unregister(Model)` | Removes one registration. The tools are withdrawn when the last one is removed.                                                                                       |
+| Member              | Behavior                                                                                                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `get(Model)`        | Returns the instance, created on first use. Safe during rendering: on the server it returns an inert object with the model's prototype and never calls `pageFactory`.                                  |
+| `register(Model)`   | Counts a registration and returns the instance. The class's tools are live while the session is started; registrations made before `start()` take effect on start. On the server it registers nothing. |
+| `unregister(Model)` | Removes one registration. The tools are withdrawn when the last one is removed.                                                                                                                        |
 
 Every registration of a class shares one instance, so a Page Object should keep no per-component state in its own fields.
 

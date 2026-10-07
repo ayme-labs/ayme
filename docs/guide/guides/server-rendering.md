@@ -4,7 +4,7 @@ What Ayme does on the server and in the browser when your app renders on the ser
 
 ## What runs where
 
-Ayme runs only in the browser. Your app keeps rendering on the server as it did, and the framework packages keep that safe:
+Ayme runs only in the browser. Your app keeps rendering on the server as it did, and Ayme keeps that safe:
 
 - Each server render gets its own inert session. It never starts, never calls `pageFactory`, observes no DOM and publishes nothing.
 - `usePageObject`, or `injectPageObject` in Angular, returns an unconstructed object with the model's prototype and registers nothing, so markup can reference its methods in event handlers. Do not read its locators or constructor-initialized fields, or run its actions, while rendering on the server.

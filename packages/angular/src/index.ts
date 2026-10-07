@@ -33,8 +33,6 @@ export type AymeSetup = {
 
 const aymeSetup = new InjectionToken<AymeSetup>("Ayme setup");
 
-const inBrowser = () => typeof window !== "undefined";
-
 /**
  * Starts Ayme with the environment injector that receives these providers,
  * before the root component is created, and stops it when that injector is
@@ -56,7 +54,8 @@ export function provideAyme(options: AymeOptions = {}): EnvironmentProviders {
         destroyRef.onDestroy(
           ayme.webMCP.subscribe((status) => publicationStatus.set(status))
         );
-        if (inBrowser()) destroyRef.onDestroy(ayme.start());
+        // On the server the session starts nothing.
+        destroyRef.onDestroy(ayme.start());
         return {
           ayme,
           webMCP: {

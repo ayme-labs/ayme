@@ -29,7 +29,7 @@ export {
   RuntimeStateError,
   ToolInputError,
 } from "./errors";
-export type { AymeErrorKind } from "./errors";
+export type { AymeErrorKind, RuntimeStateErrorCode } from "./errors";
 export type { ActionResult } from "./actionSequence";
 export type { CustomTool } from "./elementTools";
 export type { PageContext, PageContextPayload } from "./pageContext";

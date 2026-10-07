@@ -166,6 +166,8 @@ export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
   });
 }
 
+const onServer = () => typeof window === "undefined";
+
 function createServerPageObject<T extends object>(
   model: PageObjectConstructor<T>
 ): T {
@@ -181,7 +183,7 @@ function setStarted(ayme: Ayme | undefined) {
   for (const listener of startedListeners) listener(ayme);
 }
 
-/** The session started in this document, if any, for the Inspector. */
+/** The session started in this document, if any, for the Inspector and the Vue integration. */
 export function getStartedAyme(): Ayme | undefined {
   return started;
 }
@@ -351,17 +353,16 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       if (!instance) {
         // Server rendering gets an inert Page Object and never runs the
         // factory; it is still the session's one instance of the class.
-        instance =
-          typeof window === "undefined"
-            ? createServerPageObject(model)
-            : constructPageObject(model, getPage());
+        instance = onServer()
+          ? createServerPageObject(model)
+          : constructPageObject(model, getPage());
         instances.set(model, instance);
       }
       return instance;
     },
     register<T extends object>(model: PageObjectConstructor<T>): T {
       const instance = pom.get(model);
-      if (typeof window === "undefined") return instance;
+      if (onServer()) return instance;
       const registration = registrations.get(model) ?? { count: 0 };
       if (owner && registration.count === 0)
         registration.active = registerPageObject(model, instance);
@@ -393,9 +394,13 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     },
     pom,
     start() {
+      // Server rendering starts nothing, so concurrent requests share no
+      // owner and integrations need no guard.
+      if (onServer()) return () => {};
       if (owner)
         throw new RuntimeStateError(
-          "The Ayme runtime already has an active owner."
+          "The Ayme runtime already has an active owner.",
+          { code: "active-owner" }
         );
       owner = createAymeRuntime(getPage());
       // The document's interaction history starts with its first Visit.
