@@ -98,7 +98,6 @@ Only when the framework needs them:
 
 ## Known gaps
 
-- The Vue and React SPA examples do not run the shared certification. The React example uses its own fake WebMCP driver; both run against the dev server only, and the Vue example has no counter page ([#382](https://github.com/ayme-labs/ayme/issues/382)).
 - The Angular example is tested end to end from Angular 21.0, not from the package's 19.0 floor: it uses APIs and an `angular.json` setting that Angular 19 and 20 do not have, and running it there would take a second set of source files. The package's own tests cover 19.0.
 
 ## Deferred decisions
