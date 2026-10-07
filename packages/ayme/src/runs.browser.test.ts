@@ -57,27 +57,34 @@ describe("The Run log, ayme.runs, in Chromium", () => {
     }
   });
 
-  it("lists a Run as running at once, and tells subscribers when it starts and ends", async () => {
+  it("lists a Run as running when its turn starts, and tells subscribers when it starts and ends", async () => {
     const before = ayme.runs.list();
-    const heard: Run["status"][][] = [];
+    const heard: (readonly Run[])[] = [];
     const unsubscribe = ayme.runs.subscribe(() =>
-      heard.push(runsSince(before).map((run) => run.status))
+      heard.push(runsSince(before))
     );
 
-    const running = ayme.tools.run("click", SAVE, { by: callers.inspector });
-    expect(runsSince(before)).toEqual([
+    await ayme.tools.run("click", SAVE, { by: callers.inspector });
+    unsubscribe();
+    await ayme.tools.run("click", SAVE);
+
+    expect(heard).toHaveLength(2);
+    const [started, ended] = heard;
+    expect(started).toEqual([
       expect.objectContaining({
         tool: "click",
         by: callers.inspector,
         status: "running",
       }),
     ]);
-    expect(runsSince(before)[0]).not.toHaveProperty("durationMs");
-    await running;
-    unsubscribe();
-    await ayme.tools.run("click", SAVE);
-
-    expect(heard).toEqual([["running"], ["succeeded"]]);
+    expect(started![0]).not.toHaveProperty("durationMs");
+    expect(ended).toEqual([
+      expect.objectContaining({
+        id: started![0]!.id,
+        status: "succeeded",
+        durationMs: expect.any(Number),
+      }),
+    ]);
   });
 
   it("records a failed Run with its error text, and still throws the Ayme error", async () => {

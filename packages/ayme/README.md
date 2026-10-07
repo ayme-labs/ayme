@@ -58,6 +58,8 @@ await ayme.tools.run(
 
 A Caller name is any non-empty string; an empty one throws a `RuntimeStateError`. Name yours in lowercase kebab-case; Ayme does not enforce it. Ayme's own Callers use the names in `callers`: `app`, `webmcp` (WebMCP publication), `ayme-mcp` (the Ayme MCP server) and `inspector`.
 
+Runs take turns: the page runs one at a time, whichever Caller starts it. An action's turn ends once the page has settled; a read such as `snapshot` or a Peek Tool waits its turn without a settle wait. Don't call `ayme.tools.run` from inside a tool while it runs: that Run waits behind the tool's own and never starts.
+
 Ayme keeps a log of the page's Runs, `ayme.runs`, whoever started them. `list()` returns the newest 200 top-level Runs, oldest first, each a `Run` with its `id`, `tool`, `input`, Caller (`by`), `status` (`"running"`, `"succeeded"` or `"failed"`), its `result` as JSON captured when it returned (absent for `undefined`) or its `error` text, `startedAt` and `durationMs`. `subscribe(listener)` calls `listener` with the new list when a Run starts or ends, and returns the function that unsubscribes. A new document starts an empty log.
 
 ```ts
