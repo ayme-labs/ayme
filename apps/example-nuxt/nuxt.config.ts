@@ -39,18 +39,6 @@ export default defineNuxtConfig({
   },
   vite: {
     plugins: [
-      {
-        // Vite's root is Nuxt's `app/`, so it watches only the files its
-        // module graph imports. The POMs live outside it, and a type-only
-        // import such as `CounterMode.ts` is erased, never joins the graph and
-        // would never be watched. Watch the POM folder.
-        name: "watch-pom-folder",
-        configureServer(server) {
-          server.watcher.add(
-            fileURLToPath(new URL("./playwright", import.meta.url))
-          );
-        },
-      },
       ayme({
         // POMs live outside Nuxt's generated app TypeScript project.
         tsconfigPath: fileURLToPath(
