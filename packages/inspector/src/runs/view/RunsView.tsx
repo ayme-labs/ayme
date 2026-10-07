@@ -1,7 +1,10 @@
 import type { RefObject } from "react";
+import type { BuiltInCaller, Caller } from "@ayme-dev/ayme";
 import {
+  AppWindowIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
+  BotIcon,
   CheckIcon,
   ChevronRightIcon,
   CopyIcon,
@@ -16,6 +19,7 @@ import {
   MoveIcon,
   RotateCwIcon,
   SquareCheckIcon,
+  SquareTerminalIcon,
   TypeIcon,
   UploadIcon,
   UserIcon,
@@ -45,18 +49,18 @@ export type RunsViewProps = {
   /** The timeline list, which a focused run scrolls into view in. */
   timeline: RefObject<HTMLOListElement | null>;
   /** The runs whose details are closed. */
-  closedRuns: ReadonlySet<number>;
+  closedRuns: ReadonlySet<string>;
   /** The runs whose Result shows its value. */
-  openResults: ReadonlySet<number>;
+  openResults: ReadonlySet<string>;
   /** The run that flashes, having just been brought into view. */
-  flashing: number | undefined;
-  toggleRun: (id: number) => void;
-  toggleResult: (id: number) => void;
+  flashing: string | undefined;
+  toggleRun: (id: string) => void;
+  toggleResult: (id: string) => void;
   /** Copies a run's result. */
   copyResult: (text: string) => void;
 };
 
-/** Runs: the timeline of the runs made from the panel, newest first. */
+/** Runs: the timeline of the page's Runs, by any Caller, newest first. */
 export function RunsView({
   runs,
   scopeLabel,
@@ -223,14 +227,7 @@ function RunRow({
           className="flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left"
           onClick={onToggle}
         >
-          <span
-            role="img"
-            aria-label="Run by you from the panel"
-            title="Run by you from the panel"
-            className="grid size-5 flex-none place-items-center rounded-sm bg-muted text-muted-foreground"
-          >
-            <UserIcon className="size-3" aria-hidden />
-          </span>
+          <CallerMark by={run.by} />
           <span className="truncate font-mono text-xs font-semibold">
             {run.toolName}
           </span>
@@ -240,6 +237,14 @@ function RunRow({
             </span>
           )}
           <span className="flex-1" />
+          {run.earlierDocument && (
+            <span
+              title="Run before the page last loaded"
+              className="rounded-md border px-1.5 text-xs whitespace-nowrap text-muted-foreground"
+            >
+              Earlier page
+            </span>
+          )}
           <span className="text-xs whitespace-nowrap text-muted-foreground">
             {run.status === "running"
               ? "Running…"
@@ -287,6 +292,43 @@ function RunRow({
         )}
       </div>
     </li>
+  );
+}
+
+// Ayme's own Callers, keyed on the names `callers` exports.
+const callerIcons = {
+  inspector: { Icon: UserIcon, label: "Run by you from the Inspector" },
+  app: { Icon: AppWindowIcon, label: "Run by the app" },
+  webmcp: { Icon: BotIcon, label: "Run by an agent through WebMCP" },
+  "ayme-mcp": {
+    Icon: SquareTerminalIcon,
+    label: "Run by an agent through Ayme MCP",
+  },
+} satisfies Record<BuiltInCaller, { Icon: typeof UserIcon; label: string }>;
+
+/** Who started a run: an icon for Ayme's own Callers, the name for another. */
+function CallerMark({ by }: { by: Caller }) {
+  const builtIn = Object.hasOwn(callerIcons, by)
+    ? callerIcons[by as BuiltInCaller]
+    : undefined;
+  if (!builtIn)
+    return (
+      <span
+        title={`Run by ${by}`}
+        className="max-w-30 flex-none truncate rounded-sm bg-muted px-1.5 text-xs leading-5 text-muted-foreground"
+      >
+        {by}
+      </span>
+    );
+  return (
+    <span
+      role="img"
+      aria-label={builtIn.label}
+      title={builtIn.label}
+      className="grid size-5 flex-none place-items-center rounded-sm bg-muted text-muted-foreground"
+    >
+      <builtIn.Icon className="size-3" aria-hidden />
+    </span>
   );
 }
 

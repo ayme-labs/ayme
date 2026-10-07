@@ -3,7 +3,7 @@ import type { CollectionItem, Run, RunStep, ToolArguments } from "./run";
 /** The key of the run history in the tab's storage. */
 export const runsKey = "ayme-inspector:runs";
 
-/** How many of the newest runs are kept for the tab. */
+/** How many of the newest rows, of every Caller, are kept for the tab. */
 export const keptRuns = 50;
 
 /** What a run still running when the page reloaded ends with. */
@@ -30,8 +30,10 @@ export function decodeRuns(stored: unknown): Run[] {
 function decodeRun(stored: unknown): Run | undefined {
   if (
     !isRecord(stored) ||
-    typeof stored.id !== "number" ||
+    typeof stored.id !== "string" ||
     typeof stored.toolName !== "string" ||
+    typeof stored.by !== "string" ||
+    stored.by === "" ||
     typeof stored.startedAt !== "number" ||
     !isRecord(stored.arguments) ||
     !Array.isArray(stored.steps) ||
@@ -45,6 +47,7 @@ function decodeRun(stored: unknown): Run | undefined {
   return {
     id: stored.id,
     toolName: stored.toolName,
+    by: stored.by,
     ...text("className", stored.className),
     ...text("objectPath", stored.objectPath),
     ...(isItem(stored.item) ? { item: stored.item } : {}),

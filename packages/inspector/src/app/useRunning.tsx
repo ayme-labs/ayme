@@ -2,7 +2,13 @@ import { useState } from "react";
 
 import { type MemberIndex, pathBelowPage } from "../page-model";
 import { type StructureNode, structureRows } from "../structure";
-import { type CollectionItem, type RunFocus, Runs, runScope } from "../runs";
+import {
+  type CollectionItem,
+  isPanelRun,
+  type RunFocus,
+  Runs,
+  runScope,
+} from "../runs";
 import type { InspectorRuntime } from "./useInspectorRuntime";
 import type { ViewState } from "./viewState";
 import { RunsRegion } from "../panel";
@@ -11,7 +17,8 @@ import { findRefNode, RunCard } from "../tools";
 
 /**
  * Running from the panel: the run slot's run card, and Runs scoped to the
- * selection. A run card's last-success link shows that run in Runs. Whether
+ * selection. A run card shows the panel's own runs of its tool; its
+ * last-success link shows that run in Runs. Whether
  * Runs is open and lists every run is part of the view state.
  */
 export function useRunning(
@@ -39,7 +46,7 @@ export function useRunning(
   );
   const shownRuns = allRuns ? runs : runs.filter(scope.includes);
 
-  const showRun = (runId: number) => {
+  const showRun = (runId: string) => {
     onViewChange({
       open: true,
       all: allRuns || !shownRuns.some((run) => run.id === runId),
@@ -70,7 +77,9 @@ export function useRunning(
           onPreview: (ref) => highlight.hover({ ref }),
           onPreviewEnd: () => highlight.hover(undefined),
         }}
-        runs={runs.filter((run) => run.toolName === toolName)}
+        runs={runs.filter(
+          (run) => run.toolName === toolName && isPanelRun(run)
+        )}
         onRun={(input, target) => runtime.runTool(toolName, input, target)}
         onShowRun={showRun}
         onHover={highlight.hover}

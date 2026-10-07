@@ -6,8 +6,9 @@ import { decodeRuns, encodeRuns, keptRuns, reloadedError } from "./storedRuns";
 // Unit tests: which runs the Inspector still shows after a reload.
 
 const succeeded: Run = {
-  id: 2,
+  id: "2@1000",
   toolName: "ListPage_addItem",
+  by: "inspector",
   className: "ListPage",
   objectPath: "ListPage",
   arguments: { text: "Milk" },
@@ -26,8 +27,9 @@ const succeeded: Run = {
 };
 
 const failedOnItem: Run = {
-  id: 1,
+  id: "1@500",
   toolName: "ListItem_remove",
+  by: "support-assistant",
   objectPath: "ListPage.items[1]",
   item: {
     path: "ListPage.items[1]",
@@ -50,7 +52,7 @@ function reloaded(runs: readonly Run[]) {
   return decodeRuns(JSON.parse(JSON.stringify(encodeRuns(runs))));
 }
 
-it("still shows the runs, newest first, with their results and steps", () => {
+it("still shows the runs of every Caller, newest first, with their results and steps", () => {
   expect(reloaded([succeeded, failedOnItem])).toEqual([
     before(succeeded),
     before(failedOnItem),
@@ -60,7 +62,7 @@ it("still shows the runs, newest first, with their results and steps", () => {
 it(`keeps only the newest ${keptRuns} runs`, () => {
   const runs = Array.from({ length: keptRuns + 5 }, (_, index) => ({
     ...succeeded,
-    id: keptRuns + 5 - index,
+    id: String(keptRuns + 5 - index),
   }));
 
   expect(reloaded(runs).map((run) => run.id)).toEqual(
@@ -91,8 +93,9 @@ it("shows nothing when nothing is stored yet", () => {
 it("leaves out a malformed run", () => {
   expect(
     decodeRuns([
-      { id: "3", toolName: "click" },
+      { id: 3, toolName: "click", by: "app" },
       { ...succeeded, status: "done" },
+      { ...succeeded, by: "" },
       { ...succeeded, steps: [{ operation: "click", member: 42 }] },
       succeeded,
     ])

@@ -1,81 +1,220 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { RuntimeStateError, type JsonValue } from "@ayme-dev/ayme";
+import {
+  callers,
+  RuntimeStateError,
+  type Ayme,
+  type Run as LogRun,
+} from "@ayme-dev/ayme";
 import {
   getAppProcessTools,
   getStartedAyme,
   listRegisteredPomTools,
+  subscribeToStartedAyme,
 } from "@ayme-dev/ayme/internal";
 
 import { useTabState } from "../../shared";
+import {
+  rowIdOf,
+  shownRuns,
+  type RunNotes,
+  type RunTarget,
+} from "../domain/logRuns";
 import type { CollectionItem, Run, ToolArguments } from "../domain/run";
 import { decodeRuns, encodeRuns, runsKey } from "../domain/storedRuns";
 import { describeSteps } from "./runSteps";
 import { getInspectorTrace, resetInspectorTrace } from "./trace";
 
+/** The key of when Runs was last cleared in the tab's storage. */
+const clearedKey = "ayme-inspector:runs-cleared";
+
+const NO_RUNS: readonly LogRun[] = Object.freeze([]);
+const NO_NOTES: ReadonlyMap<string, RunNotes> = new Map();
+
+// Numbers the panel's runs the log never listed.
+let nextUnlogged = 1;
+
+/** A run the panel started and the log has not listed yet. */
+type PendingRun = {
+  toolName: string;
+  /** Its input as JSON, which tells it from another run of the tool. */
+  input: string;
+  item?: CollectionItem;
+  /** An App Process's tool, which acts on no page and has no steps. */
+  appProcess: boolean;
+  /** The log Run it became, by row id, once listed. */
+  rowId?: string;
+};
+
 /**
- * Tool invocations from the Inspector, newest first. The newest are kept for
- * the tab, so a reload still shows them.
+ * Runs as the panel shows them, newest first: the page's Run log, every
+ * Caller's Runs, with the steps of the runs made from the panel, from the
+ * Inspector's own trace. The rows shown are kept for the tab, so a reload
+ * still shows them, as earlier page rows. `invoke` runs a tool as the
+ * Inspector.
  */
 export function useRuns({ onSettled }: { onSettled: () => void }) {
-  const [runs, setRuns] = useTabState(runsKey, decodeRuns, encodeRuns);
-  const nextId = useRef(
-    runs.reduce((newest, run) => Math.max(newest, run.id), 0) + 1
+  const [stored, setStored] = useTabState(runsKey, decodeRuns, encodeRuns);
+  // The rows kept from before the panel mounted, read once.
+  const [earlier, setEarlier] = useState(stored);
+  const [clearedAt, setClearedAt] = useTabState(clearedKey, decodeTime);
+  const [log, setLog] = useState<{
+    runs: readonly LogRun[];
+    notes: ReadonlyMap<string, RunNotes>;
+  }>({ runs: NO_RUNS, notes: NO_NOTES });
+  const [unlogged, setUnlogged] = useState<readonly Run[]>([]);
+  const pending = useRef<PendingRun[]>([]);
+
+  useEffect(() => {
+    // The panel's runs by row id, until their steps are described.
+    const panelRuns = new Map<string, PendingRun>();
+    const note = (rowId: string, notes: RunNotes) =>
+      setLog((current) => ({
+        ...current,
+        notes: new Map(current.notes).set(rowId, {
+          ...current.notes.get(rowId),
+          ...notes,
+        }),
+      }));
+
+    /** A new Run of the panel's is claimed by the run that started it. */
+    const noteNewRun = (run: LogRun, rowId: string): RunNotes => {
+      if (run.by !== callers.inspector || run.status !== "running") return {};
+      const input = JSON.stringify(run.input);
+      const panelRun = pending.current.find(
+        (candidate) =>
+          candidate.rowId === undefined &&
+          candidate.toolName === run.tool &&
+          candidate.input === input
+      );
+      if (!panelRun) return {};
+      panelRun.rowId = rowId;
+      panelRuns.set(rowId, panelRun);
+      // The trace holds one run's steps: it's reset as each run's turn
+      // starts. An App Process's tool takes no turn, so it leaves it.
+      if (!panelRun.appProcess) resetInspectorTrace();
+      return panelRun.item ? { item: panelRun.item } : {};
+    };
+
+    // The Runs seen so far, by row id.
+    const seen = new Set<string>();
+    const read = (runs: readonly LogRun[]) => {
+      const fresh = new Map<string, RunNotes>();
+      for (const run of runs) {
+        const rowId = rowIdOf(run);
+        if (seen.has(rowId)) continue;
+        seen.add(rowId);
+        fresh.set(rowId, { ...targetOf(run.tool), ...noteNewRun(run, rowId) });
+      }
+      setLog((current) => {
+        if (!fresh.size) return { ...current, runs };
+        const notes = new Map(current.notes);
+        for (const [rowId, runNotes] of fresh)
+          notes.set(rowId, { ...notes.get(rowId), ...runNotes });
+        return { runs, notes };
+      });
+      for (const run of runs) {
+        const rowId = rowIdOf(run);
+        const panelRun = panelRuns.get(rowId);
+        if (!panelRun || run.status === "running") continue;
+        panelRuns.delete(rowId);
+        if (panelRun.appProcess) continue;
+        // The trace now holds the run's steps: it was reset as the run's
+        // turn started, and the next turn starts after this one ends.
+        void describeSteps(getInspectorTrace()).then((steps) =>
+          note(rowId, { steps })
+        );
+      }
+    };
+
+    let unsubscribeFromLog = () => {};
+    const follow = (ayme: Ayme | undefined) => {
+      unsubscribeFromLog();
+      unsubscribeFromLog = ayme?.runs.subscribe(read) ?? (() => {});
+      read(ayme?.runs.list() ?? NO_RUNS);
+    };
+    const unsubscribeFromStarted = subscribeToStartedAyme(follow);
+    follow(getStartedAyme());
+    return () => {
+      unsubscribeFromStarted();
+      unsubscribeFromLog();
+    };
+  }, []);
+
+  const runs = useMemo(
+    () =>
+      shownRuns({
+        log: log.runs,
+        notes: log.notes,
+        unlogged,
+        earlier,
+        clearedAt,
+      }),
+    [log, unlogged, earlier, clearedAt]
   );
+  useEffect(() => setStored(runs), [runs, setStored]);
 
   const invoke = useCallback(
     async (toolName: string, args: ToolArguments, item?: CollectionItem) => {
-      const tool = findTool(toolName);
-      const id = nextId.current++;
       const startedAt = Date.now();
-      const settle = async (
-        patch: Pick<Run, "status" | "result" | "error">
-      ) => {
-        const durationMs = Date.now() - startedAt;
-        const settled = {
-          ...patch,
-          durationMs,
-          steps: await describeSteps(getInspectorTrace()),
-        };
-        setRuns((current) =>
-          current.map((run) => (run.id === id ? { ...run, ...settled } : run))
-        );
+      const ayme = getStartedAyme();
+      const appProcessTools = ayme && getAppProcessTools(ayme);
+      const appProcess =
+        appProcessTools?.list().some(({ name }) => name === toolName) ?? false;
+      const panelRun: PendingRun = {
+        toolName,
+        input: JSON.stringify(args),
+        ...(item ? { item } : {}),
+        appProcess,
       };
-
-      // The trace holds one run's steps: it's reset as each run starts.
-      resetInspectorTrace();
-      setRuns((current) => [
-        {
-          id,
-          toolName,
-          ...tool.target,
-          ...(item ? { item, objectPath: item.path } : {}),
-          arguments: args,
-          status: "running",
-          startedAt,
-          steps: [],
-        },
-        ...current,
-      ]);
+      pending.current.push(panelRun);
+      const by = { by: callers.inspector };
       try {
-        const result = JSON.stringify(await tool.execute(args), null, 2) as
-          string | undefined;
-        await settle({ status: "succeeded", result });
+        if (!ayme)
+          throw new RuntimeStateError("No Ayme runtime session has started.");
+        if (appProcess) await appProcessTools!.run(toolName, args, by);
+        else await ayme.tools.run(toolName, args as never, by);
       } catch (error) {
-        await settle({ status: "failed", error: errorText(error) });
+        // A run the log never listed, such as one whose tool is no longer
+        // live, still shows its failure.
+        if (panelRun.rowId === undefined)
+          setUnlogged((current) => [
+            {
+              id: `panel-${nextUnlogged++}@${startedAt}`,
+              toolName,
+              by: callers.inspector,
+              ...targetOf(toolName).target,
+              ...(item ? { item, objectPath: item.path } : {}),
+              arguments: args,
+              status: "failed",
+              error: errorText(error),
+              startedAt,
+              durationMs: Date.now() - startedAt,
+              steps: [],
+            },
+            ...current,
+          ]);
       } finally {
+        pending.current.splice(pending.current.indexOf(panelRun), 1);
         onSettled();
       }
     },
-    [onSettled, setRuns]
+    [onSettled]
   );
 
   const clear = useCallback(() => {
-    setRuns([]);
+    setClearedAt(Date.now());
+    setEarlier([]);
+    setUnlogged([]);
     resetInspectorTrace();
-  }, [setRuns]);
+  }, [setClearedAt]);
 
   return { runs, invoke, clear };
+}
+
+/** When Runs was last cleared, from its stored value; never by default. */
+function decodeTime(stored: unknown): number {
+  return typeof stored === "number" ? stored : 0;
 }
 
 /**
@@ -88,44 +227,23 @@ function errorText(error: unknown) {
   return `${error.name}: ${error.message}`;
 }
 
-type FoundTool = {
-  execute: (input: ToolArguments) => Promise<JsonValue>;
-  /** The Page Object Model and Page Object a Page Object tool runs on. */
-  target?: { className: string; objectPath: string };
-};
-
 /**
- * The tool to run by name. Every tool runs through the started session,
- * whether or not WebMCP publication is active, and fails with the error an
- * agent gets as text. An App Process's tool runs in that process, through
- * the agent's Ayme MCP server the session's page is paired with.
+ * The Page Object Model and Page Object a Page Object tool runs on, from
+ * the registry as it is now. Tool names can collide across registrations;
+ * this is the one that is live now, the one the runtime runs.
  */
-function findTool(toolName: string): FoundTool {
-  // Tool names can collide across registrations; this is the one that is
-  // live now, the one the runtime runs.
+function targetOf(toolName: string): { target?: RunTarget } {
   const pomTool = listRegisteredPomTools().find(
     (candidate) => candidate.name === toolName
   );
+  if (!pomTool) return {};
   return {
-    execute: async (input) => {
-      const ayme = getStartedAyme();
-      if (!ayme)
-        throw new RuntimeStateError("No Ayme runtime session has started.");
-      const appProcessTools = getAppProcessTools(ayme);
-      if (appProcessTools.list().some(({ name }) => name === toolName))
-        return (await appProcessTools.run(toolName, input)) as JsonValue;
-      return (await ayme.tools.run(toolName, input)) as JsonValue;
+    target: {
+      className: pomTool.componentClassName ?? pomTool.pomId,
+      objectPath:
+        pomTool.componentPath === undefined
+          ? pomTool.pomId
+          : `${pomTool.pomId}.${pomTool.componentPath}`,
     },
-    ...(pomTool
-      ? {
-          target: {
-            className: pomTool.componentClassName ?? pomTool.pomId,
-            objectPath:
-              pomTool.componentPath === undefined
-                ? pomTool.pomId
-                : `${pomTool.pomId}.${pomTool.componentPath}`,
-          },
-        }
-      : {}),
   };
 }

@@ -1,4 +1,4 @@
-import type { JsonValue } from "@ayme-dev/ayme";
+import type { Caller, JsonValue } from "@ayme-dev/ayme";
 
 /** A call on the runtime's Page that the Inspector's instrumentation records. */
 export type TraceEntry = {
@@ -35,10 +35,16 @@ export type CollectionItem = {
   label: string;
 };
 
-/** A run made from the panel: one tool call, with the steps it performed. */
+/**
+ * A top-level Run as Runs shows it: one tool call from the runtime's Run log,
+ * by any Caller, and for a run made from the panel, the steps it performed.
+ */
 export type Run = {
-  id: number;
+  /** Unique across the documents the tab has shown. */
+  id: string;
   toolName: string;
+  /** Its Caller: who started it. */
+  by: Caller;
   /** The Page Object Model whose action it ran. */
   className?: string;
   /** The Page Object it ran on, e.g. "ListPage" or "ListPage.items[1]". */
@@ -57,7 +63,10 @@ export type Run = {
   /** When it started, in epoch milliseconds. */
   startedAt: number;
   durationMs?: number;
-  /** The calls it made on the page, from the Inspector's own trace. */
+  /**
+   * The calls it made on the page, from the Inspector's own trace: a run
+   * made from the panel has them, any other none.
+   */
   steps: readonly RunStep[];
   /**
    * Made before the page last loaded, so the refs it names (its item's, its
@@ -68,4 +77,4 @@ export type Run = {
 };
 
 /** A request to bring one run into view. A new `at` repeats it. */
-export type RunFocus = { runId: number; at: number };
+export type RunFocus = { runId: string; at: number };

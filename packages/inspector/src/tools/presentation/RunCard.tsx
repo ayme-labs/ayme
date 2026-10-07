@@ -35,7 +35,7 @@ export type RunCardProps = {
   /** Runs the tool with its input, on the item for a collection action. */
   onRun: (input: ToolArguments, item?: CollectionItem) => void;
   /** Shows a run in Runs. */
-  onShowRun: (runId: number) => void;
+  onShowRun: (runId: string) => void;
   /** Highlights an item on the page while it's hovered. */
   onHover?: OnHover;
 };

@@ -56,7 +56,7 @@ export function RunCardView({
   /** Highlights an item on the page while it's hovered. */
   onHover?: OnHover;
   /** Shows a run in Runs. */
-  onShowRun: (runId: number) => void;
+  onShowRun: (runId: string) => void;
   /** Its arguments, e.g. "(text: string)". */
   signature: string;
   fields: readonly Field[];
@@ -303,7 +303,7 @@ function LastResult({
 }: {
   run: Run;
   lastSuccess: Run | undefined;
-  onShowRun: (runId: number) => void;
+  onShowRun: (runId: string) => void;
 }) {
   const steps = `${run.steps.length} ${run.steps.length === 1 ? "step" : "steps"}`;
   // A run interrupted by a reload has no known duration.

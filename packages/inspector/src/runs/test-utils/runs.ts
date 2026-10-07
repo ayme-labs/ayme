@@ -8,7 +8,7 @@ import type { CollectionItem, Run, RunStep } from "../domain/run";
 let nextRunId = 1000;
 
 /**
- * A settled run of ListPage.addItem, with a fresh id. A run on an item is on
+ * A settled run of ListPage.addItem from the panel, with a fresh id. A run on an item is on
  * that item's path, and a Browser Tool's run (a name without a dot, e.g.
  * "fill") is on no Page Object.
  */
@@ -20,8 +20,9 @@ export function aRun(fields: Partial<Run> = {}): Run {
     : {};
   const status = fields.status ?? "succeeded";
   return {
-    id: nextRunId++,
+    id: String(nextRunId++),
     toolName,
+    by: "inspector",
     ...target,
     arguments: {},
     status,

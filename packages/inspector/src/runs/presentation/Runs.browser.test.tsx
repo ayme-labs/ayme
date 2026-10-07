@@ -6,7 +6,7 @@ import { anItem, aRun, aStep } from "../test-utils/runs";
 import { RunsRegion } from "../../panel";
 import { renderPart } from "../../testing/renderPart";
 import { RunsView } from "../../testing";
-import type { RunFocus } from "../domain/run";
+import type { Run, RunFocus } from "../domain/run";
 import { Runs, type RunsProps } from "./Runs";
 
 // Component tests: Runs with fixture runs, driven through its page object
@@ -33,7 +33,7 @@ const clickAdd = aStep({
 });
 
 const addMilk = aRun({
-  id: 1,
+  id: "1",
   arguments: { text: "Milk" },
   durationMs: 320,
   steps: [fillText, clickAdd],
@@ -58,8 +58,11 @@ function renderRuns(props: Partial<RunsProps> = {}) {
     onClear: vi.fn(),
     onHover: vi.fn(),
   };
-  let focusRun: (runId: number) => void = () => {};
+  let focusRun: (runId: string) => void = () => {};
+  let showRuns: (runs: readonly Run[]) => void = () => {};
   function Harness() {
+    const [runs, setRuns] = useState(props.runs ?? [archiveGone, addMilk]);
+    showRuns = setRuns;
     const [open, setOpen] = useState(true);
     const [allRuns, setAllRuns] = useState(false);
     const [focus, setFocus] = useState<RunFocus>();
@@ -68,7 +71,6 @@ function renderRuns(props: Partial<RunsProps> = {}) {
       <div className="flex h-[600px] flex-col">
         <RunsRegion collapsed={!open}>
           <Runs
-            runs={[archiveGone, addMilk]}
             scopeLabel="This object"
             allRuns={allRuns}
             open={open}
@@ -83,17 +85,22 @@ function renderRuns(props: Partial<RunsProps> = {}) {
               setOpen(next);
             }}
             {...props}
+            runs={runs}
           />
         </RunsRegion>
       </div>
     );
   }
   unmounts.push(renderPart(<Harness />));
-  return { ...callbacks, focusRun: (runId: number) => focusRun(runId) };
+  return {
+    ...callbacks,
+    focusRun: (runId: string) => focusRun(runId),
+    showRuns: (runs: readonly Run[]) => showRuns(runs),
+  };
 }
 
 describe("Runs", () => {
-  it("lists the runs made from the panel, newest first, marked as yours", async () => {
+  it("lists the runs, newest first", async () => {
     renderRuns();
 
     await expect.poll(() => runsView.runs.count()).toBe(2);
@@ -101,7 +108,62 @@ describe("Runs", () => {
     expect(await runsView.run(0).root.getAttribute("aria-label")).toBe(
       "ListPage.items.archive"
     );
-    expect(await runsView.run(1).byYou.count()).toBe(1);
+  });
+
+  it("marks each run with its Caller: an icon for Ayme's own, the name for any other", async () => {
+    renderRuns({
+      runs: [
+        aRun({ by: "inspector" }),
+        aRun({ by: "app" }),
+        aRun({ by: "webmcp" }),
+        aRun({ by: "ayme-mcp" }),
+        aRun({ by: "support-assistant" }),
+      ],
+    });
+
+    await expect.poll(() => runsView.runs.count()).toBe(5);
+    const callers = [];
+    for (let index = 0; index < 5; index++)
+      callers.push(await runsView.run(index).caller());
+    expect(callers).toEqual([
+      { icon: "Run by you from the Inspector" },
+      { icon: "Run by the app" },
+      { icon: "Run by an agent through WebMCP" },
+      { icon: "Run by an agent through Ayme MCP" },
+      { text: "support-assistant" },
+    ]);
+  });
+
+  it("follows a running run as it ends", async () => {
+    const running = aRun({ id: "7", by: "webmcp", status: "running" });
+    const { showRuns } = renderRuns({ runs: [running] });
+    const run = runsView.run(0);
+    await expect.poll(() => run.status()).toBe("Running");
+    expect(await run.root.textContent()).toContain("Running…");
+
+    showRuns([
+      { ...running, status: "succeeded", durationMs: 42, result: "true" },
+    ]);
+
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(await run.root.textContent()).toContain("42 ms");
+    expect(await run.resultText()).toBe("true");
+  });
+
+  it("marks the runs from before the page last loaded as earlier page rows", async () => {
+    renderRuns({
+      runs: [
+        aRun({ by: "inspector" }),
+        aRun({ by: "ayme-mcp", earlierDocument: true }),
+      ],
+    });
+
+    await expect.poll(() => runsView.runs.count()).toBe(2);
+    expect(await runsView.run(0).earlierPage.count()).toBe(0);
+    expect(await runsView.run(1).earlierPage.count()).toBe(1);
+    expect(await runsView.run(1).caller()).toEqual({
+      icon: "Run by an agent through Ayme MCP",
+    });
   });
 
   it("shows each run's steps, by member where it's known", async () => {
@@ -196,7 +258,7 @@ describe("Runs", () => {
     await run.toggle.click();
     await expect.poll(() => run.steps.count()).toBe(0);
 
-    focusRun(1);
+    focusRun("1");
 
     await expect.poll(() => run.steps.count()).toBe(2);
   });
@@ -302,13 +364,13 @@ describe("a run's result", () => {
 
   it("shows when its run is asked to show, even from a collapsed run", async () => {
     const { focusRun } = renderRuns({
-      runs: [aRun({ result: '"Eggs"' }), aRun({ id: 1, result: '"Milk"' })],
+      runs: [aRun({ result: '"Eggs"' }), aRun({ id: "1", result: '"Milk"' })],
     });
     const run = runsView.run(1);
     await run.toggle.click();
     await expect.poll(() => run.resultToggle.count()).toBe(0);
 
-    focusRun(1);
+    focusRun("1");
 
     await expect.poll(() => run.result.textContent()).toBe('"Milk"');
     expect(await runsView.run(0).result.count()).toBe(0);

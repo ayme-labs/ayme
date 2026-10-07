@@ -15,8 +15,8 @@ export class RunEntry {
   readonly root: Locator;
   /** Expands or collapses the run. */
   readonly toggle: Locator;
-  /** The mark of a run made by you from the panel. */
-  readonly byYou: Locator;
+  /** The mark that it ran before the page last loaded. */
+  readonly earlierPage: Locator;
   /** Its arguments, absent when it had none. */
   readonly arguments: Locator;
   /** Shows or hides its result, on a successful run that returned one. */
@@ -31,7 +31,7 @@ export class RunEntry {
   constructor(root: Locator) {
     this.root = root;
     this.toggle = root.locator("button[aria-expanded]").first();
-    this.byYou = root.getByRole("img", { name: "Run by you from the panel" });
+    this.earlierPage = root.getByText(/^Earlier page$/);
     this.arguments = root.getByRole("figure", { name: "Arguments" });
     this.resultToggle = root.getByRole("button", {
       name: "Result",
@@ -46,6 +46,25 @@ export class RunEntry {
     this.steps = root
       .getByRole("list", { name: "Steps" })
       .getByRole("listitem");
+  }
+
+  /**
+   * Who started it: the icon of one of Ayme's own Callers, by its label,
+   * e.g. "Run by you from the Inspector", or another Caller's name as text.
+   */
+  @ayme.action({
+    description:
+      "Reads who started the run: a built-in Caller's icon label, or another Caller's name as text.",
+  })
+  async caller(): Promise<{ icon: string } | { text: string }> {
+    return await this.root
+      .getByTitle(/^Run by /)
+      .first()
+      .evaluate((mark) =>
+        mark.getAttribute("role") === "img"
+          ? { icon: mark.getAttribute("aria-label") ?? "" }
+          : { text: mark.textContent ?? "" }
+      );
   }
 
   /** Running, Succeeded or Failed. */
@@ -90,7 +109,7 @@ export class RunEntry {
   }
 }
 
-/** Runs: the timeline of the runs made from the panel, newest first. */
+/** Runs: the timeline of the page's Runs, by any Caller, newest first. */
 @ayme
 export class RunsView {
   readonly root: Locator;

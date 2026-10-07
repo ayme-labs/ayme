@@ -511,16 +511,16 @@ describe("the last result", () => {
     const { card, onShowRun } = renderCard({
       tool: addItem,
       runs: [
-        aRun({ id: 3, status: "failed", error: "No." }),
-        aRun({ id: 2 }),
-        aRun({ id: 1 }),
+        aRun({ id: "3", status: "failed", error: "No." }),
+        aRun({ id: "2" }),
+        aRun({ id: "1" }),
       ],
     });
 
     await card.lastSuccessLink.click();
 
     expect(await card.lastSuccessLink.textContent()).toBe("Last success ›");
-    expect(onShowRun).toHaveBeenCalledExactlyOnceWith(2);
+    expect(onShowRun).toHaveBeenCalledExactlyOnceWith("2");
   });
 
   it("is the last run on the item picked", async () => {

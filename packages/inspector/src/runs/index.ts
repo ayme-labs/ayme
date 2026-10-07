@@ -5,6 +5,7 @@ export type {
   ToolArguments,
   TraceEntry,
 } from "./domain/run";
+export { isPanelRun } from "./domain/logRuns";
 export { runScope } from "./domain/runScope";
 export {
   dispatchInspectorTrace,
