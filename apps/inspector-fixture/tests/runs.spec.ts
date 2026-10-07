@@ -2,24 +2,38 @@ import type { Page } from "@playwright/test";
 import { executePublishedTool } from "@ayme-dev/ayme/testing";
 
 import { AgentView } from "./agentView";
-import { expect, openFixture, test } from "./fixtures";
+import { expect, INSPECTOR, openFixture, test } from "./fixtures";
 
 // E2E: running tools from the panel, on the fixture page with the real
 // ListPage Page Object, the Ayme runtime and a recording WebMCP driver.
 
-test("a run from the panel shows in Runs, marked as yours, with its steps", async ({
+test("a Tools panel run shows in Runs as the Inspector's, with its steps", async ({
   inspector,
 }) => {
   await (await inspector.tool("ListPage.addItem")).run({ text: "Milk" });
 
   const run = inspector.runs.latest("ListPage.addItem");
   await expect.poll(() => run.status()).toBe("Succeeded");
-  await expect(run.byYou).toBeVisible();
+  expect(await run.caller()).toEqual(INSPECTOR);
   // ListPage.addItem fills the new item's text, then presses Add item.
   expect(await run.stepList()).toEqual([
     { operation: "fill", target: "ListPage.newItemInput", value: '"Milk"' },
     { operation: "click", target: "ListPage.addItemButton" },
   ]);
+});
+
+test("an agent's call over WebMCP shows in Runs as the agent's", async ({
+  page,
+  inspector,
+}) => {
+  await executePublishedTool(page, "ListPage.addItem", { text: "Milk" });
+
+  const run = inspector.runs.latest("ListPage.addItem");
+  await expect.poll(() => run.status()).toBe("Succeeded");
+  expect(await run.caller()).toEqual({
+    icon: "Run by an agent through WebMCP",
+  });
+  expect(await run.arguments.textContent()).toBe('{"text":"Milk"}');
 });
 
 test("hovering a run's step highlights its element on the page", async ({
@@ -70,7 +84,7 @@ test("a Custom Tool runs from the panel and shows in Runs", async ({
   await expect(listPage.addItemButton).toHaveAttribute("data-marked");
   const run = inspector.runs.latest("mark_element");
   await expect.poll(() => run.status()).toBe("Succeeded");
-  await expect(run.byYou).toBeVisible();
+  expect(await run.caller()).toEqual(INSPECTOR);
 });
 
 // The run card's and Runs' own choices, made with the mouse in the closed
@@ -107,9 +121,9 @@ test("Runs switches between the selection's runs and all runs with the mouse", a
   await expect(inspector.runs.runs).toHaveCount(0);
 
   await inspector.runs.showAll();
-  await expect(
-    inspector.runs.latest("ListPage.countItems").byYou
-  ).toBeVisible();
+  await expect
+    .poll(() => inspector.runs.latest("ListPage.countItems").caller())
+    .toEqual(INSPECTOR);
 
   await inspector.runs.showSelection();
   await expect(inspector.runs.runs).toHaveCount(0);
@@ -128,7 +142,7 @@ test("goal runs from the panel and shows in Runs with its steps and Handover res
 
   const run = inspector.runs.latest("goal");
   await expect.poll(() => run.status()).toBe("Succeeded");
-  await expect(run.byYou).toBeVisible();
+  expect(await run.caller()).toEqual(INSPECTOR);
   expect(await run.stepList()).toContainEqual({
     operation: "click",
     target: "ListPage.clearButton",

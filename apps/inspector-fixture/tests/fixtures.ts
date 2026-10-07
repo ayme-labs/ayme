@@ -9,6 +9,9 @@ import { ListPage } from "../pom/ListPage";
 
 export { expect } from "@playwright/test";
 
+/** The Caller mark of a run made from the panel, as Runs shows it. */
+export const INSPECTOR = { icon: "Run by you from the Inspector" } as const;
+
 /**
  * A fixture page: the list app with its Page Object, the runtime and the
  * Inspector. "/models.html" has other Page Objects; "/unpublished.html" is
