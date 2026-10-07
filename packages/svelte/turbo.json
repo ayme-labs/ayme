@@ -1,4 +1,9 @@
 {
   "extends": ["//"],
-  "tags": ["adapter"]
+  "tags": ["adapter"],
+  "tasks": {
+    "test": {
+      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
+    }
+  }
 }

@@ -1,12 +1,17 @@
+// Client tests of the owner and consumer API, in a real browser. Test names
+// cite the rows of the behaviour contract in docs/framework-integrations.md.
+// C9 and C10 are in index.ssr.test.ts, which renders on the server.
 import { tick } from "svelte";
 import { VERSION } from "svelte/compiler";
 import { get } from "svelte/store";
 import { afterEach, expect, it, vi } from "vitest";
-import { createAyme, RuntimeStateError } from "@ayme-dev/ayme";
 import {
-  listRegisteredPoms,
-  registerCompiledPom,
-} from "@ayme-dev/ayme/internal";
+  createAyme,
+  RuntimeStateError,
+  type DecisionRequest,
+  type DecisionResponse,
+} from "@ayme-dev/ayme";
+import { registerCompiledPom } from "@ayme-dev/ayme/internal";
 
 // A mount that throws leaves its started owners undestroyed, so the tests
 // stop every started session themselves.
@@ -31,6 +36,7 @@ import {
   Consumer,
   Owner,
   OwnerAndPageObject,
+  PageObjectPair,
   PageObjectUser,
   Status,
 } from "./fixtures/components.js";
@@ -45,6 +51,7 @@ type PageFactory = NonNullable<UseAymeOptions["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
 const page = { url: () => "factory page" } as unknown as Page;
 const pageFactory: PageFactory = () => page;
+
 class Model {
   constructor(readonly page: Page) {}
 }
@@ -52,12 +59,24 @@ registerCompiledPom(Model, {
   className: "Model",
   components: [],
   members: [],
-  tools: [],
+  tools: [
+    {
+      methodName: "ping",
+      toolName: "Model.ping",
+      description: "Ping.",
+      inputSchema: { type: "object", properties: {} },
+      parameters: [],
+    },
+  ],
 });
+// Never passed through the Ayme compiler, so it has no metadata.
+class UncompiledModel {
+  constructor(readonly page: Page) {}
+}
 
 const legacyInternal =
   Number(VERSION.split(".")[0]) < 5
-    ? ((await import(/* @vite-ignore */ "svelte/internal" as string)) as {
+    ? ((await import("svelte/internal" as string)) as {
         set_current_component(component: null): void;
       })
     : undefined;
@@ -71,11 +90,12 @@ function mount<Props>(
   },
   props: Props
 ) {
-  const target = document.createElement("div");
+  const target = document.body.appendChild(document.createElement("div"));
   let component;
   try {
     component = new Component({ target, props });
   } catch (error) {
+    target.remove();
     // Svelte 3 and 4 leave the failed component current, so later calls would
     // find its context.
     if (legacyInternal) legacyInternal.set_current_component(null);
@@ -88,13 +108,21 @@ function mount<Props>(
 function destroy(component: { $destroy(): void }) {
   mounted.splice(mounted.indexOf(component), 1);
   component.$destroy();
+  container(component).remove();
 }
 afterEach(() => {
-  for (const component of mounted.splice(0).reverse()) component.$destroy();
+  for (const component of mounted.splice(0).reverse()) {
+    component.$destroy();
+    container(component).remove();
+  }
   for (const stop of stops.splice(0)) stop();
   vi.mocked(createAyme).mockClear();
   delete (document as { modelContext?: unknown }).modelContext;
 });
+
+/** The names of the tools the session has live, which are none until it starts. */
+const liveTools = ({ ayme }: UseAymeResult) =>
+  ayme.tools.list().map(({ name }) => name);
 
 it("C1: passes the options to the runtime session unchanged", () => {
   const options: UseAymeOptions = {
@@ -111,34 +139,27 @@ it("C1: passes the options to the runtime session unchanged", () => {
   expect(result?.ayme).toBe(vi.mocked(createAyme).mock.results[0]?.value);
 });
 
-it("starts the runtime before descendants mount and stops it on destroy", async () => {
-  let goalError: unknown;
+it("C2: starts the runtime before descendants mount and stops it on destroy", () => {
   let result: UseAymeResult | undefined;
+  let liveInDescendant: string[] | undefined;
   const owner = mount(Owner, {
     options: { pageFactory },
     onInit: (value) => (result = value),
     child: Consumer,
     childProps: {
-      onMounted: ({ ayme }: UseAymeResult) =>
-        ayme.tools
-          .run("goal", { goal: "Check", maxSteps: 1 })
-          .catch((error: unknown) => {
-            goalError = error;
-          }),
+      onMounted: (value: UseAymeResult) =>
+        (liveInDescendant = liveTools(value)),
     },
   });
-  await vi.waitFor(() => expect(goalError).toBeDefined());
-  // A stopped session would reject with "is not started".
-  expect(goalError).toEqual(
-    new RuntimeStateError('The tool "goal" is not live.')
-  );
+  expect(liveInDescendant).toContain("snapshot");
   const { ayme } = result!;
   expect(ayme.webMCP.publicationStatus.state).toBe("disabled");
   destroy(owner);
   expect(ayme.webMCP.publicationStatus.state).toBe("disposed");
+  expect(ayme.tools.list()).toEqual([]);
 });
 
-it("gives descendants the owner's value and starts nothing more", () => {
+it("C3: gives a descendant without options the owner's value", () => {
   let owner: UseAymeResult | undefined;
   let descendant: UseAymeResult | undefined;
   mount(Owner, {
@@ -152,7 +173,7 @@ it("gives descendants the owner's value and starts nothing more", () => {
   expect(createAyme).toHaveBeenCalledOnce();
 });
 
-it("rejects options beneath an owner", () => {
+it("C3: rejects options beneath an owner, naming the owner to configure", () => {
   expect(() =>
     mount(Owner, {
       child: Consumer,
@@ -163,7 +184,7 @@ it("rejects options beneath an owner", () => {
   );
 });
 
-it("names the root component when a second owner becomes active", () => {
+it("C3: rejects a second owner while the first is active, naming where to call it", () => {
   mount(Owner, { options: { pageFactory } });
   let error: unknown;
   try {
@@ -183,7 +204,22 @@ it("names the root component when a second owner becomes active", () => {
   );
 });
 
-it("reads the publication status as a store that follows the session", async () => {
+it("C3: accepts a new owner after the first is destroyed", () => {
+  destroy(mount(Owner, { options: { pageFactory } }));
+  let result: UseAymeResult | undefined;
+  mount(Owner, {
+    options: { pageFactory },
+    onInit: (value) => (result = value),
+  });
+  expect(liveTools(result!)).toContain("snapshot");
+});
+
+// C3's nested-owner text is n/a: useAyme is both owner and consumer, and its
+// options error above replaces it.
+
+it.skip("C4: n/a, useAyme takes its options once and cannot change them afterwards", () => {});
+
+it("C5: reads the publication status as a store that follows the session", async () => {
   Object.defineProperty(document, "modelContext", {
     configurable: true,
     value: { registerTool: vi.fn() },
@@ -224,10 +260,12 @@ it("reads the publication status as a store that follows the session", async () 
   expect(get(webMCP.publicationStatus).state).toBe("disposed");
 });
 
-it("registers the concrete Page Object while its component lives", async () => {
+it("C6: registers the session's Page Object while its component lives", async () => {
+  let result: UseAymeResult | undefined;
   const instances: object[] = [];
   const owner = mount(Owner, {
     options: { pageFactory },
+    onInit: (value) => (result = value),
     child: PageObjectUser,
     childProps: {
       model: Model,
@@ -236,25 +274,42 @@ it("registers the concrete Page Object while its component lives", async () => {
   });
   expect(instances).toHaveLength(1);
   expect(instances[0]).toBeInstanceOf(Model);
+  expect(instances[0]).toBe(result?.ayme.pom.get(Model));
   expect((instances[0] as Model).page.url()).toBe(page.url());
-  expect(listRegisteredPoms()).toHaveLength(1);
+  expect(liveTools(result!)).toContain("Model.ping");
 
   owner.$set({ shown: false });
   await tick();
-  expect(listRegisteredPoms()).toHaveLength(0);
+  expect(liveTools(result!)).not.toContain("Model.ping");
 
   owner.$set({ shown: true });
   await tick();
   expect(instances).toHaveLength(2);
   // The session keeps one instance per class.
   expect(instances[1]).toBe(instances[0]);
-  expect(listRegisteredPoms()).toHaveLength(1);
-
-  destroy(owner);
-  expect(listRegisteredPoms()).toHaveLength(0);
+  expect(liveTools(result!)).toContain("Model.ping");
 });
 
-it("lets the owner use a Page Object in its own component", () => {
+it("C6: keeps the tools until the last component of the model is destroyed", async () => {
+  let result: UseAymeResult | undefined;
+  const owner = mount(Owner, {
+    options: { pageFactory },
+    onInit: (value) => (result = value),
+    child: PageObjectPair,
+    childProps: { model: Model },
+  });
+  expect(liveTools(result!)).toContain("Model.ping");
+  owner.$set({ childProps: { model: Model, showFirst: false } });
+  await tick();
+  expect(liveTools(result!)).toContain("Model.ping");
+  owner.$set({
+    childProps: { model: Model, showFirst: false, showSecond: false },
+  });
+  await tick();
+  expect(liveTools(result!)).not.toContain("Model.ping");
+});
+
+it("C6: lets the owner use a Page Object in its own component", () => {
   let result: (UseAymeResult & { pageObject: object }) | undefined;
   const owner = mount(OwnerAndPageObject, {
     options: { pageFactory },
@@ -262,16 +317,46 @@ it("lets the owner use a Page Object in its own component", () => {
     onInit: (value) => (result = value),
   });
   expect(result?.pageObject).toBeInstanceOf(Model);
-  expect(listRegisteredPoms()).toHaveLength(1);
+  expect(liveTools(result!)).toContain("Model.ping");
   destroy(owner);
-  expect(listRegisteredPoms()).toHaveLength(0);
+  expect(liveTools(result!)).toEqual([]);
   expect(result?.ayme.webMCP.publicationStatus.state).toBe("disposed");
 });
 
-it("requires an owner for a Page Object", () => {
+it("C7: requires an owner for a Page Object", () => {
   expect(() => mount(PageObjectUser, { model: Model })).toThrow(
     "usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte."
   );
+});
+
+it("C8: throws for a model the compiler did not reach", () => {
+  expect(() =>
+    mount(Owner, {
+      options: { pageFactory },
+      child: PageObjectUser,
+      childProps: { model: UncompiledModel },
+    })
+  ).toThrow("The imported page object has no compiler-derived Ayme metadata.");
+});
+
+it("C11: runs a goal with the owner's goalLoop through the value every component gets", async () => {
+  let owner: UseAymeResult | undefined;
+  let descendant: UseAymeResult | undefined;
+  const goalLoop = vi.fn(noFittingOperation);
+  mount(Owner, {
+    options: { pageFactory, goalLoop },
+    onInit: (value) => (owner = value),
+    child: Consumer,
+    childProps: { onInit: (value: UseAymeResult) => (descendant = value) },
+  });
+  expect(descendant?.ayme).toBe(owner?.ayme);
+  await expect(
+    descendant!.ayme.tools.run("goal", {
+      goal: "Save the changes",
+      maxSteps: 1,
+    })
+  ).resolves.toMatchObject({ reason: "no_fitting_option" });
+  expect(goalLoop).toHaveBeenCalled();
 });
 
 it("leaves calls outside component initialisation to Svelte's own error", () => {
@@ -283,3 +368,26 @@ it("leaves calls outside component initialisation to Svelte's own error", () => 
   );
   expect(createAyme).not.toHaveBeenCalled();
 });
+
+/** A stubbed System One model: no operation fits, so the loop hands over. */
+async function noFittingOperation(
+  request: DecisionRequest
+): Promise<DecisionResponse> {
+  const criteria = (
+    request.questions as Record<string, { criteria?: Record<string, string> }>
+  ).operation!.criteria!;
+  return {
+    model: "typesafe/jev-1.13",
+    answers: {
+      operation: {
+        type: "choice",
+        choice: "none",
+        confidence: 1,
+        probabilities: Object.fromEntries(
+          Object.keys(criteria).map((key) => [key, key === "none" ? 1 : 0])
+        ),
+      },
+      goal_met: { type: "noul", noul: 0.1 },
+    },
+  };
+}

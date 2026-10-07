@@ -37,8 +37,9 @@
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
+    "@vitest/browser-playwright": "^4.1.11",
     "eslint": "^10.9.1",
-    "jsdom": "^30.0.1",
+    "playwright": "^1.62.1",
     "svelte": "^5.57.1",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
