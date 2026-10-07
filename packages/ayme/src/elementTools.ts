@@ -6,8 +6,8 @@ import {
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import { runAction, type ActionResult } from "./actionSequence";
 import type { JsonSchema, JsonValue } from "./contracts";
-import type { Reader } from "./interactionHistory";
 import type { RunContext } from "./run";
+import type { ToolInput, ToolResult } from "./toolTypes";
 import {
   resolvePageStateRefs,
   type AriaRef,
@@ -33,11 +33,33 @@ export type CustomTool = {
   description: string;
   /** true = the Goal Loop may offer this element. Omitted = every node with a ref. */
   filter?: (element: Element) => boolean;
-  execute(target: { ref: AriaRef; element: Element }): Promise<unknown>;
+  /**
+   * Acts on `target`. To use other tools, start them through `run`: each is
+   * a child Run of this one and runs at once, within this Run's turn. Never
+   * call `ayme.tools.run` from here: that Run waits for this one to end, so
+   * neither ever finishes.
+   */
+  execute(
+    target: { ref: AriaRef; element: Element },
+    context: CustomToolContext
+  ): Promise<unknown>;
 };
 
-/** Runs a tool for the reader it is given. */
-type ReaderRun = (input: unknown, reader: Reader) => Promise<ActionResult>;
+/** What a Custom Tool's `execute` is handed besides its target. */
+export type CustomToolContext = {
+  /**
+   * Starts a Run of the live tool `name` as a child Run of the Custom Tool's
+   * Run, and returns its result. Throws Ayme's errors, as `ayme.tools.run`
+   * does.
+   */
+  run<N extends string>(name: N, input: ToolInput<N>): Promise<ToolResult<N>>;
+};
+
+/** Runs a tool for the Run context it is given. */
+type ContextRun = (
+  input: unknown,
+  context: RunContext
+) => Promise<ActionResult>;
 
 /**
  * A Browser Tool or Custom Tool, as published: `execute` runs it for a Run,
@@ -91,7 +113,11 @@ export type ElementToolDefinition = {
   label: string;
   inputSchema: JsonSchema;
   targetField: TargetField;
-  run(target: ResolvedTarget, input: Record<string, unknown>): Promise<unknown>;
+  run(
+    target: ResolvedTarget,
+    input: Record<string, unknown>,
+    context: RunContext
+  ): Promise<unknown>;
 };
 
 const REF_INPUT_SCHEMA: JsonSchema = {
@@ -109,8 +135,8 @@ const REF_INPUT_SCHEMA: JsonSchema = {
  * `run` the element. Finishes with the shared action sequence, so every such
  * tool returns the same action result.
  */
-function elementToolRun(definition: ElementToolDefinition): ReaderRun {
-  return async (input, reader) => {
+function elementToolRun(definition: ElementToolDefinition): ContextRun {
+  return async (input, context) => {
     const fields = validatedToolInput(definition.inputSchema, input);
     const currentDocument = requireCurrentDocument();
     const target = await resolveElementTarget(
@@ -120,13 +146,13 @@ function elementToolRun(definition: ElementToolDefinition): ReaderRun {
     );
     return runAction(
       currentDocument,
-      reader,
+      context.reader,
       {
         tool: definition.name,
         args: input,
         ...(target.ref ? { targetRef: target.ref } : {}),
       },
-      () => definition.run(target, fields)
+      () => definition.run(target, fields, context)
     );
   };
 }
@@ -143,7 +169,7 @@ export function registerElementTool(
       description: definition.description,
       inputSchema: definition.inputSchema,
       execute: (input: unknown, context?: RunContext) =>
-        run(input, context?.reader ?? "agent"),
+        run(input, context ?? { reader: "agent" }),
     },
     targetField: definition.targetField,
     loopInputSchema:
@@ -303,11 +329,37 @@ export function configureCustomTools(
         label: `run "${customTool.name}" on`,
         inputSchema: REF_INPUT_SCHEMA,
         targetField: "ref",
-        run: ({ ref, element }) => customTool.execute({ ref: ref!, element }),
+        run: ({ ref, element }, _input, context) =>
+          customTool.execute(
+            { ref: ref!, element },
+            {
+              run: childRunOf(
+                customTool.name,
+                context
+              ) as CustomToolContext["run"],
+            }
+          ),
       },
       customTool.filter ?? (() => true)
     )
   );
+}
+
+/**
+ * The `run` a Custom Tool is handed: its Run's, or, for a tool executed
+ * outside a Run the runtime started, one that refuses.
+ */
+function childRunOf(
+  name: string,
+  context: RunContext
+): (name: string, input: unknown) => Promise<unknown> {
+  const { run } = context;
+  if (run) return (child, input) => run(child, input);
+  return async () => {
+    throw new RuntimeStateError(
+      `The Custom Tool "${name}" runs outside a Run, so it cannot start other tools.`
+    );
+  };
 }
 
 /** Package-internal: the Custom Tools of the active session, in registration order. */

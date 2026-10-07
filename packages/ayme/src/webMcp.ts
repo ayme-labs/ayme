@@ -8,7 +8,7 @@ import {
   subscribeToRegisteredPoms,
   probeRegisteredPomMembers,
 } from "./registry";
-import { callers, runTool } from "./run";
+import { callers, readerOf, runTool } from "./run";
 import { errorText } from "./errors";
 
 /** The MCP tool-failure result a published tool returns instead of throwing. */
@@ -195,7 +195,12 @@ export async function synchronizeWebMcpTools(
           const call = (input: unknown) =>
             options.run
               ? options.run(name, input, settle)
-              : runTool(tool, input, callers.webmcp, settle);
+              : runTool(
+                  tool,
+                  input,
+                  { reader: readerOf(callers.webmcp) },
+                  settle
+                );
           try {
             await driver.registerTool(
               {

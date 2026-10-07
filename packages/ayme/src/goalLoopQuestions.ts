@@ -15,7 +15,11 @@ import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
 import type { GoalLoopStepRecord } from "./goalLoop";
 import type { AriaRef, PageStateCapture } from "./pageState";
 import { listElementTools, NAVIGATION_TOOLS } from "./browserTools";
-import { executeTool } from "./run";
+import {
+  executeTool,
+  type ChildRun,
+  type ExecutableTool as RunnableTool,
+} from "./run";
 import { acceptedRefNodes, type TargetField } from "./elementTools";
 import {
   listCollectionToolRoots,
@@ -151,8 +155,11 @@ type ArgumentSpec = {
 export type ExecutableTool = {
   name: string;
   description: string;
-  /** Runs the tool as a step: the Goal Loop's model reads its page. */
-  execute(input: unknown): Promise<unknown>;
+  /**
+   * Runs the tool as a step, a child Run of the goal Run through `run`: the
+   * Goal Loop's model reads its page.
+   */
+  execute(input: unknown, run?: ChildRun): Promise<unknown>;
   /** Parameter names a caller must pass; empty when the tool takes none. */
   requiredParams: string[];
   args: ArgumentSpec[];
@@ -274,7 +281,8 @@ export function buildToolOptions(): ToolOption[] {
     ({ tool, targetField, loopInputSchema, filter }) => ({
       name: tool.name,
       description: tool.description,
-      execute: (input: unknown) => executeTool(tool, input, "goalLoop"),
+      execute: (input: unknown, run?: ChildRun) =>
+        executeStep(tool, input, run),
       requiredParams: [...(loopInputSchema.required ?? [])],
       args: specsOfElementToolSchema(loopInputSchema, targetField, filter),
     })
@@ -282,7 +290,7 @@ export function buildToolOptions(): ToolOption[] {
   const navigationTools: ExecutableTool[] = NAVIGATION_TOOLS.map((tool) => ({
     name: tool.name,
     description: tool.description,
-    execute: (input: unknown) => executeTool(tool, input, "goalLoop"),
+    execute: (input: unknown, run?: ChildRun) => executeStep(tool, input, run),
     requiredParams: [...(tool.inputSchema.required ?? [])],
     args: specsOfObjectSchema(tool.inputSchema),
   }));
@@ -296,11 +304,11 @@ export function buildToolOptions(): ToolOption[] {
       name: t.name,
       description: t.description,
       // An action without parameters of its own still takes the empty `args`.
-      execute: (input: unknown) =>
-        executeTool(
+      execute: (input: unknown, run?: ChildRun) =>
+        executeStep(
           t,
           roots ? { args: {}, ...(input as Record<string, unknown>) } : input,
-          "goalLoop"
+          run
         ),
       requiredParams: args
         .filter((arg) => !arg.optional)
@@ -314,6 +322,21 @@ export function buildToolOptions(): ToolOption[] {
     label: tool.description,
     tool,
   }));
+}
+
+/**
+ * Executes `tool` as a Goal Loop step, which moves the Goal Loop's cursor: a
+ * child Run of the goal Run through `run`, or, for a goal executed outside a
+ * Run the runtime started, the tool itself.
+ */
+function executeStep(
+  tool: RunnableTool & { name: string },
+  input: unknown,
+  run: ChildRun | undefined
+): Promise<unknown> {
+  return run
+    ? run(tool.name, input, "goalLoop")
+    : executeTool(tool, input, { reader: "goalLoop" });
 }
 
 // --- Arguments asked in stage two ---
