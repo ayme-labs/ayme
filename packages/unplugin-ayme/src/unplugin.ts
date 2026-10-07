@@ -66,6 +66,9 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
           const dependantsByFile = viteDependants.get(environment) ?? new Map();
           viteDependants.set(environment, dependantsByFile);
           for (const dependency of transformed.dependencies) {
+            // A type-only import never joins Vite's module graph, so its file
+            // is unwatched, and outside the root it is not watched by default.
+            this.addWatchFile(dependency);
             const dependants = dependantsByFile.get(dependency) ?? new Set();
             dependantsByFile.set(dependency, dependants.add(id));
           }
