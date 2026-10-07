@@ -23,6 +23,8 @@ You mark a Page Object Model and the actions to expose. The build plugin compile
 - **Browser Tools**: built-in operations on the page, such as `click` and `fill`, aimed at what `snapshot` shows.
 - **Custom Tools**: operations of your own on one element, such as highlighting it for the user.
 
+While you develop, a coding agent also gets **Peek Tools**: they read app state the page does not show, such as a store or what your server holds, from the page and from your app's own Node processes. WebMCP never publishes them. See [`ayme.peek`](docs/guide/reference/ayme.md#aymepeek).
+
 The **Goal Loop** runs on top of them: `goal` takes a goal in natural language and lets Jev pick one operation per step until the goal is met or it needs the agent. Jev is reached through a **Decision Endpoint**, one route in your backend, or in your dev server while you develop, that adds your TypeSafe or OpenRouter key.
 
 The **Inspector** is an in-page panel that shows your Page Objects, what the agent sees and every tool, and runs them by hand.

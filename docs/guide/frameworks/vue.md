@@ -127,15 +127,15 @@ The [Nuxt example](../../../apps/example-nuxt/README.md) runs this setup, and [S
 
 ## Troubleshooting
 
-| Error                                                                                                                       | Cause                                                           |
-| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `AymeProvider cannot be nested beneath another Ayme runtime owner.`                                                         | A second owner beneath the first. Start Ayme once, at the root. |
-| `The provider options must stay fixed while mounted. Remount the provider to change them.`                                  | A provider prop changed while mounted.                          |
-| `Configure pageFactory, ignore, customTools, goalLoop and webMCP on the ancestor AymeProvider or standalone useAyme owner.` | `useAyme(options)` beneath an owner.                            |
-| `useAyme must be called within an active Vue effect scope`, and the same for `usePageObject`                                | Called outside `setup` or an effect scope.                      |
-| `usePageObject requires useAyme() or an AymeProvider in this scope or an ancestor component.`                               | No owner above.                                                 |
-| `usePeek must be called in a component's setup`                                                                             | `usePeek` called outside a component's `setup`.                 |
-| `usePeek requires useAyme() or an AymeProvider in this component or an ancestor.`                                           | No owner above.                                                 |
+| Error                                                                                         | Cause                                                           |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `AymeProvider cannot be nested beneath another Ayme runtime owner.`                           | A second owner beneath the first. Start Ayme once, at the root. |
+| `The provider options must stay fixed while mounted. Remount the provider to change them.`    | A provider prop changed while mounted.                          |
+| `Configure Ayme's options on the ancestor AymeProvider or standalone useAyme owner.`          | `useAyme(options)` beneath an owner.                            |
+| `useAyme must be called within an active Vue effect scope`, and the same for `usePageObject`  | Called outside `setup` or an effect scope.                      |
+| `usePageObject requires useAyme() or an AymeProvider in this scope or an ancestor component.` | No owner above.                                                 |
+| `usePeek must be called in a component's setup`                                               | `usePeek` called outside a component's `setup`.                 |
+| `usePeek requires useAyme() or an AymeProvider in this component or an ancestor.`             | No owner above.                                                 |
 
 ## API
 
