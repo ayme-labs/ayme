@@ -63,6 +63,10 @@ _Avoid_: tool call, invocation
 **Caller**:
 Whoever starts a top-level Run from outside: an agent through WebMCP or the Ayme MCP server, the Inspector, or the app's own code. A Caller names itself. A Run started inside another Run has a parent instead.
 
+**Interaction**:
+One input a Run gives the page: a click, fill, key press, hover or selection on one element. A Run's Interactions are the ones it performed itself; its child Runs have their own.
+_Avoid_: step, page operation, action (on its own)
+
 **Goal Loop**:
 Drives the page toward a natural-language goal in steps. Each step is one judgement by a System One model (a fast model that picks among given options, currently Jev), not by the calling agent's LLM. The calling agent starts it and receives a Handover.
 
