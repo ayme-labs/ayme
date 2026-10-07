@@ -56,6 +56,17 @@ A page that has shown no activity for a quiet window after an action. A wait for
 **Change Record**:
 What changed around an action: the difference between the Structural Page State the caller last received and the Settled Page after the action.
 
+**Run**:
+One execution of a tool, from its start to its outcome. It is started by a Caller, or inside another Run, which is then its parent. A goal Run's children are the Runs its Goal Loop's steps executed; a Custom Tool's children are the Runs it starts.
+_Avoid_: tool call, invocation
+
+**Caller**:
+Whoever starts a top-level Run from outside: an agent through WebMCP or the Ayme MCP server, the Inspector, or the app's own code. A Caller names itself. A Run started inside another Run has a parent instead.
+
+**Page Operation**:
+One call a Run makes on the page itself, such as a click, a fill or a key press.
+_Avoid_: step (a Goal Loop's judgement), trace entry
+
 **Goal Loop**:
 Drives the page toward a natural-language goal in steps. Each step is one judgement by a System One model (a fast model that picks among given options, currently Jev), not by the calling agent's LLM. The calling agent starts it and receives a Handover.
 
