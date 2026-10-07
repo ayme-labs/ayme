@@ -21,7 +21,7 @@ From `@ayme-dev/example-certification/tests`, each builder defines plain Playwri
 - `counterTests({ CounterPage, navigation? })`: the published schemas, an undecorated subclass, Ayme's own tools, the Page Object called from the app, its tool and Playwright, unmount and remount, the answer to a `click` that starts a full page load, to `navigate` to another page, to `navigate_back` from it and to `reload`, that page's published tools, and, with `navigation`, client navigation away and back.
 - `devRebuildTests({ counterModePath })`: on the dev server only, editing `CounterMode.ts` rebuilds the published schema. Call it last: it edits a source file, and the dev server rebuilds after it.
 - `agentConnectionTests({ enabled, snapshotText })`: where `enabled()` holds, a coding agent's MCP client pairs with `/` through a connect link and calls the page's `snapshot` tool; elsewhere, such as a production build, the page loads no Agent Connection code and opens no WebSocket. Every example runs it, gated as its app gates `agentConnection`.
-- `test`: Playwright's `test`, failing on page errors, console errors and hydration warnings. Every builder except the dev rebuild and the Agent Connection uses it, and so do an example's own tests.
+- `test`: Playwright's `test`, failing on page errors, console errors and hydration warnings. Every builder except the dev rebuild and the Agent Connection uses it, and so do an example's own tests. A framework that logs hydration statistics in development, such as Angular, names them with `test.use({ hydrationStatistics: /regexp/ })` so they are not counted as a warning.
 
 Tools are called through the recording WebMCP driver from `@ayme-dev/ayme/testing`, and the agent's side through `@ayme-dev/mcp/testing`.
 
