@@ -93,7 +93,7 @@ Because the session starts while the owner initializes, a descendant's `onMount`
 
 ## Server rendering
 
-SvelteKit renders on the server by default, and the setup above needs nothing more: `useAyme` and `usePageObject` run during server rendering without starting anything, and hydration constructs the real Page Objects. The same files work in SvelteKit's SPA mode:
+SvelteKit renders on the server by default, and the setup above needs nothing more: `useAyme` and `usePageObject` run during server rendering without starting anything, and hydration constructs the real Page Objects. `peek` adds its instance in `onMount`, which never runs on the server. The same files work in SvelteKit's SPA mode:
 
 ```ts
 // src/routes/+layout.ts

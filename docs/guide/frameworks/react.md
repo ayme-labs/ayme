@@ -84,7 +84,7 @@ export default function Controls() {
 
 ## Server rendering
 
-The provider and hooks render on the server without starting anything, and hydration constructs the real Page Objects. In the Next.js App Router, put `AymeProvider` and the components that call its hooks in a `"use client"` module, and render it from a server component:
+The provider and hooks render on the server without starting anything, and hydration constructs the real Page Objects. `usePeek` adds its instance in an effect, which never runs on the server. In the Next.js App Router, put `AymeProvider` and the components that call its hooks in a `"use client"` module, and render it from a server component:
 
 ```tsx
 // app/projects.tsx
