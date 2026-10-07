@@ -27,6 +27,7 @@ import {
 } from "@ayme-dev/ayme";
 import {
   getStartedAyme,
+  markRenderSession,
   sameRuntimeOptions,
   type PageObjectConstructor,
 } from "@ayme-dev/ayme/internal";
@@ -40,9 +41,9 @@ function inheritedRuntime() {
   return getCurrentInstance() ? inject(runtimeKey, undefined) : undefined;
 }
 
-// On the server the session starts nothing.
 function ownRuntime(options: UseAymeOptions = {}) {
-  const runtime = createAyme(options);
+  const runtime = renderable(createAyme(options));
+  // A render session starts nothing.
   onScopeDispose(runtime.start());
   if (getCurrentInstance()) provide(runtimeKey, runtime);
   return runtime;
@@ -162,7 +163,7 @@ export function usePageObject<T extends object>(
     inheritedRuntime() ??
     getStartedAyme() ??
     (typeof window === "undefined"
-      ? (inertSession ??= createAyme())
+      ? (inertSession ??= renderable(createAyme()))
       : undefined);
   if (!runtime)
     throw new Error(
@@ -211,3 +212,10 @@ function read(values: unknown) {
 }
 
 let inertSession: Ayme | undefined;
+
+// Without a window, Vue renders on the server, where a session must never
+// claim the process.
+function renderable(runtime: Ayme) {
+  if (typeof window === "undefined") markRenderSession(runtime);
+  return runtime;
+}

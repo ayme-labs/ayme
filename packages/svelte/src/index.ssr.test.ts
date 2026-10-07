@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAyme } from "@ayme-dev/ayme";
 import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
 
@@ -20,6 +20,14 @@ import type { UseAymeOptions, UseAymeResult } from "./index";
 
 type PageFactory = NonNullable<UseAymeOptions["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
+
+// The server's own session holds the process as its App Process, as in a
+// dev server with Peeks: a render whose session claimed it too would throw.
+let stopAppProcess = () => {};
+beforeEach(() => {
+  stopAppProcess = createAyme().start();
+});
+afterEach(() => stopAppProcess());
 
 const pageFactory = vi.fn<PageFactory>(() => {
   throw new Error("The page factory must not run on the server.");

@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { createSSRApp, defineComponent, h } from "vue";
 import { renderToString } from "@vue/server-renderer";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
-import type { Ayme } from "@ayme-dev/ayme";
+import { createAyme, type Ayme } from "@ayme-dev/ayme";
 
 const peekCalls = vi.hoisted(() => [] as string[]);
 vi.mock("@ayme-dev/ayme", async (importOriginal) => {
@@ -30,6 +30,14 @@ import {
 
 type PageFactory = NonNullable<UseAymeOptions["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
+
+// The server's own session holds the process as its App Process, as in a
+// dev server with Peeks: a render whose session claimed it too would throw.
+let stopAppProcess = () => {};
+beforeEach(() => {
+  stopAppProcess = createAyme().start();
+});
+afterEach(() => stopAppProcess());
 
 describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",

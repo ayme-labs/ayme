@@ -12,7 +12,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { createAyme } from "@ayme-dev/ayme";
+import { createAyme, type Ayme } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
   registerCompiledPom,
@@ -194,6 +194,26 @@ it("server-renders without constructing or registering a Page Object or calling 
   expect(constructions).toBe(0);
   expect(factory).not.toHaveBeenCalled();
   expect(listRegisteredPoms()).toHaveLength(0);
+});
+
+it("C9: creates a render session per server render, which starts nothing beside the process's App Process", () => {
+  vi.stubGlobal("window", undefined);
+  // React runs no effect on the server, so nothing starts these sessions;
+  // started anyway, a session that claimed the process would throw.
+  const rendered: Ayme[] = [];
+  function Child() {
+    rendered.push(useAyme().ayme);
+    return null;
+  }
+  renderToString(h(AymeProvider, null, h(Child)));
+  renderToString(h(AymeProvider, null, h(Child)));
+  const stopAppProcess = createAyme().start();
+  try {
+    expect(rendered).toHaveLength(2);
+    for (const ayme of rendered) expect(() => ayme.start()()).not.toThrow();
+  } finally {
+    stopAppProcess();
+  }
 });
 
 it("hydrates server output without warnings and then registers the Page Object", async () => {

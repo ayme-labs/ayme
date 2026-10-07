@@ -62,7 +62,7 @@ await ayme.tools.run("peek.cart", {}); // { name: "cart", instances: [{ values: 
 
 ## Peek at server state
 
-Your app's own Node processes, such as its dev server or an Express backend, can offer Peeks too, as `peek.node.<name>`. Install `@ayme-dev/mcp` beside `@ayme-dev/ayme` there, and start an App Process with `ayme.startAppProcess()` in the server's entry point. An Express backend, in `server/ayme.ts`:
+Your app's own Node processes, such as its dev server or an Express backend, can offer Peeks too, as `peek.node.<name>`. Install `@ayme-dev/mcp` beside `@ayme-dev/ayme` there, and start Ayme once, in the server's entry point: the session becomes the process's App Process, and a process has one. An Express backend, in `server/ayme.ts`:
 
 ```ts
 import { createAyme } from "@ayme-dev/ayme";
@@ -72,7 +72,7 @@ import { sessions } from "./sessions";
 export const ayme = createAyme({
   agentConnection: process.env.NODE_ENV !== "production",
 });
-ayme.startAppProcess(); // does nothing without agentConnection
+ayme.start(); // pairs with the agent's server only with agentConnection
 
 ayme.peek(() => ({ active: sessions.size }), "sessions"); // peek.node.sessions
 ```

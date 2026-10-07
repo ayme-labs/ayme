@@ -6,7 +6,12 @@ import * as goalLoopModule from "./goalLoop";
 import { loadInspector } from "./inspector";
 import * as navigateToolModule from "./navigateTool";
 import * as pageState from "./pageState";
-import { createAyme, sameRuntimeOptions, type AymePage } from "./runtime";
+import {
+  createAyme,
+  markRenderSession,
+  sameRuntimeOptions,
+  type AymePage,
+} from "./runtime";
 import { listRegisteredPoms, registerCompiledPom } from "./registry";
 import {
   synchronizeWebMcpTools,
@@ -291,16 +296,18 @@ it("never calls the page factory on the server", () => {
   expect(createPage).not.toHaveBeenCalled();
 });
 
-it("C9: starts and registers nothing on the server, for concurrent sessions", () => {
+it("C9: starts and registers nothing for concurrent render sessions on the server", () => {
   vi.stubGlobal("window", undefined);
   vi.stubGlobal("document", undefined);
   const factory = vi.fn(() => page);
   const first = createAyme({ pageFactory: factory, webMCP: { enabled: true } });
   const second = createAyme({ pageFactory: factory });
   sessions.push(first, second);
+  markRenderSession(first);
+  markRenderSession(second);
   const instance = first.pom.register(Model);
   const stopFirst = start(first);
-  // A second session on the server is no owner conflict.
+  // A second render session is no owner conflict.
   const stopSecond = start(second);
   expect(first.webMCP.publicationStatus.state).toBe("waiting");
   expect(second.webMCP.publicationStatus.state).toBe("disabled");
@@ -477,17 +484,6 @@ it("C3: rejects concurrent owners with the active-owner code and permits a fresh
   );
   stop();
   start(second);
-});
-
-it("refuses to start an App Process in the browser", () => {
-  const runtime = createAyme({ agentConnection: true });
-  sessions.push(runtime);
-  expect(() => runtime.startAppProcess()).toThrow(
-    expect.objectContaining({
-      name: "RuntimeStateError",
-      message: expect.stringContaining("In the browser, call start()."),
-    })
-  );
 });
 
 it("publishes once, shares retries, and exposes immutable status snapshots", async () => {

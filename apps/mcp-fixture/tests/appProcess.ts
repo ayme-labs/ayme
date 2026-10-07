@@ -16,7 +16,7 @@ const ayme = createAyme({
     ...(link === undefined ? {} : { link }),
   },
 });
-ayme.startAppProcess();
+ayme.start();
 ayme.peek(() => ({ value }), name);
 
 // Stays up like a dev server until the test ends it.

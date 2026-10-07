@@ -26,9 +26,8 @@ until the page's tools are MCP tools. Assertions go through the MCP client, and
 through the page only for what the page itself shows, such as its address bar.
 Add a spec file for a new concern and reuse `fixtures.ts`.
 
-`appProcess.ts` stands in for an App Process: a Node script that starts one
-with `createAyme({ agentConnection })` and `ayme.startAppProcess()`, and adds
-one Peek with `ayme.peek`. The
+`appProcess.ts` stands in for an App Process: a Node script that starts Ayme
+with `createAyme({ agentConnection })` and adds one Peek with `ayme.peek`. The
 `startAppProcess` fixture runs it and ends it with the test. Each one looks for
 a server on its test's port only, or pairs by link, so it never pairs with a
 server another test or run has on the machine.

@@ -40,7 +40,7 @@ Row ids are stable: a row that goes away leaves its id unused, and a new row tak
 
 ## Server rendering
 
-Core makes the runtime session inert on the server: starting it starts nothing and returns a stop function that does nothing, and a Page Object is an object with the model's prototype that never calls the page factory and registers nothing. The integration starts the session and registers Page Objects the same way on the server as in the browser, with no guard of its own. The initial status (C10) comes from the session; the integration renders it unchanged.
+On the server, `start()` on an ordinary session claims the Node process as its App Process, one per process. Only the integration knows it is rendering, so it marks every session it creates without a window as a render session, with `markRenderSession` from `@ayme-dev/ayme/internal`. Core makes a render session inert: starting it starts nothing and returns a stop function that does nothing, so concurrent requests share no owner and none conflicts with the process's App Process. On the server a Page Object is an object with the model's prototype that never calls the page factory and registers nothing. Beyond the mark, the integration starts the session and registers Page Objects the same way on the server as in the browser, with no guard of its own. The initial status (C10) comes from the session; the integration renders it unchanged.
 
 ## Tests
 

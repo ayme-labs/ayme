@@ -17,7 +17,10 @@ import {
   type AymeOptions,
   type AymeWebMcpPublicationStatus,
 } from "@ayme-dev/ayme";
-import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
+import {
+  markRenderSession,
+  type PageObjectConstructor,
+} from "@ayme-dev/ayme/internal";
 
 export type { AymeOptions, AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
 
@@ -51,12 +54,15 @@ export function provideAyme(options: AymeOptions = {}): EnvironmentProviders {
             "provideAyme cannot be nested beneath another Ayme runtime owner."
           );
         const ayme = createAyme(options);
+        // Without a window, Angular renders on the server, where the session
+        // must never claim the process.
+        if (typeof window === "undefined") markRenderSession(ayme);
         const destroyRef = inject(DestroyRef);
         const publicationStatus = signal(ayme.webMCP.publicationStatus);
         destroyRef.onDestroy(
           ayme.webMCP.subscribe((status) => publicationStatus.set(status))
         );
-        // On the server the session starts nothing.
+        // A render session starts nothing.
         destroyRef.onDestroy(ayme.start());
         return {
           ayme,

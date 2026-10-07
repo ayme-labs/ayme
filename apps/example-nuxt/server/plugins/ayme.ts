@@ -14,7 +14,7 @@ export default defineNitroPlugin((nitroApp) => {
     const ayme = createAyme({
       agentConnection: port === undefined ? true : { port: Number(port) },
     });
-    ayme.startAppProcess();
+    ayme.start();
     ayme.peek(() => ({ renders }), "renders");
   });
 });

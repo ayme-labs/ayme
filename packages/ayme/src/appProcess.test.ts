@@ -1,11 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createAyme, type Ayme, type AymeOptions } from "./runtime";
+import {
+  createAyme,
+  markRenderSession,
+  type Ayme,
+  type AymeOptions,
+} from "./runtime";
 
 // Runtime object seam in a Node process of the app (an App Process): no
-// window and no document. `startAppProcess()` hands `ayme` to the App Process's side
-// of the Agent Connection, which this test records in place of the real
-// one, which would scan for an agent's Ayme MCP server.
+// window and no document. `start()` claims the process and hands `ayme` to
+// the App Process's side of the Agent Connection, which this test records in
+// place of the real one, which would scan for an agent's Ayme MCP server.
 
 const processConnections = vi.hoisted(
   () =>
@@ -37,13 +42,21 @@ afterEach(() => {
   for (const cleanup of cleanups.reverse()) cleanup();
   cleanups = [];
   processConnections.length = 0;
+  // A claim a test leaves behind would fail every later test's start.
+  expect(() => createAyme().start()()).not.toThrow();
 });
 
 function started(options: AymeOptions = { agentConnection: true }) {
   const ayme = createAyme(options);
-  cleanups.push(ayme.startAppProcess());
+  cleanups.push(ayme.start());
   return ayme;
 }
+
+const activeOwner = expect.objectContaining({
+  name: "RuntimeStateError",
+  message: "The Ayme runtime already has an active owner.",
+  code: "active-owner",
+});
 
 function peek(ayme: Ayme, ...args: Parameters<Ayme["peek"]>) {
   cleanups.push(ayme.peek(...args));
@@ -65,7 +78,7 @@ describe("createAyme in an App Process", () => {
   it("passes the connect link and port of the agentConnection option to the connection", async () => {
     const stop = createAyme({
       agentConnection: { port: 41234 },
-    }).startAppProcess();
+    }).start();
     await loaded();
     stop();
     started({ agentConnection: { link: "http://localhost:5173/#ayme=x" } });
@@ -110,7 +123,7 @@ describe("createAyme in an App Process", () => {
 
   it("ends the connection and offers no tools once stopped", async () => {
     const ayme = createAyme({ agentConnection: true });
-    const stop = ayme.startAppProcess();
+    const stop = ayme.start();
     peek(ayme, () => 1, "jobs");
     await loaded();
 
@@ -123,30 +136,37 @@ describe("createAyme in an App Process", () => {
     );
   });
 
-  it("has no Peeks and no connection without the agentConnection option", async () => {
-    const ayme = started({});
+  it.each([{}, { inspector: true }])(
+    "claims the process without the agentConnection option, but has no Peeks and no connection: %o",
+    async (options) => {
+      const ayme = started(options);
 
-    peek(ayme, () => 1, "jobs");
-    await loaded();
+      peek(ayme, () => 1, "jobs");
+      await loaded();
 
-    expect(ayme.tools.list()).toEqual([]);
-    expect(processConnections).toEqual([]);
-  });
+      expect(ayme.tools.list()).toEqual([]);
+      expect(processConnections).toEqual([]);
+      expect(() => createAyme({ agentConnection: true }).start()).toThrow(
+        activeOwner
+      );
+    }
+  );
 
   it("offers and runs none of the Peeks another session adds without the agentConnection option", async () => {
-    const gatedOn = started();
+    const gatedOn = createAyme({ agentConnection: true });
     peek(gatedOn, () => 1, "jobs");
     const gatedOff = started({});
     await loaded();
 
     expect(gatedOff.tools.list()).toEqual([]);
     await expect(gatedOff.tools.run("peek.node.jobs", {})).rejects.toThrow(
-      "not started"
+      'The tool "peek.node.jobs" is not live.'
     );
   });
 
-  it("starts no App Process from start(), even with agentConnection on", async () => {
+  it("starts nothing for a render session, even with agentConnection on", async () => {
     const ayme = createAyme({ agentConnection: true });
+    markRenderSession(ayme);
     cleanups.push(ayme.start());
 
     peek(ayme, () => 1, "jobs");
@@ -154,24 +174,53 @@ describe("createAyme in an App Process", () => {
 
     expect(processConnections).toEqual([]);
     expect(ayme.tools.list()).toEqual([]);
+    // It claimed nothing, so the process is free for its App Process.
+    started();
   });
 
-  it("starts one App Process per process: another start while it runs does nothing", async () => {
-    const first = started();
-    const second = createAyme({ agentConnection: true });
-    const stopSecond = second.startAppProcess();
-    cleanups.push(first.startAppProcess());
-    peek(first, () => 1, "jobs");
+  it("starts render sessions beside the App Process, as concurrent server renders do", async () => {
+    const appProcess = started();
+    const renders = [1, 2].map(() => {
+      const render = createAyme({ agentConnection: true });
+      markRenderSession(render);
+      return render;
+    });
+
+    for (const render of renders) cleanups.push(render.start());
     await loaded();
 
-    stopSecond();
+    expect(processConnections.map(({ ayme }) => ayme)).toEqual([appProcess]);
+  });
 
+  it("has one App Process per process: another start throws active-owner until the first stops", async () => {
+    const first = createAyme({ agentConnection: true });
+    const stopFirst = first.start();
+    cleanups.push(stopFirst);
+    const second = createAyme({ agentConnection: true });
+    peek(first, () => 1, "jobs");
+
+    expect(() => second.start()).toThrow(activeOwner);
+    expect(() => first.start()).toThrow(activeOwner);
+    await loaded();
     expect(processConnections).toHaveLength(1);
     expect(processConnections[0]!.ayme).toBe(first);
-    expect(processConnections[0]!.disposed).toBe(false);
     expect(first.tools.list().map(({ name }) => name)).toEqual([
       "peek.node.jobs",
     ]);
     expect(second.tools.list()).toEqual([]);
+
+    stopFirst();
+    cleanups.push(second.start());
+    await loaded();
+
+    expect(
+      processConnections.map(({ ayme, disposed }) => [ayme, disposed])
+    ).toEqual([
+      [first, true],
+      [second, false],
+    ]);
+    expect(second.tools.list().map(({ name }) => name)).toEqual([
+      "peek.node.jobs",
+    ]);
   });
 });
