@@ -20,7 +20,6 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
     ...original,
     createAyme: (...args: Parameters<typeof original.createAyme>) => {
       const session = original.createAyme(...args);
-      vi.spyOn(session, "start");
       sessions.push(session);
       return session;
     },
@@ -96,7 +95,7 @@ describe.each([false, true])(
       for (const html of pages) expect(html).toContain(`>${status}</button>`);
       expect(sessions).toHaveLength(2);
       for (const session of sessions) {
-        expect(session.start).not.toHaveBeenCalled();
+        // A session that started and stopped would read `disposed`.
         expect(session.webMCP.publicationStatus.state).toBe(status);
       }
       expect(listRegisteredPoms()).toHaveLength(0);

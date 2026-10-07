@@ -105,7 +105,8 @@ const layoutEvents = [
 export function configureAymeRuntime(page: Page) {
   if (runtimeOwner)
     throw new RuntimeStateError(
-      "The Ayme runtime already has an active owner."
+      "The Ayme runtime already has an active owner.",
+      { code: "active-owner" }
     );
   browserPage = page;
 }
@@ -121,7 +122,8 @@ export function requireAymeRuntimePage(): Page {
 export function createAymeRuntime(page?: object) {
   if (runtimeOwner)
     throw new RuntimeStateError(
-      "The Ayme runtime already has an active owner."
+      "The Ayme runtime already has an active owner.",
+      { code: "active-owner" }
     );
 
   resetRegisteredPoms();

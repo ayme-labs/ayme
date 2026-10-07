@@ -22,8 +22,23 @@ export class RefResolutionError extends AymeError {
   readonly kind = "resolution";
 }
 
+/**
+ * A `RuntimeStateError` that callers recognise without matching its message.
+ * `active-owner`: another runtime session is already started in the document.
+ */
+export type RuntimeStateErrorCode = "active-owner";
+
 /** Ayme is not set up for this call. */
 export class RuntimeStateError extends AymeError {
   override readonly name = "RuntimeStateError";
   readonly kind = "runtime";
+  readonly code?: RuntimeStateErrorCode;
+
+  constructor(
+    message: string,
+    options?: ErrorOptions & { code?: RuntimeStateErrorCode }
+  ) {
+    super(message, options);
+    this.code = options?.code;
+  }
 }
