@@ -39,10 +39,15 @@ function fixtureRunLog() {
       return () => void listeners.delete(listener);
     },
     /**
-     * Starts a Run of `tool` for `by`, listed as running. Returns what ends
-     * it: with its result, or with its error text.
+     * Starts a Run of `tool` for `by`, or a child Run of the Run whose id is
+     * `parent`, listed as running. Returns its id and what ends it: with its
+     * result, or with its error text.
      */
-    start(tool: string, input: JsonValue | undefined, by: Caller) {
+    start(
+      tool: string,
+      input: JsonValue | undefined,
+      by: Caller | { parent: string }
+    ) {
       const id = String(nextId++);
       const startedAt = Date.now();
       publish([
@@ -50,13 +55,13 @@ function fixtureRunLog() {
         {
           id,
           tool,
-          by,
+          ...(typeof by === "string" ? { by } : by),
           status: "running",
           startedAt,
           ...(input === undefined ? {} : { input }),
         },
       ]);
-      const end = (ended: Partial<Run>) =>
+      const end = (ended: Pick<Run, "status" | "result" | "error">) =>
         publish(
           runs.map((run) =>
             run.id === id
@@ -65,6 +70,7 @@ function fixtureRunLog() {
           )
         );
       return {
+        id,
         succeed: (result?: unknown) =>
           end({
             status: "succeeded",

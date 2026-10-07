@@ -152,6 +152,23 @@ it("lists every Caller's Runs from the page's Run log, newest first, as they sta
   );
 });
 
+it("lists a Run that started child Runs once, as its Caller's", async () => {
+  const goal = startedAyme.runs.start("goal", { goal: "Save" }, "ayme-mcp");
+  startedAyme.runs
+    .start("click", { target: "e2" }, { parent: goal.id })
+    .succeed();
+  goal.succeed({ reason: "done" });
+  renderApp();
+
+  await expect.poll(() => inspector.runs.runs.count()).toBe(1);
+  expect(await inspector.runs.run(0).root.getAttribute("aria-label")).toBe(
+    "goal"
+  );
+  expect(await inspector.runs.run(0).caller()).toEqual({
+    icon: "Run by an agent through Ayme MCP",
+  });
+});
+
 it("records a Tools panel run in the Run log as the Inspector's", async () => {
   registerEditor();
   startedAyme.tools.run.mockResolvedValue({ saved: true });

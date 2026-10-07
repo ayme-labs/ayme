@@ -32,8 +32,11 @@ export function rowIdOf(run: Pick<LogRun, "id" | "startedAt">): string {
   return `${run.id}@${run.startedAt}`;
 }
 
-/** A Run from the log as Runs shows it. */
-function rowOf(run: LogRun, notes: RunNotes): Run {
+/** A top-level Run: one a Caller started, not a tool. */
+type TopLevelRun = Extract<LogRun, { by: unknown }>;
+
+/** A top-level Run from the log as Runs shows it. */
+function rowOf(run: TopLevelRun, notes: RunNotes): Run {
   return {
     id: rowIdOf(run),
     toolName: run.tool,
@@ -55,8 +58,8 @@ function rowOf(run: LogRun, notes: RunNotes): Run {
 }
 
 /**
- * The rows Runs shows, newest first: the log's Runs that started after
- * the panel was last cleared, with the panel's failed runs that never
+ * The rows Runs shows, newest first: the log's top-level Runs that started
+ * after the panel was last cleared (child Runs are not shown yet), with the panel's failed runs that never
  * reached the log, then the rows kept from earlier pages. A kept row that
  * is still in the log, as when the panel mounts again on the same page,
  * shows as the log's, with the notes it was kept with.
@@ -80,7 +83,10 @@ export function shownRuns({
 }): Run[] {
   const kept = new Map(earlier.map((run) => [run.id, run]));
   const live = log
-    .filter((run) => run.startedAt > clearedAt)
+    .filter(
+      (run): run is TopLevelRun =>
+        run.parent === undefined && run.startedAt > clearedAt
+    )
     .map((run) => {
       const id = rowIdOf(run);
       const keptRun = kept.get(id);
