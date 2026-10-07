@@ -92,6 +92,17 @@ function startedFullLoad(answer: unknown): boolean {
   );
 }
 
+/**
+ * The published tools WebMCP registers: all but those marked `webMcp: false`,
+ * whose results WebMCP cannot carry.
+ */
+function webMcpTools() {
+  const resolved = resolvePublishedTools();
+  for (const [name, { tool }] of resolved)
+    if ("webMcp" in tool && tool.webMcp === false) resolved.delete(name);
+  return resolved;
+}
+
 export type WebMcpDriver = Pick<
   NonNullable<typeof document.modelContext>,
   "registerTool"
@@ -205,7 +216,7 @@ export async function synchronizeWebMcpTools(
     try {
       do {
         syncAgain = false;
-        const resolved = resolvePublishedTools();
+        const resolved = webMcpTools();
         for (const [name, registration] of published) {
           if (resolved.get(name)?.tool === registration.tool) continue;
           // A driver may fail a running call once its tool is unregistered

@@ -24,6 +24,7 @@ import {
 } from "./historyTools";
 import { navigateTool } from "./navigateTool";
 import { requireAymeRuntimePage } from "./registry";
+import { screenshotTool } from "./screenshotTool";
 
 // --- Input schemas ---
 
@@ -451,6 +452,7 @@ const PUBLISHED_ONLY_BROWSER_TOOLS: readonly PublishedElementTool[] = [
   fillFormTool,
   pressKeyTool,
   generateLocatorTool,
+  screenshotTool,
 ];
 
 // --- Browser Tools that move the page ---
