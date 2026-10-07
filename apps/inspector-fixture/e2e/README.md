@@ -64,20 +64,20 @@ selection flags (`--grep`, a test file path).
 
 ## Environment
 
-| Variable                 | Values                                                          | Default                                                            |
-| ------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `AYME_E2E_ARM`           | `stock` (clicks only), `ayme` (tools)                           | `stock`                                                            |
-| `AYME_E2E_AGENT`         | `claude`, `cursor` (ACP config)                                 | `claude`                                                           |
-| `AYME_E2E_MODEL`         | the agent's model                                               | `sonnet` for Claude, Opus 4.6 for Cursor                           |
-| `AYME_E2E_AVAILABILITY`  | `0` turns the live-tool filter off                              | on for the ayme arm (ACP); `1` turns it on for the scripted config |
-| `AYME_E2E_CACHE`         | `read-only` replays without recording                           | `read-write`                                                       |
-| `AYME_E2E_CONFIG_NAME`   | names the cache and store directories                           | `scripted-<arm>`, `acp-<agent>-<arm>`                              |
-| `AYME_E2E_TESTS`         | a test glob                                                     | `tests/**/*.e2e.ts`                                                |
-| `AYME_E2E_APP_URL`       | the fixture's URL                                               | `http://127.0.0.1:4691`                                            |
-| `AYME_E2E_LOG`           | a path; the agent's stderr goes to `<path>.stderr`              | unset                                                              |
-| `AYME_E2E_SYSTEM_PROMPT` | `meta` sends Claude the prompt through ACP `_meta`              | first prompt                                                       |
-| `AYME_E2E_CURSOR_AGENT`  | the Cursor CLI binary                                           | `agent`                                                            |
-| `AYME_E2E_ROUTE`         | `direct` calls tools outside e2e's accounting (scripted config) | `runTool`                                                          |
+| Variable                 | Values                                                                                                                                                     | Default                                                            |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `AYME_E2E_ARM`           | `stock` (clicks only), `ayme` (tools)                                                                                                                      | `stock`                                                            |
+| `AYME_E2E_AGENT`         | `claude`, `cursor` (ACP config)                                                                                                                            | `claude`                                                           |
+| `AYME_E2E_MODEL`         | the agent's model                                                                                                                                          | `sonnet` for Claude, Opus 4.6 for Cursor                           |
+| `AYME_E2E_AVAILABILITY`  | `0` turns the live-tool filter off                                                                                                                         | on for the ayme arm (ACP); `1` turns it on for the scripted config |
+| `AYME_E2E_CACHE`         | `read-only` replays without recording                                                                                                                      | `read-write`                                                       |
+| `AYME_E2E_CONFIG_NAME`   | names the cache and store directories                                                                                                                      | `scripted-<arm>`, `acp-<agent>-<arm>`                              |
+| `AYME_E2E_TESTS`         | a test glob                                                                                                                                                | `tests/**/*.e2e.ts`                                                |
+| `AYME_E2E_APP_URL`       | the fixture's URL                                                                                                                                          | `http://127.0.0.1:4691`                                            |
+| `AYME_E2E_LOG`           | a path, relative to the fixture app; the agent's stderr goes to `<path>.stderr`, one JSON line per step (store or solver, calls, timing) to `<path>.jsonl` | unset                                                              |
+| `AYME_E2E_SYSTEM_PROMPT` | `meta` sends Claude the prompt through ACP `_meta`                                                                                                         | first prompt                                                       |
+| `AYME_E2E_CURSOR_AGENT`  | the Cursor CLI binary                                                                                                                                      | `agent`                                                            |
+| `AYME_E2E_ROUTE`         | `direct` calls tools outside e2e's accounting (scripted config)                                                                                            | `runTool`                                                          |
 
 ## Cache modes
 

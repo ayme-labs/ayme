@@ -69,8 +69,11 @@ export function aymeExecutor(options: {
   route?: "runTool" | "direct";
   /** Checks, once per step the solver gets, which page object tools are live (`aymeAvailability`). */
   availability?: () => Promise<ReadonlySet<string>>;
+  /** Where one JSON line per step goes (source: store or solver, calls, timing); `SPIKE_LOG` when unset. */
+  logFile?: string;
 }): StepExecutor {
   const store = new PageObjectStore(options.storeDir);
+  const logFile = options.logFile ?? process.env.SPIKE_LOG;
   const occurrences = (ctx: StepExecutorContext, shape: string): number => {
     const key = `ayme-e2e.occurrence:${shape}`;
     const next =
@@ -155,7 +158,7 @@ export function aymeExecutor(options: {
           }
           // A shared entry that served this test becomes the test's own as well.
           if (hit.source === "shared") store.adopt(keys.test, hit.entry);
-          log(ctx, {
+          log(logFile, ctx, {
             source: `store-${hit.source}`,
             calls: hit.entry.calls.map((call) => call.tool),
             wallMs: Date.now() - startedMs,
@@ -211,7 +214,7 @@ export function aymeExecutor(options: {
           repair = store.proposeRepair(keys.test, failed, actions);
         else stored = store.record(keys, step, actions);
       }
-      log(ctx, {
+      log(logFile, ctx, {
         source: "solver",
         storeHit: hit?.source ?? null,
         available: available === undefined ? null : [...available],
@@ -243,10 +246,14 @@ function replayable(
   return replayed === hit.entry.grammarBefore && prefix?.stopReason === "gap";
 }
 
-function log(ctx: StepExecutorContext, entry: Record<string, unknown>): void {
-  if (process.env.SPIKE_LOG === undefined) return;
+function log(
+  file: string | undefined,
+  ctx: StepExecutorContext,
+  entry: Record<string, unknown>
+): void {
+  if (file === undefined) return;
   appendFileSync(
-    process.env.SPIKE_LOG,
+    file,
     `${JSON.stringify({ phase: process.env.SPIKE_PHASE, test: ctx.attempt.testId, instruction: ctx.step.instruction, replayedPrefix: ctx.replayedPrefix ?? null, ...entry })}\n`
   );
 }

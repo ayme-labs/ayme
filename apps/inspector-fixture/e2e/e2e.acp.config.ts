@@ -1,4 +1,6 @@
 import { createRequire } from "node:module";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   acpDriver,
   agentSolver,
@@ -25,6 +27,15 @@ const model = process.env.AYME_E2E_MODEL;
 const availability =
   arm === "ayme" && process.env.AYME_E2E_AVAILABILITY !== "0";
 const require = createRequire(import.meta.url);
+// e2e resolves relative paths against the config's directory, so the log path
+// is made absolute here, relative to the fixture app (where runs start).
+const log =
+  process.env.AYME_E2E_LOG === undefined
+    ? undefined
+    : path.resolve(
+        fileURLToPath(new URL("..", import.meta.url)),
+        process.env.AYME_E2E_LOG
+      );
 
 function agentOptions(
   agent: "claude" | "cursor"
@@ -69,6 +80,7 @@ function agentOptions(
 export default config(name, {
   executor: aymeExecutor({
     tools: arm === "ayme" ? aymeTools({ engine, files: POM_FILES }) : {},
+    ...(log === undefined ? {} : { logFile: `${log}.jsonl` }),
     ...(availability
       ? { availability: aymeAvailability({ engine, files: POM_FILES }) }
       : {}),
@@ -77,9 +89,7 @@ export default config(name, {
       acpDriver({
         name: `acp-${agent}`,
         ...agentOptions(agent),
-        ...(process.env.AYME_E2E_LOG === undefined
-          ? {}
-          : { stderrFile: `${process.env.AYME_E2E_LOG}.stderr` }),
+        ...(log === undefined ? {} : { stderrFile: `${log}.stderr` }),
       }),
       { offerPageObjects: arm === "ayme" }
     ),
