@@ -193,6 +193,44 @@ describe("a Run's Interactions, in Chromium", () => {
     ]);
   });
 
+  it("runs a tool's child Runs started together one after the other, each listing only its own Interactions", async () => {
+    const addAndSave: CustomTool = {
+      name: "add_and_save",
+      description: "Add Milk and save, both at once.",
+      async execute(_target, { run }) {
+        await Promise.all([
+          run("ListPage.add", { value: "Milk" }),
+          run("ListPage.save", {}),
+        ]);
+        return null;
+      },
+    };
+    await start({ customTools: [addAndSave] });
+    const { structure } = await ayme.tools.run("snapshot", {});
+    const ref = structure.match(/(e\d+) button "Add"/)![1]!;
+    const before = ayme.runs.list();
+
+    await ayme.tools.run("add_and_save", { ref });
+
+    const [custom, ...children] = runsSince(before);
+    expect(custom).toMatchObject({ tool: "add_and_save", interactions: [] });
+    expect(children).toEqual([
+      expect.objectContaining({
+        tool: "ListPage.add",
+        parent: custom!.id,
+        interactions: [
+          { operation: "fill", locator: ITEM, value: "Milk" },
+          { operation: "click", locator: ADD },
+        ],
+      }),
+      expect.objectContaining({
+        tool: "ListPage.save",
+        parent: custom!.id,
+        interactions: [{ operation: "click", locator: SAVE }],
+      }),
+    ]);
+  });
+
   it("tells subscribers each time a Run gains an Interaction", async () => {
     await start();
     const before = ayme.runs.list();

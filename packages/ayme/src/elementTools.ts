@@ -35,9 +35,9 @@ export type CustomTool = {
   filter?: (element: Element) => boolean;
   /**
    * Acts on `target`. To use other tools, start them through `run`: each is
-   * a child Run of this one and runs at once, within this Run's turn. Never
-   * call `ayme.tools.run` from here: that Run waits for this one to end, so
-   * neither ever finishes.
+   * a child Run of this one and runs within this Run's turn, after the
+   * child Runs started before it. Never call `ayme.tools.run` from here:
+   * that Run waits for this one to end, so neither ever finishes.
    */
   execute(
     target: { ref: AriaRef; element: Element },

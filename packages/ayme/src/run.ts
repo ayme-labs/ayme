@@ -91,15 +91,16 @@ export function readerOf(by: Caller): Reader {
 }
 
 /**
- * Package-internal: a page's queue of top-level Runs. Each Run's turn starts
- * once the turn before it has ended, whether that Run succeeded or failed.
- * A Run's turn is all of `turn`: an action's settle included, a read's
- * without one. A Run inside another Run's turn must not take a turn of its
- * own: it would wait behind the Run it is part of.
+ * Package-internal: a queue of Runs, a page's top-level Runs or one Run's
+ * child Runs. Each Run's turn starts once the turn before it has ended,
+ * whether that Run succeeded or failed. A top-level Run's turn is all of
+ * `turn`: an action's settle included, a read's without one. A Run inside
+ * another Run's turn must not take a turn on the queue that Run waits in:
+ * it would wait behind the Run it is part of.
  */
 export type RunQueue = <T>(turn: () => Promise<T>) => Promise<T>;
 
-/** Package-internal: an empty `RunQueue`, one per page. */
+/** Package-internal: an empty `RunQueue`, one per page and one per Run's children. */
 export function createRunQueue(): RunQueue {
   let last: Promise<unknown> = Promise.resolve();
   return (turn) => {

@@ -43,7 +43,7 @@ createAyme({ customTools: [highlight] });
 
 ## Use other tools from a Custom Tool
 
-`execute` gets a second argument, `{ run }`. `run(name, input)` runs another live tool as a child Run of the Custom Tool's own Run and resolves with its result, as `ayme.tools.run` does. Child Runs run at once, inside the Custom Tool's turn, in the order it starts them, and `ayme.runs` lists them under its Run:
+`execute` gets a second argument, `{ run }`. `run(name, input)` runs another live tool as a child Run of the Custom Tool's own Run and resolves with its result, as `ayme.tools.run` does. Child Runs run inside the Custom Tool's turn, never waiting on the page's queue, one after the other in the order it starts them, even when it starts them together, and `ayme.runs` lists them under its Run:
 
 ```ts
 const submitSample: CustomTool = {

@@ -607,17 +607,23 @@ export function createAyme(options: AymeOptions = {}): Ayme {
 
   /**
    * What starts the child Runs of the Run `parent`: each runs the live tool
-   * it names at once, inside the parent's turn, and starts its own children
-   * the same way. Like a Goal Loop step before it, a child Run adds no
-   * settle wait of its own; the parent's turn ends with the parent's.
+   * it names inside the parent's turn, never on the page's queue, and
+   * starts its own children the same way. The parent's children run one
+   * after the other, in the order it starts them, so two started together
+   * never act on the page at once. Like a Goal Loop step before it, a child
+   * Run adds no settle wait of its own; the parent's turn ends with the
+   * parent's.
    */
   function childRun(parent: string, parentReader: Reader): ChildRun {
-    return async (name, input, reader = parentReader) =>
-      runLog.record(name, input, { parent }, (id) =>
-        executeTool(liveTool(name), input, {
-          reader,
-          run: childRun(id, reader),
-        })
+    const takeChildTurn = createRunQueue();
+    return (name, input, reader = parentReader) =>
+      takeChildTurn(() =>
+        runLog.record(name, input, { parent }, (id) =>
+          executeTool(liveTool(name), input, {
+            reader,
+            run: childRun(id, reader),
+          })
+        )
       );
   }
 
