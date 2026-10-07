@@ -59,6 +59,8 @@ navigate: (url) => router.push(url.slice(location.origin.length)),
 
 Every Caller starts its Runs through `run`: WebMCP publication as `"webmcp"`, the Ayme MCP server's page client as `"ayme-mcp"`, and your code as `"app"` unless it passes another name, such as `{ by: "support-assistant" }` for an in-app assistant. A Caller name is any non-empty string; use lowercase kebab-case, which is not enforced. `callers` holds the built-in names (`callers.app`, `callers.webmcp`, `callers.aymeMcp`, `callers.inspector`); `BuiltInCaller` is one of them, and `Caller` is any name. A `"webmcp"` Run's Change Record is the agent's; every other Caller's is the app's.
 
+Runs take turns: the page runs one at a time, in the order they were started, whatever their Callers. An action's turn ends once the page has settled, so the next Run starts from a Settled Page; a read (`snapshot`, a Peek Tool) waits its turn but adds no settle wait. A failed Run ends its turn like any other. A tool's own code must not call `run` while the tool runs: that Run would wait for the tool's turn to end, which never happens.
+
 ## ayme.pom
 
 `ayme.pom` (`AymePom`) holds one Page Object of each Page Object Model for the session.

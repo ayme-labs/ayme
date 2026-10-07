@@ -68,6 +68,25 @@ export function executeTool<T>(
 }
 
 /**
+ * Package-internal: a page's queue of top-level Runs. Each Run's turn starts
+ * once the turn before it has ended, whether that Run succeeded or failed.
+ * A Run's turn is all of `turn`: an action's settle included, a read's
+ * without one. A Run inside another Run's turn must not take a turn of its
+ * own: it would wait behind the Run it is part of.
+ */
+export type RunQueue = <T>(turn: () => Promise<T>) => Promise<T>;
+
+/** Package-internal: an empty `RunQueue`, one per page. */
+export function createRunQueue(): RunQueue {
+  let last: Promise<unknown> = Promise.resolve();
+  return (turn) => {
+    const ran = last.then(turn);
+    last = ran.catch(() => {});
+    return ran;
+  };
+}
+
+/**
  * Package-internal: run `tool` as a top-level Run for `by`, then `settle`.
  * A `webmcp` Run moves the agent's cursor; every other Caller's the app's.
  */

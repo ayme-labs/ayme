@@ -58,6 +58,8 @@ await ayme.tools.run(
 
 A Caller name is any non-empty string; an empty one throws a `RuntimeStateError`. Name yours in lowercase kebab-case; Ayme does not enforce it. Ayme's own Callers use the names in `callers`: `app`, `webmcp` (WebMCP publication), `ayme-mcp` (the Ayme MCP server) and `inspector`.
 
+Runs take turns: the page runs one at a time, whichever Caller starts it. An action's turn ends once the page has settled; a read such as `snapshot` or a Peek Tool waits its turn without a settle wait. Don't call `ayme.tools.run` from inside a tool while it runs: that Run waits behind the tool's own and never starts.
+
 ## Peek at app state
 
 While a coding agent or the Inspector is connected, `ayme.peek` lets the agent read state the page does not show. Each name becomes a Peek Tool, `peek.<name>`, which reads the values when the agent calls it:

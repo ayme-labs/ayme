@@ -532,4 +532,36 @@ describe("calling a Peek Tool", () => {
     expect(toolNames(ayme)).not.toContain("Editor.save");
     await expect.poll(() => toolNames(ayme)).toContain("Editor.save");
   });
+
+  it("waits for an action started before it, then answers without a settle wait of its own", async () => {
+    const ayme = started();
+    document.body.innerHTML = "<button>Save</button>";
+    let saved = false;
+    // The save lands a moment after the click, within the Settled Page's
+    // quiet window, so the action's turn lasts until it has.
+    document.querySelector("button")!.addEventListener("click", () => {
+      setTimeout(() => {
+        saved = true;
+        document.body.append("Saved");
+      }, 100);
+    });
+    peek(ayme, () => ({ saved }), "draft");
+
+    let actionDoneAt = 0;
+    const action = ayme.tools
+      .run("click", { target: "role=button[name='Save']" })
+      .then(() => {
+        actionDoneAt = performance.now();
+      });
+    const read = await ayme.tools.run("peek.draft", {});
+    const readDoneAt = performance.now();
+    await action;
+
+    expect(read).toEqual({
+      name: "draft",
+      instances: [{ values: { saved: true } }],
+    });
+    // A settle wait lasts at least the quiet window (250 ms).
+    expect(readDoneAt - actionDoneAt).toBeLessThan(200);
+  });
 });

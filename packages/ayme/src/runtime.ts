@@ -38,6 +38,7 @@ import type { ToolInput, ToolResult } from "./toolTypes";
 import {
   callerOf,
   callers,
+  createRunQueue,
   runTool,
   type Caller,
   type ToolRunOptions,
@@ -79,9 +80,10 @@ export type AymeTools = {
   /**
    * Starts a Run of a live tool for the Caller `by` names, `"app"` by
    * default: every Caller, WebMCP and the Ayme MCP server included, starts
-   * its Runs here. Throws Ayme's errors, and `RuntimeStateError` for an
-   * empty `by`, while the session is not started, or when the tool is not
-   * live.
+   * its Runs here. Runs take turns, one at a time per page: an action's
+   * turn ends once the page has settled, a read's without a settle wait.
+   * Throws Ayme's errors, and `RuntimeStateError` for an empty `by`, while
+   * the session is not started, or when the tool is not live.
    */
   run<N extends string>(
     name: N,
@@ -401,6 +403,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   let publication: WebMcpRegistration | undefined;
   let pending: Promise<void> | undefined;
   const appProcessTools = createAppProcessTools();
+  // One top-level Run at a time on this page, whoever its Caller.
+  const takeTurn = createRunQueue();
 
   const setStatus = (next: AymeWebMcpPublicationStatus) => {
     status = Object.freeze(next);
@@ -517,15 +521,26 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   }
 
   /**
-   * Runs the live tool `name` as a top-level Run for `by`. `settle` runs
-   * after an action, before the Run resolves: by default the Page Objects
-   * are probed, as after an agent's call, so the live tools are current.
+   * Runs the live tool `name` as a top-level Run for `by`, in its turn on
+   * the page's queue. `settle` runs after an action, within the Run's turn:
+   * by default the Page Objects are probed, as after an agent's call, so the
+   * live tools are current. `name` is resolved when the turn starts, against
+   * the tools live then.
    */
-  async function runAs(
+  function runAs(
     name: string,
     input: unknown,
     by: Caller,
     settle = () => probeRegisteredPomMembers().catch(() => {})
+  ): Promise<unknown> {
+    return takeTurn(() => runLiveTool(name, input, by, settle));
+  }
+
+  async function runLiveTool(
+    name: string,
+    input: unknown,
+    by: Caller,
+    settle: () => Promise<void>
   ): Promise<unknown> {
     if (inProcess) {
       // The Peek registry is shared by the process, so a session without

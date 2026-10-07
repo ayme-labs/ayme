@@ -124,6 +124,18 @@ describe("a tool call that starts a full page load, in Chromium", () => {
     });
   });
 
+  it("answers before a Run queued behind it takes its turn", async () => {
+    const answered: string[] = [];
+    await Promise.all([
+      ayme.tools.run("Leaver.leave", {}).then((result) => {
+        answered.push("leave");
+        expect(result).toMatchObject({ loading: NO_CONTENT });
+      }),
+      ayme.tools.run("snapshot", {}).then(() => answered.push("snapshot")),
+    ]);
+    expect(answered).toEqual(["leave", "snapshot"]);
+  });
+
   it("ends a goal with a Handover naming the loading URL", async () => {
     await expect(
       call("goal", { goal: "leave the page", maxSteps: 3 })
