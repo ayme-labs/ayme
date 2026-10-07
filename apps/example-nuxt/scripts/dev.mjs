@@ -3,19 +3,23 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import process from "node:process";
+import { parseArgs } from "node:util";
 
 const args = process.argv.slice(2);
 
-// The last value wins, so `pnpm dev --port <n>` overrides the default port.
-const lastValue = (name) =>
-  args.reduce((value, arg, index) => {
-    if (arg === name) return args[index + 1];
-    if (arg.startsWith(`${name}=`)) return arg.slice(name.length + 1);
-    return value;
-  }, undefined);
-
-const port = Number(lastValue("--port"));
-const host = lastValue("--host");
+// Parsed like Nuxt's own flags, aliases included. The last value wins, so
+// `pnpm dev --port <n>` overrides the default port.
+const { values } = parseArgs({
+  args,
+  options: {
+    port: { type: "string", short: "p" },
+    host: { type: "string", short: "h" },
+  },
+  strict: false,
+  allowPositionals: true,
+});
+const port = Number(values.port);
+const { host } = values;
 
 // ponytail: the port is released before Nuxt binds it, so another process
 //   could take it in between.
