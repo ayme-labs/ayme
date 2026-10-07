@@ -5,6 +5,7 @@ export type { CreatePageOptions } from "./browserPage";
 export { createAyme } from "./runtime";
 export type {
   Ayme,
+  AgentConnectionOptions,
   AymeOptions,
   AymePage,
   AymePom,
@@ -15,6 +16,7 @@ export type {
   GoalLoopDecisionFunction,
   ToolInfo,
 } from "./runtime";
+export type { PeekRead, PeekResult } from "./peek";
 export type { BuiltInTools, ToolInput, ToolResult } from "./toolTypes";
 export type { Handover } from "./goalLoop";
 export { decisionEndpoint } from "./decisionEndpoint";
@@ -29,7 +31,7 @@ export {
   RuntimeStateError,
   ToolInputError,
 } from "./errors";
-export type { AymeErrorKind } from "./errors";
+export type { AymeErrorKind, RuntimeStateErrorCode } from "./errors";
 export type { ActionResult } from "./actionSequence";
 export type { CustomTool } from "./elementTools";
 export type { PageContext, PageContextPayload } from "./pageContext";

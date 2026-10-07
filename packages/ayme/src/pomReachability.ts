@@ -4,6 +4,8 @@ export type PomRootState = { present: boolean; available: boolean };
 
 /**
  * Observe one POM root without scrolling or sending input.
+ * The `evaluate` callback runs in the page, so it must stay self-contained:
+ * no imports, no module-level helpers.
  * Scroll reachability describes the current layout, not content a scroll
  * handler might create.
  */
@@ -494,7 +496,10 @@ export async function probePomRootState(
       }
       return { present, available: false };
     });
-  } catch {
+  } catch (error) {
+    // A broken callback (e.g. a bundler helper such as `__name` that does not
+    // exist in the page) must fail loudly, not report every root as absent.
+    if (/\b(?:ReferenceError|SyntaxError)\b/.test(String(error))) throw error;
     return { present: false, available: false };
   }
 }

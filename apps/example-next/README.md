@@ -58,6 +58,20 @@ UI on the server without a fake DOM or fake Playwright implementation. The
 browser constructs and registers the real POM during hydration, and runtime
 activation still happens in the existing effect.
 
+## Peeks
+
+The counter adds the Peek `counter` with `usePeek`, read as `peek.counter`.
+In development, `instrumentation.ts` starts an App Process (on the Node.js
+runtime only): the server pairs with the agent's Ayme MCP server beside the
+tab and offers the Peek `renders`, how often it rendered the home page, read
+as `peek.node.renders`. `app/renders.ts` keeps the count on `globalThis`,
+because the page and `instrumentation.ts` load it in different server
+bundles. `instrumentation.ts` does nothing under `next start`. It looks for
+the agent's server on the port range, or only on the port in
+`AYME_EXAMPLE_AGENT_PORT` when set, which the e2e tests set; Ayme itself
+reads no environment variable. `usePeek` registers in an effect, in the
+browser, so server rendering adds no `counter` instance to the App Process.
+
 ## Verify
 
 After building, with no manually started server running:
@@ -76,8 +90,12 @@ turns the Inspector on in development; against `next dev` a smoke test opens
 it and runs a tool from it, and against `next start` a test checks that the
 page loads no Inspector code. It turns the Agent Connection
 (`agentConnection`) on the same way: against `next dev` an MCP client pairs
-with the page through a connect link and calls a tool, and against
-`next start` the page loads no Agent Connection code and opens no WebSocket.
+with the page through a connect link, calls a tool and reads the counter's
+Peek, and against `next start` the page loads no Agent Connection code and
+opens no WebSocket. Against `next dev`, with the App Process paired, a
+server-rendered page load leaves `peek.counter` with exactly one instance,
+from the browser, and the server offers `peek.node.renders` but no
+`peek.node.counter`. Against `next start` no App Process pairs.
 
 Main CI uses Turbo's affected graph to run relevant build, lint, typecheck,
 test, and development and production E2E tasks. It then runs repository format

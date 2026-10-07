@@ -1,19 +1,25 @@
 export {
   DISCONNECTED_CLOSE_CODE,
-  PageHelloSchema,
+  HIDDEN_BECAUSE,
+  HelloSchema,
+  HiddenToolListSchema,
   PageLeavingSchema,
   PageToolListSchema,
   PageToolSchema,
   PageWelcomeSchema,
+  ProcessToolCallSchema,
   ToolCallOutcomeSchema,
   ToolCallSchema,
   UNKNOWN_PAIRING_CLOSE_CODE,
 } from "./messages";
 export type {
+  Hello,
   PageHello,
   PageLeaving,
   PageTool,
   PageWelcome,
+  ProcessHello,
+  ProcessToolCall,
   ToolCall,
   ToolCallOutcome,
 } from "./messages";

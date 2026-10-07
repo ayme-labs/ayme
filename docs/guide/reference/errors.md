@@ -12,6 +12,8 @@ Ayme's own runtime failures are `AymeError` subclasses, exported from `@ayme-dev
 | `RefResolutionError` | `resolution` | A Structural Ref or Page Object instance does not match the page. |
 | `RuntimeStateError`  | `runtime`    | Ayme is not set up for this call.                                 |
 
+A `RuntimeStateError` that callers branch on also has a `code` (`RuntimeStateErrorCode`), so they need not match its message. The only one is `active-owner`, for the owner conflict below.
+
 `ayme.tools.run` throws them. Failures of the browser Page, such as a Playwright `TimeoutError` with its call log, pass through unchanged.
 
 ## How an agent sees a failure
@@ -45,7 +47,7 @@ Most messages say what is wrong. These are the ones whose cause is less obvious:
 | `Cannot <action> "<target>": <reason>.`, `Cannot <action> ref "<ref>": <reason>.` (`RefResolutionError`) | The ref or selector matches no element or several, the ref's node was removed, or the ref is a synthetic, observation-only ref.                    |
 | `Ref "<ref>" does not match a present <Model> instance at <path> (tool <name>).` (`RefResolutionError`)  | A collection tool's `ref` is not the Page Object Root of an item of that collection.                                                               |
 | `The tool "<name>" is not live.` (`RuntimeStateError`)                                                   | No live tool has that unprefixed name, such as a Page Object Tool whose class is not registered or whose root is not available.                    |
-| `The Ayme runtime already has an active owner.` (`RuntimeStateError`)                                    | A second session started in the same document. Start Ayme once, at the app's root.                                                                 |
+| `The Ayme runtime already has an active owner.` (`RuntimeStateError`, `code: "active-owner"`)            | A second session started in the same document, or in the same Node process. Start Ayme once, at the app's root or in the server's entry point.     |
 | `The imported page object has no compiler-derived Ayme metadata.` (`RuntimeStateError`)                  | The build plugin did not compile the model: it is not marked `@ayme`, or the plugin does not transform its file.                                   |
 | `Cannot publish the tool "<name>": another published tool already uses that name.` (`RuntimeStateError`) | Two tools, such as a Custom Tool and a Page Object Tool, share a name. Publication fails, and `ayme.tools.run` throws it until the clash is fixed. |
 | `createDecisionEndpoint must run on the server.` (`RuntimeStateError`)                                   | `createDecisionEndpoint` was called where `document` exists, which would put your key in the browser.                                              |

@@ -558,11 +558,9 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { unpluginFactory } from '@ayme-dev/unplugin-ayme';
-const resolveSettings = async (playwright) => {
-  const plugin = unpluginFactory({ playwright }, { framework: 'vite' });
-  return plugin.vite.config({ root: process.cwd() });
-};
+import { ayme } from '@ayme-dev/unplugin-ayme/vite';
+const resolveSettings = async (playwright) =>
+  ayme({ playwright }).config({ root: process.cwd() });
 const defaults = await resolveSettings(undefined);
 assert.equal(defaults.define.__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__, '"data-testid"');
 const direct = await resolveSettings({ use: { testIdAttribute: 'data-direct', actionTimeout: 9 } });
@@ -570,9 +568,9 @@ assert.equal(direct.define.__AYME_PLAYWRIGHT_ACTION_TIMEOUT__, '9');
 ${
   version
     ? `
-const plugin = unpluginFactory({}, { framework: 'vite' });
 const sourcePath = resolve('consumer.ts');
-const transformed = await plugin.transform.handler(readFileSync(sourcePath, 'utf8'), sourcePath);
+// Vite calls the hook with a plugin context; without an environment it only transforms.
+const transformed = await ayme().transform.handler.call({}, readFileSync(sourcePath, 'utf8'), sourcePath);
 assert.ok(transformed, 'Decorated POM must produce registration metadata');
 const registration = transformed.code.split('\\n').find(line => line.startsWith('registerCompiledPom(Pom, '));
 assert.ok(registration, 'Transformed POM must register its compiled manifest');
@@ -676,18 +674,27 @@ for (const vite of ["7.0.0", "8.0.0"])
 import { defineConfig, type Plugin } from 'vite';
 import aymeDefault, { ayme, type AymeOptions } from '@ayme-dev/unplugin-ayme/vite';
 import turbopackLoader from '@ayme-dev/unplugin-ayme/turbopack-loader';
+import {
+  derivePomManifests,
+  type AymePlaywrightOptions,
+  type PomCompilerOptions,
+} from '@ayme-dev/unplugin-ayme';
 const options: AymeOptions = { playwright: { use: { testIdAttribute: 'data-id' } } };
 const plugin: Plugin = ayme(options);
-void turbopackLoader;
+const playwright: AymePlaywrightOptions | undefined = options.playwright;
+const compilerOptions: PomCompilerOptions = {};
+void [turbopackLoader, derivePomManifests, playwright, compilerOptions];
 export default defineConfig({ plugins: [plugin, aymeDefault()] });
 `
       );
       exec("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
-      const viteDeclarations = fs.readFileSync(
-        path.join(packed["@ayme-dev/unplugin-ayme"]!.dir, "dist", "vite.d.mts"),
-        "utf8"
-      );
-      expect(viteDeclarations).not.toContain("unplugin");
+      for (const entry of ["index.d.mts", "vite.d.mts"])
+        expect(
+          fs.readFileSync(
+            path.join(packed["@ayme-dev/unplugin-ayme"]!.dir, "dist", entry),
+            "utf8"
+          )
+        ).not.toContain("unplugin");
     }
   );
 

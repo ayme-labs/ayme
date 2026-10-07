@@ -5,4 +5,5 @@ import { agentConnectionTests } from "@ayme-dev/example-certification/tests";
 agentConnectionTests({
   enabled: () => true,
   snapshotText: 'button "Increment"',
+  peek: true,
 });

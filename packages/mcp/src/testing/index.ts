@@ -10,7 +10,10 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { BrowserContext, Page } from "@playwright/test";
 
-/** The server's own tools; every other MCP tool is a page tool. */
+/**
+ * The server's own tools; every other MCP tool is a tool of the page or of
+ * an App Process.
+ */
 export const SERVER_TOOLS = ["ayme_connect", "ayme_list_tools", "ayme_call"];
 
 /**
@@ -67,7 +70,7 @@ export class Agent {
 
   /**
    * Calls `name` and returns the tool's own text, whether it is an error, and
-   * the server's note of the page's tool changes after it, if any.
+   * the server's note of the tool changes after it, if any.
    */
   async call(name: string, input: Record<string, unknown> = {}) {
     const result = await this.client.callTool({ name, arguments: input });
@@ -85,7 +88,10 @@ export class Agent {
     return tools.map((tool) => tool.name);
   }
 
-  /** The names the server lists now beyond its own tools. */
+  /**
+   * The names the server lists now beyond its own tools: the page's and the
+   * App Processes'.
+   */
   async pageToolNames() {
     return (await this.toolNames()).filter(
       (name) => !SERVER_TOOLS.includes(name)
@@ -131,7 +137,8 @@ export async function startAgent(...options: string[]): Promise<
 
 /**
  * Asks the agent's server for a connect link to `url`, opens it in `page`
- * and waits until the page's tools are MCP tools. Returns the link.
+ * and waits until the page's tools are MCP tools: until the server lists
+ * `snapshot`, a tool every page offers. Returns the link.
  */
 export async function connectPage(
   agent: Agent,
@@ -143,7 +150,7 @@ export async function connectPage(
   if (isError) throw new Error(`ayme_connect failed: ${link}`);
   await page.goto(link);
   const deadline = Date.now() + timeout;
-  while ((await agent.pageToolNames()).length === 0) {
+  while (!(await agent.pageToolNames()).includes("snapshot")) {
     if (Date.now() > deadline)
       throw new Error(
         `The page's tools never reached the agent. Server log:\n${agent.log}`

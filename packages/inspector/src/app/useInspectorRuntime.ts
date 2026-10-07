@@ -83,8 +83,12 @@ export function useInspectorRuntime({
     [tools.live, elementToolTargets]
   );
   const runnableTools = useMemo(
-    () => listRunnableTools(registeredPoms, activeTools, tools.live),
-    [registeredPoms, activeTools, tools.live]
+    () =>
+      listRunnableTools(registeredPoms, activeTools, [
+        ...tools.live,
+        ...tools.appProcess,
+      ]),
+    [registeredPoms, activeTools, tools.live, tools.appProcess]
   );
 
   // Picking reads the latest look at the page as the pointer moves.
@@ -95,8 +99,6 @@ export function useInspectorRuntime({
   const { hover, pin } = highlight;
 
   return {
-    /** The page's name for the header badge: its page Page Object's class. */
-    pageName: registeredPoms[0]?.manifest.className,
     /** The Page Objects on the page and the Page Object Models it knows. */
     pageModel,
     /**
@@ -106,7 +108,9 @@ export function useInspectorRuntime({
     members,
     /**
      * The tools the panel can run now: `tools.live`, every live tool in
-     * publication order, published or not;
+     * publication order, published or not; `tools.appProcess`, the tools of
+     * the App Processes paired beside the page, run through the agent's
+     * Ayme MCP server;
      * and `tools.publication`, the WebMCP publication status (a failure
      * carries its error in `message`).
      */

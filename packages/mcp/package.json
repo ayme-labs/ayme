@@ -25,6 +25,11 @@
       "import": "./dist/client.mjs",
       "default": "./dist/client.mjs"
     },
+    "./process": {
+      "types": "./dist/process.d.mts",
+      "import": "./dist/process.mjs",
+      "default": "./dist/process.mjs"
+    },
     "./testing": {
       "types": "./dist/testing.d.mts",
       "import": "./dist/testing.mjs",

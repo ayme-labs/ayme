@@ -10,8 +10,8 @@ import {
 const packageRoot = import.meta.dirname;
 
 // The slices of src/, and the slices each may use: only those listed before
-// it here. server and client are the two composition roots: nothing uses
-// them, and neither uses the other. testing is the `./testing` entry, which
+// it here. server, client and process are the composition roots: nothing
+// uses them, and none uses another. testing is the `./testing` entry, which
 // drives the built command from outside and uses no slice.
 const allowedSlices = {
   contract: [],
@@ -20,6 +20,7 @@ const allowedSlices = {
   tools: ["connection", "pairing", "contract"],
   server: ["tools", "connection", "pairing", "contract"],
   client: ["tools", "connection", "pairing", "contract"],
+  process: ["tools", "connection", "pairing", "contract"],
   testing: [],
 };
 const slices = Object.keys(allowedSlices);

@@ -47,3 +47,16 @@ it("the built client entry validates with zod/mini, not zod's full build", () =>
     "zod/mini",
   ]);
 });
+
+it("the built process entry carries no server code", () => {
+  const imports = importsOf("process.mjs");
+  // The check reads the build: an App Process opens its channel with tRPC.
+  expect(imports).toContain("@trpc/client");
+  expect(
+    imports.filter(
+      (specifier) =>
+        specifier.startsWith("@modelcontextprotocol/") ||
+        specifier.startsWith("@trpc/server")
+    )
+  ).toEqual([]);
+});

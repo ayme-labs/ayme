@@ -30,6 +30,16 @@ These are for a coding agent connected through Ayme's MCP server, as [Connect an
 - **The page is on a deployed preview or another non-local origin**: open the connect link there, and allow Chrome's local network access prompt if it asks.
 - **A tool call times out just after the app's tab went to the background**: while the machine is under heavy CPU load, the first call after the tab is hidden can stall and fail with `Timeout … exceeded`. The calls after it run normally, so retry it, or keep the tab visible.
 
+## A Peek Tool is missing
+
+These are for [Peeks](reference/ayme.md#aymepeek), which reach a coding agent through Ayme's MCP server and the Inspector only.
+
+- **No `peek.<name>` tool**: `ayme.peek` does nothing unless the session has `agentConnection` on, or `inspector` in the browser. A component's Peek appears once the component has mounted, and goes when its last instance unmounts. An agent that does not follow tool-list changes finds it with `ayme_list_tools`.
+- **No `peek.node.<name>` tool**: in Node, only `agentConnection` turns Peeks on, and the process must have started its session and paired. It pairs by itself only when exactly one Ayme MCP server answers on the ports from 9350 to 9365; with several running, name one with `agentConnection: { link }` or `{ port }`. See [In Node](reference/ayme.md#in-node).
+- **`[ayme] peek.<name> is hidden: another tool uses that name. Rename the Peek.`**: another of the page's tools took the Peek Tool's name, and keeps it. Rename the Peek.
+- **`[ayme] peek.node.<name> is hidden: another App Process offers a tool with the same name. Rename one.`**, in the process's terminal: two App Processes offer one name, and the one that connected first keeps it.
+- **`The Peek "node.<name>" would be read through peek.node.<name>, which names an App Process's Peek.`**: a Peek in the browser has a name starting with `node.`. Rename it.
+
 ## In-browser agents see no tools
 
 These are for agents that run in the browser and read the tools Ayme publishes through WebMCP.
@@ -41,6 +51,6 @@ These are for agents that run in the browser and read the tools Ayme publishes t
 
 ## Ayme starts twice
 
-- **`The Ayme runtime already has an active owner`**, or a framework's nested-owner error: start Ayme once, at the app's root. In SvelteKit, only the root `+layout.svelte` may call `useAyme(options)`; in Angular, put `provideAyme` in the application config, not in route providers.
+- **`The Ayme runtime already has an active owner`**, or a framework's nested-owner error: start Ayme once, at the app's root. In a Node process, start one session, in the server's entry point. In SvelteKit, only the root `+layout.svelte` may call `useAyme(options)`; in Angular, put `provideAyme` in the application config, not in route providers.
 
 [Errors](reference/errors.md) lists every message with its cause.

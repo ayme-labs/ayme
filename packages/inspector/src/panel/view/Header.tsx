@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { DropdownMenu } from "radix-ui";
 
-import { Badge } from "@ayme-dev/design-system/components/badge";
 import { usePortalContainer } from "@ayme-dev/design-system/lib/portal-container";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
@@ -26,11 +25,10 @@ const iconButton =
   "inline-grid size-7 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50";
 
 /**
- * The panel's header: the ayme title, the page badge, the theme switch, the
- * layout menu and collapse. The panel drags by it.
+ * The panel's header: the ayme title, the theme switch, the layout menu and
+ * collapse. The panel drags by it.
  */
 export function Header({
-  pageName,
   layout,
   theme,
   onThemeChange,
@@ -39,8 +37,6 @@ export function Header({
   onPointerDown,
   collapseRef,
 }: {
-  /** The page's name, e.g. ListPage. */
-  pageName?: string;
   layout: Layout;
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
@@ -72,14 +68,6 @@ export function Header({
       )}
       <AymeMark className="h-4.5 w-5.5 flex-none dark:fill-foreground" />
       <h2 className="text-sm font-semibold">ayme</h2>
-      {pageName && (
-        <Badge
-          variant="secondary"
-          className="bg-accent font-mono text-xs text-accent-foreground"
-        >
-          {pageName}
-        </Badge>
-      )}
       <span className="flex-1" />
       <ThemeSwitch theme={theme} onChange={onThemeChange} />
       <LayoutMenu layout={layout} onChange={onLayoutChange} />

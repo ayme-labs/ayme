@@ -47,11 +47,11 @@ export function InspectorApp() {
     view: viewState.runs,
     onViewChange: (runs) => setViewState((current) => ({ ...current, runs })),
   });
-  const { live } = runtime.tools;
+  const { live, appProcess } = runtime.tools;
   const tools = useMemo(
     () =>
       attachToolModels(
-        live,
+        [...live, ...appProcess],
         runtime.pageModel.models.map((model) => ({
           className: model.className,
           tools: model.actions.flatMap((action) =>
@@ -59,7 +59,7 @@ export function InspectorApp() {
           ),
         }))
       ),
-    [live, runtime.pageModel]
+    [live, appProcess, runtime.pageModel]
   );
 
   const lenses: Lens[] = [
@@ -128,7 +128,6 @@ export function InspectorApp() {
         preferences={preferences}
         onPreferencesChange={updatePreferences}
         reserveHost={reserveHost}
-        pageName={runtime.pageName}
       >
         <WebMcpStatus status={runtime.tools.publication} />
         <InspectorBody

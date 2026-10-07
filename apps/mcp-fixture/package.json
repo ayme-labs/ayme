@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
+    "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/mcp": "workspace:*"
   },
   "devDependencies": {

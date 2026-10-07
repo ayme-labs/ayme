@@ -8,7 +8,7 @@ Copy this request into your coding agent:
 
 > Install the `ayme` skill from https://github.com/ayme-labs/ayme/tree/main/skills/ayme into this project's skill directory, including its references. Then use it to set up Ayme here.
 
-The skill is a `SKILL.md` with two references, onboarding and browser setup; keep the references directory when you install it.
+The skill is a `SKILL.md` with five references: onboarding, browser setup, page object design, runtime integration and Peeks. Keep the references directory when you install it.
 
 ## What it does
 

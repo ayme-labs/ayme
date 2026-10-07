@@ -1,12 +1,13 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AymeProvider, useAyme, usePageObject } from "@ayme-dev/react";
+import { AymeProvider, useAyme, usePageObject, usePeek } from "@ayme-dev/react";
 import { CounterPage } from "../playwright/pom/CounterPage";
 import "./style.css";
 
 function Counter() {
   const [count, setCount] = useState(0);
   const pom = usePageObject(CounterPage);
+  usePeek({ count }, "counter");
   return (
     <section aria-label="Counter">
       <p>

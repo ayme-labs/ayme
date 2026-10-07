@@ -1,7 +1,7 @@
 import { tick } from "svelte";
 import { VERSION } from "svelte/compiler";
 import { get } from "svelte/store";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAyme, RuntimeStateError } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
@@ -32,9 +32,12 @@ import {
   Owner,
   OwnerAndPageObject,
   PageObjectUser,
+  PeekUser,
+  PeekUsers,
   Status,
 } from "./fixtures/components.js";
 import {
+  peek,
   useAyme,
   usePageObject,
   type UseAymeOptions,
@@ -177,7 +180,9 @@ it("names the root component when a second owner becomes active", () => {
     /^useAyme\(options\) already has an active owner\. Call it once, in the root \+layout\.svelte or App\.svelte\./
   );
   expect((error as Error).cause).toEqual(
-    new RuntimeStateError("The Ayme runtime already has an active owner.")
+    new RuntimeStateError("The Ayme runtime already has an active owner.", {
+      code: "active-owner",
+    })
   );
 });
 
@@ -279,5 +284,91 @@ it("leaves calls outside component initialisation to Svelte's own error", () => 
   expect(() => usePageObject(Model)).toThrow(
     /lifecycle_outside_component|outside component initiali[sz]ation/
   );
+  expect(() => peek(() => 0, "counter")).toThrow(
+    /lifecycle_outside_component|outside component initiali[sz]ation/
+  );
   expect(createAyme).not.toHaveBeenCalled();
+});
+
+// peek seam: the function's contract with `ayme.peek`, which it adapts
+// (ADR-0031). The Peek Tool an agent reads is covered by the runtime's
+// browser tests and the examples' Agent Connection suite; here the dev gate
+// stays off, so no Agent Connection loads or scans.
+describe("peek", () => {
+  type PeekCall = { read: () => unknown; name: string; id?: string };
+  let calls: PeekCall[];
+  let removed: PeekCall[];
+  const spyOnPeek = ({ ayme }: UseAymeResult) => {
+    calls = [];
+    removed = [];
+    vi.spyOn(ayme, "peek").mockImplementation((read, name, id) => {
+      const call = { read, name, id };
+      calls.push(call);
+      return () => void removed.push(call);
+    });
+  };
+
+  it("C12: adds one instance per mounted component, under its own id", () => {
+    mount(Owner, {
+      options: { pageFactory },
+      onInit: spyOnPeek,
+      child: PeekUsers,
+      childProps: { counts: [0, 5] },
+    });
+
+    expect(calls.map(({ name }) => name)).toEqual(["counter", "counter"]);
+    expect(calls[0]!.id).toEqual(expect.any(String));
+    expect(calls[1]!.id).toEqual(expect.any(String));
+    expect(calls[0]!.id).not.toBe(calls[1]!.id);
+    expect(calls.map(({ read }) => read())).toEqual([
+      { count: 0 },
+      { count: 5 },
+    ]);
+  });
+
+  it("uses the id it is given", () => {
+    mount(Owner, {
+      options: { pageFactory },
+      onInit: spyOnPeek,
+      child: PeekUser,
+      childProps: { id: "cart-7" },
+    });
+
+    expect(calls.map(({ id }) => id)).toEqual(["cart-7"]);
+  });
+
+  it("reads the component's current state without adding the instance again", async () => {
+    const owner = mount(Owner, {
+      options: { pageFactory },
+      onInit: spyOnPeek,
+      child: PeekUser,
+      childProps: { count: 0 },
+    });
+
+    owner.$set({ childProps: { count: 1 } });
+    await tick();
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.read()).toEqual({ count: 1 });
+  });
+
+  it("C12: removes the instance on destroy", async () => {
+    const owner = mount(Owner, {
+      options: { pageFactory },
+      onInit: spyOnPeek,
+      child: PeekUser,
+    });
+
+    owner.$set({ shown: false });
+    await tick();
+
+    expect(calls).toHaveLength(1);
+    expect(removed).toEqual(calls);
+  });
+
+  it("requires an owner", () => {
+    expect(() => mount(PeekUser, {})).toThrow(
+      "peek requires useAyme() in an ancestor component, such as the root +layout.svelte."
+    );
+  });
 });

@@ -20,7 +20,7 @@ From `@ayme-dev/example-certification/tests`, each builder defines plain Playwri
 - `serverRenderTests()`: the server-rendered counter and its initial publication status on repeated requests, or no counter in SPA mode.
 - `counterTests({ CounterPage, navigation? })`: the published schemas, an undecorated subclass, Ayme's own tools, the Page Object called from the app, its tool and Playwright, unmount and remount, the answer to a `click` that starts a full page load, to `navigate` to another page, to `navigate_back` from it and to `reload`, that page's published tools, and, with `navigation`, client navigation away and back.
 - `devRebuildTests({ counterModePath })`: on the dev server only, editing `CounterMode.ts` rebuilds the published schema. Call it last: it edits a source file, and the dev server rebuilds after it.
-- `agentConnectionTests({ enabled, snapshotText })`: where `enabled()` holds, a coding agent's MCP client pairs with `/` through a connect link and calls the page's `snapshot` tool; elsewhere, such as a production build, the page loads no Agent Connection code and opens no WebSocket. Every example runs it, gated as its app gates `agentConnection`.
+- `agentConnectionTests({ enabled, snapshotText, peek?, appProcess? })`: where `enabled()` holds, a coding agent's MCP client pairs with `/` through a connect link and calls the page's `snapshot` tool; elsewhere, such as a production build, the page loads no Agent Connection code and opens no WebSocket. Every example runs it, gated as its app gates `agentConnection`. With `peek: true`, the agent also reads the counter's Peek `peek.counter`: `0`, then `1` after an increment, and the tool goes when the counter unmounts. Examples whose counter adds no Peek leave it off. With `appProcess: { peek }`, for an app whose server runs an App Process where it turns the Agent Connection on: there, an agent on `agentPort` lists the server's Peek `peek.node.<peek>`, then a server-rendered load of `/` leaves `peek.counter` with exactly one instance, from the browser, and the server offers no `peek.node.counter`; elsewhere no App Process pairs with that agent.
 - `test`: Playwright's `test`, failing on page errors, console errors and hydration warnings. Every builder except the dev rebuild and the Agent Connection uses it, and so do an example's own tests.
 
 Tools are called through the recording WebMCP driver from `@ayme-dev/ayme/testing`, and the agent's side through `@ayme-dev/mcp/testing`.
@@ -33,7 +33,9 @@ The builders drive this DOM, which each example renders on `/` beneath its runti
 - a `status` named `Publication`, reading `Publication: <state>`;
 - a button `Unmount counter` that removes the region, which then reads `Mount counter` and mounts a new one;
 - a link `Full page load` to `/other`, a page reading `Other page without Page Objects.`, which the browser loads as a new document, never through the client router; `/other` runs the runtime too, so it publishes Ayme's own tools;
-- with `navigation`, a link to a page without Page Objects and a link back.
+- with `navigation`, a link to a page without Page Objects and a link back;
+- with the Agent Connection suite's `peek`, the counter adds the Peek `counter` with its current `{ count }`.
+- with the Agent Connection suite's `appProcess`, the server's own start code starts an App Process that looks for the agent's server only on the port in `AYME_EXAMPLE_AGENT_PORT`, which the run's `webServer` sets to `agentPort` from `@ayme-dev/example-certification/config`, and adds the Peek `appProcess.peek`.
 
 The Page Object Models live in the example's own source, because the build plugin compiles them only from there:
 
