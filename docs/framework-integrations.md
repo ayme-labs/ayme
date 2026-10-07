@@ -100,7 +100,6 @@ Only when the framework needs them:
 
 - Vue and React re-declare each runtime option instead of taking the runtime options type, and Vue has no test for C4 ([#350](https://github.com/ayme-labs/ayme/issues/350)).
 - Vue's and React's client tests run in jsdom and do not cite contract rows; React's server test renders a single request and does not check the initial status ([#384](https://github.com/ayme-labs/ayme/issues/384)).
-- Angular's client tests run in jsdom and do not cite contract rows ([#386](https://github.com/ayme-labs/ayme/issues/386)).
 - The Vue and React SPA examples do not run the shared certification. The React example uses its own fake WebMCP driver; both run against the dev server only, and the Vue example has no counter page ([#382](https://github.com/ayme-labs/ayme/issues/382)).
 - The Angular example is tested end to end from Angular 21.0, not from the package's 19.0 floor: it uses APIs and an `angular.json` setting that Angular 19 and 20 do not have, and running it there would take a second set of source files. The package's own tests cover 19.0.
 
