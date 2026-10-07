@@ -64,24 +64,8 @@ export const signInMission: Mission = {
 
 const mission = renameMission;
 
-const armContext: ArmContext = {
-  runId: "run-1",
-  runDir: "/run",
-  profileDir: "/run/browser-profile",
-  outputDir: "/run/playwright-output",
-  initPagePath: "/run/init-page.cjs",
-  configDir: "/run/claude-config",
-  start: mission.start,
-  cwd: "/lab",
-  log: () => undefined,
-};
-
-describe("the prompt of the default mission", () => {
-  const prompt = createPrompt(mission, arms["playwright-mcp"], baseUrl);
-
-  it("is the text the published numbers were measured with", () => {
-    expect(prompt)
-      .toBe(`Complete the following task in the Formbricks application running at http://localhost:3000.
+/** The default mission's prompt for the Playwright MCP arm, as the published numbers were measured with it. */
+const defaultMissionPrompt = `Complete the following task in the Formbricks application running at http://localhost:3000.
 
 Use the Playwright MCP browser tools (the \`playwright\` MCP server) for every browser interaction.
 Do not use any other browser interface, and do not change anything through the terminal, the Formbricks API or its database.
@@ -99,7 +83,25 @@ After every browser interaction, check the resulting page state and confirm that
 The working directory holds the Formbricks source for reference. Treat it as read-only: make every change through the running application, and do not start, stop or reconfigure the application.
 
 Finish only after the summary page shows the new survey name. Report the final URL and the evidence that convinced you the task succeeded.
-`);
+`;
+
+const armContext: ArmContext = {
+  runId: "run-1",
+  runDir: "/run",
+  profileDir: "/run/browser-profile",
+  outputDir: "/run/playwright-output",
+  initPagePath: "/run/init-page.cjs",
+  configDir: "/run/claude-config",
+  start: mission.start,
+  cwd: "/lab",
+  log: () => undefined,
+};
+
+describe("the prompt of the default mission", () => {
+  const prompt = createPrompt(mission, arms["playwright-mcp"], baseUrl);
+
+  it("is the text the published numbers were measured with", () => {
+    expect(prompt).toBe(defaultMissionPrompt);
   });
 
   it("names the Playwright CLI session as signed in on the editor", () => {
@@ -146,12 +148,11 @@ describe("the prompt of the sign-in mission", () => {
   });
 
   it("keeps the shared text of the default mission around the mission's own lines", () => {
-    const shared = createPrompt(mission, arms["playwright-mcp"], baseUrl)
-      .split("\n\n")
-      .filter((_, index) => ![2, 3, 6].includes(index));
-    expect(
-      prompt.split("\n\n").filter((_, index) => ![2, 3, 6].includes(index))
-    ).toEqual(shared);
+    const sharedParagraphs = (text: string) =>
+      text.split("\n\n").filter((_, index) => ![2, 3, 6].includes(index));
+    expect(sharedParagraphs(prompt)).toEqual(
+      sharedParagraphs(defaultMissionPrompt)
+    );
   });
 
   it("names the Playwright CLI session as open on the sign-in page, signed out", () => {
