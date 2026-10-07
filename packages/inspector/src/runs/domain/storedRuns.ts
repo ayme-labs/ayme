@@ -9,9 +9,18 @@ export const keptRuns = 50;
 /** What a run still running when the page reloaded ends with. */
 export const reloadedError = "The page reloaded before the run returned.";
 
-/** The run history as it is kept: the newest runs only. */
+/**
+ * The run history as it is kept: the newest runs only, without their images,
+ * as the tab's storage is small and shared with the app.
+ */
 export function encodeRuns(runs: readonly Run[]): readonly Run[] {
-  return runs.slice(0, keptRuns);
+  return runs
+    .slice(0, keptRuns)
+    .map((run) =>
+      run.image?.src === undefined
+        ? run
+        : { ...run, image: { description: run.image.description } }
+    );
 }
 
 /**
@@ -57,6 +66,10 @@ function decodeRun(stored: unknown): Run | undefined {
       : {
           status,
           ...text("result", stored.result),
+          ...(isRecord(stored.image) &&
+          typeof stored.image.description === "string"
+            ? { image: { description: stored.image.description } }
+            : {}),
           ...text("error", stored.error),
           ...(typeof stored.durationMs === "number"
             ? { durationMs: stored.durationMs }

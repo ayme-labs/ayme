@@ -2,6 +2,7 @@ export type {
   CollectionItem,
   Run,
   RunFocus,
+  RunImage,
   ToolArguments,
   TraceEntry,
 } from "./domain/run";
@@ -15,3 +16,4 @@ export {
 } from "./infrastructure/trace";
 export { useRuns } from "./infrastructure/useRuns";
 export { Runs } from "./presentation/Runs";
+export { RunImageView } from "./view/RunImageView";

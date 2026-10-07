@@ -9,6 +9,7 @@ import {
 
 import { useTabState } from "../../shared";
 import type { CollectionItem, Run, ToolArguments } from "../domain/run";
+import { runImageOf } from "../domain/runImage";
 import { decodeRuns, encodeRuns, runsKey } from "../domain/storedRuns";
 import { describeSteps } from "./runSteps";
 import { getInspectorTrace, resetInspectorTrace } from "./trace";
@@ -29,7 +30,7 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
       const id = nextId.current++;
       const startedAt = Date.now();
       const settle = async (
-        patch: Pick<Run, "status" | "result" | "error">
+        patch: Pick<Run, "status" | "result" | "image" | "error">
       ) => {
         const durationMs = Date.now() - startedAt;
         const settled = {
@@ -58,9 +59,15 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
         ...current,
       ]);
       try {
-        const result = JSON.stringify(await tool.execute(args), null, 2) as
-          string | undefined;
-        await settle({ status: "succeeded", result });
+        const returned = await tool.execute(args);
+        // An image shows as itself, never as its base64 JSON.
+        const image = runImageOf(returned);
+        if (image) await settle({ status: "succeeded", image });
+        else
+          await settle({
+            status: "succeeded",
+            result: JSON.stringify(returned, null, 2) as string | undefined,
+          });
       } catch (error) {
         await settle({ status: "failed", error: errorText(error) });
       } finally {

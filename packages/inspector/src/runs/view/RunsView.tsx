@@ -27,6 +27,7 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
 import type { Run, RunStep } from "../domain/run";
+import { RunImageView } from "./RunImageView";
 
 export type RunsViewProps = {
   /** The runs to show, newest first. */
@@ -255,6 +256,11 @@ function RunRow({
               >
                 {JSON.stringify(run.arguments)}
               </figure>
+            )}
+            {run.status === "succeeded" && run.image && (
+              <div className="mx-2.5 mb-2">
+                <RunImageView image={run.image} />
+              </div>
             )}
             {run.status === "succeeded" && run.result !== undefined && (
               <RunResult

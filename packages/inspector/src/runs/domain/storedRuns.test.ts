@@ -98,3 +98,24 @@ it("leaves out a malformed run", () => {
     ])
   ).toEqual([before(succeeded)]);
 });
+
+it("keeps a run's image description but not the image itself", () => {
+  const screenshot: Run = {
+    ...succeeded,
+    result: undefined,
+    image: {
+      description: "Screenshot of the viewport, 1280×720 PNG",
+      src: "data:image/png;base64,iVBORw0KGgo=",
+    },
+  };
+  const { result: _result, ...withoutResult } = screenshot;
+  void _result;
+
+  expect(JSON.stringify(encodeRuns([screenshot]))).not.toContain("base64");
+  expect(reloaded([screenshot])).toEqual([
+    before({
+      ...withoutResult,
+      image: { description: "Screenshot of the viewport, 1280×720 PNG" },
+    }),
+  ]);
+});
