@@ -385,7 +385,7 @@ jobs:
         if: env.AFFECTED == 'true'
         run: pnpm exec turbo run build --filter=${{ matrix.build }}
       - name: Install Chromium
-        if: env.AFFECTED == 'true' && matrix.e2e
+        if: env.AFFECTED == 'true' && (matrix.e2e || matrix.browser)
         run: pnpm --filter ${{ matrix.package }} exec playwright install --with-deps chromium
       # pnpm 11 needs Node 22.13, so pnpm stays on this Node 24 while the
       # scripts it starts resolve `node` from PATH, which becomes the floor.
