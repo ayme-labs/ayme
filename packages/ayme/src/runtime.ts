@@ -39,10 +39,14 @@ import {
   callerOf,
   callers,
   createRunQueue,
+  executeTool,
+  readerOf,
   runTool,
   type Caller,
+  type ChildRun,
   type ToolRunOptions,
 } from "./run";
+import type { Reader } from "./interactionHistory";
 import { runLog, type AymeRuns } from "./runLog";
 
 export type AymeWebMcpPublicationStatus = Readonly<{
@@ -115,7 +119,8 @@ export type Ayme = {
   readonly tools: AymeTools;
   /**
    * The document's Run log: the newest 200 top-level Runs started through
-   * `tools.run`, by any Caller, oldest first. A new document starts an
+   * `tools.run`, by any Caller, each with the child Runs a tool started
+   * through the `run` in its context, oldest first. A new document starts an
    * empty one.
    */
   readonly runs: AymeRuns;
@@ -557,7 +562,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         : undefined;
       if (!peekTool)
         throw new RuntimeStateError(`The tool "${name}" is not live.`);
-      return runTool(peekTool, input, by, settle);
+      return runTool(peekTool, input, { reader: readerOf(by) }, settle);
     }
     if (!owner)
       throw new RuntimeStateError(
@@ -565,9 +570,31 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       );
     const entry = resolveLiveTools({ peeks }).get(name);
     if (!entry) throw new RuntimeStateError(`The tool "${name}" is not live.`);
-    return runLog.record(name, input, by, () =>
-      runTool(entry.tool, input, by, settle)
+    const reader = readerOf(by);
+    return runLog.record(name, input, { by }, (id) =>
+      runTool(entry.tool, input, { reader, run: childRun(id, reader) }, settle)
     );
+  }
+
+  /**
+   * What starts the child Runs of the Run `parent`: each runs the live tool
+   * it names at once, inside the parent's turn, and starts its own children
+   * the same way. Like a Goal Loop step before it, a child Run adds no
+   * settle wait of its own; the parent's turn ends with the parent's.
+   */
+  function childRun(parent: string, parentReader: Reader): ChildRun {
+    return async (name, input, reader = parentReader) => {
+      if (!owner)
+        throw new RuntimeStateError(
+          `Cannot run the tool "${name}": the Ayme runtime session is not started.`
+        );
+      const entry = resolveLiveTools({ peeks }).get(name);
+      if (!entry)
+        throw new RuntimeStateError(`The tool "${name}" is not live.`);
+      return runLog.record(name, input, { parent }, (id) =>
+        executeTool(entry.tool, input, { reader, run: childRun(id, reader) })
+      );
+    };
   }
 
   /**

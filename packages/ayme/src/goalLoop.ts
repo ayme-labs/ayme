@@ -3,8 +3,7 @@ import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { JsonSchema, JsonValue } from "./contracts";
 import type { ActionResult } from "./actionSequence";
 import { renderChangeRecord } from "./changeRecord";
-import type { Reader } from "./interactionHistory";
-import type { RunContext } from "./run";
+import type { ChildRun, RunContext } from "./run";
 import {
   getInteractionHistory,
   getPageStateCaptureForDocument,
@@ -210,15 +209,17 @@ function stepRecord(
 }
 
 /**
- * Execute a tool and read the `ActionResult` it returns.
+ * Execute a tool as a step, a child Run of the goal Run through `run`, and
+ * read the `ActionResult` it returns.
  * Every registered tool (POM tools, Browser Tools, Custom Tools) runs, as the Goal Loop's model, through
  * `runAction` internally, so we just forward and interpret the result.
  */
 async function executeToolAction(
   tool: ExecutableTool,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  run: ChildRun | undefined
 ): Promise<StepOutcome> {
-  const raw = await tool.execute(args);
+  const raw = await tool.execute(args, run);
   const action = raw as ActionResult | undefined;
   return {
     result: "ok",
@@ -244,7 +245,7 @@ export function createPursueGoalTool(
       readPursueGoalInput(input),
       decisionFn,
       currentDocument,
-      context?.reader ?? "agent"
+      context
     );
     return result.handover as unknown as JsonValue;
   };
@@ -334,7 +335,7 @@ export async function pursueGoal(
   { goal, maxSteps, values }: GoalInput,
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document,
-  caller: Reader = "agent"
+  { reader: caller, run }: RunContext = { reader: "agent" }
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];
@@ -593,7 +594,11 @@ export async function pursueGoal(
     // Execute the operation through the same action sequence as direct tool calls.
     let actionResult: StepOutcome;
     try {
-      actionResult = await executeToolAction(chosenTool, chosenArguments.args);
+      actionResult = await executeToolAction(
+        chosenTool,
+        chosenArguments.args,
+        run
+      );
       consecutiveFailures = 0;
       if (actionResult.changes) score.changes = actionResult.changes;
     } catch (error) {

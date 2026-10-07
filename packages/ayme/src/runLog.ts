@@ -2,16 +2,34 @@ import type { JsonValue } from "./contracts";
 import { errorText } from "./errors";
 import type { Caller } from "./run";
 
-/** A top-level Run in the document's Run log, as it stood when listed. */
-export type Run = Readonly<{
+/**
+ * A Run in the document's Run log, as it stood when listed: a top-level Run,
+ * which names its Caller, or a child Run, which a tool started through the
+ * `run` in its context and which names its parent instead.
+ */
+export type Run = Readonly<
+  RunFields &
+    (
+      | {
+          /** A top-level Run's Caller. */
+          by: Caller;
+          parent?: undefined;
+        }
+      | {
+          /** A child Run's parent: the id of the Run that started it. */
+          parent: string;
+          by?: undefined;
+        }
+    )
+>;
+
+type RunFields = {
   /** Unique within the document. */
   id: string;
   /** The tool's unprefixed name. */
   tool: string;
   /** The input it was started with, as JSON; absent for `undefined`. */
   input?: JsonValue;
-  /** Its Caller. */
-  by: Caller;
   status: "running" | "succeeded" | "failed";
   /**
    * What it returned, as JSON captured when it returned, so a later change
@@ -24,9 +42,15 @@ export type Run = Readonly<{
   startedAt: number;
   /** How long it took; absent while it runs. */
   durationMs?: number;
-}>;
+};
 
-/** The document's Run log: its Runs, oldest first. */
+/** Package-internal: who starts a Run, its Caller or its parent Run. */
+export type RunOrigin = { by: Caller } | { parent: string };
+
+/**
+ * The document's Run log: its Runs, oldest first, each child Run after the
+ * Run that started it.
+ */
 export type AymeRuns = {
   /** The same array comes back until a Run starts or ends. */
   list(): readonly Run[];
@@ -34,7 +58,10 @@ export type AymeRuns = {
   subscribe(listener: (runs: readonly Run[]) => void): () => void;
 };
 
-/** How many top-level Runs a document's log keeps, the newest. */
+/**
+ * How many top-level Runs a document's log keeps, the newest, each with its
+ * child Runs.
+ */
 const KEPT_RUNS = 200;
 
 const NO_RUNS: readonly Run[] = Object.freeze([]);
@@ -48,6 +75,8 @@ export const runLog = createRunLog();
 function createRunLog() {
   let runs = NO_RUNS;
   let nextId = 1;
+  /** The top-level Run each Run belongs to, by id: itself for a top-level Run. */
+  const roots = new Map<string, string>();
   const listeners = new Set<(runs: readonly Run[]) => void>();
 
   function publish(next: Run[]) {
@@ -57,13 +86,32 @@ function createRunLog() {
     for (const listener of listeners) listener(runs);
   }
 
+  /**
+   * `next` without the oldest top-level Runs past `KEPT_RUNS`, each dropped
+   * with its child Runs. A child Run whose parent is gone is dropped too.
+   */
+  function retained(next: Run[]): Run[] {
+    const kept = new Set(
+      next
+        .filter((run) => run.parent === undefined)
+        .slice(-KEPT_RUNS)
+        .map((run) => run.id)
+    );
+    for (const id of roots.keys())
+      if (!kept.has(roots.get(id)!)) roots.delete(id);
+    return next.filter((run) => roots.has(run.id));
+  }
+
   const log: AymeRuns & {
-    /** Records `execute` as a Run of `tool` for `by`, and returns its answer. */
+    /**
+     * Records `execute` as a Run of `tool`, started by `origin`, and returns
+     * its answer. `execute` is handed the Run's id.
+     */
     record<T>(
       tool: string,
       input: unknown,
-      by: Caller,
-      execute: () => Promise<T>
+      origin: RunOrigin,
+      execute: (id: string) => Promise<T>
     ): Promise<T>;
   } = {
     list: () => runs,
@@ -73,20 +121,21 @@ function createRunLog() {
         listeners.delete(listener);
       };
     },
-    async record(tool, input, by, execute) {
+    async record(tool, input, origin, execute) {
       const id = String(nextId++);
       const started = performance.now();
+      roots.set(id, "parent" in origin ? (roots.get(origin.parent) ?? "") : id);
       publish(
-        [
+        retained([
           ...runs,
           withJson(
-            { id, tool, by, status: "running", startedAt: Date.now() },
+            { id, tool, ...origin, status: "running", startedAt: Date.now() },
             "input",
             input
-          ),
-        ].slice(-KEPT_RUNS)
+          ) as Run,
+        ])
       );
-      const end = (ended: Partial<Run>) =>
+      const end = (ended: Partial<RunFields>) =>
         publish(
           runs.map((run) =>
             run.id === id
@@ -100,7 +149,7 @@ function createRunLog() {
         );
       let answer;
       try {
-        answer = await execute();
+        answer = await execute(id);
       } catch (error) {
         end({ status: "failed", error: errorText(error) });
         throw error;
@@ -125,5 +174,5 @@ function withJson<F extends object>(fields: F, key: string, value: unknown) {
   }
   return Object.freeze(
     json === undefined ? fields : { ...fields, [key]: JSON.parse(json) }
-  ) as F & Partial<Run>;
+  ) as F & Partial<RunFields>;
 }

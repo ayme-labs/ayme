@@ -426,7 +426,10 @@ it("runs goal as the application while publication is unavailable", async () => 
     expect(runtime.webMCP.publicationStatus.state).toBe("unavailable");
     const input = { goal: "save", maxSteps: 3 };
     await expect(runtime.tools.run("goal", input)).resolves.toBe(handover);
-    expect(execute).toHaveBeenCalledExactlyOnceWith(input, { reader: "app" });
+    expect(execute).toHaveBeenCalledExactlyOnceWith(input, {
+      reader: "app",
+      run: expect.any(Function),
+    });
     expect(synchronizeWebMcpTools).not.toHaveBeenCalled();
   } finally {
     goalTool.mockRestore();
