@@ -89,7 +89,7 @@ function isInteraction(value: unknown): value is RunInteraction {
   return (
     isRecord(value) &&
     typeof value.operation === "string" &&
-    ["locator", "value", "state", "member"].every(
+    ["locator", "value", "member"].every(
       (key) => value[key] === undefined || typeof value[key] === "string"
     )
   );

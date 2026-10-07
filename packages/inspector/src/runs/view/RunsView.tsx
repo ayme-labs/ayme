@@ -2,14 +2,10 @@ import type { RefObject } from "react";
 import type { BuiltInCaller, Caller } from "@ayme-dev/ayme";
 import {
   AppWindowIcon,
-  ArrowLeftIcon,
-  ArrowRightIcon,
   BotIcon,
   CheckIcon,
   ChevronRightIcon,
   CopyIcon,
-  EyeIcon,
-  GlobeIcon,
   HistoryIcon,
   KeyboardIcon,
   ListChecksIcon,
@@ -17,7 +13,6 @@ import {
   MousePointer2Icon,
   MousePointerIcon,
   MoveIcon,
-  RotateCwIcon,
   SquareCheckIcon,
   SquareTerminalIcon,
   TypeIcon,
@@ -458,7 +453,7 @@ function RunResult({
 }
 
 // An Interaction's operation is the method it called; the rest show a chevron.
-const interactionIcons: Record<string, typeof EyeIcon> = {
+const interactionIcons: Record<string, typeof TypeIcon> = {
   click: MousePointer2Icon,
   dblclick: MousePointer2Icon,
   tap: MousePointer2Icon,
@@ -483,11 +478,6 @@ const interactionIcons: Record<string, typeof EyeIcon> = {
   "keyboard.up": KeyboardIcon,
   selectOption: ListChecksIcon,
   setInputFiles: UploadIcon,
-  goto: GlobeIcon,
-  goBack: ArrowLeftIcon,
-  goForward: ArrowRightIcon,
-  reload: RotateCwIcon,
-  waitFor: EyeIcon,
 };
 
 function InteractionRow({
@@ -499,9 +489,9 @@ function InteractionRow({
 }) {
   const Icon = interactionIcons[interaction.operation] ?? ChevronRightIcon;
   const value =
-    interaction.value !== undefined
-      ? JSON.stringify(interaction.value)
-      : interaction.state;
+    interaction.value === undefined
+      ? undefined
+      : JSON.stringify(interaction.value);
   const member = interaction.member;
   return (
     <li className="flex min-h-6 list-none items-center gap-2 text-xs">
