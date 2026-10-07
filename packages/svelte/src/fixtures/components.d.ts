@@ -28,6 +28,12 @@ export declare const PageObjectUser: TestComponent<{
   model: PageObjectConstructor<object>;
   onInit?: (pageObject: object) => void;
 }>;
+export declare const PageObjectPair: TestComponent<{
+  model: PageObjectConstructor<object>;
+  showFirst?: boolean;
+  showSecond?: boolean;
+  onInit?: (pageObject: object) => void;
+}>;
 export declare const OwnerAndPageObject: TestComponent<{
   options?: UseAymeOptions;
   model: PageObjectConstructor<object>;
