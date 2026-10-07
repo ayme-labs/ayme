@@ -95,8 +95,6 @@ export function useInspectorRuntime({
   const { hover, pin } = highlight;
 
   return {
-    /** The page's name for the header badge: its page Page Object's class. */
-    pageName: registeredPoms[0]?.manifest.className,
     /** The Page Objects on the page and the Page Object Models it knows. */
     pageModel,
     /**

@@ -69,15 +69,13 @@ export class LayoutMenu {
 }
 
 /**
- * The panel's header: the title, the page badge, the theme switch, the
- * layout menu and collapse. The panel drags by it.
+ * The panel's header: the title, the theme switch, the layout menu and
+ * collapse. The panel drags by it.
  */
 @ayme
 export class InspectorHeader {
   readonly root: Locator;
   readonly title: Locator;
-  /** The page's name, e.g. ListPage. */
-  readonly pageBadge: Locator;
   readonly themeSwitch: ThemeSwitch;
   readonly layoutMenu: LayoutMenu;
   readonly collapseButton: Locator;
@@ -90,7 +88,6 @@ export class InspectorHeader {
   constructor(root: Locator, portalRoot: Locator) {
     this.root = root;
     this.title = root.getByRole("heading", { name: "ayme", exact: true });
-    this.pageBadge = root.locator("[data-slot=badge]");
     this.themeSwitch = new ThemeSwitch(root);
     this.layoutMenu = new LayoutMenu(root, portalRoot);
     this.collapseButton = root.getByRole("button", {
