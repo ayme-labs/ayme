@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
+import { runPublished } from "./agentCalls.testSupport";
 import type { Locator, Page } from "@playwright/test";
 
 import { createPage } from "./browserPage";
@@ -86,14 +87,17 @@ describe("generate_locator in Chromium", () => {
     stop = ayme.start();
     ayme.pom.register(AccountPage);
     const tools = new Map<string, (input: unknown) => Promise<unknown>>();
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(tool: {
-        name: string;
-        execute(input: unknown): Promise<unknown>;
-      }) {
-        tools.set(tool.name, (input) => tool.execute(input));
-      },
-    } as never);
+    const publication = await synchronizeWebMcpTools(
+      {
+        async registerTool(tool: {
+          name: string;
+          execute(input: unknown): Promise<unknown>;
+        }) {
+          tools.set(tool.name, (input) => tool.execute(input));
+        },
+      } as never,
+      { run: runPublished }
+    );
     dispose = publication.dispose;
     published = tools.get("generate_locator")!;
   });

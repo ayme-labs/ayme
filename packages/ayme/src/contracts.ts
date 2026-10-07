@@ -126,14 +126,17 @@ export function isJsonPrimitive(value: unknown): value is JsonPrimitive {
   );
 }
 
-export type RegisteredPomTool = ModelContextTool<
-  Record<string, unknown>,
-  JsonValue
+/**
+ * A registered Page Object's tool, as the registry describes it. It runs
+ * through `ayme.tools.run`, as a Run.
+ */
+export type RegisteredPomTool = Omit<
+  ModelContextTool<Record<string, unknown>, JsonValue>,
+  "execute"
 > & {
   pomId: string;
   componentClassName?: string;
   methodName: string;
   inputSchema: JsonSchema;
   parameters: readonly ToolParameter[];
-  execute(args: unknown): Promise<JsonValue>;
 };

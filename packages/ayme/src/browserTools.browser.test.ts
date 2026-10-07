@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
+import { runPublished } from "./agentCalls.testSupport";
 import {
   isCheckableElement,
   isClickableElement,
@@ -85,11 +86,14 @@ describe("Browser Tools in Chromium", () => {
     });
     stop = session.start();
     tools = new Map();
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(tool: PublishedTool) {
-        tools.set(tool.name, tool);
-      },
-    } as never);
+    const publication = await synchronizeWebMcpTools(
+      {
+        async registerTool(tool: PublishedTool) {
+          tools.set(tool.name, tool);
+        },
+      } as never,
+      { run: runPublished }
+    );
     dispose = publication.dispose;
   });
 

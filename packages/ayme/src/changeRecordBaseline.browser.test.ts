@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import { runPublished } from "./agentCalls.testSupport";
 
 import type { PomManifest, ToolManifest } from "./contracts";
 import type { DecisionResponse } from "./decisionTypes";
@@ -50,11 +51,14 @@ describe("Change Record baseline in Chromium", () => {
   }
 
   async function publishTools() {
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(registered: PublishedTool) {
-        published.set(registered.name, registered);
+    const publication = await synchronizeWebMcpTools(
+      {
+        async registerTool(registered: PublishedTool) {
+          published.set(registered.name, registered);
+        },
       },
-    });
+      { run: runPublished }
+    );
     disposePublication = publication.dispose;
   }
 

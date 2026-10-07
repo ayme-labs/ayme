@@ -136,6 +136,7 @@ describe("WebMCP publisher", () => {
 
     const registry = await import("./registry");
     const { synchronizeWebMcpTools } = await import("./webMcp");
+    const { runPublished } = await import("./agentCalls.testSupport");
     registry.configureAymeRuntime({} as Page);
 
     let rootCount = 1;
@@ -170,7 +171,10 @@ describe("WebMCP publisher", () => {
     });
     const pageRegistration = registry.createPageRegistration(ItemsPage);
 
-    const publication = await synchronizeWebMcpTools({ registerTool });
+    const publication = await synchronizeWebMcpTools(
+      { registerTool },
+      { run: runPublished }
+    );
     expect(registrations.map(({ tool }) => tool.name)).toEqual([
       "snapshot",
       "click",
@@ -258,6 +262,7 @@ describe("WebMCP publisher", () => {
 
     const registry = await import("./registry");
     const { synchronizeWebMcpTools } = await import("./webMcp");
+    const { runPublished } = await import("./agentCalls.testSupport");
     const { listPublishedTools } = await import("./publishedTools");
     registry.configureAymeRuntime({} as Page);
 
@@ -298,7 +303,10 @@ describe("WebMCP publisher", () => {
       ],
     });
     const pageRegistration = registry.createPageRegistration(ItemsPage);
-    const publication = await synchronizeWebMcpTools({ registerTool });
+    const publication = await synchronizeWebMcpTools(
+      { registerTool },
+      { run: runPublished }
+    );
     const archive = registrations.find(
       ({ tool }) => tool.name === "ItemsPage.items.archive"
     );
@@ -350,6 +358,7 @@ describe("WebMCP publisher", () => {
 
     const registry = await import("./registry");
     const { synchronizeWebMcpTools } = await import("./webMcp");
+    const { runPublished } = await import("./agentCalls.testSupport");
     registry.configureAymeRuntime({} as Page);
 
     let rootCount = 0;
@@ -385,7 +394,10 @@ describe("WebMCP publisher", () => {
       ],
     });
     const pageRegistration = registry.createPageRegistration(ItemsPage);
-    await synchronizeWebMcpTools({ registerTool }, { onError });
+    await synchronizeWebMcpTools(
+      { registerTool },
+      { run: runPublished, onError }
+    );
     const addItem = tools.find(({ name }) => name === "addItem");
 
     await expect(addItem?.execute({})).resolves.toEqual({
@@ -418,6 +430,7 @@ describe("WebMCP publisher", () => {
 
     const registry = await import("./registry");
     const { synchronizeWebMcpTools } = await import("./webMcp");
+    const { runPublished } = await import("./agentCalls.testSupport");
     registry.configureAymeRuntime({} as Page);
 
     class SharedPage {
@@ -431,7 +444,10 @@ describe("WebMCP publisher", () => {
     });
 
     const first = registry.createPageRegistration(SharedPage);
-    const publication = await synchronizeWebMcpTools({ registerTool });
+    const publication = await synchronizeWebMcpTools(
+      { registerTool },
+      { run: runPublished }
+    );
     expect(registrations.map(({ tool }) => tool.name)).toEqual([
       "snapshot",
       "click",
@@ -494,6 +510,7 @@ describe("WebMCP publisher", () => {
 
     const registry = await import("./registry");
     const { synchronizeWebMcpTools } = await import("./webMcp");
+    const { runPublished } = await import("./agentCalls.testSupport");
     registry.configureAymeRuntime({} as Page);
 
     class FailingPage {
@@ -507,9 +524,9 @@ describe("WebMCP publisher", () => {
     });
     const registration = registry.createPageRegistration(FailingPage);
 
-    await expect(synchronizeWebMcpTools({ registerTool })).rejects.toThrow(
-      "registration failed"
-    );
+    await expect(
+      synchronizeWebMcpTools({ registerTool }, { run: runPublished })
+    ).rejects.toThrow("registration failed");
     expect(signals).toHaveLength(2);
     expect(signals.every((signal) => signal.aborted)).toBe(true);
 
@@ -537,10 +554,11 @@ describe("WebMCP publisher", () => {
     vi.stubGlobal("document", { documentElement: {} });
 
     const { synchronizeWebMcpTools } = await import("./webMcp");
+    const { runPublished } = await import("./agentCalls.testSupport");
     const controller = new AbortController();
     const pending = synchronizeWebMcpTools(
       { registerTool },
-      { signal: controller.signal }
+      { run: runPublished, signal: controller.signal }
     );
     await registrationStarted;
 
@@ -668,6 +686,7 @@ describe("tool failure results", () => {
 
     const registry = await import("./registry");
     const { synchronizeWebMcpTools } = await import("./webMcp");
+    const { runPublished } = await import("./agentCalls.testSupport");
     registry.configureAymeRuntime({} as Page);
 
     class FailingPage {
@@ -699,7 +718,10 @@ describe("tool failure results", () => {
       ],
     });
     const registration = registry.createPageRegistration(FailingPage);
-    const publication = await synchronizeWebMcpTools({ registerTool });
+    const publication = await synchronizeWebMcpTools(
+      { registerTool },
+      { run: runPublished }
+    );
     const execute = (name: string, input: unknown) => {
       const tool = tools.find((candidate) => candidate.name === name);
       if (!tool) throw new Error(`Tool ${name} was not published.`);

@@ -1,5 +1,6 @@
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { runPublished } from "./agentCalls.testSupport";
 import { createPage } from "./browserPage";
 import { ayme } from "./agentCalls.testSupport";
 import {
@@ -260,17 +261,20 @@ describe("live Page Object availability", () => {
     registerCompiledPom(Shell, manifest("Shell", [child("sidebar")]));
     createPageRegistration(Shell);
     const published = new Map<string, unknown>();
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(
-        tool: { name: string },
-        options?: { signal?: AbortSignal }
-      ) {
-        published.set(tool.name, tool);
-        options?.signal?.addEventListener("abort", () => {
-          if (published.get(tool.name) === tool) published.delete(tool.name);
-        });
+    const publication = await synchronizeWebMcpTools(
+      {
+        async registerTool(
+          tool: { name: string },
+          options?: { signal?: AbortSignal }
+        ) {
+          published.set(tool.name, tool);
+          options?.signal?.addEventListener("abort", () => {
+            if (published.get(tool.name) === tool) published.delete(tool.name);
+          });
+        },
       },
-    });
+      { run: runPublished }
+    );
     try {
       await expect
         .poll(() => [...published.keys()])
@@ -540,11 +544,14 @@ describe("live Page Object availability", () => {
     const published: string[] = [];
     let completed = false;
     const result = Promise.all([
-      synchronizeWebMcpTools({
-        async registerTool(tool: { name: string }) {
-          published.push(tool.name);
+      synchronizeWebMcpTools(
+        {
+          async registerTool(tool: { name: string }) {
+            published.push(tool.name);
+          },
         },
-      }),
+        { run: runPublished }
+      ),
       ayme.getPageState(),
     ]).then((value) => {
       completed = true;

@@ -4,6 +4,7 @@ import {
   type StructuralActionId,
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
+import { runPublished } from "./agentCalls.testSupport";
 
 import type { PomManifest, ToolManifest } from "./contracts";
 import type { DecisionResponse } from "./decisionTypes";
@@ -63,11 +64,14 @@ describe("Interaction history in Chromium", () => {
   }
 
   async function publishTools() {
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(registered: PublishedTool) {
-        published.set(registered.name, registered);
+    const publication = await synchronizeWebMcpTools(
+      {
+        async registerTool(registered: PublishedTool) {
+          published.set(registered.name, registered);
+        },
       },
-    });
+      { run: runPublished }
+    );
     disposePublication = publication.dispose;
   }
 

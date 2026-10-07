@@ -50,13 +50,13 @@ export const getPageContextTool = {
     additionalProperties: false,
   } as const,
   /** Reads the page for the Run's reader, whose page it then is. */
-  execute: (input: unknown, context?: RunContext) =>
-    snapshotFor(input, context?.reader ?? "agent"),
+  execute: (input: unknown, context: RunContext) =>
+    snapshotFor(input, context.reader),
 } satisfies Omit<
   ModelContextTool<GetPageContextInput, JsonValue>,
   "execute"
 > & {
-  execute(input: unknown, context?: RunContext): Promise<JsonValue>;
+  execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
 async function snapshotFor(input: unknown, reader: Reader): Promise<JsonValue> {

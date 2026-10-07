@@ -8,7 +8,6 @@ import {
   subscribeToRegisteredPoms,
   probeRegisteredPomMembers,
 } from "./registry";
-import { callers, readerOf, runTool } from "./run";
 import { errorText } from "./errors";
 
 /** The MCP tool-failure result a published tool returns instead of throwing. */
@@ -59,10 +58,9 @@ export type WebMcpSynchronizationOptions = {
   /**
    * Runs an agent's call of a published tool, by its unprefixed name, as a
    * `webmcp` Run that awaits `settle` before it resolves: a started
-   * session's `ayme.tools.run` path. Without it, the published tool runs
-   * itself as a `webmcp` Run.
+   * session's `ayme.tools.run` path.
    */
-  run?: (
+  run: (
     name: string,
     input: unknown,
     settle: () => Promise<void>
@@ -77,7 +75,7 @@ export type WebMcpSynchronizationOptions = {
  */
 export async function synchronizeWebMcpTools(
   driver: WebMcpDriver,
-  options: WebMcpSynchronizationOptions = {}
+  options: WebMcpSynchronizationOptions
 ): Promise<WebMcpRegistration> {
   const prefix = options.toolNamePrefix ?? "";
   type Registration = {
@@ -192,15 +190,7 @@ export async function synchronizeWebMcpTools(
           published.set(name, registration);
           // A read (`snapshot`, a Peek Tool) does not settle, and a failure
           // is an `isError` result.
-          const call = (input: unknown) =>
-            options.run
-              ? options.run(name, input, settle)
-              : runTool(
-                  tool,
-                  input,
-                  { reader: readerOf(callers.webmcp) },
-                  settle
-                );
+          const call = (input: unknown) => options.run(name, input, settle);
           try {
             await driver.registerTool(
               {

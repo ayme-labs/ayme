@@ -43,8 +43,8 @@ type ReaderRun = (input: unknown, reader: Reader) => Promise<ActionResult>;
  * `execute` runs it for a Run, whose context names the reader its Change
  * Record is for: the Goal Loop runs it as its model.
  */
-export type CallerAwarePomTool = Omit<LiveRegisteredPomTool, "execute"> & {
-  execute(input: unknown, context?: RunContext): Promise<ActionResult>;
+export type CallerAwarePomTool = LiveRegisteredPomTool & {
+  execute(input: unknown, context: RunContext): Promise<ActionResult>;
 };
 
 export type RegisteredPom = {
@@ -570,7 +570,7 @@ function createRegisteredTool(
     description: tool.description,
     inputSchema: tool.inputSchema,
     parameters: tool.parameters,
-    execute: (args, context) => run(args, context?.reader ?? "agent"),
+    execute: (args, context) => run(args, context.reader),
   };
 }
 
@@ -651,7 +651,7 @@ function createComponentTool(
     description: action.description,
     inputSchema: wrapper.inputSchema,
     parameters: wrapper.parameters,
-    execute: (input, context) => run(input, context?.reader ?? "agent"),
+    execute: (input, context) => run(input, context.reader),
   };
 }
 
@@ -684,7 +684,7 @@ function createSingularComponentTool(
     description: action.description,
     inputSchema: action.inputSchema,
     parameters: action.parameters,
-    execute: (input, context) => run(input, context?.reader ?? "agent"),
+    execute: (input, context) => run(input, context.reader),
   };
 }
 

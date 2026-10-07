@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
-import { ayme } from "./agentCalls.testSupport";
+import { ayme, runContext } from "./agentCalls.testSupport";
 import { createPage } from "./browserPage";
 import {
   createAymeRuntime,
   registerCompiledPom,
   registerPageObject,
-  listRegisteredPomTools,
+  listCallerAwarePomTools,
 } from "./registry";
 
 describe("Structural Ref interactions in Chromium", () => {
@@ -211,11 +211,11 @@ describe("Structural Ref interactions in Chromium", () => {
       const instance = new CounterPage(undefined);
       registerPageObject(CounterPage, instance);
 
-      const tool = listRegisteredPomTools().find((t) => t.name === "getCount");
+      const tool = listCallerAwarePomTools().find((t) => t.name === "getCount");
       if (!tool) throw new Error("Expected the getCount tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();
-      const result = await tool.execute({});
+      const result = await tool.execute({}, runContext());
       expect(result).toMatchObject({
         page_changed: false,
         settled: true,
@@ -262,13 +262,16 @@ describe("Structural Ref interactions in Chromium", () => {
       const instance = new PageObjectPage(undefined);
       registerPageObject(PageObjectPage, instance);
 
-      const tool = listRegisteredPomTools().find(
+      const tool = listCallerAwarePomTools().find(
         (t) => t.name === "getElement"
       );
       if (!tool) throw new Error("Expected the getElement tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();
-      const result = (await tool.execute({})) as Record<string, unknown>;
+      const result = (await tool.execute({}, runContext())) as Record<
+        string,
+        unknown
+      >;
       expect(result.page_changed).toBe(false);
       expect(result.settled).toBe(true);
       expect(result.result).toBeUndefined();
@@ -315,11 +318,14 @@ describe("Structural Ref interactions in Chromium", () => {
       const instance = new ReturningPage(undefined);
       registerPageObject(ReturningPage, instance);
 
-      const tool = listRegisteredPomTools().find((t) => t.name === "getChild");
+      const tool = listCallerAwarePomTools().find((t) => t.name === "getChild");
       if (!tool) throw new Error("Expected the getChild tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();
-      const result = (await tool.execute({})) as Record<string, unknown>;
+      const result = (await tool.execute({}, runContext())) as Record<
+        string,
+        unknown
+      >;
       expect(result.page_changed).toBe(false);
       expect(result.settled).toBe(true);
       expect(result.result).toBeUndefined();

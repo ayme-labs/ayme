@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runContext } from "./agentCalls.testSupport";
 
 const { locatorElements, testLocators, pageStateResolutions } = vi.hoisted(
   () => ({
@@ -529,8 +530,8 @@ describe("live Page Object registry", () => {
       "NestedPage.dialog.confirm",
     ]);
 
-    const confirmTool = registry.listRegisteredTools()[0];
-    await confirmTool?.execute({});
+    const confirmTool = registry.listCallerAwarePomTools()[0];
+    await confirmTool?.execute({}, runContext());
     expect(confirm).toHaveBeenCalledOnce();
 
     panelRootCount = 1;
@@ -541,8 +542,8 @@ describe("live Page Object registry", () => {
       "NestedPage.dialog.panel.save",
     ]);
 
-    const nestedTool = registry.listRegisteredTools()[1];
-    await nestedTool?.execute({});
+    const nestedTool = registry.listCallerAwarePomTools()[1];
+    await nestedTool?.execute({}, runContext());
     expect(save).toHaveBeenCalledOnce();
 
     dialogRootCount = 0;
@@ -689,10 +690,12 @@ describe("live Page Object registry", () => {
     const registration = registry.createPageRegistration(ItemsPage);
 
     await vi.runOnlyPendingTimersAsync();
-    const tool = registry.listRegisteredTools()[0];
+    const tool = registry.listCallerAwarePomTools()[0];
     if (!tool) throw new Error("Expected a collection tool.");
 
-    await expect(tool.execute({ ref: "e2", args: {} })).resolves.toEqual({
+    await expect(
+      tool.execute({ ref: "e2", args: {} }, runContext())
+    ).resolves.toEqual({
       page_changed: false,
       settled: true,
       result: "second",
@@ -701,7 +704,9 @@ describe("live Page Object registry", () => {
     expect(firstArchive).not.toHaveBeenCalled();
 
     currentItems = [replacement];
-    await expect(tool.execute({ ref: "e3", args: {} })).resolves.toEqual({
+    await expect(
+      tool.execute({ ref: "e3", args: {} }, runContext())
+    ).resolves.toEqual({
       page_changed: false,
       settled: true,
       result: "replacement",

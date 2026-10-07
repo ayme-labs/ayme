@@ -32,16 +32,12 @@ export type ToolRunOptions = {
 
 /**
  * Package-internal: what a tool's execution is handed. `reader` is whose
- * cursor its Change Record moves. A tool executed without one, as tests do,
- * reads as the agent.
+ * cursor its Change Record moves.
  */
 export type RunContext = {
   readonly reader: Reader;
-  /**
-   * Starts a child Run of this Run; absent when the tool runs outside a Run
-   * the runtime started, as tests do.
-   */
-  readonly run?: ChildRun;
+  /** Starts a child Run of this Run. */
+  readonly run: ChildRun;
 };
 
 /**
@@ -57,7 +53,7 @@ export type ChildRun = (
 
 /** Package-internal: a tool as a Run executes it. */
 export type ExecutableTool<T = unknown> = {
-  execute(input: unknown, context?: RunContext): Promise<T>;
+  execute(input: unknown, context: RunContext): Promise<T>;
 };
 
 /**

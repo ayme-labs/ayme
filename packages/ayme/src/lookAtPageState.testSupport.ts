@@ -3,6 +3,7 @@
  * recording driver, and the agent's calls through the published tools.
  */
 import { createPage } from "./browserPage";
+import { runPublished } from "./agentCalls.testSupport";
 import { createAyme } from "./runtime";
 import { synchronizeWebMcpTools } from "./webMcp";
 
@@ -15,11 +16,14 @@ export async function startAgentSession(
   setup(runtime);
   const stop = runtime.start();
   const tools = new Map<string, Tool>();
-  const publication = await synchronizeWebMcpTools({
-    async registerTool(tool: Tool) {
-      tools.set(tool.name, tool);
+  const publication = await synchronizeWebMcpTools(
+    {
+      async registerTool(tool: Tool) {
+        tools.set(tool.name, tool);
+      },
     },
-  });
+    { run: runPublished }
+  );
   /** A call as the calling agent makes it. */
   const call = (name: string, input: unknown) =>
     tools.get(name)!.execute(input) as Promise<Record<string, unknown>>;

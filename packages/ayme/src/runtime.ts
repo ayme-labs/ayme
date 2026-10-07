@@ -578,7 +578,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         : undefined;
       if (!peekTool)
         throw new RuntimeStateError(`The tool "${name}" is not live.`);
-      return runTool(peekTool, input, { reader: readerOf(by) }, settle);
+      // A read: it moves no cursor and adds no settle wait.
+      return peekTool.execute(input);
     }
     const reader = readerOf(by);
     return runLog.record(name, input, { by }, (id) =>

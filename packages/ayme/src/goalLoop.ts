@@ -68,7 +68,7 @@ export type GoalTool = Omit<
   "inputSchema" | "execute"
 > & {
   inputSchema: JsonSchema;
-  execute(input: unknown, context?: RunContext): Promise<JsonValue>;
+  execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
 /**
@@ -217,7 +217,7 @@ function stepRecord(
 async function executeToolAction(
   tool: ExecutableTool,
   args: Record<string, unknown>,
-  run: ChildRun | undefined
+  run: ChildRun
 ): Promise<StepOutcome> {
   const raw = await tool.execute(args, run);
   const action = raw as ActionResult | undefined;
@@ -239,7 +239,7 @@ export function createPursueGoalTool(
   /** Runs the loop for the Run's reader, which the Handover hands control back to. */
   const execute = async (
     input: unknown,
-    context?: RunContext
+    context: RunContext
   ): Promise<JsonValue> => {
     const result = await pursueGoal(
       readPursueGoalInput(input),
@@ -335,7 +335,7 @@ export async function pursueGoal(
   { goal, maxSteps, values }: GoalInput,
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document,
-  { reader: caller, run }: RunContext = { reader: "agent" }
+  { reader: caller, run }: RunContext
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];

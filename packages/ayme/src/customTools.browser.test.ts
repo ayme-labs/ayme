@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import { runPublished } from "./agentCalls.testSupport";
 
 import { createPage } from "./browserPage";
 import { createAyme } from "./runtime";
@@ -63,7 +64,9 @@ describe("Custom Tools in Chromium", () => {
 
   async function republish() {
     const { driver, published } = createFakeDriver();
-    const publication = await synchronizeWebMcpTools(driver);
+    const publication = await synchronizeWebMcpTools(driver, {
+      run: runPublished,
+    });
     disposePublication = publication.dispose;
     return published;
   }

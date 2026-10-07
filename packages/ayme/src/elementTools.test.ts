@@ -36,7 +36,7 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { RefResolutionError } from "./errors";
 import { getPageStateForDocument } from "./pageState";
 import { listPublishedBrowserTools } from "./browserTools";
-import { ayme } from "./agentCalls.testSupport";
+import { ayme, runContext } from "./agentCalls.testSupport";
 
 const ref = AriaRefSchema.parse;
 const clickRef = ayme.click;
@@ -258,11 +258,11 @@ describe("Structural Ref interactions", () => {
     const published = (name: string) =>
       listPublishedBrowserTools().find((tool) => tool.name === name)!;
 
-    await expect(published("click").execute({ target: "e2" })).resolves.toEqual(
-      { page_changed: false, settled: true }
-    );
     await expect(
-      published("fill").execute({ target: "e2", text: "updated" })
+      published("click").execute({ target: "e2" }, runContext())
+    ).resolves.toEqual({ page_changed: false, settled: true });
+    await expect(
+      published("fill").execute({ target: "e2", text: "updated" }, runContext())
     ).resolves.toEqual({ page_changed: false, settled: true });
     expect(click).toHaveBeenCalledWith("aria-ref=e2");
     expect(fill).toHaveBeenCalledWith("aria-ref=e2", "updated");

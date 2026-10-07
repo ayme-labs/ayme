@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DecisionRequest } from "./decisionTypes";
+import { runPublished } from "./agentCalls.testSupport";
 import type { ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { RuntimeStateError } from "./errors";
@@ -391,11 +392,14 @@ describe("where Peek Tools appear", () => {
     const ayme = started({ agentConnection: true });
     peek(ayme, () => ({ open: true }), "menu");
     const published = new Map<string, unknown>();
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(tool: { name: string }) {
-        published.set(tool.name, tool);
-      },
-    } as never);
+    const publication = await synchronizeWebMcpTools(
+      {
+        async registerTool(tool: { name: string }) {
+          published.set(tool.name, tool);
+        },
+      } as never,
+      { run: runPublished }
+    );
     cleanups.push(publication.dispose);
 
     expect(toolNames(ayme)).toContain("peek.menu");

@@ -384,7 +384,7 @@ const fillFormTool: PublishedElementTool = {
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
   inputSchema: fillFormSchema,
   execute: async (input, context) => {
-    const reader = context?.reader ?? "agent";
+    const { reader } = context;
     const fields = validatedToolInput(fillFormSchema, input)
       .fields as FormField[];
     const currentDocument = requireCurrentDocument();
@@ -433,7 +433,7 @@ const pressKeyTool: PublishedElementTool = {
   description: "Press a key on the element that has focus.",
   inputSchema: pressKeySchema,
   execute: async (input, context) => {
-    const reader = context?.reader ?? "agent";
+    const { reader } = context;
     const { key } = validatedToolInput(pressKeySchema, input) as {
       key: string;
     };

@@ -70,7 +70,7 @@ export type PublishedElementTool = Omit<
   "execute"
 > & {
   inputSchema: JsonSchema;
-  execute(input: unknown, context?: RunContext): Promise<JsonValue>;
+  execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
 /**
@@ -162,14 +162,12 @@ export function registerElementTool(
   definition: ElementToolDefinition,
   filter: (element: Element) => boolean
 ): RegisteredElementTool {
-  const run = elementToolRun(definition);
   return {
     tool: {
       name: definition.name,
       description: definition.description,
       inputSchema: definition.inputSchema,
-      execute: (input: unknown, context?: RunContext) =>
-        run(input, context ?? { reader: "agent" }),
+      execute: elementToolRun(definition),
     },
     targetField: definition.targetField,
     loopInputSchema:
@@ -329,37 +327,18 @@ export function configureCustomTools(
         label: `run "${customTool.name}" on`,
         inputSchema: REF_INPUT_SCHEMA,
         targetField: "ref",
-        run: ({ ref, element }, _input, context) =>
+        run: ({ ref, element }, _input, { run }) =>
           customTool.execute(
             { ref: ref!, element },
             {
-              run: childRunOf(
-                customTool.name,
-                context
-              ) as CustomToolContext["run"],
+              run: ((name, input) =>
+                run(name, input)) as CustomToolContext["run"],
             }
           ),
       },
       customTool.filter ?? (() => true)
     )
   );
-}
-
-/**
- * The `run` a Custom Tool is handed: its Run's, or, for a tool executed
- * outside a Run the runtime started, one that refuses.
- */
-function childRunOf(
-  name: string,
-  context: RunContext
-): (name: string, input: unknown) => Promise<unknown> {
-  const { run } = context;
-  if (run) return (child, input) => run(child, input);
-  return async () => {
-    throw new RuntimeStateError(
-      `The Custom Tool "${name}" runs outside a Run, so it cannot start other tools.`
-    );
-  };
 }
 
 /** Package-internal: the Custom Tools of the active session, in registration order. */

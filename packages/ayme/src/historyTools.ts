@@ -35,7 +35,7 @@ function traversalTool(
     description,
     inputSchema: noInputSchema,
     execute: async (input, context) => {
-      const reader = context?.reader ?? "agent";
+      const { reader } = context;
       validatedToolInput(noInputSchema, input);
       const currentDocument = requireCurrentDocument();
       const page = requireAymeRuntimePage();
@@ -111,7 +111,7 @@ export const reloadTool: PublishedElementTool = {
   description: "Reload the current page.",
   inputSchema: noInputSchema,
   execute: async (input, context) => {
-    const reader = context?.reader ?? "agent";
+    const { reader } = context;
     validatedToolInput(noInputSchema, input);
     const currentDocument = requireCurrentDocument();
     const page = requireAymeRuntimePage();
