@@ -28,9 +28,9 @@ Add a spec file for a new concern and reuse `fixtures.ts`.
 
 `appProcess.ts` stands in for an App Process: a Node script that starts Ayme
 with `createAyme({ agentConnection })` and adds one Peek with `ayme.peek`. The
-`startAppProcess` fixture runs it and ends it with the test. Each one looks for
-a server on its test's port only, or pairs by link, so it never pairs with a
-server another test or run has on the machine.
+`startStandInAppProcess` fixture runs it and ends it with the test. Each one
+looks for a server on its test's port only, or pairs by link, so it never
+pairs with a server another test or run has on the machine.
 
 ## Running
 

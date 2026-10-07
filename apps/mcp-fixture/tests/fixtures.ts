@@ -46,7 +46,7 @@ export const test = base.extend<{
    * Starts a stand-in App Process; every one the test started exits when
    * the test ends.
    */
-  startAppProcess: (options: AppProcessOptions) => AppProcess;
+  startStandInAppProcess: (options: AppProcessOptions) => AppProcess;
   /**
    * The agent's server. It listens outside the range a page's auto-pair scan
    * probes, unless a spec sets `inScanRange`, so a localhost page of another
@@ -79,11 +79,11 @@ export const test = base.extend<{
   limitScan: [true, { option: true }],
   // Playwright reads a fixture's dependencies from its first parameter.
   // eslint-disable-next-line no-empty-pattern
-  startAppProcess: async ({}, use) => {
+  startStandInAppProcess: async ({}, use) => {
     const started: AppProcess[] = [];
     try {
       await use((options) => {
-        const appProcess = startAppProcess(options);
+        const appProcess = startStandInAppProcess(options);
         started.push(appProcess);
         return appProcess;
       });
@@ -173,7 +173,7 @@ export function unanswered(answer: { text: string; isError: boolean }) {
   };
 }
 
-function startAppProcess({
+function startStandInAppProcess({
   port,
   link,
   peek,
