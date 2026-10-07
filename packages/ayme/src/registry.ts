@@ -68,6 +68,12 @@ export type RegisteredPomRoot = {
 export type RegisteredPomTarget = {
   path: string;
   element: Element;
+  /**
+   * The member's locator, as its `toString()` reads, e.g.
+   * "getByRole('button', { name: 'Add item' })": the locator an Interaction
+   * on the member names.
+   */
+  locator: string;
 };
 
 type ObservedPomRoot = {
@@ -868,8 +874,9 @@ async function collectPomTargets(
       const value = await readMember(instance, member);
       if (member.kind === "locator") {
         if (!isLocator(value)) continue;
+        const locator = value.toString();
         for (const element of locatorElements(value))
-          targets.push({ path: memberPath, element });
+          targets.push({ path: memberPath, element, locator });
         continue;
       }
 
@@ -881,8 +888,9 @@ async function collectPomTargets(
         const componentPath = member.collection
           ? `${memberPath}[${index}]`
           : memberPath;
+        const locator = candidate.root.toString();
         for (const element of locatorElements(candidate.root))
-          targets.push({ path: `${componentPath}.root`, element });
+          targets.push({ path: `${componentPath}.root`, element, locator });
         if (componentClasses.has(component.className)) continue;
         await collectPomTargets(
           candidate,
