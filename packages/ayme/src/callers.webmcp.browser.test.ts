@@ -62,4 +62,33 @@ describe("WebMCP's Caller in Chromium", () => {
     const apps = await ayme.tools.run("click", SAVE);
     expect(apps.changes).toContain("First toast");
   });
+
+  it("records an agent's WebMCP call as a webmcp Run, and a failed one as failed with an error result", async () => {
+    const earlier = new Set(ayme.runs.list().map((run) => run.id));
+    const missing = { target: "role=button[name='Delete']" };
+
+    const saved = await agentCall("click", SAVE);
+    const failed = (await executePublishedTool(inPage, "click", missing)) as {
+      isError?: boolean;
+      content: [{ text: string }];
+    };
+
+    expect(failed.isError).toBe(true);
+    expect(ayme.runs.list().filter((run) => !earlier.has(run.id))).toEqual([
+      expect.objectContaining({
+        tool: "click",
+        input: SAVE,
+        by: callers.webmcp,
+        status: "succeeded",
+        result: saved,
+      }),
+      expect.objectContaining({
+        tool: "click",
+        input: missing,
+        by: callers.webmcp,
+        status: "failed",
+        error: failed.content[0].text,
+      }),
+    ]);
+  });
 });

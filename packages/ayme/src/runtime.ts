@@ -42,6 +42,7 @@ import {
   type Caller,
   type ToolRunOptions,
 } from "./run";
+import { runLog, type AymeRuns } from "./runLog";
 
 export type AymeWebMcpPublicationStatus = Readonly<{
   state:
@@ -110,6 +111,12 @@ export type AymePom = {
 export type Ayme = {
   readonly webMCP: AymeWebMcp;
   readonly tools: AymeTools;
+  /**
+   * The document's Run log: the newest 200 top-level Runs started through
+   * `tools.run`, by any Caller, oldest first. A new document starts an
+   * empty one.
+   */
+  readonly runs: AymeRuns;
   readonly pom: AymePom;
   /**
    * Adds a Peek: `read` returns the values of state an agent can read, and
@@ -543,7 +550,9 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       );
     const entry = resolveLiveTools({ peeks }).get(name);
     if (!entry) throw new RuntimeStateError(`The tool "${name}" is not live.`);
-    return runTool(entry.tool, input, by, settle);
+    return runLog.record(name, input, by, () =>
+      runTool(entry.tool, input, by, settle)
+    );
   }
 
   /**
@@ -603,6 +612,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       },
       run: run as AymeTools["run"],
     },
+    runs: { list: runLog.list, subscribe: runLog.subscribe },
     pom,
     peek(read, name, id) {
       if (typeof name !== "string" || name === "")

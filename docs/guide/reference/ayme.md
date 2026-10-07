@@ -59,6 +59,17 @@ navigate: (url) => router.push(url.slice(location.origin.length)),
 
 Every Caller starts its Runs through `run`: WebMCP publication as `"webmcp"`, the Ayme MCP server's page client as `"ayme-mcp"`, and your code as `"app"` unless it passes another name, such as `{ by: "support-assistant" }` for an in-app assistant. A Caller name is any non-empty string; use lowercase kebab-case, which is not enforced. `callers` holds the built-in names (`callers.app`, `callers.webmcp`, `callers.aymeMcp`, `callers.inspector`); `BuiltInCaller` is one of them, and `Caller` is any name. A `"webmcp"` Run's Change Record is the agent's; every other Caller's is the app's.
 
+## ayme.runs
+
+`ayme.runs` (`AymeRuns`) is the document's Run log: the Runs started through `ayme.tools.run`, by any Caller.
+
+| Member                | Behavior                                                                                                                                              |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list()`              | The newest 200 top-level Runs, oldest first, as `Run` objects. Returns the same array until a Run starts or ends. A new document starts an empty log. |
+| `subscribe(listener)` | Calls `listener` with the new list when a Run starts or ends. Returns the function that unsubscribes.                                                 |
+
+A `Run` has an `id`, the `tool` name, its `input` as JSON, its Caller as `by`, and a `status`: `"running"`, `"succeeded"` or `"failed"`. A succeeded Run has its `result` as JSON captured when it returned, absent for `undefined`; a failed one has its `error` text, the error's message prefixed with its name unless that is plain `Error`. `startedAt` is in epoch milliseconds; `durationMs` is absent while the Run runs. A failed Run is recorded and `run` still throws, and a failed WebMCP call is still an error result.
+
 ## ayme.pom
 
 `ayme.pom` (`AymePom`) holds one Page Object of each Page Object Model for the session.

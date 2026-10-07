@@ -58,6 +58,14 @@ await ayme.tools.run(
 
 A Caller name is any non-empty string; an empty one throws a `RuntimeStateError`. Name yours in lowercase kebab-case; Ayme does not enforce it. Ayme's own Callers use the names in `callers`: `app`, `webmcp` (WebMCP publication), `ayme-mcp` (the Ayme MCP server) and `inspector`.
 
+Ayme keeps a log of the page's Runs, `ayme.runs`, whoever started them. `list()` returns the newest 200 top-level Runs, oldest first, each a `Run` with its `id`, `tool`, `input`, Caller (`by`), `status` (`"running"`, `"succeeded"` or `"failed"`), its `result` as JSON captured when it returned (absent for `undefined`) or its `error` text, `startedAt` and `durationMs`. `subscribe(listener)` calls `listener` with the new list when a Run starts or ends, and returns the function that unsubscribes. A new document starts an empty log.
+
+```ts
+const unsubscribe = ayme.runs.subscribe((runs) => {
+  for (const run of runs) console.log(run.by, run.tool, run.status);
+});
+```
+
 ## Peek at app state
 
 While a coding agent or the Inspector is connected, `ayme.peek` lets the agent read state the page does not show. Each name becomes a Peek Tool, `peek.<name>`, which reads the values when the agent calls it:

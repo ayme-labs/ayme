@@ -9,6 +9,7 @@ import {
   probeRegisteredPomMembers,
 } from "./registry";
 import { callers, runTool } from "./run";
+import { errorText } from "./errors";
 
 /** The MCP tool-failure result a published tool returns instead of throwing. */
 type ToolErrorResult = {
@@ -38,12 +39,6 @@ export function withErrorResult<T extends { execute(input: unknown): unknown }>(
 
 function toolErrorResult(error: unknown): ToolErrorResult {
   return { content: [{ type: "text", text: errorText(error) }], isError: true };
-}
-
-function errorText(error: unknown): string {
-  if (!(error instanceof Error)) return String(error);
-  if (!error.name || error.name === "Error") return error.message;
-  return `${error.name}: ${error.message}`;
 }
 
 export type WebMcpDriver = Pick<
