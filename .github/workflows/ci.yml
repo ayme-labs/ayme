@@ -240,6 +240,7 @@ jobs:
           - name: Vue 3.2 compatibility
             package: "@ayme-dev/vue"
             dir: packages/vue
+            browser: true
             version: "3.2.0"
             pins: vue @vue/server-renderer
             build: "@ayme-dev/ayme"
@@ -272,6 +273,7 @@ jobs:
           - name: React 18.0.0 compatibility
             package: "@ayme-dev/react"
             dir: packages/react
+            browser: true
             version: "18.0.0"
             pins: react react-dom @types/react@18.3.31 @types/react-dom@18.3.7
             build: "@ayme-dev/ayme"

@@ -17,7 +17,7 @@ describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",
   (publish) => {
     it.each(["provider", "standalone"])(
-      "renders concurrent requests with a %s owner without constructing or registering Page Objects or calling the page factory",
+      "C9, C10: renders concurrent requests with a %s owner without constructing or registering Page Objects or calling the page factory",
       async (kind) => {
         const pageFactory = vi.fn<PageFactory>(() => {
           throw new Error("The page factory must not run on the server.");

@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import {
   createApp,
   defineComponent,
@@ -59,11 +58,12 @@ function mount(component: Component) {
 afterEach(() => {
   for (const app of apps.splice(0)) app.unmount();
   for (const scope of scopes.splice(0)) scope.stop();
+  Reflect.deleteProperty(document, "modelContext");
   vi.mocked(createAyme).mockClear();
   vi.unstubAllGlobals();
 });
 
-it("passes the page factory and ignore to the runtime session", () => {
+it("C1: passes the page factory and ignore to the runtime session", () => {
   const ignore = (element: Element) => element.matches(".assistant");
   const scope = effectScope();
   scopes.push(scope);
@@ -76,7 +76,7 @@ it("passes the page factory and ignore to the runtime session", () => {
   });
 });
 
-it("passes customTools to the runtime session", () => {
+it("C1: passes customTools to the runtime session", () => {
   const customTools = [
     {
       name: "highlight_element",
@@ -95,7 +95,7 @@ it("passes customTools to the runtime session", () => {
   });
 });
 
-it("passes goalLoop to the runtime session", () => {
+it("C1: passes goalLoop to the runtime session", () => {
   const goalLoop = vi.fn();
   const scope = effectScope();
   scopes.push(scope);
@@ -108,7 +108,7 @@ it("passes goalLoop to the runtime session", () => {
   });
 });
 
-it("passes webMCP to the runtime session", () => {
+it("C1: passes webMCP to the runtime session", () => {
   const scope = effectScope();
   scopes.push(scope);
   scope.run(() =>
@@ -137,7 +137,7 @@ async function withoutInspectorLoad() {
   );
 }
 
-it("passes inspector to the runtime session", async () => {
+it("C1: passes inspector to the runtime session", async () => {
   await withoutInspectorLoad();
   const scope = effectScope();
   scopes.push(scope);
@@ -147,7 +147,7 @@ it("passes inspector to the runtime session", async () => {
   );
 });
 
-it("passes agentConnection to the runtime session", async () => {
+it("C1: passes agentConnection to the runtime session", async () => {
   await withoutInspectorLoad();
   const scope = effectScope();
   scopes.push(scope);
@@ -190,7 +190,7 @@ it("C1, C4: passes the provider's inspector demo setting and keeps it fixed acro
   );
 });
 
-it("returns the session as ayme, so a goal runs through it, and its webMCP member", async () => {
+it("C11: returns the session as ayme, so a goal runs through it, and its webMCP member", async () => {
   const goalLoop = vi.fn(async () => {
     throw new Error("No decision.");
   });
@@ -208,7 +208,7 @@ it("returns the session as ayme, so a goal runs through it, and its webMCP membe
   expect(handover.reason).toBe("decide_failed");
 });
 
-it("calls the page factory once for the owner's runtime, on start", () => {
+it("C2: calls the page factory once for the owner's runtime, on start", () => {
   const factory = vi.fn(pageFactory);
   const scope = effectScope();
   scopes.push(scope);
@@ -221,7 +221,7 @@ it("calls the page factory once for the owner's runtime, on start", () => {
   expect(factory).toHaveBeenCalledOnce();
 });
 
-it("preserves standalone effectScope setup, direct instance return and disposal", () => {
+it("C2, C6: preserves standalone effectScope setup, direct instance return and disposal", () => {
   const scope = effectScope();
   scopes.push(scope);
   const result = scope.run(() => {
@@ -238,7 +238,7 @@ it("preserves standalone effectScope setup, direct instance return and disposal"
   expect(result.runtime.webMCP.publicationStatus.state).toBe("disposed");
 });
 
-it("requires a Vue scope and a single-argument constructor", () => {
+it("C7: requires a Vue scope and a single-argument constructor", () => {
   expect(() => useAyme()).toThrow("active Vue effect scope");
   expect(() => usePageObject(Model)).toThrow("active Vue effect scope");
   expectTypeOf(ComplexModel).not.toMatchTypeOf<
@@ -247,7 +247,7 @@ it("requires a Vue scope and a single-argument constructor", () => {
 });
 
 it.each(["provider", "standalone"])(
-  "shares the %s owner's page with descendants without transferring ownership",
+  "C3, C6: shares the %s owner's page with descendants without transferring ownership",
   async (kind) => {
     const visible = ref(true);
     let instance: Model | undefined;
@@ -291,7 +291,9 @@ it.each(["provider", "standalone"])(
   }
 );
 
-it("rejects child page and ignore options and nested providers", () => {
+// C3 for useAyme: the page allows its options error to replace the
+// nested-owner text, because the call is both owner and consumer.
+it("C3: rejects child page and ignore options and nested providers", () => {
   const errors: unknown[] = [];
   const ignore = (element: Element) => element.matches(".assistant");
   const Child = defineComponent({
@@ -322,7 +324,7 @@ it("rejects child page and ignore options and nested providers", () => {
   ]);
 });
 
-it("creates the default page and reports real publication state to consumers", async () => {
+it("C5: creates the default page and reports real publication state to consumers", async () => {
   Object.defineProperty(document, "modelContext", {
     configurable: true,
     value: { registerTool: vi.fn() },
@@ -348,10 +350,9 @@ it("creates the default page and reports real publication state to consumers", a
   await state?.webMCP.retryPublication();
   expect(state?.webMCP.publicationStatus.state).toBe("active");
   app.unmount();
-  Reflect.deleteProperty(document, "modelContext");
 });
 
-it("rejects changing a mounted provider's options", async () => {
+it("C4: rejects changing a mounted provider's options", async () => {
   const errors: unknown[] = [];
   const prefix = ref("ayme_");
   const app = createApp({
@@ -373,4 +374,210 @@ it("rejects changing a mounted provider's options", async () => {
       "The provider options must stay fixed while mounted"
     ),
   ]);
+});
+
+it("C4: changes the options when the provider is remounted", async () => {
+  const errors: unknown[] = [];
+  const mounted = ref(true);
+  const prefix = ref("ayme_");
+  const app = createApp({
+    render: () =>
+      mounted.value
+        ? h(AymeProvider, {
+            pageFactory,
+            webMCP: { enabled: false, toolNamePrefix: prefix.value },
+          })
+        : null,
+  });
+  app.config.errorHandler = (error) => errors.push(error);
+  apps.push(app);
+  app.mount(document.createElement("div"));
+
+  mounted.value = false;
+  await nextTick();
+  prefix.value = "other_";
+  mounted.value = true;
+  await nextTick();
+  expect(errors).toEqual([]);
+  expect(createAyme).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      webMCP: { enabled: false, toolNamePrefix: "other_" },
+    })
+  );
+});
+
+it("C3: rejects a second owner while the first is active", () => {
+  const first = effectScope();
+  scopes.push(first);
+  first.run(() => useAyme({ pageFactory }));
+  const second = effectScope();
+  scopes.push(second);
+  expect(() => second.run(() => useAyme({ pageFactory }))).toThrow(
+    "The Ayme runtime already has an active owner."
+  );
+});
+
+it("C3: accepts a new owner after the first is disposed", () => {
+  const first = effectScope();
+  scopes.push(first);
+  first.run(() => useAyme({ pageFactory }));
+  first.stop();
+  const second = effectScope();
+  scopes.push(second);
+  expect(() => second.run(() => useAyme({ pageFactory }))).not.toThrow();
+});
+
+it("C7: usePageObject without an owner names the owner to add", () => {
+  const scope = effectScope();
+  scopes.push(scope);
+  expect(() => scope.run(() => usePageObject(Model))).toThrow(
+    "requires useAyme() or an AymeProvider"
+  );
+});
+
+it("C8: rejects a Page Object Model the compiler did not reach", () => {
+  class Uncompiled {
+    constructor(readonly page: Page) {}
+  }
+  const scope = effectScope();
+  scopes.push(scope);
+  expect(() =>
+    scope.run(() => {
+      useAyme({ pageFactory });
+      usePageObject(Uncompiled);
+    })
+  ).toThrow("The imported page object has no compiler-derived Ayme metadata.");
+});
+
+it("C5: follows the session's status, and a retry is the session's own", async () => {
+  Object.defineProperty(document, "modelContext", {
+    configurable: true,
+    value: { registerTool: vi.fn() },
+  });
+  const scope = effectScope();
+  scopes.push(scope);
+  const { ayme, webMCP } = scope.run(() =>
+    useAyme({ pageFactory, webMCP: { enabled: true } })
+  )!;
+  expect(webMCP.retryPublication).toBe(ayme.webMCP.retryPublication);
+  await webMCP.retryPublication();
+  expect(webMCP.publicationStatus).toEqual(ayme.webMCP.publicationStatus);
+  expect(webMCP.publicationStatus.state).toBe("active");
+});
+
+it("C2: stops the session when the provider is unmounted", () => {
+  let ayme: ReturnType<typeof useAyme>["ayme"] | undefined;
+  const Child = defineComponent({
+    setup() {
+      ({ ayme } = useAyme());
+      return () => null;
+    },
+  });
+  const app = mount({
+    render: () => h(AymeProvider, { pageFactory }, { default: () => h(Child) }),
+  });
+  expect(ayme?.webMCP.publicationStatus.state).toBe("disabled");
+  app.unmount();
+  expect(ayme?.webMCP.publicationStatus.state).toBe("disposed");
+});
+
+it("C6: keeps a model registered until its last consumer is disposed", async () => {
+  const first = ref(true);
+  const second = ref(true);
+  const Consumer = defineComponent({
+    setup() {
+      usePageObject(Model);
+      return () => null;
+    },
+  });
+  mount({
+    render: () =>
+      h(
+        AymeProvider,
+        { pageFactory },
+        {
+          default: () => [
+            first.value ? h(Consumer, { key: 1 }) : null,
+            second.value ? h(Consumer, { key: 2 }) : null,
+          ],
+        }
+      ),
+  });
+  expect(listRegisteredPoms()).toHaveLength(1);
+  first.value = false;
+  await nextTick();
+  expect(listRegisteredPoms()).toHaveLength(1);
+  second.value = false;
+  await nextTick();
+  expect(listRegisteredPoms()).toHaveLength(0);
+});
+
+class FakeMutationObserver {
+  observe() {}
+  disconnect() {}
+}
+
+async function flushPromises() {
+  for (let index = 0; index < 8; index += 1) await Promise.resolve();
+}
+
+it("C5: keeps a real publisher startup failure retryable", async () => {
+  vi.stubGlobal("MutationObserver", FakeMutationObserver);
+
+  let resolveInitialRegistration = () => {};
+  let failRegistration = true;
+  const registerTool = vi.fn(() => {
+    if (registerTool.mock.calls.length === 1)
+      return new Promise<void>((resolve) => {
+        resolveInitialRegistration = resolve;
+      });
+    if (failRegistration) throw new Error("synchronous registration failed");
+  });
+  Object.defineProperty(document, "modelContext", {
+    configurable: true,
+    value: { registerTool },
+  });
+
+  class IntegrationPage {
+    run() {}
+  }
+  registerCompiledPom(IntegrationPage, {
+    className: "IntegrationPage",
+    components: [],
+    members: [],
+    tools: [
+      {
+        methodName: "run",
+        toolName: "run",
+        description: "Run",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          required: [],
+          additionalProperties: false,
+        },
+        parameters: [],
+      },
+    ],
+  });
+
+  const scope = effectScope();
+  scopes.push(scope);
+  const result = scope.run(() =>
+    useAyme({ pageFactory, webMCP: { enabled: true } })
+  );
+  await flushPromises();
+
+  resolveInitialRegistration();
+  queueMicrotask(() => result?.ayme.pom.register(IntegrationPage));
+  await flushPromises();
+
+  expect(result?.webMCP.publicationStatus).toEqual({
+    state: "failed",
+    message: "WebMCP publication failed: synchronous registration failed",
+  });
+
+  failRegistration = false;
+  await result?.webMCP.retryPublication();
+  expect(result?.webMCP.publicationStatus.state).toBe("active");
 });
