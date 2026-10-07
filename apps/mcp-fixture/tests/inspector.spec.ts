@@ -37,7 +37,7 @@ test("an App Process's Peek tool shows in the Inspector's Node section while it 
   const run = inspector.runs.latest(TOOL);
   await expect.poll(() => run.status()).toBe("Succeeded");
   expect(await run.caller()).toEqual({ icon: "Run by you from the Inspector" });
-  expect(await run.steps.count()).toBe(0);
+  expect(await run.interactions.count()).toBe(0);
   expect(JSON.parse((await run.resultText()) ?? "")).toEqual({
     name: "jobs",
     instances: [{ values: { value: "server" } }],
