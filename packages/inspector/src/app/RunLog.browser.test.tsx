@@ -54,7 +54,6 @@ const save: RegisteredPomTool = {
   description: "Save the editor.",
   inputSchema: { type: "object" },
   parameters: [],
-  execute: vi.fn(),
 };
 const editor: RegisteredPom = {
   id: "Editor",

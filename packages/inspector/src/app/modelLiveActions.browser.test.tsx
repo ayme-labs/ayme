@@ -57,7 +57,6 @@ const save: RegisteredPomTool & { componentPath: string } = {
   description: "Save the document.",
   inputSchema: noArguments,
   parameters: [],
-  execute: async () => null,
 };
 
 /** The editor, with its toolbar on the page or not. */
