@@ -57,16 +57,24 @@ export const exampleTest = base.extend<{ ignoreAutoPairScan: void }>({
 /**
  * `exampleTest`, failing any test whose page throws, logs a console error
  * or warns about hydration. An example's own specs use it too. It ignores
- * the auto-pair scan's refused probes (`isRefusedAutoPairProbe`).
+ * the auto-pair scan's refused probes (`isRefusedAutoPairProbe`). A
+ * framework that logs hydration statistics in development, such as Angular,
+ * names them in the `hydrationStatistics` option (`test.use`) so they are not
+ * counted as a warning.
  */
-export const test = exampleTest.extend<{ failOnPageErrors: void }>({
+export const test = exampleTest.extend<{
+  failOnPageErrors: void;
+  hydrationStatistics: RegExp | undefined;
+}>({
+  hydrationStatistics: [undefined, { option: true }],
   failOnPageErrors: [
-    async ({ page }, use) => {
+    async ({ page, hydrationStatistics }, use) => {
       const errors: string[] = [];
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("console", (message) => {
         const text = message.text();
         if (isRefusedAutoPairProbe(text)) return;
+        if (hydrationStatistics?.test(text)) return;
         if (message.type() === "error" || /hydrat/i.test(text))
           errors.push(text);
       });

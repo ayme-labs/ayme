@@ -2,9 +2,11 @@
 import { ref } from "vue";
 import { usePageObject } from "@ayme-dev/vue";
 import { CounterPage } from "../../playwright/pom/CounterPage";
+import { SubCounterPage } from "../../playwright/pom/SubCounterPage";
 
 const count = ref(0);
 const pom = usePageObject(CounterPage);
+usePageObject(SubCounterPage);
 </script>
 
 <template>
