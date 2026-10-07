@@ -8,6 +8,7 @@ export type {
 } from "./application/serverTool";
 export type { ToolResult } from "./domain/toolResult";
 export { createMcpToolServer } from "./infrastructure/mcpToolServer";
+export { saveToScreenshotFolder } from "./infrastructure/screenshotFolder";
 export {
   answerToolCalls,
   publishPageTools,

@@ -55,6 +55,23 @@ export const ToolCallOutcomeSchema = z.discriminatedUnion("ok", [
 export type ToolCallOutcome = z.infer<typeof ToolCallOutcomeSchema>;
 
 /**
+ * A tool's result the agent gets as an image, such as a screenshot's: what it
+ * shows, a bare file name for it, its format, its size in pixels and its
+ * base64-encoded bytes. The server also writes it to a file under that name.
+ * `@ayme-dev/ayme`'s `ImageResult` type has the same shape.
+ */
+export const ImageResultSchema = z.object({
+  type: z.literal("image"),
+  subject: z.string(),
+  filename: z.string().check(z.minLength(1)),
+  mimeType: z.enum(["image/png", "image/jpeg"]),
+  width: z.number(),
+  height: z.number(),
+  data: z.string(),
+});
+export type ImageResult = z.infer<typeof ImageResultSchema>;
+
+/**
  * The page asks the server to run one of the App Processes' tools, as its
  * Inspector does. The server sends the call to the App Process that offers
  * it, and answers with that process's outcome. The server sends the page
