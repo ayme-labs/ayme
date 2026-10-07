@@ -54,6 +54,8 @@ Both take the [`createAyme` options](../reference/ayme.md#createayme); on the pr
 
 One owner runs Ayme for the document: a provider or a standalone `useAyme(options?)`. A second active owner is rejected, including a provider nested in another. Only the owner disposes the session.
 
+Put the owner at the application root, not in a route component or a layout that unmounts on navigation. Unmounting the owner stops Ayme, which ends its publication and agent connection, so a tool call whose action navigates away from that component can lose its answer.
+
 | Call                                      | Behavior                                                              |
 | ----------------------------------------- | --------------------------------------------------------------------- |
 | `useAyme()` beneath an owner              | Returns its `{ ayme, webMCP }`; starts and disposes nothing.          |

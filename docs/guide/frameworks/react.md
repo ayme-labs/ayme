@@ -50,6 +50,8 @@ The provider takes the [`createAyme` options](../reference/ayme.md#createayme) a
 
 The props must stay fixed while the provider is mounted; remount the provider and its consumers to change them. One owner may be active: nested providers and concurrent owners are rejected. Unmounting the provider stops publication and observation. React's Strict Mode cleanup and setup replay keeps the Page and the instances.
 
+Wrap the application root, not a route component or a layout that unmounts on navigation. Unmounting the provider stops Ayme, which ends its publication and agent connection, so a tool call whose action navigates away from that component can lose its answer.
+
 ## Hooks
 
 Call the hooks in descendants of the provider:
