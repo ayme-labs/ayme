@@ -63,7 +63,7 @@ Runs take turns: the page runs one at a time, in the order they were started, wh
 
 ## ayme.runs
 
-`ayme.runs` (`AymeRuns`) is the document's Run log: the Runs started through `ayme.tools.run`, by any Caller, each listed once its turn starts.
+`ayme.runs` (`AymeRuns`) is the document's Run log: the Runs started through `ayme.tools.run`, by any Caller, each listed once its turn starts. An App Process tool the Inspector runs from the page is listed too, as an `"inspector"` Run; it acts on no page, so it takes no turn.
 
 | Member                | Behavior                                                                                                                                              |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |

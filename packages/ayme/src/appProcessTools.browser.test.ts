@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 
 import { createPage } from "./browserPage";
+import { callers } from "./run";
 import { createAyme, getAppProcessTools, type AymeOptions } from "./runtime";
 
 // Runtime seam: the tools of the App Processes paired beside the page, as
@@ -98,6 +99,35 @@ it("runs an App Process's tool through the page client", async () => {
 
   expect(result).toEqual({ name: "jobs", instances: [] });
   expect(client.run).toHaveBeenCalledExactlyOnceWith("peek.node.jobs", {});
+});
+
+it("records a run from the page as a Run in the page's log, for the Caller that names itself", async () => {
+  const ayme = started();
+  client.run.mockResolvedValue({ name: "jobs", instances: [] });
+  client.set([jobs]);
+  const processTools = getAppProcessTools(ayme);
+  await vi.waitFor(() => expect(processTools.list()).toHaveLength(1));
+  const before = new Set(ayme.runs.list().map((run) => run.id));
+
+  await processTools.run("peek.node.jobs", {}, { by: callers.inspector });
+  client.run.mockRejectedValue(new Error("The App Process went away."));
+  await processTools.run("peek.node.jobs", {}).catch(() => {});
+
+  expect(ayme.runs.list().filter((run) => !before.has(run.id))).toEqual([
+    expect.objectContaining({
+      tool: "peek.node.jobs",
+      input: {},
+      by: callers.inspector,
+      status: "succeeded",
+      result: { name: "jobs", instances: [] },
+    }),
+    expect.objectContaining({
+      tool: "peek.node.jobs",
+      by: callers.app,
+      status: "failed",
+      error: "The App Process went away.",
+    }),
+  ]);
 });
 
 it("lists none once the session stops, and announces it", async () => {

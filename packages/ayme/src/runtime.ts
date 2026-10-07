@@ -115,8 +115,8 @@ export type Ayme = {
   readonly tools: AymeTools;
   /**
    * The document's Run log: the newest 200 top-level Runs started through
-   * `tools.run`, by any Caller, oldest first. A new document starts an
-   * empty one.
+   * `tools.run`, by any Caller, and the App Process tools run from the
+   * page, oldest first. A new document starts an empty one.
    */
   readonly runs: AymeRuns;
   readonly pom: AymePom;
@@ -287,10 +287,13 @@ export type AppProcessTools = {
   /** Calls `listener` with the new list after each change. */
   subscribe(listener: (tools: readonly AppProcessTool[]) => void): () => void;
   /**
-   * Runs one in its App Process, through the agent's Ayme MCP server.
-   * Throws its error, or when no server is paired.
+   * Runs one in its App Process, through the agent's Ayme MCP server, and
+   * records it as a Run in the page's Run log for the Caller `by` names,
+   * `"app"` by default. It acts on no page, so it takes no turn on the
+   * page's queue and has no Interactions. Throws its error, or when no
+   * server is paired.
    */
-  run(name: string, input: unknown): Promise<unknown>;
+  run(name: string, input: unknown, options?: ToolRunOptions): Promise<unknown>;
 };
 
 const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
@@ -322,12 +325,14 @@ function createAppProcessTools() {
         listeners.delete(listener);
       };
     },
-    async run(name, input) {
-      if (!followed)
+    async run(name, input, options) {
+      const by = callerOf(options);
+      const paired = followed;
+      if (!paired)
         throw new RuntimeStateError(
           "No Ayme MCP server is paired with this page."
         );
-      return followed.run(name, input);
+      return runLog.record(name, input, by, () => paired.run(name, input));
     },
   };
   return {
