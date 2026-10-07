@@ -1,4 +1,9 @@
-import type { CollectionItem, Run, RunStep } from "../domain/run";
+import type {
+  ChildRun,
+  CollectionItem,
+  Run,
+  RunInteraction,
+} from "../domain/run";
 
 // Hand-written runs for tests. Each builder fills what a test doesn't care
 // about and derives what follows from its inputs, so a test states only
@@ -28,13 +33,23 @@ export function aRun(fields: Partial<Run> = {}): Run {
     status,
     startedAt: 0,
     ...(status === "running" ? {} : { durationMs: 5 }),
-    steps: [],
+    interactions: [],
+    children: [],
     ...fields,
   };
 }
 
+/** A settled child run, as `aRun` builds one, which names no Caller. */
+export function aChildRun(fields: Partial<ChildRun> = {}): ChildRun {
+  const run: Partial<Run> = aRun(fields);
+  delete run.by;
+  return run as ChildRun;
+}
+
 /** A click on a button. */
-export function aStep(fields: Partial<RunStep> = {}): RunStep {
+export function anInteraction(
+  fields: Partial<RunInteraction> = {}
+): RunInteraction {
   return { operation: "click", locator: "getByRole('button')", ...fields };
 }
 

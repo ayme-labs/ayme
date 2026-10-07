@@ -22,8 +22,7 @@ import {
 } from "../domain/logRuns";
 import type { CollectionItem, Run, ToolArguments } from "../domain/run";
 import { decodeRuns, encodeRuns, runsKey } from "../domain/storedRuns";
-import { describeSteps } from "./runSteps";
-import { getInspectorTrace, resetInspectorTrace } from "./trace";
+import { interactionMembers } from "./interactionMembers";
 
 /** The key of when Runs was last cleared in the tab's storage. */
 const clearedKey = "ayme-inspector:runs-cleared";
@@ -40,18 +39,16 @@ type PendingRun = {
   /** Its input as JSON, which tells it from another run of the tool. */
   input: string;
   item?: CollectionItem;
-  /** An App Process's tool, which acts on no page and has no steps. */
-  appProcess: boolean;
   /** The log Run it became, by row id, once listed. */
   rowId?: string;
 };
 
 /**
  * Runs as the panel shows them, newest first: the page's Run log, every
- * Caller's Runs, with the steps of the runs made from the panel, from the
- * Inspector's own trace. The rows shown are kept for the tab, so a reload
- * still shows them, as earlier page rows. `invoke` runs a tool as the
- * Inspector.
+ * Caller's Runs with the Runs they started nested under them, and each
+ * Run's Interactions, named by the member they acted on once it ends. The
+ * rows shown are kept for the tab, so a reload still shows them, as earlier
+ * page rows. `invoke` runs a tool as the Inspector.
  */
 export function useRuns({ onSettled }: { onSettled: () => void }) {
   const [stored, setStored] = useTabState(runsKey, decodeRuns, encodeRuns);
@@ -66,8 +63,6 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
   const pending = useRef<PendingRun[]>([]);
 
   useEffect(() => {
-    // The panel's runs by row id, until their steps are described.
-    const panelRuns = new Map<string, PendingRun>();
     const note = (rowId: string, notes: RunNotes) =>
       setLog((current) => ({
         ...current,
@@ -89,15 +84,13 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
       );
       if (!panelRun) return {};
       panelRun.rowId = rowId;
-      panelRuns.set(rowId, panelRun);
-      // The trace holds one run's steps: it's reset as each run's turn
-      // starts. An App Process's tool takes no turn, so it leaves it.
-      if (!panelRun.appProcess) resetInspectorTrace();
       return panelRun.item ? { item: panelRun.item } : {};
     };
 
-    // The Runs seen so far, by row id.
+    // The Runs seen so far, and the ended Runs whose Interactions have
+    // been named, by row id.
     const seen = new Set<string>();
+    const described = new Set<string>();
     const read = (runs: readonly LogRun[]) => {
       const fresh = new Map<string, RunNotes>();
       for (const run of runs) {
@@ -115,14 +108,11 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
       });
       for (const run of runs) {
         const rowId = rowIdOf(run);
-        const panelRun = panelRuns.get(rowId);
-        if (!panelRun || run.status === "running") continue;
-        panelRuns.delete(rowId);
-        if (panelRun.appProcess) continue;
-        // The trace now holds the run's steps: it was reset as the run's
-        // turn started, and the next turn starts after this one ends.
-        void describeSteps(getInspectorTrace()).then((steps) =>
-          note(rowId, { steps })
+        if (run.status === "running" || described.has(rowId)) continue;
+        described.add(rowId);
+        if (!run.interactions.length) continue;
+        void interactionMembers(run.interactions).then((members) =>
+          note(rowId, { members })
         );
       }
     };
@@ -165,7 +155,6 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
         toolName,
         input: JSON.stringify(args),
         ...(item ? { item } : {}),
-        appProcess,
       };
       pending.current.push(panelRun);
       const by = { by: callers.inspector };
@@ -190,7 +179,8 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
               error: errorText(error),
               startedAt,
               durationMs: Date.now() - startedAt,
-              steps: [],
+              interactions: [],
+              children: [],
             },
             ...current,
           ]);
@@ -206,7 +196,6 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
     setClearedAt(Date.now());
     setEarlier([]);
     setUnlogged([]);
-    resetInspectorTrace();
   }, [setClearedAt]);
 
   return { runs, invoke, clear };

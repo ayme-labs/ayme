@@ -12,7 +12,7 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
-import type { CollectionItem, Run } from "../../runs";
+import type { ChildRun, CollectionItem, Run } from "../../runs";
 import type { Field } from "../domain/fields";
 import type { RunnableTool } from "../domain/runnableTools";
 
@@ -286,6 +286,14 @@ export function JsonEditor({
   );
 }
 
+/** The Interactions a run and the runs nested under it performed. */
+function interactionCount(run: ChildRun): number {
+  return run.children.reduce(
+    (count, child) => count + interactionCount(child),
+    run.interactions.length
+  );
+}
+
 const statusStyle = {
   running: "bg-muted text-muted-foreground",
   succeeded: "bg-success/10 text-success",
@@ -293,8 +301,9 @@ const statusStyle = {
 } as const;
 
 /**
- * The last run's status, its duration, and its error. Its result shows in
- * Runs, which the link opens.
+ * The last run's status, its duration, how many Interactions it and the
+ * runs nested under it performed, and its error. Its result shows in Runs,
+ * which the link opens.
  */
 function LastResult({
   run,
@@ -305,7 +314,8 @@ function LastResult({
   lastSuccess: Run | undefined;
   onShowRun: (runId: string) => void;
 }) {
-  const steps = `${run.steps.length} ${run.steps.length === 1 ? "step" : "steps"}`;
+  const count = interactionCount(run);
+  const interactions = `${count} ${count === 1 ? "interaction" : "interactions"}`;
   // A run interrupted by a reload has no known duration.
   const duration =
     run.durationMs === undefined ? "" : ` · ${run.durationMs} ms`;
@@ -313,7 +323,7 @@ function LastResult({
     run.status === "running"
       ? "Running…"
       : run.status === "succeeded"
-        ? `Succeeded${duration} · ${steps}`
+        ? `Succeeded${duration} · ${interactions}`
         : `Failed${duration}`;
   return (
     <div

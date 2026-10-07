@@ -1,4 +1,10 @@
-import type { CollectionItem, Run, RunStep, ToolArguments } from "./run";
+import type {
+  ChildRun,
+  CollectionItem,
+  Run,
+  RunInteraction,
+  ToolArguments,
+} from "./run";
 
 /** The key of the run history in the tab's storage. */
 export const runsKey = "ayme-inspector:runs";
@@ -28,33 +34,44 @@ export function decodeRuns(stored: unknown): Run[] {
 }
 
 function decodeRun(stored: unknown): Run | undefined {
+  if (!isRecord(stored) || typeof stored.by !== "string" || stored.by === "")
+    return undefined;
+  const run = decodeChildRun(stored);
+  return run && { ...run, by: stored.by, earlierDocument: true };
+}
+
+/**
+ * A run and the runs nested under it, as kept. One still running failed
+ * with the reload.
+ */
+function decodeChildRun(stored: unknown): ChildRun | undefined {
   if (
     !isRecord(stored) ||
     typeof stored.id !== "string" ||
     typeof stored.toolName !== "string" ||
-    typeof stored.by !== "string" ||
-    stored.by === "" ||
     typeof stored.startedAt !== "number" ||
     !isRecord(stored.arguments) ||
-    !Array.isArray(stored.steps) ||
-    !stored.steps.every(isStep)
+    !Array.isArray(stored.interactions) ||
+    !stored.interactions.every(isInteraction) ||
+    !Array.isArray(stored.children)
   )
     return undefined;
   const status = stored.status;
   if (status !== "running" && status !== "succeeded" && status !== "failed")
     return undefined;
+  const children = stored.children.map(decodeChildRun);
+  if (!children.every((child) => child !== undefined)) return undefined;
 
   return {
     id: stored.id,
     toolName: stored.toolName,
-    by: stored.by,
     ...text("className", stored.className),
     ...text("objectPath", stored.objectPath),
     ...(isItem(stored.item) ? { item: stored.item } : {}),
     arguments: stored.arguments as ToolArguments,
     startedAt: stored.startedAt,
-    steps: stored.steps,
-    earlierDocument: true,
+    interactions: stored.interactions,
+    children,
     ...(status === "running"
       ? { status: "failed", error: reloadedError }
       : {
@@ -68,7 +85,7 @@ function decodeRun(stored: unknown): Run | undefined {
   };
 }
 
-function isStep(value: unknown): value is RunStep {
+function isInteraction(value: unknown): value is RunInteraction {
   return (
     isRecord(value) &&
     typeof value.operation === "string" &&

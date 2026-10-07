@@ -95,6 +95,7 @@ beforeEach(() => {
     [...host.querySelectorAll("[data-path]")].map((target) => ({
       path: target.getAttribute("data-path")!,
       element: target,
+      locator: `locator('[data-path="${target.getAttribute("data-path")}"]')`,
     }))
   );
   vi.mocked(lookAtPageStateForDocument).mockImplementation(

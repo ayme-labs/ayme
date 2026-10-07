@@ -3,11 +3,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import { createAyme, type AymePage } from "@ayme-dev/ayme";
 import { capturePageState, registerCompiledPom } from "@ayme-dev/ayme/internal";
 
-import {
-  getInspectorTrace,
-  installInspectorInstrumentation,
-  mountInspector,
-} from "./index";
+import { installInspectorInstrumentation, mountInspector } from "./index";
 import { inspectorShadowRoot } from "./shared";
 
 const disposals: (() => void)[] = [];
@@ -17,9 +13,21 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
+/**
+ * Demo mode's pause before each action, less a margin for the timer firing
+ * early.
+ */
+const PAUSED = 450;
+
+/** How long a key press on `page` takes, which demo mode pauses before. */
+async function pressTime(page: AymePage) {
+  const started = performance.now();
+  await page.keyboard.press("Enter");
+  return performance.now() - started;
+}
+
 it("instruments a supplied Page before constructing the first Page Object", async () => {
-  document.body.innerHTML = "<button>Run</button>";
-  disposals.push(installInspectorInstrumentation());
+  disposals.push(installInspectorInstrumentation({ demo: true }));
   const suppliedPage = createPage();
   class Model {
     constructor(readonly page: AymePage) {}
@@ -33,22 +41,12 @@ it("instruments a supplied Page before constructing the first Page Object", asyn
 
   const runtime = createAyme({ pageFactory: () => suppliedPage });
   const instance = runtime.pom.get(Model);
-  await instance.page
-    .getByRole("button", { name: "Run" })
-    .waitFor({ state: "attached" });
 
-  expect(getInspectorTrace()).toEqual([
-    {
-      operation: "waitFor",
-      locator: "getByRole('button', { name: 'Run' })",
-      state: "attached",
-    },
-  ]);
+  expect(await pressTime(instance.page)).toBeGreaterThanOrEqual(PAUSED);
 });
 
 it("instruments the default Page before constructing the first Page Object", async () => {
-  document.body.innerHTML = "<button>Default</button>";
-  disposals.push(installInspectorInstrumentation());
+  disposals.push(installInspectorInstrumentation({ demo: true }));
   class DefaultModel {
     constructor(readonly page: AymePage) {}
   }
@@ -61,16 +59,12 @@ it("instruments the default Page before constructing the first Page Object", asy
 
   const runtime = createAyme();
   const instance = runtime.pom.get(DefaultModel);
-  await instance.page
-    .getByRole("button", { name: "Default" })
-    .waitFor({ state: "attached" });
 
-  expect(getInspectorTrace()).toHaveLength(1);
+  expect(await pressTime(instance.page)).toBeGreaterThanOrEqual(PAUSED);
 });
 
-it("stops tracing during disposal and resumes once after remount", async () => {
-  document.body.innerHTML = "<button>Stop</button>";
-  const dispose = installInspectorInstrumentation();
+it("stops pacing during disposal and resumes once after remount", async () => {
+  const dispose = installInspectorInstrumentation({ demo: true });
   disposals.push(dispose);
   class DisposableModel {
     constructor(readonly page: AymePage) {}
@@ -82,26 +76,16 @@ it("stops tracing during disposal and resumes once after remount", async () => {
     tools: [],
   });
   const instance = createAyme().pom.get(DisposableModel);
-
-  await instance.page
-    .getByRole("button", { name: "Stop" })
-    .waitFor({ state: "attached" });
-  expect(getInspectorTrace()).toHaveLength(1);
+  expect(await pressTime(instance.page)).toBeGreaterThanOrEqual(PAUSED);
 
   dispose();
-  await instance.page
-    .getByRole("button", { name: "Stop" })
-    .waitFor({ state: "attached" });
+  expect(await pressTime(instance.page)).toBeLessThan(PAUSED);
 
-  expect(getInspectorTrace()).toHaveLength(1);
-
-  const remountDispose = installInspectorInstrumentation();
-  disposals.push(remountDispose);
-  await instance.page
-    .getByRole("button", { name: "Stop" })
-    .waitFor({ state: "attached" });
-
-  expect(getInspectorTrace()).toHaveLength(1);
+  disposals.push(installInspectorInstrumentation({ demo: true }));
+  const remounted = await pressTime(instance.page);
+  expect(remounted).toBeGreaterThanOrEqual(PAUSED);
+  // Once: a second wrapper would pause again.
+  expect(remounted).toBeLessThan(2 * PAUSED);
 });
 
 it("mounts one Inspector in a closed Shadow Root and supports disposal and remount", async () => {

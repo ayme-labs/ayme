@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 
 import { indexMembers } from "../../page-model";
 import { collection, page } from "../../page-model/test-utils/pageModel";
-import { anItem, aRun, aStep } from "../test-utils/runs";
+import { aChildRun, anInteraction, anItem, aRun } from "../test-utils/runs";
 import { runScope as scopeOf } from "./runScope";
 
 // Unit tests: which runs Runs shows for the selection. The runs are one on
@@ -61,13 +61,13 @@ it("shows the runs on a Page Object and on the objects inside it", () => {
   expect(shown(otherItem)).toEqual([]);
 });
 
-it("shows the runs on a member, or whose steps acted on it", () => {
-  const withStep = aRun({
+it("shows the runs on a member, or whose Interactions acted on it", () => {
+  const withInteraction = aRun({
     id: "3",
-    steps: [aStep({ member: "ListPage.addItemButton" })],
+    interactions: [anInteraction({ member: "ListPage.addItemButton" })],
   });
   const onMember = (path: string) =>
-    [archiveMilk, addItem, withStep]
+    [archiveMilk, addItem, withInteraction]
       .filter(runScope({ kind: "member", path }, memberOf).includes)
       .map((shownRun) => shownRun.id);
 
@@ -117,6 +117,46 @@ it("leaves a run from before the page loaded off a node its old refs named", () 
   expect(
     runScope({ kind: "node", ref: "e10" }, memberOf).includes(archiveMilkBefore)
   ).toBe(true);
+});
+
+it("shows a tree of runs when a run nested in it belongs to the selection", () => {
+  const goal = aRun({
+    id: "4",
+    toolName: "goal",
+    children: [
+      aChildRun({
+        toolName: "fill",
+        children: [
+          aChildRun({
+            interactions: [anInteraction({ member: "ListPage.addItemButton" })],
+          }),
+        ],
+      }),
+    ],
+  });
+  const shownOf = (selection: Parameters<typeof runScope>[0]) =>
+    [goal, addItem]
+      .filter(runScope(selection, memberOf).includes)
+      .map((shownRun) => shownRun.id);
+
+  expect(shownOf({ kind: "tool", name: "fill" })).toEqual(["4"]);
+  expect(shownOf({ kind: "tool", name: "goal" })).toEqual(["4"]);
+  expect(shownOf({ kind: "member", path: "ListPage.addItemButton" })).toEqual([
+    "4",
+  ]);
+  expect(shownOf({ kind: "tool", name: "click" })).toEqual([]);
+});
+
+it("leaves a run nested in a tree from before the page loaded off a node its old refs named", () => {
+  const goal = aRun({
+    toolName: "goal",
+    earlierDocument: true,
+    children: [aChildRun({ toolName: "fill", arguments: { target: "e12" } })],
+  });
+
+  expect(runScope({ kind: "node", ref: "e12" }, memberOf).includes(goal)).toBe(
+    false
+  );
 });
 
 it("shows a tool's runs", () => {

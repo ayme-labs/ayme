@@ -28,7 +28,6 @@ async function cuesOf(act: (page: Page) => Promise<unknown>) {
   observer.observe(document.body, { childList: true });
   const page = withDemoFeedback(createPage() as unknown as Page, {
     clickCue: true,
-    onTrace() {},
   });
   try {
     await act(page);

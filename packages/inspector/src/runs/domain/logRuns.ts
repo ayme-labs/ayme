@@ -1,6 +1,12 @@
 import type { Run as LogRun, callers } from "@ayme-dev/ayme";
 
-import type { CollectionItem, Run, RunStep, ToolArguments } from "./run";
+import type {
+  ChildRun,
+  CollectionItem,
+  Run,
+  RunInteraction,
+  ToolArguments,
+} from "./run";
 
 /** The Caller the panel's own runs name, as `callers` exports it. */
 export const inspectorCaller: (typeof callers)["inspector"] = "inspector";
@@ -15,13 +21,13 @@ export type RunTarget = { className: string; objectPath: string };
 
 /**
  * What the panel knows of a Run beyond the log: the Page Object its tool
- * was on when the panel first saw it and, for a run made from the panel,
- * the item it ran on and the steps it performed.
+ * was on when the panel first saw it, the item a run made from the panel
+ * ran on, and the member each of its Interactions acted on, by place.
  */
 export type RunNotes = {
   target?: RunTarget;
   item?: CollectionItem;
-  steps?: readonly RunStep[];
+  members?: readonly (string | undefined)[];
 };
 
 /**
@@ -35,12 +41,20 @@ export function rowIdOf(run: Pick<LogRun, "id" | "startedAt">): string {
 /** A top-level Run: one a Caller started, not a tool. */
 type TopLevelRun = Extract<LogRun, { by: unknown }>;
 
-/** A top-level Run from the log as Runs shows it. */
-function rowOf(run: TopLevelRun, notes: RunNotes): Run {
+/** The panel's notes on a Run, by its row id. */
+type Notes = (rowId: string) => RunNotes;
+
+/** A Run from the log as Runs shows it, with the Runs it started. */
+function nodeOf(
+  run: LogRun,
+  notesOf: Notes,
+  childrenOf: ReadonlyMap<string, readonly LogRun[]>
+): ChildRun {
+  const id = rowIdOf(run);
+  const notes = notesOf(id);
   return {
-    id: rowIdOf(run),
+    id,
     toolName: run.tool,
-    by: run.by,
     ...notes.target,
     ...(notes.item ? { item: notes.item, objectPath: notes.item.path } : {}),
     arguments: isArguments(run.input) ? run.input : {},
@@ -53,16 +67,25 @@ function rowOf(run: TopLevelRun, notes: RunNotes): Run {
     ...(run.durationMs === undefined
       ? {}
       : { durationMs: Math.round(run.durationMs) }),
-    steps: notes.steps ?? [],
+    interactions: run.interactions.map((interaction, index) => {
+      const member = notes.members?.[index];
+      return member === undefined
+        ? { ...interaction }
+        : { ...interaction, member };
+    }),
+    children: (childrenOf.get(run.id) ?? []).map((child) =>
+      nodeOf(child, notesOf, childrenOf)
+    ),
   };
 }
 
 /**
  * The rows Runs shows, newest first: the log's top-level Runs that started
- * after the panel was last cleared (child Runs are not shown yet), with the panel's failed runs that never
- * reached the log, then the rows kept from earlier pages. A kept row that
- * is still in the log, as when the panel mounts again on the same page,
- * shows as the log's, with the notes it was kept with.
+ * after the panel was last cleared, each with the Runs it started nested
+ * under it, with the panel's failed runs that never reached the log, then
+ * the rows kept from earlier pages. A kept row that is still in the log, as
+ * when the panel mounts again on the same page, shows as the log's, with
+ * the notes it was kept with.
  */
 export function shownRuns({
   log,
@@ -82,19 +105,27 @@ export function shownRuns({
   clearedAt: number;
 }): Run[] {
   const kept = new Map(earlier.map((run) => [run.id, run]));
+  const keptNotes = new Map<string, RunNotes>();
+  const childrenOf = new Map<string, LogRun[]>();
+  for (const run of log)
+    if (run.parent !== undefined)
+      childrenOf.set(run.parent, [...(childrenOf.get(run.parent) ?? []), run]);
+  const notesOf: Notes = (rowId) => ({
+    ...keptNotes.get(rowId),
+    ...notes.get(rowId),
+  });
   const live = log
     .filter(
       (run): run is TopLevelRun =>
         run.parent === undefined && run.startedAt > clearedAt
     )
-    .map((run) => {
-      const id = rowIdOf(run);
-      const keptRun = kept.get(id);
-      kept.delete(id);
-      return rowOf(run, {
-        ...(keptRun && notesOf(keptRun)),
-        ...notes.get(id),
-      });
+    .map((run): Run => {
+      const keptRun = kept.get(rowIdOf(run));
+      if (keptRun) {
+        kept.delete(keptRun.id);
+        noteTree(keptRun, keptNotes);
+      }
+      return { ...nodeOf(run, notesOf, childrenOf), by: run.by };
     })
     .reverse();
   const current = [...live, ...unlogged].sort(
@@ -103,15 +134,19 @@ export function shownRuns({
   return [...current, ...earlier.filter((run) => kept.has(run.id))];
 }
 
-/** The notes a kept row was kept with. */
-function notesOf({ className, objectPath, item, steps }: Run): RunNotes {
-  return {
+/** The notes a kept row and the rows nested in it were kept with. */
+function noteTree(
+  { id, className, objectPath, item, interactions, children }: ChildRun,
+  notes: Map<string, RunNotes>
+) {
+  notes.set(id, {
     ...(className !== undefined && objectPath !== undefined
       ? { target: { className, objectPath } }
       : {}),
     ...(item ? { item } : {}),
-    steps,
-  };
+    members: interactions.map(({ member }: RunInteraction) => member),
+  });
+  for (const child of children) noteTree(child, notes);
 }
 
 function isArguments(input: LogRun["input"]): input is ToolArguments {

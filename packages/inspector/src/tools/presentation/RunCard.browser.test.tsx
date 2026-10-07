@@ -4,7 +4,12 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../structure/test-utils/projected";
 import { buildStructureTree } from "../../structure";
-import { anItem, aRun, aStep } from "../../runs/test-utils/runs";
+import {
+  aChildRun,
+  anInteraction,
+  anItem,
+  aRun,
+} from "../../runs/test-utils/runs";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
 import { RunCard, type RunCardProps } from "./RunCard";
@@ -469,21 +474,22 @@ describe("a collection action", () => {
 });
 
 describe("the last result", () => {
-  it("shows a success's duration and steps, leaving its result to Runs", async () => {
+  it("shows a success's duration and Interactions, its child runs' too, leaving its result to Runs", async () => {
     const { card } = renderCard({
       tool: addItem,
       runs: [
         aRun({
           durationMs: 320,
           result: '{ "added": "Milk" }',
-          steps: [aStep(), aStep()],
+          interactions: [anInteraction()],
+          children: [aChildRun({ interactions: [anInteraction()] })],
         }),
       ],
     });
 
     await expect
       .poll(() => card.lastResult.textContent())
-      .toContain("Succeeded · 320 ms · 2 steps");
+      .toContain("Succeeded · 320 ms · 2 interactions");
     expect(await card.lastResult.getByRole("button").count()).toBe(1);
   });
 

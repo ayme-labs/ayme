@@ -2,7 +2,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { anItem, aRun, aStep } from "../test-utils/runs";
+import { aChildRun, anInteraction, anItem, aRun } from "../test-utils/runs";
 import { RunsRegion } from "../../panel";
 import { renderPart } from "../../testing/renderPart";
 import { RunsView } from "../../testing";
@@ -22,12 +22,12 @@ afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
 });
 
-const fillText = aStep({
+const fillText = anInteraction({
   operation: "fill",
   locator: "getByRole('textbox', { name: 'New item' })",
   value: "Milk",
 });
-const clickAdd = aStep({
+const clickAdd = anInteraction({
   locator: "getByRole('button', { name: 'Add item' })",
   member: "ListPage.addItemButton",
 });
@@ -36,7 +36,7 @@ const addMilk = aRun({
   id: "1",
   arguments: { text: "Milk" },
   durationMs: 320,
-  steps: [fillText, clickAdd],
+  interactions: [fillText, clickAdd],
 });
 const archiveGone = aRun({
   toolName: "ListPage.items.archive",
@@ -166,12 +166,12 @@ describe("Runs", () => {
     });
   });
 
-  it("shows each run's steps, by member where it's known", async () => {
+  it("shows each run's Interactions, by member where it's known", async () => {
     renderRuns();
     const run = runsView.latest("ListPage.addItem");
 
     await expect.poll(() => run.status()).toBe("Succeeded");
-    expect(await run.stepList()).toEqual([
+    expect(await run.interactionList()).toEqual([
       {
         operation: "fill",
         target: "getByRole('textbox', { name: 'New item' })",
@@ -179,6 +179,64 @@ describe("Runs", () => {
       },
       { operation: "click", target: "ListPage.addItemButton" },
     ]);
+  });
+
+  it("nests the runs a run started under it, each with its own Interactions", async () => {
+    renderRuns({
+      runs: [
+        aRun({
+          toolName: "goal",
+          by: "ayme-mcp",
+          status: "running",
+          children: [
+            aChildRun({ interactions: [fillText, clickAdd] }),
+            aChildRun({
+              toolName: "ListPage.items.archive",
+              status: "failed",
+              error: "No such item.",
+            }),
+          ],
+        }),
+      ],
+    });
+    const goal = runsView.latest("goal");
+
+    await expect.poll(() => runsView.runs.count()).toBe(1);
+    expect(await runsView.header.textContent()).toBe("Runs · 1");
+    expect(await goal.status()).toBe("Running");
+    expect(await goal.interactions.count()).toBe(0);
+    expect(await goal.childTools()).toEqual([
+      "ListPage.addItem",
+      "ListPage.items.archive",
+    ]);
+    const addItem = goal.child("ListPage.addItem");
+    expect(await addItem.status()).toBe("Succeeded");
+    // A child run names no Caller: its parent's started it.
+    expect(await addItem.card.getByTitle(/^Run by /).count()).toBe(0);
+    expect(await addItem.interactionList()).toEqual([
+      {
+        operation: "fill",
+        target: "getByRole('textbox', { name: 'New item' })",
+        value: '"Milk"',
+      },
+      { operation: "click", target: "ListPage.addItemButton" },
+    ]);
+    const archive = goal.child("ListPage.items.archive");
+    expect(await archive.status()).toBe("Failed");
+    expect(await archive.error.textContent()).toBe("No such item.");
+    expect(await archive.interactions.count()).toBe(0);
+  });
+
+  it("hides the runs a run started while it's collapsed", async () => {
+    renderRuns({
+      runs: [aRun({ toolName: "goal", children: [aChildRun()] })],
+    });
+    const goal = runsView.latest("goal");
+    await expect.poll(() => goal.childRuns.count()).toBe(1);
+
+    await goal.toggle.click();
+
+    await expect.poll(() => goal.childRuns.count()).toBe(0);
   });
 
   it("shows a failed run's error", async () => {
@@ -191,19 +249,19 @@ describe("Runs", () => {
     );
   });
 
-  it("highlights a step's element while it's hovered", async () => {
+  it("highlights an Interaction's element while it's hovered", async () => {
     const { onHover } = renderRuns();
 
-    await runsView.latest("ListPage.addItem").stepTarget(1).hover();
+    await runsView.latest("ListPage.addItem").interactionTarget(1).hover();
 
     await expect
       .poll(() => onHover)
       .toHaveBeenCalledWith({ path: "ListPage.addItemButton" });
   });
 
-  it("marks a step whose element was gone when the run ended", async () => {
+  it("marks an Interaction whose element was gone when the run ended", async () => {
     const { onHover } = renderRuns();
-    const target = runsView.latest("ListPage.addItem").stepTarget(0);
+    const target = runsView.latest("ListPage.addItem").interactionTarget(0);
 
     await target.hover();
 
@@ -256,11 +314,11 @@ describe("Runs", () => {
     const { focusRun } = renderRuns();
     const run = runsView.latest("ListPage.addItem");
     await run.toggle.click();
-    await expect.poll(() => run.steps.count()).toBe(0);
+    await expect.poll(() => run.interactions.count()).toBe(0);
 
     focusRun("1");
 
-    await expect.poll(() => run.steps.count()).toBe(2);
+    await expect.poll(() => run.interactions.count()).toBe(2);
   });
 });
 

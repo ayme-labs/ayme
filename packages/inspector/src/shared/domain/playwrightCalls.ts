@@ -1,15 +1,15 @@
 import type { Keyboard, Locator, Mouse, Page } from "@playwright/test";
 
 /**
- * What a Playwright call does to the page, for the Inspector's wrapper on
- * the runtime's Page:
- * - `none` runs as it is: it reads, builds a locator or configures.
- * - `wait` waits for the page; Runs records it as a step.
- * - `act` acts on the page; Runs records it, and demo mode pauses first.
+ * What a Playwright call does to the page, for demo mode's wrapper on the
+ * runtime's Page. Which calls are a Run's Interactions is the runtime's to
+ * say, not this table's.
+ * - `none` runs as it is: it reads, waits, builds a locator or configures.
+ * - `act` acts on the page, so demo mode pauses first.
  * - `point` acts through the pointer, so it is also hit-tested.
  * - `click` clicks its element, so demo mode also cues it.
  */
-export type CallKind = "none" | "wait" | "act" | "point" | "click";
+export type CallKind = "none" | "act" | "point" | "click";
 
 type Methods<T> = {
   [K in keyof T]-?: T[K] extends (...args: never[]) => unknown ? K : never;
@@ -86,7 +86,7 @@ export const locatorCalls = {
   toString: "none",
   type: "act",
   uncheck: "click",
-  waitFor: "wait",
+  waitFor: "none",
   waitForFunction: "none",
 } as const satisfies Record<Methods<Locator>, CallKind>;
 

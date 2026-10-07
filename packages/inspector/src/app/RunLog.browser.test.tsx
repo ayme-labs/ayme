@@ -3,6 +3,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { RegisteredPomTool } from "@ayme-dev/ayme";
 import {
+  listRegisteredPomTargets,
   listRegisteredPomTools,
   listRegisteredPoms,
   type RegisteredPom,
@@ -60,7 +61,7 @@ const editor: RegisteredPom = {
   instance: {},
   manifest: {
     className: "Editor",
-    members: [],
+    members: [{ memberName: "saveButton", kind: "locator", access: "field" }],
     components: [],
     tools: [
       {
@@ -152,21 +153,98 @@ it("lists every Caller's Runs from the page's Run log, newest first, as they sta
   );
 });
 
-it("lists a Run that started child Runs once, as its Caller's", async () => {
+it("nests a goal Run's child Runs under it, each with its own Interactions", async () => {
   const goal = startedAyme.runs.start("goal", { goal: "Save" }, "ayme-mcp");
-  startedAyme.runs
-    .start("click", { target: "e2" }, { parent: goal.id })
-    .succeed();
+  const fill = startedAyme.runs.start(
+    "fill",
+    { target: "e3", text: "Draft" },
+    { parent: goal.id }
+  );
+  fill.interact({
+    operation: "fill",
+    locator: "getByRole('textbox', { name: 'Body' })",
+    value: "Draft",
+  });
+  fill.succeed();
+  const click = startedAyme.runs.start(
+    "click",
+    { target: "e2" },
+    { parent: goal.id }
+  );
+  click.interact({
+    operation: "click",
+    locator: "getByRole('button', { name: 'Save' })",
+  });
+  click.succeed();
   goal.succeed({ reason: "done" });
   renderApp();
 
   await expect.poll(() => inspector.runs.runs.count()).toBe(1);
-  expect(await inspector.runs.run(0).root.getAttribute("aria-label")).toBe(
-    "goal"
-  );
-  expect(await inspector.runs.run(0).caller()).toEqual({
+  const run = inspector.runs.latest("goal");
+  expect(await run.caller()).toEqual({
     icon: "Run by an agent through Ayme MCP",
   });
+  expect(await run.interactions.count()).toBe(0);
+  expect(await run.childTools()).toEqual(["fill", "click"]);
+  expect(await run.child("fill").interactionList()).toEqual([
+    {
+      operation: "fill",
+      target: "getByRole('textbox', { name: 'Body' })",
+      value: '"Draft"',
+    },
+  ]);
+  expect(await run.child("click").interactionList()).toEqual([
+    { operation: "click", target: "getByRole('button', { name: 'Save' })" },
+  ]);
+  expect(await run.child("click").status()).toBe("Succeeded");
+});
+
+it("names each Interaction by the member whose locator it names, for any Caller", async () => {
+  registerEditor();
+  const saveButton = "getByRole('button', { name: 'Save' })";
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    { path: "Editor.saveButton", element: document.body, locator: saveButton },
+  ]);
+  const save = startedAyme.runs.start("Editor.save", {}, "webmcp");
+  save.interact({ operation: "click", locator: saveButton });
+  save.interact({
+    operation: "fill",
+    locator: "getByRole('textbox', { name: 'Body' })",
+    value: "Draft",
+  });
+  save.interact({ operation: "keyboard.press", value: "Enter" });
+  save.succeed();
+  renderApp();
+
+  const run = inspector.runs.latest("Editor.save");
+  await expect
+    .poll(() => run.interactionList())
+    .toEqual([
+      { operation: "click", target: "Editor.saveButton" },
+      {
+        operation: "fill",
+        target: "getByRole('textbox', { name: 'Body' })",
+        value: '"Draft"',
+      },
+      { operation: "keyboard.press", target: "", value: '"Enter"' },
+    ]);
+});
+
+it("shows a tree of Runs in the selection's scope when a child Run is in it", async () => {
+  registerEditor();
+  const goal = startedAyme.runs.start("goal", { goal: "Save" }, "ayme-mcp");
+  startedAyme.runs.start("Editor.save", {}, { parent: goal.id }).succeed();
+  goal.succeed({ reason: "done" });
+  startedAyme.runs.start("click", { target: "e2" }, "webmcp").succeed();
+  renderApp();
+  await inspector.navigator.showLens("Model");
+
+  await inspector.navigator.model.object("Editor").click();
+
+  await expect.poll(() => inspector.runs.runs.count()).toBe(1);
+  const shown = inspector.runs.run(0);
+  expect(await shown.root.getAttribute("aria-label")).toBe("goal");
+  expect(await shown.childTools()).toEqual(["Editor.save"]);
 });
 
 it("records a Tools panel run in the Run log as the Inspector's", async () => {
@@ -184,7 +262,7 @@ it("records a Tools panel run in the Run log as the Inspector's", async () => {
   ]);
 });
 
-it("records an App Process tool run from the panel as the Inspector's Run, with no steps", async () => {
+it("records an App Process tool run from the panel as the Inspector's Run, with no Interactions", async () => {
   startedAyme.appProcessTools.list.mockReturnValue([
     {
       name: "peek.node.jobs",
@@ -200,7 +278,7 @@ it("records an App Process tool run from the panel as the Inspector's Run, with 
   const run = inspector.runs.latest("peek.node.jobs");
   await expect.poll(() => run.status()).toBe("Succeeded");
   expect(await run.caller()).toEqual({ icon: "Run by you from the Inspector" });
-  expect(await run.steps.count()).toBe(0);
+  expect(await run.interactions.count()).toBe(0);
   expect(startedAyme.runs.list()).toEqual([
     expect.objectContaining({ tool: "peek.node.jobs", by: "inspector" }),
   ]);

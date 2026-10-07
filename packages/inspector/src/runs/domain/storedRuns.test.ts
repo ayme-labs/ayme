@@ -16,7 +16,7 @@ const succeeded: Run = {
   result: '"Added"',
   startedAt: 1_000,
   durationMs: 40,
-  steps: [
+  interactions: [
     {
       operation: "fill",
       locator: "getByRole('textbox')",
@@ -24,6 +24,7 @@ const succeeded: Run = {
       member: "ListPage.newItem",
     },
   ],
+  children: [],
 };
 
 const failedOnItem: Run = {
@@ -43,7 +44,33 @@ const failedOnItem: Run = {
   error: "TimeoutError: no element",
   startedAt: 500,
   durationMs: 1_000,
-  steps: [],
+  interactions: [],
+  children: [],
+};
+
+const goal: Run = {
+  id: "3@2000",
+  toolName: "goal",
+  by: "ayme-mcp",
+  arguments: { goal: "Add milk" },
+  status: "succeeded",
+  startedAt: 2_000,
+  durationMs: 900,
+  interactions: [],
+  children: [
+    {
+      id: "4@2100",
+      toolName: "fill",
+      arguments: { target: "e3", text: "Milk" },
+      status: "succeeded",
+      startedAt: 2_100,
+      durationMs: 30,
+      interactions: [
+        { operation: "fill", locator: "getByRole('textbox')", value: "Milk" },
+      ],
+      children: [],
+    },
+  ],
 };
 
 const before = (run: Run): Run => ({ ...run, earlierDocument: true });
@@ -52,10 +79,33 @@ function reloaded(runs: readonly Run[]) {
   return decodeRuns(JSON.parse(JSON.stringify(encodeRuns(runs))));
 }
 
-it("still shows the runs of every Caller, newest first, with their results and steps", () => {
+it("still shows the runs of every Caller, newest first, with their results and Interactions", () => {
   expect(reloaded([succeeded, failedOnItem])).toEqual([
     before(succeeded),
     before(failedOnItem),
+  ]);
+});
+
+it("still shows the runs nested under a run, with their Interactions", () => {
+  expect(reloaded([goal])).toEqual([before(goal)]);
+});
+
+it("shows a nested run that was still running as failed with the reload", () => {
+  const [child] = goal.children;
+  const running: Run = {
+    ...goal,
+    status: "running",
+    durationMs: undefined,
+    children: [{ ...child!, status: "running", durationMs: undefined }],
+  };
+
+  expect(reloaded([running])[0]!.children).toEqual([
+    {
+      ...child!,
+      status: "failed",
+      error: reloadedError,
+      durationMs: undefined,
+    },
   ]);
 });
 
@@ -96,7 +146,8 @@ it("leaves out a malformed run", () => {
       { id: 3, toolName: "click", by: "app" },
       { ...succeeded, status: "done" },
       { ...succeeded, by: "" },
-      { ...succeeded, steps: [{ operation: "click", member: 42 }] },
+      { ...succeeded, interactions: [{ operation: "click", member: 42 }] },
+      { ...goal, children: [{ ...goal.children[0], toolName: 7 }] },
       succeeded,
     ])
   ).toEqual([before(succeeded)]);

@@ -4,6 +4,7 @@ import type {
   Ayme,
   AymeWebMcpPublicationStatus,
   Caller,
+  Interaction,
   JsonValue,
   Run,
   ToolInfo,
@@ -40,8 +41,9 @@ function fixtureRunLog() {
     },
     /**
      * Starts a Run of `tool` for `by`, or a child Run of the Run whose id is
-     * `parent`, listed as running. Returns its id and what ends it: with its
-     * result, or with its error text.
+     * `parent`, listed as running. Returns its id, what records an
+     * Interaction it performs, and what ends it: with its result, or with
+     * its error text.
      */
     start(
       tool: string,
@@ -62,16 +64,21 @@ function fixtureRunLog() {
           interactions: [],
         },
       ]);
+      const update = (change: (run: Run) => Run) =>
+        publish(runs.map((run) => (run.id === id ? change(run) : run)));
       const end = (ended: Pick<Run, "status" | "result" | "error">) =>
-        publish(
-          runs.map((run) =>
-            run.id === id
-              ? { ...run, ...ended, durationMs: Date.now() - startedAt }
-              : run
-          )
-        );
+        update((run) => ({
+          ...run,
+          ...ended,
+          durationMs: Date.now() - startedAt,
+        }));
       return {
         id,
+        interact: (interaction: Interaction) =>
+          update((run) => ({
+            ...run,
+            interactions: [...run.interactions, interaction],
+          })),
         succeed: (result?: unknown) =>
           end({
             status: "succeeded",

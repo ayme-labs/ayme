@@ -1,18 +1,12 @@
 export type {
+  ChildRun,
   CollectionItem,
   Run,
   RunFocus,
+  RunInteraction,
   ToolArguments,
-  TraceEntry,
 } from "./domain/run";
 export { isPanelRun } from "./domain/logRuns";
 export { runScope } from "./domain/runScope";
-export {
-  dispatchInspectorTrace,
-  getInspectorTrace,
-  recordInspectorTrace,
-  resetInspectorTrace,
-  subscribeToInspectorTraceDispatcher,
-} from "./infrastructure/trace";
 export { useRuns } from "./infrastructure/useRuns";
 export { Runs } from "./presentation/Runs";

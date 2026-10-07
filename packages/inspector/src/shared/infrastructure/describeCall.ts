@@ -12,30 +12,16 @@ import {
 /** What a call is made on: a locator, the Page, or the Page's keyboard or mouse. */
 export type CallSubject = "locator" | "page" | "keyboard" | "mouse";
 
-/** A step of a run: what a call did, to which element, with which value. */
-export type CallStep = {
-  /** The method, e.g. "click", or "keyboard.press" for the keyboard's. */
-  operation: string;
-  locator?: Locator;
-  value?: string;
-  /** The state a `waitFor` waits for. */
-  state?: string;
-};
-
+/** What demo mode does with a call that acts on the page. */
 export type CallDescription = {
-  /** Whether demo mode pauses before it. */
-  paced: boolean;
   /** The element demo mode cues, for a call that clicks one. */
   cue?: Locator;
   /** The elements it hit-tests, which the panel lets pointer events reach. */
   hitTargets: Locator[];
-  /** The step Runs records. */
-  step: CallStep;
 };
 
 const tables: Record<CallSubject, Record<string, CallKind>> = {
-  // `_expect` runs an `expect(locator)` assertion.
-  locator: { ...locatorCalls, _expect: "wait" },
+  locator: locatorCalls,
   page: pageCalls,
   keyboard: keyboardCalls,
   mouse: mouseCalls,
@@ -43,7 +29,8 @@ const tables: Record<CallSubject, Record<string, CallKind>> = {
 
 /**
  * What a call on the runtime's Page does: undefined for one that only
- * reads, builds a locator or configures, which runs as it is.
+ * reads, waits, builds a locator or configures, which runs as it is. One
+ * that acts is paced in demo mode.
  */
 export function describeCall(
   subject: CallSubject,
@@ -65,26 +52,10 @@ export function describeCall(
       : bySelector && typeof args[0] === "string"
         ? (target as Page).locator(args[0])
         : undefined;
-  const value = bySelector ? args[1] : args[0];
-  const step: CallStep = {
-    operation:
-      method === "_expect"
-        ? "expect"
-        : subject === "keyboard" || subject === "mouse"
-          ? `${subject}.${method}`
-          : method,
-    ...(element && { locator: element }),
-    ...(typeof value === "string" && method !== "_expect" && { value }),
-    ...(method === "waitFor" && {
-      state: (args[0] as { state?: string } | undefined)?.state ?? "visible",
-    }),
-  };
   const pointer = kind === "point" || kind === "click";
   return {
-    paced: kind !== "wait",
     ...(kind === "click" && element && { cue: element }),
     hitTargets: pointer ? hitTargets(subject, target, method, args) : [],
-    step,
   };
 }
 
