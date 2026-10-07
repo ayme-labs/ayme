@@ -8,7 +8,9 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
-    "test:e2e": "playwright test"
+    "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
+    "test:e2e:dev": "AYME_E2E_RENDER=spa playwright test",
+    "test:e2e:prod": "AYME_E2E_SERVER=production AYME_E2E_RENDER=spa playwright test"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
