@@ -9,7 +9,7 @@ import { CounterPage } from "../playwright/pom/CounterPage";
 
 // The shared certification, against nuxt dev and the built Nitro server.
 serverRenderTests();
-counterTests({ CounterPage });
+counterTests({ CounterPage, inspector: "development" });
 // Last: it edits a source file, and the dev server rebuilds after it.
 devRebuildTests({
   counterModePath: fileURLToPath(

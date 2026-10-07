@@ -15,6 +15,7 @@ import { CounterPage } from "../src/lib/pom/CounterPage";
 serverRenderTests();
 counterTests({
   CounterPage,
+  inspector: "development",
   navigation: {
     away: "Other",
     awayText: "Other page without Page Objects.",

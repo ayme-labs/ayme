@@ -16,6 +16,7 @@ test.use({ hydrationStatistics: /^Angular hydrated / });
 serverRenderTests();
 counterTests({
   CounterPage,
+  inspector: "development",
   navigation: {
     away: "Other",
     awayText: "Other page without Page Objects.",

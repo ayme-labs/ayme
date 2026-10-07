@@ -15,7 +15,7 @@ import { CounterPage } from "../playwright/pom/CounterPage";
 // The shared certification, against the dev server and the production build.
 // The app is a single-page app with no router, so it has no client navigation
 // to check and no server-rendered page.
-counterTests({ CounterPage });
+counterTests({ CounterPage, inspector: "always" });
 
 // React's own check: StrictMode mounts, unmounts and mounts every effect in
 // development, and each tool must still be published once.

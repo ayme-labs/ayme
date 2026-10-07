@@ -126,12 +126,16 @@ const aymeTools = [
   "reload",
 ];
 
-/** Opens the counter page with the recording driver and waits for publication. */
-async function openCounter(context: BrowserContext, page: Page) {
+/**
+ * Opens the counter page with the recording driver and waits for publication.
+ * `inspector` is when the app mounts the Inspector.
+ */
+async function openCounter(
+  context: BrowserContext,
+  page: Page,
+  inspector: "always" | "development" | undefined
+) {
   await recordPublishedTools(context);
-  // An app may turn the Inspector on in development; it loads after the page,
-  // and its mount can hold the main thread past a Page Object action's 1 s
-  // timeout, so let it land first.
   const response = await page.goto(counterPath(), {
     waitUntil: "networkidle",
   });
@@ -140,6 +144,16 @@ async function openCounter(context: BrowserContext, page: Page) {
     "Publication: active",
     { timeout: 15_000 }
   );
+  // The runtime imports the Inspector as it starts, and the page's network
+  // can go idle before the import is even requested (the main thread is busy
+  // starting the app) or between its hops. Evaluating the Inspector then
+  // holds the main thread past a Page Object action's 1 s timeout, so the
+  // click through a published tool times out. Its host in the document marks
+  // it mounted.
+  if (inspector === "always" || (inspector && server === "dev"))
+    await page
+      .locator("ayme-inspector")
+      .waitFor({ state: "attached", timeout: 15_000 });
   await expect(count(page)).toHaveText("0");
 }
 
@@ -255,12 +269,20 @@ export function serverRenderTests() {
 export function counterTests({
   CounterPage,
   navigation,
+  inspector,
 }: {
   CounterPage: new (page: Page) => { increment(): Promise<void> };
+  /**
+   * When the app mounts the Inspector: always, or only in development. The
+   * tests wait for it to mount.
+   */
+  inspector?: "always" | "development";
   navigation?: { away: string; awayText: string; back: string };
 }) {
   test.describe("counter", () => {
-    test.beforeEach(({ context, page }) => openCounter(context, page));
+    test.beforeEach(({ context, page }) =>
+      openCounter(context, page, inspector)
+    );
 
     test("publishes the Page Object's tools with their compiled schemas", async ({
       page,
