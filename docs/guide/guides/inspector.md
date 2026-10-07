@@ -45,7 +45,7 @@ Selecting anything opens its detail. A tool's page and a structure node's detail
 
 ## Running tools
 
-Every detail runs its tools through the same run card, a form typed from the tool's input schema, with an item picker for collection tools and the last result. **Runs** lists the runs made from the panel with their arguments, steps and result, which can be copied.
+Every detail runs its tools through the same run card, a form typed from the tool's input schema, with an item picker for collection tools and the last result. **Runs** lists every Run on the page, whoever started it: you from the panel, an agent, or the app. Each shows its Caller, its arguments, its result, which can be copied, and the Interactions it performed, such as clicks and fills, named by the Page Object member they acted on. The Runs a Run started sit under it: a goal Run shows the Runs its steps executed, and a Custom Tool the Runs it started, each with its own Interactions.
 
 ## The panel
 
