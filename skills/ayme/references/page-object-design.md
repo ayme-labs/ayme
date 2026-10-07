@@ -70,6 +70,28 @@ Use names that explain the action and scope. `openCreateMenu()` communicates the
 transition; `clickPlus()` describes an implementation detail.
 `openProjectCreation()` opens a form; `create()` completes creation.
 
+## Make actions do something
+
+Mark a method with `@ayme.action` only when it does something a user does:
+clicking, filling, opening, submitting. Read-only methods, such as getting a
+heading's text, counting rows, or checking whether an error shows, are not
+actions. The snapshot already shows the agent what the page displays, so a read
+as a tool only repeats it. Keep such reads as plain methods or locators for
+tests and other code.
+
+```ts
+@ayme.action({ description: "Archive the selected project." })
+async archive() {
+  await this.archiveButton.click();
+  return this;
+}
+
+// Not an action: the snapshot already shows the heading.
+async title() {
+  return this.heading.textContent();
+}
+```
+
 ## Separate helper returns from flow returns
 
 Generic UI helpers such as Menu and Modal return `this` for chaining and
