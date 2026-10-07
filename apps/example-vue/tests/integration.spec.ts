@@ -9,7 +9,8 @@ import { CounterPage } from "../playwright/pom/CounterPage";
 // The shared certification, against the dev server and the production build,
 // on the playground's `/counter` route. The app is a single-page app with no
 // router, so it has no client navigation to check and no server-rendered page.
-counterTests({ CounterPage, inspector: "always" });
+// The counter route mounts no Inspector.
+counterTests({ CounterPage });
 // Last: it edits a source file, and the dev server rebuilds after it.
 devRebuildTests({
   counterModePath: fileURLToPath(
