@@ -375,16 +375,6 @@ describe("the Inspector", () => {
     );
   });
 
-  it("names the page it inspects in the header", async () => {
-    const tool = saveTool("editor", vi.fn());
-    mockRegistry([editor("editor", tool)], [tool]);
-    renderApp();
-
-    await expect
-      .poll(() => inspector.header.pageBadge.textContent())
-      .toBe("Editor");
-  });
-
   it("shows the page state an agent receives in the Structure lens", async () => {
     renderApp();
 

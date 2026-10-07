@@ -128,7 +128,6 @@ export function InspectorApp() {
         preferences={preferences}
         onPreferencesChange={updatePreferences}
         reserveHost={reserveHost}
-        pageName={runtime.pageName}
       >
         <WebMcpStatus status={runtime.tools.publication} />
         <InspectorBody
