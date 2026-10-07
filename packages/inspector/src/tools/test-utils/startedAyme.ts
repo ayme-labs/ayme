@@ -102,15 +102,8 @@ function fixtureRunLog() {
         run.succeed(result);
         return result;
       } catch (error) {
-        // As the runtime words it: the message, prefixed with the error's
-        // name unless that is plain "Error".
-        run.fail(
-          !(error instanceof Error)
-            ? String(error)
-            : !error.name || error.name === "Error"
-              ? error.message
-              : `${error.name}: ${error.message}`
-        );
+        // The runtime words a failure; the stand-in keeps its message.
+        run.fail(error instanceof Error ? error.message : String(error));
         throw error;
       }
     },

@@ -82,23 +82,19 @@ function nodeOf(
 /**
  * The rows Runs shows, newest first: the log's top-level Runs that started
  * after the panel was last cleared, each with the Runs it started nested
- * under it, with the panel's failed runs that never reached the log, then
- * the rows kept from earlier pages. A kept row that is still in the log, as
+ * under it, then the rows kept from earlier pages. A kept row that is still in the log, as
  * when the panel mounts again on the same page, shows as the log's, with
  * the notes it was kept with.
  */
 export function shownRuns({
   log,
   notes,
-  unlogged,
   earlier,
   clearedAt,
 }: {
   /** The page's Run log, oldest first. */
   log: readonly LogRun[];
   notes: ReadonlyMap<string, RunNotes>;
-  /** The panel's runs that failed before the log recorded them. */
-  unlogged: readonly Run[];
   /** The rows kept from before the panel last mounted, newest first. */
   earlier: readonly Run[];
   /** When the panel was last cleared, in epoch milliseconds. */
@@ -128,10 +124,7 @@ export function shownRuns({
       return { ...nodeOf(run, notesOf, childrenOf), by: run.by };
     })
     .reverse();
-  const current = [...live, ...unlogged].sort(
-    (newer, older) => older.startedAt - newer.startedAt
-  );
-  return [...current, ...earlier.filter((run) => kept.has(run.id))];
+  return [...live, ...earlier.filter((run) => kept.has(run.id))];
 }
 
 /** The notes a kept row and the rows nested in it were kept with. */

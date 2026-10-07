@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { ToolInputError, type RegisteredPomTool } from "@ayme-dev/ayme";
+import {
+  RuntimeStateError,
+  ToolInputError,
+  type RegisteredPomTool,
+} from "@ayme-dev/ayme";
 import {
   listRegisteredPomTools,
   listRegisteredPoms,
@@ -348,7 +352,7 @@ describe("the Inspector", () => {
     consoleError.mockRestore();
   });
 
-  it("runs a tool through the session and shows its failure as an agent reads it", async () => {
+  it("runs a tool through the session and shows its failure as the log records it", async () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
     startedAyme.tools.run.mockRejectedValue(
@@ -360,9 +364,7 @@ describe("the Inspector", () => {
 
     const run = inspector.runs.latest("Editor.save");
     await expect.poll(() => run.status()).toBe("Failed");
-    expect(await run.error.textContent()).toBe(
-      "ToolInputError: title is required."
-    );
+    expect(await run.error.textContent()).toBe("title is required.");
     expect(startedAyme.tools.run).toHaveBeenCalledExactlyOnceWith(
       "Editor.save",
       {
@@ -376,9 +378,7 @@ describe("the Inspector", () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
     startedAyme.tools.run.mockRejectedValue(
-      Object.assign(new Error('The tool "Editor.save" is not live.'), {
-        name: "RuntimeStateError",
-      })
+      new RuntimeStateError('The tool "Editor.save" is not live.')
     );
     renderApp();
 
@@ -387,7 +387,7 @@ describe("the Inspector", () => {
     const run = inspector.runs.latest("Editor.save");
     await expect.poll(() => run.status()).toBe("Failed");
     expect(await run.error.textContent()).toBe(
-      'RuntimeStateError: The tool "Editor.save" is not live.'
+      'The tool "Editor.save" is not live.'
     );
   });
 

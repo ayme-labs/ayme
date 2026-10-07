@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  callers,
-  RuntimeStateError,
-  type Ayme,
-  type Run as LogRun,
-} from "@ayme-dev/ayme";
+import { callers, type Ayme, type Run as LogRun } from "@ayme-dev/ayme";
 import {
   getAppProcessTools,
   getStartedAyme,
@@ -20,7 +15,7 @@ import {
   type RunNotes,
   type RunTarget,
 } from "../domain/logRuns";
-import type { CollectionItem, Run, ToolArguments } from "../domain/run";
+import type { CollectionItem, ToolArguments } from "../domain/run";
 import { decodeRuns, encodeRuns, runsKey } from "../domain/storedRuns";
 import { interactionMembers } from "./interactionMembers";
 
@@ -29,9 +24,6 @@ const clearedKey = "ayme-inspector:runs-cleared";
 
 const NO_RUNS: readonly LogRun[] = Object.freeze([]);
 const NO_NOTES: ReadonlyMap<string, RunNotes> = new Map();
-
-// Numbers the panel's runs the log never listed.
-let nextUnlogged = 1;
 
 /** A run the panel started and the log has not listed yet. */
 type PendingRun = {
@@ -59,7 +51,6 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
     runs: readonly LogRun[];
     notes: ReadonlyMap<string, RunNotes>;
   }>({ runs: NO_RUNS, notes: NO_NOTES });
-  const [unlogged, setUnlogged] = useState<readonly Run[]>([]);
   const pending = useRef<PendingRun[]>([]);
 
   useEffect(() => {
@@ -136,17 +127,15 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
       shownRuns({
         log: log.runs,
         notes: log.notes,
-        unlogged,
         earlier,
         clearedAt,
       }),
-    [log, unlogged, earlier, clearedAt]
+    [log, earlier, clearedAt]
   );
   useEffect(() => setStored(runs), [runs, setStored]);
 
   const invoke = useCallback(
     async (toolName: string, args: ToolArguments, item?: CollectionItem) => {
-      const startedAt = Date.now();
       const ayme = getStartedAyme();
       const appProcessTools = ayme && getAppProcessTools(ayme);
       const appProcess =
@@ -159,31 +148,10 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
       pending.current.push(panelRun);
       const by = { by: callers.inspector };
       try {
-        if (!ayme)
-          throw new RuntimeStateError("No Ayme runtime session has started.");
         if (appProcess) await appProcessTools!.run(toolName, args, by);
-        else await ayme.tools.run(toolName, args as never, by);
-      } catch (error) {
-        // A run the log never listed, such as one whose tool is no longer
-        // live, still shows its failure.
-        if (panelRun.rowId === undefined)
-          setUnlogged((current) => [
-            {
-              id: `panel-${nextUnlogged++}@${startedAt}`,
-              toolName,
-              by: callers.inspector,
-              ...targetOf(toolName).target,
-              ...(item ? { item, objectPath: item.path } : {}),
-              arguments: args,
-              status: "failed",
-              error: errorText(error),
-              startedAt,
-              durationMs: Date.now() - startedAt,
-              interactions: [],
-              children: [],
-            },
-            ...current,
-          ]);
+        else await ayme?.tools.run(toolName, args as never, by);
+      } catch {
+        // The log records the failed Run, which the panel shows.
       } finally {
         pending.current.splice(pending.current.indexOf(panelRun), 1);
         onSettled();
@@ -195,7 +163,6 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
   const clear = useCallback(() => {
     setClearedAt(Date.now());
     setEarlier([]);
-    setUnlogged([]);
   }, [setClearedAt]);
 
   return { runs, invoke, clear };
@@ -204,16 +171,6 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
 /** When Runs was last cleared, from its stored value; never by default. */
 function decodeTime(stored: unknown): number {
   return typeof stored === "number" ? stored : 0;
-}
-
-/**
- * A failure as an agent gets it: the error's message, prefixed with its name
- * unless that is plain "Error".
- */
-function errorText(error: unknown) {
-  if (!(error instanceof Error)) return String(error);
-  if (!error.name || error.name === "Error") return error.message;
-  return `${error.name}: ${error.message}`;
 }
 
 /**
