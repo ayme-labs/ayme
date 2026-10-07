@@ -9,7 +9,9 @@
     "goals:runs": "node scripts/goal-runs.ts",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
-    "test:e2e": "playwright test --config playwright.config.ts --reporter=list",
+    "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
+    "test:e2e:dev": "AYME_E2E_RENDER=spa playwright test --config playwright.config.ts",
+    "test:e2e:prod": "AYME_E2E_SERVER=production AYME_E2E_RENDER=spa playwright test --config playwright.config.ts",
     "test:goals": "playwright test --config playwright.goals.config.ts --reporter=list",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },

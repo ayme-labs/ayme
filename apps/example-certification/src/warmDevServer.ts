@@ -5,6 +5,8 @@ import {
 } from "@ayme-dev/ayme/testing";
 import { ignoreAutoPairScan } from "@ayme-dev/mcp/testing";
 
+import { counterPath } from "./config";
+
 /**
  * Loads the counter page and `/other` once before any test starts. The dev
  * server compiles each page's modules on its first request, and on a busy CI
@@ -22,7 +24,7 @@ export default async function warmDevServer(config: FullConfig) {
     await ignoreAutoPairScan(context);
     const page = await context.newPage();
     // The published tool shows the app's modules loaded.
-    await page.goto("/", { timeout: 60_000 });
+    await page.goto(counterPath(), { timeout: 60_000 });
     await waitForPublishedTool(page, "CounterPage.increment", {
       timeout: 60_000,
     });

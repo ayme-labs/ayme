@@ -21,7 +21,7 @@ import {
   startAgent,
 } from "@ayme-dev/mcp/testing";
 
-import { render, server } from "./config";
+import { counterPath, render, server } from "./config";
 
 /**
  * Whether a console error is Chromium reporting a refused probe of the Agent
@@ -132,7 +132,9 @@ async function openCounter(context: BrowserContext, page: Page) {
   // An app may turn the Inspector on in development; it loads after the page,
   // and its mount can hold the main thread past a Page Object action's 1 s
   // timeout, so let it land first.
-  const response = await page.goto("/", { waitUntil: "networkidle" });
+  const response = await page.goto(counterPath(), {
+    waitUntil: "networkidle",
+  });
   expect(response?.status()).toBe(200);
   await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
     "Publication: active",
@@ -470,7 +472,7 @@ export function devRebuildTests({
             )
             .then((schema) => schema.jsonValue());
 
-        await page.goto("/");
+        await page.goto(counterPath());
         expect(await publishedModeSchema()).toContain('"double"');
 
         await writeFile(counterModePath, changed);
