@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nuxt dev --host 127.0.0.1 --port 4193",
+    "dev": "node scripts/dev.mjs --host 127.0.0.1 --port 4193",
     "build": "nuxt build",
     "start": "node .output/server/index.mjs",
     "typecheck": "nuxt typecheck && tsc --noEmit -p tsconfig.pom.json",
