@@ -6,6 +6,9 @@ import { ToolsLens } from "./ToolsLens";
 
 export type LensName = "Model" | "Structure" | "Tools";
 
+/** The lens buttons' labels, where they differ from the lens name. */
+const lensLabels: Partial<Record<LensName, string>> = { Tools: "Toolbox" };
+
 /**
  * The navigator: search, the lens switcher, the legend and the active lens's
  * tree. Each lens's own page object works inside {@link Navigator.root}.
@@ -37,7 +40,7 @@ export class Navigator {
   lens(name: LensName): Locator {
     return this.root
       .getByRole("group", { name: "Lens" })
-      .getByRole("button", { name, exact: true });
+      .getByRole("button", { name: lensLabels[name] ?? name, exact: true });
   }
 
   @ayme.action({ description: "Shows a lens: Model, Structure or Tools." })
