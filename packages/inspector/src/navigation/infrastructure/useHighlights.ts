@@ -90,7 +90,7 @@ function targetElements(
   targetsOf: (path: string) => ReadonlySet<string>
 ): Element[] {
   if ("ref" in target) {
-    const element = [...look.peek.elementsByRef].find(
+    const element = [...look.state.elementsByRef].find(
       ([ref]) => ref === target.ref
     )?.[1];
     return element ? [element] : [];

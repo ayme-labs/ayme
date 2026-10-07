@@ -1,5 +1,5 @@
 /**
- * Test support for the peek tests: a runtime session publishing to a
+ * Test support for the look tests: a runtime session publishing to a
  * recording driver, and the agent's calls through the published tools.
  */
 import { createPage } from "./browserPage";

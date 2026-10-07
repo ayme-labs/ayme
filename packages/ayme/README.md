@@ -46,6 +46,39 @@ ayme.pom.register(ProjectsPage);
 await ayme.tools.run("ProjectsPage.createProject", { name: "Launch plan" });
 ```
 
+## Peek at app state
+
+While a coding agent or the Inspector is connected, `ayme.peek` lets the agent read state the page does not show. Each name becomes a Peek Tool, `peek.<name>`, which reads the values when the agent calls it:
+
+```ts
+const ayme = createAyme({ agentConnection: true });
+ayme.start();
+
+const removeCart = ayme.peek(() => cartStore.getState(), "cart");
+await ayme.tools.run("peek.cart", {}); // { name: "cart", instances: [{ values: … }] }
+```
+
+`read` may be async. Pass an id as the third argument for one instance per id, such as one per mounted component; without one, a later call replaces the earlier one. The returned function removes the instance. Peeks do nothing unless the session has `agentConnection` or `inspector` on, and WebMCP never publishes them. The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek) has the details.
+
+## Peek at server state
+
+Your app's own Node processes, such as its dev server or an Express backend, can offer Peeks too, as `peek.node.<name>`. Install `@ayme-dev/mcp` beside `@ayme-dev/ayme` there, and start Ayme once, in the server's entry point: the session becomes the process's App Process, and a process has one. An Express backend, in `server/ayme.ts`:
+
+```ts
+import { createAyme } from "@ayme-dev/ayme";
+
+import { sessions } from "./sessions";
+
+export const ayme = createAyme({
+  agentConnection: process.env.NODE_ENV !== "production",
+});
+ayme.start(); // pairs with the agent's server only with agentConnection
+
+ayme.peek(() => ({ active: sessions.size }), "sessions"); // peek.node.sessions
+```
+
+The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#in-node) covers Next.js's `instrumentation.ts`, how the process finds the agent's server, and the Inspector's Node section.
+
 ## Documentation
 
 - [Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md): marking models and actions, tool names, children and collections.

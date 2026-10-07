@@ -24,7 +24,7 @@ import {
   configurePageStateIgnore,
   getPageStateCaptureForDocument,
   pageStateNodeEntry,
-  peekPageStateForDocument,
+  lookAtPageStateForDocument,
   resolvePageStateRefs,
 } from "./pageState";
 import { getPageStateTool } from "./pageContext";
@@ -770,7 +770,7 @@ describe("get_page_state", () => {
   });
 });
 
-describe("the peek's projected forest", () => {
+describe("the look's projected forest", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "document",
@@ -790,7 +790,7 @@ describe("the peek's projected forest", () => {
     vi.unstubAllGlobals();
   });
 
-  async function peek() {
+  async function look() {
     const element = (id: string) => document.getElementById(id)!;
     captureAriaSnapshot.mockReturnValue({
       distilledText: `
@@ -824,7 +824,7 @@ describe("the peek's projected forest", () => {
       { label: "Done.root", element: element("done") },
       { label: "Toggle.root", element: element("done") },
     ]);
-    return peekPageStateForDocument(document);
+    return lookAtPageStateForDocument(document);
   }
 
   function* walk(
@@ -838,7 +838,7 @@ describe("the peek's projected forest", () => {
   }
 
   it("is the forest the text is rendered from", async () => {
-    const { text, projected } = await peek();
+    const { text, projected } = await look();
 
     expect(renderCompactStructuralNodeForest(projected)).toBe(text);
     expect(text).toMatchInlineSnapshot(`
@@ -861,7 +861,7 @@ describe("the peek's projected forest", () => {
   });
 
   it("carries a lowercase Page Object label as a label, not a role", async () => {
-    const { projected } = await peek();
+    const { projected } = await look();
     const main = [...walk(projected.roots)].find(({ ref }) => ref === "e2");
 
     expect(main).toMatchObject({
@@ -872,7 +872,7 @@ describe("the peek's projected forest", () => {
   });
 
   it("renders a node's own lines exactly as the text has them, and counts what nests under it", async () => {
-    const { projected } = await peek();
+    const { projected } = await look();
     const nodes = [...walk(projected.roots)];
     const node = (ref: string) =>
       nodes.find((candidate) => candidate.ref === ref)!;

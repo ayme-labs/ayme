@@ -116,10 +116,12 @@ The [SvelteKit example](../../../apps/example-sveltekit/README.md) runs both, an
 | `useAyme(options) already has an active owner. Call it once, in the root +layout.svelte or App.svelte.` | A second owner, often in a route-group layout. |
 | `Configure Ayme on the ancestor useAyme(options) owner, not beneath it.`                                | `useAyme(options)` beneath an owner.           |
 | `usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte.`           | No owner above.                                |
+| `peek requires useAyme() in an ancestor component, such as the root +layout.svelte.`                    | No owner above.                                |
 
 ## API
 
-| Export                 | Kind       | Does                                                                              |
-| ---------------------- | ---------- | --------------------------------------------------------------------------------- |
-| `useAyme(options?)`    | Composable | Without an owner above, creates and owns the session. Returns `{ ayme, webMCP }`. |
-| `usePageObject(Model)` | Composable | Registers the class while the component lives and returns its instance.           |
+| Export                  | Kind       | Does                                                                                                     |
+| ----------------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
+| `useAyme(options?)`     | Composable | Without an owner above, creates and owns the session. Returns `{ ayme, webMCP }`.                        |
+| `usePageObject(Model)`  | Composable | Registers the class while the component lives and returns its instance.                                  |
+| `peek(read, name, id?)` | Composable | Adds the component's instance of the Peek `name` while it is mounted, reading the values `read` returns. |

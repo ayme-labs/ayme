@@ -97,7 +97,7 @@ const runtime = vi.hoisted(() => ({
 }));
 
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { asStartedAyme, startedAyme } =
+  const { appProcessToolsOf, asStartedAyme, startedAyme } =
     await import("../tools/test-utils/startedAyme");
   startedAyme.tools.list.mockImplementation(
     () => runtime.liveTools as PublishedToolInfo[]
@@ -108,7 +108,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   return {
     pageStateNodeEntry,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    peekPageStateForDocument: vi.fn(async () => ({
+    lookAtPageStateForDocument: vi.fn(async () => ({
       projected: { roots: [] },
       elementsByRef: new Map(),
     })),
@@ -118,6 +118,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listRegisteredPomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => runtime.registrations),
     getStartedAyme: asStartedAyme,
+    getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };

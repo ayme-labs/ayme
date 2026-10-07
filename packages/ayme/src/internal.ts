@@ -3,10 +3,10 @@ export {
   capturePageState,
   getPageStateForElements,
   pageStateNodeEntry,
-  peekPageStateForDocument,
+  lookAtPageStateForDocument,
   resolvePageStateRef,
 } from "./pageState";
-export type { PageStateCapture, PageStatePeek } from "./pageState";
+export type { PageStateCapture, PageStateLook } from "./pageState";
 export type {
   ProjectedStructuralNode,
   ProjectedStructuralNodeForest,
@@ -39,12 +39,15 @@ export { synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
 export type { WebMcpDriver, WebMcpRegistration } from "./webMcp";
 // The runtime session and its types are public (ADR-0031); this entry keeps
 // the plugin's registration, the framework packages' fixed-options check and
-// the inspector's instrumentation, its way to the started session and its
-// registry read model.
+// render-session marker, and the inspector's instrumentation, its way to the
+// started session and its registry read model.
 export {
+  getAppProcessTools,
   getStartedAyme,
+  markRenderSession,
   sameRuntimeOptions,
   subscribeToStartedAyme,
 } from "./runtime";
+export type { AppProcessTool, AppProcessTools } from "./runtime";
 export { installRuntimePageInstrumentation } from "./pageInstrumentation";
 export { isPlaywrightLiteLocator as isAymeLocator } from "@ayme-dev/playwright-lite/internal";

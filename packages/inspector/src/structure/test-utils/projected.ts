@@ -4,7 +4,7 @@ import type {
 } from "@ayme-dev/ayme/internal";
 
 // Hand-written projected page state for tests: the forest the page state
-// text is rendered from, as the runtime's peek carries it.
+// text is rendered from, as the runtime's look carries it.
 
 type Child = ProjectedStructuralNode | string;
 

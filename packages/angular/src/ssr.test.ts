@@ -9,9 +9,9 @@ import {
   provideServerRendering,
   renderApplication,
 } from "@angular/platform-server";
-import type { Ayme } from "@ayme-dev/ayme";
+import { createAyme, type Ayme } from "@ayme-dev/ayme";
 import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { sessions } = vi.hoisted(() => ({ sessions: [] as Ayme[] }));
 vi.mock("@ayme-dev/ayme", async (importOriginal) => {
@@ -20,6 +20,7 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
     ...original,
     createAyme: (...args: Parameters<typeof original.createAyme>) => {
       const session = original.createAyme(...args);
+      vi.spyOn(session, "peek");
       sessions.push(session);
       return session;
     },
@@ -28,11 +29,20 @@ vi.mock("@ayme-dev/ayme", async (importOriginal) => {
 import {
   injectAyme,
   injectPageObject,
+  injectPeek,
   provideAyme,
   type AymeOptions,
 } from "./index";
 
 type PageFactory = NonNullable<AymeOptions["pageFactory"]>;
+// The server's own session holds the process as its App Process, as in a
+// dev server with Peeks: a render whose session claimed it too would throw.
+let stopAppProcess = () => {};
+beforeEach(() => {
+  stopAppProcess = createAyme().start();
+});
+afterEach(() => stopAppProcess());
+
 // Angular 20 passes the server's BootstrapContext on to bootstrapApplication;
 // Angular 19 calls the bootstrap function without one.
 const bootstrap = bootstrapApplication as (
@@ -42,7 +52,7 @@ const bootstrap = bootstrapApplication as (
 describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",
   (enabled) => {
-    it("renders concurrent requests without starting Ayme, calling the page factory, or constructing or registering Page Objects", async () => {
+    it("C12: renders concurrent requests without starting Ayme, calling the page factory, constructing or registering Page Objects, or adding Peeks", async () => {
       sessions.length = 0;
       const pageFactory = vi.fn<PageFactory>(() => {
         throw new Error("The page factory must not run on the server.");
@@ -69,6 +79,7 @@ describe.each([false, true])(
           readonly model = injectPageObject(ServerModel);
           readonly webMCP = injectAyme().webMCP;
           constructor() {
+            injectPeek({ count: 0 }, "counter");
             models.push(this.model);
           }
         }
@@ -81,7 +92,12 @@ describe.each([false, true])(
               {
                 providers: [
                   provideServerRendering(),
-                  provideAyme({ pageFactory, webMCP: { enabled } }),
+                  // agentConnection on, so ayme.peek would add the instance.
+                  provideAyme({
+                    pageFactory,
+                    webMCP: { enabled },
+                    agentConnection: true,
+                  }),
                 ],
               },
               context
@@ -95,6 +111,7 @@ describe.each([false, true])(
       for (const html of pages) expect(html).toContain(`>${status}</button>`);
       expect(sessions).toHaveLength(2);
       for (const session of sessions) {
+        expect(session.peek).not.toHaveBeenCalled();
         // A session that started and stopped would read `disposed`.
         expect(session.webMCP.publicationStatus.state).toBe(status);
       }

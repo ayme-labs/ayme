@@ -141,8 +141,9 @@ The build needs the Turbopack loader from the [build plugin reference](../refere
 
 ## API
 
-| Export                 | Kind      | Does                                                                          |
-| ---------------------- | --------- | ----------------------------------------------------------------------------- |
-| `AymeProvider`         | Component | Starts and owns Ayme for its subtree. Props are the `createAyme` options.     |
-| `useAyme()`            | Hook      | Returns `{ ayme, webMCP }` from the provider above.                           |
-| `usePageObject(Model)` | Hook      | Returns the class's instance and registers it while the component is mounted. |
+| Export                       | Kind      | Does                                                                                                           |
+| ---------------------------- | --------- | -------------------------------------------------------------------------------------------------------------- |
+| `AymeProvider`               | Component | Starts and owns Ayme for its subtree. Props are the `createAyme` options.                                      |
+| `useAyme()`                  | Hook      | Returns `{ ayme, webMCP }` from the provider above.                                                            |
+| `usePageObject(Model)`       | Hook      | Returns the class's instance and registers it while the component is mounted.                                  |
+| `usePeek(values, name, id?)` | Hook      | Adds the component's instance of the Peek `name` while it is mounted, reading `values` from its latest render. |

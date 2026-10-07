@@ -4,17 +4,23 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import type { Ayme, ToolInfo } from "@ayme-dev/ayme";
 import {
+  getAppProcessTools,
   getStartedAyme,
   subscribeToStartedAyme,
 } from "@ayme-dev/ayme/internal";
 
 import { useLiveTools, type LiveTools } from "./liveTools";
-import { asStartedAyme, startedAyme } from "../test-utils/startedAyme";
+import {
+  appProcessToolsOf,
+  asStartedAyme,
+  startedAyme,
+} from "../test-utils/startedAyme";
 
 // Unit tests: the Inspector's one source of the tools the panel can run, over
 // a stand-in started session that the test changes and announces.
 vi.mock("@ayme-dev/ayme/internal", () => ({
   getStartedAyme: vi.fn(),
+  getAppProcessTools: vi.fn(),
   subscribeToStartedAyme: vi.fn(),
 }));
 
@@ -35,10 +41,17 @@ const getPageContext: ToolInfo = {
   group: "agent",
 };
 
+const jobsPeek = {
+  name: "peek.node.jobs",
+  description: 'Read the current values of the Peek "jobs".',
+  inputSchema: { type: "object" },
+};
+
 const unmounts: (() => void)[] = [];
 let session: Ayme | undefined = asStartedAyme();
 let announceSession: (ayme: Ayme | undefined) => void = () => {};
 vi.mocked(getStartedAyme).mockImplementation(() => session);
+vi.mocked(getAppProcessTools).mockImplementation(appProcessToolsOf);
 vi.mocked(subscribeToStartedAyme).mockImplementation((listener) => {
   announceSession = listener;
   return () => {};
@@ -81,7 +94,21 @@ it("gives the live tools and the publication status", () => {
 
   expect(seen.at(-1)).toEqual({
     live: [getPageContext, addItem],
+    appProcess: [],
     publication: { state: "active", message: "" },
+  });
+});
+
+it("gives the App Processes' tools beside the page's, and follows them", () => {
+  publish([getPageContext]);
+  const seen = renderReader();
+
+  startedAyme.appProcessTools.list.mockReturnValue([jobsPeek]);
+  act(() => announce());
+
+  expect(seen.at(-1)).toMatchObject({
+    live: [getPageContext],
+    appProcess: [{ ...jobsPeek, group: "peek", side: "node" }],
   });
 });
 
@@ -98,6 +125,7 @@ it("keeps the live tools when publication fails, with its error", () => {
 
   expect(seen.at(-1)).toEqual({
     live: [getPageContext, addItem],
+    appProcess: [],
     publication: {
       state: "failed",
       message: "Publication failed: a name is taken.",
@@ -120,6 +148,7 @@ it("gives no tools while no session is started, and follows the next one", () =>
   const seen = renderReader();
   expect(seen.at(-1)).toEqual({
     live: [],
+    appProcess: [],
     publication: {
       state: "disposed",
       message: "No Ayme runtime session has started.",

@@ -6,8 +6,10 @@ import type {
   ToolInfo,
 } from "@ayme-dev/ayme";
 import {
+  getAppProcessTools,
   getStartedAyme,
   subscribeToStartedAyme,
+  type AppProcessTool,
 } from "@ayme-dev/ayme/internal";
 
 /** The tools the panel can run now, and how WebMCP publication stands. */
@@ -19,11 +21,41 @@ export type LiveTools = Readonly<{
    * agents can call them.
    */
   live: readonly ToolInfo[];
+  /**
+   * The tools of the App Processes paired beside the page, which the
+   * panel runs through the agent's Ayme MCP server: none while no server
+   * is paired. An App Process offers Peek tools only, read in Node.
+   */
+  appProcess: readonly NodePeekTool[];
   /** WebMCP publication; a failure carries its error in `message`. */
   publication: AymeWebMcpPublicationStatus;
 }>;
 
+/** An App Process's tool, a Peek tool whose Peek lives in Node. */
+export type NodePeekTool = ToolInfo & { group: "peek"; side: "node" };
+
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
+const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
+
+// The App Processes' list as last read, and its tools as Node Peek tools,
+// so the same list gives the same array.
+let processTools: readonly AppProcessTool[] = NO_PROCESS_TOOLS;
+let nodePeekTools: readonly NodePeekTool[] = Object.freeze([]);
+
+function asNodePeekTools(tools: readonly AppProcessTool[]) {
+  if (tools !== processTools) {
+    processTools = tools;
+    nodePeekTools = Object.freeze(
+      tools.map((tool) => ({
+        ...tool,
+        inputSchema: tool.inputSchema as ToolInfo["inputSchema"],
+        group: "peek" as const,
+        side: "node" as const,
+      }))
+    );
+  }
+  return nodePeekTools;
+}
 const NO_SESSION: AymeWebMcpPublicationStatus = Object.freeze({
   state: "disposed",
   message: "No Ayme runtime session has started.",
@@ -37,13 +69,23 @@ let snapshot: LiveTools | undefined;
 function readLiveTools(): LiveTools {
   const ayme = getStartedAyme();
   const live = ayme?.tools.list() ?? NO_TOOLS;
+  const appProcess = asNodePeekTools(
+    ayme ? getAppProcessTools(ayme).list() : NO_PROCESS_TOOLS
+  );
   const publication = ayme?.webMCP.publicationStatus ?? NO_SESSION;
-  if (snapshot?.live !== live || snapshot.publication !== publication)
-    snapshot = Object.freeze({ live, publication });
+  if (
+    snapshot?.live !== live ||
+    snapshot.appProcess !== appProcess ||
+    snapshot.publication !== publication
+  )
+    snapshot = Object.freeze({ live, appProcess, publication });
   return snapshot;
 }
 
-/** Follow the started session's tools and publication, across sessions. */
+/**
+ * Follow the started session's tools, its App Process tools and its
+ * publication, across sessions.
+ */
 function subscribe(onChange: () => void) {
   let unsubscribeFromSession = () => {};
   const follow = (ayme: Ayme | undefined) => {
@@ -54,9 +96,12 @@ function subscribe(onChange: () => void) {
     }
     const unsubscribeFromTools = ayme.tools.subscribe(onChange);
     const unsubscribeFromStatus = ayme.webMCP.subscribe(onChange);
+    const unsubscribeFromProcesses =
+      getAppProcessTools(ayme).subscribe(onChange);
     unsubscribeFromSession = () => {
       unsubscribeFromTools();
       unsubscribeFromStatus();
+      unsubscribeFromProcesses();
     };
   };
   const unsubscribeFromStarted = subscribeToStartedAyme((ayme) => {
@@ -71,8 +116,8 @@ function subscribe(onChange: () => void) {
 }
 
 /**
- * The live tools and the publication status of the started session, kept
- * current: the session announces tool and publication changes alike.
+ * The live tools, the App Process tools and the publication status of the
+ * started session, kept current: the session announces each change.
  */
 export function useLiveTools(): LiveTools {
   return useSyncExternalStore(subscribe, readLiveTools);

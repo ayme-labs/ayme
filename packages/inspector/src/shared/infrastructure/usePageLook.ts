@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PomDefinition, RegisteredPomTool } from "@ayme-dev/ayme";
 import type {
-  PageStatePeek,
+  PageStateLook,
   ProjectedStructuralNodeForest,
   RegisteredPom,
   RegisteredPomTarget,
@@ -14,7 +14,7 @@ import {
   listRegisteredPomTargets,
   listRegisteredPomTools,
   listRegisteredPoms,
-  peekPageStateForDocument,
+  lookAtPageStateForDocument,
   subscribeToRegisteredPoms,
 } from "@ayme-dev/ayme/internal";
 
@@ -77,7 +77,7 @@ function readPomDefinitions() {
 
 /**
  * The Inspector's live view of the page. Each refresh takes one unrecorded
- * look at the page state (a peek: it never enters the interaction history,
+ * look at the page state (it never enters the interaction history,
  * so agents see exactly what they would without the Inspector), and that one
  * look feeds the member mapping (the structure is built from it), the Ref
  * Tools' targets and, through `onLook`, the highlights. Page changes, input,
@@ -115,11 +115,11 @@ export function usePageLook({
       if (!mounted.current) return;
       lookListener.current(next);
       setPageState({
-        projected: next.peek.projected,
+        projected: next.state.projected,
         targetsByRef: next.targetsByRef,
         elementToolTargets: next.elementToolTargets,
-        elementsByRef: next.peek.elementsByRef,
-        controls: readControls(next.peek.elementsByRef),
+        elementsByRef: next.state.elementsByRef,
+        controls: readControls(next.state.elementsByRef),
         capturedAt: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -192,7 +192,7 @@ export function usePageLook({
 
 /** One look at the page, and what the Inspector reads from it. */
 export type Look = {
-  peek: PageStatePeek;
+  state: PageStateLook;
   targets: readonly RegisteredPomTarget[];
   /** The page state's elements: only these can be highlighted. */
   elementsInState: ReadonlySet<Element>;
@@ -201,24 +201,24 @@ export type Look = {
 };
 
 /**
- * Peeks at the page state and maps each ref to every registry target whose
- * element it is: an element's ref is its only ref in the peek.
+ * Looks at the page state and maps each ref to every registry target whose
+ * element it is: an element's ref is its only ref in the look.
  */
 async function lookAtPage(): Promise<Look> {
-  const peek = await peekPageStateForDocument(document);
+  const state = await lookAtPageStateForDocument(document);
   const [targets, elementToolTargets] = await Promise.all([
     listRegisteredPomTargets(),
-    listElementToolTargets(peek),
+    listElementToolTargets(state),
   ]);
 
   // Several members can hold the same element (two collections over the
   // same items, or a locator over a collection's items); none hides another.
-  const targetsByRef = mapTargetsToRefs(peek.elementsByRef, targets);
+  const targetsByRef = mapTargetsToRefs(state.elementsByRef, targets);
 
   return {
-    peek,
+    state,
     targets,
-    elementsInState: new Set(peek.elementsByRef.values()),
+    elementsInState: new Set(state.elementsByRef.values()),
     targetsByRef,
     elementToolTargets,
   };

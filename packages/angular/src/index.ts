@@ -1,8 +1,10 @@
 import {
   DestroyRef,
   InjectionToken,
+  afterNextRender,
   assertInInjectionContext,
   inject,
+  isSignal,
   makeEnvironmentProviders,
   provideEnvironmentInitializer,
   signal,
@@ -15,7 +17,10 @@ import {
   type AymeOptions,
   type AymeWebMcpPublicationStatus,
 } from "@ayme-dev/ayme";
-import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
+import {
+  markRenderSession,
+  type PageObjectConstructor,
+} from "@ayme-dev/ayme/internal";
 
 export type { AymeOptions, AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
 
@@ -49,12 +54,15 @@ export function provideAyme(options: AymeOptions = {}): EnvironmentProviders {
             "provideAyme cannot be nested beneath another Ayme runtime owner."
           );
         const ayme = createAyme(options);
+        // Without a window, Angular renders on the server, where the session
+        // must never claim the process.
+        if (typeof window === "undefined") markRenderSession(ayme);
         const destroyRef = inject(DestroyRef);
         const publicationStatus = signal(ayme.webMCP.publicationStatus);
         destroyRef.onDestroy(
           ayme.webMCP.subscribe((status) => publicationStatus.set(status))
         );
-        // On the server the session starts nothing.
+        // A render session starts nothing.
         destroyRef.onDestroy(ayme.start());
         return {
           ayme,
@@ -90,4 +98,42 @@ export function injectPageObject<T extends object>(
   const { ayme } = injectAyme();
   inject(DestroyRef).onDestroy(() => ayme.pom.unregister(model));
   return ayme.pom.register(model);
+}
+
+let instances = 0;
+
+/**
+ * Adds the caller's instance of the Peek `name` until its `DestroyRef` fires,
+ * through `ayme.peek`. It is added after the first render, so never on the
+ * server. The agent reads `values` when it asks, calling `values` if it is a
+ * signal, or each top-level property that is one. `id` defaults to one per
+ * caller. Call in an injection context.
+ */
+export function injectPeek(values: unknown, name: string, id?: string): void {
+  assertInInjectionContext(injectPeek);
+  const { ayme } = injectAyme();
+  const instanceId = id ?? `ng-${++instances}`;
+  let remove: (() => void) | undefined;
+  inject(DestroyRef).onDestroy(() => remove?.());
+  // Never runs during server rendering, and not after the caller is destroyed.
+  afterNextRender(() => {
+    remove = ayme.peek(() => readValues(values), name, instanceId);
+  });
+}
+
+function readValues(values: unknown): unknown {
+  if (isSignal(values)) return values();
+  if (!isPlainObject(values)) return values;
+  return Object.fromEntries(
+    Object.entries(values).map(([key, value]) => [
+      key,
+      isSignal(value) ? value() : value,
+    ])
+  );
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null) return false;
+  const prototype = Object.getPrototypeOf(value) as unknown;
+  return prototype === Object.prototype || prototype === null;
 }
