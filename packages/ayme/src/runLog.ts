@@ -121,13 +121,16 @@ function createRunLog() {
   const log: AymeRuns & {
     /**
      * Records `execute` as a Run of `tool`, started by `origin`, and returns
-     * its answer. `execute` is handed the Run's id.
+     * its answer. `execute` is handed the Run's id. A Run `offPage` acts on
+     * no page, such as an App Process tool's: it takes no Interactions, so
+     * one made meanwhile stays the page Run's.
      */
     record<T>(
       tool: string,
       input: unknown,
       origin: RunOrigin,
-      execute: (id: string) => Promise<T>
+      execute: (id: string) => Promise<T>,
+      options?: { offPage?: boolean }
     ): Promise<T>;
     /**
      * Records `interaction` as the innermost running Run's. Outside every
@@ -142,7 +145,7 @@ function createRunLog() {
         listeners.delete(listener);
       };
     },
-    async record(tool, input, origin, execute) {
+    async record(tool, input, origin, execute, { offPage = false } = {}) {
       const id = String(nextId++);
       const started = performance.now();
       roots.set(id, "parent" in origin ? (roots.get(origin.parent) ?? "") : id);
@@ -163,9 +166,9 @@ function createRunLog() {
           ) as Run,
         ])
       );
-      running.push(id);
+      if (!offPage) running.push(id);
       const end = (ended: Partial<RunFields>) => {
-        running.splice(running.lastIndexOf(id), 1);
+        if (!offPage) running.splice(running.lastIndexOf(id), 1);
         publish(
           runs.map((run) =>
             run.id === id

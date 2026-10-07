@@ -337,7 +337,9 @@ function createAppProcessTools() {
         throw new RuntimeStateError(
           "No Ayme MCP server is paired with this page."
         );
-      return runLog.record(name, input, { by }, () => paired.run(name, input));
+      return runLog.record(name, input, { by }, () => paired.run(name, input), {
+        offPage: true,
+      });
     },
   };
   return {
