@@ -119,6 +119,14 @@ describe("Peek Tools", () => {
     expect(() => ayme.peek(() => 2, "cart/items")).toThrow(RuntimeStateError);
   });
 
+  it("refuses a browser name that would read as an App Process's peek.node. tool", () => {
+    const ayme = started();
+
+    expect(() => ayme.peek(() => 1, "node.jobs")).toThrow(RuntimeStateError);
+    expect(() => ayme.peek(() => 1, "node/jobs")).not.toThrow();
+    expect(toolNames(ayme)).not.toContain("peek.node.jobs");
+  });
+
   it("refuses a Peek whose tool name another tool already uses", () => {
     const ayme = started({
       agentConnection: true,

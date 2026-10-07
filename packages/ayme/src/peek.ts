@@ -110,6 +110,11 @@ function peekNamed(name: string): Peek {
   const existing = registry.peeks.get(name);
   if (existing) return existing;
   const toolName = peekToolName(name);
+  // `peek.node.` is the App Processes' side; a browser Peek may not read as one.
+  if (typeof window !== "undefined" && toolName.startsWith("peek.node."))
+    throw new RuntimeStateError(
+      `The Peek "${name}" would be read through ${toolName}, which names an App Process's Peek. Rename it so it doesn't start with "node.".`
+    );
   for (const [otherName, other] of registry.peeks)
     if (other.tool.name === toolName)
       throw new RuntimeStateError(
