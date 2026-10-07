@@ -267,8 +267,6 @@ jobs:
                 "@angular/animations@19.0.0":
                   peerDependencies:
                     "@angular/common": 19.0.0
-            # The browser tests need Chromium; `test:e2e` runs every project.
-            e2e: true
           # React 18.0.0's own @types/react needs an old @types/scheduler, so
           # the lane pairs the runtime with the 18.3 type packages.
           - name: React 18.0.0 compatibility

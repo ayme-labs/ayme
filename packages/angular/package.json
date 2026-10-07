@@ -31,9 +31,8 @@
   "scripts": {
     "build": "tsdown",
     "lint": "eslint src --max-warnings 0",
-    "test": "vitest run --project node",
-    "typecheck": "tsc --noEmit",
-    "test:e2e": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*"
