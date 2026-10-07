@@ -59,6 +59,7 @@ function fixtureRunLog() {
           status: "running",
           startedAt,
           ...(input === undefined ? {} : { input }),
+          interactions: [],
         },
       ]);
       const end = (ended: Pick<Run, "status" | "result" | "error">) =>
