@@ -112,11 +112,18 @@ export type Ayme = {
    */
   peek(read: PeekRead, name: string, id?: string): () => void;
   /**
-   * Starts the session; returns the function that stops it. In Node it
-   * needs no page: the session offers its Peek Tools alone and, with
-   * `agentConnection`, pairs the process as an App Process.
+   * Starts the session; returns the function that stops it. On the server it
+   * starts nothing and returns a stop function that does nothing.
    */
   start(): () => void;
+  /**
+   * Starts this Node process's App Process; returns the function that stops
+   * it. With `agentConnection`, the session offers its Peek Tools alone and
+   * pairs with the agent's Ayme MCP server beside the page; without it, it
+   * does nothing. A process has one App Process: while one runs, another
+   * call does nothing. Throws `RuntimeStateError` in the browser.
+   */
+  startAppProcess(): () => void;
 };
 export type { GoalLoopDecisionFunction } from "./goalLoop";
 
@@ -139,10 +146,11 @@ export type AymeOptions = {
   inspector?: boolean | { demo: boolean };
   /**
    * Connects the session to a coding agent's Ayme MCP server through the
-   * optional `@ayme-dev/mcp` package while it is started: in the browser,
-   * the page, through its page client; in Node, the process, as an App
-   * Process beside the page. Off unless set. An object turns it on and,
-   * for an App Process, says where the server is.
+   * optional `@ayme-dev/mcp` package: in the browser, the page, through
+   * its page client, while the session is started; in Node, the process,
+   * while `startAppProcess()` runs it as an App Process beside the page.
+   * Off unless set. An object turns it on and, for an App Process, says
+   * where the server is.
    */
   agentConnection?: boolean | AgentConnectionOptions;
   /**
@@ -217,6 +225,13 @@ function publishedToolNames(): Set<string> {
     return new Set();
   }
 }
+
+const onServer = () => typeof window === "undefined";
+
+// One App Process per Node process, whichever session and bundle start it.
+const appProcessHolder = globalThis as typeof globalThis & {
+  __aymeAppProcess?: object;
+};
 
 function createServerPageObject<T extends object>(
   model: PageObjectConstructor<T>
@@ -307,7 +322,7 @@ function setStarted(ayme: Ayme | undefined) {
   for (const listener of startedListeners) listener(ayme);
 }
 
-/** The session started in this document, if any, for the Inspector. */
+/** The session started in this document, if any, for the Inspector and the Vue integration. */
 export function getStartedAyme(): Ayme | undefined {
   return started;
 }
@@ -356,8 +371,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   let unsubscribeFromPoms: (() => void) | undefined;
   let unsubscribeFromPeeks: (() => void) | undefined;
   let owner: ReturnType<typeof createAymeRuntime> | undefined;
-  // The session while it is started in a Node process of the app, which has
-  // no page: it offers its Peek Tools only.
+  // The session while it runs the process's App Process, which has no
+  // page: it offers its Peek Tools only.
   let inProcess: { stop(): void } | undefined;
   let controller: AbortController | undefined;
   let publication: WebMcpRegistration | undefined;
@@ -501,17 +516,16 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       if (!instance) {
         // Server rendering gets an inert Page Object and never runs the
         // factory; it is still the session's one instance of the class.
-        instance =
-          typeof window === "undefined"
-            ? createServerPageObject(model)
-            : constructPageObject(model, getPage());
+        instance = onServer()
+          ? createServerPageObject(model)
+          : constructPageObject(model, getPage());
         instances.set(model, instance);
       }
       return instance;
     },
     register<T extends object>(model: PageObjectConstructor<T>): T {
       const instance = pom.get(model);
-      if (typeof window === "undefined") return instance;
+      if (onServer()) return instance;
       const registration = registrations.get(model) ?? { count: 0 };
       if (owner && registration.count === 0)
         registration.active = registerPageObject(model, instance);
@@ -554,11 +568,14 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       return addPeek(read, name, id);
     },
     start() {
-      if (owner || inProcess)
+      // Server rendering starts nothing, so concurrent requests share no
+      // owner and integrations need no guard.
+      if (onServer()) return () => {};
+      if (owner)
         throw new RuntimeStateError(
-          "The Ayme runtime already has an active owner."
+          "The Ayme runtime already has an active owner.",
+          { code: "active-owner" }
         );
-      if (typeof window === "undefined") return startInProcess();
       owner = createAymeRuntime(getPage());
       // The document's interaction history starts with its first Visit.
       getInteractionHistory(document);
@@ -606,39 +623,51 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         if (owner === startedOwner) stop();
       };
     },
+    startAppProcess() {
+      if (!onServer())
+        throw new RuntimeStateError(
+          "startAppProcess() starts an App Process in a Node process of the app. In the browser, call start()."
+        );
+      const { agentConnection } = options;
+      // Without the Agent Connection, Node offers no Peeks (ADR-0034).
+      if (!agentConnection || appProcessHolder.__aymeAppProcess)
+        return () => {};
+      return startInProcess(agentConnection);
+    },
   };
 
   /**
-   * Starts the session in a Node process of the app, an App Process: no
-   * page and no document. It offers its Peek Tools and, with
-   * `agentConnection`, pairs with the agent's Ayme MCP server beside the
-   * page.
+   * Starts the session as the process's App Process: no page and no
+   * document. It offers its Peek Tools and pairs with the agent's Ayme MCP
+   * server beside the page.
    */
-  function startInProcess(): () => void {
+  function startInProcess(
+    agentConnection: true | AgentConnectionOptions
+  ): () => void {
     const processController = new AbortController();
-    const unsubscribe = peeks ? subscribeToPeekTools(refreshTools) : undefined;
+    const unsubscribe = subscribeToPeekTools(refreshTools);
     const session = {
       stop() {
         if (inProcess !== session) return;
         inProcess = undefined;
+        if (appProcessHolder.__aymeAppProcess === session)
+          appProcessHolder.__aymeAppProcess = undefined;
         processController.abort();
-        unsubscribe?.();
+        unsubscribe();
         refreshTools();
       },
     };
     inProcess = session;
+    appProcessHolder.__aymeAppProcess = session;
     refreshTools();
-    const { agentConnection } = options;
-    if (agentConnection) {
-      const where = agentConnection === true ? {} : agentConnection;
-      startAgentConnectionUntil(processController.signal, () =>
-        loadProcessConnection().then(
-          ({ startAgentConnection }) =>
-            () =>
-              startAgentConnection(ayme, where)
-        )
-      );
-    }
+    const where = agentConnection === true ? {} : agentConnection;
+    startAgentConnectionUntil(processController.signal, () =>
+      loadProcessConnection().then(
+        ({ startAgentConnection }) =>
+          () =>
+            startAgentConnection(ayme, where)
+      )
+    );
     return () => session.stop();
   }
 

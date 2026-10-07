@@ -13,6 +13,6 @@ export async function register() {
   const ayme = createAyme({
     agentConnection: port === undefined ? true : { port: Number(port) },
   });
-  ayme.start();
+  ayme.startAppProcess();
   ayme.peek(() => ({ renders: renderCount() }), "renders");
 }

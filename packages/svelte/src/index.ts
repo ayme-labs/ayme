@@ -29,21 +29,17 @@ const runtimeKey = Symbol("Ayme runtime");
 function ownRuntime(options: UseAymeOptions | undefined): UseAymeResult {
   const ayme = createAyme(options);
   // Start during initialisation, not in onMount: a descendant's onMount runs
-  // before the owner's and must already see a started runtime.
-  if (typeof window !== "undefined") {
-    try {
-      onDestroy(ayme.start());
-    } catch (error) {
-      if (
-        error instanceof RuntimeStateError &&
-        error.message === "The Ayme runtime already has an active owner."
-      )
-        throw new RuntimeStateError(
-          "useAyme(options) already has an active owner. Call it once, in the root +layout.svelte or App.svelte.",
-          { cause: error }
-        );
-      throw error;
-    }
+  // before the owner's and must already see a started runtime. On the server
+  // the session starts nothing.
+  try {
+    onDestroy(ayme.start());
+  } catch (error) {
+    if (error instanceof RuntimeStateError && error.code === "active-owner")
+      throw new RuntimeStateError(
+        "useAyme(options) already has an active owner. Call it once, in the root +layout.svelte or App.svelte.",
+        { cause: error }
+      );
+    throw error;
   }
   const { webMCP } = ayme;
   return {

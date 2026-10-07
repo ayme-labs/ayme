@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAyme, type Ayme, type AymeOptions } from "./runtime";
 
 // Runtime object seam in a Node process of the app (an App Process): no
-// window and no document. `start()` hands `ayme` to the App Process's side
+// window and no document. `startAppProcess()` hands `ayme` to the App Process's side
 // of the Agent Connection, which this test records in place of the real
 // one, which would scan for an agent's Ayme MCP server.
 
@@ -41,7 +41,7 @@ afterEach(() => {
 
 function started(options: AymeOptions = { agentConnection: true }) {
   const ayme = createAyme(options);
-  cleanups.push(ayme.start());
+  cleanups.push(ayme.startAppProcess());
   return ayme;
 }
 
@@ -63,7 +63,11 @@ describe("createAyme in an App Process", () => {
   });
 
   it("passes the connect link and port of the agentConnection option to the connection", async () => {
-    started({ agentConnection: { port: 41234 } });
+    const stop = createAyme({
+      agentConnection: { port: 41234 },
+    }).startAppProcess();
+    await loaded();
+    stop();
     started({ agentConnection: { link: "http://localhost:5173/#ayme=x" } });
 
     await loaded();
@@ -106,7 +110,7 @@ describe("createAyme in an App Process", () => {
 
   it("ends the connection and offers no tools once stopped", async () => {
     const ayme = createAyme({ agentConnection: true });
-    const stop = ayme.start();
+    const stop = ayme.startAppProcess();
     peek(ayme, () => 1, "jobs");
     await loaded();
 
@@ -137,7 +141,37 @@ describe("createAyme in an App Process", () => {
 
     expect(gatedOff.tools.list()).toEqual([]);
     await expect(gatedOff.tools.run("peek.node.jobs", {})).rejects.toThrow(
-      "not live"
+      "not started"
     );
+  });
+
+  it("starts no App Process from start(), even with agentConnection on", async () => {
+    const ayme = createAyme({ agentConnection: true });
+    cleanups.push(ayme.start());
+
+    peek(ayme, () => 1, "jobs");
+    await loaded();
+
+    expect(processConnections).toEqual([]);
+    expect(ayme.tools.list()).toEqual([]);
+  });
+
+  it("starts one App Process per process: another start while it runs does nothing", async () => {
+    const first = started();
+    const second = createAyme({ agentConnection: true });
+    const stopSecond = second.startAppProcess();
+    cleanups.push(first.startAppProcess());
+    peek(first, () => 1, "jobs");
+    await loaded();
+
+    stopSecond();
+
+    expect(processConnections).toHaveLength(1);
+    expect(processConnections[0]!.ayme).toBe(first);
+    expect(processConnections[0]!.disposed).toBe(false);
+    expect(first.tools.list().map(({ name }) => name)).toEqual([
+      "peek.node.jobs",
+    ]);
+    expect(second.tools.list()).toEqual([]);
   });
 });

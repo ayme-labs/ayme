@@ -79,10 +79,10 @@ them by name.
 An App Process is a Node process of your app, such as its dev server or an
 Express backend, that pairs with the agent's server beside the tab. Its tools,
 such as the Peek Tools of its server-side state, are MCP tools next to the
-page's. Start it with `createAyme({ agentConnection })` and `start()` from
-`@ayme-dev/ayme` in the process's entry point; its README shows an Express
-and a Next.js setup. `@ayme-dev/mcp/process` is the side of the connection
-that `start()` loads in Node:
+page's. Start it with `createAyme({ agentConnection })` and
+`startAppProcess()` from `@ayme-dev/ayme` in the process's entry point; its
+README shows an Express and a Next.js setup. `@ayme-dev/mcp/process` is the
+side of the connection that `startAppProcess()` loads:
 `startAgentConnection(ayme, options)` takes the runtime object's `tools` (a
 `{ list, subscribe, run }` object, as the page client takes) and returns
 `{ dispose }`.

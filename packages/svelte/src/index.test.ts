@@ -180,7 +180,9 @@ it("names the root component when a second owner becomes active", () => {
     /^useAyme\(options\) already has an active owner\. Call it once, in the root \+layout\.svelte or App\.svelte\./
   );
   expect((error as Error).cause).toEqual(
-    new RuntimeStateError("The Ayme runtime already has an active owner.")
+    new RuntimeStateError("The Ayme runtime already has an active owner.", {
+      code: "active-owner",
+    })
   );
 });
 

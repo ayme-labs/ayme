@@ -26,6 +26,7 @@ import {
   type GoalLoopDecisionFunction,
 } from "@ayme-dev/ayme";
 import {
+  getStartedAyme,
   sameRuntimeOptions,
   type PageObjectConstructor,
 } from "@ayme-dev/ayme/internal";
@@ -39,16 +40,10 @@ function inheritedRuntime() {
   return getCurrentInstance() ? inject(runtimeKey, undefined) : undefined;
 }
 
+// On the server the session starts nothing.
 function ownRuntime(options: UseAymeOptions = {}) {
   const runtime = createAyme(options);
-  if (typeof window !== "undefined") {
-    const stop = runtime.start();
-    started = runtime;
-    onScopeDispose(() => {
-      stop();
-      if (started === runtime) started = undefined;
-    });
-  }
+  onScopeDispose(runtime.start());
   if (getCurrentInstance()) provide(runtimeKey, runtime);
   return runtime;
 }
@@ -161,10 +156,11 @@ export function usePageObject<T extends object>(
       "usePageObject must be called within an active Vue effect scope"
     );
   // An owner's own scope does not inject what it provides, so the started
-  // owner stands in. On the server any session's Page Object is inert.
+  // session stands in. Nothing starts on the server, where a consumer without
+  // an injected owner gets an inert Page Object from a shared inert session.
   const runtime =
     inheritedRuntime() ??
-    started ??
+    getStartedAyme() ??
     (typeof window === "undefined"
       ? (inertSession ??= createAyme())
       : undefined);
@@ -188,7 +184,7 @@ export function usePeek(values: unknown, name: string, id?: string): void {
   if (!component)
     throw new Error("usePeek must be called in a component's setup");
   // The server never mounts, so it needs no session.
-  const runtime = inheritedRuntime() ?? started;
+  const runtime = inheritedRuntime() ?? getStartedAyme();
   if (!runtime && typeof window !== "undefined")
     throw new Error(
       "usePeek requires useAyme() or an AymeProvider in this component or an ancestor."
@@ -214,6 +210,4 @@ function read(values: unknown) {
   );
 }
 
-/** The started owner's session in the browser. */
-let started: Ayme | undefined;
 let inertSession: Ayme | undefined;

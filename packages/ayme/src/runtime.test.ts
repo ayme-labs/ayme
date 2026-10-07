@@ -291,6 +291,31 @@ it("never calls the page factory on the server", () => {
   expect(createPage).not.toHaveBeenCalled();
 });
 
+it("C9: starts and registers nothing on the server, for concurrent sessions", () => {
+  vi.stubGlobal("window", undefined);
+  vi.stubGlobal("document", undefined);
+  const factory = vi.fn(() => page);
+  const first = createAyme({ pageFactory: factory, webMCP: { enabled: true } });
+  const second = createAyme({ pageFactory: factory });
+  sessions.push(first, second);
+  const instance = first.pom.register(Model);
+  const stopFirst = start(first);
+  // A second session on the server is no owner conflict.
+  const stopSecond = start(second);
+  expect(first.webMCP.publicationStatus.state).toBe("waiting");
+  expect(second.webMCP.publicationStatus.state).toBe("disabled");
+  expect(first.tools.list()).toEqual([]);
+  expect(listRegisteredPoms()).toHaveLength(0);
+  first.pom.unregister(Model);
+  stopFirst();
+  stopSecond();
+  expect(first.webMCP.publicationStatus.state).toBe("waiting");
+  expect(instance).toBeInstanceOf(Model);
+  expect(factory).not.toHaveBeenCalled();
+  expect(createPage).not.toHaveBeenCalled();
+  expect(synchronizeWebMcpTools).not.toHaveBeenCalled();
+});
+
 it("calls the page factory at most once, lazily, on first use", () => {
   const factory = vi.fn(() => page);
   const runtime = createAyme({ pageFactory: factory });
@@ -439,13 +464,30 @@ it("fails to start with two distinct classes sharing a name, and starts once one
   ).toEqual([Model]);
 });
 
-it("rejects concurrent owners and permits a fresh owner after disposal", () => {
+it("C3: rejects concurrent owners with the active-owner code and permits a fresh owner after disposal", () => {
   const first = session(false);
   const second = session(false);
   const stop = start(first);
-  expect(() => second.start()).toThrow("active owner");
+  expect(() => second.start()).toThrow(
+    expect.objectContaining({
+      name: "RuntimeStateError",
+      message: "The Ayme runtime already has an active owner.",
+      code: "active-owner",
+    })
+  );
   stop();
   start(second);
+});
+
+it("refuses to start an App Process in the browser", () => {
+  const runtime = createAyme({ agentConnection: true });
+  sessions.push(runtime);
+  expect(() => runtime.startAppProcess()).toThrow(
+    expect.objectContaining({
+      name: "RuntimeStateError",
+      message: expect.stringContaining("In the browser, call start()."),
+    })
+  );
 });
 
 it("publishes once, shares retries, and exposes immutable status snapshots", async () => {
