@@ -6,7 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { createServer, type ViteDevServer } from "vite";
 import { afterEach, expect, it, vi } from "vitest";
@@ -223,6 +223,14 @@ export class CounterPage {
     JSON.stringify(JSON.parse(json ?? "null"));
 
   expect(normalize(await modeValues())).toBe(`["up","down"]`);
+
+  // `addWatchFile` hands the file to chokidar, which starts watching it
+  // asynchronously; an edit before that raises no change event.
+  const watchedNames = () =>
+    server?.watcher.getWatched()[dirname(modeFile)] ?? [];
+  await vi.waitFor(() => expect(watchedNames()).toContain("CounterMode.ts"), {
+    timeout: 10_000,
+  });
 
   const changed = new Promise<void>((resolve) => {
     const onChange = (file: string) => {
