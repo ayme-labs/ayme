@@ -22,6 +22,7 @@ import {
   listPublishedTools,
   listElementToolTargets,
   type PublishedToolGroup,
+  type PublishedToolInfo,
 } from "./publishedTools";
 import type { CustomTool } from "./elementTools";
 import { buildToolOptions, planArguments } from "./goalLoopQuestions";
@@ -132,6 +133,11 @@ registerCompiledPom(ListPage, {
     },
   ],
 });
+
+/** The live tools without those WebMCP never publishes: `screenshot`, whose result is an image. */
+function withoutWebMcpOnly(tools: readonly PublishedToolInfo[]) {
+  return tools.filter(({ name }) => name !== "screenshot");
+}
 
 /** Every tool the fixture session publishes, in the group the Inspector shows it under. */
 const EXPECTED_GROUPS: Record<string, PublishedToolGroup> = {
@@ -329,10 +335,15 @@ export function describePublishedTools(
       expect(listed()).toEqual(await publishedOverWebMcp(context));
     });
 
-    it("lists the live tools as published while publication is active", async () => {
+    it("lists the live tools as published while publication is active, and screenshot, which WebMCP never publishes", async () => {
       await startSession();
 
-      expect(runtime.tools.list()).toEqual(listPublishedTools());
+      expect(withoutWebMcpOnly(runtime.tools.list())).toEqual(
+        listPublishedTools()
+      );
+      expect(runtime.tools.list().map(({ name }) => name)).toContain(
+        "screenshot"
+      );
     });
 
     it("puts each published tool in its group", async () => {
@@ -673,7 +684,7 @@ export function describePublishedTools(
           runtime.tools.list()
         );
 
-        expect(live).toEqual(published);
+        expect(withoutWebMcpOnly(live)).toEqual(published);
       });
 
       it("tells subscribers when a Page Object registers, and returns a new list only then", async () => {
