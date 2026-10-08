@@ -251,6 +251,13 @@ jobs:
             pins: svelte
             build: "@ayme-dev/ayme"
             browser: true
+          - name: Svelte 4.2.20 compatibility
+            package: "@ayme-dev/svelte"
+            dir: packages/svelte
+            version: "4.2.20"
+            pins: svelte
+            build: "@ayme-dev/ayme"
+            browser: true
           # @angular/animations 19.0.0, which @angular/platform-server loads,
           # imports @angular/common without declaring it, so it would reach the
           # workspace's hoisted Angular 22. The extension links it to 19.0.0.
