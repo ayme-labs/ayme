@@ -521,7 +521,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     if (!entry) throw noSuchTool(name);
     if (!entry.available)
       throw new RuntimeStateError(
-        `The tool "${name}" is not available now: its Page Object is not on the page or is blocked.`
+        `The tool "${name}" is not available now: the Page Object or component it acts on is not on the page or is blocked.`
       );
     const { tool } = entry;
     // As after an agent's call, the Page Objects are probed, so the tools'

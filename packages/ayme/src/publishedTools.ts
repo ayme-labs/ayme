@@ -110,13 +110,12 @@ export function resolvePublishedTools(): Map<
   string,
   { tool: PublishedTool; group: PublishedToolGroup }
 > {
-  const published = new Map<
-    string,
-    { tool: PublishedTool; group: PublishedToolGroup }
-  >();
-  for (const [name, { tool, group, available }] of resolveRegisteredTools())
-    if (available) published.set(name, { tool, group });
-  return published;
+  return new Map(
+    [...resolveRegisteredTools()].flatMap(
+      ([name, { tool, group, available }]) =>
+        available ? [[name, { tool, group }] as const] : []
+    )
+  );
 }
 
 let publishedTools: readonly PublishedToolInfo[] = Object.freeze([]);
@@ -166,11 +165,7 @@ export function resolveTools({
  */
 export function listTools(options: { peeks: boolean }): readonly ToolInfo[] {
   try {
-    return Object.freeze(
-      [...resolveTools(options).values()].map(({ tool, group, available }) =>
-        Object.freeze({ ...info(tool, group), available })
-      )
-    );
+    return toInfo([...resolveTools(options).values()]);
   } catch {
     return Object.freeze([]);
   }
@@ -181,10 +176,8 @@ export function listTools(options: { peeks: boolean }): readonly ToolInfo[] {
  * app, which has no page.
  */
 export function listPeekToolInfo(): readonly ToolInfo[] {
-  return Object.freeze(
-    listPeekTools().map((tool) =>
-      Object.freeze({ ...info(tool, "peek"), available: true })
-    )
+  return toInfo(
+    listPeekTools().map((tool) => ({ tool, group: "peek", available: true }))
   );
 }
 
@@ -217,19 +210,27 @@ export function reportPublishedTools(
   publishedTools = toInfo(tools);
 }
 
+/** Each tool's reading, with its availability when it has one. */
+function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[];
 function toInfo(
   tools: readonly { tool: PublishedTool; group: PublishedToolGroup }[]
-): readonly PublishedToolInfo[] {
+): readonly PublishedToolInfo[];
+function toInfo(
+  tools: readonly {
+    tool: PublishedTool;
+    group: PublishedToolGroup;
+    available?: boolean;
+  }[]
+) {
   return Object.freeze(
-    tools.map(({ tool, group }) => Object.freeze(info(tool, group)))
+    tools.map(({ tool, group, available }) =>
+      Object.freeze({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        group,
+        ...(available === undefined ? {} : { available }),
+      })
+    )
   );
-}
-
-function info(tool: PublishedTool, group: PublishedToolGroup) {
-  return {
-    name: tool.name,
-    description: tool.description,
-    inputSchema: tool.inputSchema,
-    group,
-  };
 }

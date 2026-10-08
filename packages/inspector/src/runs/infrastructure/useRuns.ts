@@ -132,7 +132,7 @@ type FoundTool = {
  */
 function findTool(toolName: string): FoundTool {
   // Tool names can collide across registrations; this is the one that is
-  // live now, the one the runtime runs.
+  // available now, the one the runtime runs.
   const pomTool = listAvailablePomTools().find(
     (candidate) => candidate.name === toolName
   );

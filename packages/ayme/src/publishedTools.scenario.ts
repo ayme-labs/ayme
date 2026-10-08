@@ -546,7 +546,7 @@ export function describePublishedTools(
       await expect(
         runtime.tools.run("ListPage.items.archive", { ref: "e1", args: {} })
       ).rejects.toThrow(
-        'The tool "ListPage.items.archive" is not available now: its Page Object is not on the page or is blocked.'
+        'The tool "ListPage.items.archive" is not available now: the Page Object or component it acts on is not on the page or is blocked.'
       );
 
       document.querySelector("#item")!.removeAttribute("hidden");
