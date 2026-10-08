@@ -56,7 +56,7 @@ The lanes, their commands and where test-only code lives are in the [testing gui
 
 Each framework is certified in a server-rendered app and in an SPA: through a config switch where the meta-framework supports both, otherwise with a separate SPA example. Each runs against its dev server and a production build. An example is a private app under `apps/` with the Turbo tag `app`; its README says what it certifies and links the package README for setup.
 
-Its Page Object Models live in the app's own source, because the build plugin compiles them only from there. Its end-to-end tests run the shared [example certification](../apps/example-certification/README.md), which drives the counter contract written down there, calls tools through the recording WebMCP driver from `@ayme-dev/ayme/testing`, and checks:
+Its Page Object Models live in the app's own source, because the build plugin compiles them only from there. Its end-to-end tests run the shared [example certification](../apps/example-certification/README.md), which drives the counter contract written down there, calls tools through the recording WebMCP driver from `@ayme-dev/webmcp/testing`, and checks:
 
 - the server-rendered HTML and the initial publication status, across repeated requests;
 - the exact published tool schemas;
