@@ -4,16 +4,16 @@ Where each kind of test runs, what it is for, and where test-only code lives. Th
 
 ## Test lanes
 
-| Lane                 | Runs with                                         | Files                                     | Command                                    |
-| -------------------- | ------------------------------------------------- | ----------------------------------------- | ------------------------------------------ |
-| Unit                 | Vitest in Node, or jsdom for hooks and components | `*.test.ts`, `*.test.tsx`                 | `pnpm test`                                |
-| Browser              | Vitest browser mode on Chromium                   | `*.browser.test.ts`, `*.browser.test.tsx` | `pnpm test` or `pnpm test:e2e` (see below) |
-| Native WebMCP        | Vitest browser mode on Chromium's own WebMCP      | `*.native.browser.test.ts` in `ayme`      | `pnpm test:e2e` in `packages/ayme`         |
-| E2E                  | Playwright on built packages and example apps     | `tests/**/*.spec.ts`                      | `pnpm test:e2e`                            |
-| Package verification | A clean consumer installs the packed packages     | `packedConsumer.test.ts`                  | `pnpm test` in `ayme`                      |
-| Live goals           | Playwright with the real model                    | `apps/example-vue/tests/goals.spec.ts`    | `pnpm test:goals` in `apps/example-vue`    |
+| Lane                 | Runs with                                     | Files                                     | Command                                    |
+| -------------------- | --------------------------------------------- | ----------------------------------------- | ------------------------------------------ |
+| Unit                 | Vitest in Node, or jsdom for components       | `*.test.ts`, `*.test.tsx`                 | `pnpm test`                                |
+| Browser              | Vitest browser mode on Chromium               | `*.browser.test.ts`, `*.browser.test.tsx` | `pnpm test` or `pnpm test:e2e` (see below) |
+| Native WebMCP        | Vitest browser mode on Chromium's own WebMCP  | `*.native.browser.test.ts` in `ayme`      | `pnpm test:e2e` in `packages/ayme`         |
+| E2E                  | Playwright on built packages and example apps | `tests/**/*.spec.ts`                      | `pnpm test:e2e`                            |
+| Package verification | A clean consumer installs the packed packages | `packedConsumer.test.ts`                  | `pnpm test` in `ayme`                      |
+| Live goals           | Playwright with the real model                | `apps/example-vue/tests/goals.spec.ts`    | `pnpm test:goals` in `apps/example-vue`    |
 
-- **Unit** covers pure modules and framework hooks. Expected values come from fixtures and examples, never from the code under test.
+- **Unit** covers pure modules. Expected values come from fixtures and examples, never from the code under test.
 - **Browser** covers code that needs a real DOM.
   - `packages/ayme` runs the runtime against real pages in `test:e2e` ([`vitest.browser.config.ts`](../packages/ayme/vitest.browser.config.ts)).
   - `packages/inspector` renders one part of the panel with fixture props and drives it through the Inspector's page objects on playwright-lite, in its `component` project ([`vitest.config.ts`](../packages/inspector/vitest.config.ts)). Its [agent notes](../packages/inspector/AGENTS.md#testing) say how those page objects work.
