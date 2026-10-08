@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { recordAgentImageRun } from "./agentImageRuns";
 import { createPage } from "./browserPage";
 import { loadAgentConnection } from "./agentConnection";
 import { RuntimeStateError } from "./errors";
@@ -196,9 +197,11 @@ it("starts the Agent Connection while a session with agentConnection is started"
   await flush();
   expect(startAgentConnection).toHaveBeenCalledOnce();
   // The page client reaches the session's tools, and runs them as ayme-mcp.
-  const [{ tools }] = startAgentConnection.mock.calls[0] as unknown as [
-    { tools: Ayme["tools"] },
+  const [{ tools, recordAgentImage }] = startAgentConnection.mock
+    .calls[0] as unknown as [
+    { tools: Ayme["tools"]; recordAgentImage: unknown },
   ];
+  expect(recordAgentImage).toBe(recordAgentImageRun);
   expect(tools.list()).toBe(runtime.tools.list());
   const run = vi.spyOn(runtime.tools, "run").mockResolvedValue("ran");
   await expect(tools.run("snapshot", {})).resolves.toBe("ran");
@@ -352,7 +355,7 @@ it("calls the page factory at most once, lazily, on first use", () => {
   expect(createPage).not.toHaveBeenCalled();
 });
 
-it("rejects a run before start, after stop and for a tool that is not live", async () => {
+it("rejects a run before start, after stop and for a tool that does not exist", async () => {
   const runtime = session(false);
   await expect(
     runtime.tools.run("goal", { goal: "save", maxSteps: 1 })
@@ -362,7 +365,7 @@ it("rejects a run before start, after stop and for a tool that is not live", asy
   const stop = start(runtime);
   await expect(
     runtime.tools.run("goal", { goal: "save", maxSteps: 1 })
-  ).rejects.toThrow('The tool "goal" is not live.');
+  ).rejects.toThrow('There is no tool "goal".');
   stop();
   await expect(runtime.tools.run("Unknown.tool", {})).rejects.toBeInstanceOf(
     RuntimeStateError

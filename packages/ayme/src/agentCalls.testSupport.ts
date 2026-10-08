@@ -9,21 +9,22 @@ import type { Reader } from "./interactionHistory";
 import { getPageContextForDocument } from "./pageContext";
 import { getPageStateForDocument, type AriaRef } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
-import { resolveLiveTools, resolvePublishedTools } from "./publishedTools";
+import { resolvePublishedTools, resolveTools } from "./publishedTools";
 import { executeTopLevelRun, type RunContext } from "./run";
 
 /**
  * The Run context for a tool a test executes itself, outside a runtime
  * session: its Change Record is `reader`'s, the agent's by default, and the
- * child Runs it starts execute the live tool they name at once, unrecorded.
+ * child Runs it starts execute the available tool they name at once,
+ * unrecorded.
  */
 export function runContext(reader: Reader = "agent"): RunContext {
   return {
     reader,
     run: async (name, input, childReader = reader) => {
-      const live = resolveLiveTools({ peeks: true }).get(name);
-      if (!live) throw new Error(`No live tool "${name}".`);
-      return live.tool.execute(input, runContext(childReader));
+      const entry = resolveTools({ peeks: true }).get(name);
+      if (!entry?.available) throw new Error(`No available tool "${name}".`);
+      return entry.tool.execute(input, runContext(childReader));
     },
   };
 }

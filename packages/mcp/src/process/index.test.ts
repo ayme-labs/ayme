@@ -72,7 +72,12 @@ const { SCAN_INTERVAL_MS, startAgentConnection } = await import("./index");
 
 const SERVER = "ws://127.0.0.1:9352";
 const OTHER = "ws://127.0.0.1:9353";
-const tool = { name: "peek.node.jobs", description: "", inputSchema: {} };
+const tool = {
+  name: "peek.node.jobs",
+  description: "",
+  inputSchema: {},
+  available: true,
+};
 const tools = {
   list: () => [tool],
   subscribe: () => () => {},

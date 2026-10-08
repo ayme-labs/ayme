@@ -1,4 +1,5 @@
 import type {
+  ImageResult,
   PageLeaving,
   PageTool,
   ToolCall,
@@ -6,18 +7,38 @@ import type {
 } from "../../contract";
 import type { AgentConnection } from "./agentConnection";
 
+type ListedPageTool = PageTool & { readonly available: boolean };
+
 /**
  * The page's or App Process's tools, as its client reaches them: the
- * `tools` member of the runtime object Ayme's setup returns.
+ * `tools` member of the runtime object Ayme's setup returns. Each says
+ * whether a call can run it now.
  */
 export type PageTools = {
-  list(): readonly PageTool[];
-  subscribe(listener: (tools: readonly PageTool[]) => void): () => void;
+  list(): readonly ListedPageTool[];
+  subscribe(listener: (tools: readonly ListedPageTool[]) => void): () => void;
   run(name: string, input: unknown): Promise<unknown>;
+};
+
+/**
+ * A call the agent made through the server whose result is an image, such
+ * as a screenshot, as the page's Inspector records it.
+ */
+export type AgentImageRun = {
+  name: string;
+  input: unknown;
+  result: ImageResult;
+  /** The file the server saves it to, when the server named its folder. */
+  savedTo: string | undefined;
+  /** When the call started, in epoch milliseconds. */
+  startedAt: number;
+  durationMs: number;
 };
 
 /** The page's or App Process's end of the channel to its paired server. */
 export type PageChannel = {
+  /** The folder the server saves a tool's images to, once its welcome named it. */
+  readonly imageFolder: string | undefined;
   /** Reports the tools to the server. */
   publishTools(tools: readonly PageTool[]): Promise<void>;
   /** Runs `handler` for every call the server sends and answers with its outcome. */
@@ -56,6 +77,8 @@ export type PageChannel = {
 export type ClientBehaviour = (context: {
   tools: PageTools;
   channel: PageChannel;
+  /** Records an agent's call whose result is an image, for the page's Inspector. */
+  recordAgentImage?: (run: AgentImageRun) => void;
 }) => () => void;
 
 /**

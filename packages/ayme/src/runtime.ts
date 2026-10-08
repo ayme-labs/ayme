@@ -1,12 +1,12 @@
+import { recordAgentImageRun } from "./agentImageRuns";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
 import {
-  listLiveTools,
   listPeekToolInfo,
-  resolveLiveTools,
-  resolvePublishedTools,
-  type PublishedToolInfo,
+  listTools,
+  resolveTools,
+  type ToolInfo,
 } from "./publishedTools";
 import { configureCustomTools, type CustomTool } from "./elementTools";
 import { loadAgentConnection, loadProcessConnection } from "./agentConnection";
@@ -70,25 +70,31 @@ export type AymeWebMcp = {
   retryPublication(): Promise<void>;
 };
 
-/** A live tool: one `tools.run` can run now. */
-export type ToolInfo = PublishedToolInfo;
+export type { ToolInfo } from "./publishedTools";
 
 /** Every registered tool, by its unprefixed name, whether or not WebMCP publishes it. */
 export type AymeTools = {
   /**
-   * Every live tool, in publication order. The same array comes back until
-   * the set changes; empty while the session is not started.
+   * Every tool, in publication order, each with whether it is available
+   * now. A Page Object Tool stays listed while its Page Object is
+   * unavailable; a surface that offers only what can run filters on
+   * `available`. The same array comes back until the list changes; empty
+   * while the session is not started.
    */
   list(): readonly ToolInfo[];
-  /** Calls `listener` with the new list after the live tool set changes. */
+  /**
+   * Calls `listener` with the new list after it changes, including when a
+   * tool's availability changes.
+   */
   subscribe(listener: (tools: readonly ToolInfo[]) => void): () => void;
   /**
-   * Starts a Run of a live tool for the Caller `by` names, `"app"` by
-   * default: every Caller, WebMCP and the Ayme MCP server included, starts
-   * its Runs here. Runs take turns, one at a time per page: an action's
-   * turn ends once the page has settled, a read's without a settle wait.
-   * Throws Ayme's errors, and `RuntimeStateError` for an empty `by`, while
-   * the session is not started, or when the tool is not live.
+   * Starts a Run of an available tool for the Caller `by` names, `"app"`
+   * by default: every Caller, WebMCP and the Ayme MCP server included,
+   * starts its Runs here. Runs take turns, one at a time per page: an
+   * action's turn ends once the page has settled, a read's without a settle
+   * wait. Throws Ayme's errors, and `RuntimeStateError` for an empty `by`,
+   * while the session is not started, when no tool has the name, or when
+   * the tool is not available.
    */
   run<N extends string>(
     name: N,
@@ -106,7 +112,7 @@ export type AymePom = {
   get<T extends object>(model: PageObjectConstructor<T>): T;
   /**
    * Counts a registration of `model` and returns its instance. Its tools are
-   * live while the session is started and the count is above zero.
+   * listed while the session is started and the count is above zero.
    */
   register<T extends object>(model: PageObjectConstructor<T>): T;
   /** Removes one registration of `model`. */
@@ -132,7 +138,7 @@ export type Ayme = {
    * when called. There is one instance per (`name`, `id`): a later call with
    * the same id gives that instance the new `read`, and without an id a later
    * call replaces the earlier one. Returns what removes the instance. Throws
-   * `RuntimeStateError` when `name` is empty, or when another live tool
+   * `RuntimeStateError` when `name` is empty, or when another tool
    * already uses the Peek Tool's name. Does nothing unless the session has
    * `agentConnection` on, or `inspector` in the browser.
    */
@@ -240,16 +246,19 @@ export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
   });
 }
 
-/** The names of the tools WebMCP would publish now; none while they clash. */
-function publishedToolNames(): Set<string> {
+/** The names of the registered tools, available or not; none while they clash. */
+function registeredToolNames(): Set<string> {
   try {
-    return new Set(resolvePublishedTools().keys());
+    return new Set(resolveTools({ peeks: false }).keys());
   } catch {
     return new Set();
   }
 }
 
 const onServer = () => typeof window === "undefined";
+
+const noSuchTool = (name: string) =>
+  new RuntimeStateError(`There is no tool "${name}".`);
 
 // One App Process per Node process, whichever session and bundle start it.
 const appProcessHolder = globalThis as typeof globalThis & {
@@ -440,7 +449,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   };
   const refreshTools = () => {
     const next = owner
-      ? listLiveTools({ peeks })
+      ? listTools({ peeks })
       : inProcess && peeks
         ? listPeekToolInfo()
         : NO_TOOLS;
@@ -549,11 +558,11 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   }
 
   /**
-   * Queues a top-level Run of the live tool `name` for `by`, which runs in
+   * Queues a top-level Run of the tool `name` for `by`, which runs in
    * its turn on the page's queue. `settle` runs after an action, within the Run's turn:
    * by default the Page Objects are probed, as after an agent's call, so the
-   * live tools are current. `name` is resolved when the turn starts, against
-   * the tools live then.
+   * tools' availability is current. `name` is resolved when the turn starts, against
+   * the tools available then.
    */
   function queueTopLevelRun(
     name: string,
@@ -565,7 +574,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   }
 
   /**
-   * Records a top-level Run of the live tool `name` for `by` in the log and
+   * Records a top-level Run of the tool `name` for `by` in the log and
    * executes it, in its turn. A session that runs an App Process keeps no
    * log: it runs its Peek Tools only.
    */
@@ -581,14 +590,13 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       const peekTool = peeks
         ? listPeekTools().find((tool) => tool.name === name)
         : undefined;
-      if (!peekTool)
-        throw new RuntimeStateError(`The tool "${name}" is not live.`);
+      if (!peekTool) throw noSuchTool(name);
       // A read: it moves no cursor and adds no settle wait.
       return peekTool.execute(input);
     }
     const reader = readerOf(by);
     return runLog.record(name, input, { by }, (id) => {
-      const tool = lookUpLiveTool(name);
+      const tool = lookUpAvailableTool(name);
       return executeTopLevelRun(
         tool,
         () =>
@@ -601,23 +609,28 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   }
 
   /**
-   * Looks up the live tool `name` for a Run. Throws when there is none,
-   * inside the Run that asked for it, so the log records that Run as failed.
+   * Looks up the available tool `name` for a Run. Throws when there is none
+   * or it is not available, inside the Run that asked for it, so the log
+   * records that Run as failed.
    */
-  function lookUpLiveTool(name: string) {
+  function lookUpAvailableTool(name: string) {
     if (!owner)
       throw new RuntimeStateError(
         `Cannot run the tool "${name}": the Ayme runtime session is not started.`
       );
-    const entry = resolveLiveTools({ peeks }).get(name);
-    if (!entry) throw new RuntimeStateError(`The tool "${name}" is not live.`);
+    const entry = resolveTools({ peeks }).get(name);
+    if (!entry) throw noSuchTool(name);
+    if (!entry.available)
+      throw new RuntimeStateError(
+        `The tool "${name}" is not available now: the Page Object or component it acts on is not on the page or is blocked.`
+      );
     return entry.tool;
   }
 
   /**
    * Executes the Run `id` with a context whose `run` starts its child Runs,
    * and ends once every child Run it started has ended, even when it fails
-   * first, so no child outlives its parent's turn. Each child runs the live
+   * first, so no child outlives its parent's turn. Each child runs the available
    * tool it names inside the parent's turn, never on the page's queue, and
    * starts its own children the same way. The parent's children run one
    * after the other, in the order it starts them, so two started together
@@ -635,7 +648,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       takeChildTurn(() =>
         runLog.record(name, input, { parent: id }, (childId) =>
           executeWithChildRuns(childId, childReader, (context) =>
-            lookUpLiveTool(name).execute(input, context)
+            lookUpAvailableTool(name).execute(input, context)
           )
         )
       );
@@ -711,7 +724,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         throw new RuntimeStateError("A Peek needs a name.");
       if (!peeks) return () => {};
       const toolName = peekToolName(name);
-      if (publishedToolNames().has(toolName))
+      if (registeredToolNames().has(toolName))
         throw new RuntimeStateError(
           `Cannot add the Peek "${name}": another tool already uses the name ${toolName}. Rename the Peek.`
         );
@@ -753,6 +766,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
             loadAgentConnection().then(({ startAgentConnection }) => () => {
               const connection = startAgentConnection({
                 tools: aymeMcpTools,
+                recordAgentImage: recordAgentImageRun,
               });
               // A page client from before App Processes hands over none.
               appProcessTools.follow(connection.processTools);

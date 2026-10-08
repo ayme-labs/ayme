@@ -158,7 +158,7 @@ describe("child Runs, in Chromium", () => {
     ]);
   });
 
-  it("records a child Run of a tool that is not live as failed, under its parent", async () => {
+  it("records a child Run of a tool that does not exist as failed, under its parent", async () => {
     const saveElsewhere: CustomTool = {
       name: "save_elsewhere",
       description: "Save on a page that is not here.",
@@ -178,7 +178,7 @@ describe("child Runs, in Chromium", () => {
       tool: "Nowhere.save",
       parent: parent!.id,
       status: "failed",
-      error: 'RuntimeStateError: The tool "Nowhere.save" is not live.',
+      error: 'RuntimeStateError: There is no tool "Nowhere.save".',
     });
   });
 

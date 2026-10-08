@@ -38,12 +38,12 @@ createAyme({ customTools: [highlight] });
 - `description` is the only instruction the model gets about the operation.
 - The call returns the same action result as every other action: a JSON value returned by `execute` appears under `result`, next to `page_changed`, `settled` and, when the page changed, `changes`.
 - `filter` limits only which elements the Goal Loop may offer for this tool. It is not enforced when an agent calls the tool with a ref. Without a `filter`, every node that has a ref may be offered.
-- A Custom Tool whose name another live tool already has fails publication, with the status `failed`, and `ayme.tools.run` throws until the clash is fixed.
+- A Custom Tool whose name another tool already has fails publication, with the status `failed`, and `ayme.tools.run` throws until the clash is fixed.
 - Custom Tools live as long as the session: they are removed when it stops.
 
 ## Use other tools from a Custom Tool
 
-`execute` gets a second argument, `{ run }`. `run(name, input)` runs another live tool as a child Run of the Custom Tool's own Run and resolves with its result, as `ayme.tools.run` does. Child Runs run inside the Custom Tool's turn, never waiting on the page's queue, one after the other in the order it starts them, even when it starts them together, and `ayme.runs` lists them under its Run:
+`execute` gets a second argument, `{ run }`. `run(name, input)` runs another available tool as a child Run of the Custom Tool's own Run and resolves with its result, as `ayme.tools.run` does. Child Runs run inside the Custom Tool's turn, never waiting on the page's queue, one after the other in the order it starts them, even when it starts them together, and `ayme.runs` lists them under its Run:
 
 ```ts
 const submitSample: CustomTool = {

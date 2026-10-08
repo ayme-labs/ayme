@@ -31,6 +31,8 @@ export class RunEntry {
   readonly result: Locator;
   /** Copies its result. */
   readonly copyResultButton: Locator;
+  /** The image it returned, such as a screenshot, with what it shows. */
+  readonly image: Locator;
   readonly error: Locator;
   /** The Interactions it performed itself, in order. */
   readonly interactions: Locator;
@@ -54,6 +56,7 @@ export class RunEntry {
       name: "Copy",
       exact: true,
     });
+    this.image = card.getByRole("figure", { name: "Image" });
     this.error = card.getByRole("note", { name: "Error" });
     this.interactions = card
       .getByRole("list", { name: "Interactions" })

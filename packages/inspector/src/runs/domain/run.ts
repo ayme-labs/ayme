@@ -25,6 +25,19 @@ export type CollectionItem = {
   label: string;
 };
 
+/** An image a run returned, such as a screenshot. */
+export type RunImage = {
+  /** What it shows, e.g. "Screenshot of the viewport, 1280×720 PNG". */
+  description: string;
+  /**
+   * The image as a data URL. Kept in memory only, never in the tab's
+   * storage, so a run from before a reload has none.
+   */
+  src?: string;
+  /** The file `ayme mcp` saved it to, for an agent's run. */
+  savedTo?: string;
+};
+
 /**
  * A Run as Runs shows it, at any depth: one tool call from the runtime's Run
  * log, with the Interactions it performed itself and the Runs it started.
@@ -47,6 +60,8 @@ export type ChildRun = {
    * returned `undefined`.
    */
   result?: string;
+  /** The image it returned, which shows in place of `result`. */
+  image?: RunImage;
   error?: string;
   /** When it started, in epoch milliseconds. */
   startedAt: number;

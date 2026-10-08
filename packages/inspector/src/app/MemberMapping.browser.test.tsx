@@ -23,6 +23,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
     toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     lookAtPageStateForDocument: vi.fn(),
@@ -33,7 +34,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     listRegisteredPomTargets: vi.fn(),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };

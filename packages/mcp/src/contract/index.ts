@@ -3,6 +3,7 @@ export {
   HIDDEN_BECAUSE,
   HelloSchema,
   HiddenToolListSchema,
+  ImageResultSchema,
   PageLeavingSchema,
   PageToolListSchema,
   PageToolSchema,
@@ -14,6 +15,7 @@ export {
 } from "./messages";
 export type {
   Hello,
+  ImageResult,
   PageHello,
   PageLeaving,
   PageTool,

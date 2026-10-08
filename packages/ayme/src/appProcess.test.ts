@@ -160,7 +160,7 @@ describe("createAyme in an App Process", () => {
 
     expect(gatedOff.tools.list()).toEqual([]);
     await expect(gatedOff.tools.run("peek.node.jobs", {})).rejects.toThrow(
-      'The tool "peek.node.jobs" is not live.'
+      'There is no tool "peek.node.jobs".'
     );
   });
 

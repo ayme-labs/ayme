@@ -59,7 +59,9 @@ function peek(ayme: Ayme, ...args: Parameters<Ayme["peek"]>) {
   return remove;
 }
 
-const toolNames = (ayme: Ayme) => ayme.tools.list().map(({ name }) => name);
+/** The names of the tools `ayme` can run now. */
+const toolNames = (ayme: Ayme) =>
+  ayme.tools.list().flatMap(({ name, available }) => (available ? [name] : []));
 
 /** The tool lists `ayme` announces from now on. */
 function heardLists(ayme: Ayme) {
@@ -90,6 +92,7 @@ describe("Peek Tools", () => {
           additionalProperties: false,
         },
         group: "peek",
+        available: true,
       },
     ]);
     count = 2;
@@ -160,7 +163,7 @@ describe("Peek Tools", () => {
         },
       ],
     });
-    // Before start, the Custom Tool is not live yet.
+    // Before start, the Custom Tool is not available yet.
     peek(ayme, () => 1, "outline");
 
     cleanups.push(ayme.start());

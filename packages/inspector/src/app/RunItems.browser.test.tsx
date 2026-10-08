@@ -4,7 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { PageStateLook, RegisteredPom } from "@ayme-dev/ayme/internal";
 import {
   listRegisteredPomTargets,
-  listRegisteredPomTools,
+  listAvailablePomTools,
   listRegisteredPoms,
   lookAtPageStateForDocument,
 } from "@ayme-dev/ayme/internal";
@@ -33,8 +33,9 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getStartedAyme: asStartedAyme,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
+    subscribeToAgentImageRuns: () => () => {},
     listRegisteredPomTargets: vi.fn(),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
@@ -124,7 +125,9 @@ beforeEach(() => {
       }) as unknown as PageStateLook
   );
   vi.mocked(listRegisteredPoms).mockReturnValue([listPage]);
-  vi.mocked(listRegisteredPomTools).mockReturnValue([archive]);
+  vi.mocked(listAvailablePomTools).mockReturnValue([archive] as ReturnType<
+    typeof listAvailablePomTools
+  >);
   vi.mocked(listRegisteredPomTargets).mockResolvedValue([
     {
       path: "ListPage.items[0].root",
@@ -143,6 +146,7 @@ beforeEach(() => {
       description: archive.description,
       inputSchema: archive.inputSchema,
       group: "pageObject",
+      available: true,
     },
   ]);
 

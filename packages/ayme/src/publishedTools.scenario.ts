@@ -18,10 +18,12 @@ import type { Page } from "@playwright/test";
 import type { PomManifest } from "./contracts";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import {
-  listLiveTools,
+  listTools,
   listPublishedTools,
   listElementToolTargets,
   type PublishedToolGroup,
+  type PublishedToolInfo,
+  type ToolInfo,
 } from "./publishedTools";
 import type { CustomTool } from "./elementTools";
 import { buildToolOptions, planArguments } from "./goalLoopQuestions";
@@ -87,8 +89,9 @@ class ListPage {
           // Return only once the page change has reached publication, so the
           // tool goes unavailable while its own call is still running.
           while (
-            listLiveTools({ peeks: false }).some(
-              ({ name }) => name === "ListPage.items.archive"
+            listTools({ peeks: false }).some(
+              ({ name, available }) =>
+                name === "ListPage.items.archive" && available
             )
           )
             await new Promise((resolve) => setTimeout(resolve, 10));
@@ -132,6 +135,16 @@ registerCompiledPom(ListPage, {
     },
   ],
 });
+
+/**
+ * The session's tools as WebMCP would publish them: the available ones,
+ * without `screenshot`, whose result is an image WebMCP cannot carry.
+ */
+function asPublished(tools: readonly ToolInfo[]): PublishedToolInfo[] {
+  return tools.flatMap(({ available, ...tool }) =>
+    available && tool.name !== "screenshot" ? [tool] : []
+  );
+}
 
 /** Every tool the fixture session publishes, in the group the Inspector shows it under. */
 const EXPECTED_GROUPS: Record<string, PublishedToolGroup> = {
@@ -329,10 +342,13 @@ export function describePublishedTools(
       expect(listed()).toEqual(await publishedOverWebMcp(context));
     });
 
-    it("lists the live tools as published while publication is active", async () => {
+    it("lists the available tools as published while publication is active, and screenshot, which WebMCP never publishes", async () => {
       await startSession();
 
-      expect(runtime.tools.list()).toEqual(listPublishedTools());
+      expect(asPublished(runtime.tools.list())).toEqual(listPublishedTools());
+      expect(runtime.tools.list().map(({ name }) => name)).toContain(
+        "screenshot"
+      );
     });
 
     it("puts each published tool in its group", async () => {
@@ -500,10 +516,50 @@ export function describePublishedTools(
         .poll(async () => (await context.getTools()).map(({ name }) => name))
         .not.toContain("ListPage.items.archive");
       // The item's availability changed, so the session's list changed with it.
-      expect(heard.at(-1)?.map(({ name }) => name)).not.toContain(
-        "ListPage.items.archive"
+      expect(heard.at(-1)).toContainEqual(
+        expect.objectContaining({
+          name: "ListPage.items.archive",
+          available: false,
+        })
       );
       expect(heard.at(-1)).toBe(runtime.tools.list());
+    });
+
+    it("lists a Page Object Tool whose Page Object is unavailable as unavailable, refuses to run it, and does not publish it", async () => {
+      document.body.innerHTML = `<ul><li id="item" hidden>Draft</li></ul>`;
+      await startSession();
+      cleanups.push(registered(ListPage));
+      await expect
+        .poll(() =>
+          runtime.tools
+            .list()
+            .find(({ name }) => name === "ListPage.items.archive")
+        )
+        .toMatchObject({ group: "pageObject", available: false });
+
+      expect(listPublishedTools().map(({ name }) => name)).not.toContain(
+        "ListPage.items.archive"
+      );
+      expect((await context.getTools()).map(({ name }) => name)).not.toContain(
+        "ListPage.items.archive"
+      );
+      await expect(
+        runtime.tools.run("ListPage.items.archive", { ref: "e1", args: {} })
+      ).rejects.toThrow(
+        'The tool "ListPage.items.archive" is not available now: the Page Object or component it acts on is not on the page or is blocked.'
+      );
+
+      document.querySelector("#item")!.removeAttribute("hidden");
+      await expect
+        .poll(() =>
+          runtime.tools
+            .list()
+            .find(({ name }) => name === "ListPage.items.archive")
+        )
+        .toMatchObject({ available: true });
+      await expect
+        .poll(async () => (await context.getTools()).map(({ name }) => name))
+        .toContain("ListPage.items.archive");
     });
 
     it("gives each single-element tool the refs the Goal Loop offers it for the same page", async () => {
@@ -664,7 +720,7 @@ export function describePublishedTools(
         expect(actual).toEqual(expected);
       });
 
-      it("lists the live tools as published with publication on", async () => {
+      it("lists the available tools as published with publication on", async () => {
         const stopPublishing = await startSession();
         const published = listPublishedTools();
         stopPublishing();
@@ -673,7 +729,7 @@ export function describePublishedTools(
           runtime.tools.list()
         );
 
-        expect(live).toEqual(published);
+        expect(asPublished(live)).toEqual(published);
       });
 
       it("tells subscribers when a Page Object registers, and returns a new list only then", async () => {
@@ -716,12 +772,12 @@ export function describePublishedTools(
         expect(described("highlight")).toEqual(["Draft"]);
       });
 
-      it("refuses to run a tool that is not live", async () => {
+      it("refuses to run a tool no Page Object registered", async () => {
         await expect(
           whilePublicationIsOff(mode, () =>
             runtime.tools.run("SettingsPage.save", { title: "x" })
           )
-        ).rejects.toThrow('The tool "SettingsPage.save" is not live.');
+        ).rejects.toThrow('There is no tool "SettingsPage.save".');
       });
     });
   });

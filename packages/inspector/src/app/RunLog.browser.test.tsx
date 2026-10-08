@@ -5,8 +5,10 @@ import type { RegisteredPomTool } from "@ayme-dev/ayme";
 import {
   getPageStateForElements,
   listRegisteredPomTargets,
-  listRegisteredPomTools,
+  listAvailablePomTools,
   listRegisteredPoms,
+  subscribeToAgentImageRuns,
+  type AgentImageRun,
   type RegisteredPom,
 } from "@ayme-dev/ayme/internal";
 
@@ -41,10 +43,11 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getPomDefinitionText: vi.fn(() => ""),
     getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
+    subscribeToAgentImageRuns: vi.fn(() => () => {}),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
@@ -79,16 +82,19 @@ const editor: RegisteredPom = {
   tools: [save],
 };
 
-/** The Editor Page Object on the page, with its live tool `Editor.save`. */
+/** The Editor Page Object on the page, with its available tool `Editor.save`. */
 function registerEditor() {
   vi.mocked(listRegisteredPoms).mockReturnValue([editor]);
-  vi.mocked(listRegisteredPomTools).mockReturnValue([save]);
+  vi.mocked(listAvailablePomTools).mockReturnValue([save] as ReturnType<
+    typeof listAvailablePomTools
+  >);
   startedAyme.tools.list.mockReturnValue([
     {
       name: save.name,
       description: save.description,
       inputSchema: save.inputSchema,
       group: "pageObject",
+      available: true,
     },
   ]);
 }
@@ -252,6 +258,46 @@ it("names a Browser Tool's Interaction by the member whose element has its ref",
   await expect
     .poll(() => inspector.runs.latest("click").interactionList())
     .toEqual([{ operation: "click", target: "Editor.saveButton" }]);
+});
+
+it("shows an image a Run returned as itself, with the file Ayme MCP saved it to", async () => {
+  const image = {
+    type: "image",
+    subject: "the viewport",
+    filename: "page-1.png",
+    mimeType: "image/png",
+    width: 2,
+    height: 1,
+    data: "iVBORw0KGgo=",
+  } as const;
+  const screenshot = startedAyme.runs.start("screenshot", {}, "ayme-mcp");
+  screenshot.succeed(image);
+  renderApp();
+
+  const run = inspector.runs.latest("screenshot");
+  await expect
+    .poll(() => run.image.textContent())
+    .toBe("Screenshot of the viewport, 2×1 PNG");
+  expect(await run.resultToggle.count()).toBe(0);
+
+  // `ayme mcp` reports the file it saved the image to once the Run ended.
+  const reportImage = vi
+    .mocked(subscribeToAgentImageRuns)
+    .mock.calls.at(-1)![0];
+  reportImage({
+    name: "screenshot",
+    input: {},
+    result: image,
+    savedTo: "/tmp/ayme-screenshots/page-1.png",
+    startedAt: Date.now(),
+    durationMs: 1,
+  } satisfies AgentImageRun);
+
+  await expect
+    .poll(() => run.image.textContent())
+    .toBe(
+      "Screenshot of the viewport, 2×1 PNG, saved to /tmp/ayme-screenshots/page-1.png"
+    );
 });
 
 it("shows a tree of Runs in the selection's scope when a child Run is in it", async () => {

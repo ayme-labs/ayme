@@ -26,6 +26,7 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
 import type { ChildRun, Run, RunInteraction } from "../domain/run";
+import { RunImageView } from "./RunImageView";
 
 export type RunsViewProps = {
   /** The runs to show, newest first. */
@@ -53,6 +54,8 @@ export type RunsViewProps = {
   toggleResult: (id: string) => void;
   /** Copies a run's result. */
   copyResult: (text: string) => void;
+  /** Opens a run's image, given its data URL, full size. */
+  openImage: (src: string) => void;
 };
 
 /** Runs: the timeline of the page's Runs, by any Caller, newest first. */
@@ -72,6 +75,7 @@ export function RunsView({
   toggleRun,
   toggleResult,
   copyResult,
+  openImage,
 }: RunsViewProps) {
   return (
     <>
@@ -143,6 +147,7 @@ export function RunsView({
                   toggleRun={toggleRun}
                   toggleResult={toggleResult}
                   copyResult={copyResult}
+                  openImage={openImage}
                   onHover={onHover}
                 />
               ))}
@@ -183,6 +188,7 @@ function RunRow({
   toggleRun,
   toggleResult,
   copyResult,
+  openImage,
   onHover,
 }: Pick<
   RunsViewProps,
@@ -192,6 +198,7 @@ function RunRow({
   | "toggleRun"
   | "toggleResult"
   | "copyResult"
+  | "openImage"
   | "onHover"
 > & {
   /** A top-level Run names its Caller; a child Run doesn't. */
@@ -231,6 +238,7 @@ function RunRow({
           onToggle={() => toggleRun(run.id)}
           onToggleResult={() => toggleResult(run.id)}
           onCopyResult={copyResult}
+          onOpenImage={openImage}
           onHover={onHover}
         />
         {open && run.children.length > 0 && (
@@ -246,6 +254,7 @@ function RunRow({
                 toggleRun={toggleRun}
                 toggleResult={toggleResult}
                 copyResult={copyResult}
+                openImage={openImage}
                 onHover={onHover}
               />
             ))}
@@ -265,6 +274,7 @@ function RunEntryCard({
   onToggle,
   onToggleResult,
   onCopyResult,
+  onOpenImage,
   onHover,
 }: {
   run: ChildRun & Partial<Pick<Run, "by" | "earlierDocument">>;
@@ -275,6 +285,7 @@ function RunEntryCard({
   onToggle: () => void;
   onToggleResult: () => void;
   onCopyResult: (text: string) => void;
+  onOpenImage: (src: string) => void;
   onHover: OnHover;
 }) {
   return (
@@ -324,6 +335,11 @@ function RunEntryCard({
             >
               {JSON.stringify(run.arguments)}
             </figure>
+          )}
+          {run.status === "succeeded" && run.image && (
+            <div className="mx-2.5 mb-2">
+              <RunImageView image={run.image} onOpen={onOpenImage} />
+            </div>
           )}
           {run.status === "succeeded" && run.result !== undefined && (
             <RunResult

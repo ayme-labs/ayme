@@ -149,7 +149,7 @@ describe("The Run log, ayme.runs, in Chromium", () => {
     expect(runsSince(before)[0]).not.toHaveProperty("result");
   });
 
-  it("records a Run of a tool that is not live as failed, and still throws", async () => {
+  it("records a Run of a tool that does not exist as failed, and still throws", async () => {
     const before = ayme.runs.list();
 
     const error = await ayme.tools
@@ -163,7 +163,7 @@ describe("The Run log, ayme.runs, in Chromium", () => {
         input: {},
         by: "support-assistant",
         status: "failed",
-        error: 'RuntimeStateError: The tool "Nowhere.save" is not live.',
+        error: 'RuntimeStateError: There is no tool "Nowhere.save".',
         durationMs: expect.any(Number),
       }),
     ]);

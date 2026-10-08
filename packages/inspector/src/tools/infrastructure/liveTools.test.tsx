@@ -33,12 +33,14 @@ const addItem: ToolInfo = {
   description: "Add an item to the list.",
   inputSchema: { type: "object" },
   group: "pageObject",
+  available: true,
 };
 const getPageContext: ToolInfo = {
   name: "snapshot",
   description: "Read the page.",
   inputSchema: { type: "object" },
   group: "agent",
+  available: true,
 };
 
 const jobsPeek = {

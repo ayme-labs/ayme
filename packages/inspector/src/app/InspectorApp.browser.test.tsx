@@ -7,7 +7,7 @@ import {
   type RegisteredPomTool,
 } from "@ayme-dev/ayme";
 import {
-  listRegisteredPomTools,
+  listAvailablePomTools,
   listRegisteredPoms,
   type RegisteredPom,
 } from "@ayme-dev/ayme/internal";
@@ -28,6 +28,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { forest, node } = await import("../structure/test-utils/projected");
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
     toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     lookAtPageStateForDocument: vi.fn(async () => ({
@@ -43,7 +44,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getPomDefinitionText: vi.fn(() => ""),
     getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
@@ -107,18 +108,22 @@ function peekTool(name: string) {
       additionalProperties: false,
     },
     group: "peek" as const,
+    available: true,
   };
 }
 
 function mockRegistry(poms: RegisteredPom[], activeTools: RegisteredPomTool[]) {
   vi.mocked(listRegisteredPoms).mockReturnValue(poms);
-  vi.mocked(listRegisteredPomTools).mockReturnValue(activeTools);
+  vi.mocked(listAvailablePomTools).mockReturnValue(
+    activeTools as ReturnType<typeof listAvailablePomTools>
+  );
   startedAyme.tools.list.mockReturnValue(
     activeTools.map(({ name, description, inputSchema }) => ({
       name,
       description,
       inputSchema,
       group: "pageObject",
+      available: true,
     }))
   );
 }
@@ -376,7 +381,7 @@ describe("the Inspector", () => {
     const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     startedAyme.tools.run.mockRejectedValue(
-      new RuntimeStateError('The tool "Editor.save" is not live.')
+      new RuntimeStateError('There is no tool "Editor.save".')
     );
     renderApp();
 
@@ -385,7 +390,7 @@ describe("the Inspector", () => {
     const run = inspector.runs.latest("Editor.save");
     await expect.poll(() => run.status()).toBe("Failed");
     expect(await run.error.textContent()).toBe(
-      'The tool "Editor.save" is not live.'
+      'There is no tool "Editor.save".'
     );
   });
 

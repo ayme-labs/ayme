@@ -40,6 +40,17 @@ function toolErrorResult(error: unknown): ToolErrorResult {
   return { content: [{ type: "text", text: errorText(error) }], isError: true };
 }
 
+/**
+ * The published tools WebMCP registers: all but those marked `webMcp: false`,
+ * whose results WebMCP cannot carry.
+ */
+function webMcpTools() {
+  const resolved = resolvePublishedTools();
+  for (const [name, { tool }] of resolved)
+    if ("webMcp" in tool && tool.webMcp === false) resolved.delete(name);
+  return resolved;
+}
+
 export type WebMcpDriver = Pick<
   NonNullable<typeof document.modelContext>,
   "registerTool"
@@ -128,7 +139,7 @@ export async function synchronizeWebMcpTools(
   };
 
   // A tool call resolves only once the published tools reflect the page it
-  // changed, so an agent's next call sees the tools that are live now. The
+  // changed, so an agent's next call sees the tools that are available now. The
   // called tool itself is the exception: if the call made it unavailable, it
   // is withdrawn just after the call (ADR-0020 does not cover this case). A probe that observes a change starts the
   // publication pass through the subscriber.
@@ -163,7 +174,7 @@ export async function synchronizeWebMcpTools(
     try {
       do {
         syncAgain = false;
-        const resolved = resolvePublishedTools();
+        const resolved = webMcpTools();
         for (const [name, registration] of published) {
           if (resolved.get(name)?.tool === registration.tool) continue;
           // A driver may fail a running call once its tool is unregistered

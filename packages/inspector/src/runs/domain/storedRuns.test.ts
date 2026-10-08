@@ -152,3 +152,84 @@ it("leaves out a malformed run", () => {
     ])
   ).toEqual([before(succeeded)]);
 });
+
+it("keeps a run's image description but not the image itself", () => {
+  const screenshot: Run = {
+    ...succeeded,
+    result: undefined,
+    image: {
+      description: "Screenshot of the viewport, 1280×720 PNG",
+      src: "data:image/png;base64,iVBORw0KGgo=",
+    },
+  };
+  const { result: _result, ...withoutResult } = screenshot;
+  void _result;
+
+  expect(JSON.stringify(encodeRuns([screenshot]))).not.toContain("base64");
+  expect(reloaded([screenshot])).toEqual([
+    before({
+      ...withoutResult,
+      image: { description: "Screenshot of the viewport, 1280×720 PNG" },
+    }),
+  ]);
+});
+
+it("keeps an agent's screenshot run and the file its image was saved to", () => {
+  const agentRun: Run = {
+    id: "3@2000",
+    toolName: "screenshot",
+    by: "ayme-mcp",
+    arguments: {},
+    status: "succeeded",
+    image: {
+      description: "Screenshot of the viewport, 1280×720 PNG",
+      src: "data:image/png;base64,iVBORw0KGgo=",
+      savedTo: "/tmp/ayme-screenshots/page-1.png",
+    },
+    startedAt: 2_000,
+    durationMs: 90,
+    interactions: [],
+    children: [],
+  };
+
+  expect(reloaded([agentRun])).toEqual([
+    before({
+      ...agentRun,
+      image: {
+        description: "Screenshot of the viewport, 1280×720 PNG",
+        savedTo: "/tmp/ayme-screenshots/page-1.png",
+      },
+    }),
+  ]);
+});
+
+it("keeps no image itself of a run nested under another", () => {
+  const screenshot = {
+    id: "5@2200",
+    toolName: "screenshot",
+    arguments: {},
+    status: "succeeded" as const,
+    image: {
+      description: "Screenshot of the viewport, 1280×720 PNG",
+      src: "data:image/png;base64,iVBORw0KGgo=",
+    },
+    startedAt: 2_200,
+    durationMs: 60,
+    interactions: [],
+    children: [],
+  };
+  const withScreenshot: Run = { ...goal, children: [screenshot] };
+
+  expect(JSON.stringify(encodeRuns([withScreenshot]))).not.toContain("base64");
+  expect(reloaded([withScreenshot])).toEqual([
+    before({
+      ...goal,
+      children: [
+        {
+          ...screenshot,
+          image: { description: "Screenshot of the viewport, 1280×720 PNG" },
+        },
+      ],
+    }),
+  ]);
+});

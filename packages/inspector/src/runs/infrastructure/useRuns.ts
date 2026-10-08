@@ -4,7 +4,8 @@ import { callers, type Ayme, type Run as LogRun } from "@ayme-dev/ayme";
 import {
   getAppProcessTools,
   getStartedAyme,
-  listRegisteredPomTools,
+  listAvailablePomTools,
+  subscribeToAgentImageRuns,
   subscribeToStartedAyme,
 } from "@ayme-dev/ayme/internal";
 
@@ -39,9 +40,11 @@ type PendingRun = {
  * Runs as the panel shows them, newest first: the page's Run log, every
  * Caller's Runs with the Runs they started nested under them, each on the
  * collection item its ref named when it started, and each Run's
- * Interactions, named by the member they acted on once it ends. The
- * rows shown are kept for the tab, so a reload still shows them, as earlier
- * page rows. `invoke` runs a tool as the Inspector.
+ * Interactions, named by the member they acted on once it ends. An image a
+ * Run returned, such as a screenshot, shows as itself, with the file
+ * `ayme mcp` saved it to for an agent's. The rows shown are kept for the
+ * tab, so a reload still shows them, as earlier page rows. `invoke` runs a
+ * tool as the Inspector.
  */
 export function useRuns({
   onSettled,
@@ -96,14 +99,17 @@ export function useRuns({
       return item ? { item } : {};
     };
 
-    // The Runs seen so far, and the ended Runs whose Interactions have
-    // been named, by row id.
+    // The Runs seen so far, the ended Runs whose Interactions have been
+    // named, and the agent's image Runs whose file has been noted, by row id.
     const seen = new Set<string>();
     const described = new Set<string>();
+    const saved = new Set<string>();
+    let listedRuns = NO_RUNS;
     const read = (runs: readonly LogRun[]) => {
+      listedRuns = runs;
       const listed = new Set(runs.map(rowIdOf));
       // What the panel knows of a Run goes when the log drops the Run.
-      for (const ids of [seen, described])
+      for (const ids of [seen, described, saved])
         for (const rowId of ids) if (!listed.has(rowId)) ids.delete(rowId);
       const fresh = new Map<string, RunNotes>();
       for (const run of runs) {
@@ -142,9 +148,29 @@ export function useRuns({
     };
     const unsubscribeFromStarted = subscribeToStartedAyme(follow);
     follow(getStartedAyme());
+    // `ayme mcp` reports the file it saves an image to after the Run ended,
+    // so the log already lists it: the newest such Run with no file yet.
+    const unsubscribeFromImages = subscribeToAgentImageRuns(
+      ({ name, input, savedTo }) => {
+        if (savedTo === undefined) return;
+        const json = JSON.stringify(input);
+        const run = listedRuns.findLast(
+          (candidate) =>
+            candidate.by === callers.aymeMcp &&
+            candidate.tool === name &&
+            candidate.status === "succeeded" &&
+            !saved.has(rowIdOf(candidate)) &&
+            JSON.stringify(candidate.input) === json
+        );
+        if (!run) return;
+        saved.add(rowIdOf(run));
+        note(rowIdOf(run), { savedTo });
+      }
+    );
     return () => {
       unsubscribeFromStarted();
       unsubscribeFromLog();
+      unsubscribeFromImages();
     };
   }, [itemOf]);
 
@@ -202,10 +228,10 @@ function decodeTime(stored: unknown): number {
 /**
  * The Page Object Model and Page Object a Page Object tool runs on, from
  * the registry as it is now. Tool names can collide across registrations;
- * this is the one that is live now, the one the runtime runs.
+ * this is the one that is available now, the one the runtime runs.
  */
 function targetOf(toolName: string): { target?: RunTarget } {
-  const pomTool = listRegisteredPomTools().find(
+  const pomTool = listAvailablePomTools().find(
     (candidate) => candidate.name === toolName
   );
   if (!pomTool) return {};
