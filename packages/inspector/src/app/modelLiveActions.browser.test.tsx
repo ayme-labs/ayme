@@ -57,7 +57,6 @@ const save: RegisteredPomTool & { componentPath: string } = {
   description: "Save the document.",
   inputSchema: noArguments,
   parameters: [],
-  execute: async () => null,
 };
 
 /** The editor, with its toolbar on the page or not. */
@@ -117,6 +116,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     })),
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
+    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
     listAvailablePomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => runtime.registrations),

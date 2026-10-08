@@ -83,8 +83,7 @@ export const screenshotTool: PublishedElementTool = {
     "Take a screenshot of the viewport, the full page or one element. To act on the page, use the snapshot's Structural Refs, not the image.",
   inputSchema,
   webMcp: false,
-  execute: (input: unknown) => screenshotTool.executeAs(input, "agent"),
-  executeAs: async (input) => {
+  execute: async (input) => {
     const request = screenshotRequest(
       validatedToolInput(inputSchema, input) as ScreenshotInput,
       new Date()

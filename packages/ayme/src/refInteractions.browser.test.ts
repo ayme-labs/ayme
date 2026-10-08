@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
-import { ayme } from "./agentCalls.testSupport";
+import { ayme, runContext } from "./agentCalls.testSupport";
 import { createPage } from "./browserPage";
 import {
   createAymeRuntime,
@@ -215,7 +215,7 @@ describe("Structural Ref interactions in Chromium", () => {
       if (!tool) throw new Error("Expected the getCount tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();
-      const result = await tool.execute({});
+      const result = await tool.execute({}, runContext());
       expect(result).toMatchObject({
         page_changed: false,
         settled: true,
@@ -266,7 +266,10 @@ describe("Structural Ref interactions in Chromium", () => {
       if (!tool) throw new Error("Expected the getElement tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();
-      const result = (await tool.execute({})) as Record<string, unknown>;
+      const result = (await tool.execute({}, runContext())) as Record<
+        string,
+        unknown
+      >;
       expect(result.page_changed).toBe(false);
       expect(result.settled).toBe(true);
       expect(result.result).toBeUndefined();
@@ -317,7 +320,10 @@ describe("Structural Ref interactions in Chromium", () => {
       if (!tool) throw new Error("Expected the getChild tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();
-      const result = (await tool.execute({})) as Record<string, unknown>;
+      const result = (await tool.execute({}, runContext())) as Record<
+        string,
+        unknown
+      >;
       expect(result.page_changed).toBe(false);
       expect(result.settled).toBe(true);
       expect(result.result).toBeUndefined();

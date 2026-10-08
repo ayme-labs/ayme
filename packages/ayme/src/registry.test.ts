@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runContext } from "./agentCalls.testSupport";
 
 const { locatorElements, testLocators, pageStateResolutions } = vi.hoisted(
   () => ({
@@ -451,7 +452,7 @@ describe("live Page Object registry", () => {
     const listed = registry.listRegisteredPomTools();
     expect(listed).toHaveLength(1);
     expect(listed[0]).toMatchObject({ available: true });
-    await listed[0]!.tool.execute({});
+    await listed[0]!.tool.execute({}, runContext());
     expect(rootless.instance.save).toHaveBeenCalledOnce();
     expect(missing.instance.save).not.toHaveBeenCalled();
 
@@ -569,7 +570,7 @@ describe("live Page Object registry", () => {
     ]);
 
     const confirmTool = registry.listAvailablePomTools()[0];
-    await confirmTool?.execute({});
+    await confirmTool?.execute({}, runContext());
     expect(confirm).toHaveBeenCalledOnce();
 
     panelRootCount = 1;
@@ -581,7 +582,7 @@ describe("live Page Object registry", () => {
     ]);
 
     const nestedTool = registry.listAvailablePomTools()[1];
-    await nestedTool?.execute({});
+    await nestedTool?.execute({}, runContext());
     expect(save).toHaveBeenCalledOnce();
 
     dialogRootCount = 0;
@@ -744,7 +745,9 @@ describe("live Page Object registry", () => {
     const tool = registry.listAvailablePomTools()[0];
     if (!tool) throw new Error("Expected a collection tool.");
 
-    await expect(tool.execute({ ref: "e2", args: {} })).resolves.toEqual({
+    await expect(
+      tool.execute({ ref: "e2", args: {} }, runContext())
+    ).resolves.toEqual({
       page_changed: false,
       settled: true,
       result: "second",
@@ -753,7 +756,9 @@ describe("live Page Object registry", () => {
     expect(firstArchive).not.toHaveBeenCalled();
 
     currentItems = [replacement];
-    await expect(tool.execute({ ref: "e3", args: {} })).resolves.toEqual({
+    await expect(
+      tool.execute({ ref: "e3", args: {} }, runContext())
+    ).resolves.toEqual({
       page_changed: false,
       settled: true,
       result: "replacement",

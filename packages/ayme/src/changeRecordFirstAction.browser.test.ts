@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { PomManifest } from "./contracts";
+import { runPublished } from "./agentCalls.testSupport";
 import { createPage } from "./browserPage";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
@@ -50,11 +51,14 @@ describe("Change Record of the first action in Chromium", () => {
     createPageRegistration(App);
 
     const published = new Map<string, PublishedTool>();
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(tool: PublishedTool) {
-        published.set(tool.name, tool);
+    const publication = await synchronizeWebMcpTools(
+      {
+        async registerTool(tool: PublishedTool) {
+          published.set(tool.name, tool);
+        },
       },
-    });
+      { run: runPublished }
+    );
     disposePublication = publication.dispose;
 
     const result = (await published.get("App.announce")!.execute({})) as {

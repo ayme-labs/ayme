@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DecisionRequest } from "./decisionTypes";
+import { runPublished } from "./agentCalls.testSupport";
 import type { ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { RuntimeStateError } from "./errors";
@@ -162,7 +163,7 @@ describe("Peek Tools", () => {
         },
       ],
     });
-    // Before start, the Custom Tool is not live yet.
+    // Before start, the Custom Tool is not available yet.
     peek(ayme, () => 1, "outline");
 
     cleanups.push(ayme.start());
@@ -385,25 +386,23 @@ describe("where Peek Tools appear", () => {
     const ayme = started({ agentConnection: true });
     peek(ayme, () => ({ open: true }), "menu");
 
-    await expect
-      .poll(() =>
-        connected.sessions.map(
-          (session) => (session as Pick<Ayme, "tools">).tools
-        )
-      )
-      .toEqual([ayme.tools]);
-    expect(toolNames(ayme)).toContain("peek.menu");
+    await expect.poll(() => connected.sessions).toHaveLength(1);
+    const [client] = connected.sessions as Pick<Ayme, "tools">[];
+    expect(client!.tools.list().map(({ name }) => name)).toContain("peek.menu");
   });
 
   it("leaves them out of WebMCP publication", async () => {
     const ayme = started({ agentConnection: true });
     peek(ayme, () => ({ open: true }), "menu");
     const published = new Map<string, unknown>();
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(tool: { name: string }) {
-        published.set(tool.name, tool);
-      },
-    } as never);
+    const publication = await synchronizeWebMcpTools(
+      {
+        async registerTool(tool: { name: string }) {
+          published.set(tool.name, tool);
+        },
+      } as never,
+      { run: runPublished }
+    );
     cleanups.push(publication.dispose);
 
     expect(toolNames(ayme)).toContain("peek.menu");
@@ -539,5 +538,37 @@ describe("calling a Peek Tool", () => {
     await ayme.tools.run("peek.reveal", {});
     expect(toolNames(ayme)).not.toContain("Editor.save");
     await expect.poll(() => toolNames(ayme)).toContain("Editor.save");
+  });
+
+  it("waits for an action started before it, then answers without a settle wait of its own", async () => {
+    const ayme = started();
+    document.body.innerHTML = "<button>Save</button>";
+    let saved = false;
+    // The save lands a moment after the click, within the Settled Page's
+    // quiet window, so the action's turn lasts until it has.
+    document.querySelector("button")!.addEventListener("click", () => {
+      setTimeout(() => {
+        saved = true;
+        document.body.append("Saved");
+      }, 100);
+    });
+    peek(ayme, () => ({ saved }), "draft");
+
+    let actionDoneAt = 0;
+    const action = ayme.tools
+      .run("click", { target: "role=button[name='Save']" })
+      .then(() => {
+        actionDoneAt = performance.now();
+      });
+    const read = await ayme.tools.run("peek.draft", {});
+    const readDoneAt = performance.now();
+    await action;
+
+    expect(read).toEqual({
+      name: "draft",
+      instances: [{ values: { saved: true } }],
+    });
+    // A settle wait lasts at least the quiet window (250 ms).
+    expect(readDoneAt - actionDoneAt).toBeLessThan(200);
   });
 });

@@ -9,6 +9,7 @@ import {
   probeRegisteredPomMembers,
 } from "./registry";
 import type { PomManifest } from "./contracts";
+import { runContext } from "./agentCalls.testSupport";
 
 const action = (methodName: string, description: string) => ({
   methodName,
@@ -95,7 +96,7 @@ describe("collection instances targeted by ref", () => {
       const state = await getPageStateForDocument(document);
       const ref = refInPageState(state.text, "ItemsPage.items[1]");
 
-      await archiveTool.execute({ ref, args: {} });
+      await archiveTool.execute({ ref, args: {} }, runContext());
 
       expect(archiveFns[0]).not.toHaveBeenCalled();
       expect(archiveFns[1]).toHaveBeenCalledOnce();
@@ -166,7 +167,7 @@ describe("collection instances targeted by ref", () => {
       document.querySelector("#item-0")?.remove();
 
       // The earlier ref should still resolve to item-1's element (ADR-0028).
-      await archiveTool.execute({ ref, args: {} });
+      await archiveTool.execute({ ref, args: {} }, runContext());
 
       expect(archiveFns[0]).not.toHaveBeenCalled();
       expect(archiveFns[1]).toHaveBeenCalledOnce();
@@ -235,7 +236,9 @@ describe("collection instances targeted by ref", () => {
       // Remove item-1 entirely from the DOM.
       document.querySelector("#item-1")?.remove();
 
-      await expect(archiveTool.execute({ ref, args: {} })).rejects.toThrow(
+      await expect(
+        archiveTool.execute({ ref, args: {} }, runContext())
+      ).rejects.toThrow(
         /does not match a present instance at ItemsPage\.items \(tool ItemsPage\.items\.archive\)/
       );
 
@@ -326,7 +329,7 @@ describe("collection instances targeted by ref", () => {
       const state = await getPageStateForDocument(document);
       const ref = refInPageState(state.text, "GroupsPage.groups[0].items[1]");
 
-      await doActionTool.execute({ ref, args: {} });
+      await doActionTool.execute({ ref, args: {} }, runContext());
 
       expect(actionFns[0]![0]).not.toHaveBeenCalled();
       expect(actionFns[0]![1]).toHaveBeenCalledOnce();
@@ -406,7 +409,7 @@ describe("collection instances targeted by ref", () => {
       const state = await getPageStateForDocument(document);
       const ref = refInPageState(state.text, "ItemsPage.items[1]");
 
-      await openTool.execute({ ref, args: {} });
+      await openTool.execute({ ref, args: {} }, runContext());
 
       expect(openFns[0]).not.toHaveBeenCalled();
       expect(openFns[1]).toHaveBeenCalledOnce();

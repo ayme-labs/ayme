@@ -1,14 +1,11 @@
 import type { Locator, Page } from "@playwright/test";
 import { isAymeLocator } from "@ayme-dev/ayme/internal";
 import { passThroughWhileCovered } from "../../panel";
-import type { TraceEntry } from "../../runs";
 import { describeCall, type CallSubject } from "../../shared";
 
 type DemoFeedbackOptions = {
   beforeActionMs?: number;
   clickCue?: boolean;
-  /** Called before each recorded call, with the locator it acts on, if any. */
-  onTrace: (entry: TraceEntry, locator?: Locator) => void;
 };
 
 type FeedbackContext = {
@@ -23,14 +20,14 @@ const wrappedPages = new WeakMap<
 >();
 
 // Diagnostic decoration. The underlying Page and its locator brands stay intact.
-// Each call goes as describeCall says: recorded, paced and cued in demo mode,
-// and passed through the Inspector panel when it covers a pointer action.
+// Each call goes as describeCall says: paced and cued in demo mode, and
+// passed through the Inspector panel when it covers a pointer action.
 export function withDemoFeedback(
   page: Page,
-  options: DemoFeedbackOptions
+  options: DemoFeedbackOptions = {}
 ): Page {
   // Wrapped again, as each install of the Inspector does: the latest
-  // options record, pace and cue it.
+  // options pace and cue it.
   const existing = wrappedPages.get(page);
   if (existing) {
     existing.context.options = options;
@@ -67,19 +64,6 @@ export function withDemoFeedback(
           const call = describeCall(subject, target, property, args);
           if (!call) return wrapResult(member.apply(target, args));
 
-          const { locator, ...step } = call.step;
-          const entry: TraceEntry = {
-            ...step,
-            ...(locator && { locator: locator.toString() }),
-          };
-          context.options.onTrace(entry, locator);
-
-          const act = () =>
-            passThroughWhileCovered(call.hitTargets, () =>
-              member.apply(target, args)
-            ).then(wrapResult);
-          if (!call.paced) return act();
-
           return (async () => {
             if (context.options.beforeActionMs)
               await new Promise((resolve) =>
@@ -87,7 +71,11 @@ export function withDemoFeedback(
               );
             if (call.cue && context.options.clickCue)
               await showClickCue(call.cue);
-            return act();
+            return wrapResult(
+              await passThroughWhileCovered(call.hitTargets, () =>
+                member.apply(target, args)
+              )
+            );
           })();
         };
       },

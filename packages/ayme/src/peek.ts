@@ -1,6 +1,5 @@
 import type { JsonValue } from "./contracts";
 import { RuntimeStateError } from "./errors";
-import type { Caller } from "./interactionHistory";
 
 /** Reads a Peek's current values when an agent asks. It may be async. */
 export type PeekRead = () => unknown;
@@ -22,8 +21,8 @@ export type PeekTool = {
     properties: Record<string, never>;
     additionalProperties: false;
   };
+  /** A read: no Change Record, so it takes no Run context. */
   execute(input: unknown): Promise<JsonValue>;
-  executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
 };
 
 /** One live instance of a Peek. */
@@ -160,7 +159,6 @@ function createPeekTool(name: string): PeekTool {
       additionalProperties: false,
     },
     execute: run,
-    executeAs: run,
   };
 }
 

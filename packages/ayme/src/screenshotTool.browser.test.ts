@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { runPublished } from "./agentCalls.testSupport";
 import { createPage } from "./browserPage";
 import { ToolInputError } from "./errors";
 import { buildToolOptions } from "./goalLoopQuestions";
@@ -74,11 +75,14 @@ describe("screenshot in Chromium", () => {
 
   it("is never published to WebMCP, and the Goal Loop never picks it", async () => {
     const names: string[] = [];
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(tool: { name: string }) {
-        names.push(tool.name);
-      },
-    } as never);
+    const publication = await synchronizeWebMcpTools(
+      {
+        async registerTool(tool: { name: string }) {
+          names.push(tool.name);
+        },
+      } as never,
+      { run: runPublished }
+    );
     publication.dispose();
 
     expect(names).toContain("snapshot");

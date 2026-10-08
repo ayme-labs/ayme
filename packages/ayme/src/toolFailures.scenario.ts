@@ -4,6 +4,7 @@
  * resolve with an MCP `isError` result instead of a bare `UnknownError`.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { runPublished } from "./agentCalls.testSupport";
 import type {
   ChromeModelContextExtensions,
   ModelContext,
@@ -65,7 +66,10 @@ export function describeToolFailures(
       cleanups.push(runtime.start());
       registerCompiledPom(FailingPage, failingManifest);
       cleanups.push(createPageRegistration(FailingPage).dispose);
-      const publication = await synchronizeWebMcpTools(context as WebMcpDriver);
+      const publication = await synchronizeWebMcpTools(
+        context as WebMcpDriver,
+        { run: runPublished }
+      );
       cleanups.push(publication.dispose);
     });
 

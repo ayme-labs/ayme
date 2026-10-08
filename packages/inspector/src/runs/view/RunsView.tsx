@@ -1,13 +1,11 @@
 import type { RefObject } from "react";
+import type { BuiltInCaller, Caller } from "@ayme-dev/ayme";
 import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
+  AppWindowIcon,
   BotIcon,
   CheckIcon,
   ChevronRightIcon,
   CopyIcon,
-  EyeIcon,
-  GlobeIcon,
   HistoryIcon,
   KeyboardIcon,
   ListChecksIcon,
@@ -15,8 +13,8 @@ import {
   MousePointer2Icon,
   MousePointerIcon,
   MoveIcon,
-  RotateCwIcon,
   SquareCheckIcon,
+  SquareTerminalIcon,
   TypeIcon,
   UploadIcon,
   UserIcon,
@@ -27,7 +25,7 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
-import type { Run, RunStep } from "../domain/run";
+import type { ChildRun, Run, RunInteraction } from "../domain/run";
 import { RunImageView } from "./RunImageView";
 
 export type RunsViewProps = {
@@ -42,25 +40,25 @@ export type RunsViewProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onClear: () => void;
-  /** Highlights a step's member on the page while it's hovered. */
+  /** Highlights an Interaction's member on the page while it's hovered. */
   onHover: OnHover;
   /** The timeline list, which a focused run scrolls into view in. */
   timeline: RefObject<HTMLOListElement | null>;
   /** The runs whose details are closed. */
-  closedRuns: ReadonlySet<number>;
+  closedRuns: ReadonlySet<string>;
   /** The runs whose Result shows its value. */
-  openResults: ReadonlySet<number>;
+  openResults: ReadonlySet<string>;
   /** The run that flashes, having just been brought into view. */
-  flashing: number | undefined;
-  toggleRun: (id: number) => void;
-  toggleResult: (id: number) => void;
+  flashing: string | undefined;
+  toggleRun: (id: string) => void;
+  toggleResult: (id: string) => void;
   /** Copies a run's result. */
   copyResult: (text: string) => void;
   /** Opens a run's image, given its data URL, full size. */
   openImage: (src: string) => void;
 };
 
-/** Runs: the timeline of the runs made from the panel, newest first. */
+/** Runs: the timeline of the page's Runs, by any Caller, newest first. */
 export function RunsView({
   runs,
   scopeLabel,
@@ -143,13 +141,13 @@ export function RunsView({
                 <RunRow
                   key={run.id}
                   run={run}
-                  open={!closedRuns.has(run.id)}
-                  resultOpen={openResults.has(run.id)}
-                  flashing={flashing === run.id}
-                  onToggle={() => toggleRun(run.id)}
-                  onToggleResult={() => toggleResult(run.id)}
-                  onCopyResult={copyResult}
-                  onOpenImage={openImage}
+                  closedRuns={closedRuns}
+                  openResults={openResults}
+                  flashing={flashing}
+                  toggleRun={toggleRun}
+                  toggleResult={toggleResult}
+                  copyResult={copyResult}
+                  openImage={openImage}
                   onHover={onHover}
                 />
               ))}
@@ -177,35 +175,39 @@ const statusIcon = {
   failed: { Icon: XIcon, label: "Failed", className: "text-destructive" },
 } as const;
 
-const callerIcon = {
-  you: { Icon: UserIcon, label: "Run by you from the panel" },
-  agent: { Icon: BotIcon, label: "Run by an agent through ayme mcp" },
-} as const;
-
+/**
+ * A run: its card, and under it, while it's open, the runs it started, each
+ * a run of its own.
+ */
 function RunRow({
   run,
-  open,
-  resultOpen,
+  nested = false,
+  closedRuns,
+  openResults,
   flashing,
-  onToggle,
-  onToggleResult,
-  onCopyResult,
-  onOpenImage,
+  toggleRun,
+  toggleResult,
+  copyResult,
+  openImage,
   onHover,
-}: {
-  run: Run;
-  open: boolean;
-  /** Whether its Result shows its value, rather than only its label. */
-  resultOpen: boolean;
-  flashing: boolean;
-  onToggle: () => void;
-  onToggleResult: () => void;
-  onCopyResult: (text: string) => void;
-  onOpenImage: (src: string) => void;
-  onHover: OnHover;
+}: Pick<
+  RunsViewProps,
+  | "closedRuns"
+  | "openResults"
+  | "flashing"
+  | "toggleRun"
+  | "toggleResult"
+  | "copyResult"
+  | "openImage"
+  | "onHover"
+> & {
+  /** A top-level Run names its Caller; a child Run doesn't. */
+  run: ChildRun & Partial<Pick<Run, "by" | "earlierDocument">>;
+  /** Whether it's a child run, nested under the run that started it. */
+  nested?: boolean;
 }) {
   const status = statusIcon[run.status];
-  const caller = callerIcon[run.caller ?? "you"];
+  const open = !closedRuns.has(run.id);
   return (
     <li
       aria-label={run.toolName}
@@ -226,86 +228,190 @@ function RunRow({
         <span className="my-0.75 w-px flex-1 bg-border" />
       </div>
       <div
-        className={cn(
-          "mb-2 min-w-0 flex-1 overflow-hidden rounded-lg border bg-card transition-shadow duration-200",
-          flashing && "ring-2 ring-ring"
-        )}
+        className={cn("flex min-w-0 flex-1 flex-col gap-2", !nested && "mb-2")}
       >
-        <button
-          type="button"
-          aria-expanded={open}
-          className="flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left"
-          onClick={onToggle}
-        >
-          <span
-            role="img"
-            aria-label={caller.label}
-            title={caller.label}
-            className="grid size-5 flex-none place-items-center rounded-sm bg-muted text-muted-foreground"
-          >
-            <caller.Icon className="size-3" aria-hidden />
-          </span>
-          <span className="truncate font-mono text-xs font-semibold">
-            {run.toolName}
-          </span>
-          {run.item && (
-            <span className="rounded-md border px-1.5 font-mono text-xs text-muted-foreground">
-              {run.item.pathBelowPage}
-            </span>
-          )}
-          <span className="flex-1" />
-          <span className="text-xs whitespace-nowrap text-muted-foreground">
-            {run.status === "running"
-              ? "Running…"
-              : `${run.durationMs === undefined ? "" : `${run.durationMs} ms · `}${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
-          </span>
-        </button>
-        {open && (
-          <>
-            {Object.keys(run.arguments).length > 0 && (
-              <figure
-                aria-label="Arguments"
-                className="mx-2.5 mt-0 mb-1.5 rounded-md bg-muted px-2 py-1.25 font-mono text-xs [overflow-wrap:anywhere]"
-              >
-                {JSON.stringify(run.arguments)}
-              </figure>
-            )}
-            {run.status === "succeeded" && run.image && (
-              <div className="mx-2.5 mb-2">
-                <RunImageView image={run.image} onOpen={onOpenImage} />
-              </div>
-            )}
-            {run.status === "succeeded" && run.result !== undefined && (
-              <RunResult
-                text={run.result}
-                open={resultOpen}
-                onToggle={onToggleResult}
-                onCopy={onCopyResult}
+        <RunEntryCard
+          run={run}
+          open={open}
+          resultOpen={openResults.has(run.id)}
+          flashing={flashing === run.id}
+          onToggle={() => toggleRun(run.id)}
+          onToggleResult={() => toggleResult(run.id)}
+          onCopyResult={copyResult}
+          onOpenImage={openImage}
+          onHover={onHover}
+        />
+        {open && run.children.length > 0 && (
+          <ol aria-label="Child runs" className="m-0 flex flex-col gap-2 p-0">
+            {run.children.map((child) => (
+              <RunRow
+                key={child.id}
+                run={child}
+                nested
+                closedRuns={closedRuns}
+                openResults={openResults}
+                flashing={flashing}
+                toggleRun={toggleRun}
+                toggleResult={toggleResult}
+                copyResult={copyResult}
+                openImage={openImage}
+                onHover={onHover}
               />
-            )}
-            {run.error && (
-              <p
-                role="note"
-                aria-label="Error"
-                className="mx-2.5 mt-0 mb-2 font-mono text-xs text-destructive"
-              >
-                {run.error}
-              </p>
-            )}
-            {run.steps.length > 0 && (
-              <ol
-                aria-label="Steps"
-                className="m-0 flex flex-col gap-0.5 px-2.5 pb-2"
-              >
-                {run.steps.map((step, index) => (
-                  <StepRow key={index} step={step} onHover={onHover} />
-                ))}
-              </ol>
-            )}
-          </>
+            ))}
+          </ol>
         )}
       </div>
     </li>
+  );
+}
+
+/** What a run ran, with what, and how it went, with its own Interactions. */
+function RunEntryCard({
+  run,
+  open,
+  resultOpen,
+  flashing,
+  onToggle,
+  onToggleResult,
+  onCopyResult,
+  onOpenImage,
+  onHover,
+}: {
+  run: ChildRun & Partial<Pick<Run, "by" | "earlierDocument">>;
+  open: boolean;
+  /** Whether its Result shows its value, rather than only its label. */
+  resultOpen: boolean;
+  flashing: boolean;
+  onToggle: () => void;
+  onToggleResult: () => void;
+  onCopyResult: (text: string) => void;
+  onOpenImage: (src: string) => void;
+  onHover: OnHover;
+}) {
+  return (
+    <div
+      data-run-card=""
+      className={cn(
+        "overflow-hidden rounded-lg border bg-card transition-shadow duration-200",
+        flashing && "ring-2 ring-ring"
+      )}
+    >
+      <button
+        type="button"
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left"
+        onClick={onToggle}
+      >
+        {run.by !== undefined && <CallerMark by={run.by} />}
+        <span className="truncate font-mono text-xs font-semibold">
+          {run.toolName}
+        </span>
+        {run.item && (
+          <span className="rounded-md border px-1.5 font-mono text-xs text-muted-foreground">
+            {run.item.pathBelowPage}
+          </span>
+        )}
+        <span className="flex-1" />
+        {run.earlierDocument && (
+          <span
+            title="Run before the page last loaded"
+            className="rounded-md border px-1.5 text-xs whitespace-nowrap text-muted-foreground"
+          >
+            Earlier page
+          </span>
+        )}
+        <span className="text-xs whitespace-nowrap text-muted-foreground">
+          {run.status === "running"
+            ? "Running…"
+            : `${run.durationMs === undefined ? "" : `${run.durationMs} ms · `}${new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`}
+        </span>
+      </button>
+      {open && (
+        <>
+          {Object.keys(run.arguments).length > 0 && (
+            <figure
+              aria-label="Arguments"
+              className="mx-2.5 mt-0 mb-1.5 rounded-md bg-muted px-2 py-1.25 font-mono text-xs [overflow-wrap:anywhere]"
+            >
+              {JSON.stringify(run.arguments)}
+            </figure>
+          )}
+          {run.status === "succeeded" && run.image && (
+            <div className="mx-2.5 mb-2">
+              <RunImageView image={run.image} onOpen={onOpenImage} />
+            </div>
+          )}
+          {run.status === "succeeded" && run.result !== undefined && (
+            <RunResult
+              text={run.result}
+              open={resultOpen}
+              onToggle={onToggleResult}
+              onCopy={onCopyResult}
+            />
+          )}
+          {run.error && (
+            <p
+              role="note"
+              aria-label="Error"
+              className="mx-2.5 mt-0 mb-2 font-mono text-xs text-destructive"
+            >
+              {run.error}
+            </p>
+          )}
+          {run.interactions.length > 0 && (
+            <ol
+              aria-label="Interactions"
+              className="m-0 flex flex-col gap-0.5 px-2.5 pb-2"
+            >
+              {run.interactions.map((interaction, index) => (
+                <InteractionRow
+                  key={index}
+                  interaction={interaction}
+                  onHover={onHover}
+                />
+              ))}
+            </ol>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// Ayme's own Callers, keyed on the names `callers` exports.
+const callerIcons = {
+  inspector: { Icon: UserIcon, label: "Run by you from the Inspector" },
+  app: { Icon: AppWindowIcon, label: "Run by the app" },
+  webmcp: { Icon: BotIcon, label: "Run by an agent through WebMCP" },
+  "ayme-mcp": {
+    Icon: SquareTerminalIcon,
+    label: "Run by an agent through Ayme MCP",
+  },
+} satisfies Record<BuiltInCaller, { Icon: typeof UserIcon; label: string }>;
+
+/** Who started a run: an icon for Ayme's own Callers, the name for another. */
+function CallerMark({ by }: { by: Caller }) {
+  const builtIn = Object.hasOwn(callerIcons, by)
+    ? callerIcons[by as BuiltInCaller]
+    : undefined;
+  if (!builtIn)
+    return (
+      <span
+        title={`Run by ${by}`}
+        className="max-w-30 flex-none truncate rounded-sm bg-muted px-1.5 text-xs leading-5 text-muted-foreground"
+      >
+        {by}
+      </span>
+    );
+  return (
+    <span
+      role="img"
+      aria-label={builtIn.label}
+      title={builtIn.label}
+      className="grid size-5 flex-none place-items-center rounded-sm bg-muted text-muted-foreground"
+    >
+      <builtIn.Icon className="size-3" aria-hidden />
+    </span>
   );
 }
 
@@ -362,8 +468,8 @@ function RunResult({
   );
 }
 
-// A step's operation is the method it called; the rest show a chevron.
-const stepIcons: Record<string, typeof EyeIcon> = {
+// An Interaction's operation is the method it called; the rest show a chevron.
+const interactionIcons: Record<string, typeof TypeIcon> = {
   click: MousePointer2Icon,
   dblclick: MousePointer2Icon,
   tap: MousePointer2Icon,
@@ -388,39 +494,42 @@ const stepIcons: Record<string, typeof EyeIcon> = {
   "keyboard.up": KeyboardIcon,
   selectOption: ListChecksIcon,
   setInputFiles: UploadIcon,
-  goto: GlobeIcon,
-  goBack: ArrowLeftIcon,
-  goForward: ArrowRightIcon,
-  reload: RotateCwIcon,
-  waitFor: EyeIcon,
 };
 
-function StepRow({ step, onHover }: { step: RunStep; onHover: OnHover }) {
-  const Icon = stepIcons[step.operation] ?? ChevronRightIcon;
+function InteractionRow({
+  interaction,
+  onHover,
+}: {
+  interaction: RunInteraction;
+  onHover: OnHover;
+}) {
+  const Icon = interactionIcons[interaction.operation] ?? ChevronRightIcon;
   const value =
-    step.value !== undefined ? JSON.stringify(step.value) : step.state;
-  const member = step.member;
+    interaction.value === undefined
+      ? undefined
+      : JSON.stringify(interaction.value);
+  const member = interaction.member;
   return (
     <li className="flex min-h-6 list-none items-center gap-2 text-xs">
       <Icon className="size-3.5 flex-none text-muted-foreground" aria-hidden />
       <span className="w-27.5 flex-none text-muted-foreground">
-        {step.operation}
+        {interaction.operation}
       </span>
-      {step.locator !== undefined && (
+      {interaction.locator !== undefined && (
         <button
           type="button"
           data-gone={member === undefined || undefined}
           title={
             member === undefined
-              ? `Not on the page when the run ended: ${step.locator}`
-              : `${step.locator}. Hover to highlight it on the page.`
+              ? `Not on the page when the run ended: ${interaction.locator}`
+              : `${interaction.locator}. Hover to highlight it on the page.`
           }
           className="max-w-57.5 cursor-crosshair truncate rounded-sm border bg-background px-1.5 py-px font-mono text-xs hover:border-ring data-gone:cursor-default data-gone:border-dashed data-gone:text-muted-foreground"
           // The hover highlight finds the member's element while it's there.
           onMouseEnter={() => member !== undefined && onHover({ path: member })}
           onMouseLeave={() => member !== undefined && onHover(undefined)}
         >
-          {member ?? step.locator}
+          {member ?? interaction.locator}
         </button>
       )}
       {value !== undefined && (

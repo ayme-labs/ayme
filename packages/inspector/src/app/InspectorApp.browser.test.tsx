@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import { ToolInputError, type RegisteredPomTool } from "@ayme-dev/ayme";
+import {
+  RuntimeStateError,
+  ToolInputError,
+  type RegisteredPomTool,
+} from "@ayme-dev/ayme";
 import {
   listAvailablePomTools,
   listRegisteredPoms,
@@ -38,6 +42,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     })),
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
+    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
     listAvailablePomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
@@ -48,10 +53,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   };
 });
 
-function saveTool(
-  pomId: string,
-  execute: RegisteredPomTool["execute"]
-): RegisteredPomTool {
+function saveTool(pomId: string): RegisteredPomTool {
   return {
     pomId,
     methodName: "save",
@@ -69,7 +71,6 @@ function saveTool(
       { name: "title", optional: false, schema: { type: "string" } },
       { name: "meta", optional: true, schema: { type: "object" } },
     ],
-    execute,
   };
 }
 
@@ -163,7 +164,7 @@ afterEach(() => {
 
 describe("the Inspector", () => {
   it("shows a Page Object's members as the page probe found them", async () => {
-    const tool = saveTool("editor", vi.fn());
+    const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     renderApp();
     const detail = inspector.detail.model;
@@ -177,7 +178,7 @@ describe("the Inspector", () => {
   });
 
   it("runs a tool with typed arguments and lists the run", async () => {
-    const tool = saveTool("editor", vi.fn());
+    const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     startedAyme.tools.run.mockResolvedValue({ saved: true });
     renderApp();
@@ -210,7 +211,7 @@ describe("the Inspector", () => {
   });
 
   it("shows a run card's last successful run in Runs, with its result", async () => {
-    const tool = saveTool("editor", vi.fn());
+    const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     startedAyme.tools.run.mockResolvedValue({ saved: true });
     renderApp();
@@ -230,7 +231,7 @@ describe("the Inspector", () => {
   });
 
   it("shows the last success's result after a failed run", async () => {
-    const tool = saveTool("editor", vi.fn());
+    const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     startedAyme.tools.run
       .mockResolvedValueOnce({ saved: 1 })
@@ -253,7 +254,7 @@ describe("the Inspector", () => {
   });
 
   it("keeps each run's result as the tool returned it", async () => {
-    const tool = saveTool("editor", vi.fn());
+    const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     const first = { saved: 1 };
     startedAyme.tools.run
@@ -289,9 +290,9 @@ describe("the Inspector", () => {
   });
 
   it("gives overlapping runs their own results", async () => {
-    const save = saveTool("editor", vi.fn());
+    const save = saveTool("editor");
     const publish: RegisteredPomTool = {
-      ...saveTool("editor", vi.fn()),
+      ...saveTool("editor"),
       methodName: "publish",
       name: "Editor.publish",
       description: "Publish the editor.",
@@ -328,8 +329,8 @@ describe("the Inspector", () => {
 
   it("lists two registrations of one page class apart and runs their tool as the runtime does", async () => {
     const consoleError = vi.spyOn(console, "error");
-    const first = saveTool("first", vi.fn());
-    const second = saveTool("second", vi.fn());
+    const first = saveTool("first");
+    const second = saveTool("second");
     mockRegistry([editor("first", first), editor("second", second)], [second]);
     startedAyme.tools.run.mockResolvedValue({ saved: true });
     renderApp();
@@ -354,8 +355,8 @@ describe("the Inspector", () => {
     consoleError.mockRestore();
   });
 
-  it("runs a tool through the session and shows its failure as an agent reads it", async () => {
-    const tool = saveTool("editor", vi.fn());
+  it("runs a tool through the session and shows its failure as the log records it", async () => {
+    const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     startedAyme.tools.run.mockRejectedValue(
       new ToolInputError("title is required.")
@@ -366,9 +367,7 @@ describe("the Inspector", () => {
 
     const run = inspector.runs.latest("Editor.save");
     await expect.poll(() => run.status()).toBe("Failed");
-    expect(await run.error.textContent()).toBe(
-      "ToolInputError: title is required."
-    );
+    expect(await run.error.textContent()).toBe("title is required.");
     expect(startedAyme.tools.run).toHaveBeenCalledExactlyOnceWith(
       "Editor.save",
       {
@@ -379,12 +378,10 @@ describe("the Inspector", () => {
   });
 
   it("shows a tool the runtime doesn't run as a failed run", async () => {
-    const tool = saveTool("editor", vi.fn());
+    const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     startedAyme.tools.run.mockRejectedValue(
-      Object.assign(new Error('There is no tool "Editor.save".'), {
-        name: "RuntimeStateError",
-      })
+      new RuntimeStateError('There is no tool "Editor.save".')
     );
     renderApp();
 
@@ -393,7 +390,7 @@ describe("the Inspector", () => {
     const run = inspector.runs.latest("Editor.save");
     await expect.poll(() => run.status()).toBe("Failed");
     expect(await run.error.textContent()).toBe(
-      'RuntimeStateError: There is no tool "Editor.save".'
+      'There is no tool "Editor.save".'
     );
   });
 
@@ -476,7 +473,7 @@ describe("the Inspector", () => {
   });
 
   it("lists the live tools when nothing is published", async () => {
-    const tool = saveTool("editor", vi.fn());
+    const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     startedAyme.webMCP.publicationStatus = publicationDisabled;
     renderApp();
@@ -489,7 +486,7 @@ describe("the Inspector", () => {
   });
 
   it("drops an open tool that stops being live and shows the page", async () => {
-    const tool = saveTool("editor", vi.fn());
+    const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     renderApp();
     await inspector.tool("Editor.save");
@@ -510,7 +507,7 @@ describe("the Inspector", () => {
   });
 
   it("shows a search result in its lens and the detail pane", async () => {
-    const tool = saveTool("editor", vi.fn());
+    const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     renderApp();
 
@@ -531,7 +528,7 @@ describe("the Inspector", () => {
   });
 
   it("comes back to the lens, the open tool and its runs after a reload", async () => {
-    const tool = saveTool("editor", vi.fn());
+    const tool = saveTool("editor");
     mockRegistry([editor("editor", tool)], [tool]);
     startedAyme.tools.run.mockResolvedValue({ saved: true });
     renderApp();

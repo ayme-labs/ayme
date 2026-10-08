@@ -22,7 +22,6 @@ import {
   type PageObjectConstructor,
 } from "./registry";
 import {
-  settledAfter,
   synchronizeWebMcpTools,
   waitForWebMcpDriver,
   type WebMcpRegistration,
@@ -36,6 +35,19 @@ import {
   type PeekRead,
 } from "./peek";
 import type { ToolInput, ToolResult } from "./toolTypes";
+import {
+  callerOf,
+  callers,
+  createRunQueue,
+  readerOf,
+  executeTopLevelRun,
+  type Caller,
+  type RunContext,
+  type StartChildRun,
+  type ToolRunOptions,
+} from "./run";
+import type { Reader } from "./interactionHistory";
+import { runLog, type AymeRuns } from "./runLog";
 
 export type AymeWebMcpPublicationStatus = Readonly<{
   state:
@@ -76,12 +88,19 @@ export type AymeTools = {
    */
   subscribe(listener: (tools: readonly ToolInfo[]) => void): () => void;
   /**
-   * Runs an available tool as the application, through the same path as an
-   * agent's call. Throws Ayme's errors, and `RuntimeStateError` while the
-   * session is not started, when no tool has the name, or when the tool is
-   * not available.
+   * Starts a Run of an available tool for the Caller `by` names, `"app"`
+   * by default: every Caller, WebMCP and the Ayme MCP server included,
+   * starts its Runs here. Runs take turns, one at a time per page: an
+   * action's turn ends once the page has settled, a read's without a settle
+   * wait. Throws Ayme's errors, and `RuntimeStateError` for an empty `by`,
+   * while the session is not started, when no tool has the name, or when
+   * the tool is not available.
    */
-  run<N extends string>(name: N, input: ToolInput<N>): Promise<ToolResult<N>>;
+  run<N extends string>(
+    name: N,
+    input: ToolInput<N>,
+    options?: ToolRunOptions
+  ): Promise<ToolResult<N>>;
 };
 
 /** The session's Page Objects: one instance per class. */
@@ -104,6 +123,13 @@ export type AymePom = {
 export type Ayme = {
   readonly webMCP: AymeWebMcp;
   readonly tools: AymeTools;
+  /**
+   * The document's Run log: the newest 200 top-level Runs started through
+   * `tools.run`, by any Caller, and the App Process tools run from the
+   * page, each with the child Runs a tool started through the `run` in its
+   * context, oldest first. A new document starts an empty one.
+   */
+  readonly runs: AymeRuns;
   readonly pom: AymePom;
   /**
    * Adds a Peek: `read` returns the values of state an agent can read, and
@@ -275,10 +301,13 @@ export type AppProcessTools = {
   /** Calls `listener` with the new list after each change. */
   subscribe(listener: (tools: readonly AppProcessTool[]) => void): () => void;
   /**
-   * Runs one in its App Process, through the agent's Ayme MCP server.
-   * Throws its error, or when no server is paired.
+   * Runs one in its App Process, through the agent's Ayme MCP server, and
+   * records it as a Run in the page's Run log for the Caller `by` names,
+   * `"app"` by default. It acts on no page, so it takes no turn on the
+   * page's queue and has no Interactions. Throws its error, or when no
+   * server is paired.
    */
-  run(name: string, input: unknown): Promise<unknown>;
+  run(name: string, input: unknown, options?: ToolRunOptions): Promise<unknown>;
 };
 
 const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
@@ -310,12 +339,22 @@ function createAppProcessTools() {
         listeners.delete(listener);
       };
     },
-    async run(name, input) {
-      if (!followed)
-        throw new RuntimeStateError(
-          "No Ayme MCP server is paired with this page."
-        );
-      return followed.run(name, input);
+    async run(name, input, options) {
+      const by = callerOf(options);
+      const paired = followed;
+      return runLog.record(
+        name,
+        input,
+        { by },
+        () => {
+          if (!paired)
+            throw new RuntimeStateError(
+              "No Ayme MCP server is paired with this page."
+            );
+          return paired.run(name, input);
+        },
+        { offPage: true }
+      );
     },
   };
   return {
@@ -365,7 +404,10 @@ const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 export function createAyme(options: AymeOptions = {}): Ayme {
   let resolvedPage: AymePage | undefined;
   const getPage = () =>
-    (resolvedPage ??= instrumentedPage((options.pageFactory ?? createPage)()));
+    (resolvedPage ??= instrumentedPage(
+      (options.pageFactory ?? createPage)(),
+      runLog.interact
+    ));
   // Publication is decided once, when the session is created.
   const enabled = options.webMCP?.enabled === true;
   // Peeks reach coding agents and the Inspector only (ADR-0034). The
@@ -398,6 +440,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   let publication: WebMcpRegistration | undefined;
   let pending: Promise<void> | undefined;
   const appProcessTools = createAppProcessTools();
+  // One top-level Run at a time on this page, whoever its Caller.
+  const takeTurn = createRunQueue();
 
   const setStatus = (next: AymeWebMcpPublicationStatus) => {
     status = Object.freeze(next);
@@ -441,6 +485,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         const registration = await synchronizeWebMcpTools(driver, {
           toolNamePrefix,
           signal,
+          run: (name, input, settle) =>
+            queueTopLevelRun(name, input, callers.webmcp, settle),
           onError(error) {
             attemptFailed = true;
             if (signal.aborted) return;
@@ -503,7 +549,41 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     retryPublication,
   };
 
-  async function run(name: string, input: unknown): Promise<unknown> {
+  async function run(
+    name: string,
+    input: unknown,
+    options?: ToolRunOptions
+  ): Promise<unknown> {
+    return queueTopLevelRun(name, input, callerOf(options));
+  }
+
+  /**
+   * Queues a top-level Run of the tool `name` for `by`, which runs in
+   * its turn on the page's queue. `settle` runs after an action, within the Run's turn:
+   * by default the Page Objects are probed, as after an agent's call, so the
+   * tools' availability is current. `name` is resolved when the turn starts, against
+   * the tools available then.
+   */
+  function queueTopLevelRun(
+    name: string,
+    input: unknown,
+    by: Caller,
+    settle = () => probeRegisteredPomMembers().catch(() => {})
+  ): Promise<unknown> {
+    return takeTurn(() => recordTopLevelRun(name, input, by, settle));
+  }
+
+  /**
+   * Records a top-level Run of the tool `name` for `by` in the log and
+   * executes it, in its turn. A session that runs an App Process keeps no
+   * log: it runs its Peek Tools only.
+   */
+  async function recordTopLevelRun(
+    name: string,
+    input: unknown,
+    by: Caller,
+    settle: () => Promise<void>
+  ): Promise<unknown> {
     if (inProcess) {
       // The Peek registry is shared by the process, so a session without
       // Peeks runs none another session added.
@@ -511,8 +591,29 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         ? listPeekTools().find((tool) => tool.name === name)
         : undefined;
       if (!peekTool) throw noSuchTool(name);
-      return peekTool.executeAs(input, "app");
+      // A read: it moves no cursor and adds no settle wait.
+      return peekTool.execute(input);
     }
+    const reader = readerOf(by);
+    return runLog.record(name, input, { by }, (id) => {
+      const tool = lookUpAvailableTool(name);
+      return executeTopLevelRun(
+        tool,
+        () =>
+          executeWithChildRuns(id, reader, (context) =>
+            tool.execute(input, context)
+          ),
+        settle
+      );
+    });
+  }
+
+  /**
+   * Looks up the available tool `name` for a Run. Throws when there is none
+   * or it is not available, inside the Run that asked for it, so the log
+   * records that Run as failed.
+   */
+  function lookUpAvailableTool(name: string) {
     if (!owner)
       throw new RuntimeStateError(
         `Cannot run the tool "${name}": the Ayme runtime session is not started.`
@@ -523,15 +624,53 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       throw new RuntimeStateError(
         `The tool "${name}" is not available now: the Page Object or component it acts on is not on the page or is blocked.`
       );
-    const { tool } = entry;
-    // As after an agent's call, the Page Objects are probed, so the tools'
-    // availability is current when the call resolves.
-    return settledAfter(
-      tool,
-      () => tool.executeAs(input, "app"),
-      () => probeRegisteredPomMembers().catch(() => {})
-    );
+    return entry.tool;
   }
+
+  /**
+   * Executes the Run `id` with a context whose `run` starts its child Runs,
+   * and ends once every child Run it started has ended, even when it fails
+   * first, so no child outlives its parent's turn. Each child runs the available
+   * tool it names inside the parent's turn, never on the page's queue, and
+   * starts its own children the same way. The parent's children run one
+   * after the other, in the order it starts them, so two started together
+   * never act on the page at once. Like a Goal Loop step before it, a child
+   * Run adds no settle wait of its own; the parent's turn ends with the
+   * parent's.
+   */
+  async function executeWithChildRuns<T>(
+    id: string,
+    reader: Reader,
+    execute: (context: RunContext) => Promise<T>
+  ): Promise<T> {
+    const takeChildTurn = createRunQueue();
+    const run: StartChildRun = (name, input, childReader = reader) =>
+      takeChildTurn(() =>
+        runLog.record(name, input, { parent: id }, (childId) =>
+          executeWithChildRuns(childId, childReader, (context) =>
+            lookUpAvailableTool(name).execute(input, context)
+          )
+        )
+      );
+    try {
+      return await execute({ reader, run });
+    } finally {
+      // A turn taken now starts once every child started so far has ended.
+      await takeChildTurn(async () => {});
+    }
+  }
+
+  /**
+   * The session's tools as the Ayme MCP server's client reaches them: its
+   * Runs are `ayme-mcp`'s, so `@ayme-dev/mcp` names no Caller.
+   */
+  const aymeMcpTools = {
+    list: () => ayme.tools.list(),
+    subscribe: (listener: (tools: readonly ToolInfo[]) => void) =>
+      ayme.tools.subscribe(listener),
+    run: (name: string, input: unknown) =>
+      ayme.tools.run(name, input as never, { by: callers.aymeMcp }),
+  };
 
   const pom: AymePom = {
     get<T extends object>(model: PageObjectConstructor<T>): T {
@@ -578,6 +717,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       },
       run: run as AymeTools["run"],
     },
+    runs: { list: runLog.list, subscribe: runLog.subscribe },
     pom,
     peek(read, name, id) {
       if (typeof name !== "string" || name === "")
@@ -625,7 +765,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
           startAgentConnectionUntil(signal, () =>
             loadAgentConnection().then(({ startAgentConnection }) => () => {
               const connection = startAgentConnection({
-                tools: ayme.tools,
+                tools: aymeMcpTools,
                 recordAgentImage: recordAgentImageRun,
               });
               // A page client from before App Processes hands over none.

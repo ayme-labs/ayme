@@ -14,6 +14,7 @@ import { buildStructureTree, emptyStructure } from "../structure";
 import { useHighlights } from "../navigation";
 import { usePageLook } from "../shared";
 import { useRuns } from "../runs";
+import { itemsOf } from "./collectionItems";
 
 /**
  * What the Inspector shows and does, composed from each slice's own reading
@@ -44,7 +45,20 @@ export function useInspectorRuntime({
     () => refreshPageState(),
     [refreshPageState]
   );
-  const { runs, invoke, clear } = useRuns({ onSettled: onRunSettled });
+  // A Run's item is the one its ref names in the latest look at the page.
+  const latestStructure = useRef(emptyStructure);
+  const itemOf = useCallback(
+    (toolName: string, ref: string) =>
+      latestMembers.current &&
+      itemsOf(toolName, latestMembers.current, latestStructure.current).find(
+        (item) => item.ref === ref
+      ),
+    []
+  );
+  const { runs, invoke, clear } = useRuns({
+    onSettled: onRunSettled,
+    itemOf,
+  });
   const tools = useLiveTools();
 
   const { projected, targetsByRef, controls, ...pageState } =
@@ -70,6 +84,9 @@ export function useInspectorRuntime({
         : buildStructureTree(projected, targetsByRef, members, controls),
     [projected, targetsByRef, members, controls]
   );
+  useEffect(() => {
+    latestStructure.current = structure;
+  }, [structure]);
   const elementTools = useMemo(
     () =>
       tools.live

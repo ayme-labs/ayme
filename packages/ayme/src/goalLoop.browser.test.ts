@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
+import { runPublished } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { createPageRegistration, registerCompiledPom } from "./registry";
@@ -391,7 +392,9 @@ describe("Goal Loop goal in Chromium", () => {
   ): Promise<PublishedTool> {
     startRuntime(goalLoop, customTools);
     const { driver, published } = createFakeDriver();
-    const publication = await synchronizeWebMcpTools(driver);
+    const publication = await synchronizeWebMcpTools(driver, {
+      run: runPublished,
+    });
     disposePublication = publication.dispose;
     const tool = published.get("goal");
     if (!tool) throw new Error("goal not published");

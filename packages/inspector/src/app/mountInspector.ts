@@ -7,12 +7,6 @@ import {
 import { allowPassThrough } from "../panel";
 import { renderInspector } from "./renderInspector";
 import { exposeInspectorShadowRoot } from "../shared";
-import {
-  dispatchInspectorTrace,
-  recordInspectorTrace,
-  resetInspectorTrace,
-  subscribeToInspectorTraceDispatcher,
-} from "../runs";
 import { withDemoFeedback } from "../demo";
 
 // The page's two highlights: solid for the Inspector's selection, dashed
@@ -69,26 +63,18 @@ export type InspectorOptions = {
 };
 
 /**
- * Records every action on the runtime's Pages for Runs, and in demo mode
- * paces them and cues their clicks.
+ * Lets the pointer actions on the runtime's Pages reach elements under the
+ * panel, and in demo mode paces every action and cues its clicks.
  */
 export function installInspectorInstrumentation({
   demo = false,
 }: InspectorOptions = {}) {
-  resetInspectorTrace();
-  const unsubscribeFromTrace =
-    subscribeToInspectorTraceDispatcher(recordInspectorTrace);
-  const uninstall = installRuntimePageInstrumentation((page) => {
-    return withDemoFeedback(page as Page, {
-      onTrace: dispatchInspectorTrace,
-      ...(demo && { beforeActionMs: DEMO_PAUSE_MS, clickCue: true }),
-    });
-  });
-
-  return () => {
-    uninstall();
-    unsubscribeFromTrace();
-  };
+  return installRuntimePageInstrumentation((page) =>
+    withDemoFeedback(
+      page as Page,
+      demo ? { beforeActionMs: DEMO_PAUSE_MS, clickCue: true } : {}
+    )
+  );
 }
 
 type MountedInspector = {

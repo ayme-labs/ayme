@@ -3,7 +3,7 @@ import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import type { JsonSchema, JsonValue } from "./contracts";
 import type { ActionResult } from "./actionSequence";
 import { renderChangeRecord } from "./changeRecord";
-import type { Caller } from "./interactionHistory";
+import type { StartChildRun, RunContext } from "./run";
 import {
   getInteractionHistory,
   getPageStateCaptureForDocument,
@@ -28,7 +28,7 @@ import {
   type ChoiceAnswer,
   type ChosenArguments,
   type ChosenOption,
-  type ExecutableTool,
+  type GoalLoopOperation,
   type GoalValues,
   MAX_GOAL_VALUES,
   type NoulAnswer,
@@ -59,14 +59,16 @@ export function configureGoalLoop(
   goalLoopStore.decisionFn = decisionFn;
 }
 
-/** The `goal` tool; `execute` runs it for the calling agent. */
+/**
+ * The `goal` tool; `execute` runs the loop for a Run, whose reader the
+ * Handover hands control back to.
+ */
 export type GoalTool = Omit<
   ModelContextTool<Record<string, unknown>, JsonValue>,
   "inputSchema" | "execute"
 > & {
   inputSchema: JsonSchema;
-  execute(input: unknown): Promise<JsonValue>;
-  executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
+  execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
 /**
@@ -207,15 +209,17 @@ function stepRecord(
 }
 
 /**
- * Execute a tool and read the `ActionResult` it returns.
+ * Execute a tool as a step, a child Run of the goal Run through `run`, and
+ * read the `ActionResult` it returns.
  * Every registered tool (POM tools, Browser Tools, Custom Tools) runs, as the Goal Loop's model, through
  * `runAction` internally, so we just forward and interpret the result.
  */
 async function executeToolAction(
-  tool: ExecutableTool,
-  args: Record<string, unknown>
+  tool: GoalLoopOperation,
+  args: Record<string, unknown>,
+  run: StartChildRun
 ): Promise<StepOutcome> {
-  const raw = await tool.execute(args);
+  const raw = await tool.execute(args, run);
   const action = raw as ActionResult | undefined;
   return {
     result: "ok",
@@ -232,16 +236,16 @@ export function createPursueGoalTool(
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document
 ): GoalTool {
-  /** Runs the loop for `caller`, which the Handover hands control back to. */
-  const executeAs = async (
+  /** Runs the loop for the Run's reader, which the Handover hands control back to. */
+  const execute = async (
     input: unknown,
-    caller: Caller
+    context: RunContext
   ): Promise<JsonValue> => {
     const result = await pursueGoal(
       readPursueGoalInput(input),
       decisionFn,
       currentDocument,
-      caller
+      context
     );
     return result.handover as unknown as JsonValue;
   };
@@ -268,8 +272,7 @@ export function createPursueGoalTool(
       required: ["goal", "maxSteps"],
       additionalProperties: false,
     } as const,
-    execute: (input: unknown) => executeAs(input, "agent"),
-    executeAs,
+    execute,
   };
 }
 
@@ -332,7 +335,7 @@ export async function pursueGoal(
   { goal, maxSteps, values }: GoalInput,
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document,
-  caller: Caller = "agent"
+  { reader: caller, run }: RunContext
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];
@@ -591,7 +594,11 @@ export async function pursueGoal(
     // Execute the operation through the same action sequence as direct tool calls.
     let actionResult: StepOutcome;
     try {
-      actionResult = await executeToolAction(chosenTool, chosenArguments.args);
+      actionResult = await executeToolAction(
+        chosenTool,
+        chosenArguments.args,
+        run
+      );
       consecutiveFailures = 0;
       if (actionResult.changes) score.changes = actionResult.changes;
     } catch (error) {

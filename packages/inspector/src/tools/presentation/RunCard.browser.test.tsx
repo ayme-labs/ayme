@@ -4,7 +4,12 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../structure/test-utils/projected";
 import { buildStructureTree } from "../../structure";
-import { anItem, aRun, aStep } from "../../runs/test-utils/runs";
+import {
+  aChildRun,
+  anInteraction,
+  anItem,
+  aRun,
+} from "../../runs/test-utils/runs";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
 import { argumentViolationsOf } from "../infrastructure/argumentViolations";
@@ -524,21 +529,22 @@ describe("a collection action", () => {
 });
 
 describe("the last result", () => {
-  it("shows a success's duration and steps, leaving its result to Runs", async () => {
+  it("shows a success's duration and Interactions, its child runs' too, leaving its result to Runs", async () => {
     const { card } = renderCard({
       tool: addItem,
       runs: [
         aRun({
           durationMs: 320,
           result: '{ "added": "Milk" }',
-          steps: [aStep(), aStep()],
+          interactions: [anInteraction()],
+          children: [aChildRun({ interactions: [anInteraction()] })],
         }),
       ],
     });
 
     await expect
       .poll(() => card.lastResult.textContent())
-      .toContain("Succeeded · 320 ms · 2 steps");
+      .toContain("Succeeded · 320 ms · 2 interactions");
     expect(await card.lastResult.getByRole("button").count()).toBe(1);
   });
 
@@ -566,16 +572,16 @@ describe("the last result", () => {
     const { card, onShowRun } = renderCard({
       tool: addItem,
       runs: [
-        aRun({ id: 3, status: "failed", error: "No." }),
-        aRun({ id: 2 }),
-        aRun({ id: 1 }),
+        aRun({ id: "3", status: "failed", error: "No." }),
+        aRun({ id: "2" }),
+        aRun({ id: "1" }),
       ],
     });
 
     await card.lastSuccessLink.click();
 
     expect(await card.lastSuccessLink.textContent()).toBe("Last success ›");
-    expect(onShowRun).toHaveBeenCalledExactlyOnceWith(2);
+    expect(onShowRun).toHaveBeenCalledExactlyOnceWith("2");
   });
 
   it("is the last run on the item picked", async () => {

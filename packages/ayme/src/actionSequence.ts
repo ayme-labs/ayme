@@ -6,7 +6,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import { isJsonValue, type JsonValue } from "./contracts";
 import { browserMonotonicClock } from "./browserMonotonicClock";
-import type { Caller, ToolCall } from "./interactionHistory";
+import type { Reader, ToolCall } from "./interactionHistory";
 import { getBrowserPageActivitySource } from "./pageActivitySource";
 import {
   completeActionForDocument,
@@ -40,7 +40,8 @@ export type ActionResult = {
  * part of the record.
  *
  * An action whose `perform` or settle wait throws is completed as failed with
- * the page as it is then, moves no cursor, and the error travels on. Where
+ * the page as it is then, moves no cursor, and the error travels on; one
+ * whose `perform` throws still waits for a Settled Page first. Where
  * capturing that page or the Settled Page throws, the page as last recorded
  * stands in for it.
  *
@@ -52,7 +53,7 @@ export type ActionResult = {
  */
 export async function runAction(
   currentDocument: Document,
-  caller: Caller,
+  caller: Reader,
   call: ToolCall,
   perform: () => unknown
 ): Promise<ActionResult> {
@@ -62,14 +63,22 @@ export async function runAction(
   const fullLoad = watchFullLoad(currentDocument);
   let loadingUrl: string | undefined;
   try {
-    const settled = (async () => {
-      rawResult = await perform();
-      ({ stable } = await waitForSettled({
+    const waitForSettledPage = () =>
+      waitForSettled({
         activity: getBrowserPageActivitySource(currentDocument),
         clock: browserMonotonicClock,
         quietMs: SETTLED_PAGE_QUIET_MS,
         deadlineMs: SETTLED_PAGE_DEADLINE_MS,
-      }));
+      });
+    const settled = (async () => {
+      try {
+        rawResult = await perform();
+      } catch (error) {
+        // What a failed action set off settles before its Run's turn ends.
+        await waitForSettledPage().catch(() => {});
+        throw error;
+      }
+      ({ stable } = await waitForSettledPage());
     })();
     loadingUrl = await Promise.race([
       settled.then(() => undefined),

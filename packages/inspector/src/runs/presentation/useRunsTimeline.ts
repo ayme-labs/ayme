@@ -7,11 +7,11 @@ import type { RunFocus } from "../domain/run";
  * and the run a focus brings into view, opened and flashing briefly.
  */
 export function useRunsTimeline(focus: RunFocus | undefined) {
-  const [closedRuns, setClosedRuns] = useState<ReadonlySet<number>>(new Set());
-  const [openResults, setOpenResults] = useState<ReadonlySet<number>>(
+  const [closedRuns, setClosedRuns] = useState<ReadonlySet<string>>(new Set());
+  const [openResults, setOpenResults] = useState<ReadonlySet<string>>(
     new Set()
   );
-  const [flashing, setFlashing] = useState<number>();
+  const [flashing, setFlashing] = useState<string>();
   const timeline = useRef<HTMLOListElement>(null);
 
   useEffect(() => {
@@ -36,8 +36,8 @@ export function useRunsTimeline(focus: RunFocus | undefined) {
     closedRuns,
     openResults,
     flashing,
-    toggleRun: (id: number) => setClosedRuns((closed) => toggled(closed, id)),
-    toggleResult: (id: number) =>
+    toggleRun: (id: string) => setClosedRuns((closed) => toggled(closed, id)),
+    toggleResult: (id: string) =>
       setOpenResults((opened) => toggled(opened, id)),
     copyResult: (text: string) => void copy(text),
     openImage: openImageFullSize,
@@ -45,7 +45,7 @@ export function useRunsTimeline(focus: RunFocus | undefined) {
 }
 
 /** The set with `id` added, or removed if it was there. */
-function toggled(set: ReadonlySet<number>, id: number) {
+function toggled(set: ReadonlySet<string>, id: string) {
   const next = new Set(set);
   if (!next.delete(id)) next.add(id);
   return next;

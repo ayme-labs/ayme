@@ -16,7 +16,6 @@ const addItem: RegisteredPomTool & { componentPath?: string } = {
   description: "Add an item to the list.",
   inputSchema: { type: "object" },
   parameters: [{ name: "text", optional: false, schema: { type: "string" } }],
-  execute: async () => null,
 };
 const rename: RegisteredPomTool & { componentPath?: string } = {
   pomId: "ListPage",
@@ -38,7 +37,6 @@ const rename: RegisteredPomTool & { componentPath?: string } = {
       },
     },
   ],
-  execute: async () => null,
 };
 const listPage: RegisteredPom = {
   id: "ListPage",

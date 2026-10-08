@@ -86,7 +86,7 @@ function browserTool(
   name: string,
   description: string,
   inputSchema: JsonSchema,
-  run: (target: ResolvedTarget, input: Fields) => Promise<unknown>
+  perform: (target: ResolvedTarget, input: Fields) => Promise<unknown>
 ): ElementToolDefinition {
   return {
     name,
@@ -96,8 +96,8 @@ function browserTool(
     targetField: "target",
     // An action's own result would appear under `result`; Browser Tools have
     // none, as in Playwright MCP, so `selectOption`'s values are dropped.
-    run: async (target, input) => {
-      await run(target, input);
+    perform: async (target, input) => {
+      await perform(target, input);
     },
   };
 }
@@ -384,14 +384,14 @@ const fillFormTool: PublishedElementTool = {
   description:
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
   inputSchema: fillFormSchema,
-  execute: (input: unknown) => fillFormTool.executeAs(input, "agent"),
-  executeAs: async (input, caller) => {
+  execute: async (input, context) => {
+    const { reader } = context;
     const fields = validatedToolInput(fillFormSchema, input)
       .fields as FormField[];
     const currentDocument = requireCurrentDocument();
     return runAction(
       currentDocument,
-      caller,
+      reader,
       { tool: "fill_form", args: input },
       async () => {
         const filled: string[] = [];
@@ -433,14 +433,14 @@ const pressKeyTool: PublishedElementTool = {
   name: "press_key",
   description: "Press a key on the element that has focus.",
   inputSchema: pressKeySchema,
-  execute: (input: unknown) => pressKeyTool.executeAs(input, "agent"),
-  executeAs: async (input, caller) => {
+  execute: async (input, context) => {
+    const { reader } = context;
     const { key } = validatedToolInput(pressKeySchema, input) as {
       key: string;
     };
     return runAction(
       requireCurrentDocument(),
-      caller,
+      reader,
       { tool: "press_key", args: input },
       () => requireAymeRuntimePage().keyboard.press(key)
     );

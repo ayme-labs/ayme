@@ -15,7 +15,7 @@ it("preserves observation and composition through chained and array locators", a
     <article><button>First</button></article>
     <article><button>Second</button></article>
   `;
-  const page = withDemoFeedback(createPage(), { onTrace: vi.fn() });
+  const page = withDemoFeedback(createPage());
   const rows = await page.locator("article").all();
   const button = rows[1]!.getByRole("button").and(page.locator("button"));
 
@@ -32,7 +32,7 @@ it("preserves observation and composition through chained and array locators", a
     )
   ).toEqual([document.querySelectorAll("article")[1]]);
 
-  const otherPage = withDemoFeedback(createPage(), { onTrace: vi.fn() });
+  const otherPage = withDemoFeedback(createPage());
   expect(() => button.and(otherPage.locator("button"))).toThrow(
     /same frame|different Page/
   );
@@ -45,16 +45,11 @@ it("forwards fill unchanged and preserves action failures", async () => {
   const fill = vi.spyOn(rawLocator, "fill").mockResolvedValue();
   const failure = new Error("action failed");
   vi.spyOn(rawLocator, "click").mockRejectedValue(failure);
-  const onTrace = vi.fn();
-  const page = withDemoFeedback(rawPage, { onTrace });
+  const page = withDemoFeedback(rawPage);
 
   await page.locator("input").fill("abc", { timeout: 75 });
   expect(fill).toHaveBeenCalledExactlyOnceWith("abc", { timeout: 75 });
   await expect(page.locator("input").click()).rejects.toBe(failure);
-  expect(onTrace.mock.calls.map(([entry]) => entry.operation)).toEqual([
-    "fill",
-    "click",
-  ]);
 });
 
 it("delays the delegated action without changing its timeout option", async () => {
@@ -63,10 +58,7 @@ it("delays the delegated action without changing its timeout option", async () =
   const rawLocator = rawPage.locator("button");
   vi.spyOn(rawPage, "locator").mockReturnValue(rawLocator);
   const click = vi.spyOn(rawLocator, "click").mockResolvedValue();
-  const page = withDemoFeedback(rawPage, {
-    beforeActionMs: 50,
-    onTrace: vi.fn(),
-  });
+  const page = withDemoFeedback(rawPage, { beforeActionMs: 50 });
 
   const pending = page.locator("button").click({ timeout: 10 });
   await vi.advanceTimersByTimeAsync(49);
@@ -82,8 +74,8 @@ it("paces a Page wrapped again by the latest options only", async () => {
   const rawLocator = rawPage.locator("button");
   vi.spyOn(rawPage, "locator").mockReturnValue(rawLocator);
   const click = vi.spyOn(rawLocator, "click").mockResolvedValue();
-  withDemoFeedback(rawPage, { beforeActionMs: 50, onTrace: vi.fn() });
-  const page = withDemoFeedback(rawPage, { onTrace: vi.fn() });
+  withDemoFeedback(rawPage, { beforeActionMs: 50 });
+  const page = withDemoFeedback(rawPage);
 
   await page.locator("button").click();
   expect(click).toHaveBeenCalledOnce();
@@ -112,10 +104,7 @@ it.each([
   const action = vi
     .spyOn(rawLocator, method)
     .mockResolvedValue(undefined as never);
-  const page = withDemoFeedback(rawPage, {
-    beforeActionMs: 50,
-    onTrace: vi.fn(),
-  });
+  const page = withDemoFeedback(rawPage, { beforeActionMs: 50 });
 
   const pending = (
     page.locator("input")[method] as (...args: unknown[]) => Promise<unknown>
@@ -136,10 +125,7 @@ it("pauses before a drag", async () => {
   vi.spyOn(rawPage, "locator").mockImplementation((selector) =>
     selector === "#source" ? source : target
   );
-  const page = withDemoFeedback(rawPage, {
-    beforeActionMs: 50,
-    onTrace: vi.fn(),
-  });
+  const page = withDemoFeedback(rawPage, { beforeActionMs: 50 });
 
   const pending = page.locator("#source").dragTo(page.locator("#target"));
   await vi.advanceTimersByTimeAsync(49);
@@ -153,10 +139,7 @@ it("pauses before an action the Page takes by selector", async () => {
   vi.useFakeTimers();
   const rawPage = createPage();
   const click = vi.spyOn(rawPage, "click").mockResolvedValue();
-  const page = withDemoFeedback(rawPage, {
-    beforeActionMs: 50,
-    onTrace: vi.fn(),
-  });
+  const page = withDemoFeedback(rawPage, { beforeActionMs: 50 });
 
   const pending = page.click("button");
   await vi.advanceTimersByTimeAsync(49);
@@ -169,27 +152,19 @@ it("pauses before an action the Page takes by selector", async () => {
 it("does not pause what only reads the page", async () => {
   vi.useFakeTimers();
   document.body.innerHTML = "<button>Read</button>";
-  const page = withDemoFeedback(createPage(), {
-    beforeActionMs: 50,
-    onTrace: vi.fn(),
-  });
+  const page = withDemoFeedback(createPage(), { beforeActionMs: 50 });
 
   expect(await page.locator("button").textContent()).toBe("Read");
   expect(await page.locator("button").count()).toBe(1);
 });
 
-it("paces and records the Page keyboard's calls", async () => {
+it("paces the Page keyboard's calls", async () => {
   vi.useFakeTimers();
   const rawPage = createPage();
   const press = vi.spyOn(rawPage.keyboard, "press").mockResolvedValue();
-  const onTrace = vi.fn();
-  const page = withDemoFeedback(rawPage, { beforeActionMs: 50, onTrace });
+  const page = withDemoFeedback(rawPage, { beforeActionMs: 50 });
 
   const pending = page.keyboard.press("Enter");
-  expect(onTrace).toHaveBeenCalledExactlyOnceWith(
-    { operation: "keyboard.press", value: "Enter" },
-    undefined
-  );
   await vi.advanceTimersByTimeAsync(49);
   expect(press).not.toHaveBeenCalled();
   await vi.advanceTimersByTimeAsync(1);
@@ -197,18 +172,13 @@ it("paces and records the Page keyboard's calls", async () => {
   expect(press).toHaveBeenCalledExactlyOnceWith("Enter");
 });
 
-it("paces and records a navigation", async () => {
+it("paces a navigation", async () => {
   vi.useFakeTimers();
   const rawPage = createPage();
   const goto = vi.spyOn(rawPage, "goto").mockResolvedValue(null);
-  const onTrace = vi.fn();
-  const page = withDemoFeedback(rawPage, { beforeActionMs: 50, onTrace });
+  const page = withDemoFeedback(rawPage, { beforeActionMs: 50 });
 
   const pending = page.goto("/list");
-  expect(onTrace).toHaveBeenCalledExactlyOnceWith(
-    { operation: "goto", value: "/list" },
-    undefined
-  );
   await vi.advanceTimersByTimeAsync(49);
   expect(goto).not.toHaveBeenCalled();
   await vi.advanceTimersByTimeAsync(1);

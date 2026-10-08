@@ -3,6 +3,7 @@
  * calls them, and a Goal Loop decision function that runs given operations.
  */
 import type { DecisionResponse } from "./decisionTypes";
+import { runPublished } from "./agentCalls.testSupport";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { synchronizeWebMcpTools } from "./webMcp";
 
@@ -14,17 +15,20 @@ type PublishedTool = {
 /** Publish the started session's tools, as the calling agent sees them. */
 export async function publishTools() {
   const published = new Map<string, PublishedTool>();
-  const { dispose } = await synchronizeWebMcpTools({
-    async registerTool(
-      tool: PublishedTool,
-      { signal }: { signal: AbortSignal }
-    ) {
-      published.set(tool.name, tool);
-      signal.addEventListener("abort", () => {
-        if (published.get(tool.name) === tool) published.delete(tool.name);
-      });
+  const { dispose } = await synchronizeWebMcpTools(
+    {
+      async registerTool(
+        tool: PublishedTool,
+        { signal }: { signal: AbortSignal }
+      ) {
+        published.set(tool.name, tool);
+        signal.addEventListener("abort", () => {
+          if (published.get(tool.name) === tool) published.delete(tool.name);
+        });
+      },
     },
-  });
+    { run: runPublished }
+  );
   return {
     /** Call a published tool as the calling agent. */
     call(name: string, input: unknown) {

@@ -1,4 +1,9 @@
-import type { CollectionItem, Run, RunStep } from "../domain/run";
+import type {
+  ChildRun,
+  CollectionItem,
+  Run,
+  RunInteraction,
+} from "../domain/run";
 
 // Hand-written runs for tests. Each builder fills what a test doesn't care
 // about and derives what follows from its inputs, so a test states only
@@ -8,7 +13,7 @@ import type { CollectionItem, Run, RunStep } from "../domain/run";
 let nextRunId = 1000;
 
 /**
- * A settled run of ListPage.addItem, with a fresh id. A run on an item is on
+ * A settled run of ListPage.addItem from the panel, with a fresh id. A run on an item is on
  * that item's path, and a Browser Tool's run (a name without a dot, e.g.
  * "fill") is on no Page Object.
  */
@@ -20,20 +25,31 @@ export function aRun(fields: Partial<Run> = {}): Run {
     : {};
   const status = fields.status ?? "succeeded";
   return {
-    id: nextRunId++,
+    id: String(nextRunId++),
     toolName,
+    by: "inspector",
     ...target,
     arguments: {},
     status,
     startedAt: 0,
     ...(status === "running" ? {} : { durationMs: 5 }),
-    steps: [],
+    interactions: [],
+    children: [],
     ...fields,
   };
 }
 
+/** A settled child run, as `aRun` builds one, which names no Caller. */
+export function aChildRun(fields: Partial<ChildRun> = {}): ChildRun {
+  const run: Partial<Run> = aRun(fields);
+  delete run.by;
+  return run as ChildRun;
+}
+
 /** A click on a button. */
-export function aStep(fields: Partial<RunStep> = {}): RunStep {
+export function anInteraction(
+  fields: Partial<RunInteraction> = {}
+): RunInteraction {
   return { operation: "click", locator: "getByRole('button')", ...fields };
 }
 

@@ -123,4 +123,50 @@ describe("registered Page Object targets", () => {
 
     registration.dispose();
   });
+
+  it("names each target's member locator, as an Interaction on it names it", async () => {
+    document.body.innerHTML = `
+      <ul><li class="item"><button>Milk</button></li></ul>
+    `;
+    const page = createPage();
+    configureAymeRuntime(page);
+    class ListPage {
+      readonly addItemButton = page.getByRole("button", { name: "Milk" });
+      readonly items = [{ root: page.locator(".item").nth(0) }];
+    }
+    registerCompiledPom(ListPage, {
+      className: "ListPage",
+      tools: [],
+      members: [
+        { memberName: "addItemButton", kind: "locator", access: "field" },
+        {
+          memberName: "items",
+          kind: "component",
+          access: "field",
+          componentClassName: "ListItem",
+          collection: true,
+        },
+      ],
+      components: [
+        {
+          className: "ListItem",
+          members: [{ memberName: "root", kind: "locator", access: "field" }],
+          tools: [],
+        },
+      ],
+    });
+    const registration = createPageRegistration(ListPage);
+
+    const targets = await listRegisteredPomTargets();
+
+    expect(targets.map(({ path, locator }) => ({ path, locator }))).toEqual([
+      {
+        path: "ListPage.addItemButton",
+        locator: "getByRole('button', { name: 'Milk' })",
+      },
+      { path: "ListPage.items[0].root", locator: "locator('.item').first()" },
+    ]);
+
+    registration.dispose();
+  });
 });

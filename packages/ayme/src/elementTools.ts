@@ -4,9 +4,10 @@ import {
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
 import type { ModelContextTool } from "@mcp-b/webmcp-types";
-import { runAction, type ActionResult } from "./actionSequence";
+import { runAction } from "./actionSequence";
 import type { JsonSchema, JsonValue } from "./contracts";
-import type { Caller } from "./interactionHistory";
+import type { RunContext } from "./run";
+import type { ToolInput, ToolResult } from "./toolTypes";
 import {
   resolvePageStateRefs,
   type AriaRef,
@@ -33,25 +34,40 @@ export type CustomTool = {
   description: string;
   /** true = the Goal Loop may offer this element. Omitted = every node with a ref. */
   filter?: (element: Element) => boolean;
-  execute(target: { ref: AriaRef; element: Element }): Promise<unknown>;
+  /**
+   * Acts on `target`. To use other tools, start them through `run`: each is
+   * a child Run of this one and runs within this Run's turn, after the
+   * child Runs started before it. Never call `ayme.tools.run` from here:
+   * that Run waits for this one to end, so neither ever finishes.
+   */
+  execute(
+    target: { ref: AriaRef; element: Element },
+    context: CustomToolContext
+  ): Promise<unknown>;
 };
 
-/** Runs a tool for the caller it is given. */
-type CallerRun = (input: unknown, caller: Caller) => Promise<ActionResult>;
+/** What a Custom Tool's `execute` is handed besides its target. */
+export type CustomToolContext = {
+  /**
+   * Starts a Run of the live tool `name` as a child Run of the Custom Tool's
+   * Run, and returns its result. Throws Ayme's errors, as `ayme.tools.run`
+   * does.
+   */
+  run<N extends string>(name: N, input: ToolInput<N>): Promise<ToolResult<N>>;
+};
 
 /**
- * A Browser Tool or Custom Tool, as published: `execute` runs it as the
- * calling agent, `executeAs` for the caller given.
+ * A Browser Tool or Custom Tool, as published: `execute` runs it for a Run,
+ * whose context names the reader its Change Record is for.
  */
-export type PublishedElementTool = ModelContextTool<
-  Record<string, unknown>,
-  JsonValue
+export type PublishedElementTool = Omit<
+  ModelContextTool<Record<string, unknown>, JsonValue>,
+  "execute"
 > & {
   inputSchema: JsonSchema;
   /** `false`: never published to WebMCP, as for a tool whose result is an image. */
   webMcp?: false;
-  execute(input: unknown): Promise<JsonValue>;
-  executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
+  execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
 /**
@@ -60,7 +76,7 @@ export type PublishedElementTool = ModelContextTool<
  * Browser Tool (ADR-0023).
  */
 export type RegisteredElementTool = {
-  /** As published, its `execute` runs it as the calling agent. */
+  /** As published; the Goal Loop executes it too. */
   readonly tool: PublishedElementTool;
   /** The input field that addresses the element: `ref` or `target`. */
   readonly targetField: TargetField;
@@ -68,8 +84,6 @@ export type RegisteredElementTool = {
   readonly loopInputSchema: JsonSchema;
   /** true = the Goal Loop may offer this element; not enforced on direct calls. */
   readonly filter: (element: Element) => boolean;
-  /** Runs it as the caller given; the Goal Loop runs it as its model. */
-  readonly executeAs: CallerRun;
 };
 
 /**
@@ -96,7 +110,11 @@ export type ElementToolDefinition = {
   label: string;
   inputSchema: JsonSchema;
   targetField: TargetField;
-  run(target: ResolvedTarget, input: Record<string, unknown>): Promise<unknown>;
+  perform(
+    target: ResolvedTarget,
+    input: Record<string, unknown>,
+    context: RunContext
+  ): Promise<unknown>;
 };
 
 const REF_INPUT_SCHEMA: JsonSchema = {
@@ -109,13 +127,15 @@ const REF_INPUT_SCHEMA: JsonSchema = {
 // --- The shared mechanism ---
 
 /**
- * Run a tool that acts on one element: check the input against the schema,
- * resolve the element (a ref through the identity ledger, ADR-0028) and hand
- * `run` the element. Finishes with the shared action sequence, so every such
- * tool returns the same action result.
+ * How a tool that acts on one element executes for a Run: check the input
+ * against the schema, resolve the element (a ref through the identity
+ * ledger, ADR-0028) and hand `perform` the element. Finishes with the
+ * shared action sequence, so every such tool returns the same action result.
  */
-function elementToolRun(definition: ElementToolDefinition): CallerRun {
-  return async (input, caller) => {
+function elementToolExecution(
+  definition: ElementToolDefinition
+): PublishedElementTool["execute"] {
+  return async (input, context) => {
     const fields = validatedToolInput(definition.inputSchema, input);
     const currentDocument = requireCurrentDocument();
     const target = await resolveElementTarget(
@@ -125,13 +145,13 @@ function elementToolRun(definition: ElementToolDefinition): CallerRun {
     );
     return runAction(
       currentDocument,
-      caller,
+      context.reader,
       {
         tool: definition.name,
         args: input,
         ...(target.ref ? { targetRef: target.ref } : {}),
       },
-      () => definition.run(target, fields)
+      () => definition.perform(target, fields, context)
     );
   };
 }
@@ -141,14 +161,12 @@ export function registerElementTool(
   definition: ElementToolDefinition,
   filter: (element: Element) => boolean
 ): RegisteredElementTool {
-  const executeAs = elementToolRun(definition);
   return {
     tool: {
       name: definition.name,
       description: definition.description,
       inputSchema: definition.inputSchema,
-      execute: (input: unknown) => executeAs(input, "agent"),
-      executeAs,
+      execute: elementToolExecution(definition),
     },
     targetField: definition.targetField,
     loopInputSchema:
@@ -156,7 +174,6 @@ export function registerElementTool(
         ? requiredInputOnly(definition.inputSchema)
         : definition.inputSchema,
     filter,
-    executeAs,
   };
 }
 
@@ -298,7 +315,14 @@ export function configureCustomTools(
         label: `run "${customTool.name}" on`,
         inputSchema: REF_INPUT_SCHEMA,
         targetField: "ref",
-        run: ({ ref, element }) => customTool.execute({ ref: ref!, element }),
+        perform: ({ ref, element }, _input, { run }) =>
+          customTool.execute(
+            { ref: ref!, element },
+            {
+              run: ((name, input) =>
+                run(name, input)) as CustomToolContext["run"],
+            }
+          ),
       },
       customTool.filter ?? (() => true)
     )

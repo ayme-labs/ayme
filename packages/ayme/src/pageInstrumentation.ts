@@ -1,5 +1,10 @@
 import { isPlaywrightLiteLocator } from "@ayme-dev/playwright-lite/internal";
 
+import {
+  interactionOf,
+  type CallSubject,
+  type Interaction,
+} from "./interactions";
 import type { AymePage } from "./runtime";
 
 type PageInstrumentation = (page: AymePage) => AymePage;
@@ -30,8 +35,13 @@ export function installRuntimePageInstrumentation(
  * late-loaded Inspector's, still reaches it. A method read from the Page or a
  * locator resolves its target when it is called, so a saved method does too,
  * and so does a saved keyboard or mouse.
+ *
+ * `onInteraction` hears each call that is an Interaction, before it runs.
  */
-export function instrumentedPage(page: AymePage): AymePage {
+export function instrumentedPage(
+  page: AymePage,
+  onInteraction?: (interaction: Interaction) => void
+): AymePage {
   const derivePage = () => {
     let instrumented = page;
     for (const instrumentation of instrumentations)
@@ -45,6 +55,7 @@ export function instrumentedPage(page: AymePage): AymePage {
     let bound = devices.get(property);
     if (!bound) {
       bound = lateBound(
+        property as CallSubject,
         () => Reflect.get(resolvePage(), property) as object
       ).proxy;
       devices.set(property, bound);
@@ -53,6 +64,7 @@ export function instrumentedPage(page: AymePage): AymePage {
   };
 
   function lateBound<T extends object>(
+    subject: CallSubject,
     derive: () => T,
     initial = { generation, target: derive() }
   ): { proxy: T; resolve: () => T } {
@@ -67,7 +79,7 @@ export function instrumentedPage(page: AymePage): AymePage {
         Reflect.get(target, property, target) as (...args: unknown[]) => unknown
       ).apply(target, args);
     const bindLocator = (locator: object, rederive: () => object) =>
-      lateBound(rederive, { generation, target: locator }).proxy;
+      lateBound("locator", rederive, { generation, target: locator }).proxy;
     const bindResult = (
       result: unknown,
       property: string | symbol,
@@ -104,14 +116,19 @@ export function instrumentedPage(page: AymePage): AymePage {
         )
           return device(property);
         if (typeof member !== "function") return member;
-        return (...args: unknown[]) =>
-          bindResult(call(resolve(), property, args), property, args);
+        return (...args: unknown[]) => {
+          const target = resolve();
+          const interaction =
+            onInteraction && interactionOf(subject, target, property, args);
+          if (interaction) onInteraction(interaction);
+          return bindResult(call(target, property, args), property, args);
+        };
       },
     });
     return { proxy, resolve };
   }
 
-  const root = lateBound(derivePage);
+  const root = lateBound("page", derivePage);
   resolvePage = root.resolve;
   const proxyPage = root.proxy;
   return proxyPage;

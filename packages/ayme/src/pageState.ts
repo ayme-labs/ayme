@@ -21,7 +21,7 @@ import {
 import { browserMonotonicClock } from "./browserMonotonicClock";
 import {
   InteractionHistory,
-  type Caller,
+  type Reader,
   type ToolCall,
 } from "./interactionHistory";
 import { getRegisteredPomStructure } from "./registry";
@@ -35,7 +35,7 @@ import { parseCapturedTree } from "./capturedTree";
 import { RuntimeStateError, ToolInputError } from "./errors";
 
 export type { AriaRef };
-export type { Caller } from "./interactionHistory";
+export type { Reader } from "./interactionHistory";
 
 export type AymeNode = {
   ref: AriaRef;
@@ -144,7 +144,7 @@ function isWithinIgnoredSubtree(element: Element): boolean {
 /** Capture the page state `receivedBy` receives; the calling agent by default. */
 export async function getPageStateForDocument(
   currentDocument: Document,
-  receivedBy: Caller = "agent"
+  receivedBy: Reader = "agent"
 ): Promise<PageState> {
   return getPageStateSession(currentDocument).getPageState(receivedBy);
 }
@@ -156,7 +156,7 @@ export async function getPageStateForDocument(
  */
 export async function getPageStateCaptureForDocument(
   currentDocument: Document,
-  options: { receivedBy?: Caller } = {}
+  options: { receivedBy?: Reader } = {}
 ): Promise<PageStateCapture> {
   return getPageStateSession(currentDocument).getPageStateCapture(
     options.receivedBy
@@ -180,7 +180,7 @@ export async function lookAtPageStateForDocument(
  */
 export async function startActionForDocument(
   currentDocument: Document,
-  caller: Caller,
+  caller: Reader,
   call: ToolCall
 ): Promise<StructuralActionId> {
   return getPageStateSession(currentDocument).startAction(caller, call);
@@ -283,11 +283,11 @@ class PageStateSession {
     );
   }
 
-  async getPageState(receivedBy: Caller): Promise<PageState> {
+  async getPageState(receivedBy: Reader): Promise<PageState> {
     return this.pageStateFor(await this.capture(receivedBy));
   }
 
-  async getPageStateCapture(receivedBy?: Caller): Promise<PageStateCapture> {
+  async getPageStateCapture(receivedBy?: Reader): Promise<PageStateCapture> {
     return this.capture(receivedBy);
   }
 
@@ -306,7 +306,7 @@ class PageStateSession {
   }
 
   async startAction(
-    caller: Caller,
+    caller: Reader,
     call: ToolCall
   ): Promise<StructuralActionId> {
     if (!this.history.hasObservation) await this.capture();
@@ -365,7 +365,7 @@ class PageStateSession {
   }
 
   /** Capture and record an observation; `receivedBy` moves that caller's cursor. */
-  private async capture(receivedBy?: Caller): Promise<CapturedPageState> {
+  private async capture(receivedBy?: Reader): Promise<CapturedPageState> {
     const capture = await this.captureTree();
     // Stamped once the capture is taken, so it cannot share its time with an
     // action started right after it.
