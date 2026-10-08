@@ -3,6 +3,7 @@ import {
   SETTLED_PAGE_QUIET_MS,
   waitForSettled,
   type StructuralActionId,
+  type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
 import { isJsonValue, type JsonValue } from "./contracts";
 import { browserMonotonicClock } from "./browserMonotonicClock";
@@ -11,6 +12,7 @@ import { getBrowserPageActivitySource } from "./pageActivitySource";
 import {
   completeActionForDocument,
   failActionForDocument,
+  getInteractionHistory,
   startActionForDocument,
 } from "./pageState";
 import { renderChangeRecord } from "./changeRecord";
@@ -58,6 +60,10 @@ export async function runAction(
   perform: () => unknown
 ): Promise<ActionResult> {
   const actionId = await startActionForDocument(currentDocument, caller, call);
+  const history = getInteractionHistory(currentDocument);
+  // The before of the Change Record: what the caller has received as the
+  // action starts; child Runs inside the action move the cursor on.
+  const before = history.cursor(caller);
   let rawResult: unknown;
   let stable = false;
   const fullLoad = watchFullLoad(currentDocument);
@@ -92,9 +98,10 @@ export async function runAction(
     fullLoad.stop();
   }
   if (loadingUrl !== undefined)
-    return loadingResult(currentDocument, actionId, loadingUrl);
+    return loadingResult(currentDocument, actionId, before, loadingUrl);
 
-  const changes = await completeActionForDocument(currentDocument, actionId);
+  const after = await completeActionForDocument(currentDocument, actionId);
+  const changes = await history.readChange(before ?? after, after);
   const pageChanged = changes.hasAnyChanges();
 
   const out: ActionResult = {
@@ -145,13 +152,15 @@ export async function startNavigation(
 async function loadingResult(
   currentDocument: Document,
   actionId: StructuralActionId,
+  before: StructuralObservationEntry | undefined,
   url: string
 ): Promise<ActionResult> {
   // The document may already be going away; the answer goes out regardless.
-  const changes = await completeActionForDocument(
-    currentDocument,
-    actionId
-  ).catch(() => undefined);
+  const changes = await completeActionForDocument(currentDocument, actionId)
+    .then((after) =>
+      getInteractionHistory(currentDocument).readChange(before ?? after, after)
+    )
+    .catch(() => undefined);
   const pageChanged = changes?.hasAnyChanges() ?? false;
   return {
     page_changed: pageChanged,

@@ -83,13 +83,13 @@ describe("InteractionHistory cursors", () => {
       tool: "App.save",
       args: {},
     });
+    const before = history.cursor("goalLoop")!;
 
-    const changes = await history.completeAction(
-      actionId,
-      saved(),
-      history.now()
-    );
+    const after = history.completeAction(actionId, saved(), history.now());
+    const changes = await history.readChange(before, after);
 
+    expect(after.capturedForActionId).toBe(actionId);
+    expect(history.cursor("goalLoop")).toBe(after);
     expect(changes.getNodesByStatus("added").map((node) => node.name)).toEqual([
       "Saved",
     ]);

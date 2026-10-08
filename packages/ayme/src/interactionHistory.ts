@@ -9,7 +9,7 @@ import {
   PageIdSchema,
   StructuralActionIdFactory,
   StructuralObservationSession,
-  StructuralTree,
+  type StructuralTree,
   type AriaRef,
   type MonotonicClock,
   type MonotonicTimeMs,
@@ -48,7 +48,9 @@ let documentCount = 0;
 /**
  * A document's interaction history (ADR-0027): a core Structural Observation
  * Session driven from the browser, the tool call behind each Structural
- * Action, and, per caller, the observation that caller last received.
+ * Action, and, per caller, the observation that caller last received. Every
+ * reading of what changed is core's: this records and names observations,
+ * it never diffs them itself.
  *
  * ponytail: everything is kept for the document's life, so memory has no
  * ceiling: it grows by one StructuralTree per observation (two per single-element tool
@@ -61,16 +63,8 @@ export class InteractionHistory {
   private readonly actionIds = new StructuralActionIdFactory();
   private readonly recorded = new Map<StructuralActionId, RecordedAction>();
   /**
-   * The observation each running action's caller had received when the
-   * action started: the before of its Change Record.
-   */
-  private readonly before = new Map<
-    StructuralActionId,
-    StructuralObservationEntry | undefined
-  >();
-  /**
-   * ponytail: two remembered positions, the observation each caller last
-   * received; they become reader points with an explicit `since`.
+   * ponytail: three remembered positions, the observation each caller last
+   * received; they become one cursor per Caller name beside the Run log.
    */
   private readonly cursors = new Map<Reader, StructuralObservationEntry>();
   private first: StructuralObservationEntry | undefined;
@@ -129,14 +123,14 @@ export class InteractionHistory {
 
   /**
    * Start a Structural Action for `caller`'s tool call. Its Change Record
-   * starts at the observation `caller` has received now, so an action that
-   * runs others inside it, as a Custom Tool runs its child Runs, covers what
-   * they changed too.
+   * starts at the observation `caller` has received now, `cursor(caller)`,
+   * so an action that runs others inside it, as a Custom Tool runs its child
+   * Runs, covers what they changed too; whoever reads the record keeps that
+   * observation.
    */
   startAction(caller: Reader, call: ToolCall): StructuralActionId {
     const actionId = this.actionIds.create();
     this.recorded.set(actionId, { ...call, caller });
-    this.before.set(actionId, this.cursor(caller));
     this.observations.recordActionStarted({
       kind: "action-started",
       at: this.now(),
@@ -147,33 +141,28 @@ export class InteractionHistory {
   }
 
   /**
-   * Complete an action with its Settled Page and return its Change Record
-   * tree: the observation the acting caller had received when the action
-   * started reconciled against the Settled Page, which then becomes that
-   * caller's cursor.
-   *
-   * The Change Record is read from these two observations rather than from
-   * core's derived `actionChange`: that starts at the latest observation
-   * before the action (a ref-resolution capture, not the caller's), an
-   * action that changes the route completes in the next Visit, where core
-   * keeps its before state as its after state, and each query replays every
-   * earlier action of the Visit, quadratic per Visit.
-   *
-   * ponytail: the reconcile here stands in for core's two-point reading.
+   * Complete an action with its Settled Page and return that observation,
+   * the action's after, which becomes the acting caller's cursor. The Change
+   * Record is `readChange` from the observation the caller had received when
+   * the action started to this one.
    */
-  async completeAction(
+  completeAction(
     actionId: StructuralActionId,
     settledPage: StructuralTree,
     at: MonotonicTimeMs
-  ): Promise<StructuralTree> {
+  ): StructuralObservationEntry {
     const action = this.recordedAction(actionId);
-    const before = this.before.get(actionId);
     const after = this.complete(actionId, settledPage, at);
     this.cursors.set(action.caller, after);
-    return StructuralTree.reconcile(
-      await (before ?? after).tree.resolve(),
-      settledPage
-    );
+    return after;
+  }
+
+  /** What changed between two observations of this document: core's reading. */
+  readChange(
+    from: StructuralObservationEntry,
+    to: StructuralObservationEntry
+  ): Promise<StructuralTree> {
+    return this.observations.readChange(this.pageId, from, to);
   }
 
   /**
@@ -204,10 +193,7 @@ export class InteractionHistory {
     const before = this.cursor(caller) ?? received;
     this.cursors.set(caller, received);
     this.cursors.delete("goalLoop");
-    return StructuralTree.reconcile(
-      await before.tree.resolve(),
-      await received.tree.resolve()
-    );
+    return this.readChange(before, received);
   }
 
   /** The tool calls behind the recorded Structural Actions, in start order. */
@@ -228,7 +214,6 @@ export class InteractionHistory {
     at: MonotonicTimeMs
   ): StructuralObservationEntry {
     const after = this.record(page, at, actionId);
-    this.before.delete(actionId);
     this.observations.recordActionCompleted({
       kind: "action-completed",
       at: this.now(),

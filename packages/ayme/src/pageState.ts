@@ -199,16 +199,15 @@ export async function failActionForDocument(
 }
 
 /**
- * Package-internal: capture the Settled Page after an action and return its
- * Change Record tree, reconciled against the page the acting caller last
- * received. The capture becomes that caller's cursor. When capturing throws,
- * the action is completed as failed with the page as last recorded, and the
- * error travels on.
+ * Package-internal: capture the Settled Page after an action and return that
+ * observation, the action's after, which becomes the acting caller's cursor.
+ * When capturing throws, the action is completed as failed with the page as
+ * last recorded, and the error travels on.
  */
 export async function completeActionForDocument(
   currentDocument: Document,
   actionId: StructuralActionId
-): Promise<StructuralTree> {
+): Promise<StructuralObservationEntry> {
   return getPageStateSession(currentDocument).completeAction(actionId);
 }
 
@@ -313,7 +312,9 @@ class PageStateSession {
     return this.history.startAction(caller, call);
   }
 
-  async completeAction(actionId: StructuralActionId): Promise<StructuralTree> {
+  async completeAction(
+    actionId: StructuralActionId
+  ): Promise<StructuralObservationEntry> {
     let capture: CapturedPageState;
     try {
       capture = await this.captureTree();
@@ -321,13 +322,13 @@ class PageStateSession {
       await this.failAtLatestObservation(actionId);
       throw error;
     }
-    const changes = this.history.completeAction(
+    const after = this.history.completeAction(
       actionId,
       capture.tree,
       this.history.now()
     );
     this.rememberElements(capture);
-    return changes;
+    return after;
   }
 
   async failAction(actionId: StructuralActionId): Promise<void> {
