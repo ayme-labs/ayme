@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   callers,
   createAyme,
@@ -99,6 +99,31 @@ describe("The Run log, ayme.runs, in Chromium", () => {
         durationMs: expect.any(Number),
       }),
     ]);
+  });
+
+  it("reports a subscriber that throws apart, and runs and records the Run as usual", async () => {
+    const reported = vi.spyOn(console, "error").mockImplementation(() => {});
+    const failure = new Error("listener broke");
+    const unsubscribe = ayme.runs.subscribe(() => {
+      throw failure;
+    });
+    const before = ayme.runs.list();
+
+    let reports: unknown[][];
+    try {
+      await expect(ayme.tools.run("click", SAVE)).resolves.toMatchObject({
+        page_changed: expect.any(Boolean),
+      });
+    } finally {
+      unsubscribe();
+      reports = reported.mock.calls;
+      reported.mockRestore();
+    }
+
+    expect(runsSince(before)).toEqual([
+      expect.objectContaining({ tool: "click", status: "succeeded" }),
+    ]);
+    expect(reports).toContainEqual([expect.any(String), failure]);
   });
 
   it("records a failed Run with its error text, and still throws the Ayme error", async () => {

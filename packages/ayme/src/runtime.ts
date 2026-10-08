@@ -42,6 +42,7 @@ import {
   readerOf,
   executeTopLevelRun,
   type Caller,
+  type RunContext,
   type StartChildRun,
   type ToolRunOptions,
 } from "./run";
@@ -586,14 +587,17 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       return peekTool.execute(input);
     }
     const reader = readerOf(by);
-    return runLog.record(name, input, { by }, (id) =>
-      executeTopLevelRun(
-        lookUpLiveTool(name),
-        input,
-        { reader, run: startChildRunOf(id, reader) },
+    return runLog.record(name, input, { by }, (id) => {
+      const tool = lookUpLiveTool(name);
+      return executeTopLevelRun(
+        tool,
+        () =>
+          executeWithChildRuns(id, reader, (context) =>
+            tool.execute(input, context)
+          ),
         settle
-      )
-    );
+      );
+    });
   }
 
   /**
@@ -611,28 +615,36 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   }
 
   /**
-   * Starts the child Runs of the Run `parent`: each runs the live tool
-   * it names inside the parent's turn, never on the page's queue, and
+   * Executes the Run `id` with a context whose `run` starts its child Runs,
+   * and ends once every child Run it started has ended, even when it fails
+   * first, so no child outlives its parent's turn. Each child runs the live
+   * tool it names inside the parent's turn, never on the page's queue, and
    * starts its own children the same way. The parent's children run one
    * after the other, in the order it starts them, so two started together
    * never act on the page at once. Like a Goal Loop step before it, a child
    * Run adds no settle wait of its own; the parent's turn ends with the
    * parent's.
    */
-  function startChildRunOf(
-    parent: string,
-    parentReader: Reader
-  ): StartChildRun {
+  async function executeWithChildRuns<T>(
+    id: string,
+    reader: Reader,
+    execute: (context: RunContext) => Promise<T>
+  ): Promise<T> {
     const takeChildTurn = createRunQueue();
-    return (name, input, reader = parentReader) =>
+    const run: StartChildRun = (name, input, childReader = reader) =>
       takeChildTurn(() =>
-        runLog.record(name, input, { parent }, (id) =>
-          lookUpLiveTool(name).execute(input, {
-            reader,
-            run: startChildRunOf(id, reader),
-          })
+        runLog.record(name, input, { parent: id }, (childId) =>
+          executeWithChildRuns(childId, childReader, (context) =>
+            lookUpLiveTool(name).execute(input, context)
+          )
         )
       );
+    try {
+      return await execute({ reader, run });
+    } finally {
+      // A turn taken now starts once every child started so far has ended.
+      await takeChildTurn(async () => {});
+    }
   }
 
   /**

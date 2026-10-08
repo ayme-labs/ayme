@@ -96,34 +96,22 @@ export function createRunQueue(): RunQueue {
 }
 
 /**
- * Package-internal: execute `tool` for a top-level Run, then `settle`; a
- * child Run adds no settle wait of its own. The context's reader is the
- * Caller's (`readerOf`).
+ * Package-internal: `execute` a top-level Run of `tool`, then `settle`
+ * before resolving, whether it succeeded or failed; a child Run adds no
+ * settle wait of its own. A read (`snapshot`, a Peek Tool) skips the settle,
+ * and so does an answer saying a full page load started: it goes out at
+ * once, before the document goes away.
  */
-export function executeTopLevelRun<T>(
+export async function executeTopLevelRun<T>(
   tool: ExecutableTool<T>,
-  input: unknown,
-  context: RunContext,
-  settle: () => Promise<void>
-): Promise<T> {
-  return settledAfter(tool, () => tool.execute(input, context), settle);
-}
-
-/**
- * Run `call` of `tool`, then `settle` before resolving, unless the tool only
- * reads (`snapshot`, a Peek Tool) or its answer says a full page load
- * started: that answer goes out at once, before the document goes away.
- */
-async function settledAfter<T>(
-  tool: ExecutableTool<T>,
-  call: () => Promise<T>,
+  execute: () => Promise<T>,
   settle: () => Promise<void>
 ): Promise<T> {
   if ((tool as object) === getPageContextTool || isPeekTool(tool))
-    return call();
+    return execute();
   let result: T;
   try {
-    result = await call();
+    result = await execute();
   } catch (error) {
     await settle();
     throw error;

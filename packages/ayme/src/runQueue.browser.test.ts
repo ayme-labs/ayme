@@ -5,6 +5,7 @@ import {
   createPage,
   type ActionResult,
   type Ayme,
+  type CustomTool,
 } from "./index";
 
 // Runtime object seam: Runs start through `ayme.tools.run`; their order shows
@@ -85,6 +86,36 @@ describe("one Run at a time per page, in Chromium", () => {
     expect(next).toMatchObject({
       status: "fulfilled",
       value: { changes: expect.stringContaining("Saved 1") },
+    });
+  });
+
+  it("has a Run started during a failing action wait for the page to settle", async () => {
+    stop();
+    const clickThenFail: CustomTool = {
+      name: "click_then_fail",
+      description: "Click Save, then fail.",
+      async execute(target) {
+        (target.element as HTMLElement).click();
+        throw new Error("Failed after clicking.");
+      },
+    };
+    ayme = createAyme({
+      pageFactory: () => createPage({ actionTimeout: 500 }),
+      customTools: [clickThenFail],
+    });
+    stop = ayme.start();
+    const { structure: before } = await ayme.tools.run("snapshot", {});
+    const ref = before.match(/(e\d+) button "Save"/)![1];
+
+    const [failed, read] = await Promise.allSettled([
+      ayme.tools.run("click_then_fail", { ref }),
+      ayme.tools.run("snapshot", {}),
+    ]);
+
+    expect(failed.status).toBe("rejected");
+    expect(read).toMatchObject({
+      status: "fulfilled",
+      value: { structure: expect.stringContaining("Saved 1") },
     });
   });
 });

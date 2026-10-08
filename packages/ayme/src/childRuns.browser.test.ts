@@ -113,6 +113,51 @@ describe("child Runs, in Chromium", () => {
     ]);
   });
 
+  it("ends a Run only after every child Run it started has ended, even when one fails first", async () => {
+    const saveBoth: CustomTool = {
+      name: "save_both",
+      description: "Save here and elsewhere at once.",
+      async execute(_target, { run }) {
+        await Promise.all([run("Nowhere.save", {}), run("click", SAVE)]);
+        return null;
+      },
+    };
+    start({ customTools: [saveBoth] });
+    const ref = await refOf("Save");
+    const before = ayme.runs.list();
+    const runningAtParentEnd: string[] = [];
+    const unsubscribe = ayme.runs.subscribe((runs) => {
+      const parent = runs.find(
+        (run) => run.tool === "save_both" && !before.includes(run)
+      );
+      if (parent?.status !== "failed" || runningAtParentEnd.length) return;
+      runningAtParentEnd.push(
+        ...runs
+          .filter((run) => run.parent === parent.id)
+          .map((run) => `${run.tool} ${run.status}`)
+      );
+    });
+
+    await Promise.all([
+      ayme.tools.run("save_both", { ref }).catch(() => {}),
+      ayme.tools.run("click", SAVE, { by: callers.inspector }),
+    ]);
+    unsubscribe();
+
+    expect(runningAtParentEnd).toEqual([
+      "Nowhere.save failed",
+      "click succeeded",
+    ]);
+    expect(
+      runsSince(before).map((run) => [run.tool, run.by ?? "child"])
+    ).toEqual([
+      ["save_both", callers.app],
+      ["Nowhere.save", "child"],
+      ["click", "child"],
+      ["click", callers.inspector],
+    ]);
+  });
+
   it("records a child Run of a tool that is not live as failed, under its parent", async () => {
     const saveElsewhere: CustomTool = {
       name: "save_elsewhere",

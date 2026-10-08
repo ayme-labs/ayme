@@ -85,8 +85,6 @@ export const runLog = createRunLog();
 function createRunLog() {
   let runs = NO_RUNS;
   let nextId = 1;
-  /** The top-level Run each Run belongs to, by id: itself for a top-level Run. */
-  const roots = new Map<string, string>();
   /**
    * The ids of the Runs running now, outermost first. Top-level Runs take
    * turns and a child Run runs inside its parent's turn, so the last one is
@@ -99,7 +97,13 @@ function createRunLog() {
     // A Run that ended after retention dropped it changes nothing.
     if (next.every((run, index) => run === runs[index])) return;
     runs = Object.freeze(next);
-    for (const listener of listeners) listener(runs);
+    for (const listener of listeners)
+      try {
+        listener(runs);
+      } catch (error) {
+        // A listener's failure is its own: reported apart, it changes no Run.
+        console.error("A Run log listener threw.", error);
+      }
   }
 
   /**
@@ -113,9 +117,13 @@ function createRunLog() {
         .slice(-KEPT_RUNS)
         .map((run) => run.id)
     );
-    for (const id of roots.keys())
-      if (!kept.has(roots.get(id)!)) roots.delete(id);
-    return next.filter((run) => roots.has(run.id));
+    // A child Run comes after its parent, so its parent is decided first.
+    return next.filter((run) => {
+      if (run.parent === undefined) return kept.has(run.id);
+      if (!kept.has(run.parent)) return false;
+      kept.add(run.id);
+      return true;
+    });
   }
 
   const log: AymeRuns & {
@@ -148,7 +156,6 @@ function createRunLog() {
     async record(tool, input, origin, execute, { offPage = false } = {}) {
       const id = String(nextId++);
       const started = performance.now();
-      roots.set(id, "parent" in origin ? (roots.get(origin.parent) ?? "") : id);
       publish(
         retained([
           ...runs,

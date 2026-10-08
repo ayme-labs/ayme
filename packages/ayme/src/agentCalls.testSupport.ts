@@ -40,7 +40,11 @@ export function runPublished(
 ): Promise<unknown> {
   const published = resolvePublishedTools().get(name);
   if (!published) throw new Error(`No published tool "${name}".`);
-  return executeTopLevelRun(published.tool, input, runContext(), settle);
+  return executeTopLevelRun(
+    published.tool,
+    () => published.tool.execute(input, runContext()),
+    settle
+  );
 }
 
 function browserTool(name: string) {

@@ -3,7 +3,6 @@ import type { Page } from "@playwright/test";
 import { expect as expectOnPage } from "@ayme-dev/playwright-lite";
 
 import type { PomManifest, ToolManifest } from "./contracts";
-import type { GoalLoopDecisionFunction } from "./goalLoop";
 import {
   callers,
   createAyme,
@@ -12,6 +11,7 @@ import {
   type CustomTool,
   type Run,
 } from "./index";
+import { operations } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 
 // Runtime object seam: each Run in `ayme.runs` lists the Interactions it
@@ -253,15 +253,11 @@ describe("a Run's Interactions, in Chromium", () => {
 
   it("lists no Interactions for a goal Run, and its steps' Interactions under its child Runs", async () => {
     await start({
-      goalLoop: decideSteps([
-        { operation: "ListPage.save" },
-        { operation: "ListPage.save" },
-        { operation: "none", goalMet: 0.9 },
-      ]),
+      goalLoop: operations(["ListPage.save"]),
     });
     const before = ayme.runs.list();
 
-    await ayme.tools.run("goal", { goal: "save twice", maxSteps: 5 });
+    await ayme.tools.run("goal", { goal: "save twice", maxSteps: 2 });
 
     const [goal, ...steps] = runsSince(before);
     expect(goal).toMatchObject({ tool: "goal", interactions: [] });
@@ -279,38 +275,6 @@ describe("a Run's Interactions, in Chromium", () => {
     ]);
   });
 });
-
-type Step = { operation: string; goalMet?: number };
-
-/**
- * A fake Decision Endpoint: each step chooses `operation`, a tool that takes
- * no input, and scores the goal as met by `goalMet` (0.1 when absent).
- */
-function decideSteps(steps: Step[]): GoalLoopDecisionFunction {
-  let step = 0;
-  return async (request) => {
-    const questions = request.questions as Record<
-      string,
-      { criteria: Record<string, string> }
-    >;
-    const { criteria } = questions.operation!;
-    const { operation, goalMet = 0.1 } = steps[step++]!;
-    const choice = Object.keys(criteria).find(
-      (key) => key === operation || criteria[key] === operation
-    );
-    if (choice === undefined)
-      throw new Error(
-        `No option ${operation} among ${JSON.stringify(criteria)}`
-      );
-    return {
-      model: "fake",
-      answers: {
-        operation: { type: "choice", choice, confidence: 1 },
-        goal_met: { type: "noul", noul: goalMet },
-      },
-    };
-  };
-}
 
 function tool(
   methodName: string,
