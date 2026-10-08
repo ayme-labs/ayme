@@ -39,6 +39,7 @@ export const ToolCallSchema = z.object({
 });
 export type ToolCall = z.infer<typeof ToolCallSchema>;
 
+// Stryker disable StringLiteral,ObjectLiteral: a wrong discriminator or an option without it throws as the module loads, which Stryker's Vitest runner counts as no test run rather than a kill
 /** The page's answer to one call: the tool's result, or why it failed. */
 export const ToolCallOutcomeSchema = z.discriminatedUnion("ok", [
   z.object({
@@ -52,6 +53,7 @@ export const ToolCallOutcomeSchema = z.discriminatedUnion("ok", [
     error: z.string(),
   }),
 ]);
+// Stryker restore StringLiteral,ObjectLiteral
 export type ToolCallOutcome = z.infer<typeof ToolCallOutcomeSchema>;
 
 /**
