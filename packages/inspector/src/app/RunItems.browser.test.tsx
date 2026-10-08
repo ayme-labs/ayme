@@ -4,18 +4,19 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { PageStateLook, RegisteredPom } from "@ayme-dev/ayme/internal";
 import {
   listRegisteredPomTargets,
+  listRegisteredPomTools,
   listRegisteredPoms,
   lookAtPageStateForDocument,
 } from "@ayme-dev/ayme/internal";
 
 import { forest, node } from "../structure/test-utils/projected";
 import { renderInspector } from "./renderInspector";
+import { startedAyme } from "../tools/test-utils/startedAyme";
 import { Inspector } from "../testing";
 
-// Component tests: two collections over the same list items, and a locator
-// over them too. Each member's items are there to find, whichever the
-// registry lists first. The runtime is replaced by fixture targets and a
-// look at the host page, so the evidence covers the panel and its runtime wiring.
+// Component tests: a collection action's Runs by any Caller are on the item
+// their ref named, so an item's scope lists them. The runtime is replaced by
+// fixture targets, a look at the host page and a stand-in Run log.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { appProcessToolsOf, asStartedAyme } =
     await import("../tools/test-utils/startedAyme");
@@ -39,49 +40,56 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   };
 });
 
-const collectionOfItems = (memberName: string) =>
-  ({
-    memberName,
-    kind: "component",
-    access: "field",
-    componentClassName: "ListItem",
-    collection: true,
-  }) as const;
+const archive: RegisteredPom["tools"][number] = {
+  pomId: "ListPage",
+  methodName: "archive",
+  name: "ListPage.items.archive",
+  description: "Archive the item.",
+  inputSchema: { type: "object" },
+  parameters: [],
+  componentClassName: "ListItem",
+  componentPath: "items[]",
+};
 const listPage: RegisteredPom = {
   id: "ListPage",
   instance: {},
   manifest: {
     className: "ListPage",
     members: [
-      { memberName: "rows", kind: "locator", access: "field" },
-      collectionOfItems("items"),
-      collectionOfItems("entries"),
+      {
+        memberName: "items",
+        kind: "component",
+        access: "field",
+        componentClassName: "ListItem",
+        collection: true,
+      },
     ],
     components: [
       {
         className: "ListItem",
         members: [{ memberName: "root", kind: "locator", access: "field" }],
-        tools: [],
+        tools: [
+          {
+            methodName: archive.methodName,
+            toolName: archive.name,
+            description: archive.description,
+            inputSchema: archive.inputSchema,
+            parameters: archive.parameters,
+          },
+        ],
       },
     ],
     tools: [],
   },
   memberObservations: [
-    { memberName: "rows", kind: "locator", count: 2 },
-    ...["items", "entries"].flatMap((collection) => [
-      {
-        memberName: collection,
-        kind: "component-collection" as const,
-        count: 2,
-      },
-      ...[0, 1].map((index) => ({
-        memberName: `${collection}[${index}].root`,
-        kind: "component-root" as const,
-        count: 1,
-      })),
-    ]),
+    { memberName: "items", kind: "component-collection", count: 2 },
+    ...[0, 1].map((index) => ({
+      memberName: `items[${index}].root`,
+      kind: "component-root" as const,
+      count: 1,
+    })),
   ],
-  tools: [],
+  tools: [archive],
 };
 
 const page = createPage();
@@ -93,7 +101,7 @@ const unmounts: (() => void)[] = [];
 
 beforeEach(() => {
   const host = document.createElement("ul");
-  host.innerHTML = `<li data-ref="e2">Milk</li><li data-ref="e3">Eggs</li>`;
+  host.innerHTML = `<li>Milk</li><li>Eggs</li>`;
   document.body.append(host);
   unmounts.push(() => host.remove());
   const [milk, eggs] = host.querySelectorAll("li");
@@ -116,10 +124,8 @@ beforeEach(() => {
       }) as unknown as PageStateLook
   );
   vi.mocked(listRegisteredPoms).mockReturnValue([listPage]);
-  // Two collections hold the same items; search finds the later one's too.
+  vi.mocked(listRegisteredPomTools).mockReturnValue([archive]);
   vi.mocked(listRegisteredPomTargets).mockResolvedValue([
-    { path: "ListPage.rows", element: milk!, locator: "locator('li')" },
-    { path: "ListPage.rows", element: eggs!, locator: "locator('li')" },
     {
       path: "ListPage.items[0].root",
       element: milk!,
@@ -130,15 +136,13 @@ beforeEach(() => {
       element: eggs!,
       locator: "locator('li').nth(1)",
     },
+  ]);
+  startedAyme.tools.list.mockReturnValue([
     {
-      path: "ListPage.entries[0].root",
-      element: milk!,
-      locator: "locator('.entry').first()",
-    },
-    {
-      path: "ListPage.entries[1].root",
-      element: eggs!,
-      locator: "locator('.entry').nth(1)",
+      name: archive.name,
+      description: archive.description,
+      inputSchema: archive.inputSchema,
+      group: "pageObject",
     },
   ]);
 
@@ -154,27 +158,22 @@ beforeEach(() => {
 afterEach(() => {
   for (const unmount of unmounts.splice(0).reverse()) unmount();
   vi.clearAllMocks();
+  startedAyme.reset();
   localStorage.clear();
   sessionStorage.clear();
 });
 
-/** The refs among the search results; the Model lens finds the objects. */
-const refsFound = async () =>
-  (await inspector.navigator.searchResults.allTextContents()).flatMap(
-    (text) => /^Ref(e\d+)/.exec(text)?.[1] ?? []
-  );
+it("scopes an agent's collection Run to the item its ref named when it started", async () => {
+  const model = inspector.navigator.model;
+  await inspector.navigator.showLens("Model");
+  await expect.poll(() => model.object("ListPage.items[1]").count()).toBe(1);
 
-it.each(["ListPage.items[1]", "ListPage.entries[1]"])(
-  "finds the item %s on the page",
-  async (item) => {
-    await inspector.navigator.search(item);
+  startedAyme.runs
+    .start("ListPage.items.archive", { ref: "e3", args: {} }, "webmcp")
+    .succeed();
 
-    await expect.poll(refsFound).toEqual(["e3"]);
-  }
-);
-
-it("finds every item a locator over the same items holds", async () => {
-  await inspector.navigator.search("ListPage.rows");
-
-  await expect.poll(refsFound).toEqual(["e2", "e3"]);
+  await model.object("ListPage.items[1]").click();
+  await expect.poll(() => inspector.runs.runs.count()).toBe(1);
+  await model.object("ListPage.items[0]").click();
+  await expect.poll(() => inspector.runs.runs.count()).toBe(0);
 });

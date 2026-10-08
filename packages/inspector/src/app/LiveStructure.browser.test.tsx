@@ -24,6 +24,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     lookAtPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
+    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     getStartedAyme: asStartedAyme,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},

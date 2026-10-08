@@ -37,12 +37,20 @@ type PendingRun = {
 
 /**
  * Runs as the panel shows them, newest first: the page's Run log, every
- * Caller's Runs with the Runs they started nested under them, and each
- * Run's Interactions, named by the member they acted on once it ends. The
+ * Caller's Runs with the Runs they started nested under them, each on the
+ * collection item its ref named when it started, and each Run's
+ * Interactions, named by the member they acted on once it ends. The
  * rows shown are kept for the tab, so a reload still shows them, as earlier
  * page rows. `invoke` runs a tool as the Inspector.
  */
-export function useRuns({ onSettled }: { onSettled: () => void }) {
+export function useRuns({
+  onSettled,
+  itemOf,
+}: {
+  onSettled: () => void;
+  /** The item of the collection tool `toolName` whose root is `ref` now. */
+  itemOf: (toolName: string, ref: string) => CollectionItem | undefined;
+}) {
   const [stored, setStored] = useTabState(runsKey, decodeRuns, encodeRuns);
   // The rows kept from before the panel mounted, read once.
   const [earlier, setEarlier] = useState(stored);
@@ -54,7 +62,9 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
   const pending = useRef<PendingRun[]>([]);
 
   useEffect(() => {
-    const note = (rowId: string, notes: RunNotes) =>
+    const note = (rowId: string, notes: RunNotes) => {
+      // A Run the log dropped meanwhile keeps no notes.
+      if (!seen.has(rowId)) return;
       setLog((current) => ({
         ...current,
         notes: new Map(current.notes).set(rowId, {
@@ -62,20 +72,28 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
           ...notes,
         }),
       }));
+    };
 
-    /** A new Run of the panel's is claimed by the run that started it. */
-    const noteNewRun = (run: LogRun, rowId: string): RunNotes => {
-      if (run.by !== callers.inspector || run.status !== "running") return {};
-      const input = JSON.stringify(run.input);
-      const panelRun = pending.current.find(
-        (candidate) =>
-          candidate.rowId === undefined &&
-          candidate.toolName === run.tool &&
-          candidate.input === input
-      );
-      if (!panelRun) return {};
-      panelRun.rowId = rowId;
-      return panelRun.item ? { item: panelRun.item } : {};
+    /**
+     * The item a new Run is on: a run of the panel's has the item it was
+     * started on; any other, the item its `ref` names on the page now.
+     */
+    const itemOfNewRun = (run: LogRun, rowId: string): RunNotes => {
+      const panelRun =
+        run.by === callers.inspector && run.status === "running"
+          ? pending.current.find(
+              (candidate) =>
+                candidate.rowId === undefined &&
+                candidate.toolName === run.tool &&
+                candidate.input === JSON.stringify(run.input)
+            )
+          : undefined;
+      if (panelRun) panelRun.rowId = rowId;
+      const ref = (run.input as { ref?: unknown } | undefined)?.ref;
+      const item =
+        panelRun?.item ??
+        (typeof ref === "string" ? itemOf(run.tool, ref) : undefined);
+      return item ? { item } : {};
     };
 
     // The Runs seen so far, and the ended Runs whose Interactions have
@@ -83,16 +101,24 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
     const seen = new Set<string>();
     const described = new Set<string>();
     const read = (runs: readonly LogRun[]) => {
+      const listed = new Set(runs.map(rowIdOf));
+      // What the panel knows of a Run goes when the log drops the Run.
+      for (const ids of [seen, described])
+        for (const rowId of ids) if (!listed.has(rowId)) ids.delete(rowId);
       const fresh = new Map<string, RunNotes>();
       for (const run of runs) {
         const rowId = rowIdOf(run);
         if (seen.has(rowId)) continue;
         seen.add(rowId);
-        fresh.set(rowId, { ...targetOf(run.tool), ...noteNewRun(run, rowId) });
+        fresh.set(rowId, {
+          ...targetOf(run.tool),
+          ...itemOfNewRun(run, rowId),
+        });
       }
       setLog((current) => {
-        if (!fresh.size) return { ...current, runs };
-        const notes = new Map(current.notes);
+        const notes = new Map(
+          [...current.notes].filter(([rowId]) => listed.has(rowId))
+        );
         for (const [rowId, runNotes] of fresh)
           notes.set(rowId, { ...notes.get(rowId), ...runNotes });
         return { runs, notes };
@@ -120,7 +146,7 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
       unsubscribeFromStarted();
       unsubscribeFromLog();
     };
-  }, []);
+  }, [itemOf]);
 
   const runs = useMemo(
     () =>

@@ -3,6 +3,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import type { RegisteredPomTool } from "@ayme-dev/ayme";
 import {
+  getPageStateForElements,
   listRegisteredPomTargets,
   listRegisteredPomTools,
   listRegisteredPoms,
@@ -38,6 +39,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     })),
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
+    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
     listRegisteredPomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
@@ -228,6 +230,28 @@ it("names each Interaction by the member whose locator it names, for any Caller"
       },
       { operation: "keyboard.press", target: "", value: '"Enter"' },
     ]);
+});
+
+it("names a Browser Tool's Interaction by the member whose element has its ref", async () => {
+  registerEditor();
+  vi.mocked(listRegisteredPomTargets).mockResolvedValue([
+    {
+      path: "Editor.saveButton",
+      element: document.body,
+      locator: "getByRole('button', { name: 'Save' })",
+    },
+  ]);
+  vi.mocked(getPageStateForElements).mockResolvedValue({
+    refs: ["e2"],
+  } as Awaited<ReturnType<typeof getPageStateForElements>>);
+  const click = startedAyme.runs.start("click", { target: "e2" }, "webmcp");
+  click.interact({ operation: "click", locator: "locator('aria-ref=e2')" });
+  click.succeed();
+  renderApp();
+
+  await expect
+    .poll(() => inspector.runs.latest("click").interactionList())
+    .toEqual([{ operation: "click", target: "Editor.saveButton" }]);
 });
 
 it("shows a tree of Runs in the selection's scope when a child Run is in it", async () => {

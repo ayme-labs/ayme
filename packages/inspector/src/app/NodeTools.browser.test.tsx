@@ -55,6 +55,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
         ])
     ),
     getPomDefinitionText: vi.fn(() => ""),
+    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
     listRegisteredPomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => []),
