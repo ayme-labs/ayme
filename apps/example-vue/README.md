@@ -19,7 +19,7 @@ This browser playground combines a functional list app with an Ayme inspector so
 
 Open the playground and choose **Try with your own coding agent**. The wizard shows the prompt to paste into the agent: it registers [Ayme's MCP server](../../packages/mcp/README.md), pinned to the version of `@ayme-dev/mcp` in this repository, and asks the agent to call `ayme_connect` with the page's URL. The visitor opens the returned link in this tab, which pairs it without a reload; the wizard closes itself when the link arrives, because an open dialog blocks the page for the agent. The prompt is plain copy in `src/agentPrompts.ts`. Ayme's MCP server is the only thing a visitor installs, and the page contacts it only through a connect link. The [Ayme setup skill](../../skills/ayme/SKILL.md) is for integrating Ayme into your own project, not for trying the playground.
 
-`App.vue` turns the Agent Connection (`agentConnection` in `useAyme`) on under the same condition as the Inspector, so the hosted build has it and `--mode inspector-disabled` builds without it. The end-to-end tests run the shared [example certification](../example-certification/README.md)'s Agent Connection check: an MCP client pairs with the dev server's page through a connect link and calls a tool.
+`App.vue` turns the Agent Connection (`agentConnection` in `useAyme`) on under the same condition as the Inspector, so the hosted build has it and `--mode inspector-disabled` builds without it. The end-to-end tests run the shared [example certification](../example-certification/README.md)'s Agent Connection check: an MCP client pairs with the dev server's page through a connect link and calls a tool. On the dev server only, a counter below the playground adds the Peek `counter` with `usePeek`, which the client reads before and after an increment and sees go when the counter unmounts; `ignore` keeps it out of Structural Page State.
 
 The hosted bundle initializes the pinned WebMCP polyfill before the Vue app starts.
 
@@ -53,7 +53,7 @@ pnpm run typecheck
 pnpm run test:e2e
 ```
 
-The browser test injects a minimal `document.modelContext`, verifies the two published tools and their compiler-derived schemas, exercises direct list interaction, then invokes the published collection Page Object Tool and the same tool through the debug console against the real DOM-backed runtime.
+The playground is also a Vue single-page app in the shared [example certification](../example-certification/README.md): its `/counter` route renders the counter contract page, and `/other` the page without Page Objects. `test:e2e` runs the certification and the playground tests below against the dev server and the production build (`test:e2e:dev`, `test:e2e:prod`); the production build publishes no `goal`. The browser test injects a minimal `document.modelContext`, verifies the two published tools and their compiler-derived schemas, exercises direct list interaction, then invokes the published collection Page Object Tool and the same tool through the debug console against the real DOM-backed runtime.
 
 ## Live goal lane
 

@@ -1,9 +1,11 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 /**
  * `fill_form`'s form in a run card: every field on the page as a row, by
  * its name. The rows changed are filled, numbered in fill order.
  */
+@ayme
 export class FillForm {
   /** The rows, in fill order. */
   readonly rows: Locator;
@@ -58,6 +60,9 @@ export class FillForm {
   }
 
   /** Whether the last run couldn't fill the field. */
+  @ayme.action({
+    description: "Whether the last run could not fill the field.",
+  })
   async failed(name: string): Promise<boolean> {
     return (await this.row(name).getAttribute("data-failed")) === "true";
   }
@@ -85,6 +90,7 @@ export class FillForm {
   }
 
   /** Undoes the change to one field. */
+  @ayme.action({ description: "Undoes the change to one field." })
   async undo(name: string) {
     await this.row(name)
       .getByRole("button", { name: `Undo the change to ${name}` })
@@ -97,6 +103,10 @@ export class FillForm {
   }
 
   /** Drags a row onto another, which moves it to that row's place. */
+  @ayme.action({
+    description:
+      "Drags a row onto another, which moves it to that row's place.",
+  })
   async drag(name: string, onto: string) {
     await this.moveButton(name).dragTo(this.row(onto));
   }

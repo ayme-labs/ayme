@@ -26,7 +26,7 @@ Layers, only where a slice has that kind of code: `domain` (pure rules and types
 
 - `shared` keeps the Inspector's look at the page live: page changes, input,
   focus and registry changes schedule a refresh (debounced, one at a time),
-  and each refresh is one unrecorded peek at the page state, so the
+  and each refresh is one unrecorded look at the page state, so the
   Inspector never changes what agents see.
 - `page-model` holds the Page Objects on the page and their models, indexed
   by member path, so members, their groups and owners resolve by lookup.
@@ -64,8 +64,10 @@ Object Model of the panel. `@ayme-dev/inspector/testing` exports it
 (ADR-0026: only tests may import a testing entry). `Inspector` takes a
 Playwright `Page` and is built from one page object per part of the panel,
 each rooted at a `Locator`. The same classes run on Playwright and on
-playwright-lite's `createPage()`. They are plain classes, never registered
-with the Ayme runtime, so their actions never become WebMCP tools.
+playwright-lite's `createPage()`. They carry `@ayme` marks, but an app never
+registers them with its runtime; only the inspector-fixture app's dogfood page
+does (`mountInspector({ dogfood: true })`), so that agents drive the panel the
+way tests do.
 
 On Playwright, register the `ayme-inspector` selector engine before the page
 is created. The engine shares its name with the Inspector's host element but

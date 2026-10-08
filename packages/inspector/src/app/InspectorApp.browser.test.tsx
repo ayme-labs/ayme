@@ -17,14 +17,17 @@ import { Inspector } from "../testing";
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its runtime wiring only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { asStartedAyme } = await import("../tools/test-utils/startedAyme");
-  const { pageStateNodeEntry } =
+  const { appProcessToolsOf, asStartedAyme } =
+    await import("../tools/test-utils/startedAyme");
+  const { pageStateNodeEntry, toolInputViolations } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
+    toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    peekPageStateForDocument: vi.fn(async () => ({
+    lookAtPageStateForDocument: vi.fn(async () => ({
       projected: forest(
         node(
           { ref: "e1", role: "main" },
@@ -38,6 +41,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listRegisteredPomTargets: vi.fn(async () => []),
     listRegisteredPomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
+    getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
@@ -92,6 +96,20 @@ function editor(id: string, ...tools: RegisteredPomTool[]): RegisteredPom {
   };
 }
 
+/** A Peek tool, as the session or an App Process lists it. */
+function peekTool(name: string) {
+  return {
+    name,
+    description: "Read the current values of a Peek.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+      additionalProperties: false,
+    },
+    group: "peek" as const,
+  };
+}
+
 function mockRegistry(poms: RegisteredPom[], activeTools: RegisteredPomTool[]) {
   vi.mocked(listRegisteredPoms).mockReturnValue(poms);
   vi.mocked(listRegisteredPomTools).mockReturnValue(activeTools);
@@ -136,6 +154,7 @@ afterEach(() => {
   vi.clearAllMocks();
   startedAyme.reset();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe("the Inspector", () => {
@@ -374,16 +393,6 @@ describe("the Inspector", () => {
     );
   });
 
-  it("names the page it inspects in the header", async () => {
-    const tool = saveTool("editor", vi.fn());
-    mockRegistry([editor("editor", tool)], [tool]);
-    renderApp();
-
-    await expect
-      .poll(() => inspector.header.pageBadge.textContent())
-      .toBe("Editor");
-  });
-
   it("shows the page state an agent receives in the Structure lens", async () => {
     renderApp();
 
@@ -393,6 +402,73 @@ describe("the Inspector", () => {
     await expect
       .poll(() => inspector.navigator.legend.textContent())
       .toContain("2 refs");
+  });
+
+  it("lists an App Process's Peek tool in the Node section, beside the page's, and runs it through the agent's server", async () => {
+    startedAyme.tools.list.mockReturnValue([peekTool("peek.cart")]);
+    startedAyme.appProcessTools.list.mockReturnValue([
+      peekTool("peek.node.jobs"),
+    ]);
+    startedAyme.appProcessTools.run.mockResolvedValue({
+      name: "jobs",
+      instances: [{ values: { value: "server" } }],
+    });
+    renderApp();
+    await inspector.navigator.showLens("Tools");
+    await expect
+      .poll(() => inspector.navigator.tools.peekSections())
+      .toEqual({ Browser: ["peek.cart"], Node: ["peek.node.jobs"] });
+
+    await (await inspector.tool("peek.node.jobs")).run();
+
+    const run = inspector.runs.latest("peek.node.jobs");
+    await expect.poll(() => run.status()).toBe("Succeeded");
+    expect(JSON.parse((await run.resultText()) ?? "")).toEqual({
+      name: "jobs",
+      instances: [{ values: { value: "server" } }],
+    });
+    expect(startedAyme.appProcessTools.run).toHaveBeenCalledExactlyOnceWith(
+      "peek.node.jobs",
+      {}
+    );
+    expect(startedAyme.tools.run).not.toHaveBeenCalled();
+  });
+
+  it("shows an App Process's Peek tool failure as a failed run", async () => {
+    startedAyme.appProcessTools.list.mockReturnValue([
+      peekTool("peek.node.jobs"),
+    ]);
+    startedAyme.appProcessTools.run.mockRejectedValue(
+      new Error("The App Process exited before it answered.")
+    );
+    renderApp();
+
+    await (await inspector.tool("peek.node.jobs")).run();
+
+    const run = inspector.runs.latest("peek.node.jobs");
+    await expect.poll(() => run.status()).toBe("Failed");
+    expect(await run.error.textContent()).toBe(
+      "The App Process exited before it answered."
+    );
+  });
+
+  it("drops the Node section once no App Process offers a Peek tool", async () => {
+    startedAyme.tools.list.mockReturnValue([peekTool("peek.cart")]);
+    startedAyme.appProcessTools.list.mockReturnValue([
+      peekTool("peek.node.jobs"),
+    ]);
+    renderApp();
+    await inspector.navigator.showLens("Tools");
+    await expect
+      .poll(() => inspector.navigator.tools.peekSections())
+      .toEqual({ Browser: ["peek.cart"], Node: ["peek.node.jobs"] });
+
+    startedAyme.appProcessTools.list.mockReturnValue([]);
+    startedAyme.announce();
+
+    await expect
+      .poll(() => inspector.navigator.tools.peekSections())
+      .toEqual({ Browser: ["peek.cart"] });
   });
 
   it("lists the live tools when nothing is published", async () => {
@@ -450,13 +526,42 @@ describe("the Inspector", () => {
     await expect.poll(() => inspector.detail.runCard().root.count()).toBe(1);
   });
 
+  it("comes back to the lens, the open tool and its runs after a reload", async () => {
+    const tool = saveTool("editor", vi.fn());
+    mockRegistry([editor("editor", tool)], [tool]);
+    startedAyme.tools.run.mockResolvedValue({ saved: true });
+    renderApp();
+    const save = await inspector.tool("Editor.save");
+    await save.run({ copies: 1, title: "Notes" });
+    await expect
+      .poll(() => inspector.runs.latest("Editor.save").status())
+      .toBe("Succeeded");
+
+    for (const unmount of unmounts.splice(0)) unmount();
+    renderApp();
+
+    await expect
+      .poll(() =>
+        inspector.navigator.lens("Tools").getAttribute("aria-pressed")
+      )
+      .toBe("true");
+    await expect
+      .poll(() =>
+        inspector.navigator.item("Editor.save").getAttribute("aria-current")
+      )
+      .toBe("true");
+    await expect
+      .poll(() => inspector.runs.latest("Editor.save").status())
+      .toBe("Succeeded");
+  });
+
   it("switches the panel to dark from the header", async () => {
     renderApp();
 
     await inspector.header.themeSwitch.choose("Dark");
 
     await expect
-      .poll(() => inspector.root.getAttribute("class"))
+      .poll(() => inspector.container.getAttribute("class"))
       .toMatch(/\bdark\b/);
   });
 });

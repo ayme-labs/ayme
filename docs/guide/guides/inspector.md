@@ -22,6 +22,7 @@ useAyme({ webMCP: { enabled: true }, inspector: import.meta.env.DEV });
 - If the package cannot be loaded, the error names `@ayme-dev/inspector`.
 - The Inspector reaches Page Objects constructed before it loaded.
 - It works whether WebMCP publication is on or off.
+- It turns the page's [Peeks](../reference/ayme.md#aymepeek) on, as `agentConnection` does.
 
 ## Demo mode
 
@@ -39,7 +40,7 @@ The navigator has three lenses:
 
 - **Model**: the Page Objects on the page and the Page Object Models it knows, with their members' states.
 - **Structure**: the Structural Page State an agent receives, each node tagged with the member it maps to.
-- **Tools**: every tool the panel can run now.
+- **Tools**: every tool the panel can run now, grouped as Page object, Custom, Browser, Peek and Agent tools. Peek tools lists the page's [Peeks](../reference/ayme.md#aymepeek) under Browser and, while the tab is paired with a coding agent's Ayme MCP server, those of the App Processes paired beside it under Node, which the panel runs through that server.
 
 Selecting anything opens its detail. A tool's page and a structure node's detail also show what the model sees of them: the definitions, page state and schemas an agent gets.
 
@@ -49,7 +50,7 @@ Every detail runs its tools through the same run card, a form typed from the too
 
 ## The panel
 
-The panel floats, docks to the left, right or bottom of the page, or collapses to the Ayme logo. It remembers its layout, sizes, positions and theme per site in the page's `localStorage`, and uses its defaults when storage is unavailable. Its theme follows the system until you change it. While docked, it pads the page's root on that side so the panel sits beside the page.
+The panel floats, docks to the left, right or bottom of the page, or collapses to the Ayme logo. It remembers its layout, sizes, positions and theme per site in the page's `localStorage`, and uses its defaults when storage is unavailable. Within a tab, it also keeps the open lens, the selection, the Runs region and the newest 50 runs in `sessionStorage`, so a reload comes back to them. A selected structure node goes back to the page, because its ref can name another element after a reload. Its theme follows the system until you change it. While docked, it pads the page's root on that side so the panel sits beside the page.
 
 It paints above the page's own UI; only the browser's top layer, such as modal dialogs, popovers and fullscreen, covers it. Outside the panel and the collapsed logo, the page keeps its pointer. When an agent's pointer action targets something under the panel, the action passes through it.
 

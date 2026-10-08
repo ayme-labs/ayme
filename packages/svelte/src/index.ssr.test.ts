@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+// Server tests of the owner and consumer API in Node. Test names cite the rows
+// of the behaviour contract in docs/framework-integrations.md.
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAyme } from "@ayme-dev/ayme";
 import { listRegisteredPoms } from "@ayme-dev/ayme/internal";
 
@@ -13,12 +15,21 @@ import {
   Owner,
   OwnerAndPageObject,
   PageObjectUser,
+  PeekUser,
   Status,
 } from "./fixtures/components.js";
 import type { UseAymeOptions, UseAymeResult } from "./index";
 
 type PageFactory = NonNullable<UseAymeOptions["pageFactory"]>;
 type Page = ReturnType<PageFactory>;
+
+// The server's own session holds the process as its App Process, as in a
+// dev server with Peeks: a render whose session claimed it too would throw.
+let stopAppProcess = () => {};
+beforeEach(() => {
+  stopAppProcess = createAyme().start();
+});
+afterEach(() => stopAppProcess());
 
 const pageFactory = vi.fn<PageFactory>(() => {
   throw new Error("The page factory must not run on the server.");
@@ -37,7 +48,7 @@ class ServerModel {
 describe.each([false, true])(
   "server rendering with webMCP.enabled=%s",
   (enabled) => {
-    it("gives each render its own inert session and Page Objects", () => {
+    it("C9: gives each render its own inert session and Page Objects", () => {
       vi.mocked(createAyme).mockClear();
       const owners: UseAymeResult[] = [];
       const pageObjects: object[] = [];
@@ -69,7 +80,7 @@ describe.each([false, true])(
       expect(listRegisteredPoms()).toHaveLength(0);
     });
 
-    it("renders the initial publication status", () => {
+    it("C10: renders the initial publication status", () => {
       const { html } = Owner.render({
         options: { webMCP: { enabled } },
         child: Status,
@@ -79,7 +90,7 @@ describe.each([false, true])(
   }
 );
 
-it("lets the owner use a Page Object in its own component", () => {
+it("C9: lets the owner use a Page Object in its own component", () => {
   let result: (UseAymeResult & { pageObject: object }) | undefined;
   void OwnerAndPageObject.render({
     options: { pageFactory },
@@ -91,8 +102,29 @@ it("lets the owner use a Page Object in its own component", () => {
   expect(listRegisteredPoms()).toHaveLength(0);
 });
 
-it("requires an owner for a Page Object", () => {
+it("C7: requires an owner for a Page Object", () => {
   expect(() => PageObjectUser.render({ model: ServerModel }).html).toThrow(
     "usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte."
+  );
+});
+
+it("C12: adds no Peek instance during server rendering", () => {
+  const peeks: unknown[] = [];
+  void Owner.render({
+    options: { agentConnection: true },
+    onInit: ({ ayme }) => {
+      vi.spyOn(ayme, "peek").mockImplementation((...args) => {
+        peeks.push(args);
+        return () => {};
+      });
+    },
+    child: PeekUser,
+  }).html;
+  expect(peeks).toEqual([]);
+});
+
+it("requires an owner for a Peek", () => {
+  expect(() => PeekUser.render({}).html).toThrow(
+    "peek requires useAyme() in an ancestor component, such as the root +layout.svelte."
   );
 });

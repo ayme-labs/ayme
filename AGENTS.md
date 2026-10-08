@@ -1,3 +1,7 @@
+## Writing rules down
+
+Write each rule once, next to the config or code that enforces it. Other docs, this file included, link to it rather than restate it.
+
 ## Repository map
 
 - `packages/`: the Ayme WebMCP product. Each package README is its npm entry point; the consumer docs in `docs/guide/` own its API and setup.
@@ -16,6 +20,7 @@
 Skills for agents working on this repository live in `.agents/skills/` (agent-agnostic; `.claude/skills` is a symlink to it). They are separate from `skills/`, which holds the skills ayme ships to consumers.
 
 - `typesafe-ai`: copied from [typesafe-ai/skills](https://github.com/typesafe-ai/skills) at tag v0.5.7 (`skills/typesafe-ai/`). To refresh it, copy `SKILL.md` and `LICENSE` from a newer tag and update the tag here.
+- `inspector-dogfood`: verify a change to the Inspector by driving the Inspector itself through `ayme mcp`, on the inspector-fixture app's dogfood page. Use it for any change under `packages/inspector` before showing the change to the user.
 
 ### Issue tracker
 
@@ -29,9 +34,9 @@ Use the default triage label vocabulary. See `docs/agents/triage-labels.md`.
 
 This repository uses a single-context domain-doc layout. See `docs/agents/domain.md`.
 
-Treat `CONTEXT.md` as the canonical domain glossary.
+Treat `GLOSSARY.md` as the canonical domain glossary.
 
-Before adding or renaming a term in `CONTEXT.md`, present the proposed wording to the user and wait for explicit approval.
+Before adding or renaming a term in `GLOSSARY.md`, present the proposed wording to the user and wait for explicit approval.
 
 ### Architectural decisions
 
@@ -42,6 +47,10 @@ ADRs record decisions and their rationale. Do not restate API names, options or 
 Before creating or superseding an ADR, present the complete proposed ADR to the user and wait for explicit approval. Never infer ADR approval from general agreement with a plan.
 
 A single approval covers the complete supersession operation. Mark the old ADR as `superseded by ADR-NNNN`, keep the replacement ADR accepted and explicit about which ADR it supersedes, and keep the old ADR rationale intact.
+
+## Commit types
+
+Commit messages follow Conventional Commits. `commitlint.config.ts` defines the allowed types and when to use each; read it before choosing a type.
 
 ## Updating the Playwright Lite fork
 
@@ -54,4 +63,5 @@ A single approval covers the complete supersession operation. Mark the old ADR a
 ## Development environment
 
 - Start a persistent Devbox shell and run all project commands inside it.
+- `devbox run -- <cmd>` runs from the repository root, whatever the current directory. Reach a package with `pnpm -C <dir> <script>`, or `devbox run -- sh -c 'cd <dir> && <cmd>'`.
 - If Devbox is unavailable, surface the environment blocker.

@@ -1,19 +1,19 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageStatePeek } from "@ayme-dev/ayme/internal";
+import type { PageStateLook } from "@ayme-dev/ayme/internal";
 
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "../testing";
 
 // Component tests: a node's single-element tools while WebMCP publishes nothing. The
-// runtime is replaced by a peek of the host page, live single-element tools that are
+// runtime is replaced by a look at the host page, live single-element tools that are
 // not published, and the refs each can take, so the evidence covers the
 // panel and its runtime wiring.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { asStartedAyme, startedAyme } =
+  const { appProcessToolsOf, asStartedAyme, startedAyme } =
     await import("../tools/test-utils/startedAyme");
-  const { pageStateNodeEntry } =
+  const { pageStateNodeEntry, toolInputViolations } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
   const browserTool = (name: string) => ({
@@ -32,8 +32,10 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   };
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
+    toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    peekPageStateForDocument: vi.fn(
+    lookAtPageStateForDocument: vi.fn(
       async () =>
         ({
           projected: forest(
@@ -44,7 +46,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
             )
           ),
           elementsByRef: new Map(),
-        }) as unknown as PageStatePeek
+        }) as unknown as PageStateLook
     ),
     listElementToolTargets: vi.fn(
       async () =>
@@ -58,6 +60,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listRegisteredPomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
+    getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
@@ -83,6 +86,7 @@ beforeEach(() => {
 afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 it("offers a node its live single-element tools while nothing is published", async () => {

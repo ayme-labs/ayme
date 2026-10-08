@@ -14,7 +14,8 @@ import {
   type PageStateCapture,
 } from "./pageState";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import { requireAymeRuntimePage, validateValue } from "./registry";
+import { requireAymeRuntimePage } from "./registry";
+import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
 import {
   RefResolutionError,
   RuntimeStateError,
@@ -47,6 +48,8 @@ export type PublishedElementTool = ModelContextTool<
   JsonValue
 > & {
   inputSchema: JsonSchema;
+  /** `false`: never published to WebMCP, as for a tool whose result is an image. */
+  webMcp?: false;
   execute(input: unknown): Promise<JsonValue>;
   executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
 };
@@ -182,19 +185,8 @@ export function validatedToolInput(
   schema: JsonSchema,
   input: unknown
 ): Record<string, unknown> {
-  if (typeof input !== "object" || input === null || Array.isArray(input))
-    throw new ToolInputError("Tool input must be an object.");
-  const fields = input as Record<string, unknown>;
-  const properties = schema.properties ?? {};
-  for (const name of Object.keys(fields))
-    if (!Object.hasOwn(properties, name))
-      throw new ToolInputError(`The option "${name}" is not supported.`);
-  for (const name of schema.required ?? [])
-    if (fields[name] === undefined)
-      throw new ToolInputError(`The input property "${name}" is required.`);
-  for (const [name, value] of Object.entries(fields))
-    validateValue(name, properties[name]!, value);
-  return fields;
+  throwFirstViolation(toolInputViolations(schema, input));
+  return input as Record<string, unknown>;
 }
 
 /**

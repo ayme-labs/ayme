@@ -4,19 +4,31 @@ import { type MemberIndex, pathBelowPage } from "../page-model";
 import { type StructureNode, structureRows } from "../structure";
 import { type CollectionItem, type RunFocus, Runs, runScope } from "../runs";
 import type { InspectorRuntime } from "./useInspectorRuntime";
+import type { ViewState } from "./viewState";
 import { RunsRegion } from "../panel";
 import type { RenderRun, Selection } from "../navigation";
-import { findRefNode, RunCard } from "../tools";
+import { argumentViolationsOf, findRefNode, RunCard } from "../tools";
 
 /**
  * Running from the panel: the run slot's run card, and Runs scoped to the
- * selection. A run card's last-success link shows that run in Runs.
+ * selection. A run card's last-success link shows that run in Runs. Whether
+ * Runs is open and lists every run is part of the view state.
  */
-export function useRunning(runtime: InspectorRuntime, selection: Selection) {
+export function useRunning(
+  runtime: InspectorRuntime,
+  selection: Selection,
+  {
+    view: { open, all: allRuns },
+    onViewChange,
+  }: {
+    view: ViewState["runs"];
+    onViewChange: (view: ViewState["runs"]) => void;
+  }
+) {
   const { runs, runnableTools, pageState, highlight, refPicking, members } =
     runtime;
-  const [allRuns, setAllRuns] = useState(false);
-  const [open, setOpen] = useState(true);
+  const setAllRuns = (all: boolean) => onViewChange({ open, all });
+  const setOpen = (open: boolean) => onViewChange({ open, all: allRuns });
   const [focus, setFocus] = useState<RunFocus>();
 
   const roots = pageState.structure.roots;
@@ -28,8 +40,10 @@ export function useRunning(runtime: InspectorRuntime, selection: Selection) {
   const shownRuns = allRuns ? runs : runs.filter(scope.includes);
 
   const showRun = (runId: number) => {
-    setOpen(true);
-    if (!shownRuns.some((run) => run.id === runId)) setAllRuns(true);
+    onViewChange({
+      open: true,
+      all: allRuns || !shownRuns.some((run) => run.id === runId),
+    });
     setFocus({ runId, at: Date.now() });
   };
 
@@ -57,6 +71,7 @@ export function useRunning(runtime: InspectorRuntime, selection: Selection) {
           onPreviewEnd: () => highlight.hover(undefined),
         }}
         runs={runs.filter((run) => run.toolName === toolName)}
+        argumentViolations={argumentViolationsOf(tool)}
         onRun={(input, target) => runtime.runTool(toolName, input, target)}
         onShowRun={showRun}
         onHover={highlight.hover}

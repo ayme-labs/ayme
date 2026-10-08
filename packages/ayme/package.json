@@ -75,7 +75,7 @@
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11",
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#cd4217e91307bb16133cd3194032686631f62af7"
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e"
   },
   "dependencies": {
     "@mcp-b/webmcp-types": "^5.0.1"

@@ -1,5 +1,8 @@
 import { BracesIcon, ChevronRightIcon, ZapIcon } from "lucide-react";
 
+import { Badge } from "@ayme-dev/design-system/components/badge";
+import { Separator } from "@ayme-dev/design-system/components/separator";
+
 import { WhatTheModelSees } from "../../shared";
 import {
   type Lens,
@@ -7,13 +10,20 @@ import {
   type RenderRun,
   type Selection,
 } from "../../navigation";
-import { listTools, toolKindLabels, type LiveTool } from "../domain/toolGroups";
+import {
+  listTools,
+  peekSideLabels,
+  toolKindLabels,
+  type LiveTool,
+} from "../domain/toolGroups";
 
 /**
  * The Tools lens: every live tool, the ones the panel can run now whether
- * WebMCP publishes them or not, grouped as Page object tools, Custom tools, Browser tools and
- * Agent tools. A tool's page is its description, the
- * run slot and what the model sees of it.
+ * WebMCP publishes them or not, grouped as Page object tools, Custom tools, Browser tools,
+ * Peek tools and Agent tools. The Peek tools list the page's (Browser),
+ * then, set apart by a separator, the App Processes' (Node), each row
+ * badged with its side. A tool's page is its description, the run slot and
+ * what the model sees of it.
  */
 export function toolsLens({
   tools,
@@ -48,20 +58,49 @@ export function toolsLens({
               {label} · {tools.length}
             </h3>
             <ul aria-label={label}>
-              {tools.map((tool) => (
-                <li key={tool.name}>
-                  <NavItem
-                    selected={tool.name === selectedTool}
-                    onClick={() => onSelect({ kind: "tool", name: tool.name })}
-                  >
-                    <ZapIcon
-                      className="size-3.5 flex-none text-muted-foreground"
-                      aria-hidden
-                    />
-                    <span className="truncate font-mono">{tool.name}</span>
-                  </NavItem>
-                </li>
-              ))}
+              {tools.map((tool, index) => {
+                const side =
+                  tool.group === "peek" ? (tool.side ?? "browser") : undefined;
+                // The App Processes' Peek tools come after the page's.
+                const separated =
+                  side === "node" &&
+                  index > 0 &&
+                  tools[index - 1]!.side !== "node";
+                return (
+                  <li key={tool.name} className="relative">
+                    {separated && (
+                      <Separator
+                        data-peek-separator
+                        className="mx-2 my-1 w-auto!"
+                      />
+                    )}
+                    <NavItem
+                      selected={tool.name === selectedTool}
+                      onClick={() =>
+                        onSelect({ kind: "tool", name: tool.name })
+                      }
+                      className={side && "pr-20"}
+                    >
+                      <ZapIcon
+                        className="size-3.5 flex-none text-muted-foreground"
+                        aria-hidden
+                      />
+                      <span className="truncate font-mono">{tool.name}</span>
+                    </NavItem>
+                    {side && (
+                      // Beside the row's button, so the tool's name stays the
+                      // button's name.
+                      <Badge
+                        variant={side === "node" ? "default" : "secondary"}
+                        data-peek-side
+                        className="pointer-events-none absolute right-2 bottom-1.5"
+                      >
+                        {peekSideLabels[side]}
+                      </Badge>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
         ))}
@@ -148,7 +187,11 @@ function ToolPage({
             <ChevronRightIcon className="size-3" aria-hidden />
           </button>
         )}
-        <span>{toolKindLabels[tool.group]}</span>
+        <span data-tool-kind>
+          {tool.group === "peek"
+            ? `${peekSideLabels[tool.side ?? "browser"]} ${toolKindLabels.peek}`
+            : toolKindLabels[tool.group]}
+        </span>
       </div>
       <p className="mt-2 mb-3 text-xs text-muted-foreground">
         {tool.description}

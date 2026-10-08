@@ -2,7 +2,9 @@
 // only tests may import. It uses Playwright's types only and runs on the
 // test's own Playwright `Page` or on playwright-lite's `createPage()`. On
 // Playwright, register its selector engine first: the mounted Inspector
-// lives in a closed shadow root.
+// lives in a closed shadow root. Its classes carry `@ayme`, so a page that
+// dogfoods the Inspector can compile and register it like its own Page
+// Objects; this entry ships without that compiler output.
 export { Inspector } from "./pom/Inspector";
 export { CollapsedLogo } from "./pom/CollapsedLogo";
 export { DetailPane } from "./pom/DetailPane";
@@ -27,13 +29,17 @@ export {
 } from "./pom/ModelDetailView";
 export { ModelLens, type ModelPaneName } from "./pom/ModelLens";
 export { NodeView } from "./pom/NodeView";
-export { PanelShell, type PanelEdge } from "./pom/PanelShell";
+export { PanelShell, type PanelCorner, type PanelEdge } from "./pom/PanelShell";
 export { RefField } from "./pom/RefField";
 export { RunCard, type ArgumentValue } from "./pom/RunCard";
 export { RunEntry, RunsView, type RunStep } from "./pom/RunsView";
 export { StructureLens } from "./pom/StructureLens";
 export { ToolPage } from "./pom/ToolPage";
 export { ValueRows } from "./pom/ValueRows";
-export { ToolsLens, type ToolGroupLabel } from "./pom/ToolsLens";
+export {
+  ToolsLens,
+  type PeekSideLabel,
+  type ToolGroupLabel,
+} from "./pom/ToolsLens";
 export { WhatTheModelSees } from "./pom/WhatTheModelSees";
 export { WebMcpStatus } from "./pom/WebMcpStatus";

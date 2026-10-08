@@ -28,9 +28,20 @@ export declare const PageObjectUser: TestComponent<{
   model: PageObjectConstructor<object>;
   onInit?: (pageObject: object) => void;
 }>;
+export declare const PageObjectPair: TestComponent<{
+  model: PageObjectConstructor<object>;
+  showFirst?: boolean;
+  showSecond?: boolean;
+  onInit?: (pageObject: object) => void;
+}>;
 export declare const OwnerAndPageObject: TestComponent<{
   options?: UseAymeOptions;
   model: PageObjectConstructor<object>;
   onInit?: (result: UseAymeResult & { pageObject: object }) => void;
 }>;
+export declare const PeekUser: TestComponent<{
+  count?: number;
+  id?: string;
+}>;
+export declare const PeekUsers: TestComponent<{ counts?: number[] }>;
 export declare const Status: TestComponent<Record<string, never>>;

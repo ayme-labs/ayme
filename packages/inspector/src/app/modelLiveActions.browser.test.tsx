@@ -97,18 +97,20 @@ const runtime = vi.hoisted(() => ({
 }));
 
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { asStartedAyme, startedAyme } =
+  const { appProcessToolsOf, asStartedAyme, startedAyme } =
     await import("../tools/test-utils/startedAyme");
   startedAyme.tools.list.mockImplementation(
     () => runtime.liveTools as PublishedToolInfo[]
   );
   startedAyme.webMCP.publicationStatus = runtime.publication;
-  const { pageStateNodeEntry } =
+  const { pageStateNodeEntry, toolInputViolations } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
+    toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    peekPageStateForDocument: vi.fn(async () => ({
+    lookAtPageStateForDocument: vi.fn(async () => ({
       projected: { roots: [] },
       elementsByRef: new Map(),
     })),
@@ -118,6 +120,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listRegisteredPomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => runtime.registrations),
     getStartedAyme: asStartedAyme,
+    getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
@@ -151,6 +154,7 @@ function renderApp({
 afterEach(() => {
   for (const unmount of unmounts.splice(0)) unmount();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 it("runs a live action from the panel while WebMCP publication is off", async () => {

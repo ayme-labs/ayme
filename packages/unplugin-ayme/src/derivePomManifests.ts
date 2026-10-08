@@ -32,6 +32,11 @@ export function createPomCompiler(
   };
 }
 
+/**
+ * Returns one manifest per marked class in the file, Page Object Children
+ * included. A class that another manifest lists in `components` is a child,
+ * not a top-level Page Object.
+ */
 export function derivePomManifests(
   fileName: string,
   options: PomCompilerOptions = {}

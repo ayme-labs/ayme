@@ -398,14 +398,14 @@ function handshake(address: string, path: string, origin?: string) {
   });
 }
 
-test("the server accepts a connection without a token only from a localhost or 127.0.0.1 origin", async ({
+test("the server accepts a connection without a token only from a localhost or 127.0.0.1 origin, or from a local process, which sends no Origin", async ({
   agent,
 }) => {
   const { address } = await serverAddress(agent);
 
   expect(await handshake(address, "/", `http://${OTHER_HOST}:5173`)).toBe(401);
   expect(await handshake(address, "/", "https://example.com")).toBe(401);
-  expect(await handshake(address, "/")).toBe(401);
+  expect(await handshake(address, "/")).toBe(101);
   expect(await handshake(address, "/", "http://localhost:5173")).toBe(101);
   expect(await handshake(address, "/", "http://127.0.0.1:8080")).toBe(101);
 });

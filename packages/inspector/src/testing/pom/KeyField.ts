@@ -1,9 +1,11 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 /**
  * A run card's key field: focusing it records the key or combo pressed;
  * Esc switches it to searching key names.
  */
+@ayme
 export class KeyField {
   /** Shows the key, e.g. `ControlOrMeta+C`. */
   readonly input: Locator;
@@ -29,6 +31,9 @@ export class KeyField {
   }
 
   /** Whether the field records a key press or searches key names. */
+  @ayme.action({
+    description: "Whether the field records a key press or searches key names.",
+  })
   async mode(): Promise<"record" | "search"> {
     return (await this.modeButton.getAttribute("aria-label")) ===
       "Search key names instead"
@@ -37,12 +42,17 @@ export class KeyField {
   }
 
   /** Records a key press, e.g. "F5" or "Control+c", as Playwright names it. */
+  @ayme.action({
+    description:
+      "Records a key press, e.g. F5 or Control+c, as Playwright names it.",
+  })
   async record(key: string) {
     await this.input.focus();
     await this.input.press(key);
   }
 
   /** Switches to searching and types a key name, e.g. "arr" or "shift+tab". */
+  @ayme.action({ description: "Switches to searching and types a key name." })
   async search(text: string) {
     await this.input.focus();
     if ((await this.mode()) === "record") await this.input.press("Escape");

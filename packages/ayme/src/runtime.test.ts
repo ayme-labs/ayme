@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { recordAgentImageRun } from "./agentImageRuns";
 import { createPage } from "./browserPage";
 import { loadAgentConnection } from "./agentConnection";
 import { RuntimeStateError } from "./errors";
@@ -6,7 +7,12 @@ import * as goalLoopModule from "./goalLoop";
 import { loadInspector } from "./inspector";
 import * as navigateToolModule from "./navigateTool";
 import * as pageState from "./pageState";
-import { createAyme, sameRuntimeOptions, type AymePage } from "./runtime";
+import {
+  createAyme,
+  markRenderSession,
+  sameRuntimeOptions,
+  type AymePage,
+} from "./runtime";
 import { listRegisteredPoms, registerCompiledPom } from "./registry";
 import {
   synchronizeWebMcpTools,
@@ -21,7 +27,10 @@ vi.mock("./webMcp", async (importOriginal) => ({
   waitForWebMcpDriver: vi.fn(),
 }));
 vi.mock("./inspector", () => ({ loadInspector: vi.fn() }));
-vi.mock("./agentConnection", () => ({ loadAgentConnection: vi.fn() }));
+vi.mock("./agentConnection", () => ({
+  loadAgentConnection: vi.fn(),
+  loadProcessConnection: vi.fn(),
+}));
 vi.mock("./browserPage", () => ({
   createPage: vi.fn(() => ({}) as AymePage),
 }));
@@ -170,7 +179,10 @@ it("compares the inspector option by what it turns on", () => {
 
 it("starts the Agent Connection while a session with agentConnection is started", async () => {
   const dispose = vi.fn();
-  const startAgentConnection = vi.fn(() => ({ dispose }));
+  const startAgentConnection = vi.fn(() => ({
+    dispose,
+    processTools: { list: () => [], subscribe: () => () => {}, run: vi.fn() },
+  }));
   vi.mocked(loadAgentConnection).mockResolvedValue({ startAgentConnection });
   start(session(false))();
   expect(loadAgentConnection).not.toHaveBeenCalled();
@@ -182,7 +194,10 @@ it("starts the Agent Connection while a session with agentConnection is started"
   sessions.push(runtime);
   const stop = start(runtime);
   await flush();
-  expect(startAgentConnection).toHaveBeenCalledExactlyOnceWith(runtime);
+  expect(startAgentConnection).toHaveBeenCalledExactlyOnceWith({
+    tools: runtime.tools,
+    recordAgentImage: recordAgentImageRun,
+  });
   stop();
   expect(dispose).toHaveBeenCalledOnce();
 
@@ -283,6 +298,33 @@ it("never calls the page factory on the server", () => {
   expect(runtime.tools.list()).toEqual([]);
   expect(factory).not.toHaveBeenCalled();
   expect(createPage).not.toHaveBeenCalled();
+});
+
+it("C9: starts and registers nothing for concurrent render sessions on the server", () => {
+  vi.stubGlobal("window", undefined);
+  vi.stubGlobal("document", undefined);
+  const factory = vi.fn(() => page);
+  const first = createAyme({ pageFactory: factory, webMCP: { enabled: true } });
+  const second = createAyme({ pageFactory: factory });
+  sessions.push(first, second);
+  markRenderSession(first);
+  markRenderSession(second);
+  const instance = first.pom.register(Model);
+  const stopFirst = start(first);
+  // A second render session is no owner conflict.
+  const stopSecond = start(second);
+  expect(first.webMCP.publicationStatus.state).toBe("waiting");
+  expect(second.webMCP.publicationStatus.state).toBe("disabled");
+  expect(first.tools.list()).toEqual([]);
+  expect(listRegisteredPoms()).toHaveLength(0);
+  first.pom.unregister(Model);
+  stopFirst();
+  stopSecond();
+  expect(first.webMCP.publicationStatus.state).toBe("waiting");
+  expect(instance).toBeInstanceOf(Model);
+  expect(factory).not.toHaveBeenCalled();
+  expect(createPage).not.toHaveBeenCalled();
+  expect(synchronizeWebMcpTools).not.toHaveBeenCalled();
 });
 
 it("calls the page factory at most once, lazily, on first use", () => {
@@ -433,11 +475,17 @@ it("fails to start with two distinct classes sharing a name, and starts once one
   ).toEqual([Model]);
 });
 
-it("rejects concurrent owners and permits a fresh owner after disposal", () => {
+it("C3: rejects concurrent owners with the active-owner code and permits a fresh owner after disposal", () => {
   const first = session(false);
   const second = session(false);
   const stop = start(first);
-  expect(() => second.start()).toThrow("active owner");
+  expect(() => second.start()).toThrow(
+    expect.objectContaining({
+      name: "RuntimeStateError",
+      message: "The Ayme runtime already has an active owner.",
+      code: "active-owner",
+    })
+  );
   stop();
   start(second);
 });

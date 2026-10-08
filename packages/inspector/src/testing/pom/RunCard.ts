@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 import { FillForm } from "./FillForm";
@@ -18,6 +19,7 @@ export type ArgumentValue =
  * The run card: runs one tool. Run is always there; when the tool needs
  * input, the first press opens the typed form.
  */
+@ayme
 export class RunCard {
   readonly root: Locator;
   readonly runButton: Locator;
@@ -26,8 +28,15 @@ export class RunCard {
   readonly formSwitch: Locator;
   readonly jsonSwitch: Locator;
   readonly jsonEditor: Locator;
-  /** Why the JSON editor's arguments can't be used. */
+  /** Why the JSON editor's text isn't JSON, or isn't an object. */
   readonly jsonError: Locator;
+  /**
+   * How the JSON editor's arguments break the tool's schema, one entry per
+   * violation, e.g. "values.zip: must be a string or a number".
+   */
+  readonly schemaErrors: Locator;
+  /** Pretty-prints the JSON editor's text. */
+  readonly formatButton: Locator;
   /** The items a collection action can run on. */
   readonly items: Locator;
   /** The last run's status, its duration, and its error. */
@@ -45,7 +54,14 @@ export class RunCard {
     this.formSwitch = editor.getByRole("button", { name: "Form" });
     this.jsonSwitch = editor.getByRole("button", { name: "JSON" });
     this.jsonEditor = root.getByRole("textbox", { name: "Arguments JSON" });
-    this.jsonError = root.getByRole("alert");
+    this.jsonError = root.getByRole("alert").and(root.locator("span"));
+    this.schemaErrors = root
+      .getByRole("alert", { name: "Schema errors" })
+      .getByRole("listitem");
+    this.formatButton = root.getByRole("button", {
+      name: "Format",
+      exact: true,
+    });
     this.items = root
       .getByRole("radiogroup", { name: "Item" })
       .getByRole("radio");
@@ -89,6 +105,9 @@ export class RunCard {
   }
 
   /** Opens the form, on a card whose form is closed. */
+  @ayme.action({
+    description: "Opens the form, on a card whose form is closed.",
+  })
   async openArguments() {
     if (
       (await this.argumentsToggle.count()) &&
@@ -98,6 +117,10 @@ export class RunCard {
   }
 
   /** Chooses the item a collection action runs on, by what it shows. */
+  @ayme.action({
+    description:
+      "Chooses the item a collection action runs on, by what it shows.",
+  })
   async pickItem(label: string) {
     await this.items.filter({ hasText: label }).click();
   }
@@ -110,6 +133,9 @@ export class RunCard {
   }
 
   /** Types the arguments into the JSON editor. */
+  @ayme.action({
+    description: "Types the arguments into the JSON editor, as JSON text.",
+  })
   async fillJson(text: string) {
     await this.openArguments();
     await this.jsonSwitch.click();

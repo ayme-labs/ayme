@@ -6,6 +6,7 @@ import type { Point } from "../domain/preferences";
 
 /**
  * The collapsed Inspector: the ayme logo, draggable anywhere in the viewport.
+ * It keeps the brand fill in both themes, so it reads the same on any page.
  * A click that ends a drag does not open the panel.
  */
 export function Fab({
@@ -31,7 +32,7 @@ export function Fab({
       aria-label="Open ayme"
       title="Drag to move. Click to open."
       aria-expanded={false}
-      className="pointer-events-auto absolute flex size-12 cursor-grab touch-none items-center justify-center rounded-full border border-primary bg-background p-2.5 shadow-lg active:cursor-grabbing"
+      className="pointer-events-auto absolute flex size-12 cursor-grab touch-none items-center justify-center rounded-full bg-primary p-2.5 shadow-lg inset-ring inset-ring-white/15 shadow-primary/40 transition-transform duration-(--duration-fast) ease-(--ease-out) active:scale-[0.97] active:cursor-grabbing"
       style={{ left: position.x, top: position.y }}
       onPointerDown={(event) => {
         dragged.current = false;
@@ -52,7 +53,7 @@ export function Fab({
         else onOpen();
       }}
     >
-      <AymeMark className="size-full" />
+      <AymeMark className="size-full fill-primary-foreground" />
     </button>
   );
 }

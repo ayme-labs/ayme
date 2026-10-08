@@ -1,4 +1,4 @@
-import { getContext, onDestroy, setContext } from "svelte";
+import { getContext, onDestroy, onMount, setContext } from "svelte";
 import { readable, type Readable } from "svelte/store";
 import {
   createAyme,
@@ -8,7 +8,10 @@ import {
   type AymeWebMcp,
   type AymeWebMcpPublicationStatus,
 } from "@ayme-dev/ayme";
-import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
+import {
+  markRenderSession,
+  type PageObjectConstructor,
+} from "@ayme-dev/ayme/internal";
 
 export type { AymeWebMcpPublicationStatus } from "@ayme-dev/ayme";
 /** The options of `createAyme`, passed to it unchanged. */
@@ -28,22 +31,21 @@ const runtimeKey = Symbol("Ayme runtime");
 
 function ownRuntime(options: UseAymeOptions | undefined): UseAymeResult {
   const ayme = createAyme(options);
+  // Without a window, Svelte renders on the server, where the session must
+  // never claim the process.
+  if (typeof window === "undefined") markRenderSession(ayme);
   // Start during initialisation, not in onMount: a descendant's onMount runs
-  // before the owner's and must already see a started runtime.
-  if (typeof window !== "undefined") {
-    try {
-      onDestroy(ayme.start());
-    } catch (error) {
-      if (
-        error instanceof RuntimeStateError &&
-        error.message === "The Ayme runtime already has an active owner."
-      )
-        throw new RuntimeStateError(
-          "useAyme(options) already has an active owner. Call it once, in the root +layout.svelte or App.svelte.",
-          { cause: error }
-        );
-      throw error;
-    }
+  // before the owner's and must already see a started runtime. A render
+  // session starts nothing.
+  try {
+    onDestroy(ayme.start());
+  } catch (error) {
+    if (error instanceof RuntimeStateError && error.code === "active-owner")
+      throw new RuntimeStateError(
+        "useAyme(options) already has an active owner. Call it once, in the root +layout.svelte or App.svelte.",
+        { cause: error }
+      );
+    throw error;
   }
   const { webMCP } = ayme;
   return {
@@ -94,4 +96,23 @@ export function usePageObject<T extends object>(
   const { ayme } = runtime;
   onDestroy(() => ayme.pom.unregister(model));
   return ayme.pom.register(model);
+}
+
+let instances = 0;
+
+/**
+ * Call during component initialisation, beneath a `useAyme` owner. After
+ * mount, adds this component's instance of the Peek `name` through
+ * `ayme.peek` and removes it when the component is destroyed. The agent reads
+ * the values `read` returns when it asks. `id` defaults to one per mounted
+ * component. On the server, adds nothing.
+ */
+export function peek(read: () => unknown, name: string, id?: string): void {
+  const runtime = getContext<UseAymeResult | undefined>(runtimeKey);
+  if (!runtime)
+    throw new Error(
+      "peek requires useAyme() in an ancestor component, such as the root +layout.svelte."
+    );
+  const { ayme } = runtime;
+  onMount(() => ayme.peek(read, name, id ?? `svelte-${(instances += 1)}`));
 }

@@ -27,6 +27,12 @@ The pages:
 - `/session.html`: the list app whose runtime session mounts the Inspector
   through its `inspector` option; the tests stop and restart it. With `?demo`,
   the option turns demo mode on.
+- `/dogfood.html`: the list app with the Inspector mounted for dogfooding: an
+  open shadow root, the Agent Connection on, and the Inspector's own Page
+  Object registered, so an agent drives the panel through Page Object Tools.
+  The Structure lens's tree and the search results are kept out of the page
+  state, since they render that state. `pnpm dev` serves it for a coding agent connected
+  through `ayme mcp`.
 
 ## Running
 

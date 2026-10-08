@@ -50,6 +50,8 @@ The provider takes the [`createAyme` options](../reference/ayme.md#createayme) a
 
 The props must stay fixed while the provider is mounted; remount the provider and its consumers to change them. One owner may be active: nested providers and concurrent owners are rejected. Unmounting the provider stops publication and observation. React's Strict Mode cleanup and setup replay keeps the Page and the instances.
 
+Wrap the application root, not a route component or a layout that unmounts on navigation. Unmounting the provider stops Ayme, which ends its publication and agent connection, so a tool call whose action navigates away from that component can lose its answer.
+
 ## Hooks
 
 Call the hooks in descendants of the provider:
@@ -82,7 +84,7 @@ export default function Controls() {
 
 ## Server rendering
 
-The provider and hooks render on the server without starting anything, and hydration constructs the real Page Objects. In the Next.js App Router, put `AymeProvider` and the components that call its hooks in a `"use client"` module, and render it from a server component:
+The provider and hooks render on the server without starting anything, and hydration constructs the real Page Objects. `usePeek` adds its instance in an effect, which never runs on the server. In the Next.js App Router, put `AymeProvider` and the components that call its hooks in a `"use client"` module, and render it from a server component:
 
 ```tsx
 // app/projects.tsx
@@ -139,8 +141,9 @@ The build needs the Turbopack loader from the [build plugin reference](../refere
 
 ## API
 
-| Export                 | Kind      | Does                                                                          |
-| ---------------------- | --------- | ----------------------------------------------------------------------------- |
-| `AymeProvider`         | Component | Starts and owns Ayme for its subtree. Props are the `createAyme` options.     |
-| `useAyme()`            | Hook      | Returns `{ ayme, webMCP }` from the provider above.                           |
-| `usePageObject(Model)` | Hook      | Returns the class's instance and registers it while the component is mounted. |
+| Export                       | Kind      | Does                                                                                                           |
+| ---------------------------- | --------- | -------------------------------------------------------------------------------------------------------------- |
+| `AymeProvider`               | Component | Starts and owns Ayme for its subtree. Props are the `createAyme` options.                                      |
+| `useAyme()`                  | Hook      | Returns `{ ayme, webMCP }` from the provider above.                                                            |
+| `usePageObject(Model)`       | Hook      | Returns the class's instance and registers it while the component is mounted.                                  |
+| `usePeek(values, name, id?)` | Hook      | Adds the component's instance of the Peek `name` while it is mounted, reading `values` from its latest render. |

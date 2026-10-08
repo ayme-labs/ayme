@@ -1,4 +1,7 @@
 {
   "extends": "@ayme-dev/typescript-config/react-library.json",
+  "compilerOptions": {
+    "experimentalDecorators": true
+  },
   "include": ["src"]
 }

@@ -35,6 +35,18 @@ export type Preferences = {
   bottomHeight: number;
   logo?: Point;
   modelPanes: ModelPanes;
+  /**
+   * The sizes of the panel's regions, set by dragging their dividers. Unset
+   * means the layout's default size.
+   */
+  regions: RegionSizes;
+};
+
+/** The navigator's width and Runs' size: its height, or its width as a column. */
+export type RegionSizes = {
+  navigatorWidth?: number;
+  runsHeight?: number;
+  runsWidth?: number;
 };
 
 export const defaultPreferences: Preferences = {
@@ -44,6 +56,7 @@ export const defaultPreferences: Preferences = {
   sideWidth: 640,
   bottomHeight: 360,
   modelPanes: { objectsOpen: true, modelsOpen: true, split: 0.58 },
+  regions: {},
 };
 
 const layouts: readonly Layout[] = ["float", "left", "right", "bottom"];
@@ -73,8 +86,20 @@ export function decodePreferences(stored: unknown): Preferences {
       : defaultPreferences.bottomHeight,
     logo: isPoint(stored.logo) ? pick(stored.logo, pointKeys) : undefined,
     modelPanes: readModelPanes(stored.modelPanes),
+    regions: readRegions(stored.regions),
   };
 }
+
+function readRegions(stored: unknown): RegionSizes {
+  if (!isRecord(stored)) return {};
+  return Object.fromEntries(
+    regionKeys.flatMap((key) =>
+      isSize(stored[key]) ? [[key, stored[key]]] : []
+    )
+  );
+}
+
+const regionKeys = ["navigatorWidth", "runsHeight", "runsWidth"] as const;
 
 function readModelPanes(stored: unknown): ModelPanes {
   const defaults = defaultPreferences.modelPanes;

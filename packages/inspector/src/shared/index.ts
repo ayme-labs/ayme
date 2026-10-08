@@ -1,4 +1,5 @@
 export type { ControlState } from "./domain/controlState";
+export { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "./domain/pageRendering";
 export { mapTargetsToRefs } from "./domain/targetsByRef";
 export {
   describeCall,
@@ -13,8 +14,10 @@ export {
   inspectorShadowRoot,
 } from "./infrastructure/shadowRootHook";
 export { type Look, usePageLook } from "./infrastructure/usePageLook";
+export { useTabState } from "./infrastructure/tabStorage";
 export { usePointerDrag } from "./presentation/pointerDrag";
 export { AymeMark } from "./view/AymeMark";
 export { Empty } from "./view/common";
+export { Divider, resizeGrip } from "./presentation/Divider";
 export { InspectorRoot } from "./view/InspectorRoot";
 export { WhatTheModelSees } from "./presentation/WhatTheModelSees";

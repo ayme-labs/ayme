@@ -22,13 +22,14 @@ import {
   listPublishedTools,
   listElementToolTargets,
   type PublishedToolGroup,
+  type PublishedToolInfo,
 } from "./publishedTools";
 import type { CustomTool } from "./elementTools";
 import { buildToolOptions, planArguments } from "./goalLoopQuestions";
 import { getPomDefinitionText } from "./pageContext";
 import {
   getInteractionHistory,
-  peekPageStateForDocument,
+  lookAtPageStateForDocument,
   type AriaRef,
 } from "./pageState";
 import { registerCompiledPom, type PageObjectConstructor } from "./registry";
@@ -87,7 +88,7 @@ class ListPage {
           // Return only once the page change has reached publication, so the
           // tool goes unavailable while its own call is still running.
           while (
-            listLiveTools().some(
+            listLiveTools({ peeks: false }).some(
               ({ name }) => name === "ListPage.items.archive"
             )
           )
@@ -132,6 +133,11 @@ registerCompiledPom(ListPage, {
     },
   ],
 });
+
+/** The live tools without those WebMCP never publishes: `screenshot`, whose result is an image. */
+function withoutWebMcpOnly(tools: readonly PublishedToolInfo[]) {
+  return tools.filter(({ name }) => name !== "screenshot");
+}
 
 /** Every tool the fixture session publishes, in the group the Inspector shows it under. */
 const EXPECTED_GROUPS: Record<string, PublishedToolGroup> = {
@@ -329,10 +335,15 @@ export function describePublishedTools(
       expect(listed()).toEqual(await publishedOverWebMcp(context));
     });
 
-    it("lists the live tools as published while publication is active", async () => {
+    it("lists the live tools as published while publication is active, and screenshot, which WebMCP never publishes", async () => {
       await startSession();
 
-      expect(runtime.tools.list()).toEqual(listPublishedTools());
+      expect(withoutWebMcpOnly(runtime.tools.list())).toEqual(
+        listPublishedTools()
+      );
+      expect(runtime.tools.list().map(({ name }) => name)).toContain(
+        "screenshot"
+      );
     });
 
     it("puts each published tool in its group", async () => {
@@ -514,7 +525,7 @@ export function describePublishedTools(
         <p data-highlightable>Draft</p>
       `;
       await startSession();
-      const capture = await peekPageStateForDocument(document);
+      const capture = await lookAtPageStateForDocument(document);
       const described = (refs: readonly AriaRef[] = []) =>
         refs.map((ref) => {
           const element = capture.elementsByRef.get(ref)!;
@@ -673,7 +684,7 @@ export function describePublishedTools(
           runtime.tools.list()
         );
 
-        expect(live).toEqual(published);
+        expect(withoutWebMcpOnly(live)).toEqual(published);
       });
 
       it("tells subscribers when a Page Object registers, and returns a new list only then", async () => {
@@ -707,10 +718,10 @@ export function describePublishedTools(
           listElementToolTargets()
         );
 
-        const peek = await peekPageStateForDocument(document);
+        const look = await lookAtPageStateForDocument(document);
         const described = (name: string) =>
           (targets.get(name) ?? []).map(
-            (ref) => peek.elementsByRef.get(ref)?.textContent
+            (ref) => look.elementsByRef.get(ref)?.textContent
           );
         expect(described("click")).toEqual(["Save"]);
         expect(described("highlight")).toEqual(["Draft"]);

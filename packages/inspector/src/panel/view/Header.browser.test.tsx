@@ -37,7 +37,6 @@ function renderHeader({
   unmounts.push(
     renderPart(
       <Header
-        pageName="ListPage"
         layout={layout}
         theme={theme}
         onThemeChange={onThemeChange}
@@ -48,11 +47,10 @@ function renderHeader({
   );
 }
 
-it("is titled ayme and names the page it inspects", async () => {
+it("is titled ayme", async () => {
   renderHeader();
 
   await expect.poll(() => header.title.textContent()).toBe("ayme");
-  await expect.poll(() => header.pageBadge.textContent()).toBe("ListPage");
 });
 
 it.each([

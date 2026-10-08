@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 /** One step of a run: a locator operation it performed. */
@@ -9,6 +10,7 @@ export type RunStep = {
 };
 
 /** One run in the Runs timeline. */
+@ayme
 export class RunEntry {
   readonly root: Locator;
   /** Expands or collapses the run. */
@@ -47,6 +49,9 @@ export class RunEntry {
   }
 
   /** Running, Succeeded or Failed. */
+  @ayme.action({
+    description: "Reads the run's status: Running, Succeeded or Failed.",
+  })
   async status() {
     return await this.root
       .getByRole("img", { name: /^(Running|Succeeded|Failed)$/ })
@@ -54,6 +59,9 @@ export class RunEntry {
   }
 
   /** Its result as JSON, shown first if it isn't. */
+  @ayme.action({
+    description: "Reads the run's result as JSON, shown first if it is not.",
+  })
   async resultText() {
     if ((await this.resultToggle.getAttribute("aria-expanded")) === "false")
       await this.resultToggle.click();
@@ -83,6 +91,7 @@ export class RunEntry {
 }
 
 /** Runs: the timeline of the runs made from the panel, newest first. */
+@ayme
 export class RunsView {
   readonly root: Locator;
   /** Collapses Runs to its header, or expands it. It reads "Runs · 2". */
@@ -128,14 +137,17 @@ export class RunsView {
     return new RunEntry(this.runs.nth(index));
   }
 
+  @ayme.action({ description: "Shows every run." })
   async showAll() {
     await this.allScope.click();
   }
 
+  @ayme.action({ description: "Shows the selection's runs." })
   async showSelection() {
     await this.selectionScope.click();
   }
 
+  @ayme.action({ description: "Clears the runs." })
   async clear() {
     await this.clearButton.click();
   }

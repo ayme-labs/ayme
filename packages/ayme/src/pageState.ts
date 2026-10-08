@@ -75,7 +75,7 @@ type CapturedPageState = PageStateCapture & {
  * A capture that recorded nothing: its tree, element map, rendered text and
  * the projected forest the text is rendered from.
  */
-export type PageStatePeek = CapturedPageState;
+export type PageStateLook = CapturedPageState;
 
 /**
  * Package-internal: a projected node's own entry in the page state text, as
@@ -98,7 +98,14 @@ export function pageStateNodeEntry(node: ProjectedStructuralNode): {
 
 const pageStateSessions = new WeakMap<Document, PageStateSession>();
 
-const INSPECTOR_HOST_SELECTOR = "[data-ayme-inspector-host]";
+/**
+ * Marks an Inspector host mounted for dogfooding: the panel is then part of
+ * the page agents see.
+ */
+export const INSPECTOR_DOGFOOD_ATTRIBUTE = "data-ayme-inspector-dogfood";
+
+/** Package-internal: the Inspector's host, unless it is mounted for dogfooding. */
+export const INSPECTOR_HOST_SELECTOR = `[data-ayme-inspector-host]:not([${INSPECTOR_DOGFOOD_ATTRIBUTE}])`;
 
 type PageStateIgnorePredicate = (element: Element) => boolean;
 
@@ -160,10 +167,10 @@ export async function getPageStateCaptureForDocument(
  * Capture `currentDocument`'s page state without recording it in the
  * interaction history, for a reader that is not a caller (the Inspector).
  */
-export async function peekPageStateForDocument(
+export async function lookAtPageStateForDocument(
   currentDocument: Document
-): Promise<PageStatePeek> {
-  return getPageStateSession(currentDocument).peek();
+): Promise<PageStateLook> {
+  return getPageStateSession(currentDocument).look();
 }
 
 /**
@@ -291,7 +298,7 @@ class PageStateSession {
    * elements; a fresh synthetic-ref factory keeps the `s_` refs a caller
    * sees next from shifting.
    */
-  async peek(): Promise<PageStatePeek> {
+  async look(): Promise<PageStateLook> {
     return captureCurrentPageState(
       this.currentDocument.body,
       new SyntheticAriaRefFactory()

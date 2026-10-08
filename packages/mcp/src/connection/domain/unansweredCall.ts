@@ -1,5 +1,5 @@
 /**
- * How a page left before it answered a call. `tools` is there once the tab
+ * How a page or App Process left before it answered a call. `tools` is there once the tab
  * reconnected: the names of the tools the new document offers.
  */
 export type PageExit =
@@ -9,6 +9,7 @@ export type PageExit =
       tools?: readonly string[];
     }
   | { type: "closed" }
+  | { type: "processLeft" }
   | { type: "replaced" }
   | { type: "stopped" };
 
@@ -30,6 +31,11 @@ function unansweredCall(exit: PageExit) {
       return {
         error: `The tab closed, or left the app, before it answered, ${UNKNOWN}.`,
         next: "No page is connected. Call ayme_connect and open the link to connect a tab.",
+      };
+    case "processLeft":
+      return {
+        error: `The App Process exited, or lost its connection to this server, before it answered, ${UNKNOWN}.`,
+        next: "Its tools return once it connects again. Call ayme_list_tools for the current tools.",
       };
     case "replaced":
       return {

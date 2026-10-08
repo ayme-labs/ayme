@@ -8,15 +8,11 @@ import {
   UNKNOWN_PAIRING_CLOSE_CODE,
   type PageWelcome,
 } from "../../contract";
-import {
-  BUSY_SERVER,
-  SERVER_IDENTITY,
-  admit,
-  busyRefuses,
-} from "../../pairing";
+import { admit, busyRefuses, isLocalProcess, probeAnswer } from "../../pairing";
 import type {
   AgentConnection,
   PageSession,
+  ProcessSession,
 } from "../application/agentConnection";
 import {
   pageChannelRouter,
@@ -24,19 +20,23 @@ import {
 } from "./pageChannelRouter";
 
 /**
- * The WebSocket server pages connect to. It accepts a connection on the
- * path `/<token>`, or without a token from a page on localhost (see
- * `admit`), and each accepted connection is a page that attaches to
- * `connection` once it says hello. A `/probe` connection is closed at once
- * and never attaches. Returns the HTTP server, not yet listening, and what
+ * The WebSocket server pages and App Processes connect to. It accepts a
+ * connection on the path `/<token>`, or without a token from a page on
+ * localhost or a local process (see `admit`), and each accepted connection
+ * attaches to `connection` once it says hello: as the page, or as an App
+ * Process beside it. A `/probe` connection is closed at once and never
+ * attaches. Returns the HTTP server, not yet listening, and what
  * closes it with every page connection, answering the calls still waiting.
  */
 export function createPageChannelServer({
   connection,
   token,
+  imageFolder,
 }: {
   connection: AgentConnection;
   token: string;
+  /** Where the server saves a tool's images, which a page's welcome names. */
+  imageFolder?: string;
 }): { server: Server; close(): void } {
   const server = createServer((_request, response) => {
     response.statusCode = 426;
@@ -47,7 +47,7 @@ export function createPageChannelServer({
   const handleConnection = getWSConnectionHandler({
     wss: sockets,
     router: pageChannelRouter,
-    createContext: ({ res }) => ({ page: pages.get(res)! }),
+    createContext: ({ res }) => ({ connection, page: pages.get(res)! }),
   });
 
   server.on("upgrade", (request, socket, head) => {
@@ -61,9 +61,10 @@ export function createPageChannelServer({
       return;
     }
     if (admission === "probe") {
-      // A busy server does not count for the scan; see `busyRefuses`.
-      const { code, reason } =
-        connection.busyWith === undefined ? SERVER_IDENTITY : BUSY_SERVER;
+      const { code, reason } = probeAnswer({
+        busyWith: connection.busyWith,
+        origin: request.headers.origin,
+      });
       sockets.handleUpgrade(request, socket, head, (ws) =>
         ws.close(code, reason)
       );
@@ -79,8 +80,16 @@ export function createPageChannelServer({
       return;
     }
     const tokenless = admission === "tokenless";
+    const fromProcess = isLocalProcess(request.headers.origin);
     sockets.handleUpgrade(request, socket, head, (ws) => {
-      pages.set(ws, acceptPage(connection, ws, tokenless ? token : undefined));
+      pages.set(
+        ws,
+        acceptPage(connection, ws, {
+          handOver: tokenless ? token : undefined,
+          fromProcess,
+          imageFolder,
+        })
+      );
       handleConnection(ws, request);
     });
   });
@@ -96,25 +105,37 @@ export function createPageChannelServer({
 }
 
 /**
- * An accepted page connection: the page attaches to `connection` when it
- * says hello and detaches when its socket closes. A page another tab
- * replaced, or one that connected without a token while the server is busy
- * with another tab, is closed with `DISCONNECTED_CLOSE_CODE`. A page that
- * connected without a token gets `handOver`, the server's token, in reply
- * to its hello.
+ * An accepted connection: the page or App Process attaches to `connection`
+ * when it says hello and detaches when its socket closes. A page another
+ * tab replaced, or one that connected without a token while the server is
+ * busy with another tab, is closed with `DISCONNECTED_CLOSE_CODE`. Only a
+ * connection `fromProcess`, which sent no `Origin`, may say hello as an App
+ * Process, and the server is never too busy for it. One that connected
+ * without a token gets `handOver`, the server's token, in reply to its
+ * hello, and every one gets `imageFolder`.
  */
 function acceptPage(
   connection: AgentConnection,
   ws: WebSocket,
-  handOver: string | undefined
+  {
+    handOver,
+    fromProcess,
+    imageFolder,
+  }: {
+    handOver: string | undefined;
+    fromProcess: boolean;
+    imageFolder: string | undefined;
+  }
 ): PageChannelContext["page"] {
-  let page: PageSession | undefined;
-  let resolveSession!: (page: PageSession) => void;
+  let page: PageSession | ProcessSession | undefined;
+  let resolveSession!: (page: PageSession | ProcessSession) => void;
   let rejectSession!: (error: Error) => void;
-  const session = new Promise<PageSession>((resolve, reject) => {
-    resolveSession = resolve;
-    rejectSession = reject;
-  });
+  const session = new Promise<PageSession | ProcessSession>(
+    (resolve, reject) => {
+      resolveSession = resolve;
+      rejectSession = reject;
+    }
+  );
   // Procedures waiting for a page that never said hello end with the socket.
   session.catch(() => {});
   const disconnect = () =>
@@ -130,6 +151,19 @@ function acceptPage(
     session,
     hello(hello): PageWelcome {
       if (page) return {};
+      const welcome: PageWelcome = {
+        ...(handOver === undefined ? {} : { token: handOver }),
+        ...(imageFolder === undefined ? {} : { imageFolder }),
+      };
+      if ("process" in hello) {
+        if (!fromProcess) {
+          ws.close(1008, "Only a local process pairs as an App Process.");
+          return {};
+        }
+        page = connection.attachProcess(hello);
+        resolveSession(page);
+        return welcome;
+      }
       // Decided at hello, which names the tab, so the tab the server works
       // with may still connect without a token, as before its token
       // reached it.
@@ -146,7 +180,7 @@ function acceptPage(
       page = connection.attach(hello, disconnect);
       if (!page) return {};
       resolveSession(page);
-      return handOver === undefined ? {} : { token: handOver };
+      return welcome;
     },
   };
 }

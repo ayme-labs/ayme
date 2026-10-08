@@ -1,6 +1,5 @@
-import { fileURLToPath } from "node:url";
-
 import { expect } from "@playwright/test";
+import { server } from "@ayme-dev/example-certification/config";
 import {
   counterTests,
   devRebuildTests,
@@ -15,6 +14,7 @@ import { CounterPage } from "../src/lib/pom/CounterPage";
 serverRenderTests();
 counterTests({
   CounterPage,
+  inspector: server === "dev",
   navigation: {
     away: "Other",
     awayText: "Other page without Page Objects.",
@@ -35,7 +35,5 @@ test("starts the runtime before the counter mounts", async ({
 
 // Last: it edits a source file, and the dev server rebuilds after it.
 devRebuildTests({
-  counterModePath: fileURLToPath(
-    new URL("../src/lib/pom/CounterMode.ts", import.meta.url)
-  ),
+  counterModePath: new URL("../src/lib/pom/CounterMode.ts", import.meta.url),
 });

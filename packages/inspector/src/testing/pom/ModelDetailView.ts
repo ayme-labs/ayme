@@ -1,3 +1,4 @@
+import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
 export type ModelDetailSection =
@@ -9,6 +10,7 @@ export type ModelDetailSection =
  * actions (run through the run slot) and the members; the page shows its
  * page-wide tools.
  */
+@ayme
 export class ModelDetailView {
   readonly root: Locator;
   readonly title: Locator;

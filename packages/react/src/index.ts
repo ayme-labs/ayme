@@ -3,6 +3,8 @@ import {
   createElement,
   useContext,
   useEffect,
+  useId,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactElement,
@@ -15,6 +17,7 @@ import {
   type AymeWebMcp,
 } from "@ayme-dev/ayme";
 import {
+  markRenderSession,
   sameRuntimeOptions,
   type PageObjectConstructor,
 } from "@ayme-dev/ayme/internal";
@@ -38,7 +41,11 @@ export function AymeProvider({
           ? { ...options.inspector }
           : options.inspector,
     };
-    return { options: snapshot, runtime: createAyme(snapshot) };
+    const runtime = createAyme(snapshot);
+    // Without a window, React renders on the server, where the session must
+    // never claim the process.
+    if (typeof window === "undefined") markRenderSession(runtime);
+    return { options: snapshot, runtime };
   });
   if (ancestor)
     throw new Error(
@@ -98,4 +105,24 @@ export function usePageObject<T extends object>(
     return () => runtime.pom.unregister(model);
   }, [runtime, model]);
   return runtime.pom.get(model);
+}
+
+/**
+ * Adds this component's instance of the Peek `name` while it is mounted,
+ * through `ayme.peek`. The agent reads `values` from the latest committed
+ * render. `id` defaults to one per mounted component.
+ */
+export function usePeek(values: unknown, name: string, id?: string): void {
+  const runtime = useRuntime();
+  const ownId = useId();
+  const instanceId = id ?? ownId;
+  const latest = useRef(values);
+  // Before the registration effect, so the first read sees this render too.
+  useEffect(() => {
+    latest.current = values;
+  });
+  useEffect(
+    () => runtime.peek(() => latest.current, name, instanceId),
+    [runtime, name, instanceId]
+  );
 }

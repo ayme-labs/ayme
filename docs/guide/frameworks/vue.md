@@ -54,6 +54,8 @@ Both take the [`createAyme` options](../reference/ayme.md#createayme); on the pr
 
 One owner runs Ayme for the document: a provider or a standalone `useAyme(options?)`. A second active owner is rejected, including a provider nested in another. Only the owner disposes the session.
 
+Put the owner at the application root, not in a route component or a layout that unmounts on navigation. Unmounting the owner stops Ayme, which ends its publication and agent connection, so a tool call whose action navigates away from that component can lose its answer.
+
 | Call                                      | Behavior                                                              |
 | ----------------------------------------- | --------------------------------------------------------------------- |
 | `useAyme()` beneath an owner              | Returns its `{ ayme, webMCP }`; starts and disposes nothing.          |
@@ -83,7 +85,7 @@ await pom.addItem("Write release notes");
 
 ## Server rendering
 
-The provider and composables render on the server without starting anything, and hydration constructs the real Page Objects. With Nuxt, add the Vite plugin and decorators in `nuxt.config.ts`:
+The provider and composables render on the server without starting anything, and hydration constructs the real Page Objects. `usePeek` adds its instance in `onMounted`, which never runs on the server. With Nuxt, add the Vite plugin and decorators in `nuxt.config.ts`:
 
 ```ts
 // nuxt.config.ts
@@ -125,18 +127,21 @@ The [Nuxt example](../../../apps/example-nuxt/README.md) runs this setup, and [S
 
 ## Troubleshooting
 
-| Error                                                                                                                       | Cause                                                           |
-| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `AymeProvider cannot be nested beneath another Ayme runtime owner.`                                                         | A second owner beneath the first. Start Ayme once, at the root. |
-| `The provider options must stay fixed while mounted. Remount the provider to change them.`                                  | A provider prop changed while mounted.                          |
-| `Configure pageFactory, ignore, customTools, goalLoop and webMCP on the ancestor AymeProvider or standalone useAyme owner.` | `useAyme(options)` beneath an owner.                            |
-| `useAyme must be called within an active Vue effect scope`, and the same for `usePageObject`                                | Called outside `setup` or an effect scope.                      |
-| `usePageObject requires useAyme() or an AymeProvider in this scope or an ancestor component.`                               | No owner above.                                                 |
+| Error                                                                                         | Cause                                                           |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `AymeProvider cannot be nested beneath another Ayme runtime owner.`                           | A second owner beneath the first. Start Ayme once, at the root. |
+| `The provider options must stay fixed while mounted. Remount the provider to change them.`    | A provider prop changed while mounted.                          |
+| `Configure Ayme's options on the ancestor AymeProvider or standalone useAyme owner.`          | `useAyme(options)` beneath an owner.                            |
+| `useAyme must be called within an active Vue effect scope`, and the same for `usePageObject`  | Called outside `setup` or an effect scope.                      |
+| `usePageObject requires useAyme() or an AymeProvider in this scope or an ancestor component.` | No owner above.                                                 |
+| `usePeek must be called in a component's setup`                                               | `usePeek` called outside a component's `setup`.                 |
+| `usePeek requires useAyme() or an AymeProvider in this component or an ancestor.`             | No owner above.                                                 |
 
 ## API
 
-| Export                 | Kind       | Does                                                                      |
-| ---------------------- | ---------- | ------------------------------------------------------------------------- |
-| `AymeProvider`         | Component  | Starts and owns Ayme for its subtree. Props are the `createAyme` options. |
-| `useAyme(options?)`    | Composable | Without an owner above, starts and owns Ayme. Returns `{ ayme, webMCP }`. |
-| `usePageObject(Model)` | Composable | Registers the class for the current scope and returns its instance.       |
+| Export                       | Kind       | Does                                                                                                                |
+| ---------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------- |
+| `AymeProvider`               | Component  | Starts and owns Ayme for its subtree. Props are the `createAyme` options.                                           |
+| `useAyme(options?)`          | Composable | Without an owner above, starts and owns Ayme. Returns `{ ayme, webMCP }`.                                           |
+| `usePageObject(Model)`       | Composable | Registers the class for the current scope and returns its instance.                                                 |
+| `usePeek(values, name, id?)` | Composable | Adds the component's instance of the Peek `name` while it is mounted, reading the current values of `values`' refs. |

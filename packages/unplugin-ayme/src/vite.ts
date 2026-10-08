@@ -1,6 +1,6 @@
 import type { Plugin } from "vite";
 
-import { unplugin } from "./index";
+import { unplugin } from "./unplugin";
 import type { AymeOptions } from "./options";
 
 export type { AymeOptions, AymePlaywrightOptions } from "./options";

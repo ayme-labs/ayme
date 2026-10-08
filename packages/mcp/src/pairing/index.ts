@@ -1,5 +1,4 @@
-export { BUSY_SERVER, SERVER_IDENTITY } from "./domain/admission";
-export { busyRefuses } from "./domain/busyServer";
+export { busyRefuses, probeAnswer } from "./domain/busyServer";
 export {
   SERVER_HOST,
   SERVER_PORTS,
@@ -14,13 +13,14 @@ export {
   parseStoredPairing,
   serializePairing,
 } from "./domain/pairingStorage";
-export { admit } from "./domain/admission";
+export { admit, isLocalProcess } from "./domain/admission";
 export { autoPairing } from "./infrastructure/autoPairing";
 export {
   listenOnFirstFreePort,
   listenOnPort,
 } from "./infrastructure/firstFreePort";
 export { pairingLinks } from "./infrastructure/pairingLinks";
+export { findServers } from "./infrastructure/serverScan";
 export {
   forgetStoredPairing,
   storePairing,

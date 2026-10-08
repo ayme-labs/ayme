@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { usePageObject } from "@ayme-dev/vue";
+import { usePageObject, usePeek } from "@ayme-dev/vue";
 import { CounterPage } from "../../playwright/pom/CounterPage";
+import { SubCounterPage } from "../../playwright/pom/SubCounterPage";
 
 const count = ref(0);
 const pom = usePageObject(CounterPage);
+usePageObject(SubCounterPage);
+usePeek({ count }, "counter");
 </script>
 
 <template>

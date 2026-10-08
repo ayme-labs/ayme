@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PageStatePeek } from "@ayme-dev/ayme/internal";
+import type { PageStateLook } from "@ayme-dev/ayme/internal";
 import {
   listRegisteredPomTargets,
-  peekPageStateForDocument,
+  lookAtPageStateForDocument,
   listRegisteredPoms,
   type RegisteredPom,
 } from "@ayme-dev/ayme/internal";
@@ -16,21 +16,25 @@ import { Inspector } from "../testing";
 // Component tests of the page's two highlights through the whole panel: the
 // dashed one follows the pointer in the panel, the solid one follows the
 // selection. The runtime is replaced by a fixture host page whose elements
-// carry their refs in the peeked page state, so the evidence covers the
+// carry their refs in the page state it looks at, so the evidence covers the
 // panel and its runtime wiring only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { asStartedAyme } = await import("../tools/test-utils/startedAyme");
-  const { pageStateNodeEntry } =
+  const { appProcessToolsOf, asStartedAyme } =
+    await import("../tools/test-utils/startedAyme");
+  const { pageStateNodeEntry, toolInputViolations } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
+    toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
-    peekPageStateForDocument: vi.fn(),
+    lookAtPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
     listRegisteredPomTargets: vi.fn(),
     listRegisteredPomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
+    getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     listRegisteredPoms: vi.fn(),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
@@ -95,7 +99,7 @@ beforeEach(() => {
       element: target,
     }))
   );
-  vi.mocked(peekPageStateForDocument).mockImplementation(
+  vi.mocked(lookAtPageStateForDocument).mockImplementation(
     async () =>
       ({
         projected: structure,
@@ -105,7 +109,7 @@ beforeEach(() => {
             target,
           ])
         ),
-      }) as unknown as PageStatePeek
+      }) as unknown as PageStateLook
   );
 
   const inspectorHost = document.createElement("div");
@@ -121,6 +125,7 @@ afterEach(() => {
   for (const unmount of unmounts.splice(0).reverse()) unmount();
   vi.clearAllMocks();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 /** Which highlight each host element shows: "hover", "selection", both or none. */

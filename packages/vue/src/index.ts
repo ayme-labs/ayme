@@ -3,10 +3,13 @@ import {
   getCurrentInstance,
   getCurrentScope,
   inject,
+  onMounted,
   onScopeDispose,
+  onUnmounted,
   provide,
   shallowReactive,
   shallowReadonly,
+  unref,
   watch,
   type DefineComponent,
   type InjectionKey,
@@ -23,6 +26,8 @@ import {
   type GoalLoopDecisionFunction,
 } from "@ayme-dev/ayme";
 import {
+  getStartedAyme,
+  markRenderSession,
   sameRuntimeOptions,
   type PageObjectConstructor,
 } from "@ayme-dev/ayme/internal";
@@ -37,15 +42,9 @@ function inheritedRuntime() {
 }
 
 function ownRuntime(options: UseAymeOptions = {}) {
-  const runtime = createAyme(options);
-  if (typeof window !== "undefined") {
-    const stop = runtime.start();
-    started = runtime;
-    onScopeDispose(() => {
-      stop();
-      if (started === runtime) started = undefined;
-    });
-  }
+  const runtime = renderable(createAyme(options));
+  // A render session starts nothing.
+  onScopeDispose(runtime.start());
   if (getCurrentInstance()) provide(runtimeKey, runtime);
   return runtime;
 }
@@ -94,7 +93,10 @@ const providerProps = {
     type: [Boolean, Object] as PropType<AymeOptions["inspector"]>,
     default: undefined,
   },
-  agentConnection: { type: Boolean, default: undefined },
+  agentConnection: {
+    type: [Boolean, Object] as PropType<AymeOptions["agentConnection"]>,
+    default: undefined,
+  },
   navigate: {
     type: Function as PropType<NonNullable<UseAymeOptions["navigate"]>>,
     required: false,
@@ -155,12 +157,13 @@ export function usePageObject<T extends object>(
       "usePageObject must be called within an active Vue effect scope"
     );
   // An owner's own scope does not inject what it provides, so the started
-  // owner stands in. On the server any session's Page Object is inert.
+  // session stands in. Nothing starts on the server, where a consumer without
+  // an injected owner gets an inert Page Object from a shared inert session.
   const runtime =
     inheritedRuntime() ??
-    started ??
+    getStartedAyme() ??
     (typeof window === "undefined"
-      ? (inertSession ??= createAyme())
+      ? (inertSession ??= renderable(createAyme()))
       : undefined);
   if (!runtime)
     throw new Error(
@@ -171,6 +174,48 @@ export function usePageObject<T extends object>(
   return instance;
 }
 
-/** The started owner's session in the browser. */
-let started: Ayme | undefined;
+/**
+ * Adds this component's instance of the Peek `name` while it is mounted,
+ * through `ayme.peek`. `values` may be a ref, a reactive object or an object
+ * of refs; the agent reads their current values. `id` defaults to one per
+ * component instance.
+ */
+export function usePeek(values: unknown, name: string, id?: string): void {
+  const component = getCurrentInstance();
+  if (!component)
+    throw new Error("usePeek must be called in a component's setup");
+  // The server never mounts, so it needs no session.
+  const runtime = inheritedRuntime() ?? getStartedAyme();
+  if (!runtime && typeof window !== "undefined")
+    throw new Error(
+      "usePeek requires useAyme() or an AymeProvider in this component or an ancestor."
+    );
+  let remove: (() => void) | undefined;
+  onMounted(() => {
+    remove = runtime?.peek(
+      () => read(values),
+      name,
+      id ?? String(component.uid)
+    );
+  });
+  onUnmounted(() => remove?.());
+}
+
+function read(values: unknown) {
+  const value = unref(values);
+  if (value === null || typeof value !== "object") return value;
+  const prototype: unknown = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, unref(entry)])
+  );
+}
+
 let inertSession: Ayme | undefined;
+
+// Without a window, Vue renders on the server, where a session must never
+// claim the process.
+function renderable(runtime: Ayme) {
+  if (typeof window === "undefined") markRenderSession(runtime);
+  return runtime;
+}

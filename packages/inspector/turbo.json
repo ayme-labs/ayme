@@ -5,8 +5,7 @@
       "dependsOn": ["build", "^build", "^typecheck"]
     },
     "test": {
-      "outputs": ["coverage/**"],
-      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
+      "outputs": ["coverage/**"]
     }
   }
 }
