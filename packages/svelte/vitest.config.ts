@@ -2,7 +2,8 @@ import { compile, VERSION } from "svelte/compiler";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig, type Plugin } from "vitest/config";
 
-const legacyCompiler = Number(VERSION.split(".")[0]) < 5;
+const major = Number(VERSION.split(".")[0]);
+const legacyCompiler = major < 5;
 
 /**
  * Compiles the test components with the installed Svelte, so the same tests
@@ -31,7 +32,11 @@ const clientDependencies = [
   "svelte",
   "svelte/store",
   ...(legacyCompiler
-    ? ["svelte/internal"]
+    ? [
+        "svelte/internal",
+        // Svelte 4's compiled components import it; Svelte 3 has none.
+        ...(major === 4 ? ["svelte/internal/disclose-version"] : []),
+      ]
     : [
         "svelte/legacy",
         "svelte/internal/client",
@@ -60,7 +65,7 @@ export default defineConfig({
       {
         plugins: [svelteTestComponents("server")],
         test: {
-          name: "server",
+          name: "node",
           environment: "node",
           include: ["src/**/*.ssr.test.ts"],
         },
