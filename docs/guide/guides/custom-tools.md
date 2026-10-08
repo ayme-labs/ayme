@@ -38,7 +38,7 @@ createAyme({ customTools: [highlight] });
 - `description` is the only instruction the model gets about the operation.
 - The call returns the same action result as every other action: a JSON value returned by `execute` appears under `result`, next to `page_changed`, `settled` and, when the page changed, `changes_before` and `changes`.
 - `filter` limits only which elements the Goal Loop may offer for this tool. It is not enforced when an agent calls the tool with a ref. Without a `filter`, every node that has a ref may be offered.
-- A Custom Tool whose name another tool already has fails publication, with the status `failed`, and `ayme.tools.run` throws until the clash is fixed.
+- A Custom Tool whose name another tool already has leaves the session with no tools: `ayme.tools.list()` is empty, so nothing is published, and `ayme.tools.run` throws until the clash is fixed.
 - Custom Tools live as long as the session: they are removed when it stops.
 
 ## Use other tools from a Custom Tool
