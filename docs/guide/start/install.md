@@ -12,6 +12,7 @@ Which packages Ayme publishes, what each one owns, and which versions of each fr
 | `@ayme-dev/svelte`        | Starting Ayme in a Svelte app and Page Objects in components. See [Svelte](../frameworks/svelte.md).                                                                   | Svelte, SvelteKit             |
 | `@ayme-dev/angular`       | `ng add`, starting Ayme in an Angular app and Page Objects in components. See [Angular](../frameworks/angular.md).                                                     | Angular                       |
 | `@ayme-dev/unplugin-ayme` | Compiling Page Object Models and their tool schemas into the browser build, for Vite, the Angular CLI and Turbopack. See [Build plugin](../reference/build-plugin.md). | Always, as a dev dependency   |
+| `@ayme-dev/webmcp`        | Publishing the tools through WebMCP, for agents that run in the browser. See [Publish tools](../guides/publish-tools.md).                                              | With the `webMCP` option      |
 | `@ayme-dev/inspector`     | The in-page panel. See [Inspector](../guides/inspector.md).                                                                                                            | Optional, as a dev dependency |
 | `@ayme-dev/mcp`           | Ayme's MCP server for coding agents, and the page client it pairs with. See [Connect an agent](../guides/connect-an-agent.md).                                         | Optional, as a dev dependency |
 

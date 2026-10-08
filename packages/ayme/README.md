@@ -5,7 +5,7 @@ Ayme turns the Page Object Models from your Playwright tests into tools that cod
 ## Install
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/vue # or react, svelte, angular
+npm install @ayme-dev/ayme @ayme-dev/webmcp @ayme-dev/vue # or react, svelte, angular
 npm install -D @ayme-dev/unplugin-ayme @playwright/test
 ```
 
@@ -45,6 +45,8 @@ const stop = ayme.start();
 ayme.pom.register(ProjectsPage);
 await ayme.tools.run("ProjectsPage.createProject", { name: "Launch plan" });
 ```
+
+`webMCP` publishes the tools through WebMCP, for agents that run in the browser, with `@ayme-dev/webmcp`.
 
 Every call of a tool is a Run, started by a Caller. `ayme.tools.run` runs as the app by default; pass `by` to name another Caller, such as your in-app assistant:
 

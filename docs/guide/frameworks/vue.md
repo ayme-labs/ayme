@@ -4,10 +4,10 @@ Everything about Ayme in a Vue app: setup, the provider and the standalone compo
 
 ## Setup
 
-Install Ayme, the Vue package and the build plugin, and the Inspector if you want it:
+Install Ayme, the Vue package, WebMCP publication and the build plugin, and the Inspector if you want it:
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/vue
+npm install @ayme-dev/ayme @ayme-dev/vue @ayme-dev/webmcp
 npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector
 ```
 
