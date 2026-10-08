@@ -26,6 +26,14 @@ type PublishedTool = {
   execute(input: unknown): Promise<unknown>;
 };
 
+type Schema = {
+  type?: string;
+  description?: string;
+  additionalProperties?: unknown;
+  items?: Schema;
+  properties?: Record<string, Schema>;
+};
+
 const BROWSER_TOOLS = [
   "click",
   "hover",
@@ -128,14 +136,6 @@ describe("Browser Tools in Chromium", () => {
       );
     expect(shapeOf(tools.get("fill")!.inputSchema)).toEqual(FILL_SCHEMA);
   });
-
-  type Schema = {
-    type?: string;
-    description?: string;
-    additionalProperties?: unknown;
-    items?: Schema;
-    properties?: Record<string, Schema>;
-  };
 
   it("describes every field of the Browser Tools' input schemas to the agent", () => {
     const undescribed = (schema: Schema, path: string): string[] =>

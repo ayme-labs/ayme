@@ -179,8 +179,8 @@ async function groupFor(
 /** Package-internal: the generate_locator Browser Tool, published only. */
 export const generateLocatorTool: PublishedElementTool = {
   name: "generate_locator",
-  // Stryker disable StringLiteral: tool description wording, for the agent to
-  // read; no test should pin the prose.
+  // Wording for the agent to read; no test should pin the prose.
+  // Stryker disable StringLiteral: tool description wording
   description: [
     "Generate Playwright locators for elements, to write into Page Object Model code; does not act on the page.",
     "Structural Refs are capture-scoped: use them in tool calls, never in code. The locators are what belongs in a page object.",
