@@ -49,6 +49,8 @@ function loadWorkspaceScopes(): string[] {
   return [...scopes].sort((left, right) => left.localeCompare(right));
 }
 
+// `docs` is only for user-facing docs; internal docs and tooling use `devex`.
+// AGENTS.md ("Commit types") says which files fall under each.
 const allowedTypes = [
   "build",
   "chore",

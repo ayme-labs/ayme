@@ -44,6 +44,13 @@ Before creating or superseding an ADR, present the complete proposed ADR to the 
 
 A single approval covers the complete supersession operation. Mark the old ADR as `superseded by ADR-NNNN`, keep the replacement ADR accepted and explicit about which ADR it supersedes, and keep the old ADR rationale intact.
 
+## Commit types
+
+Commit messages follow Conventional Commits, checked by `commitlint.config.ts`. Two types are easy to mix up:
+
+- `docs:` is only for user-facing docs: the consumer guide in `docs/guide/` (the published site), the root README, the package READMEs that serve as npm entry points, and wording-only changes to the consumer skills in `skills/` (a change to a skill's behaviour is `feat(skills):` or `fix(skills):`).
+- `devex:` is for internal material and tooling: `AGENTS.md` files, READMEs under `apps/`, ADRs, `docs/agents/`, `docs/testing.md`, `docs/releasing.md` and other internal docs, repo-local skills in `.agents/skills/`, and tooling such as Devbox, Lefthook hooks, `commitlint.config.ts` and `scripts/`.
+
 ## Updating the Playwright Lite fork
 
 `@ayme-dev/playwright-lite` is a Git dependency on `ayme-labs/playwright-lite`, pinned to the commit SHA of an `ayme-<date>` tag (ADR-0021). Pin only such tags; never a branch or `main` commit.
