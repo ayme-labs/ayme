@@ -108,6 +108,47 @@ describe("toolInputViolations", () => {
     expect(toolInputViolations(schema, { count: 2 })).toEqual([]);
   });
 
+  it("checks an array and each of its items", () => {
+    const schema: JsonSchema = {
+      type: "object",
+      properties: {
+        tags: { type: "array", items: { type: "string", enum: ["a", "b"] } },
+      },
+    };
+    expect(toolInputViolations(schema, { tags: ["a", "b"] })).toEqual([]);
+    expect(toolInputViolations(schema, { tags: "a" })).toEqual([
+      { path: "tags", message: "must be an array" },
+    ]);
+    expect(toolInputViolations(schema, { tags: ["a", "c"] })).toEqual([
+      { path: "tags[1]", message: "must be one of a, b" },
+    ]);
+  });
+
+  it("takes an inherited name as missing, not given", () => {
+    const schema: JsonSchema = {
+      type: "object",
+      properties: Object.fromEntries([
+        ["constructor", { type: "string" as const }],
+      ]),
+      required: ["constructor"],
+    };
+    expect(toolInputViolations(schema, {})).toEqual([
+      { path: "constructor", message: "is required" },
+    ]);
+  });
+
+  it("rejects a number JSON overflows to Infinity", () => {
+    expect(
+      toolInputViolations(goalSchema, {
+        goal: "x",
+        maxSteps: 1,
+        values: { amount: JSON.parse("1e400") as number },
+      })
+    ).toEqual([
+      { path: "values.amount", message: "must be a string or a number" },
+    ]);
+  });
+
   it("rejects input that isn't an object", () => {
     expect(toolInputViolations(goalSchema, [])).toEqual([
       { path: "", message: "must be an object" },

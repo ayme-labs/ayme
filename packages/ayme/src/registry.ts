@@ -8,11 +8,7 @@ import type {
   RegisteredPomTool,
   ToolManifest,
 } from "./contracts";
-import {
-  schemaViolations,
-  throwFirstViolation,
-  toolInputViolations,
-} from "./schemaValidation";
+import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
 import { createPage } from "./browserPage";
 import {
   isPlaywrightLiteLocator,
@@ -1052,16 +1048,10 @@ function validatedArguments(tool: ToolManifest, args: unknown) {
     toolInputViolations(inputSchemaFor(tool.parameters), args)
   );
   const input = args as Record<string, unknown>;
-  return tool.parameters.map((parameter) => input[parameter.name]);
-}
-
-/** Package-internal: check one input value against its schema, or throw a ToolInputError naming it. */
-export function validateValue(
-  name: string,
-  schema: JsonSchema,
-  value: unknown
-) {
-  throwFirstViolation(schemaViolations(schema, value, name));
+  // An inherited name, such as constructor, is no argument.
+  return tool.parameters.map((parameter) =>
+    Object.hasOwn(input, parameter.name) ? input[parameter.name] : undefined
+  );
 }
 
 function inputSchemaFor(

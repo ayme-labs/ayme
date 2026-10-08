@@ -104,7 +104,7 @@ function objectViolations(
       violations.push(...schemaViolations(extra, value, child(name)));
   }
   for (const name of schema.required ?? [])
-    if (object[name] === undefined)
+    if (!Object.hasOwn(object, name) || object[name] === undefined)
       violations.push({ path: child(name), message: "is required" });
   const count = Object.values(object).filter(
     (value) => value !== undefined
@@ -144,6 +144,9 @@ function hasType(value: unknown, type: NonNullable<JsonSchema["type"]>) {
       return isRecord(value);
     case "integer":
       return typeof value === "number" && Number.isInteger(value);
+    case "number":
+      // JSON.parse reads 1e400 as Infinity, which no tool takes.
+      return typeof value === "number" && Number.isFinite(value);
     default:
       return typeof value === type;
   }
