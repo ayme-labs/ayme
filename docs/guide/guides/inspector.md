@@ -22,6 +22,7 @@ useAyme({ webMCP: { enabled: true }, inspector: import.meta.env.DEV });
 - If the package cannot be loaded, the error names `@ayme-dev/inspector`.
 - The Inspector reaches Page Objects constructed before it loaded.
 - It works whether WebMCP publication is on or off.
+- It turns the page's [Peeks](../reference/ayme.md#aymepeek) on, as `agentConnection` does.
 
 ## Demo mode
 
@@ -39,7 +40,7 @@ The navigator has three lenses:
 
 - **Model**: the Page Objects on the page and the Page Object Models it knows, with their members' states.
 - **Structure**: the Structural Page State an agent receives, each node tagged with the member it maps to.
-- **Tools**: every tool the panel can run now.
+- **Tools**: every tool the panel can run now, grouped as Page object, Custom, Browser, Peek and Agent tools. Peek tools lists the page's [Peeks](../reference/ayme.md#aymepeek) under Browser and, while the tab is paired with a coding agent's Ayme MCP server, those of the App Processes paired beside it under Node, which the panel runs through that server.
 
 Selecting anything opens its detail. A tool's page and a structure node's detail also show what the model sees of them: the definitions, page state and schemas an agent gets.
 

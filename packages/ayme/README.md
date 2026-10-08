@@ -80,11 +80,11 @@ const removeCart = ayme.peek(() => cartStore.getState(), "cart");
 await ayme.tools.run("peek.cart", {}); // { name: "cart", instances: [{ values: … }] }
 ```
 
-`read` may be async. Pass an id as the third argument for one instance per id, such as one per mounted component; without one, a later call replaces the earlier one. The returned function removes the instance. Peeks do nothing unless the session has `agentConnection` or `inspector` on, and WebMCP never publishes them. The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek) has the details.
+`read` may be async. Pass an id as the third argument for one instance per id, such as one per mounted component; without one, a later call replaces the earlier one. The returned function removes the instance. Peeks do nothing unless the session has `agentConnection` on, or `inspector` in the browser, and WebMCP never publishes them. The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek) has the details.
 
 ## Peek at server state
 
-Your app's own Node processes, such as its dev server or an Express backend, can offer Peeks too, as `peek.node.<name>`. Install `@ayme-dev/mcp` beside `@ayme-dev/ayme` there, and start Ayme once, in the server's entry point: the session becomes the process's App Process, and a process has one. An Express backend, in `server/ayme.ts`:
+Your app's own Node processes, such as its dev server or an Express backend, can offer Peeks too, as `peek.node.<name>`. Install `@ayme-dev/mcp` beside `@ayme-dev/ayme` there, and start Ayme once, in the server's entry point: the session becomes the process's App Process, and a process has one. The sessions your framework package creates to render on the server never claim it. An Express backend, in `server/ayme.ts`:
 
 ```ts
 import { createAyme } from "@ayme-dev/ayme";
@@ -107,7 +107,7 @@ The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference
 - [Publish tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/publish-tools.md): starting Ayme and turning WebMCP publication on.
 - [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md): the Structural Page State, Structural Refs and interaction history.
 - [Custom Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/custom-tools.md): operations of your own on one element.
-- [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md): try your tools from a coding agent through the WebMCP local relay.
+- [Connect an agent](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/connect-an-agent.md): let a coding agent call your tools through Ayme's MCP server.
 - [Goals with Jev](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/goals-with-jev.md): let a decision model drive the page toward a goal, through your Decision Endpoint.
 - [Browser Tools](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/browser-tools.md), [errors](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/errors.md) and the [Decision Endpoint contract](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/decision-endpoint.md)
 - [`@ayme-dev/ayme` reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md)

@@ -1,6 +1,7 @@
 import type { JsonPrimitive, JsonSchema, JsonValue } from "@ayme-dev/ayme";
 
 import type { ToolArguments } from "../../runs";
+import { jsonSyntaxError } from "./jsonSyntax";
 import { mapValueTypes, type ValueType } from "./valueRows";
 
 /** A JSON Schema as the form reads it: the runtime's, with a string's format. */
@@ -192,7 +193,13 @@ export function argumentsToJson(args: ToolArguments) {
 }
 
 export type ParsedArguments =
-  { ok: true; arguments: ToolArguments } | { ok: false; error: string };
+  | { ok: true; arguments: ToolArguments }
+  | {
+      ok: false;
+      error: string;
+      /** Where a syntax error is, 1-based. */
+      position?: { line: number; column: number };
+    };
 
 /** The arguments typed in the JSON editor, or why they can't be used. */
 export function argumentsFromJson(text: string): ParsedArguments {
@@ -200,9 +207,17 @@ export function argumentsFromJson(text: string): ParsedArguments {
   try {
     value = JSON.parse(text);
   } catch (error) {
+    const syntax = jsonSyntaxError(text);
+    if (!syntax)
+      return {
+        ok: false,
+        error: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    const { line, column, message } = syntax;
     return {
       ok: false,
-      error: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+      error: `Invalid JSON at line ${line}, column ${column}: ${message}.`,
+      position: { line, column },
     };
   }
   if (value === null || typeof value !== "object" || Array.isArray(value))

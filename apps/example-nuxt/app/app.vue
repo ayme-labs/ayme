@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { AymeProvider } from "@ayme-dev/vue";
-import CounterDemo from "./components/CounterDemo.vue";
 
 const inspector = import.meta.dev;
 const agentConnection = import.meta.dev;
@@ -15,7 +14,7 @@ const agentConnection = import.meta.dev;
       :inspector="inspector"
       :agentConnection="agentConnection"
     >
-      <CounterDemo />
+      <NuxtPage />
     </AymeProvider>
   </main>
 </template>

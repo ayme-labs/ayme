@@ -38,12 +38,12 @@ function valueIn(text: string) {
 test("an App Process pairs beside the paired page, the agent lists and calls both sides' tools, and the page stays paired", async ({
   agent,
   connect,
-  startAppProcess,
+  startStandInAppProcess,
 }) => {
   await connect("/");
   const { port } = await serverAddress(agent);
 
-  startAppProcess({ port, value: "server" });
+  startStandInAppProcess({ port, value: "server" });
 
   await listed(agent, TOOL);
   expect(await agent.toolNames()).toEqual(
@@ -61,10 +61,10 @@ test("an App Process pairs beside the paired page, the agent lists and calls bot
 
 test("an App Process's tool goes when it exits, and the agent's next result says so", async ({
   agent,
-  startAppProcess,
+  startStandInAppProcess,
 }) => {
   const { port } = await serverAddress(agent);
-  const appProcess = startAppProcess({ port, value: "server" });
+  const appProcess = startStandInAppProcess({ port, value: "server" });
   await listed(agent, TOOL);
   await agent.call("ayme_list_tools");
 
@@ -78,10 +78,10 @@ test("an App Process's tool goes when it exits, and the agent's next result says
 });
 
 test("an App Process started before the agent pairs once the agent's server is up, and again after it restarts", async ({
-  startAppProcess,
+  startStandInAppProcess,
 }) => {
   const port = await freePort();
-  startAppProcess({ port, value: "server" });
+  startStandInAppProcess({ port, value: "server" });
 
   const agent = await startAgent("--port", String(port));
   try {
@@ -102,13 +102,13 @@ test("an App Process started before the agent pairs once the agent's server is u
 
 test("an App Process pairs with the server its connect link names", async ({
   agent,
-  startAppProcess,
+  startStandInAppProcess,
 }) => {
   const { text: link } = await agent.call("ayme_connect", {
     url: "http://127.0.0.1/",
   });
 
-  startAppProcess({ link, value: "linked" });
+  startStandInAppProcess({ link, value: "linked" });
 
   await listed(agent, TOOL);
   expect(await valueOf(agent)).toBe("linked");
@@ -116,13 +116,13 @@ test("an App Process pairs with the server its connect link names", async ({
 
 test("of two App Processes that offer one tool name, the agent gets the first one's and is told, and the second logs it", async ({
   agent,
-  startAppProcess,
+  startStandInAppProcess,
 }) => {
   const { port } = await serverAddress(agent);
-  const first = startAppProcess({ port, value: "server" });
+  const first = startStandInAppProcess({ port, value: "server" });
   await listed(agent, TOOL);
 
-  const second = startAppProcess({ port, value: "worker" });
+  const second = startStandInAppProcess({ port, value: "worker" });
 
   await expect
     .poll(() => second.output(), { timeout: 15_000 })
@@ -142,12 +142,12 @@ test("of two App Processes that offer one tool name, the agent gets the first on
 test("a Peek the page and an App Process add under one name gives peek.<name> and peek.node.<name>, each reading its own side", async ({
   agent,
   connect,
-  startAppProcess,
+  startStandInAppProcess,
 }) => {
   await connect("/?peek=jobs");
   const { port } = await serverAddress(agent);
 
-  startAppProcess({ port, peek: "jobs", value: "server" });
+  startStandInAppProcess({ port, peek: "jobs", value: "server" });
 
   await listed(agent, TOOL);
   expect(await agent.toolNames()).toContain("peek.jobs");

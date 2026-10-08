@@ -97,7 +97,7 @@ Peek Tools are in `ayme.tools` and reach coding agents through the Agent Connect
 
 ### In Node
 
-In Node, `start()` makes the session the process's App Process. It needs no page, and the session's tools are its Peek Tools alone; with `agentConnection` the process pairs with the agent's Ayme MCP server beside the page. Without `agentConnection` the session still owns the process, but connects nothing and offers no Peeks. A process has one App Process, so start one session per process, once, in the server's entry point; in Next.js, that is `instrumentation.ts`, which runs once when the server starts:
+In Node, `start()` makes the session the process's App Process, unless a framework integration created the session to render a request. It needs no page, and the session's tools are its Peek Tools alone; with `agentConnection` the process pairs with the agent's Ayme MCP server beside the page. Without `agentConnection` the session still owns the process, but connects nothing and offers no Peeks. A process has one App Process, so start one session per process, once, in the server's entry point; in Next.js, that is `instrumentation.ts`, which runs once when the server starts:
 
 ```ts
 export async function register() {
@@ -109,6 +109,8 @@ export async function register() {
   ayme.peek(async () => ({ users: await db.user.count() }), "users");
 }
 ```
+
+In Nuxt, start it in a Nitro server plugin, as the [Nuxt example](../../../apps/example-nuxt/README.md#peeks) does.
 
 The process finds the agent's server the way a tab does: it pairs only when exactly one Ayme MCP server answers on the ports from 9350 to 9365. While unpaired it looks again every few seconds, and again when its server goes away, so a dev server started before the agent pairs once the agent is up. With several servers running, name one with `agentConnection: { link }` or `{ port }`. Read these from your own environment if you need them; Ayme reads none. Component Peeks register only after mount in the browser, so server rendering adds none to the process. While the tab is paired with that server too, its Inspector lists the process's Peek Tools in the Node section of its Peek tools and runs them through the server. The [`@ayme-dev/mcp` README](../../../packages/mcp/README.md#app-processes) covers the pairing and what happens when two App Processes offer one name.
 

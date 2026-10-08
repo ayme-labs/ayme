@@ -53,7 +53,7 @@ pnpm run typecheck
 pnpm run test:e2e
 ```
 
-The browser test injects a minimal `document.modelContext`, verifies the two published tools and their compiler-derived schemas, exercises direct list interaction, then invokes the published collection Page Object Tool and the same tool through the debug console against the real DOM-backed runtime.
+The playground is also a Vue single-page app in the shared [example certification](../example-certification/README.md): its `/counter` route renders the counter contract page, and `/other` the page without Page Objects. `test:e2e` runs the certification and the playground tests below against the dev server and the production build (`test:e2e:dev`, `test:e2e:prod`); the production build publishes no `goal`. The browser test injects a minimal `document.modelContext`, verifies the two published tools and their compiler-derived schemas, exercises direct list interaction, then invokes the published collection Page Object Tool and the same tool through the debug console against the real DOM-backed runtime.
 
 ## Live goal lane
 
