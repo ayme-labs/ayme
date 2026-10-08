@@ -230,6 +230,13 @@ describe("Form and JSON", () => {
     });
   });
 
+  it("reports JSON nested too deep to place the error", () => {
+    const parsed = argumentsFromJson("[".repeat(200_000));
+
+    expect(parsed.ok).toBe(false);
+    expect(!parsed.ok && parsed.error).toMatch(/^Invalid JSON: /);
+  });
+
   it("reports JSON that isn't an object", () => {
     expect(argumentsFromJson('["Milk"]')).toEqual({
       ok: false,

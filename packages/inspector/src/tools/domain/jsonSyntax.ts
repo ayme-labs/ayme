@@ -4,7 +4,8 @@ export type JsonSyntaxError = { line: number; column: number; message: string };
 /**
  * The first syntax error in JSON text, or undefined when it is JSON. Engines
  * word `JSON.parse` errors differently, and V8 gives no position for an
- * unexpected token, so this finds the position itself.
+ * unexpected token, so this finds the position itself. Nesting too deep
+ * to scan gives undefined too.
  */
 export function jsonSyntaxError(text: string): JsonSyntaxError | undefined {
   let at = 0;
@@ -84,6 +85,8 @@ export function jsonSyntaxError(text: string): JsonSyntaxError | undefined {
     if (at < text.length) fail("the end of the text");
     return undefined;
   } catch (error) {
+    // Nesting deeper than the call stack: JSON.parse's own message stands.
+    if (error instanceof RangeError) return undefined;
     if (!(error instanceof SyntaxAt)) throw error;
     const before = text.slice(0, error.offset).split("\n");
     return {
