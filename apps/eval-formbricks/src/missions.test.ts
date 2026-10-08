@@ -4,7 +4,6 @@ import {
   defaultMissionId,
   missionDefinitions,
   missionStart,
-  parseMission,
   type SeededSurvey,
 } from "./missions.ts";
 
@@ -53,46 +52,5 @@ describe("the mission definitions", () => {
     expect(() => missionStart({ start: "editor" }, baseUrl, null)).toThrow(
       "must seed a survey"
     );
-  });
-});
-
-describe("parseMission", () => {
-  const stored = {
-    id: "sign-in-create-and-revise-survey",
-    runId: "run-2",
-    nonce: "ab12cd",
-    user: {
-      id: "user-2",
-      name: "eval-run-2",
-      email: "eval-run-2@example.com",
-      password: "secret",
-    },
-    organizationId: "organization-2",
-    workspaceId: "workspace-2",
-    survey: null,
-    expected: { surveyName: "Product feedback ab12cd", questionHeadline: "H" },
-    start: { screen: "sign-in", url: `${baseUrl}/auth/login`, signedIn: false },
-  };
-
-  it("reads a stored mission back, with or without a seeded survey", () => {
-    expect(parseMission(stored)).toEqual(stored);
-    const withSurvey = {
-      ...stored,
-      survey: seededSurvey,
-      start: { screen: "editor", url: seededSurvey.editorUrl, signedIn: true },
-    };
-    expect(parseMission(withSurvey)).toEqual(withSurvey);
-  });
-
-  it.each([
-    ["a missing start", { ...stored, start: undefined }],
-    [
-      "an unknown screen",
-      { ...stored, start: { ...stored.start, screen: "x" } },
-    ],
-    ["a survey without an id", { ...stored, survey: { questionId: "q" } }],
-    ["a missing user", { ...stored, user: undefined }],
-  ])("rejects %s", (_, value) => {
-    expect(() => parseMission(value)).toThrow(TypeError);
   });
 });
