@@ -31,6 +31,8 @@ Every pull request runs `pnpm analyze:changed` before it goes ready. It compares
 
 The fast lane is each package's `vitest.fast.config.ts`: its unit tests and its Vitest browser-mode tests, without `packedConsumer.test.ts`. Playwright e2e tests are not in it, so code that only they exercise reads as uncovered. Stryker skips static mutants here, code that runs when a module loads such as tool descriptions, because no test owns them and each one would rerun every test. The shared settings live in [`packages/test-config`](../packages/test-config).
 
+Code serialized into the page, such as a `locator.evaluate` callback, reads as uncovered, and Stryker's instrumentation breaks it there. Wrap such a callback in `// Stryker disable all` and `// Stryker restore all`; without them, analysis of its file fails on its first test run.
+
 Act on the report like this:
 
 - A function the change added, or whose complexity it raised, with CRAP above 15: add tests or simplify it in this pull request.
