@@ -27,5 +27,11 @@ apps/example-vue/tests/vue-webmcp.spec.ts-snapshots/
 
 apps/example-angular/.angular/
 
+# The Formbricks lab app submodule, formatted by its own upstream
+/apps/lab-formbricks/formbricks/
+
+# The Formbricks eval's run artifacts and Claude Code configuration
+/apps/eval-formbricks/results/
+
 # Liquid template for the docs site, which Prettier cannot parse
 docs/guide/_layouts/
