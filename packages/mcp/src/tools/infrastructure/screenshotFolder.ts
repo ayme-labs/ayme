@@ -1,8 +1,14 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, join, sep } from "node:path";
 
 import type { SaveImage } from "../application/callPageTool";
+
+/**
+ * `ayme-screenshots` in the OS's temporary folder, ending in a path
+ * separator, as the server tells a page in its welcome.
+ */
+export const screenshotFolder = join(tmpdir(), "ayme-screenshots") + sep;
 
 /**
  * Writes an image into `ayme-screenshots` in the OS's temporary folder,
@@ -12,9 +18,8 @@ import type { SaveImage } from "../application/callPageTool";
 export const saveToScreenshotFolder: SaveImage = async (filename, data) => {
   if (basename(filename) !== filename || /[/\\]|\.\./.test(filename))
     throw new Error(`"${filename}" is not a bare file name`);
-  const folder = join(tmpdir(), "ayme-screenshots");
-  await mkdir(folder, { recursive: true });
-  const path = join(folder, filename);
+  await mkdir(screenshotFolder, { recursive: true });
+  const path = screenshotFolder + filename;
   await writeFile(path, Buffer.from(data, "base64"));
   return path;
 };

@@ -115,6 +115,12 @@ export type Hello = z.infer<typeof HelloSchema>;
  */
 export const PageWelcomeSchema = z.object({
   token: z.optional(z.string().check(z.minLength(1))),
+  /**
+   * The folder the server saves a tool's images to, ending in a path
+   * separator: an image named `filename` is saved as `imageFolder +
+   * filename`.
+   */
+  imageFolder: z.optional(z.string().check(z.minLength(1))),
 });
 export type PageWelcome = z.infer<typeof PageWelcomeSchema>;
 

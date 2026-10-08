@@ -11,7 +11,11 @@ import {
   listenOnPort,
   type Pairing,
 } from "../pairing";
-import { createMcpToolServer, saveToScreenshotFolder } from "../tools";
+import {
+  createMcpToolServer,
+  saveToScreenshotFolder,
+  screenshotFolder,
+} from "../tools";
 import { connectionBehaviours } from "./connectionBehaviours";
 import { serverTools } from "./serverTools";
 
@@ -29,7 +33,11 @@ export async function startMcpServer({
 }: { port?: number } = {}): Promise<void> {
   const connection = new AgentConnection();
   const token = randomUUID();
-  const channel = createPageChannelServer({ connection, token });
+  const channel = createPageChannelServer({
+    connection,
+    token,
+    imageFolder: screenshotFolder,
+  });
   const port =
     pinnedPort === undefined
       ? await listenOnFirstFreePort(channel.server, SERVER_PORTS)
