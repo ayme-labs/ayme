@@ -17,12 +17,19 @@ function isImageResult(value: unknown): value is ImageResult {
   );
 }
 
-/** The image a tool returned, such as a screenshot, as a run shows it. */
-export function runImageOf(result: unknown): RunImage | undefined {
+/**
+ * The image a tool returned, such as a screenshot, as a run shows it, with
+ * the file `ayme mcp` saved it to, if any.
+ */
+export function runImageOf(
+  result: unknown,
+  savedTo?: string
+): RunImage | undefined {
   if (!isImageResult(result)) return undefined;
   const format = result.mimeType === "image/png" ? "PNG" : "JPEG";
   return {
     description: `Screenshot of ${result.subject}, ${result.width}×${result.height} ${format}`,
     src: `data:${result.mimeType};base64,${result.data}`,
+    ...(savedTo === undefined ? {} : { savedTo }),
   };
 }

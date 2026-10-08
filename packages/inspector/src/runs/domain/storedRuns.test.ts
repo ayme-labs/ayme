@@ -119,3 +119,31 @@ it("keeps a run's image description but not the image itself", () => {
     }),
   ]);
 });
+
+it("keeps an agent's screenshot run and the file its image was saved to", () => {
+  const agentRun: Run = {
+    id: 3,
+    toolName: "screenshot",
+    caller: "agent",
+    arguments: {},
+    status: "succeeded",
+    image: {
+      description: "Screenshot of the viewport, 1280×720 PNG",
+      src: "data:image/png;base64,iVBORw0KGgo=",
+      savedTo: "/tmp/ayme-screenshots/page-1.png",
+    },
+    startedAt: 2_000,
+    durationMs: 90,
+    steps: [],
+  };
+
+  expect(reloaded([agentRun])).toEqual([
+    before({
+      ...agentRun,
+      image: {
+        description: "Screenshot of the viewport, 1280×720 PNG",
+        savedTo: "/tmp/ayme-screenshots/page-1.png",
+      },
+    }),
+  ]);
+});

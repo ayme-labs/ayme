@@ -27,6 +27,7 @@ export function RunCardView({
   items,
   onHover,
   onShowRun,
+  onOpenImage,
   signature,
   fields,
   json,
@@ -57,6 +58,8 @@ export function RunCardView({
   onHover?: OnHover;
   /** Shows a run in Runs. */
   onShowRun: (runId: number) => void;
+  /** Opens the last run's image, given its data URL, full size. */
+  onOpenImage: (src: string) => void;
   /** Its arguments, e.g. "(text: string)". */
   signature: string;
   fields: readonly Field[];
@@ -242,6 +245,7 @@ export function RunCardView({
           run={last}
           lastSuccess={lastSuccess}
           onShowRun={onShowRun}
+          onOpenImage={onOpenImage}
         />
       )}
     </form>
@@ -300,10 +304,12 @@ function LastResult({
   run,
   lastSuccess,
   onShowRun,
+  onOpenImage,
 }: {
   run: Run;
   lastSuccess: Run | undefined;
   onShowRun: (runId: number) => void;
+  onOpenImage: (src: string) => void;
 }) {
   const steps = `${run.steps.length} ${run.steps.length === 1 ? "step" : "steps"}`;
   // A run interrupted by a reload has no known duration.
@@ -351,7 +357,7 @@ function LastResult({
         <p className="m-0 font-mono text-xs break-words">{run.error}</p>
       )}
       {run.status === "succeeded" && run.image && (
-        <RunImageView image={run.image} />
+        <RunImageView image={run.image} onOpen={onOpenImage} />
       )}
     </div>
   );

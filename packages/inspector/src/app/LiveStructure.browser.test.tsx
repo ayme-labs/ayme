@@ -19,6 +19,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     lookAtPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),

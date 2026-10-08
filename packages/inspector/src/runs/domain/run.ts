@@ -44,12 +44,19 @@ export type RunImage = {
    * storage, so a run from before a reload has none.
    */
   src?: string;
+  /** The file `ayme mcp` saved it to, for an agent's run. */
+  savedTo?: string;
 };
 
-/** A run made from the panel: one tool call, with the steps it performed. */
+/**
+ * A run made from the panel: one tool call, with the steps it performed. An
+ * agent's `screenshot` call through `ayme mcp` is recorded too.
+ */
 export type Run = {
   id: number;
   toolName: string;
+  /** Who ran it: the person from the panel, unless an agent did. */
+  caller?: "agent";
   /** The Page Object Model whose action it ran. */
   className?: string;
   /** The Page Object it ran on, e.g. "ListPage" or "ListPage.items[1]". */

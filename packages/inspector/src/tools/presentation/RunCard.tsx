@@ -1,5 +1,10 @@
 import type { OnHover } from "../../navigation";
-import type { CollectionItem, Run, ToolArguments } from "../../runs";
+import {
+  openImageFullSize,
+  type CollectionItem,
+  type Run,
+  type ToolArguments,
+} from "../../runs";
 import { argumentsToJson } from "../domain/fields";
 import type { RefSource } from "../domain/refTree";
 import type { RunnableTool } from "../domain/runnableTools";
@@ -84,6 +89,7 @@ export function RunCard(props: RunCardProps) {
       items={items}
       onHover={onHover}
       onShowRun={onShowRun}
+      onOpenImage={(src) => void openImageFullSize(src)}
       form={form}
     />
   );

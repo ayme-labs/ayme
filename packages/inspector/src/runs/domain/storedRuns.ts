@@ -14,13 +14,19 @@ export const reloadedError = "The page reloaded before the run returned.";
  * as the tab's storage is small and shared with the app.
  */
 export function encodeRuns(runs: readonly Run[]): readonly Run[] {
-  return runs
-    .slice(0, keptRuns)
-    .map((run) =>
-      run.image?.src === undefined
-        ? run
-        : { ...run, image: { description: run.image.description } }
-    );
+  return runs.slice(0, keptRuns).map((run) =>
+    run.image?.src === undefined
+      ? run
+      : {
+          ...run,
+          image: {
+            description: run.image.description,
+            ...(run.image.savedTo === undefined
+              ? {}
+              : { savedTo: run.image.savedTo }),
+          },
+        }
+  );
 }
 
 /**
@@ -54,6 +60,7 @@ function decodeRun(stored: unknown): Run | undefined {
   return {
     id: stored.id,
     toolName: stored.toolName,
+    ...(stored.caller === "agent" ? { caller: "agent" as const } : {}),
     ...text("className", stored.className),
     ...text("objectPath", stored.objectPath),
     ...(isItem(stored.item) ? { item: stored.item } : {}),
@@ -68,7 +75,12 @@ function decodeRun(stored: unknown): Run | undefined {
           ...text("result", stored.result),
           ...(isRecord(stored.image) &&
           typeof stored.image.description === "string"
-            ? { image: { description: stored.image.description } }
+            ? {
+                image: {
+                  description: stored.image.description,
+                  ...text("savedTo", stored.image.savedTo),
+                },
+              }
             : {}),
           ...text("error", stored.error),
           ...(typeof stored.durationMs === "number"

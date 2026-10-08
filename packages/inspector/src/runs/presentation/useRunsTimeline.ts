@@ -40,6 +40,7 @@ export function useRunsTimeline(focus: RunFocus | undefined) {
     toggleResult: (id: number) =>
       setOpenResults((opened) => toggled(opened, id)),
     copyResult: (text: string) => void copy(text),
+    openImage: (src: string) => void openImageFullSize(src),
   };
 }
 
@@ -56,4 +57,16 @@ async function copy(text: string) {
   } catch {
     // The page can deny the clipboard; the result can still be selected.
   }
+}
+
+/**
+ * Opens an image, given its data URL, full size in a new tab, through a
+ * blob URL, as a tab won't open a data URL.
+ */
+export async function openImageFullSize(src: string) {
+  const blob = await (await fetch(src)).blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank", "noopener");
+  // Long enough for the tab to load it.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

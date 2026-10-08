@@ -31,3 +31,11 @@ it.each([undefined, "text", { type: "image" }, { ...screenshot, data: 1 }])(
     expect(runImageOf(result)).toBeUndefined();
   }
 );
+
+it("keeps the file ayme mcp saved the image to", () => {
+  expect(runImageOf(screenshot, "/tmp/ayme-screenshots/page-1.png")).toEqual({
+    description: "Screenshot of the viewport, 1280×720 PNG",
+    src: "data:image/png;base64,iVBORw0KGgo=",
+    savedTo: "/tmp/ayme-screenshots/page-1.png",
+  });
+});
