@@ -155,19 +155,17 @@ export function registerElementTool(
       executeAs,
     },
     targetField: definition.targetField,
-    loopInputSchema:
-      definition.targetField === "target"
-        ? requiredInputOnly(definition.inputSchema)
-        : definition.inputSchema,
+    loopInputSchema: requiredInputOnly(definition.inputSchema),
     filter,
     executeAs,
   };
 }
 
 /**
- * A Browser Tool's input as the Goal Loop fills it: its required fields. The
- * options Playwright MCP adds (double click, modifiers, typing slowly) stay
- * with the calling agent, so a loop step asks what it asked before them.
+ * A tool's input as the Goal Loop fills it: its required fields. The options
+ * Playwright MCP adds to Browser Tools (double click, modifiers, typing
+ * slowly) stay with the calling agent, so a loop step asks what it asked
+ * before them. A Custom Tool's only field, `ref`, is required.
  */
 function requiredInputOnly(schema: JsonSchema): JsonSchema {
   const required = new Set(schema.required ?? []);

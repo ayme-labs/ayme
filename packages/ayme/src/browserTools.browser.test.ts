@@ -265,6 +265,28 @@ describe("Browser Tools in Chromium", () => {
       });
   });
 
+  it("takes a target as a Structural Ref only when all of it is one", async () => {
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<button id="save1" type="button">Save one</button><e1-box id="box">Box</e1-box>'
+    );
+
+    // Each selector holds a ref-like `e1`, at its end or at its start.
+    await call("click", { target: "#save1" });
+    await call("click", { target: "e1-box" });
+    expect(log).toEqual(expect.arrayContaining(["click save1", "click box"]));
+    await expect(call("click", { target: "s_root" })).resolves.toMatchObject({
+      content: [
+        {
+          text: expect.stringContaining(
+            'Cannot click ref "s_root": synthetic observation-only ref'
+          ),
+        },
+      ],
+      isError: true,
+    });
+  });
+
   it("fails a selector that matches several elements", async () => {
     await expect(call("click", { target: ".twin" })).resolves.toEqual({
       content: [
