@@ -297,10 +297,11 @@ describe.each([
     expect(arm.interfaceLine(mission.start)).toContain("its `ayme` skill");
   });
 
-  it("checks the server's build and ports first, and sets the server and the page up outside the measured window", () => {
+  it("checks the server's build and ports first, and the Decision Endpoint with the Goal Loop on, and sets the server and the page up outside the measured window", () => {
     expect(arm.preconditions?.map((p) => p.name)).toEqual([
       "Ayme MCP server",
       "Ayme MCP ports",
+      ...(goalLoop ? ["Decision Endpoint"] : []),
     ]);
     expect(arm.setup).toBeTypeOf("function");
     expect(arm.interfaceLine(mission.start).includes("`goal`")).toBe(goalLoop);

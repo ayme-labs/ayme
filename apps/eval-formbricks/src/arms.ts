@@ -9,6 +9,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 
 import {
+  aymeGoalLoopPreconditions,
   aymeMcpPackageName,
   aymeMcpPreconditions,
   aymeMcpServer,
@@ -110,10 +111,11 @@ export const goalFirstSentence =
  * An Ayme arm: the page's own tools through Ayme's MCP server, paired with
  * the page before the agent starts, and nothing else. The two arms differ in
  * the lab app's Goal Loop switch, which the setup sets before the page loads,
- * and in the goal-first sentence of the prompt's interface line. The server's
- * own tools stay: `ayme_connect` only returns a link, which the agent has no
- * way to open, and the server, busy with its tab, ignores any other tab's
- * scan, so the agent cannot leave the harness's tab.
+ * in the goal-first sentence of the prompt's interface line, and in the "on"
+ * arm's check that the lab app's Decision Endpoint has its model key. The
+ * server's own tools stay: `ayme_connect` only returns a link, which the
+ * agent has no way to open, and the server, busy with its tab, ignores any
+ * other tab's scan, so the agent cannot leave the harness's tab.
  */
 function aymeArm(id: ArmId, goalLoop: boolean): Arm {
   const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, and its \`${aymeSkillName}\` skill for every browser interaction: \`snapshot\`, Ayme's Browser Tools and the Page Object Tools of the screen you are on.`;
@@ -125,7 +127,7 @@ function aymeArm(id: ArmId, goalLoop: boolean): Arm {
     tools: [...readOnlyFileTools, "Skill"],
     allowedTools: [`mcp__${aymeServerName}`, `Skill(${aymeSkillName})`],
     mcpServers: (context) => ({ [aymeServerName]: aymeMcpServer(context) }),
-    preconditions: aymeMcpPreconditions,
+    preconditions: goalLoop ? aymeGoalLoopPreconditions : aymeMcpPreconditions,
     setup: (context) => setUpAymeAgent(context, { goalLoop }),
     browserInterface: () => ({
       name: aymeMcpPackageName,

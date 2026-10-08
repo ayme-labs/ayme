@@ -71,6 +71,42 @@ export function labAppPrecondition(baseUrl: string): Precondition {
   };
 }
 
+/**
+ * The Goal Loop arm needs the lab app's Decision Endpoint to hold the model
+ * key. The key lives in the lab app's environment, not the eval's, so the
+ * check asks the running endpoint: an empty decision request gets 400 when
+ * the key is set, refused before any model call, and 503 when it is not.
+ * The lab app records the 400 in its usage file, before any run's window.
+ */
+export function decisionEndpointPrecondition(
+  baseUrl: string,
+  fetchImpl: typeof fetch = fetch
+): Precondition {
+  const url = `${baseUrl}/api/ayme/decisions`;
+  return {
+    name: "Decision Endpoint",
+    check: async () => {
+      let status: number;
+      try {
+        ({ status } = await fetchImpl(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+          // The lab app compiles the route on its first request.
+          signal: AbortSignal.timeout(60_000),
+        }));
+      } catch {
+        return `The lab app's Decision Endpoint is not reachable at ${url}. Run pnpm lab:dev in apps/lab-formbricks.`;
+      }
+      if (status === 503)
+        return "The lab app's Decision Endpoint has no model key, so every Goal Loop decision would fail. Restart pnpm lab:dev with AYME_OPENROUTER_API_KEY exported.";
+      if (status !== 400)
+        return `The lab app's Decision Endpoint at ${url} answered an empty request with HTTP ${status}, not 400.`;
+      return null;
+    },
+  };
+}
+
 export function formbricksPreparedPrecondition(
   formbricksRoot: string
 ): Precondition {

@@ -29,7 +29,11 @@ import type { ArmContext, ArmSetup, McpServer } from "./arms.ts";
 import { playwright, viewport, type BrowserContext } from "./browser.ts";
 import { withoutClaudeVariables } from "./claude.ts";
 import type { StartScreen } from "./missions.ts";
-import type { Precondition } from "./preconditions.ts";
+import { labUrl } from "./paths.ts";
+import {
+  decisionEndpointPrecondition,
+  type Precondition,
+} from "./preconditions.ts";
 
 export const aymeMcpPackageName = "@ayme-dev/mcp";
 const aymeMcpPackagePath = createRequire(import.meta.url).resolve(
@@ -172,6 +176,12 @@ export const aymeMcpPreconditions: Precondition[] = [
       return `Something listens on port ${ports.join(", ")}, in the range ${serverPorts.first} to ${serverPorts.last} a page scans for Ayme MCP servers; the page would not pair with this run's server alone. Stop it (another coding agent's ayme mcp, for example) and run again.`;
     },
   },
+];
+
+/** With the Goal Loop on, the lab app's Decision Endpoint must also have its model key. */
+export const aymeGoalLoopPreconditions: Precondition[] = [
+  ...aymeMcpPreconditions,
+  decisionEndpointPrecondition(labUrl),
 ];
 
 /** What the setup established before the measured window, recorded in the result. */
