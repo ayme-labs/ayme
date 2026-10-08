@@ -1,3 +1,7 @@
+## Writing rules down
+
+Write each rule once, next to the config or code that enforces it. Other docs, this file included, link to it rather than restate it.
+
 ## Repository map
 
 - `packages/`: the Ayme WebMCP product. Each package README is its npm entry point; the consumer docs in `docs/guide/` own its API and setup.
@@ -46,10 +50,7 @@ A single approval covers the complete supersession operation. Mark the old ADR a
 
 ## Commit types
 
-Commit messages follow Conventional Commits, checked by `commitlint.config.ts`. Two types are easy to mix up:
-
-- `docs:` is only for user-facing docs: the consumer guide in `docs/guide/` (the published site), the root README, the package READMEs that serve as npm entry points, and wording-only changes to the consumer skills in `skills/` (a change to a skill's behaviour is `feat(skills):` or `fix(skills):`).
-- `devex:` is for internal material and tooling: `AGENTS.md` files, READMEs under `apps/`, ADRs, `docs/agents/`, `docs/testing.md`, `docs/releasing.md` and other internal docs, repo-local skills in `.agents/skills/`, and tooling such as Devbox, Lefthook hooks, `commitlint.config.ts` and `scripts/`.
+Commit messages follow Conventional Commits. `commitlint.config.ts` defines the allowed types and when to use each; read it before choosing a type.
 
 ## Updating the Playwright Lite fork
 

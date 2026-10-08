@@ -49,20 +49,21 @@ function loadWorkspaceScopes(): string[] {
   return [...scopes].sort((left, right) => left.localeCompare(right));
 }
 
-// `docs` is only for user-facing docs; internal docs and tooling use `devex`.
-// AGENTS.md ("Commit types") says which files fall under each.
-const allowedTypes = [
-  "build",
-  "chore",
-  "ci",
-  "devex",
-  "docs",
-  "feat",
-  "fix",
-  "refactor",
-  "style",
-  "test",
-];
+// The allowed commit types and when to use each. AGENTS.md points here.
+const commitTypes = {
+  build: "Build system and package dependencies.",
+  chore: "Maintenance that fits no other type.",
+  ci: "CI workflows and their actions.",
+  devex:
+    "Internal material and tooling: AGENTS.md files, READMEs under apps/, ADRs, docs/agents/, docs/testing.md, docs/releasing.md and other internal docs, repo-local skills in .agents/skills/, Devbox, Lefthook hooks, this file and scripts/.",
+  docs: "User-facing docs only: the consumer guide in docs/guide/ (the published site), the root README, the package READMEs that serve as npm entry points, and wording-only changes to the consumer skills in skills/. A change to a skill's behaviour is feat(skills) or fix(skills).",
+  feat: "A new user-facing capability.",
+  fix: "A user-facing bug fix.",
+  refactor: "A code change that neither adds a capability nor fixes a bug.",
+  style: "Formatting only, with no change in behaviour.",
+  test: "Tests and test-only code.",
+} as const;
+const allowedTypes = Object.keys(commitTypes);
 const workspaceScopes = [
   ...new Set([...loadWorkspaceScopes(), ...additionalScopes]),
 ].sort((left, right) => left.localeCompare(right));
