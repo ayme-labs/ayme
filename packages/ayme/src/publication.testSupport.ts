@@ -18,12 +18,13 @@ import { getStartedAyme } from "./runtime";
 export function agentTools() {
   const ayme = getStartedAyme();
   if (!ayme) throw new Error("Start a session before calling its tools.");
+  /** The names of the tools WebMCP publishes now, in publication order. */
+  const names = () => listWebMcpTools().map(({ name }) => name);
   return {
-    /** The names of the tools WebMCP publishes now, in publication order. */
-    names: () => listWebMcpTools().map(({ name }) => name),
+    names,
     /** Call a tool as the agent. */
     call: async (name: string, input: unknown): Promise<unknown> => {
-      if (!listWebMcpTools().some((tool) => tool.name === name))
+      if (!names().includes(name))
         throw new RuntimeStateError(`Tool ${name} is not published.`);
       try {
         return await ayme.tools.run(name, input as never, {

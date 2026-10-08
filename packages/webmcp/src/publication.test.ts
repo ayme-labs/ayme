@@ -5,19 +5,13 @@ import {
   type WebMcpPublicationStatus,
   type WebMcpTool,
 } from "./index";
-
-type Registered = {
-  name: string;
-  description: string;
-  inputSchema: unknown;
-  execute(input: unknown): Promise<unknown>;
-};
+import type { PublishedTool } from "./testing";
 
 /** A driver that keeps what is registered, as `document.modelContext` would. */
 function recordingDriver() {
-  const tools = new Map<string, Registered>();
+  const tools = new Map<string, PublishedTool>();
   const registerTool = vi.fn(
-    async (tool: Registered, { signal }: { signal: AbortSignal }) => {
+    async (tool: PublishedTool, { signal }: { signal: AbortSignal }) => {
       tools.set(tool.name, tool);
       signal.addEventListener("abort", () => {
         if (tools.get(tool.name) === tool) tools.delete(tool.name);
@@ -158,38 +152,50 @@ describe("startWebMcpPublication", () => {
     expect(driver.names()).toEqual(["Todo.add"]);
   });
 
-  it("resolves a call only once the tools it changed are published", async () => {
-    const tools = toolSource([tool("Todo.open")]);
-    let release!: () => void;
-    // Registering Todo.close waits until the test releases it.
-    const registered = new Map<string, Registered>();
-    driver.registerTool.mockImplementation(async (tool, { signal }) => {
-      if (tool.name === "Todo.close")
-        await new Promise<void>((resolve) => (release = resolve));
-      registered.set(tool.name, tool);
-      signal.addEventListener("abort", () => registered.delete(tool.name));
-    });
-    tools.source.run.mockImplementation(async () => {
-      tools.set([tool("Todo.open"), tool("Todo.close")]);
-      return "opened";
-    });
-    await publish(tools.source).retry();
-
-    let resolved = false;
-    const call = registered
-      .get("Todo.open")!
-      .execute({})
-      .then((result) => {
-        resolved = true;
-        return result;
+  it.each([
+    ["succeeds", async () => "opened", "opened"],
+    [
+      "fails",
+      async () => {
+        throw new Error("Not opened.");
+      },
+      { content: [{ type: "text", text: "Not opened." }], isError: true },
+    ],
+  ])(
+    "resolves a call that %s only once the tools it changed are published",
+    async (_, outcome, result) => {
+      const tools = toolSource([tool("Todo.open")]);
+      let release!: () => void;
+      // Registering Todo.close waits until the test releases it.
+      const registered = new Map<string, PublishedTool>();
+      driver.registerTool.mockImplementation(async (tool, { signal }) => {
+        if (tool.name === "Todo.close")
+          await new Promise<void>((resolve) => (release = resolve));
+        registered.set(tool.name, tool);
+        signal.addEventListener("abort", () => registered.delete(tool.name));
       });
-    await flush();
-    expect(resolved).toBe(false);
+      tools.source.run.mockImplementation(async () => {
+        tools.set([tool("Todo.open"), tool("Todo.close")]);
+        return await outcome();
+      });
+      await publish(tools.source).retry();
 
-    release();
-    expect(await call).toBe("opened");
-    expect([...registered.keys()]).toEqual(["Todo.open", "Todo.close"]);
-  });
+      let resolved = false;
+      const call = registered
+        .get("Todo.open")!
+        .execute({})
+        .then((result) => {
+          resolved = true;
+          return result;
+        });
+      await flush();
+      expect(resolved).toBe(false);
+
+      release();
+      expect(await call).toEqual(result);
+      expect([...registered.keys()]).toEqual(["Todo.open", "Todo.close"]);
+    }
+  );
 
   it("keeps a tool its own call made unavailable until the call returns, then withdraws it", async () => {
     vi.useFakeTimers();

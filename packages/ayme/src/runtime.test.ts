@@ -572,6 +572,25 @@ it("probes the Page Objects before it publishes", async () => {
   }
 });
 
+it("shows a failed probe as failed publication", async () => {
+  const probe = vi
+    .spyOn(registryModule, "probeRegisteredPomMembers")
+    .mockRejectedValueOnce(new Error("The probe failed."));
+  try {
+    const runtime = session();
+    start(runtime);
+    await vi.waitFor(() =>
+      expect(runtime.webMCP.publicationStatus).toEqual({
+        state: "failed",
+        message: "WebMCP publication failed: The probe failed.",
+      })
+    );
+    expect(startWebMcpPublication).not.toHaveBeenCalled();
+  } finally {
+    probe.mockRestore();
+  }
+});
+
 it("loads nothing while webMCP.enabled is unset", async () => {
   const runtime = createAyme({
     pageFactory: () => page,
@@ -626,7 +645,7 @@ it("publishes the tools WebMCP can carry, and runs an agent's call as a webmcp R
   const listener = vi.fn();
   const unsubscribe = tools.subscribe(listener);
   runtime.pom.register(Saver);
-  expect(listener).toHaveBeenCalledExactlyOnceWith();
+  expect(listener).toHaveBeenCalledOnce();
   expect(names()).toContain("Saver.save");
   unsubscribe();
   runtime.pom.unregister(Saver);

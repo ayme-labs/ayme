@@ -130,12 +130,11 @@ export async function synchronizeWebMcpTools(
   ) => {
     registration.runningCalls += 1;
     try {
-      const result = await tools.run(name, input);
-      // The source told its listeners of what the call changed, so the pass
-      // that publishes it has started.
-      await currentSync.catch(failPublication);
-      return result;
+      return await tools.run(name, input);
     } finally {
+      // Whether the call succeeded or failed, the source told its listeners
+      // of what it changed, so the pass that publishes that has started.
+      await currentSync.catch(failPublication);
       registration.runningCalls -= 1;
       if (!registration.runningCalls && registration.keptForCall) {
         registration.keptForCall = false;

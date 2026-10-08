@@ -390,8 +390,9 @@ console.log("ok");
   }
 );
 
-it("the Playwright peer is optional in core and required by the inspector", () => {
-  // Only core declares the optional peer; the inspector requires it.
+it("the Playwright peer is optional in core and WebMCP and required by the inspector", () => {
+  // Core and WebMCP declare the optional peer, WebMCP for its testing entry;
+  // the inspector requires it.
   for (const name of [
     "ayme",
     "vue",
@@ -400,10 +401,13 @@ it("the Playwright peer is optional in core and required by the inspector", () =
     "angular",
     "inspector",
     "unplugin-ayme",
+    "webmcp",
   ]) {
     const manifest = readManifest(path.join(packagesRoot, name));
     expect(manifest.peerDependencies?.["@playwright/test"]).toBe(
-      ["ayme", "inspector"].includes(name) ? ">=1.29 <1.63" : undefined
+      ["ayme", "inspector", "webmcp"].includes(name)
+        ? ">=1.29 <1.63"
+        : undefined
     );
     expect(
       (
@@ -411,7 +415,7 @@ it("the Playwright peer is optional in core and required by the inspector", () =
           peerDependenciesMeta?: Record<string, { optional?: boolean }>;
         }
       ).peerDependenciesMeta?.["@playwright/test"]?.optional
-    ).toBe(name === "ayme" ? true : undefined);
+    ).toBe(["ayme", "webmcp"].includes(name) ? true : undefined);
   }
 });
 

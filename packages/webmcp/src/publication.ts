@@ -29,10 +29,10 @@ export type WebMcpPublication = {
   retry(): Promise<void>;
 };
 
-const WAITING: WebMcpPublicationStatus = Object.freeze({
+const WAITING: WebMcpPublicationStatus = {
   state: "waiting",
   message: "Waiting for the WebMCP driver.",
-});
+};
 
 /** How long an attempt waits for `document.modelContext` to appear. */
 const DRIVER_WAIT_MS = 2_000;

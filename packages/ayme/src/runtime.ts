@@ -461,7 +461,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
    */
   const webMcpTools = {
     list: listWebMcpTools,
-    subscribe: (listener: () => void) => ayme.tools.subscribe(() => listener()),
+    subscribe: (listener: () => void) => ayme.tools.subscribe(listener),
     run: (name: string, input: unknown) =>
       ayme.tools.run(name, input as never, { by: callers.webmcp }),
   };
@@ -474,7 +474,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   function startPublication(signal: AbortSignal) {
     const attempt: Promise<typeof publication> = Promise.all([
       loadWebMcpPublication(),
-      probeRegisteredPomMembers().catch(() => {}),
+      probeRegisteredPomMembers(),
     ])
       .then(([{ startWebMcpPublication }]) => {
         if (signal.aborted) return undefined;
@@ -497,16 +497,16 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         if (loading === attempt) loading = undefined;
       });
     loading = attempt;
+    return attempt;
   }
 
   function retryPublication(): Promise<void> {
     if (!enabled || !owner) return Promise.resolve();
     if (publication) return publication.retry();
-    if (!loading) {
-      setStatus(initialStatus);
-      startPublication(controller!.signal);
-    }
-    return loading!.then((started) => started?.retry());
+    if (!loading) setStatus(initialStatus);
+    return (loading ?? startPublication(controller!.signal)).then((started) =>
+      started?.retry()
+    );
   }
 
   function stop() {
