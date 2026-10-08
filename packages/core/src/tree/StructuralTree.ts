@@ -491,11 +491,10 @@ export class StructuralTree {
     for (const rawLine of yaml.split("\n")) {
       if (!rawLine.trim()) continue;
 
-      // Stryker disable next-line OptionalChaining,Regex: /^(\s*)/ always matches, and an unanchored \s* matches at index 0 too
-      const leadingSpaces = rawLine.match(/^(\s*)/)?.[1]?.length ?? 0;
+      const trimmedLine = rawLine.trimStart();
+      const leadingSpaces = rawLine.length - trimmedLine.length;
       // Stryker disable next-line ArithmeticOperator: only the order of indents matters, and Playwright indents in steps of two
       const indent = Math.floor(leadingSpaces / 2);
-      const trimmedLine = rawLine.trimStart();
 
       while (stack.length > 0 && stack[stack.length - 1]!.indent >= indent)
         stack.pop();
