@@ -35,8 +35,9 @@ there; never add a second one.
 ## Separate publication from direct consumers
 
 POM registration, WebMCP publication, and assistant adapters are separate
-responsibilities. A tool is listed once its POM is registered, and available
-while its POM is available, whether or not it is published. An
+responsibilities. Whether a tool is listed or available does not depend on
+publication; [`ayme.tools`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymetools)
+gives the rules. An
 [in-app assistant](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/in-app-assistant.md)
 runs available tools through `ayme.tools`; it gets thrown errors, whereas a published
 call resolves a failure as a result with `isError: true`, as
@@ -47,7 +48,7 @@ describes.
 
 After mounting the component, check the tools and the page state:
 
-- `ayme.tools.list()` lists the tools, each with whether it is `available`.
+- [`ayme.tools.list()`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymetools) lists them.
 - The [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md)'s
   Model and Tools lenses show the Page Objects on the page and their available tools.
 - `(await ayme.tools.run("snapshot", {})).structure` returns the Structural Page
