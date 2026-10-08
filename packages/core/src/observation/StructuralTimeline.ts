@@ -135,11 +135,18 @@ export type StructuralObservationEntry = {
    */
   readonly tree: StructuralTreeEvidence;
   /**
-   * Set when this observation is the explicit post-action capture for a specific action. It is the
-   * authoritative after-state for that action: polling observations (which leave this absent) cannot
-   * override it merely by having an earlier timestamp.
+   * Set when this observation was captured for a specific action. With no `relation`, or `"after"`,
+   * it is the explicit post-action capture: the authoritative after-state for that action, which
+   * polling observations (which leave this absent) cannot override merely by having an earlier
+   * timestamp.
    */
   readonly capturedForActionId?: StructuralActionId;
+  /**
+   * How this observation relates to `capturedForActionId`: `"before"` when the host captured it right
+   * before the action started, `"after"` (the default) when it is the action's post-action capture.
+   * The timeline stores it and reads it as a boundary; what it means to the host is the host's business.
+   */
+  readonly relation?: "before" | "after";
 };
 
 export type StructuralActionStartedEntry = {
@@ -749,7 +756,8 @@ export class StructuralTimeline {
     if (action.crossesVisitBoundary) return observations.length - 1;
 
     const explicitIndex = observations.findIndex(
-      (obs) => obs.capturedForActionId === action.actionId
+      (obs) =>
+        obs.capturedForActionId === action.actionId && obs.relation !== "before"
     );
     if (explicitIndex < 0) {
       // The window closed after this action without an explicit capture (e.g. navigation skipped it):
