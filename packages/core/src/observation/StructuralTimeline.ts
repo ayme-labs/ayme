@@ -380,9 +380,10 @@ export class StructuralTimeline {
    *   latest poll strictly before the next action start; with no such poll the action keeps its
    *   before-state (an unchanged diff). A crossing/navigation action keeps its explicit capture even
    *   when that capture sits in the destination visit's window: the host said it is this action's
-   *   after. Without one it (or a non-crossing action whose window has since closed without an
-   *   explicit capture) falls back to the source window's last observation. A non-crossing action in
-   *   an open window with no explicit capture is invalid.
+   *   after. Without one, its after is the destination visit's first observation of the page, and only
+   *   with no destination observation yet the source window's last observation. A non-crossing action
+   *   whose window has since closed without an explicit capture falls back to the source window's last
+   *   observation; one in an open window with no explicit capture is invalid.
    * - baseline: previous action's after-boundary (or the visit's first observation)
    * - unassignedChanges: a meaningful diff from baseline to before; unchanged polling observations are omitted
    * - actionChange: the diff from before to after
@@ -571,7 +572,7 @@ export class StructuralTimeline {
         pageId: owningVisit.pageId,
         beforeIndex,
         nextActionStart,
-        visitWindowClosed: nextVisitBoundaryIndex < this._entries.length,
+        nextVisitBoundaryIndex,
       });
 
       let unassignedChanges: StructuralResolvedChange[] = [];
@@ -812,7 +813,7 @@ export class StructuralTimeline {
       pageId: PageId;
       beforeIndex: number;
       nextActionStart: number | undefined;
-      visitWindowClosed: boolean;
+      nextVisitBoundaryIndex: number;
     }
   ): {
     observation: StructuralObservationEntry;
@@ -829,8 +830,10 @@ export class StructuralTimeline {
 
     if (action.crossesVisitBoundary) {
       // A crossing action settled on the destination page. The capture the host recorded for it is
-      // its after wherever it sits; without one there is no trustworthy source capture, so resolve it
-      // against the source window's last known observation (equal before/after stays unchanged).
+      // its after wherever it sits. Without one, the destination visit's first observation of the
+      // page is the navigation's result; a later explicit capture would still replace it. With no
+      // destination observation yet there is no trustworthy capture at all, so resolve against the
+      // source window's last known observation (equal before/after stays unchanged).
       const explicit = this._entries.find(
         (entry): entry is StructuralObservationEntry =>
           entry.kind === "observation" &&
@@ -843,6 +846,12 @@ export class StructuralTimeline {
           index: observations.indexOf(explicit),
           settled: true,
         };
+      const destination = this._firstObservationFrom(
+        context.nextVisitBoundaryIndex,
+        context.pageId
+      );
+      if (destination)
+        return { observation: destination, index: -1, settled: false };
       return { ...at(observations.length - 1), settled: false };
     }
 
@@ -850,7 +859,8 @@ export class StructuralTimeline {
     if (explicitIndex < 0) {
       // The window closed after this action without an explicit capture (e.g. navigation skipped it):
       // keep the navigation fallback. With the window still open, a missing capture is invalid state.
-      if (context.visitWindowClosed) return at(observations.length - 1);
+      if (context.nextVisitBoundaryIndex < this._entries.length)
+        return at(observations.length - 1);
       throw new Error(
         `No post-action observation recorded for action ${String(action.actionId)}.`
       );
@@ -872,6 +882,18 @@ export class StructuralTimeline {
       context.nextActionStart
     );
     return at(guardedIndex ?? context.beforeIndex);
+  }
+
+  /** The first observation of the page at or after entry `fromIndex`, or null when none is recorded. */
+  private _firstObservationFrom(
+    fromIndex: number,
+    pageId: PageId
+  ): StructuralObservationEntry | null {
+    for (let index = fromIndex; index < this._entries.length; index += 1) {
+      const entry = this._entries[index]!;
+      if (entry.kind === "observation" && entry.pageId === pageId) return entry;
+    }
+    return null;
   }
 
   private _latestObservationIndexInRange(
