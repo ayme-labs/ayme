@@ -18,6 +18,14 @@ it("reads the pairing back from a connect link's fragment", () => {
   expect(pairingFromFragment(link.hash)).toEqual(pairing);
 });
 
+it("pairs with every loopback host name", () => {
+  for (const host of ["127.0.0.1", "localhost", "[::1]"])
+    expect(pairingFromFragment(`#ayme=ws://${host}:9351/f00d`), host).toEqual({
+      address: `ws://${host}:9351`,
+      token: "f00d",
+    });
+});
+
 it("pairs only with a loopback WebSocket address", () => {
   for (const hash of [
     "",
@@ -26,6 +34,8 @@ it("pairs only with a loopback WebSocket address", () => {
     "#ayme=ws://example.com:9351/f00d",
     "#ayme=ws://127.0.0.1:9351/",
     "#ayme=not a url",
+    "#x#ayme=ws://127.0.0.1:9351/f00d",
+    "#ayme=ws://127.0.0.1:9351/f00d\nx",
   ])
     expect(pairingFromFragment(hash), hash).toBeUndefined();
 });

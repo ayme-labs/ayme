@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { parseStoredPairing, serializePairing } from "./pairingStorage";
+import {
+  PAIRING_STORAGE_KEY,
+  parseStoredPairing,
+  serializePairing,
+} from "./pairingStorage";
 
 const PAIRING = {
   address: "ws://127.0.0.1:9350",
@@ -36,4 +40,9 @@ describe("parseStoredPairing", () => {
       expect(parseStoredPairing(value)).toBeUndefined();
     }
   );
+});
+
+// apps/mcp-fixture and apps/example-certification read the pairing under this key.
+it("keeps the pairing under the key the e2e tests read", () => {
+  expect(PAIRING_STORAGE_KEY).toBe("ayme:agent-connection");
 });
