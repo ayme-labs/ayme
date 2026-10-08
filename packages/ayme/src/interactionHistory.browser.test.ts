@@ -152,6 +152,10 @@ describe("Interaction history in Chromium", () => {
     expect(visits()[1]!.urls).toEqual([
       new URL("?route=orders", LOADED_URL).href,
     ]);
+    await readStructure();
+    expect(
+      (await history().observations.getVisitEvidence(visits()[1]!.id)).cause
+    ).toBe("navigate");
 
     // A hash change stays in the Visit; going back to it is no new Visit.
     window.history.pushState(null, "", "#details");
