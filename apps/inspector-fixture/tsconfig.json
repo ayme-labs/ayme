@@ -3,6 +3,9 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "types": ["node"],
+    // The e2e harness and `@ayme-dev/e2e` import with `.ts` extensions.
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     // The Inspector's Page Object from source, as the Vite config resolves
     // it: the Ayme plugin reads its decorators, which the shipped
     // declarations drop.
@@ -12,5 +15,6 @@
       ]
     }
   },
-  "include": ["app", "pom", "tests", "*.ts"]
+  "include": ["app", "pom", "tests", "e2e", "*.ts"],
+  "exclude": ["e2e/.e2e"]
 }

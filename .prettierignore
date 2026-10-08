@@ -29,3 +29,6 @@ apps/example-angular/.angular/
 
 # Liquid template for the docs site, which Prettier cannot parse
 docs/guide/_layouts/
+
+# e2e harness output (apps/inspector-fixture/e2e)
+.e2e/

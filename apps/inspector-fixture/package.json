@@ -17,13 +17,16 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@ayme-dev/e2e": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@ayme-dev/unplugin-ayme": "workspace:*",
+    "@e2e-dev/web": "0.13.0",
     "@playwright/test": "^1.62.1",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "e2e": "0.18.0",
     "eslint": "^10.9.1",
     "playwright": "^1.62.1",
     "typescript": "^6.0.3",
