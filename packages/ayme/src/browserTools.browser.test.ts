@@ -129,6 +129,47 @@ describe("Browser Tools in Chromium", () => {
     expect(shapeOf(tools.get("fill")!.inputSchema)).toEqual(FILL_SCHEMA);
   });
 
+  type Schema = {
+    type?: string;
+    description?: string;
+    additionalProperties?: unknown;
+    items?: Schema;
+    properties?: Record<string, Schema>;
+  };
+
+  it("describes every field of the Browser Tools' input schemas to the agent", () => {
+    const undescribed = (schema: Schema, path: string): string[] =>
+      Object.entries(schema.properties ?? {}).flatMap(([name, property]) => [
+        ...(property.description ? [] : [`${path}.${name}`]),
+        ...undescribed(property, `${path}.${name}`),
+        ...(property.items
+          ? undescribed(property.items, `${path}.${name}[]`)
+          : []),
+      ]);
+    expect(
+      BROWSER_TOOLS.flatMap((name) =>
+        undescribed(tools.get(name)!.inputSchema as Schema, name)
+      )
+    ).toEqual([]);
+  });
+
+  it("closes every object in the Browser Tools' input schemas, as their input checks refuse unknown options", () => {
+    const openObjects = (schema: Schema, path: string): string[] => [
+      ...(schema.type === "object" && schema.additionalProperties !== false
+        ? [path]
+        : []),
+      ...(schema.items ? openObjects(schema.items, `${path}[]`) : []),
+      ...Object.entries(schema.properties ?? {}).flatMap(([name, property]) =>
+        openObjects(property, `${path}.${name}`)
+      ),
+    ];
+    expect(
+      BROWSER_TOOLS.flatMap((name) =>
+        openObjects(tools.get(name)!.inputSchema as Schema, name)
+      )
+    ).toEqual([]);
+  });
+
   describe.each([
     ["a Structural Ref", (label: string) => refOf(label)],
     ["a selector", async (_label: string, selector: string) => selector],
@@ -401,6 +442,41 @@ describe("Browser Tool filters in Chromium", () => {
         fixture('<div contenteditable="plaintext-only">Text</div>')
       )
     ).toBe(true);
+  });
+
+  it("keeps exactly the input types Playwright fills", () => {
+    const fillable = (type: string) =>
+      isFillableElement(fixture(`<input type="${type}">`));
+    expect(
+      [
+        "color",
+        "date",
+        "datetime-local",
+        "email",
+        "month",
+        "number",
+        "password",
+        "range",
+        "search",
+        "tel",
+        "text",
+        "time",
+        "url",
+        "week",
+      ].filter((type) => !fillable(type))
+    ).toEqual([]);
+    expect(
+      [
+        "button",
+        "checkbox",
+        "file",
+        "hidden",
+        "image",
+        "radio",
+        "reset",
+        "submit",
+      ].filter(fillable)
+    ).toEqual([]);
   });
 
   it("drops elements that cannot be filled", () => {
