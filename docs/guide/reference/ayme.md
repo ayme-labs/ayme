@@ -105,18 +105,35 @@ ayme.peek(() => ({ id: user.id, name: user.name }), "user"); // not the whole us
 
 ### In Node
 
-In Node, `start()` makes the session the process's App Process, unless a framework integration created the session to render a request. It needs no page, and the session's tools are its Peek Tools alone; with `agentConnection` the process pairs with the agent's Ayme MCP server beside the page. Without `agentConnection` the session still owns the process, but connects nothing and offers no Peeks. A process has one App Process, so start one session per process, once, in the server's entry point; in Next.js, that is `instrumentation.ts`, which runs once when the server starts:
+In Node, `start()` makes the session the process's App Process, unless a framework integration created the session to render a request. It needs no page, and the session's tools are its Peek Tools alone; with `agentConnection` the process pairs with the agent's Ayme MCP server beside the page. Without `agentConnection` the session still owns the process, but connects nothing and offers no Peeks. A process has one App Process, so start one session per process, once, in the server's entry point.
+
+Peeks follow one rule on both sides: start the connection where the process starts, and define each Peek in the module that owns the state it reads. In the browser, that is the component, with your framework's Peek hook. In Node, it is the module that holds the state, or one next to it that the same code imports. The App Process offers the Peeks of every session in the process that has `agentConnection` on, so that module needs no started session: it creates its own with `agentConnection` on in development and calls `peek` on it. When a dev server evaluates the module again after an edit, its new `ayme.peek` call replaces the old instance, so the Peek reads the new code.
+
+In Next.js, start the App Process in `instrumentation.ts`, which runs once when the server starts:
 
 ```ts
+// instrumentation.ts
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (process.env.NODE_ENV === "production") return;
   const { createAyme } = await import("@ayme-dev/ayme");
-  const ayme = createAyme({ agentConnection: true });
-  ayme.start();
-  ayme.peek(async () => ({ users: await db.user.count() }), "users");
+  createAyme({ agentConnection: true }).start();
 }
 ```
+
+Define the Peeks in a module that request code imports, such as one the root layout imports:
+
+```ts
+// app/server-peeks.ts, imported by app/layout.tsx
+import { createAyme } from "@ayme-dev/ayme";
+import { db } from "./db";
+
+createAyme({
+  agentConnection: process.env.NODE_ENV !== "production",
+}).peek(async () => ({ users: await db.user.count() }), "users");
+```
+
+Do not add Peeks in `register()`. `next dev` never evaluates `instrumentation.ts` again, not even after you edit it, and the modules it imports get their own copies, apart from the ones pages, layouts and Server Actions use. A Peek added there reads that copy: state request code changed does not show in it, and after an edit to the module it reads, it keeps running the old code until `next dev` restarts. A Peek in request code reads the same modules the page does. After an edit, it runs the old code until the next request evaluates its module again, so load a page after editing server code.
 
 In Nuxt, start it in a Nitro server plugin, as the [Nuxt example](../../../apps/example-nuxt/README.md#peeks) does.
 
