@@ -353,6 +353,33 @@ describe("StructuralObservationSession readChange", () => {
     expect(change.getNode(ref("e1"))?.status).toEqual({ kind: "unchanged" });
   });
 
+  it("reads a node removed and replaced by a look-alike in between as removed and added, as the ledger has it", async () => {
+    const { session, observe } = recordingSession();
+    const from = observe(
+      '- document [ref=e0]:\n  - button "Save" [ref=e1]\n  - status "Draft" [ref=e9]'
+    );
+    observe('- document [ref=e0]:\n  - status "Draft" [ref=e9]');
+    const to = observe(
+      '- document [ref=e0]:\n  - button "Save" [ref=e2]\n  - status "Draft" [ref=e9]'
+    );
+
+    const change = await session.readChange(PAGE, from, to);
+
+    expect(change.getNodesByStatus("removed").map((node) => node.ref)).toEqual([
+      "e1",
+    ]);
+    expect(change.getNodesByStatus("added").map((node) => node.ref)).toEqual([
+      "e2",
+    ]);
+    expect(change.getBeforeNodeForAfterRef(ref("e2"))).toBeNull();
+    expect(change.getNode(ref("e9"))?.status).toEqual({ kind: "unchanged" });
+    const ledger = await session.readIdentityLedger(PAGE, (read) => read);
+    expect(ledger.resolve(ref("e1"))).toMatchObject({
+      status: "unresolved",
+      reason: "removed",
+    });
+  });
+
   it("reads an observation recorded before an action like any other, and never takes it as the action's after", async () => {
     const { session, observe, startAction, completeAction } =
       recordingSession();

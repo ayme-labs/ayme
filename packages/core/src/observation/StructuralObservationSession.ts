@@ -219,9 +219,14 @@ export class StructuralObservationSession {
    * What changed on a page between two of its recorded observations: `from`'s
    * tree reconciled against `to`'s, so a node present in both keeps its
    * identity (`getBeforeNodeForAfterRef`) and the rest carries an added,
-   * removed or updated status. The two trees are resolved once and nothing in
-   * between is replayed; the session remembers nothing about who asked, so a
-   * host keeps its own notion of where each reader stands.
+   * removed or updated status. Two refs name one node only when the page's
+   * identity ledger says so, so a node removed and replaced by a look-alike in
+   * between reads as removed and added, as ref resolution would have it. The
+   * two trees are resolved and reconciled once; the ledger advances through
+   * the observations recorded so far as `readIdentityLedger` does, one
+   * reconcile per observation it has not seen, and an observation it cannot
+   * take fails this reading too. The session remembers nothing about who
+   * asked, so a host keeps its own notion of where each reader stands.
    */
   async readChange(
     pageId: PageId,
@@ -237,7 +242,12 @@ export class StructuralObservationSession {
       from.tree.resolve(),
       to.tree.resolve(),
     ]);
-    return StructuralTree.reconcile(before, after);
+    return this.readIdentityLedger(pageId, (ledger) =>
+      StructuralTree.reconcile(before, after, {
+        sameIdentity: (beforeRef, afterRef) =>
+          ledger.sameIdentity(beforeRef, afterRef),
+      })
+    );
   }
 
   currentVisitIdForPage(pageId: PageId): VisitId | null {
