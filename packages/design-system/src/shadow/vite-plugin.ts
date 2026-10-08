@@ -20,12 +20,15 @@ const unwrapPropertyFallback = (): PostcssPlugin => ({
   OnceExit(root) {
     let unwrapped = 0;
     root.walkAtRules("layer", (layer) => {
+      // Stryker disable next-line MethodExpression: PostCSS keeps the whitespace around params in raws, so trim() never changes them.
       if (layer.params.trim() !== "properties") return;
       layer.walkAtRules("supports", (supports) => {
         supports.replaceWith(supports.nodes ?? []);
+        // Stryker disable next-line UpdateOperator: only zero versus non-zero is read, and counting down agrees on that.
         unwrapped++;
       });
       layer.walkRules((rule) => {
+        // Stryker disable next-line ConditionalExpression,StringLiteral: the only rule Tailwind puts in this layer starts with *, so the check never skips one.
         if (rule.selector.startsWith("*"))
           rule.selector = `:host, ${rule.selector}`;
       });
@@ -60,10 +63,12 @@ const remToPx = (): PostcssPlugin => {
     postcssPlugin: "shadow-rem-to-px",
     OnceExit(root) {
       root.walkDecls((declaration) => {
+        // Stryker disable next-line ConditionalExpression,StringLiteral: a shortcut only; toPx leaves a value without rem unchanged.
         if (declaration.value.includes("rem"))
           declaration.value = toPx(declaration.value);
       });
       root.walkAtRules((atRule) => {
+        // Stryker disable next-line ConditionalExpression,StringLiteral: a shortcut only; toPx leaves params without rem unchanged.
         if (atRule.params.includes("rem")) atRule.params = toPx(atRule.params);
       });
     },
@@ -83,11 +88,13 @@ export type ShadowTailwindOptions = {
  * than Vite.
  */
 export async function compileShadowCss(entry: string): Promise<string> {
+  // Stryker disable next-line StringLiteral: without an encoding readFile returns a Buffer, which PostCSS reads as the same text.
+  const source = await readFile(entry, "utf8");
   const result = await postcss([
     tailwind({ optimize: { minify: true } }),
     unwrapPropertyFallback(),
     remToPx(),
-  ]).process(await readFile(entry, "utf8"), { from: entry });
+  ]).process(source, { from: entry });
   return result.css;
 }
 
