@@ -12,6 +12,11 @@ on:
     paths:
       - .github/workflows/analysis.yml
 
+# A newer run of the same branch replaces an older one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
