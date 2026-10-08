@@ -59,21 +59,31 @@ const digest = (text: string): string =>
 const normalize = (instruction: string): string =>
   instruction.replace(/\r\n?/g, "\n").normalize("NFC").trim();
 
-/** Arguments with each value that equals a step parameter written as a reference to it. */
+/** A primitive's identity for parameter matching: its type and value, so `1` and `"1"` stay apart. */
+const primitiveKey = (value: string | number | boolean): string =>
+  `${typeof value}:${String(value)}`;
+
+/** Arguments with each primitive value that equals a step parameter written as a reference to it. */
 export function templateArgs(
   args: JsonValue,
   params: Readonly<Record<string, JsonValue>> | undefined
 ): JsonValue {
   const byValue = new Map(
     Object.entries(params ?? {})
-      .filter(
-        (entry): entry is [string, string] => typeof entry[1] === "string"
+      .filter((entry): entry is [string, string | number | boolean] =>
+        ["string", "number", "boolean"].includes(typeof entry[1])
       )
-      .map(([name, value]) => [value, name])
+      .map(([name, value]) => [primitiveKey(value), name])
   );
   const walk = (value: JsonValue): JsonValue => {
-    if (typeof value === "string")
-      return byValue.has(value) ? { $param: byValue.get(value)! } : value;
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      const name = byValue.get(primitiveKey(value));
+      return name === undefined ? value : { $param: name };
+    }
     if (Array.isArray(value)) return value.map(walk);
     if (value !== null && typeof value === "object")
       return Object.fromEntries(

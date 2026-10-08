@@ -32,7 +32,7 @@ built (`pnpm build` at the root; the fixture serves the built Inspector).
 1. Start the fixture dev server on the port the harness expects:
 
    ```sh
-   pnpm --filter @ayme-dev/inspector-fixture dev -- --port 4691 --strictPort
+   pnpm --filter @ayme-dev/inspector-fixture dev --port 4691 --strictPort
    ```
 
    `AYME_E2E_APP_URL` points the harness at another URL.

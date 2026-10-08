@@ -370,10 +370,18 @@ export function acpDriver(options: AcpDriverOptions): AgentDriver & {
           fail("the session was closed");
           void (async () => {
             try {
-              const info = await ready;
+              // An adapter that never finished initializing gets no close
+              // request: the wait is bounded so the process still goes.
+              const info = await Promise.race([
+                ready,
+                new Promise<undefined>((resolve) =>
+                  setTimeout(() => resolve(undefined), 2_000).unref()
+                ),
+              ]);
               if (
+                info !== undefined &&
                 info.initialize.agentCapabilities?.sessionCapabilities?.close !=
-                null
+                  null
               ) {
                 await Promise.race([
                   connection.closeSession({

@@ -7,7 +7,7 @@ export const engine = web();
 
 /**
  * The fixture dev server, started by hand:
- * `pnpm --filter @ayme-dev/inspector-fixture dev -- --port 4691 --strictPort`.
+ * `pnpm --filter @ayme-dev/inspector-fixture dev --port 4691 --strictPort`.
  */
 export const APP_URL = process.env.AYME_E2E_APP_URL ?? "http://127.0.0.1:4691";
 
