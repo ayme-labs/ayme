@@ -103,7 +103,7 @@ ayme.start(); // pairs with the agent's server only with agentConnection
 ayme.peek(() => ({ active: sessions.size }), "sessions"); // peek.node.sessions
 ```
 
-The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#in-node) covers Next.js's `instrumentation.ts`, how the process finds the agent's server, and the Inspector's Node section.
+The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#in-node) covers where Peeks live in Next.js (not in `instrumentation.ts`), how the process finds the agent's server, and the Inspector's Node section.
 
 ## Documentation
 

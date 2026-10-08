@@ -107,6 +107,36 @@ describe("createAyme in an App Process", () => {
     });
   });
 
+  it("answers with the newest read a re-evaluated module adds, from its own copy of Ayme", async () => {
+    // As in `next dev`: the server's entry starts the App Process, and a
+    // module request code imports adds the Peek from another bundle's copy
+    // of Ayme, through a session it never starts. After an edit, the dev
+    // server evaluates that module again, with fresh code.
+    const appProcess = started();
+    const heard: string[][] = [];
+    cleanups.push(
+      appProcess.tools.subscribe((tools) =>
+        heard.push(tools.map(({ name }) => name))
+      )
+    );
+    const evaluateModule = async (read: () => unknown) => {
+      vi.resetModules();
+      const { createAyme: createRequestAyme } = await import("./runtime");
+      peek(createRequestAyme({ agentConnection: true }), read, "renders");
+    };
+
+    await evaluateModule(() => ({ renders: 1 }));
+    await evaluateModule(() => ({ renders: 1, version: 2 }));
+    await loaded();
+
+    expect(await appProcess.tools.run("peek.node.renders", {})).toEqual({
+      name: "renders",
+      instances: [{ values: { renders: 1, version: 2 } }],
+    });
+    // The Peek Tool stayed listed throughout.
+    expect(heard).toEqual([["peek.node.renders"]]);
+  });
+
   it("tells its subscribers when a Peek Tool appears and goes", async () => {
     const ayme = started();
     const heard: string[][] = [];
