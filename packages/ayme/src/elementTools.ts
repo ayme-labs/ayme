@@ -96,6 +96,13 @@ export type ElementToolDefinition = {
   run(target: ResolvedTarget, input: Record<string, unknown>): Promise<unknown>;
 };
 
+/** Package-internal: the input field naming the one element a tool addresses. */
+export const TARGET_SCHEMA: JsonSchema = {
+  type: "string",
+  description:
+    "A Structural Ref from the page snapshot, or a selector that matches exactly one element.",
+};
+
 const REF_INPUT_SCHEMA: JsonSchema = {
   type: "object",
   properties: { ref: { type: "string" } },

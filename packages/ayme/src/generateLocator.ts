@@ -10,6 +10,7 @@ import type { JsonSchema } from "./contracts";
 import {
   requireCurrentDocument,
   resolveElementTarget,
+  TARGET_SCHEMA,
   validatedToolInput,
   type PublishedElementTool,
 } from "./elementTools";
@@ -20,12 +21,6 @@ import type { ToolResult } from "./toolTypes";
 type Result = ToolResult<"generate_locator">;
 type Group = Result["groups"][number];
 type Entry = Extract<Group, { locators: unknown }>["locators"][number];
-
-const TARGET: JsonSchema = {
-  type: "string",
-  description:
-    "A Structural Ref from the page snapshot, or a selector that matches exactly one element.",
-};
 
 const inputSchema: JsonSchema = {
   type: "object",
@@ -39,11 +34,11 @@ const inputSchema: JsonSchema = {
         properties: {
           targets: {
             type: "array",
-            items: TARGET,
+            items: TARGET_SCHEMA,
             description: "The elements to generate locators for.",
           },
           within: {
-            ...TARGET,
+            ...TARGET_SCHEMA,
             description:
               "The container the locators are relative to, such as a component's root. Omitted: relative to the page.",
           },
@@ -184,12 +179,15 @@ async function groupFor(
 /** Package-internal: the generate_locator Browser Tool, published only. */
 export const generateLocatorTool: PublishedElementTool = {
   name: "generate_locator",
+  // Stryker disable StringLiteral: tool description wording, for the agent to
+  // read; no test should pin the prose.
   description: [
     "Generate Playwright locators for elements, to write into Page Object Model code; does not act on the page.",
     "Structural Refs are capture-scoped: use them in tool calls, never in code. The locators are what belongs in a page object.",
     "Group targets by the container they belong to: a group's locators are relative to its `within` container, ready for a component's `root`, or to the page without one.",
     "Each locator is checked to match exactly its element. A target that cannot be resolved fails on its own entry, and a container on its own group.",
   ].join(" "),
+  // Stryker restore StringLiteral
   inputSchema,
   execute: (input: unknown) => generateLocatorTool.executeAs(input, "agent"),
   executeAs: async (input) => {
