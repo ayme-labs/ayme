@@ -39,7 +39,7 @@ Act on the report like this:
 - A surviving mutant on a changed line: add a test that kills it, or give a one-line reason in the pull request, for example that the mutant is equivalent.
 - A touched function that was already above 15 is not yours to refactor: test the lines you changed, note its score in the pull request, and leave the refactor to its own issue.
 
-The `new`, `raised` and `existing` labels come from matching functions to `main` by name and order, so check a surprising one. Run analysis locally only through `analyze:changed`; runs over every file belong to CI.
+The `new`, `raised` and `existing` labels come from matching functions to `main` by name and order, so check a surprising one. Run analysis locally only through `analyze:changed`. Runs over every file belong to the weekly [Analysis workflow](../.github/workflows/analysis.yml), which can also be started by hand: it scores CRAP over all source and runs Stryker on every file with static mutants included, and uploads both reports.
 
 ## Test-only code
 

@@ -25,7 +25,7 @@
     "test:mutation": {
       "dependsOn": ["^build"],
       "cache": false,
-      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
+      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH", "STRYKER_LANE"]
     },
     "test:e2e": {
       "dependsOn": ["build", "^build"],

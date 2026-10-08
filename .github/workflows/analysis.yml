@@ -1,0 +1,76 @@
+name: Analysis
+
+# The full analysis lane: CRAP over all source and Stryker on every file,
+# static mutants included. Pull requests run the fast lane on their own
+# changes with `pnpm analyze:changed`; see docs/testing.md#change-analysis.
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+  # An edit to this workflow runs it, so the job is tested before it merges.
+  pull_request:
+    paths:
+      - .github/workflows/analysis.yml
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    name: List analyzed packages
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.list.outputs.packages }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: list
+        run: |
+          packages=$(jq -sc '[.[] | select(.scripts["test:mutation"]) | .name]' packages/*/package.json)
+          echo "Packages: $packages"
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+
+  crap:
+    name: CRAP
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm exec turbo run test:crap --concurrency=1
+      - run: node scripts/crap-report.mjs >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crap-report
+          path: reports/crap
+
+  mutation:
+    name: Stryker ${{ matrix.package }}
+    needs: packages
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    timeout-minutes: 300
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      STRYKER_LANE: full
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.packages.outputs.packages) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm exec turbo run test:mutation --filter=${{ matrix.package }}
+      - name: Name the report after the package
+        if: always()
+        id: report
+        run: echo "name=mutation-$(echo '${{ matrix.package }}' | tr -c 'a-z0-9-\n' '-')" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ steps.report.outputs.name }}
+          path: packages/*/reports/mutation
+          if-no-files-found: ignore

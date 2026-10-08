@@ -17,9 +17,11 @@ export function defineStrykerConfig({ mutate } = {}) {
     plugins: ["@stryker-mutator/vitest-runner"],
     vitest: { configFile: "vitest.fast.config.ts", related: true },
     ignoreStatic: !full,
-    concurrency: 2,
+    // Two workers keep a local run light; CI's full lane takes every core.
+    ...(full ? {} : { concurrency: 2 }),
     tempDirName: ".stryker-tmp",
-    reporters: ["clear-text", "json"],
+    reporters: full ? ["clear-text", "json", "html"] : ["clear-text", "json"],
+    htmlReporter: { fileName: "reports/mutation/mutation-full.html" },
     jsonReporter: {
       fileName: full
         ? "reports/mutation/mutation-full.json"
