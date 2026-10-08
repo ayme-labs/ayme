@@ -519,3 +519,37 @@ describe("usePeek", () => {
     ]);
   });
 });
+
+describe("AymeProvider props", () => {
+  function warningsMounting(props: Record<string, unknown>) {
+    const warnings: string[] = [];
+    const app = createApp({ render: () => h(AymeProvider, props) });
+    app.config.warnHandler = (message, _instance, trace) =>
+      warnings.push(`${message}\n${trace}`);
+    app.config.errorHandler = () => {};
+    apps.push(app);
+    app.mount(document.createElement("div"));
+    return warnings;
+  }
+
+  it("needs none of its props", () => {
+    expect(warningsMounting({})).toEqual([]);
+  });
+
+  it.each([
+    "pageFactory",
+    "ignore",
+    "customTools",
+    "goalLoop",
+    "webMCP",
+    "inspector",
+    "agentConnection",
+    "navigate",
+  ])("warns, naming the provider, when %s has the wrong type", (prop) => {
+    expect(warningsMounting({ [prop]: "wrong" })).toContainEqual(
+      expect.stringMatching(
+        new RegExp(`type check failed for prop "${prop}"[^]*<AymeProvider`)
+      )
+    );
+  });
+});
