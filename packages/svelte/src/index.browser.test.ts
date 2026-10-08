@@ -5,12 +5,7 @@ import { tick } from "svelte";
 import { VERSION } from "svelte/compiler";
 import { get } from "svelte/store";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  createAyme,
-  RuntimeStateError,
-  type DecisionRequest,
-  type DecisionResponse,
-} from "@ayme-dev/ayme";
+import { createAyme, RuntimeStateError } from "@ayme-dev/ayme";
 import { registerCompiledPom } from "@ayme-dev/ayme/internal";
 
 // A mount that throws leaves its started owners undestroyed, so the tests
@@ -345,7 +340,9 @@ it("C8: throws for a model the compiler did not reach", () => {
 it("C11: runs a goal with the owner's goalLoop through the value every component gets", async () => {
   let owner: UseAymeResult | undefined;
   let descendant: UseAymeResult | undefined;
-  const goalLoop = vi.fn(noFittingOperation);
+  const goalLoop = vi.fn(async () => {
+    throw new Error("No decision.");
+  });
   mount(Owner, {
     options: { pageFactory, goalLoop },
     onInit: (value) => (owner = value),
@@ -358,7 +355,7 @@ it("C11: runs a goal with the owner's goalLoop through the value every component
       goal: "Save the changes",
       maxSteps: 1,
     })
-  ).resolves.toMatchObject({ reason: "no_fitting_option" });
+  ).resolves.toMatchObject({ reason: "decide_failed" });
   expect(goalLoop).toHaveBeenCalled();
 });
 
@@ -374,29 +371,6 @@ it("leaves calls outside component initialisation to Svelte's own error", () => 
   );
   expect(createAyme).not.toHaveBeenCalled();
 });
-
-/** A stubbed System One model: no operation fits, so the loop hands over. */
-async function noFittingOperation(
-  request: DecisionRequest
-): Promise<DecisionResponse> {
-  const criteria = (
-    request.questions as Record<string, { criteria?: Record<string, string> }>
-  ).operation!.criteria!;
-  return {
-    model: "typesafe/jev-1.13",
-    answers: {
-      operation: {
-        type: "choice",
-        choice: "none",
-        confidence: 1,
-        probabilities: Object.fromEntries(
-          Object.keys(criteria).map((key) => [key, key === "none" ? 1 : 0])
-        ),
-      },
-      goal_met: { type: "noul", noul: 0.1 },
-    },
-  };
-}
 
 // peek seam: the function's contract with `ayme.peek`, which it adapts
 // (ADR-0031). The Peek Tool an agent reads is covered by the runtime's
