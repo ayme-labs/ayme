@@ -213,8 +213,26 @@ type WindowAction = {
  * action whose completion lands in a later visit is still attributed to its source visit and resolved
  * against that window's observations rather than leaking into the destination visit's tree.
  */
+/** An action's evidence once resolved, kept so a later reading never replays past it. */
+type ResolvedAction = {
+  readonly evidence: StructuralActionTimelineEvidence;
+  readonly after: StructuralObservationEntry;
+  /** The reconciled current tree at the after-boundary: the next action's baseline. */
+  readonly afterTree: StructuralTree;
+};
+
 export class StructuralTimeline {
   private readonly _entries: StructuralTimelineEntry[] = [];
+  /**
+   * Resolved evidence per completed action. Any entry that lands anywhere but at the end of the
+   * timeline can move an earlier action's boundaries, so such an insert forgets everything; a
+   * crossing action whose after is only a fallback is never kept, since its explicit capture may
+   * still arrive.
+   */
+  private readonly _resolvedActions = new Map<
+    StructuralActionId,
+    ResolvedAction
+  >();
 
   visits(): ReadonlyArray<StructuralVisitSnapshot> {
     return deriveVisitsFromEntries(this._entries);
@@ -354,20 +372,25 @@ export class StructuralTimeline {
    * navigation. Scoping by entry position (not timestamp) keeps visits that share a timestamp from
    * borrowing each other's observations.
    * Boundaries are selected only from observations inside the owning visit's window:
-   * - before: latest observation with `at < startedAt`
+   * - before: the observation the host recorded as this action's before (`capturedForActionId` with
+   *   `relation: "before"`) when there is one, else the latest observation with `at < startedAt`
    * - after: the action's explicit post-action capture (the observation tagged with this action id),
    *   which is authoritative even when earlier polls exist. If that capture only completed after the
    *   next action started it may already reflect the next action, so it is excluded in favour of the
    *   latest poll strictly before the next action start; with no such poll the action keeps its
-   *   before-state (an unchanged diff). A crossing/navigation action (or a non-crossing action whose
-   *   window has since closed without an explicit capture) falls back to the source window's last
-   *   observation. A non-crossing action in an open window with no explicit capture is invalid.
+   *   before-state (an unchanged diff). A crossing/navigation action keeps its explicit capture even
+   *   when that capture sits in the destination visit's window: the host said it is this action's
+   *   after. Without one it (or a non-crossing action whose window has since closed without an
+   *   explicit capture) falls back to the source window's last observation. A non-crossing action in
+   *   an open window with no explicit capture is invalid.
    * - baseline: previous action's after-boundary (or the visit's first observation)
    * - unassignedChanges: a meaningful diff from baseline to before; unchanged polling observations are omitted
    * - actionChange: the diff from before to after
    *
    * Observations inside `[startedAt, endedAt]` are never selected as boundaries. Tree-id continuity is
-   * preserved by projecting reconciled current trees forward through prior action boundaries.
+   * preserved by projecting reconciled current trees forward through prior action boundaries. Each
+   * resolved action is remembered, so a reading resumes from the latest earlier action already
+   * resolved instead of replaying the visit: its cost follows the distance read, not the visit's age.
    */
   async getActionEvidence(
     actionId: StructuralActionId,
@@ -431,6 +454,8 @@ export class StructuralTimeline {
         "Unable to resolve structural action evidence from observations."
       );
     }
+    const alreadyResolved = this._resolvedActions.get(actionId);
+    if (alreadyResolved) return alreadyResolved.evidence;
 
     // Resolve each selected observation's lazy tree at most once. Only the handful of observations
     // chosen as boundaries while threading up to the queried action are resolved; unselected polling
@@ -498,14 +523,38 @@ export class StructuralTimeline {
     }
     let resolved: StructuralActionTimelineEvidence | null = null;
 
-    for (let index = 0; index <= queriedIndex; index += 1) {
+    // Resume from the latest earlier action already resolved whose after-boundary is in this window,
+    // instead of replaying every action of the visit.
+    let firstIndex = 0;
+    for (let index = queriedIndex - 1; index >= 0; index -= 1) {
+      const earlier = this._resolvedActions.get(actions[index]!.actionId);
+      if (!earlier) continue;
+      const afterIndex = observations.indexOf(earlier.after);
+      if (afterIndex < 0) continue;
+      baselineIndex = afterIndex;
+      baselineTree = earlier.afterTree;
+      firstIndex = index + 1;
+      break;
+    }
+
+    for (let index = firstIndex; index <= queriedIndex; index += 1) {
       const action = actions[index]!;
-      // No observation strictly before the action means the visit's baseline observation (the first in
-      // the window) is the before-state. This keeps the baseline available even when an action shares
-      // the visit-start timestamp, where a strict `<` lookup would otherwise find nothing.
+      // The before the host recorded for the action wins. Otherwise, no observation strictly before
+      // the action means the visit's baseline observation (the first in the window) is the
+      // before-state. This keeps the baseline available even when an action shares the visit-start
+      // timestamp, where a strict `<` lookup would otherwise find nothing.
+      const explicitBeforeIndex = observations.findIndex(
+        (obs) =>
+          obs.capturedForActionId === action.actionId &&
+          obs.relation === "before"
+      );
       let beforeIndex =
-        this._latestObservationIndexBefore(observations, action.startedAt) ??
-        baselineIndex;
+        explicitBeforeIndex >= 0
+          ? explicitBeforeIndex
+          : (this._latestObservationIndexBefore(
+              observations,
+              action.startedAt
+            ) ?? baselineIndex);
       // Skip unresolvable before-candidates, walking back toward (never past) the running baseline so a
       // poll whose snapshot is unparseable falls back to the nearest resolvable earlier observation.
       while (
@@ -518,7 +567,8 @@ export class StructuralTimeline {
       const nextActionStart = actionStartTimes.find(
         (startedAt) => startedAt > action.startedAt
       );
-      const afterIndex = this._selectAfterIndex(observations, action, {
+      const selectedAfter = this._selectAfter(observations, action, {
+        pageId: owningVisit.pageId,
         beforeIndex,
         nextActionStart,
         visitWindowClosed: nextVisitBoundaryIndex < this._entries.length,
@@ -552,28 +602,36 @@ export class StructuralTimeline {
         beforeTree = baselineTree;
       }
 
-      const after = observations[afterIndex]!;
+      const after = selectedAfter.observation;
       const actionChangeTree = StructuralTree.reconcile(
         beforeTree,
         await resolveTree(after)
       );
+      const afterTree = actionChangeTree.toCurrentTree();
+      const evidence: StructuralActionTimelineEvidence = {
+        visitId: owningVisitId,
+        unassignedChanges,
+        actionChange: {
+          timestamp: after.at,
+          changeTree: actionChangeTree,
+          structuralTree: afterTree,
+          sourceTreeEvidence: after.tree,
+          beforeStructuralTree: beforeTree,
+        },
+      };
+      if (selectedAfter.settled)
+        this._resolvedActions.set(action.actionId, {
+          evidence,
+          after,
+          afterTree,
+        });
+      if (index === queriedIndex) resolved = evidence;
 
-      if (index === queriedIndex) {
-        resolved = {
-          visitId: owningVisitId,
-          unassignedChanges,
-          actionChange: {
-            timestamp: after.at,
-            changeTree: actionChangeTree,
-            structuralTree: actionChangeTree.toCurrentTree(),
-            sourceTreeEvidence: after.tree,
-            beforeStructuralTree: beforeTree,
-          },
-        };
-      }
-
-      baselineIndex = afterIndex;
-      baselineTree = actionChangeTree.toCurrentTree();
+      baselineIndex =
+        selectedAfter.index >= 0
+          ? selectedAfter.index
+          : observations.length - 1;
+      baselineTree = afterTree;
     }
 
     if (!resolved)
@@ -674,6 +732,9 @@ export class StructuralTimeline {
   private _insert(entry: StructuralTimelineEntry): void {
     let index = this._entries.length;
     while (index > 0 && this._entries[index - 1]!.at > entry.at) index -= 1;
+    const last = this._entries[this._entries.length - 1];
+    if (index < this._entries.length || (last && last.at === entry.at))
+      this._resolvedActions.clear();
     this._entries.splice(index, 0, entry);
   }
 
@@ -739,30 +800,57 @@ export class StructuralTimeline {
   }
 
   /**
-   * Selects the after-boundary observation index for a single action, per the authoritative post-action
-   * capture contract documented on {@link getActionEvidence}.
+   * Selects the after-boundary observation for a single action, per the authoritative post-action
+   * capture contract documented on {@link getActionEvidence}. `index` is its position among the
+   * window's observations, -1 when it lies in the destination visit; `settled` is false when the
+   * choice is a fallback that a later explicit capture would replace.
    */
-  private _selectAfterIndex(
+  private _selectAfter(
     observations: StructuralObservationEntry[],
     action: WindowAction,
     context: {
+      pageId: PageId;
       beforeIndex: number;
       nextActionStart: number | undefined;
       visitWindowClosed: boolean;
     }
-  ): number {
-    // A crossing action settled on the destination page, so it never has a trustworthy source capture;
-    // resolve it against the source window's last known observation (equal before/after stays unchanged).
-    if (action.crossesVisitBoundary) return observations.length - 1;
+  ): {
+    observation: StructuralObservationEntry;
+    index: number;
+    settled: boolean;
+  } {
+    const isExplicit = (obs: StructuralObservationEntry) =>
+      obs.capturedForActionId === action.actionId && obs.relation !== "before";
+    const at = (index: number) => ({
+      observation: observations[index]!,
+      index,
+      settled: true,
+    });
 
-    const explicitIndex = observations.findIndex(
-      (obs) =>
-        obs.capturedForActionId === action.actionId && obs.relation !== "before"
-    );
+    if (action.crossesVisitBoundary) {
+      // A crossing action settled on the destination page. The capture the host recorded for it is
+      // its after wherever it sits; without one there is no trustworthy source capture, so resolve it
+      // against the source window's last known observation (equal before/after stays unchanged).
+      const explicit = this._entries.find(
+        (entry): entry is StructuralObservationEntry =>
+          entry.kind === "observation" &&
+          entry.pageId === context.pageId &&
+          isExplicit(entry)
+      );
+      if (explicit)
+        return {
+          observation: explicit,
+          index: observations.indexOf(explicit),
+          settled: true,
+        };
+      return { ...at(observations.length - 1), settled: false };
+    }
+
+    const explicitIndex = observations.findIndex(isExplicit);
     if (explicitIndex < 0) {
       // The window closed after this action without an explicit capture (e.g. navigation skipped it):
       // keep the navigation fallback. With the window still open, a missing capture is invalid state.
-      if (context.visitWindowClosed) return observations.length - 1;
+      if (context.visitWindowClosed) return at(observations.length - 1);
       throw new Error(
         `No post-action observation recorded for action ${String(action.actionId)}.`
       );
@@ -773,7 +861,7 @@ export class StructuralTimeline {
       context.nextActionStart === undefined ||
       explicit.at < context.nextActionStart
     )
-      return explicitIndex;
+      return at(explicitIndex);
 
     // The explicit capture only completed after the next action began, so it may already reflect that
     // action. Use the latest genuine post-action poll before the next action; without one the action
@@ -783,7 +871,7 @@ export class StructuralTimeline {
       action.endedAt,
       context.nextActionStart
     );
-    return guardedIndex ?? context.beforeIndex;
+    return at(guardedIndex ?? context.beforeIndex);
   }
 
   private _latestObservationIndexInRange(
