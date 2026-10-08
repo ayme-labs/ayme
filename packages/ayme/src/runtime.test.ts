@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { recordAgentImageRun } from "./agentImageRuns";
 import { createPage } from "./browserPage";
 import { loadAgentConnection } from "./agentConnection";
+import { cursors } from "./cursors";
 import { RuntimeStateError } from "./errors";
 import * as goalLoopModule from "./goalLoop";
 import { loadInspector } from "./inspector";
@@ -15,6 +16,7 @@ import {
   type AymePage,
 } from "./runtime";
 import { listRegisteredPoms, registerCompiledPom } from "./registry";
+import { callers } from "./run";
 import {
   synchronizeWebMcpTools,
   waitForWebMcpDriver,
@@ -430,7 +432,7 @@ it("runs goal as the application while publication is unavailable", async () => 
     const input = { goal: "save", maxSteps: 3 };
     await expect(runtime.tools.run("goal", input)).resolves.toBe(handover);
     expect(execute).toHaveBeenCalledExactlyOnceWith(input, {
-      reader: "app",
+      cursor: cursors.of(callers.app),
       run: expect.any(Function),
     });
     expect(synchronizeWebMcpTools).not.toHaveBeenCalled();

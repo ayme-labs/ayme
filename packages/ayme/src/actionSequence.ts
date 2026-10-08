@@ -7,7 +7,8 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import { isJsonValue, type JsonValue } from "./contracts";
 import { browserMonotonicClock } from "./browserMonotonicClock";
-import type { Reader, ToolCall } from "./interactionHistory";
+import type { Cursor } from "./cursors";
+import type { ToolCall } from "./interactionHistory";
 import { getBrowserPageActivitySource } from "./pageActivitySource";
 import {
   completeActionForDocument,
@@ -32,14 +33,14 @@ export type ActionResult = {
  * Shared action sequence: record a Structural Action around `perform`, wait
  * for a Settled Page, capture it and return the unified action result with an
  * optional Change Record — what changed around the action: the difference
- * between the Structural Page State the acting caller last received and the
- * Settled Page after the action.
+ * between the Structural Page State `cursor` stands at, the one its Caller
+ * last received, and the Settled Page after the action, where `cursor` then
+ * moves.
  *
- * A caller's state is what it received: `snapshot` and the Settled
- * Page of its previous action for the calling agent, each step's tree for the
- * Goal Loop's model. Captures Ayme makes for itself move neither. A change
- * that happened on its own since the caller last read the page is therefore
- * part of the record.
+ * A Caller's state is what it received: `snapshot` and the Settled Page of
+ * its previous action; each step's tree for the Goal Loop's fork. Captures
+ * Ayme makes for itself move no cursor. A change that happened on its own
+ * since the Caller last read the page is therefore part of the record.
  *
  * An action whose `perform` or settle wait throws is completed as failed with
  * the page as it is then, moves no cursor, and the error travels on; one
@@ -55,15 +56,15 @@ export type ActionResult = {
  */
 export async function runAction(
   currentDocument: Document,
-  caller: Reader,
+  cursor: Cursor,
   call: ToolCall,
   perform: () => unknown
 ): Promise<ActionResult> {
-  const actionId = await startActionForDocument(currentDocument, caller, call);
+  const actionId = await startActionForDocument(currentDocument, call);
   const history = getInteractionHistory(currentDocument);
-  // The before of the Change Record: what the caller has received as the
-  // action starts; child Runs inside the action move the cursor on.
-  const before = history.cursor(caller);
+  // The before of the Change Record: where the cursor stands as the action
+  // starts; child Runs inside the action move the cursor on.
+  const before = history.received(cursor);
   let rawResult: unknown;
   let stable = false;
   const fullLoad = watchFullLoad(currentDocument);
@@ -98,9 +99,10 @@ export async function runAction(
     fullLoad.stop();
   }
   if (loadingUrl !== undefined)
-    return loadingResult(currentDocument, actionId, before, loadingUrl);
+    return loadingResult(currentDocument, actionId, cursor, before, loadingUrl);
 
   const after = await completeActionForDocument(currentDocument, actionId);
+  cursor.move(after);
   const changes = await history.readChange(before ?? after, after);
   const pageChanged = changes.hasAnyChanges();
 
@@ -152,14 +154,19 @@ export async function startNavigation(
 async function loadingResult(
   currentDocument: Document,
   actionId: StructuralActionId,
+  cursor: Cursor,
   before: StructuralObservationEntry | undefined,
   url: string
 ): Promise<ActionResult> {
   // The document may already be going away; the answer goes out regardless.
   const changes = await completeActionForDocument(currentDocument, actionId)
-    .then((after) =>
-      getInteractionHistory(currentDocument).readChange(before ?? after, after)
-    )
+    .then((after) => {
+      cursor.move(after);
+      return getInteractionHistory(currentDocument).readChange(
+        before ?? after,
+        after
+      );
+    })
     .catch(() => undefined);
   const pageChanged = changes?.hasAnyChanges() ?? false;
   return {

@@ -1,5 +1,5 @@
+import type { Cursor } from "./cursors";
 import { RuntimeStateError } from "./errors";
-import type { Reader } from "./interactionHistory";
 import { getPageContextTool } from "./pageContext";
 import { isPeekTool } from "./peek";
 
@@ -31,11 +31,12 @@ export type ToolRunOptions = {
 };
 
 /**
- * Package-internal: what a tool's execution is handed. `reader` is whose
- * cursor its Change Record moves.
+ * Package-internal: what a tool's execution is handed. `cursor` is the
+ * Change Record cursor the Run reads from and moves: its Caller's for a
+ * top-level Run, the parent's for a child Run.
  */
 export type RunContext = {
-  readonly reader: Reader;
+  readonly cursor: Cursor;
   /** Starts a child Run of this Run. */
   readonly run: StartChildRun;
 };
@@ -43,13 +44,13 @@ export type RunContext = {
 /**
  * Package-internal: starts the live tool `name` as a child Run of the
  * current Run, inside its turn, after the child Runs it started before: it
- * never waits on the page's queue. Its Change Record moves `reader`'s
- * cursor, the parent Run's by default.
+ * never waits on the page's queue. Its Change Record reads from and moves
+ * `cursor`, the parent Run's by default.
  */
 export type StartChildRun = (
   name: string,
   input: unknown,
-  reader?: Reader
+  cursor?: Cursor
 ) => Promise<unknown>;
 
 /** Package-internal: a tool as a Run executes it. */
@@ -68,11 +69,6 @@ export function callerOf(options: ToolRunOptions | undefined): Caller {
       "A Run needs a Caller: pass a non-empty name as `by`, or leave it out to run as the app."
     );
   return by;
-}
-
-/** Package-internal: whose cursor a top-level Run for `by` moves. */
-export function readerOf(by: Caller): Reader {
-  return by === callers.webmcp ? "agent" : "app";
 }
 
 /**

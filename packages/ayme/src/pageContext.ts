@@ -8,7 +8,7 @@ import {
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { ToolInputError } from "./errors";
-import type { Reader } from "./interactionHistory";
+import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
 
 type GetPageContextInput = { names?: string[] };
@@ -49,9 +49,9 @@ export const getPageContextTool = {
     required: [],
     additionalProperties: false,
   } as const,
-  /** Reads the page for the Run's reader, whose page it then is. */
+  /** Reads the page for the Run's Caller, whose cursor moves to it. */
   execute: (input: unknown, context: RunContext) =>
-    snapshotFor(input, context.reader),
+    snapshotFor(input, context.cursor),
 } satisfies Omit<
   ModelContextTool<GetPageContextInput, JsonValue>,
   "execute"
@@ -59,10 +59,10 @@ export const getPageContextTool = {
   execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
-async function snapshotFor(input: unknown, reader: Reader): Promise<JsonValue> {
+async function snapshotFor(input: unknown, cursor: Cursor): Promise<JsonValue> {
   const context = await pageContextFor(
     document,
-    reader,
+    cursor,
     definitionNamesFrom(input)
   );
   const payload: PageContextPayload = {
@@ -72,19 +72,21 @@ async function snapshotFor(input: unknown, reader: Reader): Promise<JsonValue> {
   return JSON.parse(JSON.stringify(payload)) as JsonValue;
 }
 
+/** The page context `cursor`'s reader receives; its cursor moves to the capture. */
 export async function getPageContextForDocument(
   currentDocument: Document,
+  cursor: Cursor,
   ...names: readonly string[]
 ): Promise<PageContext> {
-  return pageContextFor(currentDocument, "agent", names);
+  return pageContextFor(currentDocument, cursor, names);
 }
 
 async function pageContextFor(
   currentDocument: Document,
-  reader: Reader,
+  cursor: Cursor,
   names: readonly string[]
 ): Promise<PageContext> {
-  const pageState = await getPageStateForDocument(currentDocument, reader);
+  const pageState = await getPageStateForDocument(currentDocument, cursor);
   return Object.freeze({
     structure: pageState.text,
     pomDefinitions: getPomDefinitions(...names).definitions,

@@ -14,7 +14,7 @@ vi.mock("./pageState", async (importOriginal) => ({
 vi.mock("./pomDefinitions", () => ({ getPomDefinitions }));
 
 import { getPageContextForDocument, getPageContextTool } from "./pageContext";
-import { runContext } from "./agentCalls.testSupport";
+import { agentCursor, runContext } from "./agentCalls.testSupport";
 
 describe("snapshot", () => {
   beforeEach(() => {
@@ -51,6 +51,7 @@ describe("snapshot", () => {
     });
     const context = await getPageContextForDocument(
       document,
+      agentCursor(),
       "ProfileMenu",
       "DocumentPage"
     );

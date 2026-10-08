@@ -53,8 +53,9 @@ describe("Callers of ayme.tools.run in Chromium", () => {
     expect(document.body.textContent).not.toContain("Saved");
   });
 
-  it("runs as the app by default, and a named Caller shares the app's Change Record", async () => {
+  it("runs as the app by default, and a named Caller reads its own Change Record", async () => {
     await ayme.tools.run("snapshot", {});
+    await ayme.tools.run("snapshot", {}, { by: "support-assistant" });
     toast("First toast");
 
     const named: ActionResult = await ayme.tools.run("click", SAVE, {
@@ -65,9 +66,10 @@ describe("Callers of ayme.tools.run in Chromium", () => {
 
     toast("Second toast");
     const byDefault = await ayme.tools.run("click", SAVE);
-    expect(byDefault.changes).toContain("Second toast");
-    expect(byDefault.changes).not.toContain("First toast");
-    expect(byDefault.changes).toContain("Saved 2");
+    // The app's record starts at the app's own snapshot: what the named
+    // Caller did since is in it.
+    for (const text of ["First toast", "Saved 1", "Second toast", "Saved 2"])
+      expect(byDefault.changes).toContain(text);
   });
 
   it("runs as a built-in Caller named by its constant", async () => {

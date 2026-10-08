@@ -17,16 +17,7 @@ import {
   type StructuralActionId,
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
-
-/**
- * Whose cursor a Run moves: the agent's (a `webmcp` Run), the Goal Loop's
- * System One model's (a Goal Loop step), or the app's (every other Caller).
- * The capture layer never learns which Caller started a Run.
- *
- * ponytail: `goalLoop` is a reader id of its own until the Goal Loop becomes
- * a plain consumer of the history.
- */
-export type Reader = "agent" | "goalLoop" | "app";
+import type { Cursor } from "./cursors";
 
 /** What core's Structural Action does not carry: the tool call behind it. */
 export type ToolCall = {
@@ -38,7 +29,6 @@ export type ToolCall = {
 
 /** A tool call as recorded beside its Structural Action. */
 export type RecordedAction = ToolCall & {
-  readonly caller: Reader;
   /** Set when the tool call threw; the action still completed. */
   readonly failed?: true;
 };
@@ -47,10 +37,11 @@ let documentCount = 0;
 
 /**
  * A document's interaction history (ADR-0027): a core Structural Observation
- * Session driven from the browser, the tool call behind each Structural
- * Action, and, per caller, the observation that caller last received. Every
- * reading of what changed is core's: this records and names observations,
- * it never diffs them itself.
+ * Session driven from the browser and the tool call behind each Structural
+ * Action. Every reading of what changed is core's: this records and names
+ * observations, it never diffs them itself. Who received which observation
+ * is the cursors' business (`cursors.ts`): the history never learns which
+ * Caller started an action.
  *
  * ponytail: everything is kept for the document's life, so memory has no
  * ceiling: it grows by one StructuralTree per observation (two per single-element tool
@@ -62,11 +53,6 @@ export class InteractionHistory {
   readonly observations: StructuralObservationSession;
   private readonly actionIds = new StructuralActionIdFactory();
   private readonly recorded = new Map<StructuralActionId, RecordedAction>();
-  /**
-   * ponytail: three remembered positions, the observation each caller last
-   * received; they become one cursor per Caller name beside the Run log.
-   */
-  private readonly cursors = new Map<Reader, StructuralObservationEntry>();
   private first: StructuralObservationEntry | undefined;
   private latest: StructuralObservationEntry | undefined;
 
@@ -100,15 +86,17 @@ export class InteractionHistory {
     return this.first !== undefined;
   }
 
-  /** Record an already-captured tree as an observation; `receivedBy` moves that caller's cursor. */
+  /** The first observation recorded, of any kind. */
+  get firstObservation(): StructuralObservationEntry | undefined {
+    return this.first;
+  }
+
+  /** Record an already-captured tree as an observation. */
   observe(
     tree: StructuralTree,
-    at: MonotonicTimeMs,
-    receivedBy?: Reader
+    at: MonotonicTimeMs
   ): StructuralObservationEntry {
-    const entry = this.record(tree, at);
-    if (receivedBy) this.cursors.set(receivedBy, entry);
-    return entry;
+    return this.record(tree, at);
   }
 
   /** The observation recorded most recently, of any kind. */
@@ -116,21 +104,27 @@ export class InteractionHistory {
     return this.latest;
   }
 
-  /** The observation `caller` last received; the first observation while it has received none. */
-  cursor(caller: Reader): StructuralObservationEntry | undefined {
-    return this.cursors.get(caller) ?? this.first;
+  /**
+   * Where `cursor` stands in this history: the observation it last received,
+   * or the first observation while it has received none of this document.
+   * An observation of another document, which a test's document swap leaves
+   * behind, is no position here.
+   */
+  received(cursor: Cursor): StructuralObservationEntry | undefined {
+    const current = cursor.current();
+    return current?.pageId === this.pageId ? current : this.first;
   }
 
   /**
-   * Start a Structural Action for `caller`'s tool call. Its Change Record
-   * starts at the observation `caller` has received now, `cursor(caller)`,
-   * so an action that runs others inside it, as a Custom Tool runs its child
+   * Start a Structural Action for a tool call. Its Change Record starts at
+   * the observation the acting cursor stands at now, `received(cursor)`, so
+   * an action that runs others inside it, as a Custom Tool runs its child
    * Runs, covers what they changed too; whoever reads the record keeps that
    * observation.
    */
-  startAction(caller: Reader, call: ToolCall): StructuralActionId {
+  startAction(call: ToolCall): StructuralActionId {
     const actionId = this.actionIds.create();
-    this.recorded.set(actionId, { ...call, caller });
+    this.recorded.set(actionId, { ...call });
     this.observations.recordActionStarted({
       kind: "action-started",
       at: this.now(),
@@ -142,19 +136,16 @@ export class InteractionHistory {
 
   /**
    * Complete an action with its Settled Page and return that observation,
-   * the action's after, which becomes the acting caller's cursor. The Change
-   * Record is `readChange` from the observation the caller had received when
-   * the action started to this one.
+   * the action's after, where the acting cursor moves. The Change Record is
+   * `readChange` from the observation the cursor stood at when the action
+   * started to this one.
    */
   completeAction(
     actionId: StructuralActionId,
     settledPage: StructuralTree,
     at: MonotonicTimeMs
   ): StructuralObservationEntry {
-    const action = this.recordedAction(actionId);
-    const after = this.complete(actionId, settledPage, at);
-    this.cursors.set(action.caller, after);
-    return after;
+    return this.complete(actionId, settledPage, at);
   }
 
   /** What changed between two observations of this document: core's reading. */
@@ -167,7 +158,7 @@ export class InteractionHistory {
 
   /**
    * Complete an action whose tool call threw, with the page as it is now. The
-   * caller received an error, not a page, so its cursor stays where it was.
+   * Caller received an error, not a page, so its cursor stays where it was.
    */
   failAction(
     actionId: StructuralActionId,
@@ -179,21 +170,6 @@ export class InteractionHistory {
       failed: true,
     });
     this.complete(actionId, page, at);
-  }
-
-  /**
-   * The Goal Loop hands control back to `caller`, which ran it: it has now
-   * received the page the model last received. Returns the run's Change
-   * Record tree, the caller's previous cursor reconciled against that page;
-   * undefined when the model received nothing.
-   */
-  async handOver(caller: Reader): Promise<StructuralTree | undefined> {
-    const received = this.cursors.get("goalLoop");
-    if (!received) return undefined;
-    const before = this.cursor(caller) ?? received;
-    this.cursors.set(caller, received);
-    this.cursors.delete("goalLoop");
-    return this.readChange(before, received);
   }
 
   /** The tool calls behind the recorded Structural Actions, in start order. */

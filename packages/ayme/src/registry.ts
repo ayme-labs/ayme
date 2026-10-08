@@ -18,7 +18,7 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { Locator, Page } from "@playwright/test";
 import { probePomRootState } from "./pomReachability";
 import { resolvePageStateRefs, type AriaRef } from "./pageState";
-import type { Reader } from "./interactionHistory";
+import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
 import { runAction, type ActionResult } from "./actionSequence";
 import { RefResolutionError, RuntimeStateError } from "./errors";
@@ -33,8 +33,8 @@ type ScopedPomTool = RegisteredPomTool & {
 
 /**
  * Package-internal: a Page Object tool as the registry holds it. Its
- * `execute` runs it for a Run, whose context names the reader its Change
- * Record is for: the Goal Loop runs it as its model.
+ * `execute` runs it for a Run, whose context carries the cursor its Change
+ * Record reads from and moves.
  */
 export type CallerAwarePomTool = ScopedPomTool & {
   execute(input: unknown, context: RunContext): Promise<ActionResult>;
@@ -573,8 +573,8 @@ function createRegisteredTool(
     description: tool.description,
     inputSchema: tool.inputSchema,
     parameters: tool.parameters,
-    execute: (args, { reader }) =>
-      performPageObjectAction(instance, tool, args, reader),
+    execute: (args, { cursor }) =>
+      performPageObjectAction(instance, tool, args, cursor),
   };
 }
 
@@ -627,7 +627,7 @@ function createComponentTool(
     );
 
   const wrapper = refComponentToolManifest(pomId, path, action);
-  const execute: CallerAwarePomTool["execute"] = async (input, { reader }) => {
+  const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const values = validatedArguments(wrapper, input);
     const ref = AriaRefSchema.parse(values[0] as string);
     const args = values[1];
@@ -648,7 +648,7 @@ function createComponentTool(
       componentInstance,
       action,
       args,
-      reader
+      cursor
     );
   };
   return {
@@ -672,7 +672,7 @@ function createSingularComponentTool(
   action: ToolManifest,
   componentPath: string
 ): CallerAwarePomTool {
-  const execute: CallerAwarePomTool["execute"] = async (input, { reader }) => {
+  const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const componentInstance = await resolveSingularComponent(
       pageInstance,
       path
@@ -686,7 +686,7 @@ function createSingularComponentTool(
       componentInstance,
       action,
       input,
-      reader
+      cursor
     );
   };
   return {
@@ -1038,12 +1038,12 @@ async function readMember(instance: object, member: PomMemberManifest) {
   return await value;
 }
 
-/** Performs a Page Object Action for a Run whose Change Record is `reader`'s. */
+/** Performs a Page Object Action for a Run whose Change Record is read from `cursor`. */
 async function performPageObjectAction(
   instance: object,
   tool: ToolManifest,
   args: unknown,
-  reader: Reader
+  cursor: Cursor
 ): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
   if (!isCallable(method))
@@ -1053,9 +1053,9 @@ async function performPageObjectAction(
 
   const currentDocument = requireCurrentDocument();
   const parameters = validatedArguments(tool, args);
-  // A tool may be called without the caller ever having read the page; the
+  // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
-  return runAction(currentDocument, reader, { tool: tool.toolName, args }, () =>
+  return runAction(currentDocument, cursor, { tool: tool.toolName, args }, () =>
     method.apply(instance, parameters)
   );
 }

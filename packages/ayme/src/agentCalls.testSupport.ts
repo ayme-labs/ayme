@@ -5,26 +5,29 @@
  */
 import type { ActionResult } from "./actionSequence";
 import { listElementTools } from "./browserTools";
-import type { Reader } from "./interactionHistory";
+import { cursors, type Cursor } from "./cursors";
 import { getPageContextForDocument } from "./pageContext";
 import { getPageStateForDocument, type AriaRef } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
 import { resolvePublishedTools, resolveTools } from "./publishedTools";
-import { executeTopLevelRun, type RunContext } from "./run";
+import { callers, executeTopLevelRun, type RunContext } from "./run";
+
+/** The calling agent's cursor: a WebMCP agent's, as `webmcp` Runs read it. */
+export const agentCursor = (): Cursor => cursors.of(callers.webmcp);
 
 /**
  * The Run context for a tool a test executes itself, outside a runtime
- * session: its Change Record is `reader`'s, the agent's by default, and the
- * child Runs it starts execute the available tool they name at once,
- * unrecorded.
+ * session: its Change Record reads from and moves `cursor`, the calling
+ * agent's by default, and the child Runs it starts execute the available
+ * tool they name at once, unrecorded.
  */
-export function runContext(reader: Reader = "agent"): RunContext {
+export function runContext(cursor: Cursor = agentCursor()): RunContext {
   return {
-    reader,
-    run: async (name, input, childReader = reader) => {
+    cursor,
+    run: async (name, input, childCursor = cursor) => {
       const entry = resolveTools({ peeks: true }).get(name);
       if (!entry?.available) throw new Error(`No available tool "${name}".`);
-      return entry.tool.execute(input, runContext(childReader));
+      return entry.tool.execute(input, runContext(childCursor));
     },
   };
 }
@@ -58,8 +61,8 @@ function browserTool(name: string) {
 
 export const ayme = {
   getPageContext: (...names: readonly string[]) =>
-    getPageContextForDocument(document, ...names),
-  getPageState: () => getPageStateForDocument(document),
+    getPageContextForDocument(document, agentCursor(), ...names),
+  getPageState: () => getPageStateForDocument(document, agentCursor()),
   getPomDefinitions,
   click: (ref: AriaRef) =>
     browserTool("click").tool.execute(

@@ -4,7 +4,7 @@ import {
   type StructuralActionId,
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
-import { runPublished } from "./agentCalls.testSupport";
+import { agentCursor, runPublished } from "./agentCalls.testSupport";
 
 import type { PomManifest, ToolManifest } from "./contracts";
 import type { DecisionResponse } from "./decisionTypes";
@@ -193,7 +193,6 @@ describe("Interaction history in Chromium", () => {
     expect(history().actions().size).toBe(actionsBefore + 1);
     const actionId = lastActionId();
     expect(history().actions().get(actionId)).toEqual({
-      caller: "agent",
       tool: "click",
       args: { target: addRef },
       targetRef: addRef,
@@ -212,7 +211,6 @@ describe("Interaction history in Chromium", () => {
     expect(history().actions().size).toBe(actionsBefore + 1);
     const actionId = lastActionId();
     expect(history().actions().get(actionId)).toEqual({
-      caller: "agent",
       tool: "App.add",
       args: {},
     });
@@ -325,7 +323,7 @@ describe("Interaction history in Chromium", () => {
     const decide: GoalLoopDecisionFunction =
       async (): Promise<DecisionResponse> => {
         const first = step++ === 0;
-        if (!first) agentCursorDuringRun = history().cursor("agent");
+        if (!first) agentCursorDuringRun = agentCursor().current();
         return {
           model: "typesafe/jev-1.13",
           answers: {
@@ -340,7 +338,7 @@ describe("Interaction history in Chromium", () => {
       };
     await startWithAddingPom(decide);
     await readStructure();
-    const agentCursor = history().cursor("agent");
+    const agentPage = agentCursor().current();
     const actionsBefore = history().actions().size;
 
     const handover = (await tool("goal").execute({
@@ -354,16 +352,15 @@ describe("Interaction history in Chromium", () => {
     expect(history().actions().size).toBe(actionsBefore + 1);
     const actionId = lastActionId();
     expect(history().actions().get(actionId)).toMatchObject({
-      caller: "goalLoop",
       tool: "App.add",
     });
     await expectBeforeChangeAfter(actionId);
 
     // Step two ran after the step's action: the agent's cursor had not moved.
-    expect(agentCursorDuringRun).toBe(agentCursor);
+    expect(agentCursorDuringRun).toBe(agentPage);
     // The Handover gives the agent the page the model last received.
-    expect(history().cursor("agent")).not.toBe(agentCursor);
-    expect(names(await history().cursor("agent")!.tree.resolve())).toContain(
+    expect(agentCursor().current()).not.toBe(agentPage);
+    expect(names(await agentCursor().current()!.tree.resolve())).toContain(
       "Added by the action"
     );
   });
@@ -418,7 +415,9 @@ describe("Interaction history in Chromium", () => {
     await readStructure();
 
     await tool("goal").execute({ goal: "add one", maxSteps: 3 });
-    expect(history().actions().get(agentActionId!)?.caller).toBe("agent");
+    expect(history().actions().get(agentActionId!)).toMatchObject({
+      tool: "App.noop",
+    });
 
     // A capture Ayme makes for itself: it finds the ref and moves no cursor.
     const [markRef] = (

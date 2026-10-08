@@ -19,7 +19,10 @@ vi.mock("@ayme-dev/core/structural-observation", async (importOriginal) => ({
 }));
 
 import { runAction, startNavigation } from "./actionSequence";
+import { createCursors } from "./cursors";
 import { getInteractionHistory } from "./pageState";
+
+const cursor = () => createCursors().of("app");
 
 describe("runAction", () => {
   beforeEach(() => {
@@ -40,7 +43,7 @@ describe("runAction", () => {
     const captureError = captureOnceThenThrow();
 
     await expect(
-      runAction(document, "agent", { tool: "App.save", args: {} }, () => {})
+      runAction(document, cursor(), { tool: "App.save", args: {} }, () => {})
     ).rejects.toBe(captureError);
 
     await expectOneFailedCompletedAction();
@@ -51,7 +54,7 @@ describe("runAction", () => {
     const performError = new Error("Save failed.");
 
     await expect(
-      runAction(document, "agent", { tool: "App.save", args: {} }, () => {
+      runAction(document, cursor(), { tool: "App.save", args: {} }, () => {
         throw performError;
       })
     ).rejects.toBe(performError);

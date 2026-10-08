@@ -6,6 +6,7 @@ import {
   StructuralTree,
   SyntheticAriaRefFactory,
 } from "@ayme-dev/core/structural-observation";
+import { createCursors } from "./cursors";
 import { InteractionHistory } from "./interactionHistory";
 
 let now = 0;
@@ -61,61 +62,55 @@ describe("InteractionHistory without the Navigation API", () => {
   });
 });
 
-describe("InteractionHistory cursors", () => {
+describe("InteractionHistory actions", () => {
   const empty = () => tree('- button "Save" [ref=e1]');
   const saved = () =>
     tree('- button "Save" [ref=e1]\n- status "Saved" [ref=e2]');
 
-  it("stands the first observation in for a caller that received nothing", () => {
+  it("stands the first observation in for a cursor that received nothing", () => {
     const history = new InteractionHistory(document, clock);
-    const first = history.observe(empty(), history.now());
-    history.observe(saved(), history.now());
+    const cursor = createCursors().of("app");
+    expect(history.received(cursor)).toBeUndefined();
 
-    expect(history.cursor("agent")).toBe(first);
-    expect(history.cursor("goalLoop")).toBe(first);
+    const first = history.observe(empty(), history.now());
+    const second = history.observe(saved(), history.now());
+
+    expect(history.firstObservation).toBe(first);
+    expect(history.received(cursor)).toBe(first);
+    cursor.move(second);
+    expect(history.received(cursor)).toBe(second);
   });
 
-  it("renders an action against the acting caller's cursor and moves only that cursor", async () => {
+  it("completes an action with its after observation and reads the change from where the cursor stood", async () => {
     const history = new InteractionHistory(document, clock);
-    const agentRead = history.observe(empty(), history.now(), "agent");
-    history.observe(empty(), history.now(), "goalLoop");
-    const actionId = history.startAction("goalLoop", {
-      tool: "App.save",
-      args: {},
-    });
-    const before = history.cursor("goalLoop")!;
+    const cursor = createCursors().of("app");
+    cursor.move(history.observe(empty(), history.now()));
+    const actionId = history.startAction({ tool: "App.save", args: {} });
+    const before = history.received(cursor)!;
 
     const after = history.completeAction(actionId, saved(), history.now());
     const changes = await history.readChange(before, after);
 
     expect(after.capturedForActionId).toBe(actionId);
-    expect(history.cursor("goalLoop")).toBe(after);
     expect(changes.getNodesByStatus("added").map((node) => node.name)).toEqual([
       "Saved",
     ]);
-    expect(history.actions().get(actionId)?.caller).toBe("goalLoop");
-    expect(history.cursor("agent")).toBe(agentRead);
-
-    const runChanges = await history.handOver("agent");
-    expect(history.cursor("agent")?.capturedForActionId).toBe(actionId);
-    // The run's Change Record starts at the agent's previous cursor.
-    expect(
-      runChanges?.getNodesByStatus("added").map((node) => node.name)
-    ).toEqual(["Saved"]);
-  });
-
-  it("completes an action whose tool call failed without moving a cursor", async () => {
-    const history = new InteractionHistory(document, clock);
-    const agentRead = history.observe(empty(), history.now(), "agent");
-    const actionId = history.startAction("agent", {
+    expect(history.actions().get(actionId)).toEqual({
       tool: "App.save",
       args: {},
     });
+    // Moving the cursor is the reader's: the history moved nothing.
+    expect(history.received(cursor)).toBe(before);
+  });
+
+  it("completes an action whose tool call failed with its page", async () => {
+    const history = new InteractionHistory(document, clock);
+    history.observe(empty(), history.now());
+    const actionId = history.startAction({ tool: "App.save", args: {} });
 
     history.failAction(actionId, saved(), history.now());
 
     expect(history.actions().get(actionId)).toMatchObject({ failed: true });
-    expect(history.cursor("agent")).toBe(agentRead);
     const { actionChange } =
       await history.observations.getActionEvidence(actionId);
     expect(actionChange.changeTree.hasAnyChanges()).toBe(true);
