@@ -56,8 +56,15 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
     listening.abort();
     disposePublication();
     stop();
-    if (navigation.currentEntry!.key !== firstEntry.key)
+    if (navigation.currentEntry!.key !== firstEntry.key) {
+      // The traversal's popstate can come after it finishes; it must not
+      // reach the next test's router.
+      const popped = new Promise((resolve) =>
+        window.addEventListener("popstate", resolve, { once: true })
+      );
       await navigation.traverseTo(firstEntry.key).finished;
+      await popped;
+    }
     document.body.innerHTML = "";
   });
 
