@@ -154,6 +154,7 @@ function observe(
     label?: string;
     pageId?: PageId;
     capturedForActionId?: StructuralActionId;
+    relation?: "before" | "after";
   }
 ): StructuralTreeEvidence {
   const evidence = treeEvidence(options.yaml, {
@@ -167,6 +168,7 @@ function observe(
     pageId: options.pageId ?? PAGE,
     tree: evidence,
     capturedForActionId: options.capturedForActionId,
+    ...(options.relation ? { relation: options.relation } : {}),
   });
   return evidence;
 }
@@ -1029,23 +1031,29 @@ describe("StructuralTimeline", () => {
         pageId: PAGE,
         actionId: id,
       });
+      observe(timeline, {
+        at: 40,
+        yaml: pageYaml(
+          '- textbox "Username" [ref=e9]\n- textbox "Password" [ref=e10]'
+        ),
+        label: "later-poll",
+      });
 
       const evidence = await timeline.getActionEvidence(id);
 
       expect(evidence.visitId).toBe(visit(1));
-      // No source post-action observation exists, so the action change is unchanged.
-      expect(addedNames(evidence.actionChange)).toEqual([]);
+      expect(timeline.actionCrossedVisitBoundary(id)).toBe(true);
+      // The host tagged no capture for it, so the destination visit's first observation is its after.
+      expect(evidence.actionChange.timestamp).toBe(20);
+      expect(addedNames(evidence.actionChange)).toEqual(["Username"]);
       expect(
-        evidence.actionChange.changeTree.getNodesByStatus("updated")
-      ).toEqual([]);
-      // The destination tree must never leak into source-action evidence.
-      expect(
-        evidence.actionChange.structuralTree.getNode(AriaRefSchema.parse("e9"))
-      ).toBeNull();
+        evidence.actionChange.changeTree
+          .getNodesByStatus("removed")
+          .map((node) => node.name)
+      ).toEqual(["Dashboard"]);
       expect(
         evidence.actionChange.structuralTree.getNode(AriaRefSchema.parse("e1"))
-          ?.name
-      ).toBe("Dashboard");
+      ).toBeNull();
     });
 
     it("uses the last source observation when the visit closes before a post-action observation arrives", async () => {
@@ -1064,7 +1072,7 @@ describe("StructuralTimeline", () => {
       ).toBeNull();
     });
 
-    it("uses a source observation recorded before navigation as a crossing action effect", async () => {
+    it("never takes a source poll inside a crossing action as its after over the destination's first observation", async () => {
       const loginYaml = pageYaml('- textbox "Username" [ref=e9]');
       const timeline = new StructuralTimeline();
       startVisit(timeline, { visitId: visit(1), at: 0, yaml: INITIAL_YAML });
@@ -1075,11 +1083,11 @@ describe("StructuralTimeline", () => {
         pageId: PAGE,
         actionId: id,
       });
-      // A poll captures the source DOM effect (Refresh appears) before navigation replaces the page.
+      // A poll lands inside the action (Refresh appears) before navigation replaces the page.
       observe(timeline, {
         at: 16,
         yaml: PRE_ACTION_YAML,
-        label: "source-after",
+        label: "source-poll",
       });
       startVisit(timeline, { visitId: visit(2), at: 20, yaml: loginYaml });
       timeline.recordActionCompleted({
@@ -1092,10 +1100,10 @@ describe("StructuralTimeline", () => {
       const evidence = await timeline.getActionEvidence(id);
 
       expect(evidence.visitId).toBe(visit(1));
-      expect(addedNames(evidence.actionChange)).toEqual(["Refresh"]);
-      expect(evidenceLabels.get(evidence.actionChange.sourceTreeEvidence)).toBe(
-        "source-after"
-      );
+      expect(addedNames(evidence.actionChange)).toEqual(["Username"]);
+      expect(
+        evidenceLabels.get(evidence.actionChange.sourceTreeEvidence)
+      ).not.toBe("source-poll");
     });
 
     it("resolves a crossing action by entry position even when the destination visit shares the action-start timestamp", async () => {
@@ -1121,7 +1129,7 @@ describe("StructuralTimeline", () => {
       const evidence = await timeline.getActionEvidence(id);
 
       expect(evidence.visitId).toBe(visit(1));
-      expect(addedNames(evidence.actionChange)).toEqual([]);
+      expect(addedNames(evidence.actionChange)).toEqual(["Username"]);
     });
 
     it("falls back to the latest resolvable pre-action observation as baseline when visit-start is unresolvable", async () => {
@@ -1320,5 +1328,169 @@ describe("StructuralTimeline", () => {
 
       expect(timeline.getNavigationSignalForAction(contained)).toBeNull();
     });
+  });
+});
+
+describe("StructuralTimeline action evidence with a host's before and resumed reads", () => {
+  it("takes the observation recorded as the action's before over a later poll", async () => {
+    const timeline = new StructuralTimeline();
+    startVisit(timeline, { visitId: visit(1), at: 0, yaml: INITIAL_YAML });
+    const id = actionId();
+    observe(timeline, {
+      at: 5,
+      yaml: PRE_ACTION_YAML,
+      label: "host-before",
+      capturedForActionId: id,
+      relation: "before",
+    });
+    observe(timeline, { at: 8, yaml: MID_ACTION_YAML, label: "later-poll" });
+    timeline.recordActionStarted({
+      kind: "action-started",
+      at: at(10),
+      pageId: PAGE,
+      actionId: id,
+    });
+    timeline.recordActionCompleted({
+      kind: "action-completed",
+      at: at(15),
+      pageId: PAGE,
+      actionId: id,
+    });
+    observe(timeline, {
+      at: 20,
+      yaml: POST_ACTION_YAML,
+      label: "after",
+      capturedForActionId: id,
+    });
+
+    const evidence = await timeline.getActionEvidence(id);
+
+    expect(
+      evidence.actionChange.beforeStructuralTree?.getNode(
+        AriaRefSchema.parse("e3")
+      )
+    ).toBeNull();
+    expect(addedNames(evidence.actionChange)).toEqual(["Archive", "Delete"]);
+    expect(evidence.unassignedChanges.map(addedNames)).toEqual([["Refresh"]]);
+    expect(
+      evidenceLabels.get(evidence.unassignedChanges[0]!.sourceTreeEvidence)
+    ).toBe("host-before");
+  });
+
+  it("keeps a crossing action's explicit capture as its after even in the destination visit", async () => {
+    const loginYaml = pageYaml('- textbox "Username" [ref=e9]');
+    const timeline = new StructuralTimeline();
+    startVisit(timeline, { visitId: visit(1), at: 0, yaml: INITIAL_YAML });
+    const id = actionId();
+    timeline.recordActionStarted({
+      kind: "action-started",
+      at: at(10),
+      pageId: PAGE,
+      actionId: id,
+    });
+    startVisit(timeline, { visitId: visit(2), at: 20, yaml: loginYaml });
+    timeline.recordActionCompleted({
+      kind: "action-completed",
+      at: at(30),
+      pageId: PAGE,
+      actionId: id,
+    });
+    observe(timeline, {
+      at: 35,
+      yaml: loginYaml,
+      label: "settled-destination",
+      capturedForActionId: id,
+    });
+
+    const evidence = await timeline.getActionEvidence(id);
+
+    expect(evidence.visitId).toBe(visit(1));
+    expect(timeline.actionCrossedVisitBoundary(id)).toBe(true);
+    expect(evidenceLabels.get(evidence.actionChange.sourceTreeEvidence)).toBe(
+      "settled-destination"
+    );
+    expect(addedNames(evidence.actionChange)).toEqual(["Username"]);
+    expect(
+      evidence.actionChange.changeTree
+        .getNodesByStatus("removed")
+        .map((node) => node.name)
+    ).toEqual(["Dashboard"]);
+  });
+
+  it("reads a recent action's evidence cold or resumed by resolving a bounded number of trees, never the visit", async () => {
+    const timeline = new StructuralTimeline();
+    startVisit(timeline, { visitId: visit(1), at: 0, yaml: INITIAL_YAML });
+    const count = 200;
+    let clock = 0;
+    const act = () =>
+      recordAction(timeline, {
+        startedAt: (clock += 10),
+        endedAt: (clock += 5),
+        after: {
+          at: (clock += 5),
+          yaml: pageYaml(
+            `- heading "Dashboard" [ref=e1]\n- status "Step ${clock}" [ref=e2]`
+          ),
+        },
+      });
+    let last!: StructuralActionId;
+    for (let index = 0; index < count; index += 1) last = act();
+
+    const resolvedPerRead: number[] = [];
+    const read = async (id: StructuralActionId) => {
+      let resolved = 0;
+      const evidence = await timeline.getActionEvidence(id, (handle) => {
+        resolved += 1;
+        return handle.resolve();
+      });
+      resolvedPerRead.push(resolved);
+      return evidence;
+    };
+
+    await read(last);
+    await read(last);
+    const next = act();
+    const evidence = await read(next);
+    await read(last);
+
+    // Cold: the previous action's after and the action's own after. Resumed: nothing.
+    expect(resolvedPerRead).toEqual([2, 0, 1, 0]);
+    expect(
+      evidence.actionChange.changeTree
+        .getNodesByStatus("updated")
+        .map((node) => node.name)
+    ).toContain(`Step ${clock}`);
+  });
+
+  it("forgets resolved evidence when an entry lands before the end of the timeline", async () => {
+    const timeline = new StructuralTimeline();
+    startVisit(timeline, { visitId: visit(1), at: 0, yaml: INITIAL_YAML });
+    const first = recordAction(timeline, {
+      startedAt: 10,
+      endedAt: 15,
+      after: { at: 20, yaml: PRE_ACTION_YAML },
+    });
+    const second = recordAction(timeline, {
+      startedAt: 30,
+      endedAt: 35,
+      after: { at: 40, yaml: MID_ACTION_YAML },
+    });
+    await timeline.getActionEvidence(second);
+
+    // A late poll from inside the first action's settle lands between the two actions.
+    observe(timeline, { at: 25, yaml: POST_ACTION_YAML, label: "late-poll" });
+
+    const evidence = await timeline.getActionEvidence(second);
+    expect(evidence.unassignedChanges.map(addedNames)).toEqual([
+      ["Archive", "Delete"],
+    ]);
+    expect(
+      evidence.actionChange.changeTree
+        .getNodesByStatus("removed")
+        .map((node) => node.name)
+    ).toEqual(["Delete"]);
+    expect(
+      (await timeline.getActionEvidence(first)).actionChange
+    ).toBeDefined();
   });
 });

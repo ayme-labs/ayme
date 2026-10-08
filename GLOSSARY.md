@@ -54,7 +54,7 @@ An operation an app registers that applies to one element. One registration make
 A page that has shown no activity for a quiet window after an action. A wait for it is bounded by a deadline and reports whether the page became stable.
 
 **Change Record**:
-What changed around an action: the difference between the Structural Page State the caller last received and the Settled Page after the action.
+What changed around an action: the difference between the Structural Page State the caller last received and the Settled Page after the action. It is read in two parts: what changed before the action, and what the action changed.
 
 **Run**:
 One execution of a tool, from its start to its outcome. It is started by a Caller, or inside another Run, which is then its parent. A goal Run's children are the Runs its Goal Loop's steps executed; a Custom Tool's children are the Runs it starts.

@@ -152,8 +152,8 @@ export type GoalLoopOperation = {
   name: string;
   description: string;
   /**
-   * Runs the tool as a step, a child Run of the goal Run through `run`: the
-   * Goal Loop's model reads its page.
+   * Runs the tool as a step, a child Run of the goal Run through `run`, which
+   * reads with the goal Run's fork of its Caller's cursor.
    */
   execute(input: unknown, run: StartChildRun): Promise<unknown>;
   /** Parameter names a caller must pass; empty when the tool takes none. */
@@ -277,8 +277,7 @@ export function buildToolOptions(): ToolOption[] {
     ({ tool, targetField, loopInputSchema, filter }) => ({
       name: tool.name,
       description: tool.description,
-      execute: (input: unknown, run: StartChildRun) =>
-        run(tool.name, input, "goalLoop"),
+      execute: (input: unknown, run: StartChildRun) => run(tool.name, input),
       requiredParams: [...(loopInputSchema.required ?? [])],
       args: specsOfElementToolSchema(loopInputSchema, targetField, filter),
     })
@@ -286,8 +285,7 @@ export function buildToolOptions(): ToolOption[] {
   const navigationTools: GoalLoopOperation[] = NAVIGATION_TOOLS.map((tool) => ({
     name: tool.name,
     description: tool.description,
-    execute: (input: unknown, run: StartChildRun) =>
-      run(tool.name, input, "goalLoop"),
+    execute: (input: unknown, run: StartChildRun) => run(tool.name, input),
     requiredParams: [...(tool.inputSchema.required ?? [])],
     args: specsOfObjectSchema(tool.inputSchema),
   }));
@@ -304,8 +302,7 @@ export function buildToolOptions(): ToolOption[] {
       execute: (input: unknown, run: StartChildRun) =>
         run(
           t.name,
-          roots ? { args: {}, ...(input as Record<string, unknown>) } : input,
-          "goalLoop"
+          roots ? { args: {}, ...(input as Record<string, unknown>) } : input
         ),
       requiredParams: args
         .filter((arg) => !arg.optional)

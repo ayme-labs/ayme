@@ -28,7 +28,8 @@ vi.mock("./pageState", async (importOriginal) => ({
       return { status: "unresolved", requestedRef: ref, reason: "unknown-ref" };
     }),
 }));
-vi.mock("./actionSequence", () => ({
+vi.mock("./actionSequence", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./actionSequence")>()),
   runAction: vi.fn(
     async (
       _doc: unknown,

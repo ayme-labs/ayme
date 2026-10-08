@@ -168,6 +168,10 @@ afterEach(() => {
 });
 
 it("scopes an agent's collection Run to the item its ref named when it started", async () => {
+  // A Run's item is read from the latest look at the page when the Run
+  // appears, so the first look has to land before the Run starts.
+  await inspector.navigator.showLens("Structure");
+  await expect.poll(() => inspector.structure.node("e3").count()).toBe(1);
   const model = inspector.navigator.model;
   await inspector.navigator.showLens("Model");
   await expect.poll(() => model.object("ListPage.items[1]").count()).toBe(1);

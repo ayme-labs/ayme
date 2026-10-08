@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
-import { runPublished } from "./agentCalls.testSupport";
+import { agentCursor, runPublished } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { createPageRegistration, registerCompiledPom } from "./registry";
@@ -20,7 +20,6 @@ import {
 } from "./goalLoopQuestions";
 import { toolFailure } from "./toolFailure.testSupport";
 import {
-  getInteractionHistory,
   getPageStateCaptureForDocument,
   resolvePageStateRefs,
 } from "./pageState";
@@ -2281,7 +2280,7 @@ describe("Goal Loop goal in Chromium", () => {
       }),
     ]);
     // The agent's next Change Record: from the page the Handover gave it.
-    const handedOver = getInteractionHistory(document).cursor("agent")!;
+    const handedOver = agentCursor().current()!;
     const { tree: now } = await getPageStateCaptureForDocument(document);
     const record = StructuralTree.reconcile(
       await handedOver.tree.resolve(),

@@ -17,8 +17,8 @@ import { RuntimeStateError } from "./errors";
 import { listPeekTools, type PeekTool } from "./peek";
 
 /**
- * A tool of the session: `execute` runs it for a Run, whose context names
- * the reader its Change Record is for.
+ * A tool of the session: `execute` runs it for a Run, whose context carries
+ * the cursor its Change Record reads from and moves.
  */
 export type PublishedTool =
   | CallerAwarePomTool

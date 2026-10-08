@@ -58,7 +58,7 @@ export type CustomToolContext = {
 
 /**
  * A Browser Tool or Custom Tool, as published: `execute` runs it for a Run,
- * whose context names the reader its Change Record is for.
+ * whose context carries the cursor its Change Record reads from and moves.
  */
 export type PublishedElementTool = Omit<
   ModelContextTool<Record<string, unknown>, JsonValue>,
@@ -145,7 +145,7 @@ function elementToolExecution(
     );
     return runAction(
       currentDocument,
-      context.reader,
+      context.cursor,
       {
         tool: definition.name,
         args: input,

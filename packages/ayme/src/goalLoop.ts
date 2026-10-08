@@ -4,6 +4,7 @@ import type { JsonSchema, JsonValue } from "./contracts";
 import type { ActionResult } from "./actionSequence";
 import { renderChangeRecord } from "./changeRecord";
 import type { StartChildRun, RunContext } from "./run";
+import { cursors } from "./cursors";
 import {
   getInteractionHistory,
   getPageStateCaptureForDocument,
@@ -60,7 +61,7 @@ export function configureGoalLoop(
 }
 
 /**
- * The `goal` tool; `execute` runs the loop for a Run, whose reader the
+ * The `goal` tool; `execute` runs the loop for a Run, whose Caller the
  * Handover hands control back to.
  */
 export type GoalTool = Omit<
@@ -236,7 +237,7 @@ export function createPursueGoalTool(
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document
 ): GoalTool {
-  /** Runs the loop for the Run's reader, which the Handover hands control back to. */
+  /** Runs the loop for the Run's Caller, which the Handover hands control back to. */
   const execute = async (
     input: unknown,
     context: RunContext
@@ -335,21 +336,35 @@ export async function pursueGoal(
   { goal, maxSteps, values }: GoalInput,
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document,
-  { reader: caller, run }: RunContext
+  { cursor, run: runChild }: RunContext
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];
   const interactions = getInteractionHistory(currentDocument);
   let consecutiveFailures = 0;
+  // The loop reads on the Caller's behalf with a fork of its cursor: each
+  // step's capture and child Run move the fork, the Caller's cursor stays put
+  // until the Handover.
+  const loop = cursors.fork(cursor);
+  const run: StartChildRun = (name, input, stepCursor = loop) =>
+    runChild(name, input, stepCursor);
 
   /**
-   * End the run. The Handover moves the caller's cursor to the page the loop
-   * last received and carries what changed since the caller's previous one.
+   * End the run. The Handover carries what changed from the page the Caller
+   * last received to the page the loop last received, and moves the Caller's
+   * cursor there; the fork is dropped with the run.
    */
   const done = async (handover: Handover): Promise<GoalLoopRunResult> => {
-    const changes = await interactions.handOver(caller);
-    if (changes?.hasAnyChanges())
-      handover.changes = renderChangeRecord(changes);
+    const received = loop.current();
+    if (received) {
+      const changes = await interactions.readChange(
+        interactions.received(cursor) ?? received,
+        received
+      );
+      cursor.move(received);
+      if (changes.hasAnyChanges())
+        handover.changes = renderChangeRecord(changes);
+    }
     const result = { handover, stepScores };
     runResultStore.last = result;
     return result;
@@ -383,14 +398,13 @@ export async function pursueGoal(
     await probeRegisteredPomMembers();
 
     // Capture the page state this step decides on and build tool options. The
-    // model is a caller with its own cursor, so the tree it sees is the
-    // "before" of the step's Change Record: a change made while it decides
-    // counts into page_changed. The calling agent's cursor stays put until the
-    // Handover.
+    // model reads with the fork, so the tree it sees is the "before" of the
+    // step's Change Record: a change made while it decides counts into
+    // page_changed. The Caller's cursor stays put until the Handover.
     // Both stages of the step are decided on this one capture, so the refs the
     // model reads in the page are the refs the ref options offer.
     const capture = await getPageStateCaptureForDocument(currentDocument, {
-      receivedBy: "goalLoop",
+      cursor: loop,
     });
     const state = buildStepState(
       goal,

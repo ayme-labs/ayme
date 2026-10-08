@@ -58,7 +58,7 @@ export const navigateTool: PublishedElementTool = {
     "Open a URL on the page's own origin, or a path relative to the current page.",
   inputSchema: navigateSchema,
   execute: async (input, context) => {
-    const { reader } = context;
+    const { cursor } = context;
     const { url } = validatedToolInput(navigateSchema, input) as {
       url: string;
     };
@@ -82,7 +82,7 @@ export const navigateTool: PublishedElementTool = {
     const { navigate } = routerStore;
     return runAction(
       currentDocument,
-      reader,
+      cursor,
       { tool: "navigate", args: input },
       navigate
         ? async () => {

@@ -3,7 +3,7 @@
 // defaults follow Playwright MCP, without its permission-prompt `element`;
 // descriptions are Ayme's own.
 import type { JsonSchema } from "./contracts";
-import { runAction } from "./actionSequence";
+import { ACTION_RESULT_NOTE, runAction } from "./actionSequence";
 import {
   listCustomTools,
   locatorOf,
@@ -385,13 +385,13 @@ const fillFormTool: PublishedElementTool = {
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
   inputSchema: fillFormSchema,
   execute: async (input, context) => {
-    const { reader } = context;
+    const { cursor } = context;
     const fields = validatedToolInput(fillFormSchema, input)
       .fields as FormField[];
     const currentDocument = requireCurrentDocument();
     return runAction(
       currentDocument,
-      reader,
+      cursor,
       { tool: "fill_form", args: input },
       async () => {
         const filled: string[] = [];
@@ -434,26 +434,18 @@ const pressKeyTool: PublishedElementTool = {
   description: "Press a key on the element that has focus.",
   inputSchema: pressKeySchema,
   execute: async (input, context) => {
-    const { reader } = context;
+    const { cursor } = context;
     const { key } = validatedToolInput(pressKeySchema, input) as {
       key: string;
     };
     return runAction(
       requireCurrentDocument(),
-      reader,
+      cursor,
       { tool: "press_key", args: input },
       () => requireAymeRuntimePage().keyboard.press(key)
     );
   },
 };
-
-/** Browser Tools that take no single element, published only. */
-const PUBLISHED_ONLY_BROWSER_TOOLS: readonly PublishedElementTool[] = [
-  fillFormTool,
-  pressKeyTool,
-  generateLocatorTool,
-  screenshotTool,
-];
 
 // --- Browser Tools that move the page ---
 
@@ -469,11 +461,30 @@ export const NAVIGATION_TOOLS: readonly PublishedElementTool[] = [
   reloadTool,
 ];
 
+/**
+ * A Browser Tool that acts on the page, as published: its description ends
+ * with how the action result reports what changed. Only Ayme's own Browser
+ * Tools carry the sentence; a Page Object Tool or Custom Tool is published
+ * with the description its author wrote, and the Goal Loop offers its model
+ * every tool's own description.
+ */
+function withActionResultNote(
+  tool: PublishedElementTool
+): PublishedElementTool {
+  return { ...tool, description: `${tool.description} ${ACTION_RESULT_NOTE}` };
+}
+
+/** Computed once, so a Browser Tool resolves to the same object across publications. */
+const PUBLISHED_BROWSER_TOOLS: readonly PublishedElementTool[] = [
+  ...SINGLE_ELEMENT_TOOLS.map(({ tool }) => withActionResultNote(tool)),
+  withActionResultNote(fillFormTool),
+  withActionResultNote(pressKeyTool),
+  generateLocatorTool,
+  screenshotTool,
+  ...NAVIGATION_TOOLS.map(withActionResultNote),
+];
+
 /** Package-internal: every Browser Tool as published, in publication order. */
 export function listPublishedBrowserTools(): readonly PublishedElementTool[] {
-  return [
-    ...SINGLE_ELEMENT_TOOLS.map(({ tool }) => tool),
-    ...PUBLISHED_ONLY_BROWSER_TOOLS,
-    ...NAVIGATION_TOOLS,
-  ];
+  return PUBLISHED_BROWSER_TOOLS;
 }

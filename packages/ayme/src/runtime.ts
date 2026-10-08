@@ -39,14 +39,13 @@ import {
   callerOf,
   callers,
   createRunQueue,
-  readerOf,
   executeTopLevelRun,
   type Caller,
   type RunContext,
   type StartChildRun,
   type ToolRunOptions,
 } from "./run";
-import type { Reader } from "./interactionHistory";
+import { cursors, type Cursor } from "./cursors";
 import { runLog, type AymeRuns } from "./runLog";
 
 export type AymeWebMcpPublicationStatus = Readonly<{
@@ -594,13 +593,13 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       // A read: it moves no cursor and adds no settle wait.
       return peekTool.execute(input);
     }
-    const reader = readerOf(by);
+    const cursor = cursors.of(by);
     return runLog.record(name, input, { by }, (id) => {
       const tool = lookUpAvailableTool(name);
       return executeTopLevelRun(
         tool,
         () =>
-          executeWithChildRuns(id, reader, (context) =>
+          executeWithChildRuns(id, cursor, (context) =>
             tool.execute(input, context)
           ),
         settle
@@ -636,24 +635,25 @@ export function createAyme(options: AymeOptions = {}): Ayme {
    * after the other, in the order it starts them, so two started together
    * never act on the page at once. Like a Goal Loop step before it, a child
    * Run adds no settle wait of its own; the parent's turn ends with the
-   * parent's.
+   * parent's. A child Run reads from and moves its parent's cursor unless
+   * the parent hands it another, as the goal Run hands its steps its fork.
    */
   async function executeWithChildRuns<T>(
     id: string,
-    reader: Reader,
+    cursor: Cursor,
     execute: (context: RunContext) => Promise<T>
   ): Promise<T> {
     const takeChildTurn = createRunQueue();
-    const run: StartChildRun = (name, input, childReader = reader) =>
+    const run: StartChildRun = (name, input, childCursor = cursor) =>
       takeChildTurn(() =>
         runLog.record(name, input, { parent: id }, (childId) =>
-          executeWithChildRuns(childId, childReader, (context) =>
+          executeWithChildRuns(childId, childCursor, (context) =>
             lookUpAvailableTool(name).execute(input, context)
           )
         )
       );
     try {
-      return await execute({ reader, run });
+      return await execute({ cursor, run });
     } finally {
       // A turn taken now starts once every child started so far has ended.
       await takeChildTurn(async () => {});
