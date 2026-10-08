@@ -10,7 +10,7 @@ export default defineConfig({
       {
         extends: true,
         test: {
-          name: "server",
+          name: "node",
           environment: "node",
           include: ["src/**/*.test.ts"],
           exclude: ["src/**/*.browser.test.ts"],
@@ -20,7 +20,7 @@ export default defineConfig({
         // Client tests mount the owner and consumers in Chromium.
         extends: true,
         test: {
-          name: "client",
+          name: "browser",
           include: ["src/**/*.browser.test.ts"],
           browser: {
             enabled: true,
