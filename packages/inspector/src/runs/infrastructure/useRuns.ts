@@ -4,7 +4,7 @@ import { RuntimeStateError, type JsonValue } from "@ayme-dev/ayme";
 import {
   getAppProcessTools,
   getStartedAyme,
-  listRegisteredPomTools,
+  listAvailablePomTools,
   subscribeToAgentImageRuns,
 } from "@ayme-dev/ayme/internal";
 
@@ -132,8 +132,8 @@ type FoundTool = {
  */
 function findTool(toolName: string): FoundTool {
   // Tool names can collide across registrations; this is the one that is
-  // live now, the one the runtime runs.
-  const pomTool = listRegisteredPomTools().find(
+  // available now, the one the runtime runs.
+  const pomTool = listAvailablePomTools().find(
     (candidate) => candidate.name === toolName
   );
   return {

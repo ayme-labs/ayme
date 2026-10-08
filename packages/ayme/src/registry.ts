@@ -26,7 +26,7 @@ export type PageObjectConstructor<T extends object = object> = new (
   page: Page
 ) => T;
 
-type LiveRegisteredPomTool = RegisteredPomTool & {
+type ScopedPomTool = RegisteredPomTool & {
   componentPath?: string;
 };
 
@@ -34,11 +34,11 @@ type LiveRegisteredPomTool = RegisteredPomTool & {
 type CallerRun = (input: unknown, caller: Caller) => Promise<ActionResult>;
 
 /**
- * Package-internal: a live Page Object tool as the registry holds it. Its
+ * Package-internal: a Page Object tool as the registry holds it. Its
  * `execute` runs it as the calling agent; `executeAs` for the caller given,
  * which is how the Goal Loop runs it as its model.
  */
-export type CallerAwarePomTool = LiveRegisteredPomTool & {
+export type CallerAwarePomTool = ScopedPomTool & {
   readonly executeAs: CallerRun;
 };
 
@@ -47,7 +47,7 @@ export type RegisteredPom = {
   instance: object;
   manifest: PomManifest;
   memberObservations: readonly PomMemberObservation[];
-  tools: readonly LiveRegisteredPomTool[];
+  tools: readonly ScopedPomTool[];
 };
 
 export type RegisteredPomRoot = {
@@ -417,24 +417,27 @@ export async function listRegisteredPomTargets(): Promise<
   return targets;
 }
 
-/** The live Page Object tools, as published. */
-export function listRegisteredPomTools(): LiveRegisteredPomTool[] {
-  return listCallerAwarePomTools();
-}
-
 /**
- * Package-internal: the live Page Object tools with the run that takes a
- * caller, for the Goal Loop.
+ * Package-internal: every registered Page Object tool, one per name, with
+ * whether it is available now: its Page Object, or the component instance
+ * it acts on, is available (Page Object Availability). Of tools sharing a
+ * name, the first available one wins, else the first registered.
  */
-export function listCallerAwarePomTools(): CallerAwarePomTool[] {
-  const activeTools = new Map<string, CallerAwarePomTool>();
+export function listRegisteredPomTools(): {
+  tool: CallerAwarePomTool;
+  available: boolean;
+}[] {
+  const tools = new Map<
+    string,
+    { tool: CallerAwarePomTool; available: boolean }
+  >();
   for (const registration of registeredPoms) {
     const declaredRoot = registration.manifest.members.some(
       (member) => member.kind === "locator" && member.memberName === "root"
     );
     for (const tool of registration.tools) {
       const componentPath = tool.componentPath;
-      const active =
+      const available =
         componentPath === undefined
           ? !declaredRoot ||
             registration.rootObservations.some(
@@ -445,11 +448,22 @@ export function listCallerAwarePomTools(): CallerAwarePomTool[] {
                 isRootAvailable(root) &&
                 isLiveComponentRoot(componentPath, `${root.path}.root`)
             );
-      if (active && !activeTools.has(tool.name))
-        activeTools.set(tool.name, tool);
+      const listed = tools.get(tool.name);
+      if (!listed || (available && !listed.available))
+        tools.set(tool.name, { tool, available });
     }
   }
-  return [...activeTools.values()];
+  return [...tools.values()];
+}
+
+/**
+ * Package-internal: the available Page Object tools, the ones a call can
+ * run now, with the run that takes a caller.
+ */
+export function listAvailablePomTools(): CallerAwarePomTool[] {
+  return listRegisteredPomTools().flatMap(({ tool, available }) =>
+    available ? [tool] : []
+  );
 }
 
 /**
@@ -511,8 +525,6 @@ function isLiveComponentRoot(path: string, memberName: string) {
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-
-export const listRegisteredTools = listRegisteredPomTools;
 
 export function subscribeToRegisteredPoms(subscriber: () => void) {
   subscribers.add(subscriber);

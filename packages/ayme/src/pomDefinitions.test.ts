@@ -267,7 +267,7 @@ describe("POM definition catalog", () => {
     const registration = registry.createPageRegistration(ToolPage);
 
     const definition = definitions.getPomDefinitions("ToolPage");
-    const callable = registry.listRegisteredPomTools()[0];
+    const callable = registry.listAvailablePomTools()[0];
     expect(definition).toEqual({
       definitions: [
         {

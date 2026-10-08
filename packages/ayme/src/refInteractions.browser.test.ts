@@ -7,7 +7,7 @@ import {
   createAymeRuntime,
   registerCompiledPom,
   registerPageObject,
-  listRegisteredPomTools,
+  listAvailablePomTools,
 } from "./registry";
 
 describe("Structural Ref interactions in Chromium", () => {
@@ -211,7 +211,7 @@ describe("Structural Ref interactions in Chromium", () => {
       const instance = new CounterPage(undefined);
       registerPageObject(CounterPage, instance);
 
-      const tool = listRegisteredPomTools().find((t) => t.name === "getCount");
+      const tool = listAvailablePomTools().find((t) => t.name === "getCount");
       if (!tool) throw new Error("Expected the getCount tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();
@@ -262,9 +262,7 @@ describe("Structural Ref interactions in Chromium", () => {
       const instance = new PageObjectPage(undefined);
       registerPageObject(PageObjectPage, instance);
 
-      const tool = listRegisteredPomTools().find(
-        (t) => t.name === "getElement"
-      );
+      const tool = listAvailablePomTools().find((t) => t.name === "getElement");
       if (!tool) throw new Error("Expected the getElement tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();
@@ -315,7 +313,7 @@ describe("Structural Ref interactions in Chromium", () => {
       const instance = new ReturningPage(undefined);
       registerPageObject(ReturningPage, instance);
 
-      const tool = listRegisteredPomTools().find((t) => t.name === "getChild");
+      const tool = listAvailablePomTools().find((t) => t.name === "getChild");
       if (!tool) throw new Error("Expected the getChild tool.");
       // The Change Record starts from the page state the caller last received.
       await ayme.getPageState();

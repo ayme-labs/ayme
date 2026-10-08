@@ -3,11 +3,10 @@ import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
 import {
-  listLiveTools,
   listPeekToolInfo,
-  resolveLiveTools,
-  resolvePublishedTools,
-  type PublishedToolInfo,
+  listTools,
+  resolveTools,
+  type ToolInfo,
 } from "./publishedTools";
 import { configureCustomTools, type CustomTool } from "./elementTools";
 import { loadAgentConnection, loadProcessConnection } from "./agentConnection";
@@ -59,22 +58,28 @@ export type AymeWebMcp = {
   retryPublication(): Promise<void>;
 };
 
-/** A live tool: one `tools.run` can run now. */
-export type ToolInfo = PublishedToolInfo;
+export type { ToolInfo } from "./publishedTools";
 
 /** Every registered tool, by its unprefixed name, whether or not WebMCP publishes it. */
 export type AymeTools = {
   /**
-   * Every live tool, in publication order. The same array comes back until
-   * the set changes; empty while the session is not started.
+   * Every tool, in publication order, each with whether it is available
+   * now. A Page Object Tool stays listed while its Page Object is
+   * unavailable; a surface that offers only what can run filters on
+   * `available`. The same array comes back until the list changes; empty
+   * while the session is not started.
    */
   list(): readonly ToolInfo[];
-  /** Calls `listener` with the new list after the live tool set changes. */
+  /**
+   * Calls `listener` with the new list after it changes, including when a
+   * tool's availability changes.
+   */
   subscribe(listener: (tools: readonly ToolInfo[]) => void): () => void;
   /**
-   * Runs a live tool as the application, through the same path as an
+   * Runs an available tool as the application, through the same path as an
    * agent's call. Throws Ayme's errors, and `RuntimeStateError` while the
-   * session is not started or when the tool is not live.
+   * session is not started, when no tool has the name, or when the tool is
+   * not available.
    */
   run<N extends string>(name: N, input: ToolInput<N>): Promise<ToolResult<N>>;
 };
@@ -88,7 +93,7 @@ export type AymePom = {
   get<T extends object>(model: PageObjectConstructor<T>): T;
   /**
    * Counts a registration of `model` and returns its instance. Its tools are
-   * live while the session is started and the count is above zero.
+   * listed while the session is started and the count is above zero.
    */
   register<T extends object>(model: PageObjectConstructor<T>): T;
   /** Removes one registration of `model`. */
@@ -107,7 +112,7 @@ export type Ayme = {
    * when called. There is one instance per (`name`, `id`): a later call with
    * the same id gives that instance the new `read`, and without an id a later
    * call replaces the earlier one. Returns what removes the instance. Throws
-   * `RuntimeStateError` when `name` is empty, or when another live tool
+   * `RuntimeStateError` when `name` is empty, or when another tool
    * already uses the Peek Tool's name. Does nothing unless the session has
    * `agentConnection` on, or `inspector` in the browser.
    */
@@ -215,16 +220,19 @@ export function sameRuntimeOptions(a: AymeOptions, b: AymeOptions) {
   });
 }
 
-/** The names of the tools WebMCP would publish now; none while they clash. */
-function publishedToolNames(): Set<string> {
+/** The names of the registered tools, available or not; none while they clash. */
+function registeredToolNames(): Set<string> {
   try {
-    return new Set(resolvePublishedTools().keys());
+    return new Set(resolveTools({ peeks: false }).keys());
   } catch {
     return new Set();
   }
 }
 
 const onServer = () => typeof window === "undefined";
+
+const noSuchTool = (name: string) =>
+  new RuntimeStateError(`There is no tool "${name}".`);
 
 // One App Process per Node process, whichever session and bundle start it.
 const appProcessHolder = globalThis as typeof globalThis & {
@@ -397,7 +405,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   };
   const refreshTools = () => {
     const next = owner
-      ? listLiveTools({ peeks })
+      ? listTools({ peeks })
       : inProcess && peeks
         ? listPeekToolInfo()
         : NO_TOOLS;
@@ -502,19 +510,22 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       const peekTool = peeks
         ? listPeekTools().find((tool) => tool.name === name)
         : undefined;
-      if (!peekTool)
-        throw new RuntimeStateError(`The tool "${name}" is not live.`);
+      if (!peekTool) throw noSuchTool(name);
       return peekTool.executeAs(input, "app");
     }
     if (!owner)
       throw new RuntimeStateError(
         `Cannot run the tool "${name}": the Ayme runtime session is not started.`
       );
-    const entry = resolveLiveTools({ peeks }).get(name);
-    if (!entry) throw new RuntimeStateError(`The tool "${name}" is not live.`);
+    const entry = resolveTools({ peeks }).get(name);
+    if (!entry) throw noSuchTool(name);
+    if (!entry.available)
+      throw new RuntimeStateError(
+        `The tool "${name}" is not available now: the Page Object or component it acts on is not on the page or is blocked.`
+      );
     const { tool } = entry;
-    // As after an agent's call, the Page Objects are probed, so the live
-    // tools are current when the call resolves.
+    // As after an agent's call, the Page Objects are probed, so the tools'
+    // availability is current when the call resolves.
     return settledAfter(
       tool,
       () => tool.executeAs(input, "app"),
@@ -573,7 +584,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         throw new RuntimeStateError("A Peek needs a name.");
       if (!peeks) return () => {};
       const toolName = peekToolName(name);
-      if (publishedToolNames().has(toolName))
+      if (registeredToolNames().has(toolName))
         throw new RuntimeStateError(
           `Cannot add the Peek "${name}": another tool already uses the name ${toolName}. Rename the Peek.`
         );

@@ -181,7 +181,7 @@ export async function synchronizeWebMcpTools(
   };
 
   // A tool call resolves only once the published tools reflect the page it
-  // changed, so an agent's next call sees the tools that are live now. The
+  // changed, so an agent's next call sees the tools that are available now. The
   // called tool itself is the exception: if the call made it unavailable, it
   // is withdrawn just after the call (ADR-0020 does not cover this case). A probe that observes a change starts the
   // publication pass through the subscriber.

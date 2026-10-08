@@ -5,7 +5,7 @@ import {
   createAymeRuntime,
   registerCompiledPom,
   createPageRegistration,
-  listRegisteredPomTools,
+  listAvailablePomTools,
   probeRegisteredPomMembers,
 } from "./registry";
 import type { PomManifest } from "./contracts";
@@ -85,7 +85,7 @@ describe("collection instances targeted by ref", () => {
       const registration = createPageRegistration(ItemsPage);
       await probeRegisteredPomMembers();
 
-      const tools = listRegisteredPomTools();
+      const tools = listAvailablePomTools();
       const archiveTool = tools.find(
         (t) => t.name === "ItemsPage.items.archive"
       );
@@ -151,7 +151,7 @@ describe("collection instances targeted by ref", () => {
       const registration = createPageRegistration(ItemsPage);
       await probeRegisteredPomMembers();
 
-      const tools = listRegisteredPomTools();
+      const tools = listAvailablePomTools();
       const archiveTool = tools.find(
         (t) => t.name === "ItemsPage.items.archive"
       );
@@ -221,7 +221,7 @@ describe("collection instances targeted by ref", () => {
       const registration = createPageRegistration(ItemsPage);
       await probeRegisteredPomMembers();
 
-      const tools = listRegisteredPomTools();
+      const tools = listAvailablePomTools();
       const archiveTool = tools.find(
         (t) => t.name === "ItemsPage.items.archive"
       );
@@ -315,7 +315,7 @@ describe("collection instances targeted by ref", () => {
       const registration = createPageRegistration(GroupsPage);
       await probeRegisteredPomMembers();
 
-      const tools = listRegisteredPomTools();
+      const tools = listAvailablePomTools();
       const doActionTool = tools.find(
         (t) => t.name === "GroupsPage.groups.items.doAction"
       );
@@ -396,7 +396,7 @@ describe("collection instances targeted by ref", () => {
       const registration = createPageRegistration(ItemsPage);
       await probeRegisteredPomMembers();
 
-      const tools = listRegisteredPomTools();
+      const tools = listAvailablePomTools();
       const openTool = tools.find(
         (t) => t.name === "ItemsPage.items.child.open"
       );

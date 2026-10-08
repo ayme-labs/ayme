@@ -18,7 +18,7 @@ import { listElementTools, NAVIGATION_TOOLS } from "./browserTools";
 import { acceptedRefNodes, type TargetField } from "./elementTools";
 import {
   listCollectionToolRoots,
-  listCallerAwarePomTools,
+  listAvailablePomTools,
   type RegisteredPomRoot,
 } from "./registry";
 
@@ -286,7 +286,7 @@ export function buildToolOptions(): ToolOption[] {
     args: specsOfObjectSchema(tool.inputSchema),
   }));
   const collectionRoots = listCollectionToolRoots();
-  const pomTools: ExecutableTool[] = listCallerAwarePomTools().map((t) => {
+  const pomTools: ExecutableTool[] = listAvailablePomTools().map((t) => {
     const roots = collectionRoots.get(t.name);
     const args = roots
       ? specsOfCollectionTool(t.parameters, roots)

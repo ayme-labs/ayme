@@ -2,16 +2,21 @@ import type { ClientBehaviour } from "../../connection";
 import { ImageResultSchema } from "../../contract";
 import { errorText } from "../domain/toolResult";
 
-/** Reports the page's tools when the channel opens and after every change. */
+/**
+ * Reports the page's available tools when the channel opens and after every
+ * change.
+ */
 export const publishPageTools: ClientBehaviour = ({ tools, channel }) => {
-  const publish = (list: Parameters<typeof channel.publishTools>[0]) =>
+  const publish = (list: ReturnType<typeof tools.list>) =>
     void channel
       .publishTools(
-        list.map(({ name, description, inputSchema }) => ({
-          name,
-          description,
-          inputSchema,
-        }))
+        list
+          .filter(({ available }) => available)
+          .map(({ name, description, inputSchema }) => ({
+            name,
+            description,
+            inputSchema,
+          }))
       )
       // The channel closed; the next channel publishes again.
       .catch(() => {});
