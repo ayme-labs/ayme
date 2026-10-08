@@ -73,7 +73,7 @@ Every registration of a class shares one instance, so a Page Object should keep 
 
 `ayme.peek(read, name, id?)` adds a Peek: a named view of app state that a coding agent reads on demand. It returns the function that removes it.
 
-- `read` returns the values when an agent asks, and may be async. The values go out as JSON.
+- `read` returns the values when an agent asks, and may be async. The values go out as JSON: a property whose value is `undefined` is left out, so the agent cannot tell it from one the Peek does not have; a `Date` becomes its ISO string; and an instance whose `read` returns `undefined` reads `null`.
 - `name` is required; an empty name throws `RuntimeStateError`, and so does a name whose Peek Tool name another live tool already uses, or, in the browser, a name starting with `node.`, whose tool would read as an App Process's. A tool that takes the name later wins, and the console warns that the Peek Tool is hidden. Each name has one Peek Tool, `peek.<name>` in the browser and `peek.node.<name>` in a Node process (an App Process), with characters outside `[A-Za-z0-9_.-]` replaced by `_`. It takes no input and returns `{ name, instances }`: per live instance, its `id` and either its `values` or the `error` its read threw.
 - There is one instance per (`name`, `id`). A later call with the same `id` updates that instance's `read`. Without an `id` there is one instance per name, and a later call replaces the earlier one, so a module that runs again replaces its Peek.
 - The tool goes when its last instance is removed. An instance removed and added again in one go, such as by React StrictMode's remount, keeps it.
