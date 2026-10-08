@@ -55,6 +55,38 @@ it("remembers the layout, sizes, positions, theme, Model lens panes and region s
   expect(readPreferences(storage)).toEqual(left);
 });
 
+it("keeps its preferences under its own key in the site's storage", () => {
+  expect(preferencesKey).toMatch(/^ayme-inspector:/);
+});
+
+it.each(["float", "left", "right", "bottom"] as const)(
+  "remembers the %s layout",
+  (layout) => {
+    const storage = memoryStorage();
+    writePreferences(storage, { ...defaultPreferences, layout });
+    expect(readPreferences(storage).layout).toBe(layout);
+  }
+);
+
+it.each(["system", "light", "dark"] as const)(
+  "remembers the %s theme",
+  (theme) => {
+    const storage = memoryStorage();
+    writePreferences(storage, { ...defaultPreferences, theme });
+    expect(readPreferences(storage).theme).toBe(theme);
+  }
+);
+
+it("falls back to the default layout and theme for empty ones", () => {
+  const storage = memoryStorage({
+    [preferencesKey]: JSON.stringify({ layout: "", theme: "" }),
+  });
+  expect(readPreferences(storage)).toMatchObject({
+    layout: "float",
+    theme: "system",
+  });
+});
+
 it("opens with the defaults when nothing is stored yet", () => {
   expect(readPreferences(memoryStorage())).toEqual({
     layout: "float",
