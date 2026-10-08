@@ -21,6 +21,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     description: `${name} by ref.`,
     inputSchema: { type: "object" as const },
     group: "browser" as const,
+    available: true,
   });
   startedAyme.tools.list.mockReturnValue([
     browserTool("click"),
@@ -57,7 +58,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     ),
     getPomDefinitionText: vi.fn(() => ""),
     listRegisteredPomTargets: vi.fn(async () => []),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
     getAppProcessTools: appProcessToolsOf,

@@ -29,7 +29,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     listRegisteredPomTargets: vi.fn(async () => []),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };

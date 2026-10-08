@@ -6,7 +6,7 @@ import {
   createAymeRuntime,
   createPageRegistration,
   listRegisteredPomRoots,
-  listRegisteredPomTools,
+  listAvailablePomTools,
   listRegisteredPoms,
   probeRegisteredPomMembers,
   registerCompiledPom,
@@ -58,7 +58,7 @@ const manifest = (
     },
   ],
 });
-const names = () => listRegisteredPomTools().map((tool) => tool.name);
+const names = () => listAvailablePomTools().map((tool) => tool.name);
 
 describe("live Page Object availability", () => {
   let page: ReturnType<typeof createPage>;

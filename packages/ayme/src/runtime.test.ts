@@ -341,7 +341,7 @@ it("calls the page factory at most once, lazily, on first use", () => {
   expect(createPage).not.toHaveBeenCalled();
 });
 
-it("rejects a run before start, after stop and for a tool that is not live", async () => {
+it("rejects a run before start, after stop and for a tool that does not exist", async () => {
   const runtime = session(false);
   await expect(
     runtime.tools.run("goal", { goal: "save", maxSteps: 1 })
@@ -351,7 +351,7 @@ it("rejects a run before start, after stop and for a tool that is not live", asy
   const stop = start(runtime);
   await expect(
     runtime.tools.run("goal", { goal: "save", maxSteps: 1 })
-  ).rejects.toThrow('The tool "goal" is not live.');
+  ).rejects.toThrow('There is no tool "goal".');
   stop();
   await expect(runtime.tools.run("Unknown.tool", {})).rejects.toBeInstanceOf(
     RuntimeStateError

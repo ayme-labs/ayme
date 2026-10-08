@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 
 import type { AgentImageRun, PageChannel, PageTools } from "../../connection";
 import type { ToolCall, ToolCallOutcome } from "../../contract";
-import { answerToolCalls } from "./pageToolBehaviours";
+import { answerToolCalls, publishPageTools } from "./pageToolBehaviours";
 
 const image = {
   type: "image",
@@ -68,4 +68,31 @@ it("records no other result", async () => {
   const { recorded } = await answer({ page_changed: false }, "/tmp/x/");
 
   expect(recorded).toEqual([]);
+});
+
+it("publishes only the page's available tools, again after each change", () => {
+  const published: string[][] = [];
+  const channel = {
+    publishTools: async (tools: { name: string }[]) =>
+      void published.push(tools.map(({ name }) => name)),
+  } as unknown as PageChannel;
+  const tool = (name: string, available: boolean) => ({
+    name,
+    description: "",
+    inputSchema: {},
+    available,
+  });
+  let announce!: (tools: ReturnType<PageTools["list"]>) => void;
+  const tools = {
+    list: () => [tool("snapshot", true), tool("Dialog.confirm", false)],
+    subscribe: (listener: typeof announce) => {
+      announce = listener;
+      return () => {};
+    },
+  } as unknown as PageTools;
+
+  publishPageTools({ tools, channel });
+  announce([tool("snapshot", true), tool("Dialog.confirm", true)]);
+
+  expect(published).toEqual([["snapshot"], ["snapshot", "Dialog.confirm"]]);
 });

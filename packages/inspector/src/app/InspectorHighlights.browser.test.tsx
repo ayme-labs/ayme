@@ -32,7 +32,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
     listRegisteredPomTargets: vi.fn(),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},

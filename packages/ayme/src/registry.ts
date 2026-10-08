@@ -417,24 +417,41 @@ export async function listRegisteredPomTargets(): Promise<
   return targets;
 }
 
-/** The live Page Object tools, as published. */
-export function listRegisteredPomTools(): LiveRegisteredPomTool[] {
-  return listCallerAwarePomTools();
+/**
+ * Package-internal: every registered Page Object tool, one per name, with
+ * whether it is available now: its Page Object, or the component instance
+ * it acts on, is available (Page Object Availability). Of tools sharing a
+ * name, an available one wins.
+ */
+export function listRegisteredPomTools(): {
+  tool: CallerAwarePomTool;
+  available: boolean;
+}[] {
+  return [...pomToolsByName()].map(([tool, available]) => ({
+    tool,
+    available,
+  }));
 }
 
 /**
- * Package-internal: the live Page Object tools with the run that takes a
- * caller, for the Goal Loop.
+ * Package-internal: the available Page Object tools, the ones a call can
+ * run now, with the run that takes a caller.
  */
-export function listCallerAwarePomTools(): CallerAwarePomTool[] {
-  const activeTools = new Map<string, CallerAwarePomTool>();
+export function listAvailablePomTools(): CallerAwarePomTool[] {
+  return [...pomToolsByName()].flatMap(([tool, available]) =>
+    available ? [tool] : []
+  );
+}
+
+function pomToolsByName() {
+  const tools = new Map<string, [CallerAwarePomTool, boolean]>();
   for (const registration of registeredPoms) {
     const declaredRoot = registration.manifest.members.some(
       (member) => member.kind === "locator" && member.memberName === "root"
     );
     for (const tool of registration.tools) {
       const componentPath = tool.componentPath;
-      const active =
+      const available =
         componentPath === undefined
           ? !declaredRoot ||
             registration.rootObservations.some(
@@ -445,11 +462,10 @@ export function listCallerAwarePomTools(): CallerAwarePomTool[] {
                 isRootAvailable(root) &&
                 isLiveComponentRoot(componentPath, `${root.path}.root`)
             );
-      if (active && !activeTools.has(tool.name))
-        activeTools.set(tool.name, tool);
+      if (!tools.get(tool.name)?.[1]) tools.set(tool.name, [tool, available]);
     }
   }
-  return [...activeTools.values()];
+  return tools.values();
 }
 
 /**
@@ -511,8 +527,6 @@ function isLiveComponentRoot(path: string, memberName: string) {
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-
-export const listRegisteredTools = listRegisteredPomTools;
 
 export function subscribeToRegisteredPoms(subscriber: () => void) {
   subscribers.add(subscriber);

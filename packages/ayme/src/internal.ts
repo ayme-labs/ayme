@@ -22,7 +22,7 @@ export type { PublishedToolGroup, PublishedToolInfo } from "./publishedTools";
 export {
   configureAymeRuntime,
   createAymeRuntime,
-  listRegisteredPomTools,
+  listAvailablePomTools,
   listRegisteredPomTargets,
   listRegisteredPoms,
   probeRegisteredPomMembers,

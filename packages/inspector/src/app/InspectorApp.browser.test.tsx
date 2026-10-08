@@ -3,7 +3,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 
 import { ToolInputError, type RegisteredPomTool } from "@ayme-dev/ayme";
 import {
-  listRegisteredPomTools,
+  listAvailablePomTools,
   listRegisteredPoms,
   type RegisteredPom,
 } from "@ayme-dev/ayme/internal";
@@ -39,7 +39,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
     listRegisteredPomTargets: vi.fn(async () => []),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
@@ -107,18 +107,22 @@ function peekTool(name: string) {
       additionalProperties: false,
     },
     group: "peek" as const,
+    available: true,
   };
 }
 
 function mockRegistry(poms: RegisteredPom[], activeTools: RegisteredPomTool[]) {
   vi.mocked(listRegisteredPoms).mockReturnValue(poms);
-  vi.mocked(listRegisteredPomTools).mockReturnValue(activeTools);
+  vi.mocked(listAvailablePomTools).mockReturnValue(
+    activeTools as ReturnType<typeof listAvailablePomTools>
+  );
   startedAyme.tools.list.mockReturnValue(
     activeTools.map(({ name, description, inputSchema }) => ({
       name,
       description,
       inputSchema,
       group: "pageObject",
+      available: true,
     }))
   );
 }
@@ -378,7 +382,7 @@ describe("the Inspector", () => {
     const tool = saveTool("editor", vi.fn());
     mockRegistry([editor("editor", tool)], [tool]);
     startedAyme.tools.run.mockRejectedValue(
-      Object.assign(new Error('The tool "Editor.save" is not live.'), {
+      Object.assign(new Error('There is no tool "Editor.save".'), {
         name: "RuntimeStateError",
       })
     );
@@ -389,7 +393,7 @@ describe("the Inspector", () => {
     const run = inspector.runs.latest("Editor.save");
     await expect.poll(() => run.status()).toBe("Failed");
     expect(await run.error.textContent()).toBe(
-      'RuntimeStateError: The tool "Editor.save" is not live.'
+      'RuntimeStateError: There is no tool "Editor.save".'
     );
   });
 
