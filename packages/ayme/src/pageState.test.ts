@@ -52,6 +52,7 @@ describe("get_page_state", () => {
   });
 
   it("describes structural refs and root POM decoration", () => {
+    expect(getPageStateTool.name).toBe("get_page_state");
     expect(getPageStateTool.description).toBe(
       "Return the top-level structural page state, decorated with root POM labels. Real nodes use Playwright refs; synthetic POM roots use observation-only synthetic refs. Capture is limited to the top-level document."
     );
