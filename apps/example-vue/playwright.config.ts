@@ -11,7 +11,7 @@ const certification = await certificationConfig({
   }),
 });
 
-const config: PlaywrightTestConfig = {
+export default {
   ...certification,
   testMatch: [
     "vue-webmcp.spec.ts",
@@ -20,11 +20,8 @@ const config: PlaywrightTestConfig = {
   ],
   // The suite warms the counter page and `/other`; the playground's own
   // tests need the playground warm too.
-  globalSetup: [
-    ...(certification.globalSetup ? [certification.globalSetup as string] : []),
-    "./tests/warmDevServer.ts",
-  ],
+  globalSetup: [certification.globalSetup, "./tests/warmDevServer.ts"]
+    .flat()
+    .filter((setup) => setup !== undefined),
   snapshotPathTemplate: "{testDir}/{testFilePath}-snapshots/{arg}{ext}",
-};
-
-export default config;
+} satisfies PlaywrightTestConfig;
