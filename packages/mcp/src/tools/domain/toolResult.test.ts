@@ -15,6 +15,9 @@ const image: ImageResult = {
 
 const PATH = "/tmp/ayme-screenshots/page-1.png";
 
+/** `bytes` bytes, base64-encoded. */
+const base64Of = (bytes: number) => Buffer.alloc(bytes).toString("base64");
+
 describe("imageOf", () => {
   it("finds the image in a tool's result", () => {
     expect(imageOf({ callId: "1", ok: true, result: image })).toEqual(image);
@@ -44,7 +47,8 @@ describe("imageToolResult", () => {
   it.each([
     [{ width: 8001, height: 720 }, "it is over 8000 pixels on a side"],
     [{ width: 1280, height: 9000 }, "it is over 8000 pixels on a side"],
-    [{ data: "A".repeat(5 * 1024 * 1024 + 1) }, "it is over 5 MB"],
+    // 5 MiB and one byte, base64-encoded: 5,592,408 characters.
+    [{ data: base64Of(5 * 1024 * 1024 + 1) }, "it is over 5 MB"],
   ])(
     "returns only the file of an image too large to return inline",
     (over, why) => {
@@ -60,6 +64,15 @@ describe("imageToolResult", () => {
       });
     }
   );
+
+  it("returns an image of exactly 5 MiB inline, though its base64 is longer", () => {
+    const result = imageToolResult(
+      { ...image, data: base64Of(5 * 1024 * 1024) },
+      { path: PATH }
+    );
+
+    expect(result.content[0]).toMatchObject({ type: "image" });
+  });
 
   it("still returns the image when its file could not be written", () => {
     expect(imageToolResult(image, { error: "EACCES" })).toEqual({

@@ -58,11 +58,17 @@ export type SavedImage = { path: string } | { error: string };
 const MAX_INLINE_SIDE = 8000;
 const MAX_INLINE_BYTES = 5 * 1024 * 1024;
 
+/** How many bytes a base64 string decodes to. */
+function decodedBytes(base64: string): number {
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+  return (base64.length / 4) * 3 - padding;
+}
+
 /** Why an image is too large to return inline, if it is. */
 function tooLargeToInline(image: ImageResult): string | undefined {
   if (image.width > MAX_INLINE_SIDE || image.height > MAX_INLINE_SIDE)
     return `it is over ${MAX_INLINE_SIDE} pixels on a side`;
-  if (image.data.length > MAX_INLINE_BYTES) return "it is over 5 MB";
+  if (decodedBytes(image.data) > MAX_INLINE_BYTES) return "it is over 5 MB";
   return undefined;
 }
 
