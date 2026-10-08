@@ -169,6 +169,15 @@ async function recordedToolNames(page: Page) {
   return (await recordedTools(page)).map((tool) => tool.name);
 }
 
+/**
+ * The published tool names, sorted: a tool that comes back is registered
+ * after the tools that stayed published, so after a change the registration
+ * order is not the publication order.
+ */
+async function recordedToolSet(page: Page) {
+  return (await recordedToolNames(page)).sort();
+}
+
 test("derives nested object input schemas from POM action types", () => {
   const [manifest] = derivePomManifests(
     path.resolve("tests/fixtures/objectInputPom.ts")
@@ -371,8 +380,8 @@ test("publishes collection tools only while a component root is live", async ({
     text: "Restore live component tools",
   });
   await expect
-    .poll(async () => await recordedToolNames(page))
-    .toEqual(initialToolNames);
+    .poll(async () => await recordedToolSet(page))
+    .toEqual([...initialToolNames].sort());
 });
 
 test("demonstrates the list app and invokes the generated POM tools", async ({
@@ -588,8 +597,8 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
   await page.getByRole("button", { name: "Confirm archive" }).click();
   await expect(page.locator("[data-archived-label]")).toHaveCount(3);
   await expect
-    .poll(async () => await recordedToolNames(page))
-    .toEqual(initialToolNames);
+    .poll(async () => await recordedToolSet(page))
+    .toEqual([...initialToolNames].sort());
 });
 
 // The playground's Inspector smoke test: the hosted Inspector opens
