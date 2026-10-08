@@ -28,13 +28,12 @@ it.each([
   expect(schema.parse(message)).toEqual(message);
 });
 
-it("rejects an outcome whose `ok` does not match its fields", () => {
-  for (const outcome of [
-    { callId: "1", ok: true, error: "x" },
-    { callId: "1", ok: false, result: 2 },
-  ])
-    expect(
-      ToolCallOutcomeSchema.safeParse(outcome).success,
-      outcome.ok + ""
-    ).toBe(false);
-});
+it.each([
+  [true, { callId: "1", ok: true, error: "x" }],
+  [false, { callId: "1", ok: false, result: 2 }],
+])(
+  "rejects an outcome with ok=%s and the other branch's fields",
+  (_ok, outcome) => {
+    expect(ToolCallOutcomeSchema.safeParse(outcome).success).toBe(false);
+  }
+);

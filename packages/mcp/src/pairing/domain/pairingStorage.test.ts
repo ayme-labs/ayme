@@ -42,7 +42,9 @@ describe("parseStoredPairing", () => {
   );
 });
 
-// apps/mcp-fixture and apps/example-certification read the pairing under this key.
-it("keeps the pairing under the key the e2e tests read", () => {
-  expect(PAIRING_STORAGE_KEY).toBe("ayme:agent-connection");
+describe("PAIRING_STORAGE_KEY", () => {
+  // apps/mcp-fixture and apps/example-certification read the pairing under this key.
+  it("is the key the e2e tests read", () => {
+    expect(PAIRING_STORAGE_KEY).toBe("ayme:agent-connection");
+  });
 });

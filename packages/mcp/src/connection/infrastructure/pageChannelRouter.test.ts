@@ -7,13 +7,16 @@ import {
 import { pageChannelRouter } from "./pageChannelRouter";
 
 it("hands a page's hello, tools and answers to the server", async () => {
-  const session = { publishTools: vi.fn(), answer: vi.fn() };
+  const session: Pick<ChannelSession, "publishTools" | "answer"> = {
+    publishTools: vi.fn(),
+    answer: vi.fn(),
+  };
   const hello = vi.fn(() => ({ token: "f00d" }));
   const caller = pageChannelRouter.createCaller({
     connection: new AgentConnection(),
     page: {
       hello,
-      session: Promise.resolve(session as unknown as ChannelSession),
+      session: Promise.resolve(session as ChannelSession),
     },
   });
   const tool = { name: "peek", description: "", inputSchema: {} };
