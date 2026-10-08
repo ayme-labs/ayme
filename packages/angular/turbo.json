@@ -3,8 +3,7 @@
   "tags": ["adapter"],
   "tasks": {
     "test": {
-      "dependsOn": ["build", "^build"],
-      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
+      "dependsOn": ["build", "^build"]
     }
   }
 }
