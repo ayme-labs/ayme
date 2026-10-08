@@ -25,14 +25,21 @@ jobs:
     name: List analyzed packages
     runs-on: ubuntu-latest
     outputs:
-      packages: ${{ steps.list.outputs.packages }}
+      jobs: ${{ steps.list.outputs.jobs }}
     steps:
       - uses: actions/checkout@v7
+      # A package's full lane runs in one job unless it is listed in `shards`:
+      # the inspector's and ayme's take over two hours each on one runner.
       - id: list
         run: |
-          packages=$(jq -sc '[.[] | select(.scripts["test:mutation"]) | .name]' packages/*/package.json)
-          echo "Packages: $packages"
-          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+          jobs=$(jq -sc --argjson shards '{"@ayme-dev/inspector": 4, "@ayme-dev/ayme": 3}' '
+            [.[] | select(.scripts["test:mutation"]) | .name as $package
+              | ($shards[$package] // 1) as $count
+              | range(1; $count + 1)
+              | {package: $package, shard: "\(.)/\($count)", label: (if $count > 1 then " (\(.)/\($count))" else "" end)}]
+          ' packages/*/package.json)
+          echo "Jobs: $jobs"
+          echo "jobs=$jobs" >> "$GITHUB_OUTPUT"
 
   crap:
     name: CRAP
@@ -52,7 +59,7 @@ jobs:
           path: reports/crap
 
   mutation:
-    name: Stryker ${{ matrix.package }}
+    name: Stryker ${{ matrix.package }}${{ matrix.label }}
     needs: packages
     runs-on: ubuntu-latest
     container:
@@ -61,10 +68,11 @@ jobs:
     env:
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       STRYKER_LANE: full
+      STRYKER_SHARD: ${{ matrix.shard }}
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJSON(needs.packages.outputs.packages) }}
+        include: ${{ fromJSON(needs.packages.outputs.jobs) }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -72,7 +80,7 @@ jobs:
       - name: Name the report after the package
         if: always()
         id: report
-        run: echo "name=mutation-$(echo '${{ matrix.package }}' | tr -c 'a-z0-9-\n' '-')" >> "$GITHUB_OUTPUT"
+        run: echo "name=mutation-$(echo '${{ matrix.package }}-${{ matrix.shard }}' | tr -c 'a-z0-9-\n' '-')" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
