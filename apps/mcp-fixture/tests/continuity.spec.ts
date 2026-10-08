@@ -125,6 +125,51 @@ test("a call in flight when the page starts loading another document gets the pa
   expect(answer.next).toContain("snapshot");
 });
 
+test("a reload the agent calls answers with its loading URL even when a task holds the old document as it reloads", async ({
+  agent,
+  baseURL,
+  connect,
+  page,
+}) => {
+  await connect();
+
+  // The first reload after the page connected, then one once the reloaded
+  // page is back.
+  for (const round of [1, 2]) {
+    // A task queued as the reload starts holds the page, as a large page's
+    // capture does, so the reloaded document arrives before any later task
+    // of the old one runs (#578).
+    await page.evaluate(() => {
+      Object.assign(window, { beforeReload: true });
+      navigation.addEventListener("navigate", () =>
+        setTimeout(() => {
+          const until = performance.now() + 300;
+          while (performance.now() < until);
+        })
+      );
+    });
+
+    const { text, isError } = await agent.call("reload");
+
+    expect(isError, `reload ${round}: ${text}`).toBe(false);
+    expect(JSON.parse(text)).toMatchObject({
+      settled: false,
+      loading: `${baseURL}/`,
+    });
+    await expect
+      .poll(() =>
+        page
+          .evaluate(() => "beforeReload" in window)
+          // The old document went away under the check.
+          .catch(() => true)
+      )
+      .toBe(false);
+    await expect
+      .poll(async () => (await agent.call("snapshot")).isError)
+      .toBe(false);
+  }
+});
+
 test("a call in flight when the tab closes says the tab closed, and the connection ends", async ({
   agent,
   connect,
