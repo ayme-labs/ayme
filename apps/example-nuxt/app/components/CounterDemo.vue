@@ -14,6 +14,7 @@ const { webMCP } = useAyme();
   <button @click="visible = !visible">
     {{ visible ? "Unmount counter" : "Mount counter" }}
   </button>
+  <NuxtLink to="/other">Other</NuxtLink>
   <!-- A plain anchor: the browser loads /other as a new document. -->
   <a href="/other">Full page load</a>
   <Counter v-if="visible" />

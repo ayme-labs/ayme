@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 import {
   test as base,
@@ -133,7 +134,7 @@ const aymeTools = [
 async function openCounter(
   context: BrowserContext,
   page: Page,
-  inspector: "always" | "development" | undefined
+  inspector: boolean | undefined
 ) {
   await recordPublishedTools(context);
   const response = await page.goto(counterPath(), {
@@ -150,7 +151,7 @@ async function openCounter(
   // holds the main thread past a Page Object action's 1 s timeout, so the
   // click through a published tool times out. Its host in the document marks
   // it mounted.
-  if (inspector === "always" || (inspector && server === "dev"))
+  if (inspector)
     await page
       .locator("ayme-inspector")
       .waitFor({ state: "attached", timeout: 15_000 });
@@ -272,11 +273,8 @@ export function counterTests({
   inspector,
 }: {
   CounterPage: new (page: Page) => { increment(): Promise<void> };
-  /**
-   * When the app mounts the Inspector: always, or only in development. The
-   * tests wait for it to mount.
-   */
-  inspector?: "always" | "development";
+  /** Whether this page mounts the Inspector. The tests wait for it to mount. */
+  inspector?: boolean;
   navigation?: { away: string; awayText: string; back: string };
 }) {
   test.describe("counter", () => {
@@ -451,26 +449,30 @@ export function counterTests({
 /**
  * On the dev server, editing a type the Page Object Model imports rebuilds
  * its published schema without a restart. `counterModePath` is the app's
- * `CounterMode.ts`.
+ * `CounterMode.ts`, as a path or a URL.
  */
 export function devRebuildTests({
   counterModePath,
 }: {
-  counterModePath: string;
+  counterModePath: string | URL;
 }) {
+  const counterModeFile =
+    typeof counterModePath === "string"
+      ? counterModePath
+      : fileURLToPath(counterModePath);
   // `exampleTest`, not `test`: the dev server's own reloads may log errors.
   exampleTest.describe("dev rebuild", () => {
     let original: string | undefined;
     // A hook, unlike a `finally` in the test, also runs after a timeout.
     exampleTest.afterEach(async () => {
-      if (original !== undefined) await writeFile(counterModePath, original);
+      if (original !== undefined) await writeFile(counterModeFile, original);
     });
 
     exampleTest(
       "rebuilds the published schema when an imported type changes",
       async ({ context, page }) => {
         exampleTest.skip(server !== "dev", "Production builds do not rebuild.");
-        original = await readFile(counterModePath, "utf8");
+        original = await readFile(counterModeFile, "utf8");
         const changed = original.replace('"double"', '"triple"');
         expect(changed).not.toBe(original);
         await recordPublishedTools(context);
@@ -497,7 +499,7 @@ export function devRebuildTests({
         await page.goto(counterPath());
         expect(await publishedModeSchema()).toContain('"double"');
 
-        await writeFile(counterModePath, changed);
+        await writeFile(counterModeFile, changed);
         // A hot update may replace the edited module without reloading the
         // page, so the page is reloaded until it publishes the rebuilt schema.
         // The load event fires before the app's modules run, so each document

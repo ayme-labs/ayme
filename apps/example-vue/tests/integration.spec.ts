@@ -1,5 +1,3 @@
-import { fileURLToPath } from "node:url";
-
 import {
   counterTests,
   devRebuildTests,
@@ -13,7 +11,5 @@ import { CounterPage } from "../playwright/pom/CounterPage";
 counterTests({ CounterPage });
 // Last: it edits a source file, and the dev server rebuilds after it.
 devRebuildTests({
-  counterModePath: fileURLToPath(
-    new URL("../playwright/pom/CounterMode.ts", import.meta.url)
-  ),
+  counterModePath: new URL("../playwright/pom/CounterMode.ts", import.meta.url),
 });

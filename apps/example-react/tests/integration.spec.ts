@@ -1,5 +1,3 @@
-import { fileURLToPath } from "node:url";
-
 import { expect } from "@playwright/test";
 import {
   counterTests,
@@ -15,7 +13,7 @@ import { CounterPage } from "../playwright/pom/CounterPage";
 // The shared certification, against the dev server and the production build.
 // The app is a single-page app with no router, so it has no client navigation
 // to check and no server-rendered page.
-counterTests({ CounterPage, inspector: "always" });
+counterTests({ CounterPage, inspector: true });
 
 // React's own check: StrictMode mounts, unmounts and mounts every effect in
 // development, and each tool must still be published once.
@@ -38,7 +36,5 @@ test("publishes each tool once under StrictMode", async ({ context, page }) => {
 
 // Last: it edits a source file, and the dev server rebuilds after it.
 devRebuildTests({
-  counterModePath: fileURLToPath(
-    new URL("../playwright/pom/CounterMode.ts", import.meta.url)
-  ),
+  counterModePath: new URL("../playwright/pom/CounterMode.ts", import.meta.url),
 });
