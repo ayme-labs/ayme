@@ -21,11 +21,7 @@ import {
   subscribeToRegisteredPoms,
   type PageObjectConstructor,
 } from "./registry";
-import {
-  synchronizeWebMcpTools,
-  waitForWebMcpDriver,
-  type WebMcpRegistration,
-} from "./webMcp";
+import { loadWebMcpPublication } from "./webMcp";
 import { RuntimeStateError } from "./errors";
 import {
   addPeek,
@@ -415,7 +411,6 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   const peeks =
     Boolean(options.agentConnection) ||
     (inspectorMode(options) !== "off" && !onServer());
-  const toolNamePrefix = options.webMCP?.toolNamePrefix;
   const initialStatus: AymeWebMcpPublicationStatus = {
     state: enabled ? "waiting" : "disabled",
     message: enabled
@@ -436,8 +431,11 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   // page: it offers its Peek Tools only.
   let inProcess: { stop(): void } | undefined;
   let controller: AbortController | undefined;
-  let publication: WebMcpRegistration | undefined;
-  let pending: Promise<void> | undefined;
+  // The started session's WebMCP publication; while its package loads, the
+  // attempt that starts it and the retry that waits for that attempt.
+  let publication: { retry(): Promise<void> } | undefined;
+  let loading: Promise<typeof publication> | undefined;
+  let retryingLoad: Promise<void> | undefined;
   const appProcessTools = createAppProcessTools();
   // One top-level Run at a time on this page, whoever its Caller.
   const takeTurn = createRunQueue();
@@ -458,64 +456,69 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     toolsKey = key;
     for (const listener of toolListeners) listener(tools);
   };
-  const failed = (error: unknown) =>
-    setStatus({
-      state: "failed",
-      message: `WebMCP publication failed: ${error instanceof Error ? error.message : String(error)}`,
-    });
+  /**
+   * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
+   * calls as `webmcp` Runs. The package decides which of them it publishes.
+   */
+  const webMcpTools = {
+    list: () => ayme.tools.list(),
+    subscribe: (listener: () => void) => ayme.tools.subscribe(listener),
+    run: (name: string, input: unknown) =>
+      ayme.tools.run(name, input as never, { by: callers.webmcp }),
+  };
+
+  /**
+   * Loads the WebMCP package and starts publication, until `signal` aborts,
+   * once a probe has made the Page Objects' tools current. Failing to load or
+   * start is a failed publication, which a retry starts again.
+   */
+  function startPublication(signal: AbortSignal) {
+    const attempt: Promise<typeof publication> = Promise.all([
+      loadWebMcpPublication(),
+      probeRegisteredPomMembers(),
+    ])
+      .then(([{ startWebMcpPublication }]) => {
+        if (signal.aborted) return undefined;
+        publication = startWebMcpPublication(webMcpTools, {
+          toolNamePrefix: options.webMCP?.toolNamePrefix,
+          signal,
+          onStatus: setStatus,
+        });
+        return publication;
+      })
+      .catch((error: unknown) => {
+        if (signal.aborted) return undefined;
+        setStatus({
+          state: "failed",
+          message: `WebMCP publication failed: ${error instanceof Error ? error.message : String(error)}`,
+        });
+        return undefined;
+      })
+      .finally(() => {
+        if (loading === attempt) loading = undefined;
+      });
+    loading = attempt;
+    return attempt;
+  }
 
   function retryPublication(): Promise<void> {
-    if (!enabled || !owner || publication) return Promise.resolve();
-    if (pending) return pending;
-    const signal = controller!.signal;
-    setStatus(initialStatus);
-    const attempt = (async () => {
-      try {
-        const driver = await waitForWebMcpDriver(2_000, signal);
-        if (signal.aborted) return;
-        if (!driver) {
-          setStatus({
-            state: "unavailable",
-            message: "The WebMCP driver is unavailable.",
-          });
-          return;
-        }
-        let attemptFailed = false;
-        const registration = await synchronizeWebMcpTools(driver, {
-          toolNamePrefix,
-          signal,
-          run: (name, input, settle) =>
-            queueTopLevelRun(name, input, callers.webmcp, settle),
-          onError(error) {
-            attemptFailed = true;
-            if (signal.aborted) return;
-            publication = undefined;
-            failed(error);
-          },
-        });
-        if (signal.aborted || attemptFailed) {
-          registration.dispose();
-          return;
-        }
-        publication = registration;
-        setStatus({ state: "active", message: registration.message });
-      } catch (error) {
-        if (!signal.aborted) failed(error);
-      }
-    })();
-    pending = attempt;
-    void attempt.then(() => {
-      if (pending === attempt) pending = undefined;
-    });
-    return attempt;
+    if (!enabled || !owner) return Promise.resolve();
+    if (publication) return publication.retry();
+    if (!loading) setStatus(initialStatus);
+    retryingLoad ??= (loading ?? startPublication(controller!.signal))
+      .then((started) => started?.retry())
+      .finally(() => {
+        retryingLoad = undefined;
+      });
+    return retryingLoad;
   }
 
   function stop() {
     if (!owner) return;
     controller?.abort();
-    publication?.dispose();
     publication = undefined;
-    pending = undefined;
+    loading = undefined;
+    retryingLoad = undefined;
     unsubscribeFromPoms?.();
     unsubscribeFromPoms = undefined;
     unsubscribeFromPeeks?.();
@@ -558,18 +561,21 @@ export function createAyme(options: AymeOptions = {}): Ayme {
 
   /**
    * Queues a top-level Run of the tool `name` for `by`, which runs in
-   * its turn on the page's queue. `settle` runs after an action, within the Run's turn:
-   * by default the Page Objects are probed, as after an agent's call, so the
-   * tools' availability is current. `name` is resolved when the turn starts, against
-   * the tools available then.
+   * its turn on the page's queue. After an action, within the Run's turn,
+   * the Page Objects are probed, so the tools' availability is current and
+   * `tools.subscribe` listeners have heard of any change. `name` is resolved
+   * when the turn starts, against the tools available then.
    */
   function queueTopLevelRun(
     name: string,
     input: unknown,
-    by: Caller,
-    settle = () => probeRegisteredPomMembers().catch(() => {})
+    by: Caller
   ): Promise<unknown> {
-    return takeTurn(() => recordTopLevelRun(name, input, by, settle));
+    return takeTurn(() =>
+      recordTopLevelRun(name, input, by, () =>
+        probeRegisteredPomMembers().catch(() => {})
+      )
+    );
   }
 
   /**
@@ -754,7 +760,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
         refreshTools();
         setStatus(initialStatus);
         setStarted(ayme);
-        void retryPublication();
+        if (enabled) startPublication(controller.signal);
         const inspector = inspectorMode(options);
         if (inspector !== "off")
           mountInspectorUntil(controller.signal, {

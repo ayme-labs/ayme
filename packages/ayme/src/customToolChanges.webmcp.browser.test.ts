@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { PomManifest, ToolManifest } from "./contracts";
 import {
@@ -9,17 +9,13 @@ import {
   type Ayme,
   type CustomTool,
 } from "./index";
+import { agentTools } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
-import { executePublishedTool, recordPublishedToolsLate } from "./testing";
 
-// Runtime object seam, through the recording WebMCP driver: an agent's call
-// of a Custom Tool answers with a Change Record of everything its Run
-// changed, the child Runs it started included.
-
-// The recording driver's helpers evaluate in the page; this test runs there.
-const inPage = {
-  evaluate: async (fn: (arg: unknown) => unknown, arg: unknown) => fn(arg),
-} as unknown as Page;
+// Runtime object seam, with an agent calling through WebMCP (a `webmcp` Run,
+// through the publication harness): its call of a Custom Tool answers with a
+// Change Record of everything its Run changed, the child Runs it started
+// included.
 
 /** A list whose Add button appends the item field's text as a row. */
 const LIST = `
@@ -82,9 +78,7 @@ describe("a Custom Tool's Change Record, through WebMCP, in Chromium", () => {
   let ayme: Ayme;
   let stop: () => void;
 
-  beforeAll(() => recordPublishedToolsLate(inPage));
-
-  beforeEach(async () => {
+  beforeEach(() => {
     document.body.innerHTML = LIST;
     document.querySelector("#add")!.addEventListener("click", () => {
       const text = document.querySelector<HTMLInputElement>("#item")!.value;
@@ -94,12 +88,10 @@ describe("a Custom Tool's Change Record, through WebMCP, in Chromium", () => {
     });
     ayme = createAyme({
       pageFactory: () => createPage(),
-      webMCP: { enabled: true },
       customTools: [addMilk],
     });
     stop = ayme.start();
     ayme.pom.register(ListPage);
-    await expect.poll(() => ayme.webMCP.publicationStatus.state).toBe("active");
   });
 
   afterEach(() => {
@@ -109,14 +101,12 @@ describe("a Custom Tool's Change Record, through WebMCP, in Chromium", () => {
   });
 
   it("covers what the Custom Tool's child Runs changed", async () => {
-    const { structure } = (await executePublishedTool(
-      inPage,
-      "snapshot",
-      {}
-    )) as { structure: string };
+    const { structure } = (await agentTools().call("snapshot", {})) as {
+      structure: string;
+    };
     const ref = structure.match(/(e\d+) button "Add"/)![1]!;
 
-    const answer = (await executePublishedTool(inPage, "add_milk", {
+    const answer = (await agentTools().call("add_milk", {
       ref,
     })) as ActionResult;
 

@@ -42,6 +42,7 @@ const PUBLISHED_PACKAGES = [
   "ayme",
   "inspector",
   "mcp",
+  "webmcp",
   "vue",
   "react",
   "angular",
@@ -389,8 +390,9 @@ console.log("ok");
   }
 );
 
-it("the Playwright peer is optional in core and required by the inspector", () => {
-  // Only core declares the optional peer; the inspector requires it.
+it("the Playwright peer is optional in core and WebMCP and required by the inspector", () => {
+  // Core and WebMCP declare the optional peer, WebMCP for its testing entry;
+  // the inspector requires it.
   for (const name of [
     "ayme",
     "vue",
@@ -399,10 +401,13 @@ it("the Playwright peer is optional in core and required by the inspector", () =
     "angular",
     "inspector",
     "unplugin-ayme",
+    "webmcp",
   ]) {
     const manifest = readManifest(path.join(packagesRoot, name));
     expect(manifest.peerDependencies?.["@playwright/test"]).toBe(
-      ["ayme", "inspector"].includes(name) ? ">=1.29 <1.63" : undefined
+      ["ayme", "inspector", "webmcp"].includes(name)
+        ? ">=1.29 <1.63"
+        : undefined
     );
     expect(
       (
@@ -410,7 +415,7 @@ it("the Playwright peer is optional in core and required by the inspector", () =
           peerDependenciesMeta?: Record<string, { optional?: boolean }>;
         }
       ).peerDependenciesMeta?.["@playwright/test"]?.optional
-    ).toBe(name === "ayme" ? true : undefined);
+    ).toBe(["ayme", "webmcp"].includes(name) ? true : undefined);
   }
 });
 
@@ -428,6 +433,7 @@ for (const version of [undefined, "1.29.0", "1.62.1"])
         "@ayme-dev/svelte",
         "@ayme-dev/inspector",
         "@ayme-dev/unplugin-ayme",
+        "@ayme-dev/webmcp",
       ]);
       const consumer = path.join(tmp, version ?? "without-playwright");
       fs.mkdirSync(consumer);
@@ -531,7 +537,7 @@ import {
   waitForPublishedTool,
   type PublishedTool,
   type RecordingDriver,
-} from '@ayme-dev/ayme/testing';
+} from '@ayme-dev/webmcp/testing';
 export async function recordAndRun(context: BrowserContext, page: Page): Promise<unknown> {
   await recordPublishedTools(context);
   await waitForPublishedTool(page, 'Pom.act', { timeout: 10 });
@@ -1024,7 +1030,10 @@ it(
         name: "consumer",
         type: "module",
         version: "0.0.0",
-        dependencies: tarballDependencies(["@ayme-dev/ayme"]).tarballs,
+        dependencies: tarballDependencies([
+          "@ayme-dev/ayme",
+          "@ayme-dev/webmcp",
+        ]).tarballs,
       })
     );
     exec("pnpm", ["install", "--ignore-scripts", "--no-lockfile"], consumerDir);
@@ -1041,10 +1050,12 @@ it(
         'if (typeof main.createAyme !== "function") throw new Error("missing createAyme");',
         'if ("createAyme" in internal) throw new Error("createAyme must not be on /internal");',
         'if (typeof internal.configureAymeRuntime !== "function") throw new Error("missing configureAymeRuntime");',
-        'const testing = await import("@ayme-dev/ayme/testing");',
+        'const webmcp = await import("@ayme-dev/webmcp");',
+        'if (JSON.stringify(Object.keys(webmcp)) !== JSON.stringify(["startWebMcpPublication"])) throw new Error("unexpected @ayme-dev/webmcp exports: " + Object.keys(webmcp));',
+        'const testing = await import("@ayme-dev/webmcp/testing");',
         'const testingExports = ["executePublishedTool", "publishedToolNames", "publishedToolSchema", "recordPublishedTools", "recordPublishedToolsLate", "waitForPublishedTool"];',
         'if (JSON.stringify(Object.keys(testing).sort()) !== JSON.stringify(testingExports)) throw new Error("unexpected /testing exports: " + Object.keys(testing));',
-        'if ("recordPublishedTools" in main || "recordPublishedTools" in internal) throw new Error("the recording driver must stay on /testing");',
+        'if ([main, internal, webmcp].some((entry) => "recordPublishedTools" in entry)) throw new Error("the recording driver must stay on /testing");',
         'console.log("ok");',
       ].join("\n")
     );

@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
-import { operations, publishTools } from "./publication.testSupport";
+import { agentTools, operations } from "./publication.testSupport";
 import { createAyme, type Ayme } from "./runtime";
-import { toolFailure } from "./toolFailure.testSupport";
+import { errorText } from "./errors";
 
 // The test server answers `/__no-content` with 204 (vitest.browser.config.ts),
 // so a load starts and is then dropped: the test document stays, and what the
@@ -14,21 +14,16 @@ const NO_CONTENT = new URL("/__no-content", location.href).href;
 
 /** The error for a URL that is not on the test page's origin. */
 const otherOrigin = (url: string) =>
-  toolFailure(
-    `ToolInputError: Cannot navigate to "${url}": it is not on the page's own origin, ${location.origin}. Leaving the origin would lose the connection to this page; navigate to a path or a URL on ${location.origin} instead.`
-  );
+  `ToolInputError: Cannot navigate to "${url}": it is not on the page's own origin, ${location.origin}. Leaving the origin would lose the connection to this page; navigate to a path or a URL on ${location.origin} instead.`;
 
 /** The error for a URL whose protocol the tool does not open. */
 const unsupportedProtocol = (url: string, protocol: string) =>
-  toolFailure(
-    `ToolInputError: Cannot navigate to "${url}": the protocol ${protocol} is not supported.`
-  );
+  `ToolInputError: Cannot navigate to "${url}": the protocol ${protocol} is not supported.`;
 
 describe("the navigate tool, in Chromium", () => {
   let ayme: Ayme;
   let call: (name: string, input: unknown) => Promise<unknown>;
   let stop: () => void;
-  let disposePublication: () => void;
   let listening: AbortController;
   let decide: GoalLoopDecisionFunction;
   const start = location.href;
@@ -65,13 +60,12 @@ describe("the navigate tool, in Chromium", () => {
       goalLoop: (request) => decide(request),
     });
     stop = ayme.start();
-    ({ call, dispose: disposePublication } = await publishTools());
+    ({ call } = agentTools());
     await call("snapshot", {});
   });
 
   afterEach(() => {
     listening.abort();
-    disposePublication();
     stop();
     history.replaceState(null, "", start);
     document.body.innerHTML = "";
@@ -136,13 +130,15 @@ describe("the navigate tool, in Chromium", () => {
 
   it("refuses a URL on another origin", async () => {
     const url = "https://example.com/sign-in";
-    await expect(call("navigate", { url })).resolves.toEqual(otherOrigin(url));
+    expect(await call("navigate", { url }).catch(errorText)).toBe(
+      otherOrigin(url)
+    );
     expect(location.href).toBe(start);
   });
 
   it("refuses an unsupported protocol", async () => {
     const url = "javascript:alert(1)";
-    await expect(call("navigate", { url })).resolves.toEqual(
+    expect(await call("navigate", { url }).catch(errorText)).toBe(
       unsupportedProtocol(url, "javascript:")
     );
     expect(location.href).toBe(start);
@@ -151,7 +147,7 @@ describe("the navigate tool, in Chromium", () => {
   it("refuses a blob URL on the page's own origin", async () => {
     const url = URL.createObjectURL(new Blob(["<p>Blob page</p>"]));
     try {
-      await expect(call("navigate", { url })).resolves.toEqual(
+      expect(await call("navigate", { url }).catch(errorText)).toBe(
         unsupportedProtocol(url, "blob:")
       );
       expect(location.href).toBe(start);
@@ -161,8 +157,8 @@ describe("the navigate tool, in Chromium", () => {
   });
 
   it("refuses an invalid URL with the browser Page's error", async () => {
-    await expect(call("navigate", { url: "http://" })).resolves.toEqual(
-      toolFailure("page.goto: Cannot navigate to invalid URL")
+    await expect(call("navigate", { url: "http://" })).rejects.toThrow(
+      "page.goto: Cannot navigate to invalid URL"
     );
     expect(location.href).toBe(start);
   });
@@ -223,7 +219,6 @@ describe("the navigate tool, in Chromium", () => {
 describe("the navigate tool with a router function, in Chromium", () => {
   let call: (name: string, input: unknown) => Promise<unknown>;
   let stop: () => void;
-  let disposePublication: () => void;
   let heading: HTMLHeadingElement;
   // What the app's router was asked to open; it lives only in this document.
   let routed: string[];
@@ -249,12 +244,11 @@ describe("the navigate tool with a router function, in Chromium", () => {
         return route(url);
       },
     }).start();
-    ({ call, dispose: disposePublication } = await publishTools());
+    ({ call } = agentTools());
     await call("snapshot", {});
   });
 
   afterEach(() => {
-    disposePublication();
     stop();
     history.replaceState(null, "", start);
     document.body.innerHTML = "";
@@ -307,14 +301,16 @@ describe("the navigate tool with a router function, in Chromium", () => {
     route = async () => {
       throw new Error("No route matches /app/missing.");
     };
-    await expect(call("navigate", { url: "/app/missing" })).resolves.toEqual(
-      toolFailure("No route matches /app/missing.")
+    await expect(call("navigate", { url: "/app/missing" })).rejects.toThrow(
+      "No route matches /app/missing."
     );
   });
 
   it("refuses a URL on another origin without calling the router", async () => {
     const url = "https://example.com/sign-in";
-    await expect(call("navigate", { url })).resolves.toEqual(otherOrigin(url));
+    expect(await call("navigate", { url }).catch(errorText)).toBe(
+      otherOrigin(url)
+    );
     expect(routed).toEqual([]);
     expect(location.href).toBe(start);
   });
@@ -323,7 +319,6 @@ describe("the navigate tool with a router function, in Chromium", () => {
 describe("the navigate tool on a Page that navigates late, in Chromium", () => {
   let call: (name: string, input: unknown) => Promise<unknown>;
   let stop: () => void;
-  let disposePublication: () => void;
   let listening: AbortController;
   const start = location.href;
 
@@ -355,13 +350,12 @@ describe("the navigate tool on a Page that navigates late, in Chromium", () => {
     stop = createAyme({
       pageFactory: () => lateGoto(createPage({ actionTimeout: 500 })),
     }).start();
-    ({ call, dispose: disposePublication } = await publishTools());
+    ({ call } = agentTools());
     await call("snapshot", {});
   });
 
   afterEach(() => {
     listening.abort();
-    disposePublication();
     stop();
     history.replaceState(null, "", start);
     document.body.innerHTML = "";

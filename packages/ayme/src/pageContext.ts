@@ -1,5 +1,4 @@
-import type { ModelContextTool } from "@mcp-b/webmcp-types";
-import type { JsonValue, PomDefinition } from "./contracts";
+import type { JsonValue, PomDefinition, ToolDescriptor } from "./contracts";
 import {
   getPageStateForDocument,
   type AriaRef,
@@ -10,8 +9,6 @@ import { renderPomDefinitions } from "./pomDefinitionText";
 import { ToolInputError } from "./errors";
 import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
-
-type GetPageContextInput = { names?: string[] };
 
 export type PageContext = {
   readonly structure: string;
@@ -35,7 +32,10 @@ export const getPageStateTool = {
     additionalProperties: false,
   } as const,
   execute: async () => (await getPageStateForDocument(document)).text,
-} satisfies ModelContextTool<Record<string, never>, string>;
+} satisfies ToolDescriptor & {
+  inputSchema: object;
+  execute(): Promise<string>;
+};
 
 export const getPageContextTool = {
   name: "snapshot",
@@ -52,10 +52,8 @@ export const getPageContextTool = {
   /** Reads the page for the Run's Caller, whose cursor moves to it. */
   execute: (input: unknown, context: RunContext) =>
     snapshotFor(input, context.cursor),
-} satisfies Omit<
-  ModelContextTool<GetPageContextInput, JsonValue>,
-  "execute"
-> & {
+} satisfies ToolDescriptor & {
+  inputSchema: object;
   execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 

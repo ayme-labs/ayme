@@ -1,5 +1,3 @@
-import type { ModelContextTool } from "@mcp-b/webmcp-types";
-
 export type JsonPrimitive = string | number | boolean | null;
 
 export type JsonValue =
@@ -126,14 +124,17 @@ export function isJsonPrimitive(value: unknown): value is JsonPrimitive {
   );
 }
 
+/** A tool as an agent reads it, apart from its input schema. */
+export type ToolDescriptor = {
+  name: string;
+  description: string;
+};
+
 /**
  * A registered Page Object's tool, as the registry describes it. It runs
  * through `ayme.tools.run`, as a Run.
  */
-export type RegisteredPomTool = Omit<
-  ModelContextTool<Record<string, unknown>, JsonValue>,
-  "execute"
-> & {
+export type RegisteredPomTool = ToolDescriptor & {
   pomId: string;
   componentClassName?: string;
   methodName: string;

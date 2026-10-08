@@ -30,7 +30,7 @@ export type PublishedTool =
 /**
  * Where a tool comes from: a Page Object (Page Object Tool), Ayme's
  * Browser Tools, the app's Custom Tools, the app's Peeks (Peek Tools), or the
- * agent's own tools (`snapshot`, `goal`). WebMCP never publishes a Peek Tool.
+ * agent's own tools (`snapshot`, `goal`).
  */
 export type PublishedToolGroup =
   "pageObject" | "browser" | "custom" | "peek" | "agent";
@@ -99,33 +99,6 @@ function resolveRegisteredTools(): Map<string, ResolvedTool> {
       available: true,
     });
   return tools;
-}
-
-/**
- * Package-internal: the tools WebMCP publication registers, by name, in
- * publication order: the available ones. Throws when two registered tools
- * would share a name.
- */
-export function resolvePublishedTools(): Map<
-  string,
-  { tool: PublishedTool; group: PublishedToolGroup }
-> {
-  return new Map(
-    [...resolveRegisteredTools()].flatMap(
-      ([name, { tool, group, available }]) =>
-        available ? [[name, { tool, group }] as const] : []
-    )
-  );
-}
-
-let publishedTools: readonly PublishedToolInfo[] = Object.freeze([]);
-
-/**
- * The tools registered with WebMCP right now, in publication order. Empty
- * while publication is disabled, waiting, unavailable, failed or disposed.
- */
-export function listPublishedTools(): readonly PublishedToolInfo[] {
-  return publishedTools;
 }
 
 // The Peek Tools already warned about, so a clash is logged once.
@@ -200,28 +173,8 @@ export async function listElementToolTargets(
   );
 }
 
-/** Package-internal: `synchronizeWebMcpTools` registered or withdrew tools. */
-export function reportPublishedTools(
-  tools: readonly {
-    tool: PublishedTool;
-    group: PublishedToolGroup;
-  }[]
-) {
-  publishedTools = toInfo(tools);
-}
-
-/** Each tool's reading, with its availability when it has one. */
-function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[];
-function toInfo(
-  tools: readonly { tool: PublishedTool; group: PublishedToolGroup }[]
-): readonly PublishedToolInfo[];
-function toInfo(
-  tools: readonly {
-    tool: PublishedTool;
-    group: PublishedToolGroup;
-    available?: boolean;
-  }[]
-) {
+/** Each tool's reading. */
+function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
   return Object.freeze(
     tools.map(({ tool, group, available }) =>
       Object.freeze({
@@ -229,7 +182,7 @@ function toInfo(
         description: tool.description,
         inputSchema: tool.inputSchema,
         group,
-        ...(available === undefined ? {} : { available }),
+        available,
       })
     )
   );

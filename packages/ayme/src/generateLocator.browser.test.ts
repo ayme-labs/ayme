@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import { runPublished } from "./agentCalls.testSupport";
 import type { Locator, Page } from "@playwright/test";
 
 import { createPage } from "./browserPage";
@@ -8,10 +7,10 @@ import type { PomManifest } from "./contracts";
 import { RuntimeStateError, ToolInputError } from "./errors";
 import { buildToolOptions } from "./goalLoopQuestions";
 import { getInteractionHistory } from "./pageState";
+import { agentTools } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
 import type { ToolInput, ToolResult } from "./toolTypes";
-import { synchronizeWebMcpTools } from "./webMcp";
 
 type Result = ToolResult<"generate_locator">;
 
@@ -77,33 +76,16 @@ describe("generate_locator in Chromium", () => {
   let page: Page;
   let ayme: Ayme;
   let stop: () => void;
-  let dispose: () => void;
-  let published: (input: unknown) => Promise<unknown>;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     document.body.innerHTML = FIXTURE;
     page = createPage({ actionTimeout: 500, testIdAttribute: "data-qa" });
     ayme = createAyme({ pageFactory: () => page });
     stop = ayme.start();
     ayme.pom.register(AccountPage);
-    const tools = new Map<string, (input: unknown) => Promise<unknown>>();
-    const publication = await synchronizeWebMcpTools(
-      {
-        async registerTool(tool: {
-          name: string;
-          execute(input: unknown): Promise<unknown>;
-        }) {
-          tools.set(tool.name, (input) => tool.execute(input));
-        },
-      } as never,
-      { run: runPublished }
-    );
-    dispose = publication.dispose;
-    published = tools.get("generate_locator")!;
   });
 
   afterEach(() => {
-    dispose();
     stop();
     document.body.innerHTML = "";
   });
@@ -334,7 +316,9 @@ describe("generate_locator in Chromium", () => {
     const heading = await ref("heading", "Orders");
     const input = { groups: [{ targets: [heading] }] };
 
-    expect(await published(input)).toEqual(await run(input));
+    expect(await agentTools().call("generate_locator", input)).toEqual(
+      await run(input)
+    );
   });
 
   it("never acts: no Structural Action, and it is not a Goal Loop operation", async () => {

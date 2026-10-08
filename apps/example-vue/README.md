@@ -39,7 +39,7 @@ useAyme({ webMCP: { enabled: true } });
 usePageObject(ListPage);
 ```
 
-`webMCP.enabled` turns publication on; it is off unless set. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
+`webMCP.enabled` turns publication on through `@ayme-dev/webmcp`, which the example depends on; it is off unless set. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
 
 This example turns the Inspector on with `inspector: { demo: true }`, so each action pauses briefly and each click shows a cue. `AgentPanel.vue` holds the agent wizard, which shows the prompt and loads nothing itself. `App.vue` also passes `ignore` to keep the site header out of Structural Page State. These helpers support the demo and are optional for applications.
 

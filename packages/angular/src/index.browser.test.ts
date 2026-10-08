@@ -143,9 +143,12 @@ it("C5: returns { ayme, webMCP } whose publication status is a signal that follo
   ]);
   expect(webMCP.retryPublication).toBe(ayme.webMCP.retryPublication);
   expect(webMCP.publicationStatus().state).toBe("waiting");
-  // No WebMCP driver appears within the runtime's wait.
-  await vi.advanceTimersByTimeAsync(pastDriverWait);
-  expect(webMCP.publicationStatus().state).toBe("unavailable");
+  // No WebMCP driver appears within the wait, once the session has loaded
+  // @ayme-dev/webmcp.
+  await vi.waitFor(async () => {
+    await vi.advanceTimersByTimeAsync(pastDriverWait);
+    expect(webMCP.publicationStatus().state).toBe("unavailable");
+  });
   const retry = webMCP.retryPublication();
   expect(webMCP.publicationStatus().state).toBe("waiting");
   await vi.advanceTimersByTimeAsync(pastDriverWait);

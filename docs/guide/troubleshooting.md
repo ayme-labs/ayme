@@ -47,7 +47,8 @@ These are for agents that run in the browser and read the tools Ayme publishes t
 
 - **The publication status is `disabled`**: pass `webMCP: { enabled: true }` where Ayme starts. See [Publish tools](guides/publish-tools.md).
 - **The status is `unavailable`**: no WebMCP driver appeared within two seconds. Load the polyfill or enable Chrome's flag before your app's entry module, as [Publish tools](guides/publish-tools.md#give-the-page-webmcp) shows, or call `retryPublication()` once it is there.
-- **The status is `failed`**: most often two published tools share a name, such as a Custom Tool named like a Page Object Tool, or the WebMCP driver rejected a registration. The message says which.
+- **The status is `failed`**: `@ayme-dev/webmcp` is not installed beside `@ayme-dev/ayme`, or the WebMCP driver rejected a registration. The message says which.
+- **The status is `active` but no tool is published**: two tools share a name, such as a Custom Tool named like a Page Object Tool, which leaves `ayme.tools.list()` empty. `ayme.tools.run` throws the error that names the tool.
 - **The tools have unexpected names**: `webMCP.toolNamePrefix` is set, and agents see the prefixed names.
 
 ## Ayme starts twice

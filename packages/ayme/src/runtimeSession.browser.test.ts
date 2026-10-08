@@ -71,7 +71,7 @@ describe("the public runtime session in Chromium", () => {
 
   it("runs the Goal Loop with a caller page factory and a Custom Tool, without publication or a driver", async () => {
     document.body.innerHTML = `<main><button>Save changes</button></main>`;
-    expect(document.modelContext).toBeUndefined();
+    expect("modelContext" in document).toBe(false);
     const highlight: CustomTool = {
       name: "highlight_element",
       description: "Highlight one element on the page.",
@@ -116,6 +116,6 @@ describe("the public runtime session in Chromium", () => {
     ).toBe(true);
     expect(pageFactory).toHaveBeenCalledOnce();
     expect(session.webMCP.publicationStatus.state).toBe("disabled");
-    expect(document.modelContext).toBeUndefined();
+    expect("modelContext" in document).toBe(false);
   });
 });

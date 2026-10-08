@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { runPublished } from "./agentCalls.testSupport";
 import { createPage } from "./browserPage";
 import { ToolInputError } from "./errors";
 import { buildToolOptions } from "./goalLoopQuestions";
@@ -12,7 +11,6 @@ import {
 } from "./playwrightMcp.testSupport";
 import { createAyme, type Ayme } from "./runtime";
 import type { ToolInput } from "./toolTypes";
-import { synchronizeWebMcpTools } from "./webMcp";
 
 const FIXTURE = `
   <style>
@@ -73,20 +71,7 @@ describe("screenshot in Chromium", () => {
     );
   });
 
-  it("is never published to WebMCP, and the Goal Loop never picks it", async () => {
-    const names: string[] = [];
-    const publication = await synchronizeWebMcpTools(
-      {
-        async registerTool(tool: { name: string }) {
-          names.push(tool.name);
-        },
-      } as never,
-      { run: runPublished }
-    );
-    publication.dispose();
-
-    expect(names).toContain("snapshot");
-    expect(names).not.toContain("screenshot");
+  it("is never offered to the Goal Loop", () => {
     expect(buildToolOptions().map((option) => option.key)).not.toContain(
       "screenshot"
     );

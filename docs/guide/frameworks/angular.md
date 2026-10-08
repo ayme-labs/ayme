@@ -13,7 +13,7 @@ ng add @ayme-dev/angular
 ### Manual setup
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/angular
+npm install @ayme-dev/ayme @ayme-dev/angular @ayme-dev/webmcp
 npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild @playwright/test
 ```
 
@@ -33,6 +33,8 @@ export const appConfig: ApplicationConfig = {
   providers: [provideAyme({ webMCP: { enabled: true } })],
 };
 ```
+
+`webMCP` publishes the tools through `@ayme-dev/webmcp`, which `ng add` leaves out. Install it with `npm install @ayme-dev/webmcp`.
 
 In a component, `injectPageObject(Model)` returns the Page Object and `injectAyme()` returns `{ ayme, webMCP }`:
 

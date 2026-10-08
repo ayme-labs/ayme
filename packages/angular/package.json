@@ -59,6 +59,7 @@
     "@angular/platform-server": "^22.2.1",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
+    "@ayme-dev/webmcp": "workspace:*",
     "@schematics/angular": "^22.2.1",
     "@vitest/browser-playwright": "^4.1.11",
     "eslint": "^10.9.1",

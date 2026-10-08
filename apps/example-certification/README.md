@@ -25,7 +25,7 @@ From `@ayme-dev/example-certification/tests`, each builder defines plain Playwri
 - `agentConnectionTests({ enabled, snapshotText, peek?, appProcess? })`: where `enabled()` holds, a coding agent's MCP client pairs with `/` through a connect link and calls the page's `snapshot` tool; elsewhere, such as a production build, the page loads no Agent Connection code and opens no WebSocket. Every example runs it, gated as its app gates `agentConnection`. With `peek: true`, the agent also reads the counter's Peek `peek.counter`: `0`, then `1` after an increment, and the tool goes when the counter unmounts. Examples whose counter adds no Peek leave it off. With `appProcess: { peek }`, for an app whose server runs an App Process where it turns the Agent Connection on: there, an agent on `agentPort` lists the server's Peek `peek.node.<peek>`, then a server-rendered load of `/` leaves `peek.counter` with exactly one instance, from the browser, and the server offers no `peek.node.counter`; elsewhere no App Process pairs with that agent.
 - `test`: Playwright's `test`, failing on page errors, console errors and hydration warnings. Every builder except the dev rebuild and the Agent Connection uses it, and so do an example's own tests. A framework that logs hydration statistics in development, such as Angular, names them with `test.use({ hydrationStatistics: /regexp/ })` so they are not counted as a warning.
 
-Tools are called through the recording WebMCP driver from `@ayme-dev/ayme/testing`, and the agent's side through `@ayme-dev/mcp/testing`.
+Tools are called through the recording WebMCP driver from `@ayme-dev/webmcp/testing`, and the agent's side through `@ayme-dev/mcp/testing`.
 
 ## Counter contract
 

@@ -16,19 +16,11 @@ import {
   type AymePage,
 } from "./runtime";
 import { listRegisteredPoms, registerCompiledPom } from "./registry";
+import * as registryModule from "./registry";
 import { callers } from "./run";
-import {
-  synchronizeWebMcpTools,
-  waitForWebMcpDriver,
-  type WebMcpDriver,
-  type WebMcpRegistration,
-} from "./webMcp";
+import { loadWebMcpPublication } from "./webMcp";
 
-vi.mock("./webMcp", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./webMcp")>()),
-  synchronizeWebMcpTools: vi.fn(),
-  waitForWebMcpDriver: vi.fn(),
-}));
+vi.mock("./webMcp", () => ({ loadWebMcpPublication: vi.fn() }));
 vi.mock("./inspector", () => ({ loadInspector: vi.fn() }));
 vi.mock("./agentConnection", () => ({
   loadAgentConnection: vi.fn(),
@@ -40,8 +32,24 @@ vi.mock("./browserPage", () => ({
 const page = { url: () => "factory page" } as unknown as AymePage;
 const sessions: ReturnType<typeof createAyme>[] = [];
 const stops: (() => void)[] = [];
-const driver = { registerTool: vi.fn() };
-const disposePublication = vi.fn();
+type StartWebMcpPublication = Awaited<
+  ReturnType<typeof loadWebMcpPublication>
+>["startWebMcpPublication"];
+const retry = vi.fn<() => Promise<void>>();
+const startWebMcpPublication = vi.fn<StartWebMcpPublication>(() => ({
+  retry,
+}));
+/** The tool source and options the session last started publication with. */
+function published() {
+  const [tools, options] = startWebMcpPublication.mock.lastCall!;
+  return { tools, options };
+}
+/**
+ * Waits until the session has started publication `times` times in all: it
+ * starts once the package has loaded and the Page Objects have been probed.
+ */
+const publicationStarts = (times = 1) =>
+  vi.waitFor(() => expect(startWebMcpPublication).toHaveBeenCalledTimes(times));
 class Model {
   constructor(readonly page: AymePage) {}
 }
@@ -74,10 +82,9 @@ beforeEach(() => {
     }
   );
   registerCompiledPom(Model, manifest);
-  vi.mocked(waitForWebMcpDriver).mockResolvedValue(driver);
-  vi.mocked(synchronizeWebMcpTools).mockResolvedValue({
-    message: "Published",
-    dispose: disposePublication,
+  retry.mockResolvedValue(undefined);
+  vi.mocked(loadWebMcpPublication).mockResolvedValue({
+    startWebMcpPublication,
   });
 });
 afterEach(() => {
@@ -115,6 +122,7 @@ it("mounts the Inspector while a session with inspector is started", async () =>
 it.each([
   ["Inspector", { inspector: true }],
   ["Agent Connection", { agentConnection: true }],
+  ["WebMCP publication", { webMCP: { enabled: true } }],
 ] as const)(
   "drops a %s load failure once the session has stopped",
   async (_, option) => {
@@ -122,6 +130,7 @@ it.each([
     const failing = new Promise<never>((_, reject) => (failLoad = reject));
     vi.mocked(loadInspector).mockReturnValue(failing);
     vi.mocked(loadAgentConnection).mockReturnValue(failing);
+    vi.mocked(loadWebMcpPublication).mockReturnValue(failing);
     const unhandled = vi.fn();
     process.on("unhandledRejection", unhandled);
     try {
@@ -340,7 +349,7 @@ it("C9: starts and registers nothing for concurrent render sessions on the serve
   expect(instance).toBeInstanceOf(Model);
   expect(factory).not.toHaveBeenCalled();
   expect(createPage).not.toHaveBeenCalled();
-  expect(synchronizeWebMcpTools).not.toHaveBeenCalled();
+  expect(loadWebMcpPublication).not.toHaveBeenCalled();
 });
 
 it("calls the page factory at most once, lazily, on first use", () => {
@@ -424,10 +433,13 @@ it("runs goal as the application while publication is unavailable", async () => 
       execute,
     });
   try {
-    vi.mocked(waitForWebMcpDriver).mockResolvedValue(undefined);
     const runtime = session();
     start(runtime);
-    await runtime.webMCP.retryPublication();
+    await publicationStarts();
+    published().options.onStatus({
+      state: "unavailable",
+      message: "The WebMCP driver is unavailable.",
+    });
     expect(runtime.webMCP.publicationStatus.state).toBe("unavailable");
     const input = { goal: "save", maxSteps: 3 };
     await expect(runtime.tools.run("goal", input)).resolves.toBe(handover);
@@ -435,7 +447,6 @@ it("runs goal as the application while publication is unavailable", async () => 
       cursor: cursors.of(callers.app),
       run: expect.any(Function),
     });
-    expect(synchronizeWebMcpTools).not.toHaveBeenCalled();
   } finally {
     goalTool.mockRestore();
   }
@@ -456,7 +467,7 @@ it("gets without activation and handles registration before owner startup and re
   expect(listRegisteredPoms()[0]?.instance).toBe(instance);
   runtime.pom.unregister(Model);
   expect(listRegisteredPoms()).toHaveLength(0);
-  expect(waitForWebMcpDriver).not.toHaveBeenCalled();
+  expect(loadWebMcpPublication).not.toHaveBeenCalled();
 });
 
 it("shares one instance between registrations and withdraws it with the last", () => {
@@ -508,95 +519,256 @@ it("C3: rejects concurrent owners with the active-owner code and permits a fresh
   start(second);
 });
 
-it("publishes once, shares retries, and exposes immutable status snapshots", async () => {
+it("publishes while a session with webMCP.enabled is started, under its toolNamePrefix", async () => {
+  start(session(false))();
+  await flush();
+  expect(loadWebMcpPublication).not.toHaveBeenCalled();
+
+  const runtime = createAyme({
+    pageFactory: () => page,
+    webMCP: { enabled: true, toolNamePrefix: "ayme_" },
+  });
+  sessions.push(runtime);
+  const stop = start(runtime);
+  expect(runtime.webMCP.publicationStatus).toEqual({
+    state: "waiting",
+    message: "Waiting for the WebMCP driver.",
+  });
+  await publicationStarts();
+  const { options } = published();
+  expect(options).toEqual({
+    toolNamePrefix: "ayme_",
+    signal: expect.any(AbortSignal),
+    onStatus: expect.any(Function),
+  });
+  expect(options.signal.aborted).toBe(false);
+
+  stop();
+  expect(options.signal.aborted).toBe(true);
+  expect(runtime.webMCP.publicationStatus).toEqual({
+    state: "disposed",
+    message: "The Ayme runtime was disposed.",
+  });
+});
+
+it("probes the Page Objects before it publishes", async () => {
+  let finishProbe!: () => void;
+  const probe = vi
+    .spyOn(registryModule, "probeRegisteredPomMembers")
+    .mockReturnValueOnce(new Promise((resolve) => (finishProbe = resolve)));
+  try {
+    start(session());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(probe).toHaveBeenCalledOnce();
+    expect(loadWebMcpPublication).toHaveBeenCalledOnce();
+    expect(startWebMcpPublication).not.toHaveBeenCalled();
+
+    finishProbe();
+
+    await publicationStarts();
+  } finally {
+    probe.mockRestore();
+  }
+});
+
+it("shows a failed probe as failed publication", async () => {
+  const probe = vi
+    .spyOn(registryModule, "probeRegisteredPomMembers")
+    .mockRejectedValueOnce(new Error("The probe failed."));
+  try {
+    const runtime = session();
+    start(runtime);
+    await vi.waitFor(() =>
+      expect(runtime.webMCP.publicationStatus).toEqual({
+        state: "failed",
+        message: "WebMCP publication failed: The probe failed.",
+      })
+    );
+    expect(startWebMcpPublication).not.toHaveBeenCalled();
+  } finally {
+    probe.mockRestore();
+  }
+});
+
+it("loads nothing while webMCP.enabled is unset", async () => {
+  const runtime = createAyme({
+    pageFactory: () => page,
+    webMCP: { toolNamePrefix: "ayme_" },
+  });
+  sessions.push(runtime);
+  start(runtime);
+  await runtime.webMCP.retryPublication();
+  await flush();
+
+  expect(loadWebMcpPublication).not.toHaveBeenCalled();
+  expect(runtime.webMCP.publicationStatus).toEqual({
+    state: "disabled",
+    message: "WebMCP publication is disabled.",
+  });
+});
+
+it("hands publication the session's tools, and runs an agent's call as a webmcp Run", async () => {
+  class Saver {
+    save() {}
+  }
+  registerCompiledPom(Saver, {
+    className: "Saver",
+    components: [],
+    members: [],
+    tools: [
+      {
+        methodName: "save",
+        toolName: "Saver.save",
+        description: "Save.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          required: [],
+          additionalProperties: false,
+        },
+        parameters: [],
+      },
+    ],
+  });
+  const runtime = session();
+  start(runtime);
+  await publicationStarts();
+  const { tools } = published();
+  const names = () => tools.list().map(({ name }) => name);
+  expect(tools.list()).toBe(runtime.tools.list());
+  expect(names()).toContain("click");
+
+  const listener = vi.fn();
+  const unsubscribe = tools.subscribe(listener);
+  runtime.pom.register(Saver);
+  expect(listener).toHaveBeenCalledOnce();
+  expect(names()).toContain("Saver.save");
+  unsubscribe();
+  runtime.pom.unregister(Saver);
+  expect(listener).toHaveBeenCalledOnce();
+
+  const run = vi.spyOn(runtime.tools, "run").mockResolvedValue("ran");
+  await expect(tools.run("snapshot", {})).resolves.toBe("ran");
+  expect(run).toHaveBeenCalledExactlyOnceWith("snapshot", {}, { by: "webmcp" });
+});
+
+it("shows each status publication reports, frozen, and tells subscribers", async () => {
   const runtime = session();
   const listener = vi.fn();
   const unsubscribe = runtime.webMCP.subscribe(listener);
   start(runtime);
-  const pending = runtime.webMCP.retryPublication();
-  expect(runtime.webMCP.retryPublication()).toBe(pending);
-  await pending;
-  expect(runtime.webMCP.publicationStatus.state).toBe("active");
+  await publicationStarts();
+  expect(listener).toHaveBeenLastCalledWith({
+    state: "waiting",
+    message: "Waiting for the WebMCP driver.",
+  });
+
+  published().options.onStatus({
+    state: "active",
+    message: "Registered 17 WebMCP tools and watching for changes.",
+  });
+
+  expect(runtime.webMCP.publicationStatus).toEqual({
+    state: "active",
+    message: "Registered 17 WebMCP tools and watching for changes.",
+  });
   expect(Object.isFrozen(runtime.webMCP.publicationStatus)).toBe(true);
-  await runtime.webMCP.retryPublication();
-  expect(synchronizeWebMcpTools).toHaveBeenCalledOnce();
   expect(listener).toHaveBeenLastCalledWith(runtime.webMCP.publicationStatus);
   unsubscribe();
 });
 
-it("retries unavailable and failed publication", async () => {
-  vi.mocked(waitForWebMcpDriver).mockResolvedValueOnce(undefined);
-  vi.mocked(synchronizeWebMcpTools).mockRejectedValueOnce(
-    new Error("registration failed")
+it("shares the retries made while the package loads, resolving once the publication's attempt ends", async () => {
+  let finishAttempt!: () => void;
+  retry.mockReturnValueOnce(
+    new Promise<void>((resolve) => (finishAttempt = resolve))
   );
   const runtime = session();
   start(runtime);
-  await runtime.webMCP.retryPublication();
-  expect(runtime.webMCP.publicationStatus.state).toBe("unavailable");
-  await runtime.webMCP.retryPublication();
+  let retried = false;
+
+  const pending = runtime.webMCP.retryPublication();
+  expect(runtime.webMCP.retryPublication()).toBe(pending);
+  const retrying = pending.then(() => {
+    retried = true;
+  });
+  await vi.waitFor(() => expect(retry).toHaveBeenCalledOnce());
+  expect(retried).toBe(false);
+  finishAttempt();
+  await retrying;
+
+  expect(loadWebMcpPublication).toHaveBeenCalledOnce();
+  expect(startWebMcpPublication).toHaveBeenCalledOnce();
+});
+
+it("shows a load failure as failed publication, and loads again on a retry", async () => {
+  vi.mocked(loadWebMcpPublication).mockRejectedValueOnce(
+    new Error(
+      "The webMCP option could not load @ayme-dev/webmcp. Install it beside @ayme-dev/ayme, or turn the option off. Cause: Cannot find package."
+    )
+  );
+  const runtime = session();
+  start(runtime);
+  await flush();
   expect(runtime.webMCP.publicationStatus).toEqual({
     state: "failed",
-    message: "WebMCP publication failed: registration failed",
+    message:
+      "WebMCP publication failed: The webMCP option could not load @ayme-dev/webmcp. Install it beside @ayme-dev/ayme, or turn the option off. Cause: Cannot find package.",
   });
-  await runtime.webMCP.retryPublication();
-  expect(runtime.webMCP.publicationStatus.state).toBe("active");
+  expect(startWebMcpPublication).not.toHaveBeenCalled();
+
+  const retrying = runtime.webMCP.retryPublication();
+  expect(runtime.webMCP.publicationStatus.state).toBe("waiting");
+  await retrying;
+
+  expect(loadWebMcpPublication).toHaveBeenCalledTimes(2);
+  expect(startWebMcpPublication).toHaveBeenCalledOnce();
+  expect(published().options.signal.aborted).toBe(false);
+  expect(retry).toHaveBeenCalledOnce();
 });
 
-it("does not overwrite a synchronous publisher failure with active status", async () => {
-  vi.mocked(synchronizeWebMcpTools).mockImplementationOnce(
-    async (_driver, options) => {
-      options?.onError?.(new Error("startup failed"));
-      return { message: "No tools", dispose: disposePublication };
-    }
-  );
+it("shows a publication that throws as it starts as failed, and starts it again on a retry", async () => {
+  startWebMcpPublication.mockImplementationOnce(() => {
+    throw new Error("A status listener threw.");
+  });
   const runtime = session();
   start(runtime);
-  await runtime.webMCP.retryPublication();
-  expect(runtime.webMCP.publicationStatus.state).toBe("failed");
-  expect(disposePublication).toHaveBeenCalledOnce();
-  await runtime.webMCP.retryPublication();
-  expect(runtime.webMCP.publicationStatus.state).toBe("active");
-});
-
-it("aborts pending discovery without publishing its late result", async () => {
-  let resolve!: (driver: WebMcpDriver) => void;
-  vi.mocked(waitForWebMcpDriver).mockImplementationOnce(
-    () =>
-      new Promise((r) => {
-        resolve = r;
-      })
-  );
-  const runtime = session();
-  const stop = start(runtime);
-  const pending = runtime.webMCP.retryPublication();
-  stop();
-  expect(vi.mocked(waitForWebMcpDriver).mock.calls[0]?.[1]?.aborted).toBe(true);
-  resolve(driver);
-  await pending;
-  expect(synchronizeWebMcpTools).not.toHaveBeenCalled();
-  expect(runtime.webMCP.publicationStatus.state).toBe("disposed");
-});
-
-it("disposes late publication from an old start without overwriting its replacement", async () => {
-  let resolve!: (registration: WebMcpRegistration) => void;
-  vi.mocked(synchronizeWebMcpTools).mockImplementationOnce(
-    () =>
-      new Promise((r) => {
-        resolve = r;
-      })
-  );
-  const runtime = session();
-  const stop = start(runtime);
+  await publicationStarts();
   await flush();
-  stop();
+  expect(runtime.webMCP.publicationStatus).toEqual({
+    state: "failed",
+    message: "WebMCP publication failed: A status listener threw.",
+  });
+
+  await runtime.webMCP.retryPublication();
+
+  expect(startWebMcpPublication).toHaveBeenCalledTimes(2);
+  expect(retry).toHaveBeenCalledOnce();
+});
+
+it("ignores a load that ends after its session stopped, leaving a later start's publication alone", async () => {
+  let finishLoad!: (loaded: {
+    startWebMcpPublication: StartWebMcpPublication;
+  }) => void;
+  let failLoad!: (error: Error) => void;
+  vi.mocked(loadWebMcpPublication)
+    .mockReturnValueOnce(new Promise((resolve) => (finishLoad = resolve)))
+    .mockReturnValueOnce(new Promise((_, reject) => (failLoad = reject)));
+  const runtime = session();
+  // Two starts stop before their loads end; the third publishes.
+  start(runtime)();
+  start(runtime)();
   start(runtime);
-  await runtime.webMCP.retryPublication();
-  const disposeLate = vi.fn();
-  resolve({ message: "Late", dispose: disposeLate });
-  await flush();
-  expect(disposeLate).toHaveBeenCalledOnce();
+  await publicationStarts();
+  published().options.onStatus({ state: "active", message: "Published." });
+
+  finishLoad({ startWebMcpPublication });
+  failLoad(new Error("Cannot load the package after teardown."));
+  // What the late loads set off runs in promise callbacks, before a timer.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  expect(startWebMcpPublication).toHaveBeenCalledOnce();
   expect(runtime.webMCP.publicationStatus).toEqual({
     state: "active",
-    message: "Published",
+    message: "Published.",
   });
 });

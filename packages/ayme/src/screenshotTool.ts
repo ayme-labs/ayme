@@ -1,8 +1,7 @@
 // screenshot: the Browser Tool that captures the page, or one element, as an
 // image, as Playwright MCP's browser_take_screenshot does. playwright-lite
 // renders it from the DOM. It reads and never acts, so it records no
-// Structural Action. Published only, and never to WebMCP, which has no image
-// result.
+// Structural Action. Published only: the Goal Loop never offers it.
 import type { JsonSchema } from "./contracts";
 import {
   locatorOf,
@@ -76,13 +75,12 @@ async function sizeOf(bytes: Uint8Array, mimeType: string) {
   }
 }
 
-/** Package-internal: the screenshot Browser Tool, published only and not to WebMCP. */
+/** Package-internal: the screenshot Browser Tool, published only. */
 export const screenshotTool: PublishedElementTool = {
   name: "screenshot",
   description:
     "Take a screenshot of the viewport, the full page or one element. To act on the page, use the snapshot's Structural Refs, not the image.",
   inputSchema,
-  webMcp: false,
   execute: async (input) => {
     const request = screenshotRequest(
       validatedToolInput(inputSchema, input) as ScreenshotInput,

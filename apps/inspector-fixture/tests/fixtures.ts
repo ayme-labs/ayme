@@ -1,5 +1,5 @@
 import { test as base, selectors, type Page } from "@playwright/test";
-import { recordPublishedTools } from "@ayme-dev/ayme/testing";
+import { recordPublishedTools } from "@ayme-dev/webmcp/testing";
 import {
   Inspector,
   registerInspectorSelectors,
@@ -97,7 +97,7 @@ export const test = base.extend<
     { scope: "worker", auto: true },
   ],
   // The runtime publishes to the recording WebMCP driver from
-  // `@ayme-dev/ayme/testing`, which the tests call tools through.
+  // `@ayme-dev/webmcp/testing`, which the tests call tools through.
   publishedTools: [
     async ({ context }, use) => {
       await recordPublishedTools(context);

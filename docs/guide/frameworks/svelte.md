@@ -4,10 +4,10 @@ Everything about Ayme in a Svelte or SvelteKit app: setup, starting Ayme in the 
 
 ## Setup
 
-Install Ayme, the Svelte package and the build plugin, and the Inspector if you want it:
+Install Ayme, the Svelte package, WebMCP publication and the build plugin, and the Inspector if you want it:
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/svelte
+npm install @ayme-dev/ayme @ayme-dev/svelte @ayme-dev/webmcp
 npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector
 ```
 

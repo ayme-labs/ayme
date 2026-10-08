@@ -1,5 +1,4 @@
-import type { Page } from "@playwright/test";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   callers,
   createAyme,
@@ -7,12 +6,11 @@ import {
   type ActionResult,
   type Ayme,
 } from "./index";
-import { executePublishedTool, recordPublishedToolsLate } from "./testing";
+import { errorText } from "./errors";
+import { agentTools } from "./publication.testSupport";
 
-// The recording driver's helpers evaluate in the page; this test runs there.
-const inPage = {
-  evaluate: async (fn: (arg: unknown) => unknown, arg: unknown) => fn(arg),
-} as unknown as Page;
+// Runtime object seam: an agent's call through WebMCP is a `webmcp` Run,
+// made here through the publication harness.
 
 const SAVE = { target: "role=button[name='Save']" };
 
@@ -27,16 +25,10 @@ describe("WebMCP's Caller in Chromium", () => {
   let ayme: Ayme;
   let stop: () => void;
 
-  beforeAll(() => recordPublishedToolsLate(inPage));
-
-  beforeEach(async () => {
+  beforeEach(() => {
     document.body.innerHTML = "<main><button>Save</button></main>";
-    ayme = createAyme({
-      pageFactory: () => createPage(),
-      webMCP: { enabled: true },
-    });
+    ayme = createAyme({ pageFactory: () => createPage() });
     stop = ayme.start();
-    await expect.poll(() => ayme.webMCP.publicationStatus.state).toBe("active");
   });
 
   afterEach(() => {
@@ -45,9 +37,9 @@ describe("WebMCP's Caller in Chromium", () => {
   });
 
   const agentCall = (name: string, input: object) =>
-    executePublishedTool(inPage, name, input) as Promise<ActionResult>;
+    agentTools().call(name, input) as Promise<ActionResult>;
 
-  it("shares the agent's Change Record between WebMCP and a Run named webmcp, apart from the app's", async () => {
+  it("shares the agent's Change Record between its WebMCP calls and a Run named webmcp, apart from the app's", async () => {
     await agentCall("snapshot", {});
     await ayme.tools.run("snapshot", {});
     toast("First toast");
@@ -63,17 +55,16 @@ describe("WebMCP's Caller in Chromium", () => {
     expect(apps.changes_before).toContain("First toast");
   });
 
-  it("records an agent's WebMCP call as a webmcp Run, and a failed one as failed with an error result", async () => {
+  it("records an agent's WebMCP call as a webmcp Run, and a failed one as failed", async () => {
     const earlier = new Set(ayme.runs.list().map((run) => run.id));
     const missing = { target: "role=button[name='Delete']" };
 
     const saved = await agentCall("click", SAVE);
-    const failed = (await executePublishedTool(inPage, "click", missing)) as {
-      isError?: boolean;
-      content: [{ text: string }];
-    };
+    const failure: unknown = await agentTools()
+      .call("click", missing)
+      .catch((error: unknown) => error);
 
-    expect(failed.isError).toBe(true);
+    expect(failure).toBeInstanceOf(Error);
     expect(ayme.runs.list().filter((run) => !earlier.has(run.id))).toEqual([
       expect.objectContaining({
         tool: "click",
@@ -87,7 +78,7 @@ describe("WebMCP's Caller in Chromium", () => {
         input: missing,
         by: callers.webmcp,
         status: "failed",
-        error: failed.content[0].text,
+        error: errorText(failure),
       }),
     ]);
   });

@@ -3,9 +3,8 @@ import {
   type StructuralNode,
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
-import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import { runAction } from "./actionSequence";
-import type { JsonSchema, JsonValue } from "./contracts";
+import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
 import type { RunContext } from "./run";
 import type { ToolInput, ToolResult } from "./toolTypes";
 import {
@@ -60,13 +59,8 @@ export type CustomToolContext = {
  * A Browser Tool or Custom Tool, as published: `execute` runs it for a Run,
  * whose context carries the cursor its Change Record reads from and moves.
  */
-export type PublishedElementTool = Omit<
-  ModelContextTool<Record<string, unknown>, JsonValue>,
-  "execute"
-> & {
+export type PublishedElementTool = ToolDescriptor & {
   inputSchema: JsonSchema;
-  /** `false`: never published to WebMCP, as for a tool whose result is an image. */
-  webMcp?: false;
   execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 

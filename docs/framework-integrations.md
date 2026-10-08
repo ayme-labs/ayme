@@ -14,7 +14,7 @@ API names follow [ADR-0017](adr/0017-keep-framework-integration-apis-closely-ali
 
 - `packages/<framework>`, published as `@ayme-dev/<framework>`, with the Turbo boundaries tag `adapter`. Copy the manifest fields, `LICENSE`, tsdown, ESLint and TypeScript setup of an existing integration.
 - `@ayme-dev/ayme` is a dependency; the framework is a peer dependency whose range runs from the tested floor to the current major.
-- Only `@ayme-dev/ayme` declares the optional `@playwright/test` peer. An integration does not.
+- An integration does not declare the `@playwright/test` peer. `@ayme-dev/ayme` and `@ayme-dev/webmcp` declare it as optional.
 - The owner takes the runtime options type as is, instead of re-declaring each option.
 - The integration uses the public runtime session. It imports `@ayme-dev/ayme/internal` only for what the public API does not export yet, such as the Page Object constructor type.
 - Every row of the behaviour contract holds, or is n/a where the row allows it.
@@ -56,7 +56,7 @@ The lanes, their commands and where test-only code lives are in the [testing gui
 
 Each framework is certified in a server-rendered app and in an SPA: through a config switch where the meta-framework supports both, otherwise with a separate SPA example. Each runs against its dev server and a production build. An example is a private app under `apps/` with the Turbo tag `app`; its README says what it certifies and links the package README for setup.
 
-Its Page Object Models live in the app's own source, because the build plugin compiles them only from there. Its end-to-end tests run the shared [example certification](../apps/example-certification/README.md), which drives the counter contract written down there, calls tools through the recording WebMCP driver from `@ayme-dev/ayme/testing`, and checks:
+Its Page Object Models live in the app's own source, because the build plugin compiles them only from there. Its end-to-end tests run the shared [example certification](../apps/example-certification/README.md), which drives the counter contract written down there, calls tools through the recording WebMCP driver from `@ayme-dev/webmcp/testing`, and checks:
 
 - the server-rendered HTML and the initial publication status, across repeated requests;
 - the exact published tool schemas;

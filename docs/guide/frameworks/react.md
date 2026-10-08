@@ -4,10 +4,10 @@ Everything about Ayme in a React app: setup, the provider, hooks, server renderi
 
 ## Setup
 
-Install Ayme, the React package and the build plugin, and the Inspector if you want it:
+Install Ayme, the React package, WebMCP publication and the build plugin, and the Inspector if you want it:
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/react
+npm install @ayme-dev/ayme @ayme-dev/react @ayme-dev/webmcp
 npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector
 ```
 

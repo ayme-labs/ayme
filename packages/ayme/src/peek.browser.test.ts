@@ -1,14 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DecisionRequest } from "./decisionTypes";
-import { runPublished } from "./agentCalls.testSupport";
 import type { ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { RuntimeStateError } from "./errors";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme, type AymeOptions } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
 
 // Runtime object seam: an app adds Peeks with `ayme.peek` and reads them as
 // Peek Tools through `ayme.tools`, the set the Agent Connection's page client
@@ -389,33 +387,6 @@ describe("where Peek Tools appear", () => {
     await expect.poll(() => connected.sessions).toHaveLength(1);
     const [client] = connected.sessions as Pick<Ayme, "tools">[];
     expect(client!.tools.list().map(({ name }) => name)).toContain("peek.menu");
-  });
-
-  it("leaves them out of WebMCP publication", async () => {
-    const ayme = started({ agentConnection: true });
-    peek(ayme, () => ({ open: true }), "menu");
-    const published = new Map<string, unknown>();
-    const publication = await synchronizeWebMcpTools(
-      {
-        async registerTool(tool: { name: string }) {
-          published.set(tool.name, tool);
-        },
-      } as never,
-      { run: runPublished }
-    );
-    cleanups.push(publication.dispose);
-
-    expect(toolNames(ayme)).toContain("peek.menu");
-    expect(published.has("snapshot")).toBe(true);
-    expect(
-      [...published.keys()].filter((name) => name.startsWith("peek."))
-    ).toEqual([]);
-
-    peek(ayme, () => 1, "later");
-    await nextTurn();
-    expect(
-      [...published.keys()].filter((name) => name.startsWith("peek."))
-    ).toEqual([]);
   });
 
   it("never offers them to the Goal Loop", async () => {

@@ -301,6 +301,13 @@ it("C5: renders live publication state and retries without replacing the Page Ob
   await act(() =>
     root().render(h(AymeProvider, { webMCP: { enabled: true } }, h(Child)))
   );
+  const ayme = vi.mocked(createAyme).mock.results[0]!.value as ReturnType<
+    typeof createAyme
+  >;
+  // Publication goes active once the session has loaded @ayme-dev/webmcp.
+  await act(() =>
+    vi.waitFor(() => expect(ayme.webMCP.publicationStatus.state).toBe("active"))
+  );
   expect(typeof current?.page.getByRole).toBe("function");
   expect(states).toContain("waiting");
   expect(states.at(-1)).toBe("active");

@@ -9,8 +9,8 @@ import { cursors, type Cursor } from "./cursors";
 import { getPageContextForDocument } from "./pageContext";
 import { getPageStateForDocument, type AriaRef } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
-import { resolvePublishedTools, resolveTools } from "./publishedTools";
-import { callers, executeTopLevelRun, type RunContext } from "./run";
+import { resolveTools } from "./publishedTools";
+import { callers, type RunContext } from "./run";
 
 /** The calling agent's cursor: a WebMCP agent's, as `webmcp` Runs read it. */
 export const agentCursor = (): Cursor => cursors.of(callers.webmcp);
@@ -30,25 +30,6 @@ export function runContext(cursor: Cursor = agentCursor()): RunContext {
       return entry.tool.execute(input, runContext(childCursor));
     },
   };
-}
-
-/**
- * The `run` a test hands `synchronizeWebMcpTools` outside a runtime session:
- * an agent's call runs the published tool for the agent, then `settle`, as a
- * `webmcp` Run does, but with no queue and unrecorded.
- */
-export function runPublished(
-  name: string,
-  input: unknown,
-  settle: () => Promise<void>
-): Promise<unknown> {
-  const published = resolvePublishedTools().get(name);
-  if (!published) throw new Error(`No published tool "${name}".`);
-  return executeTopLevelRun(
-    published.tool,
-    () => published.tool.execute(input, runContext()),
-    settle
-  );
 }
 
 function browserTool(name: string) {

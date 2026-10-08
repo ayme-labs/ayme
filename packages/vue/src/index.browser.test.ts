@@ -527,10 +527,6 @@ class FakeMutationObserver {
   disconnect() {}
 }
 
-async function flushPromises() {
-  for (let index = 0; index < 8; index += 1) await Promise.resolve();
-}
-
 it("C5: keeps a real publisher startup failure retryable", async () => {
   vi.stubGlobal("MutationObserver", FakeMutationObserver);
 
@@ -576,16 +572,18 @@ it("C5: keeps a real publisher startup failure retryable", async () => {
   const result = scope.run(() =>
     useAyme({ pageFactory, webMCP: { enabled: true } })
   );
-  await flushPromises();
+  // Publication starts once the session has loaded @ayme-dev/webmcp.
+  await vi.waitFor(() => expect(registerTool).toHaveBeenCalledOnce());
 
   resolveInitialRegistration();
   queueMicrotask(() => result?.ayme.pom.register(IntegrationPage));
-  await flushPromises();
 
-  expect(result?.webMCP.publicationStatus).toEqual({
-    state: "failed",
-    message: "WebMCP publication failed: synchronous registration failed",
-  });
+  await vi.waitFor(() =>
+    expect(result?.webMCP.publicationStatus).toEqual({
+      state: "failed",
+      message: "WebMCP publication failed: synchronous registration failed",
+    })
+  );
 
   failRegistration = false;
   await result?.webMCP.retryPublication();
