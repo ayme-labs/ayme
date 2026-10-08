@@ -389,9 +389,11 @@ export class StructuralTimeline {
    * - actionChange: the diff from before to after
    *
    * Observations inside `[startedAt, endedAt]` are never selected as boundaries. Tree-id continuity is
-   * preserved by projecting reconciled current trees forward through prior action boundaries. Each
-   * resolved action is remembered, so a reading resumes from the latest earlier action already
-   * resolved instead of replaying the visit: its cost follows the distance read, not the visit's age.
+   * preserved by projecting reconciled current trees forward through the action boundaries a reading
+   * crosses. Each resolved action is remembered, so a reading resumes from the latest earlier action
+   * already resolved; a cold reading of a later action starts from the previous action's after,
+   * resolved on its own. Either way a reading resolves a bounded number of trees: its cost follows the
+   * distance read, not the visit's age.
    */
   async getActionEvidence(
     actionId: StructuralActionId,
@@ -492,40 +494,20 @@ export class StructuralTimeline {
       return tree;
     };
 
-    // The canonical baseline is the visit's first observation (visit-start). When it resolves, keep it
-    // so spontaneous changes between visit-start and the first action still surface as unassigned
-    // changes. When it cannot resolve (e.g. an empty SPA shell), fall back to the LATEST resolvable
-    // observation strictly before the first action, walking backward from that before-boundary: this
-    // treats pre-action hydration/render as unknown initial state rather than a spontaneous change, and
-    // never crosses into the action window so a post-action snapshot can never become the baseline
-    // (bleed-safe). The backward fallback also avoids replaying earlier empty shells once a later
-    // resolvable snapshot is found.
-    const firstAction = actions[0]!;
-    const firstBeforeBound =
-      this._latestObservationIndexBefore(observations, firstAction.startedAt) ??
-      0;
-    let baselineIndex = 0;
-    let baselineTree = await tryResolveTree(observations[0]!);
-    if (!baselineTree) {
-      baselineIndex = firstBeforeBound;
-      while (baselineIndex >= 0) {
-        const candidate = await tryResolveTree(observations[baselineIndex]!);
-        if (candidate) {
-          baselineTree = candidate;
-          break;
-        }
-        baselineIndex -= 1;
-      }
-    }
-    if (!baselineTree) {
-      throw new Error(
-        "Unable to resolve a structural baseline observation for the action window."
-      );
-    }
-    let resolved: StructuralActionTimelineEvidence | null = null;
+    const afterContext = (index: number) => ({
+      pageId: owningVisit.pageId,
+      nextActionStart: actionStartTimes.find(
+        (startedAt) => startedAt > actions[index]!.startedAt
+      ),
+      nextVisitBoundaryIndex,
+    });
 
-    // Resume from the latest earlier action already resolved whose after-boundary is in this window,
-    // instead of replaying every action of the visit.
+    // The running baseline is the previous action's after-boundary. A reading resumes from the latest
+    // earlier action already resolved whose after lies in this window; a cold reading of a later
+    // action starts from the previous action's after resolved on its own, so its cost follows the
+    // distance read, never the visit's length.
+    let baselineIndex = 0;
+    let baselineTree: StructuralTree | null = null;
     let firstIndex = 0;
     for (let index = queriedIndex - 1; index >= 0; index -= 1) {
       const earlier = this._resolvedActions.get(actions[index]!.actionId);
@@ -537,25 +519,67 @@ export class StructuralTimeline {
       firstIndex = index + 1;
       break;
     }
+    if (!baselineTree && queriedIndex > 0) {
+      const previous = actions[queriedIndex - 1]!;
+      const previousAfter = this._selectAfter(observations, previous, {
+        ...afterContext(queriedIndex - 1),
+        beforeIndex: this._beforeIndexOf(observations, previous, 0),
+      });
+      const previousAfterTree = await tryResolveTree(previousAfter.observation);
+      if (previousAfterTree) {
+        baselineIndex =
+          previousAfter.index >= 0
+            ? previousAfter.index
+            : observations.length - 1;
+        baselineTree = previousAfterTree;
+        firstIndex = queriedIndex;
+      }
+    }
+    if (!baselineTree) {
+      // The visit's first observation (visit-start) is the first action's baseline, and the fallback
+      // of a later action whose previous after cannot resolve. When it resolves, keep it so spontaneous
+      // changes between visit-start and the first action still surface as unassigned changes. When it
+      // cannot resolve (e.g. an empty SPA shell), fall back to the LATEST resolvable observation
+      // strictly before the first action, walking backward from that before-boundary: this treats
+      // pre-action hydration/render as unknown initial state rather than a spontaneous change, and
+      // never crosses into the action window so a post-action snapshot can never become the baseline
+      // (bleed-safe). The backward fallback also avoids replaying earlier empty shells once a later
+      // resolvable snapshot is found.
+      const firstAction = actions[0]!;
+      const firstBeforeBound =
+        this._latestObservationIndexBefore(
+          observations,
+          firstAction.startedAt
+        ) ?? 0;
+      baselineIndex = 0;
+      baselineTree = await tryResolveTree(observations[0]!);
+      if (!baselineTree) {
+        baselineIndex = firstBeforeBound;
+        while (baselineIndex >= 0) {
+          const candidate = await tryResolveTree(observations[baselineIndex]!);
+          if (candidate) {
+            baselineTree = candidate;
+            break;
+          }
+          baselineIndex -= 1;
+        }
+      }
+      firstIndex = 0;
+    }
+    if (!baselineTree) {
+      throw new Error(
+        "Unable to resolve a structural baseline observation for the action window."
+      );
+    }
+    let resolved: StructuralActionTimelineEvidence | null = null;
 
     for (let index = firstIndex; index <= queriedIndex; index += 1) {
       const action = actions[index]!;
-      // The before the host recorded for the action wins. Otherwise, no observation strictly before
-      // the action means the visit's baseline observation (the first in the window) is the
-      // before-state. This keeps the baseline available even when an action shares the visit-start
-      // timestamp, where a strict `<` lookup would otherwise find nothing.
-      const explicitBeforeIndex = observations.findIndex(
-        (obs) =>
-          obs.capturedForActionId === action.actionId &&
-          obs.relation === "before"
+      let beforeIndex = this._beforeIndexOf(
+        observations,
+        action,
+        baselineIndex
       );
-      let beforeIndex =
-        explicitBeforeIndex >= 0
-          ? explicitBeforeIndex
-          : (this._latestObservationIndexBefore(
-              observations,
-              action.startedAt
-            ) ?? baselineIndex);
       // Skip unresolvable before-candidates, walking back toward (never past) the running baseline so a
       // poll whose snapshot is unparseable falls back to the nearest resolvable earlier observation.
       while (
@@ -565,14 +589,9 @@ export class StructuralTimeline {
         beforeIndex -= 1;
       }
       if (beforeIndex < baselineIndex) beforeIndex = baselineIndex;
-      const nextActionStart = actionStartTimes.find(
-        (startedAt) => startedAt > action.startedAt
-      );
       const selectedAfter = this._selectAfter(observations, action, {
-        pageId: owningVisit.pageId,
+        ...afterContext(index),
         beforeIndex,
-        nextActionStart,
-        nextVisitBoundaryIndex,
       });
 
       let unassignedChanges: StructuralResolvedChange[] = [];
@@ -788,6 +807,28 @@ export class StructuralTimeline {
       });
     }
     return actions.sort((a, b) => a.startedAt - b.startedAt);
+  }
+
+  /**
+   * The before-boundary of an action: the observation the host recorded as its before wins; otherwise
+   * the latest observation strictly before the action, and with none `fallbackIndex` (the running
+   * baseline), which keeps a baseline available even when an action shares the visit-start timestamp,
+   * where a strict `<` lookup finds nothing.
+   */
+  private _beforeIndexOf(
+    observations: StructuralObservationEntry[],
+    action: WindowAction,
+    fallbackIndex: number
+  ): number {
+    const explicitBeforeIndex = observations.findIndex(
+      (obs) =>
+        obs.capturedForActionId === action.actionId && obs.relation === "before"
+    );
+    if (explicitBeforeIndex >= 0) return explicitBeforeIndex;
+    return (
+      this._latestObservationIndexBefore(observations, action.startedAt) ??
+      fallbackIndex
+    );
   }
 
   private _latestObservationIndexBefore(

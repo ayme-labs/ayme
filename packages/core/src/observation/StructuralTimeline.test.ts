@@ -1417,7 +1417,7 @@ describe("StructuralTimeline action evidence with a host's before and resumed re
     ).toEqual(["Dashboard"]);
   });
 
-  it("resumes a reading from the latest action already resolved instead of replaying the visit", async () => {
+  it("reads a recent action's evidence cold or resumed by resolving a bounded number of trees, never the visit", async () => {
     const timeline = new StructuralTimeline();
     startVisit(timeline, { visitId: visit(1), at: 0, yaml: INITIAL_YAML });
     const count = 200;
@@ -1453,10 +1453,8 @@ describe("StructuralTimeline action evidence with a host's before and resumed re
     const evidence = await read(next);
     await read(last);
 
-    expect(resolvedPerRead[0]).toBeGreaterThan(count);
-    expect(resolvedPerRead[1]).toBe(0);
-    expect(resolvedPerRead[2]).toBeLessThanOrEqual(2);
-    expect(resolvedPerRead[3]).toBe(0);
+    // Cold: the previous action's after and the action's own after. Resumed: nothing.
+    expect(resolvedPerRead).toEqual([2, 0, 1, 0]);
     expect(
       evidence.actionChange.changeTree
         .getNodesByStatus("updated")
