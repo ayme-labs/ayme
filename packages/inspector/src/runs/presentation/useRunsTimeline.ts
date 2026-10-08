@@ -40,7 +40,7 @@ export function useRunsTimeline(focus: RunFocus | undefined) {
     toggleResult: (id: number) =>
       setOpenResults((opened) => toggled(opened, id)),
     copyResult: (text: string) => void copy(text),
-    openImage: (src: string) => void openImageFullSize(src),
+    openImage: openImageFullSize,
   };
 }
 
@@ -60,12 +60,15 @@ async function copy(text: string) {
 }
 
 /**
- * Opens an image, given its data URL, full size in a new tab, through a
- * blob URL, as a tab won't open a data URL.
+ * Opens an image, given its base64 data URL, full size in a new tab,
+ * through a blob URL, as a tab won't open a data URL. Synchronous, so the
+ * tab opens within the click and no popup blocker stops it.
  */
-export async function openImageFullSize(src: string) {
-  const blob = await (await fetch(src)).blob();
-  const url = URL.createObjectURL(blob);
+export function openImageFullSize(src: string) {
+  const [header = "", data = ""] = src.split(",", 2);
+  const type = /^data:([^;]+)/.exec(header)?.[1] ?? "";
+  const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
   window.open(url, "_blank", "noopener");
   // Long enough for the tab to load it.
   setTimeout(() => URL.revokeObjectURL(url), 60_000);

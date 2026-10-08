@@ -99,7 +99,7 @@ export function RunCard(props: RunCardProps) {
       items={items}
       onHover={onHover}
       onShowRun={onShowRun}
-      onOpenImage={(src) => void openImageFullSize(src)}
+      onOpenImage={openImageFullSize}
       form={form}
     />
   );
