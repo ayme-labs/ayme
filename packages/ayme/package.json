@@ -43,12 +43,14 @@
     "test": "vitest run --passWithNoTests",
     "test:e2e": "vitest run --config vitest.browser.config.ts",
     "test:package": "vitest run src/packedConsumer.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:crap": "vitest run --config vitest.fast.config.ts --coverage",
+    "test:mutation": "stryker run"
   },
   "peerDependencies": {
-    "@playwright/test": ">=1.29 <1.63",
     "@ayme-dev/inspector": "workspace:*",
-    "@ayme-dev/mcp": "workspace:*"
+    "@ayme-dev/mcp": "workspace:*",
+    "@playwright/test": ">=1.29 <1.63"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {
@@ -62,20 +64,24 @@
     }
   },
   "devDependencies": {
-    "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/core": "workspace:*",
+    "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e",
+    "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@mcp-b/webmcp-polyfill": "5.1.0",
+    "@playwright/test": "^1.62.1",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@types/node": "^24.0.0",
     "@vitest/browser-playwright": "^4.1.11",
-    "@playwright/test": "^1.62.1",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.9.1",
     "playwright": "^1.62.1",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11",
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e"
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "@mcp-b/webmcp-types": "^5.0.1"

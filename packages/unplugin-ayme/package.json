@@ -41,7 +41,9 @@
     "build": "tsdown",
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:crap": "vitest run --config vitest.fast.config.ts --coverage",
+    "test:mutation": "stryker run"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
@@ -65,8 +67,12 @@
   },
   "devDependencies": {
     "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@playwright/test": "~1.62.1",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "esbuild": "^0.28.2",
     "eslint": "^10.9.1",
     "playwright": "~1.62.1",

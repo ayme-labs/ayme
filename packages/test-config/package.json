@@ -1,0 +1,22 @@
+{
+  "name": "@ayme-dev/test-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./stryker": {
+      "types": "./stryker.d.ts",
+      "default": "./stryker.js"
+    },
+    "./vitest": {
+      "types": "./vitest.d.ts",
+      "default": "./vitest.js"
+    }
+  },
+  "peerDependencies": {
+    "vitest": "^4.1.11"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.11"
+  }
+}

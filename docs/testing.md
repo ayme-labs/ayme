@@ -25,6 +25,20 @@ Where each kind of test runs, what it is for, and where test-only code lives. Th
 
 Each package keeps its own Vitest config ([ADR-0003](adr/0003-keep-vitest-configuration-package-local.md)). Run `pnpm check` from the root for everything CI's Check job runs. On a pull request, CI runs the affected packages' `build lint typecheck test test:e2e`, plus commit lint, `turbo boundaries`, the docs check ([`scripts/check-docs.mjs`](../scripts/check-docs.mjs)) and the format check ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)).
 
+## Change analysis
+
+Every pull request runs `pnpm analyze:changed` before it goes ready. It compares the working tree with `main`, finds the packages whose `src/` changed, and runs their fast lane: CRAP for each function the change touched, and Stryker mutants on the changed lines only. The report prints and is written to `reports/analyze-changed.md` ([`scripts/analyze-changed.mjs`](../scripts/analyze-changed.mjs)).
+
+The fast lane is each package's `vitest.fast.config.ts`: its unit tests and its Vitest browser-mode tests, without `packedConsumer.test.ts`. Playwright e2e tests are not in it, so code that only they exercise reads as uncovered. Stryker skips static mutants here, code that runs when a module loads such as tool descriptions, because no test owns them and each one would rerun every test. The shared settings live in [`packages/test-config`](../packages/test-config).
+
+Act on the report like this:
+
+- A function the change added, or whose complexity it raised, with CRAP above 15: add tests or simplify it in this pull request.
+- A surviving mutant on a changed line: add a test that kills it, or give a one-line reason in the pull request, for example that the mutant is equivalent.
+- A touched function that was already above 15 is not yours to refactor: test the lines you changed, note its score in the pull request, and leave the refactor to its own issue.
+
+The `new`, `raised` and `existing` labels come from matching functions to `main` by name and order, so check a surprising one. Run analysis locally only through `analyze:changed`; runs over every file belong to CI.
+
 ## Test-only code
 
 Fakes, test doubles and page objects for tests ship from the package's `testing` entry, `@ayme-dev/<package>/testing`, built from its `src/testing.ts` or `src/testing/index.ts`. Only test files may import one; lint enforces it ([`testing-entries.js`](../packages/eslint-config/testing-entries.js)). Why, and the options we rejected: [ADR-0026](adr/0026-test-seams-behind-a-testing-entry.md).

@@ -6,6 +6,7 @@
 - `skills/`: skills shipped to consumers for integrating Ayme into their own project. Read [skills/AGENTS.md](skills/AGENTS.md) before editing one.
 - `apps/example-vue/`: the hosted playground where visitors try Ayme before integrating it. A visitor installs only Ayme's MCP server. Read [its README](apps/example-vue/README.md) before changing the app.
 - `docs/testing.md`: the test lanes and where test-only code lives. Read it before adding tests or test helpers.
+- Before a pull request goes ready, run `pnpm analyze:changed` and act on its report as [docs/testing.md](docs/testing.md#change-analysis) says.
 - `docs/framework-integrations.md`: what a framework integration ships, its behaviour contract and the files a new framework touches. Read it before adding or changing a framework integration.
 - `docs/releasing.md`: how the published packages are versioned and released.
 

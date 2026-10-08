@@ -9,7 +9,7 @@
   "scripts": {
     "build": "turbo run build",
     "boundaries": "turbo boundaries",
-    "check": "pnpm run boundaries && pnpm run docs:check && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
+    "check": "pnpm run boundaries && pnpm run docs:check && pnpm run test:scripts && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
     "prepare": "lefthook install",
     "release:version": "node scripts/release-version.mjs",
     "hooks:install": "lefthook install",
@@ -19,7 +19,9 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "analyze:changed": "node scripts/analyze-changed.mjs",
+    "test:scripts": "node --test scripts/analyze-changed.test.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
