@@ -3,14 +3,14 @@ import type { Page } from "@playwright/test";
 
 import { createPage } from "./browserPage";
 import type { PomManifest } from "./contracts";
+import { errorText } from "./errors";
 import { agentTools, saveButtonRef } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
-import { toolFailure } from "./toolFailure.testSupport";
 
-// Runtime object seam: a failing call an agent makes is the MCP `isError`
-// result carrying the error's text, which WebMCP returns in place of a bare
-// `UnknownError`. The agent's calls are `webmcp` Runs, through the
+// Runtime object seam: a failing call an agent makes rejects with the error,
+// whose text `@ayme-dev/webmcp` returns as the MCP `isError` result in place of
+// a bare `UnknownError`. The agent's calls are `webmcp` Runs, through the
 // publication harness.
 
 const noInput = {
@@ -97,12 +97,8 @@ describe("tool failures an agent gets, in Chromium", () => {
   it("returns a browser action failure with its name and call log", async () => {
     const ref = await saveButtonRef();
 
-    expect(await agentCall("click", { target: ref })).toEqual(
-      toolFailure(
-        expect.stringMatching(
-          /^TimeoutError: locator\.click: Timeout 1000ms[\s\S]*Call log:/
-        )
-      )
+    expect(await agentCall("click", { target: ref }).catch(errorText)).toMatch(
+      /^TimeoutError: locator\.click: Timeout 1000ms[\s\S]*Call log:/
     );
   });
 
@@ -110,21 +106,21 @@ describe("tool failures an agent gets, in Chromium", () => {
     const ref = await saveButtonRef();
     document.querySelector("#save")!.remove();
 
-    expect(await agentCall("click", { target: ref })).toEqual(
-      toolFailure(`RefResolutionError: Cannot click ref "${ref}": removed.`)
+    expect(await agentCall("click", { target: ref }).catch(errorText)).toBe(
+      `RefResolutionError: Cannot click ref "${ref}": removed.`
     );
   });
 
   it("returns a throwing Page Object tool's message", async () => {
-    expect(await agentCall("FailingPage.explode", {})).toEqual(
-      toolFailure("The page object action exploded.")
+    expect(await agentCall("FailingPage.explode", {}).catch(errorText)).toBe(
+      "The page object action exploded."
     );
   });
 
   it("returns input a Page Object tool's schema rejects as a ToolInputError", async () => {
-    expect(await agentCall("FailingPage.explode", { extra: true })).toEqual(
-      toolFailure(expect.stringMatching(/^ToolInputError: .*extra/))
-    );
+    expect(
+      await agentCall("FailingPage.explode", { extra: true }).catch(errorText)
+    ).toMatch(/^ToolInputError: .*extra/);
   });
 
   it("returns a collection tool's ref that matches no element as a RefResolutionError", async () => {
@@ -135,15 +131,16 @@ describe("tool failures an agent gets, in Chromium", () => {
       .toContain("FailingPage.items.archive");
 
     expect(
-      await agentCall("FailingPage.items.archive", { ref: "e404", args: {} })
-    ).toEqual(
-      toolFailure(expect.stringMatching(/^RefResolutionError: .*"e404"/))
-    );
+      await agentCall("FailingPage.items.archive", {
+        ref: "e404",
+        args: {},
+      }).catch(errorText)
+    ).toMatch(/^RefResolutionError: .*"e404"/);
   });
 
   it("returns invalid snapshot input as a ToolInputError", async () => {
-    expect(await agentCall("snapshot", { names: "x" })).toEqual(
-      toolFailure(expect.stringMatching(/^ToolInputError: .*names/))
-    );
+    expect(
+      await agentCall("snapshot", { names: "x" }).catch(errorText)
+    ).toMatch(/^ToolInputError: .*names/);
   });
 });

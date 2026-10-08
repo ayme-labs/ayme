@@ -16,7 +16,6 @@ import { agentTools, saveButtonRef } from "./publication.testSupport";
 import {
   listElementToolTargets,
   listTools,
-  listWebMcpTools,
   type PublishedToolGroup,
   type PublishedToolInfo,
   type ToolInfo,
@@ -27,7 +26,6 @@ import {
   type PageObjectConstructor,
 } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
-import { toolFailure } from "./toolFailure.testSupport";
 
 // Runtime object seam: the session's tools as `ayme.tools` lists and runs
 // them, and the set `@ayme-dev/webmcp` publishes. An agent's call is a
@@ -224,8 +222,8 @@ describe("the session's tools in Chromium", () => {
   it("offers WebMCP the available tools but screenshot", () => {
     startSession();
 
-    expect(listWebMcpTools()).toEqual(publishable(ayme.tools.list()));
-    expect(names(listWebMcpTools())).not.toContain("screenshot");
+    expect(agentTools().names()).toEqual(names(publishable(ayme.tools.list())));
+    expect(agentTools().names()).not.toContain("screenshot");
     expect(names(ayme.tools.list())).toContain("screenshot");
   });
 
@@ -242,7 +240,7 @@ describe("the session's tools in Chromium", () => {
       .toContain("SettingsPage.save");
     expect(heard).toEqual([ayme.tools.list()]);
     expect(ayme.tools.list()).not.toBe(before);
-    expect(listWebMcpTools()).toEqual(publishable(ayme.tools.list()));
+    expect(agentTools().names()).toEqual(names(publishable(ayme.tools.list())));
 
     // A second registration changes nothing; the last one withdraws it.
     ayme.pom.register(SettingsPage);
@@ -251,7 +249,7 @@ describe("the session's tools in Chromium", () => {
     ayme.pom.unregister(SettingsPage);
     expect(heard).toHaveLength(2);
     expect(heard[1]).toEqual(before);
-    expect(names(listWebMcpTools())).not.toContain("SettingsPage.save");
+    expect(agentTools().names()).not.toContain("SettingsPage.save");
   });
 
   it("reports to the agent what the application's action changed", async () => {
@@ -271,7 +269,7 @@ describe("the session's tools in Chromium", () => {
     expect(agentSees.changes ?? "").not.toContain("Saved");
   });
 
-  it("throws a ToolInputError for input the tool's schema rejects, which the agent gets as an error result", async () => {
+  it("throws a ToolInputError for input the tool's schema rejects, for an agent's call too", async () => {
     startSession();
     // A name typed as any string, as an application passing user input does.
     const click: string = "click";
@@ -279,12 +277,10 @@ describe("the session's tools in Chromium", () => {
     await expect(ayme.tools.run(click, {})).rejects.toBeInstanceOf(
       ToolInputError
     );
-    expect(await agentCall("click", {})).toEqual(
-      toolFailure(expect.stringMatching(/^ToolInputError: /))
-    );
+    await expect(agentCall("click", {})).rejects.toBeInstanceOf(ToolInputError);
   });
 
-  it("throws a failing call's error, which the agent gets as an error result with its name and message", async () => {
+  it("throws a failing call's error, for an agent's call too", async () => {
     document.body.innerHTML = `<button id="save">Save changes</button>`;
     startSession();
     const ref = await saveButtonRef();
@@ -295,9 +291,8 @@ describe("the session's tools in Chromium", () => {
       .catch((thrown: unknown) => thrown);
 
     expect(error).toBeInstanceOf(AymeError);
-    const { name, message } = error as AymeError;
-    expect(await agentCall("click", { target: ref })).toEqual(
-      toolFailure(`${name}: ${message}`)
+    await expect(agentCall("click", { target: ref })).rejects.toThrow(
+      (error as AymeError).message
     );
   });
 
@@ -341,7 +336,7 @@ describe("the session's tools in Chromium", () => {
       .poll(archive)
       .toMatchObject({ group: "pageObject", available: false });
 
-    expect(names(listWebMcpTools())).not.toContain("ListPage.items.archive");
+    expect(agentTools().names()).not.toContain("ListPage.items.archive");
     await expect(
       ayme.tools.run("ListPage.items.archive", { ref: "e1", args: {} })
     ).rejects.toThrow(
@@ -350,7 +345,7 @@ describe("the session's tools in Chromium", () => {
 
     document.querySelector("#item")!.removeAttribute("hidden");
     await expect.poll(archive).toMatchObject({ available: true });
-    expect(names(listWebMcpTools())).toContain("ListPage.items.archive");
+    expect(agentTools().names()).toContain("ListPage.items.archive");
   });
 
   it("lists a tool two registrations of one class share once, and runs it on the first one still registered", async () => {
@@ -359,7 +354,7 @@ describe("the session's tools in Chromium", () => {
     const second = createPageRegistration(SettingsPage);
     cleanups.push(first.dispose, second.dispose);
     const listed = () =>
-      names(listWebMcpTools()).filter((name) => name === "SettingsPage.save");
+      names(ayme.tools.list()).filter((name) => name === "SettingsPage.save");
     const saves = () => [first.instance.saves, second.instance.saves];
 
     expect(listed()).toHaveLength(1);
@@ -469,7 +464,7 @@ describe("the session's tools in Chromium", () => {
       'Cannot publish the tool "TodoPage.addTodo": another published tool already uses that name.';
 
     expect(ayme.tools.list()).toEqual([]);
-    expect(() => listWebMcpTools()).toThrow(clash);
+    expect(() => agentTools().names()).toThrow(clash);
     await expect(ayme.tools.run("snapshot", {})).rejects.toThrow(clash);
   });
 });

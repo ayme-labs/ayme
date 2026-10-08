@@ -3,6 +3,7 @@ import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import { agentCursor } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
+import { errorText } from "./errors";
 import { agentTools } from "./publication.testSupport";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
@@ -18,7 +19,6 @@ import {
   chunkQuestionId,
   runOffQuestionId,
 } from "./goalLoopQuestions";
-import { toolFailure } from "./toolFailure.testSupport";
 import {
   getPageStateCaptureForDocument,
   resolvePageStateRefs,
@@ -1122,11 +1122,11 @@ describe("Goal Loop goal in Chromium", () => {
         const { requests, decide } = recording(scriptedDecisionFn([]));
         const tool = await registerPom(decide);
 
-        await expect(
-          tool.execute({ goal: "Add Milk", maxSteps: 5, values })
-        ).resolves.toEqual(
-          toolFailure(expect.stringMatching(/^ToolInputError: .*values/))
-        );
+        expect(
+          await tool
+            .execute({ goal: "Add Milk", maxSteps: 5, values })
+            .catch(errorText)
+        ).toMatch(/^ToolInputError: .*values/);
         expect(requests).toEqual([]);
       }
     );
@@ -1165,9 +1165,9 @@ describe("Goal Loop goal in Chromium", () => {
     const decide = scriptedDecisionFn([]);
     const tool = await registerPom(decide);
 
-    await expect(tool.execute({ goal: "do the thing" })).resolves.toEqual(
-      toolFailure(expect.stringMatching(/^ToolInputError: .*maxSteps/))
-    );
+    expect(
+      await tool.execute({ goal: "do the thing" }).catch(errorText)
+    ).toMatch(/^ToolInputError: .*maxSteps/);
   });
 
   // --- Handover reason: step_budget ---

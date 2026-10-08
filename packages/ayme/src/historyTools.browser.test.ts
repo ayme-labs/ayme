@@ -97,10 +97,9 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
     vi.spyOn(requireAymeRuntimePage(), "goBack").mockRejectedValue(
       new Error("Timeout 500ms exceeded.")
     );
-    await expect(call("navigate_back", {})).resolves.toEqual({
-      content: [{ type: "text", text: "Timeout 500ms exceeded." }],
-      isError: true,
-    });
+    await expect(call("navigate_back", {})).rejects.toThrow(
+      "Timeout 500ms exceeded."
+    );
     expect(heading()).toBe("Settings");
   });
 

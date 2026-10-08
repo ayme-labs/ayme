@@ -4,7 +4,7 @@
  */
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { DecisionResponse } from "./decisionTypes";
-import { errorText, RuntimeStateError } from "./errors";
+import { RuntimeStateError } from "./errors";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { listWebMcpTools } from "./publishedTools";
 import { callers } from "./run";
@@ -13,8 +13,8 @@ import { getStartedAyme } from "./runtime";
 /**
  * The started session's tools as WebMCP publishes them to an agent, without
  * a driver. A call is a `webmcp` Run, as an agent's call through
- * `@ayme-dev/webmcp` is, and a failure is the `isError` result the agent
- * gets for it.
+ * `@ayme-dev/webmcp` is, and fails as that Run does: the package's own tests
+ * check the `isError` result an agent gets for it.
  */
 export function agentTools() {
   const ayme = getStartedAyme();
@@ -27,16 +27,7 @@ export function agentTools() {
     call: async (name: string, input: unknown): Promise<unknown> => {
       if (!names().includes(name))
         throw new RuntimeStateError(`Tool ${name} is not published.`);
-      try {
-        return await ayme.tools.run(name, input as never, {
-          by: callers.webmcp,
-        });
-      } catch (error) {
-        return {
-          content: [{ type: "text", text: errorText(error) }],
-          isError: true,
-        };
-      }
+      return ayme.tools.run(name, input as never, { by: callers.webmcp });
     },
   };
 }

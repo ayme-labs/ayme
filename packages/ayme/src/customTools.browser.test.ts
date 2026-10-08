@@ -3,10 +3,9 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 import { createPage } from "./browserPage";
 import { agentTools } from "./publication.testSupport";
-import { listWebMcpTools } from "./publishedTools";
 import { createAyme } from "./runtime";
-import type { CustomTool } from "./elementTools";
-import { toolFailure } from "./toolFailure.testSupport";
+import { listCustomTools, type CustomTool } from "./elementTools";
+import { errorText } from "./errors";
 
 type ActionResultShape = {
   result?: unknown;
@@ -37,6 +36,7 @@ describe("Custom Tools in Chromium", () => {
       customTools,
     });
     stop = runtime.start();
+    return runtime;
   }
 
   const call = (name: string, input: unknown) => agentTools().call(name, input);
@@ -67,11 +67,11 @@ describe("Custom Tools in Chromium", () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool } = recordingCustomTool();
 
-    start([customTool]);
+    const ayme = start([customTool]);
 
-    const tool = listWebMcpTools().find(
-      ({ name }) => name === "highlight_element"
-    );
+    const tool = ayme.tools
+      .list()
+      .find(({ name }) => name === "highlight_element");
     expect(tool?.description).toBe("Highlight one element on the page.");
     expect(tool?.inputSchema).toEqual({
       type: "object",
@@ -183,10 +183,10 @@ describe("Custom Tools in Chromium", () => {
     start([customTool]);
     await structure();
 
-    await expect(call("highlight_element", { ref: "e999" })).resolves.toEqual(
-      toolFailure(
-        'RefResolutionError: Cannot run "highlight_element" on ref "e999": unknown-ref.'
-      )
+    expect(
+      await call("highlight_element", { ref: "e999" }).catch(errorText)
+    ).toBe(
+      'RefResolutionError: Cannot run "highlight_element" on ref "e999": unknown-ref.'
     );
     expect(targets).toHaveLength(0);
   });
@@ -199,10 +199,10 @@ describe("Custom Tools in Chromium", () => {
     const saveRef = refFor(await structure(), "Save changes");
     document.querySelector("#save")!.remove();
 
-    await expect(call("highlight_element", { ref: saveRef })).resolves.toEqual(
-      toolFailure(
-        `RefResolutionError: Cannot run "highlight_element" on ref "${saveRef}": removed.`
-      )
+    expect(
+      await call("highlight_element", { ref: saveRef }).catch(errorText)
+    ).toBe(
+      `RefResolutionError: Cannot run "highlight_element" on ref "${saveRef}": removed.`
     );
     expect(targets).toHaveLength(0);
   });
@@ -217,9 +217,7 @@ describe("Custom Tools in Chromium", () => {
 
     stop?.();
     stop = undefined;
-    expect(listWebMcpTools().map(({ name }) => name)).not.toContain(
-      "highlight_element"
-    );
+    expect(listCustomTools()).toEqual([]);
   });
 });
 

@@ -5,7 +5,7 @@ import type { ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { RuntimeStateError } from "./errors";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
-import { listWebMcpTools } from "./publishedTools";
+import { agentTools } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme, type AymeOptions } from "./runtime";
 
@@ -393,7 +393,7 @@ describe("where Peek Tools appear", () => {
   it("leaves them out of WebMCP publication", async () => {
     const ayme = started({ agentConnection: true });
     peek(ayme, () => ({ open: true }), "menu");
-    const published = () => listWebMcpTools().map(({ name }) => name);
+    const published = () => agentTools().names();
 
     expect(toolNames(ayme)).toContain("peek.menu");
     expect(published()).toContain("snapshot");
