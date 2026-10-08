@@ -78,6 +78,18 @@ test("ayme_call with an unknown tool names it and points to ayme_list_tools", as
   expect(text).toContain("ayme_list_tools");
 });
 
+test("ayme_call without a tool name says it needs one", async ({
+  agent,
+  connect,
+}) => {
+  await connect();
+
+  const { text, isError } = await agent.call("ayme_call", {});
+
+  expect(isError).toBe(true);
+  expect(text).toContain('ayme_call needs "tool"');
+});
+
 test("with no page connected, page tools and fallback tools say to call ayme_connect", async ({
   agent,
 }) => {

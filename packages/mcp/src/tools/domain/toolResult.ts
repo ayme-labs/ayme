@@ -43,6 +43,16 @@ export function notConnectedResult(): ToolResult {
   );
 }
 
+/**
+ * The answer to a call of a tool the page or an App Process offered earlier
+ * but no longer does.
+ */
+export function goneToolResult(name: string): ToolResult {
+  return errorResult(
+    `The tool "${name}" is gone: the page or App Process that offered it no longer does, such as when its component unmounted, the page navigated or the process stopped. ayme_list_tools lists the current tools.`
+  );
+}
+
 /** A page tool as an MCP tool listing shows it. */
 export function mcpPageTool({ name, description, inputSchema }: PageTool) {
   return {
