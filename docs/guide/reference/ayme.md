@@ -95,6 +95,14 @@ Every registration of a class shares one instance, so a Page Object should keep 
 
 Peek Tools are in `ayme.tools` and reach coding agents through the Agent Connection and the Inspector. WebMCP never publishes them, and the Goal Loop never offers them. A call answers at once, without waiting for a Settled Page. `ayme.peek` does nothing unless the session has `agentConnection` on, or `inspector` in the browser.
 
+### What a Peek exposes
+
+Through the Agent Connection, whatever `read` returns goes to the coding agent unchanged, and from the agent's context to its model provider, as a page snapshot does; the Inspector shows it to you. Ayme sends it nowhere else. A Peek is live only while the Agent Connection or the Inspector is on, which you turn on in development only; there is no production guard. `read` is where you decide what the agent sees: return only what you would paste into a chat with that provider. Pick the fields rather than handing over a whole record, and a class with a `toJSON` method controls its own shape:
+
+```ts
+ayme.peek(() => ({ id: user.id, name: user.name }), "user"); // not the whole user, with its email and token
+```
+
 ### In Node
 
 In Node, `start()` makes the session the process's App Process, unless a framework integration created the session to render a request. It needs no page, and the session's tools are its Peek Tools alone; with `agentConnection` the process pairs with the agent's Ayme MCP server beside the page. Without `agentConnection` the session still owns the process, but connects nothing and offers no Peeks. A process has one App Process, so start one session per process, once, in the server's entry point; in Next.js, that is `instrumentation.ts`, which runs once when the server starts:
