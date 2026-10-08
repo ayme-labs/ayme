@@ -14,7 +14,7 @@ API names follow [ADR-0017](adr/0017-keep-framework-integration-apis-closely-ali
 
 - `packages/<framework>`, published as `@ayme-dev/<framework>`, with the Turbo boundaries tag `adapter`. Copy the manifest fields, `LICENSE`, tsdown, ESLint and TypeScript setup of an existing integration.
 - `@ayme-dev/ayme` is a dependency; the framework is a peer dependency whose range runs from the tested floor to the current major.
-- Only `@ayme-dev/ayme` declares the optional `@playwright/test` peer. An integration does not.
+- An integration does not declare the `@playwright/test` peer. `@ayme-dev/ayme` and `@ayme-dev/webmcp` declare it as optional.
 - The owner takes the runtime options type as is, instead of re-declaring each option.
 - The integration uses the public runtime session. It imports `@ayme-dev/ayme/internal` only for what the public API does not export yet, such as the Page Object constructor type.
 - Every row of the behaviour contract holds, or is n/a where the row allows it.
