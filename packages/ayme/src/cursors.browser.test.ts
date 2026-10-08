@@ -12,7 +12,11 @@ import {
 
 const ADD = { target: "role=button[name='Add']" };
 
-type ActionResultShape = { page_changed: boolean; changes?: string };
+type ActionResultShape = {
+  page_changed: boolean;
+  changes_before?: string;
+  changes?: string;
+};
 
 describe("Change Record cursors, in Chromium", () => {
   let ayme: Ayme;
@@ -61,13 +65,13 @@ describe("Change Record cursors, in Chromium", () => {
 
     expect(first.changes).toContain("Item 1");
     // The second Caller had received nothing: its record covers the first
-    // Caller's change too.
-    expect(second.changes).toContain("Item 1");
+    // Caller's change too, before its own.
+    expect(second.changes_before).toContain("Item 1");
     expect(second.changes).toContain("Item 2");
     // The first Caller's record starts at its own last page: what the other
     // Caller changed meanwhile is in it, what it did itself is not.
-    expect(third.changes).not.toContain("Item 1");
-    expect(third.changes).toContain("Item 2");
+    expect(third.changes_before).not.toContain("Item 1");
+    expect(third.changes_before).toContain("Item 2");
     expect(third.changes).toContain("Item 3");
   });
 
@@ -80,14 +84,15 @@ describe("Change Record cursors, in Chromium", () => {
     const byAppAgain = await add();
 
     expect(byApp.changes).toContain("Item 1");
-    expect(named.changes).toContain("Item 1");
+    expect(named.changes_before).toContain("Item 1");
     expect(named.changes).toContain("Item 2");
     // The second Run under the name starts where the first left it.
-    expect(namedAgain.changes).not.toContain("Item 2");
+    expect(namedAgain.changes_before).toBeUndefined();
     expect(namedAgain.changes).toContain("Item 3");
-    expect(byAppAgain.changes).not.toContain("Item 1");
-    for (const item of ["Item 2", "Item 3", "Item 4"])
-      expect(byAppAgain.changes).toContain(item);
+    expect(byAppAgain.changes_before).not.toContain("Item 1");
+    for (const item of ["Item 2", "Item 3"])
+      expect(byAppAgain.changes_before).toContain(item);
+    expect(byAppAgain.changes).toContain("Item 4");
   });
 
   it("moves a Caller's cursor to its snapshot and to the Settled Page of its action, and leaves it after a failed one", async () => {
@@ -106,7 +111,7 @@ describe("Change Record cursors, in Chromium", () => {
     drift("Drifted after the snapshot");
     const first = await add(by);
     // The snapshot moved the cursor: the drift since is in the record.
-    expect(first.changes).toContain("Drifted after the snapshot");
+    expect(first.changes_before).toContain("Drifted after the snapshot");
     expect(first.changes).toContain("Item 1");
 
     drift("Drifted after the action");
@@ -117,8 +122,8 @@ describe("Change Record cursors, in Chromium", () => {
     const second = await add(by);
     // The action moved the cursor to its Settled Page; the failed one did not
     // move it past the drift.
-    expect(second.changes).not.toContain("Item 1");
-    expect(second.changes).toContain("Drifted after the action");
+    expect(second.changes_before).not.toContain("Item 1");
+    expect(second.changes_before).toContain("Drifted after the action");
     expect(second.changes).toContain("Item 2");
   });
 });

@@ -394,11 +394,14 @@ export function describePublishedTools(
       const applied = (await runtime.tools.run("click", { target: ref }))
         .changes;
       const agentSees = (await agentGets("hover", { target: ref })) as {
+        changes_before?: string;
         changes?: string;
       };
 
       expect(applied).toContain("Saved");
-      expect(agentSees.changes).toContain("Saved");
+      // The app's action came before the agent's: the first part carries it.
+      expect(agentSees.changes_before).toContain("Saved");
+      expect(agentSees.changes ?? "").not.toContain("Saved");
     });
 
     it("publishes every tool under toolNamePrefix, and the Goal Loop still runs", async () => {

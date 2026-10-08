@@ -61,15 +61,16 @@ describe("Callers of ayme.tools.run in Chromium", () => {
     const named: ActionResult = await ayme.tools.run("click", SAVE, {
       by: "support-assistant",
     });
-    expect(named.changes).toContain("First toast");
+    expect(named.changes_before).toContain("First toast");
     expect(named.changes).toContain("Saved 1");
 
     toast("Second toast");
     const byDefault = await ayme.tools.run("click", SAVE);
     // The app's record starts at the app's own snapshot: what the named
-    // Caller did since is in it.
-    for (const text of ["First toast", "Saved 1", "Second toast", "Saved 2"])
-      expect(byDefault.changes).toContain(text);
+    // Caller did since is in it, before the app's own action.
+    for (const text of ["First toast", "Saved 1", "Second toast"])
+      expect(byDefault.changes_before).toContain(text);
+    expect(byDefault.changes).toContain("Saved 2");
   });
 
   it("runs as a built-in Caller named by its constant", async () => {

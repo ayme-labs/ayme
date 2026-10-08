@@ -186,6 +186,20 @@ export async function startActionForDocument(
 }
 
 /**
+ * Package-internal: the before capture of an action that has started: the
+ * page right before its tool runs, recorded as the action's "before"
+ * observation only when it differs from the latest observation, so an idle
+ * page between two Runs costs no observation. Moves no cursor. Returns the
+ * observation when one was recorded.
+ */
+export async function captureBeforeActionForDocument(
+  currentDocument: Document,
+  actionId: StructuralActionId
+): Promise<StructuralObservationEntry | undefined> {
+  return getPageStateSession(currentDocument).captureBefore(actionId);
+}
+
+/**
  * Package-internal: complete an action whose tool call threw, with the page as
  * it is now, or as last recorded when capturing it throws. No caller's cursor
  * moves.
@@ -306,6 +320,26 @@ class PageStateSession {
   async startAction(call: ToolCall): Promise<StructuralActionId> {
     if (!this.history.hasObservation) await this.capture();
     return this.history.startAction(call);
+  }
+
+  async captureBefore(
+    actionId: StructuralActionId
+  ): Promise<StructuralObservationEntry | undefined> {
+    // Set: starting the action captured when nothing had been observed.
+    const latest = this.history.latestObservation!;
+    const capture = await this.captureTree();
+    const sinceLatest = StructuralTree.reconcile(
+      await latest.tree.resolve(),
+      capture.tree
+    );
+    if (!sinceLatest.hasAnyChanges()) return undefined;
+    const before = this.history.observeBefore(
+      actionId,
+      capture.tree,
+      this.history.now()
+    );
+    this.rememberElements(capture);
+    return before;
   }
 
   async completeAction(

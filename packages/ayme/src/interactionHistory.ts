@@ -135,6 +135,20 @@ export class InteractionHistory {
   }
 
   /**
+   * Record the page as it was right before `actionId` ran, the action's
+   * "before" observation: the host captured it and found it differs from
+   * the latest observation. What changed up to it happened on its own, or
+   * by another Caller; what changed from it is the action's.
+   */
+  observeBefore(
+    actionId: StructuralActionId,
+    tree: StructuralTree,
+    at: MonotonicTimeMs
+  ): StructuralObservationEntry {
+    return this.record(tree, at, actionId, "before");
+  }
+
+  /**
    * Complete an action with its Settled Page and return that observation,
    * the action's after, where the acting cursor moves. The Change Record is
    * `readChange` from the observation the cursor stood at when the action
@@ -202,7 +216,8 @@ export class InteractionHistory {
   private record(
     tree: StructuralTree,
     at: MonotonicTimeMs,
-    capturedForActionId?: StructuralActionId
+    capturedForActionId?: StructuralActionId,
+    relation?: "before"
   ): StructuralObservationEntry {
     const entry = this.observations.recordObservation({
       kind: "observation",
@@ -210,6 +225,7 @@ export class InteractionHistory {
       pageId: this.pageId,
       tree: { pageId: this.pageId, capturedAt: at, resolve: async () => tree },
       ...(capturedForActionId ? { capturedForActionId } : {}),
+      ...(relation ? { relation } : {}),
     });
     this.first ??= entry;
     this.latest = entry;

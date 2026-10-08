@@ -56,11 +56,11 @@ describe("WebMCP's Caller in Chromium", () => {
     toast("Second toast");
 
     const agents = await agentCall("click", SAVE);
-    expect(agents.changes).toContain("Second toast");
-    expect(agents.changes).not.toContain("First toast");
+    expect(agents.changes_before).toContain("Second toast");
+    expect(agents.changes_before).not.toContain("First toast");
 
     const apps = await ayme.tools.run("click", SAVE);
-    expect(apps.changes).toContain("First toast");
+    expect(apps.changes_before).toContain("First toast");
   });
 
   it("records an agent's WebMCP call as a webmcp Run, and a failed one as failed with an error result", async () => {

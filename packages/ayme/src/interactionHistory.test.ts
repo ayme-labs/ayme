@@ -103,6 +103,41 @@ describe("InteractionHistory actions", () => {
     expect(history.received(cursor)).toBe(before);
   });
 
+  it("records the page right before an action as its before, which core reads the action's change from", async () => {
+    const history = new InteractionHistory(document, clock);
+    history.observe(empty(), history.now());
+    const actionId = history.startAction({ tool: "App.save", args: {} });
+    const drifted = tree(
+      '- button "Save" [ref=e1]\n- status "Drifted" [ref=e3]'
+    );
+
+    const before = history.observeBefore(actionId, drifted, history.now());
+    const after = history.completeAction(
+      actionId,
+      tree(
+        '- button "Save" [ref=e1]\n- status "Drifted" [ref=e3]\n- status "Saved" [ref=e2]'
+      ),
+      history.now()
+    );
+
+    expect(before).toMatchObject({
+      capturedForActionId: actionId,
+      relation: "before",
+    });
+    expect(after).toMatchObject({ capturedForActionId: actionId });
+    expect(after.relation).toBeUndefined();
+    const { actionChange, unassignedChanges } =
+      await history.observations.getActionEvidence(actionId);
+    expect(
+      actionChange.changeTree.getNodesByStatus("added").map((node) => node.name)
+    ).toEqual(["Saved"]);
+    expect(
+      unassignedChanges.map((change) =>
+        change.changeTree.getNodesByStatus("added").map((node) => node.name)
+      )
+    ).toEqual([["Drifted"]]);
+  });
+
   it("completes an action whose tool call failed with its page", async () => {
     const history = new InteractionHistory(document, clock);
     history.observe(empty(), history.now());

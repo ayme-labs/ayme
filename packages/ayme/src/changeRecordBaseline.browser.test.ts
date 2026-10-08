@@ -19,6 +19,7 @@ type PublishedTool = {
 type ActionResultShape = {
   page_changed: boolean;
   settled: boolean;
+  changes_before?: string;
   changes?: string;
 };
 
@@ -109,7 +110,8 @@ describe("Change Record baseline in Chromium", () => {
     const result = await act("click", { target: actRef });
 
     expect(result.page_changed).toBe(true);
-    expect(result.changes).toContain("Background toast");
+    expect(result.changes_before).toContain("Background toast");
+    expect(result.changes).not.toContain("Background toast");
   });
 
   it("reports a change made after snapshot in the fill's Change Record", async () => {
@@ -126,7 +128,8 @@ describe("Change Record baseline in Chromium", () => {
     });
 
     expect(result.page_changed).toBe(true);
-    expect(result.changes).toContain("Background toast");
+    expect(result.changes_before).toContain("Background toast");
+    expect(result.changes).toContain("Ada");
   });
 
   it("reports a change made after snapshot in a Page Object Tool's Change Record", async () => {
@@ -137,8 +140,10 @@ describe("Change Record baseline in Chromium", () => {
 
     const result = await act("App.noop", {});
 
+    // The action itself changed nothing: only the first part has a change.
     expect(result.page_changed).toBe(true);
-    expect(result.changes).toContain("Background toast");
+    expect(result.changes_before).toContain("Background toast");
+    expect(result.changes).toBeUndefined();
   });
 
   // --- Two actions in a row ---
@@ -168,8 +173,8 @@ describe("Change Record baseline in Chromium", () => {
 
     const second = await act("click", { target: secondRef });
     expect(second.page_changed).toBe(true);
-    expect(second.changes).toContain("Background toast");
-    expect(second.changes).not.toContain("Result of the first action");
+    expect(second.changes_before).toContain("Background toast");
+    expect(second.changes_before).not.toContain("Result of the first action");
   });
 
   // --- A capture Ayme makes for itself must not consume the change ---
@@ -186,7 +191,7 @@ describe("Change Record baseline in Chromium", () => {
     const result = await act("click", { target: actRef });
 
     expect(result.page_changed).toBe(true);
-    expect(result.changes).toContain("Background toast");
+    expect(result.changes_before).toContain("Background toast");
   });
 
   // --- No change at all ---
