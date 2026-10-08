@@ -713,21 +713,3 @@ describe("live Page Object registry", () => {
     pageStateResolutions.clear();
   });
 });
-
-describe("tool input validation", () => {
-  it("checks an array input and each of its items", async () => {
-    const { validateValue } = await import("./registry");
-    const schema = {
-      type: "array",
-      items: { type: "string", enum: ["a", "b"] },
-    } as const;
-
-    expect(() => validateValue("tags", schema, ["a", "b"])).not.toThrow();
-    expect(() => validateValue("tags", schema, "a")).toThrow(
-      "Input property tags must be an array."
-    );
-    expect(() => validateValue("tags", schema, ["a", "c"])).toThrow(
-      "Input property tags[1] must be one of a, b."
-    );
-  });
-});

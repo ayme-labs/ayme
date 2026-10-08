@@ -39,10 +39,11 @@
     "@ayme-dev/typescript-config": "workspace:*",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitest/browser-playwright": "^4.1.11",
+    "eslint": "^10.9.1",
+    "playwright": "^1.62.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "jsdom": "^30.0.1",
-    "eslint": "^10.9.1",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"

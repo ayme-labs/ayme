@@ -244,7 +244,7 @@ describe("Browser Tools in Chromium", () => {
       call("click", { target: "#save", force: true })
     ).resolves.toMatchObject({
       content: [
-        { text: 'ToolInputError: The option "force" is not supported.' },
+        { text: "ToolInputError: Input property force is not supported." },
       ],
       isError: true,
     });
@@ -253,7 +253,9 @@ describe("Browser Tools in Chromium", () => {
       call("fill", { target: "#name", text: "Ada", constructor: "x" })
     ).resolves.toMatchObject({
       content: [
-        { text: 'ToolInputError: The option "constructor" is not supported.' },
+        {
+          text: "ToolInputError: Input property constructor is not supported.",
+        },
       ],
       isError: true,
     });

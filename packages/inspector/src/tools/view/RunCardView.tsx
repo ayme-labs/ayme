@@ -1,4 +1,4 @@
-import { useId, type FormEvent, type ReactNode } from "react";
+import { useId, useRef, type FormEvent, type ReactNode } from "react";
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -8,6 +8,7 @@ import {
   ZapIcon,
 } from "lucide-react";
 
+import type { SchemaViolation } from "@ayme-dev/ayme/internal";
 import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
@@ -81,7 +82,10 @@ export function RunCardView({
   last: Run | undefined;
   lastSuccess: Run | undefined;
   running: boolean;
-  /** Whether a field can't be sent as it is, so Run is off. */
+  /**
+   * Whether the arguments can't be sent as they are, so Run is off: a field
+   * is invalid, or the JSON is, or it breaks the tool's schema.
+   */
   invalid: boolean;
   submit: (event: FormEvent) => void;
   toggleOpen: () => void;
@@ -252,40 +256,113 @@ export function RunCardView({
   );
 }
 
+/**
+ * The arguments as JSON, with line numbers. It marks the line of a syntax
+ * error, lists how valid JSON breaks the tool's schema by path, and formats
+ * the text on demand.
+ */
 export function JsonEditor({
   text,
   error,
+  errorLine,
+  violations,
   onChange,
+  onFormat,
 }: {
   text: string;
   error: string | undefined;
+  /** The line of the syntax error, 1-based. */
+  errorLine: number | undefined;
+  violations: readonly SchemaViolation[];
   onChange: (text: string) => void;
+  onFormat: () => void;
 }) {
   const id = useId();
+  const gutter = useRef<HTMLDivElement>(null);
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  const lineCount = text.split("\n").length;
   return (
     <div className="flex flex-col gap-1">
-      <label
-        htmlFor={id}
-        className="flex items-baseline gap-1.5 text-xs font-semibold"
-      >
-        Arguments{" "}
-        <span className="font-mono text-xs font-medium text-muted-foreground">
-          JSON
-        </span>
-      </label>
-      <textarea
-        id={id}
-        aria-invalid={error !== undefined}
-        spellCheck={false}
-        className="min-h-30 w-full resize-y rounded-md border border-input bg-muted px-2.25 py-2 font-mono text-xs leading-normal outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring"
-        value={text}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      {error && (
-        <span role="alert" className="text-xs text-destructive">
-          {error}
-        </span>
-      )}
+      <div className="flex items-baseline gap-1.5">
+        <label
+          htmlFor={id}
+          className="flex items-baseline gap-1.5 text-xs font-semibold"
+        >
+          Arguments{" "}
+          <span className="font-mono text-xs font-medium text-muted-foreground">
+            JSON
+          </span>
+        </label>
+        <span className="flex-1" />
+        <button
+          type="button"
+          disabled={error !== undefined}
+          title={error ? "Fix the JSON to format it" : "Pretty-print the JSON"}
+          className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-50 disabled:hover:text-muted-foreground"
+          onClick={() => {
+            onFormat();
+            // Formatted lines start at the left edge; show them from there.
+            if (textarea.current) textarea.current.scrollLeft = 0;
+          }}
+        >
+          Format
+        </button>
+      </div>
+      <div className="flex rounded-md border border-input bg-muted focus-within:border-transparent focus-within:outline-2 focus-within:outline-ring">
+        <div
+          ref={gutter}
+          aria-hidden
+          className="flex-none overflow-hidden border-r border-input py-2 pr-1.5 pl-2 text-right font-mono text-xs leading-normal text-muted-foreground select-none"
+        >
+          {Array.from({ length: lineCount }, (_, index) => (
+            <div
+              key={index}
+              data-error={index + 1 === errorLine || undefined}
+              className="data-error:font-semibold data-error:text-destructive"
+            >
+              {index + 1}
+            </div>
+          ))}
+        </div>
+        <textarea
+          ref={textarea}
+          id={id}
+          aria-invalid={error !== undefined || violations.length > 0}
+          aria-describedby={`${id}-errors`}
+          spellCheck={false}
+          wrap="off"
+          className="min-h-30 w-0 min-w-0 flex-1 resize-y bg-transparent px-2.25 py-2 font-mono text-xs leading-normal outline-none"
+          value={text}
+          onChange={(event) => onChange(event.target.value)}
+          onScroll={(event) => {
+            if (gutter.current)
+              gutter.current.scrollTop = event.currentTarget.scrollTop;
+          }}
+        />
+      </div>
+      <div id={`${id}-errors`}>
+        {error && (
+          <span role="alert" className="text-xs text-destructive">
+            {error}
+          </span>
+        )}
+        {violations.length > 0 && (
+          <ul
+            role="alert"
+            aria-label="Schema errors"
+            className="m-0 flex list-none flex-col gap-0.5 p-0 text-xs text-destructive"
+          >
+            {violations.map(({ path, message }) => (
+              <li key={`${path} ${message}`}>
+                <span className="font-mono font-semibold">
+                  {path || "arguments"}
+                </span>
+                : {message}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

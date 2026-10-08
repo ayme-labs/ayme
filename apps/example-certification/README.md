@@ -6,6 +6,8 @@ The end-to-end certification that every framework's example app runs, written on
 
 `certificationConfig` from `@ayme-dev/example-certification/config` builds an example's Playwright config: a free port kept across Playwright's workers, and the app's server for the run's mode. The example supplies only the command that serves it on that port. Against the dev server, a global setup loads the counter page and `/other` once before the tests, so no test pays for the dev server's first compile of a page.
 
+`certificationConfig` takes `counterPath` for an app whose counter page is not `/`; it sets `AYME_E2E_COUNTER_PATH`, which the builders and the dev server warm-up read.
+
 The environment selects the mode, so an example has one config and its `test:e2e:*` scripts set the variables its `webServer` honours:
 
 | Variable                     | Selects                             |
@@ -18,16 +20,16 @@ The environment selects the mode, so an example has one config and its `test:e2e
 From `@ayme-dev/example-certification/tests`, each builder defines plain Playwright tests, one assertion story each:
 
 - `serverRenderTests()`: the server-rendered counter and its initial publication status on repeated requests, or no counter in SPA mode.
-- `counterTests({ CounterPage, navigation? })`: the published schemas, an undecorated subclass, Ayme's own tools, the Page Object called from the app, its tool and Playwright, unmount and remount, the answer to a `click` that starts a full page load, to `navigate` to another page, to `navigate_back` from it and to `reload`, that page's published tools, and, with `navigation`, client navigation away and back.
+- `counterTests({ CounterPage, navigation?, inspector? })`: the published schemas, an undecorated subclass, Ayme's own tools, the Page Object called from the app, its tool and Playwright, unmount and remount, the answer to a `click` that starts a full page load, to `navigate` to another page, to `navigate_back` from it and to `reload`, that page's published tools, and, with `navigation`, client navigation away and back. With `inspector: true`, for a page that mounts the Inspector, the tests wait for it to mount; the caller passes `server === "dev"` where the app mounts it only in development.
 - `devRebuildTests({ counterModePath })`: on the dev server only, editing `CounterMode.ts` rebuilds the published schema. Call it last: it edits a source file, and the dev server rebuilds after it.
 - `agentConnectionTests({ enabled, snapshotText, peek?, appProcess? })`: where `enabled()` holds, a coding agent's MCP client pairs with `/` through a connect link and calls the page's `snapshot` tool; elsewhere, such as a production build, the page loads no Agent Connection code and opens no WebSocket. Every example runs it, gated as its app gates `agentConnection`. With `peek: true`, the agent also reads the counter's Peek `peek.counter`: `0`, then `1` after an increment, and the tool goes when the counter unmounts. Examples whose counter adds no Peek leave it off. With `appProcess: { peek }`, for an app whose server runs an App Process where it turns the Agent Connection on: there, an agent on `agentPort` lists the server's Peek `peek.node.<peek>`, then a server-rendered load of `/` leaves `peek.counter` with exactly one instance, from the browser, and the server offers no `peek.node.counter`; elsewhere no App Process pairs with that agent.
-- `test`: Playwright's `test`, failing on page errors, console errors and hydration warnings. Every builder except the dev rebuild and the Agent Connection uses it, and so do an example's own tests.
+- `test`: Playwright's `test`, failing on page errors, console errors and hydration warnings. Every builder except the dev rebuild and the Agent Connection uses it, and so do an example's own tests. A framework that logs hydration statistics in development, such as Angular, names them with `test.use({ hydrationStatistics: /regexp/ })` so they are not counted as a warning.
 
 Tools are called through the recording WebMCP driver from `@ayme-dev/ayme/testing`, and the agent's side through `@ayme-dev/mcp/testing`.
 
 ## Counter contract
 
-The builders drive this DOM, which each example renders on `/` beneath its runtime owner, with publication enabled:
+The builders drive this DOM, which each example renders on `/`, or the app's `counterPath`, beneath its runtime owner, with publication enabled:
 
 - a `region` named `Counter`, holding the `output` with the count, starting at `0`, and the buttons `Increment` and `Call Page Object`, which increments through the Page Object;
 - a `status` named `Publication`, reading `Publication: <state>`;

@@ -1,92 +1,40 @@
 import { expect } from "@playwright/test";
-import { exampleTest as test } from "@ayme-dev/example-certification/tests";
+import {
+  counterTests,
+  devRebuildTests,
+  test,
+} from "@ayme-dev/example-certification/tests";
+import {
+  publishedToolNames,
+  recordPublishedTools,
+} from "@ayme-dev/ayme/testing";
 import { CounterPage } from "../playwright/pom/CounterPage";
 
-const browserToolNames = [
-  "click",
-  "hover",
-  "type",
-  "fill",
-  "check",
-  "uncheck",
-  "select_option",
-  "fill_form",
-  "press_key",
-  "generate_locator",
-  "navigate",
-  "navigate_back",
-  "navigate_forward",
-  "reload",
-];
+// The shared certification, against the dev server and the production build.
+// The app is a single-page app with no router, so it has no client navigation
+// to check and no server-rendered page.
+counterTests({ CounterPage, inspector: true });
 
-test("uses the same POM with real Playwright", async ({ page }) => {
-  await page.goto("/");
-  await new CounterPage(page).increment();
-  await expect(page.locator("output")).toHaveText("1");
-});
-
-test("publishes, executes, and removes compiled tools under StrictMode", async ({
-  page,
-}) => {
-  await page.addInitScript(() => {
-    const tools = new Map<
-      string,
-      { execute: (args: Record<string, unknown>) => Promise<unknown> }
-    >();
-    Object.defineProperty(document, "modelContext", {
-      configurable: true,
-      value: {
-        registerTool(
-          tool: {
-            name: string;
-            execute: (args: Record<string, unknown>) => Promise<unknown>;
-          },
-          { signal }: { signal: AbortSignal }
-        ) {
-          if (signal.aborted) return;
-          if (tools.has(tool.name))
-            throw new Error(`Duplicate tool: ${tool.name}`);
-          tools.set(tool.name, tool);
-          signal.addEventListener("abort", () => tools.delete(tool.name), {
-            once: true,
-          });
-        },
-        tools,
-      },
-    });
-  });
+// React's own check: StrictMode mounts, unmounts and mounts every effect in
+// development, and each tool must still be published once.
+test("publishes each tool once under StrictMode", async ({ context, page }) => {
+  await recordPublishedTools(context);
   await page.goto("/");
   await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
     "Publication: active"
   );
-  const names = () =>
-    page.evaluate(() => [
-      ...(
-        document.modelContext as unknown as { tools: Map<string, unknown> }
-      ).tools.keys(),
-    ]);
   await expect
-    .poll(names)
-    .toEqual(["snapshot", ...browserToolNames, "CounterPage.increment"]);
-  await page.evaluate(async () => {
-    const driver = document.modelContext as unknown as {
-      tools: Map<
-        string,
-        { execute: (args: Record<string, unknown>) => Promise<unknown> }
-      >;
-    };
-    await driver.tools.get("CounterPage.increment")!.execute({});
-  });
-  await expect(page.locator("output")).toHaveText("1");
-  await page.getByRole("button", { name: "Call Page Object" }).click();
-  await expect(page.locator("output")).toHaveText("2");
-  await page.getByRole("button", { name: "Unmount counter" }).click();
-  await expect.poll(names).toEqual(["snapshot", ...browserToolNames]);
-  await page
-    .getByRole("button", { name: "Mount counter", exact: true })
-    .click();
-  await expect
-    .poll(names)
-    .toEqual(["snapshot", ...browserToolNames, "CounterPage.increment"]);
-  await expect(page.locator("output")).toHaveText("0");
+    .poll(async () =>
+      (await publishedToolNames(page)).filter((name) =>
+        /^(Sub)?CounterPage\./.test(name)
+      )
+    )
+    .toHaveLength(4);
+  const names = await publishedToolNames(page);
+  expect(new Set(names).size).toBe(names.length);
+});
+
+// Last: it edits a source file, and the dev server rebuilds after it.
+devRebuildTests({
+  counterModePath: new URL("../playwright/pom/CounterMode.ts", import.meta.url),
 });

@@ -18,11 +18,11 @@ test("an App Process's Peek tool shows in the Inspector's Node section while it 
   agent,
   connect,
   page,
-  startAppProcess,
+  startStandInAppProcess,
 }) => {
   await connect("/?inspector&peek=cart");
   const { port } = await serverAddress(agent);
-  const appProcess = startAppProcess({ port, value: "server" });
+  const appProcess = startStandInAppProcess({ port, value: "server" });
   const inspector = new Inspector(page);
   await inspector.open();
   await inspector.navigator.showLens("Tools");

@@ -28,8 +28,15 @@ export class RunCard {
   readonly formSwitch: Locator;
   readonly jsonSwitch: Locator;
   readonly jsonEditor: Locator;
-  /** Why the JSON editor's arguments can't be used. */
+  /** Why the JSON editor's text isn't JSON, or isn't an object. */
   readonly jsonError: Locator;
+  /**
+   * How the JSON editor's arguments break the tool's schema, one entry per
+   * violation, e.g. "values.zip: must be a string or a number".
+   */
+  readonly schemaErrors: Locator;
+  /** Pretty-prints the JSON editor's text. */
+  readonly formatButton: Locator;
   /** The items a collection action can run on. */
   readonly items: Locator;
   /** The last run's status, its duration, and its error. */
@@ -47,7 +54,14 @@ export class RunCard {
     this.formSwitch = editor.getByRole("button", { name: "Form" });
     this.jsonSwitch = editor.getByRole("button", { name: "JSON" });
     this.jsonEditor = root.getByRole("textbox", { name: "Arguments JSON" });
-    this.jsonError = root.getByRole("alert");
+    this.jsonError = root.getByRole("alert").and(root.locator("span"));
+    this.schemaErrors = root
+      .getByRole("alert", { name: "Schema errors" })
+      .getByRole("listitem");
+    this.formatButton = root.getByRole("button", {
+      name: "Format",
+      exact: true,
+    });
     this.items = root
       .getByRole("radiogroup", { name: "Item" })
       .getByRole("radio");

@@ -23,6 +23,8 @@ You mark a Page Object Model and the actions to expose. The build plugin compile
 - **Browser Tools**: built-in operations on the page, such as `click` and `fill`, aimed at what `snapshot` shows.
 - **Custom Tools**: operations of your own on one element, such as highlighting it for the user.
 
+While you develop, a coding agent also gets **Peek Tools**: they read app state the page does not show, such as a store or what your server holds, from the page and from your app's own Node processes. WebMCP never publishes them. See [`ayme.peek`](docs/guide/reference/ayme.md#aymepeek).
+
 The **Goal Loop** runs on top of them: `goal` takes a goal in natural language and lets Jev pick one operation per step until the goal is met or it needs the agent. Jev is reached through a **Decision Endpoint**, one route in your backend, or in your dev server while you develop, that adds your TypeSafe or OpenRouter key.
 
 The **Inspector** is an in-page panel that shows your Page Objects, what the agent sees and every tool, and runs them by hand.
@@ -63,7 +65,7 @@ Read the docs at [ayme-labs.github.io/ayme/docs](https://ayme-labs.github.io/aym
 
 ## Your data stays with you
 
-Ayme runs entirely in your app's page. It has no backend and no account, and it sends nothing to Ayme. Page content leaves the page in two ways, both set up by you: a coding agent you connect reads the page through Ayme's MCP server, which runs on your machine, and each Goal Loop step goes from your own Decision Endpoint, with your key, to the model provider you chose.
+Ayme runs entirely in your app: in its page, and in its own Node processes where you start it. It has no backend and no account, and it sends nothing to Ayme. Your app's content leaves it in three ways, all set up by you: a coding agent you connect reads the page and your app's Peeks through Ayme's MCP server, which runs on your machine; with WebMCP publication on, an in-browser agent calls your Page Object, Browser and Custom Tools (never Peeks); and each Goal Loop step goes from your own Decision Endpoint, with your key, to the model provider you chose.
 
 ## License
 
