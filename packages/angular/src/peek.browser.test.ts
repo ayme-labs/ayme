@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 // Angular 19 needs Zone.js to bootstrap; later majors run zoneless with it
 // loaded too. JIT compiles the test components.
 import "zone.js";

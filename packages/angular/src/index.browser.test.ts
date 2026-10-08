@@ -1,5 +1,4 @@
-// Contract rows are in docs/framework-integrations.md. C4 is n/a: provideAyme
-// takes its options once and cannot change them afterwards. C9 and C10 run in
+// Contract rows are in docs/framework-integrations.md. C9 and C10 run in
 // Node, in ssr.test.ts.
 import {
   createEnvironmentInjector,
@@ -13,6 +12,7 @@ import {
   registerCompiledPom,
 } from "@ayme-dev/ayme/internal";
 import { afterEach, expect, it, vi } from "vitest";
+import { createAyme } from "@ayme-dev/ayme";
 import {
   injectAyme,
   injectPageObject,
@@ -20,6 +20,11 @@ import {
   provideAyme,
   type AymeOptions,
 } from "./index";
+
+vi.mock("@ayme-dev/ayme", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@ayme-dev/ayme")>();
+  return { ...original, createAyme: vi.fn(original.createAyme) };
+});
 
 type Page = ReturnType<NonNullable<AymeOptions["pageFactory"]>>;
 const page = { url: () => "factory page" } as unknown as Page;
@@ -51,28 +56,41 @@ afterEach(() => {
     // Angular 19 does not declare `destroyed` on EnvironmentInjector.
     if (!(injector as { destroyed?: boolean }).destroyed) injector.destroy();
   vi.useRealTimers();
+  vi.mocked(createAyme).mockClear();
 });
 
 it("C1: passes every runtime option to the session unchanged", async () => {
-  const goalLoop = vi.fn(async () => {
-    throw new Error("No decision.");
-  });
-  const root = environment([
-    provideAyme({
-      pageFactory,
-      goalLoop,
-      webMCP: { enabled: true },
-    }),
-  ]);
-  const { ayme, webMCP } = runInInjectionContext(root, injectAyme);
+  // Keep the optional Inspector and Agent Connection peers from loading; they
+  // may not be built or installed where these tests run.
+  const { createAyme: actual } =
+    await vi.importActual<typeof import("@ayme-dev/ayme")>("@ayme-dev/ayme");
+  vi.mocked(createAyme).mockImplementationOnce((options) =>
+    actual({ ...options, inspector: false, agentConnection: false })
+  );
+  const options: AymeOptions = {
+    pageFactory,
+    ignore: (element) => element.matches(".assistant"),
+    customTools: [
+      {
+        name: "highlight_element",
+        description: "Highlight one element on the page.",
+        execute: async () => null,
+      },
+    ],
+    goalLoop: vi.fn(),
+    navigate: vi.fn(),
+    webMCP: { enabled: false, toolNamePrefix: "ayme_" },
+    inspector: true,
+    agentConnection: true,
+  };
+  const root = environment([provideAyme(options)]);
+  runInInjectionContext(root, injectAyme);
 
-  expect(
-    runInInjectionContext(root, () => injectPageObject(Model)).page.url()
-  ).toBe("factory page");
-  expect(webMCP.publicationStatus().state).toBe("waiting");
-  await ayme.tools.run("goal", { goal: "goal", maxSteps: 1 });
-  expect(goalLoop).toHaveBeenCalledOnce();
+  expect(createAyme).toHaveBeenCalledExactlyOnceWith(options);
+  expect(vi.mocked(createAyme).mock.calls[0]![0]).toBe(options);
 });
+
+it.skip("C4: n/a, provideAyme takes its options once and cannot change them afterwards", () => {});
 
 it("C2: starts the session with the environment and stops it when the injector is destroyed", async () => {
   const goalLoop = vi.fn(async () => {
