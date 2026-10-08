@@ -581,18 +581,42 @@ function toolParameter(
 
   const type = checker.getTypeAtLocation(parameter);
   const optional =
-    parameter.questionToken !== undefined || typeIncludesUndefined(type);
+    parameter.questionToken !== undefined ||
+    parameter.initializer !== undefined ||
+    typeIncludesUndefined(type);
+  const schema = schemaForType(
+    checker,
+    type,
+    className,
+    methodName,
+    parameter.name.text
+  );
+  const defaultValue =
+    parameter.initializer && literalDefault(parameter.initializer);
   return {
     name: parameter.name.text,
     optional,
-    schema: schemaForType(
-      checker,
-      type,
-      className,
-      methodName,
-      parameter.name.text
-    ),
+    schema:
+      defaultValue === undefined
+        ? schema
+        : { ...schema, default: defaultValue },
   };
+}
+
+/** The value of a literal default (`"a"`, `3`, `-1`, `true`), if it is one. */
+function literalDefault(initializer: ts.Expression): JsonPrimitive | undefined {
+  if (ts.isStringLiteralLike(initializer)) return initializer.text;
+  if (ts.isNumericLiteral(initializer)) return Number(initializer.text);
+  if (
+    ts.isPrefixUnaryExpression(initializer) &&
+    initializer.operator === ts.SyntaxKind.MinusToken &&
+    ts.isNumericLiteral(initializer.operand)
+  ) {
+    return -Number(initializer.operand.text);
+  }
+  if (initializer.kind === ts.SyntaxKind.TrueKeyword) return true;
+  if (initializer.kind === ts.SyntaxKind.FalseKeyword) return false;
+  return undefined;
 }
 
 function schemaForType(
