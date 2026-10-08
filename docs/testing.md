@@ -23,7 +23,7 @@ Where each kind of test runs, what it is for, and where test-only code lives. Th
 - `packages/angular`'s `ng add` tests run Angular's `SchematicTestRunner` on the built `schematics/collection.json`, so the package's `test` task depends on its own `build`.
 - **Live goals** run real goals through `goal` against the model. It needs `AYME_TYPESAFE_API_KEY` or `AYME_OPENROUTER_API_KEY` and skips itself without one. It is a separate CI job, and `pnpm check` does not run it. See the [example-vue README](../apps/example-vue/README.md#live-goal-lane), which also covers the hand-run goal harness.
 
-Each package keeps its own Vitest config ([ADR-0003](adr/0003-keep-vitest-configuration-package-local.md)). Run `pnpm check` from the root for everything CI's Check job runs. On a pull request, CI runs the affected packages' `build lint typecheck test test:e2e`, plus commit lint, `turbo boundaries`, the docs check ([`scripts/check-docs.mjs`](../scripts/check-docs.mjs)) and the format check ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)).
+Each package keeps its own Vitest config; the change-analysis lane below builds its configs from shared helpers in `@ayme-dev/test-config`. Run `pnpm check` from the root for everything CI's Check job runs. On a pull request, CI runs the affected packages' `build lint typecheck test test:e2e`, plus commit lint, `turbo boundaries`, the docs check ([`scripts/check-docs.mjs`](../scripts/check-docs.mjs)) and the format check ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)).
 
 ## Change analysis
 
