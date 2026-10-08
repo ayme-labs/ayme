@@ -1,26 +1,28 @@
 /**
- * Test support: the started session's tools as an agent calls them through
- * WebMCP, and a Goal Loop decision function that runs given operations.
+ * Test support: the started session's tools as an agent calls them, and a
+ * Goal Loop decision function that runs given operations.
  */
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { DecisionResponse } from "./decisionTypes";
 import { RuntimeStateError } from "./errors";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
-import { listWebMcpTools } from "./publishedTools";
 import { callers } from "./run";
 import { getStartedAyme } from "./runtime";
 
 /**
- * The started session's tools as WebMCP publishes them to an agent, without
- * a driver. A call is a `webmcp` Run, as an agent's call through
- * `@ayme-dev/webmcp` is, and fails as that Run does: the package's own tests
- * check the `isError` result an agent gets for it.
+ * The started session's tools an agent can call now, without a driver. A
+ * call is a `webmcp` Run, as an agent's call through `@ayme-dev/webmcp` is,
+ * and fails as that Run does: the package's own tests check which tools it
+ * publishes and the `isError` result an agent gets for a failure.
  */
 export function agentTools() {
   const ayme = getStartedAyme();
   if (!ayme) throw new Error("Start a session before calling its tools.");
-  /** The names of the tools WebMCP publishes now, in publication order. */
-  const names = () => listWebMcpTools().map(({ name }) => name);
+  /** The names of the available tools, in publication order. */
+  const names = () =>
+    ayme.tools
+      .list()
+      .flatMap(({ name, available }) => (available ? [name] : []));
   return {
     names,
     /** Call a tool as the agent. */

@@ -5,7 +5,6 @@ import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
 import {
   listPeekToolInfo,
   listTools,
-  listWebMcpTools,
   resolveTools,
   type ToolInfo,
 } from "./publishedTools";
@@ -458,11 +457,11 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     for (const listener of toolListeners) listener(tools);
   };
   /**
-   * The tools WebMCP publishes, as the `@ayme-dev/webmcp` package reaches
-   * them: the available ones it can carry, and its calls as `webmcp` Runs.
+   * The session's tools as the `@ayme-dev/webmcp` package reaches them, its
+   * calls as `webmcp` Runs. The package decides which of them it publishes.
    */
   const webMcpTools = {
-    list: listWebMcpTools,
+    list: () => ayme.tools.list(),
     subscribe: (listener: () => void) => ayme.tools.subscribe(listener),
     run: (name: string, input: unknown) =>
       ayme.tools.run(name, input as never, { by: callers.webmcp }),

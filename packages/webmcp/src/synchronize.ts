@@ -1,18 +1,20 @@
 import type { WebMcpDriver } from "./driver";
 
-/** A tool as WebMCP publishes it, by its unprefixed name. */
+/**
+ * A tool of the session, by its unprefixed name, as `ayme.tools.list()`
+ * reads it: `available` says whether a call can run it now.
+ */
 export type WebMcpTool = Readonly<{
   name: string;
   description: string;
   inputSchema: object;
+  group: string;
+  available: boolean;
 }>;
 
 /** The session's tools, as publication reads and calls them. */
 export type WebMcpToolSource = {
-  /**
-   * The tools to publish now, by unprefixed name. Throws when they cannot be
-   * published, such as when two would share a name.
-   */
+  /** Every tool of the session now; throws when they cannot be listed. */
   list(): readonly WebMcpTool[];
   /** Calls `listener` after the tools may have changed; returns what stops it. */
   subscribe(listener: () => void): () => void;
@@ -58,15 +60,23 @@ function errorText(error: unknown): string {
   return `${error.name}: ${error.message}`;
 }
 
+/**
+ * Whether WebMCP publishes a tool: an available one, but a Peek Tool, which
+ * reads app state for a coding agent while developing, and `screenshot`,
+ * whose image result WebMCP cannot carry.
+ */
+const publishable = (tool: WebMcpTool) =>
+  tool.available && tool.group !== "peek" && tool.name !== "screenshot";
+
 /** What makes a published tool stale: its description or schema changed. */
 const versionOf = (tool: WebMcpTool) =>
   JSON.stringify([tool.description, tool.inputSchema]);
 
 /**
- * Keep the driver's tool set in sync with the source's. A call of a
- * published tool resolves only once the published set reflects the page it
- * changed, so an agent's next call sees the tools available now; the called
- * tool itself is withdrawn just after its call, if the call made it
+ * Keep the driver's tool set in sync with the source's publishable tools. A
+ * call of a published tool resolves only once the published set reflects the
+ * page it changed, so an agent's next call sees the tools available now; the
+ * called tool itself is withdrawn just after its call, if the call made it
  * unavailable. A published tool never throws: a failure is an `isError`
  * result.
  */
@@ -148,7 +158,12 @@ export async function synchronizeWebMcpTools(
     try {
       do {
         syncAgain = false;
-        const listed = new Map(tools.list().map((tool) => [tool.name, tool]));
+        const listed = new Map(
+          tools
+            .list()
+            .filter(publishable)
+            .map((tool) => [tool.name, tool])
+        );
         for (const [name, registration] of published) {
           const tool = listed.get(name);
           if (tool && versionOf(tool) === registration.version) continue;

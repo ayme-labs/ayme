@@ -17,7 +17,6 @@ import {
   listElementToolTargets,
   listTools,
   type PublishedToolGroup,
-  type PublishedToolInfo,
   type ToolInfo,
 } from "./publishedTools";
 import {
@@ -163,16 +162,6 @@ const EXPECTED_TOOLS: [string, PublishedToolGroup][] = [
   ["goal", "agent"],
 ];
 
-/**
- * The tools WebMCP can publish: the available ones, without `screenshot`,
- * whose result is an image WebMCP cannot carry.
- */
-function publishable(tools: readonly ToolInfo[]): PublishedToolInfo[] {
-  return tools.flatMap(({ available, ...tool }) =>
-    available && tool.name !== "screenshot" ? [tool] : []
-  );
-}
-
 const names = (tools: readonly { name: string }[]) =>
   tools.map(({ name }) => name);
 
@@ -219,14 +208,6 @@ describe("the session's tools in Chromium", () => {
     );
   });
 
-  it("offers WebMCP the available tools but screenshot", () => {
-    startSession();
-
-    expect(agentTools().names()).toEqual(names(publishable(ayme.tools.list())));
-    expect(agentTools().names()).not.toContain("screenshot");
-    expect(names(ayme.tools.list())).toContain("screenshot");
-  });
-
   it("tells subscribers when a Page Object registers, and returns a new list only then", async () => {
     startSession();
     const before = ayme.tools.list();
@@ -240,7 +221,6 @@ describe("the session's tools in Chromium", () => {
       .toContain("SettingsPage.save");
     expect(heard).toEqual([ayme.tools.list()]);
     expect(ayme.tools.list()).not.toBe(before);
-    expect(agentTools().names()).toEqual(names(publishable(ayme.tools.list())));
 
     // A second registration changes nothing; the last one withdraws it.
     ayme.pom.register(SettingsPage);
@@ -249,7 +229,6 @@ describe("the session's tools in Chromium", () => {
     ayme.pom.unregister(SettingsPage);
     expect(heard).toHaveLength(2);
     expect(heard[1]).toEqual(before);
-    expect(agentTools().names()).not.toContain("SettingsPage.save");
   });
 
   it("reports to the agent what the application's action changed", async () => {
@@ -464,7 +443,6 @@ describe("the session's tools in Chromium", () => {
       'Cannot publish the tool "TodoPage.addTodo": another published tool already uses that name.';
 
     expect(ayme.tools.list()).toEqual([]);
-    expect(() => agentTools().names()).toThrow(clash);
     await expect(ayme.tools.run("snapshot", {})).rejects.toThrow(clash);
   });
 });

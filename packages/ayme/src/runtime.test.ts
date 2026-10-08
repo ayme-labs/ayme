@@ -15,7 +15,6 @@ import {
   sameRuntimeOptions,
   type AymePage,
 } from "./runtime";
-import { listWebMcpTools } from "./publishedTools";
 import { listRegisteredPoms, registerCompiledPom } from "./registry";
 import * as registryModule from "./registry";
 import { callers } from "./run";
@@ -608,7 +607,7 @@ it("loads nothing while webMCP.enabled is unset", async () => {
   });
 });
 
-it("publishes the tools WebMCP can carry, and runs an agent's call as a webmcp Run", async () => {
+it("hands publication the session's tools, and runs an agent's call as a webmcp Run", async () => {
   class Saver {
     save() {}
   }
@@ -636,11 +635,8 @@ it("publishes the tools WebMCP can carry, and runs an agent's call as a webmcp R
   await publicationStarts();
   const { tools } = published();
   const names = () => tools.list().map(({ name }) => name);
-  expect(tools.list()).toEqual(listWebMcpTools());
+  expect(tools.list()).toBe(runtime.tools.list());
   expect(names()).toContain("click");
-  // Its result is an image, which WebMCP cannot carry.
-  expect(names()).not.toContain("screenshot");
-  expect(runtime.tools.list().map(({ name }) => name)).toContain("screenshot");
 
   const listener = vi.fn();
   const unsubscribe = tools.subscribe(listener);

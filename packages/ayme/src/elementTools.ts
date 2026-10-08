@@ -61,8 +61,6 @@ export type CustomToolContext = {
  */
 export type PublishedElementTool = ToolDescriptor & {
   inputSchema: JsonSchema;
-  /** `false`: never published to WebMCP, as for a tool whose result is an image. */
-  webMcp?: false;
   execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 

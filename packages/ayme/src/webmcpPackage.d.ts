@@ -7,6 +7,8 @@ declare module "@ayme-dev/webmcp" {
         name: string;
         description: string;
         inputSchema: object;
+        group: string;
+        available: boolean;
       }[];
       subscribe(listener: () => void): () => void;
       run(name: string, input: unknown): Promise<unknown>;

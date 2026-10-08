@@ -9,7 +9,6 @@ import {
   shapeOf,
   withoutElement,
 } from "./playwrightMcp.testSupport";
-import { agentTools } from "./publication.testSupport";
 import { createAyme, type Ayme } from "./runtime";
 import type { ToolInput } from "./toolTypes";
 
@@ -72,11 +71,7 @@ describe("screenshot in Chromium", () => {
     );
   });
 
-  it("is never published to WebMCP, and the Goal Loop never picks it", () => {
-    const names = agentTools().names();
-
-    expect(names).toContain("snapshot");
-    expect(names).not.toContain("screenshot");
+  it("is never offered to the Goal Loop", () => {
     expect(buildToolOptions().map((option) => option.key)).not.toContain(
       "screenshot"
     );

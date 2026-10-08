@@ -81,13 +81,14 @@ describe("Custom Tools in Chromium", () => {
     });
   });
 
-  it("rejects a Custom Tool whose name collides with another published tool", () => {
+  it("rejects a Custom Tool whose name collides with another published tool", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool } = recordingCustomTool({ name: "click" });
 
-    start([customTool]);
+    const ayme = start([customTool]);
 
-    expect(() => agentTools().names()).toThrow(
+    expect(ayme.tools.list()).toEqual([]);
+    await expect(ayme.tools.run("snapshot", {})).rejects.toThrow(
       'Cannot publish the tool "click": another published tool already uses that name.'
     );
   });

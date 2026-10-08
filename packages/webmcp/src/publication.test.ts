@@ -30,10 +30,17 @@ function recordingDriver() {
 }
 
 const schema = { type: "object", properties: {} };
-const tool = (name: string, description = `${name}.`): WebMcpTool => ({
+const tool = (
+  name: string,
+  description = `${name}.`,
+  reading: Partial<Pick<WebMcpTool, "group" | "available">> = {}
+): WebMcpTool => ({
   name,
   description,
   inputSchema: schema,
+  group: "pageObject",
+  available: true,
+  ...reading,
 });
 
 /** An in-memory tool source; `run` calls the given implementation. */
@@ -126,6 +133,25 @@ describe("startWebMcpPublication", () => {
     expect(source.run).toHaveBeenCalledExactlyOnceWith("Todo.add", {
       title: "Milk",
     });
+  });
+
+  it("publishes the available tools, but Peek Tools and screenshot", async () => {
+    const tools = toolSource([
+      tool("snapshot", undefined, { group: "agent" }),
+      tool("screenshot", undefined, { group: "browser" }),
+      tool("peek.cart", undefined, { group: "peek" }),
+      tool("Dialog.close", undefined, { available: false }),
+    ]);
+    await publish(tools.source).retry();
+
+    expect(driver.names()).toEqual(["snapshot"]);
+
+    tools.set([
+      tool("snapshot", undefined, { group: "agent" }),
+      tool("Dialog.close"),
+    ]);
+    await flush();
+    expect(driver.names()).toEqual(["snapshot", "Dialog.close"]);
   });
 
   it("follows the source: withdraws what it stops listing and registers what it adds", async () => {
@@ -258,18 +284,13 @@ describe("startWebMcpPublication", () => {
 
   it("reports a source that cannot list as failed, and publishes on a retry once it can", async () => {
     const tools = toolSource([tool("click")]);
-    tools.fail(
-      new Error(
-        'Cannot publish the tool "click": another published tool already uses that name.'
-      )
-    );
+    tools.fail(new Error("The tools cannot be listed."));
     const publication = publish(tools.source);
     await publication.retry();
 
     expect(statuses.at(-1)).toEqual({
       state: "failed",
-      message:
-        'WebMCP publication failed: Cannot publish the tool "click": another published tool already uses that name.',
+      message: "WebMCP publication failed: The tools cannot be listed.",
     });
     expect(driver.names()).toEqual([]);
 
@@ -283,12 +304,12 @@ describe("startWebMcpPublication", () => {
     const tools = toolSource([tool("snapshot")]);
     await publish(tools.source).retry();
 
-    tools.fail(new Error("clash"));
+    tools.fail(new Error("Not listed."));
     await flush();
 
     expect(statuses.at(-1)).toEqual({
       state: "failed",
-      message: "WebMCP publication failed: clash",
+      message: "WebMCP publication failed: Not listed.",
     });
     expect(driver.names()).toEqual([]);
     expect(tools.listeners.size).toBe(0);

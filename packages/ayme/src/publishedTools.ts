@@ -30,7 +30,7 @@ export type PublishedTool =
 /**
  * Where a tool comes from: a Page Object (Page Object Tool), Ayme's
  * Browser Tools, the app's Custom Tools, the app's Peeks (Peek Tools), or the
- * agent's own tools (`snapshot`, `goal`). WebMCP never publishes a Peek Tool.
+ * agent's own tools (`snapshot`, `goal`).
  */
 export type PublishedToolGroup =
   "pageObject" | "browser" | "custom" | "peek" | "agent";
@@ -99,22 +99,6 @@ function resolveRegisteredTools(): Map<string, ResolvedTool> {
       available: true,
     });
   return tools;
-}
-
-/**
- * Package-internal: the tools WebMCP publishes, in publication order: the
- * available ones, but those marked `webMcp: false`, whose results WebMCP
- * cannot carry. Throws when two registered tools would share a name.
- */
-export function listWebMcpTools(): readonly PublishedToolInfo[] {
-  return toInfo(
-    [...resolveRegisteredTools().values()].flatMap(
-      ({ tool, group, available }) =>
-        available && !("webMcp" in tool && tool.webMcp === false)
-          ? [{ tool, group }]
-          : []
-    )
-  );
 }
 
 // The Peek Tools already warned about, so a clash is logged once.
@@ -189,18 +173,8 @@ export async function listElementToolTargets(
   );
 }
 
-/** Each tool's reading, with its availability when it has one. */
-function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[];
-function toInfo(
-  tools: readonly { tool: PublishedTool; group: PublishedToolGroup }[]
-): readonly PublishedToolInfo[];
-function toInfo(
-  tools: readonly {
-    tool: PublishedTool;
-    group: PublishedToolGroup;
-    available?: boolean;
-  }[]
-) {
+/** Each tool's reading. */
+function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
   return Object.freeze(
     tools.map(({ tool, group, available }) =>
       Object.freeze({
@@ -208,7 +182,7 @@ function toInfo(
         description: tool.description,
         inputSchema: tool.inputSchema,
         group,
-        ...(available === undefined ? {} : { available }),
+        available,
       })
     )
   );
