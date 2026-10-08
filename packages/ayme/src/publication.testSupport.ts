@@ -1,42 +1,41 @@
 /**
- * Test support: the started session's published tools as the calling agent
- * calls them, and a Goal Loop decision function that runs given operations.
+ * Test support: the started session's tools as an agent calls them through
+ * WebMCP, and a Goal Loop decision function that runs given operations.
  */
 import type { DecisionResponse } from "./decisionTypes";
-import { runPublished } from "./agentCalls.testSupport";
+import { errorText, RuntimeStateError } from "./errors";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
-import { synchronizeWebMcpTools } from "./webMcp";
+import { listWebMcpTools } from "./publishedTools";
+import { callers } from "./run";
+import { getStartedAyme } from "./runtime";
 
-type PublishedTool = {
-  name: string;
-  execute(input: unknown): Promise<unknown>;
-};
-
-/** Publish the started session's tools, as the calling agent sees them. */
-export async function publishTools() {
-  const published = new Map<string, PublishedTool>();
-  const { dispose } = await synchronizeWebMcpTools(
-    {
-      async registerTool(
-        tool: PublishedTool,
-        { signal }: { signal: AbortSignal }
-      ) {
-        published.set(tool.name, tool);
-        signal.addEventListener("abort", () => {
-          if (published.get(tool.name) === tool) published.delete(tool.name);
-        });
-      },
-    },
-    { run: runPublished }
-  );
+/**
+ * The started session's tools as WebMCP publishes them to an agent, without
+ * a driver. A call is a `webmcp` Run, as an agent's call through
+ * `@ayme-dev/webmcp` is, and a failure is the `isError` result the agent
+ * gets for it.
+ */
+export function agentTools() {
+  const ayme = getStartedAyme();
+  if (!ayme) throw new Error("Start a session before calling its tools.");
   return {
-    /** Call a published tool as the calling agent. */
-    call(name: string, input: unknown) {
-      const tool = published.get(name);
-      if (!tool) throw new Error(`Tool ${name} was not published.`);
-      return tool.execute(input);
+    /** The names of the tools WebMCP publishes now, in publication order. */
+    names: () => listWebMcpTools().map(({ name }) => name),
+    /** Call a tool as the agent. */
+    call: async (name: string, input: unknown): Promise<unknown> => {
+      if (!listWebMcpTools().some((tool) => tool.name === name))
+        throw new RuntimeStateError(`Tool ${name} is not published.`);
+      try {
+        return await ayme.tools.run(name, input as never, {
+          by: callers.webmcp,
+        });
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: errorText(error) }],
+          isError: true,
+        };
+      }
     },
-    dispose,
   };
 }
 

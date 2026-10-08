@@ -32,7 +32,12 @@
         "$TURBO_ROOT$/packages/unplugin-ayme/package.json",
         "$TURBO_ROOT$/packages/unplugin-ayme/tsdown.config.ts",
         "$TURBO_ROOT$/packages/unplugin-ayme/README.md",
-        "$TURBO_ROOT$/packages/unplugin-ayme/LICENSE"
+        "$TURBO_ROOT$/packages/unplugin-ayme/LICENSE",
+        "$TURBO_ROOT$/packages/webmcp/src/**",
+        "$TURBO_ROOT$/packages/webmcp/package.json",
+        "$TURBO_ROOT$/packages/webmcp/tsdown.config.ts",
+        "$TURBO_ROOT$/packages/webmcp/README.md",
+        "$TURBO_ROOT$/packages/webmcp/LICENSE"
       ]
     }
   }

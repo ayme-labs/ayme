@@ -14,7 +14,7 @@ import {
   publishedToolSchema,
   recordPublishedTools,
   type RecordingDriver,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/webmcp/testing";
 import {
   connectPage,
   freePort,

@@ -1,5 +1,4 @@
-import type { Page } from "@playwright/test";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   callers,
   createAyme,
@@ -13,24 +12,17 @@ import { ACTION_RESULT_NOTE } from "./actionSequence";
 import { listElementTools } from "./browserTools";
 import { renderChangeRecord } from "./changeRecord";
 import { getInteractionHistory } from "./pageState";
-import { executePublishedTool, recordPublishedToolsLate } from "./testing";
+import { agentTools } from "./publication.testSupport";
 
 // Runtime object seam: an action's result reports what changed on the page
 // before it, since its Caller last received the page, apart from what the
 // action itself changed.
-
-// The recording driver's helpers evaluate in the page; this test runs there.
-const inPage = {
-  evaluate: async (fn: (arg: unknown) => unknown, arg: unknown) => fn(arg),
-} as unknown as Page;
 
 const ADD = { target: "role=button[name='Add']" };
 
 describe("The two parts of a Change Record, in Chromium", () => {
   let ayme: Ayme;
   let stop: (() => void) | undefined;
-
-  beforeAll(() => recordPublishedToolsLate(inPage));
 
   afterEach(() => {
     stop?.();
@@ -194,17 +186,12 @@ describe("The two parts of a Change Record, in Chromium", () => {
   });
 
   it("gives an agent's WebMCP call the same two parts, and the before capture no Run or Interaction", async () => {
-    start({ webMCP: { enabled: true } });
-    await expect.poll(() => ayme.webMCP.publicationStatus.state).toBe("active");
-    await executePublishedTool(inPage, "snapshot", {});
+    start();
+    await agentTools().call("snapshot", {});
     const runsBefore = ayme.runs.list().length;
 
     drift("Drifted");
-    const result = (await executePublishedTool(
-      inPage,
-      "click",
-      ADD
-    )) as ActionResult;
+    const result = (await agentTools().call("click", ADD)) as ActionResult;
 
     expect(result.changes_before).toContain("Drifted");
     expect(result.changes).toContain("Item 1");

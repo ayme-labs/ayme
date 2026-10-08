@@ -1,8 +1,8 @@
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { runPublished } from "./agentCalls.testSupport";
 import { createPage } from "./browserPage";
 import { ayme } from "./agentCalls.testSupport";
+import { listWebMcpTools } from "./publishedTools";
 import {
   createAymeRuntime,
   createPageRegistration,
@@ -12,7 +12,6 @@ import {
   probeRegisteredPomMembers,
   registerCompiledPom,
 } from "./registry";
-import { synchronizeWebMcpTools } from "./webMcp";
 import type {
   PomComponentMemberManifest,
   PomManifest,
@@ -60,6 +59,7 @@ const manifest = (
   ],
 });
 const names = () => listAvailablePomTools().map((tool) => tool.name);
+const publishedNames = () => listWebMcpTools().map((tool) => tool.name);
 
 describe("live Page Object availability", () => {
   let page: ReturnType<typeof createPage>;
@@ -260,94 +260,75 @@ describe("live Page Object availability", () => {
     }
     registerCompiledPom(Shell, manifest("Shell", [child("sidebar")]));
     createPageRegistration(Shell);
-    const published = new Map<string, unknown>();
-    const publication = await synchronizeWebMcpTools(
-      {
-        async registerTool(
-          tool: { name: string },
-          options?: { signal?: AbortSignal }
-        ) {
-          published.set(tool.name, tool);
-          options?.signal?.addEventListener("abort", () => {
-            if (published.get(tool.name) === tool) published.delete(tool.name);
-          });
-        },
-      },
-      { run: runPublished }
-    );
-    try {
-      await expect
-        .poll(() => [...published.keys()])
-        .toEqual([
-          "snapshot",
-          "click",
-          "hover",
-          "type",
-          "fill",
-          "check",
-          "uncheck",
-          "select_option",
-          "fill_form",
-          "press_key",
-          "generate_locator",
-          "navigate",
-          "navigate_back",
-          "navigate_forward",
-          "reload",
-          "Shell.sidebar.close",
-        ]);
-      const rule = document.querySelector<HTMLStyleElement>(
-        "#availability-style"
-      )!.sheet!.cssRules[0] as CSSStyleRule;
-      rule.style.visibility = "hidden";
-      expect(
-        getComputedStyle(document.getElementById("sidebar")!).visibility
-      ).toBe("hidden");
-      window.dispatchEvent(new Event("resize"));
-      await expect
-        .poll(() => [...published.keys()])
-        .toEqual([
-          "snapshot",
-          "click",
-          "hover",
-          "type",
-          "fill",
-          "check",
-          "uncheck",
-          "select_option",
-          "fill_form",
-          "press_key",
-          "generate_locator",
-          "navigate",
-          "navigate_back",
-          "navigate_forward",
-          "reload",
-        ]);
-      rule.style.visibility = "visible";
-      window.dispatchEvent(new Event("transitionend"));
-      await expect
-        .poll(() => [...published.keys()])
-        .toEqual([
-          "snapshot",
-          "click",
-          "hover",
-          "type",
-          "fill",
-          "check",
-          "uncheck",
-          "select_option",
-          "fill_form",
-          "press_key",
-          "generate_locator",
-          "navigate",
-          "navigate_back",
-          "navigate_forward",
-          "reload",
-          "Shell.sidebar.close",
-        ]);
-    } finally {
-      publication.dispose();
-    }
+    await expect
+      .poll(publishedNames)
+      .toEqual([
+        "snapshot",
+        "click",
+        "hover",
+        "type",
+        "fill",
+        "check",
+        "uncheck",
+        "select_option",
+        "fill_form",
+        "press_key",
+        "generate_locator",
+        "navigate",
+        "navigate_back",
+        "navigate_forward",
+        "reload",
+        "Shell.sidebar.close",
+      ]);
+    const rule = document.querySelector<HTMLStyleElement>(
+      "#availability-style"
+    )!.sheet!.cssRules[0] as CSSStyleRule;
+    rule.style.visibility = "hidden";
+    expect(
+      getComputedStyle(document.getElementById("sidebar")!).visibility
+    ).toBe("hidden");
+    window.dispatchEvent(new Event("resize"));
+    await expect
+      .poll(publishedNames)
+      .toEqual([
+        "snapshot",
+        "click",
+        "hover",
+        "type",
+        "fill",
+        "check",
+        "uncheck",
+        "select_option",
+        "fill_form",
+        "press_key",
+        "generate_locator",
+        "navigate",
+        "navigate_back",
+        "navigate_forward",
+        "reload",
+      ]);
+    rule.style.visibility = "visible";
+    window.dispatchEvent(new Event("transitionend"));
+    await expect
+      .poll(publishedNames)
+      .toEqual([
+        "snapshot",
+        "click",
+        "hover",
+        "type",
+        "fill",
+        "check",
+        "uncheck",
+        "select_option",
+        "fill_form",
+        "press_key",
+        "generate_locator",
+        "navigate",
+        "navigate_back",
+        "navigate_forward",
+        "reload",
+        "Shell.sidebar.close",
+      ]);
   });
 
   it("does not publish a disposed registration after its async observation completes", async () => {
@@ -541,17 +522,9 @@ describe("live Page Object availability", () => {
     const timer = setInterval(() => {
       ticker.textContent = String(++ticks);
     }, 5);
-    const published: string[] = [];
     let completed = false;
     const result = Promise.all([
-      synchronizeWebMcpTools(
-        {
-          async registerTool(tool: { name: string }) {
-            published.push(tool.name);
-          },
-        },
-        { run: runPublished }
-      ),
+      probeRegisteredPomMembers(),
       ayme.getPageState(),
     ]).then((value) => {
       completed = true;
@@ -562,7 +535,7 @@ describe("live Page Object availability", () => {
       const [, state] = await result;
       expect(ticks).toBeGreaterThan(0);
       expect(state.text).toContain("SlowShell.panels[0]");
-      expect(published).toEqual([
+      expect(publishedNames()).toEqual([
         "snapshot",
         "click",
         "hover",
@@ -582,7 +555,6 @@ describe("live Page Object availability", () => {
       ]);
     } finally {
       clearInterval(timer);
-      (await result)[0].dispose();
     }
   });
 

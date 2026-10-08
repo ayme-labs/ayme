@@ -1,14 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DecisionRequest } from "./decisionTypes";
-import { runPublished } from "./agentCalls.testSupport";
 import type { ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { RuntimeStateError } from "./errors";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
+import { listWebMcpTools } from "./publishedTools";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme, type AymeOptions } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
 
 // Runtime object seam: an app adds Peeks with `ayme.peek` and reads them as
 // Peek Tools through `ayme.tools`, the set the Agent Connection's page client
@@ -394,28 +393,16 @@ describe("where Peek Tools appear", () => {
   it("leaves them out of WebMCP publication", async () => {
     const ayme = started({ agentConnection: true });
     peek(ayme, () => ({ open: true }), "menu");
-    const published = new Map<string, unknown>();
-    const publication = await synchronizeWebMcpTools(
-      {
-        async registerTool(tool: { name: string }) {
-          published.set(tool.name, tool);
-        },
-      } as never,
-      { run: runPublished }
-    );
-    cleanups.push(publication.dispose);
+    const published = () => listWebMcpTools().map(({ name }) => name);
 
     expect(toolNames(ayme)).toContain("peek.menu");
-    expect(published.has("snapshot")).toBe(true);
-    expect(
-      [...published.keys()].filter((name) => name.startsWith("peek."))
-    ).toEqual([]);
+    expect(published()).toContain("snapshot");
+    expect(published().filter((name) => name.startsWith("peek."))).toEqual([]);
 
     peek(ayme, () => 1, "later");
     await nextTurn();
-    expect(
-      [...published.keys()].filter((name) => name.startsWith("peek."))
-    ).toEqual([]);
+    expect(toolNames(ayme)).toContain("peek.later");
+    expect(published().filter((name) => name.startsWith("peek."))).toEqual([]);
   });
 
   it("never offers them to the Goal Loop", async () => {

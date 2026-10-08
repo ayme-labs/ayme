@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
-import { operations, publishTools } from "./publication.testSupport";
+import { agentTools, operations } from "./publication.testSupport";
 import { createAyme, type Ayme } from "./runtime";
 import { toolFailure } from "./toolFailure.testSupport";
 
@@ -28,7 +28,6 @@ describe("the navigate tool, in Chromium", () => {
   let ayme: Ayme;
   let call: (name: string, input: unknown) => Promise<unknown>;
   let stop: () => void;
-  let disposePublication: () => void;
   let listening: AbortController;
   let decide: GoalLoopDecisionFunction;
   const start = location.href;
@@ -65,13 +64,12 @@ describe("the navigate tool, in Chromium", () => {
       goalLoop: (request) => decide(request),
     });
     stop = ayme.start();
-    ({ call, dispose: disposePublication } = await publishTools());
+    ({ call } = agentTools());
     await call("snapshot", {});
   });
 
   afterEach(() => {
     listening.abort();
-    disposePublication();
     stop();
     history.replaceState(null, "", start);
     document.body.innerHTML = "";
@@ -223,7 +221,6 @@ describe("the navigate tool, in Chromium", () => {
 describe("the navigate tool with a router function, in Chromium", () => {
   let call: (name: string, input: unknown) => Promise<unknown>;
   let stop: () => void;
-  let disposePublication: () => void;
   let heading: HTMLHeadingElement;
   // What the app's router was asked to open; it lives only in this document.
   let routed: string[];
@@ -249,12 +246,11 @@ describe("the navigate tool with a router function, in Chromium", () => {
         return route(url);
       },
     }).start();
-    ({ call, dispose: disposePublication } = await publishTools());
+    ({ call } = agentTools());
     await call("snapshot", {});
   });
 
   afterEach(() => {
-    disposePublication();
     stop();
     history.replaceState(null, "", start);
     document.body.innerHTML = "";
@@ -323,7 +319,6 @@ describe("the navigate tool with a router function, in Chromium", () => {
 describe("the navigate tool on a Page that navigates late, in Chromium", () => {
   let call: (name: string, input: unknown) => Promise<unknown>;
   let stop: () => void;
-  let disposePublication: () => void;
   let listening: AbortController;
   const start = location.href;
 
@@ -355,13 +350,12 @@ describe("the navigate tool on a Page that navigates late, in Chromium", () => {
     stop = createAyme({
       pageFactory: () => lateGoto(createPage({ actionTimeout: 500 })),
     }).start();
-    ({ call, dispose: disposePublication } = await publishTools());
+    ({ call } = agentTools());
     await call("snapshot", {});
   });
 
   afterEach(() => {
     listening.abort();
-    disposePublication();
     stop();
     history.replaceState(null, "", start);
     document.body.innerHTML = "";

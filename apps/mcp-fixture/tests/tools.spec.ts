@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   publishedToolNames,
   recordPublishedTools,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/webmcp/testing";
 
 import { SERVER_TOOLS, addItemRef, expect, test } from "./fixtures";
 

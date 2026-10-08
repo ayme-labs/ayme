@@ -17,7 +17,7 @@ export {
   getPomDefinitionText,
 } from "./pageContext";
 export { getPomDefinitions } from "./pomDefinitions";
-export { listPublishedTools, listElementToolTargets } from "./publishedTools";
+export { listElementToolTargets } from "./publishedTools";
 export type { PublishedToolGroup, PublishedToolInfo } from "./publishedTools";
 export {
   configureAymeRuntime,
@@ -39,10 +39,8 @@ export type {
 // every violation before Run that the call would fail on.
 export { toolInputViolations } from "./schemaValidation";
 export type { SchemaViolation } from "./schemaValidation";
-export { synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
 export { subscribeToAgentImageRuns } from "./agentImageRuns";
 export type { AgentImageRun } from "./agentImageRuns";
-export type { WebMcpDriver, WebMcpRegistration } from "./webMcp";
 // The runtime session and its types are public (ADR-0031); this entry keeps
 // the plugin's registration, the framework packages' fixed-options check and
 // render-session marker, and the inspector's instrumentation, its way to the

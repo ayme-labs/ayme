@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createPage } from "./browserPage";
-import { operations, publishTools } from "./publication.testSupport";
+import { agentTools, operations } from "./publication.testSupport";
 import { requireAymeRuntimePage } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
 
@@ -15,7 +15,6 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
   let ayme: Ayme;
   let call: (name: string, input: unknown) => Promise<unknown>;
   let stop: () => void;
-  let disposePublication: () => void;
   let listening: AbortController;
 
   /** The app opens `title` as a new history entry of the same document. */
@@ -24,7 +23,7 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
     document.querySelector("h1")!.textContent = title;
   }
 
-  beforeEach(async () => {
+  beforeEach(() => {
     document.body.innerHTML = `<main><h1>Start page</h1></main>`;
     history.replaceState({ title: "Start page" }, "");
     listening = new AbortController();
@@ -49,12 +48,11 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
       },
     });
     stop = ayme.start();
-    ({ call, dispose: disposePublication } = await publishTools());
+    ({ call } = agentTools());
   });
 
   afterEach(async () => {
     listening.abort();
-    disposePublication();
     stop();
     if (navigation.currentEntry!.key !== firstEntry.key) {
       // The traversal's popstate can come after it finishes; it must not

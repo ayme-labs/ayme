@@ -13,7 +13,7 @@ import {
 import {
   recordPublishedTools,
   type RecordingDriver,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/webmcp/testing";
 
 /**
  * Opens the playground with the Inspector collapsed, for a test that clicks

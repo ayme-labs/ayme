@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { executePublishedTool } from "@ayme-dev/ayme/testing";
+import { executePublishedTool } from "@ayme-dev/webmcp/testing";
 
 import { AgentView } from "./agentView";
 import { expect, INSPECTOR, openFixture, test } from "./fixtures";

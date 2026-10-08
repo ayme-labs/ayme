@@ -1,13 +1,6 @@
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig, type Plugin } from "vitest/config";
 
-const chromium = (args: string[] = []) => ({
-  enabled: true,
-  headless: true,
-  instances: [{ browser: "chromium" as const }],
-  provider: playwright({ launchOptions: { args } }),
-});
-
 // Pages a test can start a full load to without leaving the test document:
 // a 204 drops the load, and `/__redirect` redirects to it.
 const noContent: Plugin = {
@@ -32,17 +25,13 @@ export default defineConfig({
         plugins: [noContent],
         test: {
           name: "chromium",
-          browser: chromium(),
+          browser: {
+            enabled: true,
+            headless: true,
+            instances: [{ browser: "chromium" }],
+            provider: playwright(),
+          },
           include: ["src/**/*.browser.test.ts"],
-          exclude: ["src/**/*.native.browser.test.ts"],
-        },
-      },
-      {
-        // Chromium's own WebMCP implementation of document.modelContext.
-        test: {
-          name: "native-webmcp",
-          browser: chromium(["--enable-features=WebMCP,WebMCPTesting"]),
-          include: ["src/**/*.native.browser.test.ts"],
         },
       },
     ],

@@ -7,7 +7,7 @@ import {
 import {
   publishedToolNames,
   recordPublishedTools,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/webmcp/testing";
 import { CounterPage } from "../playwright/pom/CounterPage";
 
 // The shared certification, against the dev server and the production build.

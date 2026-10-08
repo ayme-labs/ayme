@@ -102,30 +102,19 @@ function resolveRegisteredTools(): Map<string, ResolvedTool> {
 }
 
 /**
- * Package-internal: the tools WebMCP publication registers, by name, in
- * publication order: the available ones. Throws when two registered tools
- * would share a name.
+ * Package-internal: the tools WebMCP publishes, in publication order: the
+ * available ones, but those marked `webMcp: false`, whose results WebMCP
+ * cannot carry. Throws when two registered tools would share a name.
  */
-export function resolvePublishedTools(): Map<
-  string,
-  { tool: PublishedTool; group: PublishedToolGroup }
-> {
-  return new Map(
-    [...resolveRegisteredTools()].flatMap(
-      ([name, { tool, group, available }]) =>
-        available ? [[name, { tool, group }] as const] : []
+export function listWebMcpTools(): readonly PublishedToolInfo[] {
+  return toInfo(
+    [...resolveRegisteredTools().values()].flatMap(
+      ({ tool, group, available }) =>
+        available && !("webMcp" in tool && tool.webMcp === false)
+          ? [{ tool, group }]
+          : []
     )
   );
-}
-
-let publishedTools: readonly PublishedToolInfo[] = Object.freeze([]);
-
-/**
- * The tools registered with WebMCP right now, in publication order. Empty
- * while publication is disabled, waiting, unavailable, failed or disposed.
- */
-export function listPublishedTools(): readonly PublishedToolInfo[] {
-  return publishedTools;
 }
 
 // The Peek Tools already warned about, so a clash is logged once.
@@ -198,16 +187,6 @@ export async function listElementToolTargets(
       acceptedRefNodes(filter, current).map((node) => node.ref),
     ])
   );
-}
-
-/** Package-internal: `synchronizeWebMcpTools` registered or withdrew tools. */
-export function reportPublishedTools(
-  tools: readonly {
-    tool: PublishedTool;
-    group: PublishedToolGroup;
-  }[]
-) {
-  publishedTools = toInfo(tools);
 }
 
 /** Each tool's reading, with its availability when it has one. */

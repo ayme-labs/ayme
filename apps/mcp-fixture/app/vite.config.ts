@@ -10,14 +10,18 @@ import { defineConfig } from "vite";
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
   plugins: [ayme()],
-  // The runtime imports the page client and the Inspector only once the
-  // session starts. Found that late, Vite would optimize their dependencies
+  // The runtime imports the page client, WebMCP publication and the
+  // Inspector only once the session starts. Found that late, Vite would optimize their dependencies
   // and reload the page, after the client already took the connect link
   // from the address bar. Forced, so a rebuilt package is never served from
   // a stale cache. The runtime stays out of the Inspector's bundle, so both
   // share the page's one runtime and its started session.
   optimizeDeps: {
-    include: ["@ayme-dev/mcp/client", "@ayme-dev/inspector"],
+    include: [
+      "@ayme-dev/mcp/client",
+      "@ayme-dev/webmcp",
+      "@ayme-dev/inspector",
+    ],
     exclude: ["@ayme-dev/ayme"],
     force: true,
   },

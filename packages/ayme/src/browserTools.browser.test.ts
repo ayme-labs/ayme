@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
-import { runPublished } from "./agentCalls.testSupport";
 import {
   isCheckableElement,
   isClickableElement,
@@ -17,15 +16,9 @@ import {
   shapeOf,
   withoutElement,
 } from "./playwrightMcp.testSupport";
-import { listElementToolTargets } from "./publishedTools";
+import { agentTools } from "./publication.testSupport";
+import { listElementToolTargets, listWebMcpTools } from "./publishedTools";
 import { createAyme } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
-
-type PublishedTool = {
-  name: string;
-  inputSchema: unknown;
-  execute(input: unknown): Promise<unknown>;
-};
 
 const BROWSER_TOOLS = [
   "click",
@@ -61,13 +54,11 @@ const FIXTURE = `
 `;
 
 describe("Browser Tools in Chromium", () => {
-  let tools: Map<string, PublishedTool>;
   let stop: () => void;
-  let dispose: () => void;
   let listening: AbortController;
   const log: string[] = [];
 
-  beforeEach(async () => {
+  beforeEach(() => {
     document.body.innerHTML = FIXTURE;
     log.length = 0;
     listening = new AbortController();
@@ -85,27 +76,15 @@ describe("Browser Tools in Chromium", () => {
       pageFactory: () => createPage({ actionTimeout: 500 }),
     });
     stop = session.start();
-    tools = new Map();
-    const publication = await synchronizeWebMcpTools(
-      {
-        async registerTool(tool: PublishedTool) {
-          tools.set(tool.name, tool);
-        },
-      } as never,
-      { run: runPublished }
-    );
-    dispose = publication.dispose;
   });
 
   afterEach(() => {
     listening.abort();
-    dispose();
     stop();
     document.body.innerHTML = "";
   });
 
-  const call = (name: string, input: unknown) =>
-    tools.get(name)!.execute(input);
+  const call = (name: string, input: unknown) => agentTools().call(name, input);
 
   async function refOf(label: string) {
     const { structure } = (await call("snapshot", {})) as {
@@ -123,6 +102,7 @@ describe("Browser Tools in Chromium", () => {
     document.querySelector<HTMLInputElement>("#agree")!.checked;
 
   it("publishes the Browser Tools with Playwright MCP's input fields, without element", () => {
+    const tools = new Map(listWebMcpTools().map((tool) => [tool.name, tool]));
     for (const name of BROWSER_TOOLS) expect(tools.has(name), name).toBe(true);
     for (const [name, counterpart] of Object.entries(
       PLAYWRIGHT_MCP_COUNTERPARTS

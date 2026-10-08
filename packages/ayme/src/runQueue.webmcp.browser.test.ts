@@ -1,15 +1,10 @@
-import type { Page } from "@playwright/test";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createAyme, createPage, type ActionResult, type Ayme } from "./index";
-import { executePublishedTool, recordPublishedToolsLate } from "./testing";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createAyme, createPage, type Ayme } from "./index";
+import { agentTools } from "./publication.testSupport";
 
-// Runtime object seam, with an agent calling through the recording WebMCP
-// driver: its Runs take their turn on the same queue as the app's.
-
-// The recording driver's helpers evaluate in the page; this test runs there.
-const inPage = {
-  evaluate: async (fn: (arg: unknown) => unknown, arg: unknown) => fn(arg),
-} as unknown as Page;
+// Runtime object seam, with an agent calling through WebMCP (a `webmcp` Run,
+// through the publication harness): its Runs take their turn on the same
+// queue as the app's.
 
 const SAVE = { target: "role=button[name='Save']" };
 
@@ -17,9 +12,7 @@ describe("WebMCP Runs on the page's queue, in Chromium", () => {
   let ayme: Ayme;
   let stop: () => void;
 
-  beforeAll(() => recordPublishedToolsLate(inPage));
-
-  beforeEach(async () => {
+  beforeEach(() => {
     // Each click saves a moment later, within the Settled Page's quiet
     // window. A click while a save is still pending leaves "Overlap".
     document.body.innerHTML = "<main><button>Save</button></main>";
@@ -35,12 +28,8 @@ describe("WebMCP Runs on the page's queue, in Chromium", () => {
         main.insertAdjacentHTML("beforeend", `<p>Saved ${saves}</p>`);
       }, 100);
     });
-    ayme = createAyme({
-      pageFactory: () => createPage(),
-      webMCP: { enabled: true },
-    });
+    ayme = createAyme({ pageFactory: () => createPage() });
     stop = ayme.start();
-    await expect.poll(() => ayme.webMCP.publicationStatus.state).toBe("active");
   });
 
   afterEach(() => {
@@ -50,7 +39,7 @@ describe("WebMCP Runs on the page's queue, in Chromium", () => {
 
   it("runs an agent's WebMCP call and the app's Run started at once one after the other", async () => {
     await Promise.all([
-      executePublishedTool(inPage, "click", SAVE) as Promise<ActionResult>,
+      agentTools().call("click", SAVE),
       ayme.tools.run("click", SAVE),
     ]);
 

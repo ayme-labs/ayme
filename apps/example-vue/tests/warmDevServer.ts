@@ -2,7 +2,7 @@ import { chromium, type FullConfig } from "@playwright/test";
 import {
   recordPublishedTools,
   waitForPublishedTool,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/webmcp/testing";
 import { ignoreAutoPairScan } from "@ayme-dev/mcp/testing";
 
 /**

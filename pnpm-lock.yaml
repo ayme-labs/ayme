@@ -109,6 +109,9 @@ importers:
       "@ayme-dev/mcp":
         specifier: workspace:*
         version: link:../../packages/mcp
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       express:
         specifier: ^5.1.0
         version: 5.2.1(supports-color@10.2.2)
@@ -170,6 +173,9 @@ importers:
       "@ayme-dev/mcp":
         specifier: workspace:*
         version: link:../../packages/mcp
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
@@ -204,6 +210,9 @@ importers:
       "@ayme-dev/react":
         specifier: workspace:*
         version: link:../../packages/react
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       next:
         specifier: 16.3.4
         version: 16.3.4(@babel/core@8.0.5)(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.104.1)
@@ -262,6 +271,9 @@ importers:
       "@ayme-dev/vue":
         specifier: workspace:*
         version: link:../../packages/vue
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       nuxt:
         specifier: 4.5.2
         version: 4.5.2(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@oxc-project/types@0.150.0)(@parcel/watcher@2.6.0)(@types/node@24.13.3)(@vue/compiler-sfc@3.5.42)(db0@0.3.4)(esbuild@0.28.2)(eslint@10.9.1(jiti@2.7.0)(supports-color@10.2.2))(ioredis@5.11.1(supports-color@10.2.2))(lightningcss@1.33.0)(magicast@0.5.5)(optionator@0.9.4)(oxc-parser@0.150.0)(rolldown@1.2.8)(rollup-plugin-visualizer@7.1.1(rolldown@1.2.8)(rollup@4.63.1))(rollup@4.63.1)(sass-embedded@1.104.1)(sass@1.104.1)(srvx@0.11.22)(supports-color@10.2.2)(terser@5.51.2)(tsx@4.23.13)(typescript@6.0.3)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vue-tsc@3.3.11(typescript@6.0.3))(yaml@2.9.0)
@@ -314,6 +326,9 @@ importers:
       "@ayme-dev/react":
         specifier: workspace:*
         version: link:../../packages/react
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -372,6 +387,9 @@ importers:
       "@ayme-dev/svelte":
         specifier: workspace:*
         version: link:../../packages/svelte
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
@@ -436,6 +454,9 @@ importers:
       "@ayme-dev/vue":
         specifier: workspace:*
         version: link:../../packages/vue
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       "@lucide/vue":
         specifier: ^1.47.0
         version: 1.47.0(vue@3.5.42(typescript@6.0.3))
@@ -524,6 +545,9 @@ importers:
       "@ayme-dev/mcp":
         specifier: workspace:*
         version: link:../../packages/mcp
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -578,6 +602,9 @@ importers:
       "@ayme-dev/mcp":
         specifier: workspace:*
         version: link:../../packages/mcp
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
@@ -640,6 +667,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../webmcp
       "@schematics/angular":
         specifier: ^22.2.1
         version: 22.2.1(chokidar@5.0.0)
@@ -673,9 +703,9 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../inspector
-      "@mcp-b/webmcp-types":
-        specifier: ^5.0.1
-        version: 5.0.1
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../webmcp
     devDependencies:
       "@ayme-dev/core":
         specifier: workspace:*
@@ -692,9 +722,6 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
-      "@mcp-b/webmcp-polyfill":
-        specifier: 5.1.0
-        version: 5.1.0
       "@playwright/test":
         specifier: ^1.62.1
         version: 1.62.1
@@ -968,6 +995,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../webmcp
       "@types/react":
         specifier: ^19.0.0
         version: 19.2.18
@@ -1011,6 +1041,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../webmcp
       "@vitest/browser-playwright":
         specifier: ^4.1.11
         version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
@@ -1087,6 +1120,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../webmcp
       "@vitest/browser-playwright":
         specifier: ^4.1.11
         version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
@@ -1111,6 +1147,46 @@ importers:
       vue:
         specifier: ^3.5.42
         version: 3.5.42(typescript@6.0.3)
+
+  packages/webmcp:
+    dependencies:
+      "@mcp-b/webmcp-types":
+        specifier: ^5.0.1
+        version: 5.1.0
+    devDependencies:
+      "@ayme-dev/ayme":
+        specifier: workspace:*
+        version: link:../ayme
+      "@ayme-dev/eslint-config":
+        specifier: workspace:*
+        version: link:../eslint-config
+      "@ayme-dev/typescript-config":
+        specifier: workspace:*
+        version: link:../typescript-config
+      "@playwright/test":
+        specifier: ^1.62.1
+        version: 1.62.1
+      "@types/node":
+        specifier: ^24.0.0
+        version: 24.13.3
+      "@vitest/browser-playwright":
+        specifier: ^4.1.11
+        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      eslint:
+        specifier: ^10.9.1
+        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
+      playwright:
+        specifier: ^1.62.1
+        version: 1.62.1
+      tsdown:
+        specifier: ^0.22.14
+        version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
 
 packages:
   "@alloc/quick-lru@5.3.0":
@@ -2979,13 +3055,6 @@ packages:
     resolution:
       {
         integrity: sha512-KL09hniFssPY8HBO3qzurWPqm+1JYRwV3wx6x2XSySgo+6BL1XHGsHGIoAO7U9zzigv7TA5keNBoZ+3P1jq18g==,
-      }
-    engines: { node: ">=20" }
-
-  "@mcp-b/webmcp-types@5.0.1":
-    resolution:
-      {
-        integrity: sha512-UN7GsTrudXoMWxTL6n6451C19r5nsBzU4WLovRC6YVFnOJk3N5qYwmQySAISEi/0fcWkRDcT3OqAee7/jrl1iA==,
       }
     engines: { node: ">=20" }
 
@@ -6348,6 +6417,7 @@ packages:
       }
     cpu: [arm64]
     os: [android]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-darwin-arm64@0.8.7":
     resolution:
@@ -6356,6 +6426,7 @@ packages:
       }
     cpu: [arm64]
     os: [darwin]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-darwin-x64@0.8.7":
     resolution:
@@ -6364,6 +6435,7 @@ packages:
       }
     cpu: [x64]
     os: [darwin]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-freebsd-x64@0.8.7":
     resolution:
@@ -6372,6 +6444,7 @@ packages:
       }
     cpu: [x64]
     os: [freebsd]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-arm-gnu@0.8.7":
     resolution:
@@ -6381,6 +6454,7 @@ packages:
     cpu: [arm]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-arm-musl@0.8.7":
     resolution:
@@ -6390,6 +6464,7 @@ packages:
     cpu: [arm]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-arm64-gnu@0.8.7":
     resolution:
@@ -6399,6 +6474,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-arm64-musl@0.8.7":
     resolution:
@@ -6408,6 +6484,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-x64-gnu@0.8.7":
     resolution:
@@ -6417,6 +6494,7 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-x64-musl@0.8.7":
     resolution:
@@ -6426,6 +6504,7 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-win32-arm64@0.8.7":
     resolution:
@@ -6434,6 +6513,7 @@ packages:
       }
     cpu: [arm64]
     os: [win32]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-win32-x64@0.8.7":
     resolution:
@@ -6442,6 +6522,7 @@ packages:
       }
     cpu: [x64]
     os: [win32]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-parser/binding-android-arm64@0.8.7":
     resolution:
@@ -6450,6 +6531,7 @@ packages:
       }
     cpu: [arm64]
     os: [android]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-darwin-arm64@0.8.7":
     resolution:
@@ -6458,6 +6540,7 @@ packages:
       }
     cpu: [arm64]
     os: [darwin]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-darwin-x64@0.8.7":
     resolution:
@@ -6466,6 +6549,7 @@ packages:
       }
     cpu: [x64]
     os: [darwin]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-freebsd-x64@0.8.7":
     resolution:
@@ -6474,6 +6558,7 @@ packages:
       }
     cpu: [x64]
     os: [freebsd]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-arm-gnu@0.8.7":
     resolution:
@@ -6483,6 +6568,7 @@ packages:
     cpu: [arm]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-arm-musl@0.8.7":
     resolution:
@@ -6492,6 +6578,7 @@ packages:
     cpu: [arm]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-arm64-gnu@0.8.7":
     resolution:
@@ -6501,6 +6588,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-arm64-musl@0.8.7":
     resolution:
@@ -6510,6 +6598,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-x64-gnu@0.8.7":
     resolution:
@@ -6519,6 +6608,7 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-x64-musl@0.8.7":
     resolution:
@@ -6528,6 +6618,7 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-win32-arm64@0.8.7":
     resolution:
@@ -6536,6 +6627,7 @@ packages:
       }
     cpu: [arm64]
     os: [win32]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-win32-x64@0.8.7":
     resolution:
@@ -6544,6 +6636,7 @@ packages:
       }
     cpu: [x64]
     os: [win32]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-toolchain/types@0.8.7":
     resolution:
@@ -14263,10 +14356,6 @@ snapshots:
     dependencies:
       "@mcp-b/webmcp-types": 5.1.0
       "@standard-schema/spec": 1.1.0
-
-  "@mcp-b/webmcp-types@5.0.1":
-    dependencies:
-      "@modelcontextprotocol/server": 2.0.0
 
   "@mcp-b/webmcp-types@5.1.0":
     dependencies:

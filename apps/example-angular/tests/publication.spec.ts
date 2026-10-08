@@ -7,7 +7,7 @@ import {
   recordPublishedTools,
   recordPublishedToolsLate,
   waitForPublishedTool,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/webmcp/testing";
 
 // The app reads ?publication and ?toolNamePrefix into provideAyme's options.
 const status = (page: Page) =>

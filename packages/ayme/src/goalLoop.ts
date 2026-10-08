@@ -1,6 +1,5 @@
-import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
-import type { JsonSchema, JsonValue } from "./contracts";
+import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
 import type { ActionResult } from "./actionSequence";
 import { renderChangeRecord } from "./changeRecord";
 import type { StartChildRun, RunContext } from "./run";
@@ -64,17 +63,14 @@ export function configureGoalLoop(
  * The `goal` tool; `execute` runs the loop for a Run, whose Caller the
  * Handover hands control back to.
  */
-export type GoalTool = Omit<
-  ModelContextTool<Record<string, unknown>, JsonValue>,
-  "inputSchema" | "execute"
-> & {
+export type GoalTool = ToolDescriptor & {
   inputSchema: JsonSchema;
   execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
 /**
  * Package-internal: returns the `goal` tool when `goalLoop` is
- * configured, `null` otherwise. Called by `synchronizeWebMcpTools`.
+ * configured, `null` otherwise.
  */
 export function getPursueGoalTool(): GoalTool | null {
   const fn = goalLoopStore.decisionFn;
@@ -232,7 +228,7 @@ async function executeToolAction(
 
 // --- The loop ---
 
-/** Create the `goal` ModelContextTool bound to the given decision function and document. */
+/** Create the `goal` tool bound to the given decision function and document. */
 export function createPursueGoalTool(
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document
