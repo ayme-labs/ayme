@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 import {
   test as base,
@@ -21,7 +22,7 @@ import {
   startAgent,
 } from "@ayme-dev/mcp/testing";
 
-import { agentPort, render, server } from "./config";
+import { agentPort, counterPath, render, server } from "./config";
 
 /**
  * Whether a console error is Chromium reporting a refused probe of the Agent
@@ -57,16 +58,24 @@ export const exampleTest = base.extend<{ ignoreAutoPairScan: void }>({
 /**
  * `exampleTest`, failing any test whose page throws, logs a console error
  * or warns about hydration. An example's own specs use it too. It ignores
- * the auto-pair scan's refused probes (`isRefusedAutoPairProbe`).
+ * the auto-pair scan's refused probes (`isRefusedAutoPairProbe`). A
+ * framework that logs hydration statistics in development, such as Angular,
+ * names them in the `hydrationStatistics` option (`test.use`) so they are not
+ * counted as a warning.
  */
-export const test = exampleTest.extend<{ failOnPageErrors: void }>({
+export const test = exampleTest.extend<{
+  failOnPageErrors: void;
+  hydrationStatistics: RegExp | undefined;
+}>({
+  hydrationStatistics: [undefined, { option: true }],
   failOnPageErrors: [
-    async ({ page }, use) => {
+    async ({ page, hydrationStatistics }, use) => {
       const errors: string[] = [];
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("console", (message) => {
         const text = message.text();
         if (isRefusedAutoPairProbe(text)) return;
+        if (hydrationStatistics?.test(text)) return;
         if (message.type() === "error" || /hydrat/i.test(text))
           errors.push(text);
       });
@@ -118,18 +127,34 @@ const aymeTools = [
   "reload",
 ];
 
-/** Opens the counter page with the recording driver and waits for publication. */
-async function openCounter(context: BrowserContext, page: Page) {
+/**
+ * Opens the counter page with the recording driver and waits for publication.
+ * `inspector` is when the app mounts the Inspector.
+ */
+async function openCounter(
+  context: BrowserContext,
+  page: Page,
+  inspector: boolean | undefined
+) {
   await recordPublishedTools(context);
-  // An app may turn the Inspector on in development; it loads after the page,
-  // and its mount can hold the main thread past a Page Object action's 1 s
-  // timeout, so let it land first.
-  const response = await page.goto("/", { waitUntil: "networkidle" });
+  const response = await page.goto(counterPath(), {
+    waitUntil: "networkidle",
+  });
   expect(response?.status()).toBe(200);
   await expect(page.getByRole("status", { name: "Publication" })).toHaveText(
     "Publication: active",
     { timeout: 15_000 }
   );
+  // The runtime imports the Inspector as it starts, and the page's network
+  // can go idle before the import is even requested (the main thread is busy
+  // starting the app) or between its hops. Evaluating the Inspector then
+  // holds the main thread past a Page Object action's 1 s timeout, so the
+  // click through a published tool times out. Its host in the document marks
+  // it mounted.
+  if (inspector)
+    await page
+      .locator("ayme-inspector")
+      .waitFor({ state: "attached", timeout: 15_000 });
   await expect(count(page)).toHaveText("0");
 }
 
@@ -245,12 +270,17 @@ export function serverRenderTests() {
 export function counterTests({
   CounterPage,
   navigation,
+  inspector,
 }: {
   CounterPage: new (page: Page) => { increment(): Promise<void> };
+  /** Whether this page mounts the Inspector. The tests wait for it to mount. */
+  inspector?: boolean;
   navigation?: { away: string; awayText: string; back: string };
 }) {
   test.describe("counter", () => {
-    test.beforeEach(({ context, page }) => openCounter(context, page));
+    test.beforeEach(({ context, page }) =>
+      openCounter(context, page, inspector)
+    );
 
     test("publishes the Page Object's tools with their compiled schemas", async ({
       page,
@@ -419,26 +449,30 @@ export function counterTests({
 /**
  * On the dev server, editing a type the Page Object Model imports rebuilds
  * its published schema without a restart. `counterModePath` is the app's
- * `CounterMode.ts`.
+ * `CounterMode.ts`, as a path or a URL.
  */
 export function devRebuildTests({
   counterModePath,
 }: {
-  counterModePath: string;
+  counterModePath: string | URL;
 }) {
+  const counterModeFile =
+    typeof counterModePath === "string"
+      ? counterModePath
+      : fileURLToPath(counterModePath);
   // `exampleTest`, not `test`: the dev server's own reloads may log errors.
   exampleTest.describe("dev rebuild", () => {
     let original: string | undefined;
     // A hook, unlike a `finally` in the test, also runs after a timeout.
     exampleTest.afterEach(async () => {
-      if (original !== undefined) await writeFile(counterModePath, original);
+      if (original !== undefined) await writeFile(counterModeFile, original);
     });
 
     exampleTest(
       "rebuilds the published schema when an imported type changes",
       async ({ context, page }) => {
         exampleTest.skip(server !== "dev", "Production builds do not rebuild.");
-        original = await readFile(counterModePath, "utf8");
+        original = await readFile(counterModeFile, "utf8");
         const changed = original.replace('"double"', '"triple"');
         expect(changed).not.toBe(original);
         await recordPublishedTools(context);
@@ -462,10 +496,10 @@ export function devRebuildTests({
             )
             .then((schema) => schema.jsonValue());
 
-        await page.goto("/");
+        await page.goto(counterPath());
         expect(await publishedModeSchema()).toContain('"double"');
 
-        await writeFile(counterModePath, changed);
+        await writeFile(counterModeFile, changed);
         // A hot update may replace the edited module without reloading the
         // page, so the page is reloaded until it publishes the rebuilt schema.
         // The load event fires before the app's modules run, so each document

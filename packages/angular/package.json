@@ -31,7 +31,7 @@
   "scripts": {
     "build": "tsdown",
     "lint": "eslint src --max-warnings 0",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -60,8 +60,9 @@
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@schematics/angular": "^22.2.1",
+    "@vitest/browser-playwright": "^4.1.11",
     "eslint": "^10.9.1",
-    "jsdom": "^30.0.1",
+    "playwright": "^1.62.1",
     "rxjs": "^7.8.2",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",

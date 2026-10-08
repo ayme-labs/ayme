@@ -2,7 +2,6 @@ import * as React from "react";
 import { createElement as h, StrictMode, Suspense, useEffect } from "react";
 import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 import * as TestUtils from "react-dom/test-utils";
-import { renderToString } from "react-dom/server";
 import {
   afterEach,
   beforeEach,
@@ -12,7 +11,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { createAyme, type Ayme } from "@ayme-dev/ayme";
+import { createAyme } from "@ayme-dev/ayme";
 import {
   listRegisteredPoms,
   registerCompiledPom,
@@ -64,10 +63,11 @@ afterEach(async () => {
   for (const root of roots.splice(0)) await act(() => root.unmount());
   Reflect.deleteProperty(document, "modelContext");
   vi.mocked(createAyme).mockClear();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
-it("passes the page factory and ignore to the runtime session", async () => {
+it("C1: passes the page factory and ignore to the runtime session", async () => {
   const ignore = (element: Element) => element.matches(".assistant");
   await act(() =>
     root().render(
@@ -86,7 +86,7 @@ it("passes the page factory and ignore to the runtime session", async () => {
   });
 });
 
-it("passes customTools to the runtime session", async () => {
+it("C1: passes customTools to the runtime session", async () => {
   const customTools = [
     {
       name: "highlight_element",
@@ -111,7 +111,7 @@ it("passes customTools to the runtime session", async () => {
   });
 });
 
-it("passes goalLoop to the runtime session", async () => {
+it("C1: passes goalLoop to the runtime session", async () => {
   const goalLoop = vi.fn();
   await act(() =>
     root().render(
@@ -130,7 +130,7 @@ it("passes goalLoop to the runtime session", async () => {
   });
 });
 
-it("passes webMCP to the runtime session and accepts an equal object on rerender", async () => {
+it("C1, C4: passes webMCP to the runtime session and accepts an equal object on rerender", async () => {
   const app = root();
   await act(() =>
     app.render(
@@ -160,109 +160,65 @@ it("passes webMCP to the runtime session and accepts an equal object on rerender
   expect(createAyme).toHaveBeenCalledOnce();
 });
 
-it("server-renders without constructing or registering a Page Object or calling the page factory", () => {
-  vi.stubGlobal("window", undefined);
-  const factory = vi.fn<PageFactory>(() => {
-    throw new Error("The page factory must not run on the server.");
-  });
-  let constructions = 0;
-  class ServerModel {
-    constructor(readonly page: Page) {
-      constructions += 1;
-    }
-    increment() {}
-  }
-  registerCompiledPom(ServerModel, {
-    className: "ServerModel",
-    components: [],
-    members: [],
-    tools: [],
-  });
-  function Child() {
-    const model = usePageObject(ServerModel);
-    const { webMCP } = useAyme();
-    return h(
-      "button",
-      { onClick: () => model.increment() },
-      webMCP.publicationStatus.state
-    );
-  }
-
-  expect(
-    renderToString(h(AymeProvider, { pageFactory: factory }, h(Child)))
-  ).toContain(">disabled</button>");
-  expect(constructions).toBe(0);
-  expect(factory).not.toHaveBeenCalled();
-  expect(listRegisteredPoms()).toHaveLength(0);
-});
-
-it("C9: creates a render session per server render, which starts nothing beside the process's App Process", () => {
-  vi.stubGlobal("window", undefined);
-  // React runs no effect on the server, so nothing starts these sessions;
-  // started anyway, a session that claimed the process would throw.
-  const rendered: Ayme[] = [];
-  function Child() {
-    rendered.push(useAyme().ayme);
-    return null;
-  }
-  renderToString(h(AymeProvider, null, h(Child)));
-  renderToString(h(AymeProvider, null, h(Child)));
-  const stopAppProcess = createAyme().start();
-  try {
-    expect(rendered).toHaveLength(2);
-    for (const ayme of rendered) expect(() => ayme.start()()).not.toThrow();
-  } finally {
-    stopAppProcess();
-  }
-});
-
-it("hydrates server output without warnings and then registers the Page Object", async () => {
+// The HTML below is what the server renders for these trees (see ssr.test.ts).
+it("C10: hydrates the server's initial status without warnings and then registers the Page Object", async () => {
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
   function Child() {
     usePageObject(Model);
-    return h("span", null, "ready");
+    const { webMCP } = useAyme();
+    return h("span", null, webMCP.publicationStatus.state);
   }
-  const tree = () => h(AymeProvider, { pageFactory }, h(Child));
   const container = document.createElement("div");
-  container.innerHTML = renderToString(tree());
+  container.innerHTML = "<span>disabled</span>";
   const span = container.querySelector("span");
   let app: Root | undefined;
   await act(() => {
-    app = hydrateRoot(container, tree());
+    app = hydrateRoot(container, h(AymeProvider, { pageFactory }, h(Child)));
   });
   roots.push(app!);
   expect(container.querySelector("span")).toBe(span);
+  expect(span?.textContent).toBe("disabled");
   expect(listRegisteredPoms()).toHaveLength(1);
   expect(errors).not.toHaveBeenCalled();
-  errors.mockRestore();
 });
 
-it("renders the same Page Object identity on the server as in hydration", async () => {
+it("C10: hydrates the server's waiting status without warnings when publication is enabled", async () => {
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  function Child() {
+    const { webMCP } = useAyme();
+    return h("span", null, webMCP.publicationStatus.state);
+  }
+  const container = document.createElement("div");
+  container.innerHTML = "<span>waiting</span>";
+  let app: Root | undefined;
+  await act(() => {
+    app = hydrateRoot(
+      container,
+      h(AymeProvider, { pageFactory, webMCP: { enabled: true } }, h(Child))
+    );
+  });
+  roots.push(app!);
+  expect(errors).not.toHaveBeenCalled();
+});
+
+it("C10: renders the same Page Object identity in hydration as on the server", async () => {
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
   function Child() {
     const same = usePageObject(Model) === useAyme().ayme.pom.get(Model);
     return h("output", null, String(same));
   }
-  const tree = () => h(AymeProvider, { pageFactory }, h(Child));
   const container = document.createElement("div");
-  vi.stubGlobal("window", undefined);
-  try {
-    container.innerHTML = renderToString(tree());
-  } finally {
-    vi.unstubAllGlobals();
-  }
-  expect(container.textContent).toBe("true");
+  container.innerHTML = "<output>true</output>";
   let app: Root | undefined;
   await act(() => {
-    app = hydrateRoot(container, tree());
+    app = hydrateRoot(container, h(AymeProvider, { pageFactory }, h(Child)));
   });
   roots.push(app!);
   expect(container.textContent).toBe("true");
   expect(errors).not.toHaveBeenCalled();
-  errors.mockRestore();
 });
 
-it("keeps one custom-page instance through StrictMode replay, rerenders and remounts", async () => {
+it("C2, C6: keeps one custom-page instance through StrictMode replay, rerenders and remounts", async () => {
   const factory = vi.fn(pageFactory);
   const committed: Model[] = [];
   let current: Model | undefined;
@@ -302,7 +258,7 @@ it("keeps one custom-page instance through StrictMode replay, rerenders and remo
   expect(listRegisteredPoms()).toHaveLength(0);
 });
 
-it("does not register or claim ownership for an abandoned suspended render", async () => {
+it("C6: does not register or claim ownership for an abandoned suspended render", async () => {
   const never = new Promise<void>(() => {});
   function Suspended(): never {
     usePageObject(Model);
@@ -327,7 +283,7 @@ it("does not register or claim ownership for an abandoned suspended render", asy
   expect(listRegisteredPoms()).toHaveLength(1);
 });
 
-it("renders live publication state and retries without replacing the Page Object", async () => {
+it("C5: renders live publication state and retries without replacing the Page Object", async () => {
   Object.defineProperty(document, "modelContext", {
     configurable: true,
     value: { registerTool: vi.fn() },
@@ -355,7 +311,7 @@ it("renders live publication state and retries without replacing the Page Object
   expect(current).toBe(previous);
 });
 
-it("returns the session as ayme, so a goal runs through it, and its webMCP member", async () => {
+it("C11: returns the session as ayme, so a goal runs through it, and its webMCP member", async () => {
   const goalLoop = vi.fn(async () => {
     throw new Error("No decision.");
   });
@@ -390,7 +346,7 @@ async function withoutInspectorLoad() {
   );
 }
 
-it("passes inspector to the runtime session and rejects changing it", async () => {
+it("C1, C4: passes inspector to the runtime session and rejects changing it", async () => {
   await withoutInspectorLoad();
   const app = root();
   await act(() =>
@@ -406,7 +362,7 @@ it("passes inspector to the runtime session and rejects changing it", async () =
   ).rejects.toThrow("provider options must stay fixed");
 });
 
-it("passes agentConnection to the runtime session and rejects changing it", async () => {
+it("C1, C4: passes agentConnection to the runtime session and rejects changing it", async () => {
   await withoutInspectorLoad();
   const app = root();
   await act(() =>
@@ -455,7 +411,7 @@ it("C1, C4: passes an inline inspector demo setting and keeps it fixed across re
   ).rejects.toThrow("provider options must stay fixed");
 });
 
-it("requires an ancestor provider", async () => {
+it("C7: requires an ancestor provider", async () => {
   function Child() {
     useAyme();
     return null;
@@ -465,7 +421,7 @@ it("requires an ancestor provider", async () => {
   );
 });
 
-it("rejects nested owners", async () => {
+it("C3: rejects nested owners", async () => {
   await expect(
     act(async () =>
       root().render(
@@ -475,7 +431,7 @@ it("rejects nested owners", async () => {
   ).rejects.toThrow("cannot be nested");
 });
 
-it("rejects changing a mounted provider's page factory", async () => {
+it("C4: rejects changing a mounted provider's page factory", async () => {
   const app = root();
   await act(() => app.render(h(AymeProvider, { pageFactory })));
   await expect(
@@ -485,7 +441,7 @@ it("rejects changing a mounted provider's page factory", async () => {
   ).rejects.toThrow("provider options must stay fixed");
 });
 
-it("requires remounting to change the model class", async () => {
+it("C6: requires remounting to change the model class", async () => {
   function Child({ model }: { model: typeof Model }) {
     usePageObject(model);
     return null;
@@ -501,6 +457,99 @@ it("requires remounting to change the model class", async () => {
       )
     )
   ).rejects.toThrow("model and provider must stay fixed");
+});
+
+it("C4: changes the options when the provider is remounted", async () => {
+  const app = root();
+  const render = (key: string, prefix: string) =>
+    h(AymeProvider, {
+      key,
+      pageFactory,
+      webMCP: { enabled: false, toolNamePrefix: prefix },
+    });
+  await act(() => app.render(render("first", "ayme_")));
+  await act(() => app.render(render("second", "other_")));
+  expect(createAyme).toHaveBeenCalledTimes(2);
+  expect(createAyme).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      webMCP: { enabled: false, toolNamePrefix: "other_" },
+    })
+  );
+});
+
+it("C2: starts the session and stops it when the provider is unmounted", async () => {
+  const factory = vi.fn(pageFactory);
+  let ayme: ReturnType<typeof useAyme>["ayme"] | undefined;
+  function Child() {
+    ({ ayme } = useAyme());
+    return null;
+  }
+  const app = root();
+  await act(() =>
+    app.render(h(AymeProvider, { pageFactory: factory }, h(Child)))
+  );
+  expect(factory).toHaveBeenCalledOnce();
+  expect(ayme?.webMCP.publicationStatus.state).toBe("disabled");
+  await act(() => app.unmount());
+  roots.splice(roots.indexOf(app), 1);
+  expect(ayme?.webMCP.publicationStatus.state).toBe("disposed");
+});
+
+it("C3: rejects a second owner while the first is active, and accepts a new one after it is disposed", async () => {
+  const first = root();
+  await act(() => first.render(h(AymeProvider, { pageFactory })));
+  await expect(
+    act(async () => root().render(h(AymeProvider, { pageFactory })))
+  ).rejects.toThrow("The Ayme runtime already has an active owner.");
+  await act(() => first.unmount());
+  roots.splice(roots.indexOf(first), 1);
+  await act(() => root().render(h(AymeProvider, { pageFactory })));
+});
+
+it("C6: keeps a model registered until its last consumer is disposed", async () => {
+  function Consumer() {
+    usePageObject(Model);
+    return null;
+  }
+  const render = (first: boolean, second: boolean) =>
+    h(
+      AymeProvider,
+      { pageFactory },
+      first ? h(Consumer, { key: 1 }) : null,
+      second ? h(Consumer, { key: 2 }) : null
+    );
+  const app = root();
+  await act(() => app.render(render(true, true)));
+  expect(listRegisteredPoms()).toHaveLength(1);
+  await act(() => app.render(render(false, true)));
+  expect(listRegisteredPoms()).toHaveLength(1);
+  await act(() => app.render(render(false, false)));
+  expect(listRegisteredPoms()).toHaveLength(0);
+});
+
+it("C7: usePageObject without a provider names the provider to add", async () => {
+  function Child() {
+    usePageObject(Model);
+    return null;
+  }
+  await expect(act(async () => root().render(h(Child)))).rejects.toThrow(
+    "ancestor AymeProvider"
+  );
+});
+
+it("C8: rejects a Page Object Model the compiler did not reach", async () => {
+  class Uncompiled {
+    constructor(readonly page: Page) {}
+  }
+  function Child() {
+    usePageObject(Uncompiled);
+    return null;
+  }
+  await expect(
+    act(async () => root().render(h(AymeProvider, { pageFactory }, h(Child))))
+  ).rejects.toThrow(
+    "The imported page object has no compiler-derived Ayme metadata."
+  );
 });
 
 // usePeek seam: the hook's contract with `ayme.peek`, which it adapts
@@ -607,13 +656,6 @@ describe("usePeek", () => {
     expect(live).toHaveLength(1);
     expect(new Set(calls.map(({ id }) => id))).toEqual(new Set([live[0]!.id]));
     expect(live[0]!.read()).toEqual({ count: 3 });
-  });
-
-  it("C12: adds nothing during server rendering", () => {
-    renderToString(h(AymeProvider, { pageFactory }, h(Counter, { count: 0 })));
-
-    expect(createAyme).toHaveBeenCalled();
-    expect(calls).toEqual([]);
   });
 
   it("requires an ancestor provider", async () => {
