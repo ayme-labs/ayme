@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Hello } from "../contract";
+import type { Hello, ProcessHello } from "../contract";
 
 /** A channel the App Process opened, which the test drives. */
 type FakeChannel = {
@@ -121,7 +121,10 @@ describe("startAgentConnection in an App Process", () => {
 
     expect(openChannels()).toHaveLength(1);
     expect(channels[0]!.url()).toBe(`${SERVER}/`);
-    expect(channels[0]!.hello()).toEqual({ process: expect.any(String) });
+    expect(channels[0]!.hello()).toEqual({
+      process: expect.any(String),
+      boot: expect.any(String),
+    });
   });
 
   it("stays unpaired while no server or several answer, and scans again every few seconds until one does", async () => {
@@ -244,6 +247,20 @@ describe("startAgentConnection in an App Process", () => {
 
     expect(scans[0]!.WebSocket).toBe(WebSocket);
     expect(channels[0]!.WebSocket).toBe(WebSocket);
+  });
+
+  it("says hello with a new connection id but the same boot id when the connection is stopped and started in the same process", async () => {
+    const first = await start();
+    await scans[0]!.answer([SERVER]);
+    first.dispose();
+    await start();
+    await scans[1]!.answer([SERVER]);
+
+    const [before, after] = channels.map(
+      (channel) => channel.hello() as ProcessHello
+    );
+    expect(after!.boot).toBe(before!.boot);
+    expect(after!.process).not.toBe(before!.process);
   });
 
   it("stops scanning and closes its channel once disposed", async () => {

@@ -87,7 +87,7 @@ export function startAgentConnection(
     };
     const channel = openPageChannel(() => socketUrl(current), {
       WebSocket: WebSocketClass,
-      hello: () => ({ process: id }),
+      hello: () => ({ process: id, boot: bootId() }),
       onWelcome({ token }) {
         if (!token || current.token) return;
         current = { address: pairing.address, token };
@@ -138,6 +138,16 @@ export function startAgentConnection(
       open = undefined;
     },
   };
+}
+
+let boot: string | undefined;
+
+/**
+ * The id of the Node process or worker this module runs in, for as long as
+ * it runs: a new one after `next dev` restarts or Nuxt rebuilds its server.
+ */
+function bootId(): string {
+  return (boot ??= crypto.randomUUID());
 }
 
 /**

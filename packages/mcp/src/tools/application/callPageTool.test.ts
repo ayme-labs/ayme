@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 
 import { AgentConnection } from "../../connection";
-import { errorResult } from "../domain/toolResult";
+import { errorResult, RESTARTED_NOTE } from "../domain/toolResult";
 import { callPageTool } from "./callPageTool";
 
 const unknown = (name: string) => errorResult(`Unknown tool "${name}".`);
@@ -68,4 +68,43 @@ it("saves the image a page tool returns and gives it to the agent with its path"
     ],
   });
   expect(saveImage).toHaveBeenCalledWith("shot.png", image.data);
+});
+
+it("tells the agent, once, that an App Process it called restarted, on the next result from it", async () => {
+  const connection = new AgentConnection();
+  const answer = async (
+    session: ReturnType<AgentConnection["attachProcess"]>,
+    result: Promise<unknown>
+  ) => {
+    for await (const call of session.calls(undefined)) {
+      session.answer({ callId: call.callId, ok: true, result: "{}" });
+      break;
+    }
+    return result;
+  };
+  const tools = [
+    { name: "peek.node.jobs", description: "", inputSchema: {} },
+    { name: "peek.node.mail", description: "", inputSchema: {} },
+  ];
+  const call = (name: string) =>
+    callPageTool(connection, name, {}, unknown, saveImage);
+  const first = connection.attachProcess({ process: "first" });
+  first.publishTools(tools);
+  expect(await answer(first, call("peek.node.jobs"))).toEqual({
+    content: [{ type: "text", text: "{}" }],
+  });
+
+  connection.detach(first);
+  const restarted = connection.attachProcess({ process: "restarted" });
+  restarted.publishTools(tools);
+
+  expect(await answer(restarted, call("peek.node.mail"))).toEqual({
+    content: [
+      { type: "text", text: "{}" },
+      { type: "text", text: RESTARTED_NOTE },
+    ],
+  });
+  expect(await answer(restarted, call("peek.node.jobs"))).toEqual({
+    content: [{ type: "text", text: "{}" }],
+  });
 });

@@ -77,6 +77,28 @@ test("an App Process's tool goes when it exits, and the agent's next result says
   expect(note).toContain(`Disappeared: ${TOOL}.`);
 });
 
+test("the agent's first result from an App Process that restarted says its state started over, and the next does not", async ({
+  agent,
+  startStandInAppProcess,
+}) => {
+  const { port } = await serverAddress(agent);
+  const appProcess = startStandInAppProcess({ port, value: "server" });
+  await listed(agent, TOOL);
+  const first = await agent.call(TOOL);
+  expect(first.note ?? "").not.toContain("restarted");
+
+  await appProcess.exit();
+  await expect
+    .poll(() => agent.toolNames(), { message: agent.log })
+    .not.toContain(TOOL);
+  startStandInAppProcess({ port, value: "server" });
+  await listed(agent, TOOL);
+
+  const { note } = await agent.call(TOOL);
+  expect(note).toContain("the app's server process restarted");
+  expect((await agent.call(TOOL)).note).toBeUndefined();
+});
+
 test("an App Process started before the agent pairs once the agent's server is up, and again after it restarts", async ({
   startStandInAppProcess,
 }) => {

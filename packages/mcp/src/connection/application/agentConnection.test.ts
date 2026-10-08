@@ -234,6 +234,64 @@ describe("AgentConnection with App Processes", () => {
     ]);
   });
 
+  it("takes an App Process the agent first calls in place of one it called before as restarted, once", () => {
+    const connection = new AgentConnection();
+    const jobs = { name: "peek.node.jobs", description: "", inputSchema: {} };
+    const first = connection.attachProcess({ process: "first" });
+    first.publishTools([jobs]);
+    expect(connection.takeRestarted("peek.node.jobs")).toBe(false);
+
+    connection.detach(first);
+    connection.attachProcess({ process: "restarted" }).publishTools([jobs]);
+
+    expect(connection.takeRestarted("peek.node.jobs")).toBe(true);
+    expect(connection.takeRestarted("peek.node.jobs")).toBe(false);
+  });
+
+  it("takes an App Process that connects again as itself as the same one", () => {
+    const connection = new AgentConnection();
+    const tools = [
+      { name: "peek.node.jobs", description: "", inputSchema: {} },
+    ];
+    connection.attachProcess({ process: "server" }).publishTools(tools);
+    connection.takeRestarted("peek.node.jobs");
+
+    connection.attachProcess({ process: "server" }).publishTools(tools);
+
+    expect(connection.takeRestarted("peek.node.jobs")).toBe(false);
+  });
+
+  it("takes an App Process stopped and started in the same Node process as the same one", () => {
+    const connection = new AgentConnection();
+    const tools = [
+      { name: "peek.node.jobs", description: "", inputSchema: {} },
+    ];
+    const first = connection.attachProcess({ process: "a", boot: "node" });
+    first.publishTools(tools);
+    connection.takeRestarted("peek.node.jobs");
+
+    connection.detach(first);
+    connection
+      .attachProcess({ process: "b", boot: "node" })
+      .publishTools(tools);
+
+    expect(connection.takeRestarted("peek.node.jobs")).toBe(false);
+  });
+
+  it("never takes an App Process as restarted for a name it offers that another one keeps", () => {
+    const connection = new AgentConnection();
+    const tool = (name: string) => ({ name, description: "", inputSchema: {} });
+    connection
+      .attachProcess({ process: "server" })
+      .publishTools([tool("peek.node.jobs")]);
+    connection
+      .attachProcess({ process: "worker" })
+      .publishTools([tool("peek.node.jobs"), tool("peek.node.mail")]);
+    connection.takeRestarted("peek.node.jobs");
+
+    expect(connection.takeRestarted("peek.node.mail")).toBe(false);
+  });
+
   it("answers an App Process's calls when the server stops", async () => {
     const connection = new AgentConnection();
     connection.attachProcess({ process: "server" }).publishTools([tool("x")]);

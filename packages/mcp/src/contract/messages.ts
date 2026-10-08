@@ -96,11 +96,13 @@ export type PageHello = z.infer<typeof PageHelloSchema>;
 
 /**
  * An App Process introduces itself when its channel opens: the id it keeps
- * for this connection across reconnects. It has no URL and never reports a
- * navigation.
+ * for this connection across reconnects, and the id of the Node process or
+ * worker it runs in, which a stopped and started connection keeps too. It
+ * has no URL and never reports a navigation.
  */
 export const ProcessHelloSchema = z.object({
   process: z.string().check(z.minLength(1)),
+  boot: z.optional(z.string().check(z.minLength(1))),
 });
 export type ProcessHello = z.infer<typeof ProcessHelloSchema>;
 

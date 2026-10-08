@@ -91,7 +91,7 @@ Once a tab is paired, the page's tools are the agent's MCP tools, under the name
 
 A Peek's values reach the agent, and its model provider, unchanged, so return only what you want it to see; see [What a Peek exposes](../reference/ayme.md#what-a-peek-exposes).
 
-Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared.
+Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared. When an App Process restarted, such as after `next dev` restarts or Nuxt rebuilds its server, the agent's first result from the new process says so when it had called the one before, since the state that process keeps in memory started over.
 
 Some agents read the tool list once, when they start, so they never see the page's tools, which arrive later. For them, `ayme_list_tools` lists the page's current tools with their input schemas, and `ayme_call` runs any of them by name. A failed tool call answers with an error result. While no tab is paired, every page tool and fallback tool answers that the agent should call `ayme_connect` and open the link.
 

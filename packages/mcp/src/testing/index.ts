@@ -70,15 +70,17 @@ export class Agent {
 
   /**
    * Calls `name` and returns the tool's own text, whether it is an error, and
-   * the server's note of the tool changes after it, if any.
+   * the server's notes after it, if any, such as of the tool changes, joined
+   * by a space.
    */
   async call(name: string, input: Record<string, unknown> = {}) {
     const result = await this.client.callTool({ name, arguments: input });
-    const [own, change] = result.content as { type: string; text?: string }[];
+    const [own, ...notes] = result.content as { type: string; text?: string }[];
+    const note = notes.map(({ text }) => text ?? "").join(" ");
     return {
       text: own?.text ?? "",
       isError: result.isError === true,
-      note: change?.text,
+      note: note === "" ? undefined : note,
     };
   }
 

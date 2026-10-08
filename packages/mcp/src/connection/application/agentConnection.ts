@@ -135,6 +135,11 @@ export class PageSession extends ChannelSession {
 export class ProcessSession extends ChannelSession {
   /** The id the App Process keeps across reconnects. */
   readonly id: string;
+  /**
+   * The id of the Node process or worker it runs in, which outlives the
+   * connection; its connection id where it sends none.
+   */
+  readonly boot: string;
 
   constructor(
     hello: ProcessHello,
@@ -142,6 +147,7 @@ export class ProcessSession extends ChannelSession {
   ) {
     super(onToolsChanged);
     this.id = hello.process;
+    this.boot = hello.boot ?? hello.process;
   }
 }
 
@@ -180,6 +186,10 @@ export class AgentConnection {
   readonly #processes = new Map<string, ProcessSession>();
   #away: Away | undefined;
   readonly #replacedTabs = new Set<string>();
+  /** The Node processes of the App Processes the agent called, by boot id. */
+  readonly #calledProcesses = new Set<string>();
+  /** The tool names the agent reached those App Processes through. */
+  readonly #calledProcessTools = new Set<string>();
   #nextCallId = 1;
   readonly #listeners = new Set<(event: ConnectionEvent) => void>();
 
@@ -330,6 +340,29 @@ export class AgentConnection {
     if (!holder) throw new Error(`No connection offers the tool "${name}".`);
     const callId = String(this.#nextCallId++);
     return holder.call({ callId, name, input });
+  }
+
+  /**
+   * Whether the agent's call to `name` is its first to an App Process that
+   * takes the place of one it called before under one of the same tool
+   * names, as when the app's server process restarted: its state in memory
+   * started over. True once per Node process; an App Process that connects
+   * again, or is stopped and started, in the same Node process is the same
+   * one. Only the names the
+   * agent reaches an App Process through count, not those it hides.
+   */
+  takeRestarted(name: string): boolean {
+    const holder = this.#holderOf(name);
+    if (!(holder instanceof ProcessSession)) return false;
+    const names = this.#merged()
+      .shown.filter((shown) => shown.holder === holder)
+      .map(({ tool }) => tool.name);
+    const first = !this.#calledProcesses.has(holder.boot);
+    const restarted =
+      first && names.some((tool) => this.#calledProcessTools.has(tool));
+    this.#calledProcesses.add(holder.boot);
+    for (const tool of names) this.#calledProcessTools.add(tool);
+    return restarted;
   }
 
   /**

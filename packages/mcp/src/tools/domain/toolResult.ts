@@ -121,6 +121,13 @@ export function goneToolResult(name: string): ToolResult {
   );
 }
 
+/**
+ * The note on the agent's first result from an App Process that took the
+ * place of one it called before, such as after the app's server restarted.
+ */
+export const RESTARTED_NOTE =
+  "This answer comes from a new App Process connection since your previous call to its tools: the app's server process restarted, such as after a rebuild, so any state it keeps in memory started over.";
+
 /** A page tool as an MCP tool listing shows it. */
 export function mcpPageTool({ name, description, inputSchema }: PageTool) {
   return {
