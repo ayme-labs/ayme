@@ -432,9 +432,11 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   // page: it offers its Peek Tools only.
   let inProcess: { stop(): void } | undefined;
   let controller: AbortController | undefined;
-  // The started session's WebMCP publication, and its package while it loads.
+  // The started session's WebMCP publication; while its package loads, the
+  // attempt that starts it and the retry that waits for that attempt.
   let publication: { retry(): Promise<void> } | undefined;
   let loading: Promise<typeof publication> | undefined;
+  let retryingLoad: Promise<void> | undefined;
   const appProcessTools = createAppProcessTools();
   // One top-level Run at a time on this page, whoever its Caller.
   const takeTurn = createRunQueue();
@@ -504,9 +506,12 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     if (!enabled || !owner) return Promise.resolve();
     if (publication) return publication.retry();
     if (!loading) setStatus(initialStatus);
-    return (loading ?? startPublication(controller!.signal)).then((started) =>
-      started?.retry()
-    );
+    retryingLoad ??= (loading ?? startPublication(controller!.signal))
+      .then((started) => started?.retry())
+      .finally(() => {
+        retryingLoad = undefined;
+      });
+    return retryingLoad;
   }
 
   function stop() {
@@ -514,6 +519,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     controller?.abort();
     publication = undefined;
     loading = undefined;
+    retryingLoad = undefined;
     unsubscribeFromPoms?.();
     unsubscribeFromPoms = undefined;
     unsubscribeFromPeeks?.();

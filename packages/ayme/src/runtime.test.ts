@@ -681,7 +681,7 @@ it("shows each status publication reports, frozen, and tells subscribers", async
   unsubscribe();
 });
 
-it("retries through the publication, resolving once its attempt ends", async () => {
+it("shares the retries made while the package loads, resolving once the publication's attempt ends", async () => {
   let finishAttempt!: () => void;
   retry.mockReturnValueOnce(
     new Promise<void>((resolve) => (finishAttempt = resolve))
@@ -690,7 +690,9 @@ it("retries through the publication, resolving once its attempt ends", async () 
   start(runtime);
   let retried = false;
 
-  const retrying = runtime.webMCP.retryPublication().then(() => {
+  const pending = runtime.webMCP.retryPublication();
+  expect(runtime.webMCP.retryPublication()).toBe(pending);
+  const retrying = pending.then(() => {
     retried = true;
   });
   await vi.waitFor(() => expect(retry).toHaveBeenCalledOnce());
