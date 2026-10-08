@@ -51,7 +51,6 @@
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@playwright/test": "^1.62.1",
-    "@types/node": "^24.0.0",
     "@vitest/browser-playwright": "^4.1.11",
     "eslint": "^10.9.1",
     "playwright": "^1.62.1",

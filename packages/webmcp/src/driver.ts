@@ -14,7 +14,7 @@ export function waitForWebMcpDriver(timeoutMs: number, signal: AbortSignal) {
   const deadline = Date.now() + timeoutMs;
 
   return new Promise<WebMcpDriver | undefined>((resolve) => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timer: number | undefined;
     const finish = (driver: WebMcpDriver | undefined) => {
       if (timer !== undefined) clearTimeout(timer);
       signal.removeEventListener("abort", abort);
