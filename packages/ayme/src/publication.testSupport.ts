@@ -2,6 +2,7 @@
  * Test support: the started session's tools as an agent calls them through
  * WebMCP, and a Goal Loop decision function that runs given operations.
  */
+import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { DecisionResponse } from "./decisionTypes";
 import { errorText, RuntimeStateError } from "./errors";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
@@ -38,6 +39,16 @@ export function agentTools() {
       }
     },
   };
+}
+
+/** The Structural Ref of the "Save changes" button in the agent's snapshot. */
+export async function saveButtonRef() {
+  const { structure } = (await agentTools().call("snapshot", {})) as {
+    structure: string;
+  };
+  const ref = structure.match(/(e\d+) button "Save changes"/)?.[1];
+  if (!ref) throw new Error("Expected a Structural Ref for Save changes.");
+  return AriaRefSchema.parse(ref);
 }
 
 /**

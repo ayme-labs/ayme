@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { Page } from "@playwright/test";
 
 import { createPage } from "./browserPage";
 import type { PomManifest } from "./contracts";
-import { agentTools } from "./publication.testSupport";
+import { agentTools, saveButtonRef } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
 import { toolFailure } from "./toolFailure.testSupport";
@@ -95,17 +94,8 @@ describe("tool failures an agent gets, in Chromium", () => {
   const agentCall = (name: string, input: unknown) =>
     agentTools().call(name, input);
 
-  async function saveRef() {
-    const { structure } = (await agentCall("snapshot", {})) as {
-      structure: string;
-    };
-    const ref = structure.match(/(e\d+) button "Save changes"/)?.[1];
-    if (!ref) throw new Error("Expected a Structural Ref for Save changes.");
-    return AriaRefSchema.parse(ref);
-  }
-
   it("returns a browser action failure with its name and call log", async () => {
-    const ref = await saveRef();
+    const ref = await saveButtonRef();
 
     expect(await agentCall("click", { target: ref })).toEqual(
       toolFailure(
@@ -117,7 +107,7 @@ describe("tool failures an agent gets, in Chromium", () => {
   });
 
   it("returns a ref that no longer matches as a RefResolutionError", async () => {
-    const ref = await saveRef();
+    const ref = await saveButtonRef();
     document.querySelector("#save")!.remove();
 
     expect(await agentCall("click", { target: ref })).toEqual(

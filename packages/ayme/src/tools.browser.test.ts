@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { Page } from "@playwright/test";
 
 import { createPage } from "./browserPage";
@@ -13,7 +12,7 @@ import {
   lookAtPageStateForDocument,
   type AriaRef,
 } from "./pageState";
-import { agentTools } from "./publication.testSupport";
+import { agentTools, saveButtonRef } from "./publication.testSupport";
 import {
   listElementToolTargets,
   listTools,
@@ -213,15 +212,6 @@ describe("the session's tools in Chromium", () => {
 
   const agentCall = (name: string, input: unknown) =>
     agentTools().call(name, input);
-
-  async function saveButtonRef() {
-    const { structure } = (await agentCall("snapshot", {})) as {
-      structure: string;
-    };
-    const ref = structure.match(/(e\d+) button "Save changes"/)?.[1];
-    if (!ref) throw new Error("Expected a Structural Ref for Save changes.");
-    return AriaRefSchema.parse(ref);
-  }
 
   it("lists every tool in publication order, each in its group", () => {
     startSession();
