@@ -34,8 +34,8 @@ function traversalTool(
     name,
     description,
     inputSchema: noInputSchema,
-    execute: (input: unknown) => tool.executeAs(input, "agent"),
-    executeAs: async (input, caller) => {
+    execute: async (input, context) => {
+      const { cursor } = context;
       validatedToolInput(noInputSchema, input);
       const currentDocument = requireCurrentDocument();
       const page = requireAymeRuntimePage();
@@ -44,7 +44,7 @@ function traversalTool(
       const navigation = currentDocument.defaultView?.navigation;
       return runAction(
         currentDocument,
-        caller,
+        cursor,
         { tool: name, args: input },
         async () => {
           // The browser Page moves through history with the Navigation API
@@ -110,14 +110,14 @@ export const reloadTool: PublishedElementTool = {
   name: "reload",
   description: "Reload the current page.",
   inputSchema: noInputSchema,
-  execute: (input: unknown) => reloadTool.executeAs(input, "agent"),
-  executeAs: async (input, caller) => {
+  execute: async (input, context) => {
+    const { cursor } = context;
     validatedToolInput(noInputSchema, input);
     const currentDocument = requireCurrentDocument();
     const page = requireAymeRuntimePage();
     return runAction(
       currentDocument,
-      caller,
+      cursor,
       { tool: "reload", args: input },
       () => startNavigation(currentDocument, () => page.reload())
     );

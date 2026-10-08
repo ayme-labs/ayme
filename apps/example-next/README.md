@@ -63,11 +63,12 @@ activation still happens in the existing effect.
 The counter adds the Peek `counter` with `usePeek`, read as `peek.counter`.
 In development, `instrumentation.ts` starts an App Process (on the Node.js
 runtime only): the server pairs with the agent's Ayme MCP server beside the
-tab and offers the Peek `renders`, how often it rendered the home page, read
-as `peek.node.renders`. `app/renders.ts` keeps the count on `globalThis`,
-because the page and `instrumentation.ts` load it in different server
-bundles. `instrumentation.ts` does nothing under `next start`. It looks for
-the agent's server on the port range, or only on the port in
+tab. `app/server-peeks.ts`, which the root layout imports, offers the Peek
+`renders`, how often the server rendered the home page, read as
+`peek.node.renders`. It lives there, not in `instrumentation.ts`, so it reads
+the same `app/renders.ts` the page counts in, and after an edit the next
+request runs it with the new code. Neither offers anything under `next start`.
+`instrumentation.ts` looks for the agent's server on the port range, or only on the port in
 `AYME_EXAMPLE_AGENT_PORT` when set, which the e2e tests set; Ayme itself
 reads no environment variable. `usePeek` registers in an effect, in the
 browser, so server rendering adds no `counter` instance to the App Process.

@@ -43,3 +43,13 @@ export class RuntimeStateError extends AymeError {
     this.code = options?.code;
   }
 }
+
+/**
+ * A thrown error as text: its full message, prefixed with its name unless
+ * that is plain "Error".
+ */
+export function errorText(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  if (!error.name || error.name === "Error") return error.message;
+  return `${error.name}: ${error.message}`;
+}

@@ -12,7 +12,8 @@ The common reasons an Ayme setup fails, by what you see.
 ## A Page Object has no tools
 
 - **`The imported page object has no compiler-derived Ayme metadata`**: the build plugin did not compile the class. Check that it is marked `@ayme`, lives in a `.ts` file the app imports, and that `experimentalDecorators` is on. On Vite 8 with your own `oxc` or `esbuild` settings, see the [build plugin reference](reference/build-plugin.md#vite). A subclass in a file without `@ayme` needs a bundler content filter that matches it; see [What it compiles](reference/build-plugin.md#what-it-compiles).
-- **The tool is not in `ayme.tools.list()`**: the class is not registered, or its Page Object Root is not on the page or not available. A child model needs a `root`.
+- **The tool is not in `ayme.tools.list()`**: the class is not registered. A child model needs a `root`.
+- **The tool is listed with `available: false`**: its Page Object Root is not on the page or not available.
 - **A Svelte decorator in a `.svelte` file is ignored**: Page Object Models must be `.ts` modules.
 - **Editing a type an action uses does not change its schema** with Angular: reload the page.
 
@@ -36,6 +37,7 @@ These are for [Peeks](reference/ayme.md#aymepeek), which reach a coding agent th
 
 - **No `peek.<name>` tool**: `ayme.peek` does nothing unless the session has `agentConnection` on, or `inspector` in the browser. A component's Peek appears once the component has mounted, and goes when its last instance unmounts. An agent that does not follow tool-list changes finds it with `ayme_list_tools`.
 - **No `peek.node.<name>` tool**: in Node, only `agentConnection` turns Peeks on, and the process must have started its session and paired. It pairs by itself only when exactly one Ayme MCP server answers on the ports from 9350 to 9365; with several running, name one with `agentConnection: { link }` or `{ port }`. See [In Node](reference/ayme.md#in-node).
+- **A `peek.node.<name>` in Next.js answers with old code, or misses what request code changed**: the Peek was added in `instrumentation.ts`, which `next dev` evaluates once, with its own copies of the modules it imports. Add it from a module request code imports. See [In Node](reference/ayme.md#in-node).
 - **`[ayme] peek.<name> is hidden: another tool uses that name. Rename the Peek.`**: another of the page's tools took the Peek Tool's name, and keeps it. Rename the Peek.
 - **`[ayme] peek.node.<name> is hidden: another App Process offers a tool with the same name. Rename one.`**, in the process's terminal: two App Processes offer one name, and the one that connected first keeps it.
 - **`The Peek "node.<name>" would be read through peek.node.<name>, which names an App Process's Peek.`**: a Peek in the browser has a name starting with `node.`. Rename it.
@@ -46,7 +48,8 @@ These are for agents that run in the browser and read the tools Ayme publishes t
 
 - **The publication status is `disabled`**: pass `webMCP: { enabled: true }` where Ayme starts. See [Publish tools](guides/publish-tools.md).
 - **The status is `unavailable`**: no WebMCP driver appeared within two seconds. Load the polyfill or enable Chrome's flag before your app's entry module, as [Publish tools](guides/publish-tools.md#give-the-page-webmcp) shows, or call `retryPublication()` once it is there.
-- **The status is `failed`**: most often two published tools share a name, such as a Custom Tool named like a Page Object Tool, or the WebMCP driver rejected a registration. The message says which.
+- **The status is `failed`**: `@ayme-dev/webmcp` is not installed beside `@ayme-dev/ayme`, or the WebMCP driver rejected a registration. The message says which.
+- **The status is `active` but no tool is published**: two tools share a name, such as a Custom Tool named like a Page Object Tool, which leaves `ayme.tools.list()` empty. `ayme.tools.run` throws the error that names the tool.
 - **The tools have unexpected names**: `webMCP.toolNamePrefix` is set, and agents see the prefixed names.
 
 ## Ayme starts twice

@@ -38,7 +38,12 @@ function markdownFiles(root, dir = "") {
   })) {
     const relative = path.posix.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (!entry.name.startsWith(".") && !SKIPPED_DIRS.has(entry.name))
+      // A directory with its own `.git` is a submodule or another repository, whose docs are not ours.
+      if (
+        !entry.name.startsWith(".") &&
+        !SKIPPED_DIRS.has(entry.name) &&
+        !fs.existsSync(path.join(root, relative, ".git"))
+      )
         files.push(...markdownFiles(root, relative));
     } else if (entry.name.endsWith(".md")) files.push(relative);
   }

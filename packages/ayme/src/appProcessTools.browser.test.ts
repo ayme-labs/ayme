@@ -1,6 +1,10 @@
 import { afterEach, expect, it, vi } from "vitest";
 
 import { createPage } from "./browserPage";
+import type { Page } from "@playwright/test";
+
+import { registerCompiledPom } from "./registry";
+import { callers } from "./run";
 import { createAyme, getAppProcessTools, type AymeOptions } from "./runtime";
 
 // Runtime seam: the tools of the App Processes paired beside the page, as
@@ -49,6 +53,41 @@ vi.mock("./agentConnection", () => ({
     startAgentConnection: () => ({ dispose() {} }),
   }),
 }));
+
+/** A Page Object whose `save` waits until the test lets it click Save. */
+class SaveForm {
+  static waiting = false;
+  static proceed = () => {};
+  readonly saveButton;
+  constructor(page: Page) {
+    this.saveButton = page.getByRole("button", { name: "Save" });
+  }
+  async save() {
+    SaveForm.waiting = true;
+    await new Promise<void>((resolve) => (SaveForm.proceed = resolve));
+    SaveForm.waiting = false;
+    await this.saveButton.click();
+  }
+}
+
+registerCompiledPom(SaveForm, {
+  className: "SaveForm",
+  members: [{ memberName: "saveButton", kind: "locator", access: "field" }],
+  tools: [
+    {
+      methodName: "save",
+      toolName: "SaveForm.save",
+      description: "Save the form.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+      parameters: [],
+    },
+  ],
+  components: [],
+});
 
 const page = createPage();
 const jobs: Tool = {
@@ -100,6 +139,75 @@ it("runs an App Process's tool through the page client", async () => {
   expect(client.run).toHaveBeenCalledExactlyOnceWith("peek.node.jobs", {});
 });
 
+it("records a run from the page as a Run in the page's log, for the Caller that names itself", async () => {
+  const ayme = started();
+  client.run.mockResolvedValue({ name: "jobs", instances: [] });
+  client.set([jobs]);
+  const processTools = getAppProcessTools(ayme);
+  await vi.waitFor(() => expect(processTools.list()).toHaveLength(1));
+  const before = new Set(ayme.runs.list().map((run) => run.id));
+
+  await processTools.run("peek.node.jobs", {}, { by: callers.inspector });
+  client.run.mockRejectedValue(new Error("The App Process went away."));
+  await processTools.run("peek.node.jobs", {}).catch(() => {});
+
+  expect(ayme.runs.list().filter((run) => !before.has(run.id))).toEqual([
+    expect.objectContaining({
+      tool: "peek.node.jobs",
+      input: {},
+      by: callers.inspector,
+      status: "succeeded",
+      result: { name: "jobs", instances: [] },
+    }),
+    expect.objectContaining({
+      tool: "peek.node.jobs",
+      by: callers.app,
+      status: "failed",
+      error: "The App Process went away.",
+    }),
+  ]);
+});
+
+it("records no Interactions on an App Process tool's Run, even while a page Run acts", async () => {
+  document.body.innerHTML = "<main><button>Save</button></main>";
+  const ayme = started();
+  ayme.pom.register(SaveForm);
+  cleanups.push(() => {
+    ayme.pom.unregister(SaveForm);
+    document.body.innerHTML = "";
+  });
+  await ayme.tools.run("snapshot", {});
+  let answer: (value: unknown) => void = () => {};
+  client.run.mockImplementation(
+    () => new Promise((resolve) => (answer = resolve))
+  );
+  client.set([jobs]);
+  const processTools = getAppProcessTools(ayme);
+  await vi.waitFor(() => expect(processTools.list()).toHaveLength(1));
+  const before = new Set(ayme.runs.list().map((run) => run.id));
+
+  // The page Run waits; the App Process tool starts; the page Run clicks.
+  const saved = ayme.tools.run("SaveForm.save", {});
+  await vi.waitFor(() => expect(SaveForm.waiting).toBe(true));
+  const inProcess = processTools.run(
+    "peek.node.jobs",
+    {},
+    { by: callers.inspector }
+  );
+  SaveForm.proceed();
+  await saved;
+  answer({ name: "jobs", instances: [] });
+  await inProcess;
+
+  expect(ayme.runs.list().filter((run) => !before.has(run.id))).toEqual([
+    expect.objectContaining({
+      tool: "SaveForm.save",
+      interactions: [expect.objectContaining({ operation: "click" })],
+    }),
+    expect.objectContaining({ tool: "peek.node.jobs", interactions: [] }),
+  ]);
+});
+
 it("lists none once the session stops, and announces it", async () => {
   const ayme = createAyme({ pageFactory: () => page, agentConnection: true });
   const stop = ayme.start();
@@ -115,12 +223,21 @@ it("lists none once the session stops, and announces it", async () => {
   expect(heard).toEqual([[]]);
 });
 
-it("lists none, and runs none, without the Agent Connection", async () => {
+it("lists none, and runs none, without the Agent Connection, recording the Run as failed", async () => {
   const ayme = started({ inspector: false });
   client.set([jobs]);
+  const before = new Set(ayme.runs.list().map((run) => run.id));
 
   expect(getAppProcessTools(ayme).list()).toEqual([]);
   await expect(
     getAppProcessTools(ayme).run("peek.node.jobs", {})
   ).rejects.toThrow("No Ayme MCP server is paired with this page.");
+  expect(ayme.runs.list().filter((run) => !before.has(run.id))).toEqual([
+    expect.objectContaining({
+      tool: "peek.node.jobs",
+      by: callers.app,
+      status: "failed",
+      error: "RuntimeStateError: No Ayme MCP server is paired with this page.",
+    }),
+  ]);
 });

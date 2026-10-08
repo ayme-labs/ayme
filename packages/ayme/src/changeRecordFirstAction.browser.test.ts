@@ -2,14 +2,13 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import type { PomManifest } from "./contracts";
 import { createPage } from "./browserPage";
-import { createPageRegistration, registerCompiledPom } from "./registry";
+import { agentTools } from "./publication.testSupport";
+import {
+  createPageRegistration,
+  probeRegisteredPomMembers,
+  registerCompiledPom,
+} from "./registry";
 import { createAyme } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
-
-type PublishedTool = {
-  name: string;
-  execute(input: unknown): Promise<unknown>;
-};
 
 /**
  * One Page State Session lives per document, so a session that has handed
@@ -18,11 +17,8 @@ type PublishedTool = {
  */
 describe("Change Record of the first action in Chromium", () => {
   let stop: (() => void) | undefined;
-  let disposePublication: (() => void) | undefined;
 
   afterEach(() => {
-    disposePublication?.();
-    disposePublication = undefined;
     stop?.();
     stop = undefined;
     document.body.innerHTML = "";
@@ -48,16 +44,10 @@ describe("Change Record of the first action in Chromium", () => {
     const runtime = createAyme({ pageFactory: () => page });
     stop = runtime.start();
     createPageRegistration(App);
+    // Its tool is published once a probe finds the Page Object available.
+    await probeRegisteredPomMembers();
 
-    const published = new Map<string, PublishedTool>();
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(tool: PublishedTool) {
-        published.set(tool.name, tool);
-      },
-    });
-    disposePublication = publication.dispose;
-
-    const result = (await published.get("App.announce")!.execute({})) as {
+    const result = (await agentTools().call("App.announce", {})) as {
       page_changed: boolean;
       changes?: string;
     };

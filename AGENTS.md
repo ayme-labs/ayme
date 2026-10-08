@@ -1,3 +1,7 @@
+## Writing rules down
+
+Write each rule once, next to the config or code that enforces it. Other docs, this file included, link to it rather than restate it.
+
 ## Repository map
 
 - `packages/`: the Ayme WebMCP product. Each package README is its npm entry point; the consumer docs in `docs/guide/` own its API and setup.
@@ -45,6 +49,10 @@ Before creating or superseding an ADR, present the complete proposed ADR to the 
 
 A single approval covers the complete supersession operation. Mark the old ADR as `superseded by ADR-NNNN`, keep the replacement ADR accepted and explicit about which ADR it supersedes, and keep the old ADR rationale intact.
 
+## Commit types
+
+Commit messages follow Conventional Commits. `commitlint.config.ts` defines the allowed types and when to use each; read it before choosing a type.
+
 ## Updating the Playwright Lite fork
 
 `@ayme-dev/playwright-lite` is a Git dependency on `ayme-labs/playwright-lite`, pinned to the commit SHA of an `ayme-<date>` tag (ADR-0021). Pin only such tags; never a branch or `main` commit.
@@ -56,4 +64,5 @@ A single approval covers the complete supersession operation. Mark the old ADR a
 ## Development environment
 
 - Start a persistent Devbox shell and run all project commands inside it.
+- `devbox run -- <cmd>` runs from the repository root, whatever the current directory. Reach a package with `pnpm -C <dir> <script>`, or `devbox run -- sh -c 'cd <dir> && <cmd>'`.
 - If Devbox is unavailable, surface the environment blocker.

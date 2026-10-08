@@ -5,7 +5,7 @@ The Vue package for [Ayme](https://github.com/ayme-labs/ayme): it starts Ayme at
 ## Install
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/vue
+npm install @ayme-dev/ayme @ayme-dev/vue @ayme-dev/webmcp
 npm install -D @ayme-dev/unplugin-ayme @playwright/test
 ```
 

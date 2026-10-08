@@ -37,10 +37,12 @@ test.describe("mounted after the runtime started", () => {
 
     const run = inspector.runs.latest("ListPage.addItem");
     await expect.poll(() => run.status()).toBe("Succeeded");
-    expect(await run.stepList()).toEqual([
-      { operation: "fill", target: "ListPage.newItemInput", value: '"Milk"' },
-      { operation: "click", target: "ListPage.addItemButton" },
-    ]);
+    await expect
+      .poll(() => run.interactionList())
+      .toEqual([
+        { operation: "fill", target: "ListPage.newItemInput", value: '"Milk"' },
+        { operation: "click", target: "ListPage.addItemButton" },
+      ]);
     await expect(page.locator("html")).toHaveAttribute("data-click-cues", "1");
   });
 });

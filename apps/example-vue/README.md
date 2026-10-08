@@ -39,7 +39,7 @@ useAyme({ webMCP: { enabled: true } });
 usePageObject(ListPage);
 ```
 
-`webMCP.enabled` turns publication on; it is off unless set. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
+`webMCP.enabled` turns publication on through `@ayme-dev/webmcp`, which the example depends on; it is off unless set. No page argument or application watcher is required. Components can call `usePageObject` for their own scope, and disposal is automatic.
 
 This example turns the Inspector on with `inspector: { demo: true }`, so each action pauses briefly and each click shows a cue. `AgentPanel.vue` holds the agent wizard, which shows the prompt and loads nothing itself. `App.vue` also passes `ignore` to keep the site header out of Structural Page State. These helpers support the demo and are optional for applications.
 
@@ -53,7 +53,7 @@ pnpm run typecheck
 pnpm run test:e2e
 ```
 
-The browser test injects a minimal `document.modelContext`, verifies the two published tools and their compiler-derived schemas, exercises direct list interaction, then invokes the published collection Page Object Tool and the same tool through the debug console against the real DOM-backed runtime.
+The playground is also a Vue single-page app in the shared [example certification](../example-certification/README.md): its `/counter` route renders the counter contract page, and `/other` the page without Page Objects. `test:e2e` runs the certification and the playground tests below against the dev server and the production build (`test:e2e:dev`, `test:e2e:prod`); the production build publishes no `goal`. The browser test injects a minimal `document.modelContext`, verifies the two published tools and their compiler-derived schemas, exercises direct list interaction, then invokes the published collection Page Object Tool and the same tool through the debug console against the real DOM-backed runtime.
 
 ## Live goal lane
 

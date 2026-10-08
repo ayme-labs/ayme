@@ -1,12 +1,13 @@
 import { expect, type Page } from "@playwright/test";
 import { exampleTest as test } from "@ayme-dev/example-certification/tests";
+import { render } from "@ayme-dev/example-certification/config";
 import {
   executePublishedTool,
   publishedToolNames,
   recordPublishedTools,
   recordPublishedToolsLate,
   waitForPublishedTool,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/webmcp/testing";
 
 // The app reads ?publication and ?toolNamePrefix into provideAyme's options.
 const status = (page: Page) =>
@@ -21,6 +22,18 @@ async function callPageObjectOnceLive(page: Page) {
     });
   }).toPass();
 }
+
+test.describe("server render", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("renders the status of the options the browser will use", async ({
+    page,
+  }) => {
+    test.skip(render === "spa", "SPA mode renders no server HTML.");
+    await page.goto("/?publication=off");
+    await expect(status(page)).toHaveText("Publication: disabled");
+  });
+});
 
 test("leaves publication off unless webMCP.enabled is set", async ({
   context,

@@ -1,12 +1,15 @@
 import type { AgentConnection } from "../../connection";
 import type { Pairing } from "../../pairing";
 import type { ToolResult } from "../domain/toolResult";
+import type { SaveImage } from "./callPageTool";
 
 /** What a server tool may use. */
 export type ServerToolContext = {
   connection: AgentConnection;
   /** The address and token a page pairs with. */
   pairing: Pairing;
+  /** Where an image a page tool returns is saved. */
+  saveImage: SaveImage;
 };
 
 /**

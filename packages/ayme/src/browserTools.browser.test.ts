@@ -8,6 +8,7 @@ import {
   isSelectElement,
   isUncheckableElement,
 } from "./browserTools";
+import { errorText } from "./errors";
 import { buildToolOptions } from "./goalLoopQuestions";
 import {
   FILL_SCHEMA,
@@ -16,15 +17,9 @@ import {
   shapeOf,
   withoutElement,
 } from "./playwrightMcp.testSupport";
+import { agentTools } from "./publication.testSupport";
 import { listElementToolTargets } from "./publishedTools";
-import { createAyme } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
-
-type PublishedTool = {
-  name: string;
-  inputSchema: unknown;
-  execute(input: unknown): Promise<unknown>;
-};
+import { createAyme, type Ayme } from "./runtime";
 
 const BROWSER_TOOLS = [
   "click",
@@ -60,13 +55,12 @@ const FIXTURE = `
 `;
 
 describe("Browser Tools in Chromium", () => {
-  let tools: Map<string, PublishedTool>;
+  let ayme: Ayme;
   let stop: () => void;
-  let dispose: () => void;
   let listening: AbortController;
   const log: string[] = [];
 
-  beforeEach(async () => {
+  beforeEach(() => {
     document.body.innerHTML = FIXTURE;
     log.length = 0;
     listening = new AbortController();
@@ -80,28 +74,19 @@ describe("Browser Tools in Chromium", () => {
     document.querySelector("#form")!.addEventListener("submit", (event) => {
       event.preventDefault();
     });
-    const session = createAyme({
+    ayme = createAyme({
       pageFactory: () => createPage({ actionTimeout: 500 }),
     });
-    stop = session.start();
-    tools = new Map();
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(tool: PublishedTool) {
-        tools.set(tool.name, tool);
-      },
-    } as never);
-    dispose = publication.dispose;
+    stop = ayme.start();
   });
 
   afterEach(() => {
     listening.abort();
-    dispose();
     stop();
     document.body.innerHTML = "";
   });
 
-  const call = (name: string, input: unknown) =>
-    tools.get(name)!.execute(input);
+  const call = (name: string, input: unknown) => agentTools().call(name, input);
 
   async function refOf(label: string) {
     const { structure } = (await call("snapshot", {})) as {
@@ -119,6 +104,7 @@ describe("Browser Tools in Chromium", () => {
     document.querySelector<HTMLInputElement>("#agree")!.checked;
 
   it("publishes the Browser Tools with Playwright MCP's input fields, without element", () => {
+    const tools = new Map(ayme.tools.list().map((tool) => [tool.name, tool]));
     for (const name of BROWSER_TOOLS) expect(tools.has(name), name).toBe(true);
     for (const [name, counterpart] of Object.entries(
       PLAYWRIGHT_MCP_COUNTERPARTS
@@ -225,38 +211,24 @@ describe("Browser Tools in Chromium", () => {
   });
 
   it("fails a selector that matches several elements", async () => {
-    await expect(call("click", { target: ".twin" })).resolves.toEqual({
-      content: [
-        {
-          type: "text",
-          text: expect.stringContaining(
-            "the selector matches 2 elements; it must match exactly one"
-          ),
-        },
-      ],
-      isError: true,
-    });
+    await expect(call("click", { target: ".twin" })).rejects.toThrow(
+      "the selector matches 2 elements; it must match exactly one"
+    );
     expect(log).not.toContain("click ");
   });
 
   it("rejects an option it does not support, naming it", async () => {
-    await expect(
-      call("click", { target: "#save", force: true })
-    ).resolves.toMatchObject({
-      content: [
-        { text: 'ToolInputError: The option "force" is not supported.' },
-      ],
-      isError: true,
-    });
+    expect(
+      await call("click", { target: "#save", force: true }).catch(errorText)
+    ).toBe("ToolInputError: Input property force is not supported.");
     // A name every object inherits is still not an option.
-    await expect(
-      call("fill", { target: "#name", text: "Ada", constructor: "x" })
-    ).resolves.toMatchObject({
-      content: [
-        { text: 'ToolInputError: The option "constructor" is not supported.' },
-      ],
-      isError: true,
-    });
+    expect(
+      await call("fill", {
+        target: "#name",
+        text: "Ada",
+        constructor: "x",
+      }).catch(errorText)
+    ).toBe("ToolInputError: Input property constructor is not supported.");
     expect(log).not.toContain("click save");
     expect(value("#name")).toBe("Old");
   });

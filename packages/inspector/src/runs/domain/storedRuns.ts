@@ -1,17 +1,43 @@
-import type { CollectionItem, Run, RunStep, ToolArguments } from "./run";
+import type {
+  ChildRun,
+  CollectionItem,
+  Run,
+  RunInteraction,
+  ToolArguments,
+} from "./run";
 
 /** The key of the run history in the tab's storage. */
 export const runsKey = "ayme-inspector:runs";
 
-/** How many of the newest runs are kept for the tab. */
+/** How many of the newest rows, of every Caller, are kept for the tab. */
 export const keptRuns = 50;
 
 /** What a run still running when the page reloaded ends with. */
 export const reloadedError = "The page reloaded before the run returned.";
 
-/** The run history as it is kept: the newest runs only. */
+/**
+ * The run history as it is kept: the newest runs only, without their images,
+ * as the tab's storage is small and shared with the app.
+ */
 export function encodeRuns(runs: readonly Run[]): readonly Run[] {
-  return runs.slice(0, keptRuns);
+  return runs.slice(0, keptRuns).map(withoutImages);
+}
+
+/** A run and the runs nested under it, each without its image itself. */
+function withoutImages<R extends ChildRun>(run: R): R {
+  const { image } = run;
+  return {
+    ...run,
+    ...(image?.src === undefined
+      ? {}
+      : {
+          image: {
+            description: image.description,
+            ...(image.savedTo === undefined ? {} : { savedTo: image.savedTo }),
+          },
+        }),
+    children: run.children.map(withoutImages),
+  };
 }
 
 /**
@@ -28,19 +54,33 @@ export function decodeRuns(stored: unknown): Run[] {
 }
 
 function decodeRun(stored: unknown): Run | undefined {
+  if (!isRecord(stored) || typeof stored.by !== "string" || stored.by === "")
+    return undefined;
+  const run = decodeChildRun(stored);
+  return run && { ...run, by: stored.by, earlierDocument: true };
+}
+
+/**
+ * A run and the runs nested under it, as kept. One still running failed
+ * with the reload.
+ */
+function decodeChildRun(stored: unknown): ChildRun | undefined {
   if (
     !isRecord(stored) ||
-    typeof stored.id !== "number" ||
+    typeof stored.id !== "string" ||
     typeof stored.toolName !== "string" ||
     typeof stored.startedAt !== "number" ||
     !isRecord(stored.arguments) ||
-    !Array.isArray(stored.steps) ||
-    !stored.steps.every(isStep)
+    !Array.isArray(stored.interactions) ||
+    !stored.interactions.every(isInteraction) ||
+    !Array.isArray(stored.children)
   )
     return undefined;
   const status = stored.status;
   if (status !== "running" && status !== "succeeded" && status !== "failed")
     return undefined;
+  const children = stored.children.map(decodeChildRun);
+  if (!children.every((child) => child !== undefined)) return undefined;
 
   return {
     id: stored.id,
@@ -50,13 +90,22 @@ function decodeRun(stored: unknown): Run | undefined {
     ...(isItem(stored.item) ? { item: stored.item } : {}),
     arguments: stored.arguments as ToolArguments,
     startedAt: stored.startedAt,
-    steps: stored.steps,
-    earlierDocument: true,
+    interactions: stored.interactions,
+    children,
     ...(status === "running"
       ? { status: "failed", error: reloadedError }
       : {
           status,
           ...text("result", stored.result),
+          ...(isRecord(stored.image) &&
+          typeof stored.image.description === "string"
+            ? {
+                image: {
+                  description: stored.image.description,
+                  ...text("savedTo", stored.image.savedTo),
+                },
+              }
+            : {}),
           ...text("error", stored.error),
           ...(typeof stored.durationMs === "number"
             ? { durationMs: stored.durationMs }
@@ -65,11 +114,11 @@ function decodeRun(stored: unknown): Run | undefined {
   };
 }
 
-function isStep(value: unknown): value is RunStep {
+function isInteraction(value: unknown): value is RunInteraction {
   return (
     isRecord(value) &&
     typeof value.operation === "string" &&
-    ["locator", "value", "state", "member"].every(
+    ["locator", "value", "member"].every(
       (key) => value[key] === undefined || typeof value[key] === "string"
     )
   );

@@ -1,9 +1,9 @@
-import type { ModelContextTool } from "@mcp-b/webmcp-types";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
-import type { JsonSchema, JsonValue } from "./contracts";
+import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
 import type { ActionResult } from "./actionSequence";
 import { renderChangeRecord } from "./changeRecord";
-import type { Caller } from "./interactionHistory";
+import type { StartChildRun, RunContext } from "./run";
+import { cursors } from "./cursors";
 import {
   getInteractionHistory,
   getPageStateCaptureForDocument,
@@ -28,7 +28,7 @@ import {
   type ChoiceAnswer,
   type ChosenArguments,
   type ChosenOption,
-  type ExecutableTool,
+  type GoalLoopOperation,
   type GoalValues,
   MAX_GOAL_VALUES,
   type NoulAnswer,
@@ -59,19 +59,18 @@ export function configureGoalLoop(
   goalLoopStore.decisionFn = decisionFn;
 }
 
-/** The `goal` tool; `execute` runs it for the calling agent. */
-export type GoalTool = Omit<
-  ModelContextTool<Record<string, unknown>, JsonValue>,
-  "inputSchema" | "execute"
-> & {
+/**
+ * The `goal` tool; `execute` runs the loop for a Run, whose Caller the
+ * Handover hands control back to.
+ */
+export type GoalTool = ToolDescriptor & {
   inputSchema: JsonSchema;
-  execute(input: unknown): Promise<JsonValue>;
-  executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
+  execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
 /**
  * Package-internal: returns the `goal` tool when `goalLoop` is
- * configured, `null` otherwise. Called by `synchronizeWebMcpTools`.
+ * configured, `null` otherwise.
  */
 export function getPursueGoalTool(): GoalTool | null {
   const fn = goalLoopStore.decisionFn;
@@ -207,15 +206,17 @@ function stepRecord(
 }
 
 /**
- * Execute a tool and read the `ActionResult` it returns.
+ * Execute a tool as a step, a child Run of the goal Run through `run`, and
+ * read the `ActionResult` it returns.
  * Every registered tool (POM tools, Browser Tools, Custom Tools) runs, as the Goal Loop's model, through
  * `runAction` internally, so we just forward and interpret the result.
  */
 async function executeToolAction(
-  tool: ExecutableTool,
-  args: Record<string, unknown>
+  tool: GoalLoopOperation,
+  args: Record<string, unknown>,
+  run: StartChildRun
 ): Promise<StepOutcome> {
-  const raw = await tool.execute(args);
+  const raw = await tool.execute(args, run);
   const action = raw as ActionResult | undefined;
   return {
     result: "ok",
@@ -227,21 +228,21 @@ async function executeToolAction(
 
 // --- The loop ---
 
-/** Create the `goal` ModelContextTool bound to the given decision function and document. */
+/** Create the `goal` tool bound to the given decision function and document. */
 export function createPursueGoalTool(
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document
 ): GoalTool {
-  /** Runs the loop for `caller`, which the Handover hands control back to. */
-  const executeAs = async (
+  /** Runs the loop for the Run's Caller, which the Handover hands control back to. */
+  const execute = async (
     input: unknown,
-    caller: Caller
+    context: RunContext
   ): Promise<JsonValue> => {
     const result = await pursueGoal(
       readPursueGoalInput(input),
       decisionFn,
       currentDocument,
-      caller
+      context
     );
     return result.handover as unknown as JsonValue;
   };
@@ -268,8 +269,7 @@ export function createPursueGoalTool(
       required: ["goal", "maxSteps"],
       additionalProperties: false,
     } as const,
-    execute: (input: unknown) => executeAs(input, "agent"),
-    executeAs,
+    execute,
   };
 }
 
@@ -332,21 +332,35 @@ export async function pursueGoal(
   { goal, maxSteps, values }: GoalInput,
   decisionFn: GoalLoopDecisionFunction,
   currentDocument: Document,
-  caller: Caller = "agent"
+  { cursor, run: runChild }: RunContext
 ): Promise<GoalLoopRunResult> {
   const history: HandoverHistoryEntry[] = [];
   const stepScores: GoalLoopStepScore[] = [];
   const interactions = getInteractionHistory(currentDocument);
   let consecutiveFailures = 0;
+  // The loop reads on the Caller's behalf with a fork of its cursor: each
+  // step's capture and child Run move the fork, the Caller's cursor stays put
+  // until the Handover.
+  const loop = cursors.fork(cursor);
+  const run: StartChildRun = (name, input, stepCursor = loop) =>
+    runChild(name, input, stepCursor);
 
   /**
-   * End the run. The Handover moves the caller's cursor to the page the loop
-   * last received and carries what changed since the caller's previous one.
+   * End the run. The Handover carries what changed from the page the Caller
+   * last received to the page the loop last received, and moves the Caller's
+   * cursor there; the fork is dropped with the run.
    */
   const done = async (handover: Handover): Promise<GoalLoopRunResult> => {
-    const changes = await interactions.handOver(caller);
-    if (changes?.hasAnyChanges())
-      handover.changes = renderChangeRecord(changes);
+    const received = loop.current();
+    if (received) {
+      const changes = await interactions.readChange(
+        interactions.received(cursor) ?? received,
+        received
+      );
+      cursor.move(received);
+      if (changes.hasAnyChanges())
+        handover.changes = renderChangeRecord(changes);
+    }
     const result = { handover, stepScores };
     runResultStore.last = result;
     return result;
@@ -380,14 +394,13 @@ export async function pursueGoal(
     await probeRegisteredPomMembers();
 
     // Capture the page state this step decides on and build tool options. The
-    // model is a caller with its own cursor, so the tree it sees is the
-    // "before" of the step's Change Record: a change made while it decides
-    // counts into page_changed. The calling agent's cursor stays put until the
-    // Handover.
+    // model reads with the fork, so the tree it sees is the "before" of the
+    // step's Change Record: a change made while it decides counts into
+    // page_changed. The Caller's cursor stays put until the Handover.
     // Both stages of the step are decided on this one capture, so the refs the
     // model reads in the page are the refs the ref options offer.
     const capture = await getPageStateCaptureForDocument(currentDocument, {
-      receivedBy: "goalLoop",
+      cursor: loop,
     });
     const state = buildStepState(
       goal,
@@ -591,7 +604,11 @@ export async function pursueGoal(
     // Execute the operation through the same action sequence as direct tool calls.
     let actionResult: StepOutcome;
     try {
-      actionResult = await executeToolAction(chosenTool, chosenArguments.args);
+      actionResult = await executeToolAction(
+        chosenTool,
+        chosenArguments.args,
+        run
+      );
       consecutiveFailures = 0;
       if (actionResult.changes) score.changes = actionResult.changes;
     } catch (error) {

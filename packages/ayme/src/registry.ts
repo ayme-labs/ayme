@@ -8,7 +8,7 @@ import type {
   RegisteredPomTool,
   ToolManifest,
 } from "./contracts";
-import { isJsonPrimitive } from "./contracts";
+import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
 import { createPage } from "./browserPage";
 import {
   isPlaywrightLiteLocator,
@@ -18,32 +18,26 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { Locator, Page } from "@playwright/test";
 import { probePomRootState } from "./pomReachability";
 import { resolvePageStateRefs, type AriaRef } from "./pageState";
-import type { Caller } from "./interactionHistory";
+import type { Cursor } from "./cursors";
+import type { RunContext } from "./run";
 import { runAction, type ActionResult } from "./actionSequence";
-import {
-  RefResolutionError,
-  RuntimeStateError,
-  ToolInputError,
-} from "./errors";
+import { RefResolutionError, RuntimeStateError } from "./errors";
 
 export type PageObjectConstructor<T extends object = object> = new (
   page: Page
 ) => T;
 
-type LiveRegisteredPomTool = RegisteredPomTool & {
+type ScopedPomTool = RegisteredPomTool & {
   componentPath?: string;
 };
 
-/** Runs a Page Object tool for the caller it is given. */
-type CallerRun = (input: unknown, caller: Caller) => Promise<ActionResult>;
-
 /**
- * Package-internal: a live Page Object tool as the registry holds it. Its
- * `execute` runs it as the calling agent; `executeAs` for the caller given,
- * which is how the Goal Loop runs it as its model.
+ * Package-internal: a Page Object tool as the registry holds it. Its
+ * `execute` runs it for a Run, whose context carries the cursor its Change
+ * Record reads from and moves.
  */
-export type CallerAwarePomTool = LiveRegisteredPomTool & {
-  readonly executeAs: CallerRun;
+export type CallerAwarePomTool = ScopedPomTool & {
+  execute(input: unknown, context: RunContext): Promise<ActionResult>;
 };
 
 export type RegisteredPom = {
@@ -51,7 +45,7 @@ export type RegisteredPom = {
   instance: object;
   manifest: PomManifest;
   memberObservations: readonly PomMemberObservation[];
-  tools: readonly LiveRegisteredPomTool[];
+  tools: readonly ScopedPomTool[];
 };
 
 export type RegisteredPomRoot = {
@@ -67,6 +61,12 @@ export type RegisteredPomRoot = {
 export type RegisteredPomTarget = {
   path: string;
   element: Element;
+  /**
+   * The member's locator, as its `toString()` reads, e.g.
+   * "getByRole('button', { name: 'Add item' })": the locator an Interaction
+   * on the member names.
+   */
+  locator: string;
 };
 
 type ObservedPomRoot = {
@@ -421,24 +421,27 @@ export async function listRegisteredPomTargets(): Promise<
   return targets;
 }
 
-/** The live Page Object tools, as published. */
-export function listRegisteredPomTools(): LiveRegisteredPomTool[] {
-  return listCallerAwarePomTools();
-}
-
 /**
- * Package-internal: the live Page Object tools with the run that takes a
- * caller, for the Goal Loop.
+ * Package-internal: every registered Page Object tool, one per name, with
+ * whether it is available now: its Page Object, or the component instance
+ * it acts on, is available (Page Object Availability). Of tools sharing a
+ * name, the first available one wins, else the first registered.
  */
-export function listCallerAwarePomTools(): CallerAwarePomTool[] {
-  const activeTools = new Map<string, CallerAwarePomTool>();
+export function listRegisteredPomTools(): {
+  tool: CallerAwarePomTool;
+  available: boolean;
+}[] {
+  const tools = new Map<
+    string,
+    { tool: CallerAwarePomTool; available: boolean }
+  >();
   for (const registration of registeredPoms) {
     const declaredRoot = registration.manifest.members.some(
       (member) => member.kind === "locator" && member.memberName === "root"
     );
     for (const tool of registration.tools) {
       const componentPath = tool.componentPath;
-      const active =
+      const available =
         componentPath === undefined
           ? !declaredRoot ||
             registration.rootObservations.some(
@@ -449,11 +452,22 @@ export function listCallerAwarePomTools(): CallerAwarePomTool[] {
                 isRootAvailable(root) &&
                 isLiveComponentRoot(componentPath, `${root.path}.root`)
             );
-      if (active && !activeTools.has(tool.name))
-        activeTools.set(tool.name, tool);
+      const listed = tools.get(tool.name);
+      if (!listed || (available && !listed.available))
+        tools.set(tool.name, { tool, available });
     }
   }
-  return [...activeTools.values()];
+  return [...tools.values()];
+}
+
+/**
+ * Package-internal: the available Page Object tools, the ones a call can
+ * run now, with the run that takes a caller.
+ */
+export function listAvailablePomTools(): CallerAwarePomTool[] {
+  return listRegisteredPomTools().flatMap(({ tool, available }) =>
+    available ? [tool] : []
+  );
 }
 
 /**
@@ -516,8 +530,6 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export const listRegisteredTools = listRegisteredPomTools;
-
 export function subscribeToRegisteredPoms(subscriber: () => void) {
   subscribers.add(subscriber);
   return () => subscribers.delete(subscriber);
@@ -554,8 +566,6 @@ function createRegisteredTool(
   instance: object,
   tool: ToolManifest
 ): CallerAwarePomTool {
-  const executeAs: CallerRun = async (args, caller) =>
-    await executeTool(instance, tool, args, caller);
   return {
     pomId,
     methodName: tool.methodName,
@@ -563,8 +573,8 @@ function createRegisteredTool(
     description: tool.description,
     inputSchema: tool.inputSchema,
     parameters: tool.parameters,
-    execute: (args) => executeAs(args, "agent"),
-    executeAs,
+    execute: (args, { cursor }) =>
+      performPageObjectAction(instance, tool, args, cursor),
   };
 }
 
@@ -617,7 +627,7 @@ function createComponentTool(
     );
 
   const wrapper = refComponentToolManifest(pomId, path, action);
-  const executeAs: CallerRun = async (input, caller) => {
+  const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const values = validatedArguments(wrapper, input);
     const ref = AriaRefSchema.parse(values[0] as string);
     const args = values[1];
@@ -634,7 +644,12 @@ function createComponentTool(
         `Ref "${ref}" does not match a present ${component.className} instance at ${toolPath} (tool ${wrapper.toolName}).`
       );
     }
-    return await executeTool(componentInstance, action, args, caller);
+    return await performPageObjectAction(
+      componentInstance,
+      action,
+      args,
+      cursor
+    );
   };
   return {
     pomId,
@@ -645,8 +660,7 @@ function createComponentTool(
     description: action.description,
     inputSchema: wrapper.inputSchema,
     parameters: wrapper.parameters,
-    execute: (input) => executeAs(input, "agent"),
-    executeAs,
+    execute,
   };
 }
 
@@ -658,7 +672,7 @@ function createSingularComponentTool(
   action: ToolManifest,
   componentPath: string
 ): CallerAwarePomTool {
-  const executeAs: CallerRun = async (input, caller) => {
+  const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const componentInstance = await resolveSingularComponent(
       pageInstance,
       path
@@ -668,7 +682,12 @@ function createSingularComponentTool(
         `No ${component.className} instance exists at ${pomId}.${publicComponentPath(path)}.`
       );
     }
-    return await executeTool(componentInstance, action, input, caller);
+    return await performPageObjectAction(
+      componentInstance,
+      action,
+      input,
+      cursor
+    );
   };
   return {
     pomId,
@@ -679,8 +698,7 @@ function createSingularComponentTool(
     description: action.description,
     inputSchema: action.inputSchema,
     parameters: action.parameters,
-    execute: (input) => executeAs(input, "agent"),
-    executeAs,
+    execute,
   };
 }
 
@@ -870,8 +888,9 @@ async function collectPomTargets(
       const value = await readMember(instance, member);
       if (member.kind === "locator") {
         if (!isLocator(value)) continue;
+        const locator = value.toString();
         for (const element of locatorElements(value))
-          targets.push({ path: memberPath, element });
+          targets.push({ path: memberPath, element, locator });
         continue;
       }
 
@@ -883,8 +902,9 @@ async function collectPomTargets(
         const componentPath = member.collection
           ? `${memberPath}[${index}]`
           : memberPath;
+        const locator = candidate.root.toString();
         for (const element of locatorElements(candidate.root))
-          targets.push({ path: `${componentPath}.root`, element });
+          targets.push({ path: `${componentPath}.root`, element, locator });
         if (componentClasses.has(component.className)) continue;
         await collectPomTargets(
           candidate,
@@ -1018,11 +1038,12 @@ async function readMember(instance: object, member: PomMemberManifest) {
   return await value;
 }
 
-async function executeTool(
+/** Performs a Page Object Action for a Run whose Change Record is read from `cursor`. */
+async function performPageObjectAction(
   instance: object,
   tool: ToolManifest,
   args: unknown,
-  caller: Caller
+  cursor: Cursor
 ): Promise<ActionResult> {
   const method = Reflect.get(instance, tool.methodName);
   if (!isCallable(method))
@@ -1032,9 +1053,9 @@ async function executeTool(
 
   const currentDocument = requireCurrentDocument();
   const parameters = validatedArguments(tool, args);
-  // A tool may be called without the caller ever having read the page; the
+  // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
-  return runAction(currentDocument, caller, { tool: tool.toolName, args }, () =>
+  return runAction(currentDocument, cursor, { tool: tool.toolName, args }, () =>
     method.apply(instance, parameters)
   );
 }
@@ -1048,94 +1069,14 @@ function requireCurrentDocument(): Document {
 }
 
 function validatedArguments(tool: ToolManifest, args: unknown) {
-  const input = asRecord(args);
-  const knownParameterNames = new Set(
-    tool.parameters.map((parameter) => parameter.name)
+  throwFirstViolation(
+    toolInputViolations(inputSchemaFor(tool.parameters), args)
   );
-  for (const name of Object.keys(input)) {
-    if (!knownParameterNames.has(name))
-      throw new ToolInputError(`Unexpected input property ${name}.`);
-  }
-
-  return tool.parameters.map((parameter) => {
-    const value = input[parameter.name];
-    if (value === undefined) {
-      if (parameter.optional) return undefined;
-      throw new ToolInputError(
-        `Missing required input property ${parameter.name}.`
-      );
-    }
-    validateValue(parameter.name, parameter.schema, value);
-    return value;
-  });
-}
-
-/** Package-internal: check one input value against its schema, or throw a ToolInputError naming it. */
-export function validateValue(
-  name: string,
-  schema: JsonSchema,
-  value: unknown
-) {
-  if (schema.type === "array") {
-    if (!Array.isArray(value))
-      throw new ToolInputError(`Input property ${name} must be an array.`);
-    if (schema.items)
-      value.forEach((item, index) =>
-        validateValue(`${name}[${index}]`, schema.items!, item)
-      );
-    return;
-  }
-  if (schema.type === "object") {
-    const object = asRecord(value);
-    const properties = schema.properties ?? {};
-    if (schema.additionalProperties === false) {
-      for (const propertyName of Object.keys(object)) {
-        if (!properties[propertyName])
-          throw new ToolInputError(
-            `Input property ${name}.${propertyName} is not supported.`
-          );
-      }
-    }
-    for (const requiredProperty of schema.required ?? []) {
-      if (object[requiredProperty] === undefined) {
-        throw new ToolInputError(
-          `Input property ${name}.${requiredProperty} is required.`
-        );
-      }
-    }
-    for (const [propertyName, propertySchema] of Object.entries(properties)) {
-      const propertyValue = object[propertyName];
-      if (propertyValue !== undefined)
-        validateValue(`${name}.${propertyName}`, propertySchema, propertyValue);
-    }
-    return;
-  }
-
-  if (schema.type === "integer") {
-    if (!Number.isInteger(value) || typeof value !== "number") {
-      throw new ToolInputError(`Input property ${name} must be an integer.`);
-    }
-  } else if (schema.type && typeof value !== schema.type) {
-    throw new ToolInputError(
-      `Input property ${name} must be a ${schema.type}.`
-    );
-  }
-  if (
-    schema.minimum !== undefined &&
-    (typeof value !== "number" || value < schema.minimum)
-  ) {
-    throw new ToolInputError(
-      `Input property ${name} must be at least ${schema.minimum}.`
-    );
-  }
-  if (
-    schema.enum &&
-    (!isJsonPrimitive(value) || !schema.enum.includes(value))
-  ) {
-    throw new ToolInputError(
-      `Input property ${name} must be one of ${schema.enum.join(", ")}.`
-    );
-  }
+  const input = args as Record<string, unknown>;
+  // An inherited name, such as constructor, is no argument.
+  return tool.parameters.map((parameter) =>
+    Object.hasOwn(input, parameter.name) ? input[parameter.name] : undefined
+  );
 }
 
 function inputSchemaFor(
@@ -1175,11 +1116,6 @@ function asComponents(value: unknown): unknown[] {
   if (!Array.isArray(value))
     throw new RuntimeStateError("Expected a component collection array.");
   return value;
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  if (isRecord(value)) return value;
-  throw new ToolInputError("Tool input must be an object.");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

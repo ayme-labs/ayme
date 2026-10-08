@@ -9,7 +9,7 @@ export {
   type StructuralNodeStatus,
   type StructuralRole,
 } from "./tree/StructuralNode";
-export { StructuralTree } from "./tree/StructuralTree";
+export { StructuralTree, type ReconcileOptions } from "./tree/StructuralTree";
 export { SyntheticAriaRefFactory } from "./tree/SyntheticAriaRefFactory";
 export {
   defineStructuralEnrichment,

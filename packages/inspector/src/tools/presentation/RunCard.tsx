@@ -1,5 +1,12 @@
+import type { SchemaViolation } from "@ayme-dev/ayme/internal";
+
 import type { OnHover } from "../../navigation";
-import type { CollectionItem, Run, ToolArguments } from "../../runs";
+import {
+  openImageFullSize,
+  type CollectionItem,
+  type Run,
+  type ToolArguments,
+} from "../../runs";
 import { argumentsToJson } from "../domain/fields";
 import type { RefSource } from "../domain/refTree";
 import type { RunnableTool } from "../domain/runnableTools";
@@ -32,10 +39,15 @@ export type RunCardProps = {
   refSource?: RefSource;
   /** This tool's runs, newest first. */
   runs: readonly Run[];
+  /**
+   * How arguments break the tool's schema, as the runtime checks them. The
+   * JSON editor lists them, and Run is off while there are any.
+   */
+  argumentViolations?: (args: ToolArguments) => readonly SchemaViolation[];
   /** Runs the tool with its input, on the item for a collection action. */
   onRun: (input: ToolArguments, item?: CollectionItem) => void;
   /** Shows a run in Runs. */
-  onShowRun: (runId: number) => void;
+  onShowRun: (runId: string) => void;
   /** Highlights an item on the page while it's hovered. */
   onHover?: OnHover;
 };
@@ -48,7 +60,7 @@ export type RunCardProps = {
 export function RunCard(props: RunCardProps) {
   const card = useRunCard(props);
   const { tool, items = [], refSource, onShowRun, onHover } = props;
-  const { args, json, fields, last } = card;
+  const { args, json, violations, fields, last } = card;
   const form = tool.fillForm ? (
     <FillFormFields
       source={refSource ?? { roots: [] }}
@@ -73,7 +85,10 @@ export function RunCard(props: RunCardProps) {
     <JsonEditor
       text={json.text ?? argumentsToJson(args)}
       error={json.error}
+      errorLine={json.position?.line}
+      violations={violations}
       onChange={card.changeJson}
+      onFormat={card.formatJson}
     />
   );
   return (
@@ -84,6 +99,7 @@ export function RunCard(props: RunCardProps) {
       items={items}
       onHover={onHover}
       onShowRun={onShowRun}
+      onOpenImage={openImageFullSize}
       form={form}
     />
   );

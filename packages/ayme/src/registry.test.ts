@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runContext } from "./agentCalls.testSupport";
 
 const { locatorElements, testLocators, pageStateResolutions } = vi.hoisted(
   () => ({
@@ -27,7 +28,8 @@ vi.mock("./pageState", async (importOriginal) => ({
       return { status: "unresolved", requestedRef: ref, reason: "unknown-ref" };
     }),
 }));
-vi.mock("./actionSequence", () => ({
+vi.mock("./actionSequence", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./actionSequence")>()),
   runAction: vi.fn(
     async (
       _doc: unknown,
@@ -314,7 +316,7 @@ describe("live Page Object registry", () => {
       "ReusedPage",
       "ReusedPage",
     ]);
-    expect(registry.listRegisteredPomTools().map(({ name }) => name)).toEqual([
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "ReusedPage.open",
     ]);
 
@@ -360,7 +362,7 @@ describe("live Page Object registry", () => {
     expect(
       registry.listRegisteredPoms().map(({ instance }) => instance.constructor)
     ).toEqual([FirstDialog]);
-    expect(registry.listRegisteredPomTools().map(({ name }) => name)).toEqual([
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "Dialog.confirm",
     ]);
 
@@ -415,9 +417,48 @@ describe("live Page Object registry", () => {
 
     await vi.runOnlyPendingTimersAsync();
 
-    expect(registry.listRegisteredTools()).toEqual([]);
+    expect(registry.listAvailablePomTools()).toEqual([]);
+    expect(
+      registry
+        .listRegisteredPomTools()
+        .map(({ tool, available }) => [tool.name, available])
+    ).toEqual([["save", false]]);
 
     registration.dispose();
+  });
+
+  it("lists one tool per name, the available one when registrations share it", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    class MissingRootPage {
+      readonly save = vi.fn();
+    }
+    class RootlessPage {
+      readonly save = vi.fn();
+    }
+    registry.registerCompiledPom(MissingRootPage, {
+      ...emptyManifest("MissingRootPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    registry.registerCompiledPom(RootlessPage, {
+      ...emptyManifest("RootlessPage"),
+      tools: [action("save")],
+    });
+    const missing = registry.createPageRegistration(MissingRootPage);
+    const rootless = registry.createPageRegistration(RootlessPage);
+    await vi.runOnlyPendingTimersAsync();
+
+    const listed = registry.listRegisteredPomTools();
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({ available: true });
+    await listed[0]!.tool.execute({}, runContext());
+    expect(rootless.instance.save).toHaveBeenCalledOnce();
+    expect(missing.instance.save).not.toHaveBeenCalled();
+
+    missing.dispose();
+    rootless.dispose();
   });
 
   it("bounds recursive component manifests to the current component path", async () => {
@@ -463,7 +504,7 @@ describe("live Page Object registry", () => {
     const registration = registry.createPageRegistration(RecursivePage);
     await vi.runOnlyPendingTimersAsync();
 
-    expect(registry.listRegisteredTools().map(({ name }) => name)).toEqual([
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "RecursivePage.node.open",
     ]);
 
@@ -525,36 +566,36 @@ describe("live Page Object registry", () => {
     const registration = registry.createPageRegistration(NestedPage);
 
     await vi.runOnlyPendingTimersAsync();
-    expect(registry.listRegisteredTools().map(({ name }) => name)).toEqual([
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "NestedPage.dialog.confirm",
     ]);
 
-    const confirmTool = registry.listRegisteredTools()[0];
-    await confirmTool?.execute({});
+    const confirmTool = registry.listAvailablePomTools()[0];
+    await confirmTool?.execute({}, runContext());
     expect(confirm).toHaveBeenCalledOnce();
 
     panelRootCount = 1;
     FakeMutationObserver.instances[0]?.trigger();
     await vi.runOnlyPendingTimersAsync();
-    expect(registry.listRegisteredTools().map(({ name }) => name)).toEqual([
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "NestedPage.dialog.confirm",
       "NestedPage.dialog.panel.save",
     ]);
 
-    const nestedTool = registry.listRegisteredTools()[1];
-    await nestedTool?.execute({});
+    const nestedTool = registry.listAvailablePomTools()[1];
+    await nestedTool?.execute({}, runContext());
     expect(save).toHaveBeenCalledOnce();
 
     dialogRootCount = 0;
     panelRootCount = 0;
     FakeMutationObserver.instances[0]?.trigger();
     await vi.runOnlyPendingTimersAsync();
-    expect(registry.listRegisteredTools()).toHaveLength(0);
+    expect(registry.listAvailablePomTools()).toHaveLength(0);
 
     registration.dispose();
   });
 
-  it("lists collection tools only for their direct live roots", async () => {
+  it("lists collection tools as available only for their direct available roots", async () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);
 
@@ -605,27 +646,40 @@ describe("live Page Object registry", () => {
     });
     const registration = registry.createPageRegistration(ItemsPage);
 
-    expect(registry.listRegisteredTools().map(({ name }) => name)).toEqual([
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "addItem",
     ]);
 
     await vi.runOnlyPendingTimersAsync();
-    expect(registry.listRegisteredTools().map(({ name }) => name)).toEqual([
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "addItem",
+    ]);
+    const flags = () =>
+      registry
+        .listRegisteredPomTools()
+        .map(({ tool, available }) => [tool.name, available]);
+    // Every registered tool stays listed, flagged.
+    expect(flags()).toEqual([
+      ["addItem", true],
+      ["ItemsPage.items.archive", false],
     ]);
 
     rootCount = 1;
     FakeMutationObserver.instances[0]?.trigger();
     await vi.runOnlyPendingTimersAsync();
-    expect(registry.listRegisteredTools().map(({ name }) => name)).toEqual([
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "addItem",
       "ItemsPage.items.archive",
+    ]);
+    expect(flags()).toEqual([
+      ["addItem", true],
+      ["ItemsPage.items.archive", true],
     ]);
 
     rootCount = 0;
     FakeMutationObserver.instances[0]?.trigger();
     await vi.runOnlyPendingTimersAsync();
-    expect(registry.listRegisteredTools().map(({ name }) => name)).toEqual([
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "addItem",
     ]);
 
@@ -689,10 +743,12 @@ describe("live Page Object registry", () => {
     const registration = registry.createPageRegistration(ItemsPage);
 
     await vi.runOnlyPendingTimersAsync();
-    const tool = registry.listRegisteredTools()[0];
+    const tool = registry.listAvailablePomTools()[0];
     if (!tool) throw new Error("Expected a collection tool.");
 
-    await expect(tool.execute({ ref: "e2", args: {} })).resolves.toEqual({
+    await expect(
+      tool.execute({ ref: "e2", args: {} }, runContext())
+    ).resolves.toEqual({
       page_changed: false,
       settled: true,
       result: "second",
@@ -701,7 +757,9 @@ describe("live Page Object registry", () => {
     expect(firstArchive).not.toHaveBeenCalled();
 
     currentItems = [replacement];
-    await expect(tool.execute({ ref: "e3", args: {} })).resolves.toEqual({
+    await expect(
+      tool.execute({ ref: "e3", args: {} }, runContext())
+    ).resolves.toEqual({
       page_changed: false,
       settled: true,
       result: "replacement",
@@ -711,23 +769,5 @@ describe("live Page Object registry", () => {
 
     registration.dispose();
     pageStateResolutions.clear();
-  });
-});
-
-describe("tool input validation", () => {
-  it("checks an array input and each of its items", async () => {
-    const { validateValue } = await import("./registry");
-    const schema = {
-      type: "array",
-      items: { type: "string", enum: ["a", "b"] },
-    } as const;
-
-    expect(() => validateValue("tags", schema, ["a", "b"])).not.toThrow();
-    expect(() => validateValue("tags", schema, "a")).toThrow(
-      "Input property tags must be an array."
-    );
-    expect(() => validateValue("tags", schema, ["a", "c"])).toThrow(
-      "Input property tags[1] must be one of a, b."
-    );
   });
 });

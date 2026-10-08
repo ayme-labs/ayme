@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
+import { agentCursor } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
+import { errorText } from "./errors";
+import { agentTools } from "./publication.testSupport";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
 import {
   configureGoalLoop,
   getLastGoalLoopRunResult,
@@ -17,9 +19,7 @@ import {
   chunkQuestionId,
   runOffQuestionId,
 } from "./goalLoopQuestions";
-import { toolFailure } from "./toolFailure.testSupport";
 import {
-  getInteractionHistory,
   getPageStateCaptureForDocument,
   resolvePageStateRefs,
 } from "./pageState";
@@ -332,29 +332,11 @@ function withoutChanges(handover: unknown): unknown {
   return rest;
 }
 
-// --- Fake driver that captures published tools ---
-
-type PublishedTool = {
-  name: string;
-  execute(input: unknown): Promise<unknown>;
-};
-
-function createFakeDriver() {
-  const published = new Map<string, PublishedTool>();
-  const driver = {
-    async registerTool(tool: PublishedTool) {
-      published.set(tool.name, tool);
-    },
-  };
-  return { driver, published };
-}
-
 // --- Test setup ---
 
 describe("Goal Loop goal in Chromium", () => {
   let page: ReturnType<typeof createPage>;
   let stop: (() => void) | undefined;
-  let disposePublication: (() => void) | undefined;
   let clickCount: number;
 
   beforeEach(() => {
@@ -364,8 +346,6 @@ describe("Goal Loop goal in Chromium", () => {
   });
 
   afterEach(() => {
-    disposePublication?.();
-    disposePublication = undefined;
     stop?.();
     stop = undefined;
     configureGoalLoop(undefined);
@@ -385,17 +365,15 @@ describe("Goal Loop goal in Chromium", () => {
     return runtime;
   }
 
+  /** Start a runtime session; its `goal` tool as the agent calls it. */
   async function getPublishedPursueGoal(
     goalLoop: GoalLoopDecisionFunction,
     customTools?: CustomTool[]
-  ): Promise<PublishedTool> {
+  ) {
     startRuntime(goalLoop, customTools);
-    const { driver, published } = createFakeDriver();
-    const publication = await synchronizeWebMcpTools(driver);
-    disposePublication = publication.dispose;
-    const tool = published.get("goal");
-    if (!tool) throw new Error("goal not published");
-    return tool;
+    return {
+      execute: (input: unknown) => agentTools().call("goal", input),
+    };
   }
 
   function setupDom() {
@@ -1144,11 +1122,11 @@ describe("Goal Loop goal in Chromium", () => {
         const { requests, decide } = recording(scriptedDecisionFn([]));
         const tool = await registerPom(decide);
 
-        await expect(
-          tool.execute({ goal: "Add Milk", maxSteps: 5, values })
-        ).resolves.toEqual(
-          toolFailure(expect.stringMatching(/^ToolInputError: .*values/))
-        );
+        expect(
+          await tool
+            .execute({ goal: "Add Milk", maxSteps: 5, values })
+            .catch(errorText)
+        ).toMatch(/^ToolInputError: .*values/);
         expect(requests).toEqual([]);
       }
     );
@@ -1187,9 +1165,9 @@ describe("Goal Loop goal in Chromium", () => {
     const decide = scriptedDecisionFn([]);
     const tool = await registerPom(decide);
 
-    await expect(tool.execute({ goal: "do the thing" })).resolves.toEqual(
-      toolFailure(expect.stringMatching(/^ToolInputError: .*maxSteps/))
-    );
+    expect(
+      await tool.execute({ goal: "do the thing" }).catch(errorText)
+    ).toMatch(/^ToolInputError: .*maxSteps/);
   });
 
   // --- Handover reason: step_budget ---
@@ -2278,7 +2256,7 @@ describe("Goal Loop goal in Chromium", () => {
       }),
     ]);
     // The agent's next Change Record: from the page the Handover gave it.
-    const handedOver = getInteractionHistory(document).cursor("agent")!;
+    const handedOver = agentCursor().current()!;
     const { tree: now } = await getPageStateCaptureForDocument(document);
     const record = StructuralTree.reconcile(
       await handedOver.tree.resolve(),

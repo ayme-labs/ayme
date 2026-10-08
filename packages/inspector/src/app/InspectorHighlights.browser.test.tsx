@@ -21,16 +21,19 @@ import { Inspector } from "../testing";
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { appProcessToolsOf, asStartedAyme } =
     await import("../tools/test-utils/startedAyme");
-  const { pageStateNodeEntry } =
+  const { pageStateNodeEntry, toolInputViolations } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
+    toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     lookAtPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
+    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
@@ -95,6 +98,7 @@ beforeEach(() => {
     [...host.querySelectorAll("[data-path]")].map((target) => ({
       path: target.getAttribute("data-path")!,
       element: target,
+      locator: `locator('[data-path="${target.getAttribute("data-path")}"]')`,
     }))
   );
   vi.mocked(lookAtPageStateForDocument).mockImplementation(

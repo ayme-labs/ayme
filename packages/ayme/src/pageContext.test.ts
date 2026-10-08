@@ -7,10 +7,14 @@ const { getPageStateForDocument, getPomDefinitions } = vi.hoisted(() => ({
   getPomDefinitions: vi.fn(),
 }));
 
-vi.mock("./pageState", () => ({ getPageStateForDocument }));
+vi.mock("./pageState", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./pageState")>()),
+  getPageStateForDocument,
+}));
 vi.mock("./pomDefinitions", () => ({ getPomDefinitions }));
 
 import { getPageContextForDocument, getPageContextTool } from "./pageContext";
+import { agentCursor, runContext } from "./agentCalls.testSupport";
 
 describe("snapshot", () => {
   beforeEach(() => {
@@ -47,6 +51,7 @@ describe("snapshot", () => {
     });
     const context = await getPageContextForDocument(
       document,
+      agentCursor(),
       "ProfileMenu",
       "DocumentPage"
     );
@@ -69,7 +74,7 @@ describe("snapshot", () => {
 
   it("returns a JSON-safe context payload and forwards a named definition filter", async () => {
     await expect(
-      getPageContextTool.execute({ names: ["ProfileMenu"] })
+      getPageContextTool.execute({ names: ["ProfileMenu"] }, runContext())
     ).resolves.toEqual({
       structure: '- e1 button "Save changes"',
       pomDefinitions: "ProfileMenu // The user profile menu.",
@@ -170,9 +175,10 @@ describe("snapshot", () => {
       ],
     });
 
-    await expect(getPageContextTool.execute({})).resolves.toEqual({
-      structure: '- e1 button "Save changes"',
-      pomDefinitions: `AppTopBar // Application top bar.
+    await expect(getPageContextTool.execute({}, runContext())).resolves.toEqual(
+      {
+        structure: '- e1 button "Save changes"',
+        pomDefinitions: `AppTopBar // Application top bar.
   helpButton
   helpMenu: AppTopBarHelpMenu
   notifications: NotificationItem[]
@@ -188,6 +194,7 @@ describe("snapshot", () => {
 AppTopBarHelpMenu
   // Close the help menu.
   close(): this`,
-    });
+      }
+    );
   });
 });

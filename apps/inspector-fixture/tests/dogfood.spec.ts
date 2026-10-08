@@ -1,4 +1,4 @@
-import { executePublishedTool } from "@ayme-dev/ayme/testing";
+import { executePublishedTool } from "@ayme-dev/webmcp/testing";
 
 import { AgentView } from "./agentView";
 import { expect, test } from "./fixtures";

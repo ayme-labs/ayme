@@ -13,9 +13,9 @@
     "lint": "eslint . --max-warnings 0",
     "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod && pnpm run test:e2e:spa:dev && pnpm run test:e2e:spa:prod",
     "test:e2e:dev": "playwright test",
-    "test:e2e:prod": "playwright test --config=playwright.production.config.ts",
-    "test:e2e:spa:dev": "AYME_ANGULAR_RENDER=spa playwright test",
-    "test:e2e:spa:prod": "AYME_ANGULAR_RENDER=spa playwright test --config=playwright.production.config.ts"
+    "test:e2e:prod": "AYME_E2E_SERVER=production playwright test",
+    "test:e2e:spa:dev": "AYME_E2E_RENDER=spa playwright test",
+    "test:e2e:spa:prod": "AYME_E2E_SERVER=production AYME_E2E_RENDER=spa playwright test"
   },
   "dependencies": {
     "@angular/common": "^22.2.1",
@@ -29,6 +29,7 @@
     "@ayme-dev/ayme": "workspace:*",
     "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
+    "@ayme-dev/webmcp": "workspace:*",
     "express": "^5.1.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"

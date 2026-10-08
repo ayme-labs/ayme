@@ -5,7 +5,7 @@ The Svelte package for [Ayme](https://github.com/ayme-labs/ayme): it starts Ayme
 ## Install
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/svelte
+npm install @ayme-dev/ayme @ayme-dev/svelte @ayme-dev/webmcp
 npm install -D @ayme-dev/unplugin-ayme @playwright/test
 ```
 

@@ -19,7 +19,10 @@ vi.mock("@ayme-dev/core/structural-observation", async (importOriginal) => ({
 }));
 
 import { runAction, startNavigation } from "./actionSequence";
+import { createCursors } from "./cursors";
 import { getInteractionHistory } from "./pageState";
+
+const cursor = () => createCursors().of("app");
 
 describe("runAction", () => {
   beforeEach(() => {
@@ -37,37 +40,55 @@ describe("runAction", () => {
   });
 
   it("completes the action as failed when the post-action capture throws", async () => {
-    const captureError = captureOnceThenThrow();
+    const captureError = captureThenThrow(2);
 
     await expect(
-      runAction(document, "agent", { tool: "App.save", args: {} }, () => {})
+      runAction(document, cursor(), { tool: "App.save", args: {} }, () => {})
     ).rejects.toBe(captureError);
 
-    await expectOneFailedCompletedAction();
+    await expectOneFailedCompletedAction(3);
+  });
+
+  it("completes the action as failed, before it runs, when the before capture throws", async () => {
+    const captureError = captureThenThrow(1);
+    const perform = vi.fn();
+
+    await expect(
+      runAction(document, cursor(), { tool: "App.save", args: {} }, perform)
+    ).rejects.toBe(captureError);
+
+    expect(perform).not.toHaveBeenCalled();
+    // The failure's own capture is the third; it fails too and the page as
+    // last recorded stands in.
+    await expectOneFailedCompletedAction(3);
   });
 
   it("completes the action as failed when perform and the capture after it throw", async () => {
-    captureOnceThenThrow();
+    captureThenThrow(2);
     const performError = new Error("Save failed.");
 
     await expect(
-      runAction(document, "agent", { tool: "App.save", args: {} }, () => {
+      runAction(document, cursor(), { tool: "App.save", args: {} }, () => {
         throw performError;
       })
     ).rejects.toBe(performError);
 
-    await expectOneFailedCompletedAction();
+    await expectOneFailedCompletedAction(3);
   });
 });
 
-/** The capture that starts the action succeeds; the one after it throws. */
-function captureOnceThenThrow(): Error {
+/**
+ * The first `successes` captures succeed with one unchanged page (the one
+ * that starts the action, then the before capture); the next one throws.
+ */
+function captureThenThrow(successes: number): Error {
   const tree = '- generic [ref=e1]:\n  - button "Save" [ref=e2]';
-  captureAriaSnapshot.mockReturnValueOnce({
-    distilledText: tree,
-    fullText: tree,
-    refsByElement: new Map([[document.body, "e1"]]),
-  });
+  for (let i = 0; i < successes; i++)
+    captureAriaSnapshot.mockReturnValueOnce({
+      distilledText: tree,
+      fullText: tree,
+      refsByElement: new Map([[document.body, "e1"]]),
+    });
   const captureError = new Error("Capture failed.");
   captureAriaSnapshot.mockImplementationOnce(() => {
     throw captureError;
@@ -75,12 +96,12 @@ function captureOnceThenThrow(): Error {
   return captureError;
 }
 
-async function expectOneFailedCompletedAction() {
+async function expectOneFailedCompletedAction(captures: number) {
   const history = getInteractionHistory(document);
   const [[actionId, action]] = [...history.actions()];
   expect(action).toMatchObject({ failed: true });
   // Recorded against the last observation: no capture after the failed one.
-  expect(captureAriaSnapshot).toHaveBeenCalledTimes(2);
+  expect(captureAriaSnapshot).toHaveBeenCalledTimes(captures);
   // Core has evidence only for a completed action; a started one throws.
   await expect(
     history.observations.getActionEvidence(actionId!)

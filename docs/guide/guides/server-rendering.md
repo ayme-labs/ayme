@@ -17,7 +17,7 @@ After hydration, the root owner starts the session in the browser, constructs an
 
 ## Server state
 
-A coding agent can still read your server's state through Peeks. A session you create and start yourself in Node, rather than one a framework package creates to render, makes the process its App Process: with `agentConnection` on, it pairs with the agent's Ayme MCP server beside the tab and offers its Peeks as `peek.node.<name>`. Start one such session per process, once, in the server's entry point, such as Next.js's `instrumentation.ts` or a Nitro server plugin in Nuxt. [In Node](../reference/ayme.md#in-node) shows the setup.
+A coding agent can still read your server's state through Peeks. A session you create and start yourself in Node, rather than one a framework package creates to render, makes the process its App Process: with `agentConnection` on, it pairs with the agent's Ayme MCP server beside the tab and offers its Peeks as `peek.node.<name>`. Start one such session per process, once, in the server's entry point, such as Next.js's `instrumentation.ts` or a Nitro server plugin in Nuxt, and define each Peek in the module that owns the state it reads. [In Node](../reference/ayme.md#in-node) shows the setup, and why a Peek in Next.js does not belong in `instrumentation.ts`.
 
 ## Per framework
 

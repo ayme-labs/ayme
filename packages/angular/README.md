@@ -12,7 +12,11 @@ ng add @ayme-dev/angular
 
 ## Setup
 
-Turn publication on in the application config:
+Install WebMCP publication, which `ng add` leaves out, and turn it on in the application config:
+
+```sh
+npm install @ayme-dev/webmcp
+```
 
 ```ts
 import { ApplicationConfig } from "@angular/core";

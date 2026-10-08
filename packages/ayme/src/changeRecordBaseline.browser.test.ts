@@ -6,18 +6,18 @@ import type { DecisionResponse } from "./decisionTypes";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { getPageStateForElements } from "./pageState";
-import { createPageRegistration, registerCompiledPom } from "./registry";
+import { agentTools } from "./publication.testSupport";
+import {
+  createPageRegistration,
+  probeRegisteredPomMembers,
+  registerCompiledPom,
+} from "./registry";
 import { createAyme } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
-
-type PublishedTool = {
-  name: string;
-  execute(input: unknown): Promise<unknown>;
-};
 
 type ActionResultShape = {
   page_changed: boolean;
   settled: boolean;
+  changes_before?: string;
   changes?: string;
 };
 
@@ -25,19 +25,14 @@ const TOAST = '<div role="status">Background toast</div>';
 
 describe("Change Record baseline in Chromium", () => {
   let page: ReturnType<typeof createPage>;
-  let published: Map<string, PublishedTool>;
   let stop: (() => void) | undefined;
-  let disposePublication: (() => void) | undefined;
 
   beforeEach(() => {
     document.body.innerHTML = "";
     page = createPage();
-    published = new Map();
   });
 
   afterEach(() => {
-    disposePublication?.();
-    disposePublication = undefined;
     stop?.();
     stop = undefined;
     configureGoalLoop(undefined);
@@ -47,15 +42,6 @@ describe("Change Record baseline in Chromium", () => {
   function startRuntime(goalLoop?: GoalLoopDecisionFunction) {
     const runtime = createAyme({ pageFactory: () => page, goalLoop });
     stop = runtime.start();
-  }
-
-  async function publishTools() {
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(registered: PublishedTool) {
-        published.set(registered.name, registered);
-      },
-    });
-    disposePublication = publication.dispose;
   }
 
   /** Register a Page Object whose only action leaves the page untouched. */
@@ -69,17 +55,12 @@ describe("Change Record baseline in Chromium", () => {
     registerCompiledPom(App, manifest("App", [action("noop", "App.noop")]));
     startRuntime(goalLoop);
     createPageRegistration(App);
-    await publishTools();
-  }
-
-  function tool(name: string): PublishedTool {
-    const found = published.get(name);
-    if (!found) throw new Error(`Tool ${name} was not published.`);
-    return found;
+    // Its tool is published once a probe finds the Page Object available.
+    await probeRegisteredPomMembers();
   }
 
   async function readStructure(): Promise<string> {
-    const context = (await tool("snapshot").execute({})) as {
+    const context = (await agentTools().call("snapshot", {})) as {
       structure: string;
     };
     return context.structure;
@@ -89,7 +70,7 @@ describe("Change Record baseline in Chromium", () => {
     name: string,
     input: Record<string, unknown>
   ): Promise<ActionResultShape> {
-    return (await tool(name).execute(input)) as ActionResultShape;
+    return (await agentTools().call(name, input)) as ActionResultShape;
   }
 
   // --- A change between the caller's read and its next action ---
@@ -97,7 +78,6 @@ describe("Change Record baseline in Chromium", () => {
   it("reports a change made after snapshot in the click's Change Record", async () => {
     document.body.innerHTML = '<button id="act">Act</button>';
     startRuntime();
-    await publishTools();
 
     const actRef = refFor(await readStructure(), "Act");
     document.body.insertAdjacentHTML("beforeend", TOAST);
@@ -105,13 +85,13 @@ describe("Change Record baseline in Chromium", () => {
     const result = await act("click", { target: actRef });
 
     expect(result.page_changed).toBe(true);
-    expect(result.changes).toContain("Background toast");
+    expect(result.changes_before).toContain("Background toast");
+    expect(result.changes).not.toContain("Background toast");
   });
 
   it("reports a change made after snapshot in the fill's Change Record", async () => {
     document.body.innerHTML = '<input id="name" aria-label="Name">';
     startRuntime();
-    await publishTools();
 
     const nameRef = refFor(await readStructure(), "Name", "textbox");
     document.body.insertAdjacentHTML("beforeend", TOAST);
@@ -122,7 +102,8 @@ describe("Change Record baseline in Chromium", () => {
     });
 
     expect(result.page_changed).toBe(true);
-    expect(result.changes).toContain("Background toast");
+    expect(result.changes_before).toContain("Background toast");
+    expect(result.changes).toContain("Ada");
   });
 
   it("reports a change made after snapshot in a Page Object Tool's Change Record", async () => {
@@ -133,8 +114,10 @@ describe("Change Record baseline in Chromium", () => {
 
     const result = await act("App.noop", {});
 
+    // The action itself changed nothing: only the first part has a change.
     expect(result.page_changed).toBe(true);
-    expect(result.changes).toContain("Background toast");
+    expect(result.changes_before).toContain("Background toast");
+    expect(result.changes).toBeUndefined();
   });
 
   // --- Two actions in a row ---
@@ -151,7 +134,6 @@ describe("Change Record baseline in Chromium", () => {
       );
     });
     startRuntime();
-    await publishTools();
 
     const structure = await readStructure();
     const firstRef = refFor(structure, "First");
@@ -164,8 +146,8 @@ describe("Change Record baseline in Chromium", () => {
 
     const second = await act("click", { target: secondRef });
     expect(second.page_changed).toBe(true);
-    expect(second.changes).toContain("Background toast");
-    expect(second.changes).not.toContain("Result of the first action");
+    expect(second.changes_before).toContain("Background toast");
+    expect(second.changes_before).not.toContain("Result of the first action");
   });
 
   // --- A capture Ayme makes for itself must not consume the change ---
@@ -173,7 +155,6 @@ describe("Change Record baseline in Chromium", () => {
   it("keeps the Change Record complete when the inspector captures in between", async () => {
     document.body.innerHTML = '<button id="act">Act</button>';
     startRuntime();
-    await publishTools();
 
     const actRef = refFor(await readStructure(), "Act");
     document.body.insertAdjacentHTML("beforeend", TOAST);
@@ -182,7 +163,7 @@ describe("Change Record baseline in Chromium", () => {
     const result = await act("click", { target: actRef });
 
     expect(result.page_changed).toBe(true);
-    expect(result.changes).toContain("Background toast");
+    expect(result.changes_before).toContain("Background toast");
   });
 
   // --- No change at all ---
@@ -192,7 +173,6 @@ describe("Change Record baseline in Chromium", () => {
     // Focus first: the click would otherwise move focus, a change of its own.
     await page.locator("#act").focus();
     startRuntime();
-    await publishTools();
 
     const result = await act("click", {
       target: refFor(await readStructure(), "Act"),
@@ -225,7 +205,7 @@ describe("Change Record baseline in Chromium", () => {
 
     await startWithNoopPom(decide);
 
-    const handover = (await tool("goal").execute({
+    const handover = (await agentTools().call("goal", {
       goal: "do the thing",
       maxSteps: 3,
     })) as { history: { page_changed: boolean }[] };

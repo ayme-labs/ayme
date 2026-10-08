@@ -9,7 +9,9 @@
     "goals:runs": "node scripts/goal-runs.ts",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
-    "test:e2e": "playwright test --config playwright.config.ts --reporter=list",
+    "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
+    "test:e2e:dev": "AYME_E2E_RENDER=spa playwright test",
+    "test:e2e:prod": "AYME_E2E_SERVER=production AYME_E2E_RENDER=spa playwright test",
     "test:goals": "playwright test --config playwright.goals.config.ts --reporter=list",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
@@ -18,6 +20,7 @@
     "@ayme-dev/ayme": "workspace:*",
     "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
+    "@ayme-dev/webmcp": "workspace:*",
     "@ayme-dev/vue": "workspace:*",
     "@lucide/vue": "^1.47.0",
     "@mcp-b/webmcp-polyfill": "5.1.0",

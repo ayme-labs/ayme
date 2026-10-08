@@ -11,12 +11,13 @@
     "lint": "eslint . --max-warnings 0",
     "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
     "test:e2e:dev": "playwright test",
-    "test:e2e:prod": "playwright test --config=playwright.production.config.ts"
+    "test:e2e:prod": "AYME_E2E_SERVER=production playwright test"
   },
   "dependencies": {
     "@ayme-dev/ayme": "workspace:*",
     "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
+    "@ayme-dev/webmcp": "workspace:*",
     "@ayme-dev/vue": "workspace:*",
     "nuxt": "4.5.2",
     "vue": "^3.5.42"

@@ -19,19 +19,22 @@ import { Inspector } from "../testing";
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { appProcessToolsOf, asStartedAyme } =
     await import("../tools/test-utils/startedAyme");
-  const { pageStateNodeEntry } =
+  const { pageStateNodeEntry, toolInputViolations } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
+    toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     lookAtPageStateForDocument: vi.fn(),
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
+    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     getStartedAyme: asStartedAyme,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     listRegisteredPomTargets: vi.fn(),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
@@ -116,12 +119,28 @@ beforeEach(() => {
   vi.mocked(listRegisteredPoms).mockReturnValue([listPage]);
   // Two collections hold the same items; search finds the later one's too.
   vi.mocked(listRegisteredPomTargets).mockResolvedValue([
-    { path: "ListPage.rows", element: milk! },
-    { path: "ListPage.rows", element: eggs! },
-    { path: "ListPage.items[0].root", element: milk! },
-    { path: "ListPage.items[1].root", element: eggs! },
-    { path: "ListPage.entries[0].root", element: milk! },
-    { path: "ListPage.entries[1].root", element: eggs! },
+    { path: "ListPage.rows", element: milk!, locator: "locator('li')" },
+    { path: "ListPage.rows", element: eggs!, locator: "locator('li')" },
+    {
+      path: "ListPage.items[0].root",
+      element: milk!,
+      locator: "locator('li').first()",
+    },
+    {
+      path: "ListPage.items[1].root",
+      element: eggs!,
+      locator: "locator('li').nth(1)",
+    },
+    {
+      path: "ListPage.entries[0].root",
+      element: milk!,
+      locator: "locator('.entry').first()",
+    },
+    {
+      path: "ListPage.entries[1].root",
+      element: eggs!,
+      locator: "locator('.entry').nth(1)",
+    },
   ]);
 
   const inspectorHost = document.createElement("div");

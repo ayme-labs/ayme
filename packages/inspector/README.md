@@ -13,7 +13,7 @@ npm install -D @ayme-dev/inspector
 Pass `inspector: true` where Ayme starts, such as `useAyme`, `AymeProvider`, `provideAyme` or `createAyme`:
 
 ```ts
-useAyme({ webMCP: { enabled: true }, inspector: import.meta.env.DEV });
+useAyme({ inspector: import.meta.env.DEV });
 ```
 
 The session loads the Inspector when it starts in the browser and unmounts it when it stops. With the option off, the page requests no Inspector code. To show people what an agent does, `inspector: { demo: true }` also pauses before each action and shows where each click lands.

@@ -8,6 +8,24 @@ type Target = { target: string };
 type Modifier = "Alt" | "Control" | "ControlOrMeta" | "Meta" | "Shift";
 
 /**
+ * An image a tool returns, such as a screenshot. `ayme mcp` gives it to the
+ * agent as an MCP image and writes it to a file named `filename`.
+ */
+export type ImageResult = {
+  type: "image";
+  /** What it shows, e.g. "the viewport", "the full page" or "element e12". */
+  subject: string;
+  /** A bare file name, ending in the extension of its format. */
+  filename: string;
+  mimeType: "image/png" | "image/jpeg";
+  /** Its size in pixels. */
+  width: number;
+  height: number;
+  /** The image's bytes, base64-encoded. */
+  data: string;
+};
+
+/**
  * The input and result of each built-in tool, by name: the Browser Tools,
  * `snapshot` and `goal`. Mirrors the tools' input schemas.
  */
@@ -56,6 +74,15 @@ export type BuiltInTools = {
         | { within: string; error: string }
       )[];
     };
+  };
+  screenshot: {
+    input: {
+      type?: "png" | "jpeg";
+      target?: string;
+      fullPage?: boolean;
+      filename?: string;
+    };
+    result: ImageResult;
   };
   navigate: { input: { url: string }; result: ActionResult };
   navigate_back: { input: Record<string, never>; result: ActionResult };

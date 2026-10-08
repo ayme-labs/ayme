@@ -36,7 +36,26 @@ createAyme({ customTools: [highlight] });
 
 - The published tool takes `{ ref }`. Ayme resolves the Structural Ref against the current page and calls `execute` with the current ref and its element. An unknown, removed or ambiguous ref fails before `execute` runs.
 - `description` is the only instruction the model gets about the operation.
-- The call returns the same action result as every other action: a JSON value returned by `execute` appears under `result`, next to `page_changed`, `settled` and, when the page changed, `changes`.
+- The call returns the same action result as every other action: a JSON value returned by `execute` appears under `result`, next to `page_changed`, `settled` and, when the page changed, `changes_before` and `changes`.
 - `filter` limits only which elements the Goal Loop may offer for this tool. It is not enforced when an agent calls the tool with a ref. Without a `filter`, every node that has a ref may be offered.
-- A Custom Tool whose name another live tool already has fails publication, with the status `failed`, and `ayme.tools.run` throws until the clash is fixed.
+- A Custom Tool whose name another tool already has leaves the session with no tools: `ayme.tools.list()` is empty, so nothing is published, and `ayme.tools.run` throws until the clash is fixed.
 - Custom Tools live as long as the session: they are removed when it stops.
+
+## Use other tools from a Custom Tool
+
+`execute` gets a second argument, `{ run }`. `run(name, input)` runs another available tool as a child Run of the Custom Tool's own Run and resolves with its result, as `ayme.tools.run` does. Child Runs run inside the Custom Tool's turn, never waiting on the page's queue, one after the other in the order it starts them, even when it starts them together, and `ayme.runs` lists them under its Run:
+
+```ts
+const submitSample: CustomTool = {
+  name: "submit_sample",
+  description: "Fill a text field with sample text and submit its form.",
+  filter: (element) => element.matches("input[type=text], textarea"),
+  async execute({ ref }, { run }) {
+    await run("fill", { target: ref, text: "Sample text" });
+    await run("press_key", { key: "Enter" });
+    return null;
+  },
+};
+```
+
+Never call `ayme.tools.run` from inside `execute`. That starts a separate top-level Run, which waits for the Custom Tool's Run to end, while the Custom Tool waits for it: neither ever finishes. Use the `run` it is handed.

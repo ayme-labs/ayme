@@ -97,7 +97,7 @@ describe("the runs of a member selection", () => {
     expect(
       runIsOnMember("ListPage.newItemInput", {
         objectPath: "ListPage",
-        stepMembers: ["ListPage.newItemInput", "ListPage.addItemButton"],
+        interactionMembers: ["ListPage.newItemInput", "ListPage.addItemButton"],
       })
     ).toBe(true);
   });
@@ -106,7 +106,7 @@ describe("the runs of a member selection", () => {
     expect(
       runIsOnMember("ListPage.newItemInput", {
         objectPath: "ListPage",
-        stepMembers: [undefined, "ListPage.addItemButton"],
+        interactionMembers: [undefined, "ListPage.addItemButton"],
       })
     ).toBe(false);
   });

@@ -25,9 +25,15 @@ One session owns the current document at a time. `start()` returns the function 
 
 ## Turn publication on
 
+Publication lives in its own package. Install it beside `@ayme-dev/ayme`, which declares it as an optional peer dependency:
+
+```sh
+npm install @ayme-dev/webmcp
+```
+
 The call that starts Ayme decides whether its tools are published through WebMCP.
 
-- `webMCP.enabled` turns publication on. It is off unless set. Page Objects, page state and the Goal Loop work either way.
+- `webMCP.enabled` turns publication on. The session then loads `@ayme-dev/webmcp` when it starts in the browser; with the option off, the page requests none of its code. It is off unless set. Page Objects, page state and the Goal Loop work either way.
 - `webMCP.toolNamePrefix` is prepended to every published tool name: the agent's tools, Browser Tools, Custom Tools and Page Object Tools. It is empty by default. It applies at publication only: `ayme.tools`, the Goal Loop and the Inspector use the unprefixed names.
 
 ```ts

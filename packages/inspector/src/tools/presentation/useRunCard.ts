@@ -4,6 +4,7 @@ import type { ToolArguments } from "../../runs";
 import { needsInput } from "../application/needsInput";
 import {
   argumentsFromJson,
+  argumentsToJson,
   fieldsOf,
   initialArguments,
   signatureOf,
@@ -12,6 +13,14 @@ import {
 import type { FormField } from "../domain/fillForm";
 import type { LocatorGroup } from "../domain/locatorGroups";
 import type { RunCardProps } from "./RunCard";
+
+/** The JSON editor's text, and its syntax error, if any. */
+export type JsonState = {
+  text?: string;
+  error?: string;
+  /** Where the syntax error is, 1-based. */
+  position?: { line: number; column: number };
+};
 
 /**
  * A run card's UI logic: its arguments (typed, as JSON, or fill_form's
@@ -27,6 +36,7 @@ export function useRunCard({
   items = [],
   structuralRef,
   runs,
+  argumentViolations,
   onRun,
 }: RunCardProps) {
   const fields = useMemo(
@@ -48,7 +58,13 @@ export function useRunCard({
       ? withArgument(initial, [refField], structuralRef)
       : initial;
   });
-  const [json, setJson] = useState<{ text?: string; error?: string }>();
+  const [json, setJson] = useState<JsonState>();
+  // While the JSON editor is open: how its arguments break the tool's schema.
+  const violations = useMemo(
+    () =>
+      json && !json.error && argumentViolations ? argumentViolations(args) : [],
+    [json, args, argumentViolations]
+  );
   // The fields that can't be sent as they are; while any is, Run doesn't run.
   const [invalid, setInvalid] = useState<ReadonlySet<string>>(new Set());
   const setValidity = useCallback(
@@ -100,7 +116,7 @@ export function useRunCard({
       setOpen(true);
       return;
     }
-    if (json?.error || invalid.size) return;
+    if (json?.error || violations.length || invalid.size) return;
     if (!collection) onRun(args);
     else if (target) onRun({ ref: target.ref, args }, target);
   };
@@ -111,6 +127,7 @@ export function useRunCard({
     fields,
     args,
     json,
+    violations,
     open,
     collection,
     picking,
@@ -121,7 +138,8 @@ export function useRunCard({
     last,
     lastSuccess,
     running,
-    invalid: invalid.size > 0,
+    invalid:
+      invalid.size > 0 || json?.error !== undefined || violations.length > 0,
     setValidity,
     submit,
     setFormFields,
@@ -138,7 +156,16 @@ export function useRunCard({
       if (parsed.ok) {
         setArgs(parsed.arguments);
         setJson({ text });
-      } else setJson({ text, error: parsed.error });
+      } else
+        setJson({
+          text,
+          error: parsed.error,
+          ...(parsed.position ? { position: parsed.position } : {}),
+        });
+    },
+    /** Pretty-prints the JSON, once it's valid. */
+    formatJson: () => {
+      if (!json?.error) setJson({ text: argumentsToJson(args) });
     },
   };
 }

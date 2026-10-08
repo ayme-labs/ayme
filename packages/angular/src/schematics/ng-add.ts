@@ -158,7 +158,7 @@ export function ngAdd(options: NgAddOptions): Rule {
       (_, context) => {
         if (manual.length === 0)
           context.logger.info(
-            "Ayme is set up. Turn WebMCP publication on with provideAyme({ webMCP: { enabled: true } })."
+            "Ayme is set up. To publish its tools through WebMCP, install @ayme-dev/webmcp and turn it on with provideAyme({ webMCP: { enabled: true } })."
           );
         else for (const line of manual) context.logger.warn(line);
       },

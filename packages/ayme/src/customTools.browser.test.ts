@@ -2,19 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 import { createPage } from "./browserPage";
+import { agentTools } from "./publication.testSupport";
 import { createAyme } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
-import type { CustomTool } from "./elementTools";
-import { toolFailure } from "./toolFailure.testSupport";
-
-type PublishedTool = {
-  name: string;
-  description?: string;
-  inputSchema?: unknown;
-  execute(input: unknown): Promise<unknown>;
-};
-
-type Registration = { tool: PublishedTool; signal: AbortSignal };
+import { listCustomTools, type CustomTool } from "./elementTools";
+import { errorText } from "./errors";
 
 type ActionResultShape = {
   result?: unknown;
@@ -23,20 +14,9 @@ type ActionResultShape = {
   changes?: string;
 };
 
-function createFakeDriver() {
-  const published = new Map<string, Registration>();
-  const driver = {
-    async registerTool(tool: PublishedTool, options: { signal: AbortSignal }) {
-      published.set(tool.name, { tool, signal: options.signal });
-    },
-  };
-  return { driver, published };
-}
-
 describe("Custom Tools in Chromium", () => {
   let page: ReturnType<typeof createPage>;
   let stop: (() => void) | undefined;
-  let disposePublication: (() => void) | undefined;
 
   beforeEach(() => {
     document.body.innerHTML = "";
@@ -44,45 +24,25 @@ describe("Custom Tools in Chromium", () => {
   });
 
   afterEach(() => {
-    disposePublication?.();
-    disposePublication = undefined;
     stop?.();
     stop = undefined;
     document.body.innerHTML = "";
   });
 
-  /** Start a runtime session with the given Custom Tools and publish its tools. */
-  async function publish(customTools?: CustomTool[]) {
+  /** Start a runtime session with the given Custom Tools. */
+  function start(customTools?: CustomTool[]) {
     const runtime = createAyme({
       pageFactory: () => page,
       customTools,
     });
     stop = runtime.start();
-    return republish();
+    return runtime;
   }
 
-  async function republish() {
-    const { driver, published } = createFakeDriver();
-    const publication = await synchronizeWebMcpTools(driver);
-    disposePublication = publication.dispose;
-    return published;
-  }
+  const call = (name: string, input: unknown) => agentTools().call(name, input);
 
-  function registrationOf(
-    published: Map<string, Registration>,
-    name: string
-  ): Registration {
-    const registration = published.get(name);
-    if (!registration) throw new Error(`Tool ${name} was not published.`);
-    return registration;
-  }
-
-  async function structure(
-    published: Map<string, Registration>
-  ): Promise<string> {
-    const context = (await registrationOf(published, "snapshot").tool.execute(
-      {}
-    )) as { structure: string };
+  async function structure(): Promise<string> {
+    const context = (await call("snapshot", {})) as { structure: string };
     return context.structure;
   }
 
@@ -103,15 +63,17 @@ describe("Custom Tools in Chromium", () => {
 
   // --- Registration ---
 
-  it("publishes a registered Custom Tool with its name, description and ref input", async () => {
+  it("publishes a registered Custom Tool with its name, description and ref input", () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool } = recordingCustomTool();
 
-    const published = await publish([customTool]);
+    const ayme = start([customTool]);
 
-    const { tool } = registrationOf(published, "highlight_element");
-    expect(tool.description).toBe("Highlight one element on the page.");
-    expect(tool.inputSchema).toEqual({
+    const tool = ayme.tools
+      .list()
+      .find(({ name }) => name === "highlight_element");
+    expect(tool?.description).toBe("Highlight one element on the page.");
+    expect(tool?.inputSchema).toEqual({
       type: "object",
       properties: { ref: { type: "string" } },
       required: ["ref"],
@@ -123,7 +85,10 @@ describe("Custom Tools in Chromium", () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool } = recordingCustomTool({ name: "click" });
 
-    await expect(publish([customTool])).rejects.toThrow(
+    const ayme = start([customTool]);
+
+    expect(ayme.tools.list()).toEqual([]);
+    await expect(ayme.tools.run("snapshot", {})).rejects.toThrow(
       'Cannot publish the tool "click": another published tool already uses that name.'
     );
   });
@@ -133,12 +98,10 @@ describe("Custom Tools in Chromium", () => {
   it("passes the current Structural Ref and its element to execute", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool, targets } = recordingCustomTool();
-    const published = await publish([customTool]);
-    const saveRef = refFor(await structure(published), "Save changes");
+    start([customTool]);
+    const saveRef = refFor(await structure(), "Save changes");
 
-    await registrationOf(published, "highlight_element").tool.execute({
-      ref: saveRef,
-    });
+    await call("highlight_element", { ref: saveRef });
 
     expect(targets).toEqual([
       { ref: saveRef, element: document.querySelector("#save") },
@@ -148,17 +111,15 @@ describe("Custom Tools in Chromium", () => {
   it("retargets a historical ref to the element that replaced it", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool, targets } = recordingCustomTool();
-    const published = await publish([customTool]);
-    const saveRef = refFor(await structure(published), "Save changes");
+    start([customTool]);
+    const saveRef = refFor(await structure(), "Save changes");
 
     const replacement = document.createElement("button");
     replacement.id = "save";
     replacement.textContent = "Save changes";
     document.querySelector("#save")!.replaceWith(replacement);
 
-    await registrationOf(published, "highlight_element").tool.execute({
-      ref: saveRef,
-    });
+    await call("highlight_element", { ref: saveRef });
 
     expect(targets).toHaveLength(1);
     expect(targets[0]!.element).toBe(replacement);
@@ -169,13 +130,12 @@ describe("Custom Tools in Chromium", () => {
     const { customTool } = recordingCustomTool({
       execute: async () => ({ highlighted: true }),
     });
-    const published = await publish([customTool]);
-    const saveRef = refFor(await structure(published), "Save changes");
+    start([customTool]);
+    const saveRef = refFor(await structure(), "Save changes");
 
-    const result = (await registrationOf(
-      published,
-      "highlight_element"
-    ).tool.execute({ ref: saveRef })) as ActionResultShape;
+    const result = (await call("highlight_element", {
+      ref: saveRef,
+    })) as ActionResultShape;
 
     expect(result).toEqual({
       result: { highlighted: true },
@@ -192,13 +152,12 @@ describe("Custom Tools in Chromium", () => {
         return null;
       },
     });
-    const published = await publish([customTool]);
-    const saveRef = refFor(await structure(published), "Save changes");
+    start([customTool]);
+    const saveRef = refFor(await structure(), "Save changes");
 
-    const result = (await registrationOf(
-      published,
-      "highlight_element"
-    ).tool.execute({ ref: saveRef })) as ActionResultShape;
+    const result = (await call("highlight_element", {
+      ref: saveRef,
+    })) as ActionResultShape;
 
     expect(result.page_changed).toBe(true);
     expect(result.changes).toContain("Highlighted");
@@ -209,12 +168,10 @@ describe("Custom Tools in Chromium", () => {
     const { customTool, targets } = recordingCustomTool({
       filter: () => false,
     });
-    const published = await publish([customTool]);
-    const saveRef = refFor(await structure(published), "Save changes");
+    start([customTool]);
+    const saveRef = refFor(await structure(), "Save changes");
 
-    await registrationOf(published, "highlight_element").tool.execute({
-      ref: saveRef,
-    });
+    await call("highlight_element", { ref: saveRef });
 
     expect(targets).toHaveLength(1);
   });
@@ -224,17 +181,13 @@ describe("Custom Tools in Chromium", () => {
   it("fails an unknown ref without calling execute", async () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool, targets } = recordingCustomTool();
-    const published = await publish([customTool]);
-    await structure(published);
+    start([customTool]);
+    await structure();
 
-    await expect(
-      registrationOf(published, "highlight_element").tool.execute({
-        ref: "e999",
-      })
-    ).resolves.toEqual(
-      toolFailure(
-        'RefResolutionError: Cannot run "highlight_element" on ref "e999": unknown-ref.'
-      )
+    expect(
+      await call("highlight_element", { ref: "e999" }).catch(errorText)
+    ).toBe(
+      'RefResolutionError: Cannot run "highlight_element" on ref "e999": unknown-ref.'
     );
     expect(targets).toHaveLength(0);
   });
@@ -243,41 +196,29 @@ describe("Custom Tools in Chromium", () => {
     document.body.innerHTML =
       '<button id="save">Save changes</button><p>Keep me</p>';
     const { customTool, targets } = recordingCustomTool();
-    const published = await publish([customTool]);
-    const saveRef = refFor(await structure(published), "Save changes");
+    start([customTool]);
+    const saveRef = refFor(await structure(), "Save changes");
     document.querySelector("#save")!.remove();
 
-    await expect(
-      registrationOf(published, "highlight_element").tool.execute({
-        ref: saveRef,
-      })
-    ).resolves.toEqual(
-      toolFailure(
-        `RefResolutionError: Cannot run "highlight_element" on ref "${saveRef}": removed.`
-      )
+    expect(
+      await call("highlight_element", { ref: saveRef }).catch(errorText)
+    ).toBe(
+      `RefResolutionError: Cannot run "highlight_element" on ref "${saveRef}": removed.`
     );
     expect(targets).toHaveLength(0);
   });
 
   // --- Session lifetime ---
 
-  it("unregisters a Custom Tool when the runtime session ends", async () => {
+  it("unregisters a Custom Tool when the runtime session ends", () => {
     document.body.innerHTML = '<button id="save">Save changes</button>';
     const { customTool } = recordingCustomTool();
-    const published = await publish([customTool]);
-    const registration = registrationOf(published, "highlight_element");
-    expect(registration.signal.aborted).toBe(false);
-
-    // A session disposes the publication it owns when it stops; this test owns
-    // the publication, so it disposes it in the session's place.
-    disposePublication?.();
-    disposePublication = undefined;
-    expect(registration.signal.aborted).toBe(true);
+    start([customTool]);
+    expect(agentTools().names()).toContain("highlight_element");
 
     stop?.();
     stop = undefined;
-    const afterSession = await republish();
-    expect([...afterSession.keys()]).not.toContain("highlight_element");
+    expect(listCustomTools()).toEqual([]);
   });
 });
 

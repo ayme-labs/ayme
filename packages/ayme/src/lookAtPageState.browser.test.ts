@@ -1,6 +1,7 @@
 import { afterEach, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
+import { agentCursor } from "./agentCalls.testSupport";
 import { getInteractionHistory, lookAtPageStateForDocument } from "./pageState";
 import { refsIn, startAgentSession } from "./lookAtPageState.testSupport";
 
@@ -36,9 +37,8 @@ it("lets the agent's ref reach an identical replacement even when a look saw the
   document.querySelector("#new")!.addEventListener("click", () => {
     clicked = true;
   });
-  const result = await call("click", { target: save });
+  await call("click", { target: save });
 
-  expect(result).not.toMatchObject({ isError: true });
   expect(clicked).toBe(true);
 });
 
@@ -67,11 +67,11 @@ it("adds nothing to the interaction history", async () => {
   await read();
   const history = getInteractionHistory(document);
   const latest = history.latestObservation;
-  const agentCursor = history.cursor("agent");
+  const agentPage = agentCursor().current();
   document.body.insertAdjacentHTML("beforeend", `<p>Changed</p>`);
 
   await lookAtPageStateForDocument(document);
 
   expect(history.latestObservation).toBe(latest);
-  expect(history.cursor("agent")).toBe(agentCursor);
+  expect(agentCursor().current()).toBe(agentPage);
 });

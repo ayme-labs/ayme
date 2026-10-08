@@ -171,6 +171,17 @@ export class StructuralIdentityLedger {
     };
   }
 
+  /**
+   * Whether two observed refs are aliases of one identity: the same node
+   * followed across captures. A ref the ledger has not observed is only the
+   * same as itself.
+   */
+  sameIdentity(a: AriaRef, b: AriaRef): boolean {
+    if (a === b) return true;
+    const identity = this._byAlias.get(a);
+    return identity !== undefined && identity === this._byAlias.get(b);
+  }
+
   /** When the identity behind `ref` appeared and, if it has, disappeared. */
   lifecycle(ref: AriaRef): StructuralIdentityLifecycle | undefined {
     const identity = this._byAlias.get(ref);

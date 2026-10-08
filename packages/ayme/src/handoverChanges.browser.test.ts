@@ -10,14 +10,9 @@ import {
   type GoalLoopDecisionFunction,
   type Handover,
 } from "./goalLoop";
+import { agentTools } from "./publication.testSupport";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
-
-type PublishedTool = {
-  name: string;
-  execute(input: unknown): Promise<unknown>;
-};
 
 type ActionResultShape = {
   page_changed: boolean;
@@ -30,19 +25,14 @@ const ARCHIVED = "Archived Invoice 7";
 
 describe("Handover changes in Chromium", () => {
   let page: ReturnType<typeof createPage>;
-  let published: Map<string, PublishedTool>;
   let stop: (() => void) | undefined;
-  let disposePublication: (() => void) | undefined;
 
   beforeEach(() => {
     document.body.innerHTML = "";
     page = createPage();
-    published = new Map();
   });
 
   afterEach(() => {
-    disposePublication?.();
-    disposePublication = undefined;
     stop?.();
     stop = undefined;
     configureGoalLoop(undefined);
@@ -53,7 +43,7 @@ describe("Handover changes in Chromium", () => {
    * An inbox whose Page Object opens and closes a dialog and archives an item,
    * with a Refresh button the agent clicks through the click Browser Tool.
    */
-  async function startInbox(goalLoop: GoalLoopDecisionFunction) {
+  function startInbox(goalLoop: GoalLoopDecisionFunction) {
     document.body.innerHTML = `
       <main>
         <h1>Inbox</h1>
@@ -94,36 +84,24 @@ describe("Handover changes in Chromium", () => {
     );
     stop = createAyme({ pageFactory: () => page, goalLoop }).start();
     createPageRegistration(Inbox);
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(registered: PublishedTool) {
-        published.set(registered.name, registered);
-      },
-    });
-    disposePublication = publication.dispose;
-  }
-
-  function tool(name: string): PublishedTool {
-    const found = published.get(name);
-    if (!found) throw new Error(`Tool ${name} was not published.`);
-    return found;
   }
 
   async function readStructure(): Promise<string> {
-    const context = (await tool("snapshot").execute({})) as {
+    const context = (await agentTools().call("snapshot", {})) as {
       structure: string;
     };
     return context.structure;
   }
 
   async function pursue(): Promise<Handover> {
-    return (await tool("goal").execute({
+    return (await agentTools().call("goal", {
       goal: "archive the invoice",
       maxSteps: 5,
     })) as Handover;
   }
 
   it("carries only the net change of the run, not a dialog opened and closed on the way", async () => {
-    await startInbox(
+    startInbox(
       operations([
         "Inbox.openDialog",
         "Inbox.closeDialog",
@@ -155,9 +133,7 @@ describe("Handover changes in Chromium", () => {
   });
 
   it("carries no changes when the run changed nothing net", async () => {
-    await startInbox(
-      operations(["Inbox.openDialog", "Inbox.closeDialog", "done"])
-    );
+    startInbox(operations(["Inbox.openDialog", "Inbox.closeDialog", "done"]));
     await readStructure();
 
     const handover = await pursue();
@@ -171,13 +147,13 @@ describe("Handover changes in Chromium", () => {
   });
 
   it("does not repeat the run's changes in the agent's next Change Record", async () => {
-    await startInbox(operations(["Inbox.archive", "done"]));
+    startInbox(operations(["Inbox.archive", "done"]));
     const refreshRef = refFor(await readStructure(), "Refresh");
 
     const handover = await pursue();
     expect(handover.changes).toContain(ARCHIVED);
 
-    const result = (await tool("click").execute({
+    const result = (await agentTools().call("click", {
       target: refreshRef,
     })) as ActionResultShape;
 
@@ -187,7 +163,7 @@ describe("Handover changes in Chromium", () => {
   });
 
   it("reports a change the page made on its own when the run executes no action", async () => {
-    await startInbox(operations(["done"]));
+    startInbox(operations(["done"]));
     await readStructure();
     document
       .querySelector("main")!

@@ -4,9 +4,15 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { RunnableTool } from "../domain/runnableTools";
 import { forest, node } from "../../structure/test-utils/projected";
 import { buildStructureTree } from "../../structure";
-import { anItem, aRun, aStep } from "../../runs/test-utils/runs";
+import {
+  aChildRun,
+  anInteraction,
+  anItem,
+  aRun,
+} from "../../runs/test-utils/runs";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
+import { argumentViolationsOf } from "../infrastructure/argumentViolations";
 import { RunCard, type RunCardProps } from "./RunCard";
 
 // Component tests: the run card with fixture tools and runs, driven through
@@ -78,6 +84,7 @@ function renderCard(props: Partial<RunCardProps> & Pick<RunCardProps, "tool">) {
         runs={[]}
         onRun={onRun}
         onShowRun={onShowRun}
+        argumentViolations={argumentViolationsOf(props.tool)}
         {...props}
       />
     )
@@ -150,16 +157,56 @@ describe("the typed form", () => {
     });
   });
 
-  it("reports invalid JSON and doesn't run", async () => {
-    const { card, onRun } = renderCard({ tool: addItem });
+  it("reports where invalid JSON goes wrong, and Run is off", async () => {
+    const { card } = renderCard({ tool: addItem });
 
-    await card.fillJson('{ "text": ');
-    await card.runButton.click();
+    await card.fillJson('{\n  "text": "Eggs"\n  "copies": 2\n}');
 
     await expect
       .poll(() => card.jsonError.textContent())
-      .toMatch(/^Invalid JSON: /);
-    expect(onRun).not.toHaveBeenCalled();
+      .toBe(
+        "Invalid JSON at line 3, column 3: expected ',' or '}', found '\"'."
+      );
+    expect(await card.runButton.isDisabled()).toBe(true);
+    expect(await card.formatButton.isDisabled()).toBe(true);
+  });
+
+  it("lists how the arguments break the schema, by path, until they're fixed", async () => {
+    const { card, onRun } = renderCard({ tool: addItem });
+
+    await card.fillJson(
+      '{ "copies": 1.5, "priority": "urgent", "details": { "tags": ["home", 2] }, "note": "x" }'
+    );
+
+    await expect
+      .poll(() => card.schemaErrors.allTextContents())
+      .toEqual([
+        "copies: must be an integer",
+        "priority: must be one of low, normal, high",
+        "details.tags[1]: must be a string",
+        "note: is not supported",
+        "text: is required",
+      ]);
+    expect(await card.runButton.isDisabled()).toBe(true);
+
+    await card.jsonEditor.fill('{ "text": "Eggs", "priority": "high" }');
+    await expect.poll(() => card.schemaErrors.count()).toBe(0);
+    await card.runButton.click();
+    expect(onRun).toHaveBeenCalledExactlyOnceWith({
+      text: "Eggs",
+      priority: "high",
+    });
+  });
+
+  it("formats valid JSON", async () => {
+    const { card } = renderCard({ tool: addItem });
+
+    await card.fillJson('{"text":"Eggs","details":{"tags":["home"]}}');
+    await card.formatButton.click();
+
+    expect(await card.jsonEditor.inputValue()).toBe(
+      '{\n  "text": "Eggs",\n  "details": {\n    "tags": [\n      "home"\n    ]\n  }\n}'
+    );
   });
 
   it("runs with the arguments typed as JSON", async () => {
@@ -359,6 +406,19 @@ describe("a map of labelled values", () => {
     expect(await rows.typeState(1)).toBe("text");
     expect(await rows.typeState(2)).toBe("auto · number");
   });
+
+  it("names a map value of the wrong type by its label", async () => {
+    const { card } = await openGoal();
+
+    await card.jsonSwitch.click();
+    await card.jsonEditor.fill(
+      '{ "goal": "Sign up", "maxSteps": 5, "values": { "zip": true } }'
+    );
+
+    await expect
+      .poll(() => card.schemaErrors.allTextContents())
+      .toEqual(["values.zip: must be a string or a number"]);
+  });
 });
 
 describe("a single-element tool", () => {
@@ -469,21 +529,22 @@ describe("a collection action", () => {
 });
 
 describe("the last result", () => {
-  it("shows a success's duration and steps, leaving its result to Runs", async () => {
+  it("shows a success's duration and Interactions, its child runs' too, leaving its result to Runs", async () => {
     const { card } = renderCard({
       tool: addItem,
       runs: [
         aRun({
           durationMs: 320,
           result: '{ "added": "Milk" }',
-          steps: [aStep(), aStep()],
+          interactions: [anInteraction()],
+          children: [aChildRun({ interactions: [anInteraction()] })],
         }),
       ],
     });
 
     await expect
       .poll(() => card.lastResult.textContent())
-      .toContain("Succeeded · 320 ms · 2 steps");
+      .toContain("Succeeded · 320 ms · 2 interactions");
     expect(await card.lastResult.getByRole("button").count()).toBe(1);
   });
 
@@ -511,16 +572,16 @@ describe("the last result", () => {
     const { card, onShowRun } = renderCard({
       tool: addItem,
       runs: [
-        aRun({ id: 3, status: "failed", error: "No." }),
-        aRun({ id: 2 }),
-        aRun({ id: 1 }),
+        aRun({ id: "3", status: "failed", error: "No." }),
+        aRun({ id: "2" }),
+        aRun({ id: "1" }),
       ],
     });
 
     await card.lastSuccessLink.click();
 
     expect(await card.lastSuccessLink.textContent()).toBe("Last success ›");
-    expect(onShowRun).toHaveBeenCalledExactlyOnceWith(2);
+    expect(onShowRun).toHaveBeenCalledExactlyOnceWith("2");
   });
 
   it("is the last run on the item picked", async () => {
