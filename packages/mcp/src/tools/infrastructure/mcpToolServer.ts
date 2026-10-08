@@ -6,10 +6,12 @@ import {
 
 import type { AgentConnection } from "../../connection";
 import { callPageTool, type SaveImage } from "../application/callPageTool";
+import { rememberOfferedNames } from "../application/offeredNames";
 import type { ServerTool } from "../application/serverTool";
 import { toolChangeNote, type ToolState } from "../domain/toolChangeNote";
 import {
   errorResult,
+  goneToolResult,
   mcpPageTool,
   type ToolResult,
 } from "../domain/toolResult";
@@ -65,6 +67,7 @@ export function createMcpToolServer({
     ],
   }));
 
+  const wasOffered = rememberOfferedNames(connection);
   const run = (name: string, input: Record<string, unknown>) => {
     const serverTool = serverTools.find((tool) => tool.name === name);
     if (serverTool) return serverTool.call(input);
@@ -72,7 +75,10 @@ export function createMcpToolServer({
       connection,
       name,
       input,
-      () => errorResult(`Unknown tool "${name}".`),
+      () =>
+        wasOffered(name)
+          ? goneToolResult(name)
+          : errorResult(`Unknown tool "${name}".`),
       saveImage
     );
   };
