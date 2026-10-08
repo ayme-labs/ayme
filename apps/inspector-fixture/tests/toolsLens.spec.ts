@@ -5,6 +5,9 @@ import { expect, openFixture, test } from "./fixtures";
 // values come from the page's WebMCP tool list and snapshot, never
 // from the panel.
 
+// Live, but never published to WebMCP: its result is an image.
+const NOT_ON_WEBMCP = ["screenshot"];
+
 test("the Tools lens lists exactly the tools an agent gets", async ({
   page,
   inspector,
@@ -19,7 +22,7 @@ test("the Tools lens lists exactly the tools an agent gets", async ({
         .flat()
         .sort()
     )
-    .toEqual(agentTools.map(({ name }) => name).sort());
+    .toEqual([...agentTools.map(({ name }) => name), ...NOT_ON_WEBMCP].sort());
 });
 
 test("each tool's page shows the description and schema an agent gets", async ({
@@ -83,8 +86,8 @@ test("reading What the model sees leaves the agent's view of the page alone", as
 test("with publication off, the Tools lens still lists the live tools", async ({
   page,
 }) => {
-  // The same list app with publication on: every live tool is published, so
-  // its WebMCP tool list is the live set.
+  // The same list app with publication on: every live tool but screenshot is
+  // published, so its WebMCP tool list and screenshot are the live set.
   await openFixture(page, "/");
   const liveTools = (await new AgentView(page).tools()).map(({ name }) => name);
 
@@ -97,5 +100,5 @@ test("with publication off, the Tools lens still lists the live tools", async ({
         .flat()
         .sort()
     )
-    .toEqual(liveTools.sort());
+    .toEqual([...liveTools, ...NOT_ON_WEBMCP].sort());
 });

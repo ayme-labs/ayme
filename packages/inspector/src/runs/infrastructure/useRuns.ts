@@ -1,26 +1,50 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { RuntimeStateError, type JsonValue } from "@ayme-dev/ayme";
 import {
   getAppProcessTools,
   getStartedAyme,
   listRegisteredPomTools,
+  subscribeToAgentImageRuns,
 } from "@ayme-dev/ayme/internal";
 
 import { useTabState } from "../../shared";
 import type { CollectionItem, Run, ToolArguments } from "../domain/run";
+import { runImageOf } from "../domain/runImage";
 import { decodeRuns, encodeRuns, runsKey } from "../domain/storedRuns";
 import { describeSteps } from "./runSteps";
 import { getInspectorTrace, resetInspectorTrace } from "./trace";
 
 /**
- * Tool invocations from the Inspector, newest first. The newest are kept for
- * the tab, so a reload still shows them.
+ * Tool invocations from the Inspector, and an agent's screenshots through
+ * `ayme mcp`, newest first. The newest are kept for the tab, so a reload
+ * still shows them.
  */
 export function useRuns({ onSettled }: { onSettled: () => void }) {
   const [runs, setRuns] = useTabState(runsKey, decodeRuns, encodeRuns);
   const nextId = useRef(
     runs.reduce((newest, run) => Math.max(newest, run.id), 0) + 1
+  );
+
+  useEffect(
+    () =>
+      subscribeToAgentImageRuns((agentRun) => {
+        const image = runImageOf(agentRun.result, agentRun.savedTo);
+        if (!image) return;
+        const run: Run = {
+          id: nextId.current++,
+          toolName: agentRun.name,
+          caller: "agent",
+          arguments: (agentRun.input ?? {}) as ToolArguments,
+          status: "succeeded",
+          image,
+          startedAt: agentRun.startedAt,
+          durationMs: agentRun.durationMs,
+          steps: [],
+        };
+        setRuns((current) => [run, ...current]);
+      }),
+    [setRuns]
   );
 
   const invoke = useCallback(
@@ -29,7 +53,7 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
       const id = nextId.current++;
       const startedAt = Date.now();
       const settle = async (
-        patch: Pick<Run, "status" | "result" | "error">
+        patch: Pick<Run, "status" | "result" | "image" | "error">
       ) => {
         const durationMs = Date.now() - startedAt;
         const settled = {
@@ -58,9 +82,15 @@ export function useRuns({ onSettled }: { onSettled: () => void }) {
         ...current,
       ]);
       try {
-        const result = JSON.stringify(await tool.execute(args), null, 2) as
-          string | undefined;
-        await settle({ status: "succeeded", result });
+        const returned = await tool.execute(args);
+        // An image shows as itself, never as its base64 JSON.
+        const image = runImageOf(returned);
+        if (image) await settle({ status: "succeeded", image });
+        else
+          await settle({
+            status: "succeeded",
+            result: JSON.stringify(returned, null, 2) as string | undefined,
+          });
       } catch (error) {
         await settle({ status: "failed", error: errorText(error) });
       } finally {

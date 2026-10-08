@@ -48,6 +48,8 @@ export type PublishedElementTool = ModelContextTool<
   JsonValue
 > & {
   inputSchema: JsonSchema;
+  /** `false`: never published to WebMCP, as for a tool whose result is an image. */
+  webMcp?: false;
   execute(input: unknown): Promise<JsonValue>;
   executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
 };

@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
+  BotIcon,
   CheckIcon,
   ChevronRightIcon,
   CopyIcon,
@@ -27,6 +28,7 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
 import type { Run, RunStep } from "../domain/run";
+import { RunImageView } from "./RunImageView";
 
 export type RunsViewProps = {
   /** The runs to show, newest first. */
@@ -54,6 +56,8 @@ export type RunsViewProps = {
   toggleResult: (id: number) => void;
   /** Copies a run's result. */
   copyResult: (text: string) => void;
+  /** Opens a run's image, given its data URL, full size. */
+  openImage: (src: string) => void;
 };
 
 /** Runs: the timeline of the runs made from the panel, newest first. */
@@ -73,6 +77,7 @@ export function RunsView({
   toggleRun,
   toggleResult,
   copyResult,
+  openImage,
 }: RunsViewProps) {
   return (
     <>
@@ -144,6 +149,7 @@ export function RunsView({
                   onToggle={() => toggleRun(run.id)}
                   onToggleResult={() => toggleResult(run.id)}
                   onCopyResult={copyResult}
+                  onOpenImage={openImage}
                   onHover={onHover}
                 />
               ))}
@@ -171,6 +177,11 @@ const statusIcon = {
   failed: { Icon: XIcon, label: "Failed", className: "text-destructive" },
 } as const;
 
+const callerIcon = {
+  you: { Icon: UserIcon, label: "Run by you from the panel" },
+  agent: { Icon: BotIcon, label: "Run by an agent through ayme mcp" },
+} as const;
+
 function RunRow({
   run,
   open,
@@ -179,6 +190,7 @@ function RunRow({
   onToggle,
   onToggleResult,
   onCopyResult,
+  onOpenImage,
   onHover,
 }: {
   run: Run;
@@ -189,9 +201,11 @@ function RunRow({
   onToggle: () => void;
   onToggleResult: () => void;
   onCopyResult: (text: string) => void;
+  onOpenImage: (src: string) => void;
   onHover: OnHover;
 }) {
   const status = statusIcon[run.status];
+  const caller = callerIcon[run.caller ?? "you"];
   return (
     <li
       aria-label={run.toolName}
@@ -225,11 +239,11 @@ function RunRow({
         >
           <span
             role="img"
-            aria-label="Run by you from the panel"
-            title="Run by you from the panel"
+            aria-label={caller.label}
+            title={caller.label}
             className="grid size-5 flex-none place-items-center rounded-sm bg-muted text-muted-foreground"
           >
-            <UserIcon className="size-3" aria-hidden />
+            <caller.Icon className="size-3" aria-hidden />
           </span>
           <span className="truncate font-mono text-xs font-semibold">
             {run.toolName}
@@ -255,6 +269,11 @@ function RunRow({
               >
                 {JSON.stringify(run.arguments)}
               </figure>
+            )}
+            {run.status === "succeeded" && run.image && (
+              <div className="mx-2.5 mb-2">
+                <RunImageView image={run.image} onOpen={onOpenImage} />
+              </div>
             )}
             {run.status === "succeeded" && run.result !== undefined && (
               <RunResult

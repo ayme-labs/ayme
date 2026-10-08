@@ -5,7 +5,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import type { AgentConnection } from "../../connection";
-import { callPageTool } from "../application/callPageTool";
+import { callPageTool, type SaveImage } from "../application/callPageTool";
 import { rememberOfferedNames } from "../application/offeredNames";
 import type { ServerTool } from "../application/serverTool";
 import { toolChangeNote, type ToolState } from "../domain/toolChangeNote";
@@ -34,11 +34,14 @@ export function createMcpToolServer({
   version,
   serverTools,
   connection,
+  saveImage,
 }: {
   name: string;
   version: string;
   serverTools: readonly ServerTool[];
   connection: AgentConnection;
+  /** Where an image a page tool returns is saved. */
+  saveImage: SaveImage;
 }): Server {
   const server = new Server(
     { name, version },
@@ -68,10 +71,15 @@ export function createMcpToolServer({
   const run = (name: string, input: Record<string, unknown>) => {
     const serverTool = serverTools.find((tool) => tool.name === name);
     if (serverTool) return serverTool.call(input);
-    return callPageTool(connection, name, input, () =>
-      wasOffered(name)
-        ? goneToolResult(name)
-        : errorResult(`Unknown tool "${name}".`)
+    return callPageTool(
+      connection,
+      name,
+      input,
+      () =>
+        wasOffered(name)
+          ? goneToolResult(name)
+          : errorResult(`Unknown tool "${name}".`),
+      saveImage
     );
   };
 

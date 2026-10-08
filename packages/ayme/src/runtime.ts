@@ -1,3 +1,4 @@
+import { recordAgentImageRun } from "./agentImageRuns";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
@@ -612,7 +613,10 @@ export function createAyme(options: AymeOptions = {}): Ayme {
           const signal = controller.signal;
           startAgentConnectionUntil(signal, () =>
             loadAgentConnection().then(({ startAgentConnection }) => () => {
-              const connection = startAgentConnection(ayme);
+              const connection = startAgentConnection({
+                tools: ayme.tools,
+                recordAgentImage: recordAgentImageRun,
+              });
               // A page client from before App Processes hands over none.
               appProcessTools.follow(connection.processTools);
               signal.addEventListener(

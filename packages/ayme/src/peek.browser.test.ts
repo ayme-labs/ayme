@@ -382,7 +382,13 @@ describe("where Peek Tools appear", () => {
     const ayme = started({ agentConnection: true });
     peek(ayme, () => ({ open: true }), "menu");
 
-    await expect.poll(() => connected.sessions).toEqual([ayme]);
+    await expect
+      .poll(() =>
+        connected.sessions.map(
+          (session) => (session as Pick<Ayme, "tools">).tools
+        )
+      )
+      .toEqual([ayme.tools]);
     expect(toolNames(ayme)).toContain("peek.menu");
   });
 

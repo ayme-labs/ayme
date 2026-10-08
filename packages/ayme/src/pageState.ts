@@ -104,8 +104,8 @@ const pageStateSessions = new WeakMap<Document, PageStateSession>();
  */
 export const INSPECTOR_DOGFOOD_ATTRIBUTE = "data-ayme-inspector-dogfood";
 
-// The Inspector's host, unless it is mounted for dogfooding.
-const INSPECTOR_HOST_SELECTOR = `[data-ayme-inspector-host]:not([${INSPECTOR_DOGFOOD_ATTRIBUTE}])`;
+/** Package-internal: the Inspector's host, unless it is mounted for dogfooding. */
+export const INSPECTOR_HOST_SELECTOR = `[data-ayme-inspector-host]:not([${INSPECTOR_DOGFOOD_ATTRIBUTE}])`;
 
 type PageStateIgnorePredicate = (element: Element) => boolean;
 

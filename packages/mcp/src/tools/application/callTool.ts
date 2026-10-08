@@ -7,7 +7,7 @@ import type { ServerToolFactory } from "./serverTool";
  * `ayme_call`: runs a tool of the page or an App Process by name, for agents whose tool list never
  * shows it. Its result is the one a direct call to the page tool returns.
  */
-export const callTool: ServerToolFactory = ({ connection }) => {
+export const callTool: ServerToolFactory = ({ connection, saveImage }) => {
   const wasOffered = rememberOfferedNames(connection);
   return {
     name: "ayme_call",
@@ -33,12 +33,17 @@ export const callTool: ServerToolFactory = ({ connection }) => {
         return errorResult(
           'ayme_call needs "tool": the name of a tool, as ayme_list_tools gives it.'
         );
-      return callPageTool(connection, tool, input, (name) =>
-        wasOffered(name)
-          ? goneToolResult(name)
-          : errorResult(
-              `No connected page or App Process offers a tool "${name}". Call ayme_list_tools for the current tools.`
-            )
+      return callPageTool(
+        connection,
+        tool,
+        input,
+        (name) =>
+          wasOffered(name)
+            ? goneToolResult(name)
+            : errorResult(
+                `No connected page or App Process offers a tool "${name}". Call ayme_list_tools for the current tools.`
+              ),
+        saveImage
       );
     },
   };

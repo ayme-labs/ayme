@@ -13,7 +13,7 @@ import { Button } from "@ayme-dev/design-system/components/button";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { OnHover } from "../../navigation";
-import type { CollectionItem, Run } from "../../runs";
+import { RunImageView, type CollectionItem, type Run } from "../../runs";
 import type { Field } from "../domain/fields";
 import type { RunnableTool } from "../domain/runnableTools";
 
@@ -28,6 +28,7 @@ export function RunCardView({
   items,
   onHover,
   onShowRun,
+  onOpenImage,
   signature,
   fields,
   json,
@@ -58,6 +59,8 @@ export function RunCardView({
   onHover?: OnHover;
   /** Shows a run in Runs. */
   onShowRun: (runId: number) => void;
+  /** Opens the last run's image, given its data URL, full size. */
+  onOpenImage: (src: string) => void;
   /** Its arguments, e.g. "(text: string)". */
   signature: string;
   fields: readonly Field[];
@@ -246,6 +249,7 @@ export function RunCardView({
           run={last}
           lastSuccess={lastSuccess}
           onShowRun={onShowRun}
+          onOpenImage={onOpenImage}
         />
       )}
     </form>
@@ -370,17 +374,19 @@ const statusStyle = {
 } as const;
 
 /**
- * The last run's status, its duration, and its error. Its result shows in
- * Runs, which the link opens.
+ * The last run's status, its duration, and its error, or the image it
+ * returned. Its result shows in Runs, which the link opens.
  */
 function LastResult({
   run,
   lastSuccess,
   onShowRun,
+  onOpenImage,
 }: {
   run: Run;
   lastSuccess: Run | undefined;
   onShowRun: (runId: number) => void;
+  onOpenImage: (src: string) => void;
 }) {
   const steps = `${run.steps.length} ${run.steps.length === 1 ? "step" : "steps"}`;
   // A run interrupted by a reload has no known duration.
@@ -390,7 +396,9 @@ function LastResult({
     run.status === "running"
       ? "Running…"
       : run.status === "succeeded"
-        ? `Succeeded${duration} · ${steps}`
+        ? run.image
+          ? `Screenshot${duration}`
+          : `Succeeded${duration} · ${steps}`
         : `Failed${duration}`;
   return (
     <div
@@ -424,6 +432,9 @@ function LastResult({
       </div>
       {run.status === "failed" && (
         <p className="m-0 font-mono text-xs break-words">{run.error}</p>
+      )}
+      {run.status === "succeeded" && run.image && (
+        <RunImageView image={run.image} onOpen={onOpenImage} />
       )}
     </div>
   );

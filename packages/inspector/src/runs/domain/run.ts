@@ -35,10 +35,28 @@ export type CollectionItem = {
   label: string;
 };
 
-/** A run made from the panel: one tool call, with the steps it performed. */
+/** An image a run returned, such as a screenshot. */
+export type RunImage = {
+  /** What it shows, e.g. "Screenshot of the viewport, 1280×720 PNG". */
+  description: string;
+  /**
+   * The image as a data URL. Kept in memory only, never in the tab's
+   * storage, so a run from before a reload has none.
+   */
+  src?: string;
+  /** The file `ayme mcp` saved it to, for an agent's run. */
+  savedTo?: string;
+};
+
+/**
+ * A run made from the panel: one tool call, with the steps it performed. An
+ * agent's `screenshot` call through `ayme mcp` is recorded too.
+ */
 export type Run = {
   id: number;
   toolName: string;
+  /** Who ran it: the person from the panel, unless an agent did. */
+  caller?: "agent";
   /** The Page Object Model whose action it ran. */
   className?: string;
   /** The Page Object it ran on, e.g. "ListPage" or "ListPage.items[1]". */
@@ -53,6 +71,8 @@ export type Run = {
    * returned `undefined`.
    */
   result?: string;
+  /** The image it returned, which shows in place of `result`. */
+  image?: RunImage;
   error?: string;
   /** When it started, in epoch milliseconds. */
   startedAt: number;
