@@ -1,0 +1,2407 @@
+{
+  "mode": "node-first",
+  "variant": "prefix7",
+  "inspector": false,
+  "trials": [
+    {
+      "trial": 1,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 302,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e11",
+          "nodeMints": [
+            "f7e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 338,
+          "captureAfterClickMs": 321,
+          "liMintedBy": "node",
+          "liRef": "f7e12",
+          "nodeMints": [
+            "f7e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 276,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e13",
+          "nodeMints": [
+            "f7e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e14",
+          "nodeMints": [
+            "f7e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 279,
+          "captureAfterClickMs": 256,
+          "liMintedBy": "node",
+          "liRef": "f7e15",
+          "nodeMints": [
+            "f7e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 266,
+          "liMintedBy": "node",
+          "liRef": "f7e16",
+          "nodeMints": [
+            "f7e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e17",
+          "nodeMints": [
+            "f7e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e18",
+          "nodeMints": [
+            "f7e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "f7e19",
+          "nodeMints": [
+            "f7e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e20",
+          "nodeMints": [
+            "f7e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=f7e2]:\n  - heading \"Groceries\" [level=1] [ref=f7e3]\n    - textbox \"New item\" [ref=f7e5]\n    - checkbox \"Urgent\" [ref=f7e7]\n  - button \"Add item\" [active] [ref=f7e8]\n  - button \"Clear\" [ref=f7e9]\n  - list \"Items\" [ref=f7e10]:\n    - listitem [ref=f7e11]: item 1\n    - listitem [ref=f7e12]: item 2\n    - listitem [ref=f7e13]: item 3\n    - listitem [ref=f7e14]: item 4\n    - listitem [ref=f7e15]: item 5\n    - listitem [ref=f7e16]: item 6\n    - listitem [ref=f7e17]: item 7\n    - listitem [ref=f7e18]: item 8\n    - listitem [ref=f7e19]: item 9\n    - listitem [ref=f7e20]: item 10"
+      },
+      "allNodeMints": [
+        "f7e1 BODY generic \"\"",
+        "f7e2 MAIN main \"\"",
+        "f7e3 H1 heading \"Groceries\"",
+        "f7e4 LABEL generic \"\"",
+        "f7e5 INPUT textbox \"New item\"",
+        "f7e6 LABEL generic \"\"",
+        "f7e7 INPUT checkbox \"Urgent\"",
+        "f7e8 BUTTON button \"Add item\"",
+        "f7e9 BUTTON button \"Clear\"",
+        "f7e10 UL list \"Items\"",
+        "f7e11 LI listitem \"\"",
+        "f7e12 LI listitem \"\"",
+        "f7e13 LI listitem \"\"",
+        "f7e14 LI listitem \"\"",
+        "f7e15 LI listitem \"\"",
+        "f7e16 LI listitem \"\"",
+        "f7e17 LI listitem \"\"",
+        "f7e18 LI listitem \"\"",
+        "f7e19 LI listitem \"\"",
+        "f7e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n    - f7e5 textbox \"New item\"\n    - f7e7 checkbox \"Urgent\"\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 655 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "f7e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "f7e8",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e8\": the selector matches no element.",
+        "itemsBefore": 11,
+        "itemsAfter": 11,
+        "landed": null
+      },
+      "agentClickPrefixed": {
+        "ref": "f7e2",
+        "line": "main:",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e2\": the selector matches no element.",
+        "landed": null
+      },
+      "mintsTail": [
+        "2083 node f7e1 BODY generic \"\"",
+        "2083 node f7e2 MAIN main \"\"",
+        "2084 node f7e3 H1 heading \"Groceries\"",
+        "2084 node f7e4 LABEL generic \"\"",
+        "2084 node f7e5 INPUT textbox \"New item\"",
+        "2085 node f7e6 LABEL generic \"\"",
+        "2085 node f7e7 INPUT checkbox \"Urgent\"",
+        "2085 node f7e8 BUTTON button \"Add item\"",
+        "2085 node f7e9 BUTTON button \"Clear\"",
+        "2087 node f7e10 UL list \"Items\"",
+        "2402 node f7e11 LI listitem \"\"",
+        "2753 node f7e12 LI listitem \"\"",
+        "3040 node f7e13 LI listitem \"\"",
+        "3325 node f7e14 LI listitem \"\"",
+        "3614 node f7e15 LI listitem \"\"",
+        "3906 node f7e16 LI listitem \"\"",
+        "4192 node f7e17 LI listitem \"\"",
+        "4475 node f7e18 LI listitem \"\"",
+        "4757 node f7e19 LI listitem \"\"",
+        "5049 node f7e20 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n  - f7e4:\n    - text: New item\n    - f7e5 textbox \"New item\"\n  - f7e6:\n    - f7e7 checkbox \"Urgent\"\n    - text: Urgent\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":\n    - f7e11 ListPage.entries[0]: item 1\n    - f7e12 ListPage.entries[1]: item 2\n    - f7e13 ListPage.entries[2]: item 3\n    - f7e14 ListPage.entries[3]: item 4\n    - f7e15 ListPage.entries[4]: item 5\n    - f7e16 ListPage.entries[5]: item 6\n    - f7e17 ListPage.entries[6]: item 7\n    - f7e18 ListPage.entries[7]: item 8\n    - f7e19 ListPage.entries[8]: item 9\n    - f7e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 2,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 296,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e11",
+          "nodeMints": [
+            "f7e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 343,
+          "captureAfterClickMs": 326,
+          "liMintedBy": "node",
+          "liRef": "f7e12",
+          "nodeMints": [
+            "f7e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e13",
+          "nodeMints": [
+            "f7e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e14",
+          "nodeMints": [
+            "f7e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e15",
+          "nodeMints": [
+            "f7e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e16",
+          "nodeMints": [
+            "f7e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 278,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e17",
+          "nodeMints": [
+            "f7e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e18",
+          "nodeMints": [
+            "f7e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e19",
+          "nodeMints": [
+            "f7e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 280,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e20",
+          "nodeMints": [
+            "f7e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=f7e2]:\n  - heading \"Groceries\" [level=1] [ref=f7e3]\n    - textbox \"New item\" [ref=f7e5]\n    - checkbox \"Urgent\" [ref=f7e7]\n  - button \"Add item\" [active] [ref=f7e8]\n  - button \"Clear\" [ref=f7e9]\n  - list \"Items\" [ref=f7e10]:\n    - listitem [ref=f7e11]: item 1\n    - listitem [ref=f7e12]: item 2\n    - listitem [ref=f7e13]: item 3\n    - listitem [ref=f7e14]: item 4\n    - listitem [ref=f7e15]: item 5\n    - listitem [ref=f7e16]: item 6\n    - listitem [ref=f7e17]: item 7\n    - listitem [ref=f7e18]: item 8\n    - listitem [ref=f7e19]: item 9\n    - listitem [ref=f7e20]: item 10"
+      },
+      "allNodeMints": [
+        "f7e1 BODY generic \"\"",
+        "f7e2 MAIN main \"\"",
+        "f7e3 H1 heading \"Groceries\"",
+        "f7e4 LABEL generic \"\"",
+        "f7e5 INPUT textbox \"New item\"",
+        "f7e6 LABEL generic \"\"",
+        "f7e7 INPUT checkbox \"Urgent\"",
+        "f7e8 BUTTON button \"Add item\"",
+        "f7e9 BUTTON button \"Clear\"",
+        "f7e10 UL list \"Items\"",
+        "f7e11 LI listitem \"\"",
+        "f7e12 LI listitem \"\"",
+        "f7e13 LI listitem \"\"",
+        "f7e14 LI listitem \"\"",
+        "f7e15 LI listitem \"\"",
+        "f7e16 LI listitem \"\"",
+        "f7e17 LI listitem \"\"",
+        "f7e18 LI listitem \"\"",
+        "f7e19 LI listitem \"\"",
+        "f7e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n    - f7e5 textbox \"New item\"\n    - f7e7 checkbox \"Urgent\"\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 655 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "f7e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "f7e8",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e8\": the selector matches no element.",
+        "itemsBefore": 11,
+        "itemsAfter": 11,
+        "landed": null
+      },
+      "agentClickPrefixed": {
+        "ref": "f7e2",
+        "line": "main:",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e2\": the selector matches no element.",
+        "landed": null
+      },
+      "mintsTail": [
+        "2068 node f7e1 BODY generic \"\"",
+        "2069 node f7e2 MAIN main \"\"",
+        "2069 node f7e3 H1 heading \"Groceries\"",
+        "2069 node f7e4 LABEL generic \"\"",
+        "2070 node f7e5 INPUT textbox \"New item\"",
+        "2070 node f7e6 LABEL generic \"\"",
+        "2070 node f7e7 INPUT checkbox \"Urgent\"",
+        "2070 node f7e8 BUTTON button \"Add item\"",
+        "2071 node f7e9 BUTTON button \"Clear\"",
+        "2072 node f7e10 UL list \"Items\"",
+        "2380 node f7e11 LI listitem \"\"",
+        "2737 node f7e12 LI listitem \"\"",
+        "3021 node f7e13 LI listitem \"\"",
+        "3305 node f7e14 LI listitem \"\"",
+        "3587 node f7e15 LI listitem \"\"",
+        "3872 node f7e16 LI listitem \"\"",
+        "4163 node f7e17 LI listitem \"\"",
+        "4446 node f7e18 LI listitem \"\"",
+        "4729 node f7e19 LI listitem \"\"",
+        "5022 node f7e20 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n  - f7e4:\n    - text: New item\n    - f7e5 textbox \"New item\"\n  - f7e6:\n    - f7e7 checkbox \"Urgent\"\n    - text: Urgent\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":\n    - f7e11 ListPage.entries[0]: item 1\n    - f7e12 ListPage.entries[1]: item 2\n    - f7e13 ListPage.entries[2]: item 3\n    - f7e14 ListPage.entries[3]: item 4\n    - f7e15 ListPage.entries[4]: item 5\n    - f7e16 ListPage.entries[5]: item 6\n    - f7e17 ListPage.entries[6]: item 7\n    - f7e18 ListPage.entries[7]: item 8\n    - f7e19 ListPage.entries[8]: item 9\n    - f7e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 3,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 305,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e11",
+          "nodeMints": [
+            "f7e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 338,
+          "captureAfterClickMs": 328,
+          "liMintedBy": "node",
+          "liRef": "f7e12",
+          "nodeMints": [
+            "f7e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 278,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e13",
+          "nodeMints": [
+            "f7e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e14",
+          "nodeMints": [
+            "f7e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 257,
+          "liMintedBy": "node",
+          "liRef": "f7e15",
+          "nodeMints": [
+            "f7e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 276,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "f7e16",
+          "nodeMints": [
+            "f7e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e17",
+          "nodeMints": [
+            "f7e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 265,
+          "liMintedBy": "node",
+          "liRef": "f7e18",
+          "nodeMints": [
+            "f7e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 256,
+          "liMintedBy": "node",
+          "liRef": "f7e19",
+          "nodeMints": [
+            "f7e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 268,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e20",
+          "nodeMints": [
+            "f7e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=f7e2]:\n  - heading \"Groceries\" [level=1] [ref=f7e3]\n    - textbox \"New item\" [ref=f7e5]\n    - checkbox \"Urgent\" [ref=f7e7]\n  - button \"Add item\" [active] [ref=f7e8]\n  - button \"Clear\" [ref=f7e9]\n  - list \"Items\" [ref=f7e10]:\n    - listitem [ref=f7e11]: item 1\n    - listitem [ref=f7e12]: item 2\n    - listitem [ref=f7e13]: item 3\n    - listitem [ref=f7e14]: item 4\n    - listitem [ref=f7e15]: item 5\n    - listitem [ref=f7e16]: item 6\n    - listitem [ref=f7e17]: item 7\n    - listitem [ref=f7e18]: item 8\n    - listitem [ref=f7e19]: item 9\n    - listitem [ref=f7e20]: item 10"
+      },
+      "allNodeMints": [
+        "f7e1 BODY generic \"\"",
+        "f7e2 MAIN main \"\"",
+        "f7e3 H1 heading \"Groceries\"",
+        "f7e4 LABEL generic \"\"",
+        "f7e5 INPUT textbox \"New item\"",
+        "f7e6 LABEL generic \"\"",
+        "f7e7 INPUT checkbox \"Urgent\"",
+        "f7e8 BUTTON button \"Add item\"",
+        "f7e9 BUTTON button \"Clear\"",
+        "f7e10 UL list \"Items\"",
+        "f7e11 LI listitem \"\"",
+        "f7e12 LI listitem \"\"",
+        "f7e13 LI listitem \"\"",
+        "f7e14 LI listitem \"\"",
+        "f7e15 LI listitem \"\"",
+        "f7e16 LI listitem \"\"",
+        "f7e17 LI listitem \"\"",
+        "f7e18 LI listitem \"\"",
+        "f7e19 LI listitem \"\"",
+        "f7e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n    - f7e5 textbox \"New item\"\n    - f7e7 checkbox \"Urgent\"\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 655 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "f7e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "f7e8",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e8\": the selector matches no element.",
+        "itemsBefore": 11,
+        "itemsAfter": 11,
+        "landed": null
+      },
+      "agentClickPrefixed": {
+        "ref": "f7e2",
+        "line": "main:",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e2\": the selector matches no element.",
+        "landed": null
+      },
+      "mintsTail": [
+        "2079 node f7e1 BODY generic \"\"",
+        "2080 node f7e2 MAIN main \"\"",
+        "2080 node f7e3 H1 heading \"Groceries\"",
+        "2081 node f7e4 LABEL generic \"\"",
+        "2081 node f7e5 INPUT textbox \"New item\"",
+        "2081 node f7e6 LABEL generic \"\"",
+        "2081 node f7e7 INPUT checkbox \"Urgent\"",
+        "2082 node f7e8 BUTTON button \"Add item\"",
+        "2082 node f7e9 BUTTON button \"Clear\"",
+        "2084 node f7e10 UL list \"Items\"",
+        "2399 node f7e11 LI listitem \"\"",
+        "2752 node f7e12 LI listitem \"\"",
+        "3041 node f7e13 LI listitem \"\"",
+        "3324 node f7e14 LI listitem \"\"",
+        "3605 node f7e15 LI listitem \"\"",
+        "3889 node f7e16 LI listitem \"\"",
+        "4172 node f7e17 LI listitem \"\"",
+        "4463 node f7e18 LI listitem \"\"",
+        "4746 node f7e19 LI listitem \"\"",
+        "5031 node f7e20 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n  - f7e4:\n    - text: New item\n    - f7e5 textbox \"New item\"\n  - f7e6:\n    - f7e7 checkbox \"Urgent\"\n    - text: Urgent\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":\n    - f7e11 ListPage.entries[0]: item 1\n    - f7e12 ListPage.entries[1]: item 2\n    - f7e13 ListPage.entries[2]: item 3\n    - f7e14 ListPage.entries[3]: item 4\n    - f7e15 ListPage.entries[4]: item 5\n    - f7e16 ListPage.entries[5]: item 6\n    - f7e17 ListPage.entries[6]: item 7\n    - f7e18 ListPage.entries[7]: item 8\n    - f7e19 ListPage.entries[8]: item 9\n    - f7e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 4,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 294,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e11",
+          "nodeMints": [
+            "f7e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 338,
+          "captureAfterClickMs": 327,
+          "liMintedBy": "node",
+          "liRef": "f7e12",
+          "nodeMints": [
+            "f7e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 282,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e13",
+          "nodeMints": [
+            "f7e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "f7e14",
+          "nodeMints": [
+            "f7e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 282,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e15",
+          "nodeMints": [
+            "f7e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 277,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e16",
+          "nodeMints": [
+            "f7e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e17",
+          "nodeMints": [
+            "f7e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e18",
+          "nodeMints": [
+            "f7e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e19",
+          "nodeMints": [
+            "f7e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 277,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e20",
+          "nodeMints": [
+            "f7e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=f7e2]:\n  - heading \"Groceries\" [level=1] [ref=f7e3]\n    - textbox \"New item\" [ref=f7e5]\n    - checkbox \"Urgent\" [ref=f7e7]\n  - button \"Add item\" [active] [ref=f7e8]\n  - button \"Clear\" [ref=f7e9]\n  - list \"Items\" [ref=f7e10]:\n    - listitem [ref=f7e11]: item 1\n    - listitem [ref=f7e12]: item 2\n    - listitem [ref=f7e13]: item 3\n    - listitem [ref=f7e14]: item 4\n    - listitem [ref=f7e15]: item 5\n    - listitem [ref=f7e16]: item 6\n    - listitem [ref=f7e17]: item 7\n    - listitem [ref=f7e18]: item 8\n    - listitem [ref=f7e19]: item 9\n    - listitem [ref=f7e20]: item 10"
+      },
+      "allNodeMints": [
+        "f7e1 BODY generic \"\"",
+        "f7e2 MAIN main \"\"",
+        "f7e3 H1 heading \"Groceries\"",
+        "f7e4 LABEL generic \"\"",
+        "f7e5 INPUT textbox \"New item\"",
+        "f7e6 LABEL generic \"\"",
+        "f7e7 INPUT checkbox \"Urgent\"",
+        "f7e8 BUTTON button \"Add item\"",
+        "f7e9 BUTTON button \"Clear\"",
+        "f7e10 UL list \"Items\"",
+        "f7e11 LI listitem \"\"",
+        "f7e12 LI listitem \"\"",
+        "f7e13 LI listitem \"\"",
+        "f7e14 LI listitem \"\"",
+        "f7e15 LI listitem \"\"",
+        "f7e16 LI listitem \"\"",
+        "f7e17 LI listitem \"\"",
+        "f7e18 LI listitem \"\"",
+        "f7e19 LI listitem \"\"",
+        "f7e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n    - f7e5 textbox \"New item\"\n    - f7e7 checkbox \"Urgent\"\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 655 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "f7e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "f7e8",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e8\": the selector matches no element.",
+        "itemsBefore": 11,
+        "itemsAfter": 11,
+        "landed": null
+      },
+      "agentClickPrefixed": {
+        "ref": "f7e2",
+        "line": "main:",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e2\": the selector matches no element.",
+        "landed": null
+      },
+      "mintsTail": [
+        "2059 node f7e1 BODY generic \"\"",
+        "2060 node f7e2 MAIN main \"\"",
+        "2060 node f7e3 H1 heading \"Groceries\"",
+        "2060 node f7e4 LABEL generic \"\"",
+        "2061 node f7e5 INPUT textbox \"New item\"",
+        "2061 node f7e6 LABEL generic \"\"",
+        "2061 node f7e7 INPUT checkbox \"Urgent\"",
+        "2061 node f7e8 BUTTON button \"Add item\"",
+        "2062 node f7e9 BUTTON button \"Clear\"",
+        "2063 node f7e10 UL list \"Items\"",
+        "2368 node f7e11 LI listitem \"\"",
+        "2719 node f7e12 LI listitem \"\"",
+        "3014 node f7e13 LI listitem \"\"",
+        "3292 node f7e14 LI listitem \"\"",
+        "3587 node f7e15 LI listitem \"\"",
+        "3876 node f7e16 LI listitem \"\"",
+        "4160 node f7e17 LI listitem \"\"",
+        "4444 node f7e18 LI listitem \"\"",
+        "4727 node f7e19 LI listitem \"\"",
+        "5018 node f7e20 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n  - f7e4:\n    - text: New item\n    - f7e5 textbox \"New item\"\n  - f7e6:\n    - f7e7 checkbox \"Urgent\"\n    - text: Urgent\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":\n    - f7e11 ListPage.entries[0]: item 1\n    - f7e12 ListPage.entries[1]: item 2\n    - f7e13 ListPage.entries[2]: item 3\n    - f7e14 ListPage.entries[3]: item 4\n    - f7e15 ListPage.entries[4]: item 5\n    - f7e16 ListPage.entries[5]: item 6\n    - f7e17 ListPage.entries[6]: item 7\n    - f7e18 ListPage.entries[7]: item 8\n    - f7e19 ListPage.entries[8]: item 9\n    - f7e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 5,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 296,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e11",
+          "nodeMints": [
+            "f7e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 338,
+          "captureAfterClickMs": 326,
+          "liMintedBy": "node",
+          "liRef": "f7e12",
+          "nodeMints": [
+            "f7e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e13",
+          "nodeMints": [
+            "f7e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "f7e14",
+          "nodeMints": [
+            "f7e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 276,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e15",
+          "nodeMints": [
+            "f7e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "f7e16",
+          "nodeMints": [
+            "f7e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e17",
+          "nodeMints": [
+            "f7e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 269,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e18",
+          "nodeMints": [
+            "f7e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 278,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e19",
+          "nodeMints": [
+            "f7e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 280,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e20",
+          "nodeMints": [
+            "f7e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=f7e2]:\n  - heading \"Groceries\" [level=1] [ref=f7e3]\n    - textbox \"New item\" [ref=f7e5]\n    - checkbox \"Urgent\" [ref=f7e7]\n  - button \"Add item\" [active] [ref=f7e8]\n  - button \"Clear\" [ref=f7e9]\n  - list \"Items\" [ref=f7e10]:\n    - listitem [ref=f7e11]: item 1\n    - listitem [ref=f7e12]: item 2\n    - listitem [ref=f7e13]: item 3\n    - listitem [ref=f7e14]: item 4\n    - listitem [ref=f7e15]: item 5\n    - listitem [ref=f7e16]: item 6\n    - listitem [ref=f7e17]: item 7\n    - listitem [ref=f7e18]: item 8\n    - listitem [ref=f7e19]: item 9\n    - listitem [ref=f7e20]: item 10"
+      },
+      "allNodeMints": [
+        "f7e1 BODY generic \"\"",
+        "f7e2 MAIN main \"\"",
+        "f7e3 H1 heading \"Groceries\"",
+        "f7e4 LABEL generic \"\"",
+        "f7e5 INPUT textbox \"New item\"",
+        "f7e6 LABEL generic \"\"",
+        "f7e7 INPUT checkbox \"Urgent\"",
+        "f7e8 BUTTON button \"Add item\"",
+        "f7e9 BUTTON button \"Clear\"",
+        "f7e10 UL list \"Items\"",
+        "f7e11 LI listitem \"\"",
+        "f7e12 LI listitem \"\"",
+        "f7e13 LI listitem \"\"",
+        "f7e14 LI listitem \"\"",
+        "f7e15 LI listitem \"\"",
+        "f7e16 LI listitem \"\"",
+        "f7e17 LI listitem \"\"",
+        "f7e18 LI listitem \"\"",
+        "f7e19 LI listitem \"\"",
+        "f7e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n    - f7e5 textbox \"New item\"\n    - f7e7 checkbox \"Urgent\"\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 655 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "f7e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "f7e8",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e8\": the selector matches no element.",
+        "itemsBefore": 11,
+        "itemsAfter": 11,
+        "landed": null
+      },
+      "agentClickPrefixed": {
+        "ref": "f7e2",
+        "line": "main:",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e2\": the selector matches no element.",
+        "landed": null
+      },
+      "mintsTail": [
+        "2065 node f7e1 BODY generic \"\"",
+        "2065 node f7e2 MAIN main \"\"",
+        "2066 node f7e3 H1 heading \"Groceries\"",
+        "2066 node f7e4 LABEL generic \"\"",
+        "2066 node f7e5 INPUT textbox \"New item\"",
+        "2067 node f7e6 LABEL generic \"\"",
+        "2067 node f7e7 INPUT checkbox \"Urgent\"",
+        "2067 node f7e8 BUTTON button \"Add item\"",
+        "2067 node f7e9 BUTTON button \"Clear\"",
+        "2069 node f7e10 UL list \"Items\"",
+        "2375 node f7e11 LI listitem \"\"",
+        "2727 node f7e12 LI listitem \"\"",
+        "3010 node f7e13 LI listitem \"\"",
+        "3291 node f7e14 LI listitem \"\"",
+        "3577 node f7e15 LI listitem \"\"",
+        "3859 node f7e16 LI listitem \"\"",
+        "4144 node f7e17 LI listitem \"\"",
+        "4427 node f7e18 LI listitem \"\"",
+        "4719 node f7e19 LI listitem \"\"",
+        "5012 node f7e20 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n  - f7e4:\n    - text: New item\n    - f7e5 textbox \"New item\"\n  - f7e6:\n    - f7e7 checkbox \"Urgent\"\n    - text: Urgent\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":\n    - f7e11 ListPage.entries[0]: item 1\n    - f7e12 ListPage.entries[1]: item 2\n    - f7e13 ListPage.entries[2]: item 3\n    - f7e14 ListPage.entries[3]: item 4\n    - f7e15 ListPage.entries[4]: item 5\n    - f7e16 ListPage.entries[5]: item 6\n    - f7e17 ListPage.entries[6]: item 7\n    - f7e18 ListPage.entries[7]: item 8\n    - f7e19 ListPage.entries[8]: item 9\n    - f7e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 6,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 301,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e11",
+          "nodeMints": [
+            "f7e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 342,
+          "captureAfterClickMs": 330,
+          "liMintedBy": "node",
+          "liRef": "f7e12",
+          "nodeMints": [
+            "f7e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 275,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e13",
+          "nodeMints": [
+            "f7e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e14",
+          "nodeMints": [
+            "f7e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 262,
+          "liMintedBy": "node",
+          "liRef": "f7e15",
+          "nodeMints": [
+            "f7e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e16",
+          "nodeMints": [
+            "f7e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e17",
+          "nodeMints": [
+            "f7e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 281,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e18",
+          "nodeMints": [
+            "f7e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e19",
+          "nodeMints": [
+            "f7e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e20",
+          "nodeMints": [
+            "f7e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=f7e2]:\n  - heading \"Groceries\" [level=1] [ref=f7e3]\n    - textbox \"New item\" [ref=f7e5]\n    - checkbox \"Urgent\" [ref=f7e7]\n  - button \"Add item\" [active] [ref=f7e8]\n  - button \"Clear\" [ref=f7e9]\n  - list \"Items\" [ref=f7e10]:\n    - listitem [ref=f7e11]: item 1\n    - listitem [ref=f7e12]: item 2\n    - listitem [ref=f7e13]: item 3\n    - listitem [ref=f7e14]: item 4\n    - listitem [ref=f7e15]: item 5\n    - listitem [ref=f7e16]: item 6\n    - listitem [ref=f7e17]: item 7\n    - listitem [ref=f7e18]: item 8\n    - listitem [ref=f7e19]: item 9\n    - listitem [ref=f7e20]: item 10"
+      },
+      "allNodeMints": [
+        "f7e1 BODY generic \"\"",
+        "f7e2 MAIN main \"\"",
+        "f7e3 H1 heading \"Groceries\"",
+        "f7e4 LABEL generic \"\"",
+        "f7e5 INPUT textbox \"New item\"",
+        "f7e6 LABEL generic \"\"",
+        "f7e7 INPUT checkbox \"Urgent\"",
+        "f7e8 BUTTON button \"Add item\"",
+        "f7e9 BUTTON button \"Clear\"",
+        "f7e10 UL list \"Items\"",
+        "f7e11 LI listitem \"\"",
+        "f7e12 LI listitem \"\"",
+        "f7e13 LI listitem \"\"",
+        "f7e14 LI listitem \"\"",
+        "f7e15 LI listitem \"\"",
+        "f7e16 LI listitem \"\"",
+        "f7e17 LI listitem \"\"",
+        "f7e18 LI listitem \"\"",
+        "f7e19 LI listitem \"\"",
+        "f7e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n    - f7e5 textbox \"New item\"\n    - f7e7 checkbox \"Urgent\"\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 655 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "f7e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "f7e8",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e8\": the selector matches no element.",
+        "itemsBefore": 11,
+        "itemsAfter": 11,
+        "landed": null
+      },
+      "agentClickPrefixed": {
+        "ref": "f7e2",
+        "line": "main:",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e2\": the selector matches no element.",
+        "landed": null
+      },
+      "mintsTail": [
+        "2065 node f7e1 BODY generic \"\"",
+        "2066 node f7e2 MAIN main \"\"",
+        "2066 node f7e3 H1 heading \"Groceries\"",
+        "2067 node f7e4 LABEL generic \"\"",
+        "2067 node f7e5 INPUT textbox \"New item\"",
+        "2067 node f7e6 LABEL generic \"\"",
+        "2068 node f7e7 INPUT checkbox \"Urgent\"",
+        "2068 node f7e8 BUTTON button \"Add item\"",
+        "2068 node f7e9 BUTTON button \"Clear\"",
+        "2070 node f7e10 UL list \"Items\"",
+        "2381 node f7e11 LI listitem \"\"",
+        "2739 node f7e12 LI listitem \"\"",
+        "3027 node f7e13 LI listitem \"\"",
+        "3309 node f7e14 LI listitem \"\"",
+        "3595 node f7e15 LI listitem \"\"",
+        "3875 node f7e16 LI listitem \"\"",
+        "4159 node f7e17 LI listitem \"\"",
+        "4451 node f7e18 LI listitem \"\"",
+        "4735 node f7e19 LI listitem \"\"",
+        "5026 node f7e20 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n  - f7e4:\n    - text: New item\n    - f7e5 textbox \"New item\"\n  - f7e6:\n    - f7e7 checkbox \"Urgent\"\n    - text: Urgent\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":\n    - f7e11 ListPage.entries[0]: item 1\n    - f7e12 ListPage.entries[1]: item 2\n    - f7e13 ListPage.entries[2]: item 3\n    - f7e14 ListPage.entries[3]: item 4\n    - f7e15 ListPage.entries[4]: item 5\n    - f7e16 ListPage.entries[5]: item 6\n    - f7e17 ListPage.entries[6]: item 7\n    - f7e18 ListPage.entries[7]: item 8\n    - f7e19 ListPage.entries[8]: item 9\n    - f7e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 7,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 292,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e11",
+          "nodeMints": [
+            "f7e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 341,
+          "captureAfterClickMs": 322,
+          "liMintedBy": "node",
+          "liRef": "f7e12",
+          "nodeMints": [
+            "f7e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 255,
+          "liMintedBy": "node",
+          "liRef": "f7e13",
+          "nodeMints": [
+            "f7e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 276,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e14",
+          "nodeMints": [
+            "f7e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e15",
+          "nodeMints": [
+            "f7e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e16",
+          "nodeMints": [
+            "f7e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e17",
+          "nodeMints": [
+            "f7e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "f7e18",
+          "nodeMints": [
+            "f7e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e19",
+          "nodeMints": [
+            "f7e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e20",
+          "nodeMints": [
+            "f7e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=f7e2]:\n  - heading \"Groceries\" [level=1] [ref=f7e3]\n    - textbox \"New item\" [ref=f7e5]\n    - checkbox \"Urgent\" [ref=f7e7]\n  - button \"Add item\" [active] [ref=f7e8]\n  - button \"Clear\" [ref=f7e9]\n  - list \"Items\" [ref=f7e10]:\n    - listitem [ref=f7e11]: item 1\n    - listitem [ref=f7e12]: item 2\n    - listitem [ref=f7e13]: item 3\n    - listitem [ref=f7e14]: item 4\n    - listitem [ref=f7e15]: item 5\n    - listitem [ref=f7e16]: item 6\n    - listitem [ref=f7e17]: item 7\n    - listitem [ref=f7e18]: item 8\n    - listitem [ref=f7e19]: item 9\n    - listitem [ref=f7e20]: item 10"
+      },
+      "allNodeMints": [
+        "f7e1 BODY generic \"\"",
+        "f7e2 MAIN main \"\"",
+        "f7e3 H1 heading \"Groceries\"",
+        "f7e4 LABEL generic \"\"",
+        "f7e5 INPUT textbox \"New item\"",
+        "f7e6 LABEL generic \"\"",
+        "f7e7 INPUT checkbox \"Urgent\"",
+        "f7e8 BUTTON button \"Add item\"",
+        "f7e9 BUTTON button \"Clear\"",
+        "f7e10 UL list \"Items\"",
+        "f7e11 LI listitem \"\"",
+        "f7e12 LI listitem \"\"",
+        "f7e13 LI listitem \"\"",
+        "f7e14 LI listitem \"\"",
+        "f7e15 LI listitem \"\"",
+        "f7e16 LI listitem \"\"",
+        "f7e17 LI listitem \"\"",
+        "f7e18 LI listitem \"\"",
+        "f7e19 LI listitem \"\"",
+        "f7e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n    - f7e5 textbox \"New item\"\n    - f7e7 checkbox \"Urgent\"\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 655 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "f7e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "f7e8",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e8\": the selector matches no element.",
+        "itemsBefore": 11,
+        "itemsAfter": 11,
+        "landed": null
+      },
+      "agentClickPrefixed": {
+        "ref": "f7e2",
+        "line": "main:",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e2\": the selector matches no element.",
+        "landed": null
+      },
+      "mintsTail": [
+        "2071 node f7e1 BODY generic \"\"",
+        "2071 node f7e2 MAIN main \"\"",
+        "2072 node f7e3 H1 heading \"Groceries\"",
+        "2072 node f7e4 LABEL generic \"\"",
+        "2072 node f7e5 INPUT textbox \"New item\"",
+        "2073 node f7e6 LABEL generic \"\"",
+        "2073 node f7e7 INPUT checkbox \"Urgent\"",
+        "2073 node f7e8 BUTTON button \"Add item\"",
+        "2073 node f7e9 BUTTON button \"Clear\"",
+        "2075 node f7e10 UL list \"Items\"",
+        "2378 node f7e11 LI listitem \"\"",
+        "2734 node f7e12 LI listitem \"\"",
+        "3016 node f7e13 LI listitem \"\"",
+        "3304 node f7e14 LI listitem \"\"",
+        "3589 node f7e15 LI listitem \"\"",
+        "3871 node f7e16 LI listitem \"\"",
+        "4154 node f7e17 LI listitem \"\"",
+        "4435 node f7e18 LI listitem \"\"",
+        "4720 node f7e19 LI listitem \"\"",
+        "5012 node f7e20 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n  - f7e4:\n    - text: New item\n    - f7e5 textbox \"New item\"\n  - f7e6:\n    - f7e7 checkbox \"Urgent\"\n    - text: Urgent\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":\n    - f7e11 ListPage.entries[0]: item 1\n    - f7e12 ListPage.entries[1]: item 2\n    - f7e13 ListPage.entries[2]: item 3\n    - f7e14 ListPage.entries[3]: item 4\n    - f7e15 ListPage.entries[4]: item 5\n    - f7e16 ListPage.entries[5]: item 6\n    - f7e17 ListPage.entries[6]: item 7\n    - f7e18 ListPage.entries[7]: item 8\n    - f7e19 ListPage.entries[8]: item 9\n    - f7e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 8,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 298,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e11",
+          "nodeMints": [
+            "f7e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 341,
+          "captureAfterClickMs": 331,
+          "liMintedBy": "node",
+          "liRef": "f7e12",
+          "nodeMints": [
+            "f7e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 276,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "f7e13",
+          "nodeMints": [
+            "f7e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "f7e14",
+          "nodeMints": [
+            "f7e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e15",
+          "nodeMints": [
+            "f7e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e16",
+          "nodeMints": [
+            "f7e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e17",
+          "nodeMints": [
+            "f7e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e18",
+          "nodeMints": [
+            "f7e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e19",
+          "nodeMints": [
+            "f7e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 281,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e20",
+          "nodeMints": [
+            "f7e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=f7e2]:\n  - heading \"Groceries\" [level=1] [ref=f7e3]\n    - textbox \"New item\" [ref=f7e5]\n    - checkbox \"Urgent\" [ref=f7e7]\n  - button \"Add item\" [active] [ref=f7e8]\n  - button \"Clear\" [ref=f7e9]\n  - list \"Items\" [ref=f7e10]:\n    - listitem [ref=f7e11]: item 1\n    - listitem [ref=f7e12]: item 2\n    - listitem [ref=f7e13]: item 3\n    - listitem [ref=f7e14]: item 4\n    - listitem [ref=f7e15]: item 5\n    - listitem [ref=f7e16]: item 6\n    - listitem [ref=f7e17]: item 7\n    - listitem [ref=f7e18]: item 8\n    - listitem [ref=f7e19]: item 9\n    - listitem [ref=f7e20]: item 10"
+      },
+      "allNodeMints": [
+        "f7e1 BODY generic \"\"",
+        "f7e2 MAIN main \"\"",
+        "f7e3 H1 heading \"Groceries\"",
+        "f7e4 LABEL generic \"\"",
+        "f7e5 INPUT textbox \"New item\"",
+        "f7e6 LABEL generic \"\"",
+        "f7e7 INPUT checkbox \"Urgent\"",
+        "f7e8 BUTTON button \"Add item\"",
+        "f7e9 BUTTON button \"Clear\"",
+        "f7e10 UL list \"Items\"",
+        "f7e11 LI listitem \"\"",
+        "f7e12 LI listitem \"\"",
+        "f7e13 LI listitem \"\"",
+        "f7e14 LI listitem \"\"",
+        "f7e15 LI listitem \"\"",
+        "f7e16 LI listitem \"\"",
+        "f7e17 LI listitem \"\"",
+        "f7e18 LI listitem \"\"",
+        "f7e19 LI listitem \"\"",
+        "f7e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n    - f7e5 textbox \"New item\"\n    - f7e7 checkbox \"Urgent\"\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 655 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "f7e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "f7e8",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e8\": the selector matches no element.",
+        "itemsBefore": 11,
+        "itemsAfter": 11,
+        "landed": null
+      },
+      "agentClickPrefixed": {
+        "ref": "f7e2",
+        "line": "main:",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e2\": the selector matches no element.",
+        "landed": null
+      },
+      "mintsTail": [
+        "2072 node f7e1 BODY generic \"\"",
+        "2073 node f7e2 MAIN main \"\"",
+        "2074 node f7e3 H1 heading \"Groceries\"",
+        "2074 node f7e4 LABEL generic \"\"",
+        "2074 node f7e5 INPUT textbox \"New item\"",
+        "2074 node f7e6 LABEL generic \"\"",
+        "2075 node f7e7 INPUT checkbox \"Urgent\"",
+        "2075 node f7e8 BUTTON button \"Add item\"",
+        "2075 node f7e9 BUTTON button \"Clear\"",
+        "2077 node f7e10 UL list \"Items\"",
+        "2385 node f7e11 LI listitem \"\"",
+        "2739 node f7e12 LI listitem \"\"",
+        "3026 node f7e13 LI listitem \"\"",
+        "3310 node f7e14 LI listitem \"\"",
+        "3595 node f7e15 LI listitem \"\"",
+        "3878 node f7e16 LI listitem \"\"",
+        "4162 node f7e17 LI listitem \"\"",
+        "4445 node f7e18 LI listitem \"\"",
+        "4729 node f7e19 LI listitem \"\"",
+        "5022 node f7e20 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n  - f7e4:\n    - text: New item\n    - f7e5 textbox \"New item\"\n  - f7e6:\n    - f7e7 checkbox \"Urgent\"\n    - text: Urgent\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":\n    - f7e11 ListPage.entries[0]: item 1\n    - f7e12 ListPage.entries[1]: item 2\n    - f7e13 ListPage.entries[2]: item 3\n    - f7e14 ListPage.entries[3]: item 4\n    - f7e15 ListPage.entries[4]: item 5\n    - f7e16 ListPage.entries[5]: item 6\n    - f7e17 ListPage.entries[6]: item 7\n    - f7e18 ListPage.entries[7]: item 8\n    - f7e19 ListPage.entries[8]: item 9\n    - f7e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 9,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 296,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e11",
+          "nodeMints": [
+            "f7e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 343,
+          "captureAfterClickMs": 324,
+          "liMintedBy": "node",
+          "liRef": "f7e12",
+          "nodeMints": [
+            "f7e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e13",
+          "nodeMints": [
+            "f7e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e14",
+          "nodeMints": [
+            "f7e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e15",
+          "nodeMints": [
+            "f7e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e16",
+          "nodeMints": [
+            "f7e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e17",
+          "nodeMints": [
+            "f7e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e18",
+          "nodeMints": [
+            "f7e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e19",
+          "nodeMints": [
+            "f7e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 279,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e20",
+          "nodeMints": [
+            "f7e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=f7e2]:\n  - heading \"Groceries\" [level=1] [ref=f7e3]\n    - textbox \"New item\" [ref=f7e5]\n    - checkbox \"Urgent\" [ref=f7e7]\n  - button \"Add item\" [active] [ref=f7e8]\n  - button \"Clear\" [ref=f7e9]\n  - list \"Items\" [ref=f7e10]:\n    - listitem [ref=f7e11]: item 1\n    - listitem [ref=f7e12]: item 2\n    - listitem [ref=f7e13]: item 3\n    - listitem [ref=f7e14]: item 4\n    - listitem [ref=f7e15]: item 5\n    - listitem [ref=f7e16]: item 6\n    - listitem [ref=f7e17]: item 7\n    - listitem [ref=f7e18]: item 8\n    - listitem [ref=f7e19]: item 9\n    - listitem [ref=f7e20]: item 10"
+      },
+      "allNodeMints": [
+        "f7e1 BODY generic \"\"",
+        "f7e2 MAIN main \"\"",
+        "f7e3 H1 heading \"Groceries\"",
+        "f7e4 LABEL generic \"\"",
+        "f7e5 INPUT textbox \"New item\"",
+        "f7e6 LABEL generic \"\"",
+        "f7e7 INPUT checkbox \"Urgent\"",
+        "f7e8 BUTTON button \"Add item\"",
+        "f7e9 BUTTON button \"Clear\"",
+        "f7e10 UL list \"Items\"",
+        "f7e11 LI listitem \"\"",
+        "f7e12 LI listitem \"\"",
+        "f7e13 LI listitem \"\"",
+        "f7e14 LI listitem \"\"",
+        "f7e15 LI listitem \"\"",
+        "f7e16 LI listitem \"\"",
+        "f7e17 LI listitem \"\"",
+        "f7e18 LI listitem \"\"",
+        "f7e19 LI listitem \"\"",
+        "f7e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n    - f7e5 textbox \"New item\"\n    - f7e7 checkbox \"Urgent\"\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 655 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "f7e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "f7e8",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e8\": the selector matches no element.",
+        "itemsBefore": 11,
+        "itemsAfter": 11,
+        "landed": null
+      },
+      "agentClickPrefixed": {
+        "ref": "f7e2",
+        "line": "main:",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e2\": the selector matches no element.",
+        "landed": null
+      },
+      "mintsTail": [
+        "2063 node f7e1 BODY generic \"\"",
+        "2063 node f7e2 MAIN main \"\"",
+        "2064 node f7e3 H1 heading \"Groceries\"",
+        "2064 node f7e4 LABEL generic \"\"",
+        "2064 node f7e5 INPUT textbox \"New item\"",
+        "2065 node f7e6 LABEL generic \"\"",
+        "2065 node f7e7 INPUT checkbox \"Urgent\"",
+        "2065 node f7e8 BUTTON button \"Add item\"",
+        "2065 node f7e9 BUTTON button \"Clear\"",
+        "2067 node f7e10 UL list \"Items\"",
+        "2374 node f7e11 LI listitem \"\"",
+        "2732 node f7e12 LI listitem \"\"",
+        "3014 node f7e13 LI listitem \"\"",
+        "3299 node f7e14 LI listitem \"\"",
+        "3583 node f7e15 LI listitem \"\"",
+        "3866 node f7e16 LI listitem \"\"",
+        "4149 node f7e17 LI listitem \"\"",
+        "4433 node f7e18 LI listitem \"\"",
+        "4716 node f7e19 LI listitem \"\"",
+        "5008 node f7e20 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n  - f7e4:\n    - text: New item\n    - f7e5 textbox \"New item\"\n  - f7e6:\n    - f7e7 checkbox \"Urgent\"\n    - text: Urgent\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":\n    - f7e11 ListPage.entries[0]: item 1\n    - f7e12 ListPage.entries[1]: item 2\n    - f7e13 ListPage.entries[2]: item 3\n    - f7e14 ListPage.entries[3]: item 4\n    - f7e15 ListPage.entries[4]: item 5\n    - f7e16 ListPage.entries[5]: item 6\n    - f7e17 ListPage.entries[6]: item 7\n    - f7e18 ListPage.entries[7]: item 8\n    - f7e19 ListPage.entries[8]: item 9\n    - f7e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 10,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 299,
+          "captureAfterClickMs": 257,
+          "liMintedBy": "node",
+          "liRef": "f7e11",
+          "nodeMints": [
+            "f7e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 340,
+          "captureAfterClickMs": 325,
+          "liMintedBy": "node",
+          "liRef": "f7e12",
+          "nodeMints": [
+            "f7e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 255,
+          "liMintedBy": "node",
+          "liRef": "f7e13",
+          "nodeMints": [
+            "f7e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e14",
+          "nodeMints": [
+            "f7e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e15",
+          "nodeMints": [
+            "f7e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e16",
+          "nodeMints": [
+            "f7e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e17",
+          "nodeMints": [
+            "f7e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "f7e18",
+          "nodeMints": [
+            "f7e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "f7e19",
+          "nodeMints": [
+            "f7e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 278,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "f7e20",
+          "nodeMints": [
+            "f7e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=f7e2]:\n  - heading \"Groceries\" [level=1] [ref=f7e3]\n    - textbox \"New item\" [ref=f7e5]\n    - checkbox \"Urgent\" [ref=f7e7]\n  - button \"Add item\" [active] [ref=f7e8]\n  - button \"Clear\" [ref=f7e9]\n  - list \"Items\" [ref=f7e10]:\n    - listitem [ref=f7e11]: item 1\n    - listitem [ref=f7e12]: item 2\n    - listitem [ref=f7e13]: item 3\n    - listitem [ref=f7e14]: item 4\n    - listitem [ref=f7e15]: item 5\n    - listitem [ref=f7e16]: item 6\n    - listitem [ref=f7e17]: item 7\n    - listitem [ref=f7e18]: item 8\n    - listitem [ref=f7e19]: item 9\n    - listitem [ref=f7e20]: item 10"
+      },
+      "allNodeMints": [
+        "f7e1 BODY generic \"\"",
+        "f7e2 MAIN main \"\"",
+        "f7e3 H1 heading \"Groceries\"",
+        "f7e4 LABEL generic \"\"",
+        "f7e5 INPUT textbox \"New item\"",
+        "f7e6 LABEL generic \"\"",
+        "f7e7 INPUT checkbox \"Urgent\"",
+        "f7e8 BUTTON button \"Add item\"",
+        "f7e9 BUTTON button \"Clear\"",
+        "f7e10 UL list \"Items\"",
+        "f7e11 LI listitem \"\"",
+        "f7e12 LI listitem \"\"",
+        "f7e13 LI listitem \"\"",
+        "f7e14 LI listitem \"\"",
+        "f7e15 LI listitem \"\"",
+        "f7e16 LI listitem \"\"",
+        "f7e17 LI listitem \"\"",
+        "f7e18 LI listitem \"\"",
+        "f7e19 LI listitem \"\"",
+        "f7e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n    - f7e5 textbox \"New item\"\n    - f7e7 checkbox \"Urgent\"\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 655 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "f7e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "f7e8",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e8\": the selector matches no element.",
+        "itemsBefore": 11,
+        "itemsAfter": 11,
+        "landed": null
+      },
+      "agentClickPrefixed": {
+        "ref": "f7e2",
+        "line": "main:",
+        "isError": true,
+        "text": "RefResolutionError: Cannot click \"f7e2\": the selector matches no element.",
+        "landed": null
+      },
+      "mintsTail": [
+        "2062 node f7e1 BODY generic \"\"",
+        "2063 node f7e2 MAIN main \"\"",
+        "2063 node f7e3 H1 heading \"Groceries\"",
+        "2064 node f7e4 LABEL generic \"\"",
+        "2064 node f7e5 INPUT textbox \"New item\"",
+        "2064 node f7e6 LABEL generic \"\"",
+        "2064 node f7e7 INPUT checkbox \"Urgent\"",
+        "2065 node f7e8 BUTTON button \"Add item\"",
+        "2065 node f7e9 BUTTON button \"Clear\"",
+        "2066 node f7e10 UL list \"Items\"",
+        "2373 node f7e11 LI listitem \"\"",
+        "2725 node f7e12 LI listitem \"\"",
+        "3006 node f7e13 LI listitem \"\"",
+        "3285 node f7e14 LI listitem \"\"",
+        "3569 node f7e15 LI listitem \"\"",
+        "3853 node f7e16 LI listitem \"\"",
+        "4135 node f7e17 LI listitem \"\"",
+        "4419 node f7e18 LI listitem \"\"",
+        "4702 node f7e19 LI listitem \"\"",
+        "4995 node f7e20 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- f7e2 main:\n  - f7e3 heading \"Groceries\" [level=1]\n  - f7e4:\n    - text: New item\n    - f7e5 textbox \"New item\"\n  - f7e6:\n    - f7e7 checkbox \"Urgent\"\n    - text: Urgent\n  - f7e8 button \"Add item\" [active]\n  - f7e9 button \"Clear\"\n  - f7e10 list \"Items\":\n    - f7e11 ListPage.entries[0]: item 1\n    - f7e12 ListPage.entries[1]: item 2\n    - f7e13 ListPage.entries[2]: item 3\n    - f7e14 ListPage.entries[3]: item 4\n    - f7e15 ListPage.entries[4]: item 5\n    - f7e16 ListPage.entries[5]: item 6\n    - f7e17 ListPage.entries[6]: item 7\n    - f7e18 ListPage.entries[7]: item 8\n    - f7e19 ListPage.entries[8]: item 9\n    - f7e20 ListPage.entries[9]: item 10",
+      "errors": []
+    }
+  ]
+}

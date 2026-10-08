@@ -1,0 +1,1427 @@
+{
+  "mode": "agent-first",
+  "variant": "plain",
+  "inspector": true,
+  "trials": [
+    {
+      "trial": 1,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e495",
+          "nodeMints": [],
+          "pageMintsCount": 51,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "liMintedBy": "page",
+          "liRef": "e552",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "liMintedBy": "page",
+          "liRef": "e608",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "liMintedBy": "page",
+          "liRef": "e664",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "liMintedBy": "page",
+          "liRef": "e720",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "liMintedBy": "page",
+          "liRef": "e776",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "liMintedBy": "page",
+          "liRef": "e832",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "liMintedBy": "page",
+          "liRef": "e888",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "liMintedBy": "page",
+          "liRef": "e944",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "liMintedBy": "page",
+          "liRef": "e1000",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 494,
+      "pageMaxRefAtLoad": 494,
+      "nodeMintsAtFirstCapture": 0,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n      - textbox \"New item\" [ref=e5]\n      - checkbox \"Urgent\" [ref=e7]\n    - button \"Add item\" [active] [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]:\n      - listitem [ref=e495]: item 1\n      - listitem [ref=e552]: item 2\n      - listitem [ref=e608]: item 3\n      - listitem [ref=e664]: item 4\n      - listitem [ref=e720]: item 5\n      - listitem [ref=e776]: item 6\n      - listitem [ref=e832]: item 7\n      - listitem [ref=e888]: item 8\n      - listitem [ref=e944]: item 9\n      - listitem [ref=e1000]: item 10\n                  - listitem [ref=e225]:\n                  - listitem [ref=e232]:\n                  - listitem [ref=e239]:\n                  - listitem [ref=e246]:\n                  - listitem [ref=e253]:\n                  - listitem [ref=e260]:\n                  - listitem [ref=e267]:\n                  - listitem [ref=e274]:\n                  - listitem [ref=e281]:\n                  - listitem [ref=e288]:\n                  - listitem [ref=e295]:\n                  - listitem [ref=e302]:\n                  - listitem [ref=e309]:\n                  - listitem [ref=e316]:\n                  - listitem [ref=e323]:\n                  - listitem [ref=e330]:\n                  - listitem [ref=e337]:\n                  - listitem [ref=e344]:\n                  - listitem [ref=e351]:\n                  - listitem [ref=e358]:\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - button \"Clear\" [ref=e493]\n            - listitem \"ListPage.addItem\" [ref=e1010]:\n                  - listitem [ref=e1027]:\n                  - listitem [ref=e1033]:\n            - listitem \"ListPage.addItem\" [ref=e954]:\n                  - listitem [ref=e971]:\n                  - listitem [ref=e977]:\n            - listitem \"ListPage.addItem\" [ref=e898]:\n                  - listitem [ref=e915]:\n                  - listitem [ref=e921]:\n            - listitem \"ListPage.addItem\" [ref=e842]:\n                  - listitem [ref=e859]:\n                  - listitem [ref=e865]:\n            - listitem \"ListPage.addItem\" [ref=e786]:\n                  - listitem [ref=e803]:\n                  - listitem [ref=e809]:\n            - listitem \"ListPage.addItem\" [ref=e730]:\n                  - listitem [ref=e747]:\n                  - listitem [ref=e753]:\n            - listitem \"ListPage.addItem\" [ref=e674]:\n                  - listitem [ref=e691]:\n                  - listitem [ref=e697]:\n            - listitem \"ListPage.addItem\" [ref=e618]:\n                  - listitem [ref=e635]:\n                  - listitem [ref=e641]:\n            - listitem \"ListPage.addItem\" [ref=e562]:\n                  - listitem [ref=e579]:\n                  - listitem [ref=e585]:\n            - listitem \"ListPage.addItem\" [ref=e506]:\n                  - listitem [ref=e523]:\n                  - listitem [ref=e529]:"
+      },
+      "allNodeMints": [],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "  - e2 main:\n    - e3 heading \"Groceries\" [level=1]\n      - e5 textbox \"New item\"\n      - e7 checkbox \"Urgent\"\n    - e8 button \"Add item\" [active]\n    - e9 button \"Clear\"\n    - e432 list \"Items\":\n                  - e225 listitem:\n                  - e232 listitem:\n                  - e239 listitem:\n                  - e246 listitem:\n                  - e253 listitem:\n                  - e260 listitem:\n                  - e267 listitem:\n                  - e274 listitem:\n                  - e281 listitem:\n                  - e288 listitem:\n                  - e295 listitem:\n                  - e302 listitem:\n                  - e309 listitem:\n                  - e316 listitem:\n                  - e323 listitem:\n                  - e330 listitem:\n                  - e337 listitem:\n                  - e344 listitem:\n                  - e351 listitem:\n                  - e358 listitem:\n                    - e405 paragraph: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - e493 button \"Clear\"\n            - e1010 listitem \"ListPage.addItem\":\n                  - e1027 listitem:\n                  - e1033 listitem:\n            - e954 listitem \"ListPage.addItem\":\n                  - e971 listitem:\n                  - e977 listitem:\n            - e898 listitem \"ListPage.addItem\":\n                  - e915 listitem:\n                  - e921 listitem:\n            - e842 listitem \"ListPage.addItem\":\n                  - e859 listitem:\n                  - e865 listitem:\n            - e786 listitem \"ListPage.addItem\":\n                  - e803 listitem:\n                  - e809 listitem:\n            - e730 listitem \"ListPage.addItem\":\n                  - e747 listitem:\n                  - e753 listitem:\n            - e674 listitem \"ListPage.addItem\":\n                  - e691 listitem:\n                  - e697 listitem:\n            - e618 listitem \"ListPage.addItem\":\n                  - e635 listitem:\n                  - e641 listitem:\n            - e562 listitem \"ListPage.addItem\":\n                  - e579 listitem:\n                  - e585 listitem:\n            - e506 listitem \"ListPage.addItem\":\n                  - e523 listitem:\n                  - e529 listitem:"
+      },
+      "inspectorLook": {
+        "look": "ok, 444 refs",
+        "capturePageState": "ok, 21433 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"result\":10,\"changes_before\":\"- e1:\\n  - e10 complementary \\\"ayme\\\":\\n    - e19:\\n      - e43:\\n        - e44:\\n          - e45 navigation \\\"Navigator\\\":\\n         "
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"changes_before\":\"- e1:\\n  - e2 main:\\n    - e4:\\n      - e5 <changed> textbox \\\"New item\\\" [active]: by agent ref\\n    - e8 <changed> button \\\"Add item\\\"\\n    - e432 list \\\"Items\\\":\\n      - e1114 <added> listitem: by node ref\\n  - e10 complementary \\\"ayme\\\":\\n  ",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "errors": []
+    },
+    {
+      "trial": 2,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e495",
+          "nodeMints": [],
+          "pageMintsCount": 51,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "liMintedBy": "page",
+          "liRef": "e552",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "liMintedBy": "page",
+          "liRef": "e608",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "liMintedBy": "page",
+          "liRef": "e664",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "liMintedBy": "page",
+          "liRef": "e720",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "liMintedBy": "page",
+          "liRef": "e776",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "liMintedBy": "page",
+          "liRef": "e832",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "liMintedBy": "page",
+          "liRef": "e888",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "liMintedBy": "page",
+          "liRef": "e944",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "liMintedBy": "page",
+          "liRef": "e1000",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 494,
+      "pageMaxRefAtLoad": 494,
+      "nodeMintsAtFirstCapture": 0,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n      - textbox \"New item\" [ref=e5]\n      - checkbox \"Urgent\" [ref=e7]\n    - button \"Add item\" [active] [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]:\n      - listitem [ref=e495]: item 1\n      - listitem [ref=e552]: item 2\n      - listitem [ref=e608]: item 3\n      - listitem [ref=e664]: item 4\n      - listitem [ref=e720]: item 5\n      - listitem [ref=e776]: item 6\n      - listitem [ref=e832]: item 7\n      - listitem [ref=e888]: item 8\n      - listitem [ref=e944]: item 9\n      - listitem [ref=e1000]: item 10\n                  - listitem [ref=e225]:\n                  - listitem [ref=e232]:\n                  - listitem [ref=e239]:\n                  - listitem [ref=e246]:\n                  - listitem [ref=e253]:\n                  - listitem [ref=e260]:\n                  - listitem [ref=e267]:\n                  - listitem [ref=e274]:\n                  - listitem [ref=e281]:\n                  - listitem [ref=e288]:\n                  - listitem [ref=e295]:\n                  - listitem [ref=e302]:\n                  - listitem [ref=e309]:\n                  - listitem [ref=e316]:\n                  - listitem [ref=e323]:\n                  - listitem [ref=e330]:\n                  - listitem [ref=e337]:\n                  - listitem [ref=e344]:\n                  - listitem [ref=e351]:\n                  - listitem [ref=e358]:\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - button \"Clear\" [ref=e493]\n            - listitem \"ListPage.addItem\" [ref=e1010]:\n                  - listitem [ref=e1027]:\n                  - listitem [ref=e1033]:\n            - listitem \"ListPage.addItem\" [ref=e954]:\n                  - listitem [ref=e971]:\n                  - listitem [ref=e977]:\n            - listitem \"ListPage.addItem\" [ref=e898]:\n                  - listitem [ref=e915]:\n                  - listitem [ref=e921]:\n            - listitem \"ListPage.addItem\" [ref=e842]:\n                  - listitem [ref=e859]:\n                  - listitem [ref=e865]:\n            - listitem \"ListPage.addItem\" [ref=e786]:\n                  - listitem [ref=e803]:\n                  - listitem [ref=e809]:\n            - listitem \"ListPage.addItem\" [ref=e730]:\n                  - listitem [ref=e747]:\n                  - listitem [ref=e753]:\n            - listitem \"ListPage.addItem\" [ref=e674]:\n                  - listitem [ref=e691]:\n                  - listitem [ref=e697]:\n            - listitem \"ListPage.addItem\" [ref=e618]:\n                  - listitem [ref=e635]:\n                  - listitem [ref=e641]:\n            - listitem \"ListPage.addItem\" [ref=e562]:\n                  - listitem [ref=e579]:\n                  - listitem [ref=e585]:\n            - listitem \"ListPage.addItem\" [ref=e506]:\n                  - listitem [ref=e523]:\n                  - listitem [ref=e529]:"
+      },
+      "allNodeMints": [],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "  - e2 main:\n    - e3 heading \"Groceries\" [level=1]\n      - e5 textbox \"New item\"\n      - e7 checkbox \"Urgent\"\n    - e8 button \"Add item\" [active]\n    - e9 button \"Clear\"\n    - e432 list \"Items\":\n                  - e225 listitem:\n                  - e232 listitem:\n                  - e239 listitem:\n                  - e246 listitem:\n                  - e253 listitem:\n                  - e260 listitem:\n                  - e267 listitem:\n                  - e274 listitem:\n                  - e281 listitem:\n                  - e288 listitem:\n                  - e295 listitem:\n                  - e302 listitem:\n                  - e309 listitem:\n                  - e316 listitem:\n                  - e323 listitem:\n                  - e330 listitem:\n                  - e337 listitem:\n                  - e344 listitem:\n                  - e351 listitem:\n                  - e358 listitem:\n                    - e405 paragraph: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - e493 button \"Clear\"\n            - e1010 listitem \"ListPage.addItem\":\n                  - e1027 listitem:\n                  - e1033 listitem:\n            - e954 listitem \"ListPage.addItem\":\n                  - e971 listitem:\n                  - e977 listitem:\n            - e898 listitem \"ListPage.addItem\":\n                  - e915 listitem:\n                  - e921 listitem:\n            - e842 listitem \"ListPage.addItem\":\n                  - e859 listitem:\n                  - e865 listitem:\n            - e786 listitem \"ListPage.addItem\":\n                  - e803 listitem:\n                  - e809 listitem:\n            - e730 listitem \"ListPage.addItem\":\n                  - e747 listitem:\n                  - e753 listitem:\n            - e674 listitem \"ListPage.addItem\":\n                  - e691 listitem:\n                  - e697 listitem:\n            - e618 listitem \"ListPage.addItem\":\n                  - e635 listitem:\n                  - e641 listitem:\n            - e562 listitem \"ListPage.addItem\":\n                  - e579 listitem:\n                  - e585 listitem:\n            - e506 listitem \"ListPage.addItem\":\n                  - e523 listitem:\n                  - e529 listitem:"
+      },
+      "inspectorLook": {
+        "look": "ok, 444 refs",
+        "capturePageState": "ok, 21433 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"result\":10,\"changes_before\":\"- e1:\\n  - e10 complementary \\\"ayme\\\":\\n    - e19:\\n      - e43:\\n        - e44:\\n          - e45 navigation \\\"Navigator\\\":\\n         "
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"changes_before\":\"- e1:\\n  - e2 main:\\n    - e4:\\n      - e5 <changed> textbox \\\"New item\\\" [active]: by agent ref\\n    - e8 <changed> button \\\"Add item\\\"\\n    - e432 list \\\"Items\\\":\\n      - e1114 <added> listitem: by node ref\\n  - e10 complementary \\\"ayme\\\":\\n  ",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "errors": []
+    },
+    {
+      "trial": 3,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e495",
+          "nodeMints": [],
+          "pageMintsCount": 51,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "liMintedBy": "page",
+          "liRef": "e552",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "liMintedBy": "page",
+          "liRef": "e608",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "liMintedBy": "page",
+          "liRef": "e664",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "liMintedBy": "page",
+          "liRef": "e720",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "liMintedBy": "page",
+          "liRef": "e776",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "liMintedBy": "page",
+          "liRef": "e832",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "liMintedBy": "page",
+          "liRef": "e888",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "liMintedBy": "page",
+          "liRef": "e944",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "liMintedBy": "page",
+          "liRef": "e1000",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 494,
+      "pageMaxRefAtLoad": 494,
+      "nodeMintsAtFirstCapture": 0,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n      - textbox \"New item\" [ref=e5]\n      - checkbox \"Urgent\" [ref=e7]\n    - button \"Add item\" [active] [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]:\n      - listitem [ref=e495]: item 1\n      - listitem [ref=e552]: item 2\n      - listitem [ref=e608]: item 3\n      - listitem [ref=e664]: item 4\n      - listitem [ref=e720]: item 5\n      - listitem [ref=e776]: item 6\n      - listitem [ref=e832]: item 7\n      - listitem [ref=e888]: item 8\n      - listitem [ref=e944]: item 9\n      - listitem [ref=e1000]: item 10\n                  - listitem [ref=e225]:\n                  - listitem [ref=e232]:\n                  - listitem [ref=e239]:\n                  - listitem [ref=e246]:\n                  - listitem [ref=e253]:\n                  - listitem [ref=e260]:\n                  - listitem [ref=e267]:\n                  - listitem [ref=e274]:\n                  - listitem [ref=e281]:\n                  - listitem [ref=e288]:\n                  - listitem [ref=e295]:\n                  - listitem [ref=e302]:\n                  - listitem [ref=e309]:\n                  - listitem [ref=e316]:\n                  - listitem [ref=e323]:\n                  - listitem [ref=e330]:\n                  - listitem [ref=e337]:\n                  - listitem [ref=e344]:\n                  - listitem [ref=e351]:\n                  - listitem [ref=e358]:\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - button \"Clear\" [ref=e493]\n            - listitem \"ListPage.addItem\" [ref=e1010]:\n                  - listitem [ref=e1027]:\n                  - listitem [ref=e1033]:\n            - listitem \"ListPage.addItem\" [ref=e954]:\n                  - listitem [ref=e971]:\n                  - listitem [ref=e977]:\n            - listitem \"ListPage.addItem\" [ref=e898]:\n                  - listitem [ref=e915]:\n                  - listitem [ref=e921]:\n            - listitem \"ListPage.addItem\" [ref=e842]:\n                  - listitem [ref=e859]:\n                  - listitem [ref=e865]:\n            - listitem \"ListPage.addItem\" [ref=e786]:\n                  - listitem [ref=e803]:\n                  - listitem [ref=e809]:\n            - listitem \"ListPage.addItem\" [ref=e730]:\n                  - listitem [ref=e747]:\n                  - listitem [ref=e753]:\n            - listitem \"ListPage.addItem\" [ref=e674]:\n                  - listitem [ref=e691]:\n                  - listitem [ref=e697]:\n            - listitem \"ListPage.addItem\" [ref=e618]:\n                  - listitem [ref=e635]:\n                  - listitem [ref=e641]:\n            - listitem \"ListPage.addItem\" [ref=e562]:\n                  - listitem [ref=e579]:\n                  - listitem [ref=e585]:\n            - listitem \"ListPage.addItem\" [ref=e506]:\n                  - listitem [ref=e523]:\n                  - listitem [ref=e529]:"
+      },
+      "allNodeMints": [],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "  - e2 main:\n    - e3 heading \"Groceries\" [level=1]\n      - e5 textbox \"New item\"\n      - e7 checkbox \"Urgent\"\n    - e8 button \"Add item\" [active]\n    - e9 button \"Clear\"\n    - e432 list \"Items\":\n                  - e225 listitem:\n                  - e232 listitem:\n                  - e239 listitem:\n                  - e246 listitem:\n                  - e253 listitem:\n                  - e260 listitem:\n                  - e267 listitem:\n                  - e274 listitem:\n                  - e281 listitem:\n                  - e288 listitem:\n                  - e295 listitem:\n                  - e302 listitem:\n                  - e309 listitem:\n                  - e316 listitem:\n                  - e323 listitem:\n                  - e330 listitem:\n                  - e337 listitem:\n                  - e344 listitem:\n                  - e351 listitem:\n                  - e358 listitem:\n                    - e405 paragraph: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - e493 button \"Clear\"\n            - e1010 listitem \"ListPage.addItem\":\n                  - e1027 listitem:\n                  - e1033 listitem:\n            - e954 listitem \"ListPage.addItem\":\n                  - e971 listitem:\n                  - e977 listitem:\n            - e898 listitem \"ListPage.addItem\":\n                  - e915 listitem:\n                  - e921 listitem:\n            - e842 listitem \"ListPage.addItem\":\n                  - e859 listitem:\n                  - e865 listitem:\n            - e786 listitem \"ListPage.addItem\":\n                  - e803 listitem:\n                  - e809 listitem:\n            - e730 listitem \"ListPage.addItem\":\n                  - e747 listitem:\n                  - e753 listitem:\n            - e674 listitem \"ListPage.addItem\":\n                  - e691 listitem:\n                  - e697 listitem:\n            - e618 listitem \"ListPage.addItem\":\n                  - e635 listitem:\n                  - e641 listitem:\n            - e562 listitem \"ListPage.addItem\":\n                  - e579 listitem:\n                  - e585 listitem:\n            - e506 listitem \"ListPage.addItem\":\n                  - e523 listitem:\n                  - e529 listitem:"
+      },
+      "inspectorLook": {
+        "look": "ok, 444 refs",
+        "capturePageState": "ok, 21433 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"result\":10,\"changes_before\":\"- e1:\\n  - e10 complementary \\\"ayme\\\":\\n    - e19:\\n      - e43:\\n        - e44:\\n          - e45 navigation \\\"Navigator\\\":\\n         "
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"changes_before\":\"- e1:\\n  - e2 main:\\n    - e4:\\n      - e5 <changed> textbox \\\"New item\\\" [active]: by agent ref\\n    - e8 <changed> button \\\"Add item\\\"\\n    - e432 list \\\"Items\\\":\\n      - e1114 <added> listitem: by node ref\\n  - e10 complementary \\\"ayme\\\":\\n  ",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "errors": []
+    },
+    {
+      "trial": 4,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e495",
+          "nodeMints": [],
+          "pageMintsCount": 51,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "liMintedBy": "page",
+          "liRef": "e552",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "liMintedBy": "page",
+          "liRef": "e608",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "liMintedBy": "page",
+          "liRef": "e664",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "liMintedBy": "page",
+          "liRef": "e720",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "liMintedBy": "page",
+          "liRef": "e776",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "liMintedBy": "page",
+          "liRef": "e832",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "liMintedBy": "page",
+          "liRef": "e888",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "liMintedBy": "page",
+          "liRef": "e944",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "liMintedBy": "page",
+          "liRef": "e1000",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 494,
+      "pageMaxRefAtLoad": 494,
+      "nodeMintsAtFirstCapture": 0,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n      - textbox \"New item\" [ref=e5]\n      - checkbox \"Urgent\" [ref=e7]\n    - button \"Add item\" [active] [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]:\n      - listitem [ref=e495]: item 1\n      - listitem [ref=e552]: item 2\n      - listitem [ref=e608]: item 3\n      - listitem [ref=e664]: item 4\n      - listitem [ref=e720]: item 5\n      - listitem [ref=e776]: item 6\n      - listitem [ref=e832]: item 7\n      - listitem [ref=e888]: item 8\n      - listitem [ref=e944]: item 9\n      - listitem [ref=e1000]: item 10\n                  - listitem [ref=e225]:\n                  - listitem [ref=e232]:\n                  - listitem [ref=e239]:\n                  - listitem [ref=e246]:\n                  - listitem [ref=e253]:\n                  - listitem [ref=e260]:\n                  - listitem [ref=e267]:\n                  - listitem [ref=e274]:\n                  - listitem [ref=e281]:\n                  - listitem [ref=e288]:\n                  - listitem [ref=e295]:\n                  - listitem [ref=e302]:\n                  - listitem [ref=e309]:\n                  - listitem [ref=e316]:\n                  - listitem [ref=e323]:\n                  - listitem [ref=e330]:\n                  - listitem [ref=e337]:\n                  - listitem [ref=e344]:\n                  - listitem [ref=e351]:\n                  - listitem [ref=e358]:\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - button \"Clear\" [ref=e493]\n            - listitem \"ListPage.addItem\" [ref=e1010]:\n                  - listitem [ref=e1027]:\n                  - listitem [ref=e1033]:\n            - listitem \"ListPage.addItem\" [ref=e954]:\n                  - listitem [ref=e971]:\n                  - listitem [ref=e977]:\n            - listitem \"ListPage.addItem\" [ref=e898]:\n                  - listitem [ref=e915]:\n                  - listitem [ref=e921]:\n            - listitem \"ListPage.addItem\" [ref=e842]:\n                  - listitem [ref=e859]:\n                  - listitem [ref=e865]:\n            - listitem \"ListPage.addItem\" [ref=e786]:\n                  - listitem [ref=e803]:\n                  - listitem [ref=e809]:\n            - listitem \"ListPage.addItem\" [ref=e730]:\n                  - listitem [ref=e747]:\n                  - listitem [ref=e753]:\n            - listitem \"ListPage.addItem\" [ref=e674]:\n                  - listitem [ref=e691]:\n                  - listitem [ref=e697]:\n            - listitem \"ListPage.addItem\" [ref=e618]:\n                  - listitem [ref=e635]:\n                  - listitem [ref=e641]:\n            - listitem \"ListPage.addItem\" [ref=e562]:\n                  - listitem [ref=e579]:\n                  - listitem [ref=e585]:\n            - listitem \"ListPage.addItem\" [ref=e506]:\n                  - listitem [ref=e523]:\n                  - listitem [ref=e529]:"
+      },
+      "allNodeMints": [],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "  - e2 main:\n    - e3 heading \"Groceries\" [level=1]\n      - e5 textbox \"New item\"\n      - e7 checkbox \"Urgent\"\n    - e8 button \"Add item\" [active]\n    - e9 button \"Clear\"\n    - e432 list \"Items\":\n                  - e225 listitem:\n                  - e232 listitem:\n                  - e239 listitem:\n                  - e246 listitem:\n                  - e253 listitem:\n                  - e260 listitem:\n                  - e267 listitem:\n                  - e274 listitem:\n                  - e281 listitem:\n                  - e288 listitem:\n                  - e295 listitem:\n                  - e302 listitem:\n                  - e309 listitem:\n                  - e316 listitem:\n                  - e323 listitem:\n                  - e330 listitem:\n                  - e337 listitem:\n                  - e344 listitem:\n                  - e351 listitem:\n                  - e358 listitem:\n                    - e405 paragraph: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - e493 button \"Clear\"\n            - e1010 listitem \"ListPage.addItem\":\n                  - e1027 listitem:\n                  - e1033 listitem:\n            - e954 listitem \"ListPage.addItem\":\n                  - e971 listitem:\n                  - e977 listitem:\n            - e898 listitem \"ListPage.addItem\":\n                  - e915 listitem:\n                  - e921 listitem:\n            - e842 listitem \"ListPage.addItem\":\n                  - e859 listitem:\n                  - e865 listitem:\n            - e786 listitem \"ListPage.addItem\":\n                  - e803 listitem:\n                  - e809 listitem:\n            - e730 listitem \"ListPage.addItem\":\n                  - e747 listitem:\n                  - e753 listitem:\n            - e674 listitem \"ListPage.addItem\":\n                  - e691 listitem:\n                  - e697 listitem:\n            - e618 listitem \"ListPage.addItem\":\n                  - e635 listitem:\n                  - e641 listitem:\n            - e562 listitem \"ListPage.addItem\":\n                  - e579 listitem:\n                  - e585 listitem:\n            - e506 listitem \"ListPage.addItem\":\n                  - e523 listitem:\n                  - e529 listitem:"
+      },
+      "inspectorLook": {
+        "look": "ok, 444 refs",
+        "capturePageState": "ok, 21433 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"result\":10,\"changes_before\":\"- e1:\\n  - e10 complementary \\\"ayme\\\":\\n    - e19:\\n      - e43:\\n        - e44:\\n          - e45 navigation \\\"Navigator\\\":\\n         "
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"changes_before\":\"- e1:\\n  - e2 main:\\n    - e4:\\n      - e5 <changed> textbox \\\"New item\\\" [active]: by agent ref\\n    - e8 <changed> button \\\"Add item\\\"\\n    - e432 list \\\"Items\\\":\\n      - e1114 <added> listitem: by node ref\\n  - e10 complementary \\\"ayme\\\":\\n  ",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "errors": []
+    },
+    {
+      "trial": 5,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e495",
+          "nodeMints": [],
+          "pageMintsCount": 51,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "liMintedBy": "page",
+          "liRef": "e552",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "liMintedBy": "page",
+          "liRef": "e608",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "liMintedBy": "page",
+          "liRef": "e664",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "liMintedBy": "page",
+          "liRef": "e720",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "liMintedBy": "page",
+          "liRef": "e776",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "liMintedBy": "page",
+          "liRef": "e832",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "liMintedBy": "page",
+          "liRef": "e888",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "liMintedBy": "page",
+          "liRef": "e944",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "liMintedBy": "page",
+          "liRef": "e1000",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 494,
+      "pageMaxRefAtLoad": 494,
+      "nodeMintsAtFirstCapture": 0,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n      - textbox \"New item\" [ref=e5]\n      - checkbox \"Urgent\" [ref=e7]\n    - button \"Add item\" [active] [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]:\n      - listitem [ref=e495]: item 1\n      - listitem [ref=e552]: item 2\n      - listitem [ref=e608]: item 3\n      - listitem [ref=e664]: item 4\n      - listitem [ref=e720]: item 5\n      - listitem [ref=e776]: item 6\n      - listitem [ref=e832]: item 7\n      - listitem [ref=e888]: item 8\n      - listitem [ref=e944]: item 9\n      - listitem [ref=e1000]: item 10\n                  - listitem [ref=e225]:\n                  - listitem [ref=e232]:\n                  - listitem [ref=e239]:\n                  - listitem [ref=e246]:\n                  - listitem [ref=e253]:\n                  - listitem [ref=e260]:\n                  - listitem [ref=e267]:\n                  - listitem [ref=e274]:\n                  - listitem [ref=e281]:\n                  - listitem [ref=e288]:\n                  - listitem [ref=e295]:\n                  - listitem [ref=e302]:\n                  - listitem [ref=e309]:\n                  - listitem [ref=e316]:\n                  - listitem [ref=e323]:\n                  - listitem [ref=e330]:\n                  - listitem [ref=e337]:\n                  - listitem [ref=e344]:\n                  - listitem [ref=e351]:\n                  - listitem [ref=e358]:\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - button \"Clear\" [ref=e493]\n            - listitem \"ListPage.addItem\" [ref=e1010]:\n                  - listitem [ref=e1027]:\n                  - listitem [ref=e1033]:\n            - listitem \"ListPage.addItem\" [ref=e954]:\n                  - listitem [ref=e971]:\n                  - listitem [ref=e977]:\n            - listitem \"ListPage.addItem\" [ref=e898]:\n                  - listitem [ref=e915]:\n                  - listitem [ref=e921]:\n            - listitem \"ListPage.addItem\" [ref=e842]:\n                  - listitem [ref=e859]:\n                  - listitem [ref=e865]:\n            - listitem \"ListPage.addItem\" [ref=e786]:\n                  - listitem [ref=e803]:\n                  - listitem [ref=e809]:\n            - listitem \"ListPage.addItem\" [ref=e730]:\n                  - listitem [ref=e747]:\n                  - listitem [ref=e753]:\n            - listitem \"ListPage.addItem\" [ref=e674]:\n                  - listitem [ref=e691]:\n                  - listitem [ref=e697]:\n            - listitem \"ListPage.addItem\" [ref=e618]:\n                  - listitem [ref=e635]:\n                  - listitem [ref=e641]:\n            - listitem \"ListPage.addItem\" [ref=e562]:\n                  - listitem [ref=e579]:\n                  - listitem [ref=e585]:\n            - listitem \"ListPage.addItem\" [ref=e506]:\n                  - listitem [ref=e523]:\n                  - listitem [ref=e529]:"
+      },
+      "allNodeMints": [],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "  - e2 main:\n    - e3 heading \"Groceries\" [level=1]\n      - e5 textbox \"New item\"\n      - e7 checkbox \"Urgent\"\n    - e8 button \"Add item\" [active]\n    - e9 button \"Clear\"\n    - e432 list \"Items\":\n                  - e225 listitem:\n                  - e232 listitem:\n                  - e239 listitem:\n                  - e246 listitem:\n                  - e253 listitem:\n                  - e260 listitem:\n                  - e267 listitem:\n                  - e274 listitem:\n                  - e281 listitem:\n                  - e288 listitem:\n                  - e295 listitem:\n                  - e302 listitem:\n                  - e309 listitem:\n                  - e316 listitem:\n                  - e323 listitem:\n                  - e330 listitem:\n                  - e337 listitem:\n                  - e344 listitem:\n                  - e351 listitem:\n                  - e358 listitem:\n                    - e405 paragraph: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - e493 button \"Clear\"\n            - e1010 listitem \"ListPage.addItem\":\n                  - e1027 listitem:\n                  - e1033 listitem:\n            - e954 listitem \"ListPage.addItem\":\n                  - e971 listitem:\n                  - e977 listitem:\n            - e898 listitem \"ListPage.addItem\":\n                  - e915 listitem:\n                  - e921 listitem:\n            - e842 listitem \"ListPage.addItem\":\n                  - e859 listitem:\n                  - e865 listitem:\n            - e786 listitem \"ListPage.addItem\":\n                  - e803 listitem:\n                  - e809 listitem:\n            - e730 listitem \"ListPage.addItem\":\n                  - e747 listitem:\n                  - e753 listitem:\n            - e674 listitem \"ListPage.addItem\":\n                  - e691 listitem:\n                  - e697 listitem:\n            - e618 listitem \"ListPage.addItem\":\n                  - e635 listitem:\n                  - e641 listitem:\n            - e562 listitem \"ListPage.addItem\":\n                  - e579 listitem:\n                  - e585 listitem:\n            - e506 listitem \"ListPage.addItem\":\n                  - e523 listitem:\n                  - e529 listitem:"
+      },
+      "inspectorLook": {
+        "look": "ok, 444 refs",
+        "capturePageState": "ok, 21433 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"result\":10,\"changes_before\":\"- e1:\\n  - e10 complementary \\\"ayme\\\":\\n    - e19:\\n      - e43:\\n        - e44:\\n          - e45 navigation \\\"Navigator\\\":\\n         "
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"changes_before\":\"- e1:\\n  - e2 main:\\n    - e4:\\n      - e5 <changed> textbox \\\"New item\\\" [active]: by agent ref\\n    - e8 <changed> button \\\"Add item\\\"\\n    - e432 list \\\"Items\\\":\\n      - e1114 <added> listitem: by node ref\\n  - e10 complementary \\\"ayme\\\":\\n  ",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "errors": []
+    },
+    {
+      "trial": 6,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e495",
+          "nodeMints": [],
+          "pageMintsCount": 51,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "liMintedBy": "page",
+          "liRef": "e552",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "liMintedBy": "page",
+          "liRef": "e608",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "liMintedBy": "page",
+          "liRef": "e664",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "liMintedBy": "page",
+          "liRef": "e720",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "liMintedBy": "page",
+          "liRef": "e776",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "liMintedBy": "page",
+          "liRef": "e832",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "liMintedBy": "page",
+          "liRef": "e888",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "liMintedBy": "page",
+          "liRef": "e944",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "liMintedBy": "page",
+          "liRef": "e1000",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 494,
+      "pageMaxRefAtLoad": 494,
+      "nodeMintsAtFirstCapture": 0,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n      - textbox \"New item\" [ref=e5]\n      - checkbox \"Urgent\" [ref=e7]\n    - button \"Add item\" [active] [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]:\n      - listitem [ref=e495]: item 1\n      - listitem [ref=e552]: item 2\n      - listitem [ref=e608]: item 3\n      - listitem [ref=e664]: item 4\n      - listitem [ref=e720]: item 5\n      - listitem [ref=e776]: item 6\n      - listitem [ref=e832]: item 7\n      - listitem [ref=e888]: item 8\n      - listitem [ref=e944]: item 9\n      - listitem [ref=e1000]: item 10\n                  - listitem [ref=e225]:\n                  - listitem [ref=e232]:\n                  - listitem [ref=e239]:\n                  - listitem [ref=e246]:\n                  - listitem [ref=e253]:\n                  - listitem [ref=e260]:\n                  - listitem [ref=e267]:\n                  - listitem [ref=e274]:\n                  - listitem [ref=e281]:\n                  - listitem [ref=e288]:\n                  - listitem [ref=e295]:\n                  - listitem [ref=e302]:\n                  - listitem [ref=e309]:\n                  - listitem [ref=e316]:\n                  - listitem [ref=e323]:\n                  - listitem [ref=e330]:\n                  - listitem [ref=e337]:\n                  - listitem [ref=e344]:\n                  - listitem [ref=e351]:\n                  - listitem [ref=e358]:\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - button \"Clear\" [ref=e493]\n            - listitem \"ListPage.addItem\" [ref=e1010]:\n                  - listitem [ref=e1027]:\n                  - listitem [ref=e1033]:\n            - listitem \"ListPage.addItem\" [ref=e954]:\n                  - listitem [ref=e971]:\n                  - listitem [ref=e977]:\n            - listitem \"ListPage.addItem\" [ref=e898]:\n                  - listitem [ref=e915]:\n                  - listitem [ref=e921]:\n            - listitem \"ListPage.addItem\" [ref=e842]:\n                  - listitem [ref=e859]:\n                  - listitem [ref=e865]:\n            - listitem \"ListPage.addItem\" [ref=e786]:\n                  - listitem [ref=e803]:\n                  - listitem [ref=e809]:\n            - listitem \"ListPage.addItem\" [ref=e730]:\n                  - listitem [ref=e747]:\n                  - listitem [ref=e753]:\n            - listitem \"ListPage.addItem\" [ref=e674]:\n                  - listitem [ref=e691]:\n                  - listitem [ref=e697]:\n            - listitem \"ListPage.addItem\" [ref=e618]:\n                  - listitem [ref=e635]:\n                  - listitem [ref=e641]:\n            - listitem \"ListPage.addItem\" [ref=e562]:\n                  - listitem [ref=e579]:\n                  - listitem [ref=e585]:\n            - listitem \"ListPage.addItem\" [ref=e506]:\n                  - listitem [ref=e523]:\n                  - listitem [ref=e529]:"
+      },
+      "allNodeMints": [],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "  - e2 main:\n    - e3 heading \"Groceries\" [level=1]\n      - e5 textbox \"New item\"\n      - e7 checkbox \"Urgent\"\n    - e8 button \"Add item\" [active]\n    - e9 button \"Clear\"\n    - e432 list \"Items\":\n                  - e225 listitem:\n                  - e232 listitem:\n                  - e239 listitem:\n                  - e246 listitem:\n                  - e253 listitem:\n                  - e260 listitem:\n                  - e267 listitem:\n                  - e274 listitem:\n                  - e281 listitem:\n                  - e288 listitem:\n                  - e295 listitem:\n                  - e302 listitem:\n                  - e309 listitem:\n                  - e316 listitem:\n                  - e323 listitem:\n                  - e330 listitem:\n                  - e337 listitem:\n                  - e344 listitem:\n                  - e351 listitem:\n                  - e358 listitem:\n                    - e405 paragraph: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - e493 button \"Clear\"\n            - e1010 listitem \"ListPage.addItem\":\n                  - e1027 listitem:\n                  - e1033 listitem:\n            - e954 listitem \"ListPage.addItem\":\n                  - e971 listitem:\n                  - e977 listitem:\n            - e898 listitem \"ListPage.addItem\":\n                  - e915 listitem:\n                  - e921 listitem:\n            - e842 listitem \"ListPage.addItem\":\n                  - e859 listitem:\n                  - e865 listitem:\n            - e786 listitem \"ListPage.addItem\":\n                  - e803 listitem:\n                  - e809 listitem:\n            - e730 listitem \"ListPage.addItem\":\n                  - e747 listitem:\n                  - e753 listitem:\n            - e674 listitem \"ListPage.addItem\":\n                  - e691 listitem:\n                  - e697 listitem:\n            - e618 listitem \"ListPage.addItem\":\n                  - e635 listitem:\n                  - e641 listitem:\n            - e562 listitem \"ListPage.addItem\":\n                  - e579 listitem:\n                  - e585 listitem:\n            - e506 listitem \"ListPage.addItem\":\n                  - e523 listitem:\n                  - e529 listitem:"
+      },
+      "inspectorLook": {
+        "look": "ok, 444 refs",
+        "capturePageState": "ok, 21433 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"result\":10,\"changes_before\":\"- e1:\\n  - e10 complementary \\\"ayme\\\":\\n    - e19:\\n      - e43:\\n        - e44:\\n          - e45 navigation \\\"Navigator\\\":\\n         "
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"changes_before\":\"- e1:\\n  - e2 main:\\n    - e4:\\n      - e5 <changed> textbox \\\"New item\\\" [active]: by agent ref\\n    - e8 <changed> button \\\"Add item\\\"\\n    - e432 list \\\"Items\\\":\\n      - e1114 <added> listitem: by node ref\\n  - e10 complementary \\\"ayme\\\":\\n  ",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "errors": []
+    },
+    {
+      "trial": 7,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e495",
+          "nodeMints": [],
+          "pageMintsCount": 51,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "liMintedBy": "page",
+          "liRef": "e552",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "liMintedBy": "page",
+          "liRef": "e608",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "liMintedBy": "page",
+          "liRef": "e664",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "liMintedBy": "page",
+          "liRef": "e720",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "liMintedBy": "page",
+          "liRef": "e776",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "liMintedBy": "page",
+          "liRef": "e832",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "liMintedBy": "page",
+          "liRef": "e888",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "liMintedBy": "page",
+          "liRef": "e944",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "liMintedBy": "page",
+          "liRef": "e1000",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 494,
+      "pageMaxRefAtLoad": 494,
+      "nodeMintsAtFirstCapture": 0,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n      - textbox \"New item\" [ref=e5]\n      - checkbox \"Urgent\" [ref=e7]\n    - button \"Add item\" [active] [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]:\n      - listitem [ref=e495]: item 1\n      - listitem [ref=e552]: item 2\n      - listitem [ref=e608]: item 3\n      - listitem [ref=e664]: item 4\n      - listitem [ref=e720]: item 5\n      - listitem [ref=e776]: item 6\n      - listitem [ref=e832]: item 7\n      - listitem [ref=e888]: item 8\n      - listitem [ref=e944]: item 9\n      - listitem [ref=e1000]: item 10\n                  - listitem [ref=e225]:\n                  - listitem [ref=e232]:\n                  - listitem [ref=e239]:\n                  - listitem [ref=e246]:\n                  - listitem [ref=e253]:\n                  - listitem [ref=e260]:\n                  - listitem [ref=e267]:\n                  - listitem [ref=e274]:\n                  - listitem [ref=e281]:\n                  - listitem [ref=e288]:\n                  - listitem [ref=e295]:\n                  - listitem [ref=e302]:\n                  - listitem [ref=e309]:\n                  - listitem [ref=e316]:\n                  - listitem [ref=e323]:\n                  - listitem [ref=e330]:\n                  - listitem [ref=e337]:\n                  - listitem [ref=e344]:\n                  - listitem [ref=e351]:\n                  - listitem [ref=e358]:\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - button \"Clear\" [ref=e493]\n            - listitem \"ListPage.addItem\" [ref=e1010]:\n                  - listitem [ref=e1027]:\n                  - listitem [ref=e1033]:\n            - listitem \"ListPage.addItem\" [ref=e954]:\n                  - listitem [ref=e971]:\n                  - listitem [ref=e977]:\n            - listitem \"ListPage.addItem\" [ref=e898]:\n                  - listitem [ref=e915]:\n                  - listitem [ref=e921]:\n            - listitem \"ListPage.addItem\" [ref=e842]:\n                  - listitem [ref=e859]:\n                  - listitem [ref=e865]:\n            - listitem \"ListPage.addItem\" [ref=e786]:\n                  - listitem [ref=e803]:\n                  - listitem [ref=e809]:\n            - listitem \"ListPage.addItem\" [ref=e730]:\n                  - listitem [ref=e747]:\n                  - listitem [ref=e753]:\n            - listitem \"ListPage.addItem\" [ref=e674]:\n                  - listitem [ref=e691]:\n                  - listitem [ref=e697]:\n            - listitem \"ListPage.addItem\" [ref=e618]:\n                  - listitem [ref=e635]:\n                  - listitem [ref=e641]:\n            - listitem \"ListPage.addItem\" [ref=e562]:\n                  - listitem [ref=e579]:\n                  - listitem [ref=e585]:\n            - listitem \"ListPage.addItem\" [ref=e506]:\n                  - listitem [ref=e523]:\n                  - listitem [ref=e529]:"
+      },
+      "allNodeMints": [],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "  - e2 main:\n    - e3 heading \"Groceries\" [level=1]\n      - e5 textbox \"New item\"\n      - e7 checkbox \"Urgent\"\n    - e8 button \"Add item\" [active]\n    - e9 button \"Clear\"\n    - e432 list \"Items\":\n                  - e225 listitem:\n                  - e232 listitem:\n                  - e239 listitem:\n                  - e246 listitem:\n                  - e253 listitem:\n                  - e260 listitem:\n                  - e267 listitem:\n                  - e274 listitem:\n                  - e281 listitem:\n                  - e288 listitem:\n                  - e295 listitem:\n                  - e302 listitem:\n                  - e309 listitem:\n                  - e316 listitem:\n                  - e323 listitem:\n                  - e330 listitem:\n                  - e337 listitem:\n                  - e344 listitem:\n                  - e351 listitem:\n                  - e358 listitem:\n                    - e405 paragraph: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - e493 button \"Clear\"\n            - e1010 listitem \"ListPage.addItem\":\n                  - e1027 listitem:\n                  - e1033 listitem:\n            - e954 listitem \"ListPage.addItem\":\n                  - e971 listitem:\n                  - e977 listitem:\n            - e898 listitem \"ListPage.addItem\":\n                  - e915 listitem:\n                  - e921 listitem:\n            - e842 listitem \"ListPage.addItem\":\n                  - e859 listitem:\n                  - e865 listitem:\n            - e786 listitem \"ListPage.addItem\":\n                  - e803 listitem:\n                  - e809 listitem:\n            - e730 listitem \"ListPage.addItem\":\n                  - e747 listitem:\n                  - e753 listitem:\n            - e674 listitem \"ListPage.addItem\":\n                  - e691 listitem:\n                  - e697 listitem:\n            - e618 listitem \"ListPage.addItem\":\n                  - e635 listitem:\n                  - e641 listitem:\n            - e562 listitem \"ListPage.addItem\":\n                  - e579 listitem:\n                  - e585 listitem:\n            - e506 listitem \"ListPage.addItem\":\n                  - e523 listitem:\n                  - e529 listitem:"
+      },
+      "inspectorLook": {
+        "look": "ok, 444 refs",
+        "capturePageState": "ok, 21433 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"result\":10,\"changes_before\":\"- e1:\\n  - e10 complementary \\\"ayme\\\":\\n    - e19:\\n      - e43:\\n        - e44:\\n          - e45 navigation \\\"Navigator\\\":\\n         "
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"changes_before\":\"- e1:\\n  - e2 main:\\n    - e4:\\n      - e5 <changed> textbox \\\"New item\\\" [active]: by agent ref\\n    - e8 <changed> button \\\"Add item\\\"\\n    - e432 list \\\"Items\\\":\\n      - e1114 <added> listitem: by node ref\\n  - e10 complementary \\\"ayme\\\":\\n  ",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "errors": []
+    },
+    {
+      "trial": 8,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e495",
+          "nodeMints": [],
+          "pageMintsCount": 51,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "liMintedBy": "page",
+          "liRef": "e552",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "liMintedBy": "page",
+          "liRef": "e608",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "liMintedBy": "page",
+          "liRef": "e664",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "liMintedBy": "page",
+          "liRef": "e720",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "liMintedBy": "page",
+          "liRef": "e776",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "liMintedBy": "page",
+          "liRef": "e832",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "liMintedBy": "page",
+          "liRef": "e888",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "liMintedBy": "page",
+          "liRef": "e944",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "liMintedBy": "page",
+          "liRef": "e1000",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 494,
+      "pageMaxRefAtLoad": 494,
+      "nodeMintsAtFirstCapture": 0,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n      - textbox \"New item\" [ref=e5]\n      - checkbox \"Urgent\" [ref=e7]\n    - button \"Add item\" [active] [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]:\n      - listitem [ref=e495]: item 1\n      - listitem [ref=e552]: item 2\n      - listitem [ref=e608]: item 3\n      - listitem [ref=e664]: item 4\n      - listitem [ref=e720]: item 5\n      - listitem [ref=e776]: item 6\n      - listitem [ref=e832]: item 7\n      - listitem [ref=e888]: item 8\n      - listitem [ref=e944]: item 9\n      - listitem [ref=e1000]: item 10\n                  - listitem [ref=e225]:\n                  - listitem [ref=e232]:\n                  - listitem [ref=e239]:\n                  - listitem [ref=e246]:\n                  - listitem [ref=e253]:\n                  - listitem [ref=e260]:\n                  - listitem [ref=e267]:\n                  - listitem [ref=e274]:\n                  - listitem [ref=e281]:\n                  - listitem [ref=e288]:\n                  - listitem [ref=e295]:\n                  - listitem [ref=e302]:\n                  - listitem [ref=e309]:\n                  - listitem [ref=e316]:\n                  - listitem [ref=e323]:\n                  - listitem [ref=e330]:\n                  - listitem [ref=e337]:\n                  - listitem [ref=e344]:\n                  - listitem [ref=e351]:\n                  - listitem [ref=e358]:\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - button \"Clear\" [ref=e493]\n            - listitem \"ListPage.addItem\" [ref=e1010]:\n                  - listitem [ref=e1027]:\n                  - listitem [ref=e1033]:\n            - listitem \"ListPage.addItem\" [ref=e954]:\n                  - listitem [ref=e971]:\n                  - listitem [ref=e977]:\n            - listitem \"ListPage.addItem\" [ref=e898]:\n                  - listitem [ref=e915]:\n                  - listitem [ref=e921]:\n            - listitem \"ListPage.addItem\" [ref=e842]:\n                  - listitem [ref=e859]:\n                  - listitem [ref=e865]:\n            - listitem \"ListPage.addItem\" [ref=e786]:\n                  - listitem [ref=e803]:\n                  - listitem [ref=e809]:\n            - listitem \"ListPage.addItem\" [ref=e730]:\n                  - listitem [ref=e747]:\n                  - listitem [ref=e753]:\n            - listitem \"ListPage.addItem\" [ref=e674]:\n                  - listitem [ref=e691]:\n                  - listitem [ref=e697]:\n            - listitem \"ListPage.addItem\" [ref=e618]:\n                  - listitem [ref=e635]:\n                  - listitem [ref=e641]:\n            - listitem \"ListPage.addItem\" [ref=e562]:\n                  - listitem [ref=e579]:\n                  - listitem [ref=e585]:\n            - listitem \"ListPage.addItem\" [ref=e506]:\n                  - listitem [ref=e523]:\n                  - listitem [ref=e529]:"
+      },
+      "allNodeMints": [],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "  - e2 main:\n    - e3 heading \"Groceries\" [level=1]\n      - e5 textbox \"New item\"\n      - e7 checkbox \"Urgent\"\n    - e8 button \"Add item\" [active]\n    - e9 button \"Clear\"\n    - e432 list \"Items\":\n                  - e225 listitem:\n                  - e232 listitem:\n                  - e239 listitem:\n                  - e246 listitem:\n                  - e253 listitem:\n                  - e260 listitem:\n                  - e267 listitem:\n                  - e274 listitem:\n                  - e281 listitem:\n                  - e288 listitem:\n                  - e295 listitem:\n                  - e302 listitem:\n                  - e309 listitem:\n                  - e316 listitem:\n                  - e323 listitem:\n                  - e330 listitem:\n                  - e337 listitem:\n                  - e344 listitem:\n                  - e351 listitem:\n                  - e358 listitem:\n                    - e405 paragraph: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - e493 button \"Clear\"\n            - e1010 listitem \"ListPage.addItem\":\n                  - e1027 listitem:\n                  - e1033 listitem:\n            - e954 listitem \"ListPage.addItem\":\n                  - e971 listitem:\n                  - e977 listitem:\n            - e898 listitem \"ListPage.addItem\":\n                  - e915 listitem:\n                  - e921 listitem:\n            - e842 listitem \"ListPage.addItem\":\n                  - e859 listitem:\n                  - e865 listitem:\n            - e786 listitem \"ListPage.addItem\":\n                  - e803 listitem:\n                  - e809 listitem:\n            - e730 listitem \"ListPage.addItem\":\n                  - e747 listitem:\n                  - e753 listitem:\n            - e674 listitem \"ListPage.addItem\":\n                  - e691 listitem:\n                  - e697 listitem:\n            - e618 listitem \"ListPage.addItem\":\n                  - e635 listitem:\n                  - e641 listitem:\n            - e562 listitem \"ListPage.addItem\":\n                  - e579 listitem:\n                  - e585 listitem:\n            - e506 listitem \"ListPage.addItem\":\n                  - e523 listitem:\n                  - e529 listitem:"
+      },
+      "inspectorLook": {
+        "look": "ok, 444 refs",
+        "capturePageState": "ok, 21433 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"result\":10,\"changes_before\":\"- e1:\\n  - e10 complementary \\\"ayme\\\":\\n    - e19:\\n      - e43:\\n        - e44:\\n          - e45 navigation \\\"Navigator\\\":\\n         "
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"changes_before\":\"- e1:\\n  - e2 main:\\n    - e4:\\n      - e5 <changed> textbox \\\"New item\\\" [active]: by agent ref\\n    - e8 <changed> button \\\"Add item\\\"\\n    - e432 list \\\"Items\\\":\\n      - e1114 <added> listitem: by node ref\\n  - e10 complementary \\\"ayme\\\":\\n  ",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "errors": []
+    },
+    {
+      "trial": 9,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e495",
+          "nodeMints": [],
+          "pageMintsCount": 51,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "liMintedBy": "page",
+          "liRef": "e552",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "liMintedBy": "page",
+          "liRef": "e608",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "liMintedBy": "page",
+          "liRef": "e664",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "liMintedBy": "page",
+          "liRef": "e720",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "liMintedBy": "page",
+          "liRef": "e776",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "liMintedBy": "page",
+          "liRef": "e832",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "liMintedBy": "page",
+          "liRef": "e888",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "liMintedBy": "page",
+          "liRef": "e944",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "liMintedBy": "page",
+          "liRef": "e1000",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 494,
+      "pageMaxRefAtLoad": 494,
+      "nodeMintsAtFirstCapture": 0,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n      - textbox \"New item\" [ref=e5]\n      - checkbox \"Urgent\" [ref=e7]\n    - button \"Add item\" [active] [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]:\n      - listitem [ref=e495]: item 1\n      - listitem [ref=e552]: item 2\n      - listitem [ref=e608]: item 3\n      - listitem [ref=e664]: item 4\n      - listitem [ref=e720]: item 5\n      - listitem [ref=e776]: item 6\n      - listitem [ref=e832]: item 7\n      - listitem [ref=e888]: item 8\n      - listitem [ref=e944]: item 9\n      - listitem [ref=e1000]: item 10\n                  - listitem [ref=e225]:\n                  - listitem [ref=e232]:\n                  - listitem [ref=e239]:\n                  - listitem [ref=e246]:\n                  - listitem [ref=e253]:\n                  - listitem [ref=e260]:\n                  - listitem [ref=e267]:\n                  - listitem [ref=e274]:\n                  - listitem [ref=e281]:\n                  - listitem [ref=e288]:\n                  - listitem [ref=e295]:\n                  - listitem [ref=e302]:\n                  - listitem [ref=e309]:\n                  - listitem [ref=e316]:\n                  - listitem [ref=e323]:\n                  - listitem [ref=e330]:\n                  - listitem [ref=e337]:\n                  - listitem [ref=e344]:\n                  - listitem [ref=e351]:\n                  - listitem [ref=e358]:\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - button \"Clear\" [ref=e493]\n            - listitem \"ListPage.addItem\" [ref=e1010]:\n                  - listitem [ref=e1027]:\n                  - listitem [ref=e1033]:\n            - listitem \"ListPage.addItem\" [ref=e954]:\n                  - listitem [ref=e971]:\n                  - listitem [ref=e977]:\n            - listitem \"ListPage.addItem\" [ref=e898]:\n                  - listitem [ref=e915]:\n                  - listitem [ref=e921]:\n            - listitem \"ListPage.addItem\" [ref=e842]:\n                  - listitem [ref=e859]:\n                  - listitem [ref=e865]:\n            - listitem \"ListPage.addItem\" [ref=e786]:\n                  - listitem [ref=e803]:\n                  - listitem [ref=e809]:\n            - listitem \"ListPage.addItem\" [ref=e730]:\n                  - listitem [ref=e747]:\n                  - listitem [ref=e753]:\n            - listitem \"ListPage.addItem\" [ref=e674]:\n                  - listitem [ref=e691]:\n                  - listitem [ref=e697]:\n            - listitem \"ListPage.addItem\" [ref=e618]:\n                  - listitem [ref=e635]:\n                  - listitem [ref=e641]:\n            - listitem \"ListPage.addItem\" [ref=e562]:\n                  - listitem [ref=e579]:\n                  - listitem [ref=e585]:\n            - listitem \"ListPage.addItem\" [ref=e506]:\n                  - listitem [ref=e523]:\n                  - listitem [ref=e529]:"
+      },
+      "allNodeMints": [],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "  - e2 main:\n    - e3 heading \"Groceries\" [level=1]\n      - e5 textbox \"New item\"\n      - e7 checkbox \"Urgent\"\n    - e8 button \"Add item\" [active]\n    - e9 button \"Clear\"\n    - e432 list \"Items\":\n                  - e225 listitem:\n                  - e232 listitem:\n                  - e239 listitem:\n                  - e246 listitem:\n                  - e253 listitem:\n                  - e260 listitem:\n                  - e267 listitem:\n                  - e274 listitem:\n                  - e281 listitem:\n                  - e288 listitem:\n                  - e295 listitem:\n                  - e302 listitem:\n                  - e309 listitem:\n                  - e316 listitem:\n                  - e323 listitem:\n                  - e330 listitem:\n                  - e337 listitem:\n                  - e344 listitem:\n                  - e351 listitem:\n                  - e358 listitem:\n                    - e405 paragraph: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - e493 button \"Clear\"\n            - e1010 listitem \"ListPage.addItem\":\n                  - e1027 listitem:\n                  - e1033 listitem:\n            - e954 listitem \"ListPage.addItem\":\n                  - e971 listitem:\n                  - e977 listitem:\n            - e898 listitem \"ListPage.addItem\":\n                  - e915 listitem:\n                  - e921 listitem:\n            - e842 listitem \"ListPage.addItem\":\n                  - e859 listitem:\n                  - e865 listitem:\n            - e786 listitem \"ListPage.addItem\":\n                  - e803 listitem:\n                  - e809 listitem:\n            - e730 listitem \"ListPage.addItem\":\n                  - e747 listitem:\n                  - e753 listitem:\n            - e674 listitem \"ListPage.addItem\":\n                  - e691 listitem:\n                  - e697 listitem:\n            - e618 listitem \"ListPage.addItem\":\n                  - e635 listitem:\n                  - e641 listitem:\n            - e562 listitem \"ListPage.addItem\":\n                  - e579 listitem:\n                  - e585 listitem:\n            - e506 listitem \"ListPage.addItem\":\n                  - e523 listitem:\n                  - e529 listitem:"
+      },
+      "inspectorLook": {
+        "look": "ok, 444 refs",
+        "capturePageState": "ok, 21433 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"result\":10,\"changes_before\":\"- e1:\\n  - e10 complementary \\\"ayme\\\":\\n    - e19:\\n      - e43:\\n        - e44:\\n          - e45 navigation \\\"Navigator\\\":\\n         "
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"changes_before\":\"- e1:\\n  - e2 main:\\n    - e4:\\n      - e5 <changed> textbox \\\"New item\\\" [active]: by agent ref\\n    - e8 <changed> button \\\"Add item\\\"\\n    - e432 list \\\"Items\\\":\\n      - e1114 <added> listitem: by node ref\\n  - e10 complementary \\\"ayme\\\":\\n  ",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "errors": []
+    },
+    {
+      "trial": 10,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e495",
+          "nodeMints": [],
+          "pageMintsCount": 51,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "liMintedBy": "page",
+          "liRef": "e552",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "liMintedBy": "page",
+          "liRef": "e608",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "liMintedBy": "page",
+          "liRef": "e664",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "liMintedBy": "page",
+          "liRef": "e720",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "liMintedBy": "page",
+          "liRef": "e776",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "liMintedBy": "page",
+          "liRef": "e832",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "liMintedBy": "page",
+          "liRef": "e888",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "liMintedBy": "page",
+          "liRef": "e944",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "liMintedBy": "page",
+          "liRef": "e1000",
+          "nodeMints": [],
+          "pageMintsCount": 50,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 494,
+      "pageMaxRefAtLoad": 494,
+      "nodeMintsAtFirstCapture": 0,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n      - textbox \"New item\" [ref=e5]\n      - checkbox \"Urgent\" [ref=e7]\n    - button \"Add item\" [active] [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]:\n      - listitem [ref=e495]: item 1\n      - listitem [ref=e552]: item 2\n      - listitem [ref=e608]: item 3\n      - listitem [ref=e664]: item 4\n      - listitem [ref=e720]: item 5\n      - listitem [ref=e776]: item 6\n      - listitem [ref=e832]: item 7\n      - listitem [ref=e888]: item 8\n      - listitem [ref=e944]: item 9\n      - listitem [ref=e1000]: item 10\n                  - listitem [ref=e225]:\n                  - listitem [ref=e232]:\n                  - listitem [ref=e239]:\n                  - listitem [ref=e246]:\n                  - listitem [ref=e253]:\n                  - listitem [ref=e260]:\n                  - listitem [ref=e267]:\n                  - listitem [ref=e274]:\n                  - listitem [ref=e281]:\n                  - listitem [ref=e288]:\n                  - listitem [ref=e295]:\n                  - listitem [ref=e302]:\n                  - listitem [ref=e309]:\n                  - listitem [ref=e316]:\n                  - listitem [ref=e323]:\n                  - listitem [ref=e330]:\n                  - listitem [ref=e337]:\n                  - listitem [ref=e344]:\n                  - listitem [ref=e351]:\n                  - listitem [ref=e358]:\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - button \"Clear\" [ref=e493]\n            - listitem \"ListPage.addItem\" [ref=e1010]:\n                  - listitem [ref=e1027]:\n                  - listitem [ref=e1033]:\n            - listitem \"ListPage.addItem\" [ref=e954]:\n                  - listitem [ref=e971]:\n                  - listitem [ref=e977]:\n            - listitem \"ListPage.addItem\" [ref=e898]:\n                  - listitem [ref=e915]:\n                  - listitem [ref=e921]:\n            - listitem \"ListPage.addItem\" [ref=e842]:\n                  - listitem [ref=e859]:\n                  - listitem [ref=e865]:\n            - listitem \"ListPage.addItem\" [ref=e786]:\n                  - listitem [ref=e803]:\n                  - listitem [ref=e809]:\n            - listitem \"ListPage.addItem\" [ref=e730]:\n                  - listitem [ref=e747]:\n                  - listitem [ref=e753]:\n            - listitem \"ListPage.addItem\" [ref=e674]:\n                  - listitem [ref=e691]:\n                  - listitem [ref=e697]:\n            - listitem \"ListPage.addItem\" [ref=e618]:\n                  - listitem [ref=e635]:\n                  - listitem [ref=e641]:\n            - listitem \"ListPage.addItem\" [ref=e562]:\n                  - listitem [ref=e579]:\n                  - listitem [ref=e585]:\n            - listitem \"ListPage.addItem\" [ref=e506]:\n                  - listitem [ref=e523]:\n                  - listitem [ref=e529]:"
+      },
+      "allNodeMints": [],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "  - e2 main:\n    - e3 heading \"Groceries\" [level=1]\n      - e5 textbox \"New item\"\n      - e7 checkbox \"Urgent\"\n    - e8 button \"Add item\" [active]\n    - e9 button \"Clear\"\n    - e432 list \"Items\":\n                  - e225 listitem:\n                  - e232 listitem:\n                  - e239 listitem:\n                  - e246 listitem:\n                  - e253 listitem:\n                  - e260 listitem:\n                  - e267 listitem:\n                  - e274 listitem:\n                  - e281 listitem:\n                  - e288 listitem:\n                  - e295 listitem:\n                  - e302 listitem:\n                  - e309 listitem:\n                  - e316 listitem:\n                  - e323 listitem:\n                  - e330 listitem:\n                  - e337 listitem:\n                  - e344 listitem:\n                  - e351 listitem:\n                  - e358 listitem:\n                    - e405 paragraph: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - e493 button \"Clear\"\n            - e1010 listitem \"ListPage.addItem\":\n                  - e1027 listitem:\n                  - e1033 listitem:\n            - e954 listitem \"ListPage.addItem\":\n                  - e971 listitem:\n                  - e977 listitem:\n            - e898 listitem \"ListPage.addItem\":\n                  - e915 listitem:\n                  - e921 listitem:\n            - e842 listitem \"ListPage.addItem\":\n                  - e859 listitem:\n                  - e865 listitem:\n            - e786 listitem \"ListPage.addItem\":\n                  - e803 listitem:\n                  - e809 listitem:\n            - e730 listitem \"ListPage.addItem\":\n                  - e747 listitem:\n                  - e753 listitem:\n            - e674 listitem \"ListPage.addItem\":\n                  - e691 listitem:\n                  - e697 listitem:\n            - e618 listitem \"ListPage.addItem\":\n                  - e635 listitem:\n                  - e641 listitem:\n            - e562 listitem \"ListPage.addItem\":\n                  - e579 listitem:\n                  - e585 listitem:\n            - e506 listitem \"ListPage.addItem\":\n                  - e523 listitem:\n                  - e529 listitem:"
+      },
+      "inspectorLook": {
+        "look": "ok, 444 refs",
+        "capturePageState": "ok, 21433 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"result\":10,\"changes_before\":\"- e1:\\n  - e10 complementary \\\"ayme\\\":\\n    - e19:\\n      - e43:\\n        - e44:\\n          - e45 navigation \\\"Navigator\\\":\\n         "
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": false,
+        "text": "{\"page_changed\":true,\"settled\":true,\"changes_before\":\"- e1:\\n  - e2 main:\\n    - e4:\\n      - e5 <changed> textbox \\\"New item\\\" [active]: by agent ref\\n    - e8 <changed> button \\\"Add item\\\"\\n    - e432 list \\\"Items\\\":\\n      - e1114 <added> listitem: by node ref\\n  - e10 complementary \\\"ayme\\\":\\n  ",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "errors": []
+    }
+  ]
+}

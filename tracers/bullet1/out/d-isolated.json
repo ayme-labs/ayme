@@ -1,0 +1,17 @@
+{
+  "sourceChars": 317568,
+  "tracerInstalled": true,
+  "incrementRef": "e12",
+  "aymeRefCount": 1,
+  "aymeRefText": "Increment",
+  "clickOutput": {
+    "before": "0",
+    "after": "1"
+  },
+  "isoAlone": 0,
+  "mainAlone": 1,
+  "isoChainedAfterAymeRef": 1,
+  "isoThenAymeRef": 1,
+  "aymeRefChainedAfterCss": 1,
+  "errors": []
+}

@@ -1,0 +1,1391 @@
+{
+ "node": {
+  "increment": [
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e9 region \"Counter\":\n      - e10 paragraph:\n        - e11 <changed> status: 1\n      - e12 <changed> button \"Increment\" [active] [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478048580.117,
+     "beforeCaptured": 2.688232421875,
+     "performed": 47.83935546875,
+     "settled": 299.71875,
+     "loadSignals": {},
+     "answered": 305.752685546875
+    },
+    "window": [
+     {
+      "token": "7mr6iklemi8",
+      "url": "http://127.0.0.1:4191/?bullet2=n-inc-1791478048037-1",
+      "sentAt": 1791478048626.2998,
+      "events": [
+       [
+        1791478048595,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478048626.7693
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e9 region \"Counter\":\n      - e10 paragraph:\n        - e11 <changed> status: 1\n      - e12 <changed> button \"Increment\" [active] [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478061344.1392,
+     "beforeCaptured": 1.733642578125,
+     "performed": 27.756103515625,
+     "settled": 309.956787109375,
+     "loadSignals": {},
+     "answered": 313.18701171875
+    },
+    "window": [
+     {
+      "token": "q6l1rxxeo",
+      "url": "http://127.0.0.1:4191/?bullet2=n-inc-1791478060802-8",
+      "sentAt": 1791478061401.9,
+      "events": [
+       [
+        1791478061371.3,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478061402.2085
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e9 region \"Counter\":\n      - e10 paragraph:\n        - e11 <changed> status: 1\n      - e12 <changed> button \"Increment\" [active] [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478074162.235,
+     "beforeCaptured": 1.710205078125,
+     "performed": 16.043212890625,
+     "settled": 296.90673828125,
+     "loadSignals": {},
+     "answered": 300.524169921875
+    },
+    "window": [
+     {
+      "token": "z2g7aueybm",
+      "url": "http://127.0.0.1:4191/?bullet2=n-inc-1791478073630-15",
+      "sentAt": 1791478074207.7002,
+      "events": [
+       [
+        1791478074177.6,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478074207.9673
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e9 region \"Counter\":\n      - e10 paragraph:\n        - e11 <changed> status: 1\n      - e12 <changed> button \"Increment\" [active] [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478086934.2544,
+     "beforeCaptured": 1.52490234375,
+     "performed": 18.45458984375,
+     "settled": 300.563720703125,
+     "loadSignals": {},
+     "answered": 303.480224609375
+    },
+    "window": [
+     {
+      "token": "hv2ciczh8u",
+      "url": "http://127.0.0.1:4191/?bullet2=n-inc-1791478086397-22",
+      "sentAt": 1791478086983.4,
+      "events": [
+       [
+        1791478086952.4,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478086983.2258
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e9 region \"Counter\":\n      - e10 paragraph:\n        - e11 <changed> status: 1\n      - e12 <changed> button \"Increment\" [active] [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478099766.597,
+     "beforeCaptured": 1.9072265625,
+     "performed": 13.5478515625,
+     "settled": 292.8212890625,
+     "loadSignals": {},
+     "answered": 295.76611328125
+    },
+    "window": [
+     {
+      "token": "1u2ap0hj5wm",
+      "url": "http://127.0.0.1:4191/?bullet2=n-inc-1791478099229-29",
+      "sentAt": 1791478099808.9,
+      "events": [
+       [
+        1791478099779.9,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478099808.6973
+     }
+    ]
+   }
+  ],
+  "unmount": [
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e19 <added> button \"Mount counter\" [active] [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478050435.9055,
+     "beforeCaptured": 1.9111328125,
+     "performed": 21.184814453125,
+     "settled": 299.447998046875,
+     "loadSignals": {},
+     "answered": 303.2666015625
+    },
+    "window": [
+     {
+      "token": "n86w46jv968",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478049896-3",
+      "sentAt": 1791478050484.1,
+      "events": [
+       [
+        1791478050453.3,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478050484.714
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e19 <added> button \"Mount counter\" [active] [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478063220.06,
+     "beforeCaptured": 1.96044921875,
+     "performed": 20.154052734375,
+     "settled": 299.003662109375,
+     "loadSignals": {},
+     "answered": 301.694091796875
+    },
+    "window": [
+     {
+      "token": "dg6no86fkdv",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478062674-10",
+      "sentAt": 1791478063267.4,
+      "events": [
+       [
+        1791478063236.8,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478063267.5317
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e19 <added> button \"Mount counter\" [active] [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478076010.9043,
+     "beforeCaptured": 1.626220703125,
+     "performed": 50.48193359375,
+     "settled": 301.43994140625,
+     "loadSignals": {},
+     "answered": 304.555908203125
+    },
+    "window": [
+     {
+      "token": "vp8whsiz7d9",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478075476-17",
+      "sentAt": 1791478076060.5,
+      "events": [
+       [
+        1791478076030.8,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478076060.615
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e19 <added> button \"Mount counter\" [active] [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478088810.6252,
+     "beforeCaptured": 1.605224609375,
+     "performed": 20.76806640625,
+     "settled": 299.425537109375,
+     "loadSignals": {},
+     "answered": 303.721923828125
+    },
+    "window": [
+     {
+      "token": "4vcds2gt1gu",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478088264-24",
+      "sentAt": 1791478088859.4,
+      "events": [
+       [
+        1791478088828.4,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478088859.3572
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e19 <added> button \"Mount counter\" [active] [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478101621.3423,
+     "beforeCaptured": 1.543212890625,
+     "performed": 18.953369140625,
+     "settled": 299.79833984375,
+     "loadSignals": {},
+     "answered": 303.061279296875
+    },
+    "window": [
+     {
+      "token": "6ks79a47yc3",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478101085-31",
+      "sentAt": 1791478101669.4,
+      "events": [
+       [
+        1791478101637.4,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478101669.1016
+     }
+    ]
+   }
+  ],
+  "mount": [
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1:\n  - e3 main:\n    - e20 <added> button \"Unmount counter\" [active] [cursor=pointer]\n    - e21 <added> region \"Counter\":\n      - e22 <added> paragraph:\n        - text: \"Count:\"\n        - e23 <added> status: 0\n      - e24 <added> button \"Increment\" [cursor=pointer]\n      - e25 <added> button \"Call Page Object\" [cursor=pointer]\n    - e19 <removed> button \"Mount counter\" [active] [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478050739.1816,
+     "beforeCaptured": 2.783203125,
+     "performed": 17.04052734375,
+     "settled": 271.3779296875,
+     "loadSignals": {},
+     "answered": 276.58984375
+    }
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1:\n  - e3 main:\n    - e20 <added> button \"Unmount counter\" [active] [cursor=pointer]\n    - e21 <added> region \"Counter\":\n      - e22 <added> paragraph:\n        - text: \"Count:\"\n        - e23 <added> status: 0\n      - e24 <added> button \"Increment\" [cursor=pointer]\n      - e25 <added> button \"Call Page Object\" [cursor=pointer]\n    - e19 <removed> button \"Mount counter\" [active] [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478063521.7637,
+     "beforeCaptured": 2.087890625,
+     "performed": 17.77734375,
+     "settled": 273.64306640625,
+     "loadSignals": {},
+     "answered": 282.543212890625
+    }
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1:\n  - e3 main:\n    - e20 <added> button \"Unmount counter\" [active] [cursor=pointer]\n    - e21 <added> region \"Counter\":\n      - e22 <added> paragraph:\n        - text: \"Count:\"\n        - e23 <added> status: 0\n      - e24 <added> button \"Increment\" [cursor=pointer]\n      - e25 <added> button \"Call Page Object\" [cursor=pointer]\n    - e19 <removed> button \"Mount counter\" [active] [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478076315.4717,
+     "beforeCaptured": 2.21826171875,
+     "performed": 16.26806640625,
+     "settled": 269.7001953125,
+     "loadSignals": {},
+     "answered": 275.279052734375
+    }
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1:\n  - e3 main:\n    - e20 <added> button \"Unmount counter\" [active] [cursor=pointer]\n    - e21 <added> region \"Counter\":\n      - e22 <added> paragraph:\n        - text: \"Count:\"\n        - e23 <added> status: 0\n      - e24 <added> button \"Increment\" [cursor=pointer]\n      - e25 <added> button \"Call Page Object\" [cursor=pointer]\n    - e19 <removed> button \"Mount counter\" [active] [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478089114.3635,
+     "beforeCaptured": 2.399658203125,
+     "performed": 22.903076171875,
+     "settled": 274.265380859375,
+     "loadSignals": {},
+     "answered": 277.7373046875
+    }
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1:\n  - e3 main:\n    - e20 <added> button \"Unmount counter\" [active] [cursor=pointer]\n    - e21 <added> region \"Counter\":\n      - e22 <added> paragraph:\n        - text: \"Count:\"\n        - e23 <added> status: 0\n      - e24 <added> button \"Increment\" [cursor=pointer]\n      - e25 <added> button \"Call Page Object\" [cursor=pointer]\n    - e19 <removed> button \"Mount counter\" [active] [cursor=pointer]"
+    },
+    "timing": {
+     "t0Epoch": 1791478101924.4148,
+     "beforeCaptured": 2.363037109375,
+     "performed": 16.01708984375,
+     "settled": 271.252685546875,
+     "loadSignals": {},
+     "answered": 276.642578125
+    }
+   }
+  ],
+  "navigate_capture": [
+   {
+    "result": {
+     "page_changed": true,
+     "changes": "- f1e3 <added> main:\n  - f1e4 <added> heading \"React integration check\" [level=1]\n  - f1e5 <added> paragraph: \"One Page Object, direct calls, and Page Object Tools.\"\n  - f1e6 <added> status \"Publication\": \"Publication: active\"\n  - f1e7 <added> button \"Retry publication\" [cursor=pointer]\n  - f1e8 <added> button \"Unmount counter\" [cursor=pointer]\n  - f1e9 <added> region \"Counter\":\n    - f1e10 <added> paragraph:\n      - text: \"Count:\"\n      - f1e11 <added> status: 0\n    - f1e12 <added> button \"Increment\" [cursor=pointer]\n    - f1e13 <added> button \"Call Page Object\" [cursor=pointer]\n  - f1e14 <added> link \"Full page load\" [cursor=pointer]:\n    - /url: /other\n- e1 <removed> [active]:\n  - e3 <removed> main:\n    - e4 <removed> heading \"React integration check\" [level=1]\n    - e5 <removed> paragraph: \"One Page Object, direct calls, and Page Object Tools.\"\n    - e6 <removed> status \"Publication\": \"Publication: active\"\n    - e7 <removed> button \"Retry publication\" [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]\n    - e14 <removed> link \"Full page load\" [cursor=pointer]:\n      - /url: /other\n  - e15 <removed>:\n    - e16 <removed> button \"Navigate with query\" [cursor=pointer]\n    - e17 <removed> button \"Disabled action\" [disabled] [cursor=pointer]\n    - e18 <removed> paragraph: Plain paragraph",
+     "settled": false,
+     "loading": "http://127.0.0.1:4191/?bullet2=n-nav-1791478052341-5&nav=1",
+     "next": "The page is loading http://127.0.0.1:4191/?bullet2=n-nav-1791478052341-5&nav=1. Call snapshot next to read the new page."
+    },
+    "timing": {
+     "t0Epoch": 1791478052877.8435,
+     "beforeCaptured": 1.779052734375,
+     "loadSignals": {
+      "navigationRequest": 24.26806640625
+     },
+     "loadingNoticed": 24.364501953125,
+     "performed": 29.887451171875,
+     "settled": 281.10205078125,
+     "afterCaptured": 1057.344482421875,
+     "answered": 1058.633544921875
+    },
+    "window": [
+     {
+      "token": "15xac872mwu",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478052341-5&nav=1",
+      "sentAt": 1791478052931.5,
+      "events": [
+       [
+        1791478052914.4,
+        "armed",
+        1
+       ],
+       [
+        1791478052931.5,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478052932.0122
+     },
+     {
+      "token": "15xac872mwu",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478052341-5&nav=1",
+      "sentAt": 1791478052934.8,
+      "events": [
+       [
+        1791478052934.4,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478052935.1208
+     },
+     {
+      "token": "15xac872mwu",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478052341-5&nav=1",
+      "sentAt": 1791478052973.9,
+      "events": [
+       [
+        1791478052950.4,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478052974.2722
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "changes": "- f1e3 <added> main:\n  - f1e4 <added> heading \"React integration check\" [level=1]\n  - f1e5 <added> paragraph: \"One Page Object, direct calls, and Page Object Tools.\"\n  - f1e6 <added> status \"Publication\": \"Publication: active\"\n  - f1e7 <added> button \"Retry publication\" [cursor=pointer]\n  - f1e8 <added> button \"Unmount counter\" [cursor=pointer]\n  - f1e9 <added> region \"Counter\":\n    - f1e10 <added> paragraph:\n      - text: \"Count:\"\n      - f1e11 <added> status: 0\n    - f1e12 <added> button \"Increment\" [cursor=pointer]\n    - f1e13 <added> button \"Call Page Object\" [cursor=pointer]\n  - f1e14 <added> link \"Full page load\" [cursor=pointer]:\n    - /url: /other\n- e1 <removed> [active]:\n  - e3 <removed> main:\n    - e4 <removed> heading \"React integration check\" [level=1]\n    - e5 <removed> paragraph: \"One Page Object, direct calls, and Page Object Tools.\"\n    - e6 <removed> status \"Publication\": \"Publication: active\"\n    - e7 <removed> button \"Retry publication\" [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]\n    - e14 <removed> link \"Full page load\" [cursor=pointer]:\n      - /url: /other\n  - e15 <removed>:\n    - e16 <removed> button \"Navigate with query\" [cursor=pointer]\n    - e17 <removed> button \"Disabled action\" [disabled] [cursor=pointer]\n    - e18 <removed> paragraph: Plain paragraph",
+     "settled": false,
+     "loading": "http://127.0.0.1:4191/?bullet2=n-nav-1791478065161-12&nav=1",
+     "next": "The page is loading http://127.0.0.1:4191/?bullet2=n-nav-1791478065161-12&nav=1. Call snapshot next to read the new page."
+    },
+    "timing": {
+     "t0Epoch": 1791478065716.4456,
+     "beforeCaptured": 1.78857421875,
+     "loadSignals": {
+      "navigationRequest": 10.56787109375
+     },
+     "loadingNoticed": 10.642822265625,
+     "performed": 15.944091796875,
+     "settled": 266.986572265625,
+     "afterCaptured": 1045.294921875,
+     "answered": 1045.749755859375
+    },
+    "window": [
+     {
+      "token": "6s8r9w2qq49",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478065161-12&nav=1",
+      "sentAt": 1791478065756.5999,
+      "events": [
+       [
+        1791478065739.5999,
+        "armed",
+        1
+       ],
+       [
+        1791478065756.5999,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478065756.905
+     },
+     {
+      "token": "6s8r9w2qq49",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478065161-12&nav=1",
+      "sentAt": 1791478065759.9,
+      "events": [
+       [
+        1791478065759.5,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478065759.9885
+     },
+     {
+      "token": "6s8r9w2qq49",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478065161-12&nav=1",
+      "sentAt": 1791478065799.5,
+      "events": [
+       [
+        1791478065775.8,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478065799.7449
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "changes": "- f1e3 <added> main:\n  - f1e4 <added> heading \"React integration check\" [level=1]\n  - f1e5 <added> paragraph: \"One Page Object, direct calls, and Page Object Tools.\"\n  - f1e6 <added> status \"Publication\": \"Publication: active\"\n  - f1e7 <added> button \"Retry publication\" [cursor=pointer]\n  - f1e8 <added> button \"Unmount counter\" [cursor=pointer]\n  - f1e9 <added> region \"Counter\":\n    - f1e10 <added> paragraph:\n      - text: \"Count:\"\n      - f1e11 <added> status: 0\n    - f1e12 <added> button \"Increment\" [cursor=pointer]\n    - f1e13 <added> button \"Call Page Object\" [cursor=pointer]\n  - f1e14 <added> link \"Full page load\" [cursor=pointer]:\n    - /url: /other\n- e1 <removed> [active]:\n  - e3 <removed> main:\n    - e4 <removed> heading \"React integration check\" [level=1]\n    - e5 <removed> paragraph: \"One Page Object, direct calls, and Page Object Tools.\"\n    - e6 <removed> status \"Publication\": \"Publication: active\"\n    - e7 <removed> button \"Retry publication\" [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]\n    - e14 <removed> link \"Full page load\" [cursor=pointer]:\n      - /url: /other\n  - e15 <removed>:\n    - e16 <removed> button \"Navigate with query\" [cursor=pointer]\n    - e17 <removed> button \"Disabled action\" [disabled] [cursor=pointer]\n    - e18 <removed> paragraph: Plain paragraph",
+     "settled": false,
+     "loading": "http://127.0.0.1:4191/?bullet2=n-nav-1791478077922-19&nav=1",
+     "next": "The page is loading http://127.0.0.1:4191/?bullet2=n-nav-1791478077922-19&nav=1. Call snapshot next to read the new page."
+    },
+    "timing": {
+     "t0Epoch": 1791478078473.212,
+     "beforeCaptured": 1.813720703125,
+     "loadSignals": {
+      "navigationRequest": 20.228515625
+     },
+     "loadingNoticed": 20.36083984375,
+     "performed": 25.205322265625,
+     "settled": 276.318359375,
+     "afterCaptured": 1045.050048828125,
+     "answered": 1045.521240234375
+    },
+    "window": [
+     {
+      "token": "uivrj4b2pgp",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478077922-19&nav=1",
+      "sentAt": 1791478078522.5999,
+      "events": [
+       [
+        1791478078505.5999,
+        "armed",
+        1
+       ],
+       [
+        1791478078522.5999,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478078522.6982
+     },
+     {
+      "token": "uivrj4b2pgp",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478077922-19&nav=1",
+      "sentAt": 1791478078525.9,
+      "events": [
+       [
+        1791478078525.2998,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478078525.7747
+     },
+     {
+      "token": "uivrj4b2pgp",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478077922-19&nav=1",
+      "sentAt": 1791478078565.2998,
+      "events": [
+       [
+        1791478078541.5999,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478078565.3164
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "changes": "- f1e3 <added> main:\n  - f1e4 <added> heading \"React integration check\" [level=1]\n  - f1e5 <added> paragraph: \"One Page Object, direct calls, and Page Object Tools.\"\n  - f1e6 <added> status \"Publication\": \"Publication: active\"\n  - f1e7 <added> button \"Retry publication\" [cursor=pointer]\n  - f1e8 <added> button \"Unmount counter\" [cursor=pointer]\n  - f1e9 <added> region \"Counter\":\n    - f1e10 <added> paragraph:\n      - text: \"Count:\"\n      - f1e11 <added> status: 0\n    - f1e12 <added> button \"Increment\" [cursor=pointer]\n    - f1e13 <added> button \"Call Page Object\" [cursor=pointer]\n  - f1e14 <added> link \"Full page load\" [cursor=pointer]:\n    - /url: /other\n- e1 <removed> [active]:\n  - e3 <removed> main:\n    - e4 <removed> heading \"React integration check\" [level=1]\n    - e5 <removed> paragraph: \"One Page Object, direct calls, and Page Object Tools.\"\n    - e6 <removed> status \"Publication\": \"Publication: active\"\n    - e7 <removed> button \"Retry publication\" [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]\n    - e14 <removed> link \"Full page load\" [cursor=pointer]:\n      - /url: /other\n  - e15 <removed>:\n    - e16 <removed> button \"Navigate with query\" [cursor=pointer]\n    - e17 <removed> button \"Disabled action\" [disabled] [cursor=pointer]\n    - e18 <removed> paragraph: Plain paragraph",
+     "settled": false,
+     "loading": "http://127.0.0.1:4191/?bullet2=n-nav-1791478090758-26&nav=1",
+     "next": "The page is loading http://127.0.0.1:4191/?bullet2=n-nav-1791478090758-26&nav=1. Call snapshot next to read the new page."
+    },
+    "timing": {
+     "t0Epoch": 1791478091301.3594,
+     "beforeCaptured": 1.580810546875,
+     "loadSignals": {
+      "navigationRequest": 17.122802734375
+     },
+     "loadingNoticed": 17.213134765625,
+     "performed": 23.137939453125,
+     "settled": 274.5234375,
+     "afterCaptured": 1047.075439453125,
+     "answered": 1047.6513671875
+    },
+    "window": [
+     {
+      "token": "tqguk5lzs9o",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478090758-26&nav=1",
+      "sentAt": 1791478091350,
+      "events": [
+       [
+        1791478091332.5,
+        "armed",
+        1
+       ],
+       [
+        1791478091349.9,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478091349.7817
+     },
+     {
+      "token": "tqguk5lzs9o",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478090758-26&nav=1",
+      "sentAt": 1791478091353.2,
+      "events": [
+       [
+        1791478091352.7,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478091352.778
+     },
+     {
+      "token": "tqguk5lzs9o",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478090758-26&nav=1",
+      "sentAt": 1791478091393.4,
+      "events": [
+       [
+        1791478091368.6,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478091393.1426
+     }
+    ]
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "changes": "- f1e3 <added> main:\n  - f1e4 <added> heading \"React integration check\" [level=1]\n  - f1e5 <added> paragraph: \"One Page Object, direct calls, and Page Object Tools.\"\n  - f1e6 <added> status \"Publication\": \"Publication: active\"\n  - f1e7 <added> button \"Retry publication\" [cursor=pointer]\n  - f1e8 <added> button \"Unmount counter\" [cursor=pointer]\n  - f1e9 <added> region \"Counter\":\n    - f1e10 <added> paragraph:\n      - text: \"Count:\"\n      - f1e11 <added> status: 0\n    - f1e12 <added> button \"Increment\" [cursor=pointer]\n    - f1e13 <added> button \"Call Page Object\" [cursor=pointer]\n  - f1e14 <added> link \"Full page load\" [cursor=pointer]:\n    - /url: /other\n- e1 <removed> [active]:\n  - e3 <removed> main:\n    - e4 <removed> heading \"React integration check\" [level=1]\n    - e5 <removed> paragraph: \"One Page Object, direct calls, and Page Object Tools.\"\n    - e6 <removed> status \"Publication\": \"Publication: active\"\n    - e7 <removed> button \"Retry publication\" [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]\n    - e14 <removed> link \"Full page load\" [cursor=pointer]:\n      - /url: /other\n  - e15 <removed>:\n    - e16 <removed> button \"Navigate with query\" [cursor=pointer]\n    - e17 <removed> button \"Disabled action\" [disabled] [cursor=pointer]\n    - e18 <removed> paragraph: Plain paragraph",
+     "settled": false,
+     "loading": "http://127.0.0.1:4191/?bullet2=n-nav-1791478103530-33&nav=1",
+     "next": "The page is loading http://127.0.0.1:4191/?bullet2=n-nav-1791478103530-33&nav=1. Call snapshot next to read the new page."
+    },
+    "timing": {
+     "t0Epoch": 1791478104070.2021,
+     "beforeCaptured": 1.53369140625,
+     "loadSignals": {
+      "navigationRequest": 25.6806640625
+     },
+     "loadingNoticed": 25.77392578125,
+     "performed": 30.75,
+     "settled": 281.57275390625,
+     "afterCaptured": 1058.09912109375,
+     "answered": 1058.55712890625
+    },
+    "window": [
+     {
+      "token": "p6x66nmigh",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478103530-33&nav=1",
+      "sentAt": 1791478104125.7,
+      "events": [
+       [
+        1791478104108.5,
+        "armed",
+        1
+       ],
+       [
+        1791478104125.5999,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478104125.2373
+     },
+     {
+      "token": "p6x66nmigh",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478103530-33&nav=1",
+      "sentAt": 1791478104128.5999,
+      "events": [
+       [
+        1791478104128.3,
+        "mutation",
+        1
+       ]
+      ],
+      "receivedAt": 1791478104128.0725
+     },
+     {
+      "token": "p6x66nmigh",
+      "url": "http://127.0.0.1:4191/?bullet2=n-nav-1791478103530-33&nav=1",
+      "sentAt": 1791478104167.9,
+      "events": [
+       [
+        1791478104144.2,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478104167.398
+     }
+    ]
+   }
+  ],
+  "navigate_latest": [
+   {
+    "result": {
+     "page_changed": false,
+     "settled": false,
+     "loading": "http://127.0.0.1:4191/?bullet2=n-nav-1791478054260-6&nav=1",
+     "next": "The page is loading http://127.0.0.1:4191/?bullet2=n-nav-1791478054260-6&nav=1. Call snapshot next to read the new page."
+    },
+    "timing": {
+     "t0Epoch": 1791478054794.2427,
+     "beforeCaptured": 1.829833984375,
+     "loadSignals": {
+      "navigationRequest": 15.884765625
+     },
+     "loadingNoticed": 15.966796875,
+     "afterCaptured": 15.9697265625,
+     "answered": 16.210693359375,
+     "performed": 21.1318359375,
+     "settled": 273.073486328125
+    },
+    "window": []
+   },
+   {
+    "result": {
+     "page_changed": false,
+     "settled": false,
+     "loading": "http://127.0.0.1:4191/?bullet2=n-nav-1791478067085-13&nav=1",
+     "next": "The page is loading http://127.0.0.1:4191/?bullet2=n-nav-1791478067085-13&nav=1. Call snapshot next to read the new page."
+    },
+    "timing": {
+     "t0Epoch": 1791478067627.3762,
+     "beforeCaptured": 1.606689453125,
+     "loadSignals": {
+      "navigationRequest": 16.3076171875
+     },
+     "loadingNoticed": 16.397216796875,
+     "afterCaptured": 16.400390625,
+     "answered": 16.6005859375,
+     "performed": 21.6396484375,
+     "settled": 272.471435546875
+    },
+    "window": []
+   },
+   {
+    "result": {
+     "page_changed": false,
+     "settled": false,
+     "loading": "http://127.0.0.1:4191/?bullet2=n-nav-1791478079839-20&nav=1",
+     "next": "The page is loading http://127.0.0.1:4191/?bullet2=n-nav-1791478079839-20&nav=1. Call snapshot next to read the new page."
+    },
+    "timing": {
+     "t0Epoch": 1791478080382.9011,
+     "beforeCaptured": 1.5888671875,
+     "loadSignals": {
+      "navigationRequest": 19.064453125
+     },
+     "loadingNoticed": 19.155517578125,
+     "afterCaptured": 19.15625,
+     "answered": 19.345703125,
+     "performed": 24.055419921875,
+     "settled": 274.45166015625
+    },
+    "window": []
+   },
+   {
+    "result": {
+     "page_changed": false,
+     "settled": false,
+     "loading": "http://127.0.0.1:4191/?bullet2=n-nav-1791478092676-27&nav=1",
+     "next": "The page is loading http://127.0.0.1:4191/?bullet2=n-nav-1791478092676-27&nav=1. Call snapshot next to read the new page."
+    },
+    "timing": {
+     "t0Epoch": 1791478093220.542,
+     "beforeCaptured": 1.578369140625,
+     "loadSignals": {
+      "navigationRequest": 14.53759765625
+     },
+     "loadingNoticed": 14.61181640625,
+     "afterCaptured": 14.612548828125,
+     "answered": 14.76708984375,
+     "performed": 19.840576171875,
+     "settled": 271.429443359375
+    },
+    "window": []
+   },
+   {
+    "result": {
+     "page_changed": false,
+     "settled": false,
+     "loading": "http://127.0.0.1:4191/?bullet2=n-nav-1791478105459-34&nav=1",
+     "next": "The page is loading http://127.0.0.1:4191/?bullet2=n-nav-1791478105459-34&nav=1. Call snapshot next to read the new page."
+    },
+    "timing": {
+     "t0Epoch": 1791478106002.5972,
+     "beforeCaptured": 1.53759765625,
+     "loadSignals": {
+      "navigationRequest": 15.641845703125
+     },
+     "loadingNoticed": 15.727294921875,
+     "afterCaptured": 15.72802734375,
+     "answered": 15.88134765625,
+     "performed": 21.2138671875,
+     "settled": 271.889404296875
+    },
+    "window": []
+   }
+  ]
+ },
+ "browser": {
+  "increment": [
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e9 region \"Counter\":\n      - e10 paragraph:\n        - e11 <changed> status: 1\n      - e12 <changed> button \"Increment\" [active] [cursor=pointer]"
+    },
+    "ms": 378.098876953125
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e9 region \"Counter\":\n      - e10 paragraph:\n        - e11 <changed> status: 1\n      - e12 <changed> button \"Increment\" [active] [cursor=pointer]"
+    },
+    "ms": 384.595703125
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e9 region \"Counter\":\n      - e10 paragraph:\n        - e11 <changed> status: 1\n      - e12 <changed> button \"Increment\" [active] [cursor=pointer]"
+    },
+    "ms": 376.1376953125
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e9 region \"Counter\":\n      - e10 paragraph:\n        - e11 <changed> status: 1\n      - e12 <changed> button \"Increment\" [active] [cursor=pointer]"
+    },
+    "ms": 393.2685546875
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e9 region \"Counter\":\n      - e10 paragraph:\n        - e11 <changed> status: 1\n      - e12 <changed> button \"Increment\" [active] [cursor=pointer]"
+    },
+    "ms": 379.359375
+   }
+  ],
+  "unmount": [
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e20 <added> button \"Mount counter\" [active] [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]"
+    },
+    "ms": 375.914306640625
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e20 <added> button \"Mount counter\" [active] [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]"
+    },
+    "ms": 383.814208984375
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e20 <added> button \"Mount counter\" [active] [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]"
+    },
+    "ms": 373.16650390625
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e20 <added> button \"Mount counter\" [active] [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]"
+    },
+    "ms": 380.080810546875
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1 <changed>:\n  - e3 main:\n    - e20 <added> button \"Mount counter\" [active] [cursor=pointer]\n    - e8 <removed> button \"Unmount counter\" [cursor=pointer]\n    - e9 <removed> region \"Counter\":\n      - e10 <removed> paragraph:\n        - text: \"Count:\"\n        - e11 <removed> status: 0\n      - e12 <removed> button \"Increment\" [cursor=pointer]\n      - e13 <removed> button \"Call Page Object\" [cursor=pointer]"
+    },
+    "ms": 378.26123046875
+   }
+  ],
+  "mount": [
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1:\n  - e3 main:\n    - e21 <added> button \"Unmount counter\" [active] [cursor=pointer]\n    - e22 <added> region \"Counter\":\n      - e23 <added> paragraph:\n        - text: \"Count:\"\n        - e24 <added> status: 0\n      - e25 <added> button \"Increment\" [cursor=pointer]\n      - e26 <added> button \"Call Page Object\" [cursor=pointer]\n    - e20 <removed> button \"Mount counter\" [active] [cursor=pointer]"
+    },
+    "ms": 300.589111328125
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1:\n  - e3 main:\n    - e21 <added> button \"Unmount counter\" [active] [cursor=pointer]\n    - e22 <added> region \"Counter\":\n      - e23 <added> paragraph:\n        - text: \"Count:\"\n        - e24 <added> status: 0\n      - e25 <added> button \"Increment\" [cursor=pointer]\n      - e26 <added> button \"Call Page Object\" [cursor=pointer]\n    - e20 <removed> button \"Mount counter\" [active] [cursor=pointer]"
+    },
+    "ms": 300.8896484375
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1:\n  - e3 main:\n    - e21 <added> button \"Unmount counter\" [active] [cursor=pointer]\n    - e22 <added> region \"Counter\":\n      - e23 <added> paragraph:\n        - text: \"Count:\"\n        - e24 <added> status: 0\n      - e25 <added> button \"Increment\" [cursor=pointer]\n      - e26 <added> button \"Call Page Object\" [cursor=pointer]\n    - e20 <removed> button \"Mount counter\" [active] [cursor=pointer]"
+    },
+    "ms": 296.517578125
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1:\n  - e3 main:\n    - e21 <added> button \"Unmount counter\" [active] [cursor=pointer]\n    - e22 <added> region \"Counter\":\n      - e23 <added> paragraph:\n        - text: \"Count:\"\n        - e24 <added> status: 0\n      - e25 <added> button \"Increment\" [cursor=pointer]\n      - e26 <added> button \"Call Page Object\" [cursor=pointer]\n    - e20 <removed> button \"Mount counter\" [active] [cursor=pointer]"
+    },
+    "ms": 295.600341796875
+   },
+   {
+    "result": {
+     "page_changed": true,
+     "settled": true,
+     "changes": "- e1:\n  - e3 main:\n    - e21 <added> button \"Unmount counter\" [active] [cursor=pointer]\n    - e22 <added> region \"Counter\":\n      - e23 <added> paragraph:\n        - text: \"Count:\"\n        - e24 <added> status: 0\n      - e25 <added> button \"Increment\" [cursor=pointer]\n      - e26 <added> button \"Call Page Object\" [cursor=pointer]\n    - e20 <removed> button \"Mount counter\" [active] [cursor=pointer]"
+    },
+    "ms": 302.15380859375
+   }
+  ],
+  "navigate": [
+   {
+    "answeredMs": null,
+    "framenavigatedMs": 105.07373046875,
+    "urlAfter": "http://127.0.0.1:4191/?bullet2=b-nav-1791478055182-7&nav=1"
+   },
+   {
+    "answeredMs": null,
+    "framenavigatedMs": 103.658447265625,
+    "urlAfter": "http://127.0.0.1:4191/?bullet2=b-nav-1791478068014-14&nav=1"
+   },
+   {
+    "answeredMs": null,
+    "framenavigatedMs": 110.294921875,
+    "urlAfter": "http://127.0.0.1:4191/?bullet2=b-nav-1791478080775-21&nav=1"
+   },
+   {
+    "answeredMs": null,
+    "framenavigatedMs": 107.494140625,
+    "urlAfter": "http://127.0.0.1:4191/?bullet2=b-nav-1791478093610-28&nav=1"
+   },
+   {
+    "answeredMs": null,
+    "framenavigatedMs": 106.309326171875,
+    "urlAfter": "http://127.0.0.1:4191/?bullet2=b-nav-1791478106385-35&nav=1"
+   }
+  ]
+ },
+ "latency": [
+  {
+   "rep": 0,
+   "unmount": {
+    "t": {
+     "t0Epoch": 1791478050435.9055,
+     "beforeCaptured": 1.9111328125,
+     "performed": 21.184814453125,
+     "settled": 299.447998046875,
+     "loadSignals": {},
+     "answered": 303.2666015625
+    },
+    "window": [
+     {
+      "token": "n86w46jv968",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478049896-3",
+      "sentAt": 1791478050484.1,
+      "events": [
+       [
+        1791478050453.3,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478050484.714
+     }
+    ]
+   },
+   "mount": {
+    "t": {
+     "t0Epoch": 1791478050739.1816,
+     "beforeCaptured": 2.783203125,
+     "performed": 17.04052734375,
+     "settled": 271.3779296875,
+     "loadSignals": {},
+     "answered": 276.58984375
+    },
+    "window": [
+     {
+      "token": "n86w46jv968",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478049896-3",
+      "sentAt": 1791478050759.5,
+      "events": [
+       [
+        1791478050752.3,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478050759.988
+     }
+    ]
+   }
+  },
+  {
+   "rep": 1,
+   "unmount": {
+    "t": {
+     "t0Epoch": 1791478063220.06,
+     "beforeCaptured": 1.96044921875,
+     "performed": 20.154052734375,
+     "settled": 299.003662109375,
+     "loadSignals": {},
+     "answered": 301.694091796875
+    },
+    "window": [
+     {
+      "token": "dg6no86fkdv",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478062674-10",
+      "sentAt": 1791478063267.4,
+      "events": [
+       [
+        1791478063236.8,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478063267.5317
+     }
+    ]
+   },
+   "mount": {
+    "t": {
+     "t0Epoch": 1791478063521.7637,
+     "beforeCaptured": 2.087890625,
+     "performed": 17.77734375,
+     "settled": 273.64306640625,
+     "loadSignals": {},
+     "answered": 282.543212890625
+    },
+    "window": [
+     {
+      "token": "dg6no86fkdv",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478062674-10",
+      "sentAt": 1791478063544.2,
+      "events": [
+       [
+        1791478063536.2,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478063544.438
+     }
+    ]
+   }
+  },
+  {
+   "rep": 2,
+   "unmount": {
+    "t": {
+     "t0Epoch": 1791478076010.9043,
+     "beforeCaptured": 1.626220703125,
+     "performed": 50.48193359375,
+     "settled": 301.43994140625,
+     "loadSignals": {},
+     "answered": 304.555908203125
+    },
+    "window": [
+     {
+      "token": "vp8whsiz7d9",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478075476-17",
+      "sentAt": 1791478076060.5,
+      "events": [
+       [
+        1791478076030.8,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478076060.615
+     }
+    ]
+   },
+   "mount": {
+    "t": {
+     "t0Epoch": 1791478076315.4717,
+     "beforeCaptured": 2.21826171875,
+     "performed": 16.26806640625,
+     "settled": 269.7001953125,
+     "loadSignals": {},
+     "answered": 275.279052734375
+    },
+    "window": [
+     {
+      "token": "vp8whsiz7d9",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478075476-17",
+      "sentAt": 1791478076334.0999,
+      "events": [
+       [
+        1791478076328.0999,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478076334.124
+     }
+    ]
+   }
+  },
+  {
+   "rep": 3,
+   "unmount": {
+    "t": {
+     "t0Epoch": 1791478088810.6252,
+     "beforeCaptured": 1.605224609375,
+     "performed": 20.76806640625,
+     "settled": 299.425537109375,
+     "loadSignals": {},
+     "answered": 303.721923828125
+    },
+    "window": [
+     {
+      "token": "4vcds2gt1gu",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478088264-24",
+      "sentAt": 1791478088859.4,
+      "events": [
+       [
+        1791478088828.4,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478088859.3572
+     }
+    ]
+   },
+   "mount": {
+    "t": {
+     "t0Epoch": 1791478089114.3635,
+     "beforeCaptured": 2.399658203125,
+     "performed": 22.903076171875,
+     "settled": 274.265380859375,
+     "loadSignals": {},
+     "answered": 277.7373046875
+    },
+    "window": [
+     {
+      "token": "4vcds2gt1gu",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478088264-24",
+      "sentAt": 1791478089135.4,
+      "events": [
+       [
+        1791478089129.1,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478089135.4463
+     }
+    ]
+   }
+  },
+  {
+   "rep": 4,
+   "unmount": {
+    "t": {
+     "t0Epoch": 1791478101621.3423,
+     "beforeCaptured": 1.543212890625,
+     "performed": 18.953369140625,
+     "settled": 299.79833984375,
+     "loadSignals": {},
+     "answered": 303.061279296875
+    },
+    "window": [
+     {
+      "token": "6ks79a47yc3",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478101085-31",
+      "sentAt": 1791478101669.4,
+      "events": [
+       [
+        1791478101637.4,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478101669.1016
+     }
+    ]
+   },
+   "mount": {
+    "t": {
+     "t0Epoch": 1791478101924.4148,
+     "beforeCaptured": 2.363037109375,
+     "performed": 16.01708984375,
+     "settled": 271.252685546875,
+     "loadSignals": {},
+     "answered": 276.642578125
+    },
+    "window": [
+     {
+      "token": "6ks79a47yc3",
+      "url": "http://127.0.0.1:4191/?bullet2=n-tog-1791478101085-31",
+      "sentAt": 1791478101944.7998,
+      "events": [
+       [
+        1791478101937.0999,
+        "mutation",
+        2
+       ]
+      ],
+      "receivedAt": 1791478101944.4495
+     }
+    ]
+   }
+  }
+ ],
+ "errors": {
+  "nodeDisabledClick": {
+   "ms": 2008.4052734375,
+   "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n  - waiting for locator('#b2-disabled')\n    - locator resolved to <button disabled id=\"b2-disabled\">Disabled action</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    4 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 500ms\n"
+  },
+  "nodeDisabledClickByRole": {
+   "ms": 2005.694580078125,
+   "error": "locator.click: Timeout 2000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Disabled action' })\n    - locator resolved to <button disabled id=\"b2-disabled\">Disabled action</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    4 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 500ms\n"
+  },
+  "nodeFillParagraph": {
+   "ms": 7.935546875,
+   "error": "locator.fill: Error: Element is not an <input>, <textarea>, <select> or [contenteditable] and does not have a role allowing [aria-readonly]\nCall log:\n  - waiting for locator('#b2-para')\n    - locator resolved to <p id=\"b2-para\">Plain paragraph</p>\n    - fill(\"x\")\n  - attempting fill action\n    - waiting for element to be visible, enabled and editable\n"
+  },
+  "browserDisabledClick": {
+   "ms": 1279.282470703125,
+   "r": {
+    "content": [
+     {
+      "type": "text",
+      "text": "TimeoutError: locator.click: Timeout 1000ms exceeded. Element is not enabled\nCall log:\n  - waiting for locator('aria-ref=e17')\n    - locator resolved to <button disabled id=\"b2-disabled\">Disabled action</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 500ms"
+     }
+    ],
+    "isError": true
+   }
+  },
+  "browserFillParagraph": {
+   "ms": 1271.3095703125,
+   "r": {
+    "content": [
+     {
+      "type": "text",
+      "text": "TimeoutError: fill: Timeout 1000ms exceeded. Element is not an <input>, <textarea>, <select> or [contenteditable] and does not have a role allowing [aria-readonly]"
+     }
+    ],
+    "isError": true
+   }
+  }
+ },
+ "navExtra": [
+  {
+   "loadingAfter": "capture",
+   "loadEventAfterAnswer": 1.0419921875,
+   "rearmed": true,
+   "armedBatchSeen": true,
+   "newDocSettled": true,
+   "newDocSettledAfterAnswer": 253.90234375,
+   "newUrl": "http://127.0.0.1:4191/?bullet2=n-nav-1791478052341-5&nav=1",
+   "settlePromiseOutcome": "resolved"
+  },
+  {
+   "loadingAfter": "latest",
+   "loadEventAfterAnswer": 12.612060546875,
+   "rearmed": true,
+   "armedBatchSeen": true,
+   "newDocSettled": true,
+   "newDocSettledAfterAnswer": 322.858642578125,
+   "newUrl": "http://127.0.0.1:4191/?bullet2=n-nav-1791478054260-6&nav=1",
+   "settlePromiseOutcome": "resolved"
+  },
+  {
+   "loadingAfter": "capture",
+   "loadEventAfterAnswer": 0.228515625,
+   "rearmed": true,
+   "armedBatchSeen": true,
+   "newDocSettled": true,
+   "newDocSettledAfterAnswer": 251.984130859375,
+   "newUrl": "http://127.0.0.1:4191/?bullet2=n-nav-1791478065161-12&nav=1",
+   "settlePromiseOutcome": "resolved"
+  },
+  {
+   "loadingAfter": "latest",
+   "loadEventAfterAnswer": 12.656005859375,
+   "rearmed": true,
+   "armedBatchSeen": true,
+   "newDocSettled": true,
+   "newDocSettledAfterAnswer": 322.645751953125,
+   "newUrl": "http://127.0.0.1:4191/?bullet2=n-nav-1791478067085-13&nav=1",
+   "settlePromiseOutcome": "resolved"
+  },
+  {
+   "loadingAfter": "capture",
+   "loadEventAfterAnswer": 0.22412109375,
+   "rearmed": true,
+   "armedBatchSeen": true,
+   "newDocSettled": true,
+   "newDocSettledAfterAnswer": 251.33154296875,
+   "newUrl": "http://127.0.0.1:4191/?bullet2=n-nav-1791478077922-19&nav=1",
+   "settlePromiseOutcome": "resolved"
+  },
+  {
+   "loadingAfter": "latest",
+   "loadEventAfterAnswer": 12.3203125,
+   "rearmed": true,
+   "armedBatchSeen": true,
+   "newDocSettled": true,
+   "newDocSettledAfterAnswer": 322.48193359375,
+   "newUrl": "http://127.0.0.1:4191/?bullet2=n-nav-1791478079839-20&nav=1",
+   "settlePromiseOutcome": "resolved"
+  },
+  {
+   "loadingAfter": "capture",
+   "loadEventAfterAnswer": 0.42236328125,
+   "rearmed": true,
+   "armedBatchSeen": true,
+   "newDocSettled": true,
+   "newDocSettledAfterAnswer": 253.19921875,
+   "newUrl": "http://127.0.0.1:4191/?bullet2=n-nav-1791478090758-26&nav=1",
+   "settlePromiseOutcome": "resolved"
+  },
+  {
+   "loadingAfter": "latest",
+   "loadEventAfterAnswer": 15.741943359375,
+   "rearmed": true,
+   "armedBatchSeen": true,
+   "newDocSettled": true,
+   "newDocSettledAfterAnswer": 324.78369140625,
+   "newUrl": "http://127.0.0.1:4191/?bullet2=n-nav-1791478092676-27&nav=1",
+   "settlePromiseOutcome": "resolved"
+  },
+  {
+   "loadingAfter": "capture",
+   "loadEventAfterAnswer": 0.24609375,
+   "rearmed": true,
+   "armedBatchSeen": true,
+   "newDocSettled": true,
+   "newDocSettledAfterAnswer": 252.211669921875,
+   "newUrl": "http://127.0.0.1:4191/?bullet2=n-nav-1791478103530-33&nav=1",
+   "settlePromiseOutcome": "resolved"
+  },
+  {
+   "loadingAfter": "latest",
+   "loadEventAfterAnswer": 12.77880859375,
+   "rearmed": true,
+   "armedBatchSeen": true,
+   "newDocSettled": true,
+   "newDocSettledAfterAnswer": 323.1142578125,
+   "newUrl": "http://127.0.0.1:4191/?bullet2=n-nav-1791478105459-34&nav=1",
+   "settlePromiseOutcome": "resolved"
+  }
+ ]
+}

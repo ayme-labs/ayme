@@ -1,0 +1,15 @@
+[A locator.nth(i).count() x500, no handles] divs attached: heap=26.4MB Nodes=1296
+[A locator.nth(i).count() x500, no handles] acquired (778ms, 0 handles): heap=221.0MB Nodes=1296
+[A locator.nth(i).count() x500, no handles] divs removed, handles held: heap=221.0MB Nodes=1296
+[B page.$$('.pin') one call] divs attached: heap=26.4MB Nodes=1296
+[B page.$$('.pin') one call] acquired (804ms, 500 handles): heap=221.4MB Nodes=1796
+[B page.$$('.pin') one call] divs removed, handles held: heap=221.4MB Nodes=1796
+[B page.$$('.pin') one call] released: heap=221.4MB Nodes=1796
+[C locator.nth(i).elementHandle() x500] divs attached: heap=26.8MB Nodes=1296
+[C locator.nth(i).elementHandle() x500] acquired (1912ms, 500 handles): heap=221.5MB Nodes=1796
+[C locator.nth(i).elementHandle() x500] divs removed, handles held: heap=221.5MB Nodes=1796
+[C locator.nth(i).elementHandle() x500] released: heap=221.5MB Nodes=1796
+[D page.$('.pin:nth-of-type(k)') x500] divs attached: heap=26.5MB Nodes=1296
+[D page.$('.pin:nth-of-type(k)') x500] acquired (1403ms, 500 handles): heap=221.5MB Nodes=1796
+[D page.$('.pin:nth-of-type(k)') x500] divs removed, handles held: heap=221.5MB Nodes=1796
+[D page.$('.pin:nth-of-type(k)') x500] released: heap=221.5MB Nodes=1796

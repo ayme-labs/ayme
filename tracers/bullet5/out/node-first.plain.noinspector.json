@@ -1,0 +1,2387 @@
+{
+  "mode": "node-first",
+  "variant": "plain",
+  "inspector": false,
+  "trials": [
+    {
+      "trial": 1,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 302,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e11",
+          "nodeMints": [
+            "e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 340,
+          "captureAfterClickMs": 327,
+          "liMintedBy": "node",
+          "liRef": "e12",
+          "nodeMints": [
+            "e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 280,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e13",
+          "nodeMints": [
+            "e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "e14",
+          "nodeMints": [
+            "e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e15",
+          "nodeMints": [
+            "e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 278,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e16",
+          "nodeMints": [
+            "e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e17",
+          "nodeMints": [
+            "e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e18",
+          "nodeMints": [
+            "e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 277,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e19",
+          "nodeMints": [
+            "e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e20",
+          "nodeMints": [
+            "e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e11]: item 1\n    - listitem [ref=e12]: item 2\n    - listitem [ref=e13]: item 3\n    - listitem [ref=e14]: item 4\n    - listitem [ref=e15]: item 5\n    - listitem [ref=e16]: item 6\n    - listitem [ref=e17]: item 7\n    - listitem [ref=e18]: item 8\n    - listitem [ref=e19]: item 9\n    - listitem [ref=e20]: item 10"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\"",
+        "e11 LI listitem \"\"",
+        "e12 LI listitem \"\"",
+        "e13 LI listitem \"\"",
+        "e14 LI listitem \"\"",
+        "e15 LI listitem \"\"",
+        "e16 LI listitem \"\"",
+        "e17 LI listitem \"\"",
+        "e18 LI listitem \"\"",
+        "e19 LI listitem \"\"",
+        "e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n    - e5 textbox \"New item\"\n    - e7 checkbox \"Urgent\"\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 617 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "mintsTail": [
+        "2091 node e1 BODY generic \"\"",
+        "2092 node e2 MAIN main \"\"",
+        "2092 node e3 H1 heading \"Groceries\"",
+        "2093 node e4 LABEL generic \"\"",
+        "2093 node e5 INPUT textbox \"New item\"",
+        "2093 node e6 LABEL generic \"\"",
+        "2093 node e7 INPUT checkbox \"Urgent\"",
+        "2094 node e8 BUTTON button \"Add item\"",
+        "2094 node e9 BUTTON button \"Clear\"",
+        "2095 node e10 UL list \"Items\"",
+        "2409 node e11 LI listitem \"\"",
+        "2766 node e12 LI listitem \"\"",
+        "3057 node e13 LI listitem \"\"",
+        "3339 node e14 LI listitem \"\"",
+        "3625 node e15 LI listitem \"\"",
+        "3917 node e16 LI listitem \"\"",
+        "4199 node e17 LI listitem \"\"",
+        "4483 node e18 LI listitem \"\"",
+        "4773 node e19 LI listitem \"\"",
+        "5065 node e20 LI listitem \"\"",
+        "6996 page e1 LI listitem \"\"",
+        "7372 page e2 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n  - e4:\n    - text: New item\n    - e5 textbox \"New item\"\n  - e6:\n    - e7 checkbox \"Urgent\"\n    - text: Urgent\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":\n    - e11 ListPage.entries[0]: item 1\n    - e12 ListPage.entries[1]: item 2\n    - e13 ListPage.entries[2]: item 3\n    - e14 ListPage.entries[3]: item 4\n    - e15 ListPage.entries[4]: item 5\n    - e16 ListPage.entries[5]: item 6\n    - e17 ListPage.entries[6]: item 7\n    - e18 ListPage.entries[7]: item 8\n    - e19 ListPage.entries[8]: item 9\n    - e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 2,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 298,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e11",
+          "nodeMints": [
+            "e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 343,
+          "captureAfterClickMs": 323,
+          "liMintedBy": "node",
+          "liRef": "e12",
+          "nodeMints": [
+            "e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e13",
+          "nodeMints": [
+            "e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e14",
+          "nodeMints": [
+            "e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e15",
+          "nodeMints": [
+            "e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e16",
+          "nodeMints": [
+            "e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e17",
+          "nodeMints": [
+            "e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e18",
+          "nodeMints": [
+            "e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "e19",
+          "nodeMints": [
+            "e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 276,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e20",
+          "nodeMints": [
+            "e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e11]: item 1\n    - listitem [ref=e12]: item 2\n    - listitem [ref=e13]: item 3\n    - listitem [ref=e14]: item 4\n    - listitem [ref=e15]: item 5\n    - listitem [ref=e16]: item 6\n    - listitem [ref=e17]: item 7\n    - listitem [ref=e18]: item 8\n    - listitem [ref=e19]: item 9\n    - listitem [ref=e20]: item 10"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\"",
+        "e11 LI listitem \"\"",
+        "e12 LI listitem \"\"",
+        "e13 LI listitem \"\"",
+        "e14 LI listitem \"\"",
+        "e15 LI listitem \"\"",
+        "e16 LI listitem \"\"",
+        "e17 LI listitem \"\"",
+        "e18 LI listitem \"\"",
+        "e19 LI listitem \"\"",
+        "e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n    - e5 textbox \"New item\"\n    - e7 checkbox \"Urgent\"\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 617 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "mintsTail": [
+        "2071 node e1 BODY generic \"\"",
+        "2072 node e2 MAIN main \"\"",
+        "2072 node e3 H1 heading \"Groceries\"",
+        "2073 node e4 LABEL generic \"\"",
+        "2073 node e5 INPUT textbox \"New item\"",
+        "2073 node e6 LABEL generic \"\"",
+        "2074 node e7 INPUT checkbox \"Urgent\"",
+        "2074 node e8 BUTTON button \"Add item\"",
+        "2074 node e9 BUTTON button \"Clear\"",
+        "2076 node e10 UL list \"Items\"",
+        "2386 node e11 LI listitem \"\"",
+        "2743 node e12 LI listitem \"\"",
+        "3029 node e13 LI listitem \"\"",
+        "3313 node e14 LI listitem \"\"",
+        "3594 node e15 LI listitem \"\"",
+        "3878 node e16 LI listitem \"\"",
+        "4162 node e17 LI listitem \"\"",
+        "4444 node e18 LI listitem \"\"",
+        "4727 node e19 LI listitem \"\"",
+        "5019 node e20 LI listitem \"\"",
+        "6939 page e1 LI listitem \"\"",
+        "7310 page e2 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n  - e4:\n    - text: New item\n    - e5 textbox \"New item\"\n  - e6:\n    - e7 checkbox \"Urgent\"\n    - text: Urgent\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":\n    - e11 ListPage.entries[0]: item 1\n    - e12 ListPage.entries[1]: item 2\n    - e13 ListPage.entries[2]: item 3\n    - e14 ListPage.entries[3]: item 4\n    - e15 ListPage.entries[4]: item 5\n    - e16 ListPage.entries[5]: item 6\n    - e17 ListPage.entries[6]: item 7\n    - e18 ListPage.entries[7]: item 8\n    - e19 ListPage.entries[8]: item 9\n    - e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 3,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 299,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e11",
+          "nodeMints": [
+            "e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 341,
+          "captureAfterClickMs": 323,
+          "liMintedBy": "node",
+          "liRef": "e12",
+          "nodeMints": [
+            "e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 257,
+          "liMintedBy": "node",
+          "liRef": "e13",
+          "nodeMints": [
+            "e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 275,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e14",
+          "nodeMints": [
+            "e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e15",
+          "nodeMints": [
+            "e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 277,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e16",
+          "nodeMints": [
+            "e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e17",
+          "nodeMints": [
+            "e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 282,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e18",
+          "nodeMints": [
+            "e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e19",
+          "nodeMints": [
+            "e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 279,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e20",
+          "nodeMints": [
+            "e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e11]: item 1\n    - listitem [ref=e12]: item 2\n    - listitem [ref=e13]: item 3\n    - listitem [ref=e14]: item 4\n    - listitem [ref=e15]: item 5\n    - listitem [ref=e16]: item 6\n    - listitem [ref=e17]: item 7\n    - listitem [ref=e18]: item 8\n    - listitem [ref=e19]: item 9\n    - listitem [ref=e20]: item 10"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\"",
+        "e11 LI listitem \"\"",
+        "e12 LI listitem \"\"",
+        "e13 LI listitem \"\"",
+        "e14 LI listitem \"\"",
+        "e15 LI listitem \"\"",
+        "e16 LI listitem \"\"",
+        "e17 LI listitem \"\"",
+        "e18 LI listitem \"\"",
+        "e19 LI listitem \"\"",
+        "e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n    - e5 textbox \"New item\"\n    - e7 checkbox \"Urgent\"\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 617 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "mintsTail": [
+        "2064 node e1 BODY generic \"\"",
+        "2065 node e2 MAIN main \"\"",
+        "2065 node e3 H1 heading \"Groceries\"",
+        "2065 node e4 LABEL generic \"\"",
+        "2066 node e5 INPUT textbox \"New item\"",
+        "2066 node e6 LABEL generic \"\"",
+        "2066 node e7 INPUT checkbox \"Urgent\"",
+        "2066 node e8 BUTTON button \"Add item\"",
+        "2067 node e9 BUTTON button \"Clear\"",
+        "2068 node e10 UL list \"Items\"",
+        "2378 node e11 LI listitem \"\"",
+        "2733 node e12 LI listitem \"\"",
+        "3016 node e13 LI listitem \"\"",
+        "3303 node e14 LI listitem \"\"",
+        "3588 node e15 LI listitem \"\"",
+        "3877 node e16 LI listitem \"\"",
+        "4161 node e17 LI listitem \"\"",
+        "4453 node e18 LI listitem \"\"",
+        "4735 node e19 LI listitem \"\"",
+        "5028 node e20 LI listitem \"\"",
+        "6945 page e1 LI listitem \"\"",
+        "7315 page e2 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n  - e4:\n    - text: New item\n    - e5 textbox \"New item\"\n  - e6:\n    - e7 checkbox \"Urgent\"\n    - text: Urgent\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":\n    - e11 ListPage.entries[0]: item 1\n    - e12 ListPage.entries[1]: item 2\n    - e13 ListPage.entries[2]: item 3\n    - e14 ListPage.entries[3]: item 4\n    - e15 ListPage.entries[4]: item 5\n    - e16 ListPage.entries[5]: item 6\n    - e17 ListPage.entries[6]: item 7\n    - e18 ListPage.entries[7]: item 8\n    - e19 ListPage.entries[8]: item 9\n    - e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 4,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 301,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e11",
+          "nodeMints": [
+            "e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 344,
+          "captureAfterClickMs": 324,
+          "liMintedBy": "node",
+          "liRef": "e12",
+          "nodeMints": [
+            "e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e13",
+          "nodeMints": [
+            "e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e14",
+          "nodeMints": [
+            "e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e15",
+          "nodeMints": [
+            "e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e16",
+          "nodeMints": [
+            "e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e17",
+          "nodeMints": [
+            "e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 269,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e18",
+          "nodeMints": [
+            "e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e19",
+          "nodeMints": [
+            "e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 278,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e20",
+          "nodeMints": [
+            "e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e11]: item 1\n    - listitem [ref=e12]: item 2\n    - listitem [ref=e13]: item 3\n    - listitem [ref=e14]: item 4\n    - listitem [ref=e15]: item 5\n    - listitem [ref=e16]: item 6\n    - listitem [ref=e17]: item 7\n    - listitem [ref=e18]: item 8\n    - listitem [ref=e19]: item 9\n    - listitem [ref=e20]: item 10"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\"",
+        "e11 LI listitem \"\"",
+        "e12 LI listitem \"\"",
+        "e13 LI listitem \"\"",
+        "e14 LI listitem \"\"",
+        "e15 LI listitem \"\"",
+        "e16 LI listitem \"\"",
+        "e17 LI listitem \"\"",
+        "e18 LI listitem \"\"",
+        "e19 LI listitem \"\"",
+        "e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n    - e5 textbox \"New item\"\n    - e7 checkbox \"Urgent\"\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 617 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "mintsTail": [
+        "2065 node e1 BODY generic \"\"",
+        "2066 node e2 MAIN main \"\"",
+        "2067 node e3 H1 heading \"Groceries\"",
+        "2067 node e4 LABEL generic \"\"",
+        "2067 node e5 INPUT textbox \"New item\"",
+        "2067 node e6 LABEL generic \"\"",
+        "2068 node e7 INPUT checkbox \"Urgent\"",
+        "2068 node e8 BUTTON button \"Add item\"",
+        "2068 node e9 BUTTON button \"Clear\"",
+        "2070 node e10 UL list \"Items\"",
+        "2380 node e11 LI listitem \"\"",
+        "2737 node e12 LI listitem \"\"",
+        "3020 node e13 LI listitem \"\"",
+        "3305 node e14 LI listitem \"\"",
+        "3589 node e15 LI listitem \"\"",
+        "3872 node e16 LI listitem \"\"",
+        "4156 node e17 LI listitem \"\"",
+        "4437 node e18 LI listitem \"\"",
+        "4721 node e19 LI listitem \"\"",
+        "5012 node e20 LI listitem \"\"",
+        "6941 page e1 LI listitem \"\"",
+        "7312 page e2 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n  - e4:\n    - text: New item\n    - e5 textbox \"New item\"\n  - e6:\n    - e7 checkbox \"Urgent\"\n    - text: Urgent\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":\n    - e11 ListPage.entries[0]: item 1\n    - e12 ListPage.entries[1]: item 2\n    - e13 ListPage.entries[2]: item 3\n    - e14 ListPage.entries[3]: item 4\n    - e15 ListPage.entries[4]: item 5\n    - e16 ListPage.entries[5]: item 6\n    - e17 ListPage.entries[6]: item 7\n    - e18 ListPage.entries[7]: item 8\n    - e19 ListPage.entries[8]: item 9\n    - e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 5,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 298,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e11",
+          "nodeMints": [
+            "e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 341,
+          "captureAfterClickMs": 321,
+          "liMintedBy": "node",
+          "liRef": "e12",
+          "nodeMints": [
+            "e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 275,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e13",
+          "nodeMints": [
+            "e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e14",
+          "nodeMints": [
+            "e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 255,
+          "liMintedBy": "node",
+          "liRef": "e15",
+          "nodeMints": [
+            "e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 277,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e16",
+          "nodeMints": [
+            "e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 265,
+          "liMintedBy": "node",
+          "liRef": "e17",
+          "nodeMints": [
+            "e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 275,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e18",
+          "nodeMints": [
+            "e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 278,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "e19",
+          "nodeMints": [
+            "e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e20",
+          "nodeMints": [
+            "e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e11]: item 1\n    - listitem [ref=e12]: item 2\n    - listitem [ref=e13]: item 3\n    - listitem [ref=e14]: item 4\n    - listitem [ref=e15]: item 5\n    - listitem [ref=e16]: item 6\n    - listitem [ref=e17]: item 7\n    - listitem [ref=e18]: item 8\n    - listitem [ref=e19]: item 9\n    - listitem [ref=e20]: item 10"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\"",
+        "e11 LI listitem \"\"",
+        "e12 LI listitem \"\"",
+        "e13 LI listitem \"\"",
+        "e14 LI listitem \"\"",
+        "e15 LI listitem \"\"",
+        "e16 LI listitem \"\"",
+        "e17 LI listitem \"\"",
+        "e18 LI listitem \"\"",
+        "e19 LI listitem \"\"",
+        "e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n    - e5 textbox \"New item\"\n    - e7 checkbox \"Urgent\"\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 617 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "mintsTail": [
+        "2061 node e1 BODY generic \"\"",
+        "2062 node e2 MAIN main \"\"",
+        "2062 node e3 H1 heading \"Groceries\"",
+        "2062 node e4 LABEL generic \"\"",
+        "2063 node e5 INPUT textbox \"New item\"",
+        "2063 node e6 LABEL generic \"\"",
+        "2063 node e7 INPUT checkbox \"Urgent\"",
+        "2064 node e8 BUTTON button \"Add item\"",
+        "2064 node e9 BUTTON button \"Clear\"",
+        "2065 node e10 UL list \"Items\"",
+        "2377 node e11 LI listitem \"\"",
+        "2731 node e12 LI listitem \"\"",
+        "3018 node e13 LI listitem \"\"",
+        "3301 node e14 LI listitem \"\"",
+        "3580 node e15 LI listitem \"\"",
+        "3867 node e16 LI listitem \"\"",
+        "4157 node e17 LI listitem \"\"",
+        "4444 node e18 LI listitem \"\"",
+        "4733 node e19 LI listitem \"\"",
+        "5017 node e20 LI listitem \"\"",
+        "6944 page e1 LI listitem \"\"",
+        "7313 page e2 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n  - e4:\n    - text: New item\n    - e5 textbox \"New item\"\n  - e6:\n    - e7 checkbox \"Urgent\"\n    - text: Urgent\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":\n    - e11 ListPage.entries[0]: item 1\n    - e12 ListPage.entries[1]: item 2\n    - e13 ListPage.entries[2]: item 3\n    - e14 ListPage.entries[3]: item 4\n    - e15 ListPage.entries[4]: item 5\n    - e16 ListPage.entries[5]: item 6\n    - e17 ListPage.entries[6]: item 7\n    - e18 ListPage.entries[7]: item 8\n    - e19 ListPage.entries[8]: item 9\n    - e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 6,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 299,
+          "captureAfterClickMs": 262,
+          "liMintedBy": "node",
+          "liRef": "e11",
+          "nodeMints": [
+            "e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 342,
+          "captureAfterClickMs": 324,
+          "liMintedBy": "node",
+          "liRef": "e12",
+          "nodeMints": [
+            "e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 264,
+          "liMintedBy": "node",
+          "liRef": "e13",
+          "nodeMints": [
+            "e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 276,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e14",
+          "nodeMints": [
+            "e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e15",
+          "nodeMints": [
+            "e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 278,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e16",
+          "nodeMints": [
+            "e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 265,
+          "liMintedBy": "node",
+          "liRef": "e17",
+          "nodeMints": [
+            "e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e18",
+          "nodeMints": [
+            "e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "e19",
+          "nodeMints": [
+            "e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 281,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e20",
+          "nodeMints": [
+            "e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e11]: item 1\n    - listitem [ref=e12]: item 2\n    - listitem [ref=e13]: item 3\n    - listitem [ref=e14]: item 4\n    - listitem [ref=e15]: item 5\n    - listitem [ref=e16]: item 6\n    - listitem [ref=e17]: item 7\n    - listitem [ref=e18]: item 8\n    - listitem [ref=e19]: item 9\n    - listitem [ref=e20]: item 10"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\"",
+        "e11 LI listitem \"\"",
+        "e12 LI listitem \"\"",
+        "e13 LI listitem \"\"",
+        "e14 LI listitem \"\"",
+        "e15 LI listitem \"\"",
+        "e16 LI listitem \"\"",
+        "e17 LI listitem \"\"",
+        "e18 LI listitem \"\"",
+        "e19 LI listitem \"\"",
+        "e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n    - e5 textbox \"New item\"\n    - e7 checkbox \"Urgent\"\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 617 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "mintsTail": [
+        "2064 node e1 BODY generic \"\"",
+        "2064 node e2 MAIN main \"\"",
+        "2065 node e3 H1 heading \"Groceries\"",
+        "2065 node e4 LABEL generic \"\"",
+        "2065 node e5 INPUT textbox \"New item\"",
+        "2066 node e6 LABEL generic \"\"",
+        "2066 node e7 INPUT checkbox \"Urgent\"",
+        "2066 node e8 BUTTON button \"Add item\"",
+        "2066 node e9 BUTTON button \"Clear\"",
+        "2068 node e10 UL list \"Items\"",
+        "2379 node e11 LI listitem \"\"",
+        "2734 node e12 LI listitem \"\"",
+        "3023 node e13 LI listitem \"\"",
+        "3311 node e14 LI listitem \"\"",
+        "3595 node e15 LI listitem \"\"",
+        "3886 node e16 LI listitem \"\"",
+        "4176 node e17 LI listitem \"\"",
+        "4460 node e18 LI listitem \"\"",
+        "4743 node e19 LI listitem \"\"",
+        "5038 node e20 LI listitem \"\"",
+        "6962 page e1 LI listitem \"\"",
+        "7334 page e2 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n  - e4:\n    - text: New item\n    - e5 textbox \"New item\"\n  - e6:\n    - e7 checkbox \"Urgent\"\n    - text: Urgent\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":\n    - e11 ListPage.entries[0]: item 1\n    - e12 ListPage.entries[1]: item 2\n    - e13 ListPage.entries[2]: item 3\n    - e14 ListPage.entries[3]: item 4\n    - e15 ListPage.entries[4]: item 5\n    - e16 ListPage.entries[5]: item 6\n    - e17 ListPage.entries[6]: item 7\n    - e18 ListPage.entries[7]: item 8\n    - e19 ListPage.entries[8]: item 9\n    - e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 7,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 289,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e11",
+          "nodeMints": [
+            "e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 353,
+          "captureAfterClickMs": 341,
+          "liMintedBy": "node",
+          "liRef": "e12",
+          "nodeMints": [
+            "e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e13",
+          "nodeMints": [
+            "e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e14",
+          "nodeMints": [
+            "e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 269,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e15",
+          "nodeMints": [
+            "e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e16",
+          "nodeMints": [
+            "e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e17",
+          "nodeMints": [
+            "e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e18",
+          "nodeMints": [
+            "e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e19",
+          "nodeMints": [
+            "e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e20",
+          "nodeMints": [
+            "e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e11]: item 1\n    - listitem [ref=e12]: item 2\n    - listitem [ref=e13]: item 3\n    - listitem [ref=e14]: item 4\n    - listitem [ref=e15]: item 5\n    - listitem [ref=e16]: item 6\n    - listitem [ref=e17]: item 7\n    - listitem [ref=e18]: item 8\n    - listitem [ref=e19]: item 9\n    - listitem [ref=e20]: item 10"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\"",
+        "e11 LI listitem \"\"",
+        "e12 LI listitem \"\"",
+        "e13 LI listitem \"\"",
+        "e14 LI listitem \"\"",
+        "e15 LI listitem \"\"",
+        "e16 LI listitem \"\"",
+        "e17 LI listitem \"\"",
+        "e18 LI listitem \"\"",
+        "e19 LI listitem \"\"",
+        "e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n    - e5 textbox \"New item\"\n    - e7 checkbox \"Urgent\"\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 617 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "mintsTail": [
+        "2053 node e1 BODY generic \"\"",
+        "2054 node e2 MAIN main \"\"",
+        "2054 node e3 H1 heading \"Groceries\"",
+        "2054 node e4 LABEL generic \"\"",
+        "2054 node e5 INPUT textbox \"New item\"",
+        "2054 node e6 LABEL generic \"\"",
+        "2055 node e7 INPUT checkbox \"Urgent\"",
+        "2055 node e8 BUTTON button \"Add item\"",
+        "2055 node e9 BUTTON button \"Clear\"",
+        "2056 node e10 UL list \"Items\"",
+        "2353 node e11 LI listitem \"\"",
+        "2718 node e12 LI listitem \"\"",
+        "3003 node e13 LI listitem \"\"",
+        "3287 node e14 LI listitem \"\"",
+        "3569 node e15 LI listitem \"\"",
+        "3853 node e16 LI listitem \"\"",
+        "4137 node e17 LI listitem \"\"",
+        "4419 node e18 LI listitem \"\"",
+        "4704 node e19 LI listitem \"\"",
+        "4994 node e20 LI listitem \"\"",
+        "6912 page e1 LI listitem \"\"",
+        "7283 page e2 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n  - e4:\n    - text: New item\n    - e5 textbox \"New item\"\n  - e6:\n    - e7 checkbox \"Urgent\"\n    - text: Urgent\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":\n    - e11 ListPage.entries[0]: item 1\n    - e12 ListPage.entries[1]: item 2\n    - e13 ListPage.entries[2]: item 3\n    - e14 ListPage.entries[3]: item 4\n    - e15 ListPage.entries[4]: item 5\n    - e16 ListPage.entries[5]: item 6\n    - e17 ListPage.entries[6]: item 7\n    - e18 ListPage.entries[7]: item 8\n    - e19 ListPage.entries[8]: item 9\n    - e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 8,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 298,
+          "captureAfterClickMs": 257,
+          "liMintedBy": "node",
+          "liRef": "e11",
+          "nodeMints": [
+            "e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 340,
+          "captureAfterClickMs": 326,
+          "liMintedBy": "node",
+          "liRef": "e12",
+          "nodeMints": [
+            "e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e13",
+          "nodeMints": [
+            "e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e14",
+          "nodeMints": [
+            "e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e15",
+          "nodeMints": [
+            "e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e16",
+          "nodeMints": [
+            "e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e17",
+          "nodeMints": [
+            "e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e18",
+          "nodeMints": [
+            "e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 269,
+          "captureAfterClickMs": 255,
+          "liMintedBy": "node",
+          "liRef": "e19",
+          "nodeMints": [
+            "e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 281,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e20",
+          "nodeMints": [
+            "e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e11]: item 1\n    - listitem [ref=e12]: item 2\n    - listitem [ref=e13]: item 3\n    - listitem [ref=e14]: item 4\n    - listitem [ref=e15]: item 5\n    - listitem [ref=e16]: item 6\n    - listitem [ref=e17]: item 7\n    - listitem [ref=e18]: item 8\n    - listitem [ref=e19]: item 9\n    - listitem [ref=e20]: item 10"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\"",
+        "e11 LI listitem \"\"",
+        "e12 LI listitem \"\"",
+        "e13 LI listitem \"\"",
+        "e14 LI listitem \"\"",
+        "e15 LI listitem \"\"",
+        "e16 LI listitem \"\"",
+        "e17 LI listitem \"\"",
+        "e18 LI listitem \"\"",
+        "e19 LI listitem \"\"",
+        "e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n    - e5 textbox \"New item\"\n    - e7 checkbox \"Urgent\"\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 617 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "mintsTail": [
+        "2059 node e1 BODY generic \"\"",
+        "2059 node e2 MAIN main \"\"",
+        "2060 node e3 H1 heading \"Groceries\"",
+        "2060 node e4 LABEL generic \"\"",
+        "2060 node e5 INPUT textbox \"New item\"",
+        "2061 node e6 LABEL generic \"\"",
+        "2061 node e7 INPUT checkbox \"Urgent\"",
+        "2061 node e8 BUTTON button \"Add item\"",
+        "2061 node e9 BUTTON button \"Clear\"",
+        "2063 node e10 UL list \"Items\"",
+        "2369 node e11 LI listitem \"\"",
+        "2722 node e12 LI listitem \"\"",
+        "3005 node e13 LI listitem \"\"",
+        "3290 node e14 LI listitem \"\"",
+        "3573 node e15 LI listitem \"\"",
+        "3854 node e16 LI listitem \"\"",
+        "4140 node e17 LI listitem \"\"",
+        "4424 node e18 LI listitem \"\"",
+        "4700 node e19 LI listitem \"\"",
+        "4991 node e20 LI listitem \"\"",
+        "6915 page e1 LI listitem \"\"",
+        "7279 page e2 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n  - e4:\n    - text: New item\n    - e5 textbox \"New item\"\n  - e6:\n    - e7 checkbox \"Urgent\"\n    - text: Urgent\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":\n    - e11 ListPage.entries[0]: item 1\n    - e12 ListPage.entries[1]: item 2\n    - e13 ListPage.entries[2]: item 3\n    - e14 ListPage.entries[3]: item 4\n    - e15 ListPage.entries[4]: item 5\n    - e16 ListPage.entries[5]: item 6\n    - e17 ListPage.entries[6]: item 7\n    - e18 ListPage.entries[7]: item 8\n    - e19 ListPage.entries[8]: item 9\n    - e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 9,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 296,
+          "captureAfterClickMs": 256,
+          "liMintedBy": "node",
+          "liRef": "e11",
+          "nodeMints": [
+            "e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 342,
+          "captureAfterClickMs": 325,
+          "liMintedBy": "node",
+          "liRef": "e12",
+          "nodeMints": [
+            "e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e13",
+          "nodeMints": [
+            "e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 261,
+          "liMintedBy": "node",
+          "liRef": "e14",
+          "nodeMints": [
+            "e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 277,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "e15",
+          "nodeMints": [
+            "e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e16",
+          "nodeMints": [
+            "e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e17",
+          "nodeMints": [
+            "e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e18",
+          "nodeMints": [
+            "e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "e19",
+          "nodeMints": [
+            "e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 272,
+          "captureAfterClickMs": 260,
+          "liMintedBy": "node",
+          "liRef": "e20",
+          "nodeMints": [
+            "e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e11]: item 1\n    - listitem [ref=e12]: item 2\n    - listitem [ref=e13]: item 3\n    - listitem [ref=e14]: item 4\n    - listitem [ref=e15]: item 5\n    - listitem [ref=e16]: item 6\n    - listitem [ref=e17]: item 7\n    - listitem [ref=e18]: item 8\n    - listitem [ref=e19]: item 9\n    - listitem [ref=e20]: item 10"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\"",
+        "e11 LI listitem \"\"",
+        "e12 LI listitem \"\"",
+        "e13 LI listitem \"\"",
+        "e14 LI listitem \"\"",
+        "e15 LI listitem \"\"",
+        "e16 LI listitem \"\"",
+        "e17 LI listitem \"\"",
+        "e18 LI listitem \"\"",
+        "e19 LI listitem \"\"",
+        "e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n    - e5 textbox \"New item\"\n    - e7 checkbox \"Urgent\"\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 617 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "mintsTail": [
+        "2067 node e1 BODY generic \"\"",
+        "2067 node e2 MAIN main \"\"",
+        "2068 node e3 H1 heading \"Groceries\"",
+        "2068 node e4 LABEL generic \"\"",
+        "2068 node e5 INPUT textbox \"New item\"",
+        "2069 node e6 LABEL generic \"\"",
+        "2069 node e7 INPUT checkbox \"Urgent\"",
+        "2069 node e8 BUTTON button \"Add item\"",
+        "2069 node e9 BUTTON button \"Clear\"",
+        "2071 node e10 UL list \"Items\"",
+        "2376 node e11 LI listitem \"\"",
+        "2731 node e12 LI listitem \"\"",
+        "3015 node e13 LI listitem \"\"",
+        "3301 node e14 LI listitem \"\"",
+        "3589 node e15 LI listitem \"\"",
+        "3874 node e16 LI listitem \"\"",
+        "4156 node e17 LI listitem \"\"",
+        "4440 node e18 LI listitem \"\"",
+        "4723 node e19 LI listitem \"\"",
+        "5006 node e20 LI listitem \"\"",
+        "6918 page e1 LI listitem \"\"",
+        "7287 page e2 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n  - e4:\n    - text: New item\n    - e5 textbox \"New item\"\n  - e6:\n    - e7 checkbox \"Urgent\"\n    - text: Urgent\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":\n    - e11 ListPage.entries[0]: item 1\n    - e12 ListPage.entries[1]: item 2\n    - e13 ListPage.entries[2]: item 3\n    - e14 ListPage.entries[3]: item 4\n    - e15 ListPage.entries[4]: item 5\n    - e16 ListPage.entries[5]: item 6\n    - e17 ListPage.entries[6]: item 7\n    - e18 ListPage.entries[7]: item 8\n    - e19 ListPage.entries[8]: item 9\n    - e20 ListPage.entries[9]: item 10",
+      "errors": []
+    },
+    {
+      "trial": 10,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 297,
+          "captureAfterClickMs": 257,
+          "liMintedBy": "node",
+          "liRef": "e11",
+          "nodeMints": [
+            "e11 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 340,
+          "captureAfterClickMs": 326,
+          "liMintedBy": "node",
+          "liRef": "e12",
+          "nodeMints": [
+            "e12 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": []
+        },
+        {
+          "k": 3,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e13",
+          "nodeMints": [
+            "e13 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 3,
+          "nodeDupes": []
+        },
+        {
+          "k": 4,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 257,
+          "liMintedBy": "node",
+          "liRef": "e14",
+          "nodeMints": [
+            "e14 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 4,
+          "nodeDupes": []
+        },
+        {
+          "k": 5,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "e15",
+          "nodeMints": [
+            "e15 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 5,
+          "nodeDupes": []
+        },
+        {
+          "k": 6,
+          "settled": true,
+          "settleMs": 273,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e16",
+          "nodeMints": [
+            "e16 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 6,
+          "nodeDupes": []
+        },
+        {
+          "k": 7,
+          "settled": true,
+          "settleMs": 274,
+          "captureAfterClickMs": 266,
+          "liMintedBy": "node",
+          "liRef": "e17",
+          "nodeMints": [
+            "e17 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 7,
+          "nodeDupes": []
+        },
+        {
+          "k": 8,
+          "settled": true,
+          "settleMs": 275,
+          "captureAfterClickMs": 258,
+          "liMintedBy": "node",
+          "liRef": "e18",
+          "nodeMints": [
+            "e18 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 8,
+          "nodeDupes": []
+        },
+        {
+          "k": 9,
+          "settled": true,
+          "settleMs": 275,
+          "captureAfterClickMs": 259,
+          "liMintedBy": "node",
+          "liRef": "e19",
+          "nodeMints": [
+            "e19 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 9,
+          "nodeDupes": []
+        },
+        {
+          "k": 10,
+          "settled": true,
+          "settleMs": 271,
+          "captureAfterClickMs": 257,
+          "liMintedBy": "node",
+          "liRef": "e20",
+          "nodeMints": [
+            "e20 LI listitem \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 10,
+          "nodeDupes": []
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e11]: item 1\n    - listitem [ref=e12]: item 2\n    - listitem [ref=e13]: item 3\n    - listitem [ref=e14]: item 4\n    - listitem [ref=e15]: item 5\n    - listitem [ref=e16]: item 6\n    - listitem [ref=e17]: item 7\n    - listitem [ref=e18]: item 8\n    - listitem [ref=e19]: item 9\n    - listitem [ref=e20]: item 10"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\"",
+        "e11 LI listitem \"\"",
+        "e12 LI listitem \"\"",
+        "e13 LI listitem \"\"",
+        "e14 LI listitem \"\"",
+        "e15 LI listitem \"\"",
+        "e16 LI listitem \"\"",
+        "e17 LI listitem \"\"",
+        "e18 LI listitem \"\"",
+        "e19 LI listitem \"\"",
+        "e20 LI listitem \"\""
+      ],
+      "agentSnapshot": {
+        "isError": false,
+        "dupes": [],
+        "mainLines": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n    - e5 textbox \"New item\"\n    - e7 checkbox \"Urgent\"\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":"
+      },
+      "inspectorLook": {
+        "look": "ok, 19 refs",
+        "capturePageState": "ok, 617 chars"
+      },
+      "agentCountItems": {
+        "isError": false,
+        "text": "{\"page_changed\":false,\"settled\":true,\"result\":10}"
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 10,
+        "itemsAfter": 11,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+        "itemsBefore": 11,
+        "itemsAfter": 12,
+        "landed": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        }
+      },
+      "mintsTail": [
+        "2073 node e1 BODY generic \"\"",
+        "2074 node e2 MAIN main \"\"",
+        "2074 node e3 H1 heading \"Groceries\"",
+        "2074 node e4 LABEL generic \"\"",
+        "2075 node e5 INPUT textbox \"New item\"",
+        "2075 node e6 LABEL generic \"\"",
+        "2075 node e7 INPUT checkbox \"Urgent\"",
+        "2075 node e8 BUTTON button \"Add item\"",
+        "2076 node e9 BUTTON button \"Clear\"",
+        "2077 node e10 UL list \"Items\"",
+        "2383 node e11 LI listitem \"\"",
+        "2736 node e12 LI listitem \"\"",
+        "3019 node e13 LI listitem \"\"",
+        "3300 node e14 LI listitem \"\"",
+        "3584 node e15 LI listitem \"\"",
+        "3868 node e16 LI listitem \"\"",
+        "4159 node e17 LI listitem \"\"",
+        "4443 node e18 LI listitem \"\"",
+        "4727 node e19 LI listitem \"\"",
+        "5008 node e20 LI listitem \"\"",
+        "6930 page e1 LI listitem \"\"",
+        "7300 page e2 LI listitem \"\""
+      ],
+      "agentSnapshotFull": "- e2 main:\n  - e3 heading \"Groceries\" [level=1]\n  - e4:\n    - text: New item\n    - e5 textbox \"New item\"\n  - e6:\n    - e7 checkbox \"Urgent\"\n    - text: Urgent\n  - e8 button \"Add item\" [active]\n  - e9 button \"Clear\"\n  - e10 list \"Items\":\n    - e11 ListPage.entries[0]: item 1\n    - e12 ListPage.entries[1]: item 2\n    - e13 ListPage.entries[2]: item 3\n    - e14 ListPage.entries[3]: item 4\n    - e15 ListPage.entries[4]: item 5\n    - e16 ListPage.entries[5]: item 6\n    - e17 ListPage.entries[6]: item 7\n    - e18 ListPage.entries[7]: item 8\n    - e19 ListPage.entries[8]: item 9\n    - e20 ListPage.entries[9]: item 10",
+      "errors": []
+    }
+  ]
+}

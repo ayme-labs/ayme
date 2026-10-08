@@ -1,0 +1,323 @@
+{
+  "mode": "node-first",
+  "variant": "plain",
+  "inspector": true,
+  "trials": [
+    {
+      "trial": 1,
+      "steps": [
+        {
+          "k": 1,
+          "settled": true,
+          "settleMs": 508,
+          "captureAfterClickMs": 480,
+          "liMintedBy": "page",
+          "liRef": "e495",
+          "liPageMintAfterClickMs": 377,
+          "nodeMints": [],
+          "pageMintsCount": 9,
+          "items": 1,
+          "nodeDupes": []
+        },
+        {
+          "k": 2,
+          "settled": true,
+          "settleMs": 270,
+          "captureAfterClickMs": 278,
+          "liMintedBy": "node",
+          "liRef": "e1",
+          "nodeMints": [
+            "e1 LI listitem \"\"",
+            "e3 BUTTON treeitem \"ListPage.entries[1]\"",
+            "e4 svg img \"\"",
+            "e5 path generic \"\"",
+            "e6 path generic \"\"",
+            "e7 SPAN generic \"\"",
+            "e8 SPAN generic \"\"",
+            "e9 SPAN generic \"\"",
+            "e10 SPAN generic \"\""
+          ],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "button \"On this page · 14\""
+              ],
+              "resolvesTo": "button \"On this page · 14\""
+            },
+            {
+              "ref": "e3",
+              "elements": [
+                "h1 \"Groceries\"",
+                "button[aria-label=ListPage.entries[1]] \"[1]ListItem\""
+              ],
+              "resolvesTo": "button[aria-label=ListPage.entries[1]] \"[1]ListItem\""
+            },
+            {
+              "ref": "e4",
+              "elements": [
+                "label \"New item\"",
+                "svg \"\""
+              ],
+              "resolvesTo": "svg \"\""
+            },
+            {
+              "ref": "e5",
+              "elements": [
+                "input \"\"",
+                "path \"\""
+              ],
+              "resolvesTo": "path \"\""
+            },
+            {
+              "ref": "e6",
+              "elements": [
+                "label \"Urgent\"",
+                "path \"\""
+              ],
+              "resolvesTo": "path \"\""
+            },
+            {
+              "ref": "e7",
+              "elements": [
+                "input \"\"",
+                "span \"[1]\""
+              ],
+              "resolvesTo": "span \"[1]\""
+            },
+            {
+              "ref": "e8",
+              "elements": [
+                "button \"Add item\"",
+                "span \"ListItem\""
+              ],
+              "resolvesTo": "span \"ListItem\""
+            },
+            {
+              "ref": "e9",
+              "elements": [
+                "button \"Clear\"",
+                "span \"\""
+              ],
+              "resolvesTo": "span \"\""
+            },
+            {
+              "ref": "e10",
+              "elements": [
+                "aside[aria-label=ayme] \"aymeThis browser has no WebMCP\"",
+                "span \"\""
+              ],
+              "resolvesTo": "span \"\""
+            }
+          ]
+        }
+      ],
+      "pageMintsAtLoad": 494,
+      "pageMaxRefAtLoad": 494,
+      "nodeMintsAtFirstCapture": 0,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinalDupLines": [
+        "- generic [ref=e1]:",
+        "- main [ref=e2]:",
+        "- heading \"Groceries\" [level=1] [ref=e3]:",
+        "- generic [ref=e4]:",
+        "- textbox \"New item\" [ref=e5]:",
+        "- generic [ref=e6]:",
+        "- checkbox \"Urgent\" [ref=e7]:",
+        "- button \"Add item\" [active] [ref=e8]:",
+        "- button \"Clear\" [ref=e9]:",
+        "- listitem [ref=e1]:",
+        "- complementary \"ayme\" [ref=e10]:",
+        "- button \"On this page · 14\" [expanded] [ref=e2]:",
+        "- treeitem \"ListPage.entries[1]\" [level=4] [ref=e3]:",
+        "- img [ref=e4]:",
+        "- generic [ref=e5]:",
+        "- generic [ref=e6]:",
+        "- generic [ref=e7]:",
+        "- generic [ref=e8]:",
+        "- generic [ref=e10]:",
+        "- generic [ref=e9]:"
+      ],
+      "nodeFinal": {
+        "dupes": [
+          {
+            "ref": "e1",
+            "elements": [
+              "body \"Groceries\n      New item \n    \"",
+              "li \"item 2\""
+            ],
+            "resolvesTo": "li \"item 2\""
+          },
+          {
+            "ref": "e2",
+            "elements": [
+              "main \"Groceries\n      New item \n    \"",
+              "button \"On this page · 14\""
+            ],
+            "resolvesTo": "button \"On this page · 14\""
+          },
+          {
+            "ref": "e3",
+            "elements": [
+              "h1 \"Groceries\"",
+              "button[aria-label=ListPage.entries[1]] \"[1]ListItem\""
+            ],
+            "resolvesTo": "button[aria-label=ListPage.entries[1]] \"[1]ListItem\""
+          },
+          {
+            "ref": "e4",
+            "elements": [
+              "label \"New item\"",
+              "svg \"\""
+            ],
+            "resolvesTo": "svg \"\""
+          },
+          {
+            "ref": "e5",
+            "elements": [
+              "input \"\"",
+              "path \"\""
+            ],
+            "resolvesTo": "path \"\""
+          },
+          {
+            "ref": "e6",
+            "elements": [
+              "label \"Urgent\"",
+              "path \"\""
+            ],
+            "resolvesTo": "path \"\""
+          },
+          {
+            "ref": "e7",
+            "elements": [
+              "input \"\"",
+              "span \"[1]\""
+            ],
+            "resolvesTo": "span \"[1]\""
+          },
+          {
+            "ref": "e8",
+            "elements": [
+              "button \"Add item\"",
+              "span \"ListItem\""
+            ],
+            "resolvesTo": "span \"ListItem\""
+          },
+          {
+            "ref": "e9",
+            "elements": [
+              "button \"Clear\"",
+              "span \"\""
+            ],
+            "resolvesTo": "span \"\""
+          },
+          {
+            "ref": "e10",
+            "elements": [
+              "aside[aria-label=ayme] \"aymeThis browser has no WebMCP\"",
+              "span \"\""
+            ],
+            "resolvesTo": "span \"\""
+          }
+        ],
+        "distilledMain": "  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n      - textbox \"New item\" [ref=e5]\n      - checkbox \"Urgent\" [ref=e7]\n    - button \"Add item\" [active] [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]:\n      - listitem [ref=e495]: item 1\n      - listitem [ref=e1]: item 2\n                  - listitem [ref=e225]:\n                  - listitem [ref=e232]:\n                  - listitem [ref=e239]:\n                  - listitem [ref=e246]:\n                  - listitem [ref=e253]:\n                  - listitem [ref=e260]:\n                  - listitem [ref=e267]:\n                  - listitem [ref=e274]:\n                  - listitem [ref=e281]:\n                  - listitem [ref=e288]:\n                  - listitem [ref=e295]:\n                  - listitem [ref=e302]:\n                  - listitem [ref=e309]:\n                  - listitem [ref=e316]:\n                  - listitem [ref=e323]:\n                  - listitem [ref=e330]:\n                  - listitem [ref=e337]:\n                  - listitem [ref=e344]:\n                  - listitem [ref=e351]:\n                  - listitem [ref=e358]:\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n            - button \"Clear\" [disabled] [ref=e493]"
+      },
+      "allNodeMints": [
+        "e1 LI listitem \"\"",
+        "e3 BUTTON treeitem \"ListPage.entries[1]\"",
+        "e4 svg img \"\"",
+        "e5 path generic \"\"",
+        "e6 path generic \"\"",
+        "e7 SPAN generic \"\"",
+        "e8 SPAN generic \"\"",
+        "e9 SPAN generic \"\"",
+        "e10 SPAN generic \"\""
+      ],
+      "agentSnapshot": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e1."
+      },
+      "inspectorLook": {
+        "look": "ok, 215 refs",
+        "capturePageState": "ok, 10747 chars"
+      },
+      "agentCountItems": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e1."
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "span \"ListItem\"",
+        "dup": true,
+        "controlBefore": "button \"ListPage.entries[1]\" aria-selected=false aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 2,
+        "itemsAfter": 2,
+        "clickLanded": {
+          "target": "span \"ListItem\"",
+          "control": "button role=treeitem \"ListPage.entries[1]\" aria-selected=false aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=treeitem \"ListPage.entries[1]\" aria-selected=false aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8 (from load)",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e1."
+      },
+      "mintsTail": [
+        "5085 page e537 svg img \"\"",
+        "5085 page e538 path generic \"\"",
+        "5085 page e539 rect generic \"\"",
+        "5085 page e540 SPAN generic \"\"",
+        "5085 page e541 SPAN generic \"\"",
+        "5085 page e542 P note \"Error\"",
+        "5090 page e543 SPAN generic \"\"",
+        "5545 page e544 DIV generic \"\"",
+        "5545 page e545 DIV generic \"\"",
+        "5545 page e546 DIV generic \"\"",
+        "5545 page e547 H3 heading \"ListPage.entries[1]\"",
+        "5545 page e548 DIV generic \"\"",
+        "5545 page e549 BUTTON button \"Open the ListItem page object model\"",
+        "5545 page e550 svg img \"\"",
+        "5545 page e551 path generic \"\"",
+        "5545 page e552 path generic \"\"",
+        "5545 page e553 SPAN generic \"\"",
+        "5545 page e554 svg img \"\"",
+        "5545 page e555 path generic \"\"",
+        "5545 page e556 SPAN generic \"\"",
+        "5546 page e557 SECTION region \"Actions\"",
+        "5546 page e558 H4 heading \"Actions · 1\"",
+        "5546 page e559 svg img \"\"",
+        "5546 page e560 path generic \"\"",
+        "5546 page e561 DIV generic \"\"",
+        "5546 page e562 FORM form \"mark\"",
+        "5546 page e563 DIV generic \"\"",
+        "5546 page e564 BUTTON button \"Show the arguments for mark\"",
+        "5546 page e565 svg img \"\"",
+        "5546 page e566 path generic \"\"",
+        "5546 page e567 svg img \"\"",
+        "5546 page e568 path generic \"\"",
+        "5546 page e569 SPAN generic \"\"",
+        "5546 page e570 SPAN generic \"\"",
+        "5546 page e571 BUTTON button \"Run\"",
+        "5546 page e572 P paragraph \"\"",
+        "5546 page e574 BUTTON button \"This object\"",
+        "5546 page e575 P paragraph \"\"",
+        "5550 page e576 svg img \"\"",
+        "5550 page e577 path generic \"\""
+      ],
+      "errors": []
+    }
+  ]
+}

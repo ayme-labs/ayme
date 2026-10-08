@@ -1,0 +1,14 @@
+[control] baseline: heap=12.5MB Nodes=51
+[control] 200 divs with payload attached: heap=88.9MB Nodes=251
+[control] after querying (each handle disposed at once): heap=105.7MB Nodes=696
+[control] divs removed from DOM: heap=29.4MB Nodes=296
+[held] baseline: heap=12.5MB Nodes=51
+[held] 200 divs with payload attached: heap=88.9MB Nodes=251
+[held] after querying (holding 200 handles): heap=105.7MB Nodes=696
+[held] divs removed from DOM: heap=105.7MB Nodes=696
+[held] handles disposed: heap=29.4MB Nodes=296
+[held-drop] baseline: heap=12.5MB Nodes=51
+[held-drop] 200 divs with payload attached: heap=88.9MB Nodes=251
+[held-drop] after querying (holding 200 handles): heap=105.7MB Nodes=696
+[held-drop] divs removed from DOM: heap=105.7MB Nodes=696
+[held-drop] handles dropped in Node, no dispose, node gc x3: heap=106.1MB Nodes=696

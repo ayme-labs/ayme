@@ -1,0 +1,82 @@
+[
+ {
+  "tool": "click",
+  "bindingDeliveredNodeMs": null,
+  "navigateEvent": 99.8,
+  "beforeunload": 99.9,
+  "answeredAt": 104.4,
+  "pagehide": 107.6
+ },
+ {
+  "tool": "navigate",
+  "bindingDeliveredNodeMs": 16.078459000000294,
+  "navigateEvent": 3.9,
+  "beforeunload": 4,
+  "answeredAt": 6.1,
+  "pagehide": 10.9
+ },
+ {
+  "tool": "click",
+  "bindingDeliveredNodeMs": null,
+  "navigateEvent": 88.7,
+  "beforeunload": 88.8,
+  "answeredAt": 93.3,
+  "pagehide": 96.4
+ },
+ {
+  "tool": "navigate",
+  "bindingDeliveredNodeMs": 15.379249999999956,
+  "navigateEvent": 3.7,
+  "beforeunload": 3.8,
+  "answeredAt": 5.9,
+  "pagehide": 10.8
+ },
+ {
+  "tool": "click",
+  "bindingDeliveredNodeMs": null,
+  "navigateEvent": 89.6,
+  "beforeunload": 89.7,
+  "answeredAt": 94.4,
+  "pagehide": 97.4
+ },
+ {
+  "tool": "navigate",
+  "bindingDeliveredNodeMs": 15.277957999999671,
+  "navigateEvent": 3.8,
+  "beforeunload": 3.9,
+  "answeredAt": 5.9,
+  "pagehide": 10.2
+ },
+ {
+  "tool": "click",
+  "bindingDeliveredNodeMs": null,
+  "navigateEvent": 94.5,
+  "beforeunload": 94.6,
+  "answeredAt": 99.1,
+  "pagehide": 102.1
+ },
+ {
+  "tool": "navigate",
+  "bindingDeliveredNodeMs": 15.403250000000298,
+  "navigateEvent": 3.6,
+  "beforeunload": 3.7,
+  "answeredAt": 5.7,
+  "pagehide": 10.7
+ },
+ {
+  "tool": "click",
+  "bindingDeliveredNodeMs": null,
+  "navigateEvent": 101.8,
+  "beforeunload": 102,
+  "answeredAt": 106.7,
+  "pagehide": 109.7
+ },
+ {
+  "tool": "navigate",
+  "bindingDeliveredNodeMs": 15.427625000000262,
+  "navigateEvent": 3.7,
+  "beforeunload": 3.8,
+  "answeredAt": 5.9,
+  "pagehide": 10.9
+ }
+]

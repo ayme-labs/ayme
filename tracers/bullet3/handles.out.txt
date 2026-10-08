@@ -1,0 +1,39 @@
+Info: New devbox available: 0.18.3 -> v0.18.4. Please run `devbox version update`.
+Info: Running script "node" on <ayme>
+Preparing pnpm@11.24.0 for immediate activation...
+1 handle toString: JSHandle@node
+1 h === querySelector('section[aria-label=Counter]'): true
+2 h === h2 in-page (both locator.elementHandle): true
+2 h === h3 in-page (page.$): true
+2 h === h2 in Node (object identity): false
+2b after Increment: section handle still === querySelector: true
+2b after Increment: output handle still same node: {"before":"0","now":"1","isConnected":true,"same":true}
+2b fresh locator.elementHandle() === old h: true
+3 after unmount h.evaluate(el => el.isConnected): false
+3 after unmount h.evaluate(el => el.getAttribute('aria-label')): Counter
+3 after unmount h.isVisible(): false
+3 after unmount h.textContent(): Count: 1IncrementCall Page Object
+3 after unmount h.click({timeout:1000}) THREW: elementHandle.click: Element is not attached to the DOM | Call log: |   - attempting click action
+3 after remount old h === new section: false
+3 after remount old h isConnected: false
+4 after reload hr.evaluate(el => el.isConnected) THREW: elementHandle.evaluate: Execution context was destroyed, most likely because of a navigation
+4 after reload page.evaluate(el => el, hr) THREW: page.evaluate: Protocol error (DOM.describeNode): Cannot find context with specified id
+4 after reload hr.isVisible(): false
+4 after reload hr.dispose(): ok
+5 after dispose hd.evaluate(el => el.isConnected) THREW: elementHandle.evaluate: Target page, context or browser has been closed
+5 after dispose page.evaluate(el => !!el, hd) THREW: page.evaluate: arg.handles[0]: no object with guid handle@0cec70d9dd6a38120cc9ffcae992cb8e
+5 after dispose hd.dispose() again: ok
+5 after dispose hd.isVisible() THREW: elementHandle.isVisible: Target page, context or browser has been closed
+6 baseline node rss / heapUsed: ["147.08 MB","43.95 MB"]
+6 baseline renderer: {"JSHeapUsedSize":"13.36 MB","Nodes":51,"perfMemoryUsed":"24.80 MB"}
+6 time to create 500 (ms): 852
+6 holding 500 node rss / heapUsed: ["173.44 MB","46.16 MB"]
+6 holding 500 renderer: {"JSHeapUsedSize":"30.25 MB","Nodes":296,"perfMemoryUsed":"24.80 MB"}
+6 all 500 === each other in-page: true
+6 time to dispose 500 (ms): 62
+6 after dispose node rss / heapUsed: ["173.61 MB","45.45 MB"]
+6 after dispose renderer: {"JSHeapUsedSize":"30.25 MB","Nodes":296,"perfMemoryUsed":"24.80 MB"}
+6b created big divs: 500
+6b with 500 big divs attached + handles renderer: {"JSHeapUsedSize":"221.98 MB","Nodes":1796,"perfMemoryUsed":"24.80 MB"}
+6b big divs removed, handles held renderer: {"JSHeapUsedSize":"221.98 MB","Nodes":1796,"perfMemoryUsed":"24.80 MB"}
+6b handles disposed renderer: {"JSHeapUsedSize":"221.98 MB","Nodes":1796,"perfMemoryUsed":"24.80 MB"}

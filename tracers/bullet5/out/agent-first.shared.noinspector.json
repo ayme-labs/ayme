@@ -1,0 +1,3417 @@
+{
+  "mode": "agent-first",
+  "variant": "shared",
+  "inspector": false,
+  "trials": [
+    {
+      "trial": 1,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e1",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 1,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            }
+          ]
+        },
+        {
+          "k": 2,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "page",
+          "liRef": "e2",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 3,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 4,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 5,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 6,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 7,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 8,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 9,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 10,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [
+          {
+            "ref": "e1",
+            "elements": [
+              "body \"Groceries\n      New item \n    \"",
+              "li \"item 1\""
+            ],
+            "resolvesTo": "li \"item 1\""
+          },
+          {
+            "ref": "e2",
+            "elements": [
+              "main \"Groceries\n      New item \n    \"",
+              "li \"item 2\""
+            ],
+            "resolvesTo": "li \"item 2\""
+          }
+        ],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e1]: item 1\n    - listitem [ref=e2]: item 2"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\""
+      ],
+      "agentSnapshot": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "inspectorLook": {
+        "look": "ok, 10 refs",
+        "capturePageState": "ok, 325 chars"
+      },
+      "agentCountItems": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 2,
+        "itemsAfter": 3,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8 (from load)",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "mintsTail": [
+        "2075 node e1 BODY generic \"\"",
+        "2076 node e2 MAIN main \"\"",
+        "2076 node e3 H1 heading \"Groceries\"",
+        "2076 node e4 LABEL generic \"\"",
+        "2077 node e5 INPUT textbox \"New item\"",
+        "2077 node e6 LABEL generic \"\"",
+        "2077 node e7 INPUT checkbox \"Urgent\"",
+        "2078 node e8 BUTTON button \"Add item\"",
+        "2078 node e9 BUTTON button \"Clear\"",
+        "2079 node e10 UL list \"Items\"",
+        "2466 page e1 LI listitem \"\"",
+        "2810 page e2 LI listitem \"\"",
+        "4551 page e3 LI listitem \"\""
+      ],
+      "errors": []
+    },
+    {
+      "trial": 2,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e1",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 1,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            }
+          ]
+        },
+        {
+          "k": 2,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "page",
+          "liRef": "e2",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 3,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 4,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 5,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 6,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 7,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 8,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 9,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 10,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [
+          {
+            "ref": "e1",
+            "elements": [
+              "body \"Groceries\n      New item \n    \"",
+              "li \"item 1\""
+            ],
+            "resolvesTo": "li \"item 1\""
+          },
+          {
+            "ref": "e2",
+            "elements": [
+              "main \"Groceries\n      New item \n    \"",
+              "li \"item 2\""
+            ],
+            "resolvesTo": "li \"item 2\""
+          }
+        ],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e1]: item 1\n    - listitem [ref=e2]: item 2"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\""
+      ],
+      "agentSnapshot": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "inspectorLook": {
+        "look": "ok, 10 refs",
+        "capturePageState": "ok, 325 chars"
+      },
+      "agentCountItems": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 2,
+        "itemsAfter": 3,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8 (from load)",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "mintsTail": [
+        "2086 node e1 BODY generic \"\"",
+        "2087 node e2 MAIN main \"\"",
+        "2087 node e3 H1 heading \"Groceries\"",
+        "2088 node e4 LABEL generic \"\"",
+        "2088 node e5 INPUT textbox \"New item\"",
+        "2088 node e6 LABEL generic \"\"",
+        "2088 node e7 INPUT checkbox \"Urgent\"",
+        "2089 node e8 BUTTON button \"Add item\"",
+        "2089 node e9 BUTTON button \"Clear\"",
+        "2090 node e10 UL list \"Items\"",
+        "2466 page e1 LI listitem \"\"",
+        "2803 page e2 LI listitem \"\"",
+        "4541 page e3 LI listitem \"\""
+      ],
+      "errors": []
+    },
+    {
+      "trial": 3,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e1",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 1,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            }
+          ]
+        },
+        {
+          "k": 2,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "page",
+          "liRef": "e2",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 3,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 4,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 5,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 6,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 7,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 8,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 9,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 10,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [
+          {
+            "ref": "e1",
+            "elements": [
+              "body \"Groceries\n      New item \n    \"",
+              "li \"item 1\""
+            ],
+            "resolvesTo": "li \"item 1\""
+          },
+          {
+            "ref": "e2",
+            "elements": [
+              "main \"Groceries\n      New item \n    \"",
+              "li \"item 2\""
+            ],
+            "resolvesTo": "li \"item 2\""
+          }
+        ],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e1]: item 1\n    - listitem [ref=e2]: item 2"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\""
+      ],
+      "agentSnapshot": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "inspectorLook": {
+        "look": "ok, 10 refs",
+        "capturePageState": "ok, 325 chars"
+      },
+      "agentCountItems": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 2,
+        "itemsAfter": 3,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8 (from load)",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "mintsTail": [
+        "2065 node e1 BODY generic \"\"",
+        "2066 node e2 MAIN main \"\"",
+        "2066 node e3 H1 heading \"Groceries\"",
+        "2067 node e4 LABEL generic \"\"",
+        "2067 node e5 INPUT textbox \"New item\"",
+        "2067 node e6 LABEL generic \"\"",
+        "2067 node e7 INPUT checkbox \"Urgent\"",
+        "2068 node e8 BUTTON button \"Add item\"",
+        "2068 node e9 BUTTON button \"Clear\"",
+        "2069 node e10 UL list \"Items\"",
+        "2458 page e1 LI listitem \"\"",
+        "2802 page e2 LI listitem \"\"",
+        "4521 page e3 LI listitem \"\""
+      ],
+      "errors": []
+    },
+    {
+      "trial": 4,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e1",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 1,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            }
+          ]
+        },
+        {
+          "k": 2,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "page",
+          "liRef": "e2",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 3,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 4,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 5,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 6,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 7,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 8,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 9,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 10,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [
+          {
+            "ref": "e1",
+            "elements": [
+              "body \"Groceries\n      New item \n    \"",
+              "li \"item 1\""
+            ],
+            "resolvesTo": "li \"item 1\""
+          },
+          {
+            "ref": "e2",
+            "elements": [
+              "main \"Groceries\n      New item \n    \"",
+              "li \"item 2\""
+            ],
+            "resolvesTo": "li \"item 2\""
+          }
+        ],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e1]: item 1\n    - listitem [ref=e2]: item 2"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\""
+      ],
+      "agentSnapshot": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "inspectorLook": {
+        "look": "ok, 10 refs",
+        "capturePageState": "ok, 325 chars"
+      },
+      "agentCountItems": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 2,
+        "itemsAfter": 3,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8 (from load)",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "mintsTail": [
+        "2067 node e1 BODY generic \"\"",
+        "2068 node e2 MAIN main \"\"",
+        "2068 node e3 H1 heading \"Groceries\"",
+        "2068 node e4 LABEL generic \"\"",
+        "2069 node e5 INPUT textbox \"New item\"",
+        "2069 node e6 LABEL generic \"\"",
+        "2069 node e7 INPUT checkbox \"Urgent\"",
+        "2069 node e8 BUTTON button \"Add item\"",
+        "2070 node e9 BUTTON button \"Clear\"",
+        "2071 node e10 UL list \"Items\"",
+        "2454 page e1 LI listitem \"\"",
+        "2793 page e2 LI listitem \"\"",
+        "4525 page e3 LI listitem \"\""
+      ],
+      "errors": []
+    },
+    {
+      "trial": 5,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e1",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 1,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            }
+          ]
+        },
+        {
+          "k": 2,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "page",
+          "liRef": "e2",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 3,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 4,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 5,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 6,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 7,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 8,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 9,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 10,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [
+          {
+            "ref": "e1",
+            "elements": [
+              "body \"Groceries\n      New item \n    \"",
+              "li \"item 1\""
+            ],
+            "resolvesTo": "li \"item 1\""
+          },
+          {
+            "ref": "e2",
+            "elements": [
+              "main \"Groceries\n      New item \n    \"",
+              "li \"item 2\""
+            ],
+            "resolvesTo": "li \"item 2\""
+          }
+        ],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e1]: item 1\n    - listitem [ref=e2]: item 2"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\""
+      ],
+      "agentSnapshot": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "inspectorLook": {
+        "look": "ok, 10 refs",
+        "capturePageState": "ok, 325 chars"
+      },
+      "agentCountItems": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 2,
+        "itemsAfter": 3,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8 (from load)",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "mintsTail": [
+        "2062 node e1 BODY generic \"\"",
+        "2063 node e2 MAIN main \"\"",
+        "2063 node e3 H1 heading \"Groceries\"",
+        "2064 node e4 LABEL generic \"\"",
+        "2064 node e5 INPUT textbox \"New item\"",
+        "2064 node e6 LABEL generic \"\"",
+        "2064 node e7 INPUT checkbox \"Urgent\"",
+        "2065 node e8 BUTTON button \"Add item\"",
+        "2065 node e9 BUTTON button \"Clear\"",
+        "2067 node e10 UL list \"Items\"",
+        "2455 page e1 LI listitem \"\"",
+        "2795 page e2 LI listitem \"\"",
+        "4532 page e3 LI listitem \"\""
+      ],
+      "errors": []
+    },
+    {
+      "trial": 6,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e1",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 1,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            }
+          ]
+        },
+        {
+          "k": 2,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "page",
+          "liRef": "e2",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 3,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 4,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 5,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 6,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 7,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 8,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 9,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 10,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [
+          {
+            "ref": "e1",
+            "elements": [
+              "body \"Groceries\n      New item \n    \"",
+              "li \"item 1\""
+            ],
+            "resolvesTo": "li \"item 1\""
+          },
+          {
+            "ref": "e2",
+            "elements": [
+              "main \"Groceries\n      New item \n    \"",
+              "li \"item 2\""
+            ],
+            "resolvesTo": "li \"item 2\""
+          }
+        ],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e1]: item 1\n    - listitem [ref=e2]: item 2"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\""
+      ],
+      "agentSnapshot": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "inspectorLook": {
+        "look": "ok, 10 refs",
+        "capturePageState": "ok, 325 chars"
+      },
+      "agentCountItems": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 2,
+        "itemsAfter": 3,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8 (from load)",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "mintsTail": [
+        "2067 node e1 BODY generic \"\"",
+        "2068 node e2 MAIN main \"\"",
+        "2068 node e3 H1 heading \"Groceries\"",
+        "2069 node e4 LABEL generic \"\"",
+        "2069 node e5 INPUT textbox \"New item\"",
+        "2069 node e6 LABEL generic \"\"",
+        "2069 node e7 INPUT checkbox \"Urgent\"",
+        "2070 node e8 BUTTON button \"Add item\"",
+        "2070 node e9 BUTTON button \"Clear\"",
+        "2072 node e10 UL list \"Items\"",
+        "2455 page e1 LI listitem \"\"",
+        "2793 page e2 LI listitem \"\"",
+        "4530 page e3 LI listitem \"\""
+      ],
+      "errors": []
+    },
+    {
+      "trial": 7,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e1",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 1,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            }
+          ]
+        },
+        {
+          "k": 2,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "page",
+          "liRef": "e2",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 3,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 4,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 5,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 6,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 7,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 8,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 9,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 10,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [
+          {
+            "ref": "e1",
+            "elements": [
+              "body \"Groceries\n      New item \n    \"",
+              "li \"item 1\""
+            ],
+            "resolvesTo": "li \"item 1\""
+          },
+          {
+            "ref": "e2",
+            "elements": [
+              "main \"Groceries\n      New item \n    \"",
+              "li \"item 2\""
+            ],
+            "resolvesTo": "li \"item 2\""
+          }
+        ],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e1]: item 1\n    - listitem [ref=e2]: item 2"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\""
+      ],
+      "agentSnapshot": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "inspectorLook": {
+        "look": "ok, 10 refs",
+        "capturePageState": "ok, 325 chars"
+      },
+      "agentCountItems": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 2,
+        "itemsAfter": 3,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8 (from load)",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "mintsTail": [
+        "2061 node e1 BODY generic \"\"",
+        "2062 node e2 MAIN main \"\"",
+        "2063 node e3 H1 heading \"Groceries\"",
+        "2063 node e4 LABEL generic \"\"",
+        "2063 node e5 INPUT textbox \"New item\"",
+        "2064 node e6 LABEL generic \"\"",
+        "2064 node e7 INPUT checkbox \"Urgent\"",
+        "2064 node e8 BUTTON button \"Add item\"",
+        "2064 node e9 BUTTON button \"Clear\"",
+        "2066 node e10 UL list \"Items\"",
+        "2451 page e1 LI listitem \"\"",
+        "2792 page e2 LI listitem \"\"",
+        "4525 page e3 LI listitem \"\""
+      ],
+      "errors": []
+    },
+    {
+      "trial": 8,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e1",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 1,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            }
+          ]
+        },
+        {
+          "k": 2,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "page",
+          "liRef": "e2",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 3,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 4,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 5,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 6,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 7,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 8,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 9,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 10,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [
+          {
+            "ref": "e1",
+            "elements": [
+              "body \"Groceries\n      New item \n    \"",
+              "li \"item 1\""
+            ],
+            "resolvesTo": "li \"item 1\""
+          },
+          {
+            "ref": "e2",
+            "elements": [
+              "main \"Groceries\n      New item \n    \"",
+              "li \"item 2\""
+            ],
+            "resolvesTo": "li \"item 2\""
+          }
+        ],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e1]: item 1\n    - listitem [ref=e2]: item 2"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\""
+      ],
+      "agentSnapshot": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "inspectorLook": {
+        "look": "ok, 10 refs",
+        "capturePageState": "ok, 325 chars"
+      },
+      "agentCountItems": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 2,
+        "itemsAfter": 3,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8 (from load)",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "mintsTail": [
+        "2063 node e1 BODY generic \"\"",
+        "2064 node e2 MAIN main \"\"",
+        "2064 node e3 H1 heading \"Groceries\"",
+        "2064 node e4 LABEL generic \"\"",
+        "2065 node e5 INPUT textbox \"New item\"",
+        "2065 node e6 LABEL generic \"\"",
+        "2065 node e7 INPUT checkbox \"Urgent\"",
+        "2066 node e8 BUTTON button \"Add item\"",
+        "2066 node e9 BUTTON button \"Clear\"",
+        "2067 node e10 UL list \"Items\"",
+        "2457 page e1 LI listitem \"\"",
+        "2799 page e2 LI listitem \"\"",
+        "4533 page e3 LI listitem \"\""
+      ],
+      "errors": []
+    },
+    {
+      "trial": 9,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e1",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 1,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            }
+          ]
+        },
+        {
+          "k": 2,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "page",
+          "liRef": "e2",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 3,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 4,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 5,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 6,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 7,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 8,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 9,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 10,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [
+          {
+            "ref": "e1",
+            "elements": [
+              "body \"Groceries\n      New item \n    \"",
+              "li \"item 1\""
+            ],
+            "resolvesTo": "li \"item 1\""
+          },
+          {
+            "ref": "e2",
+            "elements": [
+              "main \"Groceries\n      New item \n    \"",
+              "li \"item 2\""
+            ],
+            "resolvesTo": "li \"item 2\""
+          }
+        ],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e1]: item 1\n    - listitem [ref=e2]: item 2"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\""
+      ],
+      "agentSnapshot": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "inspectorLook": {
+        "look": "ok, 10 refs",
+        "capturePageState": "ok, 325 chars"
+      },
+      "agentCountItems": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 2,
+        "itemsAfter": 3,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8 (from load)",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "mintsTail": [
+        "2070 node e1 BODY generic \"\"",
+        "2070 node e2 MAIN main \"\"",
+        "2071 node e3 H1 heading \"Groceries\"",
+        "2071 node e4 LABEL generic \"\"",
+        "2071 node e5 INPUT textbox \"New item\"",
+        "2072 node e6 LABEL generic \"\"",
+        "2072 node e7 INPUT checkbox \"Urgent\"",
+        "2072 node e8 BUTTON button \"Add item\"",
+        "2072 node e9 BUTTON button \"Clear\"",
+        "2074 node e10 UL list \"Items\"",
+        "2457 page e1 LI listitem \"\"",
+        "2779 page e2 LI listitem \"\"",
+        "4517 page e3 LI listitem \"\""
+      ],
+      "errors": []
+    },
+    {
+      "trial": 10,
+      "steps": [
+        {
+          "k": 1,
+          "liMintedBy": "page",
+          "liRef": "e1",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 1,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            }
+          ]
+        },
+        {
+          "k": 2,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "page",
+          "liRef": "e2",
+          "nodeMints": [],
+          "pageMintsCount": 1,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 3,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 4,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 5,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 6,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 7,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 8,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 9,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        },
+        {
+          "k": 10,
+          "agentAddError": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2.",
+          "liMintedBy": "none",
+          "nodeMints": [],
+          "pageMintsCount": 0,
+          "items": 2,
+          "nodeDupes": [
+            {
+              "ref": "e1",
+              "elements": [
+                "body \"Groceries\n      New item \n    \"",
+                "li \"item 1\""
+              ],
+              "resolvesTo": "li \"item 1\""
+            },
+            {
+              "ref": "e2",
+              "elements": [
+                "main \"Groceries\n      New item \n    \"",
+                "li \"item 2\""
+              ],
+              "resolvesTo": "li \"item 2\""
+            }
+          ]
+        }
+      ],
+      "pageMintsAtLoad": 0,
+      "pageMaxRefAtLoad": 0,
+      "nodeMintsAtFirstCapture": 10,
+      "nodeMintsInFinalCapture": [],
+      "nodeFinal": {
+        "dupes": [
+          {
+            "ref": "e1",
+            "elements": [
+              "body \"Groceries\n      New item \n    \"",
+              "li \"item 1\""
+            ],
+            "resolvesTo": "li \"item 1\""
+          },
+          {
+            "ref": "e2",
+            "elements": [
+              "main \"Groceries\n      New item \n    \"",
+              "li \"item 2\""
+            ],
+            "resolvesTo": "li \"item 2\""
+          }
+        ],
+        "distilledMain": "- main [ref=e2]:\n  - heading \"Groceries\" [level=1] [ref=e3]\n    - textbox \"New item\" [ref=e5]\n    - checkbox \"Urgent\" [ref=e7]\n  - button \"Add item\" [active] [ref=e8]\n  - button \"Clear\" [ref=e9]\n  - list \"Items\" [ref=e10]:\n    - listitem [ref=e1]: item 1\n    - listitem [ref=e2]: item 2"
+      },
+      "allNodeMints": [
+        "e1 BODY generic \"\"",
+        "e2 MAIN main \"\"",
+        "e3 H1 heading \"Groceries\"",
+        "e4 LABEL generic \"\"",
+        "e5 INPUT textbox \"New item\"",
+        "e6 LABEL generic \"\"",
+        "e7 INPUT checkbox \"Urgent\"",
+        "e8 BUTTON button \"Add item\"",
+        "e9 BUTTON button \"Clear\"",
+        "e10 UL list \"Items\""
+      ],
+      "agentSnapshot": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "inspectorLook": {
+        "look": "ok, 10 refs",
+        "capturePageState": "ok, 325 chars"
+      },
+      "agentCountItems": {
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "nodeClick": {
+        "ref": "e8",
+        "resolvesTo": "button \"Add item\"",
+        "dup": false,
+        "controlBefore": "button \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null aria-current=null",
+        "itemsBefore": 2,
+        "itemsAfter": 3,
+        "clickLanded": {
+          "target": "button \"Add item\"",
+          "control": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+        },
+        "controlAfter": "button role=null \"Add item\" aria-selected=null aria-pressed=null aria-expanded=null"
+      },
+      "agentClick": {
+        "ref": "e8 (from load)",
+        "isError": true,
+        "text": "RuntimeStateError: The page capture gave more than one node the Structural Ref e2."
+      },
+      "mintsTail": [
+        "2055 node e1 BODY generic \"\"",
+        "2056 node e2 MAIN main \"\"",
+        "2057 node e3 H1 heading \"Groceries\"",
+        "2057 node e4 LABEL generic \"\"",
+        "2057 node e5 INPUT textbox \"New item\"",
+        "2057 node e6 LABEL generic \"\"",
+        "2058 node e7 INPUT checkbox \"Urgent\"",
+        "2058 node e8 BUTTON button \"Add item\"",
+        "2058 node e9 BUTTON button \"Clear\"",
+        "2060 node e10 UL list \"Items\"",
+        "2441 page e1 LI listitem \"\"",
+        "2764 page e2 LI listitem \"\"",
+        "4514 page e3 LI listitem \"\""
+      ],
+      "errors": []
+    }
+  ]
+}

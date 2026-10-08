@@ -1,0 +1,355 @@
+{
+  "tools": [
+    "ayme_connect",
+    "ayme_list_tools",
+    "ayme_call",
+    "snapshot",
+    "click",
+    "hover",
+    "type",
+    "fill",
+    "check",
+    "uncheck",
+    "select_option",
+    "fill_form",
+    "press_key",
+    "generate_locator",
+    "screenshot",
+    "navigate",
+    "navigate_back",
+    "navigate_forward",
+    "reload",
+    "mark_element",
+    "ListPage.addItem",
+    "ListPage.countItems",
+    "ListPage.clear",
+    "Inspector.open",
+    "Inspector.collapse",
+    "Inspector.tool",
+    "Inspector.shell.resizeBy",
+    "Inspector.header.collapse",
+    "Inspector.header.dragBy",
+    "Inspector.header.dropAt",
+    "Inspector.navigator.showLens",
+    "Inspector.navigator.search",
+    "Inspector.navigator.model.togglePane",
+    "Inspector.navigator.model.dragDivider",
+    "Inspector.runs.showAll",
+    "Inspector.runs.showSelection",
+    "Inspector.runs.clear",
+    "Inspector.structure.memberOf",
+    "Inspector.structure.pick",
+    "goal"
+  ],
+  "clickSchema": {
+    "type": "object",
+    "properties": {
+      "target": {
+        "type": "string",
+        "description": "A Structural Ref from the page snapshot, or a selector that matches exactly one element."
+      },
+      "doubleClick": {
+        "type": "boolean",
+        "description": "Double-click instead; false when omitted."
+      },
+      "button": {
+        "type": "string",
+        "enum": [
+          "left",
+          "right",
+          "middle"
+        ],
+        "description": "Button to click; left when omitted."
+      },
+      "modifiers": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "Alt",
+            "Control",
+            "ControlOrMeta",
+            "Meta",
+            "Shift"
+          ]
+        },
+        "description": "Modifier keys to hold during the click."
+      }
+    },
+    "required": [
+      "target"
+    ],
+    "additionalProperties": false
+  },
+  "snapshotSchema": {
+    "type": "object",
+    "properties": {
+      "names": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  },
+  "addItemSchema": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "text"
+    ],
+    "additionalProperties": false
+  },
+  "mints": 494,
+  "mintsBy": {
+    "page": 494
+  },
+  "maxPageRef": 494,
+  "stackSample": [
+    "page e1     at HTMLBodyElement.set (<anonymous>:8316:21) |     at computeAriaRef (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11443:20) |     at toAriaNode (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11482:2) |     at visit (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11367:35) |     at buildAriaTree (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11413:3)",
+    "page e2     at HTMLElement.set (<anonymous>:8316:21) |     at computeAriaRef (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11443:20) |     at toAriaNode (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11482:2) |     at visit (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11367:35) |     at processElement (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11395:100)",
+    "page e3     at HTMLHeadingElement.set (<anonymous>:8316:21) |     at computeAriaRef (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11443:20) |     at toAriaNode (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11482:2) |     at visit (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11367:35) |     at processElement (http://127.0.0.1:4791/@fs<ayme>/packages/ayme/dist/runtime-CzbDAjJI.mjs:11395:100)"
+  ],
+  "snapshot": "{\"structure\":\"- e1 [active]:\\n  - e2 main:\\n    - e3 heading \\\"Groceries\\\" [level=1]\\n    - e4:\\n      - text: New item\\n      - e5 textbox \\\"New item\\\"\\n    - e6:\\n      - e7 checkbox \\\"Urgent\\\"\\n      - text: Urgent\\n    - e8 button \\\"Add item\\\"\\n    - e9 button \\\"Clear\\\"\\n    - e432 list \\\"Items\\\"\\n  - e10 complementary \\\"ayme\\\":\\n    - e11 separator \\\"Resize from the left edge\\\"\\n    - e12 separator \\\"Resize from the right edge\\\"\\n    - e13 separator \\\"Resize from the top edge\\\"\\n    - e14 separator \\\"Resize from the bottom edge\\\"\\n    - e15 separator \\\"Resize from the top-left corner\\\"\\n    - e16 separator \\\"Resize from the top-right corner\\\"\\n    - e17 separator \\\"Resize from the bottom-left corner\\\"\\n    - e18 separator \\\"Resize from the bottom-right corner\\\"\\n    - e19:\\n      - e20:\\n        - e30 heading \\\"ayme\\\" [level=2]\\n        - e31 button \\\"Theme: System. Switch to Light.\\\"\\n        - e34 button \\\"Layout: Floating\\\"\\n        - e40 button \\\"Collapse inspector\\\" [expanded]\\n      - e42 status \\\"WebMCP publication\\\": \\\"Waiting for WebMCP: agents can call these tools once it's ready.\\\"\\n      - e43:\\n        - e44:\\n          - e45 navigation \\\"Navigator\\\":\\n            - e46:\\n              - e51 searchbox \\\"Search page objects, actions, members and refs\\\"\\n              - e52 group \\\"Lens\\\":\\n                - e53 button \\\"Model\\\" [pressed]\\n                - e54 button \\\"Structure\\\"\\n                - e55 button \\\"Tools\\\"\\n              - e56 group \\\"Legend\\\":\\n                - e57: 12 live\\n                - e59: 8 not on page\\n                - e61: 206 refs\\n            - e63:\\n              - e64 region \\\"On this page\\\":\\n                - e65 button \\\"On this page · 12\\\" [expanded]\\n                - e69 tree \\\"Page objects\\\":\\n                  - e70 treeitem \\\"Page /\\\" [selected] [level=1]:\\n                    - e74: /\\n                    - e75: \\\"127.0.0.1:4791\\\"\\n                  - e76 treeitem \\\"ListPage\\\" [level=2]:\\n                    - e81: page\\n                  - e83 treeitem \\\"ListPage.entries\\\" [level=3]:\\n                    - e88: entries\\n                    - e439: \\\"ListItem[0]\\\"\\n                    - e89: Not on page\\n                  - e90 treeitem \\\"Inspector\\\" [level=2]:\\n                    - e95: page\\n                  - e97 treeitem \\\"Inspector.shell\\\" [level=3]:\\n                    - e101: shell\\n                    - e102: PanelShell\\n                  - e104 treeitem \\\"Inspector.header\\\" [level=3]:\\n                    - e108: header\\n                    - e109: InspectorHeader\\n                  - e111 treeitem \\\"Inspector.header.themeSwitch\\\" [level=4]:\\n                    - e115: themeSwitch\\n                    - e444: ThemeSwitch\\n                    - e116: Not on page\\n                  - e117 treeitem \\\"Inspector.header.layoutMenu\\\" [level=4]:\\n                    - e121: layoutMenu\\n                    - e446: LayoutMenu\\n                    - e122: Not on page\\n                  - e123 treeitem \\\"Inspector.webMcpStatus\\\" [level=3]:\\n                    - e127: webMcpStatus\\n                    - e128: WebMcpStatus\\n                  - e130 treeitem \\\"Inspector.logo\\\" [level=3]:\\n                    - e134: logo\\n                    - e135: CollapsedLogo\\n                    - e136: Not on page\\n                  - e137 treeitem \\\"Inspector.navigator\\\" [level=3]:\\n                    - e141: navigator\\n                    - e142: Navigator\\n                  - e144 treeitem \\\"Inspector.navigator.model\\\" [level=4]:\\n                    - e148: model\\n                    - e149: ModelLens\\n                  - e151 treeitem \\\"Inspector.navigator.tools\\\" [level=4]:\\n                    - e155: tools\\n                    - e156: ToolsLens\\n                  - e158 treeitem \\\"Inspector.detail\\\" [level=3]:\\n                    - e162: detail\\n                    - e163: DetailPane\\n                  - e165 treeitem \\\"Inspector.detail.model\\\" [level=4]:\\n                    - e169: model\\n                    - e170: ModelDetailView\\n                  - e172 treeitem \\\"Inspector.detail.node\\\" [level=4]:\\n                    - e176: node\\n                    - e177: NodeView\\n                    - e178: Not on page\\n                  - e179 treeitem \\\"Inspector.detail.node.modelSees\\\" [level=5]:\\n                    - e183: modelSees\\n                    - e456: WhatTheModelSees\\n                    - e184: Not on page\\n                  - e185 treeitem \\\"Inspector.detail.toolPage\\\" [level=4]:\\n                    - e189: toolPage\\n                    - e458: ToolPage\\n                    - e190: Not on page\\n                  - e191 treeitem \\\"Inspector.detail.toolPage.modelSees\\\" [level=5]:\\n                    - e195: modelSees\\n                    - e460: WhatTheModelSees\\n                    - e196: Not on page\\n                  - e197 treeitem \\\"Inspector.detail.toolPage.card\\\" [level=5]:\\n                    - e201: card\\n                    - e462: RunCard\\n                    - e202: Not on page\\n                  - e203 treeitem \\\"Inspector.runs\\\" [level=3]:\\n                    - e207: runs\\n                    - e208: RunsView\\n                  - e210 treeitem \\\"Inspector.structure\\\" [level=3]:\\n                    - e214: structure\\n                    - e215: StructureLens\\n              - e218 separator \\\"Resize the two lists\\\"\\n              - e219 region \\\"Page object models\\\":\\n                - e220 button \\\"Page object models · 20\\\" [expanded]\\n                - e224 list \\\"Page object models\\\":\\n                  - e225 listitem:\\n                    - e226 button \\\"ListPage\\\"\\n                  - e232 listitem:\\n                    - e233 button \\\"ListItem\\\":\\n                      - e238: Not on page\\n                  - e239 listitem:\\n                    - e240 button \\\"Inspector\\\"\\n                  - e246 listitem:\\n                    - e247 button \\\"PanelShell\\\"\\n                  - e253 listitem:\\n                    - e254 button \\\"InspectorHeader\\\"\\n                  - e260 listitem:\\n                    - e261 button \\\"WebMcpStatus\\\"\\n                  - e267 listitem:\\n                    - e268 button \\\"CollapsedLogo\\\":\\n                      - e273: Not on page\\n                  - e274 listitem:\\n                    - e275 button \\\"Navigator\\\"\\n                  - e281 listitem:\\n                    - e282 button \\\"DetailPane\\\"\\n                  - e288 listitem:\\n                    - e289 button \\\"RunsView\\\"\\n                  - e295 listitem:\\n                    - e296 button \\\"StructureLens\\\"\\n                  - e302 listitem:\\n                    - e303 button \\\"RunCard\\\":\\n                      - e308: Not on page\\n                  - e309 listitem:\\n                    - e310 button \\\"ThemeSwitch\\\":\\n                      - e315: Not on page\\n                  - e316 listitem:\\n                    - e317 button \\\"LayoutMenu\\\":\\n                      - e322: Not on page\\n                  - e323 listitem:\\n                    - e324 button \\\"ModelLens\\\"\\n                  - e330 listitem:\\n                    - e331 button \\\"ToolsLens\\\"\\n                  - e337 listitem:\\n                    - e338 button \\\"ModelDetailView\\\"\\n                  - e344 listitem:\\n                    - e345 button \\\"NodeView\\\":\\n                      - e350: Not on page\\n                  - e351 listitem:\\n                    - e352 button \\\"ToolPage\\\":\\n                      - e357: Not on page\\n                  - e358 listitem:\\n                    - e359 button \\\"WhatTheModelSees\\\":\\n                      - e364: Not on page\\n          - e365 separator \\\"Resize the navigator\\\"\\n          - e366 region \\\"Selected\\\":\\n            - e367:\\n              - e369:\\n                - e370 heading \\\"Page /\\\" [level=3]\\n                - e371: \\\"127.0.0.1:4791 · 20 page object models\\\"\\n              - e373 region \\\"On this page\\\":\\n                - e374 heading \\\"On this page · 2\\\" [level=4]\\n                - e378 button \\\"ListPage\\\":\\n                  - e381: page\\n                - e384 button \\\"Inspector\\\":\\n                  - e387: page\\n              - e390 region \\\"Tools\\\":\\n                - e391 heading \\\"Tools · 2\\\" [level=4]\\n                - e394:\\n                  - e395 form \\\"snapshot\\\":\\n                    - e396:\\n                      - e397 button \\\"Show the arguments for snapshot\\\":\\n                        - e402: snapshot\\n                        - e403: \\\"(names?)\\\"\\n                      - e404 button \\\"Run\\\"\\n                    - e405 paragraph: \\\"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\\\"\\n                  - e406 form \\\"goal\\\":\\n                    - e407:\\n                      - e408 button \\\"Show the arguments for goal\\\":\\n                        - e413: goal\\n                        - e414: \\\"(goal, maxSteps, values?)\\\"\\n                      - e415 button \\\"Run\\\"\\n                    - e416 paragraph: \\\"Drive the page toward a goal in steps. Each step is one fast model judgement. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.\\\"\\n        - e417 separator \\\"Resize Runs\\\"\\n        - e418 region \\\"Runs\\\":\\n          - e419:\\n            - e420 button \\\"Runs · 0\\\" [expanded] [cursor=pointer]\\n            - e427 group \\\"Runs scope\\\":\\n              - e428 button \\\"This page\\\" [pressed]\\n              - e429 button \\\"All\\\"\\n            - e493 button \\\"Clear\\\" [disabled]\\n          - e431 paragraph: No runs yet.\",\"pomDefinitions\":\"ListPage\\n  newItemInput\\n  addItemButton\\n  clearButton\\n  items\\n  entries: ListItem[]\\n\\n  // Add an item to the list.\\n  addItem(text: string)\\n\\n  // Count the items on the list.\\n  countItems()\\n\\n  // Remove every item from the list.\\n  clear()\\n\\nListItem\\n  root\\n\\n  // Mark this item done or to do.\\n  mark(state: \\\"done\\\" | \\\"todo\\\")\\n\\nInspector\\n  container\\n  panel\\n  shell: PanelShell\\n  header: InspectorHeader\\n  webMcpStatus: WebMcpStatus\\n  logo: CollapsedLogo\\n  navigator: Navigator\\n  detail: DetailPane\\n  runs: RunsView\\n  structure: StructureLens\\n\\n  // Expands the panel if it is collapsed to the logo.\\n  open()\\n\\n  // Collapses the panel to its logo.\\n  collapse()\\n\\n  // Selects a tool in the Tools lens and opens its run card.\\n  tool(name: string): RunCard\\n\\nPanelShell\\n  root\\n\\n  // Resizes the panel from one edge or corner by a distance in pixels.\\n  resizeBy(handle: \\\"left\\\" | \\\"right\\\" | \\\"top\\\" | \\\"bottom\\\" | \\\"top-left\\\" | \\\"top-right\\\" | \\\"bottom-left\\\" | \\\"bottom-right\\\", deltaX: number, deltaY: number)\\n\\nInspectorHeader\\n  root\\n  title\\n  themeSwitch: ThemeSwitch\\n  layoutMenu: LayoutMenu\\n  collapseButton\\n\\n  // Collapses the panel.\\n  collapse()\\n\\n  // Drags the panel by its header by a distance in pixels.\\n  dragBy(deltaX: number, deltaY: number)\\n\\n  // Drags the panel by its header and drops it at viewport coordinates.\\n  dropAt(x: number, y: number)\\n\\nWebMcpStatus\\n  root\\n\\nCollapsedLogo\\n  root\\n\\n  // Opens the panel.\\n  open()\\n\\n  // Drags the logo by a distance in pixels.\\n  dragBy(deltaX: number, deltaY: number)\\n\\nNavigator\\n  root\\n  searchBox\\n  legend\\n  searchResults\\n  noResults\\n  model: ModelLens\\n  tools: ToolsLens\\n\\n  // Shows a lens: Model, Structure or Tools.\\n  showLens(name: \\\"Model\\\" | \\\"Structure\\\" | \\\"Tools\\\")\\n\\n  // Searches the active lens.\\n  search(query: string)\\n\\nDetailPane\\n  root\\n  model: ModelDetailView\\n  node: NodeView\\n  toolPage: ToolPage\\n\\nRunsView\\n  root\\n  header\\n  scope\\n  selectionScope\\n  allScope\\n  clearButton\\n  timeline\\n  runs\\n  empty\\n\\n  // Shows every run.\\n  showAll()\\n\\n  // Shows the selection's runs.\\n  showSelection()\\n\\n  // Clears the runs.\\n  clear()\\n\\nStructureLens\\n  root\\n  tree\\n  rows\\n  error\\n\\n  // Reads the Page Object member a node is tagged with, in full.\\n  memberOf(ref: string)\\n\\n  // Selects a node by its ref; the page highlights it.\\n  pick(ref: string)\\n\\nRunCard\\n  root\\n  runButton\\n  argumentsToggle\\n  formSwitch\\n  jsonSwitch\\n  jsonEditor\\n  jsonError\\n  schemaErrors\\n  formatButton\\n  items\\n  lastResult\\n  lastSuccessLink\\n\\n  // Opens the form, on a card whose form is closed.\\n  openArguments()\\n\\n  // Chooses the item a collection action runs on, by what it shows.\\n  pickItem(label: string)\\n\\n  // Types the arguments into the JSON editor, as JSON text.\\n  fillJson(text: string)\\n\\nThemeSwitch\\n  button\\n\\n  // Switches to a theme.\\n  choose(choice: \\\"System\\\" | \\\"Light\\\" | \\\"Dark\\\")\\n\\nLayoutMenu\\n  trigger\\n  menu\\n\\n  // Moves the panel to a layout.\\n  choose(choice: \\\"Floating\\\" | \\\"Dock left\\\" | \\\"Dock right\\\" | \\\"Dock to bottom\\\")\\n\\nModelLens\\n  root\\n  objectTree\\n  modelList\\n  models\\n  divider\\n\\n  // Collapses or expands one of the two panes.\\n  togglePane(name: \\\"On this page\\\" | \\\"Page object models\\\")\\n\\n  // Drags the divider between the two panes by a distance in pixels.\\n  dragDivider(deltaY: number)\\n\\nToolsLens\\n  root\\n\\nModelDetailView\\n  root\\n  title\\n  modelLink\\n  ownerLink\\n\\nNodeView\\n  root\\n  title\\n  memberLinks\\n  tools\\n  modelSees: WhatTheModelSees\\n\\n  // Opens the Page Object that owns one of the node's members.\\n  openOwnerOf(member: string)\\n\\nToolPage\\n  root\\n  title\\n  description\\n  kind\\n  modelLink\\n  modelSees: WhatTheModelSees\\n  card: RunCard\\n\\nWhatTheModelSees\\n  root\\n  toggle\\n  definitions\\n  pageState\\n  childCount\\n\\n  // Expands What the model sees.\\n  open()\\n\\n  // Collapses What the model sees.\\n  close()\"}",
+  "node": {
+    "distilled": "- generic [active] [ref=e1]:\n  - main [ref=e2]:\n    - heading \"Groceries\" [level=1] [ref=e3]\n    - generic [ref=e4]:\n      - text: New item\n      - textbox \"New item\" [ref=e5]\n    - generic [ref=e6]:\n      - checkbox \"Urgent\" [ref=e7]\n      - text: Urgent\n    - button \"Add item\" [ref=e8]\n    - button \"Clear\" [ref=e9]\n    - list \"Items\" [ref=e432]\n  - complementary \"ayme\" [ref=e10]:\n    - separator \"Resize from the left edge\" [ref=e11]\n    - separator \"Resize from the right edge\" [ref=e12]\n    - separator \"Resize from the top edge\" [ref=e13]\n    - separator \"Resize from the bottom edge\" [ref=e14]\n    - separator \"Resize from the top-left corner\" [ref=e15]\n    - separator \"Resize from the top-right corner\" [ref=e16]\n    - separator \"Resize from the bottom-left corner\" [ref=e17]\n    - separator \"Resize from the bottom-right corner\" [ref=e18]\n    - generic [ref=e19]:\n      - generic [ref=e20]:\n        - heading \"ayme\" [level=2] [ref=e30]\n        - 'button \"Theme: System. Switch to Light.\" [ref=e31]'\n        - 'button \"Layout: Floating\" [ref=e34]'\n        - button \"Collapse inspector\" [expanded] [ref=e40]\n      - status \"WebMCP publication\" [ref=e42]: \"Waiting for WebMCP: agents can call these tools once it's ready.\"\n      - generic [ref=e43]:\n        - generic [ref=e44]:\n          - navigation \"Navigator\" [ref=e45]:\n            - generic [ref=e46]:\n              - searchbox \"Search page objects, actions, members and refs\" [ref=e51]\n              - group \"Lens\" [ref=e52]:\n                - button \"Model\" [pressed] [ref=e53]\n                - button \"Structure\" [ref=e54]\n                - button \"Tools\" [ref=e55]\n              - group \"Legend\" [ref=e56]:\n                - generic [ref=e57]: 12 live\n                - generic [ref=e59]: 8 not on page\n                - generic [ref=e61]: 206 refs\n            - generic [ref=e63]:\n              - region \"On this page\" [ref=e64]:\n                - button \"On this page · 12\" [expanded] [ref=e65]\n                - tree \"Page objects\" [ref=e69]:\n                  - treeitem \"Page /\" [level=1] [selected] [ref=e70]:\n                    - generic [ref=e74]: /\n                    - generic [ref=e75]: 127.0.0.1:4791\n                  - treeitem \"ListPage\" [level=2] [ref=e76]:\n                    - generic [ref=e81]: page\n                  - treeitem \"ListPage.entries\" [level=3] [ref=e83]:\n                    - generic [ref=e88]: entries\n                    - generic [ref=e439]: ListItem[0]\n                    - generic [ref=e89]: Not on page\n                  - treeitem \"Inspector\" [level=2] [ref=e90]:\n                    - generic [ref=e95]: page\n                  - treeitem \"Inspector.shell\" [level=3] [ref=e97]:\n                    - generic [ref=e101]: shell\n                    - generic [ref=e102]: PanelShell\n                  - treeitem \"Inspector.header\" [level=3] [ref=e104]:\n                    - generic [ref=e108]: header\n                    - generic [ref=e109]: InspectorHeader\n                  - treeitem \"Inspector.header.themeSwitch\" [level=4] [ref=e111]:\n                    - generic [ref=e115]: themeSwitch\n                    - generic [ref=e444]: ThemeSwitch\n                    - generic [ref=e116]: Not on page\n                  - treeitem \"Inspector.header.layoutMenu\" [level=4] [ref=e117]:\n                    - generic [ref=e121]: layoutMenu\n                    - generic [ref=e446]: LayoutMenu\n                    - generic [ref=e122]: Not on page\n                  - treeitem \"Inspector.webMcpStatus\" [level=3] [ref=e123]:\n                    - generic [ref=e127]: webMcpStatus\n                    - generic [ref=e128]: WebMcpStatus\n                  - treeitem \"Inspector.logo\" [level=3] [ref=e130]:\n                    - generic [ref=e134]: logo\n                    - generic [ref=e135]: CollapsedLogo\n                    - generic [ref=e136]: Not on page\n                  - treeitem \"Inspector.navigator\" [level=3] [ref=e137]:\n                    - generic [ref=e141]: navigator\n                    - generic [ref=e142]: Navigator\n                  - treeitem \"Inspector.navigator.model\" [level=4] [ref=e144]:\n                    - generic [ref=e148]: model\n                    - generic [ref=e149]: ModelLens\n                  - treeitem \"Inspector.navigator.tools\" [level=4] [ref=e151]:\n                    - generic [ref=e155]: tools\n                    - generic [ref=e156]: ToolsLens\n                  - treeitem \"Inspector.detail\" [level=3] [ref=e158]:\n                    - generic [ref=e162]: detail\n                    - generic [ref=e163]: DetailPane\n                  - treeitem \"Inspector.detail.model\" [level=4] [ref=e165]:\n                    - generic [ref=e169]: model\n                    - generic [ref=e170]: ModelDetailView\n                  - treeitem \"Inspector.detail.node\" [level=4] [ref=e172]:\n                    - generic [ref=e176]: node\n                    - generic [ref=e177]: NodeView\n                    - generic [ref=e178]: Not on page\n                  - treeitem \"Inspector.detail.node.modelSees\" [level=5] [ref=e179]:\n                    - generic [ref=e183]: modelSees\n                    - generic [ref=e456]: WhatTheModelSees\n                    - generic [ref=e184]: Not on page\n                  - treeitem \"Inspector.detail.toolPage\" [level=4] [ref=e185]:\n                    - generic [ref=e189]: toolPage\n                    - generic [ref=e458]: ToolPage\n                    - generic [ref=e190]: Not on page\n                  - treeitem \"Inspector.detail.toolPage.modelSees\" [level=5] [ref=e191]:\n                    - generic [ref=e195]: modelSees\n                    - generic [ref=e460]: WhatTheModelSees\n                    - generic [ref=e196]: Not on page\n                  - treeitem \"Inspector.detail.toolPage.card\" [level=5] [ref=e197]:\n                    - generic [ref=e201]: card\n                    - generic [ref=e462]: RunCard\n                    - generic [ref=e202]: Not on page\n                  - treeitem \"Inspector.runs\" [level=3] [ref=e203]:\n                    - generic [ref=e207]: runs\n                    - generic [ref=e208]: RunsView\n                  - treeitem \"Inspector.structure\" [level=3] [ref=e210]:\n                    - generic [ref=e214]: structure\n                    - generic [ref=e215]: StructureLens\n              - separator \"Resize the two lists\" [ref=e218]\n              - region \"Page object models\" [ref=e219]:\n                - button \"Page object models · 20\" [expanded] [ref=e220]\n                - list \"Page object models\" [ref=e224]:\n                  - listitem [ref=e225]:\n                    - button \"ListPage\" [ref=e226]\n                  - listitem [ref=e232]:\n                    - button \"ListItem\" [ref=e233]:\n                      - generic [ref=e238]: Not on page\n                  - listitem [ref=e239]:\n                    - button \"Inspector\" [ref=e240]\n                  - listitem [ref=e246]:\n                    - button \"PanelShell\" [ref=e247]\n                  - listitem [ref=e253]:\n                    - button \"InspectorHeader\" [ref=e254]\n                  - listitem [ref=e260]:\n                    - button \"WebMcpStatus\" [ref=e261]\n                  - listitem [ref=e267]:\n                    - button \"CollapsedLogo\" [ref=e268]:\n                      - generic [ref=e273]: Not on page\n                  - listitem [ref=e274]:\n                    - button \"Navigator\" [ref=e275]\n                  - listitem [ref=e281]:\n                    - button \"DetailPane\" [ref=e282]\n                  - listitem [ref=e288]:\n                    - button \"RunsView\" [ref=e289]\n                  - listitem [ref=e295]:\n                    - button \"StructureLens\" [ref=e296]\n                  - listitem [ref=e302]:\n                    - button \"RunCard\" [ref=e303]:\n                      - generic [ref=e308]: Not on page\n                  - listitem [ref=e309]:\n                    - button \"ThemeSwitch\" [ref=e310]:\n                      - generic [ref=e315]: Not on page\n                  - listitem [ref=e316]:\n                    - button \"LayoutMenu\" [ref=e317]:\n                      - generic [ref=e322]: Not on page\n                  - listitem [ref=e323]:\n                    - button \"ModelLens\" [ref=e324]\n                  - listitem [ref=e330]:\n                    - button \"ToolsLens\" [ref=e331]\n                  - listitem [ref=e337]:\n                    - button \"ModelDetailView\" [ref=e338]\n                  - listitem [ref=e344]:\n                    - button \"NodeView\" [ref=e345]:\n                      - generic [ref=e350]: Not on page\n                  - listitem [ref=e351]:\n                    - button \"ToolPage\" [ref=e352]:\n                      - generic [ref=e357]: Not on page\n                  - listitem [ref=e358]:\n                    - button \"WhatTheModelSees\" [ref=e359]:\n                      - generic [ref=e364]: Not on page\n          - separator \"Resize the navigator\" [ref=e365]\n          - region \"Selected\" [ref=e366]:\n            - generic [ref=e367]:\n              - generic [ref=e369]:\n                - heading \"Page /\" [level=3] [ref=e370]\n                - generic [ref=e371]: 127.0.0.1:4791 · 20 page object models\n              - region \"On this page\" [ref=e373]:\n                - heading \"On this page · 2\" [level=4] [ref=e374]\n                - button \"ListPage\" [ref=e378]:\n                  - generic [ref=e381]: page\n                - button \"Inspector\" [ref=e384]:\n                  - generic [ref=e387]: page\n              - region \"Tools\" [ref=e390]:\n                - heading \"Tools · 2\" [level=4] [ref=e391]\n                - generic [ref=e394]:\n                  - form \"snapshot\" [ref=e395]:\n                    - generic [ref=e396]:\n                      - button \"Show the arguments for snapshot\" [ref=e397]:\n                        - generic [ref=e402]: snapshot\n                        - generic [ref=e403]: (names?)\n                      - button \"Run\" [ref=e404]\n                    - paragraph [ref=e405]: \"Return the current live structural page state together with compact POM capability definitions known to Ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description. A bare member is a Locator; member: ChildPom is a child POM; [] marks collections; and action(args): this | OtherPom is an action with possible next POMs. Action comments are authored descriptions, and this means the current POM. Definitions can include POMs or actions that are not currently visible or callable; action return POMs describe possible next surfaces, not guarantees. The client's currently registered tool schemas remain authoritative for what can be called now.\"\n                  - form \"goal\" [ref=e406]:\n                    - generic [ref=e407]:\n                      - button \"Show the arguments for goal\" [ref=e408]:\n                        - generic [ref=e413]: goal\n                        - generic [ref=e414]: (goal, maxSteps, values?)\n                      - button \"Run\" [ref=e415]\n                    - paragraph [ref=e416]: \"Drive the page toward a goal in steps. Each step is one fast model judgement. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.\"\n        - separator \"Resize Runs\" [ref=e417]\n        - region \"Runs\" [ref=e418]:\n          - generic [ref=e419]:\n            - button \"Runs · 1\" [expanded] [ref=e1] [cursor=pointer]\n            - group \"Runs scope\" [ref=e427]:\n              - button \"This page\" [pressed] [ref=e428]\n              - button \"All\" [ref=e429]\n            - button \"Clear\" [ref=e493]\n          - list \"Runs timeline\" [ref=e2]:\n            - listitem \"snapshot\" [ref=e3]:\n              - img \"Succeeded\" [ref=e5]\n              - generic [ref=e10]:\n                - button \"Run by an agent through Ayme MCP snapshot 101 ms · 07:34:01 PM\" [expanded] [ref=e11] [cursor=pointer]:\n                  - img \"Run by an agent through Ayme MCP\" [ref=e12]\n                  - generic [ref=e16]: snapshot\n                  - generic [ref=e17]: 101 ms · 07:34:01 PM\n                - generic [ref=e19]:\n                  - button \"Result\" [ref=e20] [cursor=pointer]\n                  - button \"Copy\" [ref=e23]",
+    "dupes": [
+      {
+        "ref": "e1",
+        "elements": [
+          "body \"Groceries\n      New item \n    \"",
+          "button \"Runs · 1\""
+        ],
+        "resolvesTo": "button \"Runs · 1\""
+      },
+      {
+        "ref": "e2",
+        "elements": [
+          "main \"Groceries\n      New item \n    \"",
+          "ol[aria-label=Runs timeline] \"snapshot101 ms · 07:34:01 PMRe\""
+        ],
+        "resolvesTo": "ol[aria-label=Runs timeline] \"snapshot101 ms · 07:34:01 PMRe\""
+      },
+      {
+        "ref": "e3",
+        "elements": [
+          "h1 \"Groceries\"",
+          "li[aria-label=snapshot] \"snapshot101 ms · 07:34:01 PMRe\""
+        ],
+        "resolvesTo": "li[aria-label=snapshot] \"snapshot101 ms · 07:34:01 PMRe\""
+      },
+      {
+        "ref": "e4",
+        "elements": [
+          "label \"New item\"",
+          "div \"\""
+        ],
+        "resolvesTo": "div \"\""
+      },
+      {
+        "ref": "e5",
+        "elements": [
+          "input \"\"",
+          "span[aria-label=Succeeded] \"\""
+        ],
+        "resolvesTo": "span[aria-label=Succeeded] \"\""
+      },
+      {
+        "ref": "e6",
+        "elements": [
+          "label \"Urgent\"",
+          "svg \"\""
+        ],
+        "resolvesTo": "svg \"\""
+      },
+      {
+        "ref": "e7",
+        "elements": [
+          "input \"\"",
+          "path \"\""
+        ],
+        "resolvesTo": "path \"\""
+      },
+      {
+        "ref": "e8",
+        "elements": [
+          "button \"Add item\"",
+          "span \"\""
+        ],
+        "resolvesTo": "span \"\""
+      },
+      {
+        "ref": "e9",
+        "elements": [
+          "button \"Clear\"",
+          "div \"snapshot101 ms · 07:34:01 PMRe\""
+        ],
+        "resolvesTo": "div \"snapshot101 ms · 07:34:01 PMRe\""
+      },
+      {
+        "ref": "e10",
+        "elements": [
+          "aside[aria-label=ayme] \"aymeWaiting for WebMCP: agents\"",
+          "div \"snapshot101 ms · 07:34:01 PMRe\""
+        ],
+        "resolvesTo": "div \"snapshot101 ms · 07:34:01 PMRe\""
+      },
+      {
+        "ref": "e11",
+        "elements": [
+          "div[aria-label=Resize from the left edge] \"\"",
+          "button \"snapshot101 ms · 07:34:01 PM\""
+        ],
+        "resolvesTo": "button \"snapshot101 ms · 07:34:01 PM\""
+      },
+      {
+        "ref": "e12",
+        "elements": [
+          "div[aria-label=Resize from the right edge] \"\"",
+          "span[aria-label=Run by an agent through Ayme MCP] \"\""
+        ],
+        "resolvesTo": "span[aria-label=Run by an agent through Ayme MCP] \"\""
+      },
+      {
+        "ref": "e13",
+        "elements": [
+          "div[aria-label=Resize from the top edge] \"\"",
+          "svg \"\""
+        ],
+        "resolvesTo": "svg \"\""
+      },
+      {
+        "ref": "e14",
+        "elements": [
+          "div[aria-label=Resize from the bottom edge] \"\"",
+          "path \"\""
+        ],
+        "resolvesTo": "path \"\""
+      },
+      {
+        "ref": "e15",
+        "elements": [
+          "div[aria-label=Resize from the top-left corner] \"\"",
+          "rect \"\""
+        ],
+        "resolvesTo": "rect \"\""
+      },
+      {
+        "ref": "e16",
+        "elements": [
+          "div[aria-label=Resize from the top-right corner] \"\"",
+          "span \"snapshot\""
+        ],
+        "resolvesTo": "span \"snapshot\""
+      },
+      {
+        "ref": "e17",
+        "elements": [
+          "div[aria-label=Resize from the bottom-left corner] \"\"",
+          "span \"101 ms · 07:34:01 PM\""
+        ],
+        "resolvesTo": "span \"101 ms · 07:34:01 PM\""
+      },
+      {
+        "ref": "e18",
+        "elements": [
+          "div[aria-label=Resize from the bottom-right corner] \"\"",
+          "div \"ResultCopy\""
+        ],
+        "resolvesTo": "div \"ResultCopy\""
+      },
+      {
+        "ref": "e19",
+        "elements": [
+          "div \"aymeWaiting for WebMCP: agents\"",
+          "div \"ResultCopy\""
+        ],
+        "resolvesTo": "div \"ResultCopy\""
+      },
+      {
+        "ref": "e20",
+        "elements": [
+          "header \"ayme\"",
+          "button \"Result\""
+        ],
+        "resolvesTo": "button \"Result\""
+      },
+      {
+        "ref": "e21",
+        "elements": [
+          "svg \"\"",
+          "svg \"\""
+        ],
+        "resolvesTo": "svg \"\""
+      },
+      {
+        "ref": "e22",
+        "elements": [
+          "circle \"\"",
+          "path \"\""
+        ],
+        "resolvesTo": "path \"\""
+      },
+      {
+        "ref": "e23",
+        "elements": [
+          "circle \"\"",
+          "button \"Copy\""
+        ],
+        "resolvesTo": "button \"Copy\""
+      },
+      {
+        "ref": "e24",
+        "elements": [
+          "circle \"\"",
+          "span \"\""
+        ],
+        "resolvesTo": "span \"\""
+      },
+      {
+        "ref": "e25",
+        "elements": [
+          "circle \"\"",
+          "span \"\""
+        ],
+        "resolvesTo": "span \"\""
+      },
+      {
+        "ref": "e26",
+        "elements": [
+          "circle \"\"",
+          "svg \"\""
+        ],
+        "resolvesTo": "svg \"\""
+      },
+      {
+        "ref": "e27",
+        "elements": [
+          "circle \"\"",
+          "rect \"\""
+        ],
+        "resolvesTo": "rect \"\""
+      },
+      {
+        "ref": "e28",
+        "elements": [
+          "svg \"\"",
+          "path \"\""
+        ],
+        "resolvesTo": "path \"\""
+      }
+    ]
+  },
+  "inspectorHost": [
+    "MAIN ",
+    "SCRIPT type,src",
+    "AYME-INSPECTOR data-ayme-inspector-host,data-ayme-inspector-dogfood,style"
+  ],
+  "errors": []
+}

@@ -1,0 +1,15 @@
+[control-no-handles] baseline renderer heap=12.5MB Nodes=51 JSEventListeners=186 | node rss=137.2MB heapUsed=42.8MB
+[control-no-handles] divs attached: renderer heap=26.4MB Nodes=1296 JSEventListeners=354 | node rss=137.5MB heapUsed=42.8MB
+[control-no-handles] divs removed from DOM: renderer heap=28.6MB Nodes=296 JSEventListeners=354 | node rss=137.5MB heapUsed=42.8MB
+[held-then-dispose] baseline renderer heap=12.5MB Nodes=51 JSEventListeners=186 | node rss=138.1MB heapUsed=43.0MB
+[held-then-dispose] divs attached + 500 handles: renderer heap=221.6MB Nodes=1796 JSEventListeners=372 | node rss=147.0MB heapUsed=45.8MB
+[held-then-dispose] divs removed from DOM: renderer heap=221.6MB Nodes=1796 JSEventListeners=372 | node rss=147.1MB heapUsed=45.7MB
+[held-then-dispose] handles disposed: renderer heap=221.6MB Nodes=1796 JSEventListeners=372 | node rss=147.4MB heapUsed=44.1MB
+[held-then-drop] baseline renderer heap=12.5MB Nodes=51 JSEventListeners=186 | node rss=147.5MB heapUsed=43.9MB
+[held-then-drop] divs attached + 500 handles: renderer heap=221.6MB Nodes=1796 JSEventListeners=372 | node rss=147.8MB heapUsed=45.8MB
+[held-then-drop] divs removed from DOM: renderer heap=221.6MB Nodes=1796 JSEventListeners=372 | node rss=147.8MB heapUsed=45.8MB
+[held-then-drop] handles dropped in Node (no dispose) + node gc: renderer heap=173.8MB Nodes=1796 JSEventListeners=372 | node rss=147.8MB heapUsed=45.7MB
+[held-then-reload] baseline renderer heap=12.5MB Nodes=51 JSEventListeners=186 | node rss=147.8MB heapUsed=44.0MB
+[held-then-reload] divs attached + 500 handles: renderer heap=221.6MB Nodes=1796 JSEventListeners=372 | node rss=148.5MB heapUsed=45.9MB
+[held-then-reload] divs removed from DOM: renderer heap=221.6MB Nodes=1796 JSEventListeners=372 | node rss=148.6MB heapUsed=45.8MB
+[held-then-reload] page.reload with handles held: renderer heap=12.6MB Nodes=51 JSEventListeners=186 | node rss=148.6MB heapUsed=46.0MB
