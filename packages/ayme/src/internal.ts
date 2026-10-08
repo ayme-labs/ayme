@@ -36,6 +36,8 @@ export type {
   RegisteredPomTarget,
 } from "./registry";
 export { synchronizeWebMcpTools, waitForWebMcpDriver } from "./webMcp";
+export { subscribeToAgentImageRuns } from "./agentImageRuns";
+export type { AgentImageRun } from "./agentImageRuns";
 export type { WebMcpDriver, WebMcpRegistration } from "./webMcp";
 // The runtime session and its types are public (ADR-0031); this entry keeps
 // the plugin's registration, the framework packages' fixed-options check and
