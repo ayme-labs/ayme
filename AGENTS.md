@@ -55,4 +55,5 @@ A single approval covers the complete supersession operation. Mark the old ADR a
 ## Development environment
 
 - Start a persistent Devbox shell and run all project commands inside it.
+- `devbox run -- <cmd>` runs from the repository root, whatever the current directory. Reach a package with `pnpm -C <dir> <script>`, or `devbox run -- sh -c 'cd <dir> && <cmd>'`.
 - If Devbox is unavailable, surface the environment blocker.
