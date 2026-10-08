@@ -44,6 +44,36 @@ importers:
         specifier: ^8.68.0
         version: 8.68.0(eslint@10.9.1(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@6.0.3)
 
+  apps/eval-formbricks:
+    devDependencies:
+      "@ayme-dev/eslint-config":
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      "@ayme-dev/mcp":
+        specifier: workspace:*
+        version: link:../../packages/mcp
+      "@ayme-dev/typescript-config":
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      "@playwright/cli":
+        specifier: 0.1.22
+        version: 0.1.22
+      "@playwright/mcp":
+        specifier: 0.0.83
+        version: 0.0.83
+      "@types/node":
+        specifier: ^24.0.0
+        version: 24.13.3
+      eslint:
+        specifier: ^10.9.1
+        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+
   apps/example-angular:
     dependencies:
       "@angular/common":
@@ -79,6 +109,9 @@ importers:
       "@ayme-dev/mcp":
         specifier: workspace:*
         version: link:../../packages/mcp
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       express:
         specifier: ^5.1.0
         version: 5.2.1(supports-color@10.2.2)
@@ -140,6 +173,9 @@ importers:
       "@ayme-dev/mcp":
         specifier: workspace:*
         version: link:../../packages/mcp
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
@@ -174,6 +210,9 @@ importers:
       "@ayme-dev/react":
         specifier: workspace:*
         version: link:../../packages/react
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       next:
         specifier: 16.3.4
         version: 16.3.4(@babel/core@8.0.5)(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.104.1)
@@ -232,6 +271,9 @@ importers:
       "@ayme-dev/vue":
         specifier: workspace:*
         version: link:../../packages/vue
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       nuxt:
         specifier: 4.5.2
         version: 4.5.2(@babel/plugin-proposal-decorators@8.0.2(@babel/core@7.29.7(supports-color@10.2.2)))(@babel/plugin-syntax-jsx@8.0.1(@babel/core@7.29.7(supports-color@10.2.2)))(@babel/plugin-syntax-typescript@8.0.3(@babel/core@7.29.7(supports-color@10.2.2)))(@oxc-project/types@0.150.0)(@parcel/watcher@2.6.0)(@types/node@24.13.3)(@vue/compiler-sfc@3.5.42)(commander@14.0.3)(db0@0.3.4)(esbuild@0.28.2)(eslint@10.9.1(jiti@2.7.0)(supports-color@10.2.2))(ioredis@5.11.1(supports-color@10.2.2))(lightningcss@1.33.0)(magicast@0.5.5)(optionator@0.9.4)(oxc-parser@0.150.0)(rolldown@1.2.8)(rollup-plugin-visualizer@7.1.1(rolldown@1.2.8)(rollup@4.63.1))(rollup@4.63.1)(sass-embedded@1.104.1)(sass@1.104.1)(srvx@0.11.22)(supports-color@10.2.2)(terser@5.51.2)(tsx@4.23.13)(typescript@6.0.3)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vue-tsc@3.3.11(typescript@6.0.3))(yaml@2.9.0)
@@ -284,6 +326,9 @@ importers:
       "@ayme-dev/react":
         specifier: workspace:*
         version: link:../../packages/react
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -342,6 +387,9 @@ importers:
       "@ayme-dev/svelte":
         specifier: workspace:*
         version: link:../../packages/svelte
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
@@ -406,6 +454,9 @@ importers:
       "@ayme-dev/vue":
         specifier: workspace:*
         version: link:../../packages/vue
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       "@lucide/vue":
         specifier: ^1.47.0
         version: 1.47.0(vue@3.5.42(typescript@6.0.3))
@@ -494,6 +545,9 @@ importers:
       "@ayme-dev/mcp":
         specifier: workspace:*
         version: link:../../packages/mcp
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -535,6 +589,8 @@ importers:
         specifier: ^8.2.2
         version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)
 
+  apps/lab-formbricks: {}
+
   apps/mcp-fixture:
     dependencies:
       "@ayme-dev/ayme":
@@ -546,6 +602,9 @@ importers:
       "@ayme-dev/mcp":
         specifier: workspace:*
         version: link:../../packages/mcp
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../../packages/webmcp
     devDependencies:
       "@ayme-dev/eslint-config":
         specifier: workspace:*
@@ -611,6 +670,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../webmcp
       "@schematics/angular":
         specifier: ^22.2.1
         version: 22.2.1(chokidar@5.0.0)
@@ -620,15 +682,18 @@ importers:
       "@stryker-mutator/vitest-runner":
         specifier: ^10.0.0
         version: 10.0.0(@stryker-mutator/core@10.0.0(@types/node@24.13.3))(vitest@4.1.11)
+      "@vitest/browser-playwright":
+        specifier: ^4.1.11
+        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       eslint:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
-      jsdom:
-        specifier: ^30.0.1
-        version: 30.0.1(@noble/hashes@1.8.0)
+      playwright:
+        specifier: ^1.62.1
+        version: 1.62.1
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
@@ -650,9 +715,9 @@ importers:
       "@ayme-dev/inspector":
         specifier: workspace:*
         version: link:../inspector
-      "@mcp-b/webmcp-types":
-        specifier: ^5.0.1
-        version: 5.0.1
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../webmcp
     devDependencies:
       "@ayme-dev/core":
         specifier: workspace:*
@@ -672,9 +737,6 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
-      "@mcp-b/webmcp-polyfill":
-        specifier: 5.1.0
-        version: 5.1.0
       "@playwright/test":
         specifier: ^1.62.1
         version: 1.62.1
@@ -1008,6 +1070,9 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../webmcp
       "@stryker-mutator/core":
         specifier: ^10.0.0
         version: 10.0.0(@types/node@24.13.3)
@@ -1020,15 +1085,18 @@ importers:
       "@types/react-dom":
         specifier: ^19.0.0
         version: 19.2.7(@types/react@19.2.18)
+      "@vitest/browser-playwright":
+        specifier: ^4.1.11
+        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       eslint:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
-      jsdom:
-        specifier: ^30.0.1
-        version: 30.0.1(@noble/hashes@1.8.0)
+      playwright:
+        specifier: ^1.62.1
+        version: 1.62.1
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -1060,21 +1128,27 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../webmcp
       "@stryker-mutator/core":
         specifier: ^10.0.0
         version: 10.0.0(@types/node@24.13.3)
       "@stryker-mutator/vitest-runner":
         specifier: ^10.0.0
         version: 10.0.0(@stryker-mutator/core@10.0.0(@types/node@24.13.3))(vitest@4.1.11)
+      "@vitest/browser-playwright":
+        specifier: ^4.1.11
+        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       eslint:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
-      jsdom:
-        specifier: ^30.0.1
-        version: 30.0.1(@noble/hashes@1.8.0)
+      playwright:
+        specifier: ^1.62.1
+        version: 1.62.1
       svelte:
         specifier: ^5.57.1
         version: 5.57.1(@typescript-eslint/types@8.68.0)
@@ -1163,12 +1237,18 @@ importers:
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@ayme-dev/webmcp":
+        specifier: workspace:*
+        version: link:../webmcp
       "@stryker-mutator/core":
         specifier: ^10.0.0
         version: 10.0.0(@types/node@24.13.3)
       "@stryker-mutator/vitest-runner":
         specifier: ^10.0.0
         version: 10.0.0(@stryker-mutator/core@10.0.0(@types/node@24.13.3))(vitest@4.1.11)
+      "@vitest/browser-playwright":
+        specifier: ^4.1.11
+        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
@@ -1178,9 +1258,9 @@ importers:
       eslint:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
-      jsdom:
-        specifier: ^30.0.1
-        version: 30.0.1(@noble/hashes@1.8.0)
+      playwright:
+        specifier: ^1.62.1
+        version: 1.62.1
       tsdown:
         specifier: ^0.22.14
         version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
@@ -1193,6 +1273,43 @@ importers:
       vue:
         specifier: ^3.5.42
         version: 3.5.42(typescript@6.0.3)
+
+  packages/webmcp:
+    dependencies:
+      "@mcp-b/webmcp-types":
+        specifier: ^5.0.1
+        version: 5.1.0
+    devDependencies:
+      "@ayme-dev/ayme":
+        specifier: workspace:*
+        version: link:../ayme
+      "@ayme-dev/eslint-config":
+        specifier: workspace:*
+        version: link:../eslint-config
+      "@ayme-dev/typescript-config":
+        specifier: workspace:*
+        version: link:../typescript-config
+      "@playwright/test":
+        specifier: ^1.62.1
+        version: 1.62.1
+      "@vitest/browser-playwright":
+        specifier: ^4.1.11
+        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      eslint:
+        specifier: ^10.9.1
+        version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
+      playwright:
+        specifier: ^1.62.1
+        version: 1.62.1
+      tsdown:
+        specifier: ^0.22.14
+        version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
 
 packages:
   "@alloc/quick-lru@5.3.0":
@@ -1567,10 +1684,10 @@ packages:
     peerDependencies:
       "@babel/core": ^7.0.0
 
-  "@babel/helper-create-class-features-plugin@8.0.6":
+  "@babel/helper-create-class-features-plugin@8.0.7":
     resolution:
       {
-        integrity: sha512-Hy7wG2Pk1LnAkFMq0CbBk789XMTYVzYGxR7tKgk+TOpZckQRME3Tdou4mMT/8DFjJFxFZ8R6UsS4DR/duBKlVA==,
+        integrity: sha512-7ug3KrOhNVPPxFFLTel0/pMzimKzU/vTlNJKVL/dKguCpmNJZjjibyFbWg+Qs8QHmiIZPNuZ2UNnDGdHWGEpOg==,
       }
     engines: { node: ^22.18.0 || >=24.11.0 }
     peerDependencies:
@@ -1770,6 +1887,14 @@ packages:
     engines: { node: ^22.18.0 || >=24.11.0 }
     hasBin: true
 
+  "@babel/parser@8.0.7":
+    resolution:
+      {
+        integrity: sha512-UkDwEbPO1px2JQSrdh4qIgaH1JgG7GO/pFeJkpxhDxIETkT/QvGpnigXIw75ViHYPtIgKITmVUJqLjiO+JuWjA==,
+      }
+    engines: { node: ^22.18.0 || >=24.11.0 }
+    hasBin: true
+
   "@babel/plugin-proposal-decorators@8.0.2":
     resolution:
       {
@@ -1914,10 +2039,10 @@ packages:
     peerDependencies:
       "@babel/core": ^8.0.0
 
-  "@babel/preset-typescript@8.0.1":
+  "@babel/preset-typescript@8.0.7":
     resolution:
       {
-        integrity: sha512-qrPhQIN1NLrPmzgazF9XKQqXrOcp/WJly+K+6ReFonn24FZqRJO7clxOJo6Ni75L+2vAqI3cHVU2OJLBxoPp5A==,
+        integrity: sha512-sUFLFphAG6YNjCnJpSKpyoNxkfyeM2KNuUjJJN0R6dZusMcK2V3Fg11MVHPFvb37AZeDNocc+xM748vdh9z82Q==,
       }
     engines: { node: ^22.18.0 || >=24.11.0 }
     peerDependencies:
@@ -1948,6 +2073,13 @@ packages:
     resolution:
       {
         integrity: sha512-ilYV+qLStGzSKLipJlETdvdtpK3rAuwfCmCoGKv15MU4EoeIuLkespSNoNLFGOPSciEHx9TLWtN5mv0fz5w5mQ==,
+      }
+    engines: { node: ^22.18.0 || >=24.11.0 }
+
+  "@babel/traverse@8.0.7":
+    resolution:
+      {
+        integrity: sha512-bVV0brinsTWgc6ptSIoQo3GbITtl0VZAqEUJbHHcyfDPEu+q/fEvlYEa+6H85HoK8IdksKBFtKJbJFZ6Kff+zg==,
       }
     engines: { node: ^22.18.0 || >=24.11.0 }
 
@@ -3268,13 +3400,6 @@ packages:
       }
     engines: { node: ">=20" }
 
-  "@mcp-b/webmcp-types@5.0.1":
-    resolution:
-      {
-        integrity: sha512-UN7GsTrudXoMWxTL6n6451C19r5nsBzU4WLovRC6YVFnOJk3N5qYwmQySAISEi/0fcWkRDcT3OqAee7/jrl1iA==,
-      }
-    engines: { node: ">=20" }
-
   "@mcp-b/webmcp-types@5.1.0":
     resolution:
       {
@@ -4100,6 +4225,22 @@ packages:
         integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==,
       }
     engines: { node: ">=14" }
+
+  "@playwright/cli@0.1.22":
+    resolution:
+      {
+        integrity: sha512-6WMkQNM4VEzqMkdr/l60X9Cr7i+tI/arK87IWz2K7pB6j8I2ZJ8KN+1JfhJDLnK+SXnab6Op8xGt4adcGLsyfA==,
+      }
+    engines: { node: ">=18" }
+    hasBin: true
+
+  "@playwright/mcp@0.0.83":
+    resolution:
+      {
+        integrity: sha512-oNcl+Ae2/IAjhfPeP46BfIkSakfmprY+aOtkv5MjrQ4lPav4/yNtPhL0iq8SlIM90oApWgBDUxaNKvktazUKOg==,
+      }
+    engines: { node: ">=18" }
+    hasBin: true
 
   "@playwright/test@1.62.1":
     resolution:
@@ -6674,6 +6815,7 @@ packages:
       }
     cpu: [arm64]
     os: [android]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-darwin-arm64@0.8.7":
     resolution:
@@ -6682,6 +6824,7 @@ packages:
       }
     cpu: [arm64]
     os: [darwin]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-darwin-x64@0.8.7":
     resolution:
@@ -6690,6 +6833,7 @@ packages:
       }
     cpu: [x64]
     os: [darwin]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-freebsd-x64@0.8.7":
     resolution:
@@ -6698,6 +6842,7 @@ packages:
       }
     cpu: [x64]
     os: [freebsd]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-arm-gnu@0.8.7":
     resolution:
@@ -6707,6 +6852,7 @@ packages:
     cpu: [arm]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-arm-musl@0.8.7":
     resolution:
@@ -6716,6 +6862,7 @@ packages:
     cpu: [arm]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-arm64-gnu@0.8.7":
     resolution:
@@ -6725,6 +6872,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-arm64-musl@0.8.7":
     resolution:
@@ -6734,6 +6882,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-x64-gnu@0.8.7":
     resolution:
@@ -6743,6 +6892,7 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-linux-x64-musl@0.8.7":
     resolution:
@@ -6752,6 +6902,7 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-win32-arm64@0.8.7":
     resolution:
@@ -6760,6 +6911,7 @@ packages:
       }
     cpu: [arm64]
     os: [win32]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-codegen/binding-win32-x64@0.8.7":
     resolution:
@@ -6768,6 +6920,7 @@ packages:
       }
     cpu: [x64]
     os: [win32]
+    deprecated: yuku-codegen is pure JavaScript since 0.14
 
   "@yuku-parser/binding-android-arm64@0.8.7":
     resolution:
@@ -6776,6 +6929,7 @@ packages:
       }
     cpu: [arm64]
     os: [android]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-darwin-arm64@0.8.7":
     resolution:
@@ -6784,6 +6938,7 @@ packages:
       }
     cpu: [arm64]
     os: [darwin]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-darwin-x64@0.8.7":
     resolution:
@@ -6792,6 +6947,7 @@ packages:
       }
     cpu: [x64]
     os: [darwin]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-freebsd-x64@0.8.7":
     resolution:
@@ -6800,6 +6956,7 @@ packages:
       }
     cpu: [x64]
     os: [freebsd]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-arm-gnu@0.8.7":
     resolution:
@@ -6809,6 +6966,7 @@ packages:
     cpu: [arm]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-arm-musl@0.8.7":
     resolution:
@@ -6818,6 +6976,7 @@ packages:
     cpu: [arm]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-arm64-gnu@0.8.7":
     resolution:
@@ -6827,6 +6986,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-arm64-musl@0.8.7":
     resolution:
@@ -6836,6 +6996,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-x64-gnu@0.8.7":
     resolution:
@@ -6845,6 +7006,7 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [glibc]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-linux-x64-musl@0.8.7":
     resolution:
@@ -6854,6 +7016,7 @@ packages:
     cpu: [x64]
     os: [linux]
     libc: [musl]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-win32-arm64@0.8.7":
     resolution:
@@ -6862,6 +7025,7 @@ packages:
       }
     cpu: [arm64]
     os: [win32]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-parser/binding-win32-x64@0.8.7":
     resolution:
@@ -6870,6 +7034,7 @@ packages:
       }
     cpu: [x64]
     os: [win32]
+    deprecated: yuku-parser runs on yuku-core since 0.14
 
   "@yuku-toolchain/types@0.8.7":
     resolution:
@@ -10526,6 +10691,13 @@ packages:
       }
     engines: { node: ">=12.20.0" }
 
+  obug@3.0.0:
+    resolution:
+      {
+        integrity: sha512-5vvB5+W7ePv+p3uqxi+RcW1XAzLW0/hxt3/4X4Lc4qHudzOhmBiBwOY6DRob4WnanAEGvNcLjF+KNOufrUoEQw==,
+      }
+    engines: { node: ">=12.20.0" }
+
   ofetch@1.5.1:
     resolution:
       {
@@ -10808,10 +10980,26 @@ packages:
     engines: { node: ">=20" }
     hasBin: true
 
+  playwright-core@1.64.0-alpha-1790635538000:
+    resolution:
+      {
+        integrity: sha512-pNwaXirhXMRLaRQs4NQ18EpTdtDoFwyPH9FOaaDC7YXG4hpwE2xmwCic/1srbuExVQC7zT9LJSJpDBAru+Vo9A==,
+      }
+    engines: { node: ">=20" }
+    hasBin: true
+
   playwright@1.62.1:
     resolution:
       {
         integrity: sha512-0M+L3LAD8/nm554LOla9Ayx0j0tmFZ0FBcoQ7F1VuVHpM/XpiC8RcDzBQB8W5+hA8L22THxELzeF+2WcUzvcLg==,
+      }
+    engines: { node: ">=20" }
+    hasBin: true
+
+  playwright@1.64.0-alpha-1790635538000:
+    resolution:
+      {
+        integrity: sha512-/5XDUMxpOd/9AojJtWDFIRV3EJZNQ0AwvK69wgt3CPzy8wTgiBG9pX45VfxtqtvIRGwfWzMhrvawNKreG69Snw==,
       }
     engines: { node: ">=20" }
     hasBin: true
@@ -12930,6 +13118,13 @@ packages:
       }
     engines: { node: ">=18.12.0" }
 
+  verkit@0.5.0:
+    resolution:
+      {
+        integrity: sha512-u4J1hr6Y+C/hit34GwL3eIcUf3wngT8TlYUjK7tk0jxydKLAq3sYvifjdTDA6U3KCKRcQCQDGf/srjxfZF3l7g==,
+      }
+    engines: { node: ">=18.12.0" }
+
   vite-dev-rpc@2.0.0:
     resolution:
       {
@@ -13371,21 +13566,6 @@ packages:
       {
         integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==,
       }
-
-  ws@8.21.3:
-    resolution:
-      {
-        integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==,
-      }
-    engines: { node: ">=10.0.0" }
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: ">=5.0.2"
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
 
   ws@8.22.0:
     resolution:
@@ -13933,7 +14113,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  "@babel/helper-create-class-features-plugin@8.0.6(@babel/core@7.29.7(supports-color@10.2.2))":
+  "@babel/helper-create-class-features-plugin@8.0.7(@babel/core@7.29.7(supports-color@10.2.2))":
     dependencies:
       "@babel/core": 7.29.7(supports-color@10.2.2)
       "@babel/helper-annotate-as-pure": 8.0.0
@@ -13941,11 +14121,11 @@ snapshots:
       "@babel/helper-optimise-call-expression": 8.0.0
       "@babel/helper-replace-supers": 8.0.1(@babel/core@7.29.7(supports-color@10.2.2))
       "@babel/helper-skip-transparent-expression-wrappers": 8.0.0
-      "@babel/traverse": 8.0.6
-      verkit: 0.3.2
+      "@babel/traverse": 8.0.7
+      verkit: 0.5.0
     optional: true
 
-  "@babel/helper-create-class-features-plugin@8.0.6(@babel/core@8.0.5)":
+  "@babel/helper-create-class-features-plugin@8.0.7(@babel/core@8.0.5)":
     dependencies:
       "@babel/core": 8.0.5
       "@babel/helper-annotate-as-pure": 8.0.0
@@ -13953,8 +14133,8 @@ snapshots:
       "@babel/helper-optimise-call-expression": 8.0.0
       "@babel/helper-replace-supers": 8.0.1(@babel/core@8.0.5)
       "@babel/helper-skip-transparent-expression-wrappers": 8.0.0
-      "@babel/traverse": 8.0.6
-      verkit: 0.3.2
+      "@babel/traverse": 8.0.7
+      verkit: 0.5.0
 
   "@babel/helper-globals@7.29.7": {}
 
@@ -14085,10 +14265,14 @@ snapshots:
     dependencies:
       "@babel/types": 8.0.6
 
+  "@babel/parser@8.0.7":
+    dependencies:
+      "@babel/types": 8.0.6
+
   "@babel/plugin-proposal-decorators@8.0.2(@babel/core@7.29.7(supports-color@10.2.2))":
     dependencies:
       "@babel/core": 7.29.7(supports-color@10.2.2)
-      "@babel/helper-create-class-features-plugin": 8.0.6(@babel/core@7.29.7(supports-color@10.2.2))
+      "@babel/helper-create-class-features-plugin": 8.0.7(@babel/core@7.29.7(supports-color@10.2.2))
       "@babel/helper-plugin-utils": 8.0.1(@babel/core@7.29.7(supports-color@10.2.2))
       "@babel/plugin-syntax-decorators": 8.0.1(@babel/core@7.29.7(supports-color@10.2.2))
     optional: true
@@ -14096,7 +14280,7 @@ snapshots:
   "@babel/plugin-proposal-decorators@8.0.2(@babel/core@8.0.5)":
     dependencies:
       "@babel/core": 8.0.5
-      "@babel/helper-create-class-features-plugin": 8.0.6(@babel/core@8.0.5)
+      "@babel/helper-create-class-features-plugin": 8.0.7(@babel/core@8.0.5)
       "@babel/helper-plugin-utils": 8.0.1(@babel/core@8.0.5)
       "@babel/plugin-syntax-decorators": 8.0.1(@babel/core@8.0.5)
 
@@ -14200,7 +14384,7 @@ snapshots:
     dependencies:
       "@babel/core": 8.0.5
       "@babel/helper-annotate-as-pure": 8.0.0
-      "@babel/helper-create-class-features-plugin": 8.0.6(@babel/core@8.0.5)
+      "@babel/helper-create-class-features-plugin": 8.0.7(@babel/core@8.0.5)
       "@babel/helper-plugin-utils": 8.0.1(@babel/core@8.0.5)
       "@babel/helper-skip-transparent-expression-wrappers": 8.0.0
       "@babel/plugin-syntax-typescript": 8.0.3(@babel/core@8.0.5)
@@ -14215,7 +14399,7 @@ snapshots:
       "@babel/plugin-transform-react-jsx-development": 8.0.1(@babel/core@8.0.5)
       "@babel/plugin-transform-react-pure-annotations": 8.0.1(@babel/core@8.0.5)
 
-  "@babel/preset-typescript@8.0.1(@babel/core@8.0.5)":
+  "@babel/preset-typescript@8.0.7(@babel/core@8.0.5)":
     dependencies:
       "@babel/core": 8.0.5
       "@babel/helper-plugin-utils": 8.0.1(@babel/core@8.0.5)
@@ -14256,6 +14440,16 @@ snapshots:
       "@babel/template": 8.0.0
       "@babel/types": 8.0.6
       obug: 2.1.4
+
+  "@babel/traverse@8.0.7":
+    dependencies:
+      "@babel/code-frame": 8.0.6
+      "@babel/generator": 8.0.6
+      "@babel/helper-globals": 8.0.6
+      "@babel/parser": 8.0.7
+      "@babel/template": 8.0.0
+      "@babel/types": 8.0.6
+      obug: 3.0.0
 
   "@babel/types@7.29.8":
     dependencies:
@@ -14458,11 +14652,11 @@ snapshots:
   "@dxup/nuxt@0.5.10(esbuild@0.28.2)(magicast@0.5.5)(oxc-parser@0.150.0)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))":
     dependencies:
       "@dxup/unimport": 0.1.2
-      "@nuxt/kit": 4.5.2(magic-string@1.3.1)(magicast@0.5.5)(oxc-parser@0.150.0)(rolldown@1.2.8)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)))
+      "@nuxt/kit": 4.5.2(magic-string@1.4.1)(magicast@0.5.5)(oxc-parser@0.150.0)(rolldown@1.2.8)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)))
       "@vue/compiler-dom": 3.5.42
       chokidar: 5.0.0
       knitwork: 1.3.0
-      magic-string: 1.3.1
+      magic-string: 1.4.1
       pathe: 2.0.3
       tinyglobby: 0.2.17
       unplugin: 3.3.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
@@ -15004,10 +15198,6 @@ snapshots:
       "@mcp-b/webmcp-types": 5.1.0
       "@standard-schema/spec": 1.1.0
 
-  "@mcp-b/webmcp-types@5.0.1":
-    dependencies:
-      "@modelcontextprotocol/server": 2.0.0
-
   "@mcp-b/webmcp-types@5.1.0":
     dependencies:
       "@modelcontextprotocol/server": 2.0.0
@@ -15283,7 +15473,7 @@ snapshots:
       vite-plugin-inspect: 11.4.1(@nuxt/kit@4.5.2(magic-string@1.3.1)(magicast@0.5.5)(oxc-parser@0.150.0)(rolldown@1.2.8)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))))(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
       vite-plugin-vue-tracer: 1.5.0(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vue@3.5.42(typescript@6.0.3))
       which: 6.0.1
-      ws: 8.21.3
+      ws: 8.22.0
     transitivePeerDependencies:
       - "@azure/app-configuration"
       - "@azure/cosmos"
@@ -15334,6 +15524,36 @@ snapshots:
       tinyglobby: 0.2.17
       ufo: 1.6.4
       unctx: 3.0.1(magic-string@1.3.1)(oxc-parser@0.150.0)(rolldown@1.2.8)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)))
+      untyped: 2.0.0
+      verkit: 0.3.2
+    transitivePeerDependencies:
+      - magic-string
+      - magicast
+      - oxc-parser
+      - rolldown
+      - unplugin
+
+  "@nuxt/kit@4.5.2(magic-string@1.4.1)(magicast@0.5.5)(oxc-parser@0.150.0)(rolldown@1.2.8)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)))":
+    dependencies:
+      c12: 3.3.4(magicast@0.5.5)
+      consola: 3.4.2
+      defu: 6.1.7
+      destr: 2.0.5
+      errx: 0.1.2
+      exsolve: 1.1.1
+      ignore: 7.0.6
+      jiti: 2.7.0
+      klona: 2.0.6
+      mlly: 1.8.2
+      nostics: 1.2.0
+      ohash: 2.0.12
+      pathe: 2.0.3
+      pkg-types: 2.3.3
+      rc9: 3.1.0
+      scule: 1.3.0
+      tinyglobby: 0.2.17
+      ufo: 1.6.4
+      unctx: 3.0.1(magic-string@1.4.1)(oxc-parser@0.150.0)(rolldown@1.2.8)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)))
       untyped: 2.0.0
       verkit: 0.3.2
     transitivePeerDependencies:
@@ -15643,6 +15863,16 @@ snapshots:
 
   "@pkgjs/parseargs@0.11.0":
     optional: true
+
+  "@playwright/cli@0.1.22":
+    dependencies:
+      playwright: 1.64.0-alpha-1790635538000
+      playwright-core: 1.64.0-alpha-1790635538000
+
+  "@playwright/mcp@0.0.83":
+    dependencies:
+      playwright: 1.64.0-alpha-1790635538000
+      playwright-core: 1.64.0-alpha-1790635538000
 
   "@playwright/test@1.62.1":
     dependencies:
@@ -16676,7 +16906,7 @@ snapshots:
       "@babel/plugin-proposal-decorators": 8.0.2(@babel/core@8.0.5)
       "@babel/plugin-transform-explicit-resource-management": 8.0.5(@babel/core@8.0.5)
       "@babel/preset-react": 8.0.1(@babel/core@8.0.5)
-      "@babel/preset-typescript": 8.0.1(@babel/core@8.0.5)
+      "@babel/preset-typescript": 8.0.7(@babel/core@8.0.5)
       "@babel/traverse": 8.0.6
       "@stryker-mutator/api": 10.0.0
       "@stryker-mutator/util": 10.0.0
@@ -17028,7 +17258,7 @@ snapshots:
 
   "@unhead/bundler@3.4.0(@oxc-project/types@0.150.0)(esbuild@0.28.2)(lightningcss@1.33.0)(oxc-parser@0.150.0)(rolldown@1.2.8)(rollup@4.63.1)(unhead@3.4.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)))(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))":
     dependencies:
-      magic-string: 1.3.1
+      magic-string: 1.4.1
       oxc-walker: 1.1.1(@oxc-project/types@0.150.0)(oxc-parser@0.150.0)(rolldown@1.2.8)
       unhead: 3.4.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
       unplugin: 3.3.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
@@ -17210,6 +17440,20 @@ snapshots:
       - msw
       - utf-8-validate
       - vite
+
+  "@vitest/browser-playwright@4.1.11(playwright@1.64.0-alpha-1790635538000)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)":
+    dependencies:
+      "@vitest/browser": 4.1.11(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      "@vitest/mocker": 4.1.11(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+      playwright: 1.64.0-alpha-1790635538000
+      tinyrainbow: 3.1.1
+      vitest: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+    transitivePeerDependencies:
+      - bufferutil
+      - msw
+      - utf-8-validate
+      - vite
+    optional: true
 
   "@vitest/browser@4.1.11(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)":
     dependencies:
@@ -19829,6 +20073,8 @@ snapshots:
 
   obug@2.1.4: {}
 
+  obug@3.0.0: {}
+
   ofetch@1.5.1:
     dependencies:
       destr: 2.0.5
@@ -20008,11 +20254,17 @@ snapshots:
 
   playwright-core@1.62.1: {}
 
+  playwright-core@1.64.0-alpha-1790635538000: {}
+
   playwright@1.62.1:
     dependencies:
       playwright-core: 1.62.1
     optionalDependencies:
       fsevents: 2.3.2
+
+  playwright@1.64.0-alpha-1790635538000:
+    dependencies:
+      playwright-core: 1.64.0-alpha-1790635538000
 
   pngjs@7.0.0: {}
 
@@ -20462,7 +20714,7 @@ snapshots:
 
   rolldown-string@0.3.1(rolldown@1.2.8):
     dependencies:
-      magic-string: 1.3.1
+      magic-string: 1.4.1
     optionalDependencies:
       rolldown: 1.2.8
 
@@ -21182,6 +21434,13 @@ snapshots:
       rolldown: 1.2.8
       unplugin: 3.3.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
 
+  unctx@3.0.1(magic-string@1.4.1)(oxc-parser@0.150.0)(rolldown@1.2.8)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))):
+    optionalDependencies:
+      magic-string: 1.4.1
+      oxc-parser: 0.150.0
+      rolldown: 1.2.8
+      unplugin: 3.3.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+
   underscore@1.13.8: {}
 
   undici-types@7.18.2: {}
@@ -21218,7 +21477,7 @@ snapshots:
       escape-string-regexp: 5.0.0
       estree-walker: 3.0.3
       local-pkg: 1.2.1
-      magic-string: 1.3.1
+      magic-string: 1.4.1
       mlly: 1.8.2
       pathe: 2.0.3
       picomatch: 4.0.7
@@ -21379,6 +21638,8 @@ snapshots:
 
   verkit@0.3.2: {}
 
+  verkit@0.5.0: {}
+
   vite-dev-rpc@2.0.0(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)):
     dependencies:
       birpc: 4.2.0
@@ -21445,7 +21706,7 @@ snapshots:
     dependencies:
       estree-walker: 3.0.3
       exsolve: 1.1.1
-      magic-string: 1.3.1
+      magic-string: 1.4.1
       pathe: 2.0.3
       source-map-js: 1.2.1
       vite: 8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)
@@ -21545,7 +21806,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       "@types/node": 24.13.3
-      "@vitest/browser-playwright": 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      "@vitest/browser-playwright": 4.1.11(playwright@1.64.0-alpha-1790635538000)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8": 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       jsdom: 30.0.1(@noble/hashes@1.8.0)
     transitivePeerDependencies:
@@ -21692,8 +21953,6 @@ snapshots:
       strip-ansi: 7.2.0
 
   wrappy@1.0.2: {}
-
-  ws@8.21.3: {}
 
   ws@8.22.0: {}
 

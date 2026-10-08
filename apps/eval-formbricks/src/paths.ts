@@ -1,0 +1,24 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** This package. Missions, results and transcripts live under it, never under the lab app. */
+export const evalRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  ".."
+);
+export const repoRoot = path.resolve(evalRoot, "../..");
+
+/** The agent's working root: the lab app and nothing else. */
+export const labRoot = path.join(repoRoot, "apps/lab-formbricks");
+/** The Formbricks submodule checkout inside the lab app. */
+export const formbricksRoot = path.join(labRoot, "formbricks");
+
+/** Ignored by git. One folder per run. */
+export const resultsRoot = path.join(evalRoot, "results");
+export const runsRoot = path.join(resultsRoot, "runs");
+
+export const labUrl = "http://localhost:3000";
+/** Ignored by git. One folder per suite: its manifest and the summary built from it. */
+export const suitesRoot = path.join(resultsRoot, "suites");
+/** Committed. One dated folder per published summary. */
+export const summariesRoot = path.join(evalRoot, "summaries");

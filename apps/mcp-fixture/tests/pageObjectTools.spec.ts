@@ -96,10 +96,12 @@ test("a Page Object Tool that went is no longer callable", async ({
   await hideBasket(page);
   await expect.poll(() => agent.pageToolNames()).not.toContain(BASKET_TOOL);
 
+  // It says the tool is gone, not that the agent named a tool that never was.
   const direct = await agent.call(BASKET_TOOL);
   expect(direct.isError).toBe(true);
-  expect(direct.text).toContain(BASKET_TOOL);
+  expect(direct.text).toContain(`The tool "${BASKET_TOOL}" is gone`);
   const fallback = await agent.call("ayme_call", { tool: BASKET_TOOL });
   expect(fallback.isError).toBe(true);
+  expect(fallback.text).toContain(`The tool "${BASKET_TOOL}" is gone`);
   expect(fallback.text).toContain("ayme_list_tools");
 });

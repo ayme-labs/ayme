@@ -1,39 +1,47 @@
 /**
- * Test support: the started session's published tools as the calling agent
- * calls them, and a Goal Loop decision function that runs given operations.
+ * Test support: the started session's tools as an agent calls them, and a
+ * Goal Loop decision function that runs given operations.
  */
+import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { DecisionResponse } from "./decisionTypes";
+import { RuntimeStateError } from "./errors";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
-import { synchronizeWebMcpTools } from "./webMcp";
+import { callers } from "./run";
+import { getStartedAyme } from "./runtime";
 
-type PublishedTool = {
-  name: string;
-  execute(input: unknown): Promise<unknown>;
-};
-
-/** Publish the started session's tools, as the calling agent sees them. */
-export async function publishTools() {
-  const published = new Map<string, PublishedTool>();
-  const { dispose } = await synchronizeWebMcpTools({
-    async registerTool(
-      tool: PublishedTool,
-      { signal }: { signal: AbortSignal }
-    ) {
-      published.set(tool.name, tool);
-      signal.addEventListener("abort", () => {
-        if (published.get(tool.name) === tool) published.delete(tool.name);
-      });
-    },
-  });
+/**
+ * The started session's tools an agent can call now, without a driver. A
+ * call is a `webmcp` Run, as an agent's call through `@ayme-dev/webmcp` is,
+ * and fails as that Run does: the package's own tests check which tools it
+ * publishes and the `isError` result an agent gets for a failure.
+ */
+export function agentTools() {
+  const ayme = getStartedAyme();
+  if (!ayme) throw new Error("Start a session before calling its tools.");
+  /** The names of the available tools, in publication order. */
+  const names = () =>
+    ayme.tools
+      .list()
+      .flatMap(({ name, available }) => (available ? [name] : []));
   return {
-    /** Call a published tool as the calling agent. */
-    call(name: string, input: unknown) {
-      const tool = published.get(name);
-      if (!tool) throw new Error(`Tool ${name} was not published.`);
-      return tool.execute(input);
+    names,
+    /** Call a tool as the agent. */
+    call: async (name: string, input: unknown): Promise<unknown> => {
+      if (!names().includes(name))
+        throw new RuntimeStateError(`Tool ${name} is not published.`);
+      return ayme.tools.run(name, input as never, { by: callers.webmcp });
     },
-    dispose,
   };
+}
+
+/** The Structural Ref of the "Save changes" button in the agent's snapshot. */
+export async function saveButtonRef() {
+  const { structure } = (await agentTools().call("snapshot", {})) as {
+    structure: string;
+  };
+  const ref = structure.match(/(e\d+) button "Save changes"/)?.[1];
+  if (!ref) throw new Error("Expected a Structural Ref for Save changes.");
+  return AriaRefSchema.parse(ref);
 }
 
 /**

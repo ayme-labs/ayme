@@ -1,20 +1,10 @@
-import type { JsonValue } from "@ayme-dev/ayme";
+import type { Caller, Interaction, JsonValue } from "@ayme-dev/ayme";
 
-/** A call on the runtime's Page that the Inspector's instrumentation records. */
-export type TraceEntry = {
-  /** The method, e.g. "click", or "keyboard.press" for the keyboard's. */
-  operation: string;
-  /** The locator it acted on; absent for the keyboard, the mouse and navigations. */
-  locator?: string;
-  value?: string;
-  state?: string;
-};
-
-/** A step of a run: a call from the Inspector's own trace. */
-export type RunStep = TraceEntry & {
+/** An Interaction of a Run, from the Run log, as Runs shows it. */
+export type RunInteraction = Interaction & {
   /**
    * The Page Object member it acted on, e.g. "ListPage.addItemButton",
-   * when its element was still on the page as the run ended.
+   * when its element was on the page as the Run ended.
    */
   member?: string;
 };
@@ -35,9 +25,26 @@ export type CollectionItem = {
   label: string;
 };
 
-/** A run made from the panel: one tool call, with the steps it performed. */
-export type Run = {
-  id: number;
+/** An image a run returned, such as a screenshot. */
+export type RunImage = {
+  /** What it shows, e.g. "Screenshot of the viewport, 1280×720 PNG". */
+  description: string;
+  /**
+   * The image as a data URL. Kept in memory only, never in the tab's
+   * storage, so a run from before a reload has none.
+   */
+  src?: string;
+  /** The file `ayme mcp` saved it to, for an agent's run. */
+  savedTo?: string;
+};
+
+/**
+ * A Run as Runs shows it, at any depth: one tool call from the runtime's Run
+ * log, with the Interactions it performed itself and the Runs it started.
+ */
+export type ChildRun = {
+  /** Unique across the documents the tab has shown. */
+  id: string;
   toolName: string;
   /** The Page Object Model whose action it ran. */
   className?: string;
@@ -53,12 +60,22 @@ export type Run = {
    * returned `undefined`.
    */
   result?: string;
+  /** The image it returned, which shows in place of `result`. */
+  image?: RunImage;
   error?: string;
   /** When it started, in epoch milliseconds. */
   startedAt: number;
   durationMs?: number;
-  /** The calls it made on the page, from the Inspector's own trace. */
-  steps: readonly RunStep[];
+  /** The Interactions it performed itself, in order: not its children's. */
+  interactions: readonly RunInteraction[];
+  /** The Runs it started, in the order it started them. */
+  children: readonly ChildRun[];
+};
+
+/** A top-level Run as Runs shows it: one a Caller started. */
+export type Run = ChildRun & {
+  /** Its Caller: who started it. */
+  by: Caller;
   /**
    * Made before the page last loaded, so the refs it names (its item's, its
    * `ref` or `target` argument) named elements of that document, not this
@@ -68,4 +85,4 @@ export type Run = {
 };
 
 /** A request to bring one run into view. A new `at` repeats it. */
-export type RunFocus = { runId: number; at: number };
+export type RunFocus = { runId: string; at: number };

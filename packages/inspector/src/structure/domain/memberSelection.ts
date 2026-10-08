@@ -23,13 +23,13 @@ export function memberResolves(
 export type RunPlace = {
   /** The Page Object it ran on, e.g. "ListPage.items[1]". */
   objectPath?: string;
-  /** The members its steps acted on, e.g. "ListPage.addItemButton". */
-  stepMembers?: readonly (string | undefined)[];
+  /** The members its Interactions acted on, e.g. "ListPage.addItemButton". */
+  interactionMembers?: readonly (string | undefined)[];
 };
 
 /**
  * Whether a run belongs to a member selection: it ran on the member (or on
- * one of a collection member's items), or one of its steps targeted the
+ * one of a collection member's items), or one of its Interactions acted on the
  * member.
  *
  * @param within the paths of the member and of everything inside it.
@@ -37,5 +37,5 @@ export type RunPlace = {
 export function runIsOnMember(within: ReadonlySet<string>, run: RunPlace) {
   const inside = (path: string | undefined) =>
     path !== undefined && within.has(path);
-  return inside(run.objectPath) || (run.stepMembers ?? []).some(inside);
+  return inside(run.objectPath) || (run.interactionMembers ?? []).some(inside);
 }

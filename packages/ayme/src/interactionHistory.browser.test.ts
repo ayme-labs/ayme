@@ -4,6 +4,7 @@ import {
   type StructuralActionId,
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
+import { agentCursor } from "./agentCalls.testSupport";
 
 import type { PomManifest, ToolManifest } from "./contracts";
 import type { DecisionResponse } from "./decisionTypes";
@@ -14,14 +15,13 @@ import {
   getPageStateForElements,
   resolvePageStateRefs,
 } from "./pageState";
-import { createPageRegistration, registerCompiledPom } from "./registry";
+import { agentTools } from "./publication.testSupport";
+import {
+  createPageRegistration,
+  probeRegisteredPomMembers,
+  registerCompiledPom,
+} from "./registry";
 import { createAyme } from "./runtime";
-import { synchronizeWebMcpTools } from "./webMcp";
-
-type PublishedTool = {
-  name: string;
-  execute(input: unknown): Promise<unknown>;
-};
 
 type ActionResultShape = {
   page_changed: boolean;
@@ -33,21 +33,16 @@ const LOADED_URL = location.href;
 
 describe("Interaction history in Chromium", () => {
   let page: ReturnType<typeof createPage>;
-  let published: Map<string, PublishedTool>;
   let stop: (() => void) | undefined;
-  let disposePublication: (() => void) | undefined;
 
   const history = () => getInteractionHistory(document);
 
   beforeEach(() => {
     document.body.innerHTML = "";
     page = createPage();
-    published = new Map();
   });
 
   afterEach(() => {
-    disposePublication?.();
-    disposePublication = undefined;
     stop?.();
     stop = undefined;
     configureGoalLoop(undefined);
@@ -60,15 +55,6 @@ describe("Interaction history in Chromium", () => {
 
   function startRuntime(goalLoop?: GoalLoopDecisionFunction) {
     stop = createAyme({ pageFactory: () => page, goalLoop }).start();
-  }
-
-  async function publishTools() {
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(registered: PublishedTool) {
-        published.set(registered.name, registered);
-      },
-    });
-    disposePublication = publication.dispose;
   }
 
   /** A Page Object whose one action appends a paragraph. */
@@ -86,17 +72,12 @@ describe("Interaction history in Chromium", () => {
     registerCompiledPom(App, manifest("App", [action("add", "App.add")]));
     startRuntime(goalLoop);
     createPageRegistration(App);
-    await publishTools();
-  }
-
-  function tool(name: string): PublishedTool {
-    const found = published.get(name);
-    if (!found) throw new Error(`Tool ${name} was not published.`);
-    return found;
+    // Its tool is published once a probe finds the Page Object available.
+    await probeRegisteredPomMembers();
   }
 
   async function readStructure(): Promise<string> {
-    const context = (await tool("snapshot").execute({})) as {
+    const context = (await agentTools().call("snapshot", {})) as {
       structure: string;
     };
     return context.structure;
@@ -106,7 +87,7 @@ describe("Interaction history in Chromium", () => {
     name: string,
     input: Record<string, unknown>
   ): Promise<ActionResultShape> {
-    return (await tool(name).execute(input)) as ActionResultShape;
+    return (await agentTools().call(name, input)) as ActionResultShape;
   }
 
   const readLedger = () =>
@@ -140,7 +121,6 @@ describe("Interaction history in Chromium", () => {
 
     expect(visits()).toHaveLength(1);
     expect(visits()[0]!.urls).toEqual([LOADED_URL]);
-    await publishTools();
     await readStructure();
     const firstVisit = await history().observations.getVisitEvidence(
       visits()[0]!.id
@@ -179,7 +159,6 @@ describe("Interaction history in Chromium", () => {
         .insertAdjacentHTML("beforeend", "<p>Added by the action</p>");
     });
     startRuntime();
-    await publishTools();
     const addRef = refFor(await readStructure(), "Add");
     const actionsBefore = history().actions().size;
 
@@ -189,7 +168,6 @@ describe("Interaction history in Chromium", () => {
     expect(history().actions().size).toBe(actionsBefore + 1);
     const actionId = lastActionId();
     expect(history().actions().get(actionId)).toEqual({
-      caller: "agent",
       tool: "click",
       args: { target: addRef },
       targetRef: addRef,
@@ -208,7 +186,6 @@ describe("Interaction history in Chromium", () => {
     expect(history().actions().size).toBe(actionsBefore + 1);
     const actionId = lastActionId();
     expect(history().actions().get(actionId)).toEqual({
-      caller: "agent",
       tool: "App.add",
       args: {},
     });
@@ -225,7 +202,6 @@ describe("Interaction history in Chromium", () => {
         .insertAdjacentHTML("beforeend", "<button>Added</button>");
     });
     startRuntime();
-    await publishTools();
     const addRef = refFor(await readStructure(), "Add");
 
     const result = await act("click", { target: addRef });
@@ -252,7 +228,6 @@ describe("Interaction history in Chromium", () => {
       document.querySelector("#draft")!.remove();
     });
     startRuntime();
-    await publishTools();
     const structure = await readStructure();
     const [draftRef] = (
       await getPageStateForElements([document.querySelector("#draft")!])
@@ -277,7 +252,6 @@ describe("Interaction history in Chromium", () => {
   it("resolves a ref taken before a same-document route change after it", async () => {
     document.body.innerHTML = '<main><button id="save">Save</button></main>';
     startRuntime();
-    await publishTools();
     const saveRef = refFor(await readStructure(), "Save");
     const visitsBefore = history().observations.getVisits().length;
 
@@ -302,7 +276,6 @@ describe("Interaction history in Chromium", () => {
       document.querySelector("main")!.innerHTML = "<h1>Orders page</h1>";
     });
     startRuntime();
-    await publishTools();
     const visitsBefore = history().observations.getVisits().length;
 
     const result = await act("click", {
@@ -321,7 +294,7 @@ describe("Interaction history in Chromium", () => {
     const decide: GoalLoopDecisionFunction =
       async (): Promise<DecisionResponse> => {
         const first = step++ === 0;
-        if (!first) agentCursorDuringRun = history().cursor("agent");
+        if (!first) agentCursorDuringRun = agentCursor().current();
         return {
           model: "typesafe/jev-1.13",
           answers: {
@@ -336,10 +309,10 @@ describe("Interaction history in Chromium", () => {
       };
     await startWithAddingPom(decide);
     await readStructure();
-    const agentCursor = history().cursor("agent");
+    const agentPage = agentCursor().current();
     const actionsBefore = history().actions().size;
 
-    const handover = (await tool("goal").execute({
+    const handover = (await agentTools().call("goal", {
       goal: "add one",
       maxSteps: 3,
     })) as { history: { page_changed: boolean }[] };
@@ -350,31 +323,28 @@ describe("Interaction history in Chromium", () => {
     expect(history().actions().size).toBe(actionsBefore + 1);
     const actionId = lastActionId();
     expect(history().actions().get(actionId)).toMatchObject({
-      caller: "goalLoop",
       tool: "App.add",
     });
     await expectBeforeChangeAfter(actionId);
 
     // Step two ran after the step's action: the agent's cursor had not moved.
-    expect(agentCursorDuringRun).toBe(agentCursor);
+    expect(agentCursorDuringRun).toBe(agentPage);
     // The Handover gives the agent the page the model last received.
-    expect(history().cursor("agent")).not.toBe(agentCursor);
-    expect(names(await history().cursor("agent")!.tree.resolve())).toContain(
+    expect(agentCursor().current()).not.toBe(agentPage);
+    expect(names(await agentCursor().current()!.tree.resolve())).toContain(
       "Added by the action"
     );
   });
 
   it("renders the agent's first action after a Handover against the Handover's page", async () => {
     let step = 0;
-    let agentActionId: StructuralActionId | undefined;
+    let agentCall: Promise<ActionResultShape> | undefined;
     const decide: GoalLoopDecisionFunction =
       async (): Promise<DecisionResponse> => {
         const first = step++ === 0;
-        if (!first) {
-          // An agent tool call while the run is pending stays the agent's.
-          await act("App.noop", {});
-          agentActionId = lastActionId();
-        }
+        // An agent tool call while the run is pending stays the agent's. It
+        // waits for the Handover: one top-level Run at a time.
+        if (!first) agentCall = act("App.noop", {});
         return {
           model: "typesafe/jev-1.13",
           answers: {
@@ -410,11 +380,15 @@ describe("Interaction history in Chromium", () => {
     );
     startRuntime(decide);
     createPageRegistration(App);
-    await publishTools();
+    await probeRegisteredPomMembers();
     await readStructure();
 
-    await tool("goal").execute({ goal: "add one", maxSteps: 3 });
-    expect(history().actions().get(agentActionId!)?.caller).toBe("agent");
+    await agentTools().call("goal", { goal: "add one", maxSteps: 3 });
+    // The waiting call is the agent's first action after the Handover.
+    expect(await agentCall).toEqual({ page_changed: false, settled: true });
+    expect(history().actions().get(lastActionId())).toMatchObject({
+      tool: "App.noop",
+    });
 
     // A capture Ayme makes for itself: it finds the ref and moves no cursor.
     const [markRef] = (

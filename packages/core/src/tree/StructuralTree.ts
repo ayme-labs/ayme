@@ -61,6 +61,15 @@ type ReconciliationMetadata = {
 
 type RefAllocator = { resolve(desiredRef: AriaRef): AriaRef };
 
+export type ReconcileOptions = {
+  /**
+   * Whether a before ref and an after ref name one node, from a record of the
+   * observations in between. A pair it denies is never matched, however alike
+   * the two nodes look; a pair sharing one ref is never asked.
+   */
+  readonly sameIdentity?: (beforeRef: AriaRef, afterRef: AriaRef) => boolean;
+};
+
 /**
  * Shared state threaded through a single reconciliation. Because every tree in a
  * visit is parsed with one {@link SyntheticAriaRefFactory}, the same element
@@ -82,6 +91,7 @@ type ReconcileContext = {
   ambiguousBeforeRefs: Set<AriaRef>;
   consumedBeforeRefs: Set<AriaRef>;
   refAllocator: RefAllocator;
+  sameIdentity: (beforeRef: AriaRef, afterRef: AriaRef) => boolean;
 };
 
 type TreeNavigation = {
@@ -389,7 +399,8 @@ export class StructuralTree {
 
   static reconcile(
     before: StructuralTree,
-    after: StructuralTree
+    after: StructuralTree,
+    options: ReconcileOptions = {}
   ): StructuralTree {
     const beforeByRef: BeforeStateMap = new Map();
     const beforeByAfterRef: BeforeStateMap = new Map();
@@ -409,6 +420,7 @@ export class StructuralTree {
       ambiguousBeforeRefs: new Set(),
       consumedBeforeRefs: new Set(),
       refAllocator,
+      sameIdentity: options.sameIdentity ?? (() => true),
     };
     const rootsAreCompatible = before.root.role === after.root.role;
     const beforeRoot = rootsAreCompatible
@@ -608,7 +620,8 @@ export class StructuralTree {
         const afterChild = afterChildren[afterIndex];
         if (afterChild === undefined || typeof afterChild === "string")
           continue;
-        // A surviving ref reserves both ends of its match, even across parents.
+        // A surviving ref reserves both ends of its match, even across parents; two refs are a
+        // candidate pair only when the caller's identity record does not tell them apart.
         const candidates = StructuralTree._findNodeCandidates(
           beforeChildren,
           beforeMatches,
@@ -616,7 +629,8 @@ export class StructuralTree {
           (beforeNode, afterNode) =>
             (beforeNode.ref === afterNode.ref ||
               (!context.afterNodesByRef.has(beforeNode.ref) &&
-                !context.beforeNodesByRef.has(afterNode.ref))) &&
+                !context.beforeNodesByRef.has(afterNode.ref) &&
+                context.sameIdentity(beforeNode.ref, afterNode.ref))) &&
             comparator(beforeNode, afterNode)
         );
         candidatesByAfterIndex.set(afterIndex, candidates);

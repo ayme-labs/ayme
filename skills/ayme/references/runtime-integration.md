@@ -35,21 +35,22 @@ there; never add a second one.
 ## Separate publication from direct consumers
 
 POM registration, WebMCP publication, and assistant adapters are separate
-responsibilities. A tool is live once its POM is registered and available,
-whether or not it is published. An
+responsibilities. Whether a tool is listed or available does not depend on
+publication; [`ayme.tools`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymetools)
+gives the rules. An
 [in-app assistant](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/in-app-assistant.md)
-runs live tools through `ayme.tools`; it gets thrown errors, whereas a published
+runs available tools through `ayme.tools`; it gets thrown errors, whereas a published
 call resolves a failure as a result with `isError: true`, as
 [Errors](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/errors.md#how-an-agent-sees-a-failure)
 describes.
 
 ## Optional quick verification
 
-After mounting the component, check the live tools and the page state:
+After mounting the component, check the tools and the page state:
 
-- `ayme.tools.list()` lists the live tools.
+- [`ayme.tools.list()`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymetools) lists them.
 - The [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md)'s
-  Model and Tools lenses show the Page Objects on the page and their live tools.
+  Model and Tools lenses show the Page Objects on the page and their available tools.
 - `(await ayme.tools.run("snapshot", {})).structure` returns the Structural Page
   State an agent receives, labelled with Page Object names.
 

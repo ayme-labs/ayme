@@ -32,7 +32,7 @@ export { NodeView } from "./pom/NodeView";
 export { PanelShell, type PanelCorner, type PanelEdge } from "./pom/PanelShell";
 export { RefField } from "./pom/RefField";
 export { RunCard, type ArgumentValue } from "./pom/RunCard";
-export { RunEntry, RunsView, type RunStep } from "./pom/RunsView";
+export { RunEntry, RunsView, type RunInteraction } from "./pom/RunsView";
 export { StructureLens } from "./pom/StructureLens";
 export { ToolPage } from "./pom/ToolPage";
 export { ValueRows } from "./pom/ValueRows";

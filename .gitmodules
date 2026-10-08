@@ -1,0 +1,4 @@
+[submodule "apps/lab-formbricks/formbricks"]
+	path = apps/lab-formbricks/formbricks
+	url = https://github.com/ayme-labs/formbricks.git
+	update = none

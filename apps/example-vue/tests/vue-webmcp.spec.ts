@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { expect, selectors, type Page } from "@playwright/test";
+import { server } from "@ayme-dev/example-certification/config";
 import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 
 import { ListPage } from "../playwright/pom/ListPage";
@@ -12,7 +13,7 @@ import {
 import {
   recordPublishedTools,
   type RecordingDriver,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/webmcp/testing";
 
 /**
  * Opens the playground with the Inspector collapsed, for a test that clicks
@@ -85,7 +86,9 @@ function normalizeAppSubtree(pageState: string): string {
 }
 
 // The dev server mounts a Decision Endpoint, so the app runs with the Goal
-// Loop on and publishes `goal` alongside the Page Object tools.
+// Loop on and publishes `goal` alongside the Page Object tools; the
+// production build has no Decision Endpoint and publishes no `goal`.
+const goalToolNames = server === "dev" ? ["goal"] : [];
 const browserToolNames = [
   "click",
   "hover",
@@ -109,7 +112,7 @@ const initialToolNames = [
   "ListPage.addItem",
   "ListPage.items.archive",
   "ListPage.items.rename",
-  "goal",
+  ...goalToolNames,
 ];
 
 // The Inspector renders into a closed shadow root; its page objects reach it
@@ -164,6 +167,15 @@ async function recordedTools(page: Page) {
 
 async function recordedToolNames(page: Page) {
   return (await recordedTools(page)).map((tool) => tool.name);
+}
+
+/**
+ * The published tool names, sorted: a tool that comes back is registered
+ * after the tools that stayed published, so after a change the registration
+ * order is not the publication order.
+ */
+async function recordedToolSet(page: Page) {
+  return (await recordedToolNames(page)).sort();
 }
 
 test("derives nested object input schemas from POM action types", () => {
@@ -357,14 +369,19 @@ test("publishes collection tools only while a component root is live", async ({
   });
   await expect
     .poll(async () => await recordedToolNames(page))
-    .toEqual(["snapshot", ...browserToolNames, "ListPage.addItem", "goal"]);
+    .toEqual([
+      "snapshot",
+      ...browserToolNames,
+      "ListPage.addItem",
+      ...goalToolNames,
+    ]);
 
   await executePublishedTool(page, "ListPage.addItem", {
     text: "Restore live component tools",
   });
   await expect
-    .poll(async () => await recordedToolNames(page))
-    .toEqual(initialToolNames);
+    .poll(async () => await recordedToolSet(page))
+    .toEqual([...initialToolNames].sort());
 });
 
 test("demonstrates the list app and invokes the generated POM tools", async ({
@@ -454,30 +471,34 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
         additionalProperties: false,
       },
     },
-    {
-      name: "goal",
-      description:
-        "Drive the page toward a goal in steps. Each step is one fast model judgement. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          goal: { type: "string" },
-          maxSteps: { type: "integer" },
-          values: {
-            type: "object",
+    ...(server === "dev"
+      ? [
+          {
+            name: "goal",
             description:
-              "Passed to the Goal Loop with the goal. Where the page has nothing to pick, such as text to type or a URL to open, the loop picks one of these by its label. It never makes up a value.",
-            additionalProperties: {
-              anyOf: [{ type: "string" }, { type: "number" }],
+              "Drive the page toward a goal in steps. Each step is one fast model judgement. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.",
+            inputSchema: {
+              type: "object",
+              properties: {
+                goal: { type: "string" },
+                maxSteps: { type: "integer" },
+                values: {
+                  type: "object",
+                  description:
+                    "Passed to the Goal Loop with the goal. Where the page has nothing to pick, such as text to type or a URL to open, the loop picks one of these by its label. It never makes up a value.",
+                  additionalProperties: {
+                    anyOf: [{ type: "string" }, { type: "number" }],
+                  },
+                  minProperties: 1,
+                  maxProperties: 254,
+                },
+              },
+              required: ["goal", "maxSteps"],
+              additionalProperties: false,
             },
-            minProperties: 1,
-            maxProperties: 254,
           },
-        },
-        required: ["goal", "maxSteps"],
-        additionalProperties: false,
-      },
-    },
+        ]
+      : []),
   ]);
 
   await page.getByLabel("New item").fill("Write release notes");
@@ -567,12 +588,17 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
   ).toBeVisible();
   await expect
     .poll(async () => await recordedToolNames(page))
-    .toEqual(["snapshot", ...browserToolNames, "ListPage.addItem", "goal"]);
+    .toEqual([
+      "snapshot",
+      ...browserToolNames,
+      "ListPage.addItem",
+      ...goalToolNames,
+    ]);
   await page.getByRole("button", { name: "Confirm archive" }).click();
   await expect(page.locator("[data-archived-label]")).toHaveCount(3);
   await expect
-    .poll(async () => await recordedToolNames(page))
-    .toEqual(initialToolNames);
+    .poll(async () => await recordedToolSet(page))
+    .toEqual([...initialToolNames].sort());
 });
 
 // The playground's Inspector smoke test: the hosted Inspector opens

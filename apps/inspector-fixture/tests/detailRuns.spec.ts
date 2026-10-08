@@ -1,14 +1,11 @@
 import { AgentView } from "./agentView";
-import { expect, test } from "./fixtures";
+import { expect, INSPECTOR, test } from "./fixtures";
 
 // E2E: the lenses, the run card, Runs and What the model sees working
 // together on the fixture page, with the real runtime and Chromium's own
 // WebMCP. Expected values come from the page and from what an agent gets over
 // WebMCP, never from the panel.
 
-// Steps come from the Inspector's trace of Page Object locator operations; a
-// single-element tool acts on the element itself, so its run has none until the runtime
-// attributes steps to each call.
 test("a structure node's Browser tool runs on that node, and Runs shows the run as yours", async ({
   inspector,
   listPage,
@@ -22,7 +19,7 @@ test("a structure node's Browser tool runs on that node, and Runs shows the run 
   await expect(listPage.newItemInput).toHaveValue("Bread");
   const run = inspector.runs.latest("fill");
   await expect.poll(() => run.status()).toBe("Succeeded");
-  await expect(run.byYou).toBeVisible();
+  expect(await run.caller()).toEqual(INSPECTOR);
 });
 
 test("a tool's page runs it from a card without a head, and What the model sees shows the definition snapshot gives an agent", async ({

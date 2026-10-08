@@ -1,8 +1,8 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PomManifest, RegisteredPomTool } from "@ayme-dev/ayme";
-import type { PublishedToolInfo, RegisteredPom } from "@ayme-dev/ayme/internal";
+import type { PomManifest, RegisteredPomTool, ToolInfo } from "@ayme-dev/ayme";
+import type { RegisteredPom } from "@ayme-dev/ayme/internal";
 
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "../testing";
@@ -57,7 +57,6 @@ const save: RegisteredPomTool & { componentPath: string } = {
   description: "Save the document.",
   inputSchema: noArguments,
   parameters: [],
-  execute: async () => null,
 };
 
 /** The editor, with its toolbar on the page or not. */
@@ -77,12 +76,13 @@ function editor(toolbarOnPage: boolean): RegisteredPom {
   };
 }
 
-const saveLive: PublishedToolInfo[] = [
+const saveTool = (available: boolean): ToolInfo[] => [
   {
     name: save.name,
     description: save.description,
     inputSchema: noArguments,
     group: "pageObject",
+    available,
   },
 ];
 
@@ -100,13 +100,15 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { appProcessToolsOf, asStartedAyme, startedAyme } =
     await import("../tools/test-utils/startedAyme");
   startedAyme.tools.list.mockImplementation(
-    () => runtime.liveTools as PublishedToolInfo[]
+    () => runtime.liveTools as ToolInfo[]
   );
   startedAyme.webMCP.publicationStatus = runtime.publication;
-  const { pageStateNodeEntry } =
+  const { pageStateNodeEntry, toolInputViolations } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
+    toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     lookAtPageStateForDocument: vi.fn(async () => ({
       projected: { roots: [] },
@@ -114,8 +116,9 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     })),
     listElementToolTargets: vi.fn(async () => new Map()),
     getPomDefinitionText: vi.fn(() => ""),
+    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => runtime.registrations),
     getStartedAyme: asStartedAyme,
     getAppProcessTools: appProcessToolsOf,
@@ -136,7 +139,7 @@ function renderApp({
   live,
 }: {
   toolbarOnPage: boolean;
-  live: PublishedToolInfo[];
+  live: ToolInfo[];
 }) {
   runtime.registrations = [editor(toolbarOnPage)];
   runtime.liveTools = live;
@@ -156,7 +159,7 @@ afterEach(() => {
 });
 
 it("runs a live action from the panel while WebMCP publication is off", async () => {
-  renderApp({ toolbarOnPage: true, live: saveLive });
+  renderApp({ toolbarOnPage: true, live: saveTool(true) });
 
   await inspector.navigator.model.object("Editor.toolbar").click();
 
@@ -167,7 +170,7 @@ it("runs a live action from the panel while WebMCP publication is off", async ()
 });
 
 it("dims an action as not on page when its Page Object isn't on the page", async () => {
-  renderApp({ toolbarOnPage: false, live: [] });
+  renderApp({ toolbarOnPage: false, live: saveTool(false) });
 
   await inspector.navigator.model.object("Editor.toolbar").click();
   const action = inspector.detail.model.offPageAction("save");

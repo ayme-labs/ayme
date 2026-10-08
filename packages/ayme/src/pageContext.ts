@@ -1,5 +1,4 @@
-import type { ModelContextTool } from "@mcp-b/webmcp-types";
-import type { JsonValue, PomDefinition } from "./contracts";
+import type { JsonValue, PomDefinition, ToolDescriptor } from "./contracts";
 import {
   getPageStateForDocument,
   type AriaRef,
@@ -8,9 +7,8 @@ import {
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { ToolInputError } from "./errors";
-import type { Caller } from "./interactionHistory";
-
-type GetPageContextInput = { names?: string[] };
+import type { Cursor } from "./cursors";
+import type { RunContext } from "./run";
 
 export type PageContext = {
   readonly structure: string;
@@ -34,7 +32,10 @@ export const getPageStateTool = {
     additionalProperties: false,
   } as const,
   execute: async () => (await getPageStateForDocument(document)).text,
-} satisfies ModelContextTool<Record<string, never>, string>;
+} satisfies ToolDescriptor & {
+  inputSchema: object;
+  execute(): Promise<string>;
+};
 
 export const getPageContextTool = {
   name: "snapshot",
@@ -48,17 +49,18 @@ export const getPageContextTool = {
     required: [],
     additionalProperties: false,
   } as const,
-  execute: (input: unknown) => snapshotFor(input, "agent"),
-  /** Runs it for the caller given, whose page it is. */
-  executeAs: (input: unknown, caller: Caller) => snapshotFor(input, caller),
-} satisfies ModelContextTool<GetPageContextInput, JsonValue> & {
-  executeAs(input: unknown, caller: Caller): Promise<JsonValue>;
+  /** Reads the page for the Run's Caller, whose cursor moves to it. */
+  execute: (input: unknown, context: RunContext) =>
+    snapshotFor(input, context.cursor),
+} satisfies ToolDescriptor & {
+  inputSchema: object;
+  execute(input: unknown, context: RunContext): Promise<JsonValue>;
 };
 
-async function snapshotFor(input: unknown, caller: Caller): Promise<JsonValue> {
+async function snapshotFor(input: unknown, cursor: Cursor): Promise<JsonValue> {
   const context = await pageContextFor(
     document,
-    caller,
+    cursor,
     definitionNamesFrom(input)
   );
   const payload: PageContextPayload = {
@@ -68,19 +70,21 @@ async function snapshotFor(input: unknown, caller: Caller): Promise<JsonValue> {
   return JSON.parse(JSON.stringify(payload)) as JsonValue;
 }
 
+/** The page context `cursor`'s reader receives; its cursor moves to the capture. */
 export async function getPageContextForDocument(
   currentDocument: Document,
+  cursor: Cursor,
   ...names: readonly string[]
 ): Promise<PageContext> {
-  return pageContextFor(currentDocument, "agent", names);
+  return pageContextFor(currentDocument, cursor, names);
 }
 
 async function pageContextFor(
   currentDocument: Document,
-  caller: Caller,
+  cursor: Cursor,
   names: readonly string[]
 ): Promise<PageContext> {
-  const pageState = await getPageStateForDocument(currentDocument, caller);
+  const pageState = await getPageStateForDocument(currentDocument, cursor);
   return Object.freeze({
     structure: pageState.text,
     pomDefinitions: getPomDefinitions(...names).definitions,

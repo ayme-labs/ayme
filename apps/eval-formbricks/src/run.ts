@@ -1,0 +1,331 @@
+/**
+ * One mission, once, through one arm. Checks preconditions, seeds, opens the
+ * mission's start page, runs Claude Code, reads the verdict from the database
+ * and stores the run.
+ * `runOnce` is the function the suite calls; the command below wraps it.
+ *
+ *   node src/run.ts --arm playwright-mcp [--model sonnet] [--timeout-seconds 600] [--mission <id>]
+ */
+import { spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+import {
+  arms,
+  armIds,
+  isArmId,
+  type Arm,
+  type ArmContext,
+  type ArmSetup,
+} from "./arms.ts";
+import { initPageScript, openStartPage } from "./browser.ts";
+import {
+  agentEffort,
+  claudeEnvironment,
+  claudeVersion,
+  runClaude,
+} from "./claude.ts";
+import {
+  openRouterKeyVariable,
+  readEnvVariable,
+  readOauthToken,
+} from "./environment.ts";
+import { decisionUsageFile, measureGoalLoop } from "./goalLoop.ts";
+import { moveFiles, readLabChanges } from "./labCheckout.ts";
+import {
+  ensureDatabaseBuilt,
+  openFormbricksDatabase,
+  readWorkspaceSurveys,
+  seededIds,
+  seedMission,
+  waitForAuthorizationProjection,
+} from "./formbricks/database.ts";
+import {
+  defaultMissionId,
+  missionDefinitions,
+  type MissionDefinition,
+} from "./missions.ts";
+import {
+  normalizeRun,
+  summarizeResult,
+  type NormalizedResult,
+} from "./normalize.ts";
+import {
+  evalRoot,
+  formbricksRoot,
+  labRoot,
+  labUrl,
+  repoRoot,
+  runsRoot,
+} from "./paths.ts";
+import {
+  checkPreconditions,
+  claudeTokenPrecondition,
+  dockerPrecondition,
+  formbricksPreparedPrecondition,
+  labAppPrecondition,
+  labCheckoutCleanPrecondition,
+} from "./preconditions.ts";
+import { createPrompt, setupPrompt } from "./prompt.ts";
+import { judgeMission } from "./verdict.ts";
+
+export type RunOptions = {
+  arm: Arm;
+  mission: MissionDefinition;
+  model: string;
+  timeoutSeconds: number;
+};
+
+export const defaultModel = "sonnet";
+export const defaultTimeoutSeconds = 600;
+
+function usage() {
+  return `Usage: pnpm eval:run -- --arm <${armIds.join("|")}> [--model <model>] [--timeout-seconds <seconds>] [--mission <${Object.keys(missionDefinitions).join("|")}>]`;
+}
+
+function parseOptions(argv: string[]): RunOptions {
+  const args = argv[0] === "--" ? argv.slice(1) : argv;
+  const values = new Map<string, string>();
+  for (let index = 0; index < args.length; index += 2) {
+    const key = args[index];
+    const value = args[index + 1];
+    if (!key?.startsWith("--") || value === undefined) throw new Error(usage());
+    values.set(key.slice(2), value);
+  }
+  const arm = values.get("arm");
+  if (arm === undefined || !isArmId(arm)) throw new Error(usage());
+  const missionId = values.get("mission") ?? defaultMissionId;
+  const mission = missionDefinitions[missionId];
+  if (mission === undefined) throw new Error(usage());
+  const timeoutSeconds = Number(
+    values.get("timeout-seconds") ?? defaultTimeoutSeconds
+  );
+  if (!Number.isInteger(timeoutSeconds) || timeoutSeconds <= 0)
+    throw new Error(usage());
+  return {
+    arm: arms[arm],
+    mission,
+    model: values.get("model") ?? defaultModel,
+    timeoutSeconds,
+  };
+}
+
+export function log(line: string) {
+  process.stderr.write(`[${new Date().toISOString()}] ${line}\n`);
+}
+
+function gitOutput(cwd: string, args: string[]) {
+  const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+  return result.status === 0 ? result.stdout.trim() : null;
+}
+
+function seconds(ms: number | null) {
+  return ms === null ? "no result" : `${(ms / 1000).toFixed(1)} s`;
+}
+
+async function writeJson(filePath: string, value: unknown) {
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+/**
+ * Runs the mission once and stores it under `results/runs/<run id>/`.
+ * Throws when the run cannot complete; a failed verdict is a result, not an error.
+ */
+export async function runOnce(
+  options: RunOptions
+): Promise<{ runId: string; runDir: string; result: NormalizedResult }> {
+  const runId = `${new Date().toISOString().replace(/[:.]/g, "-")}-${options.arm.id}-${randomBytes(3).toString("hex")}`;
+  const runDir = path.join(runsRoot, runId);
+  const profileDir = path.join(runDir, "browser-profile");
+  const outputDir = path.join(runDir, "playwright-output");
+  const initPagePath = path.join(runDir, "init-page.cjs");
+  const mcpConfigPath = path.join(runDir, "mcp.json");
+  // A fresh, empty Claude Code configuration for this run alone; deleted with the browser profile.
+  const claudeConfigDir = path.join(runDir, "claude-config");
+  await mkdir(profileDir, { recursive: true });
+  await mkdir(outputDir, { recursive: true });
+  await mkdir(claudeConfigDir, { recursive: true });
+
+  const oauthToken = readOauthToken(evalRoot);
+  const environment =
+    oauthToken === undefined
+      ? undefined
+      : claudeEnvironment({ configDir: claudeConfigDir, oauthToken });
+
+  log("Checking preconditions.");
+  try {
+    await checkPreconditions([
+      claudeTokenPrecondition({ environment, envDirectory: evalRoot }),
+      dockerPrecondition,
+      labAppPrecondition(labUrl),
+      formbricksPreparedPrecondition(formbricksRoot),
+      labCheckoutCleanPrecondition(readLabChanges),
+      ...(options.arm.preconditions ?? []),
+    ]);
+  } catch (error) {
+    await rm(runDir, { recursive: true, force: true });
+    throw error;
+  }
+  if (environment === undefined) throw new Error("unreachable: no environment");
+  ensureDatabaseBuilt(formbricksRoot, log);
+  log(`Run ${runId}: ${runDir}`);
+
+  const database = await openFormbricksDatabase(formbricksRoot);
+  let armSetup: ArmSetup | undefined;
+  try {
+    log("Seeding the mission.");
+    const mission = await seedMission(database, options.mission, runId, labUrl);
+    await writeJson(path.join(runDir, "mission.json"), mission);
+    const projection = await waitForAuthorizationProjection(
+      database,
+      seededIds(mission),
+      { timeoutMs: 60_000 }
+    );
+    log(
+      `Authorization projection processed ${projection.rows} rows in ${projection.waitedMs} ms.`
+    );
+
+    log(
+      mission.start.signedIn
+        ? "Signing in and opening the editor."
+        : "Opening the sign-in page, signed out."
+    );
+    const { browserVersion } = await openStartPage({
+      mission,
+      baseUrl: labUrl,
+      profileDir,
+      channel: "chrome",
+      log,
+    });
+
+    const armContext: ArmContext = {
+      runId,
+      runDir,
+      profileDir,
+      outputDir,
+      initPagePath,
+      configDir: claudeConfigDir,
+      start: mission.start,
+      cwd: labRoot,
+      log,
+    };
+    const prompt = createPrompt(mission, options.arm, labUrl);
+    await writeFile(path.join(runDir, "setup-prompt.txt"), setupPrompt);
+    await writeFile(path.join(runDir, "prompt.txt"), prompt);
+    await writeFile(initPagePath, initPageScript(mission.start.url));
+    await writeJson(mcpConfigPath, {
+      mcpServers: options.arm.mcpServers(armContext),
+    });
+    // Whatever the arm's interface needs outside the measured window.
+    armSetup = await options.arm.setup?.(armContext);
+
+    log(
+      `Starting the agent (${options.arm.id}, ${options.model}, ${options.timeoutSeconds} s).`
+    );
+    const run = await runClaude({
+      cwd: labRoot,
+      environment: { ...environment, ...armSetup?.environment },
+      model: options.model,
+      arm: options.arm,
+      mcpConfigPath,
+      readableDirectories: armSetup?.readableDirectories,
+      setupPrompt,
+      prompt,
+      timeoutMs: options.timeoutSeconds * 1000,
+      transcriptPath: path.join(runDir, "transcript.jsonl"),
+      stderrPath: path.join(runDir, "stderr.log"),
+    });
+    // Without a completed setup turn there is no measured turn, so there is no result; the transcript stays in the run folder.
+    if (run.task === null)
+      throw new Error(
+        `The run could not complete: ${run.setupFailure ?? "the task was never sent"}. The transcript is in ${runDir}.`
+      );
+    log(
+      `Agent finished: exit ${run.exitCode ?? run.signal}, setup turn ${seconds(run.setup.wallTimeMs)}, task turn ${seconds(run.task.wallTimeMs)}, timed out ${run.task.timedOut}, ${run.lines.length} events.`
+    );
+
+    // Whatever the agent left in the lab app folder must not reach the next run.
+    const labChanges = readLabChanges();
+    await moveFiles(labChanges.untracked, path.join(runDir, "agent-files"));
+
+    log("Reading the verdict from the database.");
+    const verdict = judgeMission(
+      mission,
+      await readWorkspaceSurveys(database, mission.workspaceId)
+    );
+    await writeJson(path.join(runDir, "verdict.json"), verdict);
+
+    // The lab app's Decision Endpoint records every Goal Loop call; this run's are the ones in its window.
+    // Calls the Goal Loop made before the task message would be the setup turn's; the window starts with the task.
+    const goalLoop = await measureGoalLoop({
+      usageFile: decisionUsageFile(formbricksRoot),
+      window: { startedAt: run.task.sentAt, finishedAt: run.finishedAt },
+      openRouterApiKey: readEnvVariable(openRouterKeyVariable, evalRoot),
+      log,
+    });
+    if (goalLoop.calls > 0)
+      log(
+        `The Goal Loop made ${goalLoop.calls} decision calls (${goalLoop.failedCalls} failed); cost ${goalLoop.costUsd === null ? "unknown" : `$${goalLoop.costUsd}`}.`
+      );
+
+    const result = normalizeRun({
+      runId,
+      arm: options.arm.id,
+      missionId: mission.id,
+      requestedModel: options.model,
+      effort: agentEffort,
+      timeoutSeconds: options.timeoutSeconds,
+      transcript: run.lines,
+      exitCode: run.exitCode,
+      setupTurn: run.setup,
+      taskTurn: run.task,
+      finishedAt: run.finishedAt,
+      verdict,
+      versions: {
+        claudeCode: claudeVersion(),
+        browserInterface: options.arm.browserInterface(),
+        browser: browserVersion,
+        formbricksCommit: gitOutput(formbricksRoot, ["rev-parse", "HEAD"]),
+        aymeCommit: gitOutput(repoRoot, ["rev-parse", "HEAD"]),
+      },
+      goalLoop,
+      setup: armSetup?.evidence ?? null,
+      labCheckout: {
+        movedFiles: labChanges.untracked,
+        modifiedFiles: labChanges.modified,
+      },
+    });
+    await writeFile(
+      path.join(runDir, "final.md"),
+      result.agent.finalMessage ?? "(the agent produced no final message)\n"
+    );
+    await writeJson(path.join(runDir, "result.json"), result);
+    await writeFile(path.join(runDir, "summary.md"), summarizeResult(result));
+    if (result.labCheckoutDirty)
+      log(
+        "Warning: the agent changed the lab app checkout. Files it created are in agent-files/; tracked files it modified are still there. Inspect them before the next run."
+      );
+    return { runId, runDir, result };
+  } finally {
+    await armSetup?.dispose();
+    await database.close();
+    await rm(profileDir, { recursive: true, force: true });
+    await rm(claudeConfigDir, { recursive: true, force: true });
+  }
+}
+
+async function main() {
+  const { result } = await runOnce(parseOptions(process.argv.slice(2)));
+  process.stdout.write(summarizeResult(result));
+  process.exitCode = result.pass ? 0 : 1;
+}
+
+if (import.meta.main) {
+  main().catch((error: unknown) => {
+    process.stderr.write(
+      `${error instanceof Error ? error.message : String(error)}\n`
+    );
+    process.exitCode = 2;
+  });
+}

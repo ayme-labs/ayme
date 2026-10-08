@@ -9,13 +9,13 @@ Slices, from the bottom up:
 - `navigation`: the selection, the lens contract, the run slot, the navigator and the page highlights.
 - `page-model`: the Page Object tree and the Model lens.
 - `structure`: the page state tree, member selection and the Structure lens.
-- `runs`: running a tool, its steps and the trace, and Runs.
+- `runs`: running a tool, and Runs: the page's Run log, child Runs nested under their parent, and each Run's Interactions named by member.
 - `tools`: the tool list, the run card and its fields, and ref picking.
-- `demo`: the wrapper on the runtime's Pages: the trace Runs records, and demo mode's pause and click cue.
+- `demo`: the wrapper on the runtime's Pages: demo mode's pause and click cue, and pointer actions passing through the panel.
 - `app`: the composition root: mounting, the stylesheet and the wiring of every slice.
 - `testing`: the Inspector POM; its `index.ts` is the `./testing` entry.
 
-Layers, only where a slice has that kind of code: `domain` (pure rules and types), `application` (interaction policy), `infrastructure` (the runtime, the host document, storage, the trace), `presentation` (UI-logic hooks and containers), `view` (components that take props and callbacks), `test-utils` (test-only data and harnesses).
+Layers, only where a slice has that kind of code: `domain` (pure rules and types), `application` (interaction policy), `infrastructure` (the runtime, the host document, storage), `presentation` (UI-logic hooks and containers), `view` (components that take props and callbacks), `test-utils` (test-only data and harnesses).
 
 - Every file of a layered slice sits in a layer folder, except its `index.ts`.
 - The layer rule holds inside a slice. Another slice is reached through its `index.ts`, which lint can't see past, so import only from the layers yours may use.
@@ -44,15 +44,20 @@ Layers, only where a slice has that kind of code: `domain` (pure rules and types
   has `LocatorGroups`: one group per page object class, each with a
   container and the targets picked on the page or from a structure tree
   that opens inside the group, each showing the locator the last run gave it.
-- `runs` holds Runs, the timeline of the runs made from the panel, and
-  which runs belong to the selection.
-- `shared`'s `describeCall` says what a call on the runtime's Page does:
-  whether it acts, clicks or waits, which elements it hit-tests, and the step
-  Runs records. Its tables classify every method of Playwright's Locator,
-  Page, Keyboard and Mouse, so a Playwright release that adds one fails
-  typecheck until it is classified. The `demo` wrapper only applies that:
-  it records the step, lets hit-tested elements pass through the panel, and
-  in demo mode pauses before each action and cues each click.
+- `runs` holds Runs, the timeline of the page's Run log: every Caller's
+  Runs, each with the Runs it started nested under it and the Interactions
+  it performed itself, which the runtime records. Runs names an
+  Interaction's member by matching its locator to the registry's member
+  locators. It also says which runs belong to the selection: a tree does
+  when its top-level Run or any Run in it does.
+- `shared`'s `describeCall` says what a call on the runtime's Page does for
+  demo mode: whether it acts or clicks, and which elements it hit-tests.
+  Its tables classify every method of Playwright's Locator, Page, Keyboard
+  and Mouse, so a Playwright release that adds one fails typecheck until it
+  is classified. Which calls are a Run's Interactions is the runtime's
+  list, not these tables. The `demo` wrapper only applies them: it lets
+  hit-tested elements pass through the panel, and in demo mode pauses
+  before each action and cues each click.
 
 Only infrastructure code, and the mount that installs the Inspector's
 instrumentation, reads `@ayme-dev/ayme` at runtime; components take props.

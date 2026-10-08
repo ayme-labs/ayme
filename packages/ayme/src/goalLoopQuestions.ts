@@ -15,10 +15,11 @@ import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
 import type { GoalLoopStepRecord } from "./goalLoop";
 import type { AriaRef, PageStateCapture } from "./pageState";
 import { listElementTools, NAVIGATION_TOOLS } from "./browserTools";
+import type { StartChildRun } from "./run";
 import { acceptedRefNodes, type TargetField } from "./elementTools";
 import {
   listCollectionToolRoots,
-  listCallerAwarePomTools,
+  listAvailablePomTools,
   type RegisteredPomRoot,
 } from "./registry";
 
@@ -108,7 +109,7 @@ export function listValueQuestionId(
   return `${derivedIdPrefix(parameter, parameterNames)}${ordinal}`;
 }
 
-const parameterNamesOf = (tool: ExecutableTool) =>
+const parameterNamesOf = (tool: GoalLoopOperation) =>
   tool.args.map((arg) => arg.name);
 
 // --- Operations offered in stage one ---
@@ -147,11 +148,14 @@ type ArgumentSpec = {
   free?: FreeKind;
 };
 
-export type ExecutableTool = {
+export type GoalLoopOperation = {
   name: string;
   description: string;
-  /** Runs the tool as the Goal Loop's model, the caller of every step. */
-  execute(input: unknown): Promise<unknown>;
+  /**
+   * Runs the tool as a step, a child Run of the goal Run through `run`, which
+   * reads with the goal Run's fork of its Caller's cursor.
+   */
+  execute(input: unknown, run: StartChildRun): Promise<unknown>;
   /** Parameter names a caller must pass; empty when the tool takes none. */
   requiredParams: string[];
   args: ArgumentSpec[];
@@ -160,7 +164,7 @@ export type ExecutableTool = {
 export type ToolOption = {
   key: string;
   label: string;
-  tool: ExecutableTool;
+  tool: GoalLoopOperation;
 };
 
 /** A ref, an enum value or a boolean: what the model is allowed to fill. */
@@ -269,24 +273,24 @@ function specsOfCollectionTool(
  * Browser Tool that moves the page, and every registered POM tool.
  */
 export function buildToolOptions(): ToolOption[] {
-  const elementTools: ExecutableTool[] = listElementTools().map(
-    ({ tool, targetField, loopInputSchema, filter, executeAs }) => ({
+  const elementTools: GoalLoopOperation[] = listElementTools().map(
+    ({ tool, targetField, loopInputSchema, filter }) => ({
       name: tool.name,
       description: tool.description,
-      execute: (input: unknown) => executeAs(input, "goalLoop"),
+      execute: (input: unknown, run: StartChildRun) => run(tool.name, input),
       requiredParams: [...(loopInputSchema.required ?? [])],
       args: specsOfElementToolSchema(loopInputSchema, targetField, filter),
     })
   );
-  const navigationTools: ExecutableTool[] = NAVIGATION_TOOLS.map((tool) => ({
+  const navigationTools: GoalLoopOperation[] = NAVIGATION_TOOLS.map((tool) => ({
     name: tool.name,
     description: tool.description,
-    execute: (input: unknown) => tool.executeAs(input, "goalLoop"),
+    execute: (input: unknown, run: StartChildRun) => run(tool.name, input),
     requiredParams: [...(tool.inputSchema.required ?? [])],
     args: specsOfObjectSchema(tool.inputSchema),
   }));
   const collectionRoots = listCollectionToolRoots();
-  const pomTools: ExecutableTool[] = listCallerAwarePomTools().map((t) => {
+  const pomTools: GoalLoopOperation[] = listAvailablePomTools().map((t) => {
     const roots = collectionRoots.get(t.name);
     const args = roots
       ? specsOfCollectionTool(t.parameters, roots)
@@ -295,10 +299,10 @@ export function buildToolOptions(): ToolOption[] {
       name: t.name,
       description: t.description,
       // An action without parameters of its own still takes the empty `args`.
-      execute: (input: unknown) =>
-        t.executeAs(
-          roots ? { args: {}, ...(input as Record<string, unknown>) } : input,
-          "goalLoop"
+      execute: (input: unknown, run: StartChildRun) =>
+        run(
+          t.name,
+          roots ? { args: {}, ...(input as Record<string, unknown>) } : input
         ),
       requiredParams: args
         .filter((arg) => !arg.optional)
@@ -485,7 +489,7 @@ function describeParameter(arg: Pick<ArgumentSpec, "name" | "description">) {
     : `"${arg.name}"`;
 }
 
-function describeOperation(tool: ExecutableTool): string {
+function describeOperation(tool: GoalLoopOperation): string {
   return `The operation is "${tool.name}": ${tool.description}`;
 }
 
@@ -494,7 +498,10 @@ function pickElementSentence(parameter: string): string {
   return `Pick the element this operation acts on as its ${parameter} parameter.`;
 }
 
-function argumentInstructions(tool: ExecutableTool, arg: ArgumentSpec): string {
+function argumentInstructions(
+  tool: GoalLoopOperation,
+  arg: ArgumentSpec
+): string {
   const parameter = describeParameter(arg);
   const operation = describeOperation(tool);
   switch (arg.closedSet?.kind) {
@@ -517,7 +524,7 @@ function argumentInstructions(tool: ExecutableTool, arg: ArgumentSpec): string {
  * element.
  */
 function chunkedRefQuestions(
-  tool: ExecutableTool,
+  tool: GoalLoopOperation,
   arg: ArgumentSpec,
   options: readonly ArgumentOption[]
 ): ArgumentQuestion[] {
@@ -554,7 +561,7 @@ function chunkedRefQuestions(
  * those elements, and nothing else, so the model picks between them directly.
  */
 function runOffQuestion(
-  tool: ExecutableTool,
+  tool: GoalLoopOperation,
   chunk: ArgumentQuestion,
   named: readonly ArgumentOption[]
 ): ArgumentQuestion {
@@ -582,7 +589,7 @@ const leaveUnsetOption = (arg: ArgumentSpec): ArgumentOption => ({
  * does this value belong in the list?
  */
 function listValueQuestions(
-  tool: ExecutableTool,
+  tool: GoalLoopOperation,
   arg: ArgumentSpec,
   options: readonly ArgumentOption[]
 ): ListValueQuestion[] {
@@ -604,7 +611,7 @@ function listValueQuestions(
  * can supply.
  */
 export function planArguments(
-  tool: ExecutableTool,
+  tool: GoalLoopOperation,
   capture: PageStateCapture,
   values: GoalValues = {}
 ): ArgumentPlan {
@@ -1020,7 +1027,7 @@ function choose(
  * throws leaves the ones read before it there.
  */
 export function readArgumentAnswers(
-  tool: ExecutableTool,
+  tool: GoalLoopOperation,
   argumentQuestions: readonly StageTwoQuestion[],
   answers: Record<string, unknown>,
   record: AnswerRecord = { choices: {}, probabilities: {} }
@@ -1134,7 +1141,7 @@ export function readRunOffAnswer(
  * `select_option` is the Browser Tool this is for.
  */
 export function fitListsToTarget(
-  tool: ExecutableTool,
+  tool: GoalLoopOperation,
   chosen: ChosenArguments,
   capture: PageStateCapture
 ): void {

@@ -14,7 +14,7 @@ API names follow [ADR-0017](adr/0017-keep-framework-integration-apis-closely-ali
 
 - `packages/<framework>`, published as `@ayme-dev/<framework>`, with the Turbo boundaries tag `adapter`. Copy the manifest fields, `LICENSE`, tsdown, ESLint and TypeScript setup of an existing integration.
 - `@ayme-dev/ayme` is a dependency; the framework is a peer dependency whose range runs from the tested floor to the current major.
-- Only `@ayme-dev/ayme` declares the optional `@playwright/test` peer. An integration does not.
+- An integration does not declare the `@playwright/test` peer. `@ayme-dev/ayme` and `@ayme-dev/webmcp` declare it as optional.
 - The owner takes the runtime options type as is, instead of re-declaring each option.
 - The integration uses the public runtime session. It imports `@ayme-dev/ayme/internal` only for what the public API does not export yet, such as the Page Object constructor type.
 - Every row of the behaviour contract holds, or is n/a where the row allows it.
@@ -56,7 +56,7 @@ The lanes, their commands and where test-only code lives are in the [testing gui
 
 Each framework is certified in a server-rendered app and in an SPA: through a config switch where the meta-framework supports both, otherwise with a separate SPA example. Each runs against its dev server and a production build. An example is a private app under `apps/` with the Turbo tag `app`; its README says what it certifies and links the package README for setup.
 
-Its Page Object Models live in the app's own source, because the build plugin compiles them only from there. Its end-to-end tests run the shared [example certification](../apps/example-certification/README.md), which drives the counter contract written down there, calls tools through the recording WebMCP driver from `@ayme-dev/ayme/testing`, and checks:
+Its Page Object Models live in the app's own source, because the build plugin compiles them only from there. Its end-to-end tests run the shared [example certification](../apps/example-certification/README.md), which drives the counter contract written down there, calls tools through the recording WebMCP driver from `@ayme-dev/webmcp/testing`, and checks:
 
 - the server-rendered HTML and the initial publication status, across repeated requests;
 - the exact published tool schemas;
@@ -99,12 +99,6 @@ Only when the framework needs them:
 
 ## Known gaps
 
-- Vue and React re-declare each runtime option instead of taking the runtime options type, and Vue has no test for C4 ([#350](https://github.com/ayme-labs/ayme/issues/350)).
-- Vue's and React's client tests run in jsdom and do not cite contract rows; React's server test renders a single request and does not check the initial status ([#384](https://github.com/ayme-labs/ayme/issues/384)).
-- Svelte's client tests run in jsdom and do not cite contract rows ([#385](https://github.com/ayme-labs/ayme/issues/385)).
-- Angular's client tests run in jsdom and do not cite contract rows ([#386](https://github.com/ayme-labs/ayme/issues/386)).
-- The Nuxt and Angular examples copy their certification instead of running the shared one. Nuxt has no dev-rebuild check and does not check an undecorated subclass; Angular does not check Ayme's own tool list ([#381](https://github.com/ayme-labs/ayme/issues/381)).
-- The Vue and React SPA examples do not run the shared certification. The React example uses its own fake WebMCP driver; both run against the dev server only, and the Vue example has no counter page ([#382](https://github.com/ayme-labs/ayme/issues/382)).
 - The Angular example is tested end to end from Angular 21.0, not from the package's 19.0 floor: it uses APIs and an `angular.json` setting that Angular 19 and 20 do not have, and running it there would take a second set of source files. The package's own tests cover 19.0.
 
 ## Deferred decisions

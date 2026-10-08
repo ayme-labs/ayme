@@ -1,0 +1,50 @@
+#!/usr/bin/env node
+// A stand-in for Claude Code in the driver's tests: replays a fixture
+// transcript over --input-format stream-json, one turn per user message.
+// The turns are the fixture's events split at its result events. A turn
+// without a result event is replayed and then left hanging, as a stuck agent
+// would, until the harness stops the process. FAKE_CLAUDE_TRANSCRIPT names
+// the fixture; FAKE_CLAUDE_RESULT_DELAY_MS delays each turn's result event.
+// Each user message's text goes to stderr, so a test can see what was sent.
+import { readFileSync } from "node:fs";
+import { createInterface } from "node:readline";
+
+if (!process.argv.includes("--input-format")) {
+  process.stderr.write("fake claude: expected --input-format stream-json\n");
+  process.exit(64);
+}
+
+const turns = [[]];
+for (const line of readFileSync(process.env.FAKE_CLAUDE_TRANSCRIPT, "utf8")
+  .split("\n")
+  .filter((line) => line.trim())) {
+  turns.at(-1).push(line);
+  if (JSON.parse(line).type === "result") turns.push([]);
+}
+if (turns.at(-1).length === 0) turns.pop();
+const delayMs = Number(process.env.FAKE_CLAUDE_RESULT_DELAY_MS ?? 0);
+
+let replayed = 0;
+let replaying = Promise.resolve();
+createInterface({ input: process.stdin }).on("line", (line) => {
+  const message = JSON.parse(line);
+  const text = message.message.content.map((block) => block.text).join("");
+  process.stderr.write(`fake claude: user message ${replayed + 1}: ${text}\n`);
+  const turn = turns[replayed];
+  replayed += 1;
+  if (turn === undefined) return;
+  replaying = replaying.then(async () => {
+    for (const event of turn) {
+      if (JSON.parse(event).type === "result")
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      process.stdout.write(`${event}\n`);
+    }
+  });
+});
+process.stdin.on("end", () => {
+  // An unfinished turn keeps the process alive; a stuck agent does not exit on its own.
+  const stuck =
+    turns.length === replayed &&
+    turns.at(-1).every((event) => JSON.parse(event).type !== "result");
+  if (!stuck) replaying.then(() => process.exit(0));
+});

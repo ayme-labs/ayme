@@ -260,3 +260,181 @@ describe("StructuralObservationSession identity ledger", () => {
     });
   });
 });
+
+describe("StructuralObservationSession readChange", () => {
+  const ref = AriaRefSchema.parse;
+
+  function recordingSession() {
+    let now = 0;
+    const session = new StructuralObservationSession({
+      clock: { now: () => ++now },
+    });
+    const at = () => MonotonicTimeMsSchema.parse(++now);
+    const observe = (
+      yaml: string,
+      action?: {
+        capturedForActionId: StructuralActionId;
+        relation?: "before" | "after";
+      },
+      pageId = PAGE
+    ) => {
+      const observedAt = at();
+      const observed = StructuralTree.fromAriaSnapshotYaml(
+        yaml,
+        new SyntheticAriaRefFactory()
+      );
+      return session.recordObservation({
+        kind: "observation",
+        at: observedAt,
+        pageId,
+        tree: { pageId, capturedAt: observedAt, resolve: async () => observed },
+        ...action,
+      });
+    };
+    const startAction = (id: string) => {
+      const actionId = StructuralActionIdSchema.parse(id);
+      session.recordActionStarted({
+        kind: "action-started",
+        at: at(),
+        pageId: PAGE,
+        actionId,
+      });
+      return actionId;
+    };
+    const completeAction = (actionId: StructuralActionId) =>
+      session.recordActionCompleted({
+        kind: "action-completed",
+        at: at(),
+        pageId: PAGE,
+        actionId,
+      });
+    const navigate = (url: string, cause: "initial" | "navigate") =>
+      session.recordNavigation({ pageId: PAGE, url, cause });
+    return { session, observe, startAction, completeAction, navigate };
+  }
+
+  it("reads what changed between two observations, keeping the identity of the nodes present in both", async () => {
+    const { session, observe } = recordingSession();
+    const from = observe('- button "Save" [ref=e1]\n- status "Draft" [ref=e2]');
+    const to = observe(
+      '- button "Save" [ref=e1]\n- status "Saved" [ref=e2]\n- alert "Done" [ref=e3]'
+    );
+
+    const change = await session.readChange(PAGE, from, to);
+
+    expect(change.getNodesByStatus("added").map((node) => node.ref)).toEqual([
+      "e3",
+    ]);
+    expect(change.getNodesByStatus("removed")).toEqual([]);
+    expect(change.getNode(ref("e2"))?.status).toMatchObject({
+      kind: "updated",
+      selfChanged: true,
+    });
+    expect(change.getBeforeNodeForAfterRef(ref("e1"))?.ref).toBe("e1");
+    expect(change.getNode(ref("e1"))?.status).toEqual({ kind: "unchanged" });
+  });
+
+  it("reads across the observations in between and across a same-document route change", async () => {
+    const { session, observe, navigate } = recordingSession();
+    navigate("https://example.test/", "initial");
+    const from = observe('- button "Save" [ref=e1]\n- status "Draft" [ref=e2]');
+    observe('- button "Save" [ref=e1]\n- status "Saving" [ref=e2]');
+    navigate("https://example.test/orders", "navigate");
+    const to = observe('- button "Save" [ref=e1]\n- list "Orders" [ref=e4]');
+
+    const change = await session.readChange(PAGE, from, to);
+
+    expect(change.getNodesByStatus("added").map((node) => node.ref)).toEqual([
+      "e4",
+    ]);
+    expect(change.getNodesByStatus("removed").map((node) => node.ref)).toEqual([
+      "e2",
+    ]);
+    expect(change.getNode(ref("e1"))?.status).toEqual({ kind: "unchanged" });
+  });
+
+  it("reads a node removed and replaced by a look-alike in between as removed and added, as the ledger has it", async () => {
+    const { session, observe } = recordingSession();
+    const from = observe(
+      '- document [ref=e0]:\n  - button "Save" [ref=e1]\n  - status "Draft" [ref=e9]'
+    );
+    observe('- document [ref=e0]:\n  - status "Draft" [ref=e9]');
+    const to = observe(
+      '- document [ref=e0]:\n  - button "Save" [ref=e2]\n  - status "Draft" [ref=e9]'
+    );
+
+    const change = await session.readChange(PAGE, from, to);
+
+    expect(change.getNodesByStatus("removed").map((node) => node.ref)).toEqual([
+      "e1",
+    ]);
+    expect(change.getNodesByStatus("added").map((node) => node.ref)).toEqual([
+      "e2",
+    ]);
+    expect(change.getBeforeNodeForAfterRef(ref("e2"))).toBeNull();
+    expect(change.getNode(ref("e9"))?.status).toEqual({ kind: "unchanged" });
+    const ledger = await session.readIdentityLedger(PAGE, (read) => read);
+    expect(ledger.resolve(ref("e1"))).toMatchObject({
+      status: "unresolved",
+      reason: "removed",
+    });
+  });
+
+  it("reads an observation recorded before an action like any other, and never takes it as the action's after", async () => {
+    const { session, observe, startAction, completeAction } =
+      recordingSession();
+    session.recordNavigation({
+      pageId: PAGE,
+      url: "https://example.test/",
+      cause: "initial",
+    });
+    observe('- button "Save" [ref=e1]');
+    const actionId = StructuralActionIdSchema.parse("interaction_1");
+    const before = observe(
+      '- button "Save" [ref=e1]\n- status "Draft" [ref=e2]',
+      {
+        capturedForActionId: actionId,
+        relation: "before",
+      }
+    );
+    expect(startAction("interaction_1")).toBe(actionId);
+    completeAction(actionId);
+    const after = observe(
+      '- button "Save" [ref=e1]\n- status "Saved" [ref=e2]',
+      {
+        capturedForActionId: actionId,
+      }
+    );
+
+    const change = await session.readChange(PAGE, before, after);
+    expect(change.getNode(ref("e2"))?.status).toMatchObject({
+      kind: "updated",
+    });
+
+    const evidence = await session.getActionEvidence(actionId);
+    expect(evidence.actionChange.sourceTreeEvidence).toBe(after.tree);
+    expect(
+      evidence.actionChange.beforeStructuralTree?.getNode(ref("e2"))?.name
+    ).toBe("Draft");
+
+    const ledger = await session.readIdentityLedger(PAGE, (read) => read);
+    expect(ledger.lifecycle(ref("e2"))?.appeared).toEqual({
+      visitId: "visit_1",
+      afterActionId: null,
+    });
+  });
+
+  it("refuses an observation of another page", async () => {
+    const { session, observe } = recordingSession();
+    const from = observe('- button "Save" [ref=e1]');
+    const other = observe(
+      '- button "Save" [ref=e1]',
+      undefined,
+      PageIdSchema.parse("page@other")
+    );
+
+    await expect(session.readChange(PAGE, from, other)).rejects.toThrow(
+      "page@other"
+    );
+  });
+});

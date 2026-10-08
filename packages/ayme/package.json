@@ -30,11 +30,6 @@
       "types": "./dist/server.d.mts",
       "import": "./dist/server.mjs",
       "default": "./dist/server.mjs"
-    },
-    "./testing": {
-      "types": "./dist/testing.d.mts",
-      "import": "./dist/testing.mjs",
-      "default": "./dist/testing.mjs"
     }
   },
   "scripts": {
@@ -48,9 +43,10 @@
     "test:mutation": "stryker run"
   },
   "peerDependencies": {
+    "@playwright/test": ">=1.29 <1.63",
     "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
-    "@playwright/test": ">=1.29 <1.63"
+    "@ayme-dev/webmcp": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {
@@ -61,6 +57,9 @@
     },
     "@ayme-dev/mcp": {
       "optional": true
+    },
+    "@ayme-dev/webmcp": {
+      "optional": true
     }
   },
   "devDependencies": {
@@ -70,7 +69,6 @@
     "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
-    "@mcp-b/webmcp-polyfill": "5.1.0",
     "@playwright/test": "^1.62.1",
     "@stryker-mutator/core": "^10.0.0",
     "@stryker-mutator/vitest-runner": "^10.0.0",
@@ -82,8 +80,5 @@
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
-  },
-  "dependencies": {
-    "@mcp-b/webmcp-types": "^5.0.1"
   }
 }

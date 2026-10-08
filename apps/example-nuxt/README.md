@@ -74,20 +74,7 @@ pnpm --filter @ayme-dev/example-nuxt test:e2e
 pnpm --filter @ayme-dev/example-vue test:e2e
 ```
 
-The same browser suite runs against `nuxt dev` and the built Nitro server.
-It checks JavaScript-disabled server HTML, repeated requests, hydration with
-publication enabled, compiled POM metadata, browser and real Playwright actions,
-and registration cleanup across removal and remounting. Against `nuxt dev`
-only, where the app turns the Inspector on, a smoke test opens it and runs a
-tool from it. The app turns the Agent Connection (`agentConnection`) on in
-development too: against `nuxt dev` an MCP client pairs with the page through
-a connect link, calls a tool and reads the counter's Peek, and against the
-built server the page loads no Agent Connection code and opens no WebSocket.
-Against `nuxt dev`, with the App Process paired, a server-rendered page load
-leaves `peek.counter` with exactly one instance, from the browser, and the
-server offers `peek.node.renders` but no `peek.node.counter`. Against the
-built server no App Process pairs. The publication test
-supplies a driver fixture; it does not certify a particular browser's WebMCP API.
+The browser suite is the shared [example certification](../example-certification/README.md), run against `nuxt dev` and the built Nitro server (`AYME_E2E_SERVER=production`). The app renders the certification's counter contract: a second page, `/other`, reached by a full page load, and an undecorated `SubCounterPage`. Against `nuxt dev` only, where the app turns the Inspector on, a smoke test opens it and runs a tool from it, and the Agent Connection (`agentConnection`) is on too: an MCP client pairs with the page through a connect link, then calls a tool and reads the counter's Peek, while the built server loads no Agent Connection code and opens no WebSocket. Against `nuxt dev`, with the App Process paired, a server-rendered page load leaves `peek.counter` with exactly one instance, from the browser, and the server offers `peek.node.renders` but no `peek.node.counter`; against the built server no App Process pairs. The certification supplies a driver fixture; it does not certify a particular browser's WebMCP API.
 
 The Vue package has DOM-free SSR tests for provider and standalone ownership,
 with publication enabled and disabled. The existing Vue/Vite example remains

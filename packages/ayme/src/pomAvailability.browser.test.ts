@@ -6,12 +6,11 @@ import {
   createAymeRuntime,
   createPageRegistration,
   listRegisteredPomRoots,
-  listRegisteredPomTools,
+  listAvailablePomTools,
   listRegisteredPoms,
   probeRegisteredPomMembers,
   registerCompiledPom,
 } from "./registry";
-import { synchronizeWebMcpTools } from "./webMcp";
 import type {
   PomComponentMemberManifest,
   PomManifest,
@@ -58,7 +57,7 @@ const manifest = (
     },
   ],
 });
-const names = () => listRegisteredPomTools().map((tool) => tool.name);
+const names = () => listAvailablePomTools().map((tool) => tool.name);
 
 describe("live Page Object availability", () => {
   let page: ReturnType<typeof createPage>;
@@ -251,7 +250,7 @@ describe("live Page Object availability", () => {
     first.dispose();
   });
 
-  it("updates publication after layout events without a DOM mutation", async () => {
+  it("updates availability after layout events without a DOM mutation", async () => {
     document.body.innerHTML =
       '<style id="availability-style">#sidebar { visibility: visible; }</style><aside id="sidebar">Sidebar</aside>';
     class Shell {
@@ -259,91 +258,19 @@ describe("live Page Object availability", () => {
     }
     registerCompiledPom(Shell, manifest("Shell", [child("sidebar")]));
     createPageRegistration(Shell);
-    const published = new Map<string, unknown>();
-    const publication = await synchronizeWebMcpTools({
-      async registerTool(
-        tool: { name: string },
-        options?: { signal?: AbortSignal }
-      ) {
-        published.set(tool.name, tool);
-        options?.signal?.addEventListener("abort", () => {
-          if (published.get(tool.name) === tool) published.delete(tool.name);
-        });
-      },
-    });
-    try {
-      await expect
-        .poll(() => [...published.keys()])
-        .toEqual([
-          "snapshot",
-          "click",
-          "hover",
-          "type",
-          "fill",
-          "check",
-          "uncheck",
-          "select_option",
-          "fill_form",
-          "press_key",
-          "generate_locator",
-          "navigate",
-          "navigate_back",
-          "navigate_forward",
-          "reload",
-          "Shell.sidebar.close",
-        ]);
-      const rule = document.querySelector<HTMLStyleElement>(
-        "#availability-style"
-      )!.sheet!.cssRules[0] as CSSStyleRule;
-      rule.style.visibility = "hidden";
-      expect(
-        getComputedStyle(document.getElementById("sidebar")!).visibility
-      ).toBe("hidden");
-      window.dispatchEvent(new Event("resize"));
-      await expect
-        .poll(() => [...published.keys()])
-        .toEqual([
-          "snapshot",
-          "click",
-          "hover",
-          "type",
-          "fill",
-          "check",
-          "uncheck",
-          "select_option",
-          "fill_form",
-          "press_key",
-          "generate_locator",
-          "navigate",
-          "navigate_back",
-          "navigate_forward",
-          "reload",
-        ]);
-      rule.style.visibility = "visible";
-      window.dispatchEvent(new Event("transitionend"));
-      await expect
-        .poll(() => [...published.keys()])
-        .toEqual([
-          "snapshot",
-          "click",
-          "hover",
-          "type",
-          "fill",
-          "check",
-          "uncheck",
-          "select_option",
-          "fill_form",
-          "press_key",
-          "generate_locator",
-          "navigate",
-          "navigate_back",
-          "navigate_forward",
-          "reload",
-          "Shell.sidebar.close",
-        ]);
-    } finally {
-      publication.dispose();
-    }
+    await expect.poll(names).toEqual(["Shell.sidebar.close"]);
+    const rule = document.querySelector<HTMLStyleElement>(
+      "#availability-style"
+    )!.sheet!.cssRules[0] as CSSStyleRule;
+    rule.style.visibility = "hidden";
+    expect(
+      getComputedStyle(document.getElementById("sidebar")!).visibility
+    ).toBe("hidden");
+    window.dispatchEvent(new Event("resize"));
+    await expect.poll(names).toEqual([]);
+    rule.style.visibility = "visible";
+    window.dispatchEvent(new Event("transitionend"));
+    await expect.poll(names).toEqual(["Shell.sidebar.close"]);
   });
 
   it("does not publish a disposed registration after its async observation completes", async () => {
@@ -537,14 +464,9 @@ describe("live Page Object availability", () => {
     const timer = setInterval(() => {
       ticker.textContent = String(++ticks);
     }, 5);
-    const published: string[] = [];
     let completed = false;
     const result = Promise.all([
-      synchronizeWebMcpTools({
-        async registerTool(tool: { name: string }) {
-          published.push(tool.name);
-        },
-      }),
+      probeRegisteredPomMembers(),
       ayme.getPageState(),
     ]).then((value) => {
       completed = true;
@@ -555,27 +477,9 @@ describe("live Page Object availability", () => {
       const [, state] = await result;
       expect(ticks).toBeGreaterThan(0);
       expect(state.text).toContain("SlowShell.panels[0]");
-      expect(published).toEqual([
-        "snapshot",
-        "click",
-        "hover",
-        "type",
-        "fill",
-        "check",
-        "uncheck",
-        "select_option",
-        "fill_form",
-        "press_key",
-        "generate_locator",
-        "navigate",
-        "navigate_back",
-        "navigate_forward",
-        "reload",
-        "SlowShell.panels.close",
-      ]);
+      expect(names()).toEqual(["SlowShell.panels.close"]);
     } finally {
       clearInterval(timer);
-      (await result)[0].dispose();
     }
   });
 

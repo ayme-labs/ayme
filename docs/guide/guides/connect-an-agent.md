@@ -87,6 +87,8 @@ Run your dev server and ask the agent to connect to the page, giving it the URL,
 
 Once a tab is paired, the page's tools are the agent's MCP tools, under the names the page gives them: `snapshot`, the [Browser Tools](../reference/browser-tools.md), your Custom Tools, the Page Object Tools of every Page Object on the page, the Peek Tools of the page's [Peeks](../reference/ayme.md#aymepeek), `peek.<name>`, and `goal` when the Goal Loop is configured. Each App Process paired beside the tab adds its own Peek Tools, `peek.node.<name>`. A good first check is to ask the agent to call one of your Page Object Tools and confirm the effect in the app.
 
+A Peek's values reach the agent, and its model provider, unchanged, so return only what you want it to see; see [What a Peek exposes](../reference/ayme.md#what-a-peek-exposes).
+
 Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared.
 
 Some agents read the tool list once, when they start, so they never see the page's tools, which arrive later. For them, `ayme_list_tools` lists the page's current tools with their input schemas, and `ayme_call` runs any of them by name. A failed tool call answers with an error result. While no tab is paired, every page tool and fallback tool answers that the agent should call `ayme_connect` and open the link.

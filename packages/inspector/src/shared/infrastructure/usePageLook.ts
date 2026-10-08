@@ -12,7 +12,7 @@ import {
   getPomDefinitions,
   listElementToolTargets,
   listRegisteredPomTargets,
-  listRegisteredPomTools,
+  listAvailablePomTools,
   listRegisteredPoms,
   lookAtPageStateForDocument,
   subscribeToRegisteredPoms,
@@ -57,7 +57,7 @@ function readRegistry(): RegistrySnapshot {
   return {
     registeredPoms: listRegisteredPoms(),
     activeTools: new Map(
-      listRegisteredPomTools().map((tool) => [tool.name, tool])
+      listAvailablePomTools().map((tool) => [tool.name, tool])
     ),
     pomDefinitions: readPomDefinitions(),
   };

@@ -13,7 +13,7 @@ import { Inspector } from "../testing";
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { appProcessToolsOf, asStartedAyme, startedAyme } =
     await import("../tools/test-utils/startedAyme");
-  const { pageStateNodeEntry } =
+  const { pageStateNodeEntry, toolInputViolations } =
     await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
   const browserTool = (name: string) => ({
@@ -21,6 +21,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     description: `${name} by ref.`,
     inputSchema: { type: "object" as const },
     group: "browser" as const,
+    available: true,
   });
   startedAyme.tools.list.mockReturnValue([
     browserTool("click"),
@@ -32,6 +33,8 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   };
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
+    toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     lookAtPageStateForDocument: vi.fn(
       async () =>
@@ -54,8 +57,9 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
         ])
     ),
     getPomDefinitionText: vi.fn(() => ""),
+    getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
-    listRegisteredPomTools: vi.fn(() => []),
+    listAvailablePomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
     getAppProcessTools: appProcessToolsOf,

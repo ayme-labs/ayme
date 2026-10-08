@@ -1,7 +1,6 @@
 import { Component, signal } from "@angular/core";
 import { RouterLink } from "@angular/router";
-import { injectAyme, injectPageObject } from "@ayme-dev/angular";
-import { OtherPage } from "@pom/OtherPage";
+import { injectAyme } from "@ayme-dev/angular";
 import { Counter } from "./counter";
 
 @Component({
@@ -15,7 +14,9 @@ import { Counter } from "./counter";
     <button (click)="visible.set(!visible())">
       {{ visible() ? "Unmount counter" : "Mount counter" }}
     </button>
-    <a routerLink="/other">Other page</a>
+    <a routerLink="/other">Other</a>
+    <!-- A plain anchor: the browser loads /other as a new document. -->
+    <a href="/other">Full page load</a>
     @if (visible()) {
       <app-counter />
     }
@@ -30,10 +31,8 @@ export class Demo {
   selector: "app-other",
   imports: [RouterLink],
   template: `
-    <h2>Other page</h2>
+    <p>Other page without Page Objects.</p>
     <a routerLink="/">Home</a>
   `,
 })
-export class Other {
-  protected readonly pom = injectPageObject(OtherPage);
-}
+export class Other {}

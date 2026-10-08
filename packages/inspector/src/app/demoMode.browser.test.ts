@@ -3,7 +3,6 @@ import { createAyme, type AymePage } from "@ayme-dev/ayme";
 import { registerCompiledPom } from "@ayme-dev/ayme/internal";
 
 import { mountInspector } from "./mountInspector";
-import { getInspectorTrace } from "../runs";
 
 // The Inspector's demo mode on a real page: an agent's call, run through the
 // session's tools, pauses only while demo is on, and shows a click cue then
@@ -51,37 +50,36 @@ const manifest: Parameters<typeof registerCompiledPom>[1] = {
   })),
 };
 
-/** A tool call, the event it fires, the step Runs records and its cues. */
+/** A tool call, the event it fires and its cues. */
 type Call = {
   tool: string;
   input: object;
   event: string;
-  step: string;
   cues: number;
 };
 
 const calls: Call[] = [
-  { tool: "Toolbar.go", input: {}, event: "click", step: "click", cues: 1 },
+  { tool: "Toolbar.go", input: {}, event: "click", cues: 1 },
   {
     tool: "Toolbar.point",
     input: {},
     event: "mouseover",
-    step: "hover",
+
     cues: 0,
   },
-  { tool: "Toolbar.tick", input: {}, event: "change", step: "check", cues: 1 },
+  { tool: "Toolbar.tick", input: {}, event: "change", cues: 1 },
   {
     tool: "Toolbar.key",
     input: {},
     event: "keydown",
-    step: "keyboard.press",
+
     cues: 0,
   },
   {
     tool: "press_key",
     input: { key: "a" },
     event: "keydown",
-    step: "keyboard.press",
+
     cues: 0,
   },
 ];
@@ -174,10 +172,6 @@ it.each(calls)(
 
     expect(elapsed).toBeLessThan(500);
     expect(cues).toBe(0);
-    // The Runs view still records it.
-    expect(getInspectorTrace().map(({ operation }) => operation)).toContain(
-      call.step
-    );
   }
 );
 

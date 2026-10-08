@@ -4,7 +4,7 @@ import { createPage } from "./browserPage";
 import { ayme } from "./agentCalls.testSupport";
 import {
   createPageRegistration,
-  listRegisteredPomTools,
+  listAvailablePomTools,
   probeRegisteredPomMembers,
   registerCompiledPom,
 } from "./registry";
@@ -125,7 +125,7 @@ describe("ignore predicate in page state capture", () => {
     createPageRegistration(Panel);
 
     await probeRegisteredPomMembers();
-    expect(listRegisteredPomTools().map((tool) => tool.name)).toEqual([
+    expect(listAvailablePomTools().map((tool) => tool.name)).toEqual([
       "Panel.act",
     ]);
     const pageStateText = (await ayme.getPageState()).text;

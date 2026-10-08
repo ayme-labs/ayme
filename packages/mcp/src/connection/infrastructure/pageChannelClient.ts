@@ -49,6 +49,7 @@ export function openPageChannel(
   // server pairs each socket afresh.
   let reported: PageTool[] | undefined;
   let opened = false;
+  let imageFolder: string | undefined;
   // Who follows the App Processes' tools: they hear of none once the
   // socket closes, and the subscription gives them again once it reopens.
   const processToolListeners = new Set<(tools: readonly PageTool[]) => void>();
@@ -61,7 +62,9 @@ export function openPageChannel(
       void client.hello
         .mutate(hello())
         .then((welcome) => {
-          onWelcome(PageWelcomeSchema.parse(welcome));
+          const parsed = PageWelcomeSchema.parse(welcome);
+          imageFolder = parsed.imageFolder;
+          onWelcome(parsed);
           if (reopened && reported) return client.publishTools.mutate(reported);
         })
         // The channel closed before the hello went out.
@@ -84,6 +87,9 @@ export function openPageChannel(
     links: [wsLink({ client: socket })],
   });
   return {
+    get imageFolder() {
+      return imageFolder;
+    },
     async publishTools(tools) {
       reported = [...tools];
       await client.publishTools.mutate(reported);

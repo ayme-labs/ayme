@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { executePublishedTool } from "@ayme-dev/ayme/testing";
+import { executePublishedTool } from "@ayme-dev/webmcp/testing";
 
 import { expect, openFixture, test } from "./fixtures";
 

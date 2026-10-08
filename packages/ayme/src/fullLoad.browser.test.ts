@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
-import { operations, publishTools } from "./publication.testSupport";
+import { agentTools, operations } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
 
@@ -42,7 +42,6 @@ describe("a tool call that starts a full page load, in Chromium", () => {
   let ayme: Ayme;
   let call: (name: string, input: unknown) => Promise<unknown>;
   let stop: () => void;
-  let disposePublication: () => void;
   const start = location.href;
 
   beforeEach(async () => {
@@ -77,12 +76,11 @@ describe("a tool call that starts a full page load, in Chromium", () => {
     });
     stop = ayme.start();
     ayme.pom.register(Leaver);
-    ({ call, dispose: disposePublication } = await publishTools());
+    ({ call } = agentTools());
     await call("snapshot", {});
   });
 
   afterEach(() => {
-    disposePublication();
     ayme.pom.unregister(Leaver);
     stop();
     history.replaceState(null, "", start);
@@ -122,6 +120,18 @@ describe("a tool call that starts a full page load, in Chromium", () => {
       loading: NO_CONTENT,
       next: loadingNote(NO_CONTENT),
     });
+  });
+
+  it("answers before a Run queued behind it takes its turn", async () => {
+    const answered: string[] = [];
+    await Promise.all([
+      ayme.tools.run("Leaver.leave", {}).then((result) => {
+        answered.push("leave");
+        expect(result).toMatchObject({ loading: NO_CONTENT });
+      }),
+      ayme.tools.run("snapshot", {}).then(() => answered.push("snapshot")),
+    ]);
+    expect(answered).toEqual(["leave", "snapshot"]);
   });
 
   it("ends a goal with a Handover naming the loading URL", async () => {

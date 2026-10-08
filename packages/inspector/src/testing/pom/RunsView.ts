@@ -1,22 +1,28 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
 
-/** One step of a run: a locator operation it performed. */
-export type RunStep = {
+/** One Interaction of a run: a call it made on the page. */
+export type RunInteraction = {
   operation: string;
-  /** The locator it acted on. */
+  /** The member it acted on, or else its locator. */
   target: string;
   value?: string;
 };
 
-/** One run in the Runs timeline. */
+/**
+ * One run in the Runs timeline, top-level or nested under the run that
+ * started it. Its own parts are read from its card, so a child run's are
+ * never taken for its parent's.
+ */
 @ayme
 export class RunEntry {
   readonly root: Locator;
+  /** Its card: what it ran, with what, and how it went. */
+  readonly card: Locator;
   /** Expands or collapses the run. */
   readonly toggle: Locator;
-  /** The mark of a run made by you from the panel. */
-  readonly byYou: Locator;
+  /** The mark that it ran before the page last loaded. */
+  readonly earlierPage: Locator;
   /** Its arguments, absent when it had none. */
   readonly arguments: Locator;
   /** Shows or hides its result, on a successful run that returned one. */
@@ -25,27 +31,75 @@ export class RunEntry {
   readonly result: Locator;
   /** Copies its result. */
   readonly copyResultButton: Locator;
+  /** The image it returned, such as a screenshot, with what it shows. */
+  readonly image: Locator;
   readonly error: Locator;
-  readonly steps: Locator;
+  /** The Interactions it performed itself, in order. */
+  readonly interactions: Locator;
+  /** The runs it started, nested under it, in the order it started them. */
+  readonly childRuns: Locator;
 
   constructor(root: Locator) {
     this.root = root;
-    this.toggle = root.locator("button[aria-expanded]").first();
-    this.byYou = root.getByRole("img", { name: "Run by you from the panel" });
-    this.arguments = root.getByRole("figure", { name: "Arguments" });
-    this.resultToggle = root.getByRole("button", {
+    // An ancestor comes first in document order: its own card.
+    this.card = root.locator("[data-run-card]").first();
+    const card = this.card;
+    this.toggle = card.locator("button[aria-expanded]").first();
+    this.earlierPage = card.getByText(/^Earlier page$/);
+    this.arguments = card.getByRole("figure", { name: "Arguments" });
+    this.resultToggle = card.getByRole("button", {
       name: "Result",
       exact: true,
     });
-    this.result = root.getByRole("figure", { name: "Result" });
-    this.copyResultButton = root.getByRole("button", {
+    this.result = card.getByRole("figure", { name: "Result" });
+    this.copyResultButton = card.getByRole("button", {
       name: "Copy",
       exact: true,
     });
-    this.error = root.getByRole("note", { name: "Error" });
-    this.steps = root
-      .getByRole("list", { name: "Steps" })
+    this.image = card.getByRole("figure", { name: "Image" });
+    this.error = card.getByRole("note", { name: "Error" });
+    this.interactions = card
+      .getByRole("list", { name: "Interactions" })
       .getByRole("listitem");
+    this.childRuns = root
+      .getByRole("list", { name: "Child runs" })
+      .first()
+      .locator(":scope > li");
+  }
+
+  /** The newest child run of one tool. */
+  child(toolName: string): RunEntry {
+    return new RunEntry(
+      this.childRuns
+        .and(this.root.getByRole("listitem", { name: toolName, exact: true }))
+        .last()
+    );
+  }
+
+  /** Its child runs' tools, in the order it started them. */
+  async childTools(): Promise<string[]> {
+    return await this.childRuns.evaluateAll((items) =>
+      items.map((item) => item.getAttribute("aria-label") ?? "")
+    );
+  }
+
+  /**
+   * Who started it: the icon of one of Ayme's own Callers, by its label,
+   * e.g. "Run by you from the Inspector", or another Caller's name as text.
+   */
+  @ayme.action({
+    description:
+      "Reads who started the run: a built-in Caller's icon label, or another Caller's name as text.",
+  })
+  async caller(): Promise<{ icon: string } | { text: string }> {
+    return await this.card
+      .getByTitle(/^Run by /)
+      .first()
+      .evaluate((mark) =>
+        mark.getAttribute("role") === "img"
+          ? { icon: mark.getAttribute("aria-label") ?? "" }
+          : { text: mark.textContent ?? "" }
+      );
   }
 
   /** Running, Succeeded or Failed. */
@@ -55,6 +109,7 @@ export class RunEntry {
   async status() {
     return await this.root
       .getByRole("img", { name: /^(Running|Succeeded|Failed)$/ })
+      .first()
       .getAttribute("aria-label");
   }
 
@@ -68,14 +123,14 @@ export class RunEntry {
     return await this.result.textContent();
   }
 
-  /** The element a step acted on; hovering it highlights that element. */
-  stepTarget(index: number): Locator {
-    return this.steps.nth(index).getByRole("button");
+  /** What an Interaction acted on; hovering it highlights that element. */
+  interactionTarget(index: number): Locator {
+    return this.interactions.nth(index).getByRole("button");
   }
 
-  /** Its steps, in order. */
-  async stepList(): Promise<RunStep[]> {
-    return await this.steps.evaluateAll((items) =>
+  /** Its own Interactions, in order. */
+  async interactionList(): Promise<RunInteraction[]> {
+    return await this.interactions.evaluateAll((items) =>
       items.map((item) => {
         const [operation = "", value] = [...item.querySelectorAll("span")].map(
           (span) => span.textContent ?? ""
@@ -90,7 +145,7 @@ export class RunEntry {
   }
 }
 
-/** Runs: the timeline of the runs made from the panel, newest first. */
+/** Runs: the timeline of the page's Runs, by any Caller, newest first. */
 @ayme
 export class RunsView {
   readonly root: Locator;
@@ -118,16 +173,18 @@ export class RunsView {
     });
     this.clearButton = root.getByRole("button", { name: "Clear", exact: true });
     this.timeline = root.getByRole("list", { name: "Runs timeline" });
-    // A run's item is named by its tool; its steps' items are unnamed.
-    this.runs = this.timeline.getByRole("listitem", { name: /\S/ });
+    // The top-level runs: a child run is nested in its parent's item.
+    this.runs = this.timeline.locator(":scope > li");
     this.empty = root.getByText(/^No runs/);
   }
 
   /** The newest run of one tool. */
   latest(toolName: string): RunEntry {
     return new RunEntry(
-      this.timeline
-        .getByRole("listitem", { name: toolName, exact: true })
+      this.runs
+        .and(
+          this.timeline.getByRole("listitem", { name: toolName, exact: true })
+        )
         .first()
     );
   }

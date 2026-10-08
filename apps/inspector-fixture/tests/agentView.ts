@@ -3,7 +3,7 @@ import {
   executePublishedTool,
   publishedToolNames,
   publishedToolSchema,
-} from "@ayme-dev/ayme/testing";
+} from "@ayme-dev/webmcp/testing";
 
 /** A tool as an agent gets it over WebMCP. */
 export type AgentTool = {

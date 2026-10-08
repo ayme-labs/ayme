@@ -3,7 +3,7 @@
 // defaults follow Playwright MCP, without its permission-prompt `element`;
 // descriptions are Ayme's own.
 import type { JsonSchema } from "./contracts";
-import { runAction } from "./actionSequence";
+import { ACTION_RESULT_NOTE, runAction } from "./actionSequence";
 import {
   listCustomTools,
   locatorOf,
@@ -24,6 +24,7 @@ import {
 } from "./historyTools";
 import { navigateTool } from "./navigateTool";
 import { requireAymeRuntimePage } from "./registry";
+import { screenshotTool } from "./screenshotTool";
 
 // --- Input schemas ---
 
@@ -85,7 +86,7 @@ function browserTool(
   name: string,
   description: string,
   inputSchema: JsonSchema,
-  run: (target: ResolvedTarget, input: Fields) => Promise<unknown>
+  perform: (target: ResolvedTarget, input: Fields) => Promise<unknown>
 ): ElementToolDefinition {
   return {
     name,
@@ -95,8 +96,8 @@ function browserTool(
     targetField: "target",
     // An action's own result would appear under `result`; Browser Tools have
     // none, as in Playwright MCP, so `selectOption`'s values are dropped.
-    run: async (target, input) => {
-      await run(target, input);
+    perform: async (target, input) => {
+      await perform(target, input);
     },
   };
 }
@@ -383,14 +384,14 @@ const fillFormTool: PublishedElementTool = {
   description:
     "Fill several form fields in one call, in order. Stops at the first field that fails; the fields filled before it stay filled.",
   inputSchema: fillFormSchema,
-  execute: (input: unknown) => fillFormTool.executeAs(input, "agent"),
-  executeAs: async (input, caller) => {
+  execute: async (input, context) => {
+    const { cursor } = context;
     const fields = validatedToolInput(fillFormSchema, input)
       .fields as FormField[];
     const currentDocument = requireCurrentDocument();
     return runAction(
       currentDocument,
-      caller,
+      cursor,
       { tool: "fill_form", args: input },
       async () => {
         const filled: string[] = [];
@@ -432,26 +433,19 @@ const pressKeyTool: PublishedElementTool = {
   name: "press_key",
   description: "Press a key on the element that has focus.",
   inputSchema: pressKeySchema,
-  execute: (input: unknown) => pressKeyTool.executeAs(input, "agent"),
-  executeAs: async (input, caller) => {
+  execute: async (input, context) => {
+    const { cursor } = context;
     const { key } = validatedToolInput(pressKeySchema, input) as {
       key: string;
     };
     return runAction(
       requireCurrentDocument(),
-      caller,
+      cursor,
       { tool: "press_key", args: input },
       () => requireAymeRuntimePage().keyboard.press(key)
     );
   },
 };
-
-/** Browser Tools that take no single element, published only. */
-const PUBLISHED_ONLY_BROWSER_TOOLS: readonly PublishedElementTool[] = [
-  fillFormTool,
-  pressKeyTool,
-  generateLocatorTool,
-];
 
 // --- Browser Tools that move the page ---
 
@@ -467,11 +461,30 @@ export const NAVIGATION_TOOLS: readonly PublishedElementTool[] = [
   reloadTool,
 ];
 
+/**
+ * A Browser Tool that acts on the page, as published: its description ends
+ * with how the action result reports what changed. Only Ayme's own Browser
+ * Tools carry the sentence; a Page Object Tool or Custom Tool is published
+ * with the description its author wrote, and the Goal Loop offers its model
+ * every tool's own description.
+ */
+function withActionResultNote(
+  tool: PublishedElementTool
+): PublishedElementTool {
+  return { ...tool, description: `${tool.description} ${ACTION_RESULT_NOTE}` };
+}
+
+/** Computed once, so a Browser Tool resolves to the same object across publications. */
+const PUBLISHED_BROWSER_TOOLS: readonly PublishedElementTool[] = [
+  ...SINGLE_ELEMENT_TOOLS.map(({ tool }) => withActionResultNote(tool)),
+  withActionResultNote(fillFormTool),
+  withActionResultNote(pressKeyTool),
+  generateLocatorTool,
+  screenshotTool,
+  ...NAVIGATION_TOOLS.map(withActionResultNote),
+];
+
 /** Package-internal: every Browser Tool as published, in publication order. */
 export function listPublishedBrowserTools(): readonly PublishedElementTool[] {
-  return [
-    ...SINGLE_ELEMENT_TOOLS.map(({ tool }) => tool),
-    ...PUBLISHED_ONLY_BROWSER_TOOLS,
-    ...NAVIGATION_TOOLS,
-  ];
+  return PUBLISHED_BROWSER_TOOLS;
 }

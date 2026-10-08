@@ -5,6 +5,7 @@ import {
   type MonotonicTimeMs,
 } from "../capture/MonotonicTimeMs";
 import type { PageId } from "../capture/PageId";
+import { StructuralTree } from "../tree/StructuralTree";
 import {
   StructuralTimeline,
   normalizeNavigationUrl,
@@ -152,8 +153,10 @@ export class StructuralObservationSession {
       moment: {
         visitId: this._timeline.currentVisitIdForPage(entry.pageId),
         afterActionId:
-          entry.capturedForActionId ??
-          this._timeline.latestActionStartedForPage(entry.pageId),
+          entry.relation === "before"
+            ? this._timeline.latestActionStartedForPage(entry.pageId)
+            : (entry.capturedForActionId ??
+              this._timeline.latestActionStartedForPage(entry.pageId)),
       },
     });
     return entry;
@@ -210,6 +213,41 @@ export class StructuralObservationSession {
     entry: StructuralActionCompletedEntry
   ): StructuralActionCompletedEntry {
     return this._timeline.recordActionCompleted(entry);
+  }
+
+  /**
+   * What changed on a page between two of its recorded observations: `from`'s
+   * tree reconciled against `to`'s, so a node present in both keeps its
+   * identity (`getBeforeNodeForAfterRef`) and the rest carries an added,
+   * removed or updated status. Two refs name one node only when the page's
+   * identity ledger says so, so a node removed and replaced by a look-alike in
+   * between reads as removed and added, as ref resolution would have it. The
+   * two trees are resolved and reconciled once; the ledger advances through
+   * the observations recorded so far as `readIdentityLedger` does, one
+   * reconcile per observation it has not seen, and an observation it cannot
+   * take fails this reading too. The session remembers nothing about who
+   * asked, so a host keeps its own notion of where each reader stands.
+   */
+  async readChange(
+    pageId: PageId,
+    from: StructuralObservationEntry,
+    to: StructuralObservationEntry
+  ): Promise<StructuralTree> {
+    for (const entry of [from, to])
+      if (entry.pageId !== pageId)
+        throw new Error(
+          `Observation of page ${String(entry.pageId)} is not an observation of page ${String(pageId)}.`
+        );
+    const [before, after] = await Promise.all([
+      from.tree.resolve(),
+      to.tree.resolve(),
+    ]);
+    return this.readIdentityLedger(pageId, (ledger) =>
+      StructuralTree.reconcile(before, after, {
+        sameIdentity: (beforeRef, afterRef) =>
+          ledger.sameIdentity(beforeRef, afterRef),
+      })
+    );
   }
 
   currentVisitIdForPage(pageId: PageId): VisitId | null {

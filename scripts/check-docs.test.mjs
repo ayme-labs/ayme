@@ -45,6 +45,18 @@ test("passes a repository that follows the rules", () => {
   assert.deepEqual(checkDocs(fixture()), []);
 });
 
+test("skips a submodule's own docs", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "apps/lab/upstream/.git": "gitdir: ../../../.git/modules/upstream\n",
+        "apps/lab/upstream/README.md": "# Upstream\n\nSee [gone](gone.md).\n",
+      })
+    ),
+    []
+  );
+});
+
 test("treats a fence line with an info string as code, not as a closing fence", () => {
   assert.deepEqual(
     checkDocs(

@@ -107,7 +107,6 @@ function tool(
     description: "",
     inputSchema: noArguments,
     parameters: [],
-    execute: async () => null,
     ...(component
       ? {
           componentClassName: component.className,

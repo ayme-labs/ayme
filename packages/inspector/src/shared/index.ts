@@ -4,7 +4,6 @@ export { mapTargetsToRefs } from "./domain/targetsByRef";
 export {
   describeCall,
   type CallDescription,
-  type CallStep,
   type CallSubject,
 } from "./infrastructure/describeCall";
 export { renderInShadowRoot } from "./infrastructure/renderInShadowRoot";

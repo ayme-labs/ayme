@@ -6,10 +6,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { createServer, type ViteDevServer } from "vite";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 
 import { ayme } from "./vite";
 
@@ -148,4 +148,104 @@ it("recompiles a decorated subclass after its base class file changes", async ()
   expect(await subDescriptions()).toEqual(["CHANGEDAGAIN", "CHANGEDAGAIN"]);
   // Starts a Vite dev server and compiles the subclass three times: 1.3 s
   // locally, 7.6 to 13.5 s on CI beside the other Turbo tasks.
+}, 30_000);
+
+it("recompiles a Page Object after a type-only import outside the Vite root changes", async () => {
+  // Nuxt-like layout: Vite's root is app/, the Page Objects live beside it.
+  const projectRoot = realpathSync(
+    mkdtempSync(join(tmpdir(), "ayme-vite-outside-root-"))
+  );
+  root = projectRoot;
+  mkdirSync(join(projectRoot, "app"));
+  mkdirSync(join(projectRoot, "pom"));
+  writeFileSync(
+    join(projectRoot, "pom/tsconfig.json"),
+    JSON.stringify({
+      compilerOptions: {
+        target: "ES2022",
+        module: "ESNext",
+        moduleResolution: "Bundler",
+        strict: true,
+        experimentalDecorators: false,
+      },
+      include: ["."],
+    })
+  );
+  writeFileSync(join(projectRoot, "pom/ayme.ts"), decoratorStub);
+  const modeFile = join(projectRoot, "pom/CounterMode.ts");
+  const writeMode = (values: string) =>
+    writeFileSync(modeFile, `export type CounterMode = ${values};\n`);
+  writeMode(`"up" | "down"`);
+  const pomFile = join(projectRoot, "pom/CounterPage.ts");
+  writeFileSync(
+    pomFile,
+    `import { ayme } from "./ayme";
+import type { CounterMode } from "./CounterMode";
+
+@ayme
+export class CounterPage {
+  @ayme.action({ description: "Step the counter." })
+  step(mode: CounterMode) {}
+}
+`
+  );
+  writeFileSync(
+    join(projectRoot, "app/internalStub.ts"),
+    "export function registerCompiledPom(..._args: unknown[]) {}\n"
+  );
+  writeFileSync(
+    join(projectRoot, "app/decorateStub.ts"),
+    "export default function decorate(..._args: unknown[]) {}\n"
+  );
+  server = await createServer({
+    root: join(projectRoot, "app"),
+    configFile: false,
+    logLevel: "silent",
+    plugins: [ayme()],
+    resolve: {
+      alias: {
+        "@ayme-dev/ayme/internal": join(projectRoot, "app/internalStub.ts"),
+        "@oxc-project/runtime/helpers/decorate": join(
+          projectRoot,
+          "app/decorateStub.ts"
+        ),
+      },
+    },
+    server: { middlewareMode: true, ws: false, fs: { strict: false } },
+    optimizeDeps: { noDiscovery: true, include: [] },
+  });
+  const environment = server.environments.client;
+  const modeValues = async () =>
+    (await environment.transformRequest(`/@fs${pomFile}`))?.code.match(
+      /"enum":\s*(\[[^\]]*\])/
+    )?.[1];
+  const normalize = (json: string | undefined) =>
+    JSON.stringify(JSON.parse(json ?? "null"));
+
+  expect(normalize(await modeValues())).toBe(`["up","down"]`);
+
+  // `addWatchFile` hands the file to chokidar, which starts watching it
+  // asynchronously; an edit before that raises no change event.
+  const watchedNames = () =>
+    server?.watcher.getWatched()[dirname(modeFile)] ?? [];
+  await vi.waitFor(() => expect(watchedNames()).toContain("CounterMode.ts"), {
+    timeout: 10_000,
+  });
+
+  const changed = new Promise<void>((resolve) => {
+    const onChange = (file: string) => {
+      if (file !== modeFile) return;
+      server?.watcher.off("change", onChange);
+      resolve();
+    };
+    server?.watcher.on("change", onChange);
+  });
+  writeMode(`"up" | "down" | "reset"`);
+  await changed;
+
+  await vi.waitFor(
+    async () =>
+      expect(normalize(await modeValues())).toBe(`["up","down","reset"]`),
+    { timeout: 10_000 }
+  );
 }, 30_000);
