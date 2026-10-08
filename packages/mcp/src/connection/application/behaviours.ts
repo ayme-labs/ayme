@@ -1,4 +1,5 @@
 import type {
+  ImageResult,
   PageLeaving,
   PageTool,
   ToolCall,
@@ -16,8 +17,25 @@ export type PageTools = {
   run(name: string, input: unknown): Promise<unknown>;
 };
 
+/**
+ * A call the agent made through the server whose result is an image, such
+ * as a screenshot, as the page's Inspector records it.
+ */
+export type AgentImageRun = {
+  name: string;
+  input: unknown;
+  result: ImageResult;
+  /** The file the server saves it to, when the server named its folder. */
+  savedTo: string | undefined;
+  /** When the call started, in epoch milliseconds. */
+  startedAt: number;
+  durationMs: number;
+};
+
 /** The page's or App Process's end of the channel to its paired server. */
 export type PageChannel = {
+  /** The folder the server saves a tool's images to, once its welcome named it. */
+  readonly imageFolder: string | undefined;
   /** Reports the tools to the server. */
   publishTools(tools: readonly PageTool[]): Promise<void>;
   /** Runs `handler` for every call the server sends and answers with its outcome. */
@@ -56,6 +74,8 @@ export type PageChannel = {
 export type ClientBehaviour = (context: {
   tools: PageTools;
   channel: PageChannel;
+  /** Records an agent's call whose result is an image, for the page's Inspector. */
+  recordAgentImage?: (run: AgentImageRun) => void;
 }) => () => void;
 
 /**

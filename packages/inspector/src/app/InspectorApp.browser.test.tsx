@@ -24,6 +24,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { forest, node } = await import("../structure/test-utils/projected");
   return {
     pageStateNodeEntry,
+    subscribeToAgentImageRuns: () => () => {},
     toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     lookAtPageStateForDocument: vi.fn(async () => ({

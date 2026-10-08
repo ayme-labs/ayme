@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { recordAgentImageRun } from "./agentImageRuns";
 import { createPage } from "./browserPage";
 import { loadAgentConnection } from "./agentConnection";
 import { RuntimeStateError } from "./errors";
@@ -193,7 +194,10 @@ it("starts the Agent Connection while a session with agentConnection is started"
   sessions.push(runtime);
   const stop = start(runtime);
   await flush();
-  expect(startAgentConnection).toHaveBeenCalledExactlyOnceWith(runtime);
+  expect(startAgentConnection).toHaveBeenCalledExactlyOnceWith({
+    tools: runtime.tools,
+    recordAgentImage: recordAgentImageRun,
+  });
   stop();
   expect(dispose).toHaveBeenCalledOnce();
 

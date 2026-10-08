@@ -31,9 +31,12 @@ import {
 export function createPageChannelServer({
   connection,
   token,
+  imageFolder,
 }: {
   connection: AgentConnection;
   token: string;
+  /** Where the server saves a tool's images, which a page's welcome names. */
+  imageFolder?: string;
 }): { server: Server; close(): void } {
   const server = createServer((_request, response) => {
     response.statusCode = 426;
@@ -84,6 +87,7 @@ export function createPageChannelServer({
         acceptPage(connection, ws, {
           handOver: tokenless ? token : undefined,
           fromProcess,
+          imageFolder,
         })
       );
       handleConnection(ws, request);
@@ -108,7 +112,7 @@ export function createPageChannelServer({
  * connection `fromProcess`, which sent no `Origin`, may say hello as an App
  * Process, and the server is never too busy for it. One that connected
  * without a token gets `handOver`, the server's token, in reply to its
- * hello.
+ * hello, and every one gets `imageFolder`.
  */
 function acceptPage(
   connection: AgentConnection,
@@ -116,7 +120,12 @@ function acceptPage(
   {
     handOver,
     fromProcess,
-  }: { handOver: string | undefined; fromProcess: boolean }
+    imageFolder,
+  }: {
+    handOver: string | undefined;
+    fromProcess: boolean;
+    imageFolder: string | undefined;
+  }
 ): PageChannelContext["page"] {
   let page: PageSession | ProcessSession | undefined;
   let resolveSession!: (page: PageSession | ProcessSession) => void;
@@ -142,7 +151,10 @@ function acceptPage(
     session,
     hello(hello): PageWelcome {
       if (page) return {};
-      const welcome = handOver === undefined ? {} : { token: handOver };
+      const welcome: PageWelcome = {
+        ...(handOver === undefined ? {} : { token: handOver }),
+        ...(imageFolder === undefined ? {} : { imageFolder }),
+      };
       if ("process" in hello) {
         if (!fromProcess) {
           ws.close(1008, "Only a local process pairs as an App Process.");

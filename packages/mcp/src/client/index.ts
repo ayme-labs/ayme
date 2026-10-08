@@ -1,5 +1,6 @@
 import {
   openPageChannel,
+  type AgentImageRun,
   type PageChannel,
   type PageTools,
 } from "../connection";
@@ -14,8 +15,16 @@ import {
 import { clientBehaviours } from "./clientBehaviours";
 import { pairingSources } from "./pairingSources";
 
-/** The part of Ayme's runtime object the page client uses. */
-export type AgentConnectionRuntime = { readonly tools: PageTools };
+export type { AgentImageRun } from "../connection";
+
+/**
+ * The part of Ayme's runtime object the page client uses, and where it
+ * records an agent's call whose result is an image, for the Inspector.
+ */
+export type AgentConnectionRuntime = {
+  readonly tools: PageTools;
+  readonly recordAgentImage?: (run: AgentImageRun) => void;
+};
 
 /**
  * The tools of the App Processes paired with the tab's server, as the
@@ -116,7 +125,11 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
       },
     });
     const stops = clientBehaviours.map((behaviour) =>
-      behaviour({ tools: ayme.tools, channel })
+      behaviour({
+        tools: ayme.tools,
+        channel,
+        recordAgentImage: ayme.recordAgentImage,
+      })
     );
     // Not a ClientBehaviour: it feeds `processTools`, which this function
     // returns, and a behaviour's context carries no such sink.

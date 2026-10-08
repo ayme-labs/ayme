@@ -7,6 +7,7 @@ export {
 } from "./application/agentConnection";
 export type { ConnectionEvent } from "./application/agentConnection";
 export type {
+  AgentImageRun,
   ClientBehaviour,
   ConnectionBehaviour,
   PageChannel,

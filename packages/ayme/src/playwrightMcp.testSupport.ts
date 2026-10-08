@@ -2,7 +2,7 @@
 // the MCP backend bundled in playwright-core 1.62.1
 // (lib/coreBundle.js: elementSchema, clickSchema, typeSchema, selectOptionSchema,
 // browser_fill_form, browser_press_key, browser_navigate, browser_navigate_back,
-// and the skill-only browser_check, browser_uncheck, browser_navigate_forward
+// browser_take_screenshot, and the skill-only browser_check, browser_uncheck, browser_navigate_forward
 // and browser_reload). Transcribed by hand from their zod
 // definitions, keeping field names, types, enums and which fields are required;
 // descriptions are left out. Playwright MCP declares no explicit defaults: an
@@ -129,6 +129,22 @@ export const PLAYWRIGHT_MCP_SCHEMAS: Record<
   browser_navigate_back: { type: "object", properties: {} },
   browser_navigate_forward: { type: "object", properties: {} },
   browser_reload: { type: "object", properties: {} },
+};
+
+/**
+ * The shape of browser_take_screenshot, the counterpart of `screenshot`,
+ * without the `webp` type and the `scale` option, which Ayme leaves out.
+ * `screenshot` is not published to WebMCP, so it is compared on its own.
+ */
+export const PLAYWRIGHT_MCP_SCREENSHOT_SCHEMA: Shape = {
+  type: "object",
+  properties: {
+    element: { type: "string" },
+    target: { type: "string" },
+    type: { type: "string", enum: ["png", "jpeg"] },
+    filename: { type: "string" },
+    fullPage: { type: "boolean" },
+  },
 };
 
 /** The shape of `fill`, which has no counterpart: `target` and `text`. */
