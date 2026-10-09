@@ -202,9 +202,12 @@ export const pageCalls = {
 
 /** The Page's navigations: they act on no element. */
 export const navigations = new Set<string>([
+  // Stryker disable next-line StringLiteral: they take no string argument, so a selector-first reading finds no element or value either.
   "goBack",
+  // Stryker disable next-line StringLiteral: as above.
   "goForward",
   "goto",
+  // Stryker disable next-line StringLiteral: as above.
   "reload",
 ]);
 
