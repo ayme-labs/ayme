@@ -50,7 +50,9 @@ describe("compileShadowCss", () => {
   it("fails when the fallback lacks the --tw-shadow initials", async () => {
     await expect(
       compilePanel('<div class="translate-x-1"></div>', { theme: false })
-    ).rejects.toThrow(/no longer emits the @layer properties fallback/);
+    ).rejects.toThrow(
+      /no longer emits the @layer properties fallback .+ @property is ignored inside shadow roots, .+ must come from somewhere else\./
+    );
   }, 30_000);
 
   it("names the entry stylesheet when it fails to compile", async () => {

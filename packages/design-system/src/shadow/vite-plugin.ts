@@ -18,27 +18,17 @@ import type { Plugin } from "vite";
 const unwrapPropertyFallback = (): PostcssPlugin => ({
   postcssPlugin: "shadow-unwrap-property-fallback",
   OnceExit(root) {
-    let unwrapped = 0;
     root.walkAtRules("layer", (layer) => {
-      // Stryker disable next-line MethodExpression: PostCSS keeps the whitespace around params in raws, so trim() never changes them.
-      if (layer.params.trim() !== "properties") return;
+      if (layer.params !== "properties") return;
       layer.walkAtRules("supports", (supports) => {
         supports.replaceWith(supports.nodes ?? []);
-        // Stryker disable next-line UpdateOperator: only zero versus non-zero is read, and counting down agrees on that.
-        unwrapped++;
       });
       layer.walkRules((rule) => {
-        // Stryker disable next-line ConditionalExpression,StringLiteral: the only rule Tailwind puts in this layer starts with *, so the check never skips one.
-        if (rule.selector.startsWith("*"))
-          rule.selector = `:host, ${rule.selector}`;
+        rule.selector = `:host, ${rule.selector}`;
       });
     });
 
-    const css = root.toString();
-    const hasInitials =
-      css.includes("--tw-shadow: 0 0 #0000") ||
-      css.includes("--tw-shadow:0 0 #0000");
-    if (!unwrapped || !hasInitials) {
+    if (!root.toString().includes("--tw-shadow:0 0 #0000")) {
       throw new Error(
         "shadow-tailwind: Tailwind no longer emits the @layer properties fallback this build " +
           "depends on. @property is ignored inside shadow roots, so the --tw-* initial values " +
@@ -63,13 +53,10 @@ const remToPx = (): PostcssPlugin => {
     postcssPlugin: "shadow-rem-to-px",
     OnceExit(root) {
       root.walkDecls((declaration) => {
-        // Stryker disable next-line ConditionalExpression,StringLiteral: a shortcut only; toPx leaves a value without rem unchanged.
-        if (declaration.value.includes("rem"))
-          declaration.value = toPx(declaration.value);
+        declaration.value = toPx(declaration.value);
       });
       root.walkAtRules((atRule) => {
-        // Stryker disable next-line ConditionalExpression,StringLiteral: a shortcut only; toPx leaves params without rem unchanged.
-        if (atRule.params.includes("rem")) atRule.params = toPx(atRule.params);
+        atRule.params = toPx(atRule.params);
       });
     },
   };
