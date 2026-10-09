@@ -40,7 +40,21 @@ Put marked models in `.ts` files the application imports, with `experimentalDeco
 
 A Page Object Tool is named after its class and method: `ProjectsPage.createProject`. Registering a Page Object while a different class with the same name is registered throws; rename one of them.
 
-The tool's input schema comes from the method's signature: an object with one property per parameter, required unless the parameter is optional or has a default value. A literal default, such as `type = "personal"`, is published as the property's `default`. Parameters can be strings, numbers, booleans, unions of literals of one type (an enum), and object types made of such properties. Arrays, tuples, index signatures and functions are not supported, and the build fails naming the parameter.
+The tool's input schema comes from the method's signature: an object with one property per parameter, required unless the parameter is optional or has a default value. A literal default, such as `type = "personal"`, is published as the property's `default`. A parameter can take:
+
+| Type                                                          | Schema                                                                                    |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `string`, `number`, `boolean`                                 | `{ type }`                                                                                |
+| A union of literals of one type, such as `"a" \| "b"`         | `{ type, enum }`                                                                          |
+| An array, `T[]` or `readonly T[]`                             | `{ type: "array", items }`                                                                |
+| A tuple, such as `[number, string?]` or `[string, ...T[]]`    | `{ type: "array", prefixItems }`, with `minItems`, and `maxItems` or `items` for the rest |
+| An object type made of property signatures                    | `{ type: "object", properties, required }`                                                |
+| `Record<string, T>`, or an index signature `[key: string]: T` | `{ type: "object", additionalProperties }`, beside any declared properties                |
+| Any other union, such as `string \| boolean`                  | `{ anyOf }`, with `null` as `{ type: "null" }`                                            |
+
+`undefined` in a union makes the parameter optional; `null` does not. A rest parameter, `...refs: string[]`, is an optional list, and the tool's description says to pass its arguments as one. A recursive type is described down to its first repeat, which takes any array or object.
+
+Functions, class instances such as `Date`, object types with methods or getters, `unknown`, `any` and open generics have no schema. An action taking one fails the build naming the parameter, and the build lists an unmarked method taking one; see the [build plugin's report](../reference/build-plugin.md#report).
 
 ## Page Object Children
 

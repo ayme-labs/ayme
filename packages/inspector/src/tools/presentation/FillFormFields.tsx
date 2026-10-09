@@ -12,6 +12,7 @@ import { GripVerticalIcon, RotateCcwIcon } from "lucide-react";
 import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { Run } from "../../runs";
+import { INSPECTOR_PAGE_RENDERING_ATTRIBUTE } from "../../shared";
 import { inputClass } from "../view/ArgumentsFormView";
 import {
   changedFields,
@@ -146,6 +147,7 @@ export function FillFormFields({
       ) : (
         <ul
           aria-label="Form fields"
+          {...{ [INSPECTOR_PAGE_RENDERING_ATTRIBUTE]: "" }}
           className="m-0 flex list-none flex-col rounded-lg border p-0"
         >
           {rows.map((row, index) => {

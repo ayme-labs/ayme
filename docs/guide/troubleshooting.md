@@ -4,7 +4,7 @@ The common reasons an Ayme setup fails, by what you see.
 
 ## The build fails
 
-- **`Unsupported Page Object Tool input type for …`**: an action takes a parameter type the compiler cannot describe, such as an array. [Page Object Models](guides/page-object-models.md#tool-names-and-inputs) lists the supported types.
+- **`Unsupported Page Object Tool input type for …`**: an action takes a parameter type the compiler cannot describe, such as a function or a class instance. [Page Object Models](guides/page-object-models.md#tool-names-and-inputs) lists the supported types.
 - **`Could not find a tsconfig.json for POM source …`**: the Page Object Model is outside every tsconfig. Add one, or pass `tsconfigPath` to the [build plugin](reference/build-plugin.md).
 - **Angular's `maximumError` budget fails**: Ayme adds about 240 kB transferred to the initial chunk. Raise the `initial` budget; see [Angular](frameworks/angular.md#bundle-size).
 - **`Unsupported Playwright config loader version …`**: loading a Playwright config through `playwright.config` needs `@playwright/test` 1.62. Remove `config` and pass `use` values directly, or upgrade.

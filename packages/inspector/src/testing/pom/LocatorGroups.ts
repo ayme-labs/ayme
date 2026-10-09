@@ -9,16 +9,17 @@ import { RefField } from "./RefField";
  */
 @ayme
 export class LocatorGroups {
-  readonly list: Locator;
+  /** The list of groups. */
+  readonly root: Locator;
   readonly addGroupButton: Locator;
 
   constructor(card: Locator) {
-    this.list = card.getByRole("list", { name: "Locator groups" });
+    this.root = card.getByRole("list", { name: "Locator groups" });
     this.addGroupButton = card.getByRole("button", { name: "Add group" });
   }
 
   group(number: number): Locator {
-    return this.list.getByRole("listitem", {
+    return this.root.getByRole("listitem", {
       name: `Group ${number}`,
       exact: true,
     });
@@ -110,6 +111,10 @@ export class LocatorGroups {
   }
 
   /** Adds targets from the tree, or removes ones it has, by ref. */
+  @ayme.action({
+    description:
+      "Adds targets from a group's tree, or removes ones it has, by ref.",
+  })
   async toggleFromTree(number: number, ...refs: string[]) {
     if (
       (await this.treeButton(number).getAttribute("aria-expanded")) !== "true"

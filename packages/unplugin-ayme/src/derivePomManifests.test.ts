@@ -548,4 +548,213 @@ describe("derivePomManifests", () => {
       );
     });
   });
+
+  describe("parameter shapes", () => {
+    function parametersOf(methodName: string) {
+      return manifestFor("parameterShapesPom")?.tools.find(
+        (tool) => tool.methodName === methodName
+      )?.parameters;
+    }
+
+    it("schemas an array and a readonly array by their items", () => {
+      expect(parametersOf("array")).toEqual([
+        {
+          name: "tags",
+          optional: false,
+          schema: { type: "array", items: { type: "string" } },
+        },
+      ]);
+      expect(parametersOf("readonlyArray")).toEqual([
+        {
+          name: "sizes",
+          optional: false,
+          schema: { type: "array", items: { type: "number" } },
+        },
+        {
+          name: "labels",
+          optional: false,
+          schema: {
+            type: "array",
+            items: { type: "string", enum: ["a", "b"] },
+          },
+        },
+      ]);
+    });
+
+    it("schemas a tuple's elements with prefixItems, optional and rest elements included", () => {
+      expect(parametersOf("tuple")).toEqual([
+        {
+          name: "point",
+          optional: false,
+          schema: {
+            type: "array",
+            prefixItems: [{ type: "number" }, { type: "string" }],
+            minItems: 2,
+            maxItems: 2,
+          },
+        },
+        {
+          name: "range",
+          optional: false,
+          schema: {
+            type: "array",
+            prefixItems: [{ type: "number" }, { type: "number" }],
+            minItems: 1,
+            maxItems: 2,
+          },
+        },
+        {
+          name: "path",
+          optional: false,
+          schema: {
+            type: "array",
+            prefixItems: [{ type: "string" }],
+            minItems: 1,
+            items: { type: "number" },
+          },
+        },
+      ]);
+    });
+
+    it("publishes a rest parameter as an optional list and says so in the description", () => {
+      const tool = manifestFor("parameterShapesPom")?.tools.find(
+        ({ methodName }) => methodName === "rest"
+      );
+
+      expect(tool?.description).toBe(
+        "Take a rest parameter. refs is a rest parameter: pass its arguments as a list."
+      );
+      expect(tool?.authoredDescription).toBe("Take a rest parameter.");
+      expect(tool?.parameters).toEqual([
+        { name: "group", optional: false, schema: { type: "number" } },
+        {
+          name: "refs",
+          optional: true,
+          schema: { type: "array", items: { type: "string" } },
+          rest: true,
+        },
+      ]);
+    });
+
+    it("schemas a Record by its value type", () => {
+      expect(parametersOf("record")).toEqual([
+        {
+          name: "values",
+          optional: false,
+          schema: {
+            type: "object",
+            additionalProperties: {
+              anyOf: [{ type: "string" }, { type: "number" }],
+            },
+          },
+        },
+      ]);
+    });
+
+    it("schemas an index signature, beside any declared properties", () => {
+      expect(parametersOf("indexSignature")).toEqual([
+        {
+          name: "flags",
+          optional: false,
+          schema: {
+            type: "object",
+            additionalProperties: { type: "boolean" },
+          },
+        },
+        {
+          name: "labelled",
+          optional: false,
+          schema: {
+            type: "object",
+            properties: { title: { type: "string" } },
+            required: ["title"],
+            additionalProperties: { type: "string" },
+          },
+        },
+      ]);
+    });
+
+    it("schemas a union of primitives as anyOf, literals merged into an enum", () => {
+      expect(parametersOf("primitiveUnion")).toEqual([
+        {
+          name: "value",
+          optional: false,
+          schema: { anyOf: [{ type: "string" }, { type: "boolean" }] },
+        },
+        {
+          name: "size",
+          optional: true,
+          schema: {
+            anyOf: [{ type: "number" }, { type: "string", enum: ["auto"] }],
+          },
+        },
+      ]);
+    });
+
+    it("schemas null in a union without making the parameter optional", () => {
+      expect(parametersOf("nullable")).toEqual([
+        {
+          name: "note",
+          optional: false,
+          schema: { anyOf: [{ type: "null" }, { type: "string" }] },
+        },
+        {
+          name: "count",
+          optional: true,
+          schema: { anyOf: [{ type: "null" }, { type: "number" }] },
+        },
+      ]);
+    });
+
+    it("schemas a recursive type down to its first repeat", () => {
+      const repeat = {
+        anyOf: [
+          { type: "string" },
+          { type: "number" },
+          { type: "array" },
+          { type: "object" },
+        ],
+      };
+      expect(parametersOf("recursive")?.[0]?.schema).toEqual({
+        anyOf: [
+          { type: "string" },
+          { type: "number" },
+          {
+            type: "array",
+            items: {
+              anyOf: [
+                { type: "string" },
+                { type: "number" },
+                { type: "array" },
+                { type: "object", additionalProperties: repeat },
+              ],
+            },
+          },
+          {
+            type: "object",
+            additionalProperties: {
+              anyOf: [
+                { type: "string" },
+                { type: "number" },
+                { type: "array", items: repeat },
+                { type: "object" },
+              ],
+            },
+          },
+        ],
+      });
+    });
+
+    it.each([
+      ["callablePom", "CallablePom.run(callback): () => void"],
+      ["classInstancePom", "ClassInstancePom.schedule(at): Date"],
+      ["openGenericPom", "OpenGenericPom.pick(value): T"],
+    ])("still fails the build for %s", (fixture, parameter) => {
+      expect(() =>
+        derivePomManifests(
+          path.resolve(`src/fixtures/unsupportedShapes/${fixture}.ts`)
+        )
+      ).toThrow(`Unsupported Page Object Tool input type for ${parameter}.`);
+    });
+  });
 });

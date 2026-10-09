@@ -136,7 +136,7 @@ function renderCard({ runs = [] }: { runs?: Run[] } = {}) {
   );
   return {
     card,
-    form: card.fillForm(),
+    form: card.fillForm,
     onRun,
     onPreview,
     showPage: (look: Look) => showPage(look),

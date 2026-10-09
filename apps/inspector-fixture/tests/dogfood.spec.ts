@@ -56,6 +56,38 @@ test("an agent drives the panel through the Inspector's Page Object Tools", asyn
     .toContain("Inspector.detail.toolPage.card.fillJson");
 });
 
+test("an agent finds the forms' actions, and sets a fill_form field to a boolean through one", async ({
+  page,
+  inspector,
+}) => {
+  const agent = new AgentView(page);
+  const toolNames = async () => (await agent.tools()).map(({ name }) => name);
+  const card = "Inspector.detail.toolPage.card";
+  /** Opens a tool's card and its form, whose tools then list. */
+  const openForm = async (tool: string, ...actions: string[]) => {
+    await executePublishedTool(page, "Inspector.tool", { name: tool });
+    await expect.poll(toolNames).toContain(`${card}.openArguments`);
+    await executePublishedTool(page, `${card}.openArguments`, {});
+    await expect
+      .poll(toolNames)
+      .toEqual(expect.arrayContaining([`${card}.fill`, ...actions]));
+  };
+
+  // The panel settles before the agent's 1 s action timeout applies.
+  await inspector.navigator.showLens("Tools");
+  await openForm("fill_form", `${card}.fillForm.set`);
+  const form = inspector.detail.toolPage.card.fillForm;
+  await expect(form.control("Urgent")).not.toBeChecked();
+  await executePublishedTool(page, `${card}.fillForm.set`, {
+    name: "Urgent",
+    value: true,
+  });
+  await expect(form.control("Urgent")).toBeChecked();
+
+  await openForm("generate_locator", `${card}.locatorGroups.toggleFromTree`);
+  await openForm("goal", `${card}.values.fill`);
+});
+
 test("the page state an agent reads includes the panel", async ({
   page,
   inspector,

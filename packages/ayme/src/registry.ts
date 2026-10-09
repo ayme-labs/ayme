@@ -1052,7 +1052,12 @@ async function performPageObjectAction(
     );
 
   const currentDocument = requireCurrentDocument();
-  const parameters = validatedArguments(tool, args);
+  const parameters = validatedArguments(tool, args).flatMap((value, index) =>
+    // A rest parameter's list is the method's remaining arguments.
+    tool.parameters[index]?.rest
+      ? ((value as unknown[] | undefined) ?? [])
+      : [value]
+  );
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
   return runAction(currentDocument, cursor, { tool: tool.toolName, args }, () =>

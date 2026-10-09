@@ -124,6 +124,51 @@ describe("toolInputViolations", () => {
     ]);
   });
 
+  it("checks a tuple's elements and length", () => {
+    const schema: JsonSchema = {
+      type: "object",
+      properties: {
+        point: {
+          type: "array",
+          prefixItems: [{ type: "number" }, { type: "string" }],
+          minItems: 1,
+          maxItems: 2,
+        },
+        path: {
+          type: "array",
+          prefixItems: [{ type: "string" }],
+          items: { type: "number" },
+        },
+      },
+    };
+    expect(
+      toolInputViolations(schema, { point: [1, "a"], path: ["a", 1, 2] })
+    ).toEqual([]);
+    expect(toolInputViolations(schema, { point: [1] })).toEqual([]);
+    expect(
+      toolInputViolations(schema, { point: ["a", "b", "c"], path: ["a", "b"] })
+    ).toEqual([
+      { path: "point[0]", message: "must be a number" },
+      { path: "point", message: "must have at most 2 items" },
+      { path: "path[1]", message: "must be a number" },
+    ]);
+    expect(toolInputViolations(schema, { point: [] })).toEqual([
+      { path: "point", message: "must have at least 1 item" },
+    ]);
+  });
+
+  it("takes null where a union allows it", () => {
+    const schema: JsonSchema = {
+      type: "object",
+      properties: { note: { anyOf: [{ type: "null" }, { type: "string" }] } },
+    };
+    expect(toolInputViolations(schema, { note: null })).toEqual([]);
+    expect(toolInputViolations(schema, { note: "a" })).toEqual([]);
+    expect(toolInputViolations(schema, { note: 1 })).toEqual([
+      { path: "note", message: "must be null or a string" },
+    ]);
+  });
+
   it("takes an inherited name as missing, not given", () => {
     const schema: JsonSchema = {
       type: "object",
