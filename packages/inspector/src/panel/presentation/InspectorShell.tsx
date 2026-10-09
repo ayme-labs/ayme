@@ -39,6 +39,7 @@ type Handle = Side | Corner;
 // and are placed by offsets: a centring transform rounds them half a pixel off;
 // a corner arc sits 2px out, with the border's radius plus its stroke's
 // overhang.
+// Stryker disable StringLiteral,ObjectLiteral: the grips' Tailwind classes are styling, which no test reads.
 const edgeGrip = "after:rounded-full";
 const cornerGrip =
   "z-30 size-5 after:size-4 after:border-0 after:bg-transparent active:after:bg-transparent";
@@ -53,6 +54,8 @@ const handleClass: Record<Handle, string> = {
   "bottom-left": `${cornerGrip} -bottom-2 -left-2 cursor-nesw-resize after:bottom-[6px] after:left-[6px] after:rounded-bl-[15px] after:border-b-3 after:border-l-3`,
   "bottom-right": `${cornerGrip} -right-2 -bottom-2 cursor-nwse-resize after:right-[6px] after:bottom-[6px] after:rounded-br-[15px] after:border-r-3 after:border-b-3`,
 };
+
+// Stryker restore StringLiteral,ObjectLiteral
 
 /** The handles each layout resizes from: a floating panel from every side. */
 const resizeHandles: Record<Layout, readonly Handle[]> = {

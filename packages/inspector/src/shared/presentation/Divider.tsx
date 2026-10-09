@@ -10,6 +10,7 @@ import { usePointerDrag } from "./pointerDrag";
  * while pressed.
  */
 export const resizeGrip =
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "after:absolute after:border-border after:bg-border after:opacity-0 after:transition-[opacity,background-color,border-color,scale] after:duration-(--duration-fast) after:ease-(--ease-out) hover:after:opacity-100 focus-visible:after:opacity-100 active:after:border-muted-foreground active:after:bg-muted-foreground active:after:opacity-100";
 
 /*
@@ -21,11 +22,13 @@ export const resizeGrip =
 const shape = {
   vertical: {
     line: "w-2 cursor-ew-resize after:top-[calc(50%-20px)] after:left-[calc(50%-1.5px)] after:h-10 after:w-[3px] active:after:scale-y-125",
+    // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
     before: "-mr-[3.5px] -ml-[4.5px]",
     after: "-mr-[4.5px] -ml-[3.5px]",
   },
   horizontal: {
     line: "h-2 cursor-ns-resize after:top-[calc(50%-1.5px)] after:left-[calc(50%-20px)] after:h-[3px] after:w-10 active:after:scale-x-125",
+    // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
     before: "-mt-[4.5px] -mb-[3.5px]",
     after: "-mt-[3.5px] -mb-[4.5px]",
   },

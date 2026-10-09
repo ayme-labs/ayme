@@ -81,6 +81,7 @@ export type MemberOwner = { object: string } | { model: string };
 /** A member of a node, with where it leads. */
 export type MemberLink = { member: string; owner: MemberOwner };
 
+// Stryker disable next-line ObjectLiteral,ArrayDeclaration: a mutant here breaks loading the module, which fails every importing test file but counts as no failed test for Stryker's Vitest runner.
 const noMembers = indexMembers({ objects: [], models: [] });
 
 export type StructureTree = {
@@ -125,27 +126,27 @@ export const structureTreeBuilder = (nodeEntry: NodeEntry) =>
       const hasState = Object.values(entry.state).some(
         (value) => value !== undefined
       );
-      const node: StructureNode = {
-        ref: entry.ref,
-        role: entry.role,
-        name: entry.name,
-        ...(hasState ? { state: entry.state } : {}),
-        members: [],
-        pageStateLines: lines,
-        childCount,
-        children: entry.children.map(build),
-      };
-      const control = controls.get(entry.ref);
-      if (control) node.control = control;
       const members = [
         ...new Map(
+          // Stryker disable next-line ArrayDeclaration: a made-up target is no member the index has, so it is dropped either way.
           (targetsByRef.get(entry.ref) ?? []).flatMap((target) => {
             const member = index.member(target);
             return member ? [[member.path, member] as const] : [];
           })
         ).values(),
       ];
-      node.members = members.map(({ path }) => path);
+      const node: StructureNode = {
+        ref: entry.ref,
+        role: entry.role,
+        name: entry.name,
+        ...(hasState ? { state: entry.state } : {}),
+        members: members.map(({ path }) => path),
+        pageStateLines: lines,
+        childCount,
+        children: entry.children.map(build),
+      };
+      const control = controls.get(entry.ref);
+      if (control) node.control = control;
       const tag = memberTag(members, index);
       if (tag !== undefined) {
         node.member = tag.path;
@@ -194,6 +195,7 @@ function modelGroups(member: IndexedMember, index: MemberIndex) {
   const names = member.locator ? [member.locator.name] : [];
   for (const node of index.ancestors(member.owner)) {
     if (node.kind === "page") break;
+    // Stryker disable next-line ConditionalExpression,StringLiteral: a collection has its items' class and the same names, so its group repeats theirs and the links drop it.
     if (node.kind !== "collection")
       groups.unshift({
         className: node.className,
@@ -258,6 +260,7 @@ function shortTag(member: IndexedMember, index: MemberIndex) {
   const segments = nodes.map(({ kind, name }) =>
     kind === "item" ? name : `.${name}`
   );
+  // Stryker disable next-line ConditionalExpression,LogicalOperator,OptionalChaining: below a page, a collection always comes with an item after it, and an item only after a collection.
   if (first?.kind === "collection" && second?.kind === "item")
     segments.splice(0, 2, "[·]");
   if (member.locator) segments.push(`.${member.locator.name}`);

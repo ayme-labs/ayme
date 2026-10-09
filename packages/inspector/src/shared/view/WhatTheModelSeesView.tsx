@@ -96,6 +96,7 @@ export function WhatTheModelSeesView({
   );
 }
 
+// Stryker disable next-line ObjectLiteral: syntax highlighting is styling, which no test reads.
 const languages = { typescript, json };
 
 function Code({

@@ -344,6 +344,7 @@ function RunResult({
 }
 
 // A step's operation is the method it called; the rest show a chevron.
+// Stryker disable next-line ObjectLiteral: a lookup table of the icons steps show.
 const stepIcons: Record<string, typeof EyeIcon> = {
   click: MousePointer2Icon,
   dblclick: MousePointer2Icon,

@@ -185,6 +185,7 @@ function StructureTreeView({
 
 const rowClass =
   "flex w-full items-baseline gap-1.5 rounded px-1.5 py-1 text-left font-mono text-xs whitespace-nowrap";
+// Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
 const nameClass = "min-w-0 truncate text-green-700 dark:text-green-300";
 
 function rowIndent(depth: number) {
