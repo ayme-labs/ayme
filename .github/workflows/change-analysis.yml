@@ -1,0 +1,46 @@
+name: Change analysis
+
+# Runs `pnpm analyze:changed` on a pull request's changed source and posts the
+# report to the run summary. Report only: findings never fail the pull request,
+# and a run that breaks is marked as passing. See docs/testing.md#change-analysis.
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - packages/*/src/**
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze changed source
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    timeout-minutes: 90
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      # A pull request's checkout is its merge commit, whose first parent is
+      # the base it merges into. A dispatch compares with where it left main.
+      - run: pnpm analyze:changed ${BASE:+--base "$BASE"}
+        continue-on-error: true
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      - if: always()
+        run: cat reports/analyze-changed.md >> "$GITHUB_STEP_SUMMARY" || echo "No report was written; see the analysis step's log." >> "$GITHUB_STEP_SUMMARY"

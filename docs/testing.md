@@ -28,7 +28,7 @@ Each package keeps its own Vitest config; the change-analysis lane below builds 
 
 ## Change analysis
 
-Every pull request runs `pnpm analyze:changed` before it goes ready. It compares the working tree with `main`, finds the packages whose `src/` changed, and runs their fast lane: CRAP for each function the change touched, and Stryker mutants on the changed lines only. The report prints and is written to `reports/analyze-changed.md` ([`scripts/analyze-changed.mjs`](../scripts/analyze-changed.mjs)).
+Every pull request runs `pnpm analyze:changed` before it goes ready. It compares the working tree with `main`, finds the packages whose `src/` changed, and runs their fast lane: CRAP for each function the change touched, and Stryker mutants on the changed lines only. The report prints and is written to `reports/analyze-changed.md` ([`scripts/analyze-changed.mjs`](../scripts/analyze-changed.mjs)). CI runs it again on every ready pull request that changes package source and posts the report to the run summary of the Change analysis workflow. That run only reports: it never fails the pull request.
 
 The fast lane is each package's `vitest.fast.config.ts`: its unit tests and its Vitest browser-mode tests, without `packedConsumer.test.ts`. Playwright e2e tests are not in it, so code that only they exercise reads as uncovered. Stryker skips static mutants here, code that runs when a module loads such as tool descriptions, because no test owns them and each one would rerun every test. The shared settings live in [`packages/test-config`](../packages/test-config).
 
