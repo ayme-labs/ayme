@@ -123,7 +123,7 @@ export default function Home() {
 }
 ```
 
-The build needs the Turbopack loader from the [build plugin reference](../reference/build-plugin.md#nextjs). The [Next.js example](../../../apps/example-next/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
+The build needs the Turbopack loader from the [build plugin reference](../reference/build-plugin.md#nextjs). The [Next.js example](https://github.com/ayme-labs/ayme/blob/main/apps/example-next/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Limits
 

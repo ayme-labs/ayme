@@ -89,7 +89,7 @@ const serverConfig: ApplicationConfig = {
 export const config = mergeApplicationConfig(appConfig, serverConfig);
 ```
 
-On the server, `provideAyme` creates a session per request but never starts it, and hydration creates the real Page Objects. `injectPeek` adds its instance in `afterNextRender`, which never runs on the server. The [Angular example](../../../apps/example-angular/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
+On the server, `provideAyme` creates a session per request but never starts it, and hydration creates the real Page Objects. `injectPeek` adds its instance in `afterNextRender`, which never runs on the server. The [Angular example](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Bundle size
 
