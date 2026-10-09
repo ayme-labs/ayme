@@ -4,11 +4,11 @@ Everything about Ayme in a React app: setup, the provider, hooks, server renderi
 
 ## Setup
 
-Install Ayme, the React package, WebMCP publication and the build plugin, and the Inspector if you want it:
+Install Ayme, the React package and the build plugin, with the Inspector and the Agent Connection for development, as the [React quickstart](../start/quickstart-react.md) does:
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/react @ayme-dev/webmcp
-npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector
+npm install @ayme-dev/ayme @ayme-dev/react
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
 ```
 
 On Vite, add the plugin alongside the React plugin:
@@ -27,7 +27,7 @@ On Next.js, use the experimental Turbopack loader, as the [build plugin referenc
 
 ## Start Ayme at the root
 
-Wrap the app in `AymeProvider`:
+Wrap the app in `AymeProvider`, with the Inspector and the Agent Connection in development:
 
 ```tsx
 import { StrictMode } from "react";
@@ -37,14 +37,17 @@ import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AymeProvider webMCP={{ enabled: true }}>
+    <AymeProvider
+      inspector={import.meta.env.DEV}
+      agentConnection={import.meta.env.DEV}
+    >
       <App />
     </AymeProvider>
   </StrictMode>
 );
 ```
 
-The provider takes the [`createAyme` options](../reference/ayme.md#createayme) as props, such as `pageFactory`, `ignore` and `inspector` (`inspector={import.meta.env.DEV}` on Vite).
+The provider takes the [`createAyme` options](../reference/ayme.md#createayme) as props, such as `pageFactory`, `ignore`, `inspector` and `agentConnection`. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
 
 ## Root ownership
 
@@ -57,19 +60,55 @@ Wrap the application root, not a route component or a layout that unmounts on na
 Call the hooks in descendants of the provider:
 
 ```tsx
-import { useAyme, usePageObject } from "@ayme-dev/react";
+import { usePageObject } from "@ayme-dev/react";
 import { ProjectsPage } from "./playwright/pom/ProjectsPage";
 
 export default function Controls() {
   const pom = usePageObject(ProjectsPage);
-  const { ayme, webMCP } = useAyme();
+
+  return (
+    <button onClick={() => void pom.createProject("Launch plan")}>
+      Show me how
+    </button>
+  );
+}
+```
+
+- `usePageObject(Model)` returns the session's instance of the class immediately and registers the class after commit. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. Changing the model class requires remounting the component. Unmounting it removes its registration.
+- `useAyme()` returns the provider's session, `ayme`, and its WebMCP publication, `webMCP`.
+- Hooks without an ancestor provider throw. A provider returned from a component does not supply context to hooks called in that same component.
+
+## Optional: publish with WebMCP
+
+To publish the same tools through WebMCP for agents that run in the browser, as [Publish tools](../guides/publish-tools.md) describes, install the publication package:
+
+```sh
+npm install @ayme-dev/webmcp
+```
+
+Then add `webMCP` to the provider's props:
+
+```tsx
+<AymeProvider
+  inspector={import.meta.env.DEV}
+  agentConnection={import.meta.env.DEV}
+  webMCP={{ enabled: true }}
+>
+  <App />
+</AymeProvider>
+```
+
+`useAyme()`'s `webMCP` is React state: `webMCP.publicationStatus` is a read-only snapshot that updates with renders, and `webMCP.retryPublication()` tries again after publication found no WebMCP driver or failed:
+
+```tsx
+import { useAyme } from "@ayme-dev/react";
+
+export default function PublicationStatus() {
+  const { webMCP } = useAyme();
 
   return (
     <>
-      <p>{webMCP.publicationStatus.message}</p>
-      <button onClick={() => void pom.createProject("Launch plan")}>
-        Increment
-      </button>
+      <p>Publication: {webMCP.publicationStatus.state}</p>
       <button onClick={() => void webMCP.retryPublication()}>
         Retry publication
       </button>
@@ -77,10 +116,6 @@ export default function Controls() {
   );
 }
 ```
-
-- `usePageObject(Model)` returns the session's instance of the class immediately and registers the class after commit. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors must only initialize fields and compose locators: do not run actions, register listeners or start other activity in them. Changing the model class requires remounting the component. Unmounting it removes its registration.
-- `useAyme()`'s `webMCP` is React state: `webMCP.publicationStatus` is a read-only snapshot that updates with renders.
-- Hooks without an ancestor provider throw. A provider returned from a component does not supply context to hooks called in that same component.
 
 ## Server rendering
 
@@ -105,8 +140,8 @@ function Projects() {
 export default function ProjectsWithAyme() {
   return (
     <AymeProvider
-      webMCP={{ enabled: true }}
       inspector={process.env.NODE_ENV === "development"}
+      agentConnection={process.env.NODE_ENV === "development"}
     >
       <Projects />
     </AymeProvider>
