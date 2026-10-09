@@ -1,6 +1,7 @@
 import {
   derivePomManifestsFromProgram,
   type PomCompilerOptions,
+  type SkippedPomMethod,
 } from "./derivePomManifests";
 import {
   carriesPomMarker,
@@ -19,7 +20,10 @@ const REGISTRATION_MODULE = "@ayme-dev/ayme/internal";
 export const INJECTED_IMPORTS = [REGISTRATION_MODULE];
 
 /** The source transform shared by Vite and the experimental Turbopack loader. */
-export function createPomTransform(options: PomCompilerOptions = {}) {
+export function createPomTransform(
+  options: PomCompilerOptions = {},
+  onSkipped?: (fileName: string, methods: SkippedPomMethod[]) => void
+) {
   return (
     code: string,
     id: string,
@@ -36,7 +40,11 @@ export function createPomTransform(options: PomCompilerOptions = {}) {
     reportDependencies?.(dependencies);
 
     const program = createPomProgram(fileName, options);
-    const manifests = derivePomManifestsFromProgram(fileName, program);
+    const manifests = derivePomManifestsFromProgram(
+      fileName,
+      program,
+      onSkipped && ((methods) => onSkipped(fileName, methods))
+    );
     if (manifests.length === 0) return null;
 
     const rewrittenCode = rewritePomImports(code, fileName, options, program);

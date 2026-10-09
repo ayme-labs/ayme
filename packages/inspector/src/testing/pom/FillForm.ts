@@ -7,6 +7,8 @@ import type { Locator } from "@playwright/test";
  */
 @ayme
 export class FillForm {
+  /** The list of fields. */
+  readonly root: Locator;
   /** The rows, in fill order. */
   readonly rows: Locator;
   /** How many rows are changed, e.g. "2 changed". */
@@ -14,9 +16,8 @@ export class FillForm {
   readonly undoAllButton: Locator;
 
   constructor(card: Locator) {
-    this.rows = card
-      .getByRole("list", { name: "Form fields" })
-      .getByRole("listitem");
+    this.root = card.getByRole("list", { name: "Form fields" });
+    this.rows = this.root.getByRole("listitem");
     this.changedCount = card.getByRole("status", { name: "Changed fields" });
     this.undoAllButton = card.getByRole("button", { name: "Undo all" });
   }
@@ -69,8 +70,12 @@ export class FillForm {
 
   /**
    * Sets a field: text for a textbox, a checked state for a checkbox, an
-   * option's label for a combobox or a radio group, a number for a slider.
+   * option's label for a combobox or a radio group.
    */
+  @ayme.action({
+    description:
+      "Sets a field: text for a textbox, a checked state for a checkbox, an option's label for a combobox or a radio group.",
+  })
   async set(name: string, value: string | boolean) {
     const control = this.control(name);
     const kind = await control.evaluate((element) =>

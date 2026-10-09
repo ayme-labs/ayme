@@ -88,7 +88,7 @@ function renderCard({ onPick }: { onPick?: RefSource["onPick"] } = {}) {
   );
   return {
     card,
-    form: card.locatorGroups(),
+    form: card.locatorGroups,
     onRun,
     showRuns: (runs: Run[]) => showRuns(runs),
   };

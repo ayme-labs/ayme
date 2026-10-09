@@ -91,6 +91,21 @@ describe("schema to fields", () => {
     ]);
   });
 
+  it("edits a tuple as JSON, since its fixed elements have their own types", () => {
+    const path = {
+      type: "object" as const,
+      properties: {
+        path: {
+          type: "array" as const,
+          prefixItems: [{ type: "string" as const }],
+          items: { type: "number" as const },
+        },
+      },
+    };
+
+    expect(fieldsOf(path)[0]).toMatchObject({ name: "path", kind: "json" });
+  });
+
   it("picks a ref only for the argument named as the tool's ref field", () => {
     const rename = {
       type: "object" as const,

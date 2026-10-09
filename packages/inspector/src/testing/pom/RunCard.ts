@@ -43,6 +43,12 @@ export class RunCard {
   readonly lastResult: Locator;
   /** Shows the last successful run in Runs. */
   readonly lastSuccessLink: Locator;
+  /** `fill_form`'s form. */
+  readonly fillForm: FillForm;
+  /** `generate_locator`'s form. */
+  readonly locatorGroups: LocatorGroups;
+  /** `goal`'s map of values. */
+  readonly values: ValueRows;
 
   constructor(root: Locator) {
     this.root = root;
@@ -69,6 +75,9 @@ export class RunCard {
     this.lastSuccessLink = this.lastResult.getByRole("button", {
       name: /^(Show in runs|Last success)/,
     });
+    this.fillForm = new FillForm(root);
+    this.locatorGroups = new LocatorGroups(root);
+    this.values = this.valueRows("values");
   }
 
   /**
@@ -94,16 +103,6 @@ export class RunCard {
     return new ValueRows(this.root, path);
   }
 
-  /** `fill_form`'s form. */
-  fillForm(): FillForm {
-    return new FillForm(this.root);
-  }
-
-  /** `generate_locator`'s form. */
-  locatorGroups(): LocatorGroups {
-    return new LocatorGroups(this.root);
-  }
-
   /** Opens the form, on a card whose form is closed. */
   @ayme.action({
     description: "Opens the form, on a card whose form is closed.",
@@ -126,6 +125,9 @@ export class RunCard {
   }
 
   /** Fills the typed form with the given arguments. */
+  @ayme.action({
+    description: "Fills the typed form with the given arguments, by name.",
+  })
   async fill(args: Readonly<Record<string, ArgumentValue>>) {
     await this.openArguments();
     for (const [name, value] of Object.entries(args))

@@ -92,6 +92,10 @@ export class ValueRows {
    * Adds one row per entry. A string that reads as a number is fixed to
    * text, so every value keeps the type it is given.
    */
+  @ayme.action({
+    description:
+      "Adds one row per entry; a number entry gets the number type, a string the text type.",
+  })
   async fill(entries: Readonly<Record<string, string | number>>) {
     for (const [label, value] of Object.entries(entries)) {
       await this.addButton.click();

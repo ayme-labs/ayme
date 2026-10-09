@@ -16,6 +16,14 @@ import { createPomProgram, type PomCompilerOptions } from "./pomProgram";
 
 export type { PomCompilerOptions } from "./pomProgram";
 
+/** A public method of a Page Object Model that is not a Page Object Action. */
+export type SkippedPomMethod = {
+  /** The declaring class and the method, e.g. `RunCard.fill`. */
+  name: string;
+  /** Why no schema describes its parameters, when one cannot be derived. */
+  unsupported?: string;
+};
+
 export type PomCompiler = {
   derivePomManifests(fileName: string): PomManifest[];
 };
@@ -46,9 +54,15 @@ export function derivePomManifests(
   return derivePomManifestsFromProgram(absoluteFileName, program);
 }
 
+/**
+ * `onSkipped` receives the public methods of this file's Page Object Models
+ * and their Page Object Children that are not actions, Page Object Children
+ * themselves aside.
+ */
 export function derivePomManifestsFromProgram(
   fileName: string,
-  program: ts.Program
+  program: ts.Program,
+  onSkipped?: (methods: SkippedPomMethod[]) => void
 ): PomManifest[] {
   const absoluteFileName = path.resolve(fileName);
   const sourceFile = program.getSourceFile(absoluteFileName);
@@ -58,6 +72,7 @@ export function derivePomManifestsFromProgram(
   const checker = program.getTypeChecker();
   const manifests: PomManifest[] = [];
   const components = new Map<ts.ClassDeclaration, PomComponentManifest>();
+  const classes = new Map<ts.ClassDeclaration, PomManifest>();
 
   for (const declaration of sourceFile.statements) {
     if (
@@ -74,16 +89,64 @@ export function derivePomManifestsFromProgram(
       toolsForClass(checker, declaration, components)
     );
 
-    manifests.push({
+    const manifest: PomManifest = {
       className,
       ...classDescription(declaration),
       members,
       components: [...components.values()],
       tools,
-    });
+    };
+    manifests.push(manifest);
+    classes.set(declaration, manifest);
   }
 
+  if (onSkipped)
+    onSkipped(
+      // A class can be both a top-level Page Object and a Child.
+      [...new Map([...classes, ...components])].flatMap(
+        ([declaration, manifest]) =>
+          skippedMethods(checker, declaration, manifest.members)
+      )
+    );
   return manifests;
+}
+
+function skippedMethods(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration,
+  members: readonly PomMemberManifest[]
+): SkippedPomMethod[] {
+  const children = new Set(members.map((member) => member.memberName));
+  return classMembers(checker, declaration).flatMap((member) => {
+    if (
+      !isPublicInstanceMember(member) ||
+      !ts.isMethodDeclaration(member) ||
+      !ts.isIdentifier(member.name) ||
+      toolDescription(member) ||
+      children.has(member.name.text)
+    )
+      return [];
+    // Named after the Page Object, as its tools are.
+    const className = declaration.name!.text;
+    const methodName = member.name.text;
+    const name = `${className}.${methodName}`;
+    for (const parameter of member.parameters) {
+      if (!ts.isIdentifier(parameter.name))
+        return [{ name, unsupported: "a parameter is destructured" }];
+      try {
+        toolParameter(checker, parameter, className, methodName);
+      } catch (error) {
+        if (!(error instanceof UnsupportedInputTypeError)) throw error;
+        return [
+          {
+            name,
+            unsupported: `parameter ${parameter.name.text} has the unsupported type ${error.typeText}`,
+          },
+        ];
+      }
+    }
+    return [{ name }];
+  });
 }
 
 function pomMembers(
@@ -254,7 +317,8 @@ function toolsForClass(
         toolName: `${className}.${methodName}`,
         description: toolDescriptionText(
           description.authored ?? `Run ${methodName}.`,
-          returnPoms
+          returnPoms,
+          parameters.find((parameter) => parameter.rest)?.name
         ),
         ...(description.authored === undefined
           ? {}
@@ -563,10 +627,17 @@ function toolDescription(
 
 function toolDescriptionText(
   description: string,
-  returnPoms: readonly string[]
+  returnPoms: readonly string[],
+  restParameter: string | undefined
 ) {
-  if (returnPoms.length === 0) return description;
-  return `${description} Potential return POMs: ${returnPoms.join(", ")}.`;
+  const parts = [description];
+  if (restParameter !== undefined)
+    parts.push(
+      `${restParameter} is a rest parameter: pass its arguments as a list.`
+    );
+  if (returnPoms.length > 0)
+    parts.push(`Potential return POMs: ${returnPoms.join(", ")}.`);
+  return parts.join(" ");
 }
 
 function toolParameter(
@@ -582,17 +653,18 @@ function toolParameter(
   }
 
   const type = checker.getTypeAtLocation(parameter);
+  const rest = parameter.dotDotDotToken !== undefined;
+  const schema = schemaForType(
+    { checker, className, methodName, enclosing: new Set() },
+    type,
+    parameter.name.text
+  );
   const optional =
+    // A rest parameter can be left out when it takes no arguments.
+    (rest && !schema.minItems) ||
     parameter.questionToken !== undefined ||
     parameter.initializer !== undefined ||
     typeIncludesUndefined(type);
-  const schema = schemaForType(
-    checker,
-    type,
-    className,
-    methodName,
-    parameter.name.text
-  );
   const defaultValue =
     parameter.initializer && literalDefault(parameter.initializer);
   return {
@@ -602,6 +674,7 @@ function toolParameter(
       defaultValue === undefined
         ? schema
         : { ...schema, default: defaultValue },
+    ...(rest ? { rest: true as const } : {}),
   };
 }
 
@@ -621,122 +694,124 @@ function literalDefault(initializer: ts.Expression): JsonPrimitive | undefined {
   return undefined;
 }
 
+type SchemaContext = {
+  checker: ts.TypeChecker;
+  className: string;
+  methodName: string;
+  /** The object types being described, outermost first. */
+  enclosing: Set<ts.Type>;
+};
+
 function schemaForType(
-  checker: ts.TypeChecker,
+  context: SchemaContext,
   type: ts.Type,
-  className: string,
-  methodName: string,
   parameterName: string
 ): JsonSchema {
-  const membersWithoutUndefined = type.isUnion()
-    ? type.types.filter(
-        (member) => (member.flags & ts.TypeFlags.Undefined) === 0
-      )
-    : undefined;
-  if (membersWithoutUndefined && membersWithoutUndefined.length === 1) {
-    return schemaForType(
-      checker,
-      membersWithoutUndefined[0],
-      className,
-      methodName,
-      parameterName
-    );
-  }
-
-  if (type.isUnion()) {
-    const members = membersWithoutUndefined ?? [];
-    const enumValues = members.map((member) => literalValue(checker, member));
-    if (enumValues.every((value) => value !== undefined)) {
-      const values = enumValues.filter(
-        (value): value is JsonPrimitive => value !== undefined
-      );
-      const valueTypes = new Set(values.map((value) => typeof value));
-      if (valueTypes.size === 1) {
-        const type = jsonPrimitiveSchemaType(values[0]);
-        if (type === "boolean" && values.length === 2) return { type };
-        if (type) return { type, enum: values };
-      }
-    }
-  }
-
+  if (type.isUnion()) return unionSchema(context, type, parameterName);
   if (type.flags & ts.TypeFlags.StringLike) return { type: "string" };
   if (type.flags & ts.TypeFlags.NumberLike) return { type: "number" };
   if (type.flags & ts.TypeFlags.BooleanLike) return { type: "boolean" };
 
   if (type.flags & ts.TypeFlags.Object) {
-    return objectSchemaForType(
-      checker,
-      type,
-      className,
-      methodName,
-      parameterName
-    );
+    // A recursive type is described down to its first repeat, which takes
+    // any array or object.
+    if (context.enclosing.has(type))
+      return {
+        type: context.checker.isArrayLikeType(type) ? "array" : "object",
+      };
+    context.enclosing.add(type);
+    try {
+      return objectSchemaForType(context, type, parameterName);
+    } finally {
+      context.enclosing.delete(type);
+    }
   }
 
-  throw unsupportedInputType(
-    checker,
-    type,
-    className,
-    methodName,
-    parameterName
+  throw unsupportedInputType(context, type, parameterName);
+}
+
+/**
+ * `undefined` makes a parameter optional and is no variant of its own.
+ * Literals of one type merge into an enum, and `true | false` is a boolean.
+ */
+function unionSchema(
+  context: SchemaContext,
+  type: ts.UnionType,
+  parameterName: string
+): JsonSchema {
+  const members = type.types.filter(
+    (member) => (member.flags & ts.TypeFlags.Undefined) === 0
   );
+  if (members.length === 1)
+    return schemaForType(context, members[0]!, parameterName);
+
+  const variants: JsonSchema[] = [];
+  const enums = new Map<string, JsonPrimitive[]>();
+  for (const member of members) {
+    const value = literalValue(context.checker, member);
+    if (value === undefined) {
+      variants.push(
+        member.flags & ts.TypeFlags.Null
+          ? { type: "null" }
+          : schemaForType(context, member, parameterName)
+      );
+      continue;
+    }
+    const kind = jsonPrimitiveSchemaType(value);
+    let values = enums.get(kind!);
+    if (!values) {
+      values = [];
+      enums.set(kind!, values);
+      variants.push({ type: kind, enum: values });
+    }
+    values.push(value);
+  }
+
+  const schemas = variants.map((variant) =>
+    variant.type === "boolean" && variant.enum?.length === 2
+      ? { type: "boolean" as const }
+      : variant
+  );
+  return schemas.length === 1 ? schemas[0]! : { anyOf: schemas };
 }
 
 function objectSchemaForType(
-  checker: ts.TypeChecker,
+  context: SchemaContext,
   type: ts.Type,
-  className: string,
-  methodName: string,
   parameterName: string
 ): JsonSchema {
-  if (
-    checker.isArrayType(type) ||
-    checker.isTupleType(type) ||
-    checker.getIndexTypeOfType(type, ts.IndexKind.String)
-  ) {
-    throw unsupportedInputType(
-      checker,
-      type,
-      className,
-      methodName,
-      parameterName
-    );
+  const { checker } = context;
+  if (checker.isArrayType(type)) {
+    const [item] = checker.getTypeArguments(type as ts.TypeReference);
+    return {
+      type: "array",
+      items: schemaForType(context, item!, parameterName),
+    };
   }
-  if (type.getCallSignatures().length || type.getConstructSignatures().length) {
-    throw unsupportedInputType(
-      checker,
-      type,
-      className,
-      methodName,
-      parameterName
-    );
+  if (checker.isTupleType(type))
+    return tupleSchema(context, type as ts.TupleTypeReference, parameterName);
+  if (
+    type.getCallSignatures().length ||
+    type.getConstructSignatures().length ||
+    checker.getIndexInfoOfType(type, ts.IndexKind.Number)
+  ) {
+    throw unsupportedInputType(context, type, parameterName);
   }
 
-  const properties = checker.getPropertiesOfType(type);
   const schemaProperties: Record<string, JsonSchema> = {};
   const required: string[] = [];
-
-  for (const property of properties) {
+  for (const property of checker.getPropertiesOfType(type)) {
     const declaration = property.valueDeclaration ?? property.declarations?.[0];
-    if (!declaration || !ts.isPropertySignature(declaration)) {
-      throw unsupportedInputType(
-        checker,
-        type,
-        className,
-        methodName,
-        parameterName
-      );
-    }
+    if (!declaration || !ts.isPropertySignature(declaration))
+      throw unsupportedInputType(context, type, parameterName);
 
     const propertyType = checker.getTypeOfSymbolAtLocation(
       property,
       declaration
     );
     schemaProperties[property.name] = schemaForType(
-      checker,
+      context,
       propertyType,
-      className,
-      methodName,
       property.name
     );
     if (
@@ -747,15 +822,67 @@ function objectSchemaForType(
     }
   }
 
+  // An index signature, as in `Record<string, T>`, takes further properties
+  // of its value type.
+  const index = checker.getIndexInfoOfType(type, ts.IndexKind.String);
+  if (!index)
+    return {
+      type: "object",
+      properties: schemaProperties,
+      required,
+      additionalProperties: false,
+    };
   return {
     type: "object",
-    properties: schemaProperties,
-    required,
-    additionalProperties: false,
+    ...(Object.keys(schemaProperties).length
+      ? { properties: schemaProperties, required }
+      : {}),
+    additionalProperties: schemaForType(context, index.type, parameterName),
   };
 }
 
-class UnsupportedInputTypeError extends Error {}
+/** A tuple, with optional elements and a trailing rest element. */
+function tupleSchema(
+  context: SchemaContext,
+  type: ts.TupleTypeReference,
+  parameterName: string
+): JsonSchema {
+  const elements = context.checker.getTypeArguments(type);
+  const flags = type.target.elementFlags;
+  const prefixItems: JsonSchema[] = [];
+  let items: JsonSchema | undefined;
+  let minItems = 0;
+  for (const [index, element] of elements.entries()) {
+    const flag = flags[index]!;
+    if (flag & ts.ElementFlags.Variable) {
+      if (flag & ts.ElementFlags.Variadic || index !== elements.length - 1)
+        throw unsupportedInputType(context, type, parameterName);
+      items = schemaForType(context, element, parameterName);
+      continue;
+    }
+    prefixItems.push(schemaForType(context, element, parameterName));
+    if (flag & ts.ElementFlags.Required) minItems = index + 1;
+  }
+  return {
+    type: "array",
+    ...(prefixItems.length > 0 ? { prefixItems } : {}),
+    ...(minItems > 0 ? { minItems } : {}),
+    ...(items ? { items } : { maxItems: prefixItems.length }),
+  };
+}
+
+/**
+ * Thrown for a parameter type no schema describes. The build reports the
+ * type for an unmarked method.
+ */
+class UnsupportedInputTypeError extends Error {
+  constructor(
+    message: string,
+    readonly typeText: string
+  ) {
+    super(message);
+  }
+}
 
 /**
  * An unsupported type is often an import the tsconfig could not resolve, so
@@ -777,14 +904,14 @@ function toolsCompiledWith<T>(program: ts.Program, deriveTools: () => T) {
 }
 
 function unsupportedInputType(
-  checker: ts.TypeChecker,
+  context: SchemaContext,
   type: ts.Type,
-  className: string,
-  methodName: string,
   parameterName: string
 ) {
+  const typeText = context.checker.typeToString(type);
   return new UnsupportedInputTypeError(
-    `Unsupported Page Object Tool input type for ${className}.${methodName}(${parameterName}): ${checker.typeToString(type)}.`
+    `Unsupported Page Object Tool input type for ${context.className}.${context.methodName}(${parameterName}): ${typeText}.`,
+    typeText
   );
 }
 

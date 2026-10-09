@@ -4,9 +4,14 @@ export type JsonValue =
   JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
 export type JsonSchema = {
-  type?: "string" | "number" | "integer" | "boolean" | "object" | "array";
+  type?:
+    "string" | "number" | "integer" | "boolean" | "object" | "array" | "null";
   description?: string;
   items?: JsonSchema;
+  /** A tuple's elements, in order; `items` then takes any further ones. */
+  prefixItems?: readonly JsonSchema[];
+  minItems?: number;
+  maxItems?: number;
   enum?: readonly JsonPrimitive[];
   properties?: Record<string, JsonSchema>;
   required?: readonly string[];
@@ -22,6 +27,8 @@ export type ToolParameter = {
   name: string;
   optional: boolean;
   schema: JsonSchema;
+  /** A rest parameter: the action takes its list as separate arguments. */
+  rest?: true;
 };
 
 export type PomMemberAccess = "field" | "getter" | "method";

@@ -14,6 +14,13 @@ export type AymePlaywrightOptions = {
   use?: SupportedPlaywrightUse;
 };
 
+/**
+ * Which public methods of Page Object Models a build lists as not being
+ * tools: none, those whose parameters have no schema, or every one.
+ */
+export type AymeReport = "none" | "unsupported" | "all";
+
 export type AymeOptions = PomCompilerOptions & {
   playwright?: AymePlaywrightOptions;
+  report?: AymeReport;
 };

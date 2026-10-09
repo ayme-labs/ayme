@@ -43,12 +43,8 @@ export function schemaViolations(
   if (schema.type !== undefined && !hasType(value, schema.type))
     return [...violations, ...at(`must be ${describe({ type: schema.type })}`)];
 
-  if (schema.type === "array" && Array.isArray(value) && schema.items)
-    value.forEach((item, index) =>
-      violations.push(
-        ...schemaViolations(schema.items!, item, `${path}[${index}]`)
-      )
-    );
+  if (schema.type === "array" && Array.isArray(value))
+    violations.push(...arrayViolations(schema, value, path));
   if (schema.type === "object" && isRecord(value))
     violations.push(...objectViolations(schema, value, path));
   if (
@@ -83,6 +79,31 @@ function anyOfViolations(
   ];
 }
 
+function arrayViolations(
+  schema: JsonSchema,
+  array: readonly unknown[],
+  path: string
+): SchemaViolation[] {
+  const prefix = schema.prefixItems ?? [];
+  const violations = array.flatMap((item, index) => {
+    const itemSchema = prefix[index] ?? schema.items;
+    return itemSchema
+      ? schemaViolations(itemSchema, item, `${path}[${index}]`)
+      : [];
+  });
+  if (schema.minItems !== undefined && array.length < schema.minItems)
+    violations.push({
+      path,
+      message: `must have at least ${counted(schema.minItems, "item", "items")}`,
+    });
+  if (schema.maxItems !== undefined && array.length > schema.maxItems)
+    violations.push({
+      path,
+      message: `must have at most ${counted(schema.maxItems, "item", "items")}`,
+    });
+  return violations;
+}
+
 function objectViolations(
   schema: JsonSchema,
   object: Record<string, unknown>,
@@ -112,12 +133,12 @@ function objectViolations(
   if (schema.minProperties !== undefined && count < schema.minProperties)
     violations.push({
       path,
-      message: `must have at least ${entries(schema.minProperties)}`,
+      message: `must have at least ${counted(schema.minProperties, "entry", "entries")}`,
     });
   if (schema.maxProperties !== undefined && count > schema.maxProperties)
     violations.push({
       path,
-      message: `must have at most ${entries(schema.maxProperties)}`,
+      message: `must have at most ${counted(schema.maxProperties, "entry", "entries")}`,
     });
   return violations;
 }
@@ -142,6 +163,8 @@ function hasType(value: unknown, type: NonNullable<JsonSchema["type"]>) {
       return Array.isArray(value);
     case "object":
       return isRecord(value);
+    case "null":
+      return value === null;
     case "integer":
       return typeof value === "number" && Number.isInteger(value);
     case "number":
@@ -158,6 +181,8 @@ function describe(schema: JsonSchema): string {
   switch (schema.type) {
     case undefined:
       return "a JSON value";
+    case "null":
+      return "null";
     case "array":
     case "object":
     case "integer":
@@ -167,8 +192,9 @@ function describe(schema: JsonSchema): string {
   }
 }
 
-function entries(count: number) {
-  return `${count} ${count === 1 ? "entry" : "entries"}`;
+/** E.g. "1 entry" or "2 items". */
+function counted(count: number, one: string, many: string) {
+  return `${count} ${count === 1 ? one : many}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

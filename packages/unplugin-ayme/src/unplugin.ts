@@ -5,7 +5,8 @@ import { pathToFileURL } from "node:url";
 
 import { createUnplugin, type UnpluginFactory } from "unplugin";
 
-import type { AymeOptions, AymePlaywrightOptions } from "./options";
+import type { SkippedPomMethod } from "./derivePomManifests";
+import type { AymeOptions, AymePlaywrightOptions, AymeReport } from "./options";
 import { createPomTransform, INJECTED_IMPORTS } from "./transformPomModule";
 
 const PLAYWRIGHT_TEST_PACKAGE = "@playwright/test";
@@ -38,7 +39,19 @@ type LoadedPlaywrightConfig = {
 export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   options = {}
 ) => {
-  const transformPom = createPomTransform(options);
+  const report = reportOption(options.report);
+  // The latest skipped methods of each transformed module, by file.
+  const skipped = new Map<string, SkippedPomMethod[]>();
+  let command: string | undefined;
+  const transformPom = createPomTransform(
+    options,
+    report === "none"
+      ? undefined
+      : (fileName, methods) => {
+          // A dev server never reports.
+          if (command !== "serve") skipped.set(fileName, methods);
+        }
+  );
   // Vite soft-invalidates static importers of a changed file and keeps their
   // previous transform result, so a Page Object compiled from a changed base
   // class would keep a stale manifest. Record which transformed modules read
@@ -54,7 +67,22 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   return {
     name: "ayme",
     enforce: "pre",
+    buildEnd() {
+      // A dev server ends its "build" when it closes.
+      if (command === "serve") return;
+      const lines = reportLines(skipped, report);
+      skipped.clear();
+      if (lines.length > 0)
+        console.info(
+          ["[ayme] Page Object methods that are not tools:", ...lines].join(
+            "\n"
+          )
+        );
+    },
     vite: {
+      configResolved(config) {
+        command = config.command;
+      },
       transform: {
         filter: { id: /\.[cm]?[jt]sx?$/ },
         handler(code, id, transformOptions) {
@@ -153,6 +181,33 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
     },
   };
 };
+
+function reportOption(value: unknown): AymeReport {
+  if (value === undefined) return "unsupported";
+  if (value === "none" || value === "unsupported" || value === "all")
+    return value;
+  throw new TypeError('report must be "none", "unsupported" or "all"');
+}
+
+/** One line per skipped method, each method once, in name order. */
+function reportLines(
+  skipped: ReadonlyMap<string, readonly SkippedPomMethod[]>,
+  report: AymeReport
+): string[] {
+  const reasons = new Map<string, string>();
+  for (const { name, unsupported } of [...skipped.values()].flat()) {
+    if (report === "unsupported" && unsupported === undefined) continue;
+    reasons.set(
+      name,
+      unsupported === undefined
+        ? "no @ayme.action mark"
+        : `no @ayme.action mark, and ${unsupported}`
+    );
+  }
+  return [...reasons]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, reason]) => `  ${name}: ${reason}`);
+}
 
 /**
  * The injected imports that resolve from an installed package the consumer

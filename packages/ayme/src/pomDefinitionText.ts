@@ -52,13 +52,34 @@ function renderAction(action: PomDefinitionAction, ownerName: string): string {
 function renderSchema(schema: JsonSchema): string {
   if (schema.enum && schema.enum.length > 0)
     return schema.enum.map((value) => JSON.stringify(value)).join(" | ");
-  if (schema.type === "array") return `${renderSchema(schema.items ?? {})}[]`;
+  if (schema.anyOf) return schema.anyOf.map(renderSchema).join(" | ");
+  if (schema.type === "array") return renderArray(schema);
   if (schema.type === "object") {
-    const properties = renderSchemaProperties(schema, "; ");
-    return properties.length > 0 ? `{ ${properties} }` : "object";
+    const members = [renderSchemaProperties(schema, "; ")];
+    if (typeof schema.additionalProperties === "object")
+      members.push(
+        `[key: string]: ${renderSchema(schema.additionalProperties)}`
+      );
+    const body = members.filter((member) => member.length > 0).join("; ");
+    return body.length > 0 ? `{ ${body} }` : "object";
   }
   if (schema.type === "integer") return "number";
   return schema.type ?? "unknown";
+}
+
+function renderArray(schema: JsonSchema): string {
+  if (!schema.prefixItems) {
+    const item = renderSchema(schema.items ?? {});
+    return schema.items?.anyOf || (schema.items?.enum?.length ?? 0) > 1
+      ? `(${item})[]`
+      : `${item}[]`;
+  }
+  const elements = schema.prefixItems.map(
+    (item, index) =>
+      `${renderSchema(item)}${index < (schema.minItems ?? 0) ? "" : "?"}`
+  );
+  if (schema.items) elements.push(`...${renderArray({ items: schema.items })}`);
+  return `[${elements.join(", ")}]`;
 }
 
 function renderSchemaProperties(schema: JsonSchema, separator: string): string {

@@ -65,7 +65,45 @@ class SettingsPage {
   }
 }
 
+/** A Page Object whose action takes a rest parameter. */
+class GroupPage {
+  static calls: unknown[][] = [];
+  toggle(...args: unknown[]) {
+    GroupPage.calls.push(args);
+  }
+}
+
 registerCompiledPom(TodoPage, pomManifest("TodoPage", "addTodo"));
+registerCompiledPom(GroupPage, {
+  className: "GroupPage",
+  members: [],
+  tools: [
+    {
+      methodName: "toggle",
+      toolName: "GroupPage.toggle",
+      description: "Toggle refs in a group.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          group: { type: "number" },
+          refs: { type: "array", items: { type: "string" } },
+        },
+        required: ["group"],
+        additionalProperties: false,
+      },
+      parameters: [
+        { name: "group", optional: false, schema: { type: "number" } },
+        {
+          name: "refs",
+          optional: true,
+          schema: { type: "array", items: { type: "string" } },
+          rest: true,
+        },
+      ],
+    },
+  ],
+  components: [],
+});
 registerCompiledPom(SettingsPage, pomManifest("SettingsPage", "save"));
 
 /**
@@ -427,6 +465,17 @@ describe("the session's tools in Chromium", () => {
     expect(all).toMatch(
       /TodoPage[\s\S]*SettingsPage|SettingsPage[\s\S]*TodoPage/
     );
+  });
+
+  it("passes a rest parameter's list to the action as separate arguments", async () => {
+    startSession();
+    cleanups.push(registered(GroupPage));
+    GroupPage.calls = [];
+
+    await ayme.tools.run("GroupPage.toggle", { group: 2, refs: ["e1", "e2"] });
+    await ayme.tools.run("GroupPage.toggle", { group: 3 });
+
+    expect(GroupPage.calls).toEqual([[2, "e1", "e2"], [3]]);
   });
 
   it("refuses to run a tool no Page Object registered", async () => {
