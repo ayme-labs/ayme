@@ -84,9 +84,16 @@ export function formRows(roots: readonly StructureNode[]): FormRow[] {
   ) => {
     for (const node of nodes) {
       const type = fieldTypes.find((candidate) => candidate === node.role);
+      // Stryker disable next-line ConditionalExpression: every fillable role is an element, and elements have refs.
       if (node.ref !== undefined && type === "radio")
         addRadio(node as StructureNode & { ref: string }, group);
-      else if (node.ref !== undefined && type && type !== "radio")
+      else if (
+        // Stryker disable ConditionalExpression,StringLiteral: every fillable role is an element with a ref, and a radio took the branch above.
+        node.ref !== undefined &&
+        type &&
+        type !== "radio"
+      )
+        // Stryker restore ConditionalExpression,StringLiteral
         rows.push(elementRow(node as StructureNode & { ref: string }, type));
       visit(
         node.children,
@@ -110,6 +117,7 @@ function elementRow(
     key: node.ref,
     type,
     name: node.name,
+    // Stryker disable next-line StringLiteral: without a control, every type sets its value from the page state below.
     value: control?.value ?? "",
     preview: node.ref,
   };
@@ -119,6 +127,7 @@ function elementRow(
     row.value = control?.value ?? String(isChecked(node));
     return row;
   }
+  // Stryker disable next-line ConditionalExpression: only a combobox has option children or option labels, so the branch changes nothing for the others.
   if (type === "combobox") {
     const options = node.children.filter((child) => child.role === "option");
     const labels = control?.options ?? options.map((option) => option.name);
@@ -140,6 +149,7 @@ function isChecked(node: StructureNode) {
 /** The text the page state shows after a node's name: a field's value. */
 function textOf(node: StructureNode) {
   return (
+    // Stryker disable next-line ConditionalExpression,LogicalOperator: only text has no ref, so either check alone finds the same child.
     node.children.find((child) => child.role === "text" && !child.ref)?.name ??
     ""
   );
