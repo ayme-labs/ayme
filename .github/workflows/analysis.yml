@@ -1,0 +1,92 @@
+name: Analysis
+
+# The full analysis lane: CRAP over all source and Stryker on every file,
+# static mutants included. Pull requests run the fast lane on their own
+# changes with `pnpm analyze:changed`; see docs/testing.md#change-analysis.
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+  # An edit to this workflow runs it, so the job is tested before it merges.
+  pull_request:
+    paths:
+      - .github/workflows/analysis.yml
+
+# A newer run of the same branch replaces an older one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    name: List analyzed packages
+    runs-on: ubuntu-latest
+    outputs:
+      jobs: ${{ steps.list.outputs.jobs }}
+    steps:
+      - uses: actions/checkout@v7
+      # A package's full lane runs in one job unless it is listed in `shards`:
+      # the inspector's and ayme's take over two hours each on one runner.
+      - id: list
+        run: |
+          jobs=$(jq -sc --argjson shards '{"@ayme-dev/inspector": 4, "@ayme-dev/ayme": 3}' '
+            [.[] | select(.scripts["test:mutation"]) | .name as $package
+              | ($shards[$package] // 1) as $count
+              | range(1; $count + 1)
+              | {package: $package, shard: "\(.)/\($count)", label: (if $count > 1 then " (\(.)/\($count))" else "" end)}]
+          ' packages/*/package.json)
+          echo "Jobs: $jobs"
+          echo "jobs=$jobs" >> "$GITHUB_OUTPUT"
+
+  crap:
+    name: CRAP
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm exec turbo run test:crap --concurrency=1
+      - run: node scripts/crap-report.mjs >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crap-report
+          path: reports/crap
+
+  mutation:
+    name: Stryker ${{ matrix.package }}${{ matrix.label }}
+    needs: packages
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    timeout-minutes: 300
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      STRYKER_LANE: full
+      STRYKER_SHARD: ${{ matrix.shard }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.packages.outputs.jobs) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm exec turbo run test:mutation --filter=${{ matrix.package }}
+      - name: Name the report after the package
+        if: always()
+        id: report
+        run: echo "name=mutation-$(echo '${{ matrix.package }}-${{ matrix.shard }}' | tr -c 'a-z0-9-\n' '-')" >> "$GITHUB_OUTPUT"
+      - name: List surviving mutants in the job summary
+        if: always()
+        run: node scripts/mutation-survivors.mjs >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ steps.report.outputs.name }}
+          path: packages/*/reports/mutation
+          if-no-files-found: ignore

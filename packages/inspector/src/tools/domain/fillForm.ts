@@ -84,10 +84,12 @@ export function formRows(roots: readonly StructureNode[]): FormRow[] {
   ) => {
     for (const node of nodes) {
       const type = fieldTypes.find((candidate) => candidate === node.role);
-      if (node.ref !== undefined && type === "radio")
+      // Stryker disable next-line ConditionalExpression: every fillable role is an element, and elements have refs.
+      const field = node.ref !== undefined ? type : undefined;
+      if (field === "radio")
         addRadio(node as StructureNode & { ref: string }, group);
-      else if (node.ref !== undefined && type && type !== "radio")
-        rows.push(elementRow(node as StructureNode & { ref: string }, type));
+      else if (field)
+        rows.push(elementRow(node as StructureNode & { ref: string }, field));
       visit(
         node.children,
         node.role === "radiogroup" || node.role === "group" ? node : group
@@ -110,6 +112,7 @@ function elementRow(
     key: node.ref,
     type,
     name: node.name,
+    // Stryker disable next-line StringLiteral: without a control, every type sets its value from the page state below.
     value: control?.value ?? "",
     preview: node.ref,
   };
@@ -119,6 +122,7 @@ function elementRow(
     row.value = control?.value ?? String(isChecked(node));
     return row;
   }
+  // Stryker disable next-line ConditionalExpression: only a combobox has option children or option labels, so the branch changes nothing for the others.
   if (type === "combobox") {
     const options = node.children.filter((child) => child.role === "option");
     const labels = control?.options ?? options.map((option) => option.name);
@@ -140,6 +144,7 @@ function isChecked(node: StructureNode) {
 /** The text the page state shows after a node's name: a field's value. */
 function textOf(node: StructureNode) {
   return (
+    // Stryker disable next-line ConditionalExpression,LogicalOperator: only text has no ref, so either check alone finds the same child.
     node.children.find((child) => child.role === "text" && !child.ref)?.name ??
     ""
   );

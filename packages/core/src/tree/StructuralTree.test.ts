@@ -158,6 +158,43 @@ describe("StructuralTree YAML keys", () => {
   });
 });
 
+describe("StructuralTree YAML lines", () => {
+  it("skips blank and whitespace-only lines", () => {
+    const tree = parse('- list [ref=e1]:\n\n   \n  - button "Go" [ref=e2]\n');
+    expect(tree.getParentOf(id("e2"))?.ref).toBe(id("e1"));
+  });
+
+  it("trims whitespace after a role", () => {
+    expect(parse("- separator ").getRootNodes()[0]!.role).toBe("separator");
+  });
+
+  it("unescapes quotes and backslashes in a quoted name", () => {
+    const tree = parse('- button "say \\"hi\\" in C:\\\\temp" [ref=e1]');
+    expect(tree.getNode(id("e1"))!.name).toBe('say "hi" in C:\\temp');
+  });
+
+  it("keeps inline text that looks like a single-quoted key", () => {
+    const tree = parse("- button [ref=e1]: - 'b'");
+    expect(tree.getNode(id("e1"))!.children).toEqual(["- 'b'"]);
+  });
+
+  it("has no before-state on a freshly parsed tree", () => {
+    const tree = parse('- button "Go" [ref=e1]');
+    expect(tree.getBeforeNode(id("e1"))).toBeNull();
+    expect(tree.getBeforeNodeForAfterRef(id("e1"))).toBeNull();
+    expect(tree.wasBeforeRefAmbiguous(id("e1"))).toBe(false);
+  });
+
+  it.each([
+    ["a quoted role", '- "x" - button'],
+    ["text after a single-quoted key", "- 'button' x"],
+  ])("rejects %s", (_label, line) => {
+    expect(() => parse(line)).toThrow(
+      /Invalid aria node line|Unknown aria role/
+    );
+  });
+});
+
 describe("StructuralTree navigation", () => {
   const NESTED = `
 - generic [ref=e1]:

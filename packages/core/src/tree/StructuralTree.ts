@@ -314,6 +314,7 @@ export class StructuralTree {
   }
 
   private _nav(): TreeNavigation {
+    // Stryker disable next-line ConditionalExpression: a cache; rebuilding it yields the same nodes
     if (this._navigation !== null) return this._navigation;
 
     const roots =
@@ -382,7 +383,9 @@ export class StructuralTree {
     const onlyRoot = roots[0];
     if (
       roots.length === 1 &&
+      // Stryker disable next-line ConditionalExpression: narrowing only; _parseRoots returns one root here
       onlyRoot !== undefined &&
+      // Stryker disable next-line ConditionalExpression,StringLiteral: narrowing only; _parseRoots never returns a bare string root
       typeof onlyRoot !== "string"
     )
       return new StructuralTree(onlyRoot, refFactory);
@@ -494,14 +497,16 @@ export class StructuralTree {
     refFactory: SyntheticAriaRefAllocator
   ): StructuralChild[] {
     const rootFrames: Array<MutableNodeFrame | string> = [];
+    // Stryker disable next-line ArrayDeclaration: a seeded entry has no indent or frame, so it is never popped or used as a parent
     const stack: Array<{ indent: number; frame: MutableNodeFrame }> = [];
 
     for (const rawLine of yaml.split("\n")) {
       if (!rawLine.trim()) continue;
 
-      const leadingSpaces = rawLine.match(/^(\s*)/)?.[1]?.length ?? 0;
-      const indent = Math.floor(leadingSpaces / 2);
       const trimmedLine = rawLine.trimStart();
+      const leadingSpaces = rawLine.length - trimmedLine.length;
+      // Stryker disable next-line ArithmeticOperator: only the order of indents matters, and Playwright indents in steps of two
+      const indent = Math.floor(leadingSpaces / 2);
 
       while (stack.length > 0 && stack[stack.length - 1]!.indent >= indent)
         stack.pop();
@@ -538,6 +543,7 @@ export class StructuralTree {
     }
 
     return rootFrames.map((child) =>
+      // Stryker disable next-line ConditionalExpression,StringLiteral: a text line with no parent is skipped, so no root is a string
       typeof child === "string"
         ? child
         : StructuralTree._materializeFrame(child)

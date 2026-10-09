@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { admit } from "./admission";
+import { BUSY_SERVER, SERVER_IDENTITY, admit } from "./admission";
 
 const token = "f00d";
 
@@ -65,4 +65,10 @@ it("refuses a wrong token from any other origin, and any other path", () => {
   const origin = "http://localhost:5173";
   for (const path of ["/f00d/", "/a/b", ""])
     expect(admit({ path, origin, token }), path).toBe("refused");
+});
+
+// Pages and servers of different Ayme versions read these close frames.
+it("closes a probe with the codes and reasons older pages know", () => {
+  expect(SERVER_IDENTITY).toEqual({ code: 4350, reason: "ayme-mcp" });
+  expect(BUSY_SERVER).toEqual({ code: 4351, reason: "ayme-mcp-busy" });
 });

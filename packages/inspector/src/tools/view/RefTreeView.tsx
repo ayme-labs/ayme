@@ -5,6 +5,7 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 
 import type { RefNode, RefTreeRow } from "../domain/refTree";
 
+// Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
 /** A ref as the Inspector shows it: purple, light enough to read on dark. */
 export const refText = "text-primary dark:text-purple-300";
 

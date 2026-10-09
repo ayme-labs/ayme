@@ -21,7 +21,7 @@
     "test:e2e": "turbo run test:e2e",
     "typecheck": "turbo run typecheck",
     "analyze:changed": "node scripts/analyze-changed.mjs",
-    "test:scripts": "node --test scripts/analyze-changed.test.mjs"
+    "test:scripts": "node --test scripts/analyze-changed.test.mjs scripts/mutation-survivors.test.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",

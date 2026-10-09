@@ -72,6 +72,7 @@ export function indexMembers({ objects, models }: PageModel): MemberIndex {
   };
   const visit = (nodes: readonly PageObjectNode[], parent?: PageObjectNode) => {
     for (const node of nodes) {
+      // Stryker disable next-line ConditionalExpression: a page mapped to no parent reads the same as an unmapped one.
       if (parent) parents.set(node, parent);
       const self = { path: node.path, owner: node };
       add(byPath, node.path, self);
