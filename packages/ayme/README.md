@@ -19,7 +19,11 @@ import type { Page } from "@playwright/test";
 
 @ayme
 export class ProjectsPage {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   @ayme.action({ description: "Create a project with the given name." })
   async createProject(name: string) {
@@ -119,7 +123,7 @@ The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference
 
 ## Supported versions
 
-`@playwright/test` 1.29 to 1.62, optional, for the types your Page Object Models use. [Install](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/install.md) lists the supported frameworks, Node.js and TypeScript versions.
+`@playwright/test` 1.29 to 1.64, optional, for the types your Page Object Models use. [Install](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/install.md) lists the supported frameworks, Node.js and TypeScript versions.
 
 ## License
 

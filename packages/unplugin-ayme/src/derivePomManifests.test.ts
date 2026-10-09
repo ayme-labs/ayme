@@ -101,6 +101,85 @@ describe("derivePomManifests", () => {
     ]);
   });
 
+  describe("parameters with a default value", () => {
+    function toolFor(methodName: string) {
+      return manifestFor("defaultedParametersPom")?.tools.find(
+        (tool) => tool.methodName === methodName
+      );
+    }
+
+    it("publishes a defaulted parameter as optional with its literal default", () => {
+      const tool = toolFor("create");
+
+      expect(tool?.inputSchema).toEqual({
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          type: {
+            type: "string",
+            enum: ["personal", "account", "team"],
+            default: "personal",
+          },
+        },
+        required: ["name"],
+        additionalProperties: false,
+      });
+    });
+
+    it("publishes number, negative number, boolean and template literal defaults", () => {
+      expect(toolFor("literals")?.inputSchema).toEqual({
+        type: "object",
+        properties: {
+          count: { type: "number", default: 3 },
+          offset: { type: "number", default: -1 },
+          archived: { type: "boolean", default: false },
+          label: { type: "string", default: "plain" },
+        },
+        required: [],
+        additionalProperties: false,
+      });
+    });
+
+    it("publishes a non-literal default as optional without a default", () => {
+      expect(toolFor("computed")?.inputSchema).toEqual({
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          count: { type: "number" },
+          size: { type: "number" },
+        },
+        required: [],
+        additionalProperties: false,
+      });
+    });
+
+    it("keeps `?` and `| undefined` parameters optional without a default", () => {
+      expect(toolFor("optional")?.inputSchema).toEqual({
+        type: "object",
+        properties: {
+          note: { type: "string" },
+          tag: { type: "string" },
+        },
+        required: [],
+        additionalProperties: false,
+      });
+    });
+
+    it("keeps a defaulted `| undefined` parameter optional", () => {
+      expect(toolFor("both")?.parameters).toEqual([
+        {
+          name: "type",
+          optional: true,
+          schema: {
+            type: "string",
+            enum: ["personal", "account", "team"],
+            default: "team",
+          },
+        },
+      ]);
+    });
+  });
+
   it("includes inherited decorated tools", () => {
     const manifest = manifestFor("inheritedPom");
 

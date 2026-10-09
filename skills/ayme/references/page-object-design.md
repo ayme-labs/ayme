@@ -125,10 +125,13 @@ helper:
 
 ```ts
 class CreateProjectDialog<Owner> {
-  constructor(
-    private readonly page: Page,
-    readonly owner?: Owner
-  ) {}
+  private readonly page: Page;
+  readonly owner?: Owner;
+
+  constructor(page: Page, owner?: Owner) {
+    this.page = page;
+    this.owner = owner;
+  }
 
   async close() {
     await this.modal.close();

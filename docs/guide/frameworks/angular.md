@@ -4,8 +4,11 @@ Everything about Ayme in an Angular app: `ng add` and manual setup, starting Aym
 
 ## Install and configure
 
+Run `ng add`, then install the Inspector and the Agent Connection for development, as the [Angular quickstart](../start/quickstart-angular.md) does:
+
 ```sh
 ng add @ayme-dev/angular
+npm install -D @ayme-dev/inspector @ayme-dev/mcp
 ```
 
 `ng add` installs `@ayme-dev/ayme`, and as dev dependencies `@ayme-dev/unplugin-ayme`, the `@angular-builders/custom-esbuild` major that matches your Angular major, and `@playwright/test` for the types Page Object Models use. It switches the project's build and serve builders to custom-esbuild, keeping their options, adds Ayme's plugin, writes the one-line plugin file and adds `provideAyme()` to the application config. It leaves bundle budgets alone; see [Bundle size](#bundle-size). When your app uses another custom builder or bootstraps an NgModule, it changes only what it can change safely and prints the remaining steps.
@@ -13,8 +16,8 @@ ng add @ayme-dev/angular
 ### Manual setup
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/angular @ayme-dev/webmcp
-npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild @playwright/test
+npm install @ayme-dev/ayme @ayme-dev/angular
+npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild @playwright/test @ayme-dev/inspector @ayme-dev/mcp
 ```
 
 Install the `@angular-builders/custom-esbuild` major that matches your Angular major. Then set up the plugin as the [build plugin reference](../reference/build-plugin.md#angular) describes: a one-line `ayme.plugin.mjs` at the workspace root, and in `angular.json` the custom-esbuild `application` and `dev-server` builders with the plugin entry, keeping the existing options.
@@ -23,43 +26,78 @@ Finally add `provideAyme()` to the application config, as shown below.
 
 ## Start Ayme in the application config
 
-Start Ayme once in the application config:
+Start Ayme once in the application config, with the Inspector and the Agent Connection in development:
 
 ```ts
-import { ApplicationConfig } from "@angular/core";
+import { ApplicationConfig, isDevMode } from "@angular/core";
 import { provideAyme } from "@ayme-dev/angular";
 
 export const appConfig: ApplicationConfig = {
-  providers: [provideAyme({ webMCP: { enabled: true } })],
+  providers: [
+    provideAyme({ inspector: isDevMode(), agentConnection: isDevMode() }),
+  ],
 };
 ```
 
-`webMCP` publishes the tools through `@ayme-dev/webmcp`, which `ng add` leaves out. Install it with `npm install @ayme-dev/webmcp`.
+Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
 
-In a component, `injectPageObject(Model)` returns the Page Object and `injectAyme()` returns `{ ayme, webMCP }`:
+In a component, `injectPageObject(Model)` returns the Page Object:
 
 ```ts
 import { Component } from "@angular/core";
-import { injectAyme, injectPageObject } from "@ayme-dev/angular";
+import { injectPageObject } from "@ayme-dev/angular";
 import { ProjectsPage } from "../../playwright/pom/ProjectsPage";
 
 @Component({
-  selector: "app-counter",
+  selector: "app-projects",
   template: `
-    <p>Publication: {{ webMCP.publicationStatus().state }}</p>
     <button (click)="pom.createProject('Launch plan')">Show me how</button>
-    <button (click)="webMCP.retryPublication()">Retry publication</button>
   `,
 })
-export class Counter {
+export class Projects {
   protected readonly pom = injectPageObject(ProjectsPage);
-  protected readonly webMCP = injectAyme().webMCP;
 }
 ```
 
-`provideAyme` takes the [`createAyme` options](../reference/ayme.md#createayme) and passes them through unchanged. For Playwright settings, pass `pageFactory: () => createPage({ testIdAttribute, actionTimeout, navigationTimeout })` from `@ayme-dev/ayme`; for the Inspector, `inspector: isDevMode()`. The status signal updates templates in zone and zoneless apps.
+`provideAyme` takes the [`createAyme` options](../reference/ayme.md#createayme) and passes them through unchanged. For Playwright settings, pass `pageFactory: () => createPage({ testIdAttribute, actionTimeout, navigationTimeout })` from `@ayme-dev/ayme`.
 
 `injectAyme`, `injectPageObject` and `injectPeek` need an injection context, such as a field initializer or a constructor, and `provideAyme` in an ancestor injector; each throws when either is missing.
+
+## Optional: publish with WebMCP
+
+To publish the same tools through WebMCP for agents that run in the browser, as [Publish tools](../guides/publish-tools.md) describes, install the publication package, which `ng add` leaves out:
+
+```sh
+npm install @ayme-dev/webmcp
+```
+
+Then add `webMCP` to `provideAyme`'s options:
+
+```ts
+provideAyme({
+  inspector: isDevMode(),
+  agentConnection: isDevMode(),
+  webMCP: { enabled: true },
+});
+```
+
+`injectAyme().webMCP.publicationStatus` is a read-only signal that updates templates in zone and zoneless apps, and `retryPublication()` tries again after publication found no WebMCP driver or failed:
+
+```ts
+import { Component } from "@angular/core";
+import { injectAyme } from "@ayme-dev/angular";
+
+@Component({
+  selector: "app-publication-status",
+  template: `
+    <p>Publication: {{ webMCP.publicationStatus().state }}</p>
+    <button (click)="webMCP.retryPublication()">Retry publication</button>
+  `,
+})
+export class PublicationStatus {
+  protected readonly webMCP = injectAyme().webMCP;
+}
+```
 
 ## Root ownership
 
@@ -89,7 +127,7 @@ const serverConfig: ApplicationConfig = {
 export const config = mergeApplicationConfig(appConfig, serverConfig);
 ```
 
-On the server, `provideAyme` creates a session per request but never starts it, and hydration creates the real Page Objects. `injectPeek` adds its instance in `afterNextRender`, which never runs on the server. The [Angular example](../../../apps/example-angular/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
+On the server, `provideAyme` creates a session per request but never starts it, and hydration creates the real Page Objects. `injectPeek` adds its instance in `afterNextRender`, which never runs on the server. The [Angular example](https://github.com/ayme-labs/ayme/blob/main/apps/example-angular/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Bundle size
 

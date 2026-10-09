@@ -141,6 +141,25 @@ it("maps Angular 19's builders and installs the matching custom-esbuild major", 
   expect(messages.filter(({ level }) => level === "warn")).toEqual([]);
 });
 
+it("keeps the @playwright/test version a project already has", async () => {
+  const before = await workspace({ ssr: false });
+  const manifest = before.readJson("package.json") as {
+    devDependencies?: Record<string, string>;
+  };
+  manifest.devDependencies = {
+    ...manifest.devDependencies,
+    "@playwright/test": "^1.64.0",
+  };
+  before.overwrite("package.json", JSON.stringify(manifest, null, 2));
+
+  const { tree } = await ngAdd(before);
+
+  expect(
+    (tree.readJson("package.json") as { devDependencies: object })
+      .devDependencies
+  ).toHaveProperty("@playwright/test", "^1.64.0");
+});
+
 it("leaves angular.json alone and prints the manual steps for another custom builder", async () => {
   const before = await workspace({ ssr: false });
   const json = architect(before);

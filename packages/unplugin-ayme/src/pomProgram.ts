@@ -145,7 +145,35 @@ function projectConfigFor(
       `Could not find a tsconfig.json for POM source ${fileName}.`
     );
 
-  onDependency?.(configPath);
+  let config = parseConfig(configPath, onDependency);
+  if (config.fileNames.length === 0) {
+    // A solution-style tsconfig (`"files": []` plus `references`, as
+    // create-vite writes) has no compiler options of its own. Like `tsc -b`
+    // and editors, compile with the referenced project that includes the POM.
+    config =
+      config.projectReferences
+        ?.map((reference) =>
+          parseConfig(ts.resolveProjectReferencePath(reference), onDependency)
+        )
+        .find((referenced) =>
+          referenced.fileNames.some((name) => path.resolve(name) === fileName)
+        ) ?? config;
+  }
+
+  const error = config.errors[0];
+  if (error && !allowConfigErrors)
+    throw configError(
+      path.resolve(config.options.configFilePath as string),
+      error
+    );
+  return config;
+}
+
+function parseConfig(
+  configPath: string,
+  onDependency?: (fileName: string) => void
+) {
+  onDependency?.(path.resolve(configPath));
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error) throw configError(configPath, configFile.error);
 
@@ -159,14 +187,13 @@ function projectConfigFor(
         },
       }
     : ts.sys;
-  const config = ts.parseJsonConfigFileContent(
+  return ts.parseJsonConfigFileContent(
     configFile.config,
     parseHost,
-    path.dirname(configPath)
+    path.dirname(configPath),
+    undefined,
+    configPath
   );
-  const error = config.errors[0];
-  if (error && !allowConfigErrors) throw configError(configPath, error);
-  return config;
 }
 
 function reportProgramDependencies(

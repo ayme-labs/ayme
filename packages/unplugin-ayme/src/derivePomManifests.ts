@@ -70,7 +70,9 @@ export function derivePomManifestsFromProgram(
 
     const className = declaration.name.text;
     const members = pomMembers(checker, declaration, components);
-    const tools = toolsForClass(checker, declaration, components);
+    const tools = toolsCompiledWith(program, () =>
+      toolsForClass(checker, declaration, components)
+    );
 
     manifests.push({
       className,
@@ -581,18 +583,42 @@ function toolParameter(
 
   const type = checker.getTypeAtLocation(parameter);
   const optional =
-    parameter.questionToken !== undefined || typeIncludesUndefined(type);
+    parameter.questionToken !== undefined ||
+    parameter.initializer !== undefined ||
+    typeIncludesUndefined(type);
+  const schema = schemaForType(
+    checker,
+    type,
+    className,
+    methodName,
+    parameter.name.text
+  );
+  const defaultValue =
+    parameter.initializer && literalDefault(parameter.initializer);
   return {
     name: parameter.name.text,
     optional,
-    schema: schemaForType(
-      checker,
-      type,
-      className,
-      methodName,
-      parameter.name.text
-    ),
+    schema:
+      defaultValue === undefined
+        ? schema
+        : { ...schema, default: defaultValue },
   };
+}
+
+/** The value of a literal default (`"a"`, `3`, `-1`, `true`), if it is one. */
+function literalDefault(initializer: ts.Expression): JsonPrimitive | undefined {
+  if (ts.isStringLiteralLike(initializer)) return initializer.text;
+  if (ts.isNumericLiteral(initializer)) return Number(initializer.text);
+  if (
+    ts.isPrefixUnaryExpression(initializer) &&
+    initializer.operator === ts.SyntaxKind.MinusToken &&
+    ts.isNumericLiteral(initializer.operand)
+  ) {
+    return -Number(initializer.operand.text);
+  }
+  if (initializer.kind === ts.SyntaxKind.TrueKeyword) return true;
+  if (initializer.kind === ts.SyntaxKind.FalseKeyword) return false;
+  return undefined;
 }
 
 function schemaForType(
@@ -729,6 +755,27 @@ function objectSchemaForType(
   };
 }
 
+class UnsupportedInputTypeError extends Error {}
+
+/**
+ * An unsupported type is often an import the tsconfig could not resolve, so
+ * the error names the tsconfig the Program was compiled with.
+ */
+function toolsCompiledWith<T>(program: ts.Program, deriveTools: () => T) {
+  try {
+    return deriveTools();
+  } catch (error) {
+    if (!(error instanceof UnsupportedInputTypeError)) throw error;
+    const { configFilePath } = program.getCompilerOptions();
+    error.message += ` Compiled with ${
+      typeof configFilePath === "string"
+        ? path.resolve(configFilePath)
+        : "TypeScript's default options"
+    }.`;
+    throw error;
+  }
+}
+
 function unsupportedInputType(
   checker: ts.TypeChecker,
   type: ts.Type,
@@ -736,7 +783,7 @@ function unsupportedInputType(
   methodName: string,
   parameterName: string
 ) {
-  return new Error(
+  return new UnsupportedInputTypeError(
     `Unsupported Page Object Tool input type for ${className}.${methodName}(${parameterName}): ${checker.typeToString(type)}.`
   );
 }

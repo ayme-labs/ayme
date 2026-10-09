@@ -68,7 +68,7 @@ export default defineConfig(({ mode }) => ({
 }));
 ```
 
-Put `TYPESAFE_API_KEY` in your `.env` file; with an OpenRouter key, set `provider: "openrouter"`. `apply: "serve"` keeps it out of production builds, and `authorize() {}` lets every request through, which is fine on your own machine only. The [Vue example](../../../apps/example-vue/README.md) runs this setup.
+Put `TYPESAFE_API_KEY` in your `.env` file; with an OpenRouter key, set `provider: "openrouter"`. `apply: "serve"` keeps it out of production builds, and `authorize() {}` lets every request through, which is fine on your own machine only. The [Vue example](https://github.com/ayme-labs/ayme/blob/main/apps/example-vue/README.md) runs this setup.
 
 ### In production
 

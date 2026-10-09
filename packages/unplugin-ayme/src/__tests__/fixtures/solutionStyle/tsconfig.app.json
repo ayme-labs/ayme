@@ -1,0 +1,7 @@
+{
+  "extends": "@ayme-dev/typescript-config/library.json",
+  "compilerOptions": {
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["src"]
+}

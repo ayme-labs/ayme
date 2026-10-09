@@ -39,7 +39,7 @@
     "@mcp-b/webmcp-types": "^5.0.1"
   },
   "peerDependencies": {
-    "@playwright/test": ">=1.29 <1.63"
+    "@playwright/test": ">=1.29 <1.65"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {

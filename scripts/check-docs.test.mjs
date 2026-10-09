@@ -83,6 +83,13 @@ test("fails on a relative link in a guide page that does not resolve", () => {
   );
 });
 
+test("fails on a relative link in a guide page that leaves docs/guide", () => {
+  assertOneProblem(
+    { "docs/guide/start/page.md": `${PAGE}\n[License](../../../LICENSE)\n` },
+    /^docs\/guide\/start\/page\.md:5: link leaves docs\/guide, the docs site cannot serve it; use a github\.com\/ayme-labs\/ayme\/blob\/main\/ link: \.\.\/\.\.\/\.\.\/LICENSE$/
+  );
+});
+
 test("fails on a repository link that does not resolve", () => {
   assertOneProblem(
     {

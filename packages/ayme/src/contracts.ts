@@ -15,6 +15,7 @@ export type JsonSchema = {
   maxProperties?: number;
   anyOf?: readonly JsonSchema[];
   minimum?: number;
+  default?: JsonPrimitive;
 };
 
 export type ToolParameter = {

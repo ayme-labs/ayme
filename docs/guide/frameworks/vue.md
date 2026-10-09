@@ -4,11 +4,11 @@ Everything about Ayme in a Vue app: setup, the provider and the standalone compo
 
 ## Setup
 
-Install Ayme, the Vue package, WebMCP publication and the build plugin, and the Inspector if you want it:
+Install Ayme, the Vue package and the build plugin, with the Inspector and the Agent Connection for development, as the [Vue quickstart](../start/quickstart-vue.md) does:
 
 ```sh
-npm install @ayme-dev/ayme @ayme-dev/vue @ayme-dev/webmcp
-npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector
+npm install @ayme-dev/ayme @ayme-dev/vue
+npm install -D @ayme-dev/unplugin-ayme @playwright/test @ayme-dev/inspector @ayme-dev/mcp
 ```
 
 Add the plugin alongside `@vitejs/plugin-vue`:
@@ -27,28 +27,33 @@ Mark your Page Object Models as [Page Object Models](../guides/page-object-model
 
 ## Start Ayme at the root
 
-Wrap the app in `AymeProvider`:
+Wrap the app in `AymeProvider`, with the Inspector and the Agent Connection in development:
 
 ```vue
 <script setup lang="ts">
 import { AymeProvider } from "@ayme-dev/vue";
 import App from "./App.vue";
+
+const dev = import.meta.env.DEV;
 </script>
 
 <template>
-  <AymeProvider :webMCP="{ enabled: true }"><App /></AymeProvider>
+  <AymeProvider :inspector="dev" :agentConnection="dev"><App /></AymeProvider>
 </template>
 ```
 
-Or start it with the standalone composable in the root component's setup, as the [Vue example](../../../apps/example-vue/README.md) does:
+Or start it with the standalone composable in the root component's setup, as the [Vue example](https://github.com/ayme-labs/ayme/blob/main/apps/example-vue/README.md) does:
 
 ```ts
 import { useAyme } from "@ayme-dev/vue";
 
-useAyme({ webMCP: { enabled: true } });
+useAyme({
+  inspector: import.meta.env.DEV,
+  agentConnection: import.meta.env.DEV,
+});
 ```
 
-Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore` and `:inspector="isDev"`. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them. For the `navigate` tool to move through Vue Router, pass its `push` with the URL's path: `navigate: (url) => router.push(url.slice(location.origin.length))`, as `:navigate` on the provider; a different function on a later render is a change of options.
+Both take the [`createAyme` options](../reference/ayme.md#createayme); on the provider they are props, such as `:page-factory`, `:ignore`, `:inspector` and `:agentConnection`. Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows. Keep them fixed while the owner is mounted, and remount the provider and its consumers to change them. For the `navigate` tool to move through Vue Router, pass its `push` with the URL's path: `navigate: (url) => router.push(url.slice(location.origin.length))`, as `:navigate` on the provider; a different function on a later render is a change of options.
 
 ## Root ownership
 
@@ -72,16 +77,49 @@ import { useAyme, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "./playwright/pom/ListPage";
 
 const pom = usePageObject(ListPage);
-const { ayme, webMCP } = useAyme();
+const { ayme } = useAyme();
 
 // Later, in an event handler:
 await pom.addItem("Write release notes");
 ```
 
 - `usePageObject(Model)` removes its registration with its Vue scope. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialize fields and compose locators; run actions later.
-- `useAyme()`'s `webMCP` is the session's publication made reactive and read-only: read `webMCP.publicationStatus.state` in script or templates.
+- `useAyme()` returns the owner's session, `ayme`, and its WebMCP publication, `webMCP`.
 - Both need an active Vue effect scope.
 - Register each top-level Page Object in the component that owns its lifetime.
+
+## Optional: publish with WebMCP
+
+To publish the same tools through WebMCP for agents that run in the browser, as [Publish tools](../guides/publish-tools.md) describes, install the publication package:
+
+```sh
+npm install @ayme-dev/webmcp
+```
+
+Then add `webMCP` to the owner's options, `:webMCP="{ enabled: true }"` on the provider or in the standalone call:
+
+```ts
+useAyme({
+  inspector: import.meta.env.DEV,
+  agentConnection: import.meta.env.DEV,
+  webMCP: { enabled: true },
+});
+```
+
+`useAyme()`'s `webMCP` is the session's publication made reactive and read-only: read `webMCP.publicationStatus.state` in script or templates, and call `webMCP.retryPublication()` to try again after publication found no WebMCP driver or failed:
+
+```vue
+<script setup lang="ts">
+import { useAyme } from "@ayme-dev/vue";
+
+const { webMCP } = useAyme();
+</script>
+
+<template>
+  <p>Publication: {{ webMCP.publicationStatus.state }}</p>
+  <button @click="webMCP.retryPublication()">Retry publication</button>
+</template>
+```
 
 ## Server rendering
 
@@ -108,17 +146,17 @@ Then wrap the app in `AymeProvider` in `app.vue`, as in any Vue app:
 <script setup lang="ts">
 import { AymeProvider } from "@ayme-dev/vue";
 
-const inspector = import.meta.dev;
+const dev = import.meta.dev;
 </script>
 
 <template>
-  <AymeProvider :webMCP="{ enabled: true }" :inspector="inspector">
+  <AymeProvider :inspector="dev" :agentConnection="dev">
     <NuxtPage />
   </AymeProvider>
 </template>
 ```
 
-The [Nuxt example](../../../apps/example-nuxt/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
+The [Nuxt example](https://github.com/ayme-labs/ayme/blob/main/apps/example-nuxt/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Limits
 

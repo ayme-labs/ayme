@@ -43,7 +43,11 @@ import type { Page } from "@playwright/test";
 
 @ayme
 export class ProjectsPage {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   @ayme.action({ description: "Create a project with the given name." })
   async createProject(name: string) {
@@ -118,7 +122,7 @@ To call it from your coding agent, register Ayme's MCP server in the agent and c
 
 ## Next
 
-- [Svelte](../frameworks/svelte.md): SvelteKit 3, plain Svelte, Svelte 3 and 4 markup, and reading the publication status.
+- [Svelte](../frameworks/svelte.md): SvelteKit 3, plain Svelte, Svelte 3 and 4 markup, and WebMCP publication.
 - [Page Object Models](../guides/page-object-models.md): tool names, inputs and Page Object Children.
 - [Goals with Jev](../guides/goals-with-jev.md): hand the page a goal instead of single calls.
 - [Publish tools](../guides/publish-tools.md): publish the same tools through WebMCP for agents that run in the browser.
