@@ -18,12 +18,14 @@
  * 7. An Angular consumer type-checks at Angular's and TypeScript's floor.
  * 8. React, Vue and Svelte consumers type-check the published declarations
  *    at each adapter's framework floor.
+ * 9. A fresh Vite app from the React quickstart loads once on its first dev
+ *    server start, without the optimizer finding a dependency late.
  *
  * With `AYME_PACKED_DIR` set, the tarballs are packed into that empty
  * directory and kept, so the release workflow publishes exactly the
  * artefacts these tests checked.
  */
-import { execFile, execFileSync } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -1062,5 +1064,150 @@ it(
 
     const result = exec(process.execPath, [checkFile], consumerDir);
     expect(result.trim()).toBe("ok");
+  }
+);
+
+it(
+  "a fresh Vite app from the quickstart loads once, without re-optimizing",
+  { timeout: 180_000 },
+  async () => {
+    const consumer = path.join(tmp, "vite-dev-consumer");
+    fs.mkdirSync(path.join(consumer, "src", "pom"), { recursive: true });
+    const { tarballs, workspaceYaml } = tarballDependencies([
+      "@ayme-dev/ayme",
+      "@ayme-dev/react",
+      "@ayme-dev/unplugin-ayme",
+      "@ayme-dev/inspector",
+      "@ayme-dev/mcp",
+    ]);
+    fs.writeFileSync(
+      path.join(consumer, "package.json"),
+      JSON.stringify({
+        name: "ayme-vite-dev-consumer",
+        private: true,
+        type: "module",
+        dependencies: { ...tarballs, react: "19.2.8", "react-dom": "19.2.8" },
+        devDependencies: {
+          "@playwright/test": "1.62.1",
+          "@vitejs/plugin-react": "6.1.1",
+          vite: "8.3.4",
+        },
+      })
+    );
+    fs.writeFileSync(path.join(consumer, "pnpm-workspace.yaml"), workspaceYaml);
+    await execAsync(
+      "pnpm",
+      ["install", "--ignore-scripts", "--no-lockfile"],
+      consumer
+    );
+    // The quickstart's app, with its Page Object Model and AymeProvider.
+    const files: Record<string, string> = {
+      "tsconfig.json": JSON.stringify({
+        compilerOptions: {
+          experimentalDecorators: true,
+          target: "ES2022",
+          module: "ESNext",
+          moduleResolution: "bundler",
+          jsx: "react-jsx",
+        },
+        include: ["src"],
+      }),
+      "vite.config.ts": `
+import react from '@vitejs/plugin-react';
+import { ayme } from '@ayme-dev/unplugin-ayme/vite';
+import { defineConfig } from 'vite';
+export default defineConfig({ plugins: [react(), ayme()] });
+`,
+      "index.html": `<!doctype html>
+<html><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>
+`,
+      "src/pom/ProjectsPage.ts": `
+import { ayme } from '@ayme-dev/ayme';
+import type { Page } from '@playwright/test';
+@ayme
+export class ProjectsPage {
+  private readonly page: Page;
+  constructor(page: Page) { this.page = page; }
+  @ayme.action({ description: 'Create a project with the given name.' })
+  async createProject(name: string) {
+    await this.page.getByRole('button', { name: 'New project' }).click();
+  }
+}
+`,
+      "src/main.tsx": `
+import { createRoot } from 'react-dom/client';
+import { AymeProvider, usePageObject } from '@ayme-dev/react';
+import { ProjectsPage } from './pom/ProjectsPage';
+function Projects() {
+  const pom = usePageObject(ProjectsPage);
+  return <button onClick={() => void pom.createProject('x')}>New project</button>;
+}
+createRoot(document.getElementById('root')!).render(
+  <AymeProvider inspector={import.meta.env.DEV} agentConnection={import.meta.env.DEV}>
+    <Projects />
+  </AymeProvider>
+);
+`,
+    };
+    for (const [file, contents] of Object.entries(files))
+      fs.writeFileSync(path.join(consumer, file), contents);
+
+    const { chromium } = await import("playwright");
+    const browser = await chromium.launch();
+    // A fresh install has no optimizer cache, as on a first `npm run dev`.
+    const server = spawn(
+      process.execPath,
+      ["node_modules/vite/bin/vite.js", "--port", "0", "--strictPort"],
+      { cwd: consumer, env: { ...process.env, NODE_PATH: "" } }
+    );
+    let log = "";
+    const url = new Promise<string>((resolveUrl, reject) => {
+      server.on("exit", (code) =>
+        reject(new Error(`vite exited with ${code}\n${log}`))
+      );
+      const onData = (chunk: Buffer) => {
+        log += chunk;
+        const match = /Local:\s+(http:\/\/\S+)/.exec(log);
+        if (match) resolveUrl(match[1]!);
+      };
+      server.stdout.on("data", onData);
+      server.stderr.on("data", onData);
+    });
+    try {
+      const appUrl = await url;
+      // A user opens the page after the server's first optimizer run, which
+      // only sees the dependencies its scan found.
+      await expect
+        .poll(
+          () =>
+            fs.existsSync(
+              path.join(consumer, "node_modules/.vite/deps/_metadata.json")
+            ),
+          { timeout: 30_000 }
+        )
+        .toBe(true);
+      const page = await browser.newPage();
+      let documentLoads = 0;
+      page.on("request", (request) => {
+        if (
+          request.isNavigationRequest() &&
+          request.frame() === page.mainFrame()
+        )
+          documentLoads++;
+      });
+      await page.goto(appUrl);
+      // A dependency found late reruns the optimizer, which then reloads the
+      // page, so wait past the lazily loaded Inspector until it settles.
+      await page.locator("[data-ayme-inspector-host]").waitFor({
+        state: "attached",
+      });
+      await new Promise((settle) => setTimeout(settle, 2_000));
+      await page.waitForLoadState("networkidle");
+      expect(log).not.toContain("optimized dependencies changed");
+      expect(documentLoads, log).toBe(1);
+    } finally {
+      await browser.close();
+      server.kill();
+    }
   }
 );
