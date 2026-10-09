@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 import type { BodyMeasure } from "../domain/regions";
 
+// Stryker disable next-line ObjectLiteral: the layout effect replaces it with the body's measured sizes before the first paint.
 const unmeasured: BodyMeasure = {
   width: 0,
   height: 0,
