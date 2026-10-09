@@ -1158,7 +1158,8 @@ createRoot(document.getElementById('root')!).render(
     const server = spawn(
       process.execPath,
       ["node_modules/vite/bin/vite.js", "--port", "0", "--strictPort"],
-      { cwd: consumer, env: { ...process.env, NODE_PATH: "" } }
+      // Vite colours its output under CI, which would split the URL it logs.
+      { cwd: consumer, env: { ...process.env, NODE_PATH: "", NO_COLOR: "1" } }
     );
     let log = "";
     const url = new Promise<string>((resolveUrl, reject) => {
