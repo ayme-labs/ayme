@@ -9,6 +9,7 @@ import type { RefSource } from "../domain/refTree";
 import type { ValueType } from "../domain/valueRows";
 
 export const inputClass =
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "h-7.5 w-full min-w-0 rounded-md border border-input bg-background px-2.25 text-xs outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring";
 
 type Change = (path: readonly string[], value: JsonValue | undefined) => void;
