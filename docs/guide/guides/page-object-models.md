@@ -12,7 +12,11 @@ import type { Page } from "@playwright/test";
 
 @ayme
 export class ProjectsPage {
-  constructor(private readonly page: Page) {}
+  private readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   @ayme.action({ description: "Create a project with the given name." })
   async createProject(name: string) {

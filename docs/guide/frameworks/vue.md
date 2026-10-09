@@ -40,7 +40,7 @@ import App from "./App.vue";
 </template>
 ```
 
-Or start it with the standalone composable in the root component's setup, as the [Vue example](../../../apps/example-vue/README.md) does:
+Or start it with the standalone composable in the root component's setup, as the [Vue example](https://github.com/ayme-labs/ayme/blob/main/apps/example-vue/README.md) does:
 
 ```ts
 import { useAyme } from "@ayme-dev/vue";
@@ -118,7 +118,7 @@ const inspector = import.meta.dev;
 </template>
 ```
 
-The [Nuxt example](../../../apps/example-nuxt/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
+The [Nuxt example](https://github.com/ayme-labs/ayme/blob/main/apps/example-nuxt/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Limits
 

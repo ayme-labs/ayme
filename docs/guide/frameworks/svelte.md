@@ -100,14 +100,14 @@ SvelteKit renders on the server by default, and the setup above needs nothing mo
 export const ssr = false;
 ```
 
-The [SvelteKit example](../../../apps/example-sveltekit/README.md) runs both, and [Server rendering](../guides/server-rendering.md) says what runs where.
+The [SvelteKit example](https://github.com/ayme-labs/ayme/blob/main/apps/example-sveltekit/README.md) runs both, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
 ## Limits
 
 - Call `useAyme(options)` only in the root `+layout.svelte` or `App.svelte`. SvelteKit creates the next layout before it destroys the previous one, so an owner in a route-group layout becomes a second active owner on navigation and throws.
 - Decorators inside `.svelte` scripts are not compiled.
 - The compiler follows SvelteKit's generated tsconfig, so Page Object Models under `src` need nothing more. Models outside `src`, such as a `playwright/` folder, need their own tsconfig with `experimentalDecorators`, passed to the plugin as `ayme({ tsconfigPath })`.
-- The supported Svelte versions are on [Install](../start/install.md#supported-versions). The [SvelteKit example](../../../apps/example-sveltekit/README.md) runs SvelteKit 2.
+- The supported Svelte versions are on [Install](../start/install.md#supported-versions). The [SvelteKit example](https://github.com/ayme-labs/ayme/blob/main/apps/example-sveltekit/README.md) runs SvelteKit 2.
 
 ## Troubleshooting
 

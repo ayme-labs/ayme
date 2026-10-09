@@ -12,4 +12,4 @@ The skill is a `SKILL.md` with five references: onboarding, browser setup, page 
 
 ## What it does
 
-The agent follows the quickstart for your framework, exposes one of your existing Page Object Actions instead of writing a new one, registers Ayme's MCP server, connects to the page with `ayme_connect` and calls that action. It then reports what it changed and what happened on the page. The [skill's onboarding steps](../../../skills/ayme/references/onboarding.md) list exactly what it does.
+The agent follows the quickstart for your framework, exposes one of your existing Page Object Actions instead of writing a new one, registers Ayme's MCP server, connects to the page with `ayme_connect` and calls that action. It then reports what it changed and what happened on the page. The [skill's onboarding steps](https://github.com/ayme-labs/ayme/blob/main/skills/ayme/references/onboarding.md) list exactly what it does.
