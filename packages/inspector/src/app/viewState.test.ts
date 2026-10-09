@@ -41,7 +41,7 @@ it("goes back to the page for a structure node, whose ref may name another eleme
 });
 
 it("keeps its view state under its own key in the page's storage", () => {
-  expect(viewStateKey).toMatch(/^ayme-inspector:/);
+  expect(viewStateKey).toBe("ayme-inspector:view");
 });
 
 it("opens on the Model lens at the page, with Runs open on the selection's runs", () => {

@@ -95,7 +95,7 @@ it("says the page reloaded as the error of a run cut short by a reload", () => {
 });
 
 it("keeps its runs under its own key in the tab's storage", () => {
-  expect(runsKey).toMatch(/^ayme-inspector:/);
+  expect(runsKey).toBe("ayme-inspector:runs");
 });
 
 it("shows nothing when nothing is stored yet", () => {

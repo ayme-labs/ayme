@@ -56,7 +56,7 @@ it("remembers the layout, sizes, positions, theme, Model lens panes and region s
 });
 
 it("keeps its preferences under its own key in the site's storage", () => {
-  expect(preferencesKey).toMatch(/^ayme-inspector:/);
+  expect(preferencesKey).toBe("ayme-inspector:preferences");
 });
 
 it.each(["float", "left", "right", "bottom"] as const)(
