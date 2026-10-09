@@ -36,6 +36,12 @@ describe("Structural enrichment", () => {
     expect(
       node.enrichmentProperties(component, component.pick("name").propertyKeys)
     ).toEqual([{ key: "name", value: "SaveButton" }]);
+    expect(
+      node.enrichmentProperties(component, component.all().propertyKeys)
+    ).toEqual([
+      { key: "name", value: "SaveButton" },
+      { key: "tags", value: ["form"] },
+    ]);
   });
 
   it("uses enrichment change semantics after structural matching", () => {
