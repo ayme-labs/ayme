@@ -111,7 +111,7 @@ ayme({
 
 `config` is optional. Without it, Ayme does not search for a Playwright config or import Playwright's config loader, and the values come from `use` and the adapter defaults. A relative config path resolves against Vite's root.
 
-With a config, Ayme loads it through the config loader of your Playwright 1.62.x, reached through the `playwright` dependency of `@playwright/test`. That loader is a private Playwright module, so other versions fail with an explicit compatibility error. Ayme reads only `testIdAttribute`, `actionTimeout` and `navigationTimeout`; no other config field enters the browser bundle.
+With a config, Ayme loads it through the config loader of your Playwright 1.62 to 1.64, reached through the `playwright` dependency of `@playwright/test`. That loader is a private Playwright module, so other versions fail with an explicit compatibility error. Ayme reads only `testIdAttribute`, `actionTimeout` and `navigationTimeout`; no other config field enters the browser bundle.
 
 Without `project`, a config with no projects uses its top-level `use` values, a single project is selected automatically, and several projects must agree on all three values. If they do not, set `project` to the name of exactly one project.
 
@@ -134,7 +134,7 @@ These fail the build or the dev server.
 | `playwright contains unsupported option(s): …`, `playwright.config must be a non-empty string`, and the other `playwright` option checks (`TypeError`) | A malformed `playwright` option; see [Playwright settings](#playwright-settings).                                   |
 | `playwright.project requires an explicit playwright.config path` (`TypeError`)                                                                         | `project` without `config`.                                                                                         |
 | `Could not load Playwright config "<path>": …`                                                                                                         | The config file is missing or failed to load.                                                                       |
-| `Unsupported Playwright config loader …`                                                                                                               | Loading a config needs Playwright 1.62; the installed loader has another version or shape.                          |
+| `Unsupported Playwright config loader …`                                                                                                               | Loading a config needs Playwright 1.62 to 1.64; the installed loader has another version or shape.                  |
 | `Playwright project "<name>" must exist exactly once in <path>; found <count>.`                                                                        | `project` names no project, or several.                                                                             |
 | `Playwright projects have different supported settings (<fields>); set playwright.project explicitly.`                                                 | Several projects disagree and no `project` was set.                                                                 |
 | `Ayme's Angular plugin has no option(s): …` (`TypeError`)                                                                                              | An unknown Angular plugin option, or the plugin referenced as a plain string.                                       |

@@ -13,7 +13,7 @@ const DEFAULT_TEST_ID_ATTRIBUTE = "data-testid";
 const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
 const ACTION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_ACTION_TIMEOUT__";
 const NAVIGATION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__";
-const SUPPORTED_PLAYWRIGHT_VERSION = /^1\.62\.\d+(?:[-+].*)?$/;
+const SUPPORTED_PLAYWRIGHT_VERSION = /^1\.6[2-4]\.\d+(?:[-+].*)?$/;
 
 type SupportedPlaywrightSettings = NonNullable<AymePlaywrightOptions["use"]>;
 
@@ -226,7 +226,7 @@ async function loadPlaywrightConfig(
   const playwrightVersion = readPackageVersion(playwrightPackagePath);
   if (!SUPPORTED_PLAYWRIGHT_VERSION.test(playwrightVersion))
     throw new Error(
-      `Unsupported Playwright config loader version ${playwrightVersion}. Ayme supports Playwright 1.62.x only.`
+      `Unsupported Playwright config loader version ${playwrightVersion}. Ayme supports Playwright 1.62 to 1.64.`
     );
 
   // Playwright does not expose its config loader publicly. Keep this one
@@ -237,7 +237,7 @@ async function loadPlaywrightConfig(
   );
   if (!existsSync(loaderPath))
     throw new Error(
-      `Unsupported Playwright config loader: ${loaderPath} does not exist. Ayme supports Playwright 1.62.x only.`
+      `Unsupported Playwright config loader: ${loaderPath} does not exist. Ayme supports Playwright 1.62 to 1.64.`
     );
 
   let loaderModule: PlaywrightLoaderModule;
@@ -258,7 +258,7 @@ async function loadPlaywrightConfig(
     typeof loaderModule.transform.requireOrImport !== "function"
   )
     throw new Error(
-      `Unsupported Playwright config loader at ${loaderPath}: expected configLoader.loadConfigFromFile and transform.requireOrImport for Playwright 1.62.x.`
+      `Unsupported Playwright config loader at ${loaderPath}: expected configLoader.loadConfigFromFile and transform.requireOrImport for Playwright 1.62 to 1.64.`
     );
 
   let fullConfig: unknown;

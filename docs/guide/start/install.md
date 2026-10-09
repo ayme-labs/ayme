@@ -39,7 +39,7 @@ own support policy for which releases still receive fixes.
 | Nuxt               | 4.0.1 and later                          | With the Vite plugin, as in the [Nuxt example][nuxt-example]. Nuxt 3 is not supported.                                                                                             |
 | Vite               | 7 and 8                                  | The plugin is ESM-only, so the config must be loaded as ESM.                                                                                                                       |
 | Node.js            | 20.19 and later 20.x, or 22.12 and later | Nuxt 4.4.6 and later need Node.js 22.12, and Nuxt 4.5 needs 22.19, so a current Nuxt release needs Node.js 22.                                                                     |
-| `@playwright/test` | 1.29 to 1.62                             | Optional; see [Playwright in the browser](../reference/playwright-in-the-browser.md).                                                                                              |
+| `@playwright/test` | 1.29 to 1.64                             | Optional; see [Playwright in the browser](../reference/playwright-in-the-browser.md).                                                                                              |
 | TypeScript         | 5.4 and later                            | 5.0 to 5.3 work with `skipLibCheck: true`. This is the version your project compiles with; the plugin brings its own compiler. Playwright 1.29's declarations need TypeScript 5.x. |
 
 [next-example]: https://github.com/ayme-labs/ayme/blob/main/apps/example-next/README.md

@@ -406,7 +406,7 @@ it("the Playwright peer is optional in core and WebMCP and required by the inspe
     const manifest = readManifest(path.join(packagesRoot, name));
     expect(manifest.peerDependencies?.["@playwright/test"]).toBe(
       ["ayme", "inspector", "webmcp"].includes(name)
-        ? ">=1.29 <1.63"
+        ? ">=1.29 <1.65"
         : undefined
     );
     expect(
@@ -420,7 +420,7 @@ it("the Playwright peer is optional in core and WebMCP and required by the inspe
 });
 
 // Each consumer installs from scratch, so they run concurrently.
-for (const version of [undefined, "1.29.0", "1.62.1"])
+for (const version of [undefined, "1.29.0", "1.62.1", "1.64.0"])
   it.concurrent(
     `packed packages support consumer Playwright types and conditional config loading ${
       version ? `with Playwright ${version}` : "without Playwright"
@@ -597,7 +597,7 @@ assert.deepEqual(manifest.tools, [{
     : ""
 }
 ${
-  version === "1.62.1"
+  version === "1.62.1" || version === "1.64.0"
     ? `
 const loaded = await resolveSettings({ config: './playwright.config.ts' });
 assert.equal(loaded.define.__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__, '"data-config"');

@@ -123,7 +123,7 @@ The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference
 
 ## Supported versions
 
-`@playwright/test` 1.29 to 1.62, optional, for the types your Page Object Models use. [Install](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/install.md) lists the supported frameworks, Node.js and TypeScript versions.
+`@playwright/test` 1.29 to 1.64, optional, for the types your Page Object Models use. [Install](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/install.md) lists the supported frameworks, Node.js and TypeScript versions.
 
 ## License
 

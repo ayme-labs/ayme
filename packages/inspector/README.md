@@ -25,7 +25,7 @@ The session loads the Inspector when it starts in the browser and unmounts it wh
 
 ## Supported versions
 
-Any framework Ayme supports; the Inspector bundles its own React. `@playwright/test` 1.29 to 1.62 for the types.
+Any framework Ayme supports; the Inspector bundles its own React. `@playwright/test` 1.29 to 1.64 for the types.
 
 ## License
 
