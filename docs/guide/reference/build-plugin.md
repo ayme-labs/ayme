@@ -33,10 +33,10 @@ export default defineConfig({
 
 Add it alongside your framework's plugin. It skips its source transform for server rendering and compiles only the browser build.
 
-| Option         | Type     | Meaning                                                                                                                                                     |
-| -------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tsconfigPath` | `string` | The tsconfig the compiler reads. A relative path resolves from the working directory. Defaults to the nearest `tsconfig.json` above each Page Object Model. |
-| `playwright`   | `object` | The Playwright settings the browser adapter uses; see [Playwright settings](#playwright-settings).                                                          |
+| Option         | Type     | Meaning                                                                                                                                                                                                                                                                                                                                                  |
+| -------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tsconfigPath` | `string` | The tsconfig the compiler reads. A relative path resolves from the working directory. Defaults to the nearest `tsconfig.json` above each Page Object Model. When the tsconfig is solution-style (`"files": []` plus `references`, as in Vite's templates), the compiler follows its references to the project that includes the model, as `tsc -b` does. |
+| `playwright`   | `object` | The Playwright settings the browser adapter uses; see [Playwright settings](#playwright-settings).                                                                                                                                                                                                                                                       |
 
 On Vite 8, whose oxc transform does not always read the tsconfig, the plugin also sets `oxc: { decorator: { legacy: true } }`. It leaves the option alone when your config sets `oxc.decorator.legacy`, sets `oxc: false`, or sets `esbuild` options without `oxc`.
 
@@ -123,7 +123,7 @@ These fail the build or the dev server.
 
 | Message                                                                                                                                                | When                                                                                                                |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `Unsupported Page Object Tool input type for <Model>.<method>(<parameter>): <type>.`                                                                   | A parameter type the compiler cannot turn into a schema; see [Page Object Models](../guides/page-object-models.md). |
+| `Unsupported Page Object Tool input type for <Model>.<method>(<parameter>): <type>. Compiled with <tsconfig>.`                                         | A parameter type the compiler cannot turn into a schema; see [Page Object Models](../guides/page-object-models.md). |
 | `Page Object Action <Model>.<method> needs identifier parameter names.`                                                                                | A destructured parameter.                                                                                           |
 | `Page Object Child "<member>" is ambiguous: <classes>.`                                                                                                | A member's type intersects several Page Object Models.                                                              |
 | `Could not find a tsconfig.json for POM source <file>.`                                                                                                | No tsconfig above the model and no `tsconfigPath`.                                                                  |
