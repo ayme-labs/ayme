@@ -50,7 +50,7 @@ const defaultMutate = [
 
 /**
  * `STRYKER_SHARD=2/4` splits the full lane of a slow package across CI jobs:
- * this job mutates every fourth file, starting with the second.
+ * this job mutates the second of four groups of files.
  */
 function parseShard(value) {
   if (!value) return undefined;
@@ -66,8 +66,17 @@ function shardFiles(patterns, { index, count }) {
   const exclude = patterns
     .filter((pattern) => pattern.startsWith("!"))
     .map((pattern) => pattern.slice(1));
-  return fs
+  // Each file goes to the lightest group so far, biggest file first. A file's
+  // size stands in for its mutant count, which drives a shard's run time.
+  const groups = Array.from({ length: count }, () => ({ bytes: 0, files: [] }));
+  const files = fs
     .globSync(include, { exclude })
-    .sort()
-    .filter((_, i) => i % count === index - 1);
+    .map((file) => ({ file, bytes: fs.statSync(file).size }))
+    .sort((a, b) => b.bytes - a.bytes || a.file.localeCompare(b.file));
+  for (const { file, bytes } of files) {
+    const lightest = groups.reduce((a, b) => (b.bytes < a.bytes ? b : a));
+    lightest.bytes += bytes;
+    lightest.files.push(file);
+  }
+  return groups[index - 1].files;
 }
