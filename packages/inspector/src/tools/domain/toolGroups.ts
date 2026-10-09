@@ -38,6 +38,7 @@ export const toolGroupLabels: Record<ToolGroup, string> = {
   agent: "Agent tools",
 };
 
+// Stryker disable StringLiteral: display labels, a lookup table.
 /** What one tool of each group is called on its page. */
 export const toolKindLabels: Record<ToolGroup, string> = {
   pageObject: "Page object tool",
@@ -46,6 +47,7 @@ export const toolKindLabels: Record<ToolGroup, string> = {
   peek: "Peek tool",
   agent: "Agent tool",
 };
+// Stryker restore StringLiteral
 
 const groupOrder: readonly ToolGroup[] = [
   "pageObject",

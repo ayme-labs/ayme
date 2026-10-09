@@ -36,6 +36,7 @@ export type AymeSetup = {
   readonly webMCP: AymeWebMCP;
 };
 
+// Stryker disable next-line StringLiteral: a debugging label Angular may print in injector errors; no behaviour reads it
 const aymeSetup = new InjectionToken<AymeSetup>("Ayme setup");
 
 /**

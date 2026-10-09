@@ -6,9 +6,11 @@ import { cn } from "@ayme-dev/design-system/lib/utils";
 import type { ValueRow, ValueType } from "../domain/valueRows";
 
 const inputClass =
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "h-7.5 w-full min-w-0 rounded-md border border-input bg-background px-2.25 font-mono text-xs outline-none focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-destructive";
 
 const columns =
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)_1.625rem] gap-1";
 
 type Part = "label" | "value";

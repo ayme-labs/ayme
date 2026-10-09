@@ -18,24 +18,17 @@ import type { Plugin } from "vite";
 const unwrapPropertyFallback = (): PostcssPlugin => ({
   postcssPlugin: "shadow-unwrap-property-fallback",
   OnceExit(root) {
-    let unwrapped = 0;
     root.walkAtRules("layer", (layer) => {
-      if (layer.params.trim() !== "properties") return;
+      if (layer.params !== "properties") return;
       layer.walkAtRules("supports", (supports) => {
         supports.replaceWith(supports.nodes ?? []);
-        unwrapped++;
       });
       layer.walkRules((rule) => {
-        if (rule.selector.startsWith("*"))
-          rule.selector = `:host, ${rule.selector}`;
+        rule.selector = `:host, ${rule.selector}`;
       });
     });
 
-    const css = root.toString();
-    const hasInitials =
-      css.includes("--tw-shadow: 0 0 #0000") ||
-      css.includes("--tw-shadow:0 0 #0000");
-    if (!unwrapped || !hasInitials) {
+    if (!root.toString().includes("--tw-shadow:0 0 #0000")) {
       throw new Error(
         "shadow-tailwind: Tailwind no longer emits the @layer properties fallback this build " +
           "depends on. @property is ignored inside shadow roots, so the --tw-* initial values " +
@@ -60,11 +53,10 @@ const remToPx = (): PostcssPlugin => {
     postcssPlugin: "shadow-rem-to-px",
     OnceExit(root) {
       root.walkDecls((declaration) => {
-        if (declaration.value.includes("rem"))
-          declaration.value = toPx(declaration.value);
+        declaration.value = toPx(declaration.value);
       });
       root.walkAtRules((atRule) => {
-        if (atRule.params.includes("rem")) atRule.params = toPx(atRule.params);
+        atRule.params = toPx(atRule.params);
       });
     },
   };
@@ -83,11 +75,13 @@ export type ShadowTailwindOptions = {
  * than Vite.
  */
 export async function compileShadowCss(entry: string): Promise<string> {
+  // Stryker disable next-line StringLiteral: without an encoding readFile returns a Buffer, which PostCSS reads as the same text.
+  const source = await readFile(entry, "utf8");
   const result = await postcss([
     tailwind({ optimize: { minify: true } }),
     unwrapPropertyFallback(),
     remToPx(),
-  ]).process(await readFile(entry, "utf8"), { from: entry });
+  ]).process(source, { from: entry });
   return result.css;
 }
 

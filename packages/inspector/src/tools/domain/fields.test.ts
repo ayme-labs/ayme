@@ -119,17 +119,19 @@ describe("schema to fields", () => {
   });
 
   it("types a string by its format", () => {
-    const [email, url, time] = fieldsOf({
+    const [email, url, link, time] = fieldsOf({
       type: "object",
       properties: {
         email: { type: "string", format: "email" },
         url: { type: "string", format: "uri" },
+        link: { type: "string", format: "url" },
         time: { type: "string", format: "time" },
       } as never,
     });
 
     expect(email).toMatchObject({ inputType: "email", typeLabel: "email" });
     expect(url).toMatchObject({ inputType: "url", typeLabel: "uri" });
+    expect(link).toMatchObject({ inputType: "url", typeLabel: "url" });
     expect(time).toMatchObject({ inputType: "text", typeLabel: "time" });
   });
 

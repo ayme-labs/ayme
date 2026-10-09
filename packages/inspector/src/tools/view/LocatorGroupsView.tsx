@@ -16,6 +16,7 @@ import { findRefNode, type RefTreeRow } from "../domain/refTree";
 import { NodeDetail, refText, RefTreeView } from "./RefTreeView";
 
 const smallButton =
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "flex h-6.5 items-center gap-1 rounded-md border px-2 text-xs font-medium hover:border-ring aria-expanded:border-ring aria-expanded:bg-primary/10 aria-expanded:text-primary aria-pressed:border-ring aria-pressed:bg-primary/10 aria-pressed:text-primary";
 
 /**

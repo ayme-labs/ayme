@@ -288,6 +288,31 @@ exports.configLoader = {
     }
   });
 
+  it.each([
+    ["1.62.10", true],
+    ["1.62.0-beta", true],
+    ["1.62.0+build.1", true],
+    ["11.62.0", false],
+    ["1.62.0x", false],
+  ])("treats Playwright %s as supported: %s", async (version, supported) => {
+    const root = mkdtempSync(join(tmpdir(), "ayme-version-"));
+    try {
+      writePackage(root);
+      writeFileSync(join(root, "playwright.config.ts"), "export default {};");
+      writeFakeLoader(root, undefined, version);
+      const config = applyPluginConfig(root, {
+        playwright: { config: "playwright.config.ts" },
+      });
+      if (supported) await expect(config).resolves.toBeDefined();
+      else
+        await expect(config).rejects.toThrow(
+          /supports Playwright 1\.62\.x only/
+        );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("registers metadata without generating a constructor factory", async () => {
     const fixturePath = fileURLToPath(
       new URL("./fixtures/annotatedChildrenPom.ts", import.meta.url)

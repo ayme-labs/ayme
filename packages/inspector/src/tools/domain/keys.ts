@@ -4,6 +4,8 @@
  * names are those of Playwright's US keyboard layout.
  */
 
+// Stryker disable all: tables of Playwright key names; a missing entry is a
+// table error, not a code path a test should own.
 /** The modifiers Playwright holds before the key, as a key field records them. */
 const recordedModifiers = ["ControlOrMeta", "Alt", "Shift"] as const;
 
@@ -89,6 +91,7 @@ const punctuation: Readonly<Record<string, string>> = {
 
 /** The digits' characters with Shift, from 0 to 9. */
 const shiftedDigits = ")!@#$%^&*(";
+// Stryker restore all
 
 /**
  * The character a code types on the layout, e.g. `[` for BracketLeft: as

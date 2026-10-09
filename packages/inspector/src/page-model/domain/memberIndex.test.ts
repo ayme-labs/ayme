@@ -147,6 +147,21 @@ describe("what a path covers", () => {
   });
 });
 
+it("gives a path shared by two registrations of one page class to the first", () => {
+  const first = page("ListPage", { locators: ["newItemInput"] });
+  const second = page("ListPage", { locators: ["newItemInput"] });
+  const twice = indexMembers({
+    objects: [first, second],
+    models: [model("ListPage", ["newItemInput"])],
+  });
+
+  expect(twice.member("ListPage.root")?.owner).toBe(first);
+  expect(twice.member("ListPage.newItemInput")?.owner).toBe(first);
+  expect(twice.targets("ListPage.newItemInput")).toEqual(
+    new Set(["ListPage.newItemInput"])
+  );
+});
+
 it("finds a collection action's items in every collection it runs on, in page order", () => {
   expect(
     index.collectionItems("ListPage.items.tags.remove").map(({ path }) => path)

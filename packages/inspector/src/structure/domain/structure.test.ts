@@ -541,6 +541,50 @@ describe("a component whose class is also a page on the page", () => {
   });
 });
 
+describe("several pages over the same element", () => {
+  const pages = [
+    page("ListPage", {
+      children: [component("header", "Header", { locators: ["title"] })],
+    }),
+    page("Header", { locators: ["title"] }),
+  ];
+
+  it("lists a member once, leading where it was first reached", () => {
+    // The component's class member "Header.title" comes first, as the
+    // model's; the Header page's own member of that path doesn't replace it.
+    expect(
+      nodeOf(["ListPage.header.title", "Header.title"], pages).memberLinks
+    ).toEqual([
+      { member: "ListPage.header.title", owner: { object: "ListPage.header" } },
+      { member: "Header.title", owner: { model: "Header" } },
+    ]);
+  });
+
+  it("tags a node with a member inside a collection item over a deeper one outside any", () => {
+    const deep = page("App", {
+      children: [
+        component("shell", "Shell", {
+          children: [
+            component("main", "Main", {
+              children: [component("panel", "Panel", { locators: ["list"] })],
+            }),
+          ],
+        }),
+      ],
+    });
+    const list = page("ListPage", {
+      children: [collection("items", "ListItem", [{}])],
+    });
+
+    expect(
+      nodeOf(
+        ["App.shell.main.panel.list", "ListPage.items[0].root"],
+        [deep, list]
+      ).member
+    ).toBe("ListPage.items[0]");
+  });
+});
+
 describe("what the text parser used to misread", () => {
   it("keeps a lowercase Page Object label out of the role", () => {
     const { roots } = buildStructureTree(
@@ -568,6 +612,33 @@ describe("what the text parser used to misread", () => {
 
     expect(roots[0]).toMatchObject({ role: "button", name: "[checked]" });
     expect(roots[0]).not.toHaveProperty("state");
+  });
+
+  it("leaves out a state none of whose values is set", () => {
+    const { roots } = buildStructureTree(
+      forest(
+        node({ ref: "e1", role: "checkbox", state: { checked: undefined } })
+      ),
+      new Map()
+    );
+
+    expect(roots[0]).not.toHaveProperty("state");
+  });
+
+  it("gives a node its control's state, and one without a control none", () => {
+    const control = { value: "Ada" };
+    const { roots } = buildStructureTree(
+      forest(
+        node({ ref: "e1", role: "textbox" }),
+        node({ ref: "e2", role: "button" })
+      ),
+      new Map(),
+      undefined,
+      new Map([["e1", control]])
+    );
+
+    expect(roots[0]).toHaveProperty("control", control);
+    expect(roots[1]).not.toHaveProperty("control");
   });
 
   it("reads states from the node, not its line", () => {

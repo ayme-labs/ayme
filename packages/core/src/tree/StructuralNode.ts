@@ -56,6 +56,8 @@ export type VisibilityChangeStatus = Extract<
 >["kind"];
 export type StructuralRole = AriaRole | "fragment" | "iframe";
 
+// Stryker disable all: a table of ARIA roles; a missing entry is a table
+// error, not a code path a test should own.
 const STRUCTURAL_ROLES: readonly StructuralRole[] = [
   "alert",
   "alertdialog",
@@ -143,6 +145,7 @@ const STRUCTURAL_ROLES: readonly StructuralRole[] = [
   "treegrid",
   "treeitem",
 ];
+// Stryker restore all
 
 export function isStructuralRole(value: string): value is StructuralRole {
   return STRUCTURAL_ROLES.some((role) => role === value);

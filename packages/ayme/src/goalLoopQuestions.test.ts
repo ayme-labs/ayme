@@ -210,6 +210,14 @@ describe("ref questions over the option cap", () => {
     );
   });
 
+  it("takes one more chunk than would overflow: two chunks hold at most 508 elements", () => {
+    const questions = askedQuestions(clickTool, captureOfButtons(509));
+
+    expect(questions).toHaveLength(3);
+    for (const question of questions)
+      expect(question.options.length).toBeLessThanOrEqual(255);
+  });
+
   it("sends every chunk in the one stage-two request", () => {
     const capture = captureOfButtons(300);
     const questions = askedQuestions(clickTool, capture);
