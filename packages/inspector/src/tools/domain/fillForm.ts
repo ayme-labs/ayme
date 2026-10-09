@@ -85,16 +85,11 @@ export function formRows(roots: readonly StructureNode[]): FormRow[] {
     for (const node of nodes) {
       const type = fieldTypes.find((candidate) => candidate === node.role);
       // Stryker disable next-line ConditionalExpression: every fillable role is an element, and elements have refs.
-      if (node.ref !== undefined && type === "radio")
+      const field = node.ref !== undefined ? type : undefined;
+      if (field === "radio")
         addRadio(node as StructureNode & { ref: string }, group);
-      else if (
-        // Stryker disable ConditionalExpression,StringLiteral: every fillable role is an element with a ref, and a radio took the branch above.
-        node.ref !== undefined &&
-        type &&
-        type !== "radio"
-      )
-        // Stryker restore ConditionalExpression,StringLiteral
-        rows.push(elementRow(node as StructureNode & { ref: string }, type));
+      else if (field)
+        rows.push(elementRow(node as StructureNode & { ref: string }, field));
       visit(
         node.children,
         node.role === "radiogroup" || node.role === "group" ? node : group
