@@ -126,20 +126,6 @@ export const structureTreeBuilder = (nodeEntry: NodeEntry) =>
       const hasState = Object.values(entry.state).some(
         (value) => value !== undefined
       );
-      const node: StructureNode = {
-        ref: entry.ref,
-        role: entry.role,
-        name: entry.name,
-        ...(hasState ? { state: entry.state } : {}),
-        // Stryker disable next-line ArrayDeclaration: replaced below, before the node is returned.
-        members: [],
-        pageStateLines: lines,
-        childCount,
-        children: entry.children.map(build),
-      };
-      const control = controls.get(entry.ref);
-      // Stryker disable next-line ConditionalExpression: a control set to undefined reads the same as none.
-      if (control) node.control = control;
       const members = [
         ...new Map(
           // Stryker disable next-line ArrayDeclaration: a made-up target is no member the index has, so it is dropped either way.
@@ -149,7 +135,18 @@ export const structureTreeBuilder = (nodeEntry: NodeEntry) =>
           })
         ).values(),
       ];
-      node.members = members.map(({ path }) => path);
+      const node: StructureNode = {
+        ref: entry.ref,
+        role: entry.role,
+        name: entry.name,
+        ...(hasState ? { state: entry.state } : {}),
+        members: members.map(({ path }) => path),
+        pageStateLines: lines,
+        childCount,
+        children: entry.children.map(build),
+      };
+      const control = controls.get(entry.ref);
+      if (control) node.control = control;
       const tag = memberTag(members, index);
       if (tag !== undefined) {
         node.member = tag.path;

@@ -625,6 +625,22 @@ describe("what the text parser used to misread", () => {
     expect(roots[0]).not.toHaveProperty("state");
   });
 
+  it("gives a node its control's state, and one without a control none", () => {
+    const control = { value: "Ada" };
+    const { roots } = buildStructureTree(
+      forest(
+        node({ ref: "e1", role: "textbox" }),
+        node({ ref: "e2", role: "button" })
+      ),
+      new Map(),
+      undefined,
+      new Map([["e1", control]])
+    );
+
+    expect(roots[0]).toHaveProperty("control", control);
+    expect(roots[1]).not.toHaveProperty("control");
+  });
+
   it("reads states from the node, not its line", () => {
     const { roots } = buildStructureTree(
       forest(
