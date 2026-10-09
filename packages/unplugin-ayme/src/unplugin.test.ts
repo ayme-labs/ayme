@@ -209,12 +209,12 @@ exports.configLoader = {
         join(unsupportedRoot, "playwright.config.ts"),
         "export default {};"
       );
-      writeFakeLoader(unsupportedRoot, "exports.configLoader = {};", "1.63.0");
+      writeFakeLoader(unsupportedRoot, "exports.configLoader = {};", "1.65.0");
       await expect(
         applyPluginConfig(unsupportedRoot, {
           playwright: { config: "playwright.config.ts" },
         })
-      ).rejects.toThrow(/supports Playwright 1\.62\.x only/);
+      ).rejects.toThrow(/supports Playwright 1\.62 to 1\.64/);
     } finally {
       rmSync(unsupportedRoot, { recursive: true, force: true });
     }

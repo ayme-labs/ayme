@@ -8,6 +8,7 @@
     "test": {
       "inputs": [
         "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/docs/guide/start/quickstart-*.md",
         "$TURBO_ROOT$/packages/inspector/src/**",
         "$TURBO_ROOT$/packages/inspector/package.json",
         "$TURBO_ROOT$/packages/inspector/tsdown.config.ts",

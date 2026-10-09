@@ -1,0 +1,8 @@
+{
+  // create-vite's solution-style root: no compiler options of its own.
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}

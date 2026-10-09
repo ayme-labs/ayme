@@ -5,6 +5,8 @@
  *
  * It fails when
  * - a relative link does not resolve to a file or directory,
+ * - a relative link in a page under `docs/guide/` leaves `docs/guide/`, since
+ *   the docs site serves only that directory,
  * - a `github.com/ayme-labs/ayme/blob/main/...` or `tree/main/...` link does
  *   not resolve to a path in the repository,
  * - a page under `docs/guide/` is not linked from its index, `README.md`,
@@ -157,6 +159,18 @@ export function checkDocs(root) {
       const linked = linkedPath(root, file, target);
       if (linked !== undefined && !fs.existsSync(linked))
         report(file, line, `link does not resolve: ${target}`);
+      if (
+        pages.includes(file) &&
+        isRelative(target) &&
+        fs.existsSync(linked) &&
+        path.relative(path.join(root, GUIDE_DIR), linked).split(path.sep)[0] ===
+          ".."
+      )
+        report(
+          file,
+          line,
+          `link leaves ${GUIDE_DIR}, the docs site cannot serve it; use a github.com/ayme-labs/ayme/blob/main/ link: ${target}`
+        );
       if (file === `${GUIDE_DIR}/README.md` && linked !== undefined)
         indexed.add(path.relative(root, linked).split(path.sep).join("/"));
       if (isPublished && isRelative(target))

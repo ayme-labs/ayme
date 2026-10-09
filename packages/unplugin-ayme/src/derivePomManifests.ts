@@ -85,7 +85,9 @@ export function derivePomManifestsFromProgram(
 
     const className = declaration.name.text;
     const members = pomMembers(checker, declaration, components);
-    const tools = toolsForClass(checker, declaration, components);
+    const tools = toolsCompiledWith(program, () =>
+      toolsForClass(checker, declaration, components)
+    );
 
     const manifest: PomManifest = {
       className,
@@ -878,6 +880,25 @@ class UnsupportedInputTypeError extends Error {
     readonly typeText: string
   ) {
     super(message);
+  }
+}
+
+/**
+ * An unsupported type is often an import the tsconfig could not resolve, so
+ * the error names the tsconfig the Program was compiled with.
+ */
+function toolsCompiledWith<T>(program: ts.Program, deriveTools: () => T) {
+  try {
+    return deriveTools();
+  } catch (error) {
+    if (!(error instanceof UnsupportedInputTypeError)) throw error;
+    const { configFilePath } = program.getCompilerOptions();
+    error.message += ` Compiled with ${
+      typeof configFilePath === "string"
+        ? path.resolve(configFilePath)
+        : "TypeScript's default options"
+    }.`;
+    throw error;
   }
 }
 

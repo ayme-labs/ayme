@@ -123,3 +123,31 @@ describe("a subclass in a module without the decorator", () => {
     });
   });
 });
+
+describe("a solution-style tsconfig", () => {
+  const project = fileURLToPath(
+    new URL("./__tests__/fixtures/solutionStyle/", import.meta.url)
+  );
+  const pomPath = join(project, "src/pom/projectsPage.ts");
+
+  it("compiles the Page Object Model with the referenced project that includes it", () => {
+    const result = createPomTransform()(readFileSync(pomPath, "utf8"), pomPath);
+
+    expect(result?.code).toContain('"kind":{"type":"string","enum":["a","b"]}');
+    expect(result?.dependencies).toEqual(
+      expect.arrayContaining([
+        join(project, "tsconfig.json"),
+        join(project, "tsconfig.app.json"),
+      ])
+    );
+  });
+
+  it("names the tsconfig it compiled with when an input type is unsupported", () => {
+    const nodeConfig = join(project, "tsconfig.node.json");
+    const transform = createPomTransform({ tsconfigPath: nodeConfig });
+
+    expect(() => transform(readFileSync(pomPath, "utf8"), pomPath)).toThrow(
+      `ProjectsPage.probe(kind): Kind. Compiled with ${nodeConfig}.`
+    );
+  });
+});

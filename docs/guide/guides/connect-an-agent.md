@@ -34,7 +34,7 @@ useAyme({
 
 ## Register the server in your agent
 
-Register the server pinned to the version of `@ayme-dev/mcp` your app installed, the same version as your other Ayme packages: replace `<version>` below with the version in your `package.json`, so the server matches the page client in your app.
+Register the server pinned to the version of `@ayme-dev/mcp` your app installed, the same version as your other Ayme packages: replace `<version>` below with the installed version, which `npm ls @ayme-dev/mcp` prints, so the server matches the page client in your app.
 
 Claude Code:
 
@@ -73,6 +73,8 @@ Cursor, in `.cursor/mcp.json` for the project or `~/.cursor/mcp.json` for every 
 ```
 
 Any other MCP client takes the same command, `npx`, with the arguments `-y @ayme-dev/mcp@<version> mcp`. Restart the agent after registering, so it starts the server and lists `ayme_connect`.
+
+Your app already installs `@ayme-dev/mcp`, so a client that starts its servers in the app's folder can run that copy instead, which always matches the page client: the command `npx` with the arguments `--no -p @ayme-dev/mcp ayme mcp`. `--no` keeps `npx` from downloading anything, so started from any other folder the server fails to start rather than running another version.
 
 ## Connect a tab
 

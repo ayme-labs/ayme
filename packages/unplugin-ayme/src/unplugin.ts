@@ -1,20 +1,20 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { createUnplugin, type UnpluginFactory } from "unplugin";
 
 import type { SkippedPomMethod } from "./derivePomManifests";
 import type { AymeOptions, AymePlaywrightOptions, AymeReport } from "./options";
-import { createPomTransform } from "./transformPomModule";
+import { createPomTransform, INJECTED_IMPORTS } from "./transformPomModule";
 
 const PLAYWRIGHT_TEST_PACKAGE = "@playwright/test";
 const DEFAULT_TEST_ID_ATTRIBUTE = "data-testid";
 const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
 const ACTION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_ACTION_TIMEOUT__";
 const NAVIGATION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__";
-const SUPPORTED_PLAYWRIGHT_VERSION = /^1\.62\.\d+(?:[-+].*)?$/;
+const SUPPORTED_PLAYWRIGHT_VERSION = /^1\.6[2-4]\.\d+(?:[-+].*)?$/;
 
 type SupportedPlaywrightSettings = NonNullable<AymePlaywrightOptions["use"]>;
 
@@ -116,11 +116,16 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
           if (module) moduleGraph.invalidateModule(module);
         }
       },
-      async config(config) {
+      async config(config, env) {
+        const root = config.root ?? process.cwd();
         const exclude = config.optimizeDeps?.exclude ?? [];
+        // The dependency scan misses the imports the transform injects, so
+        // the first page load would find them late and reload.
+        const injected =
+          env?.command === "serve" ? installedImports(root, exclude) : [];
         const settings = await resolvePlaywrightSettings(
           options.playwright,
-          config.root ?? process.cwd()
+          root
         );
         const define: Record<string, unknown> = {
           ...config.define,
@@ -153,6 +158,16 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
           optimizeDeps: {
             ...config.optimizeDeps,
             exclude: [...new Set([...exclude, PLAYWRIGHT_TEST_PACKAGE])],
+            ...(injected.length > 0
+              ? {
+                  include: [
+                    ...new Set([
+                      ...(config.optimizeDeps?.include ?? []),
+                      ...injected,
+                    ]),
+                  ],
+                }
+              : {}),
           },
           ...(lowerDecorators ? { oxc: { decorator: { legacy: true } } } : {}),
         };
@@ -192,6 +207,25 @@ function reportLines(
   return [...reasons]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([name, reason]) => `  ${name}: ${reason}`);
+}
+
+/**
+ * The injected imports that resolve from an installed package the consumer
+ * has not excluded. Vite does not pre-bundle a linked or excluded package, and
+ * forcing a subpath of one in would load a second copy of the runtime beside
+ * the one its other imports get.
+ */
+function installedImports(root: string, exclude: string[]): string[] {
+  const consumerRequire = createRequire(resolve(root, "package.json"));
+  return INJECTED_IMPORTS.filter((specifier) => {
+    if (exclude.some((name) => specifier.startsWith(`${name}/`))) return false;
+    try {
+      const file = realpathSync(consumerRequire.resolve(specifier));
+      return file.includes(`${sep}node_modules${sep}`);
+    } catch {
+      return false;
+    }
+  });
 }
 
 async function resolvePlaywrightSettings(
@@ -281,7 +315,7 @@ async function loadPlaywrightConfig(
   const playwrightVersion = readPackageVersion(playwrightPackagePath);
   if (!SUPPORTED_PLAYWRIGHT_VERSION.test(playwrightVersion))
     throw new Error(
-      `Unsupported Playwright config loader version ${playwrightVersion}. Ayme supports Playwright 1.62.x only.`
+      `Unsupported Playwright config loader version ${playwrightVersion}. Ayme supports Playwright 1.62 to 1.64.`
     );
 
   // Playwright does not expose its config loader publicly. Keep this one
@@ -292,7 +326,7 @@ async function loadPlaywrightConfig(
   );
   if (!existsSync(loaderPath))
     throw new Error(
-      `Unsupported Playwright config loader: ${loaderPath} does not exist. Ayme supports Playwright 1.62.x only.`
+      `Unsupported Playwright config loader: ${loaderPath} does not exist. Ayme supports Playwright 1.62 to 1.64.`
     );
 
   let loaderModule: PlaywrightLoaderModule;
@@ -313,7 +347,7 @@ async function loadPlaywrightConfig(
     typeof loaderModule.transform.requireOrImport !== "function"
   )
     throw new Error(
-      `Unsupported Playwright config loader at ${loaderPath}: expected configLoader.loadConfigFromFile and transform.requireOrImport for Playwright 1.62.x.`
+      `Unsupported Playwright config loader at ${loaderPath}: expected configLoader.loadConfigFromFile and transform.requireOrImport for Playwright 1.62 to 1.64.`
     );
 
   let fullConfig: unknown;
