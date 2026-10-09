@@ -52,6 +52,13 @@ jobs:
             echo "Running all package checks."
             affected=
           fi
+          # The packed-consumer test type-checks the quickstarts' Page Object
+          # Models, which --affected misses since they live outside the package.
+          if [ -n "$affected" ] \
+            && ! git diff --quiet "$TURBO_SCM_BASE...$TURBO_SCM_HEAD" -- 'docs/guide/start/quickstart-*.md'; then
+            echo "A quickstart changed, so running all package checks."
+            affected=
+          fi
           echo "affected=$affected" >> "$GITHUB_OUTPUT"
 
           tasks=$(pnpm exec turbo run build lint typecheck test test:e2e $affected --dry=json \
