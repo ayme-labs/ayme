@@ -41,6 +41,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build the packages
         run: pnpm exec turbo run build --filter='./packages/*'
+      # The packed-consumer check opens a fresh Vite app in Chromium.
+      - name: Install Chromium
+        run: pnpm --filter @ayme-dev/ayme exec playwright install --with-deps chromium
       - name: Pack and run the packed-consumer check
         env:
           AYME_PACKED_DIR: ${{ runner.temp }}/packages
