@@ -12,7 +12,9 @@
  * 3. A clean consumer installs all packages together and imports every
  *    declared export subpath.
  * 4. The packed @ayme-dev/ayme does not expose private workspace packages.
- * 5. Consumers type-check and load config with and without Playwright.
+ * 5. Consumers type-check and load config with and without Playwright, and
+ *    each quickstart's Page Object Model type-checks under create-vite's
+ *    TypeScript template options.
  * 6. A Vite config type-checks the library declarations with only Vite
  *    installed beside the packages.
  * 7. An Angular consumer type-checks at Angular's and TypeScript's floor.
@@ -553,6 +555,57 @@ export async function recordAndRun(context: BrowserContext, page: Page): Promise
 `
       );
       await execAsync("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
+      if (version === "1.62.1") {
+        // Each quickstart's Page Object Model, under create-vite's TypeScript
+        // template options, so an example only plain tsc accepts fails here.
+        const quickstarts = path.join(repoRoot, "docs/guide/start");
+        const models: string[] = [];
+        fs.mkdirSync(path.join(consumer, "quickstart"));
+        for (const page of fs.readdirSync(quickstarts)) {
+          if (!page.startsWith("quickstart-")) continue;
+          const model = /^```ts\n(\/\/ \S*\/pom\/[^\n]*\n[\s\S]*?)^```$/m.exec(
+            fs.readFileSync(path.join(quickstarts, page), "utf8")
+          );
+          expect(
+            model,
+            `${page} has no Page Object Model block`
+          ).not.toBeNull();
+          const file = `quickstart/${path.basename(page, ".md")}.ts`;
+          fs.writeFileSync(path.join(consumer, file), model![1]!);
+          models.push(file);
+        }
+        fs.writeFileSync(
+          path.join(consumer, "tsconfig.vite.json"),
+          JSON.stringify({
+            // create-vite's react-ts tsconfig.app.json, without jsx and types.
+            compilerOptions: {
+              target: "ES2022",
+              useDefineForClassFields: true,
+              lib: ["ES2022", "DOM", "DOM.Iterable"],
+              module: "ESNext",
+              skipLibCheck: true,
+              moduleResolution: "bundler",
+              allowImportingTsExtensions: true,
+              verbatimModuleSyntax: true,
+              moduleDetection: "force",
+              noEmit: true,
+              strict: true,
+              noUnusedLocals: true,
+              noUnusedParameters: true,
+              erasableSyntaxOnly: true,
+              noFallthroughCasesInSwitch: true,
+              noUncheckedSideEffectImports: true,
+              experimentalDecorators: true,
+            },
+            files: models,
+          })
+        );
+        await execAsync(
+          "pnpm",
+          ["exec", "tsc", "-p", "tsconfig.vite.json", "--pretty", "false"],
+          consumer
+        );
+      }
       fs.writeFileSync(
         path.join(consumer, "playwright.config.ts"),
         "export default { use: { testIdAttribute: 'data-config', actionTimeout: 17 } };\n"
