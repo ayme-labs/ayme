@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   changedLines,
   classify,
+  coverageOf,
   crap,
   functionsIn,
   mutateTargets,
@@ -84,4 +85,31 @@ test("mutateTargets turns runs of changed lines into ranges", () => {
     "src/a.ts:4-6",
     "src/a.ts:12-12",
   ]);
+});
+
+test("changedLines marks where a deletion-only hunk cut lines", () => {
+  const diff = `+++ b/packages/core/src/a.ts
+@@ -5,2 +4,0 @@ export function a() {
+-  if (x) return 1;
+-  if (y) return 2;
+`;
+  assert.deepEqual([...changedLines(diff).get("packages/core/src/a.ts")], [4]);
+});
+
+test("changedLines drops scenarios, setups, fixtures and __tests__", () => {
+  const diff = [
+    "packages/core/src/a.scenario.ts",
+    "packages/core/src/a.setup.ts",
+    "packages/core/src/fixtures/a.ts",
+    "packages/core/src/__tests__/a.ts",
+  ]
+    .map((file) => `+++ b/${file}\n@@ -0,0 +1 @@\n+x\n`)
+    .join("");
+  assert.equal(changedLines(diff).size, 0);
+});
+
+test("coverageOf finds a file restored from another checkout", () => {
+  const entry = { s: {} };
+  const coverage = { "/elsewhere/packages/core/src/a.ts": entry };
+  assert.equal(coverageOf(coverage, "packages/core/src/a.ts"), entry);
 });

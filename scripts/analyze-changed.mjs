@@ -25,7 +25,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const REPORT = path.join(ROOT, "reports", "analyze-changed.md");
 const SOURCE = /^(packages\/[^/]+)\/(src\/.+\.tsx?)$/;
 const NOT_PRODUCTION =
-  /(\.d\.ts|\.test\.tsx?|\.testSupport\.tsx?)$|\/(test-utils|testing)\/|\/testing\.ts$/;
+  /(\.d\.ts|\.(test|testSupport|scenario|setup)\.tsx?)$|\/(test-utils|testing|__tests__|fixtures)\/|\/testing\.ts$/;
 
 function git(...args) {
   return execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
@@ -59,6 +59,8 @@ export function changedLines(diff, untracked = []) {
     const start = Number(hunk[1]);
     const count = hunk[2] === undefined ? 1 : Number(hunk[2]);
     if (!changes.has(file)) changes.set(file, new Set());
+    // A hunk that only deletes lines touches the line it deleted after.
+    if (count === 0) changes.get(file).add(Math.max(start, 1));
     for (let n = start; n < start + count; n += 1) changes.get(file).add(n);
   }
   for (const [file, lineCount] of untracked) {
@@ -160,6 +162,17 @@ export function classify(fn, index, baseFunctions) {
   return fn.complexity > base.complexity ? "raised" : "existing";
 }
 
+/**
+ * A file's entry in a coverage report. Turbo can restore a report from another
+ * checkout, whose keys are that checkout's absolute paths.
+ */
+export function coverageOf(coverage, file) {
+  return (
+    coverage[path.join(ROOT, file)] ??
+    Object.entries(coverage).find(([key]) => key.endsWith(`/${file}`))?.[1]
+  );
+}
+
 function packageOf(dir) {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(ROOT, dir, "package.json"), "utf8")
@@ -248,9 +261,15 @@ function survivors(packageDir, files) {
   return found;
 }
 
-function render({ base, packages, crapRows, mutantRows, mutation }) {
+function render({ base, packages, skipped, crapRows, mutantRows, mutation }) {
   const out = [`# Change analysis against ${base}`, ""];
   out.push(`Packages: ${packages.join(", ") || "none"}`, "");
+  if (skipped.length > 0) {
+    out.push(
+      `Not analyzed, no \`test:crap\` script: ${skipped.join(", ")}`,
+      ""
+    );
+  }
   out.push(`## Touched functions above CRAP ${CRAP_CAP}`, "");
   if (crapRows.length === 0) out.push("None.");
   for (const row of crapRows) {
@@ -291,10 +310,14 @@ function main() {
   );
 
   const byPackage = new Map();
+  const skipped = new Set();
   for (const [file, lines] of changes) {
     const dir = SOURCE.exec(file)[1];
     const name = packageOf(dir);
-    if (!name) continue;
+    if (!name) {
+      skipped.add(dir);
+      continue;
+    }
     if (!byPackage.has(dir)) byPackage.set(dir, { name, files: new Map() });
     byPackage.get(dir).files.set(file, lines);
   }
@@ -322,7 +345,7 @@ function main() {
     );
     for (const [file, lines] of files) {
       crapRows.push(
-        ...crapFindings(file, lines, base, coverage[path.join(ROOT, file)])
+        ...crapFindings(file, lines, base, coverageOf(coverage, file))
       );
     }
     if (args.mutation) {
@@ -344,6 +367,7 @@ function main() {
   const report = render({
     base,
     packages,
+    skipped: [...skipped],
     crapRows: crapRows.sort((a, b) => b.crap - a.crap),
     mutantRows: mutantRows.sort(
       (a, b) => a.file.localeCompare(b.file) || a.line - b.line
