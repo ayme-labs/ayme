@@ -306,7 +306,7 @@ exports.configLoader = {
       if (supported) await expect(config).resolves.toBeDefined();
       else
         await expect(config).rejects.toThrow(
-          /supports Playwright 1\.62\.x only/
+          /supports Playwright 1\.62 to 1\.64/
         );
     } finally {
       rmSync(root, { recursive: true, force: true });

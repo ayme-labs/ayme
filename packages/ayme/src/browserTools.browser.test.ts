@@ -263,16 +263,9 @@ describe("Browser Tools in Chromium", () => {
     await call("click", { target: "#save1" });
     await call("click", { target: "e1-box" });
     expect(log).toEqual(expect.arrayContaining(["click save1", "click box"]));
-    await expect(call("click", { target: "s_root" })).resolves.toMatchObject({
-      content: [
-        {
-          text: expect.stringContaining(
-            'Cannot click ref "s_root": synthetic observation-only ref'
-          ),
-        },
-      ],
-      isError: true,
-    });
+    await expect(call("click", { target: "s_root" })).rejects.toThrow(
+      'Cannot click ref "s_root": synthetic observation-only ref'
+    );
   });
 
   it("fails a selector that matches several elements", async () => {
