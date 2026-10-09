@@ -65,7 +65,8 @@ export function openPageChannel(
           const parsed = PageWelcomeSchema.parse(welcome);
           imageFolder = parsed.imageFolder;
           onWelcome(parsed);
-          if (reopened && reported) return client.publishTools.mutate(reported);
+          if (reopened && reported && !sendAtOnce("publishTools", reported))
+            return client.publishTools.mutate(reported);
         })
         // The channel closed before the hello went out.
         .catch(() => {});
@@ -86,20 +87,47 @@ export function openPageChannel(
   const client = createTRPCClient<PageChannelRouter>({
     links: [wsLink({ client: socket })],
   });
+  // The tRPC client sends a request in a later task, to batch it with
+  // others. A document that started loading another may unload before that
+  // task runs, and what it said would be lost (#578). So an answer and the
+  // leaving report go out on the open socket at once, in tRPC's own message
+  // format, under an id no tRPC request uses; the client ignores the reply.
+  // The router has no transformer, so the input goes as it is. The tools go
+  // the same way, so a change a call made reaches the server before its
+  // answer.
+  const sendAtOnce = (
+    path: "publishTools" | "answer" | "leaving",
+    input: unknown
+  ) => {
+    const { connection } = socket;
+    if (connection?.state !== "open") return false;
+    connection.ws.send(
+      JSON.stringify({
+        id: path,
+        method: "mutation",
+        params: { path, input },
+      })
+    );
+    return true;
+  };
   return {
     get imageFolder() {
       return imageFolder;
     },
     async publishTools(tools) {
       reported = [...tools];
-      await client.publishTools.mutate(reported);
+      if (!sendAtOnce("publishTools", reported))
+        await client.publishTools.mutate(reported);
     },
     answerCalls(handler) {
       const subscription = client.calls.subscribe(undefined, {
         onData(data) {
           const call = ToolCallSchema.parse(data);
           void handler(call)
-            .then((outcome) => client.answer.mutate(outcome))
+            .then((outcome) => {
+              if (!sendAtOnce("answer", outcome))
+                return client.answer.mutate(outcome);
+            })
             // The channel closed before the answer went out.
             .catch(() => {});
         },
@@ -107,7 +135,7 @@ export function openPageChannel(
       return () => subscription.unsubscribe();
     },
     async reportLeaving(leaving) {
-      await client.leaving.mutate(leaving);
+      if (!sendAtOnce("leaving", leaving)) await client.leaving.mutate(leaving);
     },
     followProcessTools(listener) {
       processToolListeners.add(listener);
