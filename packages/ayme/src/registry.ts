@@ -92,6 +92,8 @@ let probeTimer: ReturnType<typeof setTimeout> | undefined;
 let observedWindow: Window | null = null;
 let probeLifetime = 0;
 let probeInFlight: Promise<void> | undefined;
+// Only read after runPomMemberProbe or stopObservingPage has set it.
+// Stryker disable next-line BooleanLiteral: equivalent, its first value is never read
 let probePending = false;
 const layoutEvents = [
   "scroll",

@@ -7,6 +7,7 @@ import type { PomManifest } from "./contracts";
 import { RuntimeStateError, ToolInputError } from "./errors";
 import { buildToolOptions } from "./goalLoopQuestions";
 import { getInteractionHistory } from "./pageState";
+import { shapeOf } from "./playwrightMcp.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
 import type { ToolInput, ToolResult } from "./toolTypes";
@@ -158,7 +159,23 @@ describe("generate_locator in Chromium", () => {
       .list()
       .find(({ name }) => name === "generate_locator");
     expect(info?.group).toBe("browser");
-    expect(info?.inputSchema.required).toEqual(["groups"]);
+    expect(shapeOf(info?.inputSchema)).toEqual({
+      type: "object",
+      properties: {
+        groups: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              targets: { type: "array", items: { type: "string" } },
+              within: { type: "string" },
+            },
+            required: ["targets"],
+          },
+        },
+      },
+      required: ["groups"],
+    });
     expect(info?.description).toMatch(/capture-scoped/);
   });
 
@@ -317,7 +334,9 @@ describe("generate_locator in Chromium", () => {
 
     expect(result.groups[0]).toEqual({
       within: dialog,
-      error: expect.stringMatching(/removed/),
+      error: expect.stringMatching(
+        /^Cannot scope locators to ref "e\d+": .*removed/
+      ),
     });
     expect(result.groups[1]).toEqual({
       within: account,
