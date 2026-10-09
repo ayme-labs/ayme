@@ -4,7 +4,8 @@
 2. Follow the quickstart for the project's framework, linked from
    [Install](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/install.md). Its framework page, linked from the
    [documentation index](https://github.com/ayme-labs/ayme/blob/main/docs/guide/README.md), covers what the quickstart leaves out,
-   such as server rendering and Angular's manual steps.
+   such as server rendering, Angular's manual steps and optional WebMCP
+   publication.
 3. Expose one of the project's existing actions on an existing POM, as
    [Page Object Models](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md) describes, in place of
    the quickstart's `ProjectsPage`.
