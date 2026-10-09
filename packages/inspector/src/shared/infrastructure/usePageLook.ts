@@ -233,7 +233,8 @@ const ownAttributes = new Set([
   "data-ayme-pick-unusable",
 ]);
 
-function isInspectorOwnMutation(record: MutationRecord) {
+/** Whether a page change is only the Inspector's own: no reason to look again. */
+export function isInspectorOwnMutation(record: MutationRecord) {
   return (
     (record.type === "attributes" &&
       ownAttributes.has(record.attributeName ?? "")) ||
