@@ -10,6 +10,14 @@ import {
 } from "./pomProgram";
 import { rewritePomImports } from "./rewritePomImports";
 
+const REGISTRATION_MODULE = "@ayme-dev/ayme/internal";
+
+/**
+ * The bare specifiers the transform adds to a Page Object module. Vite's
+ * dependency scan reads sources untransformed, so it must be told about them.
+ */
+export const INJECTED_IMPORTS = [REGISTRATION_MODULE];
+
 /** The source transform shared by Vite and the experimental Turbopack loader. */
 export function createPomTransform(options: PomCompilerOptions = {}) {
   return (
@@ -40,7 +48,7 @@ export function createPomTransform(options: PomCompilerOptions = {}) {
       .join("\n");
 
     return {
-      code: `import { registerCompiledPom } from '@ayme-dev/ayme/internal';\n${rewrittenCode}\n${registrations}\n`,
+      code: `import { registerCompiledPom } from '${REGISTRATION_MODULE}';\n${rewrittenCode}\n${registrations}\n`,
       map: null,
       dependencies,
     };
