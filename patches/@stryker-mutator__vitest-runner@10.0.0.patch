@@ -1,0 +1,27 @@
+diff --git a/dist/src/vitest-test-runner.js b/dist/src/vitest-test-runner.js
+index 84f1ca026503b8e92b7adc952ec6c6a401943656..3c4992d0533ba4495bb727207e5db1080adeba45 100644
+--- a/dist/src/vitest-test-runner.js
++++ b/dist/src/vitest-test-runner.js
+@@ -177,6 +177,22 @@ export class VitestTestRunner {
+             failure ||= testResult.status === TestStatus.Failed;
+             return testResult;
+         });
++        // A test file that failed to load (e.g. a mutant throws at module load)
++        // has no tests, so report it as a failed test instead of letting the
++        // mutant survive.
++        for (const file of this.ctx.state.getFiles()) {
++            if (file.result?.state === 'fail' && collectTestsFromSuite(file).length === 0) {
++                failure = true;
++                testResults.push({
++                    id: `${path.relative(process.cwd(), file.filepath).replace(/\\/g, '/')}#`,
++                    name: file.name,
++                    status: TestStatus.Failed,
++                    failureMessage: file.result.errors?.[0]?.message ?? 'StrykerJS: Test file failed to load',
++                    timeSpentMs: file.result.duration ?? 0,
++                    fileName: path.resolve(file.filepath),
++                });
++            }
++        }
+         if (!failure && this.ctx.state.errorsSet.size > 0) {
+             const errorText = [...this.ctx.state.errorsSet]
+                 .map(errorToString)

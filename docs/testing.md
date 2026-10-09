@@ -38,9 +38,12 @@ Act on the report like this:
 
 - A function the change added, or whose complexity it raised, with CRAP above 15: add tests or simplify it in this pull request.
 - A surviving mutant on a changed line: add a test that kills it, or give a one-line reason in the pull request, for example that the mutant is equivalent.
+- An equivalent mutant you exclude with `// Stryker disable next-line`: first move the equivalent sub-expression onto its own line, so the comment covers only that line. A comment on a longer line also hides mutants the tests already kill.
 - A touched function that was already above 15 is not yours to refactor: test the lines you changed, note its score in the pull request, and leave the refactor to its own issue.
 
 The `new`, `raised` and `existing` labels come from matching functions to `main` by name and order, so check a surprising one. Run analysis locally only through `analyze:changed`; runs over every file belong to CI.
+
+The exception is checking survivors from a CI run: scope Stryker to their files with `--mutate`, for example `STRYKER_LANE=full pnpm exec stryker run --mutate src/a.ts,src/b.ts` in the package. A full-lane run over the whole Inspector takes about nine hours. Stryker's Vitest runner is patched ([`patches/`](../patches)) so a mutant that breaks module load counts as killed rather than survived.
 
 ## Test-only code
 
