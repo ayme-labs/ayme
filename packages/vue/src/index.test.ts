@@ -521,14 +521,31 @@ describe("usePeek", () => {
 });
 
 describe("AymeProvider props", () => {
+  // Vue checks props before setup runs, so these tests never start a
+  // runtime: a mistyped option could otherwise claim the document's runtime
+  // owner and fail before releasing it.
+  const notStarted = new Error("prop tests start no runtime");
+  beforeEach(() => {
+    vi.mocked(createAyme).mockImplementation(() => {
+      throw notStarted;
+    });
+  });
+  afterEach(() => {
+    vi.mocked(createAyme).mockReset();
+  });
+
   function warningsMounting(props: Record<string, unknown>) {
     const warnings: string[] = [];
+    const errors: unknown[] = [];
     const app = createApp({ render: () => h(AymeProvider, props) });
-    app.config.warnHandler = (message, _instance, trace) =>
-      warnings.push(`${message}\n${trace}`);
-    app.config.errorHandler = () => {};
+    // Setup fails on the stub, so Vue also warns the provider renders nothing.
+    app.config.warnHandler = (message, _instance, trace) => {
+      if (/ prop[: ]/.test(message)) warnings.push(`${message}\n${trace}`);
+    };
+    app.config.errorHandler = (error) => errors.push(error);
     apps.push(app);
     app.mount(document.createElement("div"));
+    expect(errors).toEqual([notStarted]);
     return warnings;
   }
 
