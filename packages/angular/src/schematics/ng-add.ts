@@ -8,6 +8,7 @@ import {
   addDependency,
   addRootProvider,
   DependencyType,
+  ExistingBehavior,
   readWorkspace,
   updateWorkspace,
 } from "@schematics/angular/utility";
@@ -84,6 +85,7 @@ export function ngAdd(options: NgAddOptions): Rule {
       // has @playwright/test keeps its version.
       addDependency("@playwright/test", "~1.62.1", {
         type: DependencyType.Dev,
+        existing: ExistingBehavior.Skip,
       }),
     ];
 

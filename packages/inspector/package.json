@@ -40,7 +40,7 @@
     "react-dom": "^19.0.0"
   },
   "peerDependencies": {
-    "@playwright/test": ">=1.29 <1.63"
+    "@playwright/test": ">=1.29 <1.65"
   },
   "devDependencies": {
     "@ayme-dev/design-system": "workspace:*",
