@@ -103,6 +103,18 @@ describe("navigate_back, navigate_forward and reload, in Chromium", () => {
     expect(heading()).toBe("Settings");
   });
 
+  it("reloads through the browser Page", async () => {
+    await call("snapshot", {});
+    // A real reload would end this test document.
+    const reload = vi
+      .spyOn(requireAymeRuntimePage(), "reload")
+      .mockResolvedValue(null);
+    await expect(call("reload", {})).resolves.toMatchObject({
+      page_changed: false,
+    });
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
   it("goes back and forward over the app's entries with Change Records, staying in the document", async () => {
     open("Settings");
     await call("snapshot", {});

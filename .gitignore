@@ -11,6 +11,8 @@ node_modules/
 dist/
 .turbo/
 coverage/
+reports/
+.stryker-tmp/
 test-results/
 .vitest-attachments/
 apps/example-vue/goal-runs/

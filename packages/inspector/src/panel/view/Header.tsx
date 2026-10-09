@@ -22,6 +22,7 @@ import { AymeMark } from "../../shared";
 import type { Layout, ThemePreference } from "../domain/preferences";
 
 const iconButton =
+  // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
   "inline-grid size-7 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50";
 
 /**

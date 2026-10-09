@@ -469,6 +469,7 @@ function RunResult({
 }
 
 // An Interaction's operation is the method it called; the rest show a chevron.
+// Stryker disable next-line ObjectLiteral: a lookup table of the icons Interactions show.
 const interactionIcons: Record<string, typeof TypeIcon> = {
   click: MousePointer2Icon,
   dblclick: MousePointer2Icon,

@@ -4,6 +4,12 @@
   "tasks": {
     "test": {
       "dependsOn": ["build", "^build"]
+    },
+    "test:crap": {
+      "dependsOn": ["build", "^build"]
+    },
+    "test:mutation": {
+      "dependsOn": ["build", "^build"]
     }
   }
 }

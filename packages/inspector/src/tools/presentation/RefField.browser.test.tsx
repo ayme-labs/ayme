@@ -71,7 +71,7 @@ const { roots } = buildStructureTree(
 /** A fill-like tool: it can use text fields only. */
 const textFieldsOnly = (node: { role: string }) => node.role === "textbox";
 
-function renderCard(source: Partial<RefSource> = {}) {
+function renderCard(source: Partial<RefSource> | null = {}) {
   const onRun = vi.fn();
   unmounts.push(
     renderPart(
@@ -79,7 +79,7 @@ function renderCard(source: Partial<RefSource> = {}) {
         tool={click}
         available
         head={false}
-        refSource={{ roots, ...source }}
+        refSource={source ? { roots, ...source } : undefined}
         runs={[]}
         onRun={onRun}
         onShowRun={() => {}}
@@ -142,6 +142,15 @@ describe("choosing from the structure", () => {
     await expect
       .poll(() => nodeTexts(ref.nodes))
       .toEqual(["e1main", 'e6list"Items"', "e8listitem", 'e9button"Archive"']);
+  });
+
+  it("offers no element before the page has been looked at", async () => {
+    const { ref } = renderCard(null);
+
+    await ref.open();
+
+    expect(await ref.nodes.count()).toBe(0);
+    expect(await ref.tree.textContent()).toBe("No element matches.");
   });
 
   it("says so when nothing matches", async () => {

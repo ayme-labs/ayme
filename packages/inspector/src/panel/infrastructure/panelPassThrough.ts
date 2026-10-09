@@ -67,6 +67,7 @@ export async function passThroughWhileCovered<T>(
 // action point: the centre of its first client rect inside the viewport, as
 // Playwright Lite picks it. An element of the panel itself is never under it:
 // a page that dogfoods the Inspector drives the panel through these actions.
+// Stryker disable all: evaluateAll serializes this function into the page, where Stryker's instrumented copy can't run.
 function isUnderInspector(elements: Element[], hostSelector: string) {
   return elements.some((element) => {
     const rootNode = element.getRootNode() as Partial<ShadowRoot>;
@@ -90,6 +91,7 @@ function isUnderInspector(elements: Element[], hostSelector: string) {
     return false;
   });
 }
+// Stryker restore all
 
 function hold() {
   holds += 1;

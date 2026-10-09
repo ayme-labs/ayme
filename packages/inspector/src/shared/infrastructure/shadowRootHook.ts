@@ -11,6 +11,7 @@
  * hidden from locator engines and the page state, which never read this key,
  * not hidden from the page's own scripts.
  */
+// Stryker disable next-line StringLiteral: the mount and the testing entry both import this key, so any value works.
 export const INSPECTOR_SHADOW_ROOT_KEY = "@ayme-dev/inspector/shadow-root";
 
 type HookedHost = Element & { [key: symbol]: ShadowRoot | undefined };

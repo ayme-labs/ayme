@@ -27,6 +27,20 @@
       "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"],
       "outputs": []
     },
+    "test:crap": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/crap/**"],
+      "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH"]
+    },
+    "test:mutation": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "passThroughEnv": [
+        "PLAYWRIGHT_BROWSERS_PATH",
+        "STRYKER_LANE",
+        "STRYKER_SHARD"
+      ]
+    },
     "test:e2e": {
       "dependsOn": ["build", "^build"],
       "passThroughEnv": ["PLAYWRIGHT_BROWSERS_PATH", "AYME_E2E_PORT_*"],

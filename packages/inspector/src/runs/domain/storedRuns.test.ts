@@ -1,7 +1,13 @@
 import { expect, it } from "vitest";
 
 import type { Run } from "./run";
-import { decodeRuns, encodeRuns, keptRuns, reloadedError } from "./storedRuns";
+import {
+  decodeRuns,
+  encodeRuns,
+  keptRuns,
+  reloadedError,
+  runsKey,
+} from "./storedRuns";
 
 // Unit tests: which runs the Inspector still shows after a reload.
 
@@ -134,6 +140,14 @@ it("shows a run that was still running as failed with the reload, after an unkno
     before({ ...running, status: "failed", error: reloadedError })
   );
   expect(interrupted).not.toHaveProperty("durationMs");
+});
+
+it("says the page reloaded as the error of a run cut short by a reload", () => {
+  expect(reloadedError).toMatch(/page reloaded/);
+});
+
+it("keeps its runs under its own key in the tab's storage", () => {
+  expect(runsKey).toBe("ayme-inspector:runs");
 });
 
 it("shows nothing when nothing is stored yet", () => {

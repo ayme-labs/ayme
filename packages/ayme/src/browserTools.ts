@@ -10,6 +10,7 @@ import {
   registerElementTool,
   requireCurrentDocument,
   resolveElementTarget,
+  TARGET_SCHEMA,
   validatedToolInput,
   type PublishedElementTool,
   type ElementToolDefinition,
@@ -27,12 +28,6 @@ import { requireAymeRuntimePage } from "./registry";
 import { screenshotTool } from "./screenshotTool";
 
 // --- Input schemas ---
-
-const TARGET: JsonSchema = {
-  type: "string",
-  description:
-    "A Structural Ref from the page snapshot, or a selector that matches exactly one element.",
-};
 
 const BUTTON: JsonSchema = {
   type: "string",
@@ -56,7 +51,7 @@ function elementInput(
 ): JsonSchema {
   return {
     type: "object",
-    properties: { target: TARGET, ...properties },
+    properties: { target: TARGET_SCHEMA, ...properties },
     required: ["target", ...required],
     additionalProperties: false,
   };

@@ -15,6 +15,9 @@ export async function probePomRootState(
   try {
     if ((await locator.count()) !== 1 || !(await locator.isVisible()))
       return { present: false, available: false };
+    // The callback is serialized into the page, where Stryker's
+    // instrumentation does not exist, so it is not mutated.
+    // Stryker disable all
     return await locator.evaluate((element) => {
       const absent = { present: false, available: false };
       type Rect = { left: number; right: number; top: number; bottom: number };
@@ -496,6 +499,7 @@ export async function probePomRootState(
       }
       return { present, available: false };
     });
+    // Stryker restore all
   } catch (error) {
     // A broken callback (e.g. a bundler helper such as `__name` that does not
     // exist in the page) must fail loudly, not report every root as absent.

@@ -195,6 +195,85 @@ describe("formRows", () => {
   });
 });
 
+describe("formRows without the controls' states", () => {
+  it("groups radios by their radiogroup, named by it", () => {
+    expect(
+      rowsOf(
+        forest(
+          node(
+            { ref: "e2", role: "radiogroup", name: "Size" },
+            node({ ref: "e3", role: "radio", name: "Small" }),
+            node({
+              ref: "e4",
+              role: "radio",
+              name: "Large",
+              state: { checked: true },
+            })
+          )
+        )
+      )
+    ).toEqual([
+      {
+        key: "radio:e2",
+        type: "radio",
+        name: "Size",
+        value: "e4",
+        preview: "e2",
+        options: [
+          { label: "Small", value: "e3" },
+          { label: "Large", value: "e4" },
+        ],
+      },
+    ]);
+  });
+
+  it("gives a radio outside any group a row of its own", () => {
+    expect(
+      rowsOf(forest(node({ ref: "e2", role: "radio", name: "Agree" })))
+    ).toEqual([
+      {
+        key: "radio:e2",
+        type: "radio",
+        name: "Agree",
+        value: "",
+        preview: "e2",
+        options: [{ label: "Agree", value: "e2" }],
+      },
+    ]);
+  });
+
+  it("offers a combobox's options only, and shows its text when none is selected", () => {
+    expect(
+      rowsOf(
+        forest(
+          node(
+            { ref: "e2", role: "combobox", name: "Color" },
+            node({ ref: "e3", role: "option", name: "Red" }),
+            "Teal"
+          )
+        )
+      )
+    ).toEqual([
+      {
+        key: "e2",
+        type: "combobox",
+        name: "Color",
+        value: "Teal",
+        preview: "e2",
+        options: [{ label: "Red", value: "Red" }],
+      },
+    ]);
+  });
+
+  it("gives a combobox without options none", () => {
+    expect(
+      rowsOf(forest(node({ ref: "e2", role: "combobox", name: "City" })))
+    ).toEqual([
+      { key: "e2", type: "combobox", name: "City", value: "", preview: "e2" },
+    ]);
+  });
+});
+
 describe("changedFields", () => {
   const rows = rowsOf(pageState);
 
