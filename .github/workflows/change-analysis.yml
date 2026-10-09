@@ -10,8 +10,10 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+    # An edit to this workflow runs it too, so the job is tested before it merges.
     paths:
       - packages/*/src/**
+      - .github/workflows/change-analysis.yml
   workflow_dispatch:
 
 concurrency:
