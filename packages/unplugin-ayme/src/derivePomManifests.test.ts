@@ -636,6 +636,27 @@ describe("derivePomManifests", () => {
       ]);
     });
 
+    it("leaves out an empty tuple's prefixItems, and requires a rest parameter whose tuple has required elements", () => {
+      expect(parametersOf("tupleEdges")).toEqual([
+        {
+          name: "none",
+          optional: false,
+          schema: { type: "array", maxItems: 0 },
+        },
+        {
+          name: "args",
+          optional: false,
+          schema: {
+            type: "array",
+            prefixItems: [{ type: "string" }, { type: "number" }],
+            minItems: 1,
+            maxItems: 2,
+          },
+          rest: true,
+        },
+      ]);
+    });
+
     it("schemas a Record by its value type", () => {
       expect(parametersOf("record")).toEqual([
         {

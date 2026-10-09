@@ -52,7 +52,7 @@ The tool's input schema comes from the method's signature: an object with one pr
 | `Record<string, T>`, or an index signature `[key: string]: T` | `{ type: "object", additionalProperties }`, beside any declared properties                |
 | Any other union, such as `string \| boolean`                  | `{ anyOf }`, with `null` as `{ type: "null" }`                                            |
 
-`undefined` in a union makes the parameter optional; `null` does not. A rest parameter, `...refs: string[]`, is an optional list, and the tool's description says to pass its arguments as one. A recursive type is described down to its first repeat, which takes any array or object.
+`undefined` in a union makes the parameter optional; `null` does not. A rest parameter, `...refs: string[]`, is a list, optional unless its tuple type has required elements, and the tool's description says to pass its arguments as one. A recursive type is described down to its first repeat, which takes any array or object.
 
 Functions, class instances such as `Date`, object types with methods or getters, `unknown`, `any` and open generics have no schema. An action taking one fails the build naming the parameter, and the build lists an unmarked method taking one; see the [build plugin's report](../reference/build-plugin.md#report).
 

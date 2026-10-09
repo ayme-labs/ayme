@@ -654,16 +654,17 @@ function toolParameter(
 
   const type = checker.getTypeAtLocation(parameter);
   const rest = parameter.dotDotDotToken !== undefined;
-  const optional =
-    rest ||
-    parameter.questionToken !== undefined ||
-    parameter.initializer !== undefined ||
-    typeIncludesUndefined(type);
   const schema = schemaForType(
     { checker, className, methodName, enclosing: new Set() },
     type,
     parameter.name.text
   );
+  const optional =
+    // A rest parameter can be left out when it takes no arguments.
+    (rest && !schema.minItems) ||
+    parameter.questionToken !== undefined ||
+    parameter.initializer !== undefined ||
+    typeIncludesUndefined(type);
   const defaultValue =
     parameter.initializer && literalDefault(parameter.initializer);
   return {
@@ -864,7 +865,7 @@ function tupleSchema(
   }
   return {
     type: "array",
-    prefixItems,
+    ...(prefixItems.length > 0 ? { prefixItems } : {}),
     ...(minItems > 0 ? { minItems } : {}),
     ...(items ? { items } : { maxItems: prefixItems.length }),
   };

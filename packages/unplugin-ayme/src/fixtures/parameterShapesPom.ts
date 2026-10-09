@@ -28,6 +28,13 @@ export class ParameterShapesPom {
     return [group, refs];
   }
 
+  @ayme.action({
+    description: "Take an empty tuple and a tuple rest parameter.",
+  })
+  tupleEdges(none: [], ...args: [name: string, count?: number]) {
+    return [none, args];
+  }
+
   @ayme.action({ description: "Take a Record." })
   record(values: Readonly<Record<string, string | number>>) {
     return values;

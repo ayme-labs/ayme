@@ -98,7 +98,11 @@ function fieldOf(name: string, schema: Schema, optional: boolean): Field {
     case "boolean":
       return { ...base, kind: "boolean", typeLabel: "boolean" };
     case "array": {
-      const item = schema.items && fieldOf(`${name} item`, schema.items, false);
+      // A tuple's fixed elements have their own types, so it is edited as JSON.
+      const item =
+        !schema.prefixItems &&
+        schema.items &&
+        fieldOf(`${name} item`, schema.items, false);
       if (item && ["text", "number", "choice"].includes(item.kind))
         return {
           ...base,
