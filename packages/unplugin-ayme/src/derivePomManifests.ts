@@ -84,10 +84,11 @@ export function derivePomManifestsFromProgram(
       throw new Error("A Page Object Model needs a class name.");
 
     const className = declaration.name.text;
-    const members = pomMembers(checker, declaration, components);
-    const tools = toolsCompiledWith(program, () =>
-      toolsForClass(checker, declaration, components)
-    );
+    // Members first: they derive the tools of the Page Object Children.
+    const { members, tools } = toolsCompiledWith(program, () => ({
+      members: pomMembers(checker, declaration, components),
+      tools: toolsForClass(checker, declaration, components),
+    }));
 
     const manifest: PomManifest = {
       className,
