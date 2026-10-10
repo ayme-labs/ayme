@@ -103,27 +103,7 @@ that comes and goes or a method that throws. The tool stays listed; while the
 predicate fails, it is flagged unavailable, with the string as its reason when
 it returned one, and a call is refused with that reason before anything runs.
 [Action availability](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#action-availability)
-has the signature and the rules.
-
-```ts
-const canRemove = async (self: SettingsPanel) =>
-  (await self.removeButton.isVisible()) ||
-  "This dashboard is built in or the last of its type";
-
-@ayme
-class SettingsPanel {
-  readonly removeButton = this.root.getByTestId("removeButton");
-  constructor(readonly root: Locator) {}
-
-  @ayme.action({
-    description: "Remove this dashboard. Needs a removable dashboard.",
-    available: canRemove,
-  })
-  async remove() {
-    await this.removeButton.click();
-  }
-}
-```
+has the signature, the example and the rules.
 
 The reason states the fact ("No item is selected"); the description states the
 condition ("Removes the selected item. Needs a selection."). The predicate runs
