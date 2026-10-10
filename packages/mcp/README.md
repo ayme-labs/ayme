@@ -65,14 +65,26 @@ its result. The server's own tools stay in the server: the page never publishes
 them through WebMCP.
 
 Page Object Tools appear and disappear as MCP tools while the page registers
-and unregisters its Page Objects, and the server sends
-`notifications/tools/list_changed` on every change. When the page's tools
-changed since the agent's previous call, the result ends with a separate text
-item such as `The connected tools changed since your previous call. Appeared:
-Basket.readHeading. ayme_list_tools lists the current tools; ayme_call runs any
-of them.` For agents that never re-read the tool list, `ayme_list_tools` lists
-the page's current tools with their input schemas and `ayme_call` runs any of
-them by name.
+and unregisters its Page Objects and while their Page Objects come and go on
+the page, and the server sends `notifications/tools/list_changed` on every such
+change. Every tool of a Page Object on the page is listed, whether or not its
+action can run now; the MCP tool list changes only when tools appear or
+disappear, never when one becomes available or unavailable, so a cached list
+does not churn. Calling an unavailable tool is refused before anything runs,
+with an error result that carries its reason, such as `RuntimeStateError:
+Panel.remove is unavailable: No item is selected.`
+
+When the page's tools changed since the agent's previous call, the result ends
+with a separate text item such as `The connected tools changed since your
+previous call. Appeared: Basket.readHeading. Became unavailable: Panel.remove
+(No item is selected). ayme_list_tools lists the current tools; ayme_call runs
+any of them.` It lists the tools that appeared or disappeared and the ones that
+became available or unavailable, with the reason in parentheses when there is
+one; a tool that appears unavailable reads `Appeared: Panel.remove
+(unavailable: No item is selected).` For agents that never re-read the tool
+list, `ayme_list_tools` lists the page's current tools with their input
+schemas, whether each is available and, when it is not, why, and `ayme_call`
+runs any of them by name.
 
 ## App Processes
 

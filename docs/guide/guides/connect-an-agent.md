@@ -91,9 +91,9 @@ Once a tab is paired, the page's tools are the agent's MCP tools, under the name
 
 A Peek's values reach the agent, and its model provider, unchanged, so return only what you want it to see; see [What a Peek exposes](../reference/ayme.md#what-a-peek-exposes).
 
-Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared.
+Page Object Tools appear and disappear as Page Objects come and go, Peek Tools as Peeks do, and the server tells the agent each time the list changes. A tool whose action cannot run now, because a click would not reach its Page Object Root or its [availability predicate](page-object-models.md#action-availability) says so, stays listed, and calling it is refused with its reason before anything runs. When the page's tools changed since the agent's previous call, the result also says which ones appeared or disappeared, and which became available or unavailable, with the reason.
 
-Some agents read the tool list once, when they start, so they never see the page's tools, which arrive later. For them, `ayme_list_tools` lists the page's current tools with their input schemas, and `ayme_call` runs any of them by name. A failed tool call answers with an error result. While no tab is paired, every page tool and fallback tool answers that the agent should call `ayme_connect` and open the link.
+Some agents read the tool list once, when they start, so they never see the page's tools, which arrive later. For them, `ayme_list_tools` lists the page's current tools with their input schemas, whether each is available and why not, and `ayme_call` runs any of them by name. A failed tool call answers with an error result. While no tab is paired, every page tool and fallback tool answers that the agent should call `ayme_connect` and open the link.
 
 ## Reloads, navigation and closed tabs
 
