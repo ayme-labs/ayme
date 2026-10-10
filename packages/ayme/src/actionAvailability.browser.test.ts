@@ -292,6 +292,13 @@ describe("Action Availability", () => {
     expect(published("Shell.blocked.close")).toMatchObject({ available: true });
 
     document.querySelector<HTMLDialogElement>("#modal")!.showModal();
+    // Until the agent's page state shows the modal, nothing names it: the
+    // reason never falls back to an element around it.
+    await probeRegisteredPomMembers();
+    expect(published("Shell.blocked.close")).toMatchObject({
+      available: false,
+      reason: "a click would not reach it",
+    });
     const after = await agent.getPageState();
     const modal = after.text.match(/(e\d+) dialog "Archive item"/)?.[1];
     expect(modal).toBeDefined();
