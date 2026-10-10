@@ -461,8 +461,12 @@ class PageStateSession {
     announceRegisteredPomChange();
   }
 
-  /** Each element's one ref in the latest recorded observation, built on first use. */
-  private latestRefsByElement: ReadonlyMap<Element, AriaRef> | undefined;
+  /**
+   * Each element's one ref in the latest recorded observation, built on
+   * first use; an element the page state gave several refs maps to undefined.
+   */
+  private latestRefsByElement:
+    ReadonlyMap<Element, AriaRef | undefined> | undefined;
 
   /**
    * The ref the agent's latest page state gave `element`, when it gave it
@@ -474,11 +478,7 @@ class PageStateSession {
       const refs = new Map<Element, AriaRef | undefined>();
       for (const [ref, candidate] of this.latestElements.elementsByRef)
         refs.set(candidate, refs.has(candidate) ? undefined : ref);
-      this.latestRefsByElement = new Map(
-        [...refs].filter(
-          (entry): entry is [Element, AriaRef] => entry[1] !== undefined
-        )
-      );
+      this.latestRefsByElement = refs;
     }
     return this.latestRefsByElement.get(element);
   }

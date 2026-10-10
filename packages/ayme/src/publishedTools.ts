@@ -64,20 +64,23 @@ type ResolvedTool = {
   reason?: string;
 };
 
+/** What every tool but a Page Object Tool is: on the page, and callable. */
+const always = (): Pick<ResolvedTool, "present" | "available"> => ({
+  present: true,
+  available: true,
+});
+
 /**
  * Every registered tool but the Peek Tools, by name, in publication order.
  * Throws when two of them would share a name.
  */
-/** What every tool but a Page Object Tool is: on the page, and callable. */
-const always = { present: true, available: true };
-
 function resolveRegisteredTools(): Map<string, ResolvedTool> {
   const pursueGoal = getPursueGoalTool();
   const pomTools = listRegisteredPomTools();
   const tools = new Map<string, ResolvedTool>([
     [
       getPageContextTool.name,
-      { tool: getPageContextTool, group: "agent", ...always },
+      { tool: getPageContextTool, group: "agent", ...always() },
     ],
   ]);
   const takenElsewhere = new Set([
@@ -99,12 +102,16 @@ function resolveRegisteredTools(): Map<string, ResolvedTool> {
       throw new RuntimeStateError(
         `Cannot publish the tool "${tool.name}": another published tool already uses that name.`
       );
-    tools.set(tool.name, { tool, group, ...always });
+    tools.set(tool.name, { tool, group, ...always() });
   }
   for (const { tool, ...availability } of pomTools)
     tools.set(tool.name, { tool, group: "pageObject", ...availability });
   if (pursueGoal)
-    tools.set(pursueGoal.name, { tool: pursueGoal, group: "agent", ...always });
+    tools.set(pursueGoal.name, {
+      tool: pursueGoal,
+      group: "agent",
+      ...always(),
+    });
   return tools;
 }
 
@@ -128,7 +135,7 @@ export function resolveTools({
   if (peeks)
     for (const tool of listPeekTools())
       if (!tools.has(tool.name))
-        tools.set(tool.name, { tool, group: "peek", ...always });
+        tools.set(tool.name, { tool, group: "peek", ...always() });
       else if (!warnedClashes.has(tool)) {
         warnedClashes.add(tool);
         console.warn(
@@ -160,7 +167,7 @@ export function listTools(options: { peeks: boolean }): readonly ToolInfo[] {
  */
 export function listPeekToolInfo(): readonly ToolInfo[] {
   return toInfo(
-    listPeekTools().map((tool) => ({ tool, group: "peek", ...always }))
+    listPeekTools().map((tool) => ({ tool, group: "peek", ...always() }))
   );
 }
 

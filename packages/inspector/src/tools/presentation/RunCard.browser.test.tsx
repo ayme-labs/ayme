@@ -104,11 +104,14 @@ describe("Run", () => {
     await card.runButton.click();
 
     expect(onRun).toHaveBeenCalledExactlyOnceWith({});
+    expect(await card.root.getAttribute("data-available")).toBe("true");
   });
 
   it("opens the typed form first when an argument is required", async () => {
     const { card, onRun } = renderCard({ tool: addItem });
 
+    await expect.poll(() => card.runButton.count()).toBe(1);
+    expect(await card.field("text").count()).toBe(0);
     await card.runButton.click();
 
     await expect.poll(() => card.field("text").count()).toBe(1);
@@ -120,13 +123,16 @@ describe("Run", () => {
     expect(onRun).toHaveBeenCalledExactlyOnceWith({ text: "Milk" });
   });
 
-  it("is not there on an action whose Page Object isn't on the page", async () => {
+  it("is not there, with its form, on an action whose Page Object isn't on the page", async () => {
     const { card } = renderCard({
-      tool: { ...clearList, present: false, available: false },
+      tool: { ...addItem, present: false, available: false },
     });
 
     await expect.poll(() => card.root.count()).toBe(1);
+    expect(await card.root.getAttribute("data-available")).toBe("false");
     expect(await card.runButton.count()).toBe(0);
+    expect(await card.argumentsToggle.count()).toBe(0);
+    expect(await card.field("text").count()).toBe(0);
     expect(await card.reason.count()).toBe(0);
   });
 
@@ -136,12 +142,23 @@ describe("Run", () => {
     });
 
     await expect.poll(() => card.reason.textContent()).toBe("Nothing to clear");
+    expect(await card.reason.count()).toBe(1);
     expect(await card.root.getAttribute("data-available")).toBe("false");
     expect(await card.runButton.isDisabled()).toBe(false);
 
     await card.runButton.click();
 
     expect(onRun).toHaveBeenCalledExactlyOnceWith({});
+  });
+
+  it("says why on a card without a head too", async () => {
+    const { card } = renderCard({
+      tool: { ...addItem, available: false, reason: "Nothing to add" },
+      head: false,
+    });
+
+    await expect.poll(() => card.reason.textContent()).toBe("Nothing to add");
+    expect(await card.reason.count()).toBe(1);
   });
 
   it("sits at the foot of an open form on a card without a head", async () => {

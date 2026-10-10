@@ -553,10 +553,10 @@ function combinedAvailability(
   states: readonly PomToolAvailability[]
 ): PomToolAvailability {
   const available = states.some((state) => state.available);
-  const present = states.filter((state) => state.present);
-  if (available || present.length === 0)
-    return { present: present.length > 0, available };
-  return { present: true, available: false, reason: present[0]?.reason };
+  const [first] = states.filter((state) => state.present);
+  if (available || first === undefined)
+    return { present: first !== undefined, available };
+  return { present: true, available: false, reason: first.reason };
 }
 
 /**
@@ -990,32 +990,24 @@ async function probePomMembers(registration: RegisteredPom) {
     ])
   );
   const rootObservations: ObservedPomRoot[] = [];
-  const actionObservations: ActionObservation[] = [];
   const rootMember = registration.manifest.members.find(
     (member) => member.kind === "locator" && member.memberName === "root"
   );
-  let pagePresent = rootMember === undefined;
-  if (rootMember) {
-    try {
-      const root = await readMember(registration.instance, rootMember);
-      if (isLocator(root)) {
-        await observeRoot(root, "", rootObservations);
-        pagePresent = rootObservations.some(
-          (observation) => observation.path === "" && observation.present
-        );
-      }
-    } catch {
-      // A missing or invalid declared root never falls back to rootless activation.
-    }
-  }
-  if (pagePresent)
-    actionObservations.push(
-      ...(await observeActions(
+  // A rootless Page Object is on every page.
+  const pagePresent = rootMember
+    ? await observeDeclaredRoot(
+        registration.instance,
+        rootMember,
+        rootObservations
+      )
+    : true;
+  const actionObservations = pagePresent
+    ? await observeActions(
         registration.instance,
         registration.manifest.tools,
         ""
-      ))
-    );
+      )
+    : [];
   const memberObservations = await probeMembers(
     registration.instance,
     registration.manifest.members,
@@ -1025,6 +1017,26 @@ async function probePomMembers(registration: RegisteredPom) {
     actionObservations
   );
   return { memberObservations, rootObservations, actionObservations };
+}
+
+/**
+ * Observes the page's declared root into `observations` and says whether it
+ * is present. A missing or invalid declared root never falls back to
+ * rootless activation.
+ */
+async function observeDeclaredRoot(
+  instance: object,
+  rootMember: PomMemberManifest,
+  observations: ObservedPomRoot[]
+): Promise<boolean> {
+  try {
+    const root = await readMember(instance, rootMember);
+    if (!isLocator(root)) return false;
+    await observeRoot(root, "", observations);
+  } catch {
+    return false;
+  }
+  return observations.some((observation) => observation.present);
 }
 
 async function observeRoot(

@@ -101,7 +101,11 @@ it("announces a changed tool list on presence only, and lists an unavailable too
 it("notes the tools that became available or unavailable, and ayme_list_tools carries each tool's availability and reason", async () => {
   const agent = await connectAgent();
   await agent.publish([tool("Panel.remove"), tool("Panel.copy")]);
-  await agent.call("ayme_noop");
+  // Before its first call the agent has seen no tools.
+  const [, appeared] = await agent.call("ayme_noop");
+  expect(appeared).toBe(
+    "The connected tools changed since your previous call. Appeared: Panel.remove, Panel.copy. ayme_list_tools lists the current tools; ayme_call runs any of them."
+  );
 
   await agent.publish([
     tool("Panel.remove", { available: false, reason: "No item is selected" }),

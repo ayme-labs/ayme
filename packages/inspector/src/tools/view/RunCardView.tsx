@@ -128,8 +128,9 @@ export function RunCardView({
       </span>
     </>
   );
-  // Why the session would refuse a call, under the name.
-  const reasonLine = present && !available && reason && (
+  // Why the session would refuse a call, under the name; the tool has one
+  // only while it is present and unavailable.
+  const reasonLine = reason && (
     <p
       role="note"
       aria-label="Why it is unavailable"
@@ -145,10 +146,7 @@ export function RunCardView({
       aria-label={tool.action}
       data-present={present}
       data-available={present && available}
-      className={cn(
-        "mb-2 flex flex-col gap-2.25 rounded-lg border bg-card px-3 py-2.5",
-        !(present && available) && "opacity-60"
-      )}
+      className="mb-2 flex flex-col gap-2.25 rounded-lg border bg-card px-3 py-2.5 data-[available=false]:opacity-60"
       onSubmit={submit}
     >
       {head && (
