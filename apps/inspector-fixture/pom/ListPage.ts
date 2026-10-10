@@ -42,7 +42,13 @@ export class ListPage {
     return this.items.count();
   }
 
-  @ayme.action({ description: "Remove every item from the list." })
+  // Available only while the list has items (ADR-0035): on an empty list
+  // the tool is listed, and a call is refused with this reason.
+  @ayme.action({
+    description: "Remove every item from the list.",
+    available: async (self: ListPage) =>
+      (await self.items.count()) > 0 || "Nothing to clear",
+  })
   async clear() {
     await this.clearButton.click();
   }

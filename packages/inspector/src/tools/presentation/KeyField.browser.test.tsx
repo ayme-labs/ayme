@@ -21,6 +21,7 @@ const pressKey: RunnableTool = {
   name: "press_key",
   action: "press_key",
   description: "Press a key on the element that has focus.",
+  present: true,
   available: true,
   keyField: "key",
   argumentsSchema: {
@@ -36,7 +37,7 @@ function renderCard() {
     renderPart(
       <RunCard
         tool={pressKey}
-        available
+        present
         head={false}
         runs={[]}
         onRun={onRun}

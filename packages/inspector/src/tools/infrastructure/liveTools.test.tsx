@@ -101,6 +101,20 @@ it("gives the live tools and the publication status", () => {
   });
 });
 
+it("keeps a listed tool that is unavailable, with its reason", () => {
+  const clear: ToolInfo = {
+    ...addItem,
+    name: "ListPage.clear",
+    available: false,
+    reason: "Nothing to clear",
+  };
+  publish([getPageContext, clear]);
+
+  const seen = renderReader();
+
+  expect(seen.at(-1)?.live).toEqual([getPageContext, clear]);
+});
+
 it("gives the App Processes' tools beside the page's, and follows them", () => {
   publish([getPageContext]);
   const seen = renderReader();

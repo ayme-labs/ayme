@@ -57,7 +57,7 @@ const markElement = {
 
 it("runs a Page Object action with its parameters", () => {
   const tools = listRunnableTools([listPage], new Map(), [
-    { ...addItem, inputSchema: addItem.inputSchema },
+    { ...addItem, inputSchema: addItem.inputSchema, available: true },
   ]);
 
   expect(tools.get("ListPage.addItem")).toEqual({
@@ -69,6 +69,7 @@ it("runs a Page Object action with its parameters", () => {
       properties: { text: { type: "string" } },
       required: ["text"],
     },
+    present: true,
     available: true,
   });
 });
@@ -84,24 +85,49 @@ it("runs a collection action on an item, with the action's own arguments", () =>
     action: "rename",
     collection: "ListPage.items[]",
     argumentsSchema: { properties: { text: { type: "string" } } },
+    present: true,
     available: true,
   });
 });
 
-it("can't run an action that isn't live", () => {
+it("can't run an action whose Page Object isn't on the page", () => {
   const tools = listRunnableTools([listPage], new Map(), []);
 
-  expect(tools.get("ListPage.addItem")?.available).toBe(false);
+  expect(tools.get("ListPage.addItem")).toMatchObject({
+    present: false,
+    available: false,
+  });
+  expect(tools.get("ListPage.addItem")?.reason).toBeUndefined();
+});
+
+it("keeps a present action that is unavailable, with the reason the session gives", () => {
+  const tools = listRunnableTools([listPage], new Map(), [
+    {
+      ...addItem,
+      inputSchema: addItem.inputSchema,
+      available: false,
+      reason: "Nothing to add",
+    },
+  ]);
+
+  expect(tools.get("ListPage.addItem")).toMatchObject({
+    present: true,
+    available: false,
+    reason: "Nothing to add",
+  });
 });
 
 it("runs every other live tool with its schema, and names its ref argument", () => {
-  const tools = listRunnableTools([listPage], new Map(), [markElement]);
+  const tools = listRunnableTools([listPage], new Map(), [
+    { ...markElement, available: true },
+  ]);
 
   expect(tools.get("mark_element")).toEqual({
     name: "mark_element",
     action: "mark_element",
     description: "Mark one element on the page.",
     argumentsSchema: markElement.inputSchema,
+    present: true,
     available: true,
     refField: "ref",
   });
@@ -116,6 +142,7 @@ it("names a Browser Tool's key argument, and no other tool's", () => {
       properties: { key: { type: "string" as const } },
     },
     group,
+    available: true,
   });
   const tools = listRunnableTools([], new Map(), [
     keyed("press_key", "browser"),
@@ -135,6 +162,7 @@ it("gives the generate_locator Browser Tool its own form, and no other tool", ()
       properties: { groups: { type: "array" as const } },
     },
     group,
+    available: true,
   });
   const tools = listRunnableTools([], new Map(), [
     grouped("generate_locator", "browser"),

@@ -64,11 +64,14 @@ export function useInspectorRuntime({
   const { projected, targetsByRef, controls, ...pageState } =
     inspector.pageState;
   const { elementsByRef, elementToolTargets } = pageState;
+  // The Model lens calls an action live when a call would run it.
   const pageModel = useMemo(
     () =>
       buildPageModel(
         registeredPoms,
-        new Set(tools.live.map((tool) => tool.name)),
+        new Set(
+          tools.live.filter((tool) => tool.available).map((tool) => tool.name)
+        ),
         pomDefinitions
       ),
     [registeredPoms, tools.live, pomDefinitions]
@@ -124,8 +127,9 @@ export function useInspectorRuntime({
      */
     members,
     /**
-     * The tools the panel can run now: `tools.live`, every live tool in
-     * publication order, published or not; `tools.appProcess`, the tools of
+     * The tools the panel can run now: `tools.live`, every tool the session
+     * lists in publication order, published or not, available or not;
+     * `tools.appProcess`, the tools of
      * the App Processes paired beside the page, run through the agent's
      * Ayme MCP server;
      * and `tools.publication`, the WebMCP publication status (a failure

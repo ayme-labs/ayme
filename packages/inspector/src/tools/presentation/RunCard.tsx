@@ -18,8 +18,13 @@ import { useRunCard } from "./useRunCard";
 
 export type RunCardProps = {
   tool: RunnableTool;
-  /** Whether WebMCP publishes it now. Otherwise it shows dimmed, without Run. */
-  available: boolean;
+  /**
+   * Whether the tool's Page Object is on the page. Otherwise the card shows
+   * dimmed, without Run or a form. A present tool that is unavailable shows
+   * dimmed too, with its reason under the name, and keeps Run: pressing it
+   * shows the session's refusal.
+   */
+  present: boolean;
   /**
    * The head: the action's name and signature, its description, and Run.
    * Without it, as on a tool's own view, the form is open and Run sits at
@@ -95,7 +100,7 @@ export function RunCard(props: RunCardProps) {
     <RunCardView
       {...card}
       tool={tool}
-      available={props.available}
+      present={props.present}
       items={items}
       onHover={onHover}
       onShowRun={onShowRun}
