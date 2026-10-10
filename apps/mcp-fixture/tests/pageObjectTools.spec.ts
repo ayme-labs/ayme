@@ -4,6 +4,8 @@ import { expect, test } from "./fixtures";
 
 /** The Page Object Tool of the fixture's Basket Page Object. */
 const BASKET_TOOL = "Basket.readHeading";
+/** Every tool of the Basket, as the note lists them; `clear` needs items. */
+const BASKET_TOOLS = `${BASKET_TOOL}, Basket.clear`;
 
 const showBasket = (page: Page) =>
   page.getByRole("button", { name: "Show basket" }).click();
@@ -66,7 +68,9 @@ test("every result notes the tools that appeared or disappeared since the previo
   expect(
     (JSON.parse(listed.text) as { name: string }[]).map((tool) => tool.name)
   ).toContain(BASKET_TOOL);
-  expect(listed.note).toContain(`Appeared: ${BASKET_TOOL}.`);
+  expect(listed.note).toContain(
+    `Appeared: ${BASKET_TOOLS} (unavailable: The basket is empty).`
+  );
   expect(listed.note).not.toContain("Disappeared");
   expect((await agent.call(BASKET_TOOL)).note).toBeUndefined();
 
@@ -75,13 +79,13 @@ test("every result notes the tools that appeared or disappeared since the previo
   const called = await agent.call("ayme_call", { tool: "snapshot" });
   expect(called.isError, called.text).toBe(false);
   expect(JSON.parse(called.text).structure).toContain('heading "Groceries"');
-  expect(called.note).toContain(`Disappeared: ${BASKET_TOOL}.`);
+  expect(called.note).toContain(`Disappeared: ${BASKET_TOOLS}.`);
   expect(called.note).not.toContain("Appeared");
 
   await showBasket(page);
   await expect.poll(() => agent.pageToolNames()).toContain(BASKET_TOOL);
   const connected = await agent.call("ayme_connect", { url: page.url() });
-  expect(connected.note).toContain(`Appeared: ${BASKET_TOOL}.`);
+  expect(connected.note).toContain(`Appeared: ${BASKET_TOOLS}`);
 });
 
 test("a Page Object Tool that went is no longer callable", async ({
