@@ -60,11 +60,13 @@ export async function openFixture(
     );
 
   // Without publication the runtime stays "disabled"; otherwise it publishes.
+  // The first page of a cold CI container has reached "active" just after a
+  // 10 s wait gave up, so the runtime gets longer than the script did.
   const runtimeState = path === "/unpublished.html" ? "disabled" : "active";
   try {
     await root
       .and(page.locator(`[data-runtime="${runtimeState}"]`))
-      .waitFor({ timeout: 10_000 });
+      .waitFor({ timeout: 30_000 });
   } catch {
     throw new Error(
       `The Ayme runtime did not reach "${runtimeState}": ${await root.getAttribute("data-runtime")}, ${await root.getAttribute("data-runtime-message")}`
