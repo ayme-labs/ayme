@@ -100,12 +100,16 @@ type ActionObservation = {
 type ObservedRegisteredPom = RegisteredPom & {
   pomClass: object;
   /**
-   * Whether a probe has observed it yet. Until it has, a rootless Page
-   * Object's action with a predicate is listed unavailable: its availability
-   * is what the observation finds, never a guess made before it (ADR-0035),
-   * while presence stays the registration's (ADR-0020).
+   * Whether a probe has observed it yet, and whether one of its own actions
+   * has an availability predicate. A rootless Page Object with one lists
+   * its tools once that first observation has asked it: a tool's
+   * availability is what the observation found, never a guess made before
+   * it (ADR-0035), and an agent that lists tools before the probe has run
+   * must not be told a predicate's answer the probe has not asked for yet.
+   * One without has nothing to wait for.
    */
   observed: boolean;
+  hasPredicates: boolean;
   rootObservations: readonly ObservedPomRoot[];
   actionObservations: readonly ActionObservation[];
   tools: readonly CallerAwarePomTool[];
@@ -252,6 +256,9 @@ export function registerPageObject<T extends object>(
     instance,
     manifest: compiledPom,
     observed: false,
+    hasPredicates: compiledPom.tools.some(
+      (tool) => predicateFor(instance, tool.methodName) !== undefined
+    ),
     memberObservations: [],
     rootObservations: [],
     actionObservations: [],
@@ -541,17 +548,9 @@ function instanceAvailability(
     (candidate) =>
       candidate.path === path && candidate.methodName === methodName
   );
-  if (observation)
-    return observation.available
-      ? { present: true, available: true }
-      : { present: true, available: false, reason: observation.reason };
-  // A rootless Page Object is present from registration; an action of its
-  // own with a predicate waits for the first observation to ask it.
-  const unasked =
-    root === undefined &&
-    !registration.observed &&
-    predicateFor(registration.instance, methodName) !== undefined;
-  return { present: true, available: !unasked };
+  if (!observation || observation.available)
+    return { present: true, available: true };
+  return { present: true, available: false, reason: observation.reason };
 }
 
 /**
@@ -574,7 +573,8 @@ function predicateFor(instance: object, methodName: string) {
 /**
  * The instances a tool stands for, by their root observations: the live
  * roots at a component tool's path, the page's declared root, or the page
- * itself (no root observation) for a rootless Page Object.
+ * itself (no root observation) for a rootless Page Object, once any
+ * predicate of its own has been asked.
  */
 function toolInstances(
   registration: ObservedRegisteredPom,
@@ -587,7 +587,9 @@ function toolInstances(
     );
   if (declaredRoot)
     return registration.rootObservations.filter((root) => root.path === "");
-  return [undefined];
+  return registration.observed || !registration.hasPredicates
+    ? [undefined]
+    : [];
 }
 
 /** One tool's availability over the instances it stands for. */

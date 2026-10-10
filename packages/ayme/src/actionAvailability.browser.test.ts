@@ -713,13 +713,12 @@ describe("Action Availability", () => {
       components: [],
     });
     createPageRegistration(Rootless);
-    // Present from registration, as any rootless Page Object (ADR-0020). The
-    // action with the predicate is unavailable until the observation has
-    // asked it, so no agent acts on a guess; the plain one runs at once; and
-    // that observation is announced like an appearing root.
-    expect(published("Rootless.open")).toMatchObject({ available: false });
-    expect(published("Rootless.open")).not.toHaveProperty("reason");
-    expect(published("Rootless.close")).toMatchObject({ available: true });
+    // All its tools wait for the observation that asks the predicate, so no
+    // agent sees any of them before it has been, and that observation is
+    // announced like an appearing root.
+    expect(listed("Rootless.open")).toMatchObject({ present: false });
+    expect(listed("Rootless.close")).toMatchObject({ present: false });
+    expect(published("Rootless.open")).toBeUndefined();
     const changes = vi.fn();
     const unsubscribe = subscribeToRegisteredPoms(changes);
     await probeRegisteredPomMembers();
