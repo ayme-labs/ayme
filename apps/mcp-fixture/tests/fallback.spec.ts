@@ -1,6 +1,6 @@
 import { SERVER_TOOLS, addItemRef, expect, test } from "./fixtures";
 
-test("ayme_list_tools lists the page's tools as the MCP tool list does", async ({
+test("ayme_list_tools lists the page's tools as the MCP tool list does, and whether each can run", async ({
   agent,
   connect,
 }) => {
@@ -17,7 +17,18 @@ test("ayme_list_tools lists the page's tools as the MCP tool list does", async (
       description,
       inputSchema,
     }));
-  expect(JSON.parse(text)).toEqual(pageTools);
+  const listed = JSON.parse(text) as ((typeof pageTools)[number] & {
+    available: boolean;
+  })[];
+  expect(
+    listed.map(({ name, description, inputSchema }) => ({
+      name,
+      description,
+      inputSchema,
+    }))
+  ).toEqual(pageTools);
+  // Nothing on the fixture page is unavailable before a Page Object shows.
+  expect(listed.every((tool) => tool.available)).toBe(true);
   expect(pageTools.map((tool) => tool.name)).toEqual(
     expect.arrayContaining(["snapshot", "read_text"])
   );
