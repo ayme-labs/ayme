@@ -71,8 +71,8 @@ export function derivePomManifestsFromProgram(
 
   const checker = program.getTypeChecker();
   const manifests: PomManifest[] = [];
-  const classes: ts.ClassDeclaration[] = [];
-  const children: ts.ClassDeclaration[] = [];
+  // A class can be both a top-level Page Object and a Child.
+  const reported = new Set<ts.ClassDeclaration>();
 
   for (const declaration of sourceFile.statements) {
     if (
@@ -90,29 +90,24 @@ export function derivePomManifestsFromProgram(
     const { tools, ...rest } = manifest;
     // `components` before `tools`, as the manifest has always listed them.
     manifests.push({ ...rest, components: [...components.values()], tools });
-    classes.push(declaration);
-    children.push(...components.keys());
+    reported.add(declaration);
+    for (const child of components.keys()) reported.add(child);
   }
 
   if (onSkipped)
     onSkipped(
-      // A class can be both a top-level Page Object and a Child.
-      [...new Set([...classes, ...children])].flatMap((declaration) =>
+      [...reported].flatMap((declaration) =>
         skippedMethods(checker, declaration)
       )
     );
   return manifests;
 }
 
-type PomChild =
-  | { memberName: string; kind: "locator"; access: PomMemberAccess }
-  | {
-      memberName: string;
-      kind: "component";
-      access: PomMemberAccess;
-      declaration: ts.ClassDeclaration;
-      collection: boolean;
-    };
+/** A Page Object Child, and the class it is an instance of. */
+type PomChild = {
+  member: PomMemberManifest;
+  declaration?: ts.ClassDeclaration;
+};
 
 /**
  * The role of a Page Object member: a Page Object Child, a Page Object Action,
@@ -164,7 +159,7 @@ function pomChild(
   const { access, type } = memberInfo;
 
   if (access !== "method" && isLocatorType(type))
-    return { memberName, kind: "locator", access };
+    return { member: { memberName, kind: "locator", access } };
 
   const declaration =
     access === "method"
@@ -172,11 +167,14 @@ function pomChild(
       : componentDeclaration(checker, type, memberName);
   if (!declaration?.name) return undefined;
   return {
-    memberName,
-    kind: "component",
-    access,
+    member: {
+      memberName,
+      kind: "component",
+      access,
+      componentClassName: declaration.name.text,
+      collection: access === "method",
+    },
     declaration,
-    collection: access === "method",
   };
 }
 
@@ -211,8 +209,9 @@ function skippedMethods(
 }
 
 /**
- * A class's own members and tools, and the classes they reference as
- * Page Object Children or return POMs, in the order they are referenced.
+ * A class's own members and tools, and the classes they reference: its
+ * Page Object Children first, then the return POMs of its actions, each in
+ * member order.
  */
 function classManifest(
   checker: ts.TypeChecker,
@@ -227,19 +226,8 @@ function classManifest(
   for (const member of classMembers(checker, declaration)) {
     const role = memberRole(checker, member);
     if (role?.role === "child") {
-      const { child } = role;
-      if (child.kind === "locator") {
-        members.push(child);
-        continue;
-      }
-      members.push({
-        memberName: child.memberName,
-        kind: "component",
-        access: child.access,
-        componentClassName: child.declaration.name!.text,
-        collection: child.collection,
-      });
-      childReferences.push(child.declaration);
+      members.push(role.child.member);
+      if (role.child.declaration) childReferences.push(role.child.declaration);
     } else if (role?.role === "action") {
       const { member, methodName, description } = role;
       const parameters = member.parameters.map((parameter) =>
