@@ -68,10 +68,12 @@ type ResolvedTool = {
  * Every registered tool but the Peek Tools, by name, in publication order.
  * Throws when two of them would share a name.
  */
+/** What every tool but a Page Object Tool is: on the page, and callable. */
+const always = { present: true, available: true };
+
 function resolveRegisteredTools(): Map<string, ResolvedTool> {
   const pursueGoal = getPursueGoalTool();
   const pomTools = listRegisteredPomTools();
-  const always = { present: true, available: true };
   const tools = new Map<string, ResolvedTool>([
     [
       getPageContextTool.name,
@@ -126,12 +128,7 @@ export function resolveTools({
   if (peeks)
     for (const tool of listPeekTools())
       if (!tools.has(tool.name))
-        tools.set(tool.name, {
-          tool,
-          group: "peek",
-          present: true,
-          available: true,
-        });
+        tools.set(tool.name, { tool, group: "peek", ...always });
       else if (!warnedClashes.has(tool)) {
         warnedClashes.add(tool);
         console.warn(
@@ -163,12 +160,7 @@ export function listTools(options: { peeks: boolean }): readonly ToolInfo[] {
  */
 export function listPeekToolInfo(): readonly ToolInfo[] {
   return toInfo(
-    listPeekTools().map((tool) => ({
-      tool,
-      group: "peek",
-      present: true,
-      available: true,
-    }))
+    listPeekTools().map((tool) => ({ tool, group: "peek", ...always }))
   );
 }
 

@@ -122,7 +122,6 @@ function renderCard({ runs = [] }: { runs?: Run[] } = {}) {
     return (
       <RunCard
         tool={fillForm}
-        present
         schemaText={schemaText}
         head={false}
         refSource={{ roots, onPreview, onPreviewEnd: () => {} }}

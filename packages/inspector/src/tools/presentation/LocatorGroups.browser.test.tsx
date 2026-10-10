@@ -69,7 +69,6 @@ function renderCard({ onPick }: { onPick?: RefSource["onPick"] } = {}) {
     return (
       <RunCard
         tool={generateLocator}
-        present
         schemaText={schemaText}
         head={false}
         refSource={{

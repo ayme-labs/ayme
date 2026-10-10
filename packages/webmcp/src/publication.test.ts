@@ -33,13 +33,12 @@ const schema = { type: "object", properties: {} };
 const tool = (
   name: string,
   description = `${name}.`,
-  reading: Partial<Pick<WebMcpTool, "group" | "available">> = {}
+  reading: Partial<Pick<WebMcpTool, "group">> = {}
 ): WebMcpTool => ({
   name,
   description,
   inputSchema: schema,
   group: "pageObject",
-  available: true,
   ...reading,
 });
 
@@ -135,24 +134,15 @@ describe("startWebMcpPublication", () => {
     });
   });
 
-  it("publishes every listed tool, unavailable ones too, but Peek Tools and screenshot", async () => {
+  it("publishes every listed tool but Peek Tools and screenshot", async () => {
     const tools = toolSource([
       tool("snapshot", undefined, { group: "agent" }),
       tool("screenshot", undefined, { group: "browser" }),
       tool("peek.cart", undefined, { group: "peek" }),
-      tool("Dialog.close", undefined, { available: false }),
+      tool("Dialog.close"),
     ]);
     await publish(tools.source).retry();
 
-    expect(driver.names()).toEqual(["snapshot", "Dialog.close"]);
-
-    // Availability changes nothing about the registration.
-    tools.set([
-      tool("snapshot", undefined, { group: "agent" }),
-      tool("Dialog.close"),
-    ]);
-    await flush();
-    expect(driver.registerTool).toHaveBeenCalledTimes(2);
     expect(driver.names()).toEqual(["snapshot", "Dialog.close"]);
   });
 

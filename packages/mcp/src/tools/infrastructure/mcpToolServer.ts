@@ -104,7 +104,7 @@ export function createMcpToolServer({
         tools: pageTools().map(({ name, available, reason }) => ({
           name,
           available,
-          ...(reason === undefined ? {} : { reason }),
+          reason,
         })),
         hidden: connection.hidden,
       };

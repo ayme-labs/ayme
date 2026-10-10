@@ -38,7 +38,6 @@ function renderCard() {
     renderPart(
       <RunCard
         tool={pressKey}
-        present
         schemaText={schemaText}
         head={false}
         runs={[]}

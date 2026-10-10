@@ -79,7 +79,6 @@ function renderCard(source: Partial<RefSource> | null = {}) {
     renderPart(
       <RunCard
         tool={click}
-        present
         schemaText={schemaText}
         head={false}
         refSource={source ? { roots, ...source } : undefined}
