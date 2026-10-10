@@ -18,8 +18,9 @@ version. Diagnose with the "The agent cannot reach the page" section of
   and open the new link.
 - When a tool answers that it is unavailable, read the reason. A runtime
   reason, `a click would not reach it; e42 is in the way`, names the element
-  in the way in the page state, such as an open dialog to close first; any
-  other reason is the app's own, such as `No item is selected`. The tool stays
+  in the way in the page state, such as an open dialog to close first, and
+  stops before the ref when nothing in the way has one; any other reason is
+  the app's own, such as `No item is selected`. The tool stays
   listed: `ayme_list_tools` shows whether each tool is available and why not,
   and a tool result says which tools became available or unavailable since
   your previous call.

@@ -94,7 +94,7 @@ Presence lists tools; availability says whether they would run. A present Page O
 
 ## Action availability
 
-An action that is possible only in some states, such as removing a dashboard that is not built in, declares when it can run with `available`: an availability predicate that gets the live Page Object and answers `true`, or a string that says why not. The action keeps its natural Page Object, and the tool stays listed either way:
+An action that is possible only in some states, such as removing a dashboard that is not built in, declares when it can run with `available`: an availability predicate that gets the live Page Object and answers `true`, `false`, or a string that says why not. The action keeps its natural Page Object, and the tool stays listed either way:
 
 ```ts
 const canRemove = async (self: SettingsPanel) =>
@@ -116,7 +116,7 @@ export class SettingsPanel {
 }
 ```
 
-- While the predicate fails, `ayme.tools.list()` flags the tool `available: false` with the string as its `reason`, an agent reads the reason where it learns about tool changes, and a call is refused with it before anything runs.
+- While the predicate fails, `ayme.tools.list()` flags the tool `available: false`, with the string as its `reason` when it returned one, an agent reads the reason where it learns about tool changes, and a call is refused with it before anything runs.
 - The predicate runs with the runtime's observation of the page, not with the call, so it reads the page and never changes it.
 - The [reference](../reference/ayme.md#action-availability) has the signature, how a collection and a predicate that throws are judged, and what an action without a predicate inherits.
 
