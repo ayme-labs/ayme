@@ -16,6 +16,14 @@ version. Diagnose with the "The agent cannot reach the page" section of
   pairs, list them with `ayme_list_tools` and run them with `ayme_call`.
 - When a tool answers that no page is connected, call `ayme_connect` again
   and open the new link.
+- When a tool answers that it is unavailable, read the reason. A runtime
+  reason, `a click would not reach it; e42 is in the way`, names the element
+  in the way in the page state, such as an open dialog to close first, and
+  stops before the ref when nothing in the way has one; any other reason is
+  the app's own, such as `No item is selected`. The tool stays
+  listed: `ayme_list_tools` shows whether each tool is available and why not,
+  and a tool result says which tools became available or unavailable since
+  your previous call.
 - Check the connection end to end: invoke the exposed action through Ayme's
   MCP server and confirm its visible effect in the app. A direct Ayme call or
   a page-state read alone does not check the connection.

@@ -23,11 +23,13 @@ import {
  * tool that shares a server tool's name is left out. While nothing is paired, any other name
  * answers that no page is connected, since it may be a page tool the agent
  * listed before. The agent hears `notifications/tools/list_changed` whenever
- * a page or App Process pairs, leaves or reports new tools, such as when a
- * Page Object appears or goes. One server serves one agent, so every tool
- * result also carries, as a text item after the tool's own, a note of the
- * tools that appeared, disappeared or were hidden since the previous tool
- * call; before the first call the agent has seen no tools.
+ * that list changes, such as when a Page Object appears or goes, and not
+ * when a tool merely becomes available or unavailable: the list has no
+ * field for that, and a cached list would churn (ADR-0035). One server
+ * serves one agent, so every tool result also carries, as a text item after
+ * the tool's own, a note of the tools that appeared, disappeared, became
+ * available or unavailable or were hidden since the previous tool call;
+ * before the first call the agent has seen no tools.
  */
 export function createMcpToolServer({
   name,
@@ -47,14 +49,22 @@ export function createMcpToolServer({
     { name, version },
     { capabilities: { tools: { listChanged: true } } }
   );
-  // The connection lives as long as the server, so this never unsubscribes.
-  connection.subscribe(() => {
-    // Only while an agent is connected; the notification can't reach it otherwise.
-    if (server.transport) void server.sendToolListChanged().catch(() => {});
-  });
   const ownNames = new Set(serverTools.map((tool) => tool.name));
   const pageTools = () =>
     connection.tools.filter((tool) => !ownNames.has(tool.name));
+  const listed = () => JSON.stringify(pageTools().map(mcpPageTool));
+
+  // The list as the agent last could read it, to tell a change to it from
+  // a change in availability only.
+  let announced = listed();
+  // The connection lives as long as the server, so this never unsubscribes.
+  connection.subscribe(() => {
+    const current = listed();
+    if (current === announced) return;
+    announced = current;
+    // Only while an agent is connected; the notification can't reach it otherwise.
+    if (server.transport) void server.sendToolListChanged().catch(() => {});
+  });
 
   server.setRequestHandler(ListToolsRequestSchema, () => ({
     tools: [
@@ -84,14 +94,18 @@ export function createMcpToolServer({
   };
 
   // The tools as of the previous result, taken once that result is ready.
-  let seen: ToolState = { names: [], hidden: [] };
+  let seen: ToolState = { tools: [], hidden: [] };
   server.setRequestHandler(
     CallToolRequestSchema,
     async (request): Promise<ToolResult> => {
       const { name, arguments: input = {} } = request.params;
       const result = await run(name, input);
       const current: ToolState = {
-        names: pageTools().map((tool) => tool.name),
+        tools: pageTools().map(({ name, available, reason }) => ({
+          name,
+          available,
+          reason,
+        })),
         hidden: connection.hidden,
       };
       const note = toolChangeNote(seen, current);

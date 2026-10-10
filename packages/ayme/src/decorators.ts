@@ -1,13 +1,51 @@
-// The decorators only mark a class or method; the build integration reads the
-// marks from source and generates the Page Object Tools.
+// The decorators mark a class or method; the build integration reads the
+// marks from source and generates the Page Object Tools. `@ayme.action` also
+// keeps an action's availability predicate, which only exists at runtime.
 
 export type AymeModelOptions = {
   description?: string;
 };
 
-export type AymeActionOptions = {
+/**
+ * What an availability predicate answers: `true` when the action can run now,
+ * a string when it cannot and the string is the Availability Reason, `false`
+ * when it cannot and there is no reason to give.
+ */
+export type ActionAvailability = boolean | string;
+
+/**
+ * An action's availability predicate (ADR-0035). It gets the live Page
+ * Object as `self`, runs read-only with the observation and never with the
+ * call, so it must not scroll, click, focus or change the page.
+ */
+export type AvailabilityPredicate<Self = unknown> = (
+  self: Self
+) => ActionAvailability | Promise<ActionAvailability>;
+
+export type AymeActionOptions<Self = unknown> = {
   description?: string;
+  /**
+   * When the action can run (Action Availability). Without it, the action
+   * shares its Page Object's availability. One predicate may serve several
+   * actions.
+   */
+  available?: AvailabilityPredicate<Self>;
 };
+
+// Each decorated method's predicate, by the method itself: the registry reads
+// it along an instance's prototype chain, so inherited actions keep theirs.
+const availabilityPredicates = new WeakMap<
+  object,
+  AvailabilityPredicate<never>
+>();
+
+/** Package-internal: the availability predicate `@ayme.action` kept for `method`. */
+export function availabilityPredicateOf(
+  method: unknown
+): AvailabilityPredicate<never> | undefined {
+  // A WeakMap answers undefined for a key that is not an object.
+  return availabilityPredicates.get(method as object);
+}
 
 type PageObjectClass = abstract new (...args: never[]) => unknown;
 // The standard decorator context requires a method signature that accepts any arguments.
@@ -61,6 +99,24 @@ function markAction(
   void descriptor;
 }
 
+/**
+ * A member decorator that keeps `predicate` for the method it is applied
+ * to: the descriptor's value in legacy mode, the value itself in standard.
+ */
+function keepingPredicate(
+  predicate: AvailabilityPredicate<never>
+): AymeActionDecorator {
+  return ((
+    value: object,
+    _context: unknown,
+    descriptor?: PropertyDescriptor
+  ) => {
+    const method: unknown = descriptor?.value ?? value;
+    if (typeof method === "function")
+      availabilityPredicates.set(method, predicate);
+  }) as AymeActionDecorator;
+}
+
 function aymeClass(target: PageObjectClass): void;
 function aymeClass<Class extends PageObjectClass>(
   target: Class,
@@ -81,16 +137,18 @@ function action<This, Value extends AnyMethod<This>>(
   value: Value,
   context: ClassMethodDecoratorContext<This, Value>
 ): void;
-function action(options?: AymeActionOptions): AymeActionDecorator;
+function action<Self>(options?: AymeActionOptions<Self>): AymeActionDecorator;
 function action(...args: unknown[]) {
   // Applied directly, a member decorator receives two or three arguments in
   // both decorator modes; the options form receives at most one.
   if (args.length >= 2) return;
-  return markAction;
+  const options = args[0] as AymeActionOptions<never> | undefined;
+  return options?.available ? keepingPredicate(options.available) : markAction;
 }
 
 /**
  * Marks a Page Object Model. `@ayme.action` marks a Page Object Action, which
- * becomes a Page Object Tool.
+ * becomes a Page Object Tool, and keeps its availability predicate when it
+ * has one.
  */
 export const ayme = Object.assign(aymeClass, { action });

@@ -33,13 +33,12 @@ const schema = { type: "object", properties: {} };
 const tool = (
   name: string,
   description = `${name}.`,
-  reading: Partial<Pick<WebMcpTool, "group" | "available">> = {}
+  reading: Partial<Pick<WebMcpTool, "group">> = {}
 ): WebMcpTool => ({
   name,
   description,
   inputSchema: schema,
   group: "pageObject",
-  available: true,
   ...reading,
 });
 
@@ -135,22 +134,15 @@ describe("startWebMcpPublication", () => {
     });
   });
 
-  it("publishes the available tools, but Peek Tools and screenshot", async () => {
+  it("publishes every listed tool but Peek Tools and screenshot", async () => {
     const tools = toolSource([
       tool("snapshot", undefined, { group: "agent" }),
       tool("screenshot", undefined, { group: "browser" }),
       tool("peek.cart", undefined, { group: "peek" }),
-      tool("Dialog.close", undefined, { available: false }),
+      tool("Dialog.close"),
     ]);
     await publish(tools.source).retry();
 
-    expect(driver.names()).toEqual(["snapshot"]);
-
-    tools.set([
-      tool("snapshot", undefined, { group: "agent" }),
-      tool("Dialog.close"),
-    ]);
-    await flush();
     expect(driver.names()).toEqual(["snapshot", "Dialog.close"]);
   });
 
@@ -223,7 +215,7 @@ describe("startWebMcpPublication", () => {
     }
   );
 
-  it("keeps a tool its own call made unavailable until the call returns, then withdraws it", async () => {
+  it("keeps a tool its own call withdrew until the call returns, then withdraws it", async () => {
     vi.useFakeTimers();
     const tools = toolSource([tool("Dialog.close")]);
     tools.source.run.mockImplementation(async () => {

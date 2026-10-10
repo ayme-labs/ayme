@@ -313,7 +313,7 @@ describe("the session's tools in Chromium", () => {
     );
   });
 
-  it("returns the result of a call that makes its own tool unavailable, then lists the tool unavailable", async () => {
+  it("returns the result of a call that makes its own Page Object leave the page, then withdraws the tool", async () => {
     document.body.innerHTML = `<ul><li id="item">Draft</li></ul>`;
     startSession();
     cleanups.push(registered(ListPage));
@@ -333,36 +333,73 @@ describe("the session's tools in Chromium", () => {
     ).toMatchObject({ result: "archived" });
 
     // Subscribers heard of the change before the call returned.
-    expect(heard.at(-1)).toContainEqual(
-      expect.objectContaining({
-        name: "ListPage.items.archive",
-        available: false,
-      })
+    expect(heard.at(-1)?.map(({ name }) => name)).not.toContain(
+      "ListPage.items.archive"
     );
     expect(heard.at(-1)).toBe(ayme.tools.list());
     expect(agentTools().names()).not.toContain("ListPage.items.archive");
   });
 
-  it("lists a Page Object Tool whose Page Object is unavailable as unavailable, refuses to run it, and leaves it out of WebMCP", async () => {
+  it("leaves out a Page Object Tool whose Page Object is not on the page, refuses to run it, and lists it once the Page Object is", async () => {
     document.body.innerHTML = `<ul><li id="item" hidden>Draft</li></ul>`;
     startSession();
     cleanups.push(registered(ListPage));
     const archive = () =>
       ayme.tools.list().find(({ name }) => name === "ListPage.items.archive");
     await expect
-      .poll(archive)
-      .toMatchObject({ group: "pageObject", available: false });
+      .poll(() => ayme.tools.list().map(({ name }) => name))
+      .toContain("snapshot");
 
-    expect(agentTools().names()).not.toContain("ListPage.items.archive");
+    expect(archive()).toBeUndefined();
     await expect(
       ayme.tools.run("ListPage.items.archive", { ref: "e1", args: {} })
     ).rejects.toThrow(
-      'The tool "ListPage.items.archive" is not available now: the Page Object or component it acts on is not on the page or is blocked.'
+      "ListPage.items.archive is unavailable: its Page Object is not on the page."
     );
 
     document.querySelector("#item")!.removeAttribute("hidden");
-    await expect.poll(archive).toMatchObject({ available: true });
+    await expect
+      .poll(archive)
+      .toMatchObject({ group: "pageObject", available: true });
     expect(agentTools().names()).toContain("ListPage.items.archive");
+  });
+
+  it("lists a Page Object Tool a click would not reach as unavailable with the element in the way, and refuses to run it", async () => {
+    document.body.innerHTML = `<ul><li id="item">Draft</li></ul><dialog id="confirm" aria-label="Archive item"><button>Confirm</button></dialog>`;
+    startSession();
+    cleanups.push(registered(ListPage));
+    const archive = () =>
+      ayme.tools.list().find(({ name }) => name === "ListPage.items.archive");
+    await expect.poll(archive).toMatchObject({ available: true });
+    const ref = (await agentTools().call("snapshot", {})) as {
+      structure: string;
+    };
+    const item = ref.structure.match(/(e\d+) ListPage\.items\[0\]/)?.[1];
+    if (!item) throw new Error("Expected a ref for ListPage.items[0].");
+
+    document.querySelector<HTMLDialogElement>("#confirm")!.showModal();
+    await expect.poll(archive).toMatchObject({ available: false });
+    const { structure } = (await agentTools().call("snapshot", {})) as {
+      structure: string;
+    };
+    const dialog = structure.match(/(e\d+) dialog "Archive item"/)?.[1];
+    if (!dialog) throw new Error("Expected a ref for the dialog.");
+
+    expect(archive()).toMatchObject({
+      available: false,
+      reason: `a click would not reach it; ${dialog} is in the way`,
+    });
+    expect(agentTools().names()).not.toContain("ListPage.items.archive");
+    await expect(
+      ayme.tools.run("ListPage.items.archive", { ref: item, args: {} })
+    ).rejects.toThrow(
+      `ListPage.items.archive is unavailable: a click would not reach it; ${dialog} is in the way.`
+    );
+    expect(document.querySelector("#item")!.hasAttribute("hidden")).toBe(false);
+
+    document.querySelector<HTMLDialogElement>("#confirm")!.close();
+    await expect.poll(archive).toMatchObject({ available: true });
+    expect(archive()).not.toHaveProperty("reason");
   });
 
   it("lists a tool two registrations of one class share once, and runs it on the first one still registered", async () => {

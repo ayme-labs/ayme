@@ -42,7 +42,7 @@ const tools = ayme.tools.list().filter(({ available }) => available); // name, d
 const result = await ayme.tools.run(name, input);
 ```
 
-The list holds your Page Object Tools, the Browser Tools, your [Custom Tools](custom-tools.md) and `goal`, each with a JSON Schema for its input, which is what most assistant frameworks expect for a tool. `ayme.tools.list()` also keeps the Page Object Tools whose Page Object is not on the page, with `available: false`; the filter leaves them out. `ayme.tools.subscribe(listener)` tells you when the list changes, such as when a Page Object appears on the page. A Custom Tool that highlights an element is a natural fit: the assistant can point at things before it acts on them.
+The list holds your Page Object Tools, the Browser Tools, your [Custom Tools](custom-tools.md) and `goal`, each with a JSON Schema for its input, which is what most assistant frameworks expect for a tool. `ayme.tools.list()` holds every tool of a Page Object on the page, available or not: a tool whose action cannot run now has `available: false` and, when there is one, its `reason`. The filter leaves them out; an assistant that shows its tools can show the reason instead. `ayme.tools.subscribe(listener)` tells you when the list changes, such as when a Page Object appears on the page or a tool becomes available. A Custom Tool that highlights an element is a natural fit: the assistant can point at things before it acts on them.
 
 ## Let Jev do the steps
 

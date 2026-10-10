@@ -1,5 +1,6 @@
 import { useId, useRef, type FormEvent, type ReactNode } from "react";
 import {
+  BanIcon,
   CheckIcon,
   ChevronRightIcon,
   LoaderCircleIcon,
@@ -28,7 +29,6 @@ import type { RunnableTool } from "../domain/runnableTools";
  */
 export function RunCardView({
   tool,
-  available,
   head,
   items,
   onHover,
@@ -53,9 +53,12 @@ export function RunCardView({
   showJson,
   form,
 }: {
+  /**
+   * The tool. One that is not present shows dimmed, without Run or a form;
+   * one that is unavailable shows dimmed too, with its `reason` under the
+   * name, and keeps Run.
+   */
   tool: RunnableTool;
-  /** Whether WebMCP publishes it now. Otherwise it shows dimmed, without Run. */
-  available: boolean;
   /** Whether it shows its head: the action's name, signature, description and Run. */
   head: boolean;
   /** For a collection action without an item: the items to pick from. */
@@ -99,7 +102,8 @@ export function RunCardView({
   /** The form: fill_form's fields, the typed form, or the JSON editor. */
   form: ReactNode;
 }) {
-  const runButton = available && (
+  const { present, available, reason } = tool;
+  const runButton = present && (
     <Button
       type="submit"
       size="sm"
@@ -123,21 +127,20 @@ export function RunCardView({
       </span>
     </>
   );
+  const reasonLine = <ReasonLine reason={reason} />;
 
   return (
     <form
       aria-label={tool.action}
+      data-present={present}
       data-available={available}
-      className={cn(
-        "mb-2 flex flex-col gap-2.25 rounded-lg border bg-card px-3 py-2.5",
-        !available && "opacity-60"
-      )}
+      className="mb-2 flex flex-col gap-2.25 rounded-lg border bg-card px-3 py-2.5 data-[available=false]:opacity-60"
       onSubmit={submit}
     >
       {head && (
         <>
           <div className="flex items-center gap-1.5">
-            {available && canOpen ? (
+            {present && canOpen ? (
               <button
                 type="button"
                 aria-expanded={open}
@@ -167,6 +170,7 @@ export function RunCardView({
               {signature}
             </code>
           )}
+          {reasonLine}
           {tool.description && (
             <p className="m-0 text-xs text-muted-foreground">
               {tool.description}
@@ -174,6 +178,8 @@ export function RunCardView({
           )}
         </>
       )}
+
+      {!head && reasonLine}
 
       {showBody && (
         <>
@@ -457,5 +463,20 @@ function LastResult({
         <RunImageView image={run.image} onOpen={onOpenImage} />
       )}
     </div>
+  );
+}
+
+/** Why the session would refuse a call, under the name; nothing while the tool has no reason. */
+function ReasonLine({ reason }: { reason: string | undefined }) {
+  if (!reason) return null;
+  return (
+    <p
+      role="note"
+      aria-label="Why it is unavailable"
+      className="m-0 flex items-start gap-1.5 text-xs text-muted-foreground"
+    >
+      <BanIcon className="mt-0.5 size-3.5 flex-none" aria-hidden />
+      <span>{reason}</span>
+    </p>
   );
 }

@@ -27,7 +27,7 @@ export class ProjectsPage {
 }
 ```
 
-- Both decorators take an optional description: `@ayme({ description })` describes the model, and a bare `@ayme.action` publishes with a generated description. `description` is the only option.
+- Both decorators take an optional description: `@ayme({ description })` describes the model, and a bare `@ayme.action` publishes with a generated description. `@ayme.action` also takes `available`, the action's availability predicate; see [Action availability](#action-availability).
 - Only marked actions become tools. Public members are not published on their own.
 - A class that extends an `@ayme` class is a Page Object Model too, even without the decorator. Its actions still need `@ayme.action`.
 - No Ayme base class is needed, and the same class keeps working in your Playwright tests.
@@ -88,6 +88,36 @@ export class ListItem {
 
 ## The Page Object Root
 
-A `root` locator member is the model's Page Object Root: the element that anchors the instance in the page. It decides whether the Page Object is present and available, and the page state labels that element with the Page Object's name. A child's tools are live only while its root is on the page and available, so a child needs a `root`. A registered top-level model without one has tools that are live as long as it is registered.
+A `root` locator member is the model's Page Object Root: the element that anchors the instance in the page. It decides whether the Page Object is present, while the root is on the page, and whether it is available, while a click would also reach the root; the page state labels that element with the Page Object's name. A child's tools are listed only while its root is on the page, so a child needs a `root`. A registered top-level model without one has tools that are listed as long as it is registered.
+
+Presence lists tools; availability says whether they would run. A present Page Object whose root a click would not reach, such as one under an open dialog, keeps its tools listed, flagged unavailable with a reason that names what is in the way, and a call is refused with that reason. [`ayme.tools`](../reference/ayme.md#aymetools) has the form of the reason.
+
+## Action availability
+
+An action that is possible only in some states, such as removing a dashboard that is not built in, declares when it can run with `available`: an availability predicate that gets the live Page Object and answers `true`, `false`, or a string that says why not. The action keeps its natural Page Object, and the tool stays listed either way:
+
+```ts
+const canRemove = async (self: SettingsPanel) =>
+  (await self.removeButton.isVisible()) ||
+  "This dashboard is built in or the last of its type";
+
+@ayme
+export class SettingsPanel {
+  readonly removeButton = this.root.getByTestId("removeButton");
+  constructor(readonly root: Locator) {}
+
+  @ayme.action({
+    description: "Remove this dashboard. Needs a removable dashboard.",
+    available: canRemove,
+  })
+  async remove() {
+    await this.removeButton.click();
+  }
+}
+```
+
+- While the predicate fails, `ayme.tools.list()` flags the tool `available: false`, with the string as its `reason` when it returned one, an agent reads the reason where it learns about tool changes, and a call is refused with it before anything runs.
+- The predicate runs with the runtime's observation of the page, not with the call, so it reads the page and never changes it.
+- The [reference](../reference/ayme.md#action-availability) has the signature, how a collection and a predicate that throws are judged, and what an action without a predicate inherits.
 
 Page Objects are registered by your framework package or by `ayme.pom`; [Publish tools](publish-tools.md) shows how Ayme starts.

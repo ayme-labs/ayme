@@ -27,6 +27,7 @@ const click: RunnableTool = {
   name: "click",
   action: "click",
   description: "Click a real element ref from snapshot.",
+  present: true,
   available: true,
   refField: "ref",
   argumentsSchema: {
@@ -78,7 +79,6 @@ function renderCard(source: Partial<RefSource> | null = {}) {
     renderPart(
       <RunCard
         tool={click}
-        available
         schemaText={schemaText}
         head={false}
         refSource={source ? { roots, ...source } : undefined}

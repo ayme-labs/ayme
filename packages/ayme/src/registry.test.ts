@@ -461,6 +461,96 @@ describe("live Page Object registry", () => {
     rootless.dispose();
   });
 
+  it("lists a shared tool name by the present registration, and by the available one among those", async () => {
+    const registry = await import("./registry");
+    const { ayme } = await import("./decorators");
+    registry.configureAymeRuntime({} as Page);
+
+    class MissingRootPage {
+      save() {}
+    }
+    class UnavailablePage {
+      save() {}
+    }
+    class RootlessPage {
+      save() {}
+    }
+    ayme.action({ available: () => "Nothing to save" })(
+      UnavailablePage.prototype,
+      "save",
+      Object.getOwnPropertyDescriptor(UnavailablePage.prototype, "save")!
+    );
+    registry.registerCompiledPom(MissingRootPage, {
+      ...emptyManifest("MissingRootPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    for (const Class of [UnavailablePage, RootlessPage])
+      registry.registerCompiledPom(Class, {
+        ...emptyManifest(Class.name),
+        tools: [action("save")],
+      });
+    const availability = () =>
+      registry
+        .listRegisteredPomTools()
+        .map(({ present, available, reason }) => ({
+          present,
+          available,
+          reason,
+        }));
+
+    const missing = registry.createPageRegistration(MissingRootPage);
+    const unavailable = registry.createPageRegistration(UnavailablePage);
+    await vi.runOnlyPendingTimersAsync();
+    expect(availability()).toEqual([
+      { present: true, available: false, reason: "Nothing to save" },
+    ]);
+
+    const rootless = registry.createPageRegistration(RootlessPage);
+    await vi.runOnlyPendingTimersAsync();
+    expect(availability()).toEqual([
+      { present: true, available: true, reason: undefined },
+    ]);
+
+    missing.dispose();
+    unavailable.dispose();
+    rootless.dispose();
+  });
+
+  it("does not notify when a probe observes the same present root again", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    class RootedPage {
+      readonly root = brandedLocator({
+        count: async () => 1,
+        isVisible: async () => true,
+        evaluate: async () => ({ present: true, available: true }),
+      });
+      save() {}
+    }
+    registry.registerCompiledPom(RootedPage, {
+      ...emptyManifest("RootedPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    const registration = registry.createPageRegistration(RootedPage);
+    const subscriber = vi.fn();
+    registry.subscribeToRegisteredPoms(subscriber);
+
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listRegisteredPomTools()).toEqual([
+      expect.objectContaining({ present: true, available: true }),
+    ]);
+    expect(subscriber).toHaveBeenCalledOnce();
+
+    FakeMutationObserver.instances[0]?.trigger();
+    await vi.runOnlyPendingTimersAsync();
+    expect(subscriber).toHaveBeenCalledOnce();
+
+    registration.dispose();
+  });
+
   it("bounds recursive component manifests to the current component path", async () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);

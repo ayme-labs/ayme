@@ -96,7 +96,7 @@ Your own code runs the same loop with `ayme.tools.run("goal", { goal, maxSteps, 
 
 The model decides each step on the current Structural Page State as JSON, one object per node, pruned of what it cannot target: a `generic` node with no name, props, state or pointer cursor is replaced by its children, so wrapper chains vanish and the text of their leaves is kept. The pruning affects only what the model reads; the options it is offered and the Change Record come from the full capture.
 
-A step first asks which operation moves closest to the goal and whether the goal is met. The operations are the live Page Object Tools, Custom Tools and single-element Browser Tools. When the chosen operation takes arguments from a closed set, a Structural Ref, an enum value or a boolean, a second request asks for all of them at once, and the operation runs with the chosen values.
+A step first asks which operation moves closest to the goal and whether the goal is met. The operations are the available Page Object Tools, Custom Tools and single-element Browser Tools; a Page Object Tool that cannot run now is not offered. When the chosen operation takes arguments from a closed set, a Structural Ref, an enum value or a boolean, a second request asks for all of them at once, and the operation runs with the chosen values.
 
 - The ref options are the elements the operation's filter keeps, one per element in document order; nothing is merged or ranked.
 - One question offers at most 255 options. More elements are cut into chunks of at most 254 plus "none of these", asked side by side. When exactly one chunk names an element, the operation runs on it; when several do, one more question offers just those; when none does, the loop ends with `no_fitting_option`.

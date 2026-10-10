@@ -30,6 +30,7 @@ const fillForm: RunnableTool = {
   name: "fill_form",
   action: "fill_form",
   description: "Fill several form fields in one call, in order.",
+  present: true,
   available: true,
   fillForm: true,
   argumentsSchema: {
@@ -121,7 +122,6 @@ function renderCard({ runs = [] }: { runs?: Run[] } = {}) {
     return (
       <RunCard
         tool={fillForm}
-        available
         schemaText={schemaText}
         head={false}
         refSource={{ roots, onPreview, onPreviewEnd: () => {} }}

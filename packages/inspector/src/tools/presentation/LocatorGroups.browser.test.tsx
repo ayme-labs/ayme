@@ -30,6 +30,7 @@ const generateLocator: RunnableTool = {
   name: "generate_locator",
   action: "generate_locator",
   description: "Generate Playwright locators for elements.",
+  present: true,
   available: true,
   locatorGroups: true,
   argumentsSchema: {
@@ -68,7 +69,6 @@ function renderCard({ onPick }: { onPick?: RefSource["onPick"] } = {}) {
     return (
       <RunCard
         tool={generateLocator}
-        available
         schemaText={schemaText}
         head={false}
         refSource={{
