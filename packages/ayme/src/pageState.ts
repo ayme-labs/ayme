@@ -21,7 +21,11 @@ import {
 import { browserMonotonicClock } from "./browserMonotonicClock";
 import { InteractionHistory, type ToolCall } from "./interactionHistory";
 import type { Cursor } from "./cursors";
-import { getRegisteredPomStructure } from "./registry";
+import {
+  announceRegisteredPomChange,
+  getRegisteredPomStructure,
+} from "./registry";
+import { containsThroughShadow } from "./pomObstruction";
 
 import {
   placeCapturedRoots,
@@ -259,6 +263,43 @@ export async function getPageStateForElements(
   return getPageStateSession(currentDocument).getPageStateForElements(elements);
 }
 
+/**
+ * Package-internal: the Structural Ref an Availability Reason names for
+ * `obstruction`, the element a click on `root` would reach instead: the ref
+ * the agent's latest recorded page state gave it, or its nearest ancestor
+ * that has one and does not hold `root` (what holds the root is not in its
+ * way). An obstruction that holds the root, an inert ancestor, is named by
+ * its own ref only. Undefined when none has one, as for `<html>` when `body`
+ * takes no pointer events.
+ */
+export function latestRefInTheWay(
+  obstruction: Element,
+  root: Element
+): AriaRef | undefined {
+  const session = pageStateSessions.get(obstruction.ownerDocument);
+  if (!session) return undefined;
+  if (containsThroughShadow(obstruction, root))
+    return session.latestRefOf(obstruction);
+  for (
+    let node: Element | null = obstruction;
+    node && !containsThroughShadow(node, root);
+    node = parentElement(node)
+  ) {
+    const ref = session.latestRefOf(node);
+    if (ref !== undefined) return ref;
+  }
+  return undefined;
+}
+
+function parentElement(current: Element): Element | null {
+  return (
+    current.assignedSlot ??
+    current.parentElement ??
+    (current.getRootNode() as ShadowRoot).host ??
+    null
+  );
+}
+
 function getPageStateSession(currentDocument: Document) {
   let session = pageStateSessions.get(currentDocument);
   if (!session) {
@@ -414,6 +455,32 @@ class PageStateSession {
       observation: this.history.latestObservation!,
       elementsByRef,
     };
+    this.latestRefsByElement = undefined;
+    // An Availability Reason names the ref this capture may have just given
+    // the element in the way, so the tools are read again.
+    announceRegisteredPomChange();
+  }
+
+  /** Each element's one ref in the latest recorded observation, built on first use. */
+  private latestRefsByElement: ReadonlyMap<Element, AriaRef> | undefined;
+
+  /**
+   * The ref the agent's latest page state gave `element`, when it gave it
+   * exactly one; undefined before any page state was recorded.
+   */
+  latestRefOf(element: Element): AriaRef | undefined {
+    if (!this.latestElements) return undefined;
+    if (!this.latestRefsByElement) {
+      const refs = new Map<Element, AriaRef | undefined>();
+      for (const [ref, candidate] of this.latestElements.elementsByRef)
+        refs.set(candidate, refs.has(candidate) ? undefined : ref);
+      this.latestRefsByElement = new Map(
+        [...refs].filter(
+          (entry): entry is [Element, AriaRef] => entry[1] !== undefined
+        )
+      );
+    }
+    return this.latestRefsByElement.get(element);
   }
 
   /** Capture the page for recording, rejecting a capture the identity ledger could not accept. */

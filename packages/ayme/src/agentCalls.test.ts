@@ -16,6 +16,7 @@ vi.mock("./registry", () => ({
     absentElements: [],
   }),
   listRegisteredPoms,
+  announceRegisteredPomChange: () => {},
 }));
 
 import { ayme } from "./agentCalls.testSupport";

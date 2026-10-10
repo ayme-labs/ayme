@@ -19,6 +19,7 @@ import {
   probeRegisteredPomMembers,
   registerPageObject,
   subscribeToRegisteredPoms,
+  unavailableToolMessage,
   type PageObjectConstructor,
 } from "./registry";
 import { loadWebMcpPublication } from "./webMcp";
@@ -626,9 +627,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
     const entry = resolveTools({ peeks }).get(name);
     if (!entry) throw noSuchTool(name);
     if (!entry.available)
-      throw new RuntimeStateError(
-        `The tool "${name}" is not available now: the Page Object or component it acts on is not on the page or is blocked.`
-      );
+      throw new RuntimeStateError(unavailableToolMessage(name, entry));
     return entry.tool;
   }
 
