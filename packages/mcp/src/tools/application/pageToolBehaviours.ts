@@ -3,20 +3,20 @@ import { ImageResultSchema } from "../../contract";
 import { errorText } from "../domain/toolResult";
 
 /**
- * Reports the page's available tools when the channel opens and after every
- * change.
+ * Reports the page's tools, with each one's availability, when the channel
+ * opens and after every change.
  */
 export const publishPageTools: ClientBehaviour = ({ tools, channel }) => {
   const publish = (list: ReturnType<typeof tools.list>) =>
     void channel
       .publishTools(
-        list
-          .filter(({ available }) => available)
-          .map(({ name, description, inputSchema }) => ({
-            name,
-            description,
-            inputSchema,
-          }))
+        list.map(({ name, description, inputSchema, available, reason }) => ({
+          name,
+          description,
+          inputSchema,
+          available,
+          ...(reason === undefined ? {} : { reason }),
+        }))
       )
       // The channel closed; the next channel publishes again.
       .catch(() => {});

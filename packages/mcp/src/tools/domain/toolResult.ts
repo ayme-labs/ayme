@@ -121,11 +121,27 @@ export function goneToolResult(name: string): ToolResult {
   );
 }
 
-/** A page tool as an MCP tool listing shows it. */
+/**
+ * A page tool as the MCP tool list shows it: its name, description and
+ * schema only, since that list changes on presence and not on availability
+ * (ADR-0035).
+ */
 export function mcpPageTool({ name, description, inputSchema }: PageTool) {
   return {
     name,
     description,
     inputSchema: { ...inputSchema, type: "object" as const },
+  };
+}
+
+/**
+ * A page tool as `ayme_list_tools` shows it: the MCP listing, plus whether
+ * a call can run it now and, when it cannot and the page said, why.
+ */
+export function listedPageTool(tool: PageTool) {
+  return {
+    ...mcpPageTool(tool),
+    available: tool.available,
+    ...(tool.reason === undefined ? {} : { reason: tool.reason }),
   };
 }

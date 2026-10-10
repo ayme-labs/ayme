@@ -2,7 +2,9 @@ import type { WebMcpDriver } from "./driver";
 
 /**
  * A tool of the session, by its unprefixed name, as `ayme.tools.list()`
- * reads it: `available` says whether a call can run it now.
+ * reads it: `available` says whether a call can run it now. Publication
+ * registers every listed tool, available or not; the session refuses a call
+ * to an unavailable one with its reason (ADR-0035).
  */
 export type WebMcpTool = Readonly<{
   name: string;
@@ -61,12 +63,12 @@ function errorText(error: unknown): string {
 }
 
 /**
- * Whether WebMCP publishes a tool: an available one, but a Peek Tool, which
+ * Whether WebMCP publishes a tool: every listed one but a Peek Tool, which
  * reads app state for a coding agent while developing, and `screenshot`,
  * whose image result WebMCP cannot carry.
  */
 const publishable = (tool: WebMcpTool) =>
-  tool.available && tool.group !== "peek" && tool.name !== "screenshot";
+  tool.group !== "peek" && tool.name !== "screenshot";
 
 /** What makes a published tool stale: its description or schema changed. */
 const versionOf = (tool: WebMcpTool) =>
@@ -75,10 +77,10 @@ const versionOf = (tool: WebMcpTool) =>
 /**
  * Keep the driver's tool set in sync with the source's publishable tools. A
  * call of a published tool resolves only once the published set reflects the
- * page it changed, so an agent's next call sees the tools available now; the
- * called tool itself is withdrawn just after its call, if the call made it
- * unavailable. A published tool never throws: a failure is an `isError`
- * result.
+ * page it changed, so an agent's next call sees the tools listed now; the
+ * called tool itself is withdrawn just after its call, if the call made the
+ * source stop listing it. A published tool never throws: a failure is an
+ * `isError` result.
  */
 export async function synchronizeWebMcpTools(
   driver: WebMcpDriver,

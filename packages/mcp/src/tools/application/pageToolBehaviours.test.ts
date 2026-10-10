@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 
 import type { AgentImageRun, PageChannel, PageTools } from "../../connection";
-import type { ToolCall, ToolCallOutcome } from "../../contract";
+import type { PageTool, ToolCall, ToolCallOutcome } from "../../contract";
 import { answerToolCalls, publishPageTools } from "./pageToolBehaviours";
 
 const image = {
@@ -70,21 +70,25 @@ it("records no other result", async () => {
   expect(recorded).toEqual([]);
 });
 
-it("publishes only the page's available tools, again after each change", () => {
-  const published: string[][] = [];
+it("publishes every tool of the page with its availability and reason, again after each change", () => {
+  const published: PageTool[][] = [];
   const channel = {
-    publishTools: async (tools: { name: string }[]) =>
-      void published.push(tools.map(({ name }) => name)),
+    publishTools: async (tools: PageTool[]) => void published.push(tools),
   } as unknown as PageChannel;
-  const tool = (name: string, available: boolean) => ({
+  const tool = (name: string, available: boolean, reason?: string) => ({
     name,
     description: "",
     inputSchema: {},
+    group: "pageObject",
     available,
+    ...(reason === undefined ? {} : { reason }),
   });
   let announce!: (tools: ReturnType<PageTools["list"]>) => void;
   const tools = {
-    list: () => [tool("snapshot", true), tool("Dialog.confirm", false)],
+    list: () => [
+      tool("snapshot", true),
+      tool("Dialog.confirm", false, "a click would not reach it"),
+    ],
     subscribe: (listener: typeof announce) => {
       announce = listener;
       return () => {};
@@ -94,5 +98,18 @@ it("publishes only the page's available tools, again after each change", () => {
   publishPageTools({ tools, channel });
   announce([tool("snapshot", true), tool("Dialog.confirm", true)]);
 
-  expect(published).toEqual([["snapshot"], ["snapshot", "Dialog.confirm"]]);
+  const expected = (name: string, available: boolean, reason?: string) => ({
+    name,
+    description: "",
+    inputSchema: {},
+    available,
+    ...(reason === undefined ? {} : { reason }),
+  });
+  expect(published).toEqual([
+    [
+      expected("snapshot", true),
+      expected("Dialog.confirm", false, "a click would not reach it"),
+    ],
+    [expected("snapshot", true), expected("Dialog.confirm", true)],
+  ]);
 });
