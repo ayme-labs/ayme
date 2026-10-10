@@ -2,7 +2,12 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import {
+  derivePomManifestsFromProgram,
+  type SkippedPomMethod,
+} from "./derivePomManifests";
 import { derivePomManifests } from "./index";
+import { createPomProgram } from "./pomProgram";
 
 function manifestFor(fixture: string) {
   return derivePomManifests(path.resolve(`src/fixtures/${fixture}.ts`))[0];
@@ -423,6 +428,22 @@ describe("derivePomManifests", () => {
 
     expect(componentsOf("SearchPage")).toEqual(["SearchBox", "ResultsPage"]);
     expect(componentsOf("SettingsPage")).toEqual([]);
+  });
+
+  it("lists Children of Children once, and reports their unmarked methods", () => {
+    const fileName = path.resolve("src/fixtures/nestedChildren/shopPage.ts");
+    let skipped: SkippedPomMethod[] = [];
+    const [manifest] = derivePomManifestsFromProgram(
+      fileName,
+      createPomProgram(fileName),
+      (methods) => (skipped = methods)
+    );
+
+    // CartItem's action returns ShopPage, which closes the loop.
+    expect(
+      manifest?.components.map((component) => component.className)
+    ).toEqual(["Cart", "CartItem", "ShopPage"]);
+    expect(skipped).toEqual([{ name: "CartItem.quantity" }]);
   });
 
   describe("inherited @ayme recognition", () => {
