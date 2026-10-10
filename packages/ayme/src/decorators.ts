@@ -100,37 +100,22 @@ function markAction(
   void descriptor;
 }
 
-/** The method a member decorator was applied to, in either decorator mode. */
-function decoratedMethod(
-  value: object,
-  descriptor: PropertyDescriptor | undefined
-): unknown {
-  return descriptor ? descriptor.value : value;
-}
-
+/**
+ * A member decorator that keeps `predicate` for the method it is applied
+ * to: the descriptor's value in legacy mode, the value itself in standard.
+ */
 function keepingPredicate(
   predicate: AvailabilityPredicate<never>
 ): AymeActionDecorator {
-  function mark(
-    target: object,
-    propertyKey: string | symbol,
-    descriptor: PropertyDescriptor
-  ): void;
-  function mark<This, Value extends AnyMethod<This>>(
-    value: Value,
-    context: ClassMethodDecoratorContext<This, Value>
-  ): void;
-  function mark(
+  return ((
     value: object,
-    contextOrKey: unknown,
+    _context: unknown,
     descriptor?: PropertyDescriptor
-  ) {
-    void contextOrKey;
-    const method = decoratedMethod(value, descriptor);
+  ) => {
+    const method: unknown = descriptor?.value ?? value;
     if (typeof method === "function")
       availabilityPredicates.set(method, predicate);
-  }
-  return mark;
+  }) as AymeActionDecorator;
 }
 
 function aymeClass(target: PageObjectClass): void;

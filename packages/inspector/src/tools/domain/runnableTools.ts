@@ -77,12 +77,20 @@ export function listRunnableTools(
     for (const tool of registration.tools)
       if (!tools.has(tool.name)) {
         const listed = live.get(tool.name);
-        const availability: Availability = listed
-          ? { present: true, ...availabilityOf(listed) }
-          : activeTools.has(tool.name)
-            ? { present: true, available: true }
-            : { present: false, available: false };
-        tools.set(tool.name, pageObjectTool(tool, availability));
+        const active = activeTools.has(tool.name);
+        tools.set(
+          tool.name,
+          pageObjectTool(
+            tool,
+            listed
+              ? {
+                  present: true,
+                  available: listed.available,
+                  reason: listed.reason,
+                }
+              : { present: active, available: active }
+          )
+        );
       }
   for (const tool of otherTools)
     if (!tools.has(tool.name)) {
@@ -95,7 +103,8 @@ export function listRunnableTools(
         description: tool.description,
         argumentsSchema: tool.inputSchema,
         present: true,
-        ...availabilityOf(tool),
+        available: tool.available,
+        reason: tool.reason,
         ...(refField ? { refField } : {}),
         ...(tool.group === "browser" &&
         tool.inputSchema.properties?.key?.type === "string"
@@ -112,19 +121,9 @@ export function listRunnableTools(
   return tools;
 }
 
-type Availability = Pick<RunnableTool, "present" | "available" | "reason">;
-
-/** A listed tool's availability, with its reason only when it has one. */
-function availabilityOf({
-  available,
-  reason,
-}: ToolSummary): Pick<RunnableTool, "available" | "reason"> {
-  return reason === undefined ? { available } : { available, reason };
-}
-
 function pageObjectTool(
   tool: RegisteredPomTool & { componentPath?: string },
-  availability: Availability
+  availability: Pick<RunnableTool, "present" | "available" | "reason">
 ): RunnableTool {
   const collection = innermostCollectionPath(tool.componentPath);
   const base = {

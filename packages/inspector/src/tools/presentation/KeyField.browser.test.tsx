@@ -37,7 +37,6 @@ function renderCard() {
     renderPart(
       <RunCard
         tool={pressKey}
-        present
         head={false}
         runs={[]}
         onRun={onRun}

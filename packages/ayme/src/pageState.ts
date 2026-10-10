@@ -25,7 +25,7 @@ import {
   announceRegisteredPomChange,
   getRegisteredPomStructure,
 } from "./registry";
-import { containsThroughShadow } from "./pomObstruction";
+import { containsThroughShadow, parentElement } from "./pomObstruction";
 
 import {
   placeCapturedRoots,
@@ -290,15 +290,6 @@ export function latestRefInTheWay(
     if (ref !== undefined) return ref;
   }
   return undefined;
-}
-
-function parentElement(current: Element): Element | null {
-  return (
-    current.assignedSlot ??
-    current.parentElement ??
-    (current.getRootNode() as ShadowRoot).host ??
-    null
-  );
 }
 
 function isModal(element: Element): boolean {

@@ -112,9 +112,8 @@ describe("Action Availability", () => {
       } else {
         expect(offered).not.toContain("Panel.remove");
         expect(listAvailablePomTools().map((tool) => tool.name)).toEqual([]);
-        expect(
-          "reason" in expected || !("reason" in listed("Panel.remove")!)
-        ).toBe(true);
+        if (!("reason" in expected))
+          expect(published("Panel.remove")).not.toHaveProperty("reason");
       }
     }
   );

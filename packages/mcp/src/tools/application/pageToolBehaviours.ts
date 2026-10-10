@@ -15,7 +15,7 @@ export const publishPageTools: ClientBehaviour = ({ tools, channel }) => {
           description,
           inputSchema,
           available,
-          ...(reason === undefined ? {} : { reason }),
+          reason,
         }))
       )
       // The channel closed; the next channel publishes again.

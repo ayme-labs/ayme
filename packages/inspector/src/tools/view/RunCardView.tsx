@@ -29,7 +29,6 @@ import type { RunnableTool } from "../domain/runnableTools";
  */
 export function RunCardView({
   tool,
-  present,
   head,
   items,
   onHover,
@@ -54,13 +53,12 @@ export function RunCardView({
   showJson,
   form,
 }: {
-  tool: RunnableTool;
   /**
-   * Whether the tool's Page Object is on the page. Otherwise the card shows
-   * dimmed, without Run or a form. The tool's own `available` dims it too,
-   * with its `reason` under the name, and keeps Run.
+   * The tool. One that is not present shows dimmed, without Run or a form;
+   * one that is unavailable shows dimmed too, with its `reason` under the
+   * name, and keeps Run.
    */
-  present: boolean;
+  tool: RunnableTool;
   /** Whether it shows its head: the action's name, signature, description and Run. */
   head: boolean;
   /** For a collection action without an item: the items to pick from. */
@@ -104,7 +102,7 @@ export function RunCardView({
   /** The form: fill_form's fields, the typed form, or the JSON editor. */
   form: ReactNode;
 }) {
-  const { available, reason } = tool;
+  const { present, available, reason } = tool;
   const runButton = present && (
     <Button
       type="submit"

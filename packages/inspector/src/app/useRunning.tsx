@@ -57,7 +57,6 @@ export function useRunning(
       <RunCard
         key={`${toolName}|${item ?? ""}|${ref ?? ""}`}
         tool={tool}
-        present={tool.present}
         head={head}
         item={items.find((candidate) => candidate.path === item)}
         items={items}

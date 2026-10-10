@@ -372,23 +372,12 @@ async function probeRegistrations(lifetime: number): Promise<void> {
   if (changed) notifySubscribers();
 }
 
+// Plain data with a fixed key order, so the texts compare.
 function sameActionObservations(
   left: readonly ActionObservation[],
   right: readonly ActionObservation[]
 ) {
-  return (
-    left.length === right.length &&
-    left.every((observation, index) => {
-      const candidate = right[index];
-      return (
-        candidate !== undefined &&
-        observation.path === candidate.path &&
-        observation.methodName === candidate.methodName &&
-        observation.available === candidate.available &&
-        observation.reason === candidate.reason
-      );
-    })
-  );
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function sameObservations(
@@ -556,11 +545,7 @@ function instanceAvailability(
   );
   if (!observation || observation.available)
     return { present: true, available: true };
-  return {
-    present: true,
-    available: false,
-    ...(observation.reason === undefined ? {} : { reason: observation.reason }),
-  };
+  return { present: true, available: false, reason: observation.reason };
 }
 
 /** One tool's availability over the instances it stands for. */
@@ -571,12 +556,7 @@ function combinedAvailability(
   const present = states.filter((state) => state.present);
   if (available || present.length === 0)
     return { present: present.length > 0, available };
-  const [first] = present;
-  return {
-    present: true,
-    available: false,
-    ...(first?.reason === undefined ? {} : { reason: first.reason }),
-  };
+  return { present: true, available: false, reason: present[0]?.reason };
 }
 
 /**
@@ -713,7 +693,10 @@ function notifySubscribers() {
  * an unavailable root's way its ref.
  */
 export function announceRegisteredPomChange() {
-  if (registeredPoms.size > 0) notifySubscribers();
+  const obstructed = [...registeredPoms].some((registration) =>
+    registration.rootObservations.some((root) => root.obstruction)
+  );
+  if (obstructed) notifySubscribers();
 }
 
 function createRegisteredTools(manifest: PomManifest, instance: object) {

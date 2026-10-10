@@ -68,7 +68,6 @@ function renderCard({ onPick }: { onPick?: RefSource["onPick"] } = {}) {
     return (
       <RunCard
         tool={generateLocator}
-        present
         head={false}
         refSource={{
           roots,

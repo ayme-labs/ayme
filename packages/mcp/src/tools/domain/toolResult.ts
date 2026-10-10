@@ -142,6 +142,6 @@ export function listedPageTool(tool: PageTool) {
   return {
     ...mcpPageTool(tool),
     available: tool.available,
-    ...(tool.reason === undefined ? {} : { reason: tool.reason }),
+    reason: tool.reason,
   };
 }

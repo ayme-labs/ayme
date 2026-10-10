@@ -78,7 +78,6 @@ function renderCard(source: Partial<RefSource> | null = {}) {
     renderPart(
       <RunCard
         tool={click}
-        present
         head={false}
         refSource={source ? { roots, ...source } : undefined}
         runs={[]}
