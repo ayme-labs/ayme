@@ -48,9 +48,11 @@ describes.
 
 After mounting the component, check the tools and the page state:
 
-- [`ayme.tools.list()`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymetools) lists them.
+- [`ayme.tools.list()`](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymetools)
+  lists them, with `available` and, for a tool that cannot run now, its `reason`.
 - The [Inspector](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/inspector.md)'s
-  Model and Tools lenses show the Page Objects on the page and their available tools.
+  Model and Tools lenses show the Page Objects on the page and their tools; an
+  unavailable tool shows dimmed with its reason.
 - `(await ayme.tools.run("snapshot", {})).structure` returns the Structural Page
   State an agent receives, labelled with Page Object names.
 
