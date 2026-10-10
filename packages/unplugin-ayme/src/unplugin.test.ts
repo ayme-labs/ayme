@@ -41,7 +41,7 @@ function writeFakeLoader(
 exports.configLoader = {
   loadConfigFromFile: async () => ({ projects: [] }),
 };`,
-  version = "1.62.1"
+  version = "1.64.0"
 ) {
   const playwrightRoot = join(
     root,

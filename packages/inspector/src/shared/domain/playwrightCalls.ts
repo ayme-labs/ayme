@@ -24,6 +24,7 @@ export const locatorCalls = {
   allTextContents: "none",
   and: "none",
   ariaSnapshot: "none",
+  ariaSnapshotJSON: "none",
   blur: "act",
   boundingBox: "none",
   check: "click",
@@ -86,8 +87,10 @@ export const locatorCalls = {
   toString: "none",
   type: "act",
   uncheck: "click",
+  visible: "none",
   waitFor: "none",
   waitForFunction: "none",
+  within: "none",
 } as const satisfies Record<Methods<Locator>, CallKind>;
 
 /** The Page's actions take their element's selector first. */
@@ -102,6 +105,7 @@ export const pageCalls = {
   addScriptTag: "none",
   addStyleTag: "none",
   ariaSnapshot: "none",
+  ariaSnapshotJSON: "none",
   bringToFront: "none",
   cancelPickLocator: "none",
   check: "click",
@@ -129,6 +133,7 @@ export const pageCalls = {
   getByAltText: "none",
   getByLabel: "none",
   getByPlaceholder: "none",
+  getByRef: "none",
   getByRole: "none",
   getByTestId: "none",
   getByText: "none",

@@ -102,7 +102,7 @@ describe.each([true, false])("a standalone app with ssr=%s", (ssr) => {
     };
     expect(manifest.dependencies["@ayme-dev/ayme"]).toBe(version);
     expect(manifest.devDependencies["@ayme-dev/unplugin-ayme"]).toBe(version);
-    expect(manifest.devDependencies["@playwright/test"]).toBe("~1.62.1");
+    expect(manifest.devDependencies["@playwright/test"]).toBe("~1.64.0");
     // The custom-esbuild major follows the Angular major the workspace uses.
     const angularMajor =
       manifest.dependencies["@angular/core"]!.match(/\d+/)![0];
