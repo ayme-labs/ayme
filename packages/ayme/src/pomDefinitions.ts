@@ -5,6 +5,7 @@ import type {
   PomDefinitionsResult,
   PomManifest,
 } from "./contracts";
+import { inputSchemaFor } from "./actionTool";
 import { listRegisteredPoms } from "./registry";
 import { RefResolutionError, ToolInputError } from "./errors";
 
@@ -108,10 +109,10 @@ function addNode(
 function definitionFor(node: DefinitionNode): PomDefinition {
   const actions: PomDefinitionAction[] = node.tools.map((tool) => ({
     name: tool.methodName,
-    ...(tool.authoredDescription === undefined
+    ...(tool.description === undefined
       ? {}
-      : { description: tool.authoredDescription }),
-    inputSchema: tool.inputSchema,
+      : { description: tool.description }),
+    inputSchema: inputSchemaFor(tool.parameters),
     returnPoms: tool.returnPoms ?? [],
   }));
   return {

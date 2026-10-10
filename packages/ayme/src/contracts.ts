@@ -23,12 +23,16 @@ export type JsonSchema = {
   default?: JsonPrimitive;
 };
 
+/** A Page Object Action's parameter, as TypeScript declares it. */
 export type ToolParameter = {
   name: string;
+  /** Declared optional: `?`, an initializer, or `| undefined`. */
   optional: boolean;
   schema: JsonSchema;
   /** A rest parameter: the action takes its list as separate arguments. */
   rest?: true;
+  /** The initializer's value, when it is a literal. */
+  default?: JsonPrimitive;
 };
 
 export type PomMemberAccess = "field" | "getter" | "method";
@@ -65,12 +69,15 @@ export type PomMemberObservation = {
   error?: string;
 };
 
+/**
+ * A Page Object Action as the compiler finds it in TypeScript. `actionTool.ts`
+ * derives the input schema and description agents read.
+ */
 export type ToolManifest = {
   methodName: string;
   toolName: string;
-  description: string;
-  authoredDescription?: string;
-  inputSchema: JsonSchema;
+  /** The description its `@ayme.action` marker gives. */
+  description?: string;
   parameters: readonly ToolParameter[];
   returnPoms?: readonly string[];
 };
@@ -147,5 +154,10 @@ export type RegisteredPomTool = ToolDescriptor & {
   componentClassName?: string;
   methodName: string;
   inputSchema: JsonSchema;
-  parameters: readonly ToolParameter[];
+  /** Its parameters as agents read them. */
+  parameters: readonly {
+    name: string;
+    optional: boolean;
+    schema: JsonSchema;
+  }[];
 };

@@ -16,13 +16,6 @@ const action = (
   methodName,
   toolName: methodName,
   description,
-  authoredDescription: description,
-  inputSchema: {
-    type: "object",
-    properties: { value: { type: "string" } },
-    required: ["value"],
-    additionalProperties: false,
-  },
   parameters: [{ name: "value", optional: false, schema: { type: "string" } }],
   returnPoms,
 });

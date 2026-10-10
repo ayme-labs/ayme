@@ -40,12 +40,6 @@ const pomManifest = (className: string, methodName: string): PomManifest => ({
       methodName,
       toolName: `${className}.${methodName}`,
       description: `${methodName} on ${className}.`,
-      inputSchema: {
-        type: "object",
-        properties: { title: { type: "string" } },
-        required: ["title"],
-        additionalProperties: false,
-      },
       parameters: [
         { name: "title", optional: false, schema: { type: "string" } },
       ],
@@ -82,20 +76,11 @@ registerCompiledPom(GroupPage, {
       methodName: "toggle",
       toolName: "GroupPage.toggle",
       description: "Toggle refs in a group.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          group: { type: "number" },
-          refs: { type: "array", items: { type: "string" } },
-        },
-        required: ["group"],
-        additionalProperties: false,
-      },
       parameters: [
         { name: "group", optional: false, schema: { type: "number" } },
         {
           name: "refs",
-          optional: true,
+          optional: false,
           schema: { type: "array", items: { type: "string" } },
           rest: true,
         },
@@ -156,12 +141,6 @@ registerCompiledPom(ListPage, {
           methodName: "archive",
           toolName: "archive",
           description: "archive on ListItem.",
-          inputSchema: {
-            type: "object",
-            properties: {},
-            required: [],
-            additionalProperties: false,
-          },
           parameters: [],
         },
       ],

@@ -2,6 +2,7 @@
 
 import type { JsonSchema, JsonValue } from "@ayme-dev/ayme";
 import {
+  inputSchemaFor,
   renderPomDefinitions,
   toolInputViolations,
 } from "@ayme-dev/ayme/internal";
@@ -11,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { actionSignature } from "./actionSignature";
 
 // Contract: one schema, three readers. The build plugin compiles a Page
-// Object's parameters to a schema, the runtime validates calls against it,
+// Object's parameters, the runtime derives a schema and validates calls against it,
 // and agents and the Inspector both render it. Each fixture action's schema
 // must accept a matching call, and the Inspector must show the signature
 // the definition text gives agents.
@@ -75,17 +76,17 @@ describe("an action's schema, compiled, validated and rendered", () => {
   it.each(tools.map((tool) => [tool.toolName, tool] as const))(
     "%s accepts a matching call",
     (toolName, tool) => {
-      expect(toolInputViolations(tool.inputSchema, calls[toolName])).toEqual(
-        []
-      );
+      expect(
+        toolInputViolations(inputSchemaFor(tool.parameters), calls[toolName])
+      ).toEqual([]);
     }
   );
 
   it.each(tools.map((tool) => [tool.toolName, tool] as const))(
     "%s shows agents' signature in the Inspector",
     (_, tool) => {
-      expect(`  ${tool.methodName}${actionSignature(tool.inputSchema)}`).toBe(
-        definitionLine(tool.methodName, tool.inputSchema)
+      expect(`  ${tool.methodName}${actionSignature(tool.parameters)}`).toBe(
+        definitionLine(tool.methodName, inputSchemaFor(tool.parameters))
       );
     }
   );
@@ -93,7 +94,7 @@ describe("an action's schema, compiled, validated and rendered", () => {
   it("renders unions, tuples, maps and rest parameters as TypeScript", () => {
     const signatureOf = (methodName: string) =>
       actionSignature(
-        tools.find((tool) => tool.methodName === methodName)!.inputSchema
+        tools.find((tool) => tool.methodName === methodName)!.parameters
       );
 
     expect(signatureOf("primitiveUnion")).toBe(

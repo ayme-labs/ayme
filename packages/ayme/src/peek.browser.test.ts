@@ -427,12 +427,6 @@ describe("calling a Peek Tool", () => {
     methodName: "save",
     toolName: "Editor.save",
     description: "Save.",
-    inputSchema: {
-      type: "object",
-      properties: {},
-      required: [],
-      additionalProperties: false,
-    },
     parameters: [],
   };
   const reveal: ToolManifest = {

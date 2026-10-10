@@ -29,25 +29,11 @@ describe("derivePomManifests", () => {
         {
           methodName: "open",
           toolName: "BarePom.open",
-          description: "Run open.",
-          inputSchema: {
-            type: "object",
-            properties: {},
-            required: [],
-            additionalProperties: false,
-          },
           parameters: [],
         },
         {
           methodName: "close",
           toolName: "BarePom.close",
-          description: "Run close.",
-          inputSchema: {
-            type: "object",
-            properties: {},
-            required: [],
-            additionalProperties: false,
-          },
           parameters: [],
         },
       ]);
@@ -62,7 +48,6 @@ describe("derivePomManifests", () => {
           {
             toolName: "DescribedPom.save",
             description: "Save the name.",
-            authoredDescription: "Save the name.",
           },
         ],
       });
@@ -113,61 +98,60 @@ describe("derivePomManifests", () => {
       );
     }
 
-    it("publishes a defaulted parameter as optional with its literal default", () => {
-      const tool = toolFor("create");
-
-      expect(tool?.inputSchema).toEqual({
-        type: "object",
-        properties: {
-          name: { type: "string" },
-          type: {
-            type: "string",
-            enum: ["personal", "account", "team"],
-            default: "personal",
-          },
+    it("records a defaulted parameter as optional with its literal default", () => {
+      expect(toolFor("create")?.parameters).toEqual([
+        { name: "name", optional: false, schema: { type: "string" } },
+        {
+          name: "type",
+          optional: true,
+          schema: { type: "string", enum: ["personal", "account", "team"] },
+          default: "personal",
         },
-        required: ["name"],
-        additionalProperties: false,
-      });
+      ]);
     });
 
-    it("publishes number, negative number, boolean and template literal defaults", () => {
-      expect(toolFor("literals")?.inputSchema).toEqual({
-        type: "object",
-        properties: {
-          count: { type: "number", default: 3 },
-          offset: { type: "number", default: -1 },
-          archived: { type: "boolean", default: false },
-          label: { type: "string", default: "plain" },
+    it("records number, negative number, boolean and template literal defaults", () => {
+      expect(toolFor("literals")?.parameters).toEqual([
+        {
+          name: "count",
+          optional: true,
+          schema: { type: "number" },
+          default: 3,
         },
-        required: [],
-        additionalProperties: false,
-      });
+        {
+          name: "offset",
+          optional: true,
+          schema: { type: "number" },
+          default: -1,
+        },
+        {
+          name: "archived",
+          optional: true,
+          schema: { type: "boolean" },
+          default: false,
+        },
+        {
+          name: "label",
+          optional: true,
+          schema: { type: "string" },
+          default: "plain",
+        },
+      ]);
     });
 
-    it("publishes a non-literal default as optional without a default", () => {
-      expect(toolFor("computed")?.inputSchema).toEqual({
-        type: "object",
-        properties: {
-          name: { type: "string" },
-          count: { type: "number" },
-          size: { type: "number" },
-        },
-        required: [],
-        additionalProperties: false,
-      });
+    it("records a non-literal default as optional without a default", () => {
+      expect(toolFor("computed")?.parameters).toEqual([
+        { name: "name", optional: true, schema: { type: "string" } },
+        { name: "count", optional: true, schema: { type: "number" } },
+        { name: "size", optional: true, schema: { type: "number" } },
+      ]);
     });
 
     it("keeps `?` and `| undefined` parameters optional without a default", () => {
-      expect(toolFor("optional")?.inputSchema).toEqual({
-        type: "object",
-        properties: {
-          note: { type: "string" },
-          tag: { type: "string" },
-        },
-        required: [],
-        additionalProperties: false,
-      });
+      expect(toolFor("optional")?.parameters).toEqual([
+        { name: "note", optional: true, schema: { type: "string" } },
+        { name: "tag", optional: true, schema: { type: "string" } },
+      ]);
     });
 
     it("keeps a defaulted `| undefined` parameter optional", () => {
@@ -175,11 +159,8 @@ describe("derivePomManifests", () => {
         {
           name: "type",
           optional: true,
-          schema: {
-            type: "string",
-            enum: ["personal", "account", "team"],
-            default: "team",
-          },
+          schema: { type: "string", enum: ["personal", "account", "team"] },
+          default: "team",
         },
       ]);
     });
@@ -193,15 +174,6 @@ describe("derivePomManifests", () => {
         methodName: "inheritedTool",
         toolName: "InheritedPom.inheritedTool",
         description: "Use the inherited tool.",
-        authoredDescription: "Use the inherited tool.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            value: { type: "string" },
-          },
-          required: ["value"],
-          additionalProperties: false,
-        },
         parameters: [
           {
             name: "value",
@@ -396,14 +368,9 @@ describe("derivePomManifests", () => {
         {
           methodName: "open",
           returnPoms: ["FirstReturnPom", "SecondReturnPom"],
-          description:
-            "Open a related POM. Potential return POMs: FirstReturnPom, SecondReturnPom.",
-          authoredDescription: "Open a related POM.",
+          description: "Open a related POM.",
         },
-        {
-          methodName: "status",
-          description: "Run status.",
-        },
+        { methodName: "status" },
       ],
       components: expect.arrayContaining([
         expect.objectContaining({
@@ -414,7 +381,7 @@ describe("derivePomManifests", () => {
       ]),
     });
     const status = manifest.tools.find((tool) => tool.methodName === "status");
-    expect(status).not.toHaveProperty("authoredDescription");
+    expect(status).not.toHaveProperty("description");
   });
 
   it("lists only the Children and return POMs of each Page Object in a file", () => {
@@ -650,27 +617,24 @@ describe("derivePomManifests", () => {
       ]);
     });
 
-    it("publishes a rest parameter as an optional list and says so in the description", () => {
+    it("records a rest parameter as a list", () => {
       const tool = manifestFor("parameterShapesPom")?.tools.find(
         ({ methodName }) => methodName === "rest"
       );
 
-      expect(tool?.description).toBe(
-        "Take a rest parameter. refs is a rest parameter: pass its arguments as a list."
-      );
-      expect(tool?.authoredDescription).toBe("Take a rest parameter.");
+      expect(tool?.description).toBe("Take a rest parameter.");
       expect(tool?.parameters).toEqual([
         { name: "group", optional: false, schema: { type: "number" } },
         {
           name: "refs",
-          optional: true,
+          optional: false,
           schema: { type: "array", items: { type: "string" } },
           rest: true,
         },
       ]);
     });
 
-    it("leaves out an empty tuple's prefixItems, and requires a rest parameter whose tuple has required elements", () => {
+    it("leaves out an empty tuple's prefixItems", () => {
       expect(parametersOf("tupleEdges")).toEqual([
         {
           name: "none",
