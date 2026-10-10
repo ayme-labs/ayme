@@ -150,4 +150,19 @@ describe("a solution-style tsconfig", () => {
       `ProjectsPage.probe(kind): Kind. Compiled with ${nodeConfig}.`
     );
   });
+
+  it("names the tsconfig when the unsupported input type is on a Page Object Child's action", () => {
+    const nodeConfig = join(project, "tsconfig.node.json");
+    const dialogPath = join(project, "src/pom/projectsDialog.ts");
+    const transform = createPomTransform({ tsconfigPath: nodeConfig });
+
+    expect(() =>
+      transform(readFileSync(dialogPath, "utf8"), dialogPath)
+    ).toThrow(
+      // The whole message, so the suffix appears once.
+      expect.objectContaining({
+        message: `Unsupported Page Object Tool input type for KindPicker.pick(kind): Kind. Compiled with ${nodeConfig}.`,
+      })
+    );
+  });
 });
