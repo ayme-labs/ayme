@@ -285,14 +285,6 @@ function tool(
     methodName,
     toolName,
     description: methodName,
-    inputSchema: {
-      type: "object",
-      properties: Object.fromEntries(
-        parameters.map((parameter) => [parameter.name, parameter.schema])
-      ),
-      required: parameters.map((parameter) => parameter.name),
-      additionalProperties: false,
-    },
     parameters,
   };
 }

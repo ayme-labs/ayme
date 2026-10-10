@@ -188,31 +188,6 @@ test("derives nested object input schemas from POM action types", () => {
       methodName: "archive",
       toolName: "ObjectInputPom.archive",
       description: "Archive with structured options.",
-      authoredDescription: "Archive with structured options.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          options: {
-            type: "object",
-            properties: {
-              reason: { type: "string", enum: ["obsolete", "duplicate"] },
-              notification: {
-                type: "object",
-                properties: {
-                  channel: { type: "string", enum: ["email", "in-app"] },
-                  includeLink: { type: "boolean" },
-                },
-                required: ["channel"],
-                additionalProperties: false,
-              },
-            },
-            required: ["reason"],
-            additionalProperties: false,
-          },
-        },
-        required: ["options"],
-        additionalProperties: false,
-      },
       parameters: [
         {
           name: "options",

@@ -2,16 +2,15 @@ import path from "node:path";
 
 import ts from "typescript";
 
+import type { JsonPrimitive, JsonSchema } from "@ayme-dev/ayme";
 import type {
-  JsonPrimitive,
-  JsonSchema,
   PomComponentManifest,
   PomManifest,
   PomMemberAccess,
   PomMemberManifest,
   ToolManifest,
   ToolParameter,
-} from "@ayme-dev/ayme";
+} from "@ayme-dev/ayme/internal";
 import { createPomProgram, type PomCompilerOptions } from "./pomProgram";
 
 export type { PomCompilerOptions } from "./pomProgram";
@@ -241,15 +240,9 @@ function classManifest(
       tools.push({
         methodName,
         toolName: `${className}.${methodName}`,
-        description: toolDescriptionText(
-          description.authored ?? `Run ${methodName}.`,
-          returnPomNames,
-          parameters.find((parameter) => parameter.rest)?.name
-        ),
         ...(description.authored === undefined
           ? {}
-          : { authoredDescription: description.authored }),
-        inputSchema: inputSchemaFor(parameters),
+          : { description: description.authored }),
         parameters,
         ...(returnPomNames.length === 0 ? {} : { returnPoms: returnPomNames }),
       } satisfies ToolManifest);
@@ -586,21 +579,6 @@ function toolDescription(
   return authored === undefined ? {} : { authored };
 }
 
-function toolDescriptionText(
-  description: string,
-  returnPoms: readonly string[],
-  restParameter: string | undefined
-) {
-  const parts = [description];
-  if (restParameter !== undefined)
-    parts.push(
-      `${restParameter} is a rest parameter: pass its arguments as a list.`
-    );
-  if (returnPoms.length > 0)
-    parts.push(`Potential return POMs: ${returnPoms.join(", ")}.`);
-  return parts.join(" ");
-}
-
 function toolParameter(
   checker: ts.TypeChecker,
   parameter: ts.ParameterDeclaration,
@@ -621,8 +599,6 @@ function toolParameter(
     parameter.name.text
   );
   const optional =
-    // A rest parameter can be left out when it takes no arguments.
-    (rest && !schema.minItems) ||
     parameter.questionToken !== undefined ||
     parameter.initializer !== undefined ||
     typeIncludesUndefined(type);
@@ -631,11 +607,9 @@ function toolParameter(
   return {
     name: parameter.name.text,
     optional,
-    schema:
-      defaultValue === undefined
-        ? schema
-        : { ...schema, default: defaultValue },
+    schema,
     ...(rest ? { rest: true as const } : {}),
+    ...(defaultValue === undefined ? {} : { default: defaultValue }),
   };
 }
 
@@ -900,19 +874,4 @@ function typeIncludesUndefined(type: ts.Type) {
     type.isUnion() &&
     type.types.some((member) => (member.flags & ts.TypeFlags.Undefined) !== 0)
   );
-}
-
-function inputSchemaFor(parameters: readonly ToolParameter[]): JsonSchema {
-  const properties = Object.fromEntries(
-    parameters.map((parameter) => [parameter.name, parameter.schema])
-  );
-  const required = parameters
-    .filter((parameter) => !parameter.optional)
-    .map((parameter) => parameter.name);
-  return {
-    type: "object",
-    properties,
-    required,
-    additionalProperties: false,
-  };
 }

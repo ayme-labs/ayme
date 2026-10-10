@@ -1,8 +1,8 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { PomManifest, RegisteredPomTool, ToolInfo } from "@ayme-dev/ayme";
-import type { RegisteredPom } from "@ayme-dev/ayme/internal";
+import type { RegisteredPomTool, ToolInfo } from "@ayme-dev/ayme";
+import type { PomManifest, RegisteredPom } from "@ayme-dev/ayme/internal";
 
 import { renderInspector } from "./renderInspector";
 import { Inspector } from "../testing";
@@ -39,7 +39,6 @@ const manifest: PomManifest = {
           methodName: "save",
           toolName: "save",
           description: "Save the document.",
-          inputSchema: noArguments,
           parameters: [],
         },
       ],
@@ -105,6 +104,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   startedAyme.webMCP.publicationStatus = runtime.publication;
   const {
     pageStateNodeEntry,
+    inputSchemaFor,
     renderActionParameters,
     renderSchema,
     toolInputViolations,
@@ -112,6 +112,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   return {
     pageStateNodeEntry,
     subscribeToAgentImageRuns: () => () => {},
+    inputSchemaFor,
     renderActionParameters,
     renderSchema,
     toolInputViolations,

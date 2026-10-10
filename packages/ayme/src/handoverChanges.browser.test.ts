@@ -207,12 +207,6 @@ const action = (methodName: string, toolName: string): ToolManifest => ({
   methodName,
   toolName,
   description: methodName,
-  inputSchema: {
-    type: "object",
-    properties: {},
-    required: [],
-    additionalProperties: false,
-  },
   parameters: [],
 });
 

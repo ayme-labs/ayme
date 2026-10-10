@@ -13,13 +13,6 @@ import { createAyme } from "./runtime";
 // a bare `UnknownError`. The agent's calls are `webmcp` Runs, through the
 // publication harness.
 
-const noInput = {
-  type: "object",
-  properties: {},
-  required: [],
-  additionalProperties: false,
-} as const;
-
 const failingManifest: PomManifest = {
   className: "FailingPage",
   members: [
@@ -36,7 +29,6 @@ const failingManifest: PomManifest = {
       methodName: "explode",
       toolName: "FailingPage.explode",
       description: "Always fails.",
-      inputSchema: noInput,
       parameters: [],
     },
   ],
@@ -49,7 +41,6 @@ const failingManifest: PomManifest = {
           methodName: "archive",
           toolName: "archive",
           description: "Archive the item.",
-          inputSchema: noInput,
           parameters: [],
         },
       ],

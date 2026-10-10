@@ -620,12 +620,6 @@ it("hands publication the session's tools, and runs an agent's call as a webmcp 
         methodName: "save",
         toolName: "Saver.save",
         description: "Save.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-          required: [],
-          additionalProperties: false,
-        },
         parameters: [],
       },
     ],

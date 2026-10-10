@@ -1,12 +1,15 @@
 import type {
   JsonSchema,
   PomDefinition,
+  PomMemberObservation,
+} from "@ayme-dev/ayme";
+import type {
   PomManifest,
   PomMemberManifest,
-  PomMemberObservation,
+  RegisteredPom,
   ToolManifest,
-} from "@ayme-dev/ayme";
-import type { RegisteredPom } from "@ayme-dev/ayme/internal";
+  ToolParameter,
+} from "@ayme-dev/ayme/internal";
 
 /**
  * The page model the Model lens shows: the Page Objects on the page as a
@@ -116,8 +119,13 @@ type RegisteredTool = RegisteredPom["tools"][number] & {
   componentPath?: string;
 };
 
-/** An action's arguments from its input schema, e.g. "(text: string)". */
-export type Signature = (inputSchema: JsonSchema) => string;
+/**
+ * An action's arguments from its input schema, or from the parameters a
+ * manifest records, e.g. "(text: string)".
+ */
+export type Signature = (
+  input: JsonSchema | readonly ToolParameter[]
+) => string;
 
 /**
  * Builds the page model from the registered Page Objects, the live tools
@@ -375,10 +383,10 @@ function actionsAt(
     return [
       {
         name: action.methodName,
-        ...(action.authoredDescription === undefined
+        ...(action.description === undefined
           ? {}
-          : { description: action.authoredDescription }),
-        signature: context.signature(action.inputSchema),
+          : { description: action.description }),
+        signature: context.signature(action.parameters),
         toolName: tool.name,
         live: context.liveToolNames.has(tool.name),
       },

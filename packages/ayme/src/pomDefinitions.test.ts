@@ -16,13 +16,6 @@ const action = (
   methodName,
   toolName: methodName,
   description,
-  authoredDescription: description,
-  inputSchema: {
-    type: "object",
-    properties: { value: { type: "string" } },
-    required: ["value"],
-    additionalProperties: false,
-  },
   parameters: [{ name: "value", optional: false, schema: { type: "string" } }],
   returnPoms,
 });
@@ -284,6 +277,27 @@ describe("POM definition catalog", () => {
         },
       ],
     });
+
+    registration.dispose();
+  });
+
+  it("gives an action without a description none, not the one agents read", async () => {
+    const { definitions, registry } = await setup();
+    class BarePage {
+      run(value: string) {
+        return value;
+      }
+    }
+    const { methodName, toolName, parameters } = action("run");
+    registry.registerCompiledPom(
+      BarePage,
+      manifest("BarePage", { tools: [{ methodName, toolName, parameters }] })
+    );
+    const registration = registry.createPageRegistration(BarePage);
+
+    const [definition] = definitions.getPomDefinitions("BarePage").definitions;
+    expect(definition?.actions[0]).not.toHaveProperty("description");
+    expect(registry.listAvailablePomTools()[0]?.description).toBe("Run run.");
 
     registration.dispose();
   });

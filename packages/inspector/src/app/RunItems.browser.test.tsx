@@ -22,12 +22,14 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
+    inputSchemaFor,
     renderActionParameters,
     renderSchema,
     toolInputViolations,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     pageStateNodeEntry,
+    inputSchemaFor,
     renderActionParameters,
     renderSchema,
     toolInputViolations,
@@ -80,7 +82,6 @@ const listPage: RegisteredPom = {
             methodName: archive.methodName,
             toolName: archive.name,
             description: archive.description,
-            inputSchema: archive.inputSchema,
             parameters: archive.parameters,
           },
         ],

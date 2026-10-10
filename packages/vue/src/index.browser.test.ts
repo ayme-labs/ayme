@@ -556,12 +556,6 @@ it("C5: keeps a real publisher startup failure retryable", async () => {
         methodName: "run",
         toolName: "run",
         description: "Run",
-        inputSchema: {
-          type: "object",
-          properties: {},
-          required: [],
-          additionalProperties: false,
-        },
         parameters: [],
       },
     ],
