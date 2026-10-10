@@ -14,13 +14,15 @@ when its independent behavior makes that useful.
 
 ## Root a POM at what its actions touch
 
-A POM's `root` must contain every element its actions touch. Ayme publishes a
-POM's tools only while its
+A POM's `root` must contain every element its actions touch. Ayme lists a
+POM's tools while its
 [Page Object Root](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#the-page-object-root)
-is present and available, not covered or blocked by a modal. Actions on elements
-outside the root can therefore be withdrawn exactly when they are needed, for
-example while a modal menu or dialog that blocks pointer events on the rest of
-the page is open.
+is present on the page, and they are available while a click would reach the
+root. A root a click would not reach, covered or blocked by a modal, keeps its
+tools listed but unavailable, with a reason naming what is in the way, and a
+call is refused with that reason. Actions on elements outside the root are
+therefore refused exactly when they are needed, for example while a modal menu
+or dialog that blocks pointer events on the rest of the page is open.
 
 Portaled content, such as menus, dialogs, and popovers, gets its own POM rooted
 at that content. The trigger that opens it stays on the parent POM. Expose the
@@ -91,6 +93,43 @@ async title() {
   return this.heading.textContent();
 }
 ```
+
+## Declare when an action can run
+
+An action that is possible only in some states, such as removing a dashboard
+that is not built in, keeps its natural POM and declares the condition with
+`available`, an availability predicate, instead of a root at the one control
+that comes and goes or a method that throws. The tool stays listed; while the
+predicate fails, it is flagged unavailable with the string as its reason, and a
+call is refused with that reason before anything runs.
+[Action availability](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#action-availability)
+has the signature and the rules.
+
+```ts
+const canRemove = async (self: SettingsPanel) =>
+  (await self.removeButton.isVisible()) ||
+  "This dashboard is built in or the last of its type";
+
+@ayme
+class SettingsPanel {
+  readonly removeButton = this.root.getByTestId("removeButton");
+  constructor(readonly root: Locator) {}
+
+  @ayme.action({
+    description: "Remove this dashboard. Needs a removable dashboard.",
+    available: canRemove,
+  })
+  async remove() {
+    await this.removeButton.click();
+  }
+}
+```
+
+The reason states the fact ("No item is selected"); the description states the
+condition ("Removes the selected item. Needs a selection."). The predicate runs
+with Ayme's observation of the page, not with the call, so it only reads:
+visibility, enabled state, text, counts. It never clicks, scrolls, focuses or
+changes the page. One predicate can guard several actions.
 
 ## Separate helper returns from flow returns
 
