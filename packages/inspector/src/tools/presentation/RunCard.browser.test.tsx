@@ -13,6 +13,7 @@ import {
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
 import { argumentViolationsOf } from "../infrastructure/argumentViolations";
+import { schemaText } from "../infrastructure/schemaText";
 import { RunCard, type RunCardProps } from "./RunCard";
 
 // Component tests: the run card with fixture tools and runs, driven through
@@ -81,6 +82,7 @@ function renderCard(props: Partial<RunCardProps> & Pick<RunCardProps, "tool">) {
     renderPart(
       <RunCard
         available
+        schemaText={schemaText}
         runs={[]}
         onRun={onRun}
         onShowRun={onShowRun}
@@ -133,6 +135,44 @@ describe("Run", () => {
 
     expect(await card.argumentsToggle.count()).toBe(0);
     expect(onRun).toHaveBeenCalledExactlyOnceWith({ text: "Milk" });
+  });
+});
+
+describe("the types agents read", () => {
+  const shapes: RunnableTool = {
+    name: "ListPage.shapes",
+    action: "shapes",
+    description: "Take every schema shape.",
+    available: true,
+    argumentsSchema: {
+      type: "object",
+      properties: {
+        value: { anyOf: [{ type: "string" }, { type: "number" }] },
+        point: {
+          type: "array",
+          prefixItems: [{ type: "number" }, { type: "string" }],
+          minItems: 2,
+          maxItems: 2,
+        },
+        refs: { type: "array", items: { type: "string" } },
+      },
+      required: ["value", "point"],
+    },
+  };
+
+  it("shows the signature and a JSON field's type the way the definition text writes them", async () => {
+    const { card } = renderCard({ tool: shapes });
+
+    await card.openArguments();
+
+    await expect
+      .poll(() => card.root.textContent())
+      .toContain(
+        "(value: string | number, point: [number, string], refs?: string[])"
+      );
+    const text = await card.root.textContent();
+    expect(text).toContain("valuestring | number");
+    expect(text).toContain("point[number, string]");
   });
 });
 

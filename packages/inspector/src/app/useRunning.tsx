@@ -6,7 +6,12 @@ import type { InspectorRuntime } from "./useInspectorRuntime";
 import type { ViewState } from "./viewState";
 import { RunsRegion } from "../panel";
 import type { RenderRun, Selection } from "../navigation";
-import { argumentViolationsOf, findRefNode, RunCard } from "../tools";
+import {
+  argumentViolationsOf,
+  findRefNode,
+  RunCard,
+  schemaText,
+} from "../tools";
 
 /**
  * Running from the panel: the run slot's run card, and Runs scoped to the
@@ -74,6 +79,7 @@ export function useRunning(
           (run) => run.toolName === toolName && isPanelRun(run)
         )}
         argumentViolations={argumentViolationsOf(tool)}
+        schemaText={schemaText}
         onRun={(input, target) => runtime.runTool(toolName, input, target)}
         onShowRun={showRun}
         onHover={highlight.hover}

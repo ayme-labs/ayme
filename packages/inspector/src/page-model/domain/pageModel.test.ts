@@ -8,11 +8,22 @@ import type {
 } from "@ayme-dev/ayme";
 import type { RegisteredPom } from "@ayme-dev/ayme/internal";
 
-import { buildPageModel, walk, type PageObjectNode } from "./pageModel";
+import {
+  buildPageModel,
+  walk,
+  type PageObjectNode,
+  type Signature,
+} from "./pageModel";
 
 // Unit tests: the page model the Model lens shows, built from a hand-written
 // registration of a to-do page as the runtime reports it. A page with two
 // items, and an archive dialog that isn't open.
+
+/** A stand-in for the definition text's rendering, enough for these schemas. */
+const actionSignature: Signature = (schema) =>
+  `(${Object.entries(schema.properties ?? {})
+    .map(([name, property]) => `${name}: ${String(property.type)}`)
+    .join(", ")})`;
 
 const noArguments = {
   type: "object" as const,
@@ -188,7 +199,12 @@ function objectAt(nodes: readonly PageObjectNode[], path: string) {
 
 describe("the page model", () => {
   it("lists the page's Page Objects as a tree of children, collections and items", () => {
-    const { objects } = buildPageModel([registration()], live, definitions);
+    const { objects } = buildPageModel(
+      [registration()],
+      live,
+      definitions,
+      actionSignature
+    );
 
     expect(
       [...walk(objects)].map(({ path, kind, className, live }) => ({
@@ -227,7 +243,12 @@ describe("the page model", () => {
   });
 
   it("shows each member of an object as the page probe found it", () => {
-    const { objects } = buildPageModel([registration()], live, definitions);
+    const { objects } = buildPageModel(
+      [registration()],
+      live,
+      definitions,
+      actionSignature
+    );
 
     expect(
       objectAt(objects, "TodoPage").members.map(({ name, state, live }) => ({
@@ -249,7 +270,12 @@ describe("the page model", () => {
   });
 
   it("says a member is pending until the page is first probed", () => {
-    const { objects } = buildPageModel([registration([])], live, []);
+    const { objects } = buildPageModel(
+      [registration([])],
+      live,
+      [],
+      actionSignature
+    );
 
     expect(objectAt(objects, "TodoPage").members[0]).toMatchObject({
       name: "newItemInput",
@@ -259,7 +285,12 @@ describe("the page model", () => {
   });
 
   it("gives each member its path from the page", () => {
-    const { objects } = buildPageModel([registration()], live, definitions);
+    const { objects } = buildPageModel(
+      [registration()],
+      live,
+      definitions,
+      actionSignature
+    );
 
     expect(
       objectAt(objects, "TodoPage").members.map(({ name, path }) => ({
@@ -277,7 +308,12 @@ describe("the page model", () => {
   });
 
   it("gives each object the actions that run on it, with their tools and whether they are live", () => {
-    const { objects } = buildPageModel([registration()], live, definitions);
+    const { objects } = buildPageModel(
+      [registration()],
+      live,
+      definitions,
+      actionSignature
+    );
 
     expect(objectAt(objects, "TodoPage").actions).toEqual([
       {
@@ -359,7 +395,8 @@ describe("the page model", () => {
         },
       ],
       live,
-      definitions
+      definitions,
+      actionSignature
     );
 
     expect(
@@ -370,7 +407,12 @@ describe("the page model", () => {
   });
 
   it("lists every model snapshot describes, with its instances on the page", () => {
-    const { models } = buildPageModel([registration()], live, definitions);
+    const { models } = buildPageModel(
+      [registration()],
+      live,
+      definitions,
+      actionSignature
+    );
 
     expect(
       models.map(({ className, instancePaths }) => ({
@@ -388,7 +430,12 @@ describe("the page model", () => {
   });
 
   it("gives a model its members and its actions, live or not", () => {
-    const { models } = buildPageModel([registration()], live, definitions);
+    const { models } = buildPageModel(
+      [registration()],
+      live,
+      definitions,
+      actionSignature
+    );
     const [page, , dialog] = models;
 
     expect(page?.members).toEqual([

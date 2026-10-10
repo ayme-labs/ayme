@@ -9,7 +9,12 @@ import {
   startRefPicking,
   useLiveTools,
 } from "../tools";
-import { buildPageModel, indexMembers, type MemberIndex } from "../page-model";
+import {
+  actionSignature,
+  buildPageModel,
+  indexMembers,
+  type MemberIndex,
+} from "../page-model";
 import { buildStructureTree, emptyStructure } from "../structure";
 import { useHighlights } from "../navigation";
 import { usePageLook } from "../shared";
@@ -69,7 +74,8 @@ export function useInspectorRuntime({
       buildPageModel(
         registeredPoms,
         new Set(tools.live.map((tool) => tool.name)),
-        pomDefinitions
+        pomDefinitions,
+        actionSignature
       ),
     [registeredPoms, tools.live, pomDefinitions]
   );

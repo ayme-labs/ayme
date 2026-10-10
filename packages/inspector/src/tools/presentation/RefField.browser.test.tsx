@@ -8,6 +8,7 @@ import { buildStructureTree } from "../../structure";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
 import type { RefSource } from "../domain/refTree";
+import { schemaText } from "../infrastructure/schemaText";
 import { RunCard } from "./RunCard";
 
 // Component tests: a run card's ref field, with a fixture tool and a
@@ -78,6 +79,7 @@ function renderCard(source: Partial<RefSource> | null = {}) {
       <RunCard
         tool={click}
         available
+        schemaText={schemaText}
         head={false}
         refSource={source ? { roots, ...source } : undefined}
         runs={[]}
