@@ -40,6 +40,12 @@ Whether a rooted Page Object can be associated with rendered UI in the current l
 **Page Object Availability**:
 Whether a live Page Object is currently available for interaction through its root in the user-facing page. Rooted Page Objects must be present to be available. Page Objects without a root retain registration-driven availability. DOM presence alone does not imply either structural presence or availability.
 
+**Action Availability**:
+Whether a Page Object Action can run right now. An action is available when its Page Object is available and its availability predicate, if it declares one, holds. Actions without a predicate share their Page Object's availability. Availability never adds or removes a Page Object Tool; it says whether a listed tool would run.
+
+**Availability Reason**:
+The one fact that makes a Page Object Action unavailable: `obstructed` with the Structural Ref of the element in the way, `ambiguous` when the root matches several elements, or `condition` with the string the predicate returned. The runtime measures the first two and never infers more than it measured; the author writes the third.
+
 **Browser Tool**:
 A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose.
 
