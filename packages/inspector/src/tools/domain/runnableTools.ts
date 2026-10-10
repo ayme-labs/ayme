@@ -64,12 +64,11 @@ export type ToolSummary = {
  * Every registered Page Object tool once by name, and every other live tool,
  * such as Browser and Custom Tools and the agent's own tools, as the run card runs them,
  * whether or not WebMCP publishes them. A Page Object tool is present when
- * the session lists it, or the registry has it available; its availability
- * is the session's word.
+ * the session lists it, since the session lists every present one; its
+ * availability is the session's word.
  */
 export function listRunnableTools(
   registeredPoms: readonly RegisteredPom[],
-  activeTools: ReadonlyMap<string, unknown>,
   otherTools: readonly ToolSummary[]
 ): ReadonlyMap<string, RunnableTool> {
   const live = new Map(otherTools.map((tool) => [tool.name, tool]));
@@ -78,7 +77,6 @@ export function listRunnableTools(
     for (const tool of registration.tools)
       if (!tools.has(tool.name)) {
         const listed = live.get(tool.name);
-        const active = activeTools.has(tool.name);
         tools.set(
           tool.name,
           pageObjectTool(
@@ -89,7 +87,7 @@ export function listRunnableTools(
                   available: listed.available,
                   reason: listed.reason,
                 }
-              : { present: active, available: active }
+              : { present: false, available: false }
           )
         );
       }

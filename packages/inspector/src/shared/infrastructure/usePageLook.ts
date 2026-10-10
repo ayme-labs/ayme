@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { PomDefinition, RegisteredPomTool } from "@ayme-dev/ayme";
+import type { PomDefinition } from "@ayme-dev/ayme";
 import type {
   PageStateLook,
   ProjectedStructuralNodeForest,
@@ -12,7 +12,6 @@ import {
   getPomDefinitions,
   listElementToolTargets,
   listRegisteredPomTargets,
-  listAvailablePomTools,
   listRegisteredPoms,
   lookAtPageStateForDocument,
   subscribeToRegisteredPoms,
@@ -25,8 +24,6 @@ import { createRefreshScheduler } from "./refreshScheduler";
 
 export type RegistrySnapshot = {
   registeredPoms: readonly RegisteredPom[];
-  /** The Page Object tools a call would run now, by name. */
-  activeTools: ReadonlyMap<string, RegisteredPomTool>;
   /** The Page Object Model definitions snapshot returns. */
   pomDefinitions: readonly PomDefinition[];
 };
@@ -56,9 +53,6 @@ const STRUCTURE_POLL_MS = 2000;
 function readRegistry(): RegistrySnapshot {
   return {
     registeredPoms: listRegisteredPoms(),
-    activeTools: new Map(
-      listAvailablePomTools().map((tool) => [tool.name, tool])
-    ),
     pomDefinitions: readPomDefinitions(),
   };
 }
