@@ -16,8 +16,10 @@ pnpm install
 
 # The container ships one Chromium build, but each installed Playwright pins
 # its own revision. Expose the shipped build under every pinned revision.
+# Only the shipped build has a real chrome-linux directory; the revisions this
+# script links have a chrome-linux64 symlink instead.
 browsers="${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers}"
-shipped=$(find "$browsers" -maxdepth 1 -type d -name 'chromium-[0-9]*' -printf '%f\n' | sed 's/chromium-//' | sort -n | tail -1)
+shipped=$(find "$browsers" -mindepth 2 -maxdepth 2 -type d -name chrome-linux -path '*/chromium-[0-9]*/chrome-linux' -printf '%h\n' | sed 's/.*chromium-//' | sort -n | tail -1)
 if [ -n "$shipped" ]; then
   shopt -s nullglob
   manifests=(node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/browsers.json)
