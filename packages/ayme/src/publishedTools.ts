@@ -46,14 +46,22 @@ export type PublishedToolInfo = Readonly<{
 /**
  * A tool of the session, for reading only. `available` says whether a call
  * can run it now: a Page Object Tool is available while its Page Object (or
- * the component instance it acts on) is; every other tool always is.
+ * the component instance it acts on) is and its action's availability
+ * predicate, if it has one, holds; every other tool always is. `reason`,
+ * when the tool is unavailable and there is one, is its Availability Reason:
+ * the runtime's, naming the Structural Ref of the element a click would
+ * reach instead, or the predicate's string (ADR-0035).
  */
-export type ToolInfo = PublishedToolInfo & Readonly<{ available: boolean }>;
+export type ToolInfo = PublishedToolInfo &
+  Readonly<{ available: boolean; reason?: string }>;
 
 type ResolvedTool = {
   tool: PublishedTool;
   group: PublishedToolGroup;
+  /** Whether it is offered: a Page Object Tool's Page Object is present. */
+  present: boolean;
   available: boolean;
+  reason?: string;
 };
 
 /**
@@ -63,10 +71,11 @@ type ResolvedTool = {
 function resolveRegisteredTools(): Map<string, ResolvedTool> {
   const pursueGoal = getPursueGoalTool();
   const pomTools = listRegisteredPomTools();
+  const always = { present: true, available: true };
   const tools = new Map<string, ResolvedTool>([
     [
       getPageContextTool.name,
-      { tool: getPageContextTool, group: "agent", available: true },
+      { tool: getPageContextTool, group: "agent", ...always },
     ],
   ]);
   const takenElsewhere = new Set([
@@ -88,16 +97,12 @@ function resolveRegisteredTools(): Map<string, ResolvedTool> {
       throw new RuntimeStateError(
         `Cannot publish the tool "${tool.name}": another published tool already uses that name.`
       );
-    tools.set(tool.name, { tool, group, available: true });
+    tools.set(tool.name, { tool, group, ...always });
   }
-  for (const { tool, available } of pomTools)
-    tools.set(tool.name, { tool, group: "pageObject", available });
+  for (const { tool, ...availability } of pomTools)
+    tools.set(tool.name, { tool, group: "pageObject", ...availability });
   if (pursueGoal)
-    tools.set(pursueGoal.name, {
-      tool: pursueGoal,
-      group: "agent",
-      available: true,
-    });
+    tools.set(pursueGoal.name, { tool: pursueGoal, group: "agent", ...always });
   return tools;
 }
 
@@ -121,7 +126,12 @@ export function resolveTools({
   if (peeks)
     for (const tool of listPeekTools())
       if (!tools.has(tool.name))
-        tools.set(tool.name, { tool, group: "peek", available: true });
+        tools.set(tool.name, {
+          tool,
+          group: "peek",
+          present: true,
+          available: true,
+        });
       else if (!warnedClashes.has(tool)) {
         warnedClashes.add(tool);
         console.warn(
@@ -132,13 +142,16 @@ export function resolveTools({
 }
 
 /**
- * Package-internal: every tool of the session with its availability, in
- * publication order; empty when a tool name clash leaves the set
- * unresolvable.
+ * Package-internal: every tool of the session that is offered, with its
+ * availability, in publication order: a Page Object Tool while its Page
+ * Object is present, available or not (ADR-0035); empty when a tool name
+ * clash leaves the set unresolvable.
  */
 export function listTools(options: { peeks: boolean }): readonly ToolInfo[] {
   try {
-    return toInfo([...resolveTools(options).values()]);
+    return toInfo(
+      [...resolveTools(options).values()].filter(({ present }) => present)
+    );
   } catch {
     return Object.freeze([]);
   }
@@ -150,7 +163,12 @@ export function listTools(options: { peeks: boolean }): readonly ToolInfo[] {
  */
 export function listPeekToolInfo(): readonly ToolInfo[] {
   return toInfo(
-    listPeekTools().map((tool) => ({ tool, group: "peek", available: true }))
+    listPeekTools().map((tool) => ({
+      tool,
+      group: "peek",
+      present: true,
+      available: true,
+    }))
   );
 }
 
@@ -176,13 +194,14 @@ export async function listElementToolTargets(
 /** Each tool's reading. */
 function toInfo(tools: readonly ResolvedTool[]): readonly ToolInfo[] {
   return Object.freeze(
-    tools.map(({ tool, group, available }) =>
+    tools.map(({ tool, group, available, reason }) =>
       Object.freeze({
         name: tool.name,
         description: tool.description,
         inputSchema: tool.inputSchema,
         group,
         available,
+        ...(reason === undefined ? {} : { reason }),
       })
     )
   );

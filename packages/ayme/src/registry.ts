@@ -17,7 +17,14 @@ import {
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { Locator, Page } from "@playwright/test";
 import { probePomRootState } from "./pomReachability";
-import { resolvePageStateRefs, type AriaRef } from "./pageState";
+import { findObstruction } from "./pomObstruction";
+import {
+  latestRefInTheWay,
+  resolvePageStateRefs,
+  type AriaRef,
+} from "./pageState";
+import { availabilityPredicateOf } from "./decorators";
+import { errorText } from "./errors";
 import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
 import { runAction, type ActionResult } from "./actionSequence";
@@ -74,12 +81,38 @@ type ObservedPomRoot = {
   element: Element | undefined;
   present: boolean;
   available: boolean;
+  /** What a click would reach instead, for a present root that is not available. */
+  obstruction: Element | undefined;
+};
+
+/**
+ * What an action's availability predicate answered for one Page Object
+ * instance, the one at `path` ("" for the page's own), as of the last
+ * observation. Actions without a predicate have no observation.
+ */
+type ActionObservation = {
+  path: string;
+  methodName: string;
+  available: boolean;
+  reason?: string;
 };
 
 type ObservedRegisteredPom = RegisteredPom & {
   pomClass: object;
   rootObservations: readonly ObservedPomRoot[];
+  actionObservations: readonly ActionObservation[];
   tools: readonly CallerAwarePomTool[];
+};
+
+/**
+ * Whether a tool can be offered and run now: `present` while its Page
+ * Object is, so it is listed; `available` while a call would run it;
+ * otherwise `reason`, the Availability Reason, when there is one.
+ */
+export type PomToolAvailability = {
+  present: boolean;
+  available: boolean;
+  reason?: string;
 };
 
 let browserPage: Page | undefined;
@@ -213,6 +246,7 @@ export function registerPageObject<T extends object>(
     manifest: compiledPom,
     memberObservations: [],
     rootObservations: [],
+    actionObservations: [],
     tools: createRegisteredTools(compiledPom, instance),
   };
   const registryWasEmpty = registeredPoms.size === 0;
@@ -305,6 +339,7 @@ async function probeRegistrations(lifetime: number): Promise<void> {
     registration,
     memberObservations,
     rootObservations,
+    actionObservations,
   } of results) {
     if (!registeredPoms.has(registration)) continue;
     const sameRoots =
@@ -316,19 +351,44 @@ async function probeRegistrations(lifetime: number): Promise<void> {
           root.path === next.path &&
           root.element === next.element &&
           root.present === next.present &&
-          root.available === next.available
+          root.available === next.available &&
+          root.obstruction === next.obstruction
         );
       });
     if (
       sameRoots &&
-      sameObservations(registration.memberObservations, memberObservations)
+      sameObservations(registration.memberObservations, memberObservations) &&
+      sameActionObservations(
+        registration.actionObservations,
+        actionObservations
+      )
     )
       continue;
     registration.memberObservations = memberObservations;
     registration.rootObservations = rootObservations;
+    registration.actionObservations = actionObservations;
     changed = true;
   }
   if (changed) notifySubscribers();
+}
+
+function sameActionObservations(
+  left: readonly ActionObservation[],
+  right: readonly ActionObservation[]
+) {
+  return (
+    left.length === right.length &&
+    left.every((observation, index) => {
+      const candidate = right[index];
+      return (
+        candidate !== undefined &&
+        observation.path === candidate.path &&
+        observation.methodName === candidate.methodName &&
+        observation.available === candidate.available &&
+        observation.reason === candidate.reason
+      );
+    })
+  );
 }
 
 function sameObservations(
@@ -425,17 +485,20 @@ export async function listRegisteredPomTargets(): Promise<
 
 /**
  * Package-internal: every registered Page Object tool, one per name, with
- * whether it is available now: its Page Object, or the component instance
- * it acts on, is available (Page Object Availability). Of tools sharing a
- * name, the first available one wins, else the first registered.
+ * whether it is present, available now, and why not (ADR-0035). A tool is
+ * present while its Page Object, or the component instance it acts on, is;
+ * available while that Page Object is available and the action's predicate,
+ * if it has one, holds. A collection action stands for every present
+ * instance: it is available while any instance is, and when none is, its
+ * reason is the first present instance's. Of tools sharing a name, the first
+ * available one wins, else the first present, else the first registered.
  */
-export function listRegisteredPomTools(): {
+export function listRegisteredPomTools(): ({
   tool: CallerAwarePomTool;
-  available: boolean;
-}[] {
+} & PomToolAvailability)[] {
   const tools = new Map<
     string,
-    { tool: CallerAwarePomTool; available: boolean }
+    { tool: CallerAwarePomTool } & PomToolAvailability
   >();
   for (const registration of registeredPoms) {
     const declaredRoot = registration.manifest.members.some(
@@ -443,23 +506,126 @@ export function listRegisteredPomTools(): {
     );
     for (const tool of registration.tools) {
       const componentPath = tool.componentPath;
-      const available =
+      const instances =
         componentPath === undefined
-          ? !declaredRoot ||
-            registration.rootObservations.some(
-              (root) => root.path === "" && isRootAvailable(root)
-            )
-          : registration.rootObservations.some(
-              (root) =>
-                isRootAvailable(root) &&
-                isLiveComponentRoot(componentPath, `${root.path}.root`)
+          ? declaredRoot
+            ? registration.rootObservations.filter((root) => root.path === "")
+            : [undefined]
+          : registration.rootObservations.filter((root) =>
+              isLiveComponentRoot(componentPath, `${root.path}.root`)
             );
+      const states = instances.map((root) =>
+        instanceAvailability(registration, root, tool.methodName)
+      );
+      const availability = combinedAvailability(states);
       const listed = tools.get(tool.name);
-      if (!listed || (available && !listed.available))
-        tools.set(tool.name, { tool, available });
+      if (
+        !listed ||
+        (availability.available && !listed.available) ||
+        (availability.present && !listed.present)
+      )
+        tools.set(tool.name, { tool, ...availability });
     }
   }
   return [...tools.values()];
+}
+
+/**
+ * Whether the action `methodName` can run on one instance now: the page's own
+ * when `root` is undefined (a Page Object without a declared root is always
+ * present and available), else the instance at that root.
+ */
+function instanceAvailability(
+  registration: ObservedRegisteredPom,
+  root: ObservedPomRoot | undefined,
+  methodName: string
+): PomToolAvailability {
+  if (root !== undefined) {
+    if (!isRootPresent(root)) return { present: false, available: false };
+    if (!isRootAvailable(root))
+      return {
+        present: true,
+        available: false,
+        reason: obstructionReason(root),
+      };
+  }
+  const path = root?.path ?? "";
+  const observation = registration.actionObservations.find(
+    (candidate) =>
+      candidate.path === path && candidate.methodName === methodName
+  );
+  if (!observation || observation.available)
+    return { present: true, available: true };
+  return {
+    present: true,
+    available: false,
+    ...(observation.reason === undefined ? {} : { reason: observation.reason }),
+  };
+}
+
+/** One tool's availability over the instances it stands for. */
+function combinedAvailability(
+  states: readonly PomToolAvailability[]
+): PomToolAvailability {
+  const available = states.some((state) => state.available);
+  const present = states.filter((state) => state.present);
+  if (available || present.length === 0)
+    return { present: present.length > 0, available };
+  const [first] = present;
+  return {
+    present: true,
+    available: false,
+    ...(first?.reason === undefined ? {} : { reason: first.reason }),
+  };
+}
+
+/**
+ * The runtime's Availability Reason for a present root a click would not
+ * reach: it names the Structural Ref of the element in the way when the
+ * agent's latest page state gave it or an ancestor of it one.
+ */
+function obstructionReason(root: ObservedPomRoot & { element: Element }) {
+  const ref =
+    root.obstruction && latestRefInTheWay(root.obstruction, root.element);
+  return ref === undefined
+    ? "a click would not reach it"
+    : `a click would not reach it; ${ref} is in the way`;
+}
+
+/**
+ * Package-internal: refuses a call of `toolName` on the component instance
+ * whose root is `element`, when the last observation found that instance
+ * unavailable: the tool is listed available because another instance is.
+ */
+function assertInstanceAvailable(
+  toolName: string,
+  methodName: string,
+  element: Element
+) {
+  for (const registration of registeredPoms) {
+    const root = registration.rootObservations.find(
+      (candidate) => candidate.element === element
+    );
+    if (!root) continue;
+    const state = instanceAvailability(registration, root, methodName);
+    if (!state.available)
+      throw new RuntimeStateError(unavailableToolMessage(toolName, state));
+    return;
+  }
+}
+
+/**
+ * Package-internal: how a refused call of an unavailable tool reads:
+ * `<tool> is unavailable: <reason>.`, or without the reason when there is none.
+ */
+export function unavailableToolMessage(
+  toolName: string,
+  { present, reason }: PomToolAvailability
+) {
+  const why = present ? reason : "its Page Object is not on the page";
+  return why === undefined
+    ? `${toolName} is unavailable.`
+    : `${toolName} is unavailable: ${why}.`;
 }
 
 /**
@@ -539,6 +705,15 @@ export function subscribeToRegisteredPoms(subscriber: () => void) {
 
 function notifySubscribers() {
   for (const subscriber of subscribers) subscriber();
+}
+
+/**
+ * Package-internal: tells the subscribers to read the tools again although
+ * no observation changed, as when a recorded page state gave the element in
+ * an unavailable root's way its ref.
+ */
+export function announceRegisteredPomChange() {
+  if (registeredPoms.size > 0) notifySubscribers();
 }
 
 function createRegisteredTools(manifest: PomManifest, instance: object) {
@@ -646,6 +821,7 @@ function createComponentTool(
         `Ref "${ref}" does not match a present ${component.className} instance at ${toolPath} (tool ${wrapper.toolName}).`
       );
     }
+    assertInstanceAvailable(wrapper.toolName, action.methodName, element);
     return await performPageObjectAction(
       componentInstance,
       action,
@@ -831,25 +1007,41 @@ async function probePomMembers(registration: RegisteredPom) {
     ])
   );
   const rootObservations: ObservedPomRoot[] = [];
+  const actionObservations: ActionObservation[] = [];
   const rootMember = registration.manifest.members.find(
     (member) => member.kind === "locator" && member.memberName === "root"
   );
+  let pagePresent = rootMember === undefined;
   if (rootMember) {
     try {
       const root = await readMember(registration.instance, rootMember);
-      if (isLocator(root)) await observeRoot(root, "", rootObservations);
+      if (isLocator(root)) {
+        await observeRoot(root, "", rootObservations);
+        pagePresent = rootObservations.some(
+          (observation) => observation.path === "" && observation.present
+        );
+      }
     } catch {
       // A missing or invalid declared root never falls back to rootless activation.
     }
   }
+  if (pagePresent)
+    actionObservations.push(
+      ...(await observeActions(
+        registration.instance,
+        registration.manifest.tools,
+        ""
+      ))
+    );
   const memberObservations = await probeMembers(
     registration.instance,
     registration.manifest.members,
     "",
     components,
-    rootObservations
+    rootObservations,
+    actionObservations
   );
-  return { memberObservations, rootObservations };
+  return { memberObservations, rootObservations, actionObservations };
 }
 
 async function observeRoot(
@@ -867,13 +1059,50 @@ async function observeRoot(
       : await probePomRootState(root);
   const current = locatorElements(root);
   const sameElement = current.length === 1 && current[0] === element;
+  const present = sameElement && state.present;
+  const available = sameElement && state.available;
   observations.push({
     path,
     element: sameElement ? element : undefined,
-    present: sameElement && state.present,
-    available: sameElement && state.available,
+    present,
+    available,
+    obstruction:
+      present && !available && element ? findObstruction(element) : undefined,
   });
   return count;
+}
+
+/**
+ * Asks each action's availability predicate about `instance`, the Page
+ * Object at `path`, read-only. A predicate that throws makes its action
+ * unavailable, with the error as the reason, so the author sees it.
+ */
+async function observeActions(
+  instance: object,
+  tools: readonly ToolManifest[],
+  path: string
+): Promise<ActionObservation[]> {
+  const observations: ActionObservation[] = [];
+  for (const tool of tools) {
+    const predicate = availabilityPredicateOf(
+      (instance as Record<string, unknown>)[tool.methodName]
+    );
+    if (!predicate) continue;
+    let verdict: boolean | string;
+    try {
+      verdict = await predicate(instance as never);
+    } catch (error) {
+      verdict = errorText(error);
+    }
+    observations.push({
+      path,
+      methodName: tool.methodName,
+      ...(typeof verdict === "string" && verdict !== ""
+        ? { available: false, reason: verdict }
+        : { available: Boolean(verdict) }),
+    });
+  }
+  return observations;
 }
 
 async function collectPomTargets(
@@ -932,6 +1161,7 @@ async function probeMembers(
   prefix: string,
   components: ReadonlyMap<string, PomComponentManifest>,
   roots: ObservedPomRoot[],
+  actions: ActionObservation[],
   ancestors: ReadonlySet<object> = new Set()
 ): Promise<PomMemberObservation[]> {
   if (ancestors.has(instance)) return [];
@@ -992,6 +1222,14 @@ async function probeMembers(
           kind: "component-root",
           count: await observeRoot(componentValue.root, componentPath, roots),
         });
+        if (roots.some((root) => root.path === componentPath && root.present))
+          actions.push(
+            ...(await observeActions(
+              componentValue,
+              componentManifest.tools,
+              componentPath
+            ))
+          );
         const childMembers = componentManifest.members.filter(
           (child) => !(child.kind === "locator" && child.memberName === "root")
         );
@@ -1002,6 +1240,7 @@ async function probeMembers(
             componentPath,
             components,
             roots,
+            actions,
             nextAncestors
           ))
         );

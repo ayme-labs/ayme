@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ayme } from "./index";
+import { availabilityPredicateOf } from "./decorators";
 
 // Vitest does not compile decorator syntax, so these tests apply the
 // decorators as each decorator mode calls them. The build integration's
@@ -52,4 +53,59 @@ describe("@ayme.action", () => {
       expect(new Page().greet()).toBe("Hello.");
     }
   );
+});
+
+describe("@ayme.action({ available })", () => {
+  const canGreet = (self: Page) => self.greet() === "Hello." || "Not now";
+
+  it("keeps the predicate for the method in both decorator modes", () => {
+    class Legacy {
+      greet() {
+        return "Hello.";
+      }
+    }
+    class Standard {
+      greet() {
+        return "Hello.";
+      }
+    }
+    const legacyGreet = Object.getOwnPropertyDescriptor(
+      Legacy.prototype,
+      "greet"
+    )!;
+
+    expect(
+      ayme.action({ available: canGreet })(
+        Legacy.prototype,
+        "greet",
+        legacyGreet
+      )
+    ).toBeUndefined();
+    expect(
+      ayme.action({ available: canGreet })(
+        Standard.prototype.greet,
+        methodContext as ClassMethodDecoratorContext<Standard, () => string>
+      )
+    ).toBeUndefined();
+
+    expect(availabilityPredicateOf(Legacy.prototype.greet)).toBe(canGreet);
+    expect(availabilityPredicateOf(new Standard().greet)).toBe(canGreet);
+    expect(new Legacy().greet()).toBe("Hello.");
+  });
+
+  it("keeps no predicate for an action without one", () => {
+    class Plain {
+      greet() {
+        return "Hello.";
+      }
+    }
+    ayme.action({ description: "Greet someone." })(
+      Plain.prototype,
+      "greet",
+      Object.getOwnPropertyDescriptor(Plain.prototype, "greet")!
+    );
+
+    expect(availabilityPredicateOf(Plain.prototype.greet)).toBeUndefined();
+    expect(availabilityPredicateOf(undefined)).toBeUndefined();
+  });
 });
