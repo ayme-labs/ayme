@@ -1031,12 +1031,23 @@ async function observeDeclaredRoot(
 ): Promise<boolean> {
   try {
     const root = await readMember(instance, rootMember);
-    if (!isLocator(root)) return false;
-    await observeRoot(root, "", observations);
+    if (isLocator(root)) await observeRoot(root, "", observations);
   } catch {
-    return false;
+    // A root that cannot be read is not on the page.
   }
   return observations.some((observation) => observation.present);
+}
+
+/** Asks a component's predicates about it while its root is present. */
+async function observeComponentActions(
+  component: object,
+  manifest: PomComponentManifest,
+  path: string,
+  roots: readonly ObservedPomRoot[],
+  actions: ActionObservation[]
+) {
+  if (roots.some((root) => root.path === path && root.present))
+    actions.push(...(await observeActions(component, manifest.tools, path)));
 }
 
 async function observeRoot(
@@ -1217,14 +1228,13 @@ async function probeMembers(
           kind: "component-root",
           count: await observeRoot(componentValue.root, componentPath, roots),
         });
-        if (roots.some((root) => root.path === componentPath && root.present))
-          actions.push(
-            ...(await observeActions(
-              componentValue,
-              componentManifest.tools,
-              componentPath
-            ))
-          );
+        await observeComponentActions(
+          componentValue,
+          componentManifest,
+          componentPath,
+          roots,
+          actions
+        );
         const childMembers = componentManifest.members.filter(
           (child) => !(child.kind === "locator" && child.memberName === "root")
         );

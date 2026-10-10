@@ -128,24 +128,13 @@ export function RunCardView({
       </span>
     </>
   );
-  // Why the session would refuse a call, under the name; the tool has one
-  // only while it is present and unavailable.
-  const reasonLine = reason && (
-    <p
-      role="note"
-      aria-label="Why it is unavailable"
-      className="m-0 flex items-start gap-1.5 text-xs text-muted-foreground"
-    >
-      <BanIcon className="mt-0.5 size-3.5 flex-none" aria-hidden />
-      <span>{reason}</span>
-    </p>
-  );
+  const reasonLine = <ReasonLine reason={reason} />;
 
   return (
     <form
       aria-label={tool.action}
       data-present={present}
-      data-available={present && available}
+      data-available={available}
       className="mb-2 flex flex-col gap-2.25 rounded-lg border bg-card px-3 py-2.5 data-[available=false]:opacity-60"
       onSubmit={submit}
     >
@@ -469,5 +458,20 @@ function LastResult({
         <RunImageView image={run.image} onOpen={onOpenImage} />
       )}
     </div>
+  );
+}
+
+/** Why the session would refuse a call, under the name; nothing while the tool has no reason. */
+function ReasonLine({ reason }: { reason: string | undefined }) {
+  if (!reason) return null;
+  return (
+    <p
+      role="note"
+      aria-label="Why it is unavailable"
+      className="m-0 flex items-start gap-1.5 text-xs text-muted-foreground"
+    >
+      <BanIcon className="mt-0.5 size-3.5 flex-none" aria-hidden />
+      <span>{reason}</span>
+    </p>
   );
 }

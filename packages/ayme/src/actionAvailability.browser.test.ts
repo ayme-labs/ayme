@@ -406,8 +406,14 @@ describe("Action Availability", () => {
     });
     createPageRegistration(Shell);
     document.querySelector("#inertWrapper")!.setAttribute("inert", "");
-    // The agent's page state gives the elements in the way their refs.
+    await probeRegisteredPomMembers();
+    // The agent's page state gives the elements in the way their refs, which
+    // changes the listing, so the registry's subscribers hear of it.
+    const changes = vi.fn();
+    const unsubscribe = subscribeToRegisteredPoms(changes);
     const { text } = await agent.getPageState();
+    expect(changes).toHaveBeenCalled();
+    unsubscribe();
     const refOf = (pattern: string) =>
       text.match(new RegExp(`(e\\d+) ${pattern}`))?.[1];
     const overlay = refOf('dialog "Cookie settings"');
@@ -437,13 +443,7 @@ describe("Action Availability", () => {
       available: false,
       reason: "a click would not reach it",
     });
-    // The page state that gives the modal its ref changes the listing, so
-    // the registry's subscribers hear of it.
-    const changes = vi.fn();
-    const unsubscribe = subscribeToRegisteredPoms(changes);
     const after = await agent.getPageState();
-    expect(changes).toHaveBeenCalled();
-    unsubscribe();
     const modal = after.text.match(/(e\d+) dialog "Archive item"/)?.[1];
     expect(modal).toBeDefined();
     expect(published("Shell.blocked.close")).toMatchObject({
