@@ -16,7 +16,7 @@ export function findObstruction(root: Element): Element | undefined {
     modals = [];
   }
   const outside = (modal: Element) =>
-    !contains(modal, root) && !contains(root, modal);
+    !containsThroughShadow(modal, root) && !containsThroughShadow(root, modal);
   if (modals.length && modals.every(outside)) return modals.at(-1);
   for (let node: Element | null = root; node; node = parentElement(node)) {
     if (node.hasAttribute("inert")) return node;
@@ -25,10 +25,13 @@ export function findObstruction(root: Element): Element | undefined {
   const rect = root.getBoundingClientRect();
   const x = rect.left + rect.width / 2;
   const y = rect.top + rect.height / 2;
-  return hitElements(document, x, y).find((hit) => !contains(root, hit));
+  return hitElements(document, x, y).find(
+    (hit) => !containsThroughShadow(root, hit)
+  );
 }
 
-function parentElement(current: Element): Element | null {
+/** Package-internal: the parent, through slots and shadow roots. */
+export function parentElement(current: Element): Element | null {
   return (
     current.assignedSlot ??
     current.parentElement ??
@@ -42,10 +45,6 @@ export function containsThroughShadow(
   ancestor: Element,
   candidate: Element
 ): boolean {
-  return contains(ancestor, candidate);
-}
-
-function contains(ancestor: Element, candidate: Element): boolean {
   for (let node: Element | null = candidate; node; node = parentElement(node))
     if (node === ancestor) return true;
   return false;

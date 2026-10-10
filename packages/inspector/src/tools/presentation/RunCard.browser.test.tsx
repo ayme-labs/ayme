@@ -84,7 +84,6 @@ function renderCard(props: Partial<RunCardProps> & Pick<RunCardProps, "tool">) {
   unmounts.push(
     renderPart(
       <RunCard
-        present
         schemaText={schemaText}
         runs={[]}
         onRun={onRun}
@@ -126,7 +125,6 @@ describe("Run", () => {
   it("is not there on an action whose Page Object isn't on the page", async () => {
     const { card } = renderCard({
       tool: { ...clearList, present: false, available: false },
-      present: false,
     });
 
     await expect.poll(() => card.root.count()).toBe(1);
