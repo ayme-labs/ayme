@@ -116,7 +116,7 @@ jobs:
     if: needs.changes.outputs.package_checks == 'true'
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.62.1-noble
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
     env:
       TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       TURBO_TEAM: ${{ vars.TURBO_TEAM }}
@@ -135,7 +135,7 @@ jobs:
       && (needs.changes.outputs.package_checks == 'true' || needs.changes.outputs.docs_checks == 'true')
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.62.1-noble
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
     env:
       TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       TURBO_TEAM: ${{ vars.TURBO_TEAM }}
@@ -158,7 +158,7 @@ jobs:
     if: needs.changes.outputs.package_checks == 'true'
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.62.1-noble
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
     env:
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -176,7 +176,7 @@ jobs:
     if: needs.changes.outputs.e2e_suites != '[]'
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.62.1-noble
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
     env:
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -216,7 +216,7 @@ jobs:
     if: needs.changes.outputs.package_checks == 'true'
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.62.1-noble
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
     env:
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}

@@ -74,7 +74,24 @@ describe("decisionEndpoint", () => {
       })
     );
     const decide = decisionEndpoint("/api/decisions");
-    await expect(decide(request)).rejects.toThrow("403 Forbidden.");
+    await expect(decide(request)).rejects.toThrow(
+      "The Decision Endpoint /api/decisions answered 403 Forbidden."
+    );
+  });
+
+  it("names the URL and status when an error response has no body", async () => {
+    fetchMock.mockResolvedValue(
+      new Response("", { status: 404, statusText: "Not Found" })
+    );
+    const decide = decisionEndpoint("/api/decisions");
+    await expect(decide(request)).rejects.toThrow(
+      /^The Decision Endpoint \/api\/decisions answered 404 Not Found$/
+    );
+    // Over HTTP/2 there is no status text either.
+    fetchMock.mockResolvedValue(new Response("", { status: 404 }));
+    await expect(decide(request)).rejects.toThrow(
+      /^The Decision Endpoint \/api\/decisions answered 404$/
+    );
   });
 
   it.each([

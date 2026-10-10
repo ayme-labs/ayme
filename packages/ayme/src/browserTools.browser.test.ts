@@ -275,6 +275,17 @@ describe("Browser Tools in Chromium", () => {
     expect(log).not.toContain("click ");
   });
 
+  it("rejects a locator expression from generate_locator, saying what to pass", async () => {
+    expect(
+      await call("click", {
+        target: "getByRole('button', { name: 'Save' })",
+      }).catch(errorText)
+    ).toBe(
+      `ToolInputError: The target "getByRole('button', { name: 'Save' })" is a Playwright locator expression, which tools do not take. Pass a Structural Ref from snapshot, or a selector such as role=button[name="Save"] or text=Save.`
+    );
+    expect(log).not.toContain("click save");
+  });
+
   it("rejects an option it does not support, naming it", async () => {
     expect(
       await call("click", { target: "#save", force: true }).catch(errorText)

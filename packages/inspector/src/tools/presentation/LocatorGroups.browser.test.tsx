@@ -11,6 +11,7 @@ import { aRun } from "../../runs/test-utils/runs";
 import type { Run } from "../../runs";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
+import { schemaText } from "../infrastructure/schemaText";
 import { RunCard } from "./RunCard";
 
 // Component tests: generate_locator's form in a run card, built from a
@@ -68,6 +69,7 @@ function renderCard({ onPick }: { onPick?: RefSource["onPick"] } = {}) {
     return (
       <RunCard
         tool={generateLocator}
+        schemaText={schemaText}
         head={false}
         refSource={{
           roots,

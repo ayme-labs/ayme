@@ -12,6 +12,7 @@ import { aRun } from "../../runs/test-utils/runs";
 import type { Run } from "../../runs";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
+import { schemaText } from "../infrastructure/schemaText";
 import { RunCard } from "./RunCard";
 
 // Component tests: fill_form's form in a run card, built from a fixture
@@ -121,6 +122,7 @@ function renderCard({ runs = [] }: { runs?: Run[] } = {}) {
     return (
       <RunCard
         tool={fillForm}
+        schemaText={schemaText}
         head={false}
         refSource={{ roots, onPreview, onPreviewEnd: () => {} }}
         runs={shownRuns}

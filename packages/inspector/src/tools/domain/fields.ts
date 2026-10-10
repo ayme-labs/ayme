@@ -43,6 +43,16 @@ export type FieldKind =
   /** Anything the form has no control for, edited as JSON. */
   | { kind: "json" };
 
+/**
+ * How a schema reads as TypeScript, the way the definition text agents read
+ * writes it: one type, e.g. `string | number`, and an action's signature,
+ * e.g. `(text: string, tags?: string[])`.
+ */
+export type SchemaText = {
+  type: (schema: JsonSchema) => string;
+  signature: (schema: JsonSchema) => string;
+};
+
 const inputTypes: Partial<Record<string, TextInputType>> = {
   date: "date",
   email: "email",
@@ -53,11 +63,17 @@ const inputTypes: Partial<Record<string, TextInputType>> = {
 /**
  * The fields of an object schema, one per property, in schema order.
  * `ref` names the property that takes a Structural Ref, and `key` the one
- * that takes a key to press, if any.
+ * that takes a key to press, if any. `typeOf` labels a field edited as JSON
+ * with its type, e.g. `[number, string]`; without it, the label is the
+ * schema's `type`.
  */
 export function fieldsOf(
   schema: JsonSchema,
-  { ref, key }: { ref?: string; key?: string } = {}
+  {
+    ref,
+    key,
+    typeOf,
+  }: { ref?: string; key?: string; typeOf?: SchemaText["type"] } = {}
 ): Field[] {
   const required = new Set(schema.required ?? []);
   return Object.entries(schema.properties ?? {}).map(([name, property]) => {
@@ -66,11 +82,16 @@ export function fieldsOf(
       const kind = name === ref ? "ref" : "key";
       return { name, optional, kind, typeLabel: kind };
     }
-    return fieldOf(name, property, optional);
+    return fieldOf(name, property, optional, typeOf);
   });
 }
 
-function fieldOf(name: string, schema: Schema, optional: boolean): Field {
+function fieldOf(
+  name: string,
+  schema: Schema,
+  optional: boolean,
+  typeOf: SchemaText["type"] | undefined
+): Field {
   const base = { name, optional };
   if (schema.enum?.length)
     return {
@@ -102,7 +123,7 @@ function fieldOf(name: string, schema: Schema, optional: boolean): Field {
       const item =
         !schema.prefixItems &&
         schema.items &&
-        fieldOf(`${name} item`, schema.items, false);
+        fieldOf(`${name} item`, schema.items, false, typeOf);
       if (item && ["text", "number", "choice"].includes(item.kind))
         return {
           ...base,
@@ -117,7 +138,7 @@ function fieldOf(name: string, schema: Schema, optional: boolean): Field {
         return {
           ...base,
           kind: "object",
-          fields: fieldsOf(schema),
+          fields: fieldsOf(schema, { typeOf }),
           typeLabel: "object",
         };
       const valueTypes = mapValueTypes(schema);
@@ -135,7 +156,11 @@ function fieldOf(name: string, schema: Schema, optional: boolean): Field {
         };
     }
   }
-  return { ...base, kind: "json", typeLabel: schema.type ?? "JSON" };
+  return {
+    ...base,
+    kind: "json",
+    typeLabel: typeOf?.(schema) ?? schema.type ?? "JSON",
+  };
 }
 
 /**
@@ -229,10 +254,14 @@ export function argumentsFromJson(text: string): ParsedArguments {
   return { ok: true, arguments: value as ToolArguments };
 }
 
-/** An action's signature from its schema, e.g. "(text, details?)". */
-export function signatureOf(schema: JsonSchema) {
-  const names = fieldsOf(schema).map(
-    (field) => `${field.name}${field.optional ? "?" : ""}`
-  );
-  return `(${names.join(", ")})`;
+/**
+ * An action's signature from its schema, written by `signature`, e.g.
+ * "(text: string, details?: { due: string })", or none when it takes no
+ * arguments.
+ */
+export function signatureOf(
+  schema: JsonSchema,
+  signature: SchemaText["signature"]
+) {
+  return fieldsOf(schema).length ? signature(schema) : undefined;
 }

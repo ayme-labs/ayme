@@ -116,18 +116,25 @@ type RegisteredTool = RegisteredPom["tools"][number] & {
   componentPath?: string;
 };
 
+/** An action's arguments from its input schema, e.g. "(text: string)". */
+export type Signature = (inputSchema: JsonSchema) => string;
+
 /**
  * Builds the page model from the registered Page Objects, the live tools
- * (the ones the panel can run now), and the Page Object Model definitions
- * snapshot returns.
+ * (the ones the panel can run now), the Page Object Model definitions
+ * snapshot returns, and how to write an action's signature.
  */
 export function buildPageModel(
   registrations: readonly RegisteredPom[],
   liveToolNames: ReadonlySet<string>,
-  definitions: readonly PomDefinition[]
+  definitions: readonly PomDefinition[],
+  signature: Signature
 ): PageModel {
   const objects = registrations.map((registration) =>
-    withKeys(pageObject(registration, liveToolNames), registration.id)
+    withKeys(
+      pageObject(registration, liveToolNames, signature),
+      registration.id
+    )
   );
   const instances = [...walk(objects)].filter(
     (node) => node.kind !== "collection" && node.live
@@ -193,12 +200,14 @@ export function* walk(
 
 function pageObject(
   registration: RegisteredPom,
-  liveToolNames: ReadonlySet<string>
+  liveToolNames: ReadonlySet<string>,
+  signature: Signature
 ): UnkeyedNode {
   const { manifest } = registration;
   const context: Context = {
     registration,
     liveToolNames,
+    signature,
     components: new Map(
       manifest.components.map((component) => [component.className, component])
     ),
@@ -223,6 +232,7 @@ function pageObject(
 type Context = {
   registration: RegisteredPom;
   liveToolNames: ReadonlySet<string>;
+  signature: Signature;
   components: ReadonlyMap<string, PomManifest["components"][number]>;
   observations: ReadonlyMap<string, PomMemberObservation>;
 };
@@ -368,7 +378,7 @@ function actionsAt(
         ...(action.authoredDescription === undefined
           ? {}
           : { description: action.authoredDescription }),
-        signature: signature(action.inputSchema),
+        signature: context.signature(action.inputSchema),
         toolName: tool.name,
         live: context.liveToolNames.has(tool.name),
       },
@@ -409,24 +419,6 @@ function locatorState(observation: PomMemberObservation | undefined) {
   if (observation.error) return "probe failed";
   if (observation.count === 0) return "absent";
   return plural(observation.count, "match", "matches");
-}
-
-/** An action's arguments, the way snapshot writes them. */
-export function signature(schema: JsonSchema) {
-  const required = new Set(schema.required ?? []);
-  const parameters = Object.entries(schema.properties ?? {}).map(
-    ([name, property]) =>
-      `${name}${required.has(name) ? "" : "?"}: ${typeName(property)}`
-  );
-  return `(${parameters.join(", ")})`;
-}
-
-function typeName(schema: JsonSchema): string {
-  if (schema.enum?.length)
-    return schema.enum.map((value) => JSON.stringify(value)).join(" | ");
-  if (schema.type === "array") return `${typeName(schema.items ?? {})}[]`;
-  if (schema.type === "integer") return "number";
-  return schema.type ?? "unknown";
 }
 
 function plural(count: number, singular: string, pluralForm: string) {

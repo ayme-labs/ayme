@@ -21,12 +21,12 @@
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@ayme-dev/unplugin-ayme": "workspace:*",
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.64.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^10.9.1",
-    "playwright": "^1.62.1",
+    "playwright": "^1.64.0",
     "typescript": "^6.0.3",
     "vite": "^8.2.2"
   }

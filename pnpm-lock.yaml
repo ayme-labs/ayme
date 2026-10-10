@@ -150,8 +150,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin-ayme
       "@playwright/test":
-        specifier: ~1.62.1
-        version: 1.62.1
+        specifier: ~1.64.0
+        version: 1.64.0
       "@types/express":
         specifier: ^5.0.1
         version: 5.0.6
@@ -162,8 +162,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ~1.62.1
-        version: 1.62.1
+        specifier: ~1.64.0
+        version: 1.64.0
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
@@ -187,8 +187,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/typescript-config
       "@playwright/test":
-        specifier: ~1.62.1
-        version: 1.62.1
+        specifier: ~1.64.0
+        version: 1.64.0
       "@types/node":
         specifier: ^24.0.0
         version: 24.13.3
@@ -218,7 +218,7 @@ importers:
         version: link:../../packages/webmcp
       next:
         specifier: 16.3.4
-        version: 16.3.4(@babel/core@8.0.5)(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.104.1)
+        version: 16.3.4(@babel/core@8.0.5)(@playwright/test@1.64.0)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.104.1)
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -239,8 +239,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin-ayme
       "@playwright/test":
-        specifier: ~1.62.1
-        version: 1.62.1
+        specifier: ~1.64.0
+        version: 1.64.0
       "@types/node":
         specifier: ^24.0.0
         version: 24.13.3
@@ -254,8 +254,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ~1.62.1
-        version: 1.62.1
+        specifier: ~1.64.0
+        version: 1.64.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -297,8 +297,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin-ayme
       "@playwright/test":
-        specifier: ~1.62.1
-        version: 1.62.1
+        specifier: ~1.64.0
+        version: 1.64.0
       "@types/node":
         specifier: ^24.0.0
         version: 24.13.3
@@ -306,8 +306,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ~1.62.1
-        version: 1.62.1
+        specifier: ~1.64.0
+        version: 1.64.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -352,8 +352,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin-ayme
       "@playwright/test":
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       "@types/react":
         specifier: ^19.0.0
         version: 19.2.18
@@ -367,8 +367,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -407,8 +407,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin-ayme
       "@playwright/test":
-        specifier: ~1.62.1
-        version: 1.62.1
+        specifier: ~1.64.0
+        version: 1.64.0
       "@sveltejs/adapter-node":
         specifier: ^5.5.7
         version: 5.5.7(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1(@typescript-eslint/types@8.68.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)))(svelte@5.57.1(@typescript-eslint/types@8.68.0))(typescript@6.0.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)))
@@ -425,8 +425,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ~1.62.1
-        version: 1.62.1
+        specifier: ~1.64.0
+        version: 1.64.0
       svelte:
         specifier: ^5.57.1
         version: 5.57.1(@typescript-eslint/types@8.68.0)
@@ -453,7 +453,7 @@ importers:
         version: link:../../packages/mcp
       "@ayme-dev/playwright-lite":
         specifier: github:ayme-labs/playwright-lite#cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e(@playwright/test@1.62.1)
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e(@playwright/test@1.64.0)
       "@ayme-dev/vue":
         specifier: workspace:*
         version: link:../../packages/vue
@@ -498,8 +498,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin-ayme
       "@playwright/test":
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       "@tailwindcss/vite":
         specifier: ^4.3.3
         version: 4.3.3(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
@@ -516,8 +516,8 @@ importers:
         specifier: ^30.0.1
         version: 30.0.1(@noble/hashes@1.8.0)
       playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
@@ -568,8 +568,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin-ayme
       "@playwright/test":
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       "@types/node":
         specifier: ^24.0.0
         version: 24.13.3
@@ -583,8 +583,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -622,8 +622,8 @@ importers:
         specifier: ^1.32.0
         version: 1.32.0(supports-color@10.2.2)(zod@4.6.5)
       "@playwright/test":
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       "@types/node":
         specifier: ^24.0.0
         version: 24.13.3
@@ -631,8 +631,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -687,7 +687,7 @@ importers:
         version: 10.0.0(patch_hash=0e45bb77b8aa13f70ef9a38e645fc707cb33df7b55baca0492549533251792ce)(@stryker-mutator/core@10.0.0(@types/node@24.13.3))(vitest@4.1.11)
       "@vitest/browser-playwright":
         specifier: ^4.1.11
-        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+        version: 4.1.11(playwright@1.64.0)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
@@ -695,8 +695,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
@@ -733,7 +733,7 @@ importers:
         version: link:../mcp
       "@ayme-dev/playwright-lite":
         specifier: github:ayme-labs/playwright-lite#cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e(@playwright/test@1.62.1)
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e(@playwright/test@1.64.0)
       "@ayme-dev/test-config":
         specifier: workspace:*
         version: link:../test-config
@@ -741,8 +741,8 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       "@playwright/test":
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       "@stryker-mutator/core":
         specifier: ^10.0.0
         version: 10.0.0(@types/node@24.13.3)
@@ -754,7 +754,7 @@ importers:
         version: 24.13.3
       "@vitest/browser-playwright":
         specifier: ^4.1.11
-        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+        version: 4.1.11(playwright@1.64.0)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
@@ -762,8 +762,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       tsdown:
         specifier: ^0.22.14
         version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
@@ -935,16 +935,19 @@ importers:
         version: link:../eslint-config
       "@ayme-dev/playwright-lite":
         specifier: github:ayme-labs/playwright-lite#cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e(@playwright/test@1.62.1)
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e(@playwright/test@1.64.0)
       "@ayme-dev/test-config":
         specifier: workspace:*
         version: link:../test-config
       "@ayme-dev/typescript-config":
         specifier: workspace:*
         version: link:../typescript-config
+      "@ayme-dev/unplugin-ayme":
+        specifier: workspace:*
+        version: link:../unplugin-ayme
       "@playwright/test":
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       "@stryker-mutator/core":
         specifier: ^10.0.0
         version: 10.0.0(@types/node@24.13.3)
@@ -962,7 +965,7 @@ importers:
         version: 19.2.7(@types/react@19.2.18)
       "@vitest/browser-playwright":
         specifier: ^4.1.11
-        version: 4.1.11(playwright@1.62.1)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+        version: 4.1.11(playwright@1.64.0)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
@@ -976,8 +979,8 @@ importers:
         specifier: ^1.0.0
         version: 1.48.0(react@19.2.8)
       playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       sugar-high:
         specifier: ^2.4.1
         version: 2.5.0
@@ -1025,8 +1028,8 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       "@playwright/test":
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       "@stryker-mutator/core":
         specifier: ^10.0.0
         version: 10.0.0(@types/node@24.13.3)
@@ -1090,7 +1093,7 @@ importers:
         version: 19.2.7(@types/react@19.2.18)
       "@vitest/browser-playwright":
         specifier: ^4.1.11
-        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+        version: 4.1.11(playwright@1.64.0)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
@@ -1098,8 +1101,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -1142,7 +1145,7 @@ importers:
         version: 10.0.0(patch_hash=0e45bb77b8aa13f70ef9a38e645fc707cb33df7b55baca0492549533251792ce)(@stryker-mutator/core@10.0.0(@types/node@24.13.3))(vitest@4.1.11)
       "@vitest/browser-playwright":
         specifier: ^4.1.11
-        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+        version: 4.1.11(playwright@1.64.0)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
@@ -1150,8 +1153,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       svelte:
         specifier: ^5.57.1
         version: 5.57.1(@typescript-eslint/types@8.68.0)
@@ -1195,8 +1198,8 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       "@playwright/test":
-        specifier: ~1.62.1
-        version: 1.62.1
+        specifier: ~1.64.0
+        version: 1.64.0
       "@stryker-mutator/core":
         specifier: ^10.0.0
         version: 10.0.0(@types/node@24.13.3)
@@ -1213,8 +1216,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ~1.62.1
-        version: 1.62.1
+        specifier: ~1.64.0
+        version: 1.64.0
       tsdown:
         specifier: ^0.22.14
         version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
@@ -1251,7 +1254,7 @@ importers:
         version: 10.0.0(patch_hash=0e45bb77b8aa13f70ef9a38e645fc707cb33df7b55baca0492549533251792ce)(@stryker-mutator/core@10.0.0(@types/node@24.13.3))(vitest@4.1.11)
       "@vitest/browser-playwright":
         specifier: ^4.1.11
-        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+        version: 4.1.11(playwright@1.64.0)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8":
         specifier: ^4.1.11
         version: 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
@@ -1262,8 +1265,8 @@ importers:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       tsdown:
         specifier: ^0.22.14
         version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
@@ -1293,17 +1296,17 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       "@playwright/test":
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       "@vitest/browser-playwright":
         specifier: ^4.1.11
-        version: 4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+        version: 4.1.11(playwright@1.64.0)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       eslint:
         specifier: ^10.9.1
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
       playwright:
-        specifier: ^1.62.1
-        version: 1.62.1
+        specifier: ^1.64.0
+        version: 1.64.0
       tsdown:
         specifier: ^0.22.14
         version: 0.22.14(@volar/typescript@2.4.28(typescript@6.0.3))(tsx@4.23.13)(typescript@6.0.3)(vue-tsc@3.3.11(typescript@6.0.3))
@@ -4245,10 +4248,10 @@ packages:
     engines: { node: ">=18" }
     hasBin: true
 
-  "@playwright/test@1.62.1":
+  "@playwright/test@1.64.0":
     resolution:
       {
-        integrity: sha512-DTcUc8qii+cpHvtOwggMtBRMjKZHXYWdw8syRYu2vtzuq4Wxphqq4NfCs5Zt44L6mA8rfDfj+PHnxFc/FeK6mQ==,
+        integrity: sha512-oTN9FNYuN6bqQMwiho6jJKLCG2/QOYCixGXuCjRmzOq23eODeukuY2XiAVoVpAECbuezMt1MHQjAiQxK8F+Y+g==,
       }
     engines: { node: ">=20" }
     hasBin: true
@@ -8895,14 +8898,6 @@ packages:
       }
     engines: { node: ">= 0.8" }
 
-  fsevents@2.3.2:
-    resolution:
-      {
-        integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==,
-      }
-    engines: { node: ^8.16.0 || ^10.6.0 || >=11.0.0 }
-    os: [darwin]
-
   fsevents@2.3.3:
     resolution:
       {
@@ -10975,10 +10970,10 @@ packages:
         integrity: sha512-j/lCFdcppV0JxWpCEITdbDltBxPP6cHT+yNJ6Go2OgoSA9518X847X9z0p6LtA4Nc16+eQzCZjRrWanTGvHJ5w==,
       }
 
-  playwright-core@1.62.1:
+  playwright-core@1.64.0:
     resolution:
       {
-        integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==,
+        integrity: sha512-T9r+MZkTECl2+oUcZ26YgZzTrYidTsIhYYkJix+6iDOymOb1FB2RLLSOxRGnZGv5DStt+aduIVbt+E8WygXYpg==,
       }
     engines: { node: ">=20" }
     hasBin: true
@@ -10991,10 +10986,10 @@ packages:
     engines: { node: ">=20" }
     hasBin: true
 
-  playwright@1.62.1:
+  playwright@1.64.0:
     resolution:
       {
-        integrity: sha512-0M+L3LAD8/nm554LOla9Ayx0j0tmFZ0FBcoQ7F1VuVHpM/XpiC8RcDzBQB8W5+hA8L22THxELzeF+2WcUzvcLg==,
+        integrity: sha512-kVzTnYFYEyQ9RGzBjNCd2+yEqWmVbxl3AHPynv3qQ6JTjv4a+kwRcnqQwIpuP3NnrnIrE/Q6wWAIAvMfIE2/Yg==,
       }
     engines: { node: ">=20" }
     hasBin: true
@@ -13985,9 +13980,9 @@ snapshots:
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.5.2
 
-  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e(@playwright/test@1.62.1)":
+  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e(@playwright/test@1.64.0)":
     dependencies:
-      "@playwright/test": 1.62.1
+      "@playwright/test": 1.64.0
 
   "@babel/code-frame@7.29.7":
     dependencies:
@@ -15877,9 +15872,9 @@ snapshots:
       playwright: 1.64.0-alpha-1790635538000
       playwright-core: 1.64.0-alpha-1790635538000
 
-  "@playwright/test@1.62.1":
+  "@playwright/test@1.64.0":
     dependencies:
-      playwright: 1.62.1
+      playwright: 1.64.0
 
   "@polka/url@1.0.0-next.29": {}
 
@@ -17418,11 +17413,11 @@ snapshots:
       vite: 8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)
       vue: 3.5.42(typescript@6.0.3)
 
-  "@vitest/browser-playwright@4.1.11(playwright@1.62.1)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)":
+  "@vitest/browser-playwright@4.1.11(playwright@1.64.0)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)":
     dependencies:
       "@vitest/browser": 4.1.11(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/mocker": 4.1.11(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
-      playwright: 1.62.1
+      playwright: 1.64.0
       tinyrainbow: 3.1.1
       vitest: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
     transitivePeerDependencies:
@@ -17431,11 +17426,11 @@ snapshots:
       - utf-8-validate
       - vite
 
-  "@vitest/browser-playwright@4.1.11(playwright@1.62.1)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)":
+  "@vitest/browser-playwright@4.1.11(playwright@1.64.0)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)":
     dependencies:
       "@vitest/browser": 4.1.11(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/mocker": 4.1.11(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
-      playwright: 1.62.1
+      playwright: 1.64.0
       tinyrainbow: 3.1.1
       vitest: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
     transitivePeerDependencies:
@@ -17443,20 +17438,6 @@ snapshots:
       - msw
       - utf-8-validate
       - vite
-
-  "@vitest/browser-playwright@4.1.11(playwright@1.64.0-alpha-1790635538000)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)":
-    dependencies:
-      "@vitest/browser": 4.1.11(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
-      "@vitest/mocker": 4.1.11(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
-      playwright: 1.64.0-alpha-1790635538000
-      tinyrainbow: 3.1.1
-      vitest: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
-    transitivePeerDependencies:
-      - bufferutil
-      - msw
-      - utf-8-validate
-      - vite
-    optional: true
 
   "@vitest/browser@4.1.11(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)":
     dependencies:
@@ -18877,9 +18858,6 @@ snapshots:
 
   fresh@2.0.0: {}
 
-  fsevents@2.3.2:
-    optional: true
-
   fsevents@2.3.3:
     optional: true
 
@@ -19721,7 +19699,7 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next@16.3.4(@babel/core@8.0.5)(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.104.1):
+  next@16.3.4(@babel/core@8.0.5)(@playwright/test@1.64.0)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.104.1):
     dependencies:
       "@next/env": 16.3.4
       "@swc/helpers": 0.5.23
@@ -19740,7 +19718,7 @@ snapshots:
       "@next/swc-linux-x64-musl": 16.3.4
       "@next/swc-win32-arm64-msvc": 16.3.4
       "@next/swc-win32-x64-msvc": 16.3.4
-      "@playwright/test": 1.62.1
+      "@playwright/test": 1.64.0
       sass: 1.104.1
       sharp: 0.35.4(@types/node@24.13.3)
     transitivePeerDependencies:
@@ -20255,15 +20233,13 @@ snapshots:
       exsolve: 1.1.1
       pathe: 2.0.3
 
-  playwright-core@1.62.1: {}
+  playwright-core@1.64.0: {}
 
   playwright-core@1.64.0-alpha-1790635538000: {}
 
-  playwright@1.62.1:
+  playwright@1.64.0:
     dependencies:
-      playwright-core: 1.62.1
-    optionalDependencies:
-      fsevents: 2.3.2
+      playwright-core: 1.64.0
 
   playwright@1.64.0-alpha-1790635538000:
     dependencies:
@@ -21779,7 +21755,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       "@types/node": 24.13.3
-      "@vitest/browser-playwright": 4.1.11(playwright@1.62.1)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      "@vitest/browser-playwright": 4.1.11(playwright@1.64.0)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8": 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       jsdom: 30.0.1(@noble/hashes@1.8.0)
     transitivePeerDependencies:
@@ -21809,7 +21785,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       "@types/node": 24.13.3
-      "@vitest/browser-playwright": 4.1.11(playwright@1.64.0-alpha-1790635538000)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      "@vitest/browser-playwright": 4.1.11(playwright@1.64.0)(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
       "@vitest/coverage-v8": 4.1.11(@vitest/browser@4.1.11)(vitest@4.1.11)
       jsdom: 30.0.1(@noble/hashes@1.8.0)
     transitivePeerDependencies:

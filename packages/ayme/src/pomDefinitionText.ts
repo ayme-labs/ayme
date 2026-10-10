@@ -41,7 +41,7 @@ function renderChild(child: PomDefinition["children"][number]): string {
 }
 
 function renderAction(action: PomDefinitionAction, ownerName: string): string {
-  const parameters = renderSchemaProperties(action.inputSchema, ", ");
+  const parameters = renderActionParameters(action.inputSchema);
   const returnPoms = action.returnPoms.map((name) =>
     name === ownerName ? "this" : name
   );
@@ -49,7 +49,16 @@ function renderAction(action: PomDefinitionAction, ownerName: string): string {
   return `${action.name}(${parameters})${returnType}`;
 }
 
-function renderSchema(schema: JsonSchema): string {
+/**
+ * Package-internal: an action's parameter list from its input schema, e.g.
+ * `name: string, tags?: string[]`, the way the definition text writes it.
+ */
+export function renderActionParameters(inputSchema: JsonSchema): string {
+  return renderSchemaProperties(inputSchema, ", ");
+}
+
+/** Package-internal: a schema as a TypeScript type, e.g. `[number, string?]`. */
+export function renderSchema(schema: JsonSchema): string {
   if (schema.enum && schema.enum.length > 0)
     return schema.enum.map((value) => JSON.stringify(value)).join(" | ");
   if (schema.anyOf) return schema.anyOf.map(renderSchema).join(" | ");

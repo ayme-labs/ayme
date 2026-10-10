@@ -4,6 +4,7 @@ import { createPage } from "@ayme-dev/playwright-lite";
 import type { RunnableTool } from "../domain/runnableTools";
 import { renderPart } from "../../testing/renderPart";
 import { RunCard as RunCardPart } from "../../testing";
+import { schemaText } from "../infrastructure/schemaText";
 import { RunCard } from "./RunCard";
 
 // Component tests: press_key's key field in a run card, driven through the
@@ -37,6 +38,7 @@ function renderCard() {
     renderPart(
       <RunCard
         tool={pressKey}
+        schemaText={schemaText}
         head={false}
         runs={[]}
         onRun={onRun}

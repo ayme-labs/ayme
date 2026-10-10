@@ -69,8 +69,8 @@ export function RunCardView({
   onShowRun: (runId: string) => void;
   /** Opens the last run's image, given its data URL, full size. */
   onOpenImage: (src: string) => void;
-  /** Its arguments, e.g. "(text: string)". */
-  signature: string;
+  /** Its arguments, e.g. "(text: string)"; none when it takes no arguments. */
+  signature?: string;
   fields: readonly Field[];
   /** The JSON editor's state, while it edits the arguments. */
   json: { text?: string; error?: string } | undefined;
@@ -122,9 +122,8 @@ export function RunCardView({
   const name = (
     <>
       <ZapIcon className="size-3.5 flex-none text-primary" aria-hidden />
-      <span className="font-mono text-xs font-semibold">{tool.action}</span>
-      <span className="w-0 min-w-0 flex-1 truncate font-mono text-muted-foreground">
-        {signature}
+      <span className="truncate font-mono text-xs font-semibold">
+        {tool.action}
       </span>
     </>
   );
@@ -165,6 +164,12 @@ export function RunCardView({
             )}
             {runButton}
           </div>
+          {/* Its own line: types make a signature too long to share one. */}
+          {signature && (
+            <code className="-mt-1 font-mono text-xs wrap-anywhere text-muted-foreground">
+              {signature}
+            </code>
+          )}
           {reasonLine}
           {tool.description && (
             <p className="m-0 text-xs text-muted-foreground">

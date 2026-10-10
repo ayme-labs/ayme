@@ -5,7 +5,11 @@ import {
   listRegisteredPoms,
 } from "@ayme-dev/ayme/internal";
 
-import { buildPageModel, indexMembers } from "../../page-model";
+import {
+  actionSignature,
+  buildPageModel,
+  indexMembers,
+} from "../../page-model";
 
 /**
  * The Page Object member each Interaction acted on, by place: the member
@@ -37,7 +41,7 @@ export async function interactionMembers(
       // Without the targets' refs, a ref locator names no member.
     }
   const members = indexMembers(
-    buildPageModel(listRegisteredPoms(), new Set(), [])
+    buildPageModel(listRegisteredPoms(), new Set(), [], actionSignature)
   );
   return interactions.map(({ locator }) => {
     if (locator === undefined) return undefined;

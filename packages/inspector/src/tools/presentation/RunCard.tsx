@@ -7,7 +7,7 @@ import {
   type Run,
   type ToolArguments,
 } from "../../runs";
-import { argumentsToJson } from "../domain/fields";
+import { argumentsToJson, type SchemaText } from "../domain/fields";
 import type { RefSource } from "../domain/refTree";
 import type { RunnableTool } from "../domain/runnableTools";
 import { JsonEditor, RunCardView } from "../view/RunCardView";
@@ -48,6 +48,10 @@ export type RunCardProps = {
    * JSON editor lists them, and Run is off while there are any.
    */
   argumentViolations?: (args: ToolArguments) => readonly SchemaViolation[];
+  /**
+   * How its signature and its JSON fields' types read, as agents read them.
+   */
+  schemaText: SchemaText;
   /** Runs the tool with its input, on the item for a collection action. */
   onRun: (input: ToolArguments, item?: CollectionItem) => void;
   /** Shows a run in Runs. */

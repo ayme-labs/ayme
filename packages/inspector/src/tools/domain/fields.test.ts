@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { JsonSchema } from "@ayme-dev/ayme";
 
 import {
   argumentsFromJson,
@@ -196,11 +197,33 @@ describe("schema to fields", () => {
     expect(initialArguments(addItem)).toEqual({ priority: "low" });
   });
 
-  it("names an action's signature, marking optional arguments", () => {
-    expect(signatureOf(addItem)).toBe(
-      "(text, copies, urgent?, priority, details?, ref?, extra?)"
-    );
-    expect(signatureOf({ type: "object" })).toBe("()");
+  it("writes the signature it is given, and none without arguments", () => {
+    const signature = () => "(text: string)";
+    expect(signatureOf(addItem, signature)).toBe("(text: string)");
+    expect(signatureOf({ type: "object" }, signature)).toBeUndefined();
+  });
+
+  it("labels a field edited as JSON with the type it is given, nested ones too", () => {
+    const typeOf = (schema: JsonSchema) => `<${schema.type ?? "any"}>`;
+    const schema: JsonSchema = {
+      type: "object",
+      properties: {
+        value: { anyOf: [{ type: "string" }, { type: "number" }] },
+        point: { type: "array", prefixItems: [{ type: "number" }] },
+        details: { type: "object", properties: { extra: { type: "object" } } },
+        text: { type: "string" },
+      },
+    };
+
+    const [value, point, details, text] = fieldsOf(schema, { typeOf });
+
+    expect(value).toMatchObject({ kind: "json", typeLabel: "<any>" });
+    expect(point).toMatchObject({ kind: "json", typeLabel: "<array>" });
+    expect(details).toMatchObject({
+      kind: "object",
+      fields: [{ kind: "json", typeLabel: "<object>" }],
+    });
+    expect(text).toMatchObject({ kind: "text", typeLabel: "string" });
   });
 });
 
