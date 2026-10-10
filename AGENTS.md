@@ -66,3 +66,4 @@ Commit messages follow Conventional Commits. `commitlint.config.ts` defines the 
 - Start a persistent Devbox shell and run all project commands inside it.
 - `devbox run -- <cmd>` runs from the repository root, whatever the current directory. Reach a package with `pnpm -C <dir> <script>`, or `devbox run -- sh -c 'cd <dir> && <cmd>'`.
 - If Devbox is unavailable, surface the environment blocker.
+- In a Claude Code cloud container, run `scripts/prepare-cloud-checkout.sh` from a checkout or worktree before its first commit. The session start hook runs it only when the session opens in this repository.
