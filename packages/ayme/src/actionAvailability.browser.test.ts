@@ -713,12 +713,13 @@ describe("Action Availability", () => {
       components: [],
     });
     createPageRegistration(Rootless);
-    // All its tools wait for the observation that asks the predicate, so no
-    // agent sees any of them before it has been, and that observation is
-    // announced like an appearing root.
-    expect(listed("Rootless.open")).toMatchObject({ present: false });
-    expect(listed("Rootless.close")).toMatchObject({ present: false });
-    expect(published("Rootless.open")).toBeUndefined();
+    // Present from registration, as any rootless Page Object (ADR-0020). The
+    // action with the predicate is unavailable until the observation has
+    // asked it, so no agent acts on a guess; the plain one runs at once; and
+    // that observation is announced like an appearing root.
+    expect(published("Rootless.open")).toMatchObject({ available: false });
+    expect(published("Rootless.open")).not.toHaveProperty("reason");
+    expect(published("Rootless.close")).toMatchObject({ available: true });
     const changes = vi.fn();
     const unsubscribe = subscribeToRegisteredPoms(changes);
     await probeRegisteredPomMembers();
@@ -730,5 +731,99 @@ describe("Action Availability", () => {
       reason: "Not yet",
     });
     expect(published("Rootless.close")).toMatchObject({ available: true });
+  });
+
+  it("keeps the predicate of an action the constructor bound to the instance", async () => {
+    class Panel {
+      constructor() {
+        this.remove = this.remove.bind(this);
+      }
+      remove() {}
+    }
+    withAvailability(Panel, "remove", () => "This dashboard is built in");
+    registerCompiledPom(Panel, {
+      className: "Panel",
+      members: [],
+      tools: [action("remove", "Panel.remove")],
+      components: [],
+    });
+    createPageRegistration(Panel);
+    await probeRegisteredPomMembers();
+
+    expect(published("Panel.remove")).toMatchObject({
+      available: false,
+      reason: "This dashboard is built in",
+    });
+  });
+
+  it("refuses a collection action by the item's verdict when another member shares the item's element", async () => {
+    document.body.innerHTML =
+      '<ul><li id="draft">Draft</li><li id="sent">Sent</li></ul>';
+    class Message {
+      recalled = false;
+      constructor(readonly root: ReturnType<Page["locator"]>) {}
+      recall() {
+        this.recalled = true;
+      }
+    }
+    withAvailability(
+      Message,
+      "recall",
+      async (self: Message) =>
+        (await self.root.textContent()) === "Sent" || "Not sent yet"
+    );
+    class Preview {
+      constructor(readonly root: ReturnType<Page["locator"]>) {}
+    }
+    class Outbox {
+      // Declared before the items, and rooted at the first item's element.
+      preview = new Preview(page.locator("#draft"));
+      items = [
+        new Message(page.locator("#draft")),
+        new Message(page.locator("#sent")),
+      ];
+    }
+    registerCompiledPom(Outbox, {
+      className: "Outbox",
+      members: [
+        {
+          memberName: "preview",
+          kind: "component",
+          access: "field",
+          componentClassName: "Preview",
+          collection: false,
+        },
+        {
+          memberName: "items",
+          kind: "component",
+          access: "field",
+          componentClassName: "Message",
+          collection: true,
+        },
+      ],
+      tools: [],
+      components: [
+        { className: "Preview", members: [root], tools: [] },
+        {
+          className: "Message",
+          members: [root],
+          tools: [action("recall", "Outbox.items.recall")],
+        },
+      ],
+    } satisfies PomManifest);
+    const { instance: outbox } = createPageRegistration(Outbox);
+    await probeRegisteredPomMembers();
+    const state = await agent.getPageState();
+    // A shared element's node lists its members under a /pom line.
+    const draft = state.text.match(
+      /(e\d+) listitem:\n\s+- \/pom: \["Outbox\.items\[0\]","Outbox\.preview"\]/
+    )?.[1];
+    if (!draft) throw new Error("Expected a ref for the draft.");
+
+    const { tool } = listed("Outbox.items.recall")!;
+    await expect(
+      tool.execute({ ref: draft, args: {} }, runContext())
+    ).rejects.toThrow("Outbox.items.recall is unavailable: Not sent yet.");
+    expect(outbox.items[0]!.recalled).toBe(false);
   });
 });

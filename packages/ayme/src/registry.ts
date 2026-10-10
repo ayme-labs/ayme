@@ -100,14 +100,12 @@ type ActionObservation = {
 type ObservedRegisteredPom = RegisteredPom & {
   pomClass: object;
   /**
-   * Whether a probe has observed it yet, and whether one of its own actions
-   * has an availability predicate. A rootless Page Object with one lists
-   * its tools once that first observation has asked it: a tool's
-   * availability is what the observation found, never a guess made before
-   * it (ADR-0035). One without has nothing to wait for.
+   * Whether a probe has observed it yet. Until it has, a rootless Page
+   * Object's action with a predicate is listed unavailable: its availability
+   * is what the observation finds, never a guess made before it (ADR-0035),
+   * while presence stays the registration's (ADR-0020).
    */
   observed: boolean;
-  hasPredicates: boolean;
   rootObservations: readonly ObservedPomRoot[];
   actionObservations: readonly ActionObservation[];
   tools: readonly CallerAwarePomTool[];
@@ -254,12 +252,6 @@ export function registerPageObject<T extends object>(
     instance,
     manifest: compiledPom,
     observed: false,
-    hasPredicates: compiledPom.tools.some(
-      (tool) =>
-        availabilityPredicateOf(
-          (instance as Record<string, unknown>)[tool.methodName]
-        ) !== undefined
-    ),
     memberObservations: [],
     rootObservations: [],
     actionObservations: [],
@@ -549,16 +541,40 @@ function instanceAvailability(
     (candidate) =>
       candidate.path === path && candidate.methodName === methodName
   );
-  if (!observation || observation.available)
-    return { present: true, available: true };
-  return { present: true, available: false, reason: observation.reason };
+  if (observation)
+    return observation.available
+      ? { present: true, available: true }
+      : { present: true, available: false, reason: observation.reason };
+  // A rootless Page Object is present from registration; an action of its
+  // own with a predicate waits for the first observation to ask it.
+  const unasked =
+    root === undefined &&
+    !registration.observed &&
+    predicateFor(registration.instance, methodName) !== undefined;
+  return { present: true, available: !unasked };
+}
+
+/**
+ * The predicate `@ayme.action` kept for the class method `methodName`, read
+ * along the prototype chain so inherited actions keep theirs and an
+ * instance's own copy of the method, such as one bound in the constructor,
+ * does not hide it.
+ */
+function predicateFor(instance: object, methodName: string) {
+  const prototype = Object.getPrototypeOf(instance) as Record<
+    string,
+    unknown
+  > | null;
+  return (
+    availabilityPredicateOf(prototype?.[methodName]) ??
+    availabilityPredicateOf((instance as Record<string, unknown>)[methodName])
+  );
 }
 
 /**
  * The instances a tool stands for, by their root observations: the live
  * roots at a component tool's path, the page's declared root, or the page
- * itself (no root observation) for a rootless Page Object, once any
- * predicate of its own has been asked.
+ * itself (no root observation) for a rootless Page Object.
  */
 function toolInstances(
   registration: ObservedRegisteredPom,
@@ -571,9 +587,7 @@ function toolInstances(
     );
   if (declaredRoot)
     return registration.rootObservations.filter((root) => root.path === "");
-  return registration.observed || !registration.hasPredicates
-    ? [undefined]
-    : [];
+  return [undefined];
 }
 
 /** One tool's availability over the instances it stands for. */
@@ -603,22 +617,26 @@ function obstructionReason(root: ObservedPomRoot & { element: Element }) {
 /**
  * Package-internal: refuses a call of `toolName` on the instance a collection
  * tool resolved from the ref'd item root `element` of Page Object `pomId`,
- * walking the `trailing` singular members to the one that owns the action,
- * when the last observation found that instance unavailable: the tool is
- * listed available because another instance is.
+ * the item at `itemPath` (another member may share the element), walking the
+ * `trailing` singular members to the one that owns the action, when the
+ * last observation found that instance unavailable: the tool is listed
+ * available because another instance is.
  */
 function assertInstanceAvailable(
   pomId: string,
   toolName: string,
   methodName: string,
   element: Element,
+  itemPath: string,
   trailing: readonly string[]
 ) {
   const registration = [...registeredPoms].find(
     (candidate) => candidate.id === pomId
   );
   const item = registration?.rootObservations.find(
-    (candidate) => candidate.element === element
+    (candidate) =>
+      candidate.element === element &&
+      isLiveComponentRoot(itemPath, `${candidate.path}.root`)
   );
   if (!registration || !item) return;
   const path = [item.path, ...trailing].join(".");
@@ -826,9 +844,9 @@ function createComponentTool(
   const wrapper = refComponentToolManifest(pomId, path, action);
   // The singular members between the innermost collection and the action's
   // own component, which the ref'd item does not name.
-  const trailing = path
-    .slice(path.map((member) => member.collection).lastIndexOf(true) + 1)
-    .map((member) => member.memberName);
+  const itemDepth = path.map((member) => member.collection).lastIndexOf(true);
+  const itemPath = componentPathFor(path.slice(0, itemDepth + 1));
+  const trailing = path.slice(itemDepth + 1).map((member) => member.memberName);
   const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const values = validatedArguments(wrapper, input);
     const ref = AriaRefSchema.parse(values[0] as string);
@@ -851,6 +869,7 @@ function createComponentTool(
       wrapper.toolName,
       action.methodName,
       element,
+      itemPath,
       trailing
     );
     return await performPageObjectAction(
@@ -1138,9 +1157,7 @@ async function observeActions(
 ): Promise<ActionObservation[]> {
   const observations: ActionObservation[] = [];
   for (const tool of tools) {
-    const predicate = availabilityPredicateOf(
-      (instance as Record<string, unknown>)[tool.methodName]
-    );
+    const predicate = predicateFor(instance, tool.methodName);
     if (!predicate) continue;
     let verdict: boolean | string;
     try {
