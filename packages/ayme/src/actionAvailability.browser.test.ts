@@ -613,24 +613,35 @@ describe("Action Availability", () => {
   it("applies a predicate to a Page Object without a declared root", async () => {
     class Rootless {
       open() {}
+      close() {}
     }
     withAvailability(Rootless, "open", () => "Not yet");
     registerCompiledPom(Rootless, {
       className: "Rootless",
       members: [],
-      tools: [action("open", "Rootless.open")],
+      tools: [
+        action("open", "Rootless.open"),
+        action("close", "Rootless.close"),
+      ],
       components: [],
     });
     createPageRegistration(Rootless);
-    // Its tools wait for the observation that asks the predicate, so no
-    // agent sees them available before it has been.
+    // All its tools wait for the observation that asks the predicate, so no
+    // agent sees any of them before it has been, and that observation is
+    // announced like an appearing root.
     expect(listed("Rootless.open")).toMatchObject({ present: false });
+    expect(listed("Rootless.close")).toMatchObject({ present: false });
     expect(published("Rootless.open")).toBeUndefined();
+    const changes = vi.fn();
+    const unsubscribe = subscribeToRegisteredPoms(changes);
     await probeRegisteredPomMembers();
+    unsubscribe();
 
+    expect(changes).toHaveBeenCalled();
     expect(published("Rootless.open")).toMatchObject({
       available: false,
       reason: "Not yet",
     });
+    expect(published("Rootless.close")).toMatchObject({ available: true });
   });
 });
