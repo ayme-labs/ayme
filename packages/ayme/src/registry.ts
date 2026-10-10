@@ -378,10 +378,9 @@ async function probeRegistrations(lifetime: number): Promise<void> {
     if (
       sameRoots &&
       sameObservations(registration.memberObservations, memberObservations) &&
-      sameActionObservations(
-        registration.actionObservations,
-        actionObservations
-      )
+      // Plain data with a fixed key order, so the texts compare.
+      JSON.stringify(registration.actionObservations) ===
+        JSON.stringify(actionObservations)
     )
       continue;
     registration.memberObservations = memberObservations;
@@ -390,14 +389,6 @@ async function probeRegistrations(lifetime: number): Promise<void> {
     changed = true;
   }
   if (changed) notifySubscribers();
-}
-
-// Plain data with a fixed key order, so the texts compare.
-function sameActionObservations(
-  left: readonly ActionObservation[],
-  right: readonly ActionObservation[]
-) {
-  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function sameObservations(
@@ -610,25 +601,34 @@ function obstructionReason(root: ObservedPomRoot & { element: Element }) {
 }
 
 /**
- * Package-internal: refuses a call of `toolName` on the component instance
- * whose root is `element`, when the last observation found that instance
- * unavailable: the tool is listed available because another instance is.
+ * Package-internal: refuses a call of `toolName` on the instance a collection
+ * tool resolved from the ref'd item root `element` of Page Object `pomId`,
+ * walking the `trailing` singular members to the one that owns the action,
+ * when the last observation found that instance unavailable: the tool is
+ * listed available because another instance is.
  */
 function assertInstanceAvailable(
+  pomId: string,
   toolName: string,
   methodName: string,
-  element: Element
+  element: Element,
+  trailing: readonly string[]
 ) {
-  for (const registration of registeredPoms) {
-    const root = registration.rootObservations.find(
-      (candidate) => candidate.element === element
-    );
-    if (!root) continue;
-    const state = instanceAvailability(registration, root, methodName);
-    if (!state.available)
-      throw new RuntimeStateError(unavailableToolMessage(toolName, state));
-    return;
-  }
+  const registration = [...registeredPoms].find(
+    (candidate) => candidate.id === pomId
+  );
+  const item = registration?.rootObservations.find(
+    (candidate) => candidate.element === element
+  );
+  if (!registration || !item) return;
+  const path = [item.path, ...trailing].join(".");
+  const root = registration.rootObservations.find(
+    (candidate) => candidate.path === path
+  );
+  if (!root) return;
+  const state = instanceAvailability(registration, root, methodName);
+  if (!state.available)
+    throw new RuntimeStateError(unavailableToolMessage(toolName, state));
 }
 
 /**
@@ -824,6 +824,11 @@ function createComponentTool(
     );
 
   const wrapper = refComponentToolManifest(pomId, path, action);
+  // The singular members between the innermost collection and the action's
+  // own component, which the ref'd item does not name.
+  const trailing = path
+    .slice(path.map((member) => member.collection).lastIndexOf(true) + 1)
+    .map((member) => member.memberName);
   const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const values = validatedArguments(wrapper, input);
     const ref = AriaRefSchema.parse(values[0] as string);
@@ -841,7 +846,13 @@ function createComponentTool(
         `Ref "${ref}" does not match a present ${component.className} instance at ${toolPath} (tool ${wrapper.toolName}).`
       );
     }
-    assertInstanceAvailable(wrapper.toolName, action.methodName, element);
+    assertInstanceAvailable(
+      pomId,
+      wrapper.toolName,
+      action.methodName,
+      element,
+      trailing
+    );
     return await performPageObjectAction(
       componentInstance,
       action,

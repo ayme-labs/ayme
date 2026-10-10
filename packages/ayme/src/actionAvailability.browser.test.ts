@@ -361,6 +361,93 @@ describe("Action Availability", () => {
     });
   });
 
+  it("refuses a collection action owned by an item's singular child by that child's own verdict", async () => {
+    document.body.innerHTML =
+      '<ul><li id="clean"><button id="clean-save">Save</button></li><li id="dirty"><button id="dirty-save" data-dirty>Save</button></li></ul>';
+    class Editor {
+      constructor(readonly root: ReturnType<Page["locator"]>) {}
+      save() {
+        document.querySelector("#dirty-save")!.removeAttribute("data-dirty");
+      }
+    }
+    withAvailability(
+      Editor,
+      "save",
+      async (self: Editor) =>
+        (await self.root.getAttribute("data-dirty")) !== null ||
+        "Nothing to save"
+    );
+    class Item {
+      readonly editor: Editor;
+      constructor(readonly root: ReturnType<Page["locator"]>) {
+        this.editor = new Editor(root.locator("button"));
+      }
+    }
+    class Outbox {
+      items = [
+        new Item(page.locator("#clean")),
+        new Item(page.locator("#dirty")),
+      ];
+    }
+    registerCompiledPom(Outbox, {
+      className: "Outbox",
+      members: [
+        {
+          memberName: "items",
+          kind: "component",
+          access: "field",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      tools: [],
+      components: [
+        {
+          className: "Item",
+          members: [
+            root,
+            {
+              memberName: "editor",
+              kind: "component",
+              access: "field",
+              componentClassName: "Editor",
+              collection: false,
+            },
+          ],
+          tools: [],
+        },
+        {
+          className: "Editor",
+          members: [root],
+          tools: [action("save", "Outbox.items.editor.save")],
+        },
+      ],
+    } satisfies PomManifest);
+    createPageRegistration(Outbox);
+    await probeRegisteredPomMembers();
+    const state = await agent.getPageState();
+    const refOf = (index: number) =>
+      state.text.match(new RegExp(`(e\\d+) Outbox\\.items\\[${index}\\]`))?.[1];
+    const clean = refOf(0);
+    const dirty = refOf(1);
+    if (!clean || !dirty) throw new Error("Expected refs for both items.");
+
+    // The ref names the item; the verdict is the item's editor's.
+    expect(published("Outbox.items.editor.save")).toMatchObject({
+      available: true,
+    });
+    const { tool } = listed("Outbox.items.editor.save")!;
+    await expect(
+      tool.execute({ ref: clean, args: {} }, runContext())
+    ).rejects.toThrow(
+      "Outbox.items.editor.save is unavailable: Nothing to save."
+    );
+    await tool.execute({ ref: dirty, args: {} }, runContext());
+    expect(
+      document.querySelector("#dirty-save")!.hasAttribute("data-dirty")
+    ).toBe(false);
+  });
+
   it("names the Structural Ref of what is in the way: an overlay, a native modal, an inert ancestor", async () => {
     // The overlay's pane and the holder's cover have no ref of their own: the
     // reason names the overlay, the nearest ancestor with one, and nothing
