@@ -1,5 +1,6 @@
 ---
 status: accepted
+amended-by: ADR-0035
 ---
 
 # Separate Page Object presence from availability
