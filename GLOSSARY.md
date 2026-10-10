@@ -41,7 +41,7 @@ Whether a rooted Page Object can be associated with rendered UI in the current l
 Whether a live Page Object is currently available for interaction through its root in the user-facing page. Rooted Page Objects must be present to be available. Page Objects without a root retain registration-driven availability. DOM presence alone does not imply either structural presence or availability.
 
 **Action Availability**:
-Whether a Page Object Action can run right now. An action is available when its Page Object is available and its availability predicate, if it declares one, holds. Actions without a predicate share their Page Object's availability. Availability never adds or removes a Page Object Tool; it says whether a listed tool would run.
+Whether a Page Object Action can run right now. An action is available when its Page Object is available and its availability predicate, if it declares one, holds. Actions without a predicate share their Page Object's availability. Availability never adds or removes a Page Object Tool; it says whether a listed tool would run. On a collection action, availability is judged once per present instance: the tool is available while any instance passes, and otherwise carries the first failing instance's Availability Reason.
 
 **Availability Reason**:
 The one fact that makes a Page Object Action unavailable, as a string. The runtime writes it when a click would not reach the root, naming the Structural Ref of the element in the way when it has one; the author's predicate writes it otherwise. The runtime never infers more than it measured.
