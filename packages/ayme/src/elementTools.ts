@@ -237,6 +237,12 @@ export async function resolveElementTarget(
     new RefResolutionError(
       `Cannot ${definition.label} "${requested}": ${reason}.`
     );
+  // generate_locator returns locator expressions for Page Object code; an
+  // agent that passes one back as a target needs to hear what to pass instead.
+  if (/^\s*(page\.)?(getBy\w+|locator)\(/.test(requested))
+    throw new ToolInputError(
+      `The target "${requested}" is a Playwright locator expression, which tools do not take. Pass a Structural Ref from snapshot, or a selector such as role=button[name="Save"] or text=Save.`
+    );
   const page = requireAymeRuntimePage();
   let elements: Element[];
   try {

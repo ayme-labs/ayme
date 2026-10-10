@@ -68,4 +68,4 @@ const decide = decisionEndpoint("/api/decisions", {
 });
 ```
 
-`decisionEndpoint(url, options?)` returns the decision function for `goalLoop`. It posts each `DecisionRequest` as JSON to `url`, sends `headers` (a value, or a function it calls for each request), passes `credentials` to `fetch`, and throws `<status> <error text>` on a non-2xx response and `The Decision Endpoint returned an invalid response.` on a body that is not a decision response. In the Goal Loop, either ends the run with the Handover reason `decide_failed`.
+`decisionEndpoint(url, options?)` returns the decision function for `goalLoop`. It posts each `DecisionRequest` as JSON to `url`, sends `headers` (a value, or a function it calls for each request), passes `credentials` to `fetch`, and throws `The Decision Endpoint <url> answered <status> <error text>` on a non-2xx response, with the status text in place of an empty body, and `The Decision Endpoint returned an invalid response.` on a body that is not a decision response. In the Goal Loop, either ends the run with the Handover reason `decide_failed`.
