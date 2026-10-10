@@ -41,7 +41,8 @@ export type AppProcessOptions = {
  * once the agent's server is up. It keeps the token the server hands it
  * and reconnects with it while that server runs, even beside another one.
  * It logs each of its tools the server hides because another connection
- * offers the same name. Returns what ends the connection.
+ * offers the same name, and warns once when it finds several servers and
+ * cannot tell which to pair with. Returns what ends the connection.
  */
 export function startAgentConnection(
   ayme: AgentConnectionRuntime,
@@ -58,6 +59,9 @@ export function startAgentConnection(
   // The pairing with the server it last paired with, once that server
   // handed it a token.
   let known: Pairing | undefined;
+  // Whether it said it found several servers since it last paired, so the
+  // rescans that follow stay quiet.
+  let warnedSeveral = false;
 
   const later = (next: () => void) => {
     retry = setTimeout(next, SCAN_INTERVAL_MS);
@@ -70,6 +74,12 @@ export function startAgentConnection(
     if (disposed) return;
     if (known && servers.includes(known.address)) return pair(known);
     if (servers.length === 1) return pair({ address: servers[0]!, token: "" });
+    if (servers.length > 1 && !warnedSeveral) {
+      warnedSeveral = true;
+      console.warn(
+        `[ayme] Found ${servers.length} Ayme MCP servers on ports ${portList(servers)}. Pass \`link\` from the agent's \`ayme_connect\`, or \`port\`, to pick one.`
+      );
+    }
     later(scan);
   };
   const lookAgain = linked ? () => later(() => pair(linked)) : scan;
@@ -123,6 +133,7 @@ export function startAgentConnection(
       },
     };
     open = opened;
+    warnedSeveral = false;
     console.info(
       `[ayme] This process is connected to the coding agent's Ayme MCP server at ${pairing.address}.`
     );
@@ -149,6 +160,12 @@ async function webSocketClass(): Promise<typeof WebSocket> {
     globalThis.WebSocket ??
     ((await import("ws")).WebSocket as unknown as typeof WebSocket)
   );
+}
+
+/** The servers' ports, as in "9350, 9351 and 9352". */
+function portList(servers: string[]): string {
+  const ports = servers.map((address) => new URL(address).port);
+  return `${ports.slice(0, -1).join(", ")} and ${ports.at(-1)}`;
 }
 
 /** The pairing `link` names; throws when it is not a connect link. */

@@ -141,6 +141,36 @@ describe("startAgentConnection in an App Process", () => {
     ]);
   });
 
+  it("warns once while several servers answer, naming their ports, and again after it has paired and lost its server", async () => {
+    const warn = vi.mocked(console.warn);
+    const several =
+      "[ayme] Found 2 Ayme MCP servers on ports 9352 and 9353. Pass `link` from the agent's `ayme_connect`, or `port`, to pick one.";
+    await start();
+    await scans[0]!.answer([SERVER, OTHER]);
+    for (const scan of [1, 2, 3]) {
+      await vi.advanceTimersByTimeAsync(SCAN_INTERVAL_MS);
+      await scans[scan]!.answer([SERVER, OTHER]);
+    }
+    expect(warn).toHaveBeenCalledExactlyOnceWith(several);
+
+    await vi.advanceTimersByTimeAsync(SCAN_INTERVAL_MS);
+    await scans[4]!.answer([SERVER]);
+    channels[0]!.onClose!();
+    await settle();
+    await scans[5]!.answer([SERVER, OTHER]);
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not warn when one server answers or a connect link names one", async () => {
+    const warn = vi.mocked(console.warn);
+    await start();
+    await scans[0]!.answer([SERVER]);
+    await start({ link: `http://localhost:5173/#ayme=${SERVER}/f00d` });
+    await vi.advanceTimersByTimeAsync(SCAN_INTERVAL_MS * 2);
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it("scans only the port it is given", async () => {
     await start({ port: 41234 });
 
