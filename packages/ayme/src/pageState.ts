@@ -268,9 +268,10 @@ export async function getPageStateForElements(
  * `obstruction`, the element a click on `root` would reach instead: the ref
  * the agent's latest recorded page state gave it, or its nearest ancestor
  * that has one and does not hold `root` (what holds the root is not in its
- * way). An obstruction that holds the root, an inert ancestor, is named by
- * its own ref only. Undefined when none has one, as for `<html>` when `body`
- * takes no pointer events.
+ * way). An inert ancestor, which holds the root, and an open native modal
+ * are named by their own ref only. Undefined when none has one, as for
+ * `<html>` when `body` takes no pointer events, or until the agent has
+ * recorded a page state that shows the obstruction.
  */
 export function latestRefInTheWay(
   obstruction: Element,
@@ -278,7 +279,7 @@ export function latestRefInTheWay(
 ): AriaRef | undefined {
   const session = pageStateSessions.get(obstruction.ownerDocument);
   if (!session) return undefined;
-  if (containsThroughShadow(obstruction, root))
+  if (containsThroughShadow(obstruction, root) || isModal(obstruction))
     return session.latestRefOf(obstruction);
   for (
     let node: Element | null = obstruction;
@@ -298,6 +299,14 @@ function parentElement(current: Element): Element | null {
     (current.getRootNode() as ShadowRoot).host ??
     null
   );
+}
+
+function isModal(element: Element): boolean {
+  try {
+    return element.matches(":modal");
+  } catch {
+    return false;
+  }
 }
 
 function getPageStateSession(currentDocument: Document) {
