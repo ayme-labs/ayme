@@ -31,6 +31,7 @@ const clearList: RunnableTool = {
   name: "ListPage.clearList",
   action: "clearList",
   description: "Remove every item.",
+  present: true,
   available: true,
   argumentsSchema: { type: "object", properties: {} },
 };
@@ -39,6 +40,7 @@ const addItem: RunnableTool = {
   name: "ListPage.addItem",
   action: "addItem",
   description: "Add an item to the list.",
+  present: true,
   available: true,
   argumentsSchema: {
     type: "object",
@@ -63,6 +65,7 @@ const rename: RunnableTool = {
   name: "ListPage.items.rename",
   action: "rename",
   description: "Rename this item.",
+  present: true,
   available: true,
   argumentsSchema: {
     type: "object",
@@ -81,7 +84,7 @@ function renderCard(props: Partial<RunCardProps> & Pick<RunCardProps, "tool">) {
   unmounts.push(
     renderPart(
       <RunCard
-        available
+        present
         schemaText={schemaText}
         runs={[]}
         onRun={onRun}
@@ -120,11 +123,29 @@ describe("Run", () => {
     expect(onRun).toHaveBeenCalledExactlyOnceWith({ text: "Milk" });
   });
 
-  it("is not there on an action the page doesn't publish", async () => {
-    const { card } = renderCard({ tool: clearList, available: false });
+  it("is not there on an action whose Page Object isn't on the page", async () => {
+    const { card } = renderCard({
+      tool: { ...clearList, present: false, available: false },
+      present: false,
+    });
 
     await expect.poll(() => card.root.count()).toBe(1);
     expect(await card.runButton.count()).toBe(0);
+    expect(await card.reason.count()).toBe(0);
+  });
+
+  it("says why an action is unavailable, and stays runnable so the refusal can be checked", async () => {
+    const { card, onRun } = renderCard({
+      tool: { ...clearList, available: false, reason: "Nothing to clear" },
+    });
+
+    await expect.poll(() => card.reason.textContent()).toBe("Nothing to clear");
+    expect(await card.root.getAttribute("data-available")).toBe("false");
+    expect(await card.runButton.isDisabled()).toBe(false);
+
+    await card.runButton.click();
+
+    expect(onRun).toHaveBeenCalledExactlyOnceWith({});
   });
 
   it("sits at the foot of an open form on a card without a head", async () => {
@@ -143,6 +164,7 @@ describe("the types agents read", () => {
     name: "ListPage.shapes",
     action: "shapes",
     description: "Take every schema shape.",
+    present: true,
     available: true,
     argumentsSchema: {
       type: "object",
@@ -284,6 +306,7 @@ describe("a map of labelled values", () => {
     name: "goal",
     action: "goal",
     description: "Drive the page toward a goal in steps.",
+    present: true,
     available: true,
     argumentsSchema: {
       type: "object",
@@ -466,6 +489,7 @@ describe("a single-element tool", () => {
     name: "fill",
     action: "fill",
     description: "Fill a real editable element ref with text.",
+    present: true,
     available: true,
     refField: "ref",
     argumentsSchema: {
@@ -523,6 +547,7 @@ describe("a single-element tool", () => {
       name: "click",
       action: "click",
       description: "Click a real element ref.",
+      present: true,
       available: true,
       refField: "ref",
       argumentsSchema: {

@@ -15,9 +15,10 @@ import {
 /** The tools the panel can run now, and how WebMCP publication stands. */
 export type LiveTools = Readonly<{
   /**
-   * Every available tool, in publication order: each one the panel (and the
-   * session's `tools.run`) can run now because its Page Object or element is
-   * on the page, whether or not WebMCP has it. `publication` says whether
+   * Every tool the session lists, in publication order: each one whose Page
+   * Object or element is on the page, whether or not WebMCP has it. A tool
+   * can be listed and unavailable (ADR-0035): `available` says whether a
+   * call would run it, and `reason` why not. `publication` says whether
    * agents can call them.
    */
   live: readonly ToolInfo[];
@@ -64,25 +65,12 @@ const NO_SESSION: AymeWebMcpPublicationStatus = Object.freeze({
 
 let snapshot: LiveTools | undefined;
 
-// The session's list as last read, and its available tools, so the same
-// list gives the same array.
-let sessionTools: readonly ToolInfo[] = NO_TOOLS;
-let availableTools: readonly ToolInfo[] = NO_TOOLS;
-
-function asAvailableTools(tools: readonly ToolInfo[]) {
-  if (tools !== sessionTools) {
-    sessionTools = tools;
-    availableTools = Object.freeze(tools.filter((tool) => tool.available));
-  }
-  return availableTools;
-}
-
 // useSyncExternalStore needs the same object until something changes: the
 // session hands back the same list and status until they change, so keep one
 // pair.
 function readLiveTools(): LiveTools {
   const ayme = getStartedAyme();
-  const live = asAvailableTools(ayme?.tools.list() ?? NO_TOOLS);
+  const live = ayme?.tools.list() ?? NO_TOOLS;
   const appProcess = asNodePeekTools(
     ayme ? getAppProcessTools(ayme).list() : NO_PROCESS_TOOLS
   );
