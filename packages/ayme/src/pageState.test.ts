@@ -24,6 +24,7 @@ import {
 import {
   configurePageStateIgnore,
   getPageStateCaptureForDocument,
+  latestRefInTheWay,
   pageStateNodeEntry,
   lookAtPageStateForDocument,
   resolvePageStateRefs,
@@ -769,6 +770,61 @@ describe("get_page_state", () => {
         },
       ]);
     });
+  });
+});
+
+describe("the ref an Availability Reason names for what is in the way", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "document",
+      document.implementation.createHTMLDocument("Obstruction test")
+    );
+    document.body.innerHTML = `
+      <div id="holder"><section id="root">Root</section><div id="cover"></div></div>
+      <div id="overlay"><div id="pane"></div></div>
+      <div id="shell"><dialog id="modal"></dialog></div>
+    `;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const byId = (id: string) => document.querySelector(`#${id}`)!;
+  const recordPageState = async (refs: [Element, string][]) => {
+    const text = [
+      "- generic [ref=e1]:",
+      ...refs.map(([, ref]) => `  - generic [ref=${ref}]`),
+    ].join("\n");
+    captureAriaSnapshot.mockReturnValue({
+      distilledText: text,
+      fullText: text,
+      refsByElement: new Map([[document.body, "e1"], ...refs]),
+    });
+    listRegisteredPomRoots.mockResolvedValue([]);
+    await getPageStateTool.execute();
+  };
+
+  it("is nothing before the document has a page state", () => {
+    expect(latestRefInTheWay(byId("cover"), byId("root"))).toBeUndefined();
+  });
+
+  it("is the nearest ref up from the obstruction, from an ancestor that does not hold the root", async () => {
+    await recordPageState([
+      [byId("overlay"), "e2"],
+      [byId("holder"), "e3"],
+      [byId("shell"), "e4"],
+    ]);
+
+    expect(latestRefInTheWay(byId("pane"), byId("root"))).toBe(ref("e2"));
+    // What holds the root is not in its way.
+    expect(latestRefInTheWay(byId("cover"), byId("root"))).toBeUndefined();
+    // An inert ancestor is named by its own ref.
+    expect(latestRefInTheWay(byId("holder"), byId("root"))).toBe(ref("e3"));
+    // Where the browser cannot tell a modal (jsdom has no `:modal`), the
+    // dialog is walked up from like anything else.
+    expect(latestRefInTheWay(byId("modal"), byId("root"))).toBe(ref("e4"));
   });
 });
 

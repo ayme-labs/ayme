@@ -18,11 +18,11 @@ const state = (tools: (string | SeenTool)[], hidden: string[] = []) => ({
 it("names the tools that appeared and disappeared", () => {
   expect(
     toolChangeNote(
-      state(["snapshot", "Cart.checkout"]),
+      state(["snapshot", "Cart.checkout", "Cart.pay"]),
       state(["snapshot", "Basket.add"])
     )
   ).toBe(
-    "The connected tools changed since your previous call. Appeared: Basket.add. Disappeared: Cart.checkout. ayme_list_tools lists the current tools; ayme_call runs any of them."
+    "The connected tools changed since your previous call. Appeared: Basket.add. Disappeared: Cart.checkout, Cart.pay. ayme_list_tools lists the current tools; ayme_call runs any of them."
   );
 });
 
@@ -48,6 +48,7 @@ it("names the tools that became available or unavailable, with the reason when t
         unavailable("Panel.remove", "No item is selected"),
         unavailable("Panel.duplicate"),
         "Dialog.close",
+        "Dialog.submit",
       ]),
       state([
         "snapshot",
@@ -57,10 +58,11 @@ it("names the tools that became available or unavailable, with the reason when t
           "Dialog.close",
           "a click would not reach it; e7 is in the way"
         ),
+        unavailable("Dialog.submit"),
       ])
     )
   ).toBe(
-    "The connected tools changed since your previous call. Became available: Panel.remove, Panel.duplicate. Became unavailable: Dialog.close (a click would not reach it; e7 is in the way). ayme_list_tools lists the current tools; ayme_call runs any of them."
+    "The connected tools changed since your previous call. Became available: Panel.remove, Panel.duplicate. Became unavailable: Dialog.close (a click would not reach it; e7 is in the way), Dialog.submit. ayme_list_tools lists the current tools; ayme_call runs any of them."
   );
   expect(
     toolChangeNote(
