@@ -43,9 +43,8 @@ const availabilityPredicates = new WeakMap<
 export function availabilityPredicateOf(
   method: unknown
 ): AvailabilityPredicate<never> | undefined {
-  return typeof method === "function"
-    ? availabilityPredicates.get(method)
-    : undefined;
+  // A WeakMap answers undefined for a key that is not an object.
+  return availabilityPredicates.get(method as object);
 }
 
 type PageObjectClass = abstract new (...args: never[]) => unknown;

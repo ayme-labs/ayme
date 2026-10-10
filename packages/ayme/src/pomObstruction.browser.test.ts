@@ -26,6 +26,22 @@ describe("what is in the way of an unavailable root", () => {
     expect(findObstruction(root())?.id).toBe("second");
   });
 
+  it("names the open native modal for a root the viewport does not show", () => {
+    document.body.innerHTML =
+      '<section id="root" style="position:absolute;left:-5000px;width:200px;height:100px">Content</section><dialog id="modal"><button>Confirm</button></dialog>';
+    document.querySelector<HTMLDialogElement>("#modal")!.showModal();
+
+    expect(findObstruction(root())?.id).toBe("modal");
+  });
+
+  it("names what covers a root inside the open modal, not the modal", () => {
+    document.body.innerHTML =
+      '<dialog id="modal" style="width:300px;height:200px"><section id="root" style="width:200px;height:100px">Content</section><div id="cover" style="position:absolute;inset:0"></div></dialog>';
+    document.querySelector<HTMLDialogElement>("#modal")!.showModal();
+
+    expect(findObstruction(root())?.id).toBe("cover");
+  });
+
   it("names the inert ancestor", () => {
     document.body.innerHTML =
       '<div id="wrapper" inert><section id="root" style="width:200px;height:100px">Content</section></div>';
