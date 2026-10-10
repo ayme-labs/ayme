@@ -99,6 +99,15 @@ type ActionObservation = {
 
 type ObservedRegisteredPom = RegisteredPom & {
   pomClass: object;
+  /**
+   * Whether a probe has observed it yet, and whether one of its own actions
+   * has an availability predicate. A rootless Page Object with one lists
+   * its tools once that first observation has asked it: a tool's
+   * availability is what the observation found, never a guess made before
+   * it (ADR-0035). One without has nothing to wait for.
+   */
+  observed: boolean;
+  hasPredicates: boolean;
   rootObservations: readonly ObservedPomRoot[];
   actionObservations: readonly ActionObservation[];
   tools: readonly CallerAwarePomTool[];
@@ -244,6 +253,13 @@ export function registerPageObject<T extends object>(
     pomClass: PomClass,
     instance,
     manifest: compiledPom,
+    observed: false,
+    hasPredicates: compiledPom.tools.some(
+      (tool) =>
+        availabilityPredicateOf(
+          (instance as Record<string, unknown>)[tool.methodName]
+        ) !== undefined
+    ),
     memberObservations: [],
     rootObservations: [],
     actionObservations: [],
@@ -342,6 +358,10 @@ async function probeRegistrations(lifetime: number): Promise<void> {
     actionObservations,
   } of results) {
     if (!registeredPoms.has(registration)) continue;
+    if (!registration.observed) {
+      registration.observed = true;
+      changed = true;
+    }
     const sameRoots =
       registration.rootObservations.length === rootObservations.length &&
       registration.rootObservations.every((root, index) => {
@@ -494,16 +514,11 @@ export function listRegisteredPomTools(): ({
       (member) => member.kind === "locator" && member.memberName === "root"
     );
     for (const tool of registration.tools) {
-      const componentPath = tool.componentPath;
-      const instances =
-        componentPath === undefined
-          ? declaredRoot
-            ? registration.rootObservations.filter((root) => root.path === "")
-            : [undefined]
-          : registration.rootObservations.filter((root) =>
-              isLiveComponentRoot(componentPath, `${root.path}.root`)
-            );
-      const states = instances.map((root) =>
+      const states = toolInstances(
+        registration,
+        declaredRoot,
+        tool.componentPath
+      ).map((root) =>
         instanceAvailability(registration, root, tool.methodName)
       );
       const availability = combinedAvailability(states);
@@ -546,6 +561,28 @@ function instanceAvailability(
   if (!observation || observation.available)
     return { present: true, available: true };
   return { present: true, available: false, reason: observation.reason };
+}
+
+/**
+ * The instances a tool stands for, by their root observations: the live
+ * roots at a component tool's path, the page's declared root, or the page
+ * itself (no root observation) for a rootless Page Object, once any
+ * predicate of its own has been asked.
+ */
+function toolInstances(
+  registration: ObservedRegisteredPom,
+  declaredRoot: boolean,
+  componentPath: string | undefined
+): readonly (ObservedPomRoot | undefined)[] {
+  if (componentPath !== undefined)
+    return registration.rootObservations.filter((root) =>
+      isLiveComponentRoot(componentPath, `${root.path}.root`)
+    );
+  if (declaredRoot)
+    return registration.rootObservations.filter((root) => root.path === "");
+  return registration.observed || !registration.hasPredicates
+    ? [undefined]
+    : [];
 }
 
 /** One tool's availability over the instances it stands for. */

@@ -622,6 +622,10 @@ describe("Action Availability", () => {
       components: [],
     });
     createPageRegistration(Rootless);
+    // Its tools wait for the observation that asks the predicate, so no
+    // agent sees them available before it has been.
+    expect(listed("Rootless.open")).toMatchObject({ present: false });
+    expect(published("Rootless.open")).toBeUndefined();
     await probeRegisteredPomMembers();
 
     expect(published("Rootless.open")).toMatchObject({
