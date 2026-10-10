@@ -37,6 +37,7 @@ export function useRunCard({
   structuralRef,
   runs,
   argumentViolations,
+  schemaText,
   onRun,
 }: RunCardProps) {
   const fields = useMemo(
@@ -44,8 +45,9 @@ export function useRunCard({
       fieldsOf(tool.argumentsSchema, {
         ref: tool.refField,
         key: tool.keyField,
+        typeOf: schemaText.type,
       }),
-    [tool.argumentsSchema, tool.refField, tool.keyField]
+    [tool.argumentsSchema, tool.refField, tool.keyField, schemaText]
   );
   // The field the given ref fills: a Custom Tool's `ref`, a Browser Tool's `target`.
   const refField =
@@ -123,7 +125,7 @@ export function useRunCard({
 
   return {
     head,
-    signature: signatureOf(tool.argumentsSchema),
+    signature: signatureOf(tool.argumentsSchema, schemaText.signature),
     fields,
     args,
     json,

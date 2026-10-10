@@ -17,6 +17,13 @@ export {
   getPomDefinitionText,
 } from "./pageContext";
 export { getPomDefinitions } from "./pomDefinitions";
+// The definition text's own rendering, so the Inspector shows an action's
+// signature and argument types the way agents read them.
+export {
+  renderActionParameters,
+  renderPomDefinitions,
+  renderSchema,
+} from "./pomDefinitionText";
 export { listElementToolTargets } from "./publishedTools";
 export type { PublishedToolGroup, PublishedToolInfo } from "./publishedTools";
 export {

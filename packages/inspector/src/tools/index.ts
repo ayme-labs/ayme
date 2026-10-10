@@ -4,6 +4,7 @@ export { attachToolModels } from "./domain/toolGroups";
 export { argumentViolationsOf } from "./infrastructure/argumentViolations";
 export { useLiveTools } from "./infrastructure/liveTools";
 export { pomDefinitionText } from "./infrastructure/pomDefinitionText";
+export { schemaText } from "./infrastructure/schemaText";
 export {
   pickPromptOf,
   refFilterOf,

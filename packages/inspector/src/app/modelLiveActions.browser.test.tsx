@@ -103,11 +103,17 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     () => runtime.liveTools as ToolInfo[]
   );
   startedAyme.webMCP.publicationStatus = runtime.publication;
-  const { pageStateNodeEntry, toolInputViolations } =
-    await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
+  const {
+    pageStateNodeEntry,
+    renderActionParameters,
+    renderSchema,
+    toolInputViolations,
+  } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     pageStateNodeEntry,
     subscribeToAgentImageRuns: () => () => {},
+    renderActionParameters,
+    renderSchema,
     toolInputViolations,
     getPomDefinitions: vi.fn(() => ({ definitions: [] })),
     lookAtPageStateForDocument: vi.fn(async () => ({
