@@ -56,9 +56,10 @@ const markElement = {
 } as const;
 
 it("runs a Page Object action with its parameters", () => {
-  const tools = listRunnableTools([listPage], new Map(), [
-    { ...addItem, inputSchema: addItem.inputSchema, available: true },
-  ]);
+  const tools = listRunnableTools(
+    [listPage],
+    [{ ...addItem, inputSchema: addItem.inputSchema, available: true }]
+  );
 
   expect(tools.get("ListPage.addItem")).toEqual({
     name: "ListPage.addItem",
@@ -77,8 +78,7 @@ it("runs a Page Object action with its parameters", () => {
 it("runs a collection action on an item, with the action's own arguments", () => {
   const tools = listRunnableTools(
     [listPage],
-    new Map([[rename.name, rename]]),
-    []
+    [{ ...rename, inputSchema: rename.inputSchema, available: true }]
   );
 
   expect(tools.get("ListPage.items.rename")).toMatchObject({
@@ -91,7 +91,7 @@ it("runs a collection action on an item, with the action's own arguments", () =>
 });
 
 it("can't run an action whose Page Object isn't on the page", () => {
-  const tools = listRunnableTools([listPage], new Map(), []);
+  const tools = listRunnableTools([listPage], []);
 
   expect(tools.get("ListPage.addItem")).toMatchObject({
     present: false,
@@ -101,14 +101,17 @@ it("can't run an action whose Page Object isn't on the page", () => {
 });
 
 it("keeps a present action that is unavailable, with the reason the session gives", () => {
-  const tools = listRunnableTools([listPage], new Map(), [
-    {
-      ...addItem,
-      inputSchema: addItem.inputSchema,
-      available: false,
-      reason: "Nothing to add",
-    },
-  ]);
+  const tools = listRunnableTools(
+    [listPage],
+    [
+      {
+        ...addItem,
+        inputSchema: addItem.inputSchema,
+        available: false,
+        reason: "Nothing to add",
+      },
+    ]
+  );
 
   expect(tools.get("ListPage.addItem")).toMatchObject({
     present: true,
@@ -118,9 +121,10 @@ it("keeps a present action that is unavailable, with the reason the session give
 });
 
 it("runs every other live tool with its schema, and names its ref argument", () => {
-  const tools = listRunnableTools([listPage], new Map(), [
-    { ...markElement, available: true },
-  ]);
+  const tools = listRunnableTools(
+    [listPage],
+    [{ ...markElement, available: true }]
+  );
 
   expect(tools.get("mark_element")).toEqual({
     name: "mark_element",
@@ -144,10 +148,10 @@ it("names a Browser Tool's key argument, and no other tool's", () => {
     group,
     available: true,
   });
-  const tools = listRunnableTools([], new Map(), [
-    keyed("press_key", "browser"),
-    keyed("save_setting", "custom"),
-  ]);
+  const tools = listRunnableTools(
+    [],
+    [keyed("press_key", "browser"), keyed("save_setting", "custom")]
+  );
 
   expect(tools.get("press_key")?.keyField).toBe("key");
   expect(tools.get("save_setting")?.keyField).toBeUndefined();
@@ -164,10 +168,10 @@ it("gives the generate_locator Browser Tool its own form, and no other tool", ()
     group,
     available: true,
   });
-  const tools = listRunnableTools([], new Map(), [
-    grouped("generate_locator", "browser"),
-    grouped("locate", "custom"),
-  ]);
+  const tools = listRunnableTools(
+    [],
+    [grouped("generate_locator", "browser"), grouped("locate", "custom")]
+  );
 
   expect(tools.get("generate_locator")?.locatorGroups).toBe(true);
   expect(tools.get("locate")?.locatorGroups).toBeUndefined();
@@ -184,8 +188,7 @@ it("never treats a Page Object action's argument as a ref, whatever its name", (
   };
   const tools = listRunnableTools(
     [{ ...listPage, tools: [retarget] }],
-    new Map([[retarget.name, retarget]]),
-    []
+    [{ ...retarget, inputSchema: retarget.inputSchema, available: true }]
   );
 
   expect(tools.get("ListPage.retarget")?.refField).toBeUndefined();

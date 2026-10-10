@@ -39,8 +39,7 @@ export function useInspectorRuntime({
     structureVisible,
     onLook: highlight.onLook,
   });
-  const { registeredPoms, activeTools, pomDefinitions, refreshPageState } =
-    inspector;
+  const { registeredPoms, pomDefinitions, refreshPageState } = inspector;
   const onRunSettled = useCallback(
     () => refreshPageState(),
     [refreshPageState]
@@ -104,11 +103,8 @@ export function useInspectorRuntime({
   );
   const runnableTools = useMemo(
     () =>
-      listRunnableTools(registeredPoms, activeTools, [
-        ...tools.live,
-        ...tools.appProcess,
-      ]),
-    [registeredPoms, activeTools, tools.live, tools.appProcess]
+      listRunnableTools(registeredPoms, [...tools.live, ...tools.appProcess]),
+    [registeredPoms, tools.live, tools.appProcess]
   );
 
   // Picking reads the latest look at the page as the pointer moves.
