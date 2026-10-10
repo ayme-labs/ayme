@@ -36,8 +36,9 @@ const hold: CustomTool = {
 /**
  * Starts the runtime with the Agent Connection on. WebMCP publication is off
  * unless the URL has `?webmcp`, so the page shows the connection does not
- * need it. `?inspector` mounts the Inspector. The Basket Page Object is registered only while shown. The page
- * reports its state on <html> for the e2e tests.
+ * need it. `?inspector` mounts the Inspector. The Basket Page Object is registered
+ * only while shown, and its `clear` action is available only once the basket
+ * is filled. The page reports its state on <html> for the e2e tests.
  */
 const root = document.documentElement.dataset;
 try {
@@ -59,6 +60,12 @@ try {
   document
     .querySelector("#hide-basket")!
     .addEventListener("click", () => runtime.pom.unregister(Basket));
+  // Filling the basket makes its `clear` action available.
+  document.querySelector("#fill-basket")!.addEventListener("click", () => {
+    const item = document.createElement("li");
+    item.textContent = "Milk";
+    document.querySelector("#basket-items")!.append(item);
+  });
   root.fixture = "ready";
 } catch (error) {
   root.fixture = "failed";
