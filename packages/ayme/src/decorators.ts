@@ -33,7 +33,7 @@ export type AymeActionOptions<Self = unknown> = {
 };
 
 // Each decorated method's predicate, by the method itself: the registry reads
-// it off the live instance, so inherited actions keep theirs.
+// it along an instance's prototype chain, so inherited actions keep theirs.
 const availabilityPredicates = new WeakMap<
   object,
   AvailabilityPredicate<never>
