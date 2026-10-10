@@ -13,7 +13,7 @@ The common reasons an Ayme setup fails, by what you see.
 
 - **`The imported page object has no compiler-derived Ayme metadata`**: the build plugin did not compile the class. Check that it is marked `@ayme`, lives in a `.ts` file the app imports, and that `experimentalDecorators` is on. On Vite 8 with your own `oxc` or `esbuild` settings, see the [build plugin reference](reference/build-plugin.md#vite). A subclass in a file without `@ayme` needs a bundler content filter that matches it; see [What it compiles](reference/build-plugin.md#what-it-compiles).
 - **The tool is not in `ayme.tools.list()`**: the class is not registered, or its Page Object Root is not on the page. A child model needs a `root`.
-- **The tool is listed with `available: false`**: its `reason` says why. `a click would not reach it; e42 is in the way` names the element a click would hit instead of the Page Object Root, such as an open dialog; any other string comes from the action's [availability predicate](guides/page-object-models.md#action-availability), and no reason means the predicate returned `false`.
+- **The tool is listed with `available: false`**: its `reason` says why. `a click would not reach it; e42 is in the way` names the element a click would hit instead of the Page Object Root, such as an open dialog, and `a click would not reach it` alone means nothing in the way has a ref; any other string comes from the action's [availability predicate](guides/page-object-models.md#action-availability), and no reason means the predicate returned `false`.
 - **A Svelte decorator in a `.svelte` file is ignored**: Page Object Models must be `.ts` modules.
 - **Editing a type an action uses does not change its schema** with Angular: reload the page.
 

@@ -100,8 +100,8 @@ An action that is possible only in some states, such as removing a dashboard
 that is not built in, keeps its natural POM and declares the condition with
 `available`, an availability predicate, instead of a root at the one control
 that comes and goes or a method that throws. The tool stays listed; while the
-predicate fails, it is flagged unavailable with the string as its reason, and a
-call is refused with that reason before anything runs.
+predicate fails, it is flagged unavailable, with the string as its reason when
+it returned one, and a call is refused with that reason before anything runs.
 [Action availability](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-object-models.md#action-availability)
 has the signature and the rules.
 
