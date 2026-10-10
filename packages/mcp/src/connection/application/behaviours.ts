@@ -7,12 +7,12 @@ import type {
 } from "../../contract";
 import type { AgentConnection } from "./agentConnection";
 
-type ListedPageTool = PageTool & { readonly available: boolean };
+type ListedPageTool = PageTool;
 
 /**
  * The page's or App Process's tools, as its client reaches them: the
  * `tools` member of the runtime object Ayme's setup returns. Each says
- * whether a call can run it now.
+ * whether a call can run it now, and why not when it cannot.
  */
 export type PageTools = {
   list(): readonly ListedPageTool[];

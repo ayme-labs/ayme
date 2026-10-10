@@ -78,7 +78,12 @@ describe("AgentConnection", () => {
   });
 });
 
-const tool = (name: string) => ({ name, description: "", inputSchema: {} });
+const tool = (name: string) => ({
+  name,
+  description: "",
+  inputSchema: {},
+  available: true,
+});
 
 describe("AgentConnection with App Processes", () => {
   it("lists the page's tools and every App Process's, and sends each call to the connection that offers the tool", async () => {

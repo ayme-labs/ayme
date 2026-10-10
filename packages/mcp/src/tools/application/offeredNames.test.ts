@@ -9,7 +9,12 @@ it("remembers a tool name after the tool went", () => {
   const process = connection.attachProcess({ process: "server" });
 
   process.publishTools([
-    { name: "peek.node.jobs", description: "", inputSchema: {} },
+    {
+      name: "peek.node.jobs",
+      description: "",
+      inputSchema: {},
+      available: true,
+    },
   ]);
   process.publishTools([]);
 

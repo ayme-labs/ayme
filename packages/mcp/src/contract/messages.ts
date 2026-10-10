@@ -5,11 +5,18 @@ import * as z from "zod/mini";
  * validate what they receive against these schemas.
  */
 
-/** A tool the page offers, as the page names and describes it. */
+/**
+ * A tool the page offers, as the page names and describes it, and whether
+ * a call can run it now: a Page Object Tool is listed while its Page Object
+ * is on the page, and `reason` says why an unavailable one cannot run, when
+ * the page knows (ADR-0035).
+ */
 export const PageToolSchema = z.object({
   name: z.string().check(z.minLength(1)),
   description: z.string(),
   inputSchema: z.record(z.string(), z.unknown()),
+  available: z.boolean(),
+  reason: z.optional(z.string()),
 });
 export type PageTool = z.infer<typeof PageToolSchema>;
 

@@ -5,6 +5,7 @@ import { ayme as agent, runContext } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { ayme } from "./decorators";
 import { createPage } from "./browserPage";
+import { buildToolOptions } from "./goalLoopQuestions";
 import { listTools } from "./publishedTools";
 import {
   createAymeRuntime,
@@ -104,7 +105,12 @@ describe("Action Availability", () => {
         ...expected,
       });
       expect(published("Panel.remove")).toMatchObject(expected);
-      if (!expected.available) {
+      // The Goal Loop offers available tools only.
+      const offered = buildToolOptions().map((option) => option.key);
+      if (expected.available) {
+        expect(offered).toContain("Panel.remove");
+      } else {
+        expect(offered).not.toContain("Panel.remove");
         expect(listAvailablePomTools().map((tool) => tool.name)).toEqual([]);
         expect(
           "reason" in expected || !("reason" in listed("Panel.remove")!)

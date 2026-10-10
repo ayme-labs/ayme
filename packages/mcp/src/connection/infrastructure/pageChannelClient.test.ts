@@ -69,7 +69,12 @@ describe("openPageChannel", () => {
     channel.answerCalls(async ({ callId }) => {
       // As a Run's last availability probe does, right before it answers.
       void channel!.publishTools([
-        { name: "Basket.readHeading", description: "", inputSchema: {} },
+        {
+          name: "Basket.readHeading",
+          description: "",
+          inputSchema: {},
+          available: true,
+        },
       ]);
       return { callId, ok: true as const, result: "done" };
     });

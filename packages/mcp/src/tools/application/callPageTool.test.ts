@@ -9,11 +9,14 @@ const saveImage = vi.fn(async (filename: string) => `/tmp/shots/${filename}`);
 
 it("answers that a name is unknown while only an App Process is paired", async () => {
   const connection = new AgentConnection();
-  connection
-    .attachProcess({ process: "server" })
-    .publishTools([
-      { name: "peek.node.jobs", description: "", inputSchema: {} },
-    ]);
+  connection.attachProcess({ process: "server" }).publishTools([
+    {
+      name: "peek.node.jobs",
+      description: "",
+      inputSchema: {},
+      available: true,
+    },
+  ]);
 
   expect(
     await callPageTool(connection, "peek.node.mail", {}, unknown, saveImage)
@@ -41,7 +44,9 @@ it("saves the image a page tool returns and gives it to the agent with its path"
     { tab: "a", url: "http://127.0.0.1:5173/" },
     () => {}
   )!;
-  page.publishTools([{ name: "screenshot", description: "", inputSchema: {} }]);
+  page.publishTools([
+    { name: "screenshot", description: "", inputSchema: {}, available: true },
+  ]);
   const image = {
     type: "image",
     subject: "the viewport",
