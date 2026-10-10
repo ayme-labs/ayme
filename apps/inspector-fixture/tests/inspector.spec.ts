@@ -88,6 +88,7 @@ test("a docked panel sits beside the page, and floating it gives the space back"
 });
 
 test("the page highlights what's hovered in the panel and what's selected, at once", async ({
+  page,
   inspector,
   listPage,
 }) => {
@@ -98,6 +99,9 @@ test("the page highlights what's hovered in the panel and what's selected, at on
   await navigator.search("Add item");
   await navigator.result('button "Add item"').click();
   await navigator.search("New item");
+  // The new result can render right under the pointer left by the click,
+  // and Chromium 156 sends no mouseenter for that; enter it from outside.
+  await page.mouse.move(0, 0);
   await navigator.result('textbox "New item"').hover();
 
   await expect.poll(() => outline(listPage.addItemButton)).toBe("solid");

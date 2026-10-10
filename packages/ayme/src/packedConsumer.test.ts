@@ -568,7 +568,7 @@ export async function recordAndRun(context: BrowserContext, page: Page): Promise
 `
       );
       await execAsync("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
-      if (version === "1.62.1") {
+      if (version === "1.64.0") {
         // Each quickstart's Page Object Model, under create-vite's TypeScript
         // template options, so an example only plain tsc accepts fails here.
         const quickstarts = path.join(repoRoot, "docs/guide/start");
@@ -990,7 +990,7 @@ for (const floor of FRAMEWORK_FLOORS)
           dependencies: { ...tarballs, ...floor.dependencies },
           devDependencies: {
             typescript: "6.0.3",
-            "@playwright/test": "1.62.1",
+            "@playwright/test": "1.64.0",
             "@types/node": "24.13.3",
           },
         })
@@ -1152,7 +1152,7 @@ it(
         type: "module",
         dependencies: { ...tarballs, react: "19.2.8", "react-dom": "19.2.8" },
         devDependencies: {
-          "@playwright/test": "1.62.1",
+          "@playwright/test": "1.64.0",
           "@vitejs/plugin-react": "6.1.1",
           vite: "8.3.4",
         },

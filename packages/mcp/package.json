@@ -64,7 +64,7 @@
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.64.0",
     "@stryker-mutator/core": "^10.0.0",
     "@stryker-mutator/vitest-runner": "^10.0.0",
     "@types/node": "^24.0.0",

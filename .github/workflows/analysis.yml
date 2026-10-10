@@ -45,7 +45,7 @@ jobs:
     name: CRAP
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.62.1-noble
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
     env:
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
     steps:
@@ -63,7 +63,7 @@ jobs:
     needs: packages
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.62.1-noble
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
     timeout-minutes: 300
     env:
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright

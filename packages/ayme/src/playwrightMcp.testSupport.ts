@@ -1,5 +1,5 @@
-// The input schemas of Playwright MCP's tools at the revision the README pins:
-// the MCP backend bundled in playwright-core 1.62.1
+// The input schemas of Playwright MCP's tools in the playwright-core the workspace develops on:
+// the MCP backend bundled in playwright-core 1.64.0
 // (lib/coreBundle.js: elementSchema, clickSchema, typeSchema, selectOptionSchema,
 // browser_fill_form, browser_press_key, browser_navigate, browser_navigate_back,
 // browser_take_screenshot, and the skill-only browser_check, browser_uncheck, browser_navigate_forward

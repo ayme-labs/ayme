@@ -69,10 +69,14 @@ it("publishes a session's Page Object Tool, and an agent's call runs it as a web
     ({ name }) => name === "app_TodoPage.addTodo"
   );
   expect(tool?.description).toBe("Add a todo with the given title.");
-  const result = JSON.parse(
-    (await context().executeTool!(tool!, JSON.stringify({ title: "Milk" }))) ??
-      "null"
-  ) as { page_changed: boolean };
+  // Chromium 156 takes the input as an object; older builds took JSON text,
+  // as @mcp-b/webmcp-types still declares.
+  const output: unknown = await context().executeTool!(tool!, {
+    title: "Milk",
+  } as never);
+  const result = (typeof output === "string" ? JSON.parse(output) : output) as {
+    page_changed: boolean;
+  };
 
   expect(result.page_changed).toBe(true);
   expect(document.querySelector("#todos")!.textContent).toBe("Milk");

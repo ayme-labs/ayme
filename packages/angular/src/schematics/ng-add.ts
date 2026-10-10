@@ -83,7 +83,7 @@ export function ngAdd(options: NgAddOptions): Rule {
       }),
       // Page Object Models use Playwright's types; a project that already
       // has @playwright/test keeps its version.
-      addDependency("@playwright/test", "~1.62.1", {
+      addDependency("@playwright/test", "~1.64.0", {
         type: DependencyType.Dev,
         existing: ExistingBehavior.Skip,
       }),
