@@ -423,14 +423,25 @@ it("the Playwright peer is optional in core and WebMCP and required by the inspe
   }
 });
 
+// The weekly Playwright canary adds the version it checks, installed outside
+// the peer range; see .github/workflows/playwright-canary.yml.
+const canaryPlaywright = process.env.AYME_CANARY_PLAYWRIGHT || undefined;
+
 // Each consumer installs from scratch, so they run concurrently.
-for (const version of [undefined, "1.29.0", "1.62.1", "1.64.0"])
+for (const version of new Set([
+  undefined,
+  "1.29.0",
+  "1.62.1",
+  "1.64.0",
+  canaryPlaywright,
+]))
   it.concurrent(
     `packed packages support consumer Playwright types and conditional config loading ${
       version ? `with Playwright ${version}` : "without Playwright"
     }`,
     { timeout: 150_000 },
     async () => {
+      const canary = version !== undefined && version === canaryPlaywright;
       const { tarballs, workspaceYaml } = tarballDependencies([
         "@ayme-dev/ayme",
         "@ayme-dev/vue",
@@ -469,7 +480,7 @@ for (const version of [undefined, "1.29.0", "1.62.1", "1.64.0"])
           "install",
           "--ignore-scripts",
           "--no-lockfile",
-          "--strict-peer-dependencies",
+          ...(canary ? [] : ["--strict-peer-dependencies"]),
         ],
         consumer
       );
@@ -652,7 +663,7 @@ assert.deepEqual(manifest.tools, [{
     : ""
 }
 ${
-  version === "1.62.1" || version === "1.64.0"
+  version === "1.62.1" || version === "1.64.0" || canary
     ? `
 const loaded = await resolveSettings({ config: './playwright.config.ts' });
 assert.equal(loaded.define.__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__, '"data-config"');

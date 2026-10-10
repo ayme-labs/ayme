@@ -1,0 +1,128 @@
+name: Playwright canary
+
+# Runs the packed packages and the build plugin's config loader against the
+# newest @playwright/test, outside the supported peer range, so a minor that
+# breaks the private config loader shows up before the Renovate bump does.
+# It blocks nothing: a test failure opens, or comments on, one issue.
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      playwright:
+        description: "@playwright/test version or dist-tag to check"
+        type: string
+        default: latest
+
+# A newer run replaces an older one.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  canary:
+    name: Playwright ${{ inputs.playwright || 'latest' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tests-failed: ${{ steps.packed.outcome == 'failure' || steps.loader.outcome == 'failure' }}
+    env:
+      SPEC: ${{ inputs.playwright || 'latest' }}
+      # Vitest colours its summary on CI, which the pass-count checks below
+      # would not match.
+      NO_COLOR: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Resolve the Playwright version
+        id: version
+        run: |
+          version=$(npm view "@playwright/test@$SPEC" version --json | jq -r 'if type == "array" then last else . end')
+          test -n "$version"
+          echo "Checking @playwright/test $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      # The loader's version gate rejects every minor past the ceiling, so it
+      # is lifted here: the canary checks the loader itself, not the gate.
+      - name: Lift the config loader's version gate
+        run: |
+          file=packages/unplugin-ayme/src/unplugin.ts
+          grep -q '^const SUPPORTED_PLAYWRIGHT_VERSION = ' "$file"
+          sed -i 's|^const SUPPORTED_PLAYWRIGHT_VERSION = .*|const SUPPORTED_PLAYWRIGHT_VERSION = /^/;|' "$file"
+      - id: build
+        run: pnpm exec turbo run build --filter='./packages/*'
+      # Each test step checks that its filter ran exactly one test, so a
+      # renamed test fails the canary instead of passing it empty.
+      - name: Packed-consumer test
+        id: packed
+        timeout-minutes: 10
+        env:
+          AYME_CANARY_PLAYWRIGHT: ${{ steps.version.outputs.version }}
+        run: |
+          pnpm --filter @ayme-dev/ayme exec vitest run src/packedConsumer.test.ts \
+            -t "conditional config loading with Playwright $AYME_CANARY_PLAYWRIGHT" 2>&1 | tee packed-consumer.log
+          grep -Eq 'Tests +1 passed' packed-consumer.log
+      - name: Config loader test
+        id: loader
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        timeout-minutes: 10
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          pnpm --filter @ayme-dev/unplugin-ayme add --save-dev \
+            "@playwright/test@$VERSION" "playwright@$VERSION" 2>&1 | tee config-loader.log
+          pnpm --filter @ayme-dev/unplugin-ayme exec vitest run src/vite.test.ts \
+            -t "loads top-level settings from a real config" 2>&1 | tee -a config-loader.log
+          grep -Eq 'Tests +1 passed' config-loader.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-canary-logs
+          path: "*.log"
+          if-no-files-found: ignore
+
+  # A separate job, so the one token that can write issues never shares a
+  # runner with the newly released Playwright's install.
+  report:
+    name: Report the failure
+    needs: canary
+    if: ${{ failure() && needs.canary.outputs.tests-failed == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: playwright-canary-logs
+      - name: Open or update the canary issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.canary.outputs.version }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Playwright canary: @playwright/test $VERSION breaks Ayme"
+          {
+            echo "The [Playwright canary run]($RUN_URL) failed against \`@playwright/test@$VERSION\`, installed outside the supported peer range with the config loader's version gate lifted."
+            for log in packed-consumer config-loader; do
+              [ -f "$log.log" ] || continue
+              printf '\n### %s\n\n```\n' "$log"
+              tail -n 120 "$log.log"
+              printf '```\n'
+            done
+          } > body.md
+          number=$(gh issue list --state open --search '"Playwright canary" in:title' \
+            --json number,title --jq '[.[] | select(.title | startswith("Playwright canary:"))][0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --title "$title"
+            gh issue comment "$number" --body-file body.md
+          else
+            gh issue create --title "$title" --body-file body.md
+          fi
