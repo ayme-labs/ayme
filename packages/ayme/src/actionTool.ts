@@ -61,7 +61,9 @@ export function methodArguments(
   parameters: readonly ToolParameter[],
   values: readonly unknown[]
 ): unknown[] {
-  return values.flatMap((value, index) =>
-    parameters[index]?.rest ? ((value as unknown[] | undefined) ?? []) : [value]
+  return parameters.flatMap((parameter, index) =>
+    parameter.rest
+      ? ((values[index] as unknown[] | undefined) ?? [])
+      : [values[index]]
   );
 }

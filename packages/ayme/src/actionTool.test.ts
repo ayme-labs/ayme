@@ -65,7 +65,7 @@ describe("inputSchemaFor", () => {
           default: "personal",
         },
       ])
-    ).toEqual({
+    ).toStrictEqual({
       type: "object",
       properties: {
         name: { type: "string" },
