@@ -71,8 +71,8 @@ export function derivePomManifestsFromProgram(
 
   const checker = program.getTypeChecker();
   const manifests: PomManifest[] = [];
-  const components = new Map<ts.ClassDeclaration, PomComponentManifest>();
-  const classes = new Map<ts.ClassDeclaration, PomManifest>();
+  // A class can be both a top-level Page Object and a Child.
+  const reported = new Set<ts.ClassDeclaration>();
 
   for (const declaration of sourceFile.statements) {
     if (
@@ -83,55 +83,113 @@ export function derivePomManifestsFromProgram(
     if (!declaration.name)
       throw new Error("A Page Object Model needs a class name.");
 
-    const className = declaration.name.text;
-    // Members first: they derive the tools of the Page Object Children.
-    const { members, tools } = toolsCompiledWith(program, () => ({
-      members: pomMembers(checker, declaration, components),
-      tools: toolsForClass(checker, declaration, components),
-    }));
-
-    const manifest: PomManifest = {
-      className,
-      ...classDescription(declaration),
-      members,
-      components: [...components.values()],
-      tools,
-    };
-    manifests.push(manifest);
-    classes.set(declaration, manifest);
+    const { manifest, components } = toolsCompiledWith(program, () => {
+      const { manifest, references } = classManifest(checker, declaration);
+      return { manifest, components: reachableComponents(checker, references) };
+    });
+    const { tools, ...rest } = manifest;
+    // `components` before `tools`, as the manifest has always listed them.
+    manifests.push({ ...rest, components: [...components.values()], tools });
+    reported.add(declaration);
+    for (const child of components.keys()) reported.add(child);
   }
 
   if (onSkipped)
     onSkipped(
-      // A class can be both a top-level Page Object and a Child.
-      [...new Map([...classes, ...components])].flatMap(
-        ([declaration, manifest]) =>
-          skippedMethods(checker, declaration, manifest.members)
+      [...reported].flatMap((declaration) =>
+        skippedMethods(checker, declaration)
       )
     );
   return manifests;
 }
 
+/** A Page Object Child, and the class it is an instance of. */
+type PomChild = {
+  member: PomMemberManifest;
+  declaration?: ts.ClassDeclaration;
+};
+
+/**
+ * The role of a Page Object member: a Page Object Child, a Page Object Action,
+ * a public method that is neither, or nothing Ayme reads. The action marker
+ * decides: a marked method is an action, never also a child.
+ */
+type MemberRole =
+  | { role: "child"; child: PomChild }
+  | {
+      role: "action";
+      member: ts.MethodDeclaration;
+      methodName: string;
+      description: ToolDescription;
+    }
+  | { role: "method"; member: ts.MethodDeclaration; methodName: string };
+
+function memberRole(
+  checker: ts.TypeChecker,
+  member: ts.ClassElement
+): MemberRole | undefined {
+  if (!isPublicInstanceMember(member) && !isNonPublicRootMember(member))
+    return undefined;
+  if (!member.name || !ts.isIdentifier(member.name)) return undefined;
+  const memberName = member.name.text;
+
+  if (ts.isMethodDeclaration(member)) {
+    const description = toolDescription(member);
+    if (description)
+      return { role: "action", member, methodName: memberName, description };
+    const child =
+      member.parameters.length === 0
+        ? pomChild(checker, member, memberName)
+        : undefined;
+    return child
+      ? { role: "child", child }
+      : { role: "method", member, methodName: memberName };
+  }
+  const child = pomChild(checker, member, memberName);
+  return child && { role: "child", child };
+}
+
+function pomChild(
+  checker: ts.TypeChecker,
+  member: ts.ClassElement,
+  memberName: string
+): PomChild | undefined {
+  const memberInfo = memberValueInfo(checker, member);
+  if (!memberInfo) return undefined;
+  const { access, type } = memberInfo;
+
+  if (access !== "method" && isLocatorType(type))
+    return { member: { memberName, kind: "locator", access } };
+
+  const declaration =
+    access === "method"
+      ? componentCollectionDeclaration(checker, type, memberName)
+      : componentDeclaration(checker, type, memberName);
+  if (!declaration?.name) return undefined;
+  return {
+    member: {
+      memberName,
+      kind: "component",
+      access,
+      componentClassName: declaration.name.text,
+      collection: access === "method",
+    },
+    declaration,
+  };
+}
+
 function skippedMethods(
   checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration,
-  members: readonly PomMemberManifest[]
+  declaration: ts.ClassDeclaration
 ): SkippedPomMethod[] {
-  const children = new Set(members.map((member) => member.memberName));
   return classMembers(checker, declaration).flatMap((member) => {
-    if (
-      !isPublicInstanceMember(member) ||
-      !ts.isMethodDeclaration(member) ||
-      !ts.isIdentifier(member.name) ||
-      toolDescription(member) ||
-      children.has(member.name.text)
-    )
-      return [];
+    const role = memberRole(checker, member);
+    if (role?.role !== "method") return [];
     // Named after the Page Object, as its tools are.
     const className = declaration.name!.text;
-    const methodName = member.name.text;
+    const { methodName } = role;
     const name = `${className}.${methodName}`;
-    for (const parameter of member.parameters) {
+    for (const parameter of role.member.parameters) {
       if (!ts.isIdentifier(parameter.name))
         return [{ name, unsupported: "a parameter is destructured" }];
       try {
@@ -150,80 +208,79 @@ function skippedMethods(
   });
 }
 
-function pomMembers(
+/**
+ * A class's own members and tools, and the classes they reference: its
+ * Page Object Children first, then the return POMs of its actions, each in
+ * member order.
+ */
+function classManifest(
   checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration,
-  components: Map<ts.ClassDeclaration, PomComponentManifest>
-): PomMemberManifest[] {
-  return classMembers(checker, declaration).flatMap(
-    (member): PomMemberManifest[] => {
-      if (
-        !isEligiblePomMember(member) ||
-        !member.name ||
-        !ts.isIdentifier(member.name)
-      )
-        return [];
+  declaration: ts.ClassDeclaration
+): { manifest: PomComponentManifest; references: ts.ClassDeclaration[] } {
+  const className = declaration.name!.text;
+  const members: PomMemberManifest[] = [];
+  const tools: ToolManifest[] = [];
+  const childReferences: ts.ClassDeclaration[] = [];
+  const returnReferences: ts.ClassDeclaration[] = [];
 
-      const memberInfo = memberValueInfo(checker, member);
-      if (!memberInfo) return [];
-
-      if (memberInfo.access === "method") {
-        const component = componentCollectionType(
-          checker,
-          memberInfo.type,
-          member.name.text
-        );
-        if (!component) return [];
-        const componentClassName = ensureComponentManifest(
-          checker,
-          component.declaration,
-          components
-        );
-        if (!componentClassName) return [];
-        return [
-          {
-            memberName: member.name.text,
-            kind: "component",
-            access: memberInfo.access,
-            componentClassName,
-            collection: true,
-          },
-        ];
-      }
-
-      if (isLocatorType(memberInfo.type)) {
-        return [
-          {
-            memberName: member.name.text,
-            kind: "locator",
-            access: memberInfo.access,
-          },
-        ];
-      }
-
-      const component = componentType(
-        checker,
-        memberInfo.type,
-        member.name.text
+  for (const member of classMembers(checker, declaration)) {
+    const role = memberRole(checker, member);
+    if (role?.role === "child") {
+      members.push(role.child.member);
+      if (role.child.declaration) childReferences.push(role.child.declaration);
+    } else if (role?.role === "action") {
+      const { member, methodName, description } = role;
+      const parameters = member.parameters.map((parameter) =>
+        toolParameter(checker, parameter, className, methodName)
       );
-      if (!component) return [];
-      const componentClassName = ensureComponentManifest(
-        checker,
-        component.declaration,
-        components
-      );
-      if (!componentClassName) return [];
-      return [
-        {
-          memberName: member.name.text,
-          kind: "component",
-          access: memberInfo.access,
-          componentClassName,
-          collection: false,
-        },
+      const returnPoms = returnPomClassDeclarations(checker, member);
+      returnReferences.push(...returnPoms);
+      const returnPomNames = [
+        ...new Set(returnPoms.map((pom) => pom.name!.text)),
       ];
+      tools.push({
+        methodName,
+        toolName: `${className}.${methodName}`,
+        description: toolDescriptionText(
+          description.authored ?? `Run ${methodName}.`,
+          returnPomNames,
+          parameters.find((parameter) => parameter.rest)?.name
+        ),
+        ...(description.authored === undefined
+          ? {}
+          : { authoredDescription: description.authored }),
+        inputSchema: inputSchemaFor(parameters),
+        parameters,
+        ...(returnPomNames.length === 0 ? {} : { returnPoms: returnPomNames }),
+      } satisfies ToolManifest);
     }
-  );
+  }
+
+  return {
+    manifest: { className, ...classDescription(declaration), members, tools },
+    references: [...childReferences, ...returnReferences],
+  };
+}
+
+/**
+ * Every class reachable from `references`, each listed once, in the order a
+ * depth-first walk first reaches it.
+ */
+function reachableComponents(
+  checker: ts.TypeChecker,
+  references: readonly ts.ClassDeclaration[]
+) {
+  const components = new Map<ts.ClassDeclaration, PomComponentManifest>();
+  const visit = (declarations: readonly ts.ClassDeclaration[]) => {
+    for (const declaration of declarations) {
+      if (components.has(declaration)) continue;
+      const { manifest, references } = classManifest(checker, declaration);
+      components.set(declaration, manifest);
+      visit(references);
+    }
+  };
+  visit(references);
+  return components;
 }
 
 function classMembers(
@@ -261,94 +318,16 @@ function memberValueInfo(
   return undefined;
 }
 
-function ensureComponentManifest(
+function returnPomClassDeclarations(
   checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration,
-  components: Map<ts.ClassDeclaration, PomComponentManifest>
-) {
-  const className = declaration.name?.text;
-  if (!className) return undefined;
-
-  const existing = components.get(declaration);
-  if (existing) return existing.className;
-
-  components.set(declaration, {
-    className,
-    ...classDescription(declaration),
-    members: [],
-    tools: [],
-  });
-  components.set(declaration, {
-    className,
-    ...classDescription(declaration),
-    members: pomMembers(checker, declaration, components),
-    tools: toolsForClass(checker, declaration, components),
-  });
-  return className;
-}
-
-function toolsForClass(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration,
-  components: Map<ts.ClassDeclaration, PomComponentManifest>
-): ToolManifest[] {
-  const className = declaration.name?.text;
-  if (!className)
-    throw new Error("A class with Page Object Actions needs a class name.");
-
-  return classMembers(checker, declaration).flatMap((member) => {
-    if (!isPublicInstanceMember(member) || !ts.isMethodDeclaration(member))
-      return [];
-    const description = toolDescription(member);
-    if (!description) return [];
-    if (!member.name || !ts.isIdentifier(member.name)) {
-      throw new Error(
-        `Page Object Action in ${className} needs an identifier method name.`
-      );
-    }
-
-    const methodName = member.name.text;
-    const parameters = member.parameters.map((parameter) =>
-      toolParameter(checker, parameter, className, methodName)
-    );
-    const returnPoms = returnPomClassNames(checker, member, components);
-    return [
-      {
-        methodName,
-        toolName: `${className}.${methodName}`,
-        description: toolDescriptionText(
-          description.authored ?? `Run ${methodName}.`,
-          returnPoms,
-          parameters.find((parameter) => parameter.rest)?.name
-        ),
-        ...(description.authored === undefined
-          ? {}
-          : { authoredDescription: description.authored }),
-        inputSchema: inputSchemaFor(parameters),
-        parameters,
-        ...(returnPoms.length === 0 ? {} : { returnPoms }),
-      } satisfies ToolManifest,
-    ];
-  });
-}
-
-function returnPomClassNames(
-  checker: ts.TypeChecker,
-  declaration: ts.MethodDeclaration,
-  components: Map<ts.ClassDeclaration, PomComponentManifest>
+  declaration: ts.MethodDeclaration
 ) {
   const signature = checker.getSignatureFromDeclaration(declaration);
   if (!signature) return [];
-
-  const names = new Set<string>();
-  for (const candidate of returnPomDeclarations(
+  return returnPomDeclarations(
     checker,
     checker.getReturnTypeOfSignature(signature)
-  )) {
-    const name = ensureComponentManifest(checker, candidate, components);
-    if (name) names.add(name);
-  }
-  return [...names];
+  ).filter((candidate) => candidate.name);
 }
 
 function returnPomDeclarations(
@@ -371,16 +350,7 @@ function returnPomDeclarations(
   return pomDeclarations(checker, type);
 }
 
-function componentType(
-  checker: ts.TypeChecker,
-  type: ts.Type,
-  memberName: string
-) {
-  const declaration = componentDeclaration(checker, type, memberName);
-  return declaration ? { declaration } : undefined;
-}
-
-function componentCollectionType(
+function componentCollectionDeclaration(
   checker: ts.TypeChecker,
   type: ts.Type,
   memberName: string
@@ -395,10 +365,9 @@ function componentCollectionType(
     promiseValue,
     ts.IndexKind.Number
   );
-  const declaration = arrayElement
+  return arrayElement
     ? componentDeclaration(checker, arrayElement, memberName)
     : undefined;
-  return declaration ? { declaration } : undefined;
 }
 
 function componentDeclaration(
@@ -451,15 +420,6 @@ function pomDeclarations(
   }
 
   return [...declarations];
-}
-
-function isEligiblePomMember(member: ts.ClassElement) {
-  if (!isPublicInstanceMember(member) && !isNonPublicRootMember(member))
-    return false;
-  if (!ts.isMethodDeclaration(member)) return true;
-  return (
-    member.parameters.length === 0 && toolDescription(member) === undefined
-  );
 }
 
 function isNonPublicRootMember(member: ts.ClassElement) {
