@@ -44,7 +44,7 @@ Whether a live Page Object is currently available for interaction through its ro
 Whether a Page Object Action can run right now. An action is available when its Page Object is available and its availability predicate, if it declares one, holds. Actions without a predicate share their Page Object's availability. Availability never adds or removes a Page Object Tool; it says whether a listed tool would run.
 
 **Availability Reason**:
-The one fact that makes a Page Object Action unavailable: `obstructed` with the Structural Ref of the element in the way, `ambiguous` when the root matches several elements, or `condition` with the string the predicate returned. The runtime measures the first two and never infers more than it measured; the author writes the third.
+The one fact that makes a Page Object Action unavailable, as a string. The runtime writes it when a click would not reach the root, naming the Structural Ref of the element in the way when it has one; the author's predicate writes it otherwise. The runtime never infers more than it measured.
 
 **Browser Tool**:
 A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose.
