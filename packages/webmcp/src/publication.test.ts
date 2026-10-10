@@ -135,7 +135,7 @@ describe("startWebMcpPublication", () => {
     });
   });
 
-  it("publishes the available tools, but Peek Tools and screenshot", async () => {
+  it("publishes every listed tool, unavailable ones too, but Peek Tools and screenshot", async () => {
     const tools = toolSource([
       tool("snapshot", undefined, { group: "agent" }),
       tool("screenshot", undefined, { group: "browser" }),
@@ -144,13 +144,15 @@ describe("startWebMcpPublication", () => {
     ]);
     await publish(tools.source).retry();
 
-    expect(driver.names()).toEqual(["snapshot"]);
+    expect(driver.names()).toEqual(["snapshot", "Dialog.close"]);
 
+    // Availability changes nothing about the registration.
     tools.set([
       tool("snapshot", undefined, { group: "agent" }),
       tool("Dialog.close"),
     ]);
     await flush();
+    expect(driver.registerTool).toHaveBeenCalledTimes(2);
     expect(driver.names()).toEqual(["snapshot", "Dialog.close"]);
   });
 
@@ -223,7 +225,7 @@ describe("startWebMcpPublication", () => {
     }
   );
 
-  it("keeps a tool its own call made unavailable until the call returns, then withdraws it", async () => {
+  it("keeps a tool its own call withdrew until the call returns, then withdraws it", async () => {
     vi.useFakeTimers();
     const tools = toolSource([tool("Dialog.close")]);
     tools.source.run.mockImplementation(async () => {

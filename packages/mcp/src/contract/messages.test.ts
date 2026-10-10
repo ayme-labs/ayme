@@ -14,7 +14,23 @@ it.each([
   [
     "a page tool",
     PageToolSchema,
-    { name: "peek", description: "Reads", inputSchema: { type: "object" } },
+    {
+      name: "peek",
+      description: "Reads",
+      inputSchema: { type: "object" },
+      available: true,
+    },
+  ],
+  [
+    "an unavailable page tool",
+    PageToolSchema,
+    {
+      name: "Panel.remove",
+      description: "Removes",
+      inputSchema: { type: "object" },
+      available: false,
+      reason: "No item is selected",
+    },
   ],
   ["a tool call", ToolCallSchema, { callId: "1", name: "peek", input: {} }],
   ["a result", ToolCallOutcomeSchema, { callId: "1", ok: true, result: 2 }],

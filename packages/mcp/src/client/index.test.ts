@@ -112,7 +112,12 @@ describe("startAgentConnection", () => {
 });
 
 describe("startAgentConnection's App Process tools", () => {
-  const jobs = { name: "peek.node.jobs", description: "", inputSchema: {} };
+  const jobs = {
+    name: "peek.node.jobs",
+    description: "",
+    inputSchema: {},
+    available: true,
+  };
 
   const pairedConnection = () => {
     const connection = startAgentConnection({ tools: {} as never });

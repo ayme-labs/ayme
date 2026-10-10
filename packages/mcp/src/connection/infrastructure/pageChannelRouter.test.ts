@@ -19,7 +19,12 @@ it("hands a page's hello, tools and answers to the server", async () => {
       session: Promise.resolve(session as ChannelSession),
     },
   });
-  const tool = { name: "peek", description: "", inputSchema: {} };
+  const tool = {
+    name: "peek",
+    description: "",
+    inputSchema: {},
+    available: true,
+  };
   const outcome = { callId: "1", ok: true as const, result: "done" };
 
   expect(
