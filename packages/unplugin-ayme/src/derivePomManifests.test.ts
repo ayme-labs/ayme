@@ -412,6 +412,19 @@ describe("derivePomManifests", () => {
     expect(status).not.toHaveProperty("authoredDescription");
   });
 
+  it("lists only the Children and return POMs of each Page Object in a file", () => {
+    const manifests = derivePomManifests(
+      path.resolve("src/fixtures/twoPagesPom.ts")
+    );
+    const componentsOf = (className: string) =>
+      manifests
+        .find((manifest) => manifest.className === className)
+        ?.components.map((component) => component.className);
+
+    expect(componentsOf("SearchPage")).toEqual(["SearchBox", "ResultsPage"]);
+    expect(componentsOf("SettingsPage")).toEqual([]);
+  });
+
   describe("inherited @ayme recognition", () => {
     function manifestsOf(fixture: string) {
       return derivePomManifests(path.resolve(`src/fixtures/${fixture}.ts`));
