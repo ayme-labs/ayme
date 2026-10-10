@@ -61,7 +61,12 @@ export function decisionEndpoint(
       } catch {
         // Keep the raw body when it is not JSON.
       }
-      throw new Error(`${response.status} ${errorText}`);
+      // An endpoint that is not mounted, such as a dev server started without
+      // a model key, answers 404 with an empty body; name the URL and status.
+      const detail = errorText.trim() || response.statusText;
+      throw new Error(
+        `The Decision Endpoint ${url} answered ${response.status}${detail ? ` ${detail}` : ""}`
+      );
     }
 
     let parsed: unknown;
