@@ -20,8 +20,18 @@ export type RunnableTool = {
    * Its input is then `{ ref, args }`: the item's ref and its arguments.
    */
   collection?: string;
-  /** Whether it can be called now: WebMCP publishes it. */
+  /**
+   * Whether the session lists it: a Page Object action's Page Object is on
+   * the page. Every other tool is present. An absent action has no Run.
+   */
+  present: boolean;
+  /**
+   * Whether a call would run it (ADR-0035): the session refuses a call on
+   * an unavailable tool, with `reason` when it has one.
+   */
   available: boolean;
+  /** Why it is unavailable: the runtime's finding, or the action's own word. */
+  reason?: string;
   /**
    * The argument that takes a Structural Ref, for a tool that acts on one
    * element: a Custom Tool's `ref` or a Browser Tool's `target`. A Page
@@ -36,36 +46,44 @@ export type RunnableTool = {
   locatorGroups?: true;
 };
 
-/** A tool the session lists as live: one its `tools.run` can run now. */
+/**
+ * A tool the session lists as live: one whose Page Object or element is on
+ * the page, available or not.
+ */
 export type ToolSummary = {
   name: string;
   description: string;
   inputSchema: JsonSchema;
   group?: PublishedToolGroup;
+  available: boolean;
+  reason?: string;
 };
 
 /**
  * Every registered Page Object tool once by name, and every other live tool,
  * such as Browser and Custom Tools and the agent's own tools, as the run card runs them,
- * whether or not WebMCP publishes them.
+ * whether or not WebMCP publishes them. A Page Object tool is present when
+ * the session lists it, or the registry has it available; its availability
+ * is the session's word.
  */
 export function listRunnableTools(
   registeredPoms: readonly RegisteredPom[],
   activeTools: ReadonlyMap<string, unknown>,
   otherTools: readonly ToolSummary[]
 ): ReadonlyMap<string, RunnableTool> {
-  const live = new Set(otherTools.map((tool) => tool.name));
+  const live = new Map(otherTools.map((tool) => [tool.name, tool]));
   const tools = new Map<string, RunnableTool>();
   for (const registration of registeredPoms)
     for (const tool of registration.tools)
-      if (!tools.has(tool.name))
-        tools.set(
-          tool.name,
-          pageObjectTool(
-            tool,
-            activeTools.has(tool.name) || live.has(tool.name)
-          )
-        );
+      if (!tools.has(tool.name)) {
+        const listed = live.get(tool.name);
+        const availability: Availability = listed
+          ? { present: true, ...availabilityOf(listed) }
+          : activeTools.has(tool.name)
+            ? { present: true, available: true }
+            : { present: false, available: false };
+        tools.set(tool.name, pageObjectTool(tool, availability));
+      }
   for (const tool of otherTools)
     if (!tools.has(tool.name)) {
       const refField = (["target", "ref"] as const).find(
@@ -76,7 +94,8 @@ export function listRunnableTools(
         action: tool.name,
         description: tool.description,
         argumentsSchema: tool.inputSchema,
-        available: true,
+        present: true,
+        ...availabilityOf(tool),
         ...(refField ? { refField } : {}),
         ...(tool.group === "browser" &&
         tool.inputSchema.properties?.key?.type === "string"
@@ -93,16 +112,26 @@ export function listRunnableTools(
   return tools;
 }
 
+type Availability = Pick<RunnableTool, "present" | "available" | "reason">;
+
+/** A listed tool's availability, with its reason only when it has one. */
+function availabilityOf({
+  available,
+  reason,
+}: ToolSummary): Pick<RunnableTool, "available" | "reason"> {
+  return reason === undefined ? { available } : { available, reason };
+}
+
 function pageObjectTool(
   tool: RegisteredPomTool & { componentPath?: string },
-  available: boolean
+  availability: Availability
 ): RunnableTool {
   const collection = innermostCollectionPath(tool.componentPath);
   const base = {
     name: tool.name,
     action: tool.methodName,
     description: tool.description,
-    available,
+    ...availability,
   };
   if (collection === undefined)
     return { ...base, argumentsSchema: schemaOf(tool.parameters) };

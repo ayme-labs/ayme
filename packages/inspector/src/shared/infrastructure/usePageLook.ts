@@ -25,7 +25,7 @@ import { createRefreshScheduler } from "./refreshScheduler";
 
 export type RegistrySnapshot = {
   registeredPoms: readonly RegisteredPom[];
-  /** The tools callable now, by name: the ones WebMCP publishes. */
+  /** The Page Object tools a call would run now, by name. */
   activeTools: ReadonlyMap<string, RegisteredPomTool>;
   /** The Page Object Model definitions snapshot returns. */
   pomDefinitions: readonly PomDefinition[];

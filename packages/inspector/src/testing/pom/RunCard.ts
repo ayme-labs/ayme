@@ -23,6 +23,8 @@ export type ArgumentValue =
 export class RunCard {
   readonly root: Locator;
   readonly runButton: Locator;
+  /** Why the tool is unavailable, under its name; absent while it's available. */
+  readonly reason: Locator;
   /** Shows or hides the form, on a card with a head. */
   readonly argumentsToggle: Locator;
   readonly formSwitch: Locator;
@@ -53,6 +55,7 @@ export class RunCard {
   constructor(root: Locator) {
     this.root = root;
     this.runButton = root.getByRole("button", { name: "Run", exact: true });
+    this.reason = root.getByRole("note", { name: "Why it is unavailable" });
     this.argumentsToggle = root.getByRole("button", {
       name: /^(Show|Hide) the arguments for /,
     });

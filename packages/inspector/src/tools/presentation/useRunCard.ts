@@ -30,7 +30,7 @@ export type JsonState = {
  */
 export function useRunCard({
   tool,
-  available,
+  present,
   head = true,
   item,
   items = [],
@@ -98,7 +98,7 @@ export function useRunCard({
     items.find((candidate) => candidate.path === pickedPath) ??
     items[0];
   const canOpen = fields.length > 0 || picking;
-  const showBody = available && (!head || open);
+  const showBody = present && (!head || open);
   const needs = needsInput(tool, {
     itemGiven: item !== undefined,
     givenArguments: refField ? [refField] : [],
@@ -113,7 +113,7 @@ export function useRunCard({
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!available || running) return;
+    if (!present || running) return;
     if (head && needs && !open) {
       setOpen(true);
       return;
