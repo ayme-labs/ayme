@@ -10,7 +10,13 @@ export type {
   RegisteredPomTool,
   ToolDescriptor,
 } from "./contracts";
-export * from "./decorators";
+export { ayme } from "./decorators";
+export type {
+  ActionAvailability,
+  AvailabilityPredicate,
+  AymeActionOptions,
+  AymeModelOptions,
+} from "./decorators";
 export { createPage } from "./browserPage";
 export type { CreatePageOptions } from "./browserPage";
 export { createAyme } from "./runtime";
