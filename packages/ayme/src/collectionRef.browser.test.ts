@@ -15,12 +15,6 @@ const action = (methodName: string, description: string) => ({
   methodName,
   toolName: methodName,
   description,
-  inputSchema: {
-    type: "object" as const,
-    properties: {},
-    required: [] as string[],
-    additionalProperties: false,
-  },
   parameters: [],
   returnPoms: [],
 });

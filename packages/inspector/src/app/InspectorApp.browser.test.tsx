@@ -94,7 +94,6 @@ function editor(id: string, ...tools: RegisteredPomTool[]): RegisteredPom {
         methodName: tool.methodName,
         toolName: tool.name,
         description: tool.description,
-        inputSchema: tool.inputSchema,
         parameters: tool.parameters,
       })),
     },
