@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { DecisionRequest } from "./decisionTypes";
+import type { DecisionRequest } from "./decisionWire";
 import type { ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { RuntimeStateError } from "./errors";

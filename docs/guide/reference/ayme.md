@@ -169,7 +169,7 @@ createAyme({ pageFactory: () => createPage({ actionTimeout: 500 }) });
 
 ## decisionEndpoint
 
-`decisionEndpoint(url, options?)` returns a decision function for `goalLoop` that posts each `DecisionRequest` to your Decision Endpoint. It resolves function `headers`, passes `credentials`, and throws on a non-2xx response with its status and error text, or on a body that is not a decision response. The [Decision Endpoint reference](decision-endpoint.md) has the route contract and `createDecisionEndpoint`.
+`decisionEndpoint(url, options?)` returns a decision function for `goalLoop` that posts each `DecisionRequest` to your Decision Endpoint. It resolves function `headers`, passes `credentials`, and throws a `DecisionEndpointError` on a non-2xx response or a body that is not a decision response; its `code` says which. The [Decision Endpoint reference](decision-endpoint.md) has the route contract and `createDecisionEndpoint`.
 
 ## Errors
 

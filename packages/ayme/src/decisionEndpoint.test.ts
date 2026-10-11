@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { decisionEndpoint } from "./decisionEndpoint";
-import type { DecisionRequest } from "./decisionTypes";
+import type { DecisionRequest } from "./decisionWire";
 
 const request: DecisionRequest = {
   state: { goal: "archive item" },
@@ -120,24 +120,56 @@ describe("decisionEndpoint", () => {
       })
     );
     const decide = decisionEndpoint("/api/decisions");
-    await expect(decide(request)).rejects.toThrow(
-      "The Decision Endpoint /api/decisions answered 403 Forbidden."
-    );
+    await expect(decide(request)).rejects.toMatchObject({
+      code: "rejected",
+      status: 403,
+      message: "The Decision Endpoint /api/decisions answered 403 Forbidden.",
+    });
   });
 
-  it("names the URL and status when an error response has no body", async () => {
+  it("reports a 404 without an error body as no endpoint mounted", async () => {
     fetchMock.mockResolvedValue(
       new Response("", { status: 404, statusText: "Not Found" })
     );
     const decide = decisionEndpoint("/api/decisions");
-    await expect(decide(request)).rejects.toThrow(
-      /^The Decision Endpoint \/api\/decisions answered 404 Not Found$/
-    );
+    await expect(decide(request)).rejects.toMatchObject({
+      code: "not-mounted",
+      status: 404,
+      message:
+        "No Decision Endpoint is mounted at /api/decisions: it answered 404 Not Found",
+    });
     // Over HTTP/2 there is no status text either.
     fetchMock.mockResolvedValue(new Response("", { status: 404 }));
     await expect(decide(request)).rejects.toThrow(
-      /^The Decision Endpoint \/api\/decisions answered 404$/
+      /^No Decision Endpoint is mounted at \/api\/decisions: it answered 404$/
     );
+  });
+
+  it("names the URL and status when another error response has no body", async () => {
+    fetchMock.mockResolvedValue(
+      new Response("", { status: 401, statusText: "Unauthorized" })
+    );
+    const decide = decisionEndpoint("/api/decisions");
+    await expect(decide(request)).rejects.toMatchObject({
+      code: "rejected",
+      status: 401,
+      message: "The Decision Endpoint /api/decisions answered 401 Unauthorized",
+    });
+    fetchMock.mockResolvedValue(new Response("", { status: 401 }));
+    await expect(decide(request)).rejects.toThrow(
+      /^The Decision Endpoint \/api\/decisions answered 401$/
+    );
+  });
+
+  it("keeps a non-JSON error body as the error text", async () => {
+    fetchMock.mockResolvedValue(new Response("Bad gateway\n", { status: 502 }));
+    await expect(
+      decisionEndpoint("/api/decisions")(request)
+    ).rejects.toMatchObject({
+      code: "rejected",
+      status: 502,
+      message: "The Decision Endpoint /api/decisions answered 502 Bad gateway",
+    });
   });
 
   it.each([
@@ -150,8 +182,9 @@ describe("decisionEndpoint", () => {
   ])("rejects invalid successful response bodies", async (body) => {
     fetchMock.mockResolvedValue(new Response(body, { status: 200 }));
     const decide = decisionEndpoint("/api/decisions");
-    await expect(decide(request)).rejects.toThrow(
-      "The Decision Endpoint returned an invalid response."
-    );
+    await expect(decide(request)).rejects.toMatchObject({
+      code: "malformed",
+      message: "The Decision Endpoint returned an invalid response.",
+    });
   });
 });

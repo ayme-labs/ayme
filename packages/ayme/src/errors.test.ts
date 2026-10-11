@@ -6,6 +6,7 @@ import {
   RuntimeStateError,
   ToolInputError,
 } from "./errors";
+import { DecisionEndpointError } from "./decisionWire";
 import * as publicEntry from "./index";
 
 describe("Ayme errors", () => {
@@ -35,5 +36,6 @@ describe("Ayme errors", () => {
     expect(publicEntry.ToolInputError).toBe(ToolInputError);
     expect(publicEntry.RefResolutionError).toBe(RefResolutionError);
     expect(publicEntry.RuntimeStateError).toBe(RuntimeStateError);
+    expect(publicEntry.DecisionEndpointError).toBe(DecisionEndpointError);
   });
 });

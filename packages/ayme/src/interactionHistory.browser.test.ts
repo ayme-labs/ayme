@@ -7,7 +7,7 @@ import {
 import { agentCursor } from "./agentCalls.testSupport";
 
 import type { PomManifest, ToolManifest } from "./contracts";
-import type { DecisionResponse } from "./decisionTypes";
+import type { DecisionResponse } from "./decisionWire";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import {

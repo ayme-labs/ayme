@@ -1,4 +1,8 @@
-import type { DecisionRequest } from "./decisionTypes";
+import {
+  decisionErrorResponse,
+  isDecisionRequest,
+  isRecord,
+} from "./decisionWire";
 import { RuntimeStateError } from "./errors";
 
 /** Where each provider serves System One, and the Jev version the Goal Loop's
@@ -39,17 +43,6 @@ export type CreateDecisionEndpointOptions = {
   authorize: (request: Request) => void | Promise<void>;
 };
 
-function jsonError(status: number, error: string): Response {
-  return new Response(JSON.stringify({ error }), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
 /** The message of a provider's error body: TypeSafe's `detail.message` or
  *  OpenRouter's `error.message`. */
 function upstreamErrorMessage(text: string): string | undefined {
@@ -65,16 +58,6 @@ function upstreamErrorMessage(text: string): string | undefined {
       return field.message;
   }
   return undefined;
-}
-
-function isDecisionRequest(body: unknown): body is DecisionRequest {
-  if (!body || typeof body !== "object") return false;
-  const record = body as Record<string, unknown>;
-  return (
-    (typeof record.state === "string" ||
-      (record.state !== null && typeof record.state === "object")) &&
-    isRecord(record.questions)
-  );
 }
 
 async function readBody(request: Request): Promise<Uint8Array | undefined> {
@@ -141,7 +124,7 @@ export function createDecisionEndpoint({
 
   return async (request) => {
     if (request.method !== "POST")
-      return jsonError(405, "The request method must be POST.");
+      return decisionErrorResponse(405, "The request method must be POST.");
 
     try {
       await authorize(request);
@@ -152,17 +135,20 @@ export function createDecisionEndpoint({
 
     const bodyBytes = await readBody(request);
     if (!bodyBytes)
-      return jsonError(413, "The request body must be at most 1 MB.");
+      return decisionErrorResponse(
+        413,
+        "The request body must be at most 1 MB."
+      );
 
     let body: unknown;
     try {
       body = JSON.parse(new TextDecoder().decode(bodyBytes));
     } catch {
-      return jsonError(400, "The request body must be valid JSON.");
+      return decisionErrorResponse(400, "The request body must be valid JSON.");
     }
 
     if (!isDecisionRequest(body))
-      return jsonError(
+      return decisionErrorResponse(
         400,
         "The request body must include state and questions."
       );
@@ -181,7 +167,7 @@ export function createDecisionEndpoint({
         }),
       });
       if (!response.ok)
-        return jsonError(
+        return decisionErrorResponse(
           response.status,
           upstreamErrorMessage(await response.text()) ??
             `The model provider answered with status ${response.status}.`
@@ -192,7 +178,10 @@ export function createDecisionEndpoint({
       });
     } catch (error) {
       console.error("Decision Endpoint upstream request failed.", error);
-      return jsonError(502, "The model provider could not be reached.");
+      return decisionErrorResponse(
+        502,
+        "The model provider could not be reached."
+      );
     }
   };
 }

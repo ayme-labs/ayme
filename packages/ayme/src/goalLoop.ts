@@ -1,4 +1,8 @@
-import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
+import {
+  DecisionEndpointError,
+  type DecisionRequest,
+  type DecisionResponse,
+} from "./decisionWire";
 import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
 import type { ActionResult } from "./actionSequence";
 import { renderChangeRecord } from "./changeRecord";
@@ -373,13 +377,26 @@ export async function pursueGoal(
   const pickYourself = (parameter: string) =>
     `Read the page again, pick "${parameter}" yourself and call the operation directly, or try a different approach.`;
 
-  /** A decision the loop could not obtain ends the run; the error travels on. */
-  const decideFailed = (error: unknown): Promise<GoalLoopRunResult> =>
-    done({
+  /**
+   * A decision the loop could not obtain ends the run; the error travels on.
+   * A Decision Endpoint failure advises a retry only when the endpoint or its
+   * provider failed (5xx): a missing endpoint, a refusal or a malformed
+   * answer does not get better by asking again.
+   */
+  const decideFailed = (error: unknown): Promise<GoalLoopRunResult> => {
+    const endpoint = error instanceof DecisionEndpointError;
+    // Its message already says what the endpoint did.
+    const what = endpoint
+      ? error.message
+      : `The decision function failed: ${errorTextOf(error)}`;
+    const retry =
+      !endpoint || (error.code === "rejected" && (error.status ?? 0) >= 500);
+    return done({
       reason: "decide_failed",
-      next: `The decision function failed: ${errorTextOf(error)}. Retry, or handle the goal without the Goal Loop.`,
+      next: `${what.replace(/\.$/, "")}. ${retry ? "Retry, or handle" : "Handle"} the goal without the Goal Loop.`,
       history,
     });
+  };
 
   /** A decision the loop could not use ends the run the same way. */
   const invalidDecision = (error: unknown): Promise<GoalLoopRunResult> =>

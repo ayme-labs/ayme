@@ -46,6 +46,8 @@ export type {
   DecisionRequest,
   DecisionResponse,
 } from "./decisionEndpoint";
+export { DecisionEndpointError } from "./decisionWire";
+export type { DecisionEndpointErrorCode } from "./decisionWire";
 export {
   AymeError,
   RefResolutionError,

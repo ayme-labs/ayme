@@ -11,7 +11,7 @@ import {
   type TreeRendering,
 } from "@ayme-dev/core/structural-observation";
 import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
-import type { DecisionQuestions, DecisionRequest } from "./decisionTypes";
+import type { DecisionQuestions, DecisionRequest } from "./decisionWire";
 import type { GoalLoopStepRecord } from "./goalLoop";
 import type { AriaRef, PageStateCapture } from "./pageState";
 import { listElementTools, NAVIGATION_TOOLS } from "./browserTools";

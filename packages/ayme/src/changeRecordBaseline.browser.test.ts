@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 
 import type { PomManifest, ToolManifest } from "./contracts";
-import type { DecisionResponse } from "./decisionTypes";
+import type { DecisionResponse } from "./decisionWire";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { getPageStateForElements } from "./pageState";

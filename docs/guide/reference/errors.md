@@ -6,13 +6,14 @@ The errors the Ayme runtime throws, what each means, and how a published tool re
 
 Ayme's own runtime failures are `AymeError` subclasses, exported from `@ayme-dev/ayme`. Each `name` is its class name, and `kind` tells them apart:
 
-| Class                | `kind`       | Meaning                                                           |
-| -------------------- | ------------ | ----------------------------------------------------------------- |
-| `ToolInputError`     | `input`      | The caller's arguments are wrong.                                 |
-| `RefResolutionError` | `resolution` | A Structural Ref or Page Object instance does not match the page. |
-| `RuntimeStateError`  | `runtime`    | Ayme is not set up for this call.                                 |
+| Class                   | `kind`       | Meaning                                                           |
+| ----------------------- | ------------ | ----------------------------------------------------------------- |
+| `ToolInputError`        | `input`      | The caller's arguments are wrong.                                 |
+| `RefResolutionError`    | `resolution` | A Structural Ref or Page Object instance does not match the page. |
+| `RuntimeStateError`     | `runtime`    | Ayme is not set up for this call.                                 |
+| `DecisionEndpointError` | `runtime`    | A call to the Decision Endpoint failed.                           |
 
-A `RuntimeStateError` that callers branch on also has a `code` (`RuntimeStateErrorCode`), so they need not match its message. The only one is `active-owner`, for the owner conflict below.
+A `RuntimeStateError` that callers branch on also has a `code` (`RuntimeStateErrorCode`), so they need not match its message. The only one is `active-owner`, for the owner conflict below. A `DecisionEndpointError` always has a `code`, `not-mounted`, `rejected` or `malformed`, listed in the [Decision Endpoint reference](decision-endpoint.md#decisionendpoint).
 
 `ayme.tools.run` throws them. Failures of the browser Page, such as a Playwright `TimeoutError` with its call log, pass through unchanged.
 
