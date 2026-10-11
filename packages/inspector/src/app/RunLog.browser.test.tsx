@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createPage } from "@ayme-dev/playwright-lite";
 
-import type { RegisteredPomTool } from "@ayme-dev/ayme";
+import type { Interaction, RegisteredPomTool } from "@ayme-dev/ayme";
 import {
   getPageStateForElements,
   listRegisteredPomTargets,
@@ -263,7 +263,11 @@ it("names a Browser Tool's Interaction by the member whose element has its ref",
     refs: ["e2"],
   } as Awaited<ReturnType<typeof getPageStateForElements>>);
   const click = startedAyme.runs.start("click", { target: "e2" }, "webmcp");
-  click.interact({ operation: "click", locator: "locator('aria-ref=e2')" });
+  click.interact({
+    operation: "click",
+    locator: "locator('aria-ref=e2')",
+    ref: "e2" as Interaction["ref"],
+  });
   click.succeed();
   renderApp();
 

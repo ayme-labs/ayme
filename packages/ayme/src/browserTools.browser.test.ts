@@ -262,7 +262,16 @@ describe("Browser Tools in Chromium", () => {
     // Each selector holds a ref-like `e1`, at its end or at its start.
     await call("click", { target: "#save1" });
     await call("click", { target: "e1-box" });
-    expect(log).toEqual(expect.arrayContaining(["click save1", "click box"]));
+    await call("click", { target: 'role=button[name="Save one"]' });
+    await call("click", { target: "text=Box" });
+    expect(log).toEqual(
+      expect.arrayContaining([
+        "click save1",
+        "click box",
+        "click save1",
+        "click box",
+      ])
+    );
     await expect(call("click", { target: "s_root" })).rejects.toThrow(
       'Cannot click ref "s_root": synthetic observation-only ref'
     );
@@ -285,6 +294,22 @@ describe("Browser Tools in Chromium", () => {
     );
     expect(log).not.toContain("click save");
   });
+
+  it.each([
+    "root.getByRole('button', { name: 'Save' })",
+    "this.page.locator('#save')",
+    "page.frameLocator('iframe').getByRole('button')",
+    "locator('#save').first()",
+    "await page.getByText('Save')",
+  ])(
+    "rejects the chained locator expression %s the same way",
+    async (target) => {
+      expect(await call("click", { target }).catch(errorText)).toBe(
+        `ToolInputError: The target "${target}" is a Playwright locator expression, which tools do not take. Pass a Structural Ref from snapshot, or a selector such as role=button[name="Save"] or text=Save.`
+      );
+      expect(log).not.toContain("click save");
+    }
+  );
 
   it("rejects an option it does not support, naming it", async () => {
     expect(

@@ -1,4 +1,5 @@
 import { AriaRefSchema, type AriaRef } from "./StructuralTypes";
+import { isSyntheticRef } from "./StructuralRef";
 import type { SyntheticAriaRefAllocator } from "./SyntheticAriaRefFactory";
 import {
   parseStructuralRole,
@@ -994,14 +995,9 @@ export class StructuralTree {
     beforeRef: AriaRef,
     afterRef: AriaRef
   ): AriaRef {
-    return StructuralTree._isSyntheticRef(beforeRef) &&
-      StructuralTree._isSyntheticRef(afterRef)
+    return isSyntheticRef(beforeRef) && isSyntheticRef(afterRef)
       ? beforeRef
       : afterRef;
-  }
-
-  private static _isSyntheticRef(ref: AriaRef): boolean {
-    return ref === "s_root" || ref.startsWith("s_");
   }
 
   /**

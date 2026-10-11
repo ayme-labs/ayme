@@ -6,6 +6,7 @@
 import { captureAriaSnapshot } from "@ayme-dev/playwright-lite/internal";
 import {
   AriaRefSchema,
+  isSyntheticRef,
   renderCompactStructuralNodeForest,
   projectStructuralNodeForest,
   StructuralTree,
@@ -700,7 +701,7 @@ async function captureCurrentPageState(
     {
       roots: currentTree.getRootNodes(),
       structuralNode: (node) =>
-        inlineLabels.has(node.ref) || node.ref.startsWith("s_")
+        inlineLabels.has(node.ref) || isSyntheticRef(node.ref)
           ? node.copy({ role: "generic" })
           : node,
       children: (node) => node.children,

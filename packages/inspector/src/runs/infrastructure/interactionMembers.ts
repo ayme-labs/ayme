@@ -13,10 +13,10 @@ import {
 
 /**
  * The Page Object member each Interaction acted on, by place: the member
- * whose locator it names, or, for a Browser Tool's `aria-ref=…` locator,
- * the member whose element has that ref now, while that member's element is
- * on the page. Read from the registry as it is now, so a member a Run added,
- * such as a new item, is named too.
+ * whose locator it names, or, for a Browser Tool's Interaction by Structural
+ * Ref, the member whose element has that ref now, while that member's
+ * element is on the page. Read from the registry as it is now, so a member a
+ * Run added, such as a new item, is named too.
  */
 export async function interactionMembers(
   interactions: readonly Interaction[]
@@ -29,10 +29,8 @@ export async function interactionMembers(
   } catch {
     // Without the registry's targets, Interactions keep their locators.
   }
-  const ariaRefOf = (locator: string | undefined) =>
-    locator && /aria-ref=(e\d+)/.exec(locator)?.[1];
   let targetRefs: readonly (string | undefined)[] = [];
-  if (interactions.some(({ locator }) => ariaRefOf(locator)) && targets.length)
+  if (interactions.some(({ ref }) => ref !== undefined) && targets.length)
     try {
       ({ refs: targetRefs } = await getPageStateForElements(
         targets.map(({ element }) => element)
@@ -43,9 +41,8 @@ export async function interactionMembers(
   const members = indexMembers(
     buildPageModel(listRegisteredPoms(), new Set(), [], actionSignature)
   );
-  return interactions.map(({ locator }) => {
+  return interactions.map(({ locator, ref }) => {
     if (locator === undefined) return undefined;
-    const ref = ariaRefOf(locator);
     return targets
       .filter((target, index) =>
         ref ? targetRefs[index] === ref : target.locator === locator
