@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { test } from "node:test";
 
 import {
@@ -6,6 +10,7 @@ import {
   classify,
   coverageOf,
   crap,
+  diffAgainst,
   functionsIn,
   mutateTargets,
   statementCoverage,
@@ -112,4 +117,40 @@ test("coverageOf finds a file restored from another checkout", () => {
   const entry = { s: {} };
   const coverage = { "/elsewhere/packages/core/src/a.ts": entry };
   assert.equal(coverageOf(coverage, "packages/core/src/a.ts"), entry);
+});
+
+test("changedLines reads paths without git's b/ prefix", () => {
+  const diff = DIFF.replaceAll(" a/", " ").replaceAll(" b/", " ");
+  assert.deepEqual(
+    [...changedLines(diff)].map(([file, lines]) => [file, [...lines]]),
+    [["packages/core/src/a.ts", [4, 5, 12]]]
+  );
+});
+
+test("diffAgainst ignores the user's prefix and color config", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "analyze-changed-"));
+  const git = (...args) => execFileSync("git", args, { cwd: dir });
+  const file = path.join(dir, "packages/core/src/a.ts");
+  try {
+    git("init", "-q");
+    git("config", "user.email", "test@example.com");
+    git("config", "user.name", "test");
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, "a\n");
+    git("add", ".");
+    git("commit", "-qm", "base");
+    git("config", "diff.noprefix", "true");
+    git("config", "diff.mnemonicPrefix", "true");
+    git("config", "color.diff", "always");
+    fs.writeFileSync(file, "a\nb\n");
+    assert.deepEqual(
+      [...changedLines(diffAgainst("HEAD", dir))].map(([f, lines]) => [
+        f,
+        [...lines],
+      ]),
+      [["packages/core/src/a.ts", [2]]]
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

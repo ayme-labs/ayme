@@ -51,7 +51,11 @@ export function changedLines(diff, untracked = []) {
   let file;
   for (const line of diff.split("\n")) {
     if (line.startsWith("+++ ")) {
-      file = line === "+++ /dev/null" ? undefined : line.slice(6);
+      // `b/` is git's default prefix; `diff.noprefix` drops it.
+      file =
+        line === "+++ /dev/null"
+          ? undefined
+          : line.slice(4).replace(/^b\//, "");
       continue;
     }
     const hunk = /^@@ -\S+ \+(\d+)(?:,(\d+))? @@/.exec(line);
@@ -73,6 +77,29 @@ export function changedLines(diff, untracked = []) {
     if (!SOURCE.test(file) || NOT_PRODUCTION.test(file)) changes.delete(file);
   }
   return changes;
+}
+
+/**
+ * The diff of `packages` against `base` in the form `changedLines` reads:
+ * git's default `a/` `b/` prefixes and no color, whatever the user's git
+ * config says.
+ */
+export function diffAgainst(base, cwd = ROOT) {
+  return execFileSync(
+    "git",
+    [
+      "diff",
+      "-U0",
+      "--no-color",
+      "--no-ext-diff",
+      "--src-prefix=a/",
+      "--dst-prefix=b/",
+      base,
+      "--",
+      "packages",
+    ],
+    { cwd, encoding: "utf8" }
+  );
 }
 
 /** A function's name as written: its own, its variable's, or its key's. */
@@ -304,10 +331,7 @@ function main() {
       file,
       fs.readFileSync(path.join(ROOT, file), "utf8").split("\n").length,
     ]);
-  const changes = changedLines(
-    git("diff", "-U0", base, "--", "packages"),
-    untracked
-  );
+  const changes = changedLines(diffAgainst(base), untracked);
 
   const byPackage = new Map();
   const skipped = new Set();
