@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { WebSocketServer, type WebSocket } from "ws";
 
+import { DISCONNECTED_CLOSE_CODE } from "../../contract";
 import type { PageChannel } from "../application/behaviours";
 import { openPageChannel } from "./pageChannelClient";
 
@@ -82,5 +83,46 @@ describe("openPageChannel", () => {
     await expect.poll(() => paths).toContain("answer");
     const answered = paths.lastIndexOf("answer");
     expect(paths.lastIndexOf("publishTools")).toBeLessThan(answered);
+  });
+
+  it("says it lost the server when its socket closes, and keeps reconnecting", async () => {
+    const { url } = await startServer({});
+    let connections = 0;
+    server!.on("connection", (socket: WebSocket) => {
+      connections += 1;
+      if (connections === 1) socket.close(1001);
+    });
+    let lost = 0;
+    channel = openPageChannel(() => url, {
+      hello: () => ({ tab: "tab-1", url: "http://127.0.0.1/" }),
+      onWelcome: () => {},
+      onDisconnected: () => {},
+      onUnknownPairing: () => {},
+      onLost: () => (lost += 1),
+    });
+    void channel.publishTools([]).catch(() => {});
+
+    await expect.poll(() => lost).toBe(1);
+    await expect.poll(() => connections, { timeout: 5000 }).toBe(2);
+  });
+
+  it("says another tab took the server, not that it lost it, when the server says so", async () => {
+    const { url } = await startServer({});
+    server!.on("connection", (socket: WebSocket) =>
+      socket.close(DISCONNECTED_CLOSE_CODE, "Another tab connected.")
+    );
+    let lost = 0;
+    let disconnected = 0;
+    channel = openPageChannel(() => url, {
+      hello: () => ({ tab: "tab-1", url: "http://127.0.0.1/" }),
+      onWelcome: () => {},
+      onDisconnected: () => (disconnected += 1),
+      onUnknownPairing: () => {},
+      onLost: () => (lost += 1),
+    });
+    void channel.publishTools([]).catch(() => {});
+
+    await expect.poll(() => disconnected).toBe(1);
+    expect(lost).toBe(0);
   });
 });

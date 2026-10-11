@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Pairing } from "../pairing";
+import type { NotConnectedReason, Pairing } from "../pairing";
 
 const channels = vi.hoisted(
   () =>
     [] as {
-      onWelcome(welcome: { token?: string }): void;
+      onWelcome(welcome: { token?: string; agent?: string }): void;
       onDisconnected(): void;
       onUnknownPairing(): void;
+      onLost(): void;
       /** Sends the page the App Processes' tools, as the server does. */
       sendProcessTools(tools: { name: string }[]): void;
       /** How the server answers the next call to an App Process's tool. */
@@ -21,6 +22,7 @@ const sourceStarts = vi.hoisted(
     [] as {
       onPairing: (pairing: Pairing) => void;
       lookNow: boolean | undefined;
+      onUnpaired?: (reason: NotConnectedReason) => void;
     }[]
 );
 
@@ -65,9 +67,16 @@ vi.mock("./pairingSources", () => ({
   pairingSources: [
     (
       onPairing: (pairing: Pairing) => void,
-      options?: { lookNow?: boolean }
+      options?: {
+        lookNow?: boolean;
+        onUnpaired?: (reason: NotConnectedReason) => void;
+      }
     ) => {
-      sourceStarts.push({ onPairing, lookNow: options?.lookNow });
+      sourceStarts.push({
+        onPairing,
+        lookNow: options?.lookNow,
+        onUnpaired: options?.onUnpaired,
+      });
       return () => {};
     },
   ],
@@ -108,6 +117,129 @@ describe("startAgentConnection", () => {
     channels[0]!.onDisconnected();
 
     expect(sourceStarts).toHaveLength(1);
+  });
+});
+
+describe("startAgentConnection's status", () => {
+  it("is not connected, without a reason, before it learns one", () => {
+    const { status } = startAgentConnection({ tools: {} as never });
+
+    expect(status.get()).toEqual({ state: "not-connected" });
+  });
+
+  it("says why a look for a server did not pair the tab", () => {
+    const { status } = startAgentConnection({ tools: {} as never });
+
+    sourceStarts[0]!.onUnpaired!("several-servers");
+
+    expect(status.get()).toEqual({
+      state: "not-connected",
+      reason: "several-servers",
+    });
+  });
+
+  it("is connecting once it pairs, and connected with the agent's name once the server welcomes it", () => {
+    const { status } = startAgentConnection({ tools: {} as never });
+    const heard: unknown[] = [];
+    status.subscribe((next) => heard.push(next));
+
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+    channels[0]!.onWelcome({ agent: "claude-code" });
+
+    expect(heard).toEqual([
+      { state: "not-connected", reason: "connecting" },
+      { state: "connected", agent: "claude-code" },
+    ]);
+  });
+
+  it("is connected without a name when the server has none", () => {
+    const { status } = startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+
+    channels[0]!.onWelcome({});
+
+    expect(status.get()).toEqual({ state: "connected" });
+  });
+
+  it("is not connected while the server it paired with stops answering, and connected again once it answers", () => {
+    const { status } = startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+    channels[0]!.onWelcome({});
+
+    channels[0]!.onLost();
+    expect(status.get()).toEqual({
+      state: "not-connected",
+      reason: "no-answer",
+    });
+
+    channels[0]!.onWelcome({});
+    expect(status.get()).toEqual({ state: "connected" });
+  });
+
+  it.each([
+    ["another tab takes its server", "token"],
+    ["a busy server refuses its pairing without a token", ""],
+  ])("says the agent works in another tab when %s", (_case, token) => {
+    const { status } = startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token });
+    channels[0]!.onWelcome({});
+
+    channels[0]!.onDisconnected();
+
+    expect(status.get()).toEqual({
+      state: "not-connected",
+      reason: "other-tab",
+    });
+  });
+
+  it("ignores a look that did not pair while the tab is paired", () => {
+    const { status } = startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+    channels[0]!.onWelcome({});
+
+    sourceStarts[0]!.onUnpaired!("no-server");
+
+    expect(status.get()).toEqual({ state: "connected" });
+  });
+
+  it("tells its subscribers of a change only, until they unsubscribe", () => {
+    const { status } = startAgentConnection({ tools: {} as never });
+    const heard: unknown[] = [];
+    const unsubscribe = status.subscribe((next) => heard.push(next));
+
+    sourceStarts[0]!.onUnpaired!("no-server");
+    sourceStarts[0]!.onUnpaired!("no-server");
+    unsubscribe();
+    sourceStarts[0]!.onUnpaired!("several-servers");
+
+    expect(heard).toEqual([{ state: "not-connected", reason: "no-server" }]);
+  });
+
+  it("ignores the channel it paired before once it pairs with another server", () => {
+    const { status } = startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+    sourceStarts[0]!.onPairing({ address: "ws://127.0.0.1:9351", token: "t" });
+
+    channels[0]!.onWelcome({ agent: "claude-code" });
+    channels[0]!.onLost();
+    expect(status.get()).toEqual({
+      state: "not-connected",
+      reason: "connecting",
+    });
+
+    channels[1]!.onWelcome({});
+    channels[0]!.onLost();
+    expect(status.get()).toEqual({ state: "connected" });
+  });
+
+  it("forgets its reason when the server does not know its pairing, and looks again", () => {
+    const { status } = startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+
+    channels[0]!.onUnknownPairing();
+
+    expect(status.get()).toEqual({ state: "not-connected" });
+    expect(sourceStarts).toHaveLength(2);
   });
 });
 

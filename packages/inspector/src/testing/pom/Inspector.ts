@@ -10,7 +10,6 @@ import { StructureLens } from "./StructureLens";
 import { PanelShell } from "./PanelShell";
 import { RunsView } from "./RunsView";
 import type { RunCard } from "./RunCard";
-import { WebMcpStatus } from "./WebMcpStatus";
 
 /**
  * The Inspector, as a person sees it on the page. It is built from one page
@@ -31,8 +30,6 @@ export class Inspector {
   readonly panel: Locator;
   readonly shell: PanelShell;
   readonly header: InspectorHeader;
-  /** The WebMCP status line, while publication isn't active. */
-  readonly webMcpStatus: WebMcpStatus;
   readonly logo: CollapsedLogo;
   readonly navigator: Navigator;
   readonly detail: DetailPane;
@@ -64,7 +61,6 @@ export class Inspector {
       this.panel.locator(":scope > div > header"),
       this.container
     );
-    this.webMcpStatus = new WebMcpStatus(this.panel);
     this.logo = new CollapsedLogo(
       this.container.getByRole("button", { name: "Open ayme" })
     );

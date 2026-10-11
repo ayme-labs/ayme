@@ -1,4 +1,8 @@
 import { recordAgentImageRun } from "./agentImageRuns";
+import {
+  createAgentConnectionStatus,
+  setAgentConnectionStatus,
+} from "./agentConnectionStatus";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
@@ -438,6 +442,9 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   let loading: Promise<typeof publication> | undefined;
   let retryingLoad: Promise<void> | undefined;
   const appProcessTools = createAppProcessTools();
+  const agentConnectionStatus = createAgentConnectionStatus(
+    Boolean(options.agentConnection) && !onServer()
+  );
   // One top-level Run at a time on this page, whoever its Caller.
   const takeTurn = createRunQueue();
 
@@ -767,21 +774,35 @@ export function createAyme(options: AymeOptions = {}): Ayme {
           });
         if (options.agentConnection) {
           const signal = controller.signal;
-          startAgentConnectionUntil(signal, () =>
-            loadAgentConnection().then(({ startAgentConnection }) => () => {
-              const connection = startAgentConnection({
-                tools: aymeMcpTools,
-                recordAgentImage: recordAgentImageRun,
-              });
-              // A page client from before App Processes hands over none.
-              appProcessTools.follow(connection.processTools);
+          startAgentConnectionUntil(
+            signal,
+            () =>
+              loadAgentConnection().then(({ startAgentConnection }) => () => {
+                const connection = startAgentConnection({
+                  tools: aymeMcpTools,
+                  recordAgentImage: recordAgentImageRun,
+                });
+                // A page client from before App Processes hands over none.
+                appProcessTools.follow(connection.processTools);
+                agentConnectionStatus.follow(connection.status);
+                signal.addEventListener(
+                  "abort",
+                  () => {
+                    appProcessTools.follow(undefined);
+                    agentConnectionStatus.follow(undefined);
+                  },
+                  { once: true }
+                );
+                return connection;
+              }),
+            () => {
+              agentConnectionStatus.failed();
               signal.addEventListener(
                 "abort",
-                () => appProcessTools.follow(undefined),
+                () => agentConnectionStatus.follow(undefined),
                 { once: true }
               );
-              return connection;
-            })
+            }
           );
         }
       } catch (error) {
@@ -838,6 +859,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   }
 
   appProcessToolsBySession.set(ayme, appProcessTools.tools);
+  setAgentConnectionStatus(ayme, agentConnectionStatus.status);
   return ayme;
 }
 
@@ -860,12 +882,13 @@ function mountInspectorUntil(signal: AbortSignal, options: { demo: boolean }) {
 }
 
 // Like the Inspector: a load failure while the session runs stays an
-// unhandled rejection, and one after it has stopped is dropped. `load`
-// loads the page client or the App Process's side, and resolves with what
-// starts it.
+// unhandled rejection, after `onFailure`, and one after it has stopped is
+// dropped. `load` loads the page client or the App Process's side, and
+// resolves with what starts it.
 function startAgentConnectionUntil(
   signal: AbortSignal,
-  load: () => Promise<() => { dispose(): void }>
+  load: () => Promise<() => { dispose(): void }>,
+  onFailure?: () => void
 ) {
   void load().then(
     (startConnection) => {
@@ -876,7 +899,9 @@ function startAgentConnectionUntil(
       });
     },
     (error: unknown) => {
-      if (!signal.aborted) throw error;
+      if (signal.aborted) return;
+      onFailure?.();
+      throw error;
     }
   );
 }

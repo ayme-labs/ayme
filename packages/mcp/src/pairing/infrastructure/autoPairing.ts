@@ -1,8 +1,8 @@
 import { isLocalHost } from "../domain/admission";
-import type { PairingSource } from "../domain/pairing";
+import type { NotConnectedReason, PairingSource } from "../domain/pairing";
 import { SERVER_PORTS, pairingFromFragment } from "../domain/pairing";
 import { PAIRING_STORAGE_KEY } from "../domain/pairingStorage";
-import { findServers } from "./serverScan";
+import { scanServers } from "./serverScan";
 
 /**
  * Pairs a page on `localhost` or `127.0.0.1` by itself when the tab has no
@@ -12,26 +12,32 @@ import { findServers } from "./serverScan";
  * tab keeps like a connect link's. Until the tab pairs, it scans again
  * each time the tab gains focus or becomes visible, one scan at a time, so
  * a tab opened before its agent's server started still finds it. With
- * `lookNow: false` it scans only from the tab's next focus.
+ * `lookNow: false` it scans only from the tab's next focus. It tells
+ * `onUnpaired` why each scan did not pair, and that a page off localhost
+ * never scans.
  */
 export const autoPairing: PairingSource = (
   onPairing,
-  { lookNow = true } = {}
+  { lookNow = true, onUnpaired } = {}
 ) => {
-  if (!isLocalHost(window.location.hostname) || hasPairing()) return () => {};
+  if (hasPairing()) return () => {};
+  if (!isLocalHost(window.location.hostname)) {
+    onUnpaired?.("not-local");
+    return () => {};
+  }
   let stopped = false;
   let scanning = false;
   const scan = () => {
     if (stopped || scanning) return;
     if (hasPairing()) return stop();
     scanning = true;
-    void findOnlyServer().then((address) => {
+    void scanServers(SERVER_PORTS).then(({ servers, busy }) => {
       scanning = false;
       if (stopped) return;
       if (hasPairing()) return stop();
-      if (!address) return;
+      if (servers.length !== 1) return onUnpaired?.(unpaired(servers, busy));
       stop();
-      onPairing({ address, token: "" });
+      onPairing({ address: servers[0]!, token: "" });
     });
   };
   const scanWhenVisible = () => {
@@ -59,8 +65,11 @@ function hasPairing(): boolean {
   }
 }
 
-/** The address of the one server in the range, or `undefined`. */
-async function findOnlyServer(): Promise<string | undefined> {
-  const servers = await findServers(SERVER_PORTS);
-  return servers.length === 1 ? servers[0] : undefined;
+/** Why a scan that found `servers` free and `busy` busy did not pair. */
+function unpaired(
+  servers: readonly string[],
+  busy: number
+): NotConnectedReason {
+  if (servers.length !== 0) return "several-servers";
+  return busy > 0 ? "other-tab" : "no-server";
 }

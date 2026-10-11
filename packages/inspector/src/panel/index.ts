@@ -15,4 +15,8 @@ export { InspectorShell } from "./presentation/InspectorShell";
 export { useDarkTheme } from "./presentation/useTheme";
 export { InspectorBody } from "./presentation/InspectorBody";
 export { DetailPane, RunsRegion } from "./view/InspectorBody";
-export { WebMcpStatus } from "./view/WebMcpStatus";
+export { Connections } from "./view/Connections";
+export type {
+  AgentConnectionStatus,
+  PublicationStatus,
+} from "./domain/connections";

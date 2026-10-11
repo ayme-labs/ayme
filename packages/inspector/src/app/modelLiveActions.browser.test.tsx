@@ -96,7 +96,7 @@ const runtime = vi.hoisted(() => ({
 }));
 
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { appProcessToolsOf, asStartedAyme, startedAyme } =
+  const { agentConnectionOf, appProcessToolsOf, asStartedAyme, startedAyme } =
     await import("../tools/test-utils/startedAyme");
   startedAyme.tools.list.mockImplementation(
     () => runtime.liveTools as ToolInfo[]
@@ -133,6 +133,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listAvailablePomTools: vi.fn(() => []),
     listRegisteredPoms: vi.fn(() => runtime.registrations),
     getStartedAyme: asStartedAyme,
+    getAgentConnectionStatus: agentConnectionOf,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     subscribeToRegisteredPoms: vi.fn(() => () => true),

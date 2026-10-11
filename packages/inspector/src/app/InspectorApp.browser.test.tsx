@@ -21,7 +21,7 @@ import { Inspector } from "../testing";
 // registry is replaced with fixture Page Objects, so the evidence covers the
 // panel and its runtime wiring only.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { appProcessToolsOf, asStartedAyme } =
+  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
     await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
@@ -59,6 +59,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listRegisteredPomTargets: vi.fn(async () => []),
     listAvailablePomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
+    getAgentConnectionStatus: agentConnectionOf,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     listRegisteredPoms: vi.fn(() => []),
@@ -566,6 +567,37 @@ describe("the Inspector", () => {
     await expect
       .poll(() => inspector.runs.latest("Editor.save").status())
       .toBe("Succeeded");
+  });
+
+  it("names the connected agent in the header, as the runtime reports it", async () => {
+    renderApp();
+    await expect
+      .poll(() => inspector.header.connections.pill.textContent())
+      .toBe("No agent");
+
+    startedAyme.agentConnection = { state: "connected", agent: "claude-code" };
+    startedAyme.announce();
+
+    await expect
+      .poll(() => inspector.header.connections.pill.textContent())
+      .toBe("Claude Code");
+  });
+
+  it("copies an option's snippet, and keeps going when the page denies the clipboard", async () => {
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockRejectedValueOnce(new Error("Denied."))
+      .mockResolvedValue();
+    renderApp();
+    const { connections } = inspector.header;
+    await connections.open();
+
+    await connections.agent.copyButton.click();
+    await connections.agent.copyButton.click();
+
+    expect(writeText).toHaveBeenCalledTimes(2);
+    expect(writeText).toHaveBeenLastCalledWith("agentConnection: true");
+    writeText.mockRestore();
   });
 
   it("switches the panel to dark from the header", async () => {

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { recordAgentImageRun } from "./agentImageRuns";
 import { createPage } from "./browserPage";
 import { loadAgentConnection } from "./agentConnection";
+import { getAgentConnectionStatus } from "./agentConnectionStatus";
 import { cursors } from "./cursors";
 import { RuntimeStateError } from "./errors";
 import * as goalLoopModule from "./goalLoop";
@@ -149,6 +150,38 @@ it.each([
   }
 );
 
+it("says the page client failed to load while the session runs, and not once it stops", async () => {
+  vi.mocked(loadAgentConnection).mockRejectedValue(
+    new Error("Cannot find package '@ayme-dev/mcp'.")
+  );
+  const unhandled = vi.fn();
+  process.on("unhandledRejection", unhandled);
+  try {
+    const runtime = createAyme({
+      pageFactory: () => page,
+      agentConnection: true,
+    });
+    sessions.push(runtime);
+    const stop = start(runtime);
+    await flush();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(getAgentConnectionStatus(runtime).get()).toEqual({
+      state: "not-connected",
+      reason: "no-client",
+    });
+    // The failure still reaches the console.
+    expect(unhandled).toHaveBeenCalledOnce();
+
+    stop();
+    expect(getAgentConnectionStatus(runtime).get()).toEqual({
+      state: "not-connected",
+    });
+  } finally {
+    process.off("unhandledRejection", unhandled);
+  }
+});
+
 it("mounts the Inspector in demo mode when inspector asks for it", async () => {
   const mountInspector = vi.fn(() => ({ dispose: vi.fn() }));
   vi.mocked(loadInspector).mockResolvedValue({ mountInspector });
@@ -194,6 +227,10 @@ it("starts the Agent Connection while a session with agentConnection is started"
   const startAgentConnection = vi.fn(() => ({
     dispose,
     processTools: { list: () => [], subscribe: () => () => {}, run: vi.fn() },
+    status: {
+      get: () => ({ state: "not-connected" as const }),
+      subscribe: () => () => {},
+    },
   }));
   vi.mocked(loadAgentConnection).mockResolvedValue({ startAgentConnection });
   start(session(false))();

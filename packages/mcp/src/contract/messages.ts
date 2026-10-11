@@ -128,6 +128,12 @@ export const PageWelcomeSchema = z.object({
    * filename`.
    */
   imageFolder: z.optional(z.string().check(z.minLength(1))),
+  /**
+   * The name the agent's MCP client gave the server when it started it,
+   * such as `claude-code`, for the Inspector to say which agent is
+   * connected. None while the client has not introduced itself.
+   */
+  agent: z.optional(z.string().check(z.minLength(1))),
 });
 export type PageWelcome = z.infer<typeof PageWelcomeSchema>;
 

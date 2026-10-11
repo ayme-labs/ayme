@@ -3,13 +3,13 @@ import { useEffect, useMemo } from "react";
 import { useInspectorRuntime } from "./useInspectorRuntime";
 import { Empty, InspectorRoot, useTabState } from "../shared";
 import {
+  Connections,
   DetailPane,
   InspectorBody,
   InspectorShell,
   useDarkTheme,
   useHostReservation,
   usePreferences,
-  WebMcpStatus,
 } from "../panel";
 import {
   type Lens,
@@ -128,8 +128,15 @@ export function InspectorApp() {
         preferences={preferences}
         onPreferencesChange={updatePreferences}
         reserveHost={reserveHost}
+        status={
+          <Connections
+            agent={runtime.tools.agentConnection}
+            webMCP={runtime.tools.publication}
+            tools={live}
+            onCopy={copy}
+          />
+        }
       >
-        <WebMcpStatus status={runtime.tools.publication} />
         <InspectorBody
           layout={preferences.layout}
           navigator={
@@ -149,6 +156,14 @@ export function InspectorApp() {
       </InspectorShell>
     </InspectorRoot>
   );
+}
+
+async function copy(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // The page can deny the clipboard; the snippet can still be selected.
+  }
 }
 
 /** The selection's solid highlight: its lens's, or the default one. */

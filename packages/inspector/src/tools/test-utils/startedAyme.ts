@@ -11,13 +11,20 @@ import type {
   ToolRunOptions,
 } from "@ayme-dev/ayme";
 
-import type { AppProcessTool, AppProcessTools } from "@ayme-dev/ayme/internal";
+import type {
+  AgentConnectionStatus,
+  AgentConnectionStatusSource,
+  AppProcessTool,
+  AppProcessTools,
+} from "@ayme-dev/ayme/internal";
 
 // One list until a test sets another, as the session keeps it until it changes.
 const NO_TOOLS: readonly ToolInfo[] = Object.freeze([]);
 const NO_PROCESS_TOOLS: readonly AppProcessTool[] = Object.freeze([]);
 const listeners = new Set<(tools: readonly ToolInfo[]) => void>();
 const processListeners = new Set<(tools: readonly AppProcessTool[]) => void>();
+const connectionListeners = new Set<(status: AgentConnectionStatus) => void>();
+const AGENT_OFF: AgentConnectionStatus = Object.freeze({ state: "off" });
 
 /**
  * A stand-in for the document's Run log, as `ayme.runs` gives it: a Run is
@@ -153,6 +160,12 @@ export const startedAyme = {
     run: vi.fn<(name: string, input: unknown) => Promise<unknown>>(),
   },
   /**
+   * Whether the page is connected to an agent, as
+   * `getAgentConnectionStatus` gives it: tests set it and announce a
+   * change.
+   */
+  agentConnection: AGENT_OFF as AgentConnectionStatus,
+  /**
    * The document's Run log. `tools.run` and `appProcessTools.run`, as the
    * session gives them, record their Runs here for the Caller they name;
    * the mocks see the tool's name and input.
@@ -163,6 +176,8 @@ export const startedAyme = {
     for (const listener of listeners) listener(startedAyme.tools.list());
     for (const listener of processListeners)
       listener(startedAyme.appProcessTools.list());
+    for (const listener of connectionListeners)
+      listener(startedAyme.agentConnection);
   },
   /** Back to no tools, an active publication and no listeners. */
   reset() {
@@ -174,6 +189,8 @@ export const startedAyme = {
     startedAyme.appProcessTools.run.mockReset();
     processListeners.clear();
     startedAyme.webMCP.publicationStatus = { state: "active", message: "" };
+    startedAyme.agentConnection = AGENT_OFF;
+    connectionListeners.clear();
     listeners.clear();
     runLog.newDocument();
   },
@@ -211,3 +228,18 @@ export const asStartedAyme = () => session as unknown as Ayme;
 
 /** The stand-in's App Process tools, as `getAppProcessTools` returns them. */
 export const appProcessToolsOf = (): AppProcessTools => sessionAppProcessTools;
+
+const sessionAgentConnection: AgentConnectionStatusSource = {
+  get: () => startedAyme.agentConnection,
+  subscribe(listener) {
+    connectionListeners.add(listener);
+    return () => void connectionListeners.delete(listener);
+  },
+};
+
+/**
+ * The stand-in's Agent Connection status, as `getAgentConnectionStatus`
+ * returns it.
+ */
+export const agentConnectionOf = (): AgentConnectionStatusSource =>
+  sessionAgentConnection;
