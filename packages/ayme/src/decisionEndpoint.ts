@@ -23,18 +23,17 @@ async function buildHeaders(
   init?: HeadersInit | (() => HeadersInit | Promise<HeadersInit>)
 ): Promise<Record<string, string>> {
   const source = typeof init === "function" ? await init() : init;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (!source) return headers;
-
-  const entries =
-    source instanceof Headers
+  const entries = !source
+    ? []
+    : source instanceof Headers
       ? [...source.entries()]
       : Array.isArray(source)
         ? source
         : Object.entries(source);
-  for (const [key, value] of entries) headers[key] = value;
+  const headers: Record<string, string> = Object.fromEntries(entries);
+  // Header names are case-insensitive, and a Headers instance lower-cases them.
+  if (!Object.keys(headers).some((key) => key.toLowerCase() === "content-type"))
+    headers["Content-Type"] = "application/json";
   return headers;
 }
 
