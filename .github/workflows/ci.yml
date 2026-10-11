@@ -149,6 +149,10 @@ jobs:
         run: pnpm run commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}"
       - run: pnpm run boundaries
       - run: pnpm run docs:check
+      # Docs and workflows state the supported Playwright range outside any
+      # package, so --affected and Turbo's cache would miss a change to them.
+      - name: Check the supported Playwright range
+        run: pnpm --filter @ayme-dev/unplugin-ayme exec vitest run src/playwrightRange.test.ts
       - run: pnpm exec turbo run lint typecheck ${{ needs.changes.outputs.affected }} --continue=dependencies-successful
       - run: pnpm run format:check
 

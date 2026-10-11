@@ -49,13 +49,18 @@ jobs:
           test -n "$version"
           echo "Checking @playwright/test $version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      # The loader's version gate rejects every minor past the ceiling, so it
-      # is lifted here: the canary checks the loader itself, not the gate.
+      # The loader's version gate rejects every minor past the last supported
+      # one, so it is lifted here by moving that minor to the checked version:
+      # the canary checks the loader itself, not the gate.
       - name: Lift the config loader's version gate
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          file=packages/unplugin-ayme/src/unplugin.ts
-          grep -q '^const SUPPORTED_PLAYWRIGHT_VERSION = ' "$file"
-          sed -i 's|^const SUPPORTED_PLAYWRIGHT_VERSION = .*|const SUPPORTED_PLAYWRIGHT_VERSION = /^/;|' "$file"
+          file=playwright-range.json
+          jq -e 'has("lastSupported")' "$file" > /dev/null
+          jq --arg line "$(cut -d. -f1,2 <<< "$VERSION")" '.lastSupported = $line' "$file" > "$file.tmp"
+          mv "$file.tmp" "$file"
+          cat "$file"
       - id: build
         run: pnpm exec turbo run build --filter='./packages/*'
       # Each test step checks that its filter ran exactly one test, so a

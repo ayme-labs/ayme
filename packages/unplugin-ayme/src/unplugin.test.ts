@@ -11,12 +11,21 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+// @boundaries-ignore The supported Playwright range is repo-wide data (playwright-range.json).
+import playwrightRange from "../../../playwright-range.json";
 import type { AymeOptions } from "./options";
 import { unpluginFactory } from "./unplugin";
 
 const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
 const ACTION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_ACTION_TIMEOUT__";
 const NAVIGATION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__";
+
+const { configLoaderFloor: loaderFloor, lastSupported: last } = playwrightRange;
+const nextMinor = (line: string, step: number) =>
+  `1.${Number(line.split(".")[1]) + step}`;
+const unsupportedLoader = new RegExp(
+  `supports Playwright ${loaderFloor} to ${last}`.replaceAll(".", "\\.")
+);
 
 async function applyPluginConfig(root: string, options: AymeOptions = {}) {
   const pluginResult = unpluginFactory(options, {
@@ -41,7 +50,7 @@ function writeFakeLoader(
 exports.configLoader = {
   loadConfigFromFile: async () => ({ projects: [] }),
 };`,
-  version = "1.64.0"
+  version = `${last}.0`
 ) {
   const playwrightRoot = join(
     root,
@@ -209,12 +218,16 @@ exports.configLoader = {
         join(unsupportedRoot, "playwright.config.ts"),
         "export default {};"
       );
-      writeFakeLoader(unsupportedRoot, "exports.configLoader = {};", "1.65.0");
+      writeFakeLoader(
+        unsupportedRoot,
+        "exports.configLoader = {};",
+        `${nextMinor(last, 1)}.0`
+      );
       await expect(
         applyPluginConfig(unsupportedRoot, {
           playwright: { config: "playwright.config.ts" },
         })
-      ).rejects.toThrow(/supports Playwright 1\.62 to 1\.64/);
+      ).rejects.toThrow(unsupportedLoader);
     } finally {
       rmSync(unsupportedRoot, { recursive: true, force: true });
     }
@@ -289,11 +302,15 @@ exports.configLoader = {
   });
 
   it.each([
-    ["1.62.10", true],
-    ["1.62.0-beta", true],
-    ["1.62.0+build.1", true],
-    ["11.62.0", false],
-    ["1.62.0x", false],
+    [`${loaderFloor}.0`, true],
+    [`${loaderFloor}.10`, true],
+    [`${loaderFloor}.0-beta`, true],
+    [`${loaderFloor}.0+build.1`, true],
+    [`${last}.3`, true],
+    [`${nextMinor(loaderFloor, -1)}.9`, false],
+    [`${nextMinor(last, 1)}.0`, false],
+    [`1${loaderFloor}.0`, false],
+    [`${loaderFloor}.0x`, false],
   ])("treats Playwright %s as supported: %s", async (version, supported) => {
     const root = mkdtempSync(join(tmpdir(), "ayme-version-"));
     try {
@@ -304,10 +321,7 @@ exports.configLoader = {
         playwright: { config: "playwright.config.ts" },
       });
       if (supported) await expect(config).resolves.toBeDefined();
-      else
-        await expect(config).rejects.toThrow(
-          /supports Playwright 1\.62 to 1\.64/
-        );
+      else await expect(config).rejects.toThrow(unsupportedLoader);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

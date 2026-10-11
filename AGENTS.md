@@ -53,6 +53,10 @@ A single approval covers the complete supersession operation. Mark the old ADR a
 
 Commit messages follow Conventional Commits. `commitlint.config.ts` defines the allowed types and when to use each; read it before choosing a type.
 
+## Moving the supported Playwright range
+
+`playwright-range.json` at the repo root states the supported `@playwright/test` range: the types floor, the config loader's floor and the last supported minor. The build plugin's loader guard and the packed-consumer test read it. To move the range, edit that file and run `src/playwrightRange.test.ts` in `unplugin-ayme`: it names every peer range, doc, `ng add` pin and CI image that still states the old range.
+
 ## Updating the Playwright Lite fork
 
 `@ayme-dev/playwright-lite` is a Git dependency on `ayme-labs/playwright-lite`, pinned to the commit SHA of an `ayme-<date>` tag (ADR-0021). Pin only such tags; never a branch or `main` commit.
