@@ -2,10 +2,17 @@ pre-commit:
   jobs:
     - name: lint-staged
       run: pnpm exec lint-staged
+    # Like CI, check only the packages a change reaches: the ones it touches
+    # and those depending on them. Against HEAD, that is the commit being
+    # made, so a docs-only commit checks no package.
     - name: typecheck
-      run: pnpm run typecheck
+      run: pnpm exec turbo run typecheck --affected
+      env:
+        TURBO_SCM_BASE: HEAD
     - name: test
-      run: pnpm run test
+      run: pnpm exec turbo run test --affected
+      env:
+        TURBO_SCM_BASE: HEAD
 
 commit-msg:
   jobs:
