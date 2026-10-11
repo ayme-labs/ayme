@@ -21,8 +21,13 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     renderActionParameters,
     renderSchema,
     toolInputViolations,
+    elementsOf,
+    kindOf,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
+    // The Playwright call table, which demo feedback reads.
+    elementsOf,
+    kindOf,
     pageStateNodeEntry,
     subscribeToAgentImageRuns: () => () => {},
     inputSchemaFor,

@@ -75,3 +75,8 @@ export {
 export type { AppProcessTool, AppProcessTools } from "./runtime";
 export { installRuntimePageInstrumentation } from "./pageInstrumentation";
 export { isPlaywrightLiteLocator as isAymeLocator } from "@ayme-dev/playwright-lite/internal";
+// The Playwright call table: what every method of Locator, Page, Keyboard
+// and Mouse does, so the Inspector's demo feedback reads the classification
+// the runtime's Interaction recording reads.
+export { elementsOf, kindOf } from "./playwrightCalls";
+export type { CallSubject } from "./playwrightCalls";

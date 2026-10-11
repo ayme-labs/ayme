@@ -19,6 +19,8 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     renderActionParameters,
     renderSchema,
     toolInputViolations,
+    elementsOf,
+    kindOf,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
   const browserTool = (name: string) => ({
@@ -37,6 +39,9 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     message: "WebMCP publication is disabled.",
   };
   return {
+    // The Playwright call table, which demo feedback reads.
+    elementsOf,
+    kindOf,
     pageStateNodeEntry,
     subscribeToAgentImageRuns: () => () => {},
     inputSchemaFor,
