@@ -307,10 +307,7 @@ test("runs the same POM behavior through registered WebMCP tools", async ({
         await executePublishedTool(page, "ListPage.addItem", { text }),
       archiveItem: async (index) => {
         const ref = await getInstanceRef(page, `ListPage.items[${index}]`);
-        await executePublishedTool(page, "ListPage.items.archive", {
-          ref,
-          args: {},
-        });
+        await executePublishedTool(page, "ListPage.items.archive", { ref });
       },
       renameItem: async (index, text) => {
         const ref = await getInstanceRef(page, `ListPage.items[${index}]`);
@@ -418,7 +415,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
             additionalProperties: false,
           },
         },
-        required: ["ref", "args"],
+        required: ["ref"],
         additionalProperties: false,
       },
     },

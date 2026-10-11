@@ -858,7 +858,7 @@ function createComponentTool(
   const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const values = validatedArguments(wrapper, input);
     const ref = AriaRefSchema.parse(values[0] as string);
-    const args = values[1];
+    const args = values[1] ?? {};
     const toolPath = `${pomId}.${publicComponentPath(path)}`;
     const element = await resolveRefToElement(ref, wrapper.toolName, toolPath);
     const componentInstance = await resolveComponentByElementStep(
@@ -955,7 +955,10 @@ function refComponentToolManifest(
     },
     {
       name: "args",
-      optional: false,
+      // An action that needs no input runs on `{}`, so `args` may be omitted.
+      optional: inputParameters(action.parameters).every(
+        (parameter) => parameter.optional
+      ),
       schema: inputSchemaFor(action.parameters),
     },
   ];
