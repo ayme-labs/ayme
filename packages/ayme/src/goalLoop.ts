@@ -384,12 +384,16 @@ export async function pursueGoal(
    * answer does not get better by asking again.
    */
   const decideFailed = (error: unknown): Promise<GoalLoopRunResult> => {
+    const endpoint = error instanceof DecisionEndpointError;
+    // Its message already says what the endpoint did.
+    const what = endpoint
+      ? error.message
+      : `The decision function failed: ${errorTextOf(error)}`;
     const retry =
-      !(error instanceof DecisionEndpointError) ||
-      (error.code === "rejected" && (error.status ?? 0) >= 500);
+      !endpoint || (error.code === "rejected" && (error.status ?? 0) >= 500);
     return done({
       reason: "decide_failed",
-      next: `The decision function failed: ${errorTextOf(error)}. ${retry ? "Retry, or handle" : "Handle"} the goal without the Goal Loop.`,
+      next: `${what.replace(/\.$/, "")}. ${retry ? "Retry, or handle" : "Handle"} the goal without the Goal Loop.`,
       history,
     });
   };

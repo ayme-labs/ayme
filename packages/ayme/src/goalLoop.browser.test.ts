@@ -1186,22 +1186,39 @@ describe("Goal Loop goal in Chromium", () => {
   });
 
   it.each([
-    ["not-mounted", 404, "Handle"],
-    ["malformed", undefined, "Handle"],
-    ["rejected", 401, "Handle"],
-    ["rejected", 502, "Retry, or handle"],
+    [
+      "not-mounted",
+      404,
+      "No Decision Endpoint is mounted at /api/decisions: it answered 404",
+      "No Decision Endpoint is mounted at /api/decisions: it answered 404. Handle",
+    ],
+    [
+      "malformed",
+      undefined,
+      "The Decision Endpoint returned an invalid response.",
+      "The Decision Endpoint returned an invalid response. Handle",
+    ],
+    [
+      "rejected",
+      401,
+      "The Decision Endpoint /api/decisions answered 401 Sign in first.",
+      "The Decision Endpoint /api/decisions answered 401 Sign in first. Handle",
+    ],
+    [
+      "rejected",
+      502,
+      "The Decision Endpoint /api/decisions answered 502 The model provider could not be reached.",
+      "The Decision Endpoint /api/decisions answered 502 The model provider could not be reached. Retry, or handle",
+    ],
   ] as const)(
     "chooses the next step of a %s Decision Endpoint failure (%s) by its code",
-    async (code, status, advice) => {
-      const error = new DecisionEndpointError("The endpoint failed", {
-        code,
-        status,
-      });
+    async (code, status, message, next) => {
+      const error = new DecisionEndpointError(message, { code, status });
       const tool = await registerPom(failingDecisionFn(error));
       const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
       expect(withoutChanges(result)).toEqual({
         reason: "decide_failed",
-        next: `The decision function failed: The endpoint failed. ${advice} the goal without the Goal Loop.`,
+        next: `${next} the goal without the Goal Loop.`,
         history: [],
       });
     }
