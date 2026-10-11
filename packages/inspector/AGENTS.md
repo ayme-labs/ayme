@@ -4,7 +4,7 @@
 
 Slices, from the bottom up:
 
-- `shared`: the look at the page, what each Playwright call does, rendering into the shadow root, shared UI bits.
+- `shared`: the look at the page, what demo mode does with each Playwright call, rendering into the shadow root, shared UI bits.
 - `panel`: the dockable panel, its preferences and its body layout.
 - `navigation`: the selection, the lens contract, the run slot, the navigator and the page highlights.
 - `page-model`: the Page Object tree and the Model lens.
@@ -51,13 +51,13 @@ Layers, only where a slice has that kind of code: `domain` (pure rules and types
   locators. It also says which runs belong to the selection: a tree does
   when its top-level Run or any Run in it does.
 - `shared`'s `describeCall` says what a call on the runtime's Page does for
-  demo mode: whether it acts or clicks, and which elements it hit-tests.
-  Its tables classify every method of Playwright's Locator, Page, Keyboard
-  and Mouse, so a Playwright release that adds one fails typecheck until it
-  is classified. Which calls are a Run's Interactions is the runtime's
-  list, not these tables. The `demo` wrapper only applies them: it lets
-  hit-tested elements pass through the panel, and in demo mode pauses
-  before each action and cues each click.
+  demo mode: whether it acts or clicks, and which elements it hit-tests. It
+  reads ayme's Playwright call table (`@ayme-dev/ayme/internal`), which
+  classifies every method of Playwright's Locator, Page, Keyboard and Mouse
+  and also says which calls are a Run's Interactions; a Playwright release
+  that adds a method fails typecheck there, in ayme. The `demo` wrapper only
+  applies the description: it lets hit-tested elements pass through the
+  panel, and in demo mode pauses before each action and cues each click.
 
 Only infrastructure code, and the mount that installs the Inspector's
 instrumentation, reads `@ayme-dev/ayme` at runtime; components take props.
