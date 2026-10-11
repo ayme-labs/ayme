@@ -139,10 +139,17 @@ test("names headings as GitHub does", () => {
   assert.deepEqual(
     checkDocs(
       fixture({
-        "docs/guide/start/page.md": `${PAGE}\n## \`createAyme()\` and [links](../README.md)!\n\n## Usage\n\n## Usage\n\nSee [it](#createayme-and-links), [this](#usage-1) and [Unicode](#déjà-vu).\n\n### Déjà vu ###\n`,
+        "docs/guide/start/page.md": `${PAGE}\n## \`createAyme()\` and [links](../README.md)!\n\n## _Emphasis_ and snake_case\n\n## \`Ref<T>\` and \`__init__\`\n\n## Usage\n\n## Usage-1\n\n## Usage\n\nSetext\n------\n\nSee [it](#createayme-and-links), [this](#emphasis-and-snake_case), [code](#reft-and-__init__), [repeat](#usage-2), [setext](#setext) and [Unicode](#déjà-vu).\n\n### Déjà vu ###\n`,
       })
     ),
     []
+  );
+});
+
+test("fails on a fragment with a malformed escape instead of throwing", () => {
+  assertOneProblem(
+    { "docs/guide/start/page.md": `${PAGE}\n[Bad](#bad%)\n` },
+    /^docs\/guide\/start\/page\.md:5: link names no heading in its target: #bad%$/
   );
 });
 

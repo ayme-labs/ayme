@@ -125,29 +125,45 @@ function linkedPath(root, file, target) {
 
 /** The anchor GitHub and the docs site give a heading's text. */
 function slug(heading) {
-  return heading
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/<[^>]*>/g, "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, "")
-    .replace(/ /g, "-");
+  return (
+    heading
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+      // Outside code spans, drop HTML tags and the underscores of `_emphasis_`.
+      .split(/(`+[^`]*`+)/)
+      .map((part, index) =>
+        index % 2
+          ? part
+          : part
+              .replace(/<[^>]*>/g, "")
+              .replace(/(?<![\p{L}\p{N}])_+|_+(?![\p{L}\p{N}])/gu, "")
+      )
+      .join("")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, "")
+      .replace(/ /g, "-")
+  );
 }
 
-/** The anchors of a Markdown file's headings, repeats suffixed `-1`, `-2` as GitHub does. */
+/** The anchors of a Markdown file's ATX and setext headings, repeats suffixed `-1`, `-2` as GitHub does. */
 function anchors(raw) {
   const lines = raw.split("\n");
-  const seen = new Map();
   const found = new Set();
+  const add = (text) => {
+    const base = slug(text);
+    let anchor = base;
+    for (let count = 1; found.has(anchor); count++) anchor = `${base}-${count}`;
+    found.add(anchor);
+  };
   prose(raw)
     .split("\n")
-    .forEach((line, index) => {
-      if (!/^ {0,3}#{1,6}(\s|$)/.test(line)) return;
-      const base = slug(
-        lines[index].replace(/^ {0,3}#{1,6}\s*|(\s+#+)?\s*$/g, "")
-      );
-      const count = seen.get(base) ?? 0;
-      seen.set(base, count + 1);
-      found.add(count === 0 ? base : `${base}-${count}`);
+    .forEach((line, index, proseLines) => {
+      if (/^ {0,3}#{1,6}(\s|$)/.test(line))
+        add(lines[index].replace(/^ {0,3}#{1,6}\s*|(\s+#+)?\s*$/g, ""));
+      else if (
+        line.trim() !== "" &&
+        /^ {0,3}(=+|-+)\s*$/.test(proseLines[index + 1] ?? "")
+      )
+        add(lines[index].trim());
     });
   return found;
 }
@@ -186,7 +202,11 @@ export function checkDocs(root) {
   const hasAnchor = (linked, fragment) => {
     if (!anchorsOf.has(linked))
       anchorsOf.set(linked, anchors(fs.readFileSync(linked, "utf8")));
-    return anchorsOf.get(linked).has(fragment);
+    try {
+      return anchorsOf.get(linked).has(decodeURIComponent(fragment));
+    } catch {
+      return false; // a malformed escape such as `%` names no heading
+    }
   };
 
   for (const file of checked) {
@@ -202,7 +222,7 @@ export function checkDocs(root) {
         fragment !== undefined &&
         anchored?.endsWith(".md") &&
         fs.existsSync(anchored) &&
-        !hasAnchor(anchored, decodeURIComponent(fragment))
+        !hasAnchor(anchored, fragment)
       )
         report(file, line, `link names no heading in its target: ${target}`);
       if (
