@@ -6,42 +6,26 @@ export type PomCompilerOptions = {
   tsconfigPath?: string;
 };
 
-type PomProgramOptions = {
-  fallbackToUnconfigured?: boolean;
-  onDependency?: (fileName: string) => void;
-};
+/** The TypeScript project a Page Object Model module compiles with. */
+export function pomProjectConfig(
+  fileName: string,
+  options: PomCompilerOptions = {}
+) {
+  return projectConfigFor(path.resolve(fileName), options);
+}
 
 export function createPomProgram(
   fileName: string,
   options: PomCompilerOptions = {},
-  { fallbackToUnconfigured = false, onDependency }: PomProgramOptions = {}
+  config = pomProjectConfig(fileName, options)
 ) {
-  const absoluteFileName = path.resolve(fileName);
-
-  let config: ts.ParsedCommandLine;
-  try {
-    config = projectConfigFor(
-      absoluteFileName,
-      options,
-      fallbackToUnconfigured,
-      onDependency
-    );
-  } catch (error) {
-    if (!fallbackToUnconfigured) throw error;
-    const program = ts.createProgram([absoluteFileName], {});
-    reportProgramDependencies(program, onDependency);
-    return program;
-  }
-
-  const program = ts.createProgram({
-    rootNames: [...new Set([...config.fileNames, absoluteFileName])],
+  return ts.createProgram({
+    rootNames: [...new Set([...config.fileNames, path.resolve(fileName)])],
     options: {
       ...config.options,
       noEmit: true,
     },
   });
-  reportProgramDependencies(program, onDependency);
-  return program;
 }
 
 export function pomProgramDependencies(
@@ -52,7 +36,7 @@ export function pomProgramDependencies(
   const dependencies = new Set<string>();
   const report = (dependency: string) =>
     dependencies.add(path.resolve(dependency));
-  const config = projectConfigFor(absoluteFileName, options, false, report);
+  const config = projectConfigFor(absoluteFileName, options, report);
 
   for (const projectFile of config.fileNames) report(projectFile);
   walkImportedModules(absoluteFileName, config.options, report);
@@ -80,7 +64,7 @@ export function importsPomModule(
 ) {
   const absoluteFileName = path.resolve(fileName);
   const compilerOptions = projectConfigPath(absoluteFileName, options)
-    ? projectConfigFor(absoluteFileName, options, false).options
+    ? projectConfigFor(absoluteFileName, options).options
     : {};
   let found = false;
   walkImportedModules(absoluteFileName, compilerOptions, (_, source) => {
@@ -136,7 +120,6 @@ function projectConfigPath(fileName: string, options: PomCompilerOptions) {
 function projectConfigFor(
   fileName: string,
   options: PomCompilerOptions,
-  allowConfigErrors: boolean,
   onDependency?: (fileName: string) => void
 ): ts.ParsedCommandLine {
   const configPath = projectConfigPath(fileName, options);
@@ -161,7 +144,7 @@ function projectConfigFor(
   }
 
   const error = config.errors[0];
-  if (error && !allowConfigErrors)
+  if (error)
     throw configError(
       path.resolve(config.options.configFilePath as string),
       error
@@ -194,17 +177,6 @@ function parseConfig(
     undefined,
     configPath
   );
-}
-
-function reportProgramDependencies(
-  program: ts.Program,
-  onDependency: ((fileName: string) => void) | undefined
-) {
-  if (!onDependency) return;
-  for (const sourceFile of program.getSourceFiles()) {
-    if (program.isSourceFileDefaultLibrary(sourceFile)) continue;
-    onDependency(path.resolve(sourceFile.fileName));
-  }
 }
 
 function configError(configPath: string, diagnostic: ts.Diagnostic) {
