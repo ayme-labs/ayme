@@ -1,4 +1,8 @@
 import {
+  refFromSelector,
+  type AriaRef,
+} from "@ayme-dev/core/structural-observation";
+import {
   elementsOf,
   isInteraction,
   kindOf,
@@ -19,6 +23,8 @@ export type Interaction = Readonly<{
   operation: string;
   /** The locator it acted on; absent for the keyboard and the mouse. */
   locator?: string;
+  /** The Structural Ref the locator names, when a Browser Tool acted by ref. */
+  ref?: AriaRef;
   /** The value it was given, e.g. a fill's text or a pressed key. */
   value?: string;
 }>;
@@ -37,12 +43,14 @@ export function interactionOf(
   if (!isInteraction(kindOf(subject, method))) return undefined;
   const [locator] = elementsOf(subject, target, method as string, args);
   const value = valueOf(subject, method as string, args);
+  const ref = locator && refFromSelector(locator.toString());
   return {
     operation:
       subject === "keyboard" || subject === "mouse"
         ? `${subject}.${method as string}`
         : (method as string),
     ...(locator && { locator: locator.toString() }),
+    ...(ref && { ref }),
     ...(typeof value === "string" && { value }),
   };
 }

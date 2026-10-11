@@ -1,4 +1,5 @@
 import {
+  isSyntheticRef,
   StructuralNode,
   StructuralTree,
   SyntheticAriaRefFactory,
@@ -201,7 +202,7 @@ function fullTreeOrder(
   node: StructuralNode,
   fullOrder: ReadonlyMap<AriaRef, number>
 ): number {
-  if (!(node.ref === "s_root" || node.ref.startsWith("s_"))) {
+  if (!isSyntheticRef(node.ref)) {
     const order = fullOrder.get(node.ref);
     if (order !== undefined) return order;
   }

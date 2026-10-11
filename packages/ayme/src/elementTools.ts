@@ -1,5 +1,8 @@
 import {
   AriaRefSchema,
+  isSyntheticRef,
+  parseStructuralRef,
+  selectorForRef,
   type StructuralNode,
   type StructuralTree,
 } from "@ayme-dev/core/structural-observation";
@@ -206,40 +209,43 @@ export function validatedToolInput(
 }
 
 /**
- * A Structural Ref rather than a selector: Playwright MCP's ref pattern
- * (`e12`), plus Ayme's synthetic `s_` refs, which resolution then rejects.
+ * A Playwright locator expression, as generate_locator returns for Page
+ * Object code: `getByRole(…)`, `page.locator(…)`, `this.page.frameLocator(…)`,
+ * `root.getByText(…).first()`. Tools take a Structural Ref or a selector.
  */
-const STRUCTURAL_REF = /^(e\d+|s_.+)$/;
+const LOCATOR_EXPRESSION =
+  /^\s*(?:await\s+)?(?:[\w$]+\.)*(?:getBy\w+|locator|frameLocator)\(/;
 
 /**
- * Package-internal: resolve the element one call addresses. A `ref` is a
- * Structural Ref; a `target` is a Structural Ref or a selector, which must
- * match exactly one element.
+ * Package-internal: resolve the element one call addresses. The one place
+ * that decides what a target is: a `ref` is a Structural Ref; a `target` is
+ * a Structural Ref, else a selector, which must match exactly one element.
  */
 export async function resolveElementTarget(
   definition: Pick<ElementToolDefinition, "label" | "targetField">,
   requested: string,
   currentDocument: Document
 ): Promise<ResolvedTarget> {
-  if (definition.targetField === "ref" || STRUCTURAL_REF.test(requested)) {
+  const ref = parseStructuralRef(requested);
+  if (definition.targetField === "ref" || ref) {
     const node = await resolveTarget(
       definition.label,
-      AriaRefSchema.parse(requested),
+      ref ?? AriaRefSchema.parse(requested),
       currentDocument
     );
     return {
       ref: node.ref,
       element: node.element,
-      selector: `aria-ref=${node.ref}`,
+      selector: selectorForRef(node.ref),
     };
   }
   const fail = (reason: string) =>
     new RefResolutionError(
       `Cannot ${definition.label} "${requested}": ${reason}.`
     );
-  // generate_locator returns locator expressions for Page Object code; an
-  // agent that passes one back as a target needs to hear what to pass instead.
-  if (/^\s*(page\.)?(getBy\w+|locator)\(/.test(requested))
+  // An agent that passes a locator expression back as a target needs to
+  // hear what to pass instead.
+  if (LOCATOR_EXPRESSION.test(requested))
     throw new ToolInputError(
       `The target "${requested}" is a Playwright locator expression, which tools do not take. Pass a Structural Ref from snapshot, or a selector such as role=button[name="Save"] or text=Save.`
     );
@@ -271,14 +277,14 @@ async function resolveTarget(
   const fail = (reason: string) =>
     new RefResolutionError(`Cannot ${label} ref "${requestedRef}": ${reason}.`);
 
-  if (requestedRef.startsWith("s_"))
+  if (isSyntheticRef(requestedRef))
     throw fail("synthetic observation-only ref");
 
   const resolution = (
     await resolvePageStateRefs(currentDocument, requestedRef)
   )[0]!;
   if (resolution.status === "unresolved") throw fail(resolution.reason);
-  if (resolution.node.ref.startsWith("s_"))
+  if (isSyntheticRef(resolution.node.ref))
     throw fail("synthetic observation-only ref");
   return resolution.node;
 }
@@ -351,7 +357,7 @@ export function acceptedRefNodes(
   const nodes: StructuralNode[] = [];
   for (const node of walkNodes(capture.tree)) {
     // Synthetic refs are observation-only: a single-element tool rejects them.
-    if (node.ref.startsWith("s_")) continue;
+    if (isSyntheticRef(node.ref)) continue;
     const element = capture.elementsByRef.get(node.ref);
     if (!element || !filter(element)) continue;
     nodes.push(node);

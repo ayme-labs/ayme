@@ -2,7 +2,10 @@
 // Recommendations for Page Object Model code. It reads and never acts, so it
 // records no Structural Action and leaves the Goal Loop's operations alone.
 import {
-  AriaRefSchema,
+  isSyntheticRef,
+  parseStructuralRef,
+  refFromSelector,
+  type AriaRef,
   type PlaywrightLocatorString,
 } from "@ayme-dev/core/structural-observation";
 import { generateLocator } from "@ayme-dev/playwright-lite/internal";
@@ -61,10 +64,9 @@ async function resolve(
   requested: string,
   currentDocument: Document
 ): Promise<Element> {
-  if (requested.startsWith("s_"))
-    throw new Error(
-      await syntheticRefReason(label, requested, currentDocument)
-    );
+  const ref = parseStructuralRef(requested);
+  if (ref && isSyntheticRef(ref))
+    throw new Error(await syntheticRefReason(label, ref, currentDocument));
   const { element } = await resolveElementTarget(
     { label, targetField: "target" },
     requested,
@@ -76,13 +78,10 @@ async function resolve(
 /** A synthetic ref is a Page Object root: name it, as it is already modelled. */
 async function syntheticRefReason(
   label: string,
-  requested: string,
+  requested: AriaRef,
   currentDocument: Document
 ): Promise<string> {
-  const [resolution] = await resolvePageStateRefs(
-    currentDocument,
-    AriaRefSchema.parse(requested)
-  );
+  const [resolution] = await resolvePageStateRefs(currentDocument, requested);
   const labels =
     resolution?.status === "resolved"
       ? (await listRegisteredPomRoots())
@@ -116,7 +115,7 @@ function recommendLocator(
   const locator = generateLocator(requireAymeRuntimePage(), element, {
     ...(container ? { root: container } : {}),
   });
-  if (locator.includes("aria-ref"))
+  if (refFromSelector(locator))
     throw new Error(
       `the generated locator ${locator} contains a Structural Ref`
     );
