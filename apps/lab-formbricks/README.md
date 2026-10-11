@@ -19,7 +19,7 @@ pnpm lab:prepare
 pnpm lab:dev
 ```
 
-`lab:prepare` checks out the pinned submodule commit, builds and packs Ayme's `ayme`, `react`, `unplugin-ayme` and `mcp` packages from this checkout with `pnpm pack`, as they would be published, and unpacks them into the submodule's ignored `.ayme-lab/packages/` folder, where Formbricks's dependencies point. It then installs Formbricks's dependencies with the pnpm version Formbricks declares, and creates its ignored `.env` the first time. So the lab app always runs the Ayme commit this checkout is at: run `lab:prepare` again after changing Ayme, then restart `lab:dev`. It refuses to touch a dirty submodule checkout, and fails when the Ayme packages' dependencies no longer match the lockfile in the submodule; see [Moving the pin](#moving-the-pin).
+`lab:prepare` checks out the pinned submodule commit, builds and packs Ayme's `ayme`, `react`, `unplugin-ayme`, `mcp` and `webmcp` packages from this checkout with `pnpm pack`, as they would be published, and unpacks them into the submodule's ignored `.ayme-lab/packages/` folder, where Formbricks's dependencies point. It then installs Formbricks's dependencies with the pnpm version Formbricks declares, and creates its ignored `.env` the first time. So the lab app always runs the Ayme commit this checkout is at: run `lab:prepare` again after changing Ayme, then restart `lab:dev`. It refuses to touch a dirty submodule checkout, and fails when the Ayme packages' dependencies no longer match the lockfile in the submodule; see [Moving the pin](#moving-the-pin).
 
 `lab:dev` starts Formbricks's own dev stack: its services in Docker and the app at http://localhost:3000, in lab mode. It runs until you stop it with `Ctrl+C`. On the first start it also projects Formbricks's data into its authorization store and marks the survey scope ready, the state Formbricks's own CI calls production: a new survey starts restricted, and activating it asks who can view it. The marker lives in the Docker volume, so later starts skip this step.
 
@@ -46,9 +46,9 @@ pnpm lab:stop
 
 ## Ayme in the lab app
 
-One commit on the fork's `ayme-overlay` branch, the Ayme overlay, holds everything Ayme adds to Formbricks. The submodule pins that commit, `8535b46`, whose parent is the upstream revision the lab app is based on, `8abe0b42`, the fork's `main` as of 2026-10-03. Its code lives in [`formbricks/apps/web/ayme/`](https://github.com/ayme-labs/formbricks/tree/8535b463970d3f1d5c33ba6e4fe539a78b56c88c/apps/web/ayme):
+The fork's `ayme-overlay` branch, the Ayme overlay, holds everything Ayme adds to Formbricks, on top of the upstream revision the lab app is based on, `8abe0b42`, the fork's `main` as of 2026-10-03. The submodule pins the branch's tip, `b4c77b2`. Its code lives in [`formbricks/apps/web/ayme/`](https://github.com/ayme-labs/formbricks/tree/b4c77b258753d2c4e34e86944eb93dbb507969a0/apps/web/ayme):
 
-- The React integration owns the runtime in Formbricks's root layout, with WebMCP publication on, so the page publishes Ayme's Browser Tools and `snapshot`, and with the Agent Connection on in lab mode (see below).
+- The React integration owns the runtime in Formbricks's root layout, with WebMCP publication on, so the page publishes `snapshot` and Ayme's Browser Tools but `screenshot`, whose image result WebMCP cannot carry, and with the Agent Connection on in lab mode (see below).
 - Page objects for the screens the eval's mission touches, in `ayme/pom/`: `SignInPage`, `SurveyNavigationPage`, `SurveyEditorPage` and `SurveySummaryPage`. Each screen registers only its own, so the page publishes only that screen's Page Object Tools. Ayme's Turbopack loader compiles them, as in the [Next.js example](../example-next/README.md). The survey editor's question text is a rich-text editor without an accessible name, so its locator goes from the `Question*` label to the editor, as Formbricks's own Playwright helper does. The survey name input's accessible name is `Survey name`.
 - A Decision Endpoint route at `/api/ayme/decisions` for the Goal Loop.
 
