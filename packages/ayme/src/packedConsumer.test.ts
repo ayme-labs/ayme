@@ -35,12 +35,23 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
+import playwrightRange from "../../../playwright-range.json";
+
 const aymeRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   ".."
 );
 const packagesRoot = path.dirname(aymeRoot);
 const repoRoot = path.dirname(packagesRoot);
+
+// The supported @playwright/test range, from the repo root's
+// playwright-range.json: the types floor, the config loader's floor and the
+// last supported minor, each installed at its first release.
+const { typesFloor, configLoaderFloor, lastSupported } = playwrightRange;
+const playwrightPeerRange = `>=${typesFloor} <1.${Number(lastSupported.split(".")[1]) + 1}`;
+const floorPlaywright = `${typesFloor}.0`;
+const loaderFloorPlaywright = `${configLoaderFloor}.0`;
+const lastPlaywright = `${lastSupported}.0`;
 
 const PUBLISHED_PACKAGES = [
   "ayme",
@@ -410,7 +421,7 @@ it("the Playwright peer is optional in core and WebMCP and required by the inspe
     const manifest = readManifest(path.join(packagesRoot, name));
     expect(manifest.peerDependencies?.["@playwright/test"]).toBe(
       ["ayme", "inspector", "webmcp"].includes(name)
-        ? ">=1.29 <1.65"
+        ? playwrightPeerRange
         : undefined
     );
     expect(
@@ -430,9 +441,9 @@ const canaryPlaywright = process.env.AYME_CANARY_PLAYWRIGHT || undefined;
 // Each consumer installs from scratch, so they run concurrently.
 for (const version of new Set([
   undefined,
-  "1.29.0",
-  "1.62.1",
-  "1.64.0",
+  floorPlaywright,
+  loaderFloorPlaywright,
+  lastPlaywright,
   canaryPlaywright,
 ]))
   it.concurrent(
@@ -461,7 +472,7 @@ for (const version of new Set([
           dependencies: tarballs,
           devDependencies: {
             // Playwright 1.29 uses namespace syntax removed in TypeScript 6.
-            typescript: version === "1.29.0" ? "5.9.3" : "6.0.3",
+            typescript: version === floorPlaywright ? "5.9.3" : "6.0.3",
             "@types/node": "24.13.3",
             vue: "3.5.42",
             svelte: "5.57.1",
@@ -568,7 +579,7 @@ export async function recordAndRun(context: BrowserContext, page: Page): Promise
 `
       );
       await execAsync("pnpm", ["exec", "tsc", "--pretty", "false"], consumer);
-      if (version === "1.64.0") {
+      if (version === lastPlaywright && !canary) {
         // Each quickstart's Page Object Model, under create-vite's TypeScript
         // template options, so an example only plain tsc accepts fails here.
         const quickstarts = path.join(repoRoot, "docs/guide/start");
@@ -658,7 +669,7 @@ assert.deepEqual(manifest.tools, [{
     : ""
 }
 ${
-  version === "1.62.1" || version === "1.64.0" || canary
+  version === loaderFloorPlaywright || version === lastPlaywright || canary
     ? `
 const loaded = await resolveSettings({ config: './playwright.config.ts' });
 assert.equal(loaded.define.__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__, '"data-config"');
@@ -985,7 +996,7 @@ for (const floor of FRAMEWORK_FLOORS)
           dependencies: { ...tarballs, ...floor.dependencies },
           devDependencies: {
             typescript: "6.0.3",
-            "@playwright/test": "1.64.0",
+            "@playwright/test": lastPlaywright,
             "@types/node": "24.13.3",
           },
         })
@@ -1147,7 +1158,7 @@ it(
         type: "module",
         dependencies: { ...tarballs, react: "19.2.8", "react-dom": "19.2.8" },
         devDependencies: {
-          "@playwright/test": "1.64.0",
+          "@playwright/test": lastPlaywright,
           "@vitejs/plugin-react": "6.1.1",
           vite: "8.3.4",
         },

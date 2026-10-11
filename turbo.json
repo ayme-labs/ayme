@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["playwright-range.json"],
   "globalPassThroughEnv": [
     "HTTP_PROXY",
     "HTTPS_PROXY",

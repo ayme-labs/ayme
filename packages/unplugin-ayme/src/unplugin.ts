@@ -5,6 +5,8 @@ import { pathToFileURL } from "node:url";
 
 import { createUnplugin, type UnpluginFactory } from "unplugin";
 
+import playwrightRange from "../../../playwright-range.json";
+
 import type { SkippedPomMethod } from "./derivePomManifests";
 import type { AymeOptions, AymePlaywrightOptions, AymeReport } from "./options";
 import { createPomTransform, INJECTED_IMPORTS } from "./transformPomModule";
@@ -14,7 +16,24 @@ const DEFAULT_TEST_ID_ATTRIBUTE = "data-testid";
 const TEST_ID_ATTRIBUTE_DEFINE = "__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__";
 const ACTION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_ACTION_TIMEOUT__";
 const NAVIGATION_TIMEOUT_DEFINE = "__AYME_PLAYWRIGHT_NAVIGATION_TIMEOUT__";
-const SUPPORTED_PLAYWRIGHT_VERSION = /^1\.6[2-4]\.\d+(?:[-+].*)?$/;
+// The repo root's playwright-range.json states the supported range once;
+// the bundle inlines it.
+const CONFIG_LOADER_RANGE = `Playwright ${playwrightRange.configLoaderFloor} to ${playwrightRange.lastSupported}`;
+
+function releaseRank(version: string): number {
+  const [major, minor] = version.split(".").map(Number) as [number, number];
+  return major * 1000 + minor;
+}
+
+function supportsConfigLoader(version: string): boolean {
+  const match = /^(\d+\.\d+)\.\d+(?:[-+].*)?$/.exec(version);
+  if (!match) return false;
+  const minor = releaseRank(match[1]!);
+  return (
+    minor >= releaseRank(playwrightRange.configLoaderFloor) &&
+    minor <= releaseRank(playwrightRange.lastSupported)
+  );
+}
 
 type SupportedPlaywrightSettings = NonNullable<AymePlaywrightOptions["use"]>;
 
@@ -313,9 +332,9 @@ async function loadPlaywrightConfig(
   }
 
   const playwrightVersion = readPackageVersion(playwrightPackagePath);
-  if (!SUPPORTED_PLAYWRIGHT_VERSION.test(playwrightVersion))
+  if (!supportsConfigLoader(playwrightVersion))
     throw new Error(
-      `Unsupported Playwright config loader version ${playwrightVersion}. Ayme supports Playwright 1.62 to 1.64.`
+      `Unsupported Playwright config loader version ${playwrightVersion}. Ayme supports ${CONFIG_LOADER_RANGE}.`
     );
 
   // Playwright does not expose its config loader publicly. Keep this one
@@ -326,7 +345,7 @@ async function loadPlaywrightConfig(
   );
   if (!existsSync(loaderPath))
     throw new Error(
-      `Unsupported Playwright config loader: ${loaderPath} does not exist. Ayme supports Playwright 1.62 to 1.64.`
+      `Unsupported Playwright config loader: ${loaderPath} does not exist. Ayme supports ${CONFIG_LOADER_RANGE}.`
     );
 
   let loaderModule: PlaywrightLoaderModule;
@@ -347,7 +366,7 @@ async function loadPlaywrightConfig(
     typeof loaderModule.transform.requireOrImport !== "function"
   )
     throw new Error(
-      `Unsupported Playwright config loader at ${loaderPath}: expected configLoader.loadConfigFromFile and transform.requireOrImport for Playwright 1.62 to 1.64.`
+      `Unsupported Playwright config loader at ${loaderPath}: expected configLoader.loadConfigFromFile and transform.requireOrImport for ${CONFIG_LOADER_RANGE}.`
     );
 
   let fullConfig: unknown;
