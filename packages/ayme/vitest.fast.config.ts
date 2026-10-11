@@ -1,8 +1,5 @@
-import {
-  defineFastLaneConfig,
-  fastLaneExcludes,
-} from "@ayme-dev/test-config/vitest";
-import { configDefaults, defineConfig } from "vitest/config";
+import { defineFastLaneConfig } from "@ayme-dev/test-config/vitest";
+import { defineConfig } from "vitest/config";
 
 import browserConfig from "./vitest.browser.config.ts";
 import unitConfig from "./vitest.config.ts";
@@ -13,17 +10,7 @@ export default defineFastLaneConfig(
   defineConfig({
     test: {
       projects: [
-        {
-          test: {
-            ...unitConfig.test,
-            name: "unit",
-            exclude: [
-              ...configDefaults.exclude,
-              ...(unitConfig.test?.exclude ?? []),
-              ...fastLaneExcludes,
-            ],
-          },
-        },
+        { test: { ...unitConfig.test, name: "unit" } },
         ...(browserConfig.test?.projects ?? []),
       ],
     },

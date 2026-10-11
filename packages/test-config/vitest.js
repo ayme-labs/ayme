@@ -5,46 +5,46 @@
  */
 import { configDefaults, defineConfig, mergeConfig } from "vitest/config";
 
+import { nonProductionPatterns } from "./analysis.js";
+
 /** Tests that never belong to the fast lane, whatever the package runs. */
 export const fastLaneExcludes = Object.freeze([
   // Packs and installs the packages: tests packaging, not source.
   "**/packedConsumer.test.ts",
 ]);
 
-/** Source that is not production code, so it gets no CRAP score. */
-const coverageExcludes = [
-  "**/*.d.ts",
-  "**/*.test.{ts,tsx}",
-  "**/*.testSupport.{ts,tsx}",
-  "**/*.scenario.{ts,tsx}",
-  "**/*.setup.{ts,tsx}",
-  "**/__tests__/**",
-  "**/fixtures/**",
-  "**/test-utils/**",
-  "**/testing.ts",
-  "**/testing/**",
-];
-
 /**
  * Turns a package's Vitest config into its fast-lane config: the same tests
  * without the excluded ones, plus V8 coverage that `--coverage` switches on.
+ * The excludes reach each inline Vitest project too, since a config with
+ * projects ignores its own top-level `exclude`.
  * V8 rather than Istanbul because Istanbul's counters break code that tests
  * serialize into the browser.
  */
 export function defineFastLaneConfig(baseConfig, { exclude = [] } = {}) {
-  return mergeConfig(
+  const excludes = [...configDefaults.exclude, ...fastLaneExcludes, ...exclude];
+  const config = mergeConfig(
     baseConfig,
     defineConfig({
       test: {
-        exclude: [...configDefaults.exclude, ...fastLaneExcludes, ...exclude],
+        exclude: excludes,
         coverage: {
           provider: "v8",
           reportsDirectory: "./coverage/crap",
           reporter: ["json"],
           include: ["src/**/*.{ts,tsx}"],
-          exclude: coverageExcludes,
+          exclude: [...nonProductionPatterns],
         },
       },
     })
   );
+  // mergeConfig concatenates arrays, so the projects are replaced afterwards.
+  if (Array.isArray(config.test?.projects)) {
+    config.test.projects = config.test.projects.map((project) =>
+      typeof project === "string"
+        ? project
+        : mergeConfig(project, { test: { exclude: excludes } })
+    );
+  }
+  return config;
 }

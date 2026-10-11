@@ -5,6 +5,8 @@
 import fs from "node:fs";
 import process from "node:process";
 
+import { nonProductionPatterns } from "./analysis.js";
+
 /**
  * The fast lane skips static mutants: code that runs when a module loads, such
  * as tool descriptions, has no owning test, so Stryker reruns every test for
@@ -36,16 +38,7 @@ export function defineStrykerConfig({ mutate = defaultMutate } = {}) {
 
 const defaultMutate = [
   "src/**/*.{ts,tsx}",
-  "!src/**/*.d.ts",
-  "!src/**/*.test.{ts,tsx}",
-  "!src/**/*.testSupport.{ts,tsx}",
-  "!src/**/*.scenario.{ts,tsx}",
-  "!src/**/*.setup.{ts,tsx}",
-  "!src/**/__tests__/**",
-  "!src/**/fixtures/**",
-  "!src/**/test-utils/**",
-  "!src/**/testing.ts",
-  "!src/**/testing/**",
+  ...nonProductionPatterns.map((pattern) => `!${pattern}`),
 ];
 
 /**
