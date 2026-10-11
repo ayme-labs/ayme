@@ -70,6 +70,20 @@ describe("decisionEndpoint", () => {
     ["a Headers instance", new Headers({ "Content-Type": "application/json" })],
     ["a lower-case object key", { "content-type": "application/json" }],
     [
+      "two casings in one object",
+      {
+        "Content-Type": "application/json",
+        "content-type": "application/json",
+      },
+    ],
+    [
+      "two casings in a tuple array",
+      [
+        ["Content-Type", "application/json"],
+        ["content-type", "application/json"],
+      ] as [string, string][],
+    ],
+    [
       "a tuple array",
       [["CONTENT-TYPE", "application/json"]] as [string, string][],
     ],

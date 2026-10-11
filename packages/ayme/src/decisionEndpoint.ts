@@ -30,11 +30,15 @@ async function buildHeaders(
       : Array.isArray(source)
         ? source
         : Object.entries(source);
-  const headers: Record<string, string> = Object.fromEntries(entries);
-  // Header names are case-insensitive, and a Headers instance lower-cases them.
-  if (!Object.keys(headers).some((key) => key.toLowerCase() === "content-type"))
-    headers["Content-Type"] = "application/json";
-  return headers;
+  // Header names are case-insensitive, so every casing of Content-Type
+  // collapses into one entry: the caller's last value, or JSON by default.
+  let contentType = "application/json";
+  const headers: Record<string, string> = {};
+  for (const [key, value] of entries) {
+    if (key.toLowerCase() === "content-type") contentType = value;
+    else headers[key] = value;
+  }
+  return { "Content-Type": contentType, ...headers };
 }
 
 export function decisionEndpoint(
