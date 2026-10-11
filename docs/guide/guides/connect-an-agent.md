@@ -18,7 +18,7 @@ Install `@ayme-dev/mcp` beside `@ayme-dev/ayme`, which declares it as an optiona
 npm install -D @ayme-dev/mcp
 ```
 
-Then pass `agentConnection: true` where Ayme starts: `useAyme` or `AymeProvider` in Vue, `AymeProvider` in React, `useAyme` in Svelte, `provideAyme` in Angular, or `createAyme`. Gate it with your app's dev flag, as you do the [Inspector](inspector.md):
+Then pass `agentConnection: true` where Ayme starts: `useAyme` or `AymeProvider` in Vue, `AymeProvider` in React, `useAyme` in Svelte, `provideAyme` in Angular, or `createAyme`. Both `agentConnection` and the [Inspector](inspector.md) are development tools, so gate them with your framework's development flag:
 
 ```ts
 useAyme({
@@ -31,6 +31,18 @@ useAyme({
 - While it is on, the session loads the page client from `@ayme-dev/mcp` when it starts in the browser, and ends the connection when it stops. With the option off, the page requests none of its code.
 - If the package cannot be loaded, the error names `@ayme-dev/mcp`.
 - It works whether [WebMCP publication](publish-tools.md) is on or off.
+
+### The development flag per framework
+
+| Framework                | Development flag                         | Setup                                                                                                                                                                |
+| ------------------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vite: React, Vue, Svelte | `import.meta.env.DEV`                    | [React](../frameworks/react.md#start-ayme-at-the-root), [Vue](../frameworks/vue.md#start-ayme-at-the-root), [Svelte](../frameworks/svelte.md#start-ayme-at-the-root) |
+| Angular                  | `isDevMode()` from `@angular/core`       | [Angular](../frameworks/angular.md#start-ayme-in-the-application-config)                                                                                             |
+| SvelteKit                | `dev` from `$app/environment`            | [Svelte](../frameworks/svelte.md#start-ayme-at-the-root)                                                                                                             |
+| Next.js                  | `process.env.NODE_ENV === "development"` | [React: Server rendering](../frameworks/react.md#server-rendering)                                                                                                   |
+| Nuxt                     | `import.meta.dev`                        | [Vue: Server rendering](../frameworks/vue.md#server-rendering)                                                                                                       |
+
+With Vite, a development build you serve without a dev server, such as static files, comes from `NODE_ENV=development vite build`. `vite build --mode development` alone still builds with `NODE_ENV=production`, so `import.meta.env.DEV` is `false` and both features stay off.
 
 ## Register the server in your agent
 
