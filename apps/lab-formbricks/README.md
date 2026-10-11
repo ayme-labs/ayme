@@ -46,7 +46,7 @@ pnpm lab:stop
 
 ## Ayme in the lab app
 
-The fork's `ayme-overlay` branch, the Ayme overlay, holds everything Ayme adds to Formbricks, on top of the upstream revision the lab app is based on, `8abe0b42`, the fork's `main` as of 2026-10-03. The submodule pins the branch's tip, `2936826`. Its code lives in [`formbricks/apps/web/ayme/`](https://github.com/ayme-labs/formbricks/tree/2936826e488497248b4fc0711ca652a1ff3448c2/apps/web/ayme):
+The fork's `ayme-overlay` branch, the Ayme overlay, holds everything Ayme adds to Formbricks, on top of the upstream revision the lab app is based on, `8abe0b42`, the fork's `main` as of 2026-10-03. The submodule pins the branch's tip, `bf7fe30`. Its code lives in [`formbricks/apps/web/ayme/`](https://github.com/ayme-labs/formbricks/tree/bf7fe30c29131482ab7e32dccd0c4e7d120f2173/apps/web/ayme):
 
 - The React integration owns the runtime in Formbricks's root layout, with WebMCP publication on, so the page publishes Ayme's Browser Tools and `snapshot`, and with the Agent Connection on in lab mode (see below).
 - Page objects for the screens the eval's mission touches, in `ayme/pom/`: `SignInPage`, `SurveyNavigationPage`, `SurveyEditorPage` and `SurveySummaryPage`. Each screen registers only its own, so the page publishes only that screen's Page Object Tools. Ayme's Turbopack loader compiles them, as in the [Next.js example](../example-next/README.md). The survey editor's question text is a rich-text editor without an accessible name, so its locator goes from the `Question*` label to the editor, as Formbricks's own Playwright helper does. The survey name input's accessible name is `Survey name`.
