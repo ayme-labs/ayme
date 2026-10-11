@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+// @boundaries-ignore The supported Playwright range is repo-wide data (playwright-range.json).
 import playwrightRange from "../../../playwright-range.json";
 
 // The repo root's playwright-range.json is the one source of the supported

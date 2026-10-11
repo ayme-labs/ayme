@@ -35,6 +35,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
+// @boundaries-ignore The supported Playwright range is repo-wide data (playwright-range.json).
 import playwrightRange from "../../../playwright-range.json";
 
 const aymeRoot = path.resolve(
@@ -48,10 +49,15 @@ const repoRoot = path.dirname(packagesRoot);
 // playwright-range.json: the types floor, the config loader's floor and the
 // last supported minor, each installed at its first release.
 const { typesFloor, configLoaderFloor, lastSupported } = playwrightRange;
-const playwrightPeerRange = `>=${typesFloor} <1.${Number(lastSupported.split(".")[1]) + 1}`;
+const minorOf = (version: string) => Number(version.split(".")[1]);
+const playwrightPeerRange = `>=${typesFloor} <1.${minorOf(lastSupported) + 1}`;
 const floorPlaywright = `${typesFloor}.0`;
 const loaderFloorPlaywright = `${configLoaderFloor}.0`;
 const lastPlaywright = `${lastSupported}.0`;
+// Whether a consumer's Playwright can load a config through the build plugin.
+const loadsConfig = (version: string) =>
+  minorOf(version) >= minorOf(configLoaderFloor) &&
+  minorOf(version) <= minorOf(lastSupported);
 
 const PUBLISHED_PACKAGES = [
   "ayme",
@@ -669,7 +675,7 @@ assert.deepEqual(manifest.tools, [{
     : ""
 }
 ${
-  version === loaderFloorPlaywright || version === lastPlaywright || canary
+  (version && loadsConfig(version)) || canary
     ? `
 const loaded = await resolveSettings({ config: './playwright.config.ts' });
 assert.equal(loaded.define.__AYME_PLAYWRIGHT_TEST_ID_ATTRIBUTE__, '"data-config"');

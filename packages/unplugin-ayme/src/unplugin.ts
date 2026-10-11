@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 
 import { createUnplugin, type UnpluginFactory } from "unplugin";
 
+// @boundaries-ignore The supported Playwright range is repo-wide data (playwright-range.json).
 import playwrightRange from "../../../playwright-range.json";
 
 import type { SkippedPomMethod } from "./derivePomManifests";
