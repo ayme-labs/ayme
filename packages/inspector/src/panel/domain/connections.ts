@@ -12,7 +12,8 @@ export type NotConnectedReason =
   | "no-server"
   | "several-servers"
   | "other-tab"
-  | "not-local";
+  | "not-local"
+  | "no-client";
 
 /** The Agent Connection status, as the runtime reports it. */
 export type AgentConnectionStatus = Readonly<
@@ -42,15 +43,15 @@ export type ConnectionRow = Readonly<{
  * The names of MCP clients we know for sure, as each sends it when it
  * starts the server. Any other name shows as sent.
  */
-const AGENT_NAMES: Readonly<Record<string, string>> = {
-  "claude-code": "Claude Code",
-  "codex-mcp-client": "Codex",
-  "cursor-vscode": "Cursor",
-};
+const AGENT_NAMES: ReadonlyMap<string, string> = new Map([
+  ["claude-code", "Claude Code"],
+  ["codex-mcp-client", "Codex"],
+  ["cursor-vscode", "Cursor"],
+]);
 
 /** The agent's name to show, from the one its MCP client sent, if any. */
 export function agentName(sent: string | undefined): string | undefined {
-  return sent === undefined ? undefined : (AGENT_NAMES[sent] ?? sent);
+  return sent && (AGENT_NAMES.get(sent) ?? sent);
 }
 
 const FIX =
@@ -59,13 +60,21 @@ const FIX =
 const REASONS: Record<NotConnectedReason, string> = {
   connecting: "Connecting to your agent's ayme MCP server.",
   "no-answer": "The ayme MCP server this tab connected to stopped answering.",
-  "no-server": "No ayme MCP server is running on this machine.",
+  "no-server": "No ayme MCP server answered on the ports ayme looks at.",
   "several-servers":
     "More than one ayme MCP server is running, so this tab won't guess which one.",
   "other-tab": "Your agent is working in another tab.",
   "not-local":
     "This page isn't on localhost, so it doesn't look for a server by itself.",
+  "no-client":
+    "This page couldn't load @ayme-dev/mcp, which connects it to your agent. The browser console has the error.",
 };
+
+// Reasons that asking the agent to call ayme_connect would not fix.
+const NO_FIX: ReadonlySet<NotConnectedReason> = new Set([
+  "connecting",
+  "no-client",
+]);
 
 /** The Agent Connection's row. */
 export function agentRow(status: AgentConnectionStatus): ConnectionRow {
@@ -87,7 +96,7 @@ export function agentRow(status: AgentConnectionStatus): ConnectionRow {
         lines:
           reason === undefined
             ? [FIX]
-            : reason === "connecting"
+            : NO_FIX.has(reason)
               ? [REASONS[reason]]
               : [REASONS[reason], FIX],
       };
@@ -103,7 +112,19 @@ export function agentRow(status: AgentConnectionStatus): ConnectionRow {
   }
 }
 
-/** WebMCP's row; `tools` is how many tools the session lists. */
+/**
+ * How many of the session's tools WebMCP publishes: every one but a Peek
+ * Tool and `screenshot`, as `@ayme-dev/webmcp` decides.
+ */
+export function webMcpToolCount(
+  tools: readonly Readonly<{ name: string; group?: string }>[]
+): number {
+  return tools.filter(
+    (tool) => tool.group !== "peek" && tool.name !== "screenshot"
+  ).length;
+}
+
+/** WebMCP's row; `tools` is how many tools it publishes. */
 export function webMcpRow(
   status: PublicationStatus,
   tools: number

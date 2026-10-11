@@ -26,12 +26,12 @@ afterEach(() => {
 function renderConnections({
   agent,
   webMCP = { state: "disabled", message: "" },
-  tools = 2,
+  tools = [],
   onCopy = vi.fn(),
 }: {
   agent: AgentConnectionStatus;
   webMCP?: PublicationStatus;
-  tools?: number;
+  tools?: readonly { name: string; group?: string }[];
   onCopy?: (text: string) => void;
 }) {
   unmounts.push(
@@ -92,6 +92,16 @@ it.each(combinations)(
       }${broken ? `, WebMCP ${webMCP}` : ""}`
     );
 
+    const tone = { off: "off", "not connected": "waiting", connected: "ok" }[
+      agent
+    ];
+    expect(await connections.pillDot.getAttribute("data-tone")).toBe(tone);
+    expect(
+      await connections.mark.evaluateAll((marks) =>
+        marks.map((mark) => mark.getAttribute("data-webmcp-mark"))
+      )
+    ).toEqual(broken ? [webMCP] : []);
+
     await connections.open();
     await expect
       .poll(() => connections.agent.state.textContent())
@@ -108,6 +118,15 @@ it.each(combinations)(
         disabled: "Off",
         unavailable: "Unavailable",
         failed: "Failed",
+      }[webMCP]
+    );
+    expect(await connections.agent.dot.getAttribute("data-tone")).toBe(tone);
+    expect(await connections.webMCP.dot.getAttribute("data-tone")).toBe(
+      {
+        active: "ok",
+        disabled: "off",
+        unavailable: "warning",
+        failed: "error",
       }[webMCP]
     );
     expect(await connections.popover.textContent()).not.toContain(
@@ -143,11 +162,18 @@ it("says why the agent is not connected, and how to connect it", async () => {
   );
 });
 
-it("counts the tools WebMCP publishes", async () => {
+it("counts the tools WebMCP publishes, which leaves out Peek tools and screenshot", async () => {
   renderConnections({
     agent: agents.off,
     webMCP: publications.active,
-    tools: 4,
+    tools: [
+      { name: "ListPage.addItem", group: "pageObject" },
+      { name: "ListPage.clear", group: "pageObject" },
+      { name: "snapshot", group: "agent" },
+      { name: "click", group: "browser" },
+      { name: "screenshot", group: "agent" },
+      { name: "peek.jobs", group: "peek" },
+    ],
   });
 
   await connections.open();

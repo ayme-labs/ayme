@@ -16,14 +16,17 @@ class FakeProbe extends EventTarget {
     super();
     FakeProbe.opened.push(this);
   }
-  close() {}
-  answer(as: "server" | "busy" | undefined) {
+  closed = false;
+  close() {
+    this.closed = true;
+  }
+  answer(as: "server" | "busy" | { code: number; reason: string } | undefined) {
     const { code, reason } =
       as === "server"
         ? SERVER_IDENTITY
         : as === "busy"
           ? BUSY_SERVER
-          : { code: 1006, reason: "" };
+          : (as ?? { code: 1006, reason: "" });
     this.dispatchEvent(Object.assign(new Event("close"), { code, reason }));
   }
 }
@@ -162,6 +165,36 @@ describe("autoPairing", () => {
     }
   );
 
+  it("counts a port only when it answers with both the server's close code and reason", async () => {
+    const onUnpaired = vi.fn();
+    autoPairing(() => {}, { onUnpaired });
+    const answers = [
+      { code: SERVER_IDENTITY.code, reason: "Something else." },
+      { code: 1000, reason: SERVER_IDENTITY.reason },
+      { code: BUSY_SERVER.code, reason: "Something else." },
+      { code: 1000, reason: BUSY_SERVER.reason },
+    ];
+
+    for (const [index, probe] of FakeProbe.opened.splice(0).entries())
+      probe.answer(answers[index]);
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(onUnpaired).toHaveBeenCalledExactlyOnceWith("no-server");
+  });
+
+  it("gives up on a port that does not answer, and closes its probe", async () => {
+    vi.useFakeTimers();
+    const onUnpaired = vi.fn();
+    autoPairing(() => {}, { onUnpaired });
+    const probes = [...FakeProbe.opened];
+
+    await vi.runAllTimersAsync();
+
+    expect(probes.every((probe) => probe.closed)).toBe(true);
+    expect(onUnpaired).toHaveBeenCalledExactlyOnceWith("no-server");
+    vi.useRealTimers();
+  });
+
   it("pairs with the one free server beside a busy one", async () => {
     const onPairing = vi.fn();
     const onUnpaired = vi.fn();
@@ -184,6 +217,12 @@ describe("autoPairing", () => {
 
     expect(onUnpaired).toHaveBeenCalledExactlyOnceWith("not-local");
     expect(FakeProbe.opened).toHaveLength(0);
+  });
+
+  it("needs no one to tell off localhost", () => {
+    window.location.hostname = "app.example.com";
+
+    expect(() => autoPairing(() => {})).not.toThrow();
   });
 
   it("says nothing off localhost when the tab already has a pairing", () => {

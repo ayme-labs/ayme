@@ -25,6 +25,8 @@ const client = vi.hoisted(() => {
         return () => void listeners.delete(listener);
       },
     },
+    /** Whether the session follows the stand-in. */
+    followed: () => listeners.size > 0,
     reset() {
       status = { state: "not-connected" };
       listeners.clear();
@@ -73,7 +75,7 @@ it("follows the page client's status, and announces each change", async () => {
   const status = getAgentConnectionStatus(ayme);
   const heard: unknown[] = [];
   status.subscribe((next) => heard.push(next));
-  await vi.waitFor(() => expect(heard).toHaveLength(0));
+  await vi.waitFor(() => expect(client.followed()).toBe(true));
 
   client.set({ state: "connected", agent: "claude-code" });
 
@@ -94,4 +96,36 @@ it("is not connected before the page client loads, and once the session stops", 
   stop();
 
   expect(status.get()).toEqual({ state: "not-connected" });
+});
+
+it("stops announcing to a listener that unsubscribed", async () => {
+  const ayme = started();
+  const status = getAgentConnectionStatus(ayme);
+  const heard: unknown[] = [];
+  const unsubscribe = status.subscribe((next) => heard.push(next));
+  await vi.waitFor(() => expect(client.followed()).toBe(true));
+
+  const before = heard.length;
+
+  unsubscribe();
+  client.set({ state: "connected" });
+
+  expect(heard).toHaveLength(before);
+});
+
+it("says it is not connected once the session stops, and stops following the page client", async () => {
+  const ayme = createAyme({ pageFactory: () => page, agentConnection: true });
+  const stop = ayme.start();
+  const status = getAgentConnectionStatus(ayme);
+  const heard: unknown[] = [];
+  status.subscribe((next) => heard.push(next));
+  await vi.waitFor(() => expect(client.followed()).toBe(true));
+
+  stop();
+  expect(heard.at(-1)).toEqual({ state: "not-connected" });
+  heard.length = 0;
+  client.set({ state: "connected" });
+
+  expect(client.followed()).toBe(false);
+  expect(heard).toEqual([]);
 });

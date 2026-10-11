@@ -119,6 +119,33 @@ it("gives the Agent Connection status, and follows it", () => {
   });
 });
 
+it("stops following the Agent Connection once nothing reads the tools", () => {
+  const unsubscribe = vi.fn();
+  vi.mocked(getAgentConnectionStatus).mockImplementation(() => ({
+    get: () => startedAyme.agentConnection,
+    subscribe: () => unsubscribe,
+  }));
+  renderReader();
+
+  for (const unmount of unmounts.splice(0)) act(unmount);
+
+  expect(unsubscribe).toHaveBeenCalledOnce();
+  vi.mocked(getAgentConnectionStatus).mockImplementation(agentConnectionOf);
+});
+
+it("follows a change of the publication status alone", () => {
+  publish([getPageContext]);
+  const seen = renderReader();
+
+  startedAyme.webMCP.publicationStatus = {
+    state: "unavailable",
+    message: "The WebMCP driver is unavailable.",
+  };
+  act(() => announce());
+
+  expect(seen.at(-1)?.publication.state).toBe("unavailable");
+});
+
 it("keeps a listed tool that is unavailable, with its reason", () => {
   const clear: ToolInfo = {
     ...addItem,

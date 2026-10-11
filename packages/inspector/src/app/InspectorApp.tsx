@@ -132,7 +132,7 @@ export function InspectorApp() {
           <Connections
             agent={runtime.tools.agentConnection}
             webMCP={runtime.tools.publication}
-            tools={live.length}
+            tools={live}
             onCopy={copy}
           />
         }

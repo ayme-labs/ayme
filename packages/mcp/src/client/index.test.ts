@@ -202,6 +202,36 @@ describe("startAgentConnection's status", () => {
     expect(status.get()).toEqual({ state: "connected" });
   });
 
+  it("tells its subscribers of a change only, until they unsubscribe", () => {
+    const { status } = startAgentConnection({ tools: {} as never });
+    const heard: unknown[] = [];
+    const unsubscribe = status.subscribe((next) => heard.push(next));
+
+    sourceStarts[0]!.onUnpaired!("no-server");
+    sourceStarts[0]!.onUnpaired!("no-server");
+    unsubscribe();
+    sourceStarts[0]!.onUnpaired!("several-servers");
+
+    expect(heard).toEqual([{ state: "not-connected", reason: "no-server" }]);
+  });
+
+  it("ignores the channel it paired before once it pairs with another server", () => {
+    const { status } = startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+    sourceStarts[0]!.onPairing({ address: "ws://127.0.0.1:9351", token: "t" });
+
+    channels[0]!.onWelcome({ agent: "claude-code" });
+    channels[0]!.onLost();
+    expect(status.get()).toEqual({
+      state: "not-connected",
+      reason: "connecting",
+    });
+
+    channels[1]!.onWelcome({});
+    channels[0]!.onLost();
+    expect(status.get()).toEqual({ state: "connected" });
+  });
+
   it("forgets its reason when the server does not know its pairing, and looks again", () => {
     const { status } = startAgentConnection({ tools: {} as never });
     sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });

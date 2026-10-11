@@ -14,6 +14,7 @@ import type {
   PageSession,
   ProcessSession,
 } from "../application/agentConnection";
+import { pageWelcome } from "../domain/welcome";
 import {
   pageChannelRouter,
   type PageChannelContext,
@@ -42,7 +43,7 @@ export function createPageChannelServer({
    * The name the agent's MCP client introduced itself with, if it has,
    * read at each hello, which the page's welcome names.
    */
-  agent?: () => string | undefined;
+  agent: () => string | undefined;
 }): { server: Server; close(): void } {
   const server = createServer((_request, response) => {
     response.statusCode = 426;
@@ -133,7 +134,7 @@ function acceptPage(
     handOver: string | undefined;
     fromProcess: boolean;
     imageFolder: string | undefined;
-    agent: (() => string | undefined) | undefined;
+    agent: () => string | undefined;
   }
 ): PageChannelContext["page"] {
   let page: PageSession | ProcessSession | undefined;
@@ -160,12 +161,11 @@ function acceptPage(
     session,
     hello(hello): PageWelcome {
       if (page) return {};
-      const agentName = agent?.();
-      const welcome: PageWelcome = {
-        ...(handOver === undefined ? {} : { token: handOver }),
-        ...(imageFolder === undefined ? {} : { imageFolder }),
-        ...(agentName ? { agent: agentName } : {}),
-      };
+      const welcome = pageWelcome({
+        token: handOver,
+        imageFolder,
+        agent: agent(),
+      });
       if ("process" in hello) {
         if (!fromProcess) {
           ws.close(1008, "Only a local process pairs as an App Process.");

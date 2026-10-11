@@ -564,6 +564,37 @@ describe("the Inspector", () => {
       .toBe("Succeeded");
   });
 
+  it("names the connected agent in the header, as the runtime reports it", async () => {
+    renderApp();
+    await expect
+      .poll(() => inspector.header.connections.pill.textContent())
+      .toBe("No agent");
+
+    startedAyme.agentConnection = { state: "connected", agent: "claude-code" };
+    startedAyme.announce();
+
+    await expect
+      .poll(() => inspector.header.connections.pill.textContent())
+      .toBe("Claude Code");
+  });
+
+  it("copies an option's snippet, and keeps going when the page denies the clipboard", async () => {
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockRejectedValueOnce(new Error("Denied."))
+      .mockResolvedValue();
+    renderApp();
+    const { connections } = inspector.header;
+    await connections.open();
+
+    await connections.agent.copyButton.click();
+    await connections.agent.copyButton.click();
+
+    expect(writeText).toHaveBeenCalledTimes(2);
+    expect(writeText).toHaveBeenLastCalledWith("agentConnection: true");
+    writeText.mockRestore();
+  });
+
   it("switches the panel to dark from the header", async () => {
     renderApp();
 

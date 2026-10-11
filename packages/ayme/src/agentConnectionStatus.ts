@@ -4,8 +4,9 @@ import type { Ayme } from "./runtime";
  * Whether the session's page is connected to a coding agent through the
  * agent's Ayme MCP server, for the Inspector: `off` without the
  * `agentConnection` option, else as the page client reports it.
- * `not-connected` says why once the tab knows; `connected` names the agent
- * when its MCP client gave a name, such as `claude-code`.
+ * `not-connected` says why once the tab knows, `no-client` when the page
+ * client failed to load; `connected` names the agent when its MCP client
+ * gave a name, such as `claude-code`.
  */
 export type AgentConnectionStatus = Readonly<
   | { state: "off" }
@@ -17,7 +18,8 @@ export type AgentConnectionStatus = Readonly<
         | "no-server"
         | "several-servers"
         | "other-tab"
-        | "not-local";
+        | "not-local"
+        | "no-client";
     }
   | { state: "connected"; agent?: string }
 >;
@@ -43,6 +45,16 @@ const OFF: AgentConnectionStatus = Object.freeze({ state: "off" });
 const NOT_CONNECTED: AgentConnectionStatus = Object.freeze({
   state: "not-connected",
 });
+const NO_CLIENT: ClientStatus = Object.freeze({
+  state: "not-connected",
+  reason: "no-client",
+});
+
+// A page client that failed to load reports this, and never changes.
+const noClient: ClientStatusSource = {
+  get: () => NO_CLIENT,
+  subscribe: () => () => {},
+};
 
 const bySession = new WeakMap<Ayme, AgentConnectionStatusSource>();
 const offSource: AgentConnectionStatusSource = {
@@ -80,6 +92,12 @@ export function createAgentConnectionStatus(on: boolean) {
     const status = get();
     for (const listener of listeners) listener(status);
   };
+  const follow = (next: ClientStatusSource | undefined) => {
+    unfollow();
+    followed = next;
+    unfollow = next?.subscribe(announce) ?? (() => {});
+    announce();
+  };
   return {
     status: {
       get,
@@ -91,12 +109,8 @@ export function createAgentConnectionStatus(on: boolean) {
       },
     } satisfies AgentConnectionStatusSource,
     /** Follows the page client's status, or none. */
-    follow(next: ClientStatusSource | undefined) {
-      unfollow();
-      const before = get();
-      followed = next;
-      unfollow = next?.subscribe(announce) ?? (() => {});
-      if (get() !== before) announce();
-    },
+    follow,
+    /** Says the page client failed to load, until it follows another. */
+    failed: () => follow(noClient),
   };
 }

@@ -70,6 +70,6 @@ function unpaired(
   servers: readonly string[],
   busy: number
 ): NotConnectedReason {
-  if (servers.length > 1) return "several-servers";
+  if (servers.length !== 0) return "several-servers";
   return busy > 0 ? "other-tab" : "no-server";
 }

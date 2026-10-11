@@ -9,6 +9,7 @@ import {
   agentRow,
   webMcpBroken,
   webMcpRow,
+  webMcpToolCount,
   type AgentConnectionStatus,
   type ConnectionRow,
   type PublicationStatus,
@@ -36,10 +37,13 @@ const labelClass: Record<Tone, string> = {
 };
 // Stryker restore StringLiteral,ObjectLiteral
 
+/** A path's dot, whose `data-tone` tests read. */
 function Dot({ tone }: { tone: Tone }) {
   return (
     <span
       aria-hidden
+      data-tone={tone}
+      // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
       className={cn("size-2 flex-none rounded-full", dotClass[tone])}
     />
   );
@@ -58,8 +62,8 @@ export function Connections({
 }: {
   agent: AgentConnectionStatus;
   webMCP: PublicationStatus;
-  /** How many tools the session lists, which WebMCP publishes. */
-  tools: number;
+  /** The tools the session lists, which WebMCP publishes but for some. */
+  tools: readonly Readonly<{ name: string; group?: string }>[];
   onCopy: (text: string) => void;
 }) {
   const container = usePortalContainer();
@@ -71,20 +75,25 @@ export function Connections({
       <Popover.Trigger
         aria-label={name}
         title={name}
+        // Stryker disable StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator: Tailwind classes are styling, which no test reads.
         className={cn(
           "relative ml-0.5 inline-flex h-6 min-w-0 items-center gap-1.5 rounded-full bg-muted pr-2.5 pl-2 text-xs font-medium outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-accent",
           agent.state === "off" && "text-muted-foreground"
         )}
+        // Stryker restore StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator
       >
         <Dot tone={pill.tone} />
         <span className="truncate">{pill.text}</span>
         {broken && (
           <span
             aria-hidden
+            data-webmcp-mark={webMCP.state}
+            // Stryker disable StringLiteral,ConditionalExpression,EqualityOperator: Tailwind classes are styling, which no test reads.
             className={cn(
               "absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background",
               webMCP.state === "failed" ? "bg-destructive" : "bg-warning"
             )}
+            // Stryker restore StringLiteral,ConditionalExpression,EqualityOperator
           />
         )}
       </Popover.Trigger>
@@ -98,7 +107,11 @@ export function Connections({
         >
           <h3 className="text-sm font-medium">Connections</h3>
           <Row name="Agent" row={agentRow(agent)} onCopy={onCopy} />
-          <Row name="WebMCP" row={webMcpRow(webMCP, tools)} onCopy={onCopy} />
+          <Row
+            name="WebMCP"
+            row={webMcpRow(webMCP, webMcpToolCount(tools))}
+            onCopy={onCopy}
+          />
           <a
             href={DOCS}
             target="_blank"
@@ -131,13 +144,17 @@ function Row({
       <div className="flex items-center gap-2">
         <Dot tone={row.tone} />
         <h4 className="flex-1 text-[13px] font-medium">{name}</h4>
-        <span className={cn("text-xs font-medium", labelClass[row.tone])}>
+        <span
+          // Stryker disable next-line StringLiteral: Tailwind classes are styling, which no test reads.
+          className={cn("text-xs font-medium", labelClass[row.tone])}
+        >
           {row.label}
         </span>
       </div>
       {row.lines.map((line, index) => (
         <p
           key={line}
+          // Stryker disable StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator: Tailwind classes are styling, which no test reads.
           className={cn(
             "text-xs break-words",
             // What went wrong reads stronger than its fix.
@@ -145,6 +162,7 @@ function Row({
               ? "text-foreground"
               : "text-muted-foreground"
           )}
+          // Stryker restore StringLiteral,ConditionalExpression,LogicalOperator,EqualityOperator
         >
           {line}
         </p>
