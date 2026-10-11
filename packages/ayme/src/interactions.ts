@@ -102,7 +102,13 @@ export function interactionOf(
       : subject === "page" && typeof args[0] === "string"
         ? (target as Page).locator(args[0])
         : undefined;
-  const value = subject === "page" ? args[1] : args[0];
+  // dragAndDrop's second argument is the drop target's selector, not a value.
+  const value =
+    subject !== "page"
+      ? args[0]
+      : method === "dragAndDrop"
+        ? undefined
+        : args[1];
   return {
     operation:
       subject === "keyboard" || subject === "mouse"
