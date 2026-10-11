@@ -31,7 +31,9 @@ export function scorePackage(dir, coverage, root = ROOT) {
   const marker = `/packages/${dir}/`;
   const functions = [];
   for (const [key, fileCoverage] of Object.entries(coverage)) {
-    const file = key.slice(key.lastIndexOf(marker) + 1);
+    const at = key.lastIndexOf(marker);
+    if (at === -1) throw new Error(`${key} is not under packages/${dir}/`);
+    const file = key.slice(at + 1);
     const source = fs.readFileSync(path.join(root, file), "utf8");
     for (const fn of functionsIn(source, file)) {
       const covered = statementCoverage(fileCoverage, fn.start, fn.end);

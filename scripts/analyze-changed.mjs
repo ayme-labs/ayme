@@ -90,6 +90,7 @@ export function diffAgainst(base, cwd = ROOT) {
     [
       "diff",
       "-U0",
+      "--inter-hunk-context=0",
       "--no-color",
       "--no-ext-diff",
       "--src-prefix=a/",

@@ -127,28 +127,35 @@ test("changedLines reads paths without git's b/ prefix", () => {
   );
 });
 
-test("diffAgainst ignores the user's prefix and color config", () => {
+test("diffAgainst ignores the user's diff config", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "analyze-changed-"));
-  const git = (...args) => execFileSync("git", args, { cwd: dir });
+  // Only this repo's config applies, not the machine's (signing, hooks).
+  const env = {
+    ...process.env,
+    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
+  const git = (...args) => execFileSync("git", args, { cwd: dir, env });
   const file = path.join(dir, "packages/core/src/a.ts");
   try {
     git("init", "-q");
     git("config", "user.email", "test@example.com");
     git("config", "user.name", "test");
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, "a\n");
+    fs.writeFileSync(file, "a\nx\nx\nx\nc\n");
     git("add", ".");
     git("commit", "-qm", "base");
     git("config", "diff.noprefix", "true");
     git("config", "diff.mnemonicPrefix", "true");
     git("config", "color.diff", "always");
-    fs.writeFileSync(file, "a\nb\n");
+    git("config", "diff.interHunkContext", "50");
+    fs.writeFileSync(file, "a\nb\nx\nx\nx\nc\nd\n");
     assert.deepEqual(
       [...changedLines(diffAgainst("HEAD", dir))].map(([f, lines]) => [
         f,
         [...lines],
       ]),
-      [["packages/core/src/a.ts", [2]]]
+      [["packages/core/src/a.ts", [2, 7]]]
     );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
