@@ -25,12 +25,13 @@ const OUT = path.join(ROOT, "reports", "crap");
  * Every function in a package's coverage report, scored from the source under
  * `root`. Turbo can restore a report from another checkout, whose keys are
  * that checkout's absolute paths, so each key is read from `packages/<dir>/`
- * on.
+ * on, with either path separator.
  */
 export function scorePackage(dir, coverage, root = ROOT) {
   const marker = `/packages/${dir}/`;
   const functions = [];
-  for (const [key, fileCoverage] of Object.entries(coverage)) {
+  for (const [rawKey, fileCoverage] of Object.entries(coverage)) {
+    const key = rawKey.replaceAll("\\", "/");
     const at = key.lastIndexOf(marker);
     if (at === -1) throw new Error(`${key} is not under packages/${dir}/`);
     const file = key.slice(at + 1);

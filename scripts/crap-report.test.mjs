@@ -6,7 +6,7 @@ import { test } from "node:test";
 
 import { scorePackage } from "./crap-report.mjs";
 
-test("scorePackage reads a restored report's files from this checkout", () => {
+test("scorePackage reads a restored report's files from this checkout, even from Windows", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "crap-report-"));
   const file = "packages/core/src/a.ts";
   try {
@@ -16,7 +16,7 @@ test("scorePackage reads a restored report's files from this checkout", () => {
       "export function pick(a: boolean) {\n  if (a) return 1;\n  return 2;\n}\n"
     );
     const coverage = {
-      [`/elsewhere/checkout/${file}`]: {
+      [`C:\\elsewhere\\${file.replaceAll("/", "\\")}`]: {
         statementMap: { 0: { start: { line: 2 }, end: { line: 2 } } },
         s: { 0: 1 },
       },
