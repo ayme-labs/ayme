@@ -18,14 +18,14 @@ import { Linter } from "eslint";
 import { builtinRules } from "eslint/use-at-your-own-risk";
 import tseslint from "typescript-eslint";
 
+import { isProductionSource } from "../packages/test-config/analysis.js";
+
 /** Functions above this CRAP score are flagged. */
 export const CRAP_CAP = 15;
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const REPORT = path.join(ROOT, "reports", "analyze-changed.md");
-const SOURCE = /^(packages\/[^/]+)\/(src\/.+\.tsx?)$/;
-const NOT_PRODUCTION =
-  /(\.d\.ts|\.(test|testSupport|scenario|setup)\.tsx?)$|\/(test-utils|testing|__tests__|fixtures)\/|\/testing\.ts$/;
+const PACKAGE_DIR = /^packages\/[^/]+/;
 
 function git(...args) {
   return execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
@@ -70,7 +70,7 @@ export function changedLines(diff, untracked = []) {
     );
   }
   for (const file of changes.keys()) {
-    if (!SOURCE.test(file) || NOT_PRODUCTION.test(file)) changes.delete(file);
+    if (!isProductionSource(file)) changes.delete(file);
   }
   return changes;
 }
@@ -299,7 +299,7 @@ function main() {
   const base = args.base ?? git("merge-base", "origin/main", "HEAD").trim();
   const untracked = git("ls-files", "--others", "--exclude-standard")
     .split("\n")
-    .filter((file) => SOURCE.test(file))
+    .filter(isProductionSource)
     .map((file) => [
       file,
       fs.readFileSync(path.join(ROOT, file), "utf8").split("\n").length,
@@ -312,7 +312,7 @@ function main() {
   const byPackage = new Map();
   const skipped = new Set();
   for (const [file, lines] of changes) {
-    const dir = SOURCE.exec(file)[1];
+    const dir = PACKAGE_DIR.exec(file)[0];
     const name = packageOf(dir);
     if (!name) {
       skipped.add(dir);
