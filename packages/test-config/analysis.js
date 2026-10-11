@@ -4,7 +4,7 @@
  * `scripts/analyze-changed.mjs` all derive from. See
  * docs/testing.md#change-analysis.
  */
-import path from "node:path";
+import picomatch from "picomatch";
 
 /** Source under `src/` that is not production code, so it gets no score. */
 export const nonProductionPatterns = Object.freeze([
@@ -20,12 +20,15 @@ export const nonProductionPatterns = Object.freeze([
   "**/testing/**",
 ]);
 
-/** Whether a repository path (`packages/<name>/src/...`) is production source. */
+/**
+ * Whether a repository path (`packages/<name>/src/...`) is production source.
+ * picomatch is the matcher behind Vitest's coverage globs, so it agrees with
+ * them on every platform; Node's own `path.matchesGlob` ignores case on macOS.
+ */
 export function isProductionSource(repoPath) {
-  return (
-    path.posix.matchesGlob(repoPath, "packages/*/src/**/*.{ts,tsx}") &&
-    !nonProductionPatterns.some((pattern) =>
-      path.posix.matchesGlob(repoPath, pattern)
-    )
-  );
+  return isProduction(repoPath);
 }
+
+const isProduction = picomatch("packages/*/src/**/*.{ts,tsx}", {
+  ignore: [...nonProductionPatterns],
+});

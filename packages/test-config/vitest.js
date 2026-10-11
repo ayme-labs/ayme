@@ -39,9 +39,10 @@ export function defineFastLaneConfig(baseConfig, { exclude = [] } = {}) {
     })
   );
   // mergeConfig concatenates arrays, so the projects are replaced afterwards.
+  // A project with `extends: true` already inherits the top-level excludes.
   if (Array.isArray(config.test?.projects)) {
     config.test.projects = config.test.projects.map((project) =>
-      typeof project === "string"
+      typeof project === "string" || project.extends === true
         ? project
         : mergeConfig(project, { test: { exclude: excludes } })
     );
