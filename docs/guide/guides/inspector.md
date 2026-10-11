@@ -10,7 +10,7 @@ Install `@ayme-dev/inspector` beside `@ayme-dev/ayme`, which declares it as an o
 npm install -D @ayme-dev/inspector
 ```
 
-Then pass `inspector: true` where Ayme starts: `useAyme` or `AymeProvider` in Vue, `AymeProvider` in React, `useAyme` in Svelte, `provideAyme` in Angular, or `createAyme`. Most apps turn it on in development only:
+Then pass `inspector: true` where Ayme starts: `useAyme` or `AymeProvider` in Vue, `AymeProvider` in React, `useAyme` in Svelte, `provideAyme` in Angular, or `createAyme`. Most apps turn it on in development only, with their framework's development flag from [the table in Connect an agent](connect-an-agent.md#the-development-flag-per-framework):
 
 ```ts
 useAyme({ inspector: import.meta.env.DEV });
