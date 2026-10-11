@@ -23,19 +23,22 @@ async function buildHeaders(
   init?: HeadersInit | (() => HeadersInit | Promise<HeadersInit>)
 ): Promise<Record<string, string>> {
   const source = typeof init === "function" ? await init() : init;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (!source) return headers;
-
-  const entries =
-    source instanceof Headers
+  const entries = !source
+    ? []
+    : source instanceof Headers
       ? [...source.entries()]
       : Array.isArray(source)
         ? source
         : Object.entries(source);
-  for (const [key, value] of entries) headers[key] = value;
-  return headers;
+  // Header names are case-insensitive, so every casing of Content-Type
+  // collapses into one entry: the caller's last value, or JSON by default.
+  let contentType = "application/json";
+  const headers: Record<string, string> = {};
+  for (const [key, value] of entries) {
+    if (key.toLowerCase() === "content-type") contentType = value;
+    else headers[key] = value;
+  }
+  return { "Content-Type": contentType, ...headers };
 }
 
 export function decisionEndpoint(

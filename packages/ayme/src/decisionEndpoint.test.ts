@@ -66,6 +66,52 @@ describe("decisionEndpoint", () => {
     });
   });
 
+  it.each([
+    ["a Headers instance", new Headers({ "Content-Type": "application/json" })],
+    ["a lower-case object key", { "content-type": "application/json" }],
+    [
+      "two casings in one object",
+      {
+        "Content-Type": "application/json",
+        "content-type": "application/json",
+      },
+    ],
+    [
+      "two casings in a tuple array",
+      [
+        ["Content-Type", "application/json"],
+        ["content-type", "application/json"],
+      ] as [string, string][],
+    ],
+    [
+      "a tuple array",
+      [["CONTENT-TYPE", "application/json"]] as [string, string][],
+    ],
+  ])("sends one content type when headers set it as %s", async (_, init) => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ model: "typesafe/jev-1.13", answers: {} }))
+    );
+    await decisionEndpoint("/api/decisions", { headers: init })(request);
+    const sent = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(sent.get("content-type")).toBe("application/json");
+  });
+
+  it("keeps the caller's content type and other headers", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ model: "typesafe/jev-1.13", answers: {} }))
+    );
+    await decisionEndpoint("/api/decisions", {
+      headers: () =>
+        new Headers({
+          "content-type": "application/vnd.ayme+json",
+          "X-Trace": "1",
+        }),
+    })(request);
+    const sent = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(sent.get("content-type")).toBe("application/vnd.ayme+json");
+    expect(sent.get("x-trace")).toBe("1");
+  });
+
   it("throws on non-2xx responses with the status and error text", async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ error: "Forbidden." }), {
