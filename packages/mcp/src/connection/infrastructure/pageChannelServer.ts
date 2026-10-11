@@ -32,11 +32,17 @@ export function createPageChannelServer({
   connection,
   token,
   imageFolder,
+  agent,
 }: {
   connection: AgentConnection;
   token: string;
   /** Where the server saves a tool's images, which a page's welcome names. */
   imageFolder?: string;
+  /**
+   * The name the agent's MCP client introduced itself with, if it has,
+   * read at each hello, which the page's welcome names.
+   */
+  agent?: () => string | undefined;
 }): { server: Server; close(): void } {
   const server = createServer((_request, response) => {
     response.statusCode = 426;
@@ -88,6 +94,7 @@ export function createPageChannelServer({
           handOver: tokenless ? token : undefined,
           fromProcess,
           imageFolder,
+          agent,
         })
       );
       handleConnection(ws, request);
@@ -112,7 +119,7 @@ export function createPageChannelServer({
  * connection `fromProcess`, which sent no `Origin`, may say hello as an App
  * Process, and the server is never too busy for it. One that connected
  * without a token gets `handOver`, the server's token, in reply to its
- * hello, and every one gets `imageFolder`.
+ * hello, and every one gets `imageFolder` and the agent's name.
  */
 function acceptPage(
   connection: AgentConnection,
@@ -121,10 +128,12 @@ function acceptPage(
     handOver,
     fromProcess,
     imageFolder,
+    agent,
   }: {
     handOver: string | undefined;
     fromProcess: boolean;
     imageFolder: string | undefined;
+    agent: (() => string | undefined) | undefined;
   }
 ): PageChannelContext["page"] {
   let page: PageSession | ProcessSession | undefined;
@@ -151,9 +160,11 @@ function acceptPage(
     session,
     hello(hello): PageWelcome {
       if (page) return {};
+      const agentName = agent?.();
       const welcome: PageWelcome = {
         ...(handOver === undefined ? {} : { token: handOver }),
         ...(imageFolder === undefined ? {} : { imageFolder }),
+        ...(agentName ? { agent: agentName } : {}),
       };
       if ("process" in hello) {
         if (!fromProcess) {

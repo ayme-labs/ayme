@@ -42,4 +42,4 @@ export {
   type ToolGroupLabel,
 } from "./pom/ToolsLens";
 export { WhatTheModelSees } from "./pom/WhatTheModelSees";
-export { WebMcpStatus } from "./pom/WebMcpStatus";
+export { ConnectionRow, Connections } from "./pom/Connections";

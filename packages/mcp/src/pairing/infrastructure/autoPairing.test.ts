@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PROBE_PATH, SERVER_IDENTITY } from "../domain/admission";
+import { BUSY_SERVER, PROBE_PATH, SERVER_IDENTITY } from "../domain/admission";
 import { SERVER_PORTS } from "../domain/pairing";
 import { PAIRING_STORAGE_KEY } from "../domain/pairingStorage";
 import { autoPairing } from "./autoPairing";
 
 const PORT_COUNT = SERVER_PORTS.last - SERVER_PORTS.first + 1;
 const SERVER = `ws://127.0.0.1:${SERVER_PORTS.first + 3}`;
+const OTHER_SERVER = `ws://127.0.0.1:${SERVER_PORTS.first + 5}`;
 
 /** A probe the scan opened, which the test answers. */
 class FakeProbe extends EventTarget {
@@ -16,21 +17,33 @@ class FakeProbe extends EventTarget {
     FakeProbe.opened.push(this);
   }
   close() {}
-  answer(isServer: boolean) {
-    const event = Object.assign(new Event("close"), {
-      code: isServer ? SERVER_IDENTITY.code : 1006,
-      reason: isServer ? SERVER_IDENTITY.reason : "",
-    });
-    this.dispatchEvent(event);
+  answer(as: "server" | "busy" | undefined) {
+    const { code, reason } =
+      as === "server"
+        ? SERVER_IDENTITY
+        : as === "busy"
+          ? BUSY_SERVER
+          : { code: 1006, reason: "" };
+    this.dispatchEvent(Object.assign(new Event("close"), { code, reason }));
   }
 }
 
-/** Answers every open probe, as if only `servers` were running. */
-async function answerScan(servers: readonly string[] = []) {
+/**
+ * Answers every open probe, as if only `servers` were running, and `busy`
+ * besides them, busy with another tab.
+ */
+async function answerScan(
+  servers: readonly string[] = [],
+  busy: readonly string[] = []
+) {
   const probes = FakeProbe.opened.splice(0);
   expect(probes).toHaveLength(PORT_COUNT);
+  const at = (addresses: readonly string[], probe: FakeProbe) =>
+    addresses.some((address) => probe.url === address + PROBE_PATH);
   for (const probe of probes)
-    probe.answer(servers.some((server) => probe.url === server + PROBE_PATH));
+    probe.answer(
+      at(servers, probe) ? "server" : at(busy, probe) ? "busy" : undefined
+    );
   await new Promise((resolve) => setTimeout(resolve));
 }
 
@@ -131,6 +144,56 @@ describe("autoPairing", () => {
 
     expect(FakeProbe.opened).toHaveLength(0);
     expect(onPairing).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["no server answers", [], [], "no-server"],
+    ["several servers answer", [SERVER, OTHER_SERVER], [], "several-servers"],
+    ["the only server is busy with another tab", [], [SERVER], "other-tab"],
+  ] as const)(
+    "says why it did not pair when %s",
+    async (_case, servers, busy, reason) => {
+      const onUnpaired = vi.fn();
+      autoPairing(() => {}, { onUnpaired });
+
+      await answerScan(servers, busy);
+
+      expect(onUnpaired).toHaveBeenCalledExactlyOnceWith(reason);
+    }
+  );
+
+  it("pairs with the one free server beside a busy one", async () => {
+    const onPairing = vi.fn();
+    const onUnpaired = vi.fn();
+    autoPairing(onPairing, { onUnpaired });
+
+    await answerScan([SERVER], [OTHER_SERVER]);
+
+    expect(onPairing).toHaveBeenCalledExactlyOnceWith({
+      address: SERVER,
+      token: "",
+    });
+    expect(onUnpaired).not.toHaveBeenCalled();
+  });
+
+  it("says a page off localhost never looks for a server", () => {
+    window.location.hostname = "app.example.com";
+    const onUnpaired = vi.fn();
+
+    autoPairing(() => {}, { onUnpaired });
+
+    expect(onUnpaired).toHaveBeenCalledExactlyOnceWith("not-local");
+    expect(FakeProbe.opened).toHaveLength(0);
+  });
+
+  it("says nothing off localhost when the tab already has a pairing", () => {
+    window.location.hostname = "app.example.com";
+    storage.set(PAIRING_STORAGE_KEY, "{}");
+    const onUnpaired = vi.fn();
+
+    autoPairing(() => {}, { onUnpaired });
+
+    expect(onUnpaired).not.toHaveBeenCalled();
   });
 
   it("stops scanning once it is stopped, and drops a scan in flight", async () => {

@@ -6,7 +6,11 @@ export {
   pairingFromFragment,
   socketUrl,
 } from "./domain/pairing";
-export type { Pairing, PairingSource } from "./domain/pairing";
+export type {
+  NotConnectedReason,
+  Pairing,
+  PairingSource,
+} from "./domain/pairing";
 export type { StoredPairing } from "./domain/pairingStorage";
 export {
   PAIRING_STORAGE_KEY,

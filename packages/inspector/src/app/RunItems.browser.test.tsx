@@ -18,7 +18,7 @@ import { Inspector } from "../testing";
 // their ref named, so an item's scope lists them. The runtime is replaced by
 // fixture targets, a look at the host page and a stand-in Run log.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { appProcessToolsOf, asStartedAyme } =
+  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
     await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
@@ -39,6 +39,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getPomDefinitionText: vi.fn(() => ""),
     getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     getStartedAyme: asStartedAyme,
+    getAgentConnectionStatus: agentConnectionOf,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     subscribeToAgentImageRuns: () => () => {},

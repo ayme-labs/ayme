@@ -72,3 +72,26 @@ test("an agent's call over the Ayme MCP server is an ayme-mcp Run in the page's 
     ref,
   });
 });
+
+test("with an agent connected through ayme mcp and WebMCP off, the Inspector's header names the agent and nothing says agents can't call the tools", async ({
+  connect,
+  page,
+}) => {
+  await connect("/?inspector");
+  const inspector = new Inspector(page);
+  await inspector.open();
+  const { connections } = inspector.header;
+
+  // The e2e agent's MCP client introduces itself as ayme-e2e.
+  await expect(connections.pill).toHaveText("ayme-e2e");
+  await expect(connections.pill).toHaveAccessibleName(
+    "Connections: ayme-e2e connected"
+  );
+  await connections.open();
+  await expect(connections.agent.state).toHaveText("Connected");
+  await expect(connections.agent.root).toContainText(
+    "ayme-e2e is connected to this tab through ayme mcp."
+  );
+  await expect(connections.webMCP.state).toHaveText("Off");
+  await expect(inspector.container).not.toContainText("can't call");
+});

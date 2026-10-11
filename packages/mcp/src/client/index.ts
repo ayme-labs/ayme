@@ -10,12 +10,14 @@ import {
   socketUrl,
   storePairing,
   storedTabId,
+  type NotConnectedReason,
   type Pairing,
 } from "../pairing";
 import { clientBehaviours } from "./clientBehaviours";
 import { pairingSources } from "./pairingSources";
 
 export type { AgentImageRun } from "../connection";
+export type { NotConnectedReason } from "../pairing";
 
 /**
  * The part of Ayme's runtime object the page client uses, and where it
@@ -43,6 +45,24 @@ export type AppProcessTools = {
   run(name: string, input: unknown): Promise<unknown>;
 };
 
+/**
+ * Whether the tab is connected to an agent's Ayme MCP server: `connected`
+ * once the server welcomed it, with the name the agent's MCP client gave
+ * the server, if any; else `not-connected`, with why, once the tab knows.
+ */
+export type AgentConnectionStatus = Readonly<
+  | { state: "not-connected"; reason?: NotConnectedReason }
+  | { state: "connected"; agent?: string }
+>;
+
+/** The tab's connection status, for the Inspector. */
+export type AgentConnectionStatusSource = {
+  /** The same object comes back until the status changes. */
+  get(): AgentConnectionStatus;
+  /** Calls `listener` with the new status after each change. */
+  subscribe(listener: (status: AgentConnectionStatus) => void): () => void;
+};
+
 const NO_TOOLS: readonly PageTool[] = Object.freeze([]);
 
 /**
@@ -55,13 +75,37 @@ const NO_TOOLS: readonly PageTool[] = Object.freeze([]);
  * this tab's place, the tab forgets its pairing; when it does not know the
  * pairing, the tab forgets it and looks for a server again. When a busy
  * server refuses its pairing without a token, it looks again from its next
- * focus. Returns what ends the connection, and the tools of the App
- * Processes paired with the server, which the server sends the tab.
+ * focus. Returns what ends the connection, the tools of the App
+ * Processes paired with the server, which the server sends the tab, and
+ * whether the tab is connected.
  */
 export function startAgentConnection(ayme: AgentConnectionRuntime): {
   dispose(): void;
   processTools: AppProcessTools;
+  status: AgentConnectionStatusSource;
 } {
+  let currentStatus: AgentConnectionStatus = Object.freeze({
+    state: "not-connected",
+  });
+  const statusListeners = new Set<(status: AgentConnectionStatus) => void>();
+  const setStatus = (next: AgentConnectionStatus) => {
+    if (JSON.stringify(next) === JSON.stringify(currentStatus)) return;
+    currentStatus = Object.freeze(next);
+    for (const listener of statusListeners) listener(currentStatus);
+  };
+  const notConnected = (reason?: NotConnectedReason) =>
+    setStatus(
+      reason ? { state: "not-connected", reason } : { state: "not-connected" }
+    );
+  const status: AgentConnectionStatusSource = {
+    get: () => currentStatus,
+    subscribe(listener) {
+      statusListeners.add(listener);
+      return () => {
+        statusListeners.delete(listener);
+      };
+    },
+  };
   let processToolList = NO_TOOLS;
   const processToolListeners = new Set<(tools: readonly PageTool[]) => void>();
   const setProcessTools = (tools: readonly PageTool[]) => {
@@ -88,7 +132,14 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
   let stopSources: (() => void)[] = [];
   const startSources = (lookNow = true) => {
     for (const stop of stopSources) stop();
-    stopSources = pairingSources.map((source) => source(pair, { lookNow }));
+    stopSources = pairingSources.map((source) =>
+      source(pair, {
+        lookNow,
+        onUnpaired(reason) {
+          if (!open) notConnected(reason);
+        },
+      })
+    );
   };
   const pair = (pairing: Pairing) => {
     const tab = storedTabId(pairing);
@@ -96,10 +147,15 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
     // A connect link and the pairing it stored name the same channel.
     if (open?.key === key) return;
     open?.close();
+    notConnected("connecting");
     let current: Pairing = pairing;
     const channel = openPageChannel(() => socketUrl(current), {
       hello: () => ({ tab, url: window.location.href }),
-      onWelcome({ token }) {
+      onWelcome({ token, agent }) {
+        if (open === opened)
+          setStatus(
+            agent ? { state: "connected", agent } : { state: "connected" }
+          );
         if (!token || current.token) return;
         current = { address: pairing.address, token };
         storePairing({ ...current, tab });
@@ -109,13 +165,18 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
         opened.close();
         open = undefined;
         forgetStoredPairing(tab);
+        notConnected();
         startSources();
+      },
+      onLost() {
+        if (open === opened) notConnected("no-answer");
       },
       onDisconnected() {
         if (open !== opened) return;
         opened.close();
         open = undefined;
         forgetStoredPairing(tab);
+        notConnected("other-tab");
         // A busy server refused the tokenless pairing: the tab has none,
         // and looks again from its next focus.
         if (!current.token) return startSources(false);
@@ -153,5 +214,6 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
       open = undefined;
     },
     processTools,
+    status,
   };
 }

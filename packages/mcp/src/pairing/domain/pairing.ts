@@ -63,12 +63,38 @@ export function pairingFromFragment(hash: string): Pairing | undefined {
 }
 
 /**
+ * Why a tab that turned the Agent Connection on is not connected to an
+ * agent's server:
+ * - `connecting`: it has a pairing and its channel is opening;
+ * - `no-answer`: the server it paired with stopped answering, and it keeps
+ *   trying;
+ * - `no-server`: its last look found no Ayme MCP server;
+ * - `several-servers`: its last look found more than one, so it would not
+ *   pick one;
+ * - `other-tab`: the server works with another tab, which took it over or
+ *   had it first;
+ * - `not-local`: the page is not on localhost, so it never looks for a
+ *   server by itself.
+ */
+export type NotConnectedReason =
+  | "connecting"
+  | "no-answer"
+  | "no-server"
+  | "several-servers"
+  | "other-tab"
+  | "not-local";
+
+/**
  * A way the page client learns a pairing, such as a connect link. It calls
  * `onPairing` with each pairing it finds and returns what stops it.
  * `lookNow: false`, as after a server refused the tab's pairing, asks it to
- * wait for the tab's next focus before it looks for a server.
+ * wait for the tab's next focus before it looks for a server. A source that
+ * looks for a server and finds none to pair with tells `onUnpaired` why.
  */
 export type PairingSource = (
   onPairing: (pairing: Pairing) => void,
-  options?: { lookNow?: boolean }
+  options?: {
+    lookNow?: boolean;
+    onUnpaired?: (reason: NotConnectedReason) => void;
+  }
 ) => () => void;

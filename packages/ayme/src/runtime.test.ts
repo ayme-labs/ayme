@@ -194,6 +194,10 @@ it("starts the Agent Connection while a session with agentConnection is started"
   const startAgentConnection = vi.fn(() => ({
     dispose,
     processTools: { list: () => [], subscribe: () => () => {}, run: vi.fn() },
+    status: {
+      get: () => ({ state: "not-connected" as const }),
+      subscribe: () => () => {},
+    },
   }));
   vi.mocked(loadAgentConnection).mockResolvedValue({ startAgentConnection });
   start(session(false))();

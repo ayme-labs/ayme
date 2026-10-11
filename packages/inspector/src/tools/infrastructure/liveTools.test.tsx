@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import type { Ayme, ToolInfo } from "@ayme-dev/ayme";
 import {
+  getAgentConnectionStatus,
   getAppProcessTools,
   getStartedAyme,
   subscribeToStartedAyme,
@@ -11,6 +12,7 @@ import {
 
 import { useLiveTools, type LiveTools } from "./liveTools";
 import {
+  agentConnectionOf,
   appProcessToolsOf,
   asStartedAyme,
   startedAyme,
@@ -20,6 +22,7 @@ import {
 // a stand-in started session that the test changes and announces.
 vi.mock("@ayme-dev/ayme/internal", () => ({
   getStartedAyme: vi.fn(),
+  getAgentConnectionStatus: vi.fn(),
   getAppProcessTools: vi.fn(),
   subscribeToStartedAyme: vi.fn(),
 }));
@@ -54,6 +57,7 @@ let session: Ayme | undefined = asStartedAyme();
 let announceSession: (ayme: Ayme | undefined) => void = () => {};
 vi.mocked(getStartedAyme).mockImplementation(() => session);
 vi.mocked(getAppProcessTools).mockImplementation(appProcessToolsOf);
+vi.mocked(getAgentConnectionStatus).mockImplementation(agentConnectionOf);
 vi.mocked(subscribeToStartedAyme).mockImplementation((listener) => {
   announceSession = listener;
   return () => {};
@@ -98,6 +102,20 @@ it("gives the live tools and the publication status", () => {
     live: [getPageContext, addItem],
     appProcess: [],
     publication: { state: "active", message: "" },
+    agentConnection: { state: "off" },
+  });
+});
+
+it("gives the Agent Connection status, and follows it", () => {
+  publish([getPageContext]);
+  const seen = renderReader();
+
+  startedAyme.agentConnection = { state: "connected", agent: "claude-code" };
+  act(() => announce());
+
+  expect(seen.at(-1)?.agentConnection).toEqual({
+    state: "connected",
+    agent: "claude-code",
   });
 });
 
@@ -146,6 +164,7 @@ it("keeps the live tools when publication fails, with its error", () => {
       state: "failed",
       message: "Publication failed: a name is taken.",
     },
+    agentConnection: { state: "off" },
   });
 });
 
@@ -169,6 +188,7 @@ it("gives no tools while no session is started, and follows the next one", () =>
       state: "disposed",
       message: "No Ayme runtime session has started.",
     },
+    agentConnection: { state: "off" },
   });
 
   session = asStartedAyme();

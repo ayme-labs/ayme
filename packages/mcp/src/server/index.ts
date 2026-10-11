@@ -33,10 +33,13 @@ export async function startMcpServer({
 }: { port?: number } = {}): Promise<void> {
   const connection = new AgentConnection();
   const token = randomUUID();
+  // The MCP server starts after the page's: a page may say hello before it.
+  let agentName = (): string | undefined => undefined;
   const channel = createPageChannelServer({
     connection,
     token,
     imageFolder: screenshotFolder,
+    agent: () => agentName(),
   });
   const port =
     pinnedPort === undefined
@@ -56,6 +59,7 @@ export async function startMcpServer({
     connection,
     saveImage: saveToScreenshotFolder,
   });
+  agentName = () => mcp.getClientVersion()?.name;
 
   const stop = () => {
     for (const stopBehaviour of stopBehaviours) stopBehaviour();

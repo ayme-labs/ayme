@@ -21,7 +21,7 @@ import { Inspector } from "../testing";
 // runtime is replaced by a stand-in session whose Run log the test fills,
 // and which records the panel's own runs there for the Caller they name.
 vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
-  const { appProcessToolsOf, asStartedAyme } =
+  const { agentConnectionOf, appProcessToolsOf, asStartedAyme } =
     await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
@@ -53,6 +53,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     listRegisteredPomTargets: vi.fn(async () => []),
     listAvailablePomTools: vi.fn(() => []),
     getStartedAyme: asStartedAyme,
+    getAgentConnectionStatus: agentConnectionOf,
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     subscribeToAgentImageRuns: vi.fn(() => () => {}),

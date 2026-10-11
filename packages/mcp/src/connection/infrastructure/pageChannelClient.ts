@@ -22,9 +22,9 @@ import type { PageChannelRouter } from "./pageChannelRouter";
  * its tools again. When the server says another tab paired in its place,
  * or that it does not know the pairing, the channel closes for good and
  * `onDisconnected` or `onUnknownPairing` runs. On any other close the
- * channel reconnects by itself, unless `onClose` is given: then it closes
- * for good and `onClose` runs, as for an App Process, which looks for a
- * server again.
+ * channel reconnects by itself, and `onLost` runs, unless `onClose` is
+ * given: then it closes for good and `onClose` runs, as for an App
+ * Process, which looks for a server again.
  */
 export function openPageChannel(
   url: () => string,
@@ -33,6 +33,7 @@ export function openPageChannel(
     onWelcome,
     onDisconnected,
     onUnknownPairing,
+    onLost,
     onClose,
     WebSocket: WebSocketClass,
   }: {
@@ -42,6 +43,7 @@ export function openPageChannel(
     onWelcome(welcome: PageWelcome): void;
     onDisconnected(): void;
     onUnknownPairing(): void;
+    onLost?(): void;
     onClose?(): void;
   }
 ): PageChannel {
@@ -76,7 +78,7 @@ export function openPageChannel(
       const code = cause?.code;
       const known =
         code === DISCONNECTED_CLOSE_CODE || code === UNKNOWN_PAIRING_CLOSE_CODE;
-      if (!known && !onClose) return;
+      if (!known && !onClose) return onLost?.();
       // Closing here stops the client from reconnecting.
       void socket.close();
       if (code === DISCONNECTED_CLOSE_CODE) onDisconnected();

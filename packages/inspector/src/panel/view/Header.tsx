@@ -1,4 +1,4 @@
-import type { PointerEvent, Ref } from "react";
+import type { PointerEvent, ReactNode, Ref } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -26,10 +26,11 @@ const iconButton =
   "inline-grid size-7 place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50";
 
 /**
- * The panel's header: the ayme title, the theme switch, the layout menu and
- * collapse. The panel drags by it.
+ * The panel's header: the ayme title, the status after it, the theme
+ * switch, the layout menu and collapse. The panel drags by it.
  */
 export function Header({
+  status,
   layout,
   theme,
   onThemeChange,
@@ -38,6 +39,8 @@ export function Header({
   onPointerDown,
   collapseRef,
 }: {
+  /** What follows the title, such as the Connections pill. */
+  status?: ReactNode;
   layout: Layout;
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
@@ -69,6 +72,7 @@ export function Header({
       )}
       <AymeMark className="h-4.5 w-5.5 flex-none dark:fill-foreground" />
       <h2 className="text-sm font-semibold">ayme</h2>
+      {status}
       <span className="flex-1" />
       <ThemeSwitch theme={theme} onChange={onThemeChange} />
       <LayoutMenu layout={layout} onChange={onLayoutChange} />

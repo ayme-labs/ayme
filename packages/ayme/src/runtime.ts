@@ -1,4 +1,8 @@
 import { recordAgentImageRun } from "./agentImageRuns";
+import {
+  createAgentConnectionStatus,
+  setAgentConnectionStatus,
+} from "./agentConnectionStatus";
 import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { configurePageStateIgnore, getInteractionHistory } from "./pageState";
@@ -438,6 +442,9 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   let loading: Promise<typeof publication> | undefined;
   let retryingLoad: Promise<void> | undefined;
   const appProcessTools = createAppProcessTools();
+  const agentConnectionStatus = createAgentConnectionStatus(
+    Boolean(options.agentConnection) && !onServer()
+  );
   // One top-level Run at a time on this page, whoever its Caller.
   const takeTurn = createRunQueue();
 
@@ -775,9 +782,13 @@ export function createAyme(options: AymeOptions = {}): Ayme {
               });
               // A page client from before App Processes hands over none.
               appProcessTools.follow(connection.processTools);
+              agentConnectionStatus.follow(connection.status);
               signal.addEventListener(
                 "abort",
-                () => appProcessTools.follow(undefined),
+                () => {
+                  appProcessTools.follow(undefined);
+                  agentConnectionStatus.follow(undefined);
+                },
                 { once: true }
               );
               return connection;
@@ -838,6 +849,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
   }
 
   appProcessToolsBySession.set(ayme, appProcessTools.tools);
+  setAgentConnectionStatus(ayme, agentConnectionStatus.status);
   return ayme;
 }
 

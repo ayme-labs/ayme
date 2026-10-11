@@ -195,39 +195,30 @@ test("the header's menu and switches work by mouse inside the closed shadow root
   await expect(inspector.panel).toBeVisible();
 });
 
-test("the WebMCP status line is hidden while the tools are published", async ({
+test("with the tools published and no Agent Connection, the header says no agent and WebMCP is published", async ({
   inspector,
 }) => {
-  await expect(inspector.panel).toBeVisible();
+  const { connections } = inspector.header;
 
-  await expect(inspector.webMcpStatus.root).toHaveCount(0);
+  await expect(connections.pill).toHaveText("No agent");
+  await connections.open();
+  await expect(connections.agent.state).toHaveText("Off");
+  await expect(connections.webMCP.state).toHaveText("Published");
 });
 
-test("with WebMCP publishing off, the status line says so and how to turn it on", async ({
+test("with WebMCP publishing off, the Connections popover says so and offers the option that turns it on", async ({
   page,
 }) => {
   const { inspector } = await openFixture(page, "/unpublished.html");
+  const { connections } = inspector.header;
 
-  await expect(inspector.webMcpStatus.root).toContainText(
-    "WebMCP publishing is off"
+  await connections.open();
+
+  await expect(connections.webMCP.state).toHaveText("Off");
+  await expect(connections.webMCP.root).toContainText(
+    "webMCP: { enabled: true }"
   );
-  await expect(inspector.webMcpStatus.root).toContainText(
-    "Set webMCP: { enabled: true } where the app starts Ayme."
-  );
-});
-
-test("with WebMCP publishing off, the status line stays above every lens", async ({
-  page,
-}) => {
-  const { inspector } = await openFixture(page, "/unpublished.html");
-
-  for (const lens of ["Model", "Structure", "Tools"] as const) {
-    await inspector.navigator.showLens(lens);
-    await expect(inspector.webMcpStatus.root).toBeVisible();
-    const status = (await inspector.webMcpStatus.root.boundingBox())!;
-    const navigator = (await inspector.navigator.root.boundingBox())!;
-    expect(status.y + status.height).toBeLessThanOrEqual(navigator.y);
-  }
+  await expect(inspector.container).not.toContainText("can't call");
 });
 
 test.describe("on a React host with aggressive global CSS", () => {

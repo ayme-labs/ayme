@@ -73,5 +73,10 @@ export {
   subscribeToStartedAyme,
 } from "./runtime";
 export type { AppProcessTool, AppProcessTools } from "./runtime";
+export { getAgentConnectionStatus } from "./agentConnectionStatus";
+export type {
+  AgentConnectionStatus,
+  AgentConnectionStatusSource,
+} from "./agentConnectionStatus";
 export { installRuntimePageInstrumentation } from "./pageInstrumentation";
 export { isPlaywrightLiteLocator as isAymeLocator } from "@ayme-dev/playwright-lite/internal";
