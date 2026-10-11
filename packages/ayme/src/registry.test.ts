@@ -854,4 +854,87 @@ describe("live Page Object registry", () => {
     registration.dispose();
     pageStateResolutions.clear();
   });
+
+  it("lets an instance tool omit args only when its action needs no input", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    const element = { isConnected: true } as Element;
+    const archive = vi.fn(() => "archived");
+    const rename = vi.fn();
+    const item = {
+      root: brandedLocator({ count: async () => 1 }, element),
+      archive,
+      pin: vi.fn(),
+      rename,
+    };
+    pageStateResolutions.set("e2", { node: { ref: "e2", element } });
+    class ItemsPage {
+      readonly items = [item];
+    }
+
+    registry.registerCompiledPom(ItemsPage, {
+      className: "ItemsPage",
+      tools: [],
+      members: [
+        {
+          memberName: "items",
+          kind: "component",
+          access: "field",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      components: [
+        {
+          className: "Item",
+          members: [{ memberName: "root", kind: "locator", access: "field" }],
+          tools: [
+            action("archive"),
+            {
+              ...action("pin"),
+              parameters: [
+                { name: "top", optional: true, schema: { type: "boolean" } },
+              ],
+            },
+            {
+              ...action("rename"),
+              parameters: [
+                { name: "name", optional: false, schema: { type: "string" } },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const registration = registry.createPageRegistration(ItemsPage);
+
+    await vi.runOnlyPendingTimersAsync();
+    const tool = (name: string) => {
+      const found = registry
+        .listAvailablePomTools()
+        .find((candidate) => candidate.name === name);
+      if (!found) throw new Error(`Expected ${name}.`);
+      return found;
+    };
+    const archiveTool = tool("ItemsPage.items.archive");
+    const renameTool = tool("ItemsPage.items.rename");
+
+    expect(archiveTool.inputSchema.required).toEqual(["ref"]);
+    await expect(
+      archiveTool.execute({ ref: "e2" }, runContext())
+    ).resolves.toMatchObject({ result: "archived" });
+    expect(archive).toHaveBeenCalledOnce();
+
+    expect(tool("ItemsPage.items.pin").inputSchema.required).toEqual(["ref"]);
+
+    expect(renameTool.inputSchema.required).toEqual(["ref", "args"]);
+    await expect(
+      renameTool.execute({ ref: "e2" }, runContext())
+    ).rejects.toThrow(/args/);
+    expect(rename).not.toHaveBeenCalled();
+
+    registration.dispose();
+    pageStateResolutions.clear();
+  });
 });
