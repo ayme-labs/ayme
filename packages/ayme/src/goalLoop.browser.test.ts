@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
+import {
+  DecisionEndpointError,
+  type DecisionRequest,
+  type DecisionResponse,
+} from "./decisionWire";
 import { agentCursor } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
@@ -1169,16 +1173,39 @@ describe("Goal Loop goal in Chromium", () => {
 
   // --- Handover reason: decide_failed ---
 
-  it("returns decide_failed when the decision function throws", async () => {
-    const decide = failingDecisionFn(new Error("network error"));
-    const tool = await registerPom(decide);
+  it("advises a retry when the decision function throws something else", async () => {
+    const tool = await registerPom(
+      failingDecisionFn(new Error("network error"))
+    );
     const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
     expect(withoutChanges(result)).toEqual({
       reason: "decide_failed",
-      next: expect.stringContaining("network error"),
+      next: "The decision function failed: network error. Retry, or handle the goal without the Goal Loop.",
       history: [],
     });
   });
+
+  it.each([
+    ["not-mounted", 404, "Handle"],
+    ["malformed", undefined, "Handle"],
+    ["rejected", 401, "Handle"],
+    ["rejected", 502, "Retry, or handle"],
+  ] as const)(
+    "chooses the next step of a %s Decision Endpoint failure (%s) by its code",
+    async (code, status, advice) => {
+      const error = new DecisionEndpointError("The endpoint failed", {
+        code,
+        status,
+      });
+      const tool = await registerPom(failingDecisionFn(error));
+      const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
+      expect(withoutChanges(result)).toEqual({
+        reason: "decide_failed",
+        next: `The decision function failed: The endpoint failed. ${advice} the goal without the Goal Loop.`,
+        history: [],
+      });
+    }
+  );
 
   it("returns decide_failed when goal_met is not a finite number", async () => {
     const decide = scriptedDecisionFn([

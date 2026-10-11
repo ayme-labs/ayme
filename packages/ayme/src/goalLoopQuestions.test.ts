@@ -7,7 +7,7 @@ import {
   SyntheticAriaRefFactory,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
-import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
+import type { DecisionRequest, DecisionResponse } from "./decisionWire";
 import type { PageStateCapture } from "./pageState";
 import {
   NONE_OF_THESE_KEY,

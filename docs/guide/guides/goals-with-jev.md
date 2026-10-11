@@ -157,7 +157,7 @@ Each step sends the pruned page state, the goal and the step's question from the
 | `needs_value`       | The chosen operation needs values the loop cannot fill, from the page or the Goal Values. `needs` names the tool and its parameters. |
 | `action_failed`     | Two operations failed in a row.                                                                                                      |
 | `step_budget`       | `maxSteps` ran out before the goal was achieved.                                                                                     |
-| `decide_failed`     | The decision function failed: network, rejected or malformed.                                                                        |
+| `decide_failed`     | The decision function failed: network, no endpoint mounted, rejected or malformed. `next` advises a retry only when one can help.    |
 | `page_loading`      | The last step started a [full page load](page-state.md#full-page-loads) of the URL in `loading`; call `snapshot` once it has loaded. |
 
 `history` records each operation the loop ran: the tool in `operation`; in `chosen`, per parameter asked, the key of the option the model chose and its description exactly as offered, a choice to leave it unset included; `"ok"` or an error message in `result`; whether the page changed in `page_changed`; and `did`, a one-line label such as `click(button "Add item")`. A step that hands over before acting records nothing. The model is sent the same entries as its history.

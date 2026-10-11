@@ -68,4 +68,14 @@ const decide = decisionEndpoint("/api/decisions", {
 });
 ```
 
-`decisionEndpoint(url, options?)` returns the decision function for `goalLoop`. It posts each `DecisionRequest` as JSON to `url`, sends `headers` (a value, or a function it calls for each request), passes `credentials` to `fetch`, and throws `The Decision Endpoint <url> answered <status> <error text>` on a non-2xx response, with the status text in place of an empty body, and `The Decision Endpoint returned an invalid response.` on a body that is not a decision response. In the Goal Loop, either ends the run with the Handover reason `decide_failed`.
+`decisionEndpoint(url, options?)` returns the decision function for `goalLoop`. It posts each `DecisionRequest` as JSON to `url`, sends `headers` (a value, or a function it calls for each request), passes `credentials` to `fetch`, and throws a `DecisionEndpointError` when the call fails. Its `code` says why, so callers need not match the message:
+
+| `code`        | When                                                                                                                   | Message                                                      |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `not-mounted` | A `404` without an `{ "error" }` body: nothing serves the route, such as a dev server started without a model key.     | `No Decision Endpoint is mounted at <url>: it answered 404`  |
+| `rejected`    | Any other non-2xx: the handler, `authorize` or the provider refused the request, or the provider could not be reached. | `The Decision Endpoint <url> answered <status> <error text>` |
+| `malformed`   | A 2xx whose body is not a decision response.                                                                           | `The Decision Endpoint returned an invalid response.`        |
+
+`status` holds the HTTP status for `not-mounted` and `rejected`. The error text is the body's `error`, the raw body when it is not JSON, or the status text when the body is empty. A provider's own 404 reaches the browser with an `{ "error" }` body, so it is `rejected`, not `not-mounted`.
+
+In the Goal Loop, any of them ends the run with the Handover reason `decide_failed`. Its `next` advises a retry only for a `rejected` call with a 5xx status, and for errors other than `DecisionEndpointError`, such as a network failure.

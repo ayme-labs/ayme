@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { DecisionRequest, DecisionResponse } from "./decisionTypes";
+import type { DecisionRequest, DecisionResponse } from "./decisionWire";
 import { createPage } from "./browserPage";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { agentTools, operations } from "./publication.testSupport";
