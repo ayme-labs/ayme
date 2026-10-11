@@ -33,7 +33,9 @@
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.browser.config.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:crap": "vitest run --config vitest.fast.config.ts --coverage",
+    "test:mutation": "stryker run"
   },
   "dependencies": {
     "@mcp-b/webmcp-types": "^5.0.1"
@@ -49,9 +51,13 @@
   "devDependencies": {
     "@ayme-dev/ayme": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
+    "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@playwright/test": "^1.64.0",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@vitest/browser-playwright": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.9.1",
     "playwright": "^1.64.0",
     "tsdown": "^0.22.14",
