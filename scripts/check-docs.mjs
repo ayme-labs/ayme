@@ -5,6 +5,8 @@
  *
  * It fails when
  * - a relative link does not resolve to a file or directory,
+ * - a link's `#fragment` into a Markdown file names no heading in it, using
+ *   the anchors GitHub and the docs site give headings,
  * - a relative link in a page under `docs/guide/` leaves `docs/guide/`, since
  *   the docs site serves only that directory,
  * - a `github.com/ayme-labs/ayme/blob/main/...` or `tree/main/...` link does
@@ -121,6 +123,51 @@ function linkedPath(root, file, target) {
   return undefined;
 }
 
+/** The anchor GitHub and the docs site give a heading's text. */
+function slug(heading) {
+  return (
+    heading
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+      // Outside code spans, drop HTML tags and the underscores of `_emphasis_`.
+      .split(/(`+[^`]*`+)/)
+      .map((part, index) =>
+        index % 2
+          ? part
+          : part
+              .replace(/<[^>]*>/g, "")
+              .replace(/(?<![\p{L}\p{N}])_+|_+(?![\p{L}\p{N}])/gu, "")
+      )
+      .join("")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, "")
+      .replace(/ /g, "-")
+  );
+}
+
+/** The anchors of a Markdown file's ATX and setext headings, repeats suffixed `-1`, `-2` as GitHub does. */
+function anchors(raw) {
+  const lines = raw.split("\n");
+  const found = new Set();
+  const add = (text) => {
+    const base = slug(text);
+    let anchor = base;
+    for (let count = 1; found.has(anchor); count++) anchor = `${base}-${count}`;
+    found.add(anchor);
+  };
+  prose(raw)
+    .split("\n")
+    .forEach((line, index, proseLines) => {
+      if (/^ {0,3}#{1,6}(\s|$)/.test(line))
+        add(lines[index].replace(/^ {0,3}#{1,6}\s*|(\s+#+)?\s*$/g, ""));
+      else if (
+        line.trim() !== "" &&
+        /^ {0,3}(=+|-+)\s*$/.test(proseLines[index + 1] ?? "")
+      )
+        add(lines[index].trim());
+    });
+  return found;
+}
+
 /** Problems with the H1 and one-sentence description a guide page opens with. */
 function pageShape(lines) {
   let index = lines.findIndex((line) => line.trim() !== "");
@@ -151,6 +198,16 @@ export function checkDocs(root) {
     (file) => path.posix.basename(file) === "README.md" || pages.includes(file)
   );
   const indexed = new Set();
+  const anchorsOf = new Map();
+  const hasAnchor = (linked, fragment) => {
+    if (!anchorsOf.has(linked))
+      anchorsOf.set(linked, anchors(fs.readFileSync(linked, "utf8")));
+    try {
+      return anchorsOf.get(linked).has(decodeURIComponent(fragment));
+    } catch {
+      return false; // a malformed escape such as `%` names no heading
+    }
+  };
 
   for (const file of checked) {
     const text = prose(fs.readFileSync(path.join(root, file), "utf8"));
@@ -159,6 +216,15 @@ export function checkDocs(root) {
       const linked = linkedPath(root, file, target);
       if (linked !== undefined && !fs.existsSync(linked))
         report(file, line, `link does not resolve: ${target}`);
+      const fragment = /#(.+)$/.exec(target)?.[1];
+      const anchored = target.startsWith("#") ? path.join(root, file) : linked;
+      if (
+        fragment !== undefined &&
+        anchored?.endsWith(".md") &&
+        fs.existsSync(anchored) &&
+        !hasAnchor(anchored, fragment)
+      )
+        report(file, line, `link names no heading in its target: ${target}`);
       if (
         pages.includes(file) &&
         isRelative(target) &&

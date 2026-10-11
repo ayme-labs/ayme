@@ -21,7 +21,7 @@ function fixture(changes = {}) {
     "docs/guide/README.md": `# Guide\n\nEvery page, in sidebar order.\n\n- [A page](start/page.md)\n`,
     "docs/guide/start/page.md": `${PAGE}\nSee [the index](../README.md), [a section](#a-page) and [npm](https://www.npmjs.com/).\n`,
     "packages/lib/package.json": `{ "name": "lib" }`,
-    "packages/lib/README.md": `# lib\n\nSee [the guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/page.md), [the package](https://github.com/ayme-labs/ayme/tree/main/packages/lib) and [usage](#usage).\n\nIssue https://github.com/ayme-labs/ayme/issues/12 is fine.\n\n\`[not a link](gone.md) #12\` in code:\n\n\`\`\`sh\n#12 and [no link](gone.md)\n\`\`\`\n`,
+    "packages/lib/README.md": `# lib\n\nSee [the guide](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/page.md), [the package](https://github.com/ayme-labs/ayme/tree/main/packages/lib) and [usage](#usage).\n\nIssue https://github.com/ayme-labs/ayme/issues/12 is fine.\n\n\`[not a link](gone.md) #12\` in code:\n\n\`\`\`sh\n#12 and [no link](gone.md)\n# Not a heading\n\`\`\`\n\n## Usage\n`,
     "packages/internal/package.json": `{ "name": "internal", "private": true }`,
     "packages/internal/README.md": `# internal\n\nSee [the license](../../LICENSE) and #12.\n`,
     LICENSE: "license\n",
@@ -97,6 +97,59 @@ test("fails on a repository link that does not resolve", () => {
         "# lib\n\n[Gone](https://github.com/ayme-labs/ayme/blob/main/docs/gone.md)\n",
     },
     /^packages\/lib\/README\.md:3: link does not resolve: https:\/\/github\.com\/ayme-labs\/ayme\/blob\/main\/docs\/gone\.md$/
+  );
+});
+
+test("fails on a link to a heading the page does not have", () => {
+  assertOneProblem(
+    { "docs/guide/start/page.md": `${PAGE}\n[Gone](#gone)\n` },
+    /^docs\/guide\/start\/page\.md:5: link names no heading in its target: #gone$/
+  );
+});
+
+test("fails on a link to a heading another page does not have", () => {
+  assertOneProblem(
+    {
+      "docs/guide/README.md": `# Guide\n\nEvery page, in sidebar order.\n\n- [A page](start/page.md#gone)\n`,
+    },
+    /^docs\/guide\/README\.md:5: link names no heading in its target: start\/page\.md#gone$/
+  );
+});
+
+test("fails on a repository link to a heading the page does not have", () => {
+  assertOneProblem(
+    {
+      "packages/lib/README.md":
+        "# lib\n\n[Gone](https://github.com/ayme-labs/ayme/blob/main/docs/guide/start/page.md#gone)\n",
+    },
+    /^packages\/lib\/README\.md:3: link names no heading in its target: https:\/\/github\.com\/ayme-labs\/ayme\/blob\/main\/docs\/guide\/start\/page\.md#gone$/
+  );
+});
+
+test("fails on a link to a heading that is only inside a code block", () => {
+  assertOneProblem(
+    {
+      "docs/guide/start/page.md": `${PAGE}\n[Code](#not-a-heading)\n\n\`\`\`sh\n# Not a heading\n\`\`\`\n`,
+    },
+    /^docs\/guide\/start\/page\.md:5: link names no heading in its target: #not-a-heading$/
+  );
+});
+
+test("names headings as GitHub does", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "docs/guide/start/page.md": `${PAGE}\n## \`createAyme()\` and [links](../README.md)!\n\n## _Emphasis_ and snake_case\n\n## \`Ref<T>\` and \`__init__\`\n\n## Usage\n\n## Usage-1\n\n## Usage\n\nSetext\n------\n\nSee [it](#createayme-and-links), [this](#emphasis-and-snake_case), [code](#reft-and-__init__), [repeat](#usage-2), [setext](#setext) and [Unicode](#déjà-vu).\n\n### Déjà vu ###\n`,
+      })
+    ),
+    []
+  );
+});
+
+test("fails on a fragment with a malformed escape instead of throwing", () => {
+  assertOneProblem(
+    { "docs/guide/start/page.md": `${PAGE}\n[Bad](#bad%)\n` },
+    /^docs\/guide\/start\/page\.md:5: link names no heading in its target: #bad%$/
   );
 });
 
