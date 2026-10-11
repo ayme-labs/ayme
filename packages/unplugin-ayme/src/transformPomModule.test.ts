@@ -56,6 +56,18 @@ describe("with a Program cache", () => {
     expect(createPomProgram).toHaveBeenCalledTimes(2);
   });
 
+  it("drops the cached Program when a transform fails", () => {
+    const programs: PomPrograms = new Map();
+    const transform = createPomTransform({}, undefined, programs);
+
+    expect(transform(...fixture("annotatedChildrenPom"))).not.toBeNull();
+    expect(programs.size).toBe(1);
+    expect(() =>
+      transform(...fixture("unsupportedShapes/callablePom"))
+    ).toThrow("Unsupported Page Object Tool input type");
+    expect(programs.size).toBe(0);
+  });
+
   it("compiles a module outside its project's files uncached", () => {
     const programs: PomPrograms = new Map();
     const transform = createPomTransform(

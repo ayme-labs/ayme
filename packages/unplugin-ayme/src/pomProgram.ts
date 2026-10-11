@@ -120,7 +120,7 @@ function projectConfigPath(fileName: string, options: PomCompilerOptions) {
 function projectConfigFor(
   fileName: string,
   options: PomCompilerOptions,
-  onDependency?: (fileName: string) => void
+  onConfigFile?: (fileName: string) => void
 ): ts.ParsedCommandLine {
   const configPath = projectConfigPath(fileName, options);
   if (!configPath)
@@ -128,7 +128,7 @@ function projectConfigFor(
       `Could not find a tsconfig.json for POM source ${fileName}.`
     );
 
-  let config = parseConfig(configPath, onDependency);
+  let config = parseConfig(configPath, onConfigFile);
   if (config.fileNames.length === 0) {
     // A solution-style tsconfig (`"files": []` plus `references`, as
     // create-vite writes) has no compiler options of its own. Like `tsc -b`
@@ -136,7 +136,7 @@ function projectConfigFor(
     config =
       config.projectReferences
         ?.map((reference) =>
-          parseConfig(ts.resolveProjectReferencePath(reference), onDependency)
+          parseConfig(ts.resolveProjectReferencePath(reference), onConfigFile)
         )
         .find((referenced) =>
           referenced.fileNames.some((name) => path.resolve(name) === fileName)
@@ -154,18 +154,18 @@ function projectConfigFor(
 
 function parseConfig(
   configPath: string,
-  onDependency?: (fileName: string) => void
+  onConfigFile?: (fileName: string) => void
 ) {
-  onDependency?.(path.resolve(configPath));
+  onConfigFile?.(path.resolve(configPath));
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error) throw configError(configPath, configFile.error);
 
-  const parseHost: ts.ParseConfigHost = onDependency
+  const parseHost: ts.ParseConfigHost = onConfigFile
     ? {
         ...ts.sys,
         readFile(fileName) {
           const contents = ts.sys.readFile(fileName);
-          if (contents !== undefined) onDependency(path.resolve(fileName));
+          if (contents !== undefined) onConfigFile(path.resolve(fileName));
           return contents;
         },
       }

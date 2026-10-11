@@ -55,11 +55,20 @@ export function createPomTransform(
     reportDependencies?.(dependencies);
 
     const program = pomProgramFor(fileName, options, programs);
-    const manifests = derivePomManifestsFromProgram(
-      fileName,
-      program,
-      onSkipped && ((methods) => onSkipped(fileName, methods))
-    );
+    let manifests;
+    try {
+      manifests = derivePomManifestsFromProgram(
+        fileName,
+        program,
+        onSkipped && ((methods) => onSkipped(fileName, methods))
+      );
+    } catch (error) {
+      // A bundler may watch this module's dependencies only after a transform
+      // succeeds, so a retry must not reuse the Program that read the broken
+      // input.
+      programs?.clear();
+      throw error;
+    }
     if (manifests.length === 0) return null;
 
     const rewrittenCode = rewritePomImports(code, fileName, program);
