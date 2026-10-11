@@ -1,3 +1,7 @@
+import path from "node:path";
+
+import type ts from "typescript";
+
 import {
   derivePomManifestsFromProgram,
   type PomCompilerOptions,
@@ -8,6 +12,7 @@ import {
   createPomProgram,
   importsPomModule,
   pomProgramDependencies,
+  pomProjectConfig,
 } from "./pomProgram";
 import { rewritePomImports } from "./rewritePomImports";
 
@@ -19,10 +24,20 @@ const REGISTRATION_MODULE = "@ayme-dev/ayme/internal";
  */
 export const INJECTED_IMPORTS = [REGISTRATION_MODULE];
 
-/** The source transform shared by Vite and the experimental Turbopack loader. */
+/**
+ * Page Object compile Programs by tsconfig path. The bundler adapter that owns
+ * it clears it when a build ends or a watched file changes (ADR-0036).
+ */
+export type PomPrograms = Map<string, ts.Program>;
+
+/**
+ * The source transform shared by Vite, Angular and the experimental Turbopack
+ * loader. With `programs`, transforms of one tsconfig project share a Program.
+ */
 export function createPomTransform(
   options: PomCompilerOptions = {},
-  onSkipped?: (fileName: string, methods: SkippedPomMethod[]) => void
+  onSkipped?: (fileName: string, methods: SkippedPomMethod[]) => void,
+  programs?: PomPrograms
 ) {
   return (
     code: string,
@@ -39,15 +54,24 @@ export function createPomTransform(
     const dependencies = pomProgramDependencies(fileName, options);
     reportDependencies?.(dependencies);
 
-    const program = createPomProgram(fileName, options);
-    const manifests = derivePomManifestsFromProgram(
-      fileName,
-      program,
-      onSkipped && ((methods) => onSkipped(fileName, methods))
-    );
+    const program = pomProgramFor(fileName, options, programs);
+    let manifests;
+    try {
+      manifests = derivePomManifestsFromProgram(
+        fileName,
+        program,
+        onSkipped && ((methods) => onSkipped(fileName, methods))
+      );
+    } catch (error) {
+      // A bundler may watch this module's dependencies only after a transform
+      // succeeds, so a retry must not reuse the Program that read the broken
+      // input.
+      programs?.clear();
+      throw error;
+    }
     if (manifests.length === 0) return null;
 
-    const rewrittenCode = rewritePomImports(code, fileName, options, program);
+    const rewrittenCode = rewritePomImports(code, fileName, program);
     const registrations = manifests
       .map(
         (manifest) =>
@@ -63,6 +87,28 @@ export function createPomTransform(
   };
 }
 
+function pomProgramFor(
+  fileName: string,
+  options: PomCompilerOptions,
+  programs: PomPrograms | undefined
+) {
+  if (!programs) return createPomProgram(fileName, options);
+  const config = pomProjectConfig(fileName, options);
+  const absoluteFileName = path.resolve(fileName);
+  // A module outside its project's files would change the root files of the
+  // project's cached Program, so it gets a Program of its own.
+  if (!config.fileNames.some((name) => path.resolve(name) === absoluteFileName))
+    return createPomProgram(fileName, options, config);
+  const configPath = path.resolve(config.options.configFilePath as string);
+  let program = programs.get(configPath);
+  if (!program)
+    programs.set(
+      configPath,
+      (program = createPomProgram(fileName, options, config))
+    );
+  return program;
+}
+
 /**
  * A module may declare a Page Object Model when it carries `@ayme`, or when it
  * extends something and imports, directly or transitively, a module that does.
@@ -76,7 +122,7 @@ function isPomCandidate(
   if (carriesPomMarker(code)) return true;
   // ponytail: stateless per-module gate. Ceiling: every false positive (a
   // module with `extends` that imports a decorated module but declares no Page
-  // Object Model) costs one Program build. Upgrade: a Program cached across
-  // transforms, if a large app makes that matter.
+  // Object Model) costs one Program build where no build caches Programs, as
+  // in the Turbopack loader.
   return code.includes("extends") && importsPomModule(fileName, options);
 }

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { createPomProgram } from "../../pomProgram";
 import { rewritePomImports } from "..";
 
 function rewrittenImport(importDeclaration: string) {
@@ -12,7 +13,8 @@ function rewrittenImport(importDeclaration: string) {
   );
   return rewritePomImports(
     `${importDeclaration}\nexport const value = 1;\n`,
-    fileName
+    fileName,
+    createPomProgram(fileName)
   );
 }
 

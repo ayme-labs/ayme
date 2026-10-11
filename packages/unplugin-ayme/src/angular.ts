@@ -3,7 +3,7 @@ import path from "node:path";
 
 import type { Plugin } from "esbuild";
 
-import { createPomTransform } from "./transformPomModule";
+import { createPomTransform, type PomPrograms } from "./transformPomModule";
 import { transpilePomModule } from "./transpilePomModule";
 
 export type AymeAngularOptions = {
@@ -40,15 +40,25 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
       // Server bundles keep Angular's emit: SSR never constructs Page Objects.
       if (build.initialOptions.platform === "node") return;
       const root = build.initialOptions.absWorkingDir ?? process.cwd();
-      const transformPom = createPomTransform({
-        tsconfigPath:
-          options.tsconfigPath && path.resolve(root, options.tsconfigPath),
-      });
+      // One Program per tsconfig project and build (ADR-0036).
+      const programs: PomPrograms = new Map();
+      const transformPom = createPomTransform(
+        {
+          tsconfigPath:
+            options.tsconfigPath && path.resolve(root, options.tsconfigPath),
+        },
+        undefined,
+        programs
+      );
       // One compilation per module and build; a rebuild starts afresh so an
       // edited dependency reaches the manifest.
       let compiled = new Map<string, Promise<CompiledPom | null>>();
       build.onStart(() => {
         compiled = new Map();
+        programs.clear();
+      });
+      build.onEnd(() => {
+        programs.clear();
       });
 
       const compile = async (fileName: string) => {

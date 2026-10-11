@@ -15,7 +15,7 @@ vi.mock("./pomProgram", async (importOriginal) => {
   return { ...actual, createPomProgram };
 });
 
-import { createPomTransform } from "./transformPomModule";
+import { createPomTransform, type PomPrograms } from "./transformPomModule";
 
 it("builds one TypeScript program per POM transform", () => {
   const fixturePath = fileURLToPath(
@@ -29,6 +29,66 @@ it("builds one TypeScript program per POM transform", () => {
 
   expect(transform(source, fixturePath)).not.toBeNull();
   expect(createPomProgram).toHaveBeenCalledTimes(2);
+});
+
+describe("with a Program cache", () => {
+  const fixture = (name: string) => {
+    const fixturePath = fileURLToPath(
+      new URL(`./fixtures/${name}.ts`, import.meta.url)
+    );
+    return [readFileSync(fixturePath, "utf8"), fixturePath] as const;
+  };
+
+  it("builds one Program for the modules of one tsconfig project until it is cleared", () => {
+    const programs: PomPrograms = new Map();
+    const transform = createPomTransform({}, undefined, programs);
+    createPomProgram.mockClear();
+
+    expect(transform(...fixture("annotatedChildrenPom"))).not.toBeNull();
+    expect(transform(...fixture("twoPagesPom"))).not.toBeNull();
+    expect(createPomProgram).toHaveBeenCalledTimes(1);
+    expect([...programs.keys()]).toEqual([
+      fileURLToPath(new URL("./fixtures/tsconfig.json", import.meta.url)),
+    ]);
+
+    programs.clear();
+    expect(transform(...fixture("twoPagesPom"))).not.toBeNull();
+    expect(createPomProgram).toHaveBeenCalledTimes(2);
+  });
+
+  it("drops the cached Program when a transform fails", () => {
+    const programs: PomPrograms = new Map();
+    const transform = createPomTransform({}, undefined, programs);
+
+    expect(transform(...fixture("annotatedChildrenPom"))).not.toBeNull();
+    expect(programs.size).toBe(1);
+    expect(() =>
+      transform(...fixture("unsupportedShapes/callablePom"))
+    ).toThrow("Unsupported Page Object Tool input type");
+    expect(programs.size).toBe(0);
+  });
+
+  it("compiles a module outside its project's files uncached", () => {
+    const programs: PomPrograms = new Map();
+    const transform = createPomTransform(
+      {
+        tsconfigPath: fileURLToPath(
+          new URL(
+            "./__tests__/fixtures/solutionStyle/tsconfig.app.json",
+            import.meta.url
+          )
+        ),
+      },
+      undefined,
+      programs
+    );
+    createPomProgram.mockClear();
+
+    expect(transform(...fixture("annotatedChildrenPom"))).not.toBeNull();
+    expect(transform(...fixture("annotatedChildrenPom"))).not.toBeNull();
+    expect(createPomProgram).toHaveBeenCalledTimes(2);
+    expect(programs.size).toBe(0);
+  });
 });
 
 it("registers an undecorated subclass of a decorated base", () => {

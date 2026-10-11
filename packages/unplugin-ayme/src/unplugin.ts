@@ -10,7 +10,11 @@ import playwrightRange from "../../../playwright-range.json";
 
 import type { SkippedPomMethod } from "./derivePomManifests";
 import type { AymeOptions, AymePlaywrightOptions, AymeReport } from "./options";
-import { createPomTransform, INJECTED_IMPORTS } from "./transformPomModule";
+import {
+  createPomTransform,
+  INJECTED_IMPORTS,
+  type PomPrograms,
+} from "./transformPomModule";
 
 const PLAYWRIGHT_TEST_PACKAGE = "@playwright/test";
 const DEFAULT_TEST_ID_ATTRIBUTE = "data-testid";
@@ -63,6 +67,13 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   // The latest skipped methods of each transformed module, by file.
   const skipped = new Map<string, SkippedPomMethod[]>();
   let command: string | undefined;
+  // One Program per tsconfig project for the length of a build, or in a dev
+  // server until a watched file changes (ADR-0036).
+  // ponytail: a dev server drops every Program on any change. Ceiling: a
+  // dependency installed mid-session is not seen until the dev server
+  // restarts, because the reported dependencies skip `node_modules` and `lib`.
+  // Upgrade: also drop the Programs when a package manifest or lockfile changes.
+  const programs: PomPrograms = new Map();
   const transformPom = createPomTransform(
     options,
     report === "none"
@@ -70,7 +81,8 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
       : (fileName, methods) => {
           // A dev server never reports.
           if (command !== "serve") skipped.set(fileName, methods);
-        }
+        },
+    programs
   );
   // Vite soft-invalidates static importers of a changed file and keeps their
   // previous transform result, so a Page Object compiled from a changed base
@@ -79,8 +91,8 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   // in that environment's module graph when it changes.
   // ponytail: a dependency is every tsconfig input plus all transitive imports
   // (pomProgramDependencies), so editing an unrelated shared import recompiles
-  // every Page Object module that reaches it, one TypeScript Program each.
-  // Upgrade: record only the manifest-relevant inputs, or cache the Program.
+  // every Page Object module that reaches it.
+  // Upgrade: record only the manifest-relevant inputs.
   // Keyed by the Vite environment object (`this.environment`).
   const viteDependants = new WeakMap<object, Map<string, Set<string>>>();
 
@@ -88,6 +100,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
     name: "ayme",
     enforce: "pre",
     buildEnd() {
+      programs.clear();
       // A dev server ends its "build" when it closes.
       if (command === "serve") return;
       const lines = reportLines(skipped, report);
@@ -126,6 +139,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
       // Vite otherwise calls watchChange for the client environment only.
       perEnvironmentWatchChangeDuringDev: true,
       watchChange(file) {
+        programs.clear();
         const environment = this.environment as
           typeof this.environment | undefined;
         if (environment?.mode !== "dev") return;

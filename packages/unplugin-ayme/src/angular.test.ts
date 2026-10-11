@@ -3,8 +3,18 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { build, type Plugin } from "esbuild";
-import { expect, it } from "vitest";
+import { build, context, type Plugin } from "esbuild";
+import { expect, it, vi } from "vitest";
+
+const { createPomProgram } = vi.hoisted(() => ({
+  createPomProgram: vi.fn(),
+}));
+
+vi.mock("./pomProgram", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./pomProgram")>();
+  createPomProgram.mockImplementation(actual.createPomProgram);
+  return { ...actual, createPomProgram };
+});
 
 import aymeAngularPlugin, { type AymeAngularOptions } from "./angular";
 
@@ -98,6 +108,33 @@ it("claims only Page Object Model modules, relative or aliased, and leaves the r
     "angular:counter.component.ts",
     "angular:main.ts",
   ]);
+}, 30_000);
+
+it("builds one Program per tsconfig project and build, and a rebuild starts afresh", async () => {
+  const builds = await context({
+    absWorkingDir: fixtures,
+    entryPoints: ["main.ts"],
+    bundle: true,
+    write: false,
+    format: "esm",
+    external: ["@ayme-dev/ayme", "@ayme-dev/ayme/internal"],
+    plugins: [
+      angularCompiler,
+      aymeAngularPlugin({ tsconfigPath: "tsconfig.json" }),
+    ],
+    logLevel: "silent",
+  });
+  try {
+    createPomProgram.mockClear();
+    // Three Page Object Model modules of one project.
+    await builds.rebuild();
+    expect(createPomProgram).toHaveBeenCalledTimes(1);
+
+    await builds.rebuild();
+    expect(createPomProgram).toHaveBeenCalledTimes(2);
+  } finally {
+    await builds.dispose();
+  }
 }, 30_000);
 
 it("leaves the server bundle to Angular", async () => {

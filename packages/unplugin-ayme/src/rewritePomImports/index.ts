@@ -2,8 +2,6 @@ import path from "node:path";
 
 import ts from "typescript";
 
-import { createPomProgram, type PomCompilerOptions } from "../pomProgram";
-
 type Replacement = {
   start: number;
   end: number;
@@ -23,8 +21,7 @@ type ResolvedImport = {
 export function rewritePomImports(
   code: string,
   fileName: string,
-  options: PomCompilerOptions = {},
-  existingProgram?: ts.Program
+  program: ts.Program
 ) {
   const sourceFile = ts.createSourceFile(
     fileName,
@@ -39,11 +36,6 @@ export function rewritePomImports(
   );
   if (candidates.length === 0) return code;
 
-  const program =
-    existingProgram ??
-    createPomProgram(path.resolve(fileName), options, {
-      fallbackToUnconfigured: true,
-    });
   const checker = program.getTypeChecker();
   const replacements = candidates.flatMap((declaration) => {
     const replacement = replacementFor(
