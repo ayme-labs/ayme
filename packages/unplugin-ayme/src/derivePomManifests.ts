@@ -86,6 +86,7 @@ export function derivePomManifestsFromProgram(
       const { manifest, references } = classManifest(checker, declaration);
       return { manifest, components: reachableComponents(checker, references) };
     });
+    rejectSameNamedClasses(declaration, components.keys());
     const { tools, ...rest } = manifest;
     // `components` before `tools`, as the manifest has always listed them.
     manifests.push({ ...rest, components: [...components.values()], tools });
@@ -274,6 +275,32 @@ function reachableComponents(
   };
   visit(references);
   return components;
+}
+
+/**
+ * The registry tells a Page Object's classes apart by name, so two different
+ * classes with one name would share a manifest, and one member would get the
+ * other class's tools.
+ */
+function rejectSameNamedClasses(
+  page: ts.ClassDeclaration,
+  components: Iterable<ts.ClassDeclaration>
+) {
+  const pageName = page.name!.text;
+  const byName = new Map([[pageName, page]]);
+  for (const declaration of components) {
+    const name = declaration.name!.text;
+    const other = byName.get(name);
+    if (!other) byName.set(name, declaration);
+    else if (other !== declaration)
+      throw new Error(
+        `Page Object "${pageName}" reaches two different classes named "${name}", declared in ${
+          other.getSourceFile().fileName
+        } and ${
+          declaration.getSourceFile().fileName
+        }. Rename one of them: Ayme tells the classes of a Page Object apart by name.`
+      );
+  }
 }
 
 function classMembers(

@@ -357,6 +357,52 @@ describe("derivePomManifests", () => {
     );
   });
 
+  describe("two different classes with one name", () => {
+    const fixture = (name: string) =>
+      path.resolve(`src/fixtures/sameNamedChildren/${name}.ts`);
+    const clash = (page: string, first: string, second: string) =>
+      `Page Object "${page}" reaches two different classes named "Row", declared in ${fixture(
+        first
+      )} and ${fixture(second)}. Rename one of them`;
+
+    it("rejects them as Children of one Page Object", () => {
+      expect(() => derivePomManifests(fixture("page"))).toThrow(
+        clash("ListsPage", "listA", "listB")
+      );
+    });
+
+    it("rejects them as Children of Children", () => {
+      expect(() => derivePomManifests(fixture("nestedPage"))).toThrow(
+        clash("NestedListsPage", "listA", "listB")
+      );
+    });
+
+    it("rejects them as a Child and an action's return POM", () => {
+      expect(() => derivePomManifests(fixture("returnPage"))).toThrow(
+        clash("ReturningListsPage", "listA", "listB")
+      );
+    });
+
+    it("rejects a Child named like its Page Object", () => {
+      expect(() => derivePomManifests(fixture("rowPage"))).toThrow(
+        clash("Row", "rowPage", "listA")
+      );
+    });
+
+    it("derives one component for one class behind several members", () => {
+      const [manifest] = derivePomManifests(fixture("sameClassPage"));
+
+      expect(
+        manifest?.components.map((component) => component.className)
+      ).toEqual(["Row"]);
+      expect(manifest?.members).toMatchObject([
+        { memberName: "first", componentClassName: "Row" },
+        { memberName: "second", componentClassName: "Row" },
+        { memberName: "rows", componentClassName: "Row", collection: true },
+      ]);
+    });
+  });
+
   it("captures class descriptions and Promise-union return POMs", () => {
     const manifest = manifestFor("returningPom");
     if (!manifest) throw new Error("The POM manifest was not derived.");
