@@ -193,14 +193,14 @@ export type AymeEvidence = {
   pairedAt: string;
   /** From opening the start page to the pairing. */
   pairingMs: number;
-  /** The page's tool names, as the agent sees them without the server prefix. */
+  /** The page's tool names as WebMCP publishes them: the agent's, without the server prefix, but `screenshot`. */
   tools: string[];
   goalToolPublished: boolean;
 };
 
 type Page = ReturnType<BrowserContext["pages"]>[number];
 
-/** The page's current tool names; what it publishes through WebMCP is the list it reports to the server. */
+/** The page's current tool names as WebMCP publishes them: the list it reports to the server, but `screenshot`. */
 function publishedToolNames(page: Page): Promise<string[]> {
   return page.evaluate(async () => {
     const modelContext = (
