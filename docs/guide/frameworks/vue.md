@@ -30,6 +30,7 @@ Mark your Page Object Models as [Page Object Models](../guides/page-object-model
 Wrap the app in `AymeProvider`, with the Inspector and the Agent Connection in development:
 
 ```vue
+<!-- src/Root.vue -->
 <script setup lang="ts">
 import { AymeProvider } from "@ayme-dev/vue";
 import App from "./App.vue";
@@ -40,6 +41,15 @@ const dev = import.meta.env.DEV;
 <template>
   <AymeProvider :inspector="dev" :agentConnection="dev"><App /></AymeProvider>
 </template>
+```
+
+Then mount that component instead of `App` in `src/main.ts`:
+
+```ts
+// src/main.ts
+import Root from "./Root.vue";
+
+createApp(Root).mount("#app");
 ```
 
 Or start it with the standalone composable in the root component's setup, as the [Vue example](https://github.com/ayme-labs/ayme/blob/main/apps/example-vue/README.md) does:

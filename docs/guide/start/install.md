@@ -18,7 +18,7 @@ Which packages Ayme publishes, what each one owns, and which versions of each fr
 
 `@ayme-dev/ayme` bundles what it needs from Ayme's internal packages and from playwright-lite, so you never install those. `@playwright/test` is not an Ayme package; install it as a dev dependency for the `Page` and `Locator` types. Keep all Ayme packages on the same version, including the version you register Ayme's MCP server with.
 
-Each [framework page](../README.md#frameworks) has the install command for its framework, and the quickstarts start with it.
+Each [framework page](../README.md#frameworks) has the install command for its framework, and the quickstarts start with it: [Vue](quickstart-vue.md), [React](quickstart-react.md), [Svelte](quickstart-svelte.md) and [Angular](quickstart-angular.md).
 
 ## Supported versions
 

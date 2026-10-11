@@ -22,7 +22,7 @@ export default defineConfig({
 });
 ```
 
-Enable decorators in the tsconfig that covers your Page Object Models:
+Enable decorators in the tsconfig that covers your Page Object Models, `tsconfig.app.json` in Vite's templates:
 
 ```json
 { "compilerOptions": { "experimentalDecorators": true } }
