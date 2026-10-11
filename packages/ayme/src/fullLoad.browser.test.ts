@@ -26,12 +26,6 @@ registerCompiledPom(Leaver, {
       methodName: "leave",
       toolName: "Leaver.leave",
       description: "Leave the page.",
-      inputSchema: {
-        type: "object",
-        properties: {},
-        required: [],
-        additionalProperties: false,
-      },
       parameters: [],
     },
   ],

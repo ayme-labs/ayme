@@ -25,12 +25,6 @@ registerCompiledPom(TodoPage, {
       methodName: "addTodo",
       toolName: "TodoPage.addTodo",
       description: "Add a todo with the given title.",
-      inputSchema: {
-        type: "object",
-        properties: { title: { type: "string" } },
-        required: ["title"],
-        additionalProperties: false,
-      },
       parameters: [
         { name: "title", optional: false, schema: { type: "string" } },
       ],

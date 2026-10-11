@@ -25,6 +25,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
+    inputSchemaFor,
     renderActionParameters,
     renderSchema,
     toolInputViolations,
@@ -33,6 +34,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   return {
     pageStateNodeEntry,
     subscribeToAgentImageRuns: () => () => {},
+    inputSchemaFor,
     renderActionParameters,
     renderSchema,
     toolInputViolations,
@@ -92,7 +94,6 @@ function editor(id: string, ...tools: RegisteredPomTool[]): RegisteredPom {
         methodName: tool.methodName,
         toolName: tool.name,
         description: tool.description,
-        inputSchema: tool.inputSchema,
         parameters: tool.parameters,
       })),
     },

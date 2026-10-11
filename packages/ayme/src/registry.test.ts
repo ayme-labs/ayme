@@ -86,12 +86,6 @@ const action = (methodName: string) => ({
   methodName,
   toolName: methodName,
   description: methodName,
-  inputSchema: {
-    type: "object" as const,
-    properties: {},
-    required: [],
-    additionalProperties: false,
-  },
   parameters: [],
   returnPoms: [],
 });

@@ -62,7 +62,6 @@ registerCompiledPom(Model, {
       methodName: "ping",
       toolName: "Model.ping",
       description: "Ping.",
-      inputSchema: { type: "object", properties: {} },
       parameters: [],
     },
   ],

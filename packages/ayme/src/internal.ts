@@ -17,6 +17,19 @@ export {
   getPomDefinitionText,
 } from "./pageContext";
 export { getPomDefinitions } from "./pomDefinitions";
+// The compiled Page Object manifest the build plugin writes and the runtime
+// reads; both ship together, so it is no public contract.
+export type {
+  PomComponentManifest,
+  PomComponentMemberManifest,
+  PomLocatorMemberManifest,
+  PomManifest,
+  PomMemberAccess,
+  PomMemberManifest,
+  ToolManifest,
+  ToolParameter,
+} from "./contracts";
+export { inputSchemaFor } from "./actionTool";
 // The definition text's own rendering, so the Inspector shows an action's
 // signature and argument types the way agents read them.
 export {

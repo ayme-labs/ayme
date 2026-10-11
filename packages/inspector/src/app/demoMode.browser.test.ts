@@ -30,13 +30,6 @@ class Toolbar {
   }
 }
 
-const noInput = {
-  type: "object",
-  properties: {},
-  required: [],
-  additionalProperties: false,
-} as const;
-
 const manifest: Parameters<typeof registerCompiledPom>[1] = {
   className: "Toolbar",
   components: [],
@@ -45,7 +38,6 @@ const manifest: Parameters<typeof registerCompiledPom>[1] = {
     methodName,
     toolName: `Toolbar.${methodName}`,
     description: `${methodName}.`,
-    inputSchema: noInput,
     parameters: [],
   })),
 };

@@ -21,12 +21,6 @@ registerCompiledPom(AppPage, {
       methodName: "noop",
       toolName: "AppPage.noop",
       description: "Do nothing.",
-      inputSchema: {
-        type: "object",
-        properties: {},
-        required: [],
-        additionalProperties: false,
-      },
       parameters: [],
     },
   ],

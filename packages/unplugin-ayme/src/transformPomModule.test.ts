@@ -133,7 +133,9 @@ describe("a solution-style tsconfig", () => {
   it("compiles the Page Object Model with the referenced project that includes it", () => {
     const result = createPomTransform()(readFileSync(pomPath, "utf8"), pomPath);
 
-    expect(result?.code).toContain('"kind":{"type":"string","enum":["a","b"]}');
+    expect(result?.code).toContain(
+      '"name":"kind","optional":false,"schema":{"type":"string","enum":["a","b"]}'
+    );
     expect(result?.dependencies).toEqual(
       expect.arrayContaining([
         join(project, "tsconfig.json"),

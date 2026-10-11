@@ -45,12 +45,6 @@ const addItem: ToolManifest = {
   methodName: "addItem",
   toolName: "ListPage.addItem",
   description: "Add an item to the list.",
-  inputSchema: {
-    type: "object",
-    properties: { text: { type: "string" } },
-    required: ["text"],
-    additionalProperties: false,
-  },
   parameters: [{ name: "text", optional: false, schema: { type: "string" } }],
 };
 

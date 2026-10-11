@@ -65,12 +65,6 @@ const manifest: PomManifest = {
       methodName: "announce",
       toolName: "App.announce",
       description: "Announce something.",
-      inputSchema: {
-        type: "object",
-        properties: {},
-        required: [],
-        additionalProperties: false,
-      },
       parameters: [],
     },
   ],

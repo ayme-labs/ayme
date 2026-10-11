@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type {
+  JsonSchema,
   PomDefinition,
-  PomManifest,
   PomMemberObservation,
   RegisteredPomTool,
 } from "@ayme-dev/ayme";
-import type { RegisteredPom } from "@ayme-dev/ayme/internal";
+import type { PomManifest, RegisteredPom } from "@ayme-dev/ayme/internal";
 
 import {
   buildPageModel,
@@ -19,11 +19,18 @@ import {
 // registration of a to-do page as the runtime reports it. A page with two
 // items, and an archive dialog that isn't open.
 
-/** A stand-in for the definition text's rendering, enough for these schemas. */
-const actionSignature: Signature = (schema) =>
-  `(${Object.entries(schema.properties ?? {})
+/** A stand-in for the definition text's rendering, enough for these actions. */
+const actionSignature: Signature = (input) =>
+  `(${(isSchema(input)
+    ? Object.entries(input.properties ?? {})
+    : input.map(({ name, schema }) => [name, schema] as const)
+  )
     .map(([name, property]) => `${name}: ${String(property.type)}`)
     .join(", ")})`;
+
+function isSchema(input: Parameters<Signature>[0]): input is JsonSchema {
+  return !Array.isArray(input);
+}
 
 const noArguments = {
   type: "object" as const,
@@ -69,8 +76,6 @@ const manifest: PomManifest = {
           methodName: "archive",
           toolName: "archive",
           description: "Archive this item.",
-          authoredDescription: "Archive this item.",
-          inputSchema: noArguments,
           parameters: [],
         },
       ],
@@ -85,8 +90,6 @@ const manifest: PomManifest = {
         {
           methodName: "confirm",
           toolName: "confirm",
-          description: "Confirm the archive.",
-          inputSchema: noArguments,
           parameters: [],
         },
       ],
@@ -97,8 +100,6 @@ const manifest: PomManifest = {
       methodName: "addItem",
       toolName: "TodoPage.addItem",
       description: "Add an item.",
-      authoredDescription: "Add an item.",
-      inputSchema: textArgument,
       parameters: [
         { name: "text", optional: false, schema: { type: "string" } },
       ],
@@ -366,7 +367,6 @@ describe("the page model", () => {
               methodName: "remove",
               toolName: "remove",
               description: "Remove this tag.",
-              inputSchema: noArguments,
               parameters: [],
             },
           ],

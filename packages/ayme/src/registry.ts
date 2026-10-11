@@ -8,6 +8,12 @@ import type {
   RegisteredPomTool,
   ToolManifest,
 } from "./contracts";
+import {
+  inputParameters,
+  inputSchemaFor,
+  methodArguments,
+  toolDescription,
+} from "./actionTool";
 import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
 import { createPage } from "./browserPage";
 import {
@@ -572,9 +578,9 @@ function createRegisteredTool(
     pomId,
     methodName: tool.methodName,
     name: tool.toolName,
-    description: tool.description,
-    inputSchema: tool.inputSchema,
-    parameters: tool.parameters,
+    description: toolDescription(tool),
+    inputSchema: inputSchemaFor(tool.parameters),
+    parameters: inputParameters(tool.parameters),
     execute: (args, { cursor }) =>
       performPageObjectAction(instance, tool, args, cursor),
   };
@@ -659,8 +665,8 @@ function createComponentTool(
     componentPath,
     methodName: action.methodName,
     name: wrapper.toolName,
-    description: action.description,
-    inputSchema: wrapper.inputSchema,
+    description: toolDescription(action),
+    inputSchema: inputSchemaFor(wrapper.parameters),
     parameters: wrapper.parameters,
     execute,
   };
@@ -697,9 +703,9 @@ function createSingularComponentTool(
     componentPath,
     methodName: action.methodName,
     name: `${pomId}.${publicComponentPath(path)}.${action.methodName}`,
-    description: action.description,
-    inputSchema: action.inputSchema,
-    parameters: action.parameters,
+    description: toolDescription(action),
+    inputSchema: inputSchemaFor(action.parameters),
+    parameters: inputParameters(action.parameters),
     execute,
   };
 }
@@ -722,14 +728,13 @@ function refComponentToolManifest(
     {
       name: "args",
       optional: false,
-      schema: action.inputSchema,
+      schema: inputSchemaFor(action.parameters),
     },
   ];
 
   return {
     ...action,
     toolName: `${pomId}.${publicComponentPath(path)}.${action.methodName}`,
-    inputSchema: inputSchemaFor(parameters),
     parameters,
   };
 }
@@ -1054,11 +1059,9 @@ async function performPageObjectAction(
     );
 
   const currentDocument = requireCurrentDocument();
-  const parameters = validatedArguments(tool, args).flatMap((value, index) =>
-    // A rest parameter's list is the method's remaining arguments.
-    tool.parameters[index]?.rest
-      ? ((value as unknown[] | undefined) ?? [])
-      : [value]
+  const parameters = methodArguments(
+    tool.parameters,
+    validatedArguments(tool, args)
   );
   // A tool may be called without the Caller ever having read the page; the
   // Change Record then starts from the page right before the action.
@@ -1084,23 +1087,6 @@ function validatedArguments(tool: ToolManifest, args: unknown) {
   return tool.parameters.map((parameter) =>
     Object.hasOwn(input, parameter.name) ? input[parameter.name] : undefined
   );
-}
-
-function inputSchemaFor(
-  parameters: readonly { name: string; optional: boolean; schema: JsonSchema }[]
-): JsonSchema {
-  const properties = Object.fromEntries(
-    parameters.map((parameter) => [parameter.name, parameter.schema])
-  );
-  const required = parameters
-    .filter((parameter) => !parameter.optional)
-    .map((parameter) => parameter.name);
-  return {
-    type: "object",
-    properties,
-    required,
-    additionalProperties: false,
-  };
 }
 
 function isCallable(value: unknown): value is (...args: unknown[]) => unknown {

@@ -45,12 +45,6 @@ const action = (methodName: string, toolName = methodName): ToolManifest => ({
   methodName,
   toolName,
   description: methodName,
-  inputSchema: {
-    type: "object",
-    properties: {},
-    required: [],
-    additionalProperties: false,
-  },
   parameters: [],
 });
 
@@ -61,12 +55,6 @@ const actionWithParam = (
   methodName,
   toolName,
   description: methodName,
-  inputSchema: {
-    type: "object",
-    properties: { value: { type: "string" } },
-    required: ["value"],
-    additionalProperties: false,
-  },
   parameters: [{ name: "value", optional: false, schema: { type: "string" } }],
 });
 
@@ -78,16 +66,6 @@ const actionWithParameters = (
   methodName,
   toolName,
   description: methodName,
-  inputSchema: {
-    type: "object",
-    properties: Object.fromEntries(
-      parameters.map((parameter) => [parameter.name, parameter.schema])
-    ),
-    required: parameters
-      .filter((parameter) => !parameter.optional)
-      .map((parameter) => parameter.name),
-    additionalProperties: false,
-  },
   parameters,
 });
 

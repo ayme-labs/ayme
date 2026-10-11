@@ -78,11 +78,6 @@ registerCompiledPom(SaveForm, {
       methodName: "save",
       toolName: "SaveForm.save",
       description: "Save the form.",
-      inputSchema: {
-        type: "object",
-        properties: {},
-        additionalProperties: false,
-      },
       parameters: [],
     },
   ],

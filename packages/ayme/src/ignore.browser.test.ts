@@ -15,12 +15,6 @@ const action = (methodName: string, toolName = methodName): ToolManifest => ({
   methodName,
   toolName,
   description: methodName,
-  inputSchema: {
-    type: "object",
-    properties: {},
-    required: [],
-    additionalProperties: false,
-  },
   parameters: [],
 });
 const root = () =>

@@ -25,6 +25,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     await import("../tools/test-utils/startedAyme");
   const {
     pageStateNodeEntry,
+    inputSchemaFor,
     renderActionParameters,
     renderSchema,
     toolInputViolations,
@@ -32,6 +33,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
   const { forest, node } = await import("../structure/test-utils/projected");
   return {
     pageStateNodeEntry,
+    inputSchemaFor,
     renderActionParameters,
     renderSchema,
     toolInputViolations,
@@ -79,7 +81,6 @@ const editor: RegisteredPom = {
         methodName: save.methodName,
         toolName: save.name,
         description: save.description,
-        inputSchema: save.inputSchema,
         parameters: save.parameters,
       },
     ],

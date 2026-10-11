@@ -1,4 +1,15 @@
-export * from "./contracts";
+export { isJsonPrimitive, isJsonValue } from "./contracts";
+export type {
+  JsonPrimitive,
+  JsonSchema,
+  JsonValue,
+  PomDefinition,
+  PomDefinitionAction,
+  PomDefinitionsResult,
+  PomMemberObservation,
+  RegisteredPomTool,
+  ToolDescriptor,
+} from "./contracts";
 export * from "./decorators";
 export { createPage } from "./browserPage";
 export type { CreatePageOptions } from "./browserPage";
