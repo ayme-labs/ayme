@@ -2,10 +2,28 @@ pre-commit:
   jobs:
     - name: lint-staged
       run: pnpm exec lint-staged
+    # Like CI, check only the packages a change reaches: the ones it touches
+    # and those depending on them. Against HEAD, that is the commit being
+    # made, so a docs-only commit checks no package.
     - name: typecheck
-      run: pnpm run typecheck
+      run: pnpm exec turbo run typecheck --affected
+      env: &affected
+        TURBO_SCM_BASE: HEAD
+        # Git reports a renamed file only at its new path, so a file moved
+        # out of a package would leave that package unchecked.
+        GIT_CONFIG_COUNT: "1"
+        GIT_CONFIG_KEY_0: diff.renames
+        GIT_CONFIG_VALUE_0: "false"
+    # The packed-consumer test type-checks the quickstarts' Page Object
+    # Models, which --affected misses since they live outside the package.
     - name: test
-      run: pnpm run test
+      run: |
+        if git diff --cached --quiet -- 'docs/guide/start/quickstart-*.md'; then
+          pnpm exec turbo run test --affected
+        else
+          pnpm exec turbo run test
+        fi
+      env: *affected
 
 commit-msg:
   jobs:
