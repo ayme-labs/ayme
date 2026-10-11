@@ -4,6 +4,7 @@ import { expect, selectors, type Page } from "@playwright/test";
 import { server } from "@ayme-dev/example-certification/config";
 import { exampleTest as test } from "@ayme-dev/example-certification/tests";
 
+import { readDecisionProvider } from "../scripts/appEnvironment";
 import { ListPage } from "../playwright/pom/ListPage";
 import { derivePomManifests } from "@ayme-dev/unplugin-ayme";
 import {
@@ -85,10 +86,12 @@ function normalizeAppSubtree(pageState: string): string {
   );
 }
 
-// The dev server mounts a Decision Endpoint, so the app runs with the Goal
-// Loop on and publishes `goal` alongside the Page Object tools; the
-// production build has no Decision Endpoint and publishes no `goal`.
-const goalToolNames = server === "dev" ? ["goal"] : [];
+// The dev server mounts a Decision Endpoint when it has a model key, and then
+// the app runs with the Goal Loop on and publishes `goal` alongside the Page
+// Object tools; without a key, and in the production build, it publishes no
+// `goal`.
+const publishesGoal = server === "dev" && readDecisionProvider() !== undefined;
+const goalToolNames = publishesGoal ? ["goal"] : [];
 const browserToolNames = [
   "click",
   "hover",
@@ -443,7 +446,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
         additionalProperties: false,
       },
     },
-    ...(server === "dev"
+    ...(publishesGoal
       ? [
           {
             name: "goal",

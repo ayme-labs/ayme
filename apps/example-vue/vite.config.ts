@@ -8,15 +8,24 @@ import { defineConfig } from "vite";
 import { readDecisionProvider } from "./scripts/appEnvironment";
 import { decisionEndpointDev } from "./vite/decisionEndpoint.dev";
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
+  // One lookup decides both whether the dev server mounts the Decision
+  // Endpoint and whether the page turns the Goal Loop on.
+  const decisionProvider =
+    command === "serve" ? readDecisionProvider(mode) : undefined;
   return {
     base: process.env.VITE_BASE_PATH ?? "/",
     plugins: [
       vue(),
       tailwindcss(),
       ayme(),
-      decisionEndpointDev(readDecisionProvider(mode)),
+      decisionEndpointDev(decisionProvider),
     ],
+    define: {
+      "import.meta.env.AYME_DECISION_ENDPOINT": JSON.stringify(
+        decisionProvider !== undefined
+      ),
+    },
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),

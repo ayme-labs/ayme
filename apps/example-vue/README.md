@@ -57,7 +57,7 @@ The playground is also a Vue single-page app in the shared [example certificatio
 
 ## Live goal lane
 
-The app turns the Goal Loop on only in development, because only the dev server mounts a Decision Endpoint; the deployed build publishes no `goal`.
+The app turns the Goal Loop on only when the dev server mounts a Decision Endpoint, which it does only with a model key; a dev server started without a key and the deployed build publish no `goal`.
 
 `pnpm run test:goals` is a separate Playwright lane that runs real goals through `goal` against the model. It is a check that the architecture still works, not an evaluation. `pnpm run test:e2e` does not run it. Retries are on, so a test passes when one of three attempts passes.
 

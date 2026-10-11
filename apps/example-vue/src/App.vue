@@ -15,9 +15,10 @@ const isNotPlayground = (element: Element) =>
 const peekCheck = import.meta.env.DEV;
 useAyme({
   ignore: isNotPlayground,
-  // Only the dev server mounts a Decision Endpoint, so the Goal Loop is a
-  // development feature here and the deployed build publishes no goal.
-  goalLoop: import.meta.env.DEV
+  // Only the dev server mounts a Decision Endpoint, and only when it has a
+  // model key, so the page publishes `goal` only then: never in the deployed
+  // build, nor on a dev server started without a key.
+  goalLoop: import.meta.env.AYME_DECISION_ENDPOINT
     ? decisionEndpoint(decisionEndpointPath)
     : undefined,
   webMCP: { enabled: true },
