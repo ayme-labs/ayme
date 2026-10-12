@@ -36,17 +36,24 @@ const structure = {
   refCount: 2,
 };
 
+const milk = document.createElement("li");
+const bread = document.createElement("li");
+const elementsByRef = new Map([
+  ["e1", milk],
+  ["e2", bread],
+]);
+
 it("carries each item's verdict and reason from the registry", () => {
   const verdicts = [
     {
       label: "ListPage.items[0]",
-      element: document.createElement("li"),
+      element: milk,
       present: true,
       available: true,
     },
     {
       label: "ListPage.items[1]",
-      element: document.createElement("li"),
+      element: bread,
       present: true,
       available: false,
       reason: "a click would not reach it; e9 is in the way",
@@ -54,7 +61,13 @@ it("carries each item's verdict and reason from the registry", () => {
   ];
 
   expect(
-    itemsOf("ListPage.items.archive", members, structure, verdicts)
+    itemsOf(
+      "ListPage.items.archive",
+      members,
+      structure,
+      verdicts,
+      elementsByRef
+    )
   ).toEqual([
     {
       path: "ListPage.items[0]",
@@ -73,6 +86,39 @@ it("carries each item's verdict and reason from the registry", () => {
       available: false,
       reason: "a click would not reach it; e9 is in the way",
     },
+  ]);
+});
+
+it("keeps each item's own verdict when the registry saw the items swap first", () => {
+  // The registry already lists Bread first; the structure still shows Milk
+  // first, under the refs it gave before the swap.
+  const verdicts = [
+    {
+      label: "ListPage.items[0]",
+      element: bread,
+      present: true,
+      available: false,
+      reason: "Bread is locked",
+    },
+    {
+      label: "ListPage.items[1]",
+      element: milk,
+      present: true,
+      available: true,
+    },
+  ];
+
+  expect(
+    itemsOf(
+      "ListPage.items.archive",
+      members,
+      structure,
+      verdicts,
+      elementsByRef
+    ).map(({ label, available, reason }) => ({ label, available, reason }))
+  ).toEqual([
+    { label: "Milk", available: true, reason: undefined },
+    { label: "Bread", available: false, reason: "Bread is locked" },
   ]);
 });
 

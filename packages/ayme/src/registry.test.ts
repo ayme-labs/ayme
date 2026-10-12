@@ -462,6 +462,48 @@ describe("live Page Object registry", () => {
     for (const registration of registrations) registration.dispose();
   });
 
+  it("lists a Page Object's tools once its own observation completes, while another's is still pending", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    class StuckPage {
+      // A root that never answers how many elements it matches.
+      readonly root = brandedLocator({ count: () => new Promise(() => {}) });
+      save() {}
+    }
+    class Toolbar {
+      reset() {}
+    }
+    registry.registerCompiledPom(StuckPage, {
+      ...emptyManifest("StuckPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    registry.registerCompiledPom(Toolbar, {
+      ...emptyManifest("Toolbar"),
+      tools: [action("reset")],
+    });
+    const registrations = [
+      registry.createPageRegistration(StuckPage),
+      registry.createPageRegistration(Toolbar),
+    ];
+    const listed = () =>
+      registry
+        .listRegisteredPomTools()
+        .map(({ tool, present, available }) => [
+          tool.name,
+          { present, available },
+        ]);
+
+    await vi.runOnlyPendingTimersAsync();
+    expect(listed()).toEqual([
+      ["save", { present: false, available: false }],
+      ["reset", { present: true, available: true }],
+    ]);
+
+    for (const registration of registrations) registration.dispose();
+  });
+
   it("keeps tools inactive when a manifest-declared root is missing", async () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);

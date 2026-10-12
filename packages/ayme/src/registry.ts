@@ -327,31 +327,38 @@ function runPomMemberProbe(): Promise<void> {
 
 async function probeRegistrations(lifetime: number): Promise<void> {
   if (lifetime !== probeLifetime) return;
-  const results = await Promise.all(
-    [...registeredPoms].map(async (registration) => ({
-      registration,
-      ...(await probePomMembers(registration)),
-    }))
+  // Each Page Object's observation is committed as it completes, so one
+  // that is slow to read does not hold back the others' tools.
+  await Promise.all(
+    [...registeredPoms].map(async (registration) => {
+      const observed = await probePomMembers(registration);
+      if (
+        lifetime === probeLifetime &&
+        commitObservation(registration, observed)
+      )
+        notifySubscribers();
+    })
   );
-  if (lifetime !== probeLifetime) return;
+}
 
-  let changed = false;
-  for (const { registration, memberObservations, instances } of results) {
-    if (!registeredPoms.has(registration)) continue;
-    const previous = registration.instances?.all;
-    if (
-      previous?.length === instances.length &&
-      previous.every((instance, index) =>
-        sameInstance(instance, instances[index]!)
-      ) &&
-      sameObservations(registration.memberObservations, memberObservations)
-    )
-      continue;
-    registration.memberObservations = memberObservations;
-    registration.instances = groupedInstances(instances);
-    changed = true;
-  }
-  if (changed) notifySubscribers();
+/** Keeps `registration`'s new observation; whether it found anything new. */
+function commitObservation(
+  registration: ObservedRegisteredPom,
+  { memberObservations, instances }: Awaited<ReturnType<typeof probePomMembers>>
+): boolean {
+  if (!registeredPoms.has(registration)) return false;
+  const previous = registration.instances?.all;
+  if (
+    previous?.length === instances.length &&
+    previous.every((instance, index) =>
+      sameInstance(instance, instances[index]!)
+    ) &&
+    sameObservations(registration.memberObservations, memberObservations)
+  )
+    return false;
+  registration.memberObservations = memberObservations;
+  registration.instances = groupedInstances(instances);
+  return true;
 }
 
 function sameObservations(
@@ -388,7 +395,9 @@ function groupedInstances(
   const byComponentPath = new Map<string, PomInstanceObservation[]>();
   for (const instance of all) {
     const key = instance.componentPath ?? "";
-    byComponentPath.set(key, [...(byComponentPath.get(key) ?? []), instance]);
+    const group = byComponentPath.get(key);
+    if (group) group.push(instance);
+    else byComponentPath.set(key, [instance]);
   }
   return { all, byComponentPath };
 }

@@ -52,6 +52,7 @@ export function useInspectorRuntime({
   );
   // A Run's item is the one its ref names in the latest look at the page.
   const latestStructure = useRef(emptyStructure);
+  const latestElementsByRef = useRef<ReadonlyMap<string, Element>>(new Map());
   const latestCollectionItems = useRef(collectionItems);
   useEffect(() => {
     latestCollectionItems.current = collectionItems;
@@ -63,7 +64,8 @@ export function useInspectorRuntime({
         toolName,
         latestMembers.current,
         latestStructure.current,
-        latestCollectionItems.current.get(toolName)
+        latestCollectionItems.current.get(toolName),
+        latestElementsByRef.current
       ).find((item) => item.ref === ref),
     []
   );
@@ -102,7 +104,8 @@ export function useInspectorRuntime({
   );
   useEffect(() => {
     latestStructure.current = structure;
-  }, [structure]);
+    latestElementsByRef.current = elementsByRef;
+  }, [structure, elementsByRef]);
   const elementTools = useMemo(
     () =>
       tools.live
@@ -179,7 +182,13 @@ export function useInspectorRuntime({
      * whether the action would run on it.
      */
     itemsOf: (toolName: string) =>
-      itemsOf(toolName, members, structure, collectionItems.get(toolName)),
+      itemsOf(
+        toolName,
+        members,
+        structure,
+        collectionItems.get(toolName),
+        elementsByRef
+      ),
     /** The runs made from the panel, newest first. */
     runs,
     runTool: (...args: Parameters<typeof invoke>) => void invoke(...args),
