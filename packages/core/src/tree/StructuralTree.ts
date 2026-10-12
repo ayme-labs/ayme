@@ -1,5 +1,9 @@
 import { AriaRefSchema, type AriaRef } from "./StructuralTypes";
-import { isSyntheticRef } from "./StructuralRef";
+import {
+  isSyntheticRef,
+  refFromAttribute,
+  SYNTHETIC_ROOT_REF,
+} from "./StructuralRef";
 import type { SyntheticAriaRefAllocator } from "./SyntheticAriaRefFactory";
 import {
   parseStructuralRole,
@@ -392,7 +396,7 @@ export class StructuralTree {
       return new StructuralTree(onlyRoot, refFactory);
 
     const root = new StructuralNode({
-      ref: AriaRefSchema.parse("s_root"),
+      ref: SYNTHETIC_ROOT_REF,
       role: "fragment",
       name: "",
       cursorPointer: false,
@@ -459,7 +463,7 @@ export class StructuralTree {
   private static _wrapInFragment(node: StructuralNode): StructuralNode {
     if (node.role === "fragment") return node;
     return new StructuralNode({
-      ref: AriaRefSchema.parse("s_root"),
+      ref: SYNTHETIC_ROOT_REF,
       role: "fragment",
       name: "",
       cursorPointer: false,
@@ -1190,6 +1194,7 @@ export class StructuralTree {
     const matches = rawAttributes.match(/\[[^\]]+\]/g) ?? [];
     for (const match of matches) {
       const content = match.slice(1, -1);
+      const ref = refFromAttribute(content);
       if (content === "active") attributes.active = true;
       else if (content === "disabled") attributes.disabled = true;
       else if (content === "expanded") attributes.expanded = true;
@@ -1197,7 +1202,7 @@ export class StructuralTree {
       else if (content === "checked") attributes.checked = true;
       else if (content === "pressed") attributes.pressed = true;
       else if (content === "cursor=pointer") attributes.cursorPointer = true;
-      else if (content.startsWith("ref=")) attributes.ref = content.slice(4);
+      else if (ref !== undefined) attributes.ref = ref;
       else if (content.startsWith("level="))
         attributes.level = Number(content.slice(6));
       else if (content.startsWith("checked="))

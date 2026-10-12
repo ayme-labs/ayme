@@ -379,10 +379,8 @@ export async function pursueGoal(
 
   /**
    * A decision the loop could not obtain ends the run; the error travels on.
-   * A Decision Endpoint failure advises a retry only when the endpoint or its
-   * provider failed or was busy (5xx, 408 timeout, 429 rate limit): a missing
-   * endpoint, a refusal or a malformed answer does not get better by asking
-   * again.
+   * A Decision Endpoint failure advises a retry only when it is `retryable`;
+   * any other error, such as a network failure, always does.
    */
   const decideFailed = (error: unknown): Promise<GoalLoopRunResult> => {
     const endpoint = error instanceof DecisionEndpointError;
@@ -390,11 +388,7 @@ export async function pursueGoal(
     const what = endpoint
       ? error.message
       : `The decision function failed: ${errorTextOf(error)}`;
-    const status = endpoint ? (error.status ?? 0) : 0;
-    const retry =
-      !endpoint ||
-      (error.code === "rejected" &&
-        (status >= 500 || status === 408 || status === 429));
+    const retry = !endpoint || error.retryable;
     return done({
       reason: "decide_failed",
       next: `${what.replace(/\.$/, "")}. ${retry ? "Retry, or handle" : "Handle"} the goal without the Goal Loop.`,

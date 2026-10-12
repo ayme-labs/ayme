@@ -78,4 +78,6 @@ const decide = decisionEndpoint("/api/decisions", {
 
 `status` holds the HTTP status for `not-mounted` and `rejected`. The error text is the body's `error`, the raw body when it is not JSON, or the status text when the body is empty. A provider's own 404 reaches the browser with an `{ "error" }` body, so it is `rejected`, not `not-mounted`.
 
-In the Goal Loop, any of them ends the run with the Handover reason `decide_failed`. Its `next` advises a retry only for a `rejected` call with a 5xx, 408 (timeout) or 429 (rate limit) status, and for errors other than `DecisionEndpointError`, such as a network failure.
+`retryable` says whether asking again can help. It is `true` only for a `rejected` call with a 5xx, 408 (timeout) or 429 (rate limit) status; a missing endpoint, any other refusal and a malformed answer come back the same.
+
+In the Goal Loop, any of them ends the run with the Handover reason `decide_failed`. Its `next` advises a retry only when the error is `retryable`, and for errors other than `DecisionEndpointError`, such as a network failure.

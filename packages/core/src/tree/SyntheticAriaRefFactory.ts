@@ -1,4 +1,5 @@
-import { AriaRefSchema, type AriaRef } from "./StructuralTypes";
+import { syntheticRef } from "./StructuralRef";
+import type { AriaRef } from "./StructuralTypes";
 
 export type SyntheticAriaRefAllocator = {
   create(): AriaRef;
@@ -10,7 +11,7 @@ export class SyntheticAriaRefFactory {
 
   create(): AriaRef {
     this._counter += 1;
-    return AriaRefSchema.parse(`s_${this._counter}`);
+    return syntheticRef(this._counter);
   }
 
   reset(): void {
