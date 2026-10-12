@@ -11,6 +11,7 @@ import {
   aymeMcpCliPath,
   aymeMcpServer,
   mcpToolTimeoutMs,
+  pageObjectToolNames,
   proxyScript,
   proxyScriptPath,
   serverPorts,
@@ -38,6 +39,24 @@ describe("the agent's MCP server entry", () => {
     expect(aymeMcpCliPath).toMatch(/\/packages\/mcp\/dist\/cli\.mjs$/);
     expect(serverPorts).toEqual({ first: 9350, last: 9365 });
     expect(mcpToolTimeoutMs).toBeGreaterThan(300_000);
+  });
+});
+
+describe("the Page Object Tools among a page's tools", () => {
+  it("are the names with a dot, so neither snapshot, a Browser Tool nor goal counts", () => {
+    expect(
+      pageObjectToolNames([
+        "SignInPage.fillEmail",
+        "click",
+        "fill_form",
+        "goal",
+        "snapshot",
+        "SurveyEditorPage.questions.setHeadline",
+      ])
+    ).toEqual([
+      "SignInPage.fillEmail",
+      "SurveyEditorPage.questions.setHeadline",
+    ]);
   });
 });
 

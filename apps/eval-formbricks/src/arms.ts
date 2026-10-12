@@ -26,7 +26,9 @@ export type ArmId =
   | "playwright-mcp"
   | "playwright-cli"
   | "ayme-goal-loop-off"
-  | "ayme-goal-loop-on";
+  | "ayme-goal-loop-on"
+  | "ayme-no-page-objects-goal-loop-off"
+  | "ayme-no-page-objects-goal-loop-on";
 
 export type McpServer = { command: string; args: string[] };
 
@@ -114,16 +116,26 @@ export const goalFirstSentence =
 
 /**
  * An Ayme arm: the page's own tools through Ayme's MCP server, paired with
- * the page before the agent starts, and nothing else. The two arms differ in
- * the lab app's Goal Loop switch, which the setup sets before the page loads,
- * in the goal-first sentence of the prompt's interface line, and in the "on"
- * arm's check that the lab app's Decision Endpoint has its model key. The
- * server's own tools stay: `ayme_connect` only returns a link, which the
- * agent has no way to open, and the server, busy with its tab, ignores any
- * other tab's scan, so the agent cannot leave the harness's tab.
+ * the page before the agent starts, and nothing else. The arms differ in
+ * the lab app's two switches, which the setup sets before the page loads:
+ * the Goal Loop, which adds the goal-first sentence to the prompt's
+ * interface line and the check that the lab app's Decision Endpoint has its
+ * model key, and the page objects, without which the page publishes
+ * `snapshot` and the Browser Tools only and the interface line names no
+ * Page Object Tools. The server's own tools stay: `ayme_connect` only
+ * returns a link, which the agent has no way to open, and the server, busy
+ * with its tab, ignores any other tab's scan, so the agent cannot leave the
+ * harness's tab.
  */
-function aymeArm(id: ArmId, goalLoop: boolean): Arm {
-  const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, and its \`${aymeSkillName}\` skill for every browser interaction: \`snapshot\`, Ayme's Browser Tools and the Page Object Tools of the screen you are on.`;
+function aymeArm(
+  id: ArmId,
+  options: { goalLoop: boolean; pageObjects: boolean }
+): Arm {
+  const { goalLoop, pageObjects } = options;
+  const toolsLine = pageObjects
+    ? "`snapshot`, Ayme's Browser Tools and the Page Object Tools of the screen you are on."
+    : "`snapshot` and Ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed.";
+  const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, and its \`${aymeSkillName}\` skill for every browser interaction: ${toolsLine}`;
   return {
     id,
     interfaceLine: () =>
@@ -133,7 +145,7 @@ function aymeArm(id: ArmId, goalLoop: boolean): Arm {
     allowedTools: [`mcp__${aymeServerName}`, `Skill(${aymeSkillName})`],
     mcpServers: (context) => ({ [aymeServerName]: aymeMcpServer(context) }),
     preconditions: goalLoop ? aymeGoalLoopPreconditions : aymeMcpPreconditions,
-    setup: (context) => setUpAymeAgent(context, { goalLoop }),
+    setup: (context) => setUpAymeAgent(context, options),
     browserInterface: () => ({
       name: aymeMcpPackageName,
       version: aymeMcpVersion(),
@@ -196,8 +208,22 @@ export const arms: Record<ArmId, Arm> = {
       version: playwrightCliVersion(),
     }),
   },
-  "ayme-goal-loop-off": aymeArm("ayme-goal-loop-off", false),
-  "ayme-goal-loop-on": aymeArm("ayme-goal-loop-on", true),
+  "ayme-goal-loop-off": aymeArm("ayme-goal-loop-off", {
+    goalLoop: false,
+    pageObjects: true,
+  }),
+  "ayme-goal-loop-on": aymeArm("ayme-goal-loop-on", {
+    goalLoop: true,
+    pageObjects: true,
+  }),
+  "ayme-no-page-objects-goal-loop-off": aymeArm(
+    "ayme-no-page-objects-goal-loop-off",
+    { goalLoop: false, pageObjects: false }
+  ),
+  "ayme-no-page-objects-goal-loop-on": aymeArm(
+    "ayme-no-page-objects-goal-loop-on",
+    { goalLoop: true, pageObjects: false }
+  ),
 };
 
 export const armIds = Object.keys(arms) as ArmId[];
