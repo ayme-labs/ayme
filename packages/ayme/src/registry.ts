@@ -21,8 +21,7 @@ import {
   resolveLocatorElements,
 } from "@ayme-dev/playwright-lite/internal";
 import type { Locator, Page } from "@playwright/test";
-import { probePomRootState } from "./pomReachability";
-import { findObstruction } from "./pomObstruction";
+import { observePomRoot } from "./pomRootObservation";
 import {
   latestRefInTheWay,
   resolvePageStateRefs,
@@ -1142,7 +1141,7 @@ async function observeRoot(
   const state =
     element === undefined
       ? { present: false, available: false }
-      : await probePomRootState(root);
+      : await observePomRoot(root);
   const current = locatorElements(root);
   const sameElement = current.length === 1 && current[0] === element;
   const present = sameElement && state.present;
@@ -1152,8 +1151,7 @@ async function observeRoot(
     element: sameElement ? element : undefined,
     present,
     available,
-    obstruction:
-      present && !available && element ? findObstruction(element) : undefined,
+    obstruction: present && !available ? state.obstruction : undefined,
   });
   return count;
 }
