@@ -372,6 +372,205 @@ describe("live Page Object registry", () => {
     second.dispose();
   });
 
+  it("rejects a Page Object reaching a different class with a reached name", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    const reachingRow = (className: string, rowFile: string): PomManifest => ({
+      ...emptyManifest(className),
+      members: [
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "field",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ],
+      components: [{ className: "Row", file: rowFile, members: [], tools: [] }],
+    });
+    class OrdersPage {}
+    class UsersPage {}
+    class InvoicesPage {}
+    registry.registerCompiledPom(
+      OrdersPage,
+      reachingRow("OrdersPage", "src/orders/Row.ts")
+    );
+    registry.registerCompiledPom(
+      UsersPage,
+      reachingRow("UsersPage", "src/users/Row.ts")
+    );
+    registry.registerCompiledPom(
+      InvoicesPage,
+      reachingRow("InvoicesPage", "src/orders/Row.ts")
+    );
+
+    const orders = registry.createPageRegistration(OrdersPage);
+    expect(() => registry.createPageRegistration(UsersPage)).toThrow(
+      expect.objectContaining({
+        name: "RuntimeStateError",
+        message:
+          'Cannot register the Page Object "UsersPage": it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts. Rename one of them: Ayme tells the classes of Page Objects apart by name.',
+      })
+    );
+    expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
+      "OrdersPage",
+    ]);
+
+    const invoices = registry.createPageRegistration(InvoicesPage);
+    expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
+      "OrdersPage",
+      "InvoicesPage",
+    ]);
+
+    // Unregistering releases the name.
+    orders.dispose();
+    invoices.dispose();
+    const users = registry.createPageRegistration(UsersPage);
+    expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
+      "UsersPage",
+    ]);
+    users.dispose();
+  });
+
+  it("rejects a Page Object that reaches two different classes with one name", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    class Row {}
+    registry.registerCompiledPom(Row, {
+      ...emptyManifest("Row"),
+      components: [{ className: "Row", members: [], tools: [action("open")] }],
+    });
+
+    expect(() => registry.createPageRegistration(Row)).toThrow(
+      'Cannot register the Page Object "Row": it reaches two different classes named "Row". Rename one of them: Ayme tells the classes of Page Objects apart by name.'
+    );
+    expect(registry.listRegisteredPoms()).toEqual([]);
+  });
+
+  it("lets an HMR update of a shared child remount its Page Objects one by one", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    const compile = (className: string, rowTool: string, rowFile: string) => {
+      const PomClass = { [className]: class {} }[className]!;
+      registry.registerCompiledPom(PomClass, {
+        ...emptyManifest(className),
+        components: [
+          {
+            className: "Row",
+            file: rowFile,
+            members: [],
+            tools: [{ ...action(rowTool), toolName: `Row.${rowTool}` }],
+          },
+        ],
+      });
+      return PomClass;
+    };
+    const orders = registry.createPageRegistration(
+      compile("OrdersPage", "open", "src/Row.ts")
+    );
+    const invoices = registry.createPageRegistration(
+      compile("InvoicesPage", "open", "src/Row.ts")
+    );
+
+    // Editing Row gives it a new tool. OrdersPage remounts with it while
+    // InvoicesPage still holds the old Row, from the same file.
+    orders.dispose();
+    const UpdatedOrders = compile("OrdersPage", "remove", "src/Row.ts");
+    const updatedOrders = registry.createPageRegistration(UpdatedOrders);
+    expect(
+      registry.listRegisteredPoms().map(({ instance }) => instance.constructor)
+    ).toEqual([invoices.instance.constructor, UpdatedOrders]);
+
+    // A Row from another file still clashes.
+    expect(() =>
+      registry.createPageRegistration(
+        compile("UsersPage", "open", "src/users/Row.ts")
+      )
+    ).toThrow(
+      'Cannot register the Page Object "UsersPage": it reaches a class named "Row" that differs from the one the Page Object "InvoicesPage" reaches, declared in src/Row.ts and src/users/Row.ts.'
+    );
+
+    updatedOrders.dispose();
+    invoices.dispose();
+  });
+
+  it("compares a reached class with every same-named class, not the first", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    const reachingRow = (className: string, rowFile?: string) => {
+      const PomClass = { [className]: class {} }[className]!;
+      registry.registerCompiledPom(PomClass, {
+        ...emptyManifest(className),
+        components: [
+          {
+            className: "Row",
+            ...(rowFile === undefined ? {} : { file: rowFile }),
+            members: [],
+            tools: [],
+          },
+        ],
+      });
+      return PomClass;
+    };
+    // A manifest without a file matches both Rows by shape.
+    registry.createPageRegistration(reachingRow("LegacyPage"));
+    registry.createPageRegistration(
+      reachingRow("OrdersPage", "src/orders/Row.ts")
+    );
+    expect(() =>
+      registry.createPageRegistration(
+        reachingRow("UsersPage", "src/users/Row.ts")
+      )
+    ).toThrow(
+      'it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts.'
+    );
+  });
+
+  it("names both files when two top-level Page Objects share a name", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    const FirstDialog = class Dialog {};
+    const SecondDialog = class Dialog {};
+    registry.registerCompiledPom(FirstDialog, {
+      ...emptyManifest("Dialog"),
+      file: "src/a/Dialog.ts",
+    });
+    registry.registerCompiledPom(SecondDialog, {
+      ...emptyManifest("Dialog"),
+      file: "src/b/Dialog.ts",
+    });
+    registry.createPageRegistration(FirstDialog);
+    expect(() => registry.createPageRegistration(SecondDialog)).toThrow(
+      'Cannot register the Page Object "Dialog": a different class with that name is already registered, declared in src/a/Dialog.ts and src/b/Dialog.ts. Rename one of them so their tools do not share names.'
+    );
+  });
+
+  it("registers an HMR-updated Page Object after its old class is gone", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    const OldPage = class SettingsPage {};
+    const NewPage = class SettingsPage {};
+    registry.registerCompiledPom(OldPage, emptyManifest("SettingsPage"));
+    registry.registerCompiledPom(NewPage, {
+      ...emptyManifest("SettingsPage"),
+      tools: [{ ...action("save"), toolName: "SettingsPage.save" }],
+    });
+
+    registry.createPageRegistration(OldPage).dispose();
+    const updated = registry.createPageRegistration(NewPage);
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
+      "SettingsPage.save",
+    ]);
+    updated.dispose();
+  });
+
   it("reports an observation error for a manifest-declared locator without a brand", async () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);

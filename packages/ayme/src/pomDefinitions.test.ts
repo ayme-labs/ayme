@@ -188,39 +188,40 @@ describe("POM definition catalog", () => {
       ],
     });
 
-    // Distinct roots can each reach a different component with the same name.
-    const reachingConflict = (className: string, description: string) =>
+    // Distinct roots reaching one child class list its definition once.
+    const reachingShared = (className: string) =>
       manifest(className, {
-        tools: [action("open", "Open.", ["ConflictingPage"])],
+        // A return POM the manifest does not carry has no definition.
+        tools: [action("open", "Open.", ["SharedChild", "UncompiledPage"])],
         components: [
-          { className: "ConflictingPage", description, members: [], tools: [] },
+          {
+            className: "SharedChild",
+            description: "Shared child.",
+            members: [],
+            tools: [],
+          },
         ],
       });
-    registry.registerCompiledPom(
-      FirstRoot,
-      reachingConflict("FirstRoot", "First definition.")
-    );
-    registry.registerCompiledPom(
-      SecondRoot,
-      reachingConflict("SecondRoot", "Second definition.")
-    );
+    registry.registerCompiledPom(FirstRoot, reachingShared("FirstRoot"));
+    registry.registerCompiledPom(SecondRoot, reachingShared("SecondRoot"));
     registrations.push(
       registry.createPageRegistration(FirstRoot),
       registry.createPageRegistration(SecondRoot)
     );
 
-    expect(() => definitions.getPomDefinitions("ConflictingPage")).toThrow(
-      'POM definition "ConflictingPage" is ambiguous.'
-    );
-    expect(() => definitions.getPomDefinitions()).toThrow(
-      'POM definition "ConflictingPage" is ambiguous.'
-    );
-    expect(() => definitions.getPomDefinitions()).toThrow(
-      expect.objectContaining({
-        name: "RefResolutionError",
-        kind: "resolution",
-      })
-    );
+    expect(definitions.getPomDefinitions("SharedChild")).toEqual({
+      definitions: [
+        {
+          name: "SharedChild",
+          description: "Shared child.",
+          children: [],
+          actions: [],
+        },
+      ],
+    });
+    expect(
+      definitions.getPomDefinitions().definitions.map(({ name }) => name)
+    ).toEqual(["SharedPage", "FirstRoot", "SharedChild", "SecondRoot"]);
 
     registrations.forEach((registration) => registration.dispose());
   });

@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import ts from "typescript";
@@ -251,9 +252,56 @@ function classManifest(
   }
 
   return {
-    manifest: { className, ...classDescription(declaration), members, tools },
+    manifest: {
+      className,
+      file: declaringFile(declaration),
+      ...classDescription(declaration),
+      members,
+      tools,
+    },
     references: [...childReferences, ...returnReferences],
   };
+}
+
+/**
+ * The declaring file as its package's name and version plus its path in that
+ * package, so the same file gets the same identity whichever directory a build
+ * runs from, and files of two packages, or of two installed versions of one,
+ * never share one. A build embeds no machine-specific path.
+ */
+function declaringFile(declaration: ts.ClassDeclaration) {
+  const fileName = path.resolve(declaration.getSourceFile().fileName);
+  const pkg = namedPackage(path.dirname(fileName));
+  const relative = path
+    .relative(pkg?.dir ?? process.cwd(), fileName)
+    .split(path.sep)
+    .join("/");
+  if (!pkg) return relative;
+  return `${pkg.name}${pkg.version ? `@${pkg.version}` : ""}/${relative}`;
+}
+
+type NamedPackage = { dir: string; name: string; version?: string } | undefined;
+const namedPackages = new Map<string, NamedPackage>();
+
+/** The nearest `package.json` with a name, at or above `dir`. */
+function namedPackage(dir: string): NamedPackage {
+  if (namedPackages.has(dir)) return namedPackages.get(dir);
+  const manifest = path.join(dir, "package.json");
+  const { name, version } = fs.existsSync(manifest)
+    ? (JSON.parse(fs.readFileSync(manifest, "utf8")) as {
+        name?: unknown;
+        version?: unknown;
+      })
+    : {};
+  const parent = path.dirname(dir);
+  const found =
+    typeof name === "string"
+      ? { dir, name, ...(typeof version === "string" && { version }) }
+      : parent === dir
+        ? undefined
+        : namedPackage(parent);
+  namedPackages.set(dir, found);
+  return found;
 }
 
 /**
