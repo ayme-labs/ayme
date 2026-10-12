@@ -1,5 +1,4 @@
 import type {
-  PomComponentManifest,
   PomDefinition,
   PomDefinitionAction,
   PomDefinitionsResult,
@@ -7,7 +6,7 @@ import type {
 } from "./contracts";
 import { inputSchemaFor } from "./actionTool";
 import { listRegisteredPoms } from "./registry";
-import { RefResolutionError, ToolInputError } from "./errors";
+import { ToolInputError } from "./errors";
 
 type DefinitionNode = {
   name: string;
@@ -25,36 +24,25 @@ export function getPomDefinitions(
   const index = definitionIndex();
   if (names.length > 0)
     return {
-      definitions: names.flatMap((name) =>
-        unambiguousDefinitions(name, index.get(name) ?? [])
-      ),
+      definitions: names.flatMap((name) => {
+        const definition = index.get(name);
+        return definition ? [definition] : [];
+      }),
     };
 
-  return {
-    definitions: [...index.entries()].flatMap(([definitionName, candidates]) =>
-      unambiguousDefinitions(definitionName, candidates)
-    ),
-  };
+  return { definitions: [...index.values()] };
 }
 
-function unambiguousDefinitions(
-  name: string,
-  candidates: readonly PomDefinition[]
-) {
-  const definitions = distinctDefinitions(candidates);
-  if (definitions.length > 1)
-    throw new RefResolutionError(`POM definition "${name}" is ambiguous.`);
-  return definitions;
-}
-
+/**
+ * Every class the registered Page Objects reach, by name. Registration
+ * refuses two different classes with one name, so each name has one
+ * definition.
+ */
 function definitionIndex() {
-  const definitions = new Map<string, PomDefinition[]>();
+  const definitions = new Map<string, PomDefinition>();
   for (const registration of listRegisteredPoms()) {
-    for (const definition of reachableDefinitions(registration.manifest)) {
-      const candidates = definitions.get(definition.name) ?? [];
-      candidates.push(definition);
-      definitions.set(definition.name, candidates);
-    }
+    for (const definition of reachableDefinitions(registration.manifest))
+      definitions.set(definition.name, definition);
   }
   return definitions;
 }
@@ -69,41 +57,34 @@ function reachableDefinitions(manifest: PomManifest) {
     const name = pending.shift();
     if (!name || visited.has(name)) continue;
     visited.add(name);
-    for (const node of nodes.get(name) ?? []) {
-      const definition = definitionFor(node);
-      reachable.push(definition);
-      pending.push(
-        ...definition.children.flatMap((child) =>
-          child.kind === "component" ? [child.componentClassName] : []
-        ),
-        ...definition.actions.flatMap((action) => action.returnPoms)
-      );
-    }
+    const node = nodes.get(name);
+    if (!node) continue;
+    const definition = definitionFor(node);
+    reachable.push(definition);
+    pending.push(
+      ...definition.children.flatMap((child) =>
+        child.kind === "component" ? [child.componentClassName] : []
+      ),
+      ...definition.actions.flatMap((action) => action.returnPoms)
+    );
   }
   return reachable;
 }
 
 function nodesFor(manifest: PomManifest) {
-  const nodes = new Map<string, DefinitionNode[]>();
-  addNode(nodes, manifest);
-  for (const component of manifest.components) addNode(nodes, component);
-  return nodes;
-}
-
-function addNode(
-  nodes: Map<string, DefinitionNode[]>,
-  node: PomManifest | PomComponentManifest
-) {
-  const candidates = nodes.get(node.className) ?? [];
-  candidates.push({
-    name: node.className,
-    ...(node.description === undefined
-      ? {}
-      : { description: node.description }),
-    members: node.members,
-    tools: node.tools,
-  });
-  nodes.set(node.className, candidates);
+  return new Map(
+    [manifest, ...manifest.components].map((node): [string, DefinitionNode] => [
+      node.className,
+      {
+        name: node.className,
+        ...(node.description === undefined
+          ? {}
+          : { description: node.description }),
+        members: node.members,
+        tools: node.tools,
+      },
+    ])
+  );
 }
 
 function definitionFor(node: DefinitionNode): PomDefinition {
@@ -123,12 +104,4 @@ function definitionFor(node: DefinitionNode): PomDefinition {
     children: node.members,
     actions,
   };
-}
-
-function distinctDefinitions(definitions: readonly PomDefinition[]) {
-  const unique = new Map<string, PomDefinition>();
-  for (const definition of definitions) {
-    unique.set(JSON.stringify(definition), definition);
-  }
-  return [...unique.values()];
 }

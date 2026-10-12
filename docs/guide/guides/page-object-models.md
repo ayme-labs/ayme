@@ -38,7 +38,7 @@ Put marked models in `.ts` files the application imports, with `experimentalDeco
 
 ## Tool names and inputs
 
-A Page Object Tool is named after its class and method: `ProjectsPage.createProject`. Registering a Page Object while a different class with the same name is registered throws; rename one of them.
+A Page Object Tool is named after its class and method: `ProjectsPage.createProject`. Ayme tells classes apart by name, so registering a Page Object throws when it, or a Page Object Child it reaches at any depth, shares its name with a different class that it or a registered Page Object reaches; rename one of them.
 
 The tool's input schema comes from the method's signature: an object with one property per parameter, required unless the parameter is optional or has a default value. A literal default, such as `type = "personal"`, is published as the property's `default`. A parameter can take:
 

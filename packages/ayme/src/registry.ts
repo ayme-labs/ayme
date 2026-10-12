@@ -246,16 +246,7 @@ export function registerPageObject<T extends object>(
     throw new RuntimeStateError(
       "The imported page object has no compiler-derived Ayme metadata."
     );
-  // Tools are named after the class, so a different class with the same name
-  // would have its tools hidden by the first one registered.
-  for (const registered of registeredPoms)
-    if (
-      registered.id === compiledPom.className &&
-      registered.pomClass !== PomClass
-    )
-      throw new RuntimeStateError(
-        `Cannot register the Page Object "${compiledPom.className}": a different class with that name is already registered. Rename one of them so their tools do not share names.`
-      );
+  rejectSameNamedClasses(PomClass, compiledPom);
   const registration: ObservedRegisteredPom = {
     id: compiledPom.className,
     pomClass: PomClass,
@@ -284,6 +275,55 @@ export function registerPageObject<T extends object>(
       notifySubscribers();
     },
   };
+}
+
+/**
+ * Ayme tells Page Object classes apart by name: tools are named after their
+ * class, and definitions and Page Object Children are looked up by it. So no
+ * two different classes the registered Page Objects reach, at any depth, may
+ * share a name. Children carry no class, only their compiled manifest, so a
+ * child class reached twice is the same class when its manifest is the same.
+ */
+function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
+  // A different class with the same name would have its tools hidden by the
+  // first one registered.
+  for (const registered of registeredPoms)
+    if (
+      registered.id === manifest.className &&
+      registered.pomClass !== PomClass
+    )
+      throw new RuntimeStateError(
+        `Cannot register the Page Object "${manifest.className}": a different class with that name is already registered. Rename one of them so their tools do not share names.`
+      );
+
+  const reached = new Map<string, { pageObject: string; shape: string }>();
+  const reach = (pageObject: string, pom: PomManifest) => {
+    for (const node of [pom, ...pom.components]) {
+      const shape = classShape(node);
+      const other = reached.get(node.className);
+      if (!other) reached.set(node.className, { pageObject, shape });
+      else if (other.shape !== shape)
+        throw new RuntimeStateError(
+          `Cannot register the Page Object "${manifest.className}": ${
+            other.pageObject === manifest.className
+              ? `it reaches two different classes named "${node.className}"`
+              : `it reaches a class named "${node.className}" that differs from the one the Page Object "${other.pageObject}" reaches`
+          }. Rename one of them: Ayme tells the classes of Page Objects apart by name.`
+        );
+    }
+  };
+  for (const registered of registeredPoms)
+    reach(registered.id, registered.manifest);
+  reach(manifest.className, manifest);
+}
+
+function classShape({
+  className,
+  description,
+  members,
+  tools,
+}: PomManifest | PomComponentManifest) {
+  return JSON.stringify({ className, description, members, tools });
 }
 
 function startObservingPage() {
