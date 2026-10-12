@@ -8,6 +8,7 @@ import {
 } from "./derivePomManifests";
 import { derivePomManifests } from "./index";
 import { createPomProgram } from "./pomProgram";
+import { version } from "../package.json";
 
 function manifestFor(fixture: string) {
   return derivePomManifests(path.resolve(`src/fixtures/${fixture}.ts`))[0];
@@ -267,7 +268,7 @@ describe("derivePomManifests", () => {
       cwd.mockRestore();
     }
     expect(fromPackage).toBe(
-      "@ayme-dev/unplugin-ayme/src/fixtures/undecoratedChildPom.ts"
+      `@ayme-dev/unplugin-ayme@${version}/src/fixtures/undecoratedChildPom.ts`
     );
   });
 
@@ -356,7 +357,7 @@ describe("derivePomManifests", () => {
     expect(manifest.components).toEqual([
       {
         className: "AnnotatedComponent",
-        file: "@ayme-dev/unplugin-ayme/src/fixtures/annotatedChildrenPom.ts",
+        file: `@ayme-dev/unplugin-ayme@${version}/src/fixtures/annotatedChildrenPom.ts`,
         members: [
           { memberName: "root", kind: "locator", access: "field" },
           { memberName: "child", kind: "locator", access: "field" },
@@ -559,7 +560,7 @@ describe("derivePomManifests", () => {
       expect(manifestsOf("undecoratedChildPom")).toEqual([
         {
           className: "PageX",
-          file: "@ayme-dev/unplugin-ayme/src/fixtures/undecoratedChildPom.ts",
+          file: `@ayme-dev/unplugin-ayme@${version}/src/fixtures/undecoratedChildPom.ts`,
           members: [
             { memberName: "heading", kind: "locator", access: "field" },
           ],
