@@ -311,6 +311,37 @@ describe("Browser Tools in Chromium", () => {
     }
   );
 
+  it.each([
+    ["[ref=e1]", 'Cannot click "[ref=e1]": the selector matches no element.'],
+    [" e1 ", 'Cannot click " e1 ": the selector matches no element.'],
+    ["E1", 'Cannot click "E1": the selector matches no element.'],
+    [
+      "ref=e1",
+      'ToolInputError: The target "ref=e1" is neither a Structural Ref nor a selector this runtime supports:',
+    ],
+  ])(
+    "names the ref to pass when the target %j is a ref written another way",
+    async (target, failure) => {
+      const text = await call("click", { target }).catch(errorText);
+      expect(text).toContain(failure);
+      expect(text).toMatch(/ Pass the Structural Ref alone: e1\.$/);
+    }
+  );
+
+  it("gives no ref hint for a real selector, or when a selector matches several elements", async () => {
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<button type="button" ref="e1">One</button><button type="button" ref="e1">Two</button>'
+    );
+
+    expect(await call("click", { target: "[e1]" }).catch(errorText)).toBe(
+      'RefResolutionError: Cannot click "[e1]": the selector matches no element.'
+    );
+    expect(await call("click", { target: "[ref=e1]" }).catch(errorText)).toBe(
+      'RefResolutionError: Cannot click "[ref=e1]": the selector matches 2 elements; it must match exactly one.'
+    );
+  });
+
   it("rejects an option it does not support, naming it", async () => {
     expect(
       await call("click", { target: "#save", force: true }).catch(errorText)

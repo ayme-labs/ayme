@@ -26,7 +26,7 @@ import {
   announceRegisteredPomChange,
   getRegisteredPomStructure,
 } from "./registry";
-import { containsThroughShadow, parentElement } from "./pomObstruction";
+import { containsThroughShadow, parentElement } from "./composedTree";
 
 import {
   placeCapturedRoots,

@@ -1,7 +1,9 @@
 import {
-  AriaRefSchema,
+  refAttribute,
   StructuralNode,
   StructuralTree,
+  SYNTHETIC_ROOT_REF,
+  syntheticRef,
   SyntheticAriaRefFactory,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
@@ -18,8 +20,8 @@ export function parseCapturedTree(
     create() {
       let ref: AriaRef;
       do {
-        ref = AriaRefSchema.parse(`s_webmcp_parse_${++counter}`);
-      } while (yaml.includes(`[ref=${ref}]`));
+        ref = syntheticRef(`webmcp_parse_${++counter}`);
+      } while (yaml.includes(`[${refAttribute(ref)}]`));
       temporaryRefs.add(ref);
       return ref;
     },
@@ -42,7 +44,7 @@ export function parseCapturedTree(
     return temporary || excluded ? children : [node.copy({ children })];
   };
   const roots =
-    parsed.root.role === "fragment" && parsed.root.ref === "s_root"
+    parsed.root.role === "fragment" && parsed.root.ref === SYNTHETIC_ROOT_REF
       ? parsed.root.children.flatMap((child) =>
           typeof child === "string" ? [child] : select(child)
         )
@@ -52,7 +54,7 @@ export function parseCapturedTree(
     roots.length === 1 && typeof onlyRoot !== "string" && onlyRoot !== undefined
       ? onlyRoot
       : new StructuralNode({
-          ref: AriaRefSchema.parse("s_root"),
+          ref: SYNTHETIC_ROOT_REF,
           role: "fragment",
           name: "",
           cursorPointer: false,

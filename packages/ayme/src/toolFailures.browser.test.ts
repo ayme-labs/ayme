@@ -5,7 +5,7 @@ import { createPage } from "./browserPage";
 import type { PomManifest } from "./contracts";
 import { errorText } from "./errors";
 import { agentTools, saveButtonRef } from "./publication.testSupport";
-import { registerCompiledPom } from "./registry";
+import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
 
 // Runtime object seam: a failing call an agent makes rejects with the error,
@@ -63,7 +63,7 @@ registerCompiledPom(FailingPage, failingManifest);
 describe("tool failures an agent gets, in Chromium", () => {
   let stop: () => void;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // The fixed overlay covers the button, so a click on it times out.
     document.body.innerHTML = `
       <button id="save">Save changes</button>
@@ -75,6 +75,7 @@ describe("tool failures an agent gets, in Chromium", () => {
     });
     ayme.pom.register(FailingPage);
     stop = ayme.start();
+    await probeRegisteredPomMembers();
   });
 
   afterEach(() => {

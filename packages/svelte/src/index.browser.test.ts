@@ -273,7 +273,7 @@ it("C6: registers the session's Page Object while its component lives", async ()
   expect(instances[0]).toBeInstanceOf(Model);
   expect(instances[0]).toBe(result?.ayme.pom.get(Model));
   expect((instances[0] as Model).page.url()).toBe(page.url());
-  expect(liveTools(result!)).toContain("Model.ping");
+  await vi.waitFor(() => expect(liveTools(result!)).toContain("Model.ping"));
 
   owner.$set({ shown: false });
   await tick();
@@ -284,7 +284,7 @@ it("C6: registers the session's Page Object while its component lives", async ()
   expect(instances).toHaveLength(2);
   // The session keeps one instance per class.
   expect(instances[1]).toBe(instances[0]);
-  expect(liveTools(result!)).toContain("Model.ping");
+  await vi.waitFor(() => expect(liveTools(result!)).toContain("Model.ping"));
 });
 
 it("C6: keeps the tools until the last component of the model is destroyed", async () => {
@@ -295,10 +295,10 @@ it("C6: keeps the tools until the last component of the model is destroyed", asy
     child: PageObjectPair,
     childProps: { model: Model },
   });
-  expect(liveTools(result!)).toContain("Model.ping");
+  await vi.waitFor(() => expect(liveTools(result!)).toContain("Model.ping"));
   owner.$set({ childProps: { model: Model, showFirst: false } });
   await tick();
-  expect(liveTools(result!)).toContain("Model.ping");
+  await vi.waitFor(() => expect(liveTools(result!)).toContain("Model.ping"));
   owner.$set({
     childProps: { model: Model, showFirst: false, showSecond: false },
   });
@@ -306,7 +306,7 @@ it("C6: keeps the tools until the last component of the model is destroyed", asy
   expect(liveTools(result!)).not.toContain("Model.ping");
 });
 
-it("C6: lets the owner use a Page Object in its own component", () => {
+it("C6: lets the owner use a Page Object in its own component", async () => {
   let result: (UseAymeResult & { pageObject: object }) | undefined;
   const owner = mount(OwnerAndPageObject, {
     options: { pageFactory },
@@ -314,7 +314,7 @@ it("C6: lets the owner use a Page Object in its own component", () => {
     onInit: (value) => (result = value),
   });
   expect(result?.pageObject).toBeInstanceOf(Model);
-  expect(liveTools(result!)).toContain("Model.ping");
+  await vi.waitFor(() => expect(liveTools(result!)).toContain("Model.ping"));
   destroy(owner);
   expect(liveTools(result!)).toEqual([]);
   expect(result?.ayme.webMCP.publicationStatus.state).toBe("disposed");

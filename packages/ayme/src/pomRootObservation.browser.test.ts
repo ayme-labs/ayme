@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createPage } from "./browserPage";
-import { probePomRootState } from "./pomReachability";
+import { observePomRoot } from "./pomRootObservation";
 
 import type { Locator } from "@playwright/test";
 
+const byId = (id: string) => document.getElementById(id)!;
+
 // Preserve the original availability matrix while testing presence separately.
 const probePomReachability = async (locator: Locator) =>
-  (await probePomRootState(locator)).available;
+  (await observePomRoot(locator)).available;
 
 describe("POM root reachability", () => {
   afterEach(() => {
@@ -97,7 +99,7 @@ describe("POM root reachability", () => {
     const root = createPage().locator("#root");
     expect(await root.isVisible()).toBe(true);
 
-    await expect(probePomRootState(root)).resolves.toEqual({
+    await expect(observePomRoot(root)).resolves.toEqual({
       present: true,
       available: true,
     });
@@ -235,12 +237,13 @@ describe("POM root reachability", () => {
   });
   it("keeps an obstructed root structurally present", async () => {
     document.body.innerHTML =
-      '<section id="root" style="width:200px;height:100px">Panel</section><div style="position:fixed;inset:0;z-index:10"></div>';
+      '<section id="root" style="width:200px;height:100px">Panel</section><div id="overlay" style="position:fixed;inset:0;z-index:10"></div>';
     await expect(
-      probePomRootState(createPage().locator("#root"))
+      observePomRoot(createPage().locator("#root"))
     ).resolves.toEqual({
       present: true,
       available: false,
+      obstruction: byId("overlay"),
     });
   });
 
@@ -250,16 +253,17 @@ describe("POM root reachability", () => {
     document.querySelector<HTMLDialogElement>("#second")!.showModal();
     document.querySelector<HTMLDialogElement>("#first")!.showModal();
     const page = createPage();
-    await expect(probePomRootState(page.locator("#active"))).resolves.toEqual({
+    await expect(observePomRoot(page.locator("#active"))).resolves.toEqual({
       present: true,
       available: true,
     });
-    await expect(probePomRootState(page.locator("#blocked"))).resolves.toEqual({
+    await expect(observePomRoot(page.locator("#blocked"))).resolves.toEqual({
       present: true,
       available: false,
+      obstruction: byId("active"),
     });
     document.querySelector<HTMLDialogElement>("#first")!.close();
-    await expect(probePomRootState(page.locator("#blocked"))).resolves.toEqual({
+    await expect(observePomRoot(page.locator("#blocked"))).resolves.toEqual({
       present: true,
       available: true,
     });
@@ -271,20 +275,22 @@ describe("POM root reachability", () => {
     const modal = document.querySelector<HTMLDialogElement>("#modal")!;
     modal.showModal();
     const root = createPage().locator("#root");
-    await expect(probePomRootState(root)).resolves.toEqual({
+    await expect(observePomRoot(root)).resolves.toEqual({
       present: true,
       available: true,
     });
     modal.inert = true;
-    await expect(probePomRootState(root)).resolves.toEqual({
+    await expect(observePomRoot(root)).resolves.toEqual({
       present: true,
       available: false,
+      obstruction: modal,
     });
     modal.inert = false;
     document.querySelector<HTMLElement>("#panel")!.inert = true;
-    await expect(probePomRootState(root)).resolves.toEqual({
+    await expect(observePomRoot(root)).resolves.toEqual({
       present: true,
       available: false,
+      obstruction: byId("panel"),
     });
   });
 
@@ -296,7 +302,7 @@ describe("POM root reachability", () => {
     expect(document.elementFromPoint(40, 40)).not.toBe(
       document.getElementById("root")
     );
-    await expect(probePomRootState(root)).resolves.toEqual({
+    await expect(observePomRoot(root)).resolves.toEqual({
       present: false,
       available: false,
     });
@@ -306,10 +312,122 @@ describe("POM root reachability", () => {
     document.body.innerHTML =
       '<button id="root" style="position:fixed;left:20px;top:20px;width:120px;height:80px;clip-path:circle(0)">Clipped</button>';
     await expect(
-      probePomRootState(createPage().locator("#root"))
+      observePomRoot(createPage().locator("#root"))
     ).resolves.toEqual({
       present: false,
       available: false,
     });
+  });
+});
+
+describe("what is in the way of a present root a click would not reach", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+    document.body.removeAttribute("style");
+    document.documentElement.removeAttribute("style");
+    window.scrollTo(0, 0);
+  });
+
+  const observeRoot = () => observePomRoot(createPage().locator("#root"));
+
+  it("names the element over the root", async () => {
+    document.body.innerHTML =
+      '<section id="root" style="width:200px;height:100px">Content</section><div id="overlay" style="position:fixed;inset:0"></div>';
+
+    expect((await observeRoot()).obstruction).toBe(byId("overlay"));
+  });
+
+  it("names the last opened native modal the root is not in, over whatever covers it", async () => {
+    document.body.innerHTML =
+      '<section id="root" style="width:200px;height:100px">Content</section><dialog id="first"><button>First</button></dialog><dialog id="second"><button>Second</button></dialog>';
+    document.querySelector<HTMLDialogElement>("#first")!.showModal();
+    document.querySelector<HTMLDialogElement>("#second")!.showModal();
+
+    expect(await observeRoot()).toEqual({
+      present: true,
+      available: false,
+      obstruction: byId("second"),
+    });
+    expect((await observeRoot()).obstruction).toBe(byId("second"));
+  });
+
+  it("names nothing for a root inside the open modal", async () => {
+    document.body.innerHTML =
+      '<dialog id="modal"><section id="root" style="width:200px;height:100px">Content</section></dialog>';
+    document.querySelector<HTMLDialogElement>("#modal")!.showModal();
+
+    expect(await observeRoot()).toEqual({ present: true, available: true });
+  });
+
+  it("names what covers a root inside the open modal, not the modal", async () => {
+    document.body.innerHTML =
+      '<dialog id="modal" style="width:300px;height:200px"><section id="root" style="width:200px;height:100px">Content</section><div id="cover" style="position:absolute;inset:0"></div></dialog>';
+    document.querySelector<HTMLDialogElement>("#modal")!.showModal();
+
+    expect((await observeRoot()).obstruction).toBe(byId("cover"));
+  });
+
+  it("names the inert ancestor", async () => {
+    document.body.innerHTML =
+      '<div id="wrapper" inert><section id="root" style="width:200px;height:100px">Content</section></div>';
+
+    expect(await observeRoot()).toEqual({
+      present: true,
+      available: false,
+      obstruction: byId("wrapper"),
+    });
+    expect((await observeRoot()).obstruction).toBe(byId("wrapper"));
+  });
+
+  it("names the root's own ancestor when nothing else takes the click", async () => {
+    document.body.style.pointerEvents = "none";
+    document.body.innerHTML =
+      '<section id="root" style="width:200px;height:100px">Content</section>';
+
+    expect((await observeRoot()).obstruction).toBe(document.documentElement);
+  });
+
+  it("names the covering element inside an open shadow root", async () => {
+    document.body.innerHTML =
+      '<section id="root" style="width:200px;height:100px">Content</section><div id="host"></div>';
+    const shadow = byId("host").attachShadow({ mode: "open" });
+    shadow.innerHTML =
+      '<div id="cover" style="position:fixed;inset:0;background:white"></div>';
+
+    expect((await observeRoot()).obstruction).toBe(
+      shadow.getElementById("cover")
+    );
+  });
+
+  it("names the sibling that would scroll into view over the root", async () => {
+    document.body.innerHTML =
+      '<div style="overflow:auto;height:200px;position:relative"><div style="height:500px"></div><div style="position:relative;height:100px"><section id="root" style="position:absolute;inset:0">Panel</section><div id="cover" style="position:absolute;inset:0;z-index:10"></div></div></div>';
+
+    expect(await observeRoot()).toEqual({
+      present: true,
+      available: false,
+      obstruction: byId("cover"),
+    });
+    expect((await observeRoot()).obstruction).toBe(byId("cover"));
+  });
+
+  it("names what covers the part of a root the viewport shows when its centre is out of view", async () => {
+    document.documentElement.style.overflow = "hidden";
+    const height = document.documentElement.clientHeight;
+    document.body.innerHTML = `<section id="root" style="position:absolute;left:0;top:${height - 50}px;width:200px;height:200px">Content</section><div id="footer" style="position:fixed;left:0;right:0;bottom:0;height:60px"></div>`;
+
+    expect(await observeRoot()).toEqual({
+      present: true,
+      available: false,
+      obstruction: byId("footer"),
+    });
+    expect((await observeRoot()).obstruction).toBe(byId("footer"));
+  });
+
+  it("keeps the root available when it is partly covered", async () => {
+    document.body.innerHTML =
+      '<section id="root" style="position:fixed;left:0;top:0;width:200px;height:200px">Content</section><div style="position:fixed;left:0;top:0;width:200px;height:120px;z-index:10"></div>';
+
+    expect(await observeRoot()).toEqual({ present: true, available: true });
   });
 });

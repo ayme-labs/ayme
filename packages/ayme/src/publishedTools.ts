@@ -13,6 +13,7 @@ import {
   type PublishedElementTool,
 } from "./elementTools";
 import { listRegisteredPomTools, type CallerAwarePomTool } from "./registry";
+import type { ToolAvailability } from "./pomInstance";
 import { RuntimeStateError } from "./errors";
 import { listPeekTools, type PeekTool } from "./peek";
 
@@ -55,14 +56,11 @@ export type PublishedToolInfo = Readonly<{
 export type ToolInfo = PublishedToolInfo &
   Readonly<{ available: boolean; reason?: string }>;
 
+/** A tool, offered while `present`: a Page Object Tool's Page Object is. */
 type ResolvedTool = {
   tool: PublishedTool;
   group: PublishedToolGroup;
-  /** Whether it is offered: a Page Object Tool's Page Object is present. */
-  present: boolean;
-  available: boolean;
-  reason?: string;
-};
+} & ToolAvailability;
 
 /** What every tool but a Page Object Tool is: on the page, and callable. */
 const always = (): Pick<ResolvedTool, "present" | "available"> => ({

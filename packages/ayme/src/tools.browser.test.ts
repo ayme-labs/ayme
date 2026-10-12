@@ -21,6 +21,7 @@ import {
 } from "./publishedTools";
 import {
   createPageRegistration,
+  probeRegisteredPomMembers,
   registerCompiledPom,
   type PageObjectConstructor,
 } from "./registry";
@@ -190,7 +191,7 @@ describe("the session's tools in Chromium", () => {
    * Start a session with TodoPage registered, the way the framework plugins
    * do. It lists `goal`, but no test runs a goal.
    */
-  function startSession(options: Parameters<typeof createAyme>[0] = {}) {
+  async function startSession(options: Parameters<typeof createAyme>[0] = {}) {
     ayme = createAyme({
       pageFactory: () => createPage({ actionTimeout: 1000 }),
       customTools: [highlight],
@@ -201,6 +202,8 @@ describe("the session's tools in Chromium", () => {
     });
     cleanups.push(registered(TodoPage));
     cleanups.push(ayme.start());
+    // A Page Object lists its tools once the first observation has run.
+    await probeRegisteredPomMembers();
   }
 
   afterEach(() => {
@@ -217,8 +220,8 @@ describe("the session's tools in Chromium", () => {
   const agentCall = (name: string, input: unknown) =>
     agentTools().call(name, input);
 
-  it("lists every tool in publication order, each in its group", () => {
-    startSession();
+  it("lists every tool in publication order, each in its group", async () => {
+    await startSession();
 
     expect(ayme.tools.list().map(({ name, group }) => [name, group])).toEqual(
       EXPECTED_TOOLS
@@ -226,7 +229,7 @@ describe("the session's tools in Chromium", () => {
   });
 
   it("tells subscribers when a Page Object registers, and returns a new list only then", async () => {
-    startSession();
+    await startSession();
     const before = ayme.tools.list();
     expect(ayme.tools.list()).toBe(before);
     const heard: (readonly ToolInfo[])[] = [];
@@ -250,7 +253,7 @@ describe("the session's tools in Chromium", () => {
 
   it("reports to the agent what the application's action changed", async () => {
     document.body.innerHTML = `<button onclick="this.after('Saved')">Save changes</button>`;
-    startSession();
+    await startSession();
     const ref = await saveButtonRef();
 
     const applied = (await ayme.tools.run("click", { target: ref })).changes;
@@ -266,7 +269,7 @@ describe("the session's tools in Chromium", () => {
   });
 
   it("throws a ToolInputError for input the tool's schema rejects, for an agent's call too", async () => {
-    startSession();
+    await startSession();
     // A name typed as any string, as an application passing user input does.
     const click: string = "click";
 
@@ -278,7 +281,7 @@ describe("the session's tools in Chromium", () => {
 
   it("throws a failing call's error, for an agent's call too", async () => {
     document.body.innerHTML = `<button id="save">Save changes</button>`;
-    startSession();
+    await startSession();
     const ref = await saveButtonRef();
     document.querySelector("#save")!.remove();
 
@@ -294,7 +297,7 @@ describe("the session's tools in Chromium", () => {
 
   it("returns the result of a call that makes its own Page Object leave the page, then withdraws the tool", async () => {
     document.body.innerHTML = `<ul><li id="item">Draft</li></ul>`;
-    startSession();
+    await startSession();
     cleanups.push(registered(ListPage));
     await expect
       .poll(() => agentTools().names())
@@ -321,7 +324,7 @@ describe("the session's tools in Chromium", () => {
 
   it("leaves out a Page Object Tool whose Page Object is not on the page, refuses to run it, and lists it once the Page Object is", async () => {
     document.body.innerHTML = `<ul><li id="item" hidden>Draft</li></ul>`;
-    startSession();
+    await startSession();
     cleanups.push(registered(ListPage));
     const archive = () =>
       ayme.tools.list().find(({ name }) => name === "ListPage.items.archive");
@@ -345,7 +348,7 @@ describe("the session's tools in Chromium", () => {
 
   it("lists a Page Object Tool a click would not reach as unavailable with the element in the way, and refuses to run it", async () => {
     document.body.innerHTML = `<ul><li id="item">Draft</li></ul><dialog id="confirm" aria-label="Archive item"><button>Confirm</button></dialog>`;
-    startSession();
+    await startSession();
     cleanups.push(registered(ListPage));
     const archive = () =>
       ayme.tools.list().find(({ name }) => name === "ListPage.items.archive");
@@ -382,10 +385,11 @@ describe("the session's tools in Chromium", () => {
   });
 
   it("lists a tool two registrations of one class share once, and runs it on the first one still registered", async () => {
-    startSession();
+    await startSession();
     const first = createPageRegistration(SettingsPage);
     const second = createPageRegistration(SettingsPage);
     cleanups.push(first.dispose, second.dispose);
+    await probeRegisteredPomMembers();
     const listed = () =>
       names(ayme.tools.list()).filter((name) => name === "SettingsPage.save");
     const saves = () => [first.instance.saves, second.instance.saves];
@@ -407,7 +411,7 @@ describe("the session's tools in Chromium", () => {
       <label>Name <input value="Ada" /></label>
       <p data-highlightable>Draft</p>
     `;
-    startSession();
+    await startSession();
     const capture = await lookAtPageStateForDocument(document);
     const described = (refs: readonly AriaRef[] = []) =>
       refs.map((ref) => {
@@ -462,7 +466,7 @@ describe("the session's tools in Chromium", () => {
   });
 
   it("gives the POM definition text snapshot returns, without reading the page", async () => {
-    startSession();
+    await startSession();
     cleanups.push(registered(SettingsPage));
     const history = getInteractionHistory(document);
     const latest = history.latestObservation;
@@ -484,8 +488,9 @@ describe("the session's tools in Chromium", () => {
   });
 
   it("passes a rest parameter's list to the action as separate arguments", async () => {
-    startSession();
+    await startSession();
     cleanups.push(registered(GroupPage));
+    await probeRegisteredPomMembers();
     GroupPage.calls = [];
 
     await ayme.tools.run("GroupPage.toggle", { group: 2, refs: ["e1", "e2"] });
@@ -495,7 +500,7 @@ describe("the session's tools in Chromium", () => {
   });
 
   it("refuses to run a tool no Page Object registered", async () => {
-    startSession();
+    await startSession();
 
     await expect(
       ayme.tools.run("SettingsPage.save", { title: "Draft" })
@@ -503,7 +508,9 @@ describe("the session's tools in Chromium", () => {
   });
 
   it("lists no tool, and refuses every call, while two tools share a name", async () => {
-    startSession({ customTools: [{ ...highlight, name: "TodoPage.addTodo" }] });
+    await startSession({
+      customTools: [{ ...highlight, name: "TodoPage.addTodo" }],
+    });
     const clash =
       'Cannot publish the tool "TodoPage.addTodo": another published tool already uses that name.';
 

@@ -81,7 +81,7 @@ describe("claudeArguments", () => {
       "--mcp-config",
       "/run/mcp.json",
       "--tools",
-      "Read,Glob,Grep",
+      "Read,Glob,Grep,ToolSearch",
       "--permission-mode",
       "dontAsk",
       "--permission-prompts",
@@ -108,7 +108,7 @@ describe("claudeArguments for the playwright-cli arm", () => {
     expect(args).toEqual(
       expect.arrayContaining([
         "--tools",
-        "Read,Glob,Grep,Bash,Skill",
+        "Read,Glob,Grep,ToolSearch,Bash,Skill",
         "--strict-mcp-config",
         "--allowedTools",
         "Bash(playwright-cli:*),Skill(playwright-cli)",

@@ -1,4 +1,5 @@
 import type { StructuralEnrichmentSelection } from "../tree/StructuralEnrichment";
+import { refAttribute } from "../tree/StructuralRef";
 import type { AriaRef } from "../tree/StructuralTypes";
 import type {
   StructuralNode,
@@ -144,7 +145,7 @@ export function projectStructuralNodeForest<TNode>(
       identityToken:
         projection.includeIdentity === false
           ? undefined
-          : (projection.identityToken?.(entry, node) ?? `ref=${node.ref}`),
+          : (projection.identityToken?.(entry, node) ?? refAttribute(node.ref)),
       status:
         projection.includeStatus === false
           ? undefined

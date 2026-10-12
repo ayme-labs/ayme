@@ -1,5 +1,4 @@
 import {
-  AriaRefSchema,
   isSyntheticRef,
   parseStructuralRef,
   selectorForRef,
@@ -10,12 +9,8 @@ import { runAction } from "./actionSequence";
 import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
 import type { RunContext } from "./run";
 import type { ToolInput, ToolResult } from "./toolTypes";
-import {
-  resolvePageStateRefs,
-  type AriaRef,
-  type AymeNode,
-  type PageStateCapture,
-} from "./pageState";
+import type { AriaRef, PageStateCapture } from "./pageState";
+import { resolveRefTarget } from "./refTarget";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { requireAymeRuntimePage } from "./registry";
 import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
@@ -217,6 +212,21 @@ const LOCATOR_EXPRESSION =
   /^\s*(?:await\s+)?(?:[\w$]+\.)*(?:getBy\w+|locator|frameLocator)\(/;
 
 /**
+ * A Structural Ref written another way: Playwright MCP's `[ref=e5]` or
+ * `ref=e5`, with a capital `E` or surrounding spaces. Such a target is read
+ * as a selector, and its failure names the ref to pass instead.
+ */
+const REF_WRITTEN_OTHERWISE =
+  /^\s*(?:\[\s*ref\s*=\s*(e\d+)\s*\]|(?:ref\s*=\s*)?(e\d+))\s*$/i;
+
+/** The hint toward the ref `requested` names, if it names one. */
+function refHint(requested: string): string | undefined {
+  const match = REF_WRITTEN_OTHERWISE.exec(requested);
+  const ref = match?.[1] ?? match?.[2];
+  return ref && `Pass the Structural Ref alone: ${ref.toLowerCase()}.`;
+}
+
+/**
  * Package-internal: resolve the element one call addresses. The one place
  * that decides what a target is: a `ref` is a Structural Ref; a `target` is
  * a Structural Ref, else a selector, which must match exactly one element.
@@ -226,11 +236,10 @@ export async function resolveElementTarget(
   requested: string,
   currentDocument: Document
 ): Promise<ResolvedTarget> {
-  const ref = parseStructuralRef(requested);
-  if (definition.targetField === "ref" || ref) {
-    const node = await resolveTarget(
+  if (definition.targetField === "ref" || parseStructuralRef(requested)) {
+    const node = await resolveRefTarget(
       definition.label,
-      ref ?? AriaRefSchema.parse(requested),
+      requested,
       currentDocument
     );
     return {
@@ -239,9 +248,10 @@ export async function resolveElementTarget(
       selector: selectorForRef(node.ref),
     };
   }
-  const fail = (reason: string) =>
+  const hint = refHint(requested);
+  const fail = (reason: string, hint?: string) =>
     new RefResolutionError(
-      `Cannot ${definition.label} "${requested}": ${reason}.`
+      `Cannot ${definition.label} "${requested}": ${reason}.${hint ? ` ${hint}` : ""}`
     );
   // An agent that passes a locator expression back as a target needs to
   // hear what to pass instead.
@@ -257,36 +267,16 @@ export async function resolveElementTarget(
     throw new ToolInputError(
       `The target "${requested}" is neither a Structural Ref nor a selector this runtime supports: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }${hint ? `. ${hint}` : ""}`
     );
   }
-  if (elements.length === 0) throw fail("the selector matches no element");
+  if (elements.length === 0)
+    throw fail("the selector matches no element", hint);
   if (elements.length > 1)
     throw fail(
       `the selector matches ${elements.length} elements; it must match exactly one`
     );
   return { element: elements[0]!, selector: requested };
-}
-
-/** Resolve a requested ref to the node it addresses now, or fail clearly. */
-async function resolveTarget(
-  label: string,
-  requestedRef: AriaRef,
-  currentDocument: Document
-): Promise<AymeNode> {
-  const fail = (reason: string) =>
-    new RefResolutionError(`Cannot ${label} ref "${requestedRef}": ${reason}.`);
-
-  if (isSyntheticRef(requestedRef))
-    throw fail("synthetic observation-only ref");
-
-  const resolution = (
-    await resolvePageStateRefs(currentDocument, requestedRef)
-  )[0]!;
-  if (resolution.status === "unresolved") throw fail(resolution.reason);
-  if (isSyntheticRef(resolution.node.ref))
-    throw fail("synthetic observation-only ref");
-  return resolution.node;
 }
 
 /** Package-internal: the browser Page's locator for a resolved element. */
