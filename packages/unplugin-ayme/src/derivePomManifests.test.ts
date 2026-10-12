@@ -342,6 +342,7 @@ describe("derivePomManifests", () => {
     expect(manifest.components).toEqual([
       {
         className: "AnnotatedComponent",
+        file: "src/fixtures/annotatedChildrenPom.ts",
         members: [
           { memberName: "root", kind: "locator", access: "field" },
           { memberName: "child", kind: "locator", access: "field" },
@@ -544,6 +545,7 @@ describe("derivePomManifests", () => {
       expect(manifestsOf("undecoratedChildPom")).toEqual([
         {
           className: "PageX",
+          file: "src/fixtures/undecoratedChildPom.ts",
           members: [
             { memberName: "heading", kind: "locator", access: "field" },
           ],

@@ -251,9 +251,23 @@ function classManifest(
   }
 
   return {
-    manifest: { className, ...classDescription(declaration), members, tools },
+    manifest: {
+      className,
+      file: declaringFile(declaration),
+      ...classDescription(declaration),
+      members,
+      tools,
+    },
     references: [...childReferences, ...returnReferences],
   };
+}
+
+/** Relative and with `/`, so a build embeds no machine-specific path. */
+function declaringFile(declaration: ts.ClassDeclaration) {
+  return path
+    .relative(process.cwd(), declaration.getSourceFile().fileName)
+    .split(path.sep)
+    .join("/");
 }
 
 /**

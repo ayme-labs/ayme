@@ -56,6 +56,12 @@ export type PomMemberManifest =
 
 export type PomComponentManifest = {
   className: string;
+  /**
+   * The file declaring the class, relative to the build's working directory.
+   * Ayme tells classes apart by name; this tells a recompiled class from a
+   * different one with the same name.
+   */
+  file?: string;
   description?: string;
   members: readonly PomMemberManifest[];
   tools: readonly ToolManifest[];
@@ -84,6 +90,7 @@ export type ToolManifest = {
 
 export type PomManifest = {
   className: string;
+  file?: string;
   description?: string;
   members: readonly PomMemberManifest[];
   components: readonly PomComponentManifest[];

@@ -135,8 +135,6 @@ export type PomToolAvailability = {
 let browserPage: Page | undefined;
 let runtimeOwner: object | undefined;
 const compiledPoms = new WeakMap<object, PomManifest>();
-// The class each name was last compiled for: an HMR update compiles a new one.
-const latestCompiledPoms = new Map<string, object>();
 const registeredPoms = new Set<ObservedRegisteredPom>();
 const subscribers = new Set<() => void>();
 let mutationObserver: MutationObserver | undefined;
@@ -207,7 +205,6 @@ function resetRegisteredPoms() {
 
 export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
   compiledPoms.set(PomClass, manifest);
-  latestCompiledPoms.set(manifest.className, PomClass);
 }
 
 export function createPageRegistration<T extends object>(
@@ -284,8 +281,11 @@ export function registerPageObject<T extends object>(
  * Ayme tells Page Object classes apart by name: tools are named after their
  * class, and definitions and Page Object Children are looked up by it. So no
  * two different classes the registered Page Objects reach, at any depth, may
- * share a name. Children carry no class, only their compiled manifest, so a
- * child class reached twice is the same class when its manifest is the same.
+ * share a name. Children carry no class at runtime, only their compiled
+ * manifest, so two of one name are the same class when the build plugin
+ * found them in the same file: an HMR update recompiles a class there while
+ * Page Objects reaching its old version are still registered. A manifest
+ * without a file is the same class when it is the same manifest.
  */
 function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
   // A different class with the same name would have its tools hidden by the
@@ -299,29 +299,31 @@ function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
         `Cannot register the Page Object "${manifest.className}": a different class with that name is already registered. Rename one of them so their tools do not share names.`
       );
 
-  const reached = new Map<string, { pageObject: string; shape: string }>();
+  type Reached = { pageObject: string; node: PomComponentManifest };
+  const reached = new Map<string, Reached>();
   const reach = (pageObject: string, pom: PomManifest) => {
     for (const node of [pom, ...pom.components]) {
-      const shape = classShape(node);
       const other = reached.get(node.className);
-      if (!other) reached.set(node.className, { pageObject, shape });
-      else if (other.shape !== shape)
+      if (!other) reached.set(node.className, { pageObject, node });
+      else if (!sameClass(other.node, node))
         throw new RuntimeStateError(
           `Cannot register the Page Object "${manifest.className}": ${
             other.pageObject === manifest.className
               ? `it reaches two different classes named "${node.className}"`
               : `it reaches a class named "${node.className}" that differs from the one the Page Object "${other.pageObject}" reaches`
-          }. Rename one of them: Ayme tells the classes of Page Objects apart by name.`
+          }${declaredIn(other.node, node)}. Rename one of them: Ayme tells the classes of Page Objects apart by name.`
         );
     }
   };
-  // An HMR update recompiles every Page Object reaching a changed child, then
-  // remounts their users one by one, so a registration a newer compile has
-  // replaced is about to go and does not count.
   for (const registered of registeredPoms)
-    if (latestCompiledPoms.get(registered.id) === registered.pomClass)
-      reach(registered.id, registered.manifest);
+    reach(registered.id, registered.manifest);
   reach(manifest.className, manifest);
+}
+
+function sameClass(first: PomComponentManifest, second: PomComponentManifest) {
+  return first.file !== undefined && second.file !== undefined
+    ? first.file === second.file
+    : classShape(first) === classShape(second);
 }
 
 function classShape({
@@ -329,8 +331,14 @@ function classShape({
   description,
   members,
   tools,
-}: PomManifest | PomComponentManifest) {
+}: PomComponentManifest) {
   return JSON.stringify({ className, description, members, tools });
+}
+
+function declaredIn(first: PomComponentManifest, second: PomComponentManifest) {
+  return first.file === undefined || second.file === undefined
+    ? ""
+    : `, declared in ${first.file} and ${second.file}`;
 }
 
 function startObservingPage() {
