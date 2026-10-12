@@ -495,6 +495,59 @@ describe("live Page Object registry", () => {
     invoices.dispose();
   });
 
+  it("compares a reached class with every same-named class, not the first", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    const reachingRow = (className: string, rowFile?: string) => {
+      const PomClass = { [className]: class {} }[className]!;
+      registry.registerCompiledPom(PomClass, {
+        ...emptyManifest(className),
+        components: [
+          {
+            className: "Row",
+            ...(rowFile === undefined ? {} : { file: rowFile }),
+            members: [],
+            tools: [],
+          },
+        ],
+      });
+      return PomClass;
+    };
+    // A manifest without a file matches both Rows by shape.
+    registry.createPageRegistration(reachingRow("LegacyPage"));
+    registry.createPageRegistration(
+      reachingRow("OrdersPage", "src/orders/Row.ts")
+    );
+    expect(() =>
+      registry.createPageRegistration(
+        reachingRow("UsersPage", "src/users/Row.ts")
+      )
+    ).toThrow(
+      'it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts.'
+    );
+  });
+
+  it("names both files when two top-level Page Objects share a name", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    const FirstDialog = class Dialog {};
+    const SecondDialog = class Dialog {};
+    registry.registerCompiledPom(FirstDialog, {
+      ...emptyManifest("Dialog"),
+      file: "src/a/Dialog.ts",
+    });
+    registry.registerCompiledPom(SecondDialog, {
+      ...emptyManifest("Dialog"),
+      file: "src/b/Dialog.ts",
+    });
+    registry.createPageRegistration(FirstDialog);
+    expect(() => registry.createPageRegistration(SecondDialog)).toThrow(
+      'Cannot register the Page Object "Dialog": a different class with that name is already registered, declared in src/a/Dialog.ts and src/b/Dialog.ts. Rename one of them so their tools do not share names.'
+    );
+  });
+
   it("registers an HMR-updated Page Object after its old class is gone", async () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);

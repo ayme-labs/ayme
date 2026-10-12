@@ -296,16 +296,18 @@ function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
       registered.pomClass !== PomClass
     )
       throw new RuntimeStateError(
-        `Cannot register the Page Object "${manifest.className}": a different class with that name is already registered. Rename one of them so their tools do not share names.`
+        `Cannot register the Page Object "${manifest.className}": a different class with that name is already registered${declaredIn(registered.manifest, manifest)}. Rename one of them so their tools do not share names.`
       );
 
   type Reached = { pageObject: string; node: PomComponentManifest };
-  const reached = new Map<string, Reached>();
+  // Every distinct class of each name, so a manifest without a file cannot
+  // stand in for two classes from different files.
+  const reached = new Map<string, Reached[]>();
   const reach = (pageObject: string, pom: PomManifest) => {
     for (const node of [pom, ...pom.components]) {
-      const other = reached.get(node.className);
-      if (!other) reached.set(node.className, { pageObject, node });
-      else if (!sameClass(other.node, node))
+      const others = reached.get(node.className) ?? [];
+      const other = others.find((other) => !sameClass(other.node, node));
+      if (other)
         throw new RuntimeStateError(
           `Cannot register the Page Object "${manifest.className}": ${
             other.pageObject === manifest.className
@@ -313,6 +315,8 @@ function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
               : `it reaches a class named "${node.className}" that differs from the one the Page Object "${other.pageObject}" reaches`
           }${declaredIn(other.node, node)}. Rename one of them: Ayme tells the classes of Page Objects apart by name.`
         );
+      if (!others.some((other) => other.node.file === node.file))
+        reached.set(node.className, [...others, { pageObject, node }]);
     }
   };
   for (const registered of registeredPoms)

@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   derivePomManifestsFromProgram,
@@ -257,6 +257,20 @@ describe("derivePomManifests", () => {
     );
   });
 
+  it("names a class's file by its package, whatever directory the build runs from", () => {
+    const fileName = path.resolve("src/fixtures/undecoratedChildPom.ts");
+    const fromPackage = derivePomManifests(fileName)[0]?.file;
+    const cwd = vi.spyOn(process, "cwd").mockReturnValue(path.resolve("/"));
+    try {
+      expect(derivePomManifests(fileName)[0]?.file).toBe(fromPackage);
+    } finally {
+      cwd.mockRestore();
+    }
+    expect(fromPackage).toBe(
+      "@ayme-dev/unplugin-ayme/src/fixtures/undecoratedChildPom.ts"
+    );
+  });
+
   it("discovers directly annotated component values and explicit collections", () => {
     const manifest = manifestForClass(
       "annotatedChildrenPom",
@@ -342,7 +356,7 @@ describe("derivePomManifests", () => {
     expect(manifest.components).toEqual([
       {
         className: "AnnotatedComponent",
-        file: "src/fixtures/annotatedChildrenPom.ts",
+        file: "@ayme-dev/unplugin-ayme/src/fixtures/annotatedChildrenPom.ts",
         members: [
           { memberName: "root", kind: "locator", access: "field" },
           { memberName: "child", kind: "locator", access: "field" },
@@ -545,7 +559,7 @@ describe("derivePomManifests", () => {
       expect(manifestsOf("undecoratedChildPom")).toEqual([
         {
           className: "PageX",
-          file: "src/fixtures/undecoratedChildPom.ts",
+          file: "@ayme-dev/unplugin-ayme/src/fixtures/undecoratedChildPom.ts",
           members: [
             { memberName: "heading", kind: "locator", access: "field" },
           ],
