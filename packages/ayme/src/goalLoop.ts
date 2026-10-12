@@ -380,8 +380,9 @@ export async function pursueGoal(
   /**
    * A decision the loop could not obtain ends the run; the error travels on.
    * A Decision Endpoint failure advises a retry only when the endpoint or its
-   * provider failed (5xx): a missing endpoint, a refusal or a malformed
-   * answer does not get better by asking again.
+   * provider failed or was busy (5xx, 408 timeout, 429 rate limit): a missing
+   * endpoint, a refusal or a malformed answer does not get better by asking
+   * again.
    */
   const decideFailed = (error: unknown): Promise<GoalLoopRunResult> => {
     const endpoint = error instanceof DecisionEndpointError;
@@ -389,8 +390,11 @@ export async function pursueGoal(
     const what = endpoint
       ? error.message
       : `The decision function failed: ${errorTextOf(error)}`;
+    const status = endpoint ? (error.status ?? 0) : 0;
     const retry =
-      !endpoint || (error.code === "rejected" && (error.status ?? 0) >= 500);
+      !endpoint ||
+      (error.code === "rejected" &&
+        (status >= 500 || status === 408 || status === 429));
     return done({
       reason: "decide_failed",
       next: `${what.replace(/\.$/, "")}. ${retry ? "Retry, or handle" : "Handle"} the goal without the Goal Loop.`,
@@ -398,11 +402,14 @@ export async function pursueGoal(
     });
   };
 
-  /** A decision the loop could not use ends the run the same way. */
+  /**
+   * A decision the loop could not use ends the run the same way, without retry
+   * advice, like a malformed Decision Endpoint answer.
+   */
   const invalidDecision = (error: unknown): Promise<GoalLoopRunResult> =>
     done({
       reason: "decide_failed",
-      next: `The decision function returned an invalid response: ${errorTextOf(error)}. Retry, or handle the goal without the Goal Loop.`,
+      next: `The decision function returned an invalid response: ${errorTextOf(error)}. Handle the goal without the Goal Loop.`,
       history,
     });
 

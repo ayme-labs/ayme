@@ -1206,6 +1206,18 @@ describe("Goal Loop goal in Chromium", () => {
     ],
     [
       "rejected",
+      408,
+      "The Decision Endpoint /api/decisions answered 408 The model provider timed out.",
+      "The Decision Endpoint /api/decisions answered 408 The model provider timed out. Retry, or handle",
+    ],
+    [
+      "rejected",
+      429,
+      "The Decision Endpoint /api/decisions answered 429 Rate limit reached.",
+      "The Decision Endpoint /api/decisions answered 429 Rate limit reached. Retry, or handle",
+    ],
+    [
+      "rejected",
       502,
       "The Decision Endpoint /api/decisions answered 502 The model provider could not be reached.",
       "The Decision Endpoint /api/decisions answered 502 The model provider could not be reached. Retry, or handle",
@@ -1232,7 +1244,9 @@ describe("Goal Loop goal in Chromium", () => {
     const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
     expect(withoutChanges(result)).toEqual({
       reason: "decide_failed",
-      next: expect.stringContaining("Invalid goal_met answer"),
+      next: expect.stringMatching(
+        /Invalid goal_met answer.*\. Handle the goal without the Goal Loop\.$/
+      ),
       history: [],
     });
   });
