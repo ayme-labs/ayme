@@ -93,7 +93,12 @@ function playwrightMcpVersion(): string {
   return manifest.version;
 }
 
-const readOnlyFileTools = ["Read", "Glob", "Grep"];
+/**
+ * Every arm gets Claude Code's ToolSearch, as a default install has it. Without it Claude Code
+ * turns tool search off and sends every MCP tool in full, so a changed tool list rewrites the
+ * cached prompt prefix.
+ */
+const baseTools = ["Read", "Glob", "Grep", "ToolSearch"];
 
 /** A command with and without arguments, as permission rules. */
 function bashCommand(command: string) {
@@ -124,7 +129,7 @@ function aymeArm(id: ArmId, goalLoop: boolean): Arm {
     interfaceLine: () =>
       goalLoop ? `${interfaceLine} ${goalFirstSentence}` : interfaceLine,
     // The skill is invoked through the Skill tool.
-    tools: [...readOnlyFileTools, "Skill"],
+    tools: [...baseTools, "Skill"],
     allowedTools: [`mcp__${aymeServerName}`, `Skill(${aymeSkillName})`],
     mcpServers: (context) => ({ [aymeServerName]: aymeMcpServer(context) }),
     preconditions: goalLoop ? aymeGoalLoopPreconditions : aymeMcpPreconditions,
@@ -141,7 +146,7 @@ export const arms: Record<ArmId, Arm> = {
     id: "playwright-mcp",
     interfaceLine: () =>
       "Use the Playwright MCP browser tools (the `playwright` MCP server) for every browser interaction.",
-    tools: readOnlyFileTools,
+    tools: baseTools,
     allowedTools: ["mcp__playwright"],
     mcpServers: ({ profileDir, outputDir, initPagePath }) => ({
       playwright: {
@@ -173,7 +178,7 @@ export const arms: Record<ArmId, Arm> = {
     interfaceLine: (start) =>
       `Use the \`playwright-cli\` command and its \`playwright-cli\` skill for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}; start from \`playwright-cli snapshot\`.`,
     // The skill is invoked through the Skill tool; Bash is only the CLI.
-    tools: [...readOnlyFileTools, "Bash", "Skill"],
+    tools: [...baseTools, "Bash", "Skill"],
     allowedTools: ["Bash(playwright-cli:*)", "Skill(playwright-cli)"],
     disallowedTools: [
       // The skill pre-approves `npx playwright`, which would run the lab app's own Playwright, or download one.
