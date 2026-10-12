@@ -217,6 +217,21 @@ const LOCATOR_EXPRESSION =
   /^\s*(?:await\s+)?(?:[\w$]+\.)*(?:getBy\w+|locator|frameLocator)\(/;
 
 /**
+ * A Structural Ref written another way: Playwright MCP's `[ref=e5]` or
+ * `ref=e5`, with a capital `E` or surrounding spaces. Such a target is read
+ * as a selector, and its failure names the ref to pass instead.
+ */
+const REF_WRITTEN_OTHERWISE =
+  /^\s*(?:\[\s*ref\s*=\s*(e\d+)\s*\]|(?:ref\s*=\s*)?(e\d+))\s*$/i;
+
+/** The hint toward the ref `requested` names, if it names one. */
+function refHint(requested: string): string | undefined {
+  const match = REF_WRITTEN_OTHERWISE.exec(requested);
+  const ref = match?.[1] ?? match?.[2];
+  return ref && `Pass the Structural Ref alone: ${ref.toLowerCase()}.`;
+}
+
+/**
  * Package-internal: resolve the element one call addresses. The one place
  * that decides what a target is: a `ref` is a Structural Ref; a `target` is
  * a Structural Ref, else a selector, which must match exactly one element.
@@ -239,9 +254,10 @@ export async function resolveElementTarget(
       selector: selectorForRef(node.ref),
     };
   }
-  const fail = (reason: string) =>
+  const hint = refHint(requested);
+  const fail = (reason: string, hint?: string) =>
     new RefResolutionError(
-      `Cannot ${definition.label} "${requested}": ${reason}.`
+      `Cannot ${definition.label} "${requested}": ${reason}.${hint ? ` ${hint}` : ""}`
     );
   // An agent that passes a locator expression back as a target needs to
   // hear what to pass instead.
@@ -257,10 +273,11 @@ export async function resolveElementTarget(
     throw new ToolInputError(
       `The target "${requested}" is neither a Structural Ref nor a selector this runtime supports: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }${hint ? `. ${hint}` : ""}`
     );
   }
-  if (elements.length === 0) throw fail("the selector matches no element");
+  if (elements.length === 0)
+    throw fail("the selector matches no element", hint);
   if (elements.length > 1)
     throw fail(
       `the selector matches ${elements.length} elements; it must match exactly one`
