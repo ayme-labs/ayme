@@ -234,6 +234,41 @@ export function pageObjectToolNames(names: string[]): string[] {
   return names.filter((name) => name.includes("."));
 }
 
+/**
+ * What is wrong with a start page without page objects, looked at again after pairing: it must
+ * still publish its screen tool (and goal exactly when the Goal Loop is on) and no Page Object
+ * Tool, keep this run's pairing, and stay at the start URL. Null when nothing is.
+ */
+export function settledStartPageProblem(look: {
+  tools: string[];
+  screenTool: string;
+  goalLoop: boolean;
+  pairedAddress: string;
+  storedAddress: string | null;
+  pageUrl: string;
+  startUrl: string;
+}): string | null {
+  const pageObjectTools = pageObjectToolNames(look.tools);
+  if (pageObjectTools.length > 0)
+    return `The page publishes ${pageObjectTools.join(", ")} although its page objects should be off.`;
+  if (
+    !look.tools.includes(look.screenTool) ||
+    look.tools.includes("goal") !== look.goalLoop
+  )
+    return `The page publishes ${look.tools.join(", ") || "nothing"} two seconds after pairing, instead of ${look.screenTool} ${look.goalLoop ? "and" : "without"} goal.`;
+  if (look.storedAddress !== look.pairedAddress)
+    return `The page no longer keeps its pairing with ${look.pairedAddress} two seconds after pairing.`;
+  const at = new URL(look.pageUrl);
+  const start = new URL(look.startUrl);
+  if (
+    at.origin !== start.origin ||
+    at.pathname !== start.pathname ||
+    at.search !== start.search
+  )
+    return `The paired page is at ${look.pageUrl} instead of the start page ${look.startUrl}.`;
+  return null;
+}
+
 /** The pairing the tab keeps, once the server has welcomed it with its token. */
 function storedPairing(
   page: Page
@@ -475,7 +510,7 @@ export async function setUpAymeAgent(
       throw new Error(
         `The page stored a pairing but the server did not report it. Server log:\n${server.log.join("\n")}`
       );
-    const tools = await waitFor(
+    let tools = await waitFor(
       `Publishing ${options.goalLoop ? `${screenTool} and goal` : screenTool}`,
       60_000,
       async () => {
@@ -494,20 +529,20 @@ export async function setUpAymeAgent(
       );
     if (!options.pageObjects) {
       // The provider publishes a screen's Page Object Tools as it mounts them, so look again once
-      // they would have had time to appear.
+      // they would have had time to appear. That second look is the one recorded, so it must still
+      // show a complete, paired start page.
       await new Promise((resolve) => setTimeout(resolve, 2_000));
-      const pageObjectTools = pageObjectToolNames(
-        await publishedToolNames(page)
-      );
-      if (pageObjectTools.length > 0)
-        throw new Error(
-          `The page publishes ${pageObjectTools.join(", ")} although its page objects should be off for ${context.runId}.`
-        );
-      const { pathname } = new URL(page.url());
-      if (pathname !== new URL(context.start.url).pathname)
-        throw new Error(
-          `The paired page is at ${page.url()} instead of the start page ${context.start.url}.`
-        );
+      tools = await publishedToolNames(page);
+      const problem = settledStartPageProblem({
+        tools,
+        screenTool,
+        goalLoop: options.goalLoop,
+        pairedAddress: pairing.address,
+        storedAddress: (await storedPairing(page))?.address ?? null,
+        pageUrl: page.url(),
+        startUrl: context.start.url,
+      });
+      if (problem) throw new Error(`${problem} (${context.runId})`);
     }
     context.log(
       `The start page paired with the Ayme MCP server ${pairedAt.getTime() - opened} ms after opening, with ${tools.length} tools; goal ${goalToolPublished ? "is" : "is not"} published; page objects are ${options.pageObjects ? "on" : "off"}.`
