@@ -450,6 +450,51 @@ describe("live Page Object registry", () => {
     expect(registry.listRegisteredPoms()).toEqual([]);
   });
 
+  it("lets an HMR update of a shared child remount its Page Objects one by one", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    const reachingRow = (className: string, rowTool: string): PomManifest => ({
+      ...emptyManifest(className),
+      components: [
+        {
+          className: "Row",
+          members: [],
+          tools: [{ ...action(rowTool), toolName: `Row.${rowTool}` }],
+        },
+      ],
+    });
+    const compile = (rowTool: string) => {
+      const OrdersPage = class OrdersPage {};
+      const InvoicesPage = class InvoicesPage {};
+      registry.registerCompiledPom(
+        OrdersPage,
+        reachingRow("OrdersPage", rowTool)
+      );
+      registry.registerCompiledPom(
+        InvoicesPage,
+        reachingRow("InvoicesPage", rowTool)
+      );
+      return { OrdersPage, InvoicesPage };
+    };
+    const before = compile("open");
+    const orders = registry.createPageRegistration(before.OrdersPage);
+    const invoices = registry.createPageRegistration(before.InvoicesPage);
+
+    // Editing Row recompiles both Page Objects before either user remounts.
+    const after = compile("remove");
+    orders.dispose();
+    const updatedOrders = registry.createPageRegistration(after.OrdersPage);
+    invoices.dispose();
+    const updatedInvoices = registry.createPageRegistration(after.InvoicesPage);
+    expect(
+      registry.listRegisteredPoms().map(({ instance }) => instance.constructor)
+    ).toEqual([after.OrdersPage, after.InvoicesPage]);
+
+    updatedOrders.dispose();
+    updatedInvoices.dispose();
+  });
+
   it("registers an HMR-updated Page Object after its old class is gone", async () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);

@@ -135,6 +135,8 @@ export type PomToolAvailability = {
 let browserPage: Page | undefined;
 let runtimeOwner: object | undefined;
 const compiledPoms = new WeakMap<object, PomManifest>();
+// The class each name was last compiled for: an HMR update compiles a new one.
+const latestCompiledPoms = new Map<string, object>();
 const registeredPoms = new Set<ObservedRegisteredPom>();
 const subscribers = new Set<() => void>();
 let mutationObserver: MutationObserver | undefined;
@@ -205,6 +207,7 @@ function resetRegisteredPoms() {
 
 export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
   compiledPoms.set(PomClass, manifest);
+  latestCompiledPoms.set(manifest.className, PomClass);
 }
 
 export function createPageRegistration<T extends object>(
@@ -312,8 +315,12 @@ function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
         );
     }
   };
+  // An HMR update recompiles every Page Object reaching a changed child, then
+  // remounts their users one by one, so a registration a newer compile has
+  // replaced is about to go and does not count.
   for (const registered of registeredPoms)
-    reach(registered.id, registered.manifest);
+    if (latestCompiledPoms.get(registered.id) === registered.pomClass)
+      reach(registered.id, registered.manifest);
   reach(manifest.className, manifest);
 }
 
