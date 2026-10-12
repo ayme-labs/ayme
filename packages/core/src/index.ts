@@ -6,8 +6,12 @@ export type { AriaRef, PlaywrightLocatorString } from "./tree/StructuralTypes";
 export {
   isSyntheticRef,
   parseStructuralRef,
+  refAttribute,
+  refFromAttribute,
   refFromSelector,
   selectorForRef,
+  SYNTHETIC_ROOT_REF,
+  syntheticRef,
 } from "./tree/StructuralRef";
 export {
   StructuralNode,

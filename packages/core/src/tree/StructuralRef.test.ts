@@ -3,8 +3,12 @@ import { AriaRefSchema } from "./StructuralTypes";
 import {
   isSyntheticRef,
   parseStructuralRef,
+  refAttribute,
+  refFromAttribute,
   refFromSelector,
   selectorForRef,
+  SYNTHETIC_ROOT_REF,
+  syntheticRef,
 } from "./StructuralRef";
 
 describe("Structural Ref grammar", () => {
@@ -61,6 +65,49 @@ describe("Structural Ref grammar", () => {
     for (const text of ["e7", "s_root", "s_webmcp_parse_3"]) {
       const ref = AriaRefSchema.parse(text);
       expect(refFromSelector(selectorForRef(ref))).toBe(ref);
+    }
+  });
+
+  it.each([
+    ["root", "s_root"],
+    [1, "s_1"],
+    ["webmcp_parse_3", "s_webmcp_parse_3"],
+  ])("mints the synthetic ref named %j as %j", (name, ref) => {
+    const minted = syntheticRef(name);
+    expect(minted).toBe(ref);
+    expect(parseStructuralRef(minted)).toBe(minted);
+    expect(isSyntheticRef(minted)).toBe(true);
+  });
+
+  it.each(["", "a b", "-1"])(
+    "refuses to mint a synthetic ref named %j",
+    (name) => {
+      expect(() => syntheticRef(name)).toThrow(
+        `"${name}" cannot name a synthetic Structural Ref.`
+      );
+    }
+  );
+
+  it("names the root fragment's synthetic ref", () => {
+    expect(SYNTHETIC_ROOT_REF).toBe("s_root");
+  });
+
+  it.each([
+    ["ref=e12", "e12"],
+    ["ref=s_root", "s_root"],
+    ["ref=a", "a"],
+    ["active", undefined],
+    ["level=2", undefined],
+    ["aria-ref=e1", undefined],
+  ])("reads the ref the snapshot attribute %j names as %j", (content, ref) => {
+    expect(refFromAttribute(content)).toBe(ref);
+  });
+
+  it("reads back the ref its own snapshot attribute names", () => {
+    for (const text of ["e7", "s_root", "s_webmcp_parse_3"]) {
+      const ref = AriaRefSchema.parse(text);
+      expect(refAttribute(ref)).toBe(`ref=${text}`);
+      expect(refFromAttribute(refAttribute(ref))).toBe(ref);
     }
   });
 });

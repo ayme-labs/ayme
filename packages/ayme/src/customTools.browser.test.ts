@@ -192,6 +192,20 @@ describe("Custom Tools in Chromium", () => {
     expect(targets).toHaveLength(0);
   });
 
+  it("refuses a ref that is not a Structural Ref without calling execute", async () => {
+    document.body.innerHTML = '<button id="save">Save changes</button>';
+    const { customTool, targets } = recordingCustomTool();
+    start([customTool]);
+    await structure();
+
+    expect(
+      await call("highlight_element", { ref: "#save" }).catch(errorText)
+    ).toBe(
+      'ToolInputError: The ref "#save" is not a Structural Ref. Pass a ref from snapshot, such as e5.'
+    );
+    expect(targets).toHaveLength(0);
+  });
+
   it("fails a removed ref without calling execute", async () => {
     document.body.innerHTML =
       '<button id="save">Save changes</button><p>Keep me</p>';

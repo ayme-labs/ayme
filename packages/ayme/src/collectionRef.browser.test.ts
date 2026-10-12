@@ -245,6 +245,123 @@ describe("collection instances targeted by ref", () => {
     }
   });
 
+  it("refuses a ref that is not a Structural Ref, and one outside the collection", async () => {
+    document.body.innerHTML = `
+      <h1>Items</h1>
+      <ul>
+        <li id="item-0"><button>Archive item-0</button></li>
+      </ul>
+    `;
+    const page = createPage();
+    const runtime = createAymeRuntime(page);
+    try {
+      const archive = vi.fn();
+      class ItemsPage {
+        readonly items = [{ root: page.locator("#item-0"), archive }];
+      }
+
+      registerCompiledPom(ItemsPage, {
+        className: "ItemsPage",
+        tools: [],
+        members: [
+          {
+            memberName: "items",
+            kind: "component",
+            access: "field",
+            componentClassName: "Item",
+            collection: true,
+          },
+        ],
+        components: [
+          {
+            className: "Item",
+            members: [{ memberName: "root", kind: "locator", access: "field" }],
+            tools: [action("archive", "Archive this item.")],
+          },
+        ],
+      });
+      const registration = createPageRegistration(ItemsPage);
+      await probeRegisteredPomMembers();
+      const archiveTool = listAvailablePomTools().find(
+        (t) => t.name === "ItemsPage.items.archive"
+      );
+      if (!archiveTool) throw new Error("Expected archive tool.");
+
+      await expect(
+        archiveTool.execute({ ref: "button.save", args: {} }, runContext())
+      ).rejects.toThrow(
+        'The ref "button.save" is not a Structural Ref. Pass a ref from snapshot, such as e5.'
+      );
+
+      const { getPageStateForDocument } = await import("./pageState");
+      const state = await getPageStateForDocument(document);
+      const headingRef = refInPageState(state.text, "heading");
+      await expect(
+        archiveTool.execute({ ref: headingRef, args: {} }, runContext())
+      ).rejects.toThrow(
+        `Ref "${headingRef}" does not match a present Item instance at ItemsPage.items (tool ItemsPage.items.archive).`
+      );
+
+      expect(archive).not.toHaveBeenCalled();
+      registration.dispose();
+    } finally {
+      runtime.dispose();
+    }
+  });
+
+  it("targets an instance whose root has a synthetic ref", async () => {
+    document.body.innerHTML = `
+      <main><div id="item-0" role="none"><button>Archive item-0</button></div></main>
+    `;
+    const page = createPage();
+    const runtime = createAymeRuntime(page);
+    try {
+      const archive = vi.fn();
+      class ItemsPage {
+        readonly items = [{ root: page.locator("#item-0"), archive }];
+      }
+
+      registerCompiledPom(ItemsPage, {
+        className: "ItemsPage",
+        tools: [],
+        members: [
+          {
+            memberName: "items",
+            kind: "component",
+            access: "field",
+            componentClassName: "Item",
+            collection: true,
+          },
+        ],
+        components: [
+          {
+            className: "Item",
+            members: [{ memberName: "root", kind: "locator", access: "field" }],
+            tools: [action("archive", "Archive this item.")],
+          },
+        ],
+      });
+      const registration = createPageRegistration(ItemsPage);
+      await probeRegisteredPomMembers();
+      const archiveTool = listAvailablePomTools().find(
+        (t) => t.name === "ItemsPage.items.archive"
+      );
+      if (!archiveTool) throw new Error("Expected archive tool.");
+
+      const { getPageStateForDocument } = await import("./pageState");
+      const state = await getPageStateForDocument(document);
+      const ref = refInPageState(state.text, "ItemsPage.items[0]");
+      expect(ref).toMatch(/^s_/);
+
+      await archiveTool.execute({ ref, args: {} }, runContext());
+      expect(archive).toHaveBeenCalledOnce();
+
+      registration.dispose();
+    } finally {
+      runtime.dispose();
+    }
+  });
+
   it("targets an instance in a nested collection with a single ref", async () => {
     document.body.innerHTML = `
       <div id="group-0">

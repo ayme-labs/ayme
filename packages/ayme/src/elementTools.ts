@@ -1,5 +1,4 @@
 import {
-  AriaRefSchema,
   isSyntheticRef,
   parseStructuralRef,
   selectorForRef,
@@ -10,12 +9,8 @@ import { runAction } from "./actionSequence";
 import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
 import type { RunContext } from "./run";
 import type { ToolInput, ToolResult } from "./toolTypes";
-import {
-  resolvePageStateRefs,
-  type AriaRef,
-  type AymeNode,
-  type PageStateCapture,
-} from "./pageState";
+import type { AriaRef, PageStateCapture } from "./pageState";
+import { resolveRefTarget } from "./refTarget";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { requireAymeRuntimePage } from "./registry";
 import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
@@ -241,11 +236,10 @@ export async function resolveElementTarget(
   requested: string,
   currentDocument: Document
 ): Promise<ResolvedTarget> {
-  const ref = parseStructuralRef(requested);
-  if (definition.targetField === "ref" || ref) {
-    const node = await resolveTarget(
+  if (definition.targetField === "ref" || parseStructuralRef(requested)) {
+    const node = await resolveRefTarget(
       definition.label,
-      ref ?? AriaRefSchema.parse(requested),
+      requested,
       currentDocument
     );
     return {
@@ -283,27 +277,6 @@ export async function resolveElementTarget(
       `the selector matches ${elements.length} elements; it must match exactly one`
     );
   return { element: elements[0]!, selector: requested };
-}
-
-/** Resolve a requested ref to the node it addresses now, or fail clearly. */
-async function resolveTarget(
-  label: string,
-  requestedRef: AriaRef,
-  currentDocument: Document
-): Promise<AymeNode> {
-  const fail = (reason: string) =>
-    new RefResolutionError(`Cannot ${label} ref "${requestedRef}": ${reason}.`);
-
-  if (isSyntheticRef(requestedRef))
-    throw fail("synthetic observation-only ref");
-
-  const resolution = (
-    await resolvePageStateRefs(currentDocument, requestedRef)
-  )[0]!;
-  if (resolution.status === "unresolved") throw fail(resolution.reason);
-  if (isSyntheticRef(resolution.node.ref))
-    throw fail("synthetic observation-only ref");
-  return resolution.node;
 }
 
 /** Package-internal: the browser Page's locator for a resolved element. */
