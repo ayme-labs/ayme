@@ -435,95 +435,120 @@ function scrolledIntoView(
   const document = source.ownerDocument;
   const view = document.defaultView!;
   const htmlStyle = view.getComputedStyle(document.documentElement);
-  const bodyStyle = document.body && view.getComputedStyle(document.body);
-  const viewport: Rect = {
-    left: 0,
-    top: 0,
-    right: document.documentElement.clientWidth,
-    bottom: document.documentElement.clientHeight,
-  };
-  let rect: Rect | undefined = {
+  let rect = clippedBy(source, {
     left: bounds.left,
     right: bounds.right,
     top: bounds.top,
     bottom: bounds.bottom,
-  };
-  const ownClip = clipBounds(source);
-  if (ownClip === null) return undefined;
-  if (ownClip) rect = clip(rect, ownClip, true, true);
-  if (!rect) return undefined;
+  });
   const scrolls: Scroll[] = [];
   for (const ancestor of ancestors) {
-    if (ancestor === document.documentElement) break;
-    if (
-      ancestor === document.body &&
-      htmlStyle.overflowX === "visible" &&
-      htmlStyle.overflowY === "visible"
-    )
-      continue;
+    if (!rect || ancestor === document.documentElement) break;
+    // The body's overflow scrolls the viewport unless the root element's
+    // own overflow takes that over.
+    if (ancestor === document.body && overflowsVisibly(htmlStyle)) continue;
     const style = view.getComputedStyle(ancestor);
-    const box = ancestor.getBoundingClientRect();
-    const width = (ancestor as HTMLElement).offsetWidth || box.width;
-    const height = (ancestor as HTMLElement).offsetHeight || box.height;
-    const scaleX = width ? box.width / width : 1;
-    const scaleY = height ? box.height / height : 1;
-    const port = {
-      left: box.left + ancestor.clientLeft * scaleX,
-      top: box.top + ancestor.clientTop * scaleY,
-      right: box.left + (ancestor.clientLeft + ancestor.clientWidth) * scaleX,
-      bottom: box.top + (ancestor.clientTop + ancestor.clientHeight) * scaleY,
-    };
-    const scroll = projectIntoPort(
-      rect,
-      port,
-      ancestor,
-      style.overflowX,
-      style.overflowY,
-      scaleX,
-      scaleY,
-      alignment
+    const { port, scaleX, scaleY } = scrollport(ancestor);
+    scrolls.push(
+      projectIntoPort(
+        rect,
+        port,
+        ancestor,
+        style.overflowX,
+        style.overflowY,
+        scaleX,
+        scaleY,
+        alignment
+      )
     );
-    scrolls.push(scroll);
     rect = clip(
       rect,
       port,
       style.overflowX !== "visible",
       style.overflowY !== "visible"
     );
-    if (!rect) break;
-    const ancestorClip = clipBounds(ancestor);
-    if (ancestorClip === null) {
-      rect = undefined;
-      break;
-    }
-    if (ancestorClip) rect = clip(rect, ancestorClip, true, true);
-    if (!rect) break;
+    rect = rect && clippedBy(ancestor, rect);
   }
   if (!rect) return undefined;
-
+  const viewport: Rect = {
+    left: 0,
+    top: 0,
+    right: document.documentElement.clientWidth,
+    bottom: document.documentElement.clientHeight,
+  };
   const scroller = document.scrollingElement;
-  if (scroller && !fixedToViewport) {
-    const overflowX =
-      htmlStyle.overflowX === "visible"
-        ? (bodyStyle?.overflowX ?? "visible")
-        : htmlStyle.overflowX;
-    const overflowY =
-      htmlStyle.overflowY === "visible"
-        ? (bodyStyle?.overflowY ?? "visible")
-        : htmlStyle.overflowY;
+  if (scroller && !fixedToViewport)
     scrolls.push(
-      projectIntoPort(
-        rect,
-        viewport,
-        scroller,
-        overflowX === "visible" ? "auto" : overflowX,
-        overflowY === "visible" ? "auto" : overflowY,
-        1,
-        1,
-        alignment
-      )
+      documentScroll(rect, viewport, scroller, htmlStyle, alignment)
     );
-  }
-  rect = clip(rect, viewport, true, true);
-  return rect && { rect, scrolls };
+  const shown = clip(rect, viewport, true, true);
+  return shown && { rect: shown, scrolls };
+}
+
+/**
+ * `rect` cut to what `element`'s own clipping shows; undefined when it shows
+ * none of it.
+ */
+function clippedBy(element: Element, rect: Rect): Rect | undefined {
+  const bounds = clipBounds(element);
+  if (bounds === null) return undefined;
+  return bounds ? clip(rect, bounds, true, true) : rect;
+}
+
+function overflowsVisibly(style: CSSStyleDeclaration) {
+  return style.overflowX === "visible" && style.overflowY === "visible";
+}
+
+/**
+ * The box `ancestor` scrolls its content within, in the viewport's
+ * coordinates, and how much a transform scales it.
+ */
+function scrollport(ancestor: Element) {
+  const box = ancestor.getBoundingClientRect();
+  const width = (ancestor as HTMLElement).offsetWidth || box.width;
+  const height = (ancestor as HTMLElement).offsetHeight || box.height;
+  const scaleX = width ? box.width / width : 1;
+  const scaleY = height ? box.height / height : 1;
+  const port: Rect = {
+    left: box.left + ancestor.clientLeft * scaleX,
+    top: box.top + ancestor.clientTop * scaleY,
+    right: box.left + (ancestor.clientLeft + ancestor.clientWidth) * scaleX,
+    bottom: box.top + (ancestor.clientTop + ancestor.clientHeight) * scaleY,
+  };
+  return { port, scaleX, scaleY };
+}
+
+/**
+ * The document scroll that brings `rect` into `viewport`: the root
+ * element's overflow, or the body's when the root's is visible, and a
+ * visible one scrolls the viewport as auto does.
+ */
+function documentScroll(
+  rect: Rect,
+  viewport: Rect,
+  scroller: Element,
+  htmlStyle: CSSStyleDeclaration,
+  alignment: ScrollAlignment
+) {
+  const document = scroller.ownerDocument;
+  const bodyStyle =
+    document.body && document.defaultView!.getComputedStyle(document.body);
+  const overflowX =
+    htmlStyle.overflowX === "visible"
+      ? (bodyStyle?.overflowX ?? "visible")
+      : htmlStyle.overflowX;
+  const overflowY =
+    htmlStyle.overflowY === "visible"
+      ? (bodyStyle?.overflowY ?? "visible")
+      : htmlStyle.overflowY;
+  return projectIntoPort(
+    rect,
+    viewport,
+    scroller,
+    overflowX === "visible" ? "auto" : overflowX,
+    overflowY === "visible" ? "auto" : overflowY,
+    1,
+    1,
+    alignment
+  );
 }
