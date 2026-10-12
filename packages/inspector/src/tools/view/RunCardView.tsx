@@ -80,7 +80,7 @@ export function RunCardView({
   picking: boolean;
   /** The item it runs on. */
   target: CollectionItem | undefined;
-  /** Whether it has a form to open; never while the tool is absent. */
+  /** Whether it has a form to open. */
   canOpen: boolean;
   /** Whether the form shows. */
   showBody: boolean;
@@ -139,7 +139,7 @@ export function RunCardView({
       {head && (
         <>
           <div className="flex items-center gap-1.5">
-            {canOpen ? (
+            {press.kind !== "absent" && canOpen ? (
               <button
                 type="button"
                 aria-expanded={open}

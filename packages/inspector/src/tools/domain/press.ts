@@ -32,15 +32,17 @@ export function press(card: {
   /** Whether the input can't be sent as it is. */
   invalid: boolean;
   args: ToolArguments;
+  /** Whether it's a collection action, which runs on an item. */
+  collection: boolean;
   /** For a collection action: the item it runs on, if any. */
-  collection?: { target: CollectionItem | undefined };
+  target: CollectionItem | undefined;
 }): Press {
   if (!card.present) return { kind: "absent" };
   if (card.running) return { kind: "busy" };
   if (card.needsInput && !card.formOpen) return { kind: "opens-form" };
   if (card.invalid) return { kind: "blocked", why: "invalid-input" };
   if (!card.collection) return { kind: "run", input: card.args };
-  const { target } = card.collection;
+  const { target } = card;
   if (!target) return { kind: "blocked", why: "no-item" };
   return {
     kind: "run",

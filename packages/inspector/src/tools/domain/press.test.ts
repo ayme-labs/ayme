@@ -19,6 +19,8 @@ const ready = {
   formOpen: false,
   invalid: false,
   args,
+  collection: false,
+  target: undefined,
 };
 
 it.each([
@@ -50,12 +52,12 @@ it.each([
   ["runs at once with nothing to fill in", {}, { kind: "run", input: args }],
   [
     "runs a collection action on its item",
-    { collection: { target: milk } },
+    { collection: true, target: milk },
     { kind: "run", input: { ref: "e5", args }, item: milk },
   ],
   [
     "refuses a collection action with no item",
-    { collection: { target: undefined } },
+    { collection: true },
     { kind: "blocked", why: "no-item" },
   ],
 ] as const)("%s", (_, card, outcome) => {

@@ -97,8 +97,8 @@ export function useRunCard({
     item ??
     items.find((candidate) => candidate.path === pickedPath) ??
     items[0];
+  const canOpen = fields.length > 0 || picking;
   const { present } = tool;
-  const canOpen = present && (fields.length > 0 || picking);
   const showBody = present && (!head || open);
   const needs = needsInput(tool, {
     itemGiven: item !== undefined,
@@ -117,10 +117,11 @@ export function useRunCard({
     present,
     running,
     needsInput: needs,
-    formOpen: !head || open,
+    formOpen: showBody,
     invalid: argumentsInvalid,
     args,
-    ...(collection ? { collection: { target } } : {}),
+    collection,
+    target,
   });
 
   const submit = (event: FormEvent) => {

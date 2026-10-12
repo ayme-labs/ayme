@@ -125,6 +125,44 @@ describe("Run", () => {
     expect(onRun).toHaveBeenCalledExactlyOnceWith({ text: "Milk" });
   });
 
+  it("runs at once, leaving its form closed, when every argument is optional", async () => {
+    const { card, onRun } = renderCard({
+      tool: {
+        ...addItem,
+        argumentsSchema: { ...addItem.argumentsSchema, required: [] },
+      },
+    });
+
+    await card.runButton.click();
+
+    expect(onRun).toHaveBeenCalledOnce();
+    expect(await card.argumentsToggle.getAttribute("aria-expanded")).toBe(
+      "false"
+    );
+  });
+
+  it("says it asks for the arguments first, then that it runs", async () => {
+    const { card } = renderCard({ tool: addItem });
+
+    await expect
+      .poll(() => card.runButton.getAttribute("title"))
+      .toBe("Fill in the arguments, then run");
+    await card.runButton.click();
+
+    await expect
+      .poll(() => card.runButton.getAttribute("title"))
+      .toBe("Run addItem");
+  });
+
+  it("is off while the last run is still running", async () => {
+    const { card } = renderCard({
+      tool: clearList,
+      runs: [aRun({ toolName: clearList.name, status: "running" })],
+    });
+
+    await expect.poll(() => card.runButton.isDisabled()).toBe(true);
+  });
+
   it("is not there, with its form, on an action whose Page Object isn't on the page", async () => {
     const { card } = renderCard({
       tool: { ...addItem, present: false, available: false },
