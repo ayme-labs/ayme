@@ -43,6 +43,7 @@ export {
   configureAymeRuntime,
   createAymeRuntime,
   listAvailablePomTools,
+  listCollectionToolItems,
   listRegisteredPomTargets,
   listRegisteredPoms,
   probeRegisteredPomMembers,
@@ -51,6 +52,7 @@ export {
   requireAymeRuntimePage,
 } from "./registry";
 export type {
+  CollectionToolItem,
   PageObjectConstructor,
   RegisteredPom,
   RegisteredPomTarget,

@@ -672,6 +672,9 @@ it("hands publication the session's tools, and runs an agent's call as a webmcp 
   const listener = vi.fn();
   const unsubscribe = tools.subscribe(listener);
   runtime.pom.register(Saver);
+  // Its tools are listed once the first observation has run.
+  expect(names()).not.toContain("Saver.save");
+  await registryModule.probeRegisteredPomMembers();
   expect(listener).toHaveBeenCalledOnce();
   expect(names()).toContain("Saver.save");
   unsubscribe();

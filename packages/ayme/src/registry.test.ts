@@ -304,6 +304,7 @@ describe("live Page Object registry", () => {
 
     const first = registry.createPageRegistration(ReusedPage);
     const second = registry.createPageRegistration(ReusedPage);
+    await vi.runOnlyPendingTimersAsync();
 
     expect(registry.listRegisteredPoms()).toHaveLength(2);
     expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
@@ -346,6 +347,7 @@ describe("live Page Object registry", () => {
     registry.registerCompiledPom(SecondDialog, manifest());
 
     const first = registry.createPageRegistration(FirstDialog);
+    await vi.runOnlyPendingTimersAsync();
     expect(() => registry.createPageRegistration(SecondDialog)).toThrow(
       expect.objectContaining({
         name: "RuntimeStateError",
@@ -393,6 +395,171 @@ describe("live Page Object registry", () => {
     expect(linkObs?.error).toMatch(/not a browser locator/);
 
     registration.dispose();
+  });
+
+  it("lists no Page Object's tools before its first observation, whatever its kind", async () => {
+    const registry = await import("./registry");
+    const { ayme } = await import("./decorators");
+    registry.configureAymeRuntime({} as Page);
+
+    class RootedPage {
+      readonly root = brandedLocator({ count: async () => 1 });
+      save() {}
+    }
+    class RootlessPage {
+      open() {}
+    }
+    class PredicatePage {
+      close() {}
+    }
+    ayme.action({ available: () => "Nothing to close" })(
+      PredicatePage.prototype,
+      "close",
+      Object.getOwnPropertyDescriptor(PredicatePage.prototype, "close")!
+    );
+    registry.registerCompiledPom(RootedPage, {
+      ...emptyManifest("RootedPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    registry.registerCompiledPom(RootlessPage, {
+      ...emptyManifest("RootlessPage"),
+      tools: [action("open")],
+    });
+    registry.registerCompiledPom(PredicatePage, {
+      ...emptyManifest("PredicatePage"),
+      tools: [action("close")],
+    });
+    const registrations = [
+      registry.createPageRegistration(RootedPage),
+      registry.createPageRegistration(RootlessPage),
+      registry.createPageRegistration(PredicatePage),
+    ];
+    const listed = () =>
+      registry
+        .listRegisteredPomTools()
+        .map(({ tool, present, available, reason }) => [
+          tool.name,
+          { present, available, reason },
+        ]);
+
+    expect(listed()).toEqual([
+      ["save", { present: false, available: false, reason: undefined }],
+      ["open", { present: false, available: false, reason: undefined }],
+      ["close", { present: false, available: false, reason: undefined }],
+    ]);
+
+    await vi.runOnlyPendingTimersAsync();
+    expect(listed()).toEqual([
+      ["save", { present: true, available: true, reason: undefined }],
+      ["open", { present: true, available: true, reason: undefined }],
+      [
+        "close",
+        { present: true, available: false, reason: "Nothing to close" },
+      ],
+    ]);
+
+    for (const registration of registrations) registration.dispose();
+  });
+
+  it("lists a Page Object's tools once its own observation completes, while another's is still pending", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    class StuckPage {
+      // A root that never answers how many elements it matches.
+      readonly root = brandedLocator({ count: () => new Promise(() => {}) });
+      save() {}
+    }
+    class Toolbar {
+      reset() {}
+    }
+    registry.registerCompiledPom(StuckPage, {
+      ...emptyManifest("StuckPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    registry.registerCompiledPom(Toolbar, {
+      ...emptyManifest("Toolbar"),
+      tools: [action("reset")],
+    });
+    const registrations = [
+      registry.createPageRegistration(StuckPage),
+      registry.createPageRegistration(Toolbar),
+    ];
+    const listed = () =>
+      registry
+        .listRegisteredPomTools()
+        .map(({ tool, present, available }) => [
+          tool.name,
+          { present, available },
+        ]);
+
+    await vi.runOnlyPendingTimersAsync();
+    expect(listed()).toEqual([
+      ["save", { present: false, available: false }],
+      ["reset", { present: true, available: true }],
+    ]);
+
+    for (const registration of registrations) registration.dispose();
+  });
+
+  it("ends a probe only once every observation has, even when a subscriber throws", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    let answering = false;
+    const pendingCounts: ((count: number) => void)[] = [];
+    class SlowPage {
+      readonly root = brandedLocator({
+        count: () =>
+          answering
+            ? Promise.resolve(1)
+            : new Promise<number>((resolve) => pendingCounts.push(resolve)),
+      });
+      save() {}
+    }
+    class Toolbar {
+      reset() {}
+    }
+    registry.registerCompiledPom(SlowPage, {
+      ...emptyManifest("SlowPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    registry.registerCompiledPom(Toolbar, {
+      ...emptyManifest("Toolbar"),
+      tools: [action("reset")],
+    });
+    const registrations = [
+      registry.createPageRegistration(SlowPage),
+      registry.createPageRegistration(Toolbar),
+    ];
+    const unsubscribe = registry.subscribeToRegisteredPoms(() => {
+      throw new Error("subscriber failed");
+    });
+
+    let settled = false;
+    const probe = registry.probeRegisteredPomMembers().finally(() => {
+      settled = true;
+    });
+    probe.catch(() => {});
+    await vi.waitFor(() =>
+      expect(
+        registry.listRegisteredPomTools().map(({ tool }) => tool.name)
+      ).toContain("reset")
+    );
+    await vi.waitFor(() => expect(pendingCounts).not.toHaveLength(0));
+    // Toolbar's commit made the subscriber throw; SlowPage is still observing.
+    expect(settled).toBe(false);
+
+    // SlowPage's root answers now, so its observation ends.
+    answering = true;
+    for (const answer of pendingCounts) answer(1);
+    await expect(probe).rejects.toThrow("subscriber failed");
+
+    unsubscribe();
+    for (const registration of registrations) registration.dispose();
   });
 
   it("keeps tools inactive when a manifest-declared root is missing", async () => {
@@ -730,9 +897,8 @@ describe("live Page Object registry", () => {
     });
     const registration = registry.createPageRegistration(ItemsPage);
 
-    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
-      "addItem",
-    ]);
+    // Nothing is listed before the first observation has run.
+    expect(registry.listAvailablePomTools()).toEqual([]);
 
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([

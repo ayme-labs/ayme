@@ -1,6 +1,9 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createAyme, type AymePage } from "@ayme-dev/ayme";
-import { registerCompiledPom } from "@ayme-dev/ayme/internal";
+import {
+  probeRegisteredPomMembers,
+  registerCompiledPom,
+} from "@ayme-dev/ayme/internal";
 
 import { mountInspector } from "./mountInspector";
 
@@ -91,7 +94,10 @@ afterEach(() => {
  * an agent's call takes.
  * Returns the call, and the events and click cues the page has seen so far.
  */
-function callTool({ tool, input, event }: Call, { demo }: { demo: boolean }) {
+async function callTool(
+  { tool, input, event }: Call,
+  { demo }: { demo: boolean }
+) {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   document.body.innerHTML = `
     <button>Go</button>
@@ -124,6 +130,8 @@ function callTool({ tool, input, event }: Call, { demo }: { demo: boolean }) {
     inspector.dispose();
     observer.disconnect();
   });
+  // The Toolbar lists its tools once the first observation has run.
+  await probeRegisteredPomMembers();
   return {
     call: runtime.tools.run(tool as never, input as never),
     events: () => events,
@@ -148,7 +156,7 @@ async function pumpUntil(done: () => boolean) {
 
 /** Makes `call` to the end; returns the fake time until its event. */
 async function untilActed(call: Call, demo: boolean) {
-  const { call: running, events, cues } = callTool(call, { demo });
+  const { call: running, events, cues } = await callTool(call, { demo });
   let settled = false;
   void running.finally(() => (settled = true));
   const elapsed = await pumpUntil(() => events() === 1);

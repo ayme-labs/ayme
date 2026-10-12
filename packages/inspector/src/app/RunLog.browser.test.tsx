@@ -62,6 +62,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getAppProcessTools: appProcessToolsOf,
     subscribeToStartedAyme: () => () => {},
     subscribeToAgentImageRuns: vi.fn(() => () => {}),
+    listCollectionToolItems: vi.fn(() => new Map()),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };

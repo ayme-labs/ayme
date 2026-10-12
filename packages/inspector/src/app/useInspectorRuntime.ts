@@ -44,19 +44,29 @@ export function useInspectorRuntime({
     structureVisible,
     onLook: highlight.onLook,
   });
-  const { registeredPoms, pomDefinitions, refreshPageState } = inspector;
+  const { registeredPoms, pomDefinitions, collectionItems, refreshPageState } =
+    inspector;
   const onRunSettled = useCallback(
     () => refreshPageState(),
     [refreshPageState]
   );
   // A Run's item is the one its ref names in the latest look at the page.
   const latestStructure = useRef(emptyStructure);
+  const latestElementsByRef = useRef<ReadonlyMap<string, Element>>(new Map());
+  const latestCollectionItems = useRef(collectionItems);
+  useEffect(() => {
+    latestCollectionItems.current = collectionItems;
+  }, [collectionItems]);
   const itemOf = useCallback(
     (toolName: string, ref: string) =>
       latestMembers.current &&
-      itemsOf(toolName, latestMembers.current, latestStructure.current).find(
-        (item) => item.ref === ref
-      ),
+      itemsOf(
+        toolName,
+        latestMembers.current,
+        latestStructure.current,
+        latestCollectionItems.current.get(toolName),
+        latestElementsByRef.current
+      ).find((item) => item.ref === ref),
     []
   );
   const { runs, invoke, clear } = useRuns({
@@ -94,7 +104,8 @@ export function useInspectorRuntime({
   );
   useEffect(() => {
     latestStructure.current = structure;
-  }, [structure]);
+    latestElementsByRef.current = elementsByRef;
+  }, [structure, elementsByRef]);
   const elementTools = useMemo(
     () =>
       tools.live
@@ -166,6 +177,18 @@ export function useInspectorRuntime({
      * now.
      */
     elementTools,
+    /**
+     * A collection action's items on the page, by its tool's name, each with
+     * whether the action would run on it.
+     */
+    itemsOf: (toolName: string) =>
+      itemsOf(
+        toolName,
+        members,
+        structure,
+        collectionItems.get(toolName),
+        elementsByRef
+      ),
     /** The runs made from the panel, newest first. */
     runs,
     runTool: (...args: Parameters<typeof invoke>) => void invoke(...args),

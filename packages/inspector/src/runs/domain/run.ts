@@ -23,6 +23,13 @@ export type CollectionItem = {
   ref: string;
   /** What it shows, e.g. "Milk". */
   label: string;
+  /**
+   * Whether the action would run on it now (ADR-0035), as the registry last
+   * observed it; undefined before it has.
+   */
+  available?: boolean;
+  /** Why it would not, when there is a reason. */
+  reason?: string;
 };
 
 /** An image a run returned, such as a screenshot. */

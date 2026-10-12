@@ -1,3 +1,5 @@
+import type { CollectionToolItem } from "@ayme-dev/ayme/internal";
+
 import { type MemberIndex, pathBelowPage } from "../page-model";
 import {
   type StructureNode,
@@ -8,30 +10,40 @@ import type { CollectionItem } from "../runs";
 
 /**
  * A collection action's items on the page, by its tool's name, in page
- * order, labelled by what they show. An item with no ref in the page state
- * is left out.
+ * order, labelled by what they show, each with the registry's `verdicts`
+ * on whether the action would run on it. A verdict is matched by the
+ * element its item's ref names in `elementsByRef`, the page state the
+ * structure was built from, so an item that moved keeps its own. An item
+ * with no ref in the page state is left out.
  */
 export function itemsOf(
   toolName: string,
   members: MemberIndex,
-  structure: StructureTree
+  structure: StructureTree,
+  verdicts: readonly CollectionToolItem[] = [],
+  elementsByRef: ReadonlyMap<string, Element> = new Map()
 ): CollectionItem[] {
   const rows = [...structureRows(structure.roots)];
   return members.collectionItems(toolName).flatMap((item) => {
     const node = rows.find(
       ({ node }) => node.ref !== undefined && node.members.includes(item.path)
     )?.node;
-    return node?.ref === undefined
-      ? []
-      : [
-          {
-            path: item.path,
-            name: item.name,
-            pathBelowPage: pathBelowPage(item, members),
-            ref: node.ref,
-            label: textOf(node),
-          },
-        ];
+    if (node?.ref === undefined) return [];
+    const element = elementsByRef.get(node.ref);
+    const verdict = verdicts.find((candidate) => candidate.element === element);
+    return [
+      {
+        path: item.path,
+        name: item.name,
+        pathBelowPage: pathBelowPage(item, members),
+        ref: node.ref,
+        label: textOf(node),
+        ...(verdict && {
+          available: verdict.available,
+          ...(verdict.reason === undefined ? {} : { reason: verdict.reason }),
+        }),
+      },
+    ];
   });
 }
 

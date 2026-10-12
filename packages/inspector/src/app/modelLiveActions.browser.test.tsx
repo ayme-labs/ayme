@@ -131,6 +131,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     getPageStateForElements: vi.fn(async () => ({ refs: [] })),
     listRegisteredPomTargets: vi.fn(async () => []),
     listAvailablePomTools: vi.fn(() => []),
+    listCollectionToolItems: vi.fn(() => new Map()),
     listRegisteredPoms: vi.fn(() => runtime.registrations),
     getStartedAyme: asStartedAyme,
     getAgentConnectionStatus: agentConnectionOf,

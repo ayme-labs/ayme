@@ -121,10 +121,10 @@ export function listRunnableTools(
 }
 
 function pageObjectTool(
-  tool: RegisteredPomTool & { componentPath?: string },
+  tool: RegisteredPomTool & { collectionPath?: string },
   availability: Pick<RunnableTool, "present" | "available" | "reason">
 ): RunnableTool {
-  const collection = innermostCollectionPath(tool.componentPath);
+  const collection = tool.collectionPath;
   const base = {
     name: tool.name,
     action: tool.methodName,
@@ -153,15 +153,4 @@ function schemaOf(parameters: RegisteredPomTool["parameters"]): JsonSchema {
       .filter((parameter) => !parameter.optional)
       .map((parameter) => parameter.name),
   };
-}
-
-/**
- * The path of the items a collection action runs on: everything up to and
- * including the last collection segment, e.g. "items[]" for "items[].tags".
- */
-function innermostCollectionPath(componentPath: string | undefined) {
-  if (componentPath === undefined) return undefined;
-  const segments = componentPath.split(".");
-  const last = segments.findLastIndex((segment) => segment.endsWith("[]"));
-  return last === -1 ? undefined : segments.slice(0, last + 1).join(".");
 }
