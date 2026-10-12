@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { press } from "./press";
+import { asksForArguments, press } from "./press";
 
 // Unit tests: what pressing a run card's Run does.
 
@@ -32,7 +32,12 @@ it.each([
   [
     "nothing while it runs",
     { running: true, needsInput: true },
-    { kind: "busy" },
+    { kind: "busy", opensForm: true },
+  ],
+  [
+    "nothing while it runs with its form open",
+    { running: true, needsInput: true, formOpen: true },
+    { kind: "busy", opensForm: false },
   ],
   [
     "opens the closed form when it needs input",
@@ -62,4 +67,13 @@ it.each([
   ],
 ] as const)("%s", (_, card, outcome) => {
   expect(press({ ...ready, ...card })).toEqual(outcome);
+});
+
+it.each([
+  [{ kind: "opens-form" }, true],
+  [{ kind: "busy", opensForm: true }, true],
+  [{ kind: "busy", opensForm: false }, false],
+  [{ kind: "run", input: args }, false],
+] as const)("asks for the arguments first on %o: %s", (pressed, asks) => {
+  expect(asksForArguments(pressed)).toBe(asks);
 });

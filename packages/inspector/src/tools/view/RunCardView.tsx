@@ -21,7 +21,7 @@ import {
   type Run,
 } from "../../runs";
 import type { Field } from "../domain/fields";
-import type { Press } from "../domain/press";
+import { asksForArguments, type Press } from "../domain/press";
 import type { RunnableTool } from "../domain/runnableTools";
 
 /**
@@ -109,7 +109,7 @@ export function RunCardView({
       className="h-7 px-2.5 text-xs"
       disabled={press.kind === "busy" || invalid}
       title={
-        press.kind === "opens-form"
+        asksForArguments(press)
           ? "Fill in the arguments, then run"
           : `Run ${tool.action}`
       }

@@ -154,6 +154,18 @@ describe("Run", () => {
       .toBe("Run addItem");
   });
 
+  it("still asks for the arguments while the last run runs with the form closed", async () => {
+    const { card } = renderCard({
+      tool: addItem,
+      runs: [aRun({ toolName: addItem.name, status: "running" })],
+    });
+
+    await expect.poll(() => card.runButton.isDisabled()).toBe(true);
+    expect(await card.runButton.getAttribute("title")).toBe(
+      "Fill in the arguments, then run"
+    );
+  });
+
   it("is off while the last run is still running", async () => {
     const { card } = renderCard({
       tool: clearList,

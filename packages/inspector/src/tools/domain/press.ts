@@ -4,8 +4,11 @@ import type { CollectionItem, ToolArguments } from "../../runs";
 export type Press =
   /** Nothing: the tool's Page Object is not on the page. */
   | { kind: "absent" }
-  /** Nothing: its last run is still running. */
-  | { kind: "busy" }
+  /**
+   * Nothing: its last run is still running. Once it ends, the press opens the
+   * form if `opensForm`.
+   */
+  | { kind: "busy"; opensForm: boolean }
   /** Opens the form, for the input the tool needs. */
   | { kind: "opens-form" }
   /**
@@ -38,8 +41,9 @@ export function press(card: {
   target: CollectionItem | undefined;
 }): Press {
   if (!card.present) return { kind: "absent" };
-  if (card.running) return { kind: "busy" };
-  if (card.needsInput && !card.formOpen) return { kind: "opens-form" };
+  const opensForm = card.needsInput && !card.formOpen;
+  if (card.running) return { kind: "busy", opensForm };
+  if (opensForm) return { kind: "opens-form" };
   if (card.invalid) return { kind: "blocked", why: "invalid-input" };
   if (!card.collection) return { kind: "run", input: card.args };
   const { target } = card;
@@ -49,4 +53,12 @@ export function press(card: {
     input: { ref: target.ref, args: card.args },
     item: target,
   };
+}
+
+/** Whether Run asks for the arguments first: it opens the form, now or once the run ends. */
+export function asksForArguments(pressed: Press) {
+  return (
+    pressed.kind === "opens-form" ||
+    (pressed.kind === "busy" && pressed.opensForm)
+  );
 }
