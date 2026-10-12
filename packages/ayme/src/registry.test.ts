@@ -504,6 +504,64 @@ describe("live Page Object registry", () => {
     for (const registration of registrations) registration.dispose();
   });
 
+  it("ends a probe only once every observation has, even when a subscriber throws", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    let answering = false;
+    const pendingCounts: ((count: number) => void)[] = [];
+    class SlowPage {
+      readonly root = brandedLocator({
+        count: () =>
+          answering
+            ? Promise.resolve(1)
+            : new Promise<number>((resolve) => pendingCounts.push(resolve)),
+      });
+      save() {}
+    }
+    class Toolbar {
+      reset() {}
+    }
+    registry.registerCompiledPom(SlowPage, {
+      ...emptyManifest("SlowPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    registry.registerCompiledPom(Toolbar, {
+      ...emptyManifest("Toolbar"),
+      tools: [action("reset")],
+    });
+    const registrations = [
+      registry.createPageRegistration(SlowPage),
+      registry.createPageRegistration(Toolbar),
+    ];
+    const unsubscribe = registry.subscribeToRegisteredPoms(() => {
+      throw new Error("subscriber failed");
+    });
+
+    let settled = false;
+    const probe = registry.probeRegisteredPomMembers().finally(() => {
+      settled = true;
+    });
+    probe.catch(() => {});
+    await vi.waitFor(() =>
+      expect(
+        registry.listRegisteredPomTools().map(({ tool }) => tool.name)
+      ).toContain("reset")
+    );
+    await vi.waitFor(() => expect(pendingCounts).not.toHaveLength(0));
+    // Toolbar's commit made the subscriber throw; SlowPage is still observing.
+    expect(settled).toBe(false);
+
+    // SlowPage's root answers now, so its observation ends.
+    answering = true;
+    for (const answer of pendingCounts) answer(1);
+    await expect(probe).rejects.toThrow("subscriber failed");
+
+    unsubscribe();
+    for (const registration of registrations) registration.dispose();
+  });
+
   it("keeps tools inactive when a manifest-declared root is missing", async () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);

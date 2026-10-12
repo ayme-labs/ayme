@@ -328,8 +328,10 @@ function runPomMemberProbe(): Promise<void> {
 async function probeRegistrations(lifetime: number): Promise<void> {
   if (lifetime !== probeLifetime) return;
   // Each Page Object's observation is committed as it completes, so one
-  // that is slow to read does not hold back the others' tools.
-  await Promise.all(
+  // that is slow to read does not hold back the others' tools. The probe
+  // ends only once every observation has, even when a subscriber throws, so
+  // a later probe's observation is never overwritten by an older one.
+  const settled = await Promise.allSettled(
     [...registeredPoms].map(async (registration) => {
       const observed = await probePomMembers(registration);
       if (
@@ -339,6 +341,8 @@ async function probeRegistrations(lifetime: number): Promise<void> {
         notifySubscribers();
     })
   );
+  const failed = settled.find((result) => result.status === "rejected");
+  if (failed) throw failed.reason;
 }
 
 /** Keeps `registration`'s new observation; whether it found anything new. */
