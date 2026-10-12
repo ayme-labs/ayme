@@ -233,12 +233,76 @@ describe("collection instances targeted by ref", () => {
       await expect(
         archiveTool.execute({ ref, args: {} }, runContext())
       ).rejects.toThrow(
-        /does not match a present instance at ItemsPage\.items \(tool ItemsPage\.items\.archive\)/
+        `Cannot run "ItemsPage.items.archive" on ref "${ref}": removed.`
       );
 
       expect(archiveFns[0]).not.toHaveBeenCalled();
       expect(archiveFns[1]).not.toHaveBeenCalled();
 
+      registration.dispose();
+    } finally {
+      runtime.dispose();
+    }
+  });
+
+  it("refuses a ref that is not a Structural Ref, and one outside the collection", async () => {
+    document.body.innerHTML = `
+      <h1>Items</h1>
+      <ul>
+        <li id="item-0"><button>Archive item-0</button></li>
+      </ul>
+    `;
+    const page = createPage();
+    const runtime = createAymeRuntime(page);
+    try {
+      const archive = vi.fn();
+      class ItemsPage {
+        readonly items = [{ root: page.locator("#item-0"), archive }];
+      }
+
+      registerCompiledPom(ItemsPage, {
+        className: "ItemsPage",
+        tools: [],
+        members: [
+          {
+            memberName: "items",
+            kind: "component",
+            access: "field",
+            componentClassName: "Item",
+            collection: true,
+          },
+        ],
+        components: [
+          {
+            className: "Item",
+            members: [{ memberName: "root", kind: "locator", access: "field" }],
+            tools: [action("archive", "Archive this item.")],
+          },
+        ],
+      });
+      const registration = createPageRegistration(ItemsPage);
+      await probeRegisteredPomMembers();
+      const archiveTool = listAvailablePomTools().find(
+        (t) => t.name === "ItemsPage.items.archive"
+      );
+      if (!archiveTool) throw new Error("Expected archive tool.");
+
+      await expect(
+        archiveTool.execute({ ref: "button.save", args: {} }, runContext())
+      ).rejects.toThrow(
+        'The ref "button.save" is not a Structural Ref. Pass a ref from snapshot, such as e5.'
+      );
+
+      const { getPageStateForDocument } = await import("./pageState");
+      const state = await getPageStateForDocument(document);
+      const headingRef = refInPageState(state.text, "heading");
+      await expect(
+        archiveTool.execute({ ref: headingRef, args: {} }, runContext())
+      ).rejects.toThrow(
+        `Ref "${headingRef}" does not match a present Item instance at ItemsPage.items (tool ItemsPage.items.archive).`
+      );
+
+      expect(archive).not.toHaveBeenCalled();
       registration.dispose();
     } finally {
       runtime.dispose();

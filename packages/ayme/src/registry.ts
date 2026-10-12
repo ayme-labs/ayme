@@ -20,15 +20,11 @@ import {
   isPlaywrightLiteLocator,
   resolveLocatorElements,
 } from "@ayme-dev/playwright-lite/internal";
-import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { Locator, Page } from "@playwright/test";
 import { probePomRootState } from "./pomReachability";
 import { findObstruction } from "./pomObstruction";
-import {
-  latestRefInTheWay,
-  resolvePageStateRefs,
-  type AriaRef,
-} from "./pageState";
+import { latestRefInTheWay } from "./pageState";
+import { resolveRefTarget } from "./refTarget";
 import { availabilityPredicateOf } from "./decorators";
 import { errorText } from "./errors";
 import type { Cursor } from "./cursors";
@@ -857,10 +853,14 @@ function createComponentTool(
   const trailing = path.slice(itemDepth + 1).map((member) => member.memberName);
   const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const values = validatedArguments(wrapper, input);
-    const ref = AriaRefSchema.parse(values[0] as string);
+    const ref = values[0] as string;
     const args = values[1] ?? {};
     const toolPath = `${pomId}.${publicComponentPath(path)}`;
-    const element = await resolveRefToElement(ref, wrapper.toolName, toolPath);
+    const { element } = await resolveRefTarget(
+      `run "${wrapper.toolName}" on`,
+      ref,
+      document
+    );
     const componentInstance = await resolveComponentByElementStep(
       pageInstance,
       path,
@@ -990,20 +990,6 @@ async function resolveSingularComponent(
     current = await readMember(current, member);
   }
   return current;
-}
-
-async function resolveRefToElement(
-  ref: AriaRef,
-  toolName: string,
-  toolPath: string
-): Promise<Element> {
-  const resolutions = await resolvePageStateRefs(document, ref);
-  const resolution = resolutions[0];
-  if (!resolution || resolution.status === "unresolved")
-    throw new RefResolutionError(
-      `Ref "${ref}" does not match a present instance at ${toolPath} (tool ${toolName}): ${resolution?.reason ?? "unknown-ref"}.`
-    );
-  return resolution.node.element;
 }
 
 async function resolveComponentByElementStep(
