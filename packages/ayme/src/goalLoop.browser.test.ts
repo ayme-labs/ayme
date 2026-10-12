@@ -1200,6 +1200,12 @@ describe("Goal Loop goal in Chromium", () => {
     ],
     [
       "rejected",
+      400,
+      "The Decision Endpoint /api/decisions answered 400 The request body must include state and questions.",
+      "The Decision Endpoint /api/decisions answered 400 The request body must include state and questions. Handle",
+    ],
+    [
+      "rejected",
       401,
       "The Decision Endpoint /api/decisions answered 401 Sign in first.",
       "The Decision Endpoint /api/decisions answered 401 Sign in first. Handle",

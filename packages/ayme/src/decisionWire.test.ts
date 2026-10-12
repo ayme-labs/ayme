@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { decisionEndpoint } from "./decisionEndpoint";
-import { DecisionEndpointError, type DecisionRequest } from "./decisionWire";
+import {
+  DecisionEndpointError,
+  type DecisionRequest,
+  readDecisionResponse,
+} from "./decisionWire";
 import { AymeError } from "./errors";
 import { createDecisionEndpoint } from "./server";
 
@@ -119,6 +123,47 @@ describe("the Decision Endpoint wire contract, client against handler", () => {
       code: "malformed",
       message: "The Decision Endpoint returned an invalid response.",
     });
+    expect(error.status).toBeUndefined();
+  });
+});
+
+describe("readDecisionResponse", () => {
+  const errorBody = (error: string) => JSON.stringify({ error });
+
+  it.each([
+    [404, "", "not-mounted", false],
+    [404, errorBody("Unknown model."), "rejected", false],
+    [
+      400,
+      errorBody("The request body must include state and questions."),
+      "rejected",
+      false,
+    ],
+    [408, errorBody("Timed out."), "rejected", true],
+    [429, errorBody("Rate limit reached."), "rejected", true],
+    [500, "", "rejected", true],
+    [
+      502,
+      errorBody("The model provider could not be reached."),
+      "rejected",
+      true,
+    ],
+    [503, "Service Unavailable", "rejected", true],
+  ] as const)(
+    "classifies a %i (body %j) as %s, retryable: %s",
+    async (status, body, code, retryable) => {
+      const error = await failure(
+        readDecisionResponse("/api/decisions", new Response(body, { status }))
+      );
+      expect(error).toMatchObject({ code, status, retryable });
+    }
+  );
+
+  it("classifies a 2xx that is not a decision response as malformed, not retryable", async () => {
+    const error = await failure(
+      readDecisionResponse("/api/decisions", Response.json({ model: "jev" }))
+    );
+    expect(error).toMatchObject({ code: "malformed", retryable: false });
     expect(error.status).toBeUndefined();
   });
 });

@@ -65,6 +65,17 @@ export function decisionErrorResponse(status: number, error: string): Response {
 export type DecisionEndpointErrorCode =
   "not-mounted" | "rejected" | "malformed";
 
+/**
+ * Whether asking again can help: the endpoint or its provider failed, timed
+ * out or was rate limited (a `rejected` 5xx, 408 or 429). A missing endpoint,
+ * a refusal or a malformed answer comes back the same.
+ */
+function isRetryable(code: DecisionEndpointErrorCode, status = 0): boolean {
+  return (
+    code === "rejected" && (status >= 500 || status === 408 || status === 429)
+  );
+}
+
 /** A Decision Endpoint call failed; `code` says why. */
 export class DecisionEndpointError extends AymeError {
   override readonly name = "DecisionEndpointError";
@@ -72,6 +83,8 @@ export class DecisionEndpointError extends AymeError {
   readonly code: DecisionEndpointErrorCode;
   /** The HTTP status, for `not-mounted` and `rejected`. */
   readonly status?: number;
+  /** Whether a retry can help: a `rejected` 5xx, 408 or 429. */
+  readonly retryable: boolean;
 
   constructor(
     message: string,
@@ -80,6 +93,7 @@ export class DecisionEndpointError extends AymeError {
     super(message, options);
     this.code = options.code;
     this.status = options.status;
+    this.retryable = isRetryable(options.code, options.status);
   }
 }
 
