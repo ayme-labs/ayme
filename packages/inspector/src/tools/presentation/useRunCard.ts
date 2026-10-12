@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState, type FormEvent } from "react";
 
 import type { ToolArguments } from "../../runs";
 import { needsInput } from "../application/needsInput";
+import { press } from "../domain/press";
 import {
   argumentsFromJson,
   argumentsToJson,
@@ -96,8 +97,8 @@ export function useRunCard({
     item ??
     items.find((candidate) => candidate.path === pickedPath) ??
     items[0];
-  const canOpen = fields.length > 0 || picking;
   const { present } = tool;
+  const canOpen = present && (fields.length > 0 || picking);
   const showBody = present && (!head || open);
   const needs = needsInput(tool, {
     itemGiven: item !== undefined,
@@ -110,17 +111,24 @@ export function useRunCard({
   const last = cardRuns[0];
   const lastSuccess = cardRuns.find((run) => run.status === "succeeded");
   const running = last?.status === "running";
+  const argumentsInvalid =
+    invalid.size > 0 || json?.error !== undefined || violations.length > 0;
+  const pressed = press({
+    present,
+    running,
+    needsInput: needs,
+    formOpen: !head || open,
+    invalid: argumentsInvalid,
+    args,
+    ...(collection ? { collection: { target } } : {}),
+  });
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!present || running) return;
-    if (head && needs && !open) {
-      setOpen(true);
-      return;
-    }
-    if (json?.error || violations.length || invalid.size) return;
-    if (!collection) onRun(args);
-    else if (target) onRun({ ref: target.ref, args }, target);
+    if (pressed.kind === "opens-form") setOpen(true);
+    if (pressed.kind !== "run") return;
+    if (pressed.item) onRun(pressed.input, pressed.item);
+    else onRun(pressed.input);
   };
 
   return {
@@ -136,12 +144,10 @@ export function useRunCard({
     target,
     canOpen,
     showBody,
-    needs,
+    press: pressed,
     last,
     lastSuccess,
-    running,
-    invalid:
-      invalid.size > 0 || json?.error !== undefined || violations.length > 0,
+    invalid: argumentsInvalid,
     setValidity,
     submit,
     setFormFields,

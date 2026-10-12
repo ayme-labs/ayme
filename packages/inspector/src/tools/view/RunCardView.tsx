@@ -21,6 +21,7 @@ import {
   type Run,
 } from "../../runs";
 import type { Field } from "../domain/fields";
+import type { Press } from "../domain/press";
 import type { RunnableTool } from "../domain/runnableTools";
 
 /**
@@ -42,10 +43,9 @@ export function RunCardView({
   target,
   canOpen,
   showBody,
-  needs,
+  press,
   last,
   lastSuccess,
-  running,
   invalid,
   submit,
   toggleOpen,
@@ -80,16 +80,15 @@ export function RunCardView({
   picking: boolean;
   /** The item it runs on. */
   target: CollectionItem | undefined;
-  /** Whether it has a form to open. */
+  /** Whether it has a form to open; never while the tool is absent. */
   canOpen: boolean;
   /** Whether the form shows. */
   showBody: boolean;
-  /** Whether Run must open the form before it runs. */
-  needs: boolean;
+  /** What pressing Run does. */
+  press: Press;
   /** Its last run, and its last successful one. */
   last: Run | undefined;
   lastSuccess: Run | undefined;
-  running: boolean;
   /**
    * Whether the arguments can't be sent as they are, so Run is off: a field
    * is invalid, or the JSON is, or it breaks the tool's schema.
@@ -103,14 +102,14 @@ export function RunCardView({
   form: ReactNode;
 }) {
   const { present, available, reason } = tool;
-  const runButton = present && (
+  const runButton = press.kind !== "absent" && (
     <Button
       type="submit"
       size="sm"
       className="h-7 px-2.5 text-xs"
-      disabled={running || invalid}
+      disabled={press.kind === "busy" || invalid}
       title={
-        head && needs && !open
+        press.kind === "opens-form"
           ? "Fill in the arguments, then run"
           : `Run ${tool.action}`
       }
@@ -140,7 +139,7 @@ export function RunCardView({
       {head && (
         <>
           <div className="flex items-center gap-1.5">
-            {present && canOpen ? (
+            {canOpen ? (
               <button
                 type="button"
                 aria-expanded={open}
