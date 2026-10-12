@@ -1,6 +1,5 @@
 import { expect, it } from "vitest";
 
-import type { RegisteredPomTool } from "@ayme-dev/ayme";
 import type { RegisteredPom } from "@ayme-dev/ayme/internal";
 
 import { listRunnableTools } from "./runnableTools";
@@ -9,7 +8,7 @@ import { listRunnableTools } from "./runnableTools";
 // the runtime lists as live. The registration and the live list are
 // hand-written.
 
-const addItem: RegisteredPomTool & { componentPath?: string } = {
+const addItem: RegisteredPom["tools"][number] = {
   pomId: "ListPage",
   methodName: "addItem",
   name: "ListPage.addItem",
@@ -17,10 +16,11 @@ const addItem: RegisteredPomTool & { componentPath?: string } = {
   inputSchema: { type: "object" },
   parameters: [{ name: "text", optional: false, schema: { type: "string" } }],
 };
-const rename: RegisteredPomTool & { componentPath?: string } = {
+const rename: RegisteredPom["tools"][number] = {
   pomId: "ListPage",
   componentClassName: "ListItem",
   componentPath: "items[]",
+  collectionPath: "items[]",
   methodName: "rename",
   name: "ListPage.items.rename",
   description: "Rename this item.",

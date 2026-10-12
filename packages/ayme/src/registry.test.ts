@@ -304,6 +304,7 @@ describe("live Page Object registry", () => {
 
     const first = registry.createPageRegistration(ReusedPage);
     const second = registry.createPageRegistration(ReusedPage);
+    await vi.runOnlyPendingTimersAsync();
 
     expect(registry.listRegisteredPoms()).toHaveLength(2);
     expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
@@ -346,6 +347,7 @@ describe("live Page Object registry", () => {
     registry.registerCompiledPom(SecondDialog, manifest());
 
     const first = registry.createPageRegistration(FirstDialog);
+    await vi.runOnlyPendingTimersAsync();
     expect(() => registry.createPageRegistration(SecondDialog)).toThrow(
       expect.objectContaining({
         name: "RuntimeStateError",
@@ -393,6 +395,71 @@ describe("live Page Object registry", () => {
     expect(linkObs?.error).toMatch(/not a browser locator/);
 
     registration.dispose();
+  });
+
+  it("lists no Page Object's tools before its first observation, whatever its kind", async () => {
+    const registry = await import("./registry");
+    const { ayme } = await import("./decorators");
+    registry.configureAymeRuntime({} as Page);
+
+    class RootedPage {
+      readonly root = brandedLocator({ count: async () => 1 });
+      save() {}
+    }
+    class RootlessPage {
+      open() {}
+    }
+    class PredicatePage {
+      close() {}
+    }
+    ayme.action({ available: () => "Nothing to close" })(
+      PredicatePage.prototype,
+      "close",
+      Object.getOwnPropertyDescriptor(PredicatePage.prototype, "close")!
+    );
+    registry.registerCompiledPom(RootedPage, {
+      ...emptyManifest("RootedPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    registry.registerCompiledPom(RootlessPage, {
+      ...emptyManifest("RootlessPage"),
+      tools: [action("open")],
+    });
+    registry.registerCompiledPom(PredicatePage, {
+      ...emptyManifest("PredicatePage"),
+      tools: [action("close")],
+    });
+    const registrations = [
+      registry.createPageRegistration(RootedPage),
+      registry.createPageRegistration(RootlessPage),
+      registry.createPageRegistration(PredicatePage),
+    ];
+    const listed = () =>
+      registry
+        .listRegisteredPomTools()
+        .map(({ tool, present, available, reason }) => [
+          tool.name,
+          { present, available, reason },
+        ]);
+
+    expect(listed()).toEqual([
+      ["save", { present: false, available: false, reason: undefined }],
+      ["open", { present: false, available: false, reason: undefined }],
+      ["close", { present: false, available: false, reason: undefined }],
+    ]);
+
+    await vi.runOnlyPendingTimersAsync();
+    expect(listed()).toEqual([
+      ["save", { present: true, available: true, reason: undefined }],
+      ["open", { present: true, available: true, reason: undefined }],
+      [
+        "close",
+        { present: true, available: false, reason: "Nothing to close" },
+      ],
+    ]);
+
+    for (const registration of registrations) registration.dispose();
   });
 
   it("keeps tools inactive when a manifest-declared root is missing", async () => {
@@ -730,9 +797,8 @@ describe("live Page Object registry", () => {
     });
     const registration = registry.createPageRegistration(ItemsPage);
 
-    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
-      "addItem",
-    ]);
+    // Nothing is listed before the first observation has run.
+    expect(registry.listAvailablePomTools()).toEqual([]);
 
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([

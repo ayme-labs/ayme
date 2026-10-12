@@ -50,6 +50,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     subscribeToAgentImageRuns: () => () => {},
     listRegisteredPomTargets: vi.fn(),
     listAvailablePomTools: vi.fn(() => []),
+    listCollectionToolItems: vi.fn(() => new Map()),
     listRegisteredPoms: vi.fn(() => []),
     subscribeToRegisteredPoms: vi.fn(() => () => true),
   };
@@ -64,6 +65,7 @@ const archive: RegisteredPom["tools"][number] = {
   parameters: [],
   componentClassName: "ListItem",
   componentPath: "items[]",
+  collectionPath: "items[]",
 };
 const listPage: RegisteredPom = {
   id: "ListPage",

@@ -6,6 +6,7 @@ import { createPage } from "./browserPage";
 import {
   createAymeRuntime,
   registerCompiledPom,
+  probeRegisteredPomMembers,
   registerPageObject,
   listAvailablePomTools,
 } from "./registry";
@@ -204,6 +205,7 @@ describe("Structural Ref interactions in Chromium", () => {
     try {
       const instance = new CounterPage(undefined);
       registerPageObject(CounterPage, instance);
+      await probeRegisteredPomMembers();
 
       const tool = listAvailablePomTools().find((t) => t.name === "getCount");
       if (!tool) throw new Error("Expected the getCount tool.");
@@ -249,6 +251,7 @@ describe("Structural Ref interactions in Chromium", () => {
     try {
       const instance = new PageObjectPage(undefined);
       registerPageObject(PageObjectPage, instance);
+      await probeRegisteredPomMembers();
 
       const tool = listAvailablePomTools().find((t) => t.name === "getElement");
       if (!tool) throw new Error("Expected the getElement tool.");
@@ -297,6 +300,7 @@ describe("Structural Ref interactions in Chromium", () => {
     try {
       const instance = new ReturningPage(undefined);
       registerPageObject(ReturningPage, instance);
+      await probeRegisteredPomMembers();
 
       const tool = listAvailablePomTools().find((t) => t.name === "getChild");
       if (!tool) throw new Error("Expected the getChild tool.");

@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import { itemsOf } from "./collectionItems";
 import { isPanelRun, type RunFocus, Runs, runScope } from "../runs";
 import type { InspectorRuntime } from "./useInspectorRuntime";
 import type { ViewState } from "./viewState";
@@ -55,9 +54,7 @@ export function useRunning(
   const renderRun: RenderRun = ({ toolName, item, ref, head }) => {
     const tool = runnableTools.get(toolName);
     if (!tool) return null;
-    const items = tool.collection
-      ? itemsOf(toolName, members, pageState.structure)
-      : [];
+    const items = tool.collection ? runtime.itemsOf(toolName) : [];
     return (
       <RunCard
         key={`${toolName}|${item ?? ""}|${ref ?? ""}`}

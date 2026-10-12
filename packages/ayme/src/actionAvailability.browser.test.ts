@@ -11,6 +11,7 @@ import { listTools } from "./publishedTools";
 import {
   createPageRegistration,
   listAvailablePomTools,
+  listCollectionToolItems,
   listRegisteredPomTools,
   probeRegisteredPomMembers,
   registerCompiledPom,
@@ -353,6 +354,74 @@ describe("Action Availability", () => {
       available: false,
       reason: "Only a sent item can be recalled",
     });
+  });
+
+  it("judges each item of a collection by its own root: offers the tool, refuses the covered item's ref with its reason, and lists each item's verdict", async () => {
+    document.body.style.margin = "0";
+    document.body.innerHTML = `
+      <ul style="margin:0;padding:0;list-style:none">
+        <li id="open" style="height:40px">Open</li>
+        <li id="covered" style="height:40px">Covered</li>
+      </ul>
+      <div role="dialog" aria-label="Busy" style="position:fixed;left:0;right:0;top:40px;height:40px"></div>`;
+    class Row {
+      constructor(readonly root: ReturnType<Page["locator"]>) {}
+      archive() {}
+    }
+    class Inbox {
+      rows = [
+        new Row(page.locator("#open")),
+        new Row(page.locator("#covered")),
+      ];
+    }
+    registerCompiledPom(Inbox, {
+      className: "Inbox",
+      members: [
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "field",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ],
+      tools: [],
+      components: [
+        {
+          className: "Row",
+          members: [root],
+          tools: [action("archive", "Inbox.rows.archive")],
+        },
+      ],
+    } satisfies PomManifest);
+    const registration = createPageRegistration(Inbox);
+    const archived = vi.spyOn(registration.instance.rows[1]!, "archive");
+    await probeRegisteredPomMembers();
+    const { text } = await agent.getPageState();
+    const refOf = (pattern: string) =>
+      text.match(new RegExp(`(e\\d+) ${pattern}`))?.[1];
+    const covered = refOf("Inbox\\.rows\\[1\\]");
+    const busy = refOf('dialog "Busy"');
+    if (!covered || !busy)
+      throw new Error("Expected refs for the row and the dialog.");
+    const reason = `a click would not reach it; ${busy} is in the way`;
+
+    expect(published("Inbox.rows.archive")).toMatchObject({ available: true });
+    await expect(
+      listed("Inbox.rows.archive")!.tool.execute(
+        { ref: covered, args: {} },
+        runContext()
+      )
+    ).rejects.toThrow(`Inbox.rows.archive is unavailable: ${reason}.`);
+    expect(archived).not.toHaveBeenCalled();
+    expect(
+      listCollectionToolItems()
+        .get("Inbox.rows.archive")
+        ?.map(({ label, available, reason }) => ({ label, available, reason }))
+    ).toEqual([
+      { label: "Inbox.rows[0]", available: true, reason: undefined },
+      { label: "Inbox.rows[1]", available: false, reason },
+    ]);
   });
 
   it("refuses a collection action owned by an item's singular child by that child's own verdict", async () => {

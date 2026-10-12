@@ -258,6 +258,7 @@ describe("POM definition catalog", () => {
       manifest("ToolPage", { tools: [tool] })
     );
     const registration = registry.createPageRegistration(ToolPage);
+    await registry.probeRegisteredPomMembers();
 
     const definition = definitions.getPomDefinitions("ToolPage");
     const callable = registry.listAvailablePomTools()[0];
@@ -294,6 +295,7 @@ describe("POM definition catalog", () => {
       manifest("BarePage", { tools: [{ methodName, toolName, parameters }] })
     );
     const registration = registry.createPageRegistration(BarePage);
+    await registry.probeRegisteredPomMembers();
 
     const [definition] = definitions.getPomDefinitions("BarePage").definitions;
     expect(definition?.actions[0]).not.toHaveProperty("description");

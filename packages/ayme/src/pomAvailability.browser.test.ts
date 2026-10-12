@@ -187,7 +187,8 @@ describe("live Page Object availability", () => {
     );
     createPageRegistration(Rooted);
     createPageRegistration(Rootless);
-    expect(names()).toEqual(["Rootless.open"]);
+    // Neither lists a tool before the first observation has run.
+    expect(names()).toEqual([]);
     await probeRegisteredPomMembers();
     expect(names()).toEqual(["Rooted.close", "Rootless.open"]);
     expect((await listRegisteredPomRoots()).map((root) => root.label)).toEqual([

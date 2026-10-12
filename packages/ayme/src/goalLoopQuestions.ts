@@ -18,7 +18,7 @@ import { listElementTools, NAVIGATION_TOOLS } from "./browserTools";
 import type { StartChildRun } from "./run";
 import { acceptedRefNodes, type TargetField } from "./elementTools";
 import {
-  listCollectionToolRoots,
+  listCollectionToolItems,
   listAvailablePomTools,
   type RegisteredPomRoot,
 } from "./registry";
@@ -289,7 +289,7 @@ export function buildToolOptions(): ToolOption[] {
     requiredParams: [...(tool.inputSchema.required ?? [])],
     args: specsOfObjectSchema(tool.inputSchema),
   }));
-  const collectionRoots = listCollectionToolRoots();
+  const collectionRoots = listCollectionToolItems();
   const pomTools: GoalLoopOperation[] = listAvailablePomTools().map((t) => {
     const roots = collectionRoots.get(t.name);
     const args = roots
