@@ -291,7 +291,7 @@ describe.each([
   });
 
   it("leaves the agent read-only file tools, the server's tools and the eval's ayme skill, with nothing denied", () => {
-    expect(arm.tools).toEqual(["Read", "Glob", "Grep", "Skill"]);
+    expect(arm.tools).toEqual(["Read", "Glob", "Grep", "ToolSearch", "Skill"]);
     expect(arm.allowedTools).toEqual(["mcp__ayme", "Skill(ayme)"]);
     expect(arm.disallowedTools).toBeUndefined();
     expect(arm.interfaceLine(mission.start)).toContain("its `ayme` skill");
@@ -332,7 +332,12 @@ describe("the playwright-mcp arm", () => {
   });
 
   it("leaves the agent only read-only file tools beside its interface", () => {
-    expect(arms["playwright-mcp"].tools).toEqual(["Read", "Glob", "Grep"]);
+    expect(arms["playwright-mcp"].tools).toEqual([
+      "Read",
+      "Glob",
+      "Grep",
+      "ToolSearch",
+    ]);
     expect(arms["playwright-mcp"].allowedTools).toEqual(["mcp__playwright"]);
   });
 });
@@ -347,7 +352,14 @@ describe("the playwright-cli arm", () => {
   });
 
   it("leaves the agent read-only file tools, the skill and a Bash limited to the CLI", () => {
-    expect(arm.tools).toEqual(["Read", "Glob", "Grep", "Bash", "Skill"]);
+    expect(arm.tools).toEqual([
+      "Read",
+      "Glob",
+      "Grep",
+      "ToolSearch",
+      "Bash",
+      "Skill",
+    ]);
     expect(arm.allowedTools).toEqual([
       "Bash(playwright-cli:*)",
       "Skill(playwright-cli)",
