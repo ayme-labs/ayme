@@ -292,6 +292,11 @@ describe("collection instances targeted by ref", () => {
       ).rejects.toThrow(
         'The ref "button.save" is not a Structural Ref. Pass a ref from snapshot, such as e5.'
       );
+      await expect(
+        archiveTool.execute({ ref: "[ref=e7]", args: {} }, runContext())
+      ).rejects.toThrow(
+        'The ref "[ref=e7]" is not a Structural Ref. Pass the Structural Ref alone: e7.'
+      );
 
       const { getPageStateForDocument } = await import("./pageState");
       const state = await getPageStateForDocument(document);

@@ -7,14 +7,34 @@ import { resolvePageStateRefs, type AymeNode } from "./pageState";
 import { RefResolutionError, ToolInputError } from "./errors";
 
 /**
+ * A Structural Ref written another way: Playwright MCP's `[ref=e5]` or
+ * `ref=e5`, with a capital `E` or surrounding spaces.
+ */
+const REF_WRITTEN_OTHERWISE =
+  /^\s*(?:\[\s*ref\s*=\s*(e\d+)\s*\]|(?:ref\s*=\s*)?(e\d+))\s*$/i;
+
+/**
+ * Package-internal: the hint toward the ref `requested` names when it writes
+ * a Structural Ref another way, if it does.
+ */
+export function refHint(requested: string): string | undefined {
+  const match = REF_WRITTEN_OTHERWISE.exec(requested);
+  const ref = match?.[1] ?? match?.[2];
+  return ref && `Pass the Structural Ref alone: ${ref.toLowerCase()}.`;
+}
+
+/**
  * Package-internal: the Structural Ref a call's `ref` input is. A value that
- * is not one, such as a selector or a typo, is refused as input.
+ * is not one, such as a selector or a typo, is refused as input, naming the
+ * ref to pass when it writes one another way.
  */
 export function requireStructuralRef(requested: string): AriaRef {
   const ref = parseStructuralRef(requested);
   if (ref === undefined)
     throw new ToolInputError(
-      `The ref "${requested}" is not a Structural Ref. Pass a ref from snapshot, such as e5.`
+      `The ref "${requested}" is not a Structural Ref. ${
+        refHint(requested) ?? "Pass a ref from snapshot, such as e5."
+      }`
     );
   return ref;
 }

@@ -18,11 +18,20 @@ describe("resolveRefTarget", () => {
     await expect(resolve("e2")).resolves.toBe(node);
   });
 
-  it.each(["#save", "button.save", "[ref=e2]", ""])(
+  it.each(["#save", "button.save", "e", ""])(
     "refuses %j, which is not a Structural Ref",
     async (requested) => {
       await expect(resolve(requested)).rejects.toThrow(
         `The ref "${requested}" is not a Structural Ref. Pass a ref from snapshot, such as e5.`
+      );
+    }
+  );
+
+  it.each(["[ref=e2]", "ref=e2", "E2", " e2 "])(
+    "names the ref %j writes another way",
+    async (requested) => {
+      await expect(resolve(requested)).rejects.toThrow(
+        `The ref "${requested}" is not a Structural Ref. Pass the Structural Ref alone: e2.`
       );
     }
   );
