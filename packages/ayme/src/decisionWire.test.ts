@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { decisionEndpoint } from "./decisionEndpoint";
 import {
   DecisionEndpointError,
+  type DecisionFailure,
   type DecisionRequest,
+  isRetryableDecisionFailure,
   readDecisionResponse,
 } from "./decisionWire";
 import { AymeError } from "./errors";
@@ -165,5 +167,21 @@ describe("readDecisionResponse", () => {
     );
     expect(error).toMatchObject({ code: "malformed", retryable: false });
     expect(error.status).toBeUndefined();
+  });
+});
+
+describe("whether a decision failure is worth a retry", () => {
+  it.each<[DecisionFailure, boolean]>([
+    [{ kind: "endpoint", code: "rejected", status: 503 }, true],
+    [{ kind: "endpoint", code: "rejected", status: 429 }, true],
+    [{ kind: "endpoint", code: "rejected", status: 408 }, true],
+    [{ kind: "endpoint", code: "rejected", status: 400 }, false],
+    [{ kind: "endpoint", code: "not-mounted", status: 404 }, false],
+    [{ kind: "endpoint", code: "malformed" }, false],
+    [{ kind: "thrown" }, true],
+    [{ kind: "invalid" }, false],
+    [{ kind: "unknown-choice" }, false],
+  ])("%j is retryable: %s", (failure, retryable) => {
+    expect(isRetryableDecisionFailure(failure)).toBe(retryable);
   });
 });
