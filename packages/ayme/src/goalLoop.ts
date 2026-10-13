@@ -258,7 +258,12 @@ export function createPursueGoalTool(
       type: "object",
       properties: {
         goal: { type: "string" },
-        maxSteps: { type: "integer" },
+        maxSteps: {
+          type: "integer",
+          minimum: 1,
+          description:
+            "The most steps the loop may take before it hands back with step_budget. Each step runs at most one operation on the page and may ask the model more than once to choose it.",
+        },
         values: {
           type: "object",
           description:
@@ -309,7 +314,8 @@ function readPursueGoalInput(input: unknown): GoalInput {
     typeof input.goal === "string" &&
     "maxSteps" in input &&
     typeof input.maxSteps === "number" &&
-    Number.isInteger(input.maxSteps)
+    Number.isInteger(input.maxSteps) &&
+    input.maxSteps >= 1
   ) {
     const values = "values" in input ? input.values : undefined;
     if (values === undefined)
@@ -318,7 +324,7 @@ function readPursueGoalInput(input: unknown): GoalInput {
       return { goal: input.goal, maxSteps: input.maxSteps, values };
   }
   throw new ToolInputError(
-    `goal requires a string goal and an integer maxSteps, and takes values as 1 to ${MAX_GOAL_VALUES} labelled strings or numbers.`
+    `goal requires a string goal and an integer maxSteps of at least 1, and takes values as 1 to ${MAX_GOAL_VALUES} labelled strings or numbers.`
   );
 }
 
