@@ -57,6 +57,10 @@ export function openPageChannel(
   const processToolListeners = new Set<(tools: readonly PageTool[]) => void>();
   const socket = createWSClient({
     url,
+    // The server is on loopback, so retrying often costs nothing, and a tab
+    // pairs again soon after its server restarts (tRPC's default backs off
+    // to 30 s).
+    retryDelayMs: (attempt) => Math.min(500 * attempt, 2000),
     ...(WebSocketClass ? { WebSocket: WebSocketClass } : {}),
     onOpen() {
       const reopened = opened;
