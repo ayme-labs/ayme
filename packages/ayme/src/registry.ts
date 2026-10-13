@@ -21,14 +21,17 @@ import {
   resolveLocatorElements,
 } from "@ayme-dev/playwright-lite/internal";
 import type { Locator, Page } from "@playwright/test";
-import { observePomRoot } from "./pomRootObservation";
-import { resolvePageStateRefs, type AriaRef } from "./pageState";
+import { observePomRoot, type ObservedPomRoot } from "./pomRootObservation";
+import {
+  latestPageStateRef,
+  resolvePageStateRefs,
+  type AriaRef,
+} from "./pageState";
 import {
   askPredicates,
   availabilityOf,
   combinedAvailability,
   sameInstance,
-  type ObservedPomRoot,
   type PomInstanceObservation,
   type ToolAvailability,
 } from "./pomInstance";
@@ -560,7 +563,7 @@ export function listRegisteredPomTools(): ({
     for (const tool of registration.tools) {
       const availability = combinedAvailability(
         instancesOf(registration, tool).map((instance) =>
-          availabilityOf(instance, tool.methodName)
+          availabilityOf(instance, tool.methodName, latestPageStateRef)
         )
       );
       const listed = tools.get(tool.name);
@@ -594,7 +597,7 @@ function assertInstanceAvailable(
       (candidate) => candidate.item?.root?.element === element
     );
   if (!instance) return;
-  const state = availabilityOf(instance, tool.methodName);
+  const state = availabilityOf(instance, tool.methodName, latestPageStateRef);
   if (!state.available)
     throw new RuntimeStateError(unavailableToolMessage(tool.name, state));
 }
@@ -641,7 +644,11 @@ export function listCollectionToolItems(): Map<string, CollectionToolItem[]> {
               {
                 label: `${registration.id}.${instance.item.path}`,
                 element: root.element,
-                ...availabilityOf(instance, tool.methodName),
+                ...availabilityOf(
+                  instance,
+                  tool.methodName,
+                  latestPageStateRef
+                ),
               },
             ]
           : [];
@@ -671,7 +678,9 @@ function notifySubscribers() {
  */
 export function announceRegisteredPomChange() {
   const obstructed = [...registeredPoms].some((registration) =>
-    registration.instances?.all.some((instance) => instance.root?.obstruction)
+    registration.instances?.all.some(
+      (instance) => instance.root?.inTheWay.length
+    )
   );
   if (obstructed) notifySubscribers();
 }
@@ -1022,7 +1031,7 @@ async function observeDeclaredRoot(
 ): Promise<ObservedPomRoot> {
   try {
     const root = await readMember(instance, rootMember);
-    if (isLocator(root)) return (await observeRoot(root)).root;
+    if (isLocator(root)) return (await observePomRoot(root)).root;
   } catch {
     // A root that cannot be read is not on the page.
   }
@@ -1033,34 +1042,8 @@ const absentRoot: ObservedPomRoot = {
   element: undefined,
   present: false,
   available: false,
-  obstruction: undefined,
+  inTheWay: [],
 };
-
-async function observeRoot(
-  locator: Locator
-): Promise<{ count: number; root: ObservedPomRoot }> {
-  const count = await locator.count();
-  const elements = locatorElements(locator);
-  const element =
-    count === 1 && elements.length === 1 ? elements[0] : undefined;
-  const state =
-    element === undefined
-      ? { present: false, available: false }
-      : await observePomRoot(locator);
-  const current = locatorElements(locator);
-  const sameElement = current.length === 1 && current[0] === element;
-  const present = sameElement && state.present;
-  const available = sameElement && state.available;
-  return {
-    count,
-    root: {
-      element: sameElement ? element : undefined,
-      present,
-      available,
-      obstruction: present && !available ? state.obstruction : undefined,
-    },
-  };
-}
 
 async function collectPomTargets(
   instance: object,
@@ -1202,7 +1185,7 @@ async function probeComponentMember(
       });
       continue;
     }
-    const { count, root } = await observeRoot(component.root);
+    const { count, root } = await observePomRoot(component.root);
     observations.push({
       memberName: `${path}.root`,
       kind: "component-root",

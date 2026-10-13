@@ -911,6 +911,45 @@ describe("live Page Object registry", () => {
     registration.dispose();
   });
 
+  it("lists an obstructed root's tools unavailable, and reads them again when a page state may name what is in the way", async () => {
+    const registry = await import("./registry");
+    const { measurePomRoot } = await import("./pomRootMeasurement");
+    registry.configureAymeRuntime({} as Page);
+    vi.mocked(measurePomRoot).mockResolvedValue({
+      present: true,
+      available: false,
+      blocker: {} as Element,
+    });
+
+    class CoveredPage {
+      readonly root = brandedLocator({ count: async () => 1 });
+      save() {}
+    }
+    registry.registerCompiledPom(CoveredPage, {
+      ...emptyManifest("CoveredPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    const registration = registry.createPageRegistration(CoveredPage);
+    const subscriber = vi.fn();
+    registry.subscribeToRegisteredPoms(subscriber);
+    await vi.runOnlyPendingTimersAsync();
+
+    expect(registry.listRegisteredPomTools()).toEqual([
+      expect.objectContaining({
+        present: true,
+        available: false,
+        reason: "a click would not reach it",
+      }),
+    ]);
+    subscriber.mockClear();
+    registry.announceRegisteredPomChange();
+    expect(subscriber).toHaveBeenCalledOnce();
+
+    vi.mocked(measurePomRoot).mockReset();
+    registration.dispose();
+  });
+
   it("bounds recursive component manifests to the current component path", async () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);

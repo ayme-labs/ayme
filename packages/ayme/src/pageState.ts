@@ -24,7 +24,6 @@ import {
   announceRegisteredPomChange,
   getRegisteredPomStructure,
 } from "./registry";
-import { containsThroughShadow, parentElement } from "./composedTree";
 
 import {
   placeCapturedRoots,
@@ -266,40 +265,11 @@ export async function getPageStateForElements(
 }
 
 /**
- * Package-internal: the Structural Ref an Availability Reason names for
- * `obstruction`, the element a click on `root` would reach instead: the ref
- * the agent's latest recorded page state gave it, or its nearest ancestor
- * that has one and does not hold `root` (what holds the root is not in its
- * way). An inert ancestor, which holds the root, and an open native modal
- * are named by their own ref only. Undefined when none has one, as for
- * `<html>` when `body` takes no pointer events, or until the agent has
- * recorded a page state that shows the obstruction.
+ * Package-internal: the Structural Ref the agent's latest recorded page
+ * state gave `element`, when it gave it exactly one; undefined until then.
  */
-export function latestRefInTheWay(
-  obstruction: Element,
-  root: Element
-): AriaRef | undefined {
-  const session = pageStateSessions.get(obstruction.ownerDocument);
-  if (!session) return undefined;
-  if (containsThroughShadow(obstruction, root) || isModal(obstruction))
-    return session.latestRefOf(obstruction);
-  for (
-    let node: Element | null = obstruction;
-    node && !containsThroughShadow(node, root);
-    node = parentElement(node)
-  ) {
-    const ref = session.latestRefOf(node);
-    if (ref !== undefined) return ref;
-  }
-  return undefined;
-}
-
-function isModal(element: Element): boolean {
-  try {
-    return element.matches(":modal");
-  } catch {
-    return false;
-  }
+export function latestPageStateRef(element: Element): AriaRef | undefined {
+  return pageStateSessions.get(element.ownerDocument)?.latestRefOf(element);
 }
 
 function getPageStateSession(currentDocument: Document) {
