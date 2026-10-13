@@ -74,7 +74,7 @@ One input a Run gives the page: a click, fill, key press, hover or selection on 
 _Avoid_: step, page operation, action (on its own)
 
 **Goal Loop**:
-Drives the page toward a natural-language goal in steps. Each step is one judgement by a System One model (a fast model that picks among given options, currently Jev), not by the calling agent's LLM. The calling agent starts it and receives a Handover.
+Drives the page toward a natural-language goal in steps. In each step a System One model (a fast model that picks among given options, currently Jev), not the calling agent's LLM, chooses at most one operation to run. The calling agent starts it and receives a Handover.
 
 **Goal Values**:
 Labelled strings or numbers the calling agent passes with a goal. At any step the Goal Loop may pick one for a parameter it cannot fill from the page; it never writes a value itself.

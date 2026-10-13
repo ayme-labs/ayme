@@ -22,20 +22,17 @@ import {
 } from "@ayme-dev/playwright-lite/internal";
 import type { Locator, Page } from "@playwright/test";
 import { observePomRoot, type ObservedPomRoot } from "./pomRootObservation";
-import {
-  latestPageStateRef,
-  resolvePageStateRefs,
-  type AriaRef,
-} from "./pageState";
+import { latestPageStateRef } from "./pageState";
 import {
   askPredicates,
+  assertAvailable,
   availabilityOf,
   combinedAvailability,
   sameInstance,
   type PomInstanceObservation,
   type ToolAvailability,
 } from "./pomInstance";
-import { requireStructuralRef } from "./refTarget";
+import { resolveRef } from "./refTarget";
 import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
 import { runAction, type ActionResult } from "./actionSequence";
@@ -242,8 +239,10 @@ export function registerPageObject<T extends object>(
     manifest: compiledPom,
     memberObservations: [],
     instances: undefined,
-    tools: createRegisteredTools(compiledPom, instance),
+    tools: [],
   };
+  // Its collection tools read the instances observed of this registration.
+  registration.tools = createRegisteredTools(registration);
   const registryWasEmpty = registeredPoms.size === 0;
   registeredPoms.add(registration);
   if (registryWasEmpty) startObservingPage();
@@ -592,45 +591,6 @@ function availabilityNow(
 }
 
 /**
- * Package-internal: refuses a call of `tool`, of Page Object `pomId`, on the
- * instance a ref resolved to, the one in the collection item whose root is
- * `element`, when the last observation found that instance unavailable: the
- * tool is listed available because another instance is.
- */
-function assertInstanceAvailable(
-  pomId: string,
-  tool: ScopedPomTool,
-  element: Element
-) {
-  const registration = [...registeredPoms].find(
-    (candidate) => candidate.id === pomId
-  );
-  const instance =
-    registration &&
-    instancesOf(registration, tool).find(
-      (candidate) => candidate.item?.root?.element === element
-    );
-  if (!instance) return;
-  const state = availabilityNow(instance, tool.methodName);
-  if (!state.available)
-    throw new RuntimeStateError(unavailableToolMessage(tool.name, state));
-}
-
-/**
- * Package-internal: how a refused call of an unavailable tool reads:
- * `<tool> is unavailable: <reason>.`, or without the reason when there is none.
- */
-export function unavailableToolMessage(
-  toolName: string,
-  { present, reason }: ToolAvailability
-) {
-  const why = present ? reason : "its Page Object is not on the page";
-  return why === undefined
-    ? `${toolName} is unavailable.`
-    : `${toolName} is unavailable: ${why}.`;
-}
-
-/**
  * Package-internal: the available Page Object tools, the ones a call can
  * run now, with the run that takes a caller.
  */
@@ -651,25 +611,36 @@ export function listCollectionToolItems(): Map<string, CollectionToolItem[]> {
   for (const registration of registeredPoms) {
     for (const tool of registration.tools) {
       if (tool.collectionPath === undefined) continue;
-      const items = instancesOf(registration, tool).flatMap((instance) => {
-        const root = instance.item?.root;
-        return instance.item && root && isRootPresent(root)
-          ? [
-              {
-                label: `${registration.id}.${instance.item.path}`,
-                element: root.element,
-                ...availabilityNow(instance, tool.methodName),
-              },
-            ]
-          : [];
-      });
       itemsByTool.set(tool.name, [
         ...(itemsByTool.get(tool.name) ?? []),
-        ...items,
+        ...collectionItemsOf(registration, tool),
       ]);
     }
   }
   return itemsByTool;
+}
+
+/**
+ * The present items `tool` of `registration` goes through, as last observed,
+ * each with the tool's verdict on it: what the Goal Loop offers and what a
+ * call on an item is refused by.
+ */
+function collectionItemsOf(
+  registration: ObservedRegisteredPom,
+  tool: ScopedPomTool
+): CollectionToolItem[] {
+  return instancesOf(registration, tool).flatMap((instance) => {
+    const root = instance.item?.root;
+    return instance.item && root && isRootPresent(root)
+      ? [
+          {
+            label: `${registration.id}.${instance.item.path}`,
+            element: root.element,
+            ...availabilityNow(instance, tool.methodName),
+          },
+        ]
+      : [];
+  });
 }
 
 export function subscribeToRegisteredPoms(subscriber: () => void) {
@@ -695,7 +666,8 @@ export function announceRegisteredPomChange() {
   if (obstructed) notifySubscribers();
 }
 
-function createRegisteredTools(manifest: PomManifest, instance: object) {
+function createRegisteredTools(registration: ObservedRegisteredPom) {
+  const { manifest, instance } = registration;
   const pageTools = manifest.tools.map((tool) =>
     createRegisteredTool(manifest.className, instance, tool)
   );
@@ -706,13 +678,7 @@ function createRegisteredTools(manifest: PomManifest, instance: object) {
     if (member.kind !== "component") return [];
     const component = components.get(member.componentClassName);
     if (!component) return [];
-    return createComponentTools(
-      manifest.className,
-      instance,
-      [member],
-      component,
-      components
-    );
+    return createComponentTools(registration, [member], component, components);
   });
   return [...pageTools, ...componentTools];
 }
@@ -735,8 +701,7 @@ function createRegisteredTool(
 }
 
 function createComponentTools(
-  pomId: string,
-  pageInstance: object,
+  registration: ObservedRegisteredPom,
   path: readonly PomComponentMemberManifest[],
   component: PomComponentManifest,
   components: ReadonlyMap<string, PomComponentManifest>,
@@ -745,15 +710,14 @@ function createComponentTools(
   if (componentPath.has(component.className)) return [];
   const nextComponentPath = new Set(componentPath).add(component.className);
   const tools = component.tools.map((action) =>
-    createComponentTool(pomId, pageInstance, path, component, action)
+    createComponentTool(registration, path, component, action)
   );
   const nestedTools = component.members.flatMap((member) => {
     if (member.kind !== "component") return [];
     const childComponent = components.get(member.componentClassName);
     if (!childComponent) return [];
     return createComponentTools(
-      pomId,
-      pageInstance,
+      registration,
       [...path, member],
       childComponent,
       components,
@@ -764,12 +728,12 @@ function createComponentTools(
 }
 
 function createComponentTool(
-  pomId: string,
-  pageInstance: object,
+  registration: ObservedRegisteredPom,
   path: readonly PomComponentMemberManifest[],
   component: PomComponentManifest,
   action: ToolManifest
 ): CallerAwarePomTool {
+  const { id: pomId, instance: pageInstance } = registration;
   const componentPath = componentPathFor(path);
   const collectionCount = path.filter((member) => member.collection).length;
   if (collectionCount === 0)
@@ -786,10 +750,16 @@ function createComponentTool(
   const itemDepth = path.map((member) => member.collection).lastIndexOf(true);
   const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const values = validatedArguments(wrapper, input);
-    const ref = requireStructuralRef(values[0] as string);
+    const ref = values[0] as string;
     const args = values[1] ?? {};
     const toolPath = `${pomId}.${publicComponentPath(path)}`;
-    const element = await resolveRefToElement(ref, wrapper.toolName, toolPath);
+    // A Page Object Root without a role of its own gets a synthetic ref.
+    const { element } = await resolveRef(
+      ref,
+      { synthetic: "allow" },
+      `call ${wrapper.toolName} on`,
+      document
+    );
     const componentInstance = await resolveComponentByElementStep(
       pageInstance,
       path,
@@ -801,7 +771,11 @@ function createComponentTool(
         `Ref "${ref}" does not match a present ${component.className} instance at ${toolPath} (tool ${wrapper.toolName}).`
       );
     }
-    assertInstanceAvailable(pomId, tool, element);
+    // An item the last observation did not find is not on the page yet.
+    const item = collectionItemsOf(registration, tool).find(
+      (candidate) => candidate.element === element
+    );
+    assertAvailable(tool.name, item ?? { present: false, available: false });
     return await performPageObjectAction(
       componentInstance,
       action,
@@ -914,23 +888,6 @@ async function resolveSingularComponent(
     current = await readMember(current, member);
   }
   return current;
-}
-
-/**
- * The element a collection tool's ref names now. A synthetic ref resolves
- * too: a Page Object Root without a role of its own gets one in snapshot.
- */
-async function resolveRefToElement(
-  ref: AriaRef,
-  toolName: string,
-  toolPath: string
-): Promise<Element> {
-  const resolution = (await resolvePageStateRefs(document, ref))[0]!;
-  if (resolution.status === "unresolved")
-    throw new RefResolutionError(
-      `Ref "${ref}" does not match a present instance at ${toolPath} (tool ${toolName}): ${resolution.reason}.`
-    );
-  return resolution.node.element;
 }
 
 async function resolveComponentByElementStep(

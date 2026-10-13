@@ -1274,6 +1274,7 @@ describe("live Page Object registry", () => {
     expect(firstArchive).not.toHaveBeenCalled();
 
     currentItems = [replacement];
+    await registry.probeRegisteredPomMembers();
     await expect(
       tool.execute({ ref: "e3", args: {} }, runContext())
     ).resolves.toEqual({
@@ -1282,7 +1283,64 @@ describe("live Page Object registry", () => {
       result: "replacement",
     });
     expect(replacementArchive).toHaveBeenCalledOnce();
-    expect(getItems).toHaveBeenCalledTimes(3);
+    expect(getItems).toHaveBeenCalledTimes(4);
+
+    registration.dispose();
+    pageStateResolutions.clear();
+  });
+
+  it("refuses a collection call on an item the last observation did not find, rather than running it", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    const knownElement = { isConnected: true } as Element;
+    const addedElement = { isConnected: true } as Element;
+    const addedArchive = vi.fn();
+    const items = [
+      { root: brandedLocator({ count: async () => 1 }, knownElement) },
+    ];
+    pageStateResolutions.set("e2", {
+      node: { ref: "e2", element: addedElement },
+    });
+    class ItemsPage {
+      readonly items = items;
+    }
+    registry.registerCompiledPom(ItemsPage, {
+      className: "ItemsPage",
+      tools: [],
+      members: [
+        {
+          memberName: "items",
+          kind: "component",
+          access: "field",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      components: [
+        {
+          className: "Item",
+          members: [{ memberName: "root", kind: "locator", access: "field" }],
+          tools: [action("archive")],
+        },
+      ],
+    });
+    const registration = registry.createPageRegistration(ItemsPage);
+    await vi.runOnlyPendingTimersAsync();
+    const tool = registry.listAvailablePomTools()[0];
+    if (!tool) throw new Error("Expected a collection tool.");
+    // Held by the Page Object since the last observation.
+    items.push({
+      root: brandedLocator({ count: async () => 1 }, addedElement),
+      archive: addedArchive,
+    } as never);
+
+    await expect(
+      tool.execute({ ref: "e2", args: {} }, runContext())
+    ).rejects.toThrow(
+      "ItemsPage.items.archive is unavailable: its Page Object is not on the page."
+    );
+    expect(addedArchive).not.toHaveBeenCalled();
 
     registration.dispose();
     pageStateResolutions.clear();

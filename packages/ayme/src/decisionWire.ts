@@ -66,14 +66,40 @@ export type DecisionEndpointErrorCode =
   "not-mounted" | "rejected" | "malformed";
 
 /**
- * Whether asking again can help: the endpoint or its provider failed, timed
- * out or was rate limited (a `rejected` 5xx, 408 or 429). A missing endpoint,
- * a refusal or a malformed answer comes back the same.
+ * Every way obtaining a usable decision can fail.
+ * `endpoint`: a Decision Endpoint call failed, as its `code` and `status` say.
+ * `thrown`: any other error from the decision function, such as a network
+ * failure.
+ * `invalid`: an answer the caller could not read.
+ * `unknown-choice`: an answer naming an option the caller did not offer.
  */
-function isRetryable(code: DecisionEndpointErrorCode, status = 0): boolean {
-  return (
-    code === "rejected" && (status >= 500 || status === 408 || status === 429)
-  );
+export type DecisionFailure =
+  | { kind: "endpoint"; code: DecisionEndpointErrorCode; status?: number }
+  | { kind: "thrown" }
+  | { kind: "invalid" }
+  | { kind: "unknown-choice" };
+
+/**
+ * Whether asking again can help: the endpoint or its provider failed, timed
+ * out or was rate limited (a `rejected` 5xx, 408 or 429), or the call failed
+ * some other way. A missing endpoint, a refusal, a malformed answer or one the
+ * caller cannot use comes back the same.
+ */
+export function isRetryableDecisionFailure(failure: DecisionFailure): boolean {
+  switch (failure.kind) {
+    case "endpoint": {
+      const status = failure.status ?? 0;
+      return (
+        failure.code === "rejected" &&
+        (status >= 500 || status === 408 || status === 429)
+      );
+    }
+    case "thrown":
+      return true;
+    case "invalid":
+    case "unknown-choice":
+      return false;
+  }
 }
 
 /** A Decision Endpoint call failed; `code` says why. */
@@ -93,7 +119,11 @@ export class DecisionEndpointError extends AymeError {
     super(message, options);
     this.code = options.code;
     this.status = options.status;
-    this.retryable = isRetryable(options.code, options.status);
+    this.retryable = isRetryableDecisionFailure({
+      kind: "endpoint",
+      code: options.code,
+      status: options.status,
+    });
   }
 }
 

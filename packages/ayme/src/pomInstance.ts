@@ -1,7 +1,7 @@
 import type { AriaRef } from "@ayme-dev/core/structural-observation";
 import type { ToolManifest } from "./contracts";
 import { availabilityPredicateOf } from "./decorators";
-import { errorText } from "./errors";
+import { errorText, RuntimeStateError } from "./errors";
 import type { ObservedPomRoot } from "./pomRootObservation";
 
 /**
@@ -76,6 +76,25 @@ export function availabilityOf(
   const answer = instance.predicates.get(methodName);
   if (!answer || answer.available) return { present: true, available: true };
   return { present: true, available: false, reason: answer.reason };
+}
+
+/**
+ * Package-internal: refuses a call of the tool `toolName` that `availability`
+ * says would not run, the tool's own or the one on the instance the call
+ * names: `<tool> is unavailable: <reason>.`, or without the reason when there
+ * is none.
+ */
+export function assertAvailable(
+  toolName: string,
+  { present, available, reason }: ToolAvailability
+) {
+  if (available) return;
+  const why = present ? reason : "its Page Object is not on the page";
+  throw new RuntimeStateError(
+    why === undefined
+      ? `${toolName} is unavailable.`
+      : `${toolName} is unavailable: ${why}.`
+  );
 }
 
 /**

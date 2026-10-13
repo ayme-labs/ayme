@@ -1,7 +1,9 @@
 import {
   DecisionEndpointError,
+  type DecisionFailure,
   type DecisionRequest,
   type DecisionResponse,
+  isRetryableDecisionFailure,
 } from "./decisionWire";
 import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
 import type { ActionResult } from "./actionSequence";
@@ -253,7 +255,7 @@ export function createPursueGoalTool(
   return {
     name: "goal",
     description:
-      "Drive the page toward a goal in steps. Each step is one fast model judgement. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.",
+      "Drive the page toward a goal in steps. In each step a fast model chooses at most one operation to run. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.",
     inputSchema: {
       type: "object",
       properties: {
@@ -385,34 +387,38 @@ export async function pursueGoal(
     `Read the page again, pick "${parameter}" yourself and call the operation directly, or try a different approach.`;
 
   /**
-   * A decision the loop could not obtain ends the run; the error travels on.
-   * A Decision Endpoint failure advises a retry only when it is `retryable`;
-   * any other error, such as a network failure, always does.
+   * A decision the loop could not obtain or use ends the run; `what` says what
+   * went wrong and `failure` decides whether the advice includes a retry.
    */
-  const decideFailed = (error: unknown): Promise<GoalLoopRunResult> => {
-    const endpoint = error instanceof DecisionEndpointError;
-    // Its message already says what the endpoint did.
-    const what = endpoint
-      ? error.message
-      : `The decision function failed: ${errorTextOf(error)}`;
-    const retry = !endpoint || error.retryable;
-    return done({
-      reason: "decide_failed",
-      next: `${what.replace(/\.$/, "")}. ${retry ? "Retry, or handle" : "Handle"} the goal without the Goal Loop.`,
-      history,
-    });
-  };
-
-  /**
-   * A decision the loop could not use ends the run the same way, without retry
-   * advice, like a malformed Decision Endpoint answer.
-   */
-  const invalidDecision = (error: unknown): Promise<GoalLoopRunResult> =>
+  const decideFailed = (
+    what: string,
+    failure: DecisionFailure
+  ): Promise<GoalLoopRunResult> =>
     done({
       reason: "decide_failed",
-      next: `The decision function returned an invalid response: ${errorTextOf(error)}. Handle the goal without the Goal Loop.`,
+      next: `${what.replace(/\.$/, "")}. ${isRetryableDecisionFailure(failure) ? "Retry, or handle" : "Handle"} the goal without the Goal Loop.`,
       history,
     });
+
+  /** The decision function threw; the error travels on. */
+  const callFailed = (error: unknown): Promise<GoalLoopRunResult> =>
+    error instanceof DecisionEndpointError
+      ? // Its message already says what the endpoint did.
+        decideFailed(error.message, {
+          kind: "endpoint",
+          code: error.code,
+          status: error.status,
+        })
+      : decideFailed(`The decision function failed: ${errorTextOf(error)}`, {
+          kind: "thrown",
+        });
+
+  /** The decision function answered with something the loop could not read. */
+  const invalidDecision = (error: unknown): Promise<GoalLoopRunResult> =>
+    decideFailed(
+      `The decision function returned an invalid response: ${errorTextOf(error)}`,
+      { kind: "invalid" }
+    );
 
   for (let step = 0; step < maxSteps; step++) {
     // Refresh POM observations so newly revealed/hidden roots are reflected.
@@ -451,7 +457,7 @@ export async function pursueGoal(
     try {
       stageOne = await decisionFn(buildOperationRequest(state, toolOptions));
     } catch (error) {
-      return decideFailed(error);
+      return callFailed(error);
     }
 
     let operationAnswer: ChoiceAnswer;
@@ -495,11 +501,10 @@ export async function pursueGoal(
     // Find the chosen tool
     const chosenOption = toolOptions.find((opt) => opt.key === chosenKey);
     if (!chosenOption) {
-      return done({
-        reason: "decide_failed",
-        next: `The model chose an unknown operation "${chosenKey}". Handle the goal without the Goal Loop.`,
-        history,
-      });
+      return decideFailed(
+        `The model chose an unknown operation "${chosenKey}"`,
+        { kind: "unknown-choice" }
+      );
     }
     const chosenTool = chosenOption.tool;
 
@@ -563,7 +568,7 @@ export async function pursueGoal(
           buildArgumentRequest(state, plan.questions)
         );
       } catch (error) {
-        return decideFailed(error);
+        return callFailed(error);
       }
       let argumentAnswers: ArgumentAnswers;
       try {
@@ -608,7 +613,7 @@ export async function pursueGoal(
             buildArgumentRequest(state, [argumentAnswers.question])
           );
         } catch (error) {
-          return decideFailed(error);
+          return callFailed(error);
         }
         try {
           chosenArguments = readRunOffAnswer(

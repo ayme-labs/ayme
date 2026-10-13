@@ -1,10 +1,9 @@
 import {
-  refAttribute,
   StructuralNode,
   StructuralTree,
   SYNTHETIC_ROOT_REF,
-  syntheticRef,
   SyntheticAriaRefFactory,
+  syntheticRefsAbsentFrom,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
 
@@ -15,13 +14,10 @@ export function parseCapturedTree(
   excludedRefs: ReadonlySet<AriaRef> = new Set()
 ): StructuralTree {
   const temporaryRefs = new Set<AriaRef>();
-  let counter = 0;
+  const absentRefs = syntheticRefsAbsentFrom(yaml, "webmcp_parse_");
   const parsed = StructuralTree.fromAriaSnapshotYaml(yaml, {
     create() {
-      let ref: AriaRef;
-      do {
-        ref = syntheticRef(`webmcp_parse_${++counter}`);
-      } while (yaml.includes(`[${refAttribute(ref)}]`));
+      const ref = absentRefs.create();
       temporaryRefs.add(ref);
       return ref;
     },

@@ -201,7 +201,7 @@ describe("Custom Tools in Chromium", () => {
     expect(
       await call("highlight_element", { ref: "#save" }).catch(errorText)
     ).toBe(
-      'ToolInputError: The ref "#save" is not a Structural Ref. Pass a ref from snapshot, such as e5.'
+      'ToolInputError: Cannot run "highlight_element" on ref "#save": not a Structural Ref. Pass a ref from snapshot, such as e5.'
     );
     expect(targets).toHaveLength(0);
   });
