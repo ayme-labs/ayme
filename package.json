@@ -10,7 +10,7 @@
     "build": "turbo run build",
     "boundaries": "turbo boundaries",
     "check": "pnpm run boundaries && pnpm run docs:check && pnpm run test:scripts && pnpm run build && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run test:e2e && pnpm run format:check",
-    "prepare": "lefthook install",
+    "prepare": "lefthook install && scripts/link-cloud-browsers.sh",
     "release:version": "node scripts/release-version.mjs",
     "hooks:install": "lefthook install",
     "commitlint": "commitlint --verbose",
