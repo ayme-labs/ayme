@@ -490,7 +490,7 @@ export async function pursueGoal(
     if (!chosenOption) {
       return done({
         reason: "decide_failed",
-        next: `The model chose an unknown operation "${chosenKey}". Retry, or handle the goal without the Goal Loop.`,
+        next: `The model chose an unknown operation "${chosenKey}". Handle the goal without the Goal Loop.`,
         history,
       });
     }

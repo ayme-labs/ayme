@@ -1257,6 +1257,19 @@ describe("Goal Loop goal in Chromium", () => {
     });
   });
 
+  it("ends the run without retry advice when the model chooses an unknown operation", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.missing", goal_met: 0.1 },
+    ]);
+    const tool = await registerPom(decide);
+    const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
+    expect(withoutChanges(result)).toEqual({
+      reason: "decide_failed",
+      next: 'The model chose an unknown operation "App.missing". Handle the goal without the Goal Loop.',
+      history: [],
+    });
+  });
+
   // --- Order of checks ---
 
   it("checks done before no_fitting_option (goal_met >= 0.5 wins over none)", async () => {
