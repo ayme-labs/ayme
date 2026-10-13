@@ -24,7 +24,7 @@ import {
 import {
   configurePageStateIgnore,
   getPageStateCaptureForDocument,
-  latestRefInTheWay,
+  latestPageStateRef,
   pageStateNodeEntry,
   lookAtPageStateForDocument,
   resolvePageStateRefs,
@@ -773,7 +773,7 @@ describe("get_page_state", () => {
   });
 });
 
-describe("the ref an Availability Reason names for what is in the way", () => {
+describe("the ref the latest page state gave an element", () => {
   beforeEach(() => {
     vi.stubGlobal(
       "document",
@@ -782,7 +782,6 @@ describe("the ref an Availability Reason names for what is in the way", () => {
     document.body.innerHTML = `
       <div id="holder"><section id="root">Root</section><div id="cover"></div></div>
       <div id="overlay"><div id="pane"></div></div>
-      <div id="shell"><dialog id="modal"></dialog></div>
     `;
     vi.clearAllMocks();
   });
@@ -807,24 +806,19 @@ describe("the ref an Availability Reason names for what is in the way", () => {
   };
 
   it("is nothing before the document has a page state", () => {
-    expect(latestRefInTheWay(byId("cover"), byId("root"))).toBeUndefined();
+    expect(latestPageStateRef(byId("cover"))).toBeUndefined();
   });
 
-  it("is the nearest ref up from the obstruction, from an ancestor that does not hold the root", async () => {
+  it("is the ref the agent's latest page state gave the element itself", async () => {
     await recordPageState([
       [byId("overlay"), "e2"],
       [byId("holder"), "e3"],
-      [byId("shell"), "e4"],
     ]);
 
-    expect(latestRefInTheWay(byId("pane"), byId("root"))).toBe(ref("e2"));
-    // What holds the root is not in its way.
-    expect(latestRefInTheWay(byId("cover"), byId("root"))).toBeUndefined();
-    // An inert ancestor is named by its own ref.
-    expect(latestRefInTheWay(byId("holder"), byId("root"))).toBe(ref("e3"));
-    // Where the browser cannot tell a modal (jsdom has no `:modal`), the
-    // dialog is walked up from like anything else.
-    expect(latestRefInTheWay(byId("modal"), byId("root"))).toBe(ref("e4"));
+    expect(latestPageStateRef(byId("overlay"))).toBe(ref("e2"));
+    expect(latestPageStateRef(byId("holder"))).toBe(ref("e3"));
+    // Naming walks up from what is in the way; the lookup does not.
+    expect(latestPageStateRef(byId("pane"))).toBeUndefined();
   });
 });
 

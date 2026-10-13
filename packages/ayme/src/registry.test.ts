@@ -877,6 +877,35 @@ describe("live Page Object registry", () => {
     rootless.dispose();
   });
 
+  it("lists a root's tools absent once its element left the page, before the next probe", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+    const element = { isConnected: true } as { isConnected: boolean };
+
+    class RootedPage {
+      readonly root = brandedLocator(
+        { count: async () => 1 },
+        element as Element
+      );
+      save() {}
+    }
+    registry.registerCompiledPom(RootedPage, {
+      ...emptyManifest("RootedPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    const registration = registry.createPageRegistration(RootedPage);
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools()).toHaveLength(1);
+
+    element.isConnected = false;
+    expect(registry.listRegisteredPomTools()).toEqual([
+      expect.objectContaining({ present: false, available: false }),
+    ]);
+
+    registration.dispose();
+  });
+
   it("does not notify when a probe observes the same present root again", async () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);
@@ -908,6 +937,45 @@ describe("live Page Object registry", () => {
     await vi.runOnlyPendingTimersAsync();
     expect(subscriber).toHaveBeenCalledOnce();
 
+    registration.dispose();
+  });
+
+  it("lists an obstructed root's tools unavailable, and reads them again when a page state may name what is in the way", async () => {
+    const registry = await import("./registry");
+    const { measurePomRoot } = await import("./pomRootMeasurement");
+    registry.configureAymeRuntime({} as Page);
+    vi.mocked(measurePomRoot).mockResolvedValue({
+      present: true,
+      available: false,
+      blocker: {} as Element,
+    });
+
+    class CoveredPage {
+      readonly root = brandedLocator({ count: async () => 1 });
+      save() {}
+    }
+    registry.registerCompiledPom(CoveredPage, {
+      ...emptyManifest("CoveredPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    const registration = registry.createPageRegistration(CoveredPage);
+    const subscriber = vi.fn();
+    registry.subscribeToRegisteredPoms(subscriber);
+    await vi.runOnlyPendingTimersAsync();
+
+    expect(registry.listRegisteredPomTools()).toEqual([
+      expect.objectContaining({
+        present: true,
+        available: false,
+        reason: "a click would not reach it",
+      }),
+    ]);
+    subscriber.mockClear();
+    registry.announceRegisteredPomChange();
+    expect(subscriber).toHaveBeenCalledOnce();
+
+    vi.mocked(measurePomRoot).mockReset();
     registration.dispose();
   });
 

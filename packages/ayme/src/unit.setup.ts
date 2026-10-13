@@ -1,7 +1,8 @@
 import { vi } from "vitest";
 
-// Reachability policy is covered in Chromium. Registry unit tests exercise the
-// observation lifecycle without depending on layout geometry in jsdom.
-vi.mock("./pomRootObservation", () => ({
-  observePomRoot: async () => ({ present: true, available: true }),
+// Reachability geometry is covered in Chromium. Unit tests observe Page
+// Object Roots for real on a layout that shows every root and lets every
+// click reach it; a test measures another by overriding `measurePomRoot`.
+vi.mock("./pomRootMeasurement", () => ({
+  measurePomRoot: vi.fn(async () => ({ present: true, available: true })),
 }));
