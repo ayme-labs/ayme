@@ -6,9 +6,11 @@ import {
   refAttribute,
   refFromAttribute,
   refFromSelector,
+  refWrittenOtherwise,
   selectorForRef,
   SYNTHETIC_ROOT_REF,
   syntheticRef,
+  syntheticRefsAbsentFrom,
 } from "./StructuralRef";
 
 describe("Structural Ref grammar", () => {
@@ -108,6 +110,40 @@ describe("Structural Ref grammar", () => {
       const ref = AriaRefSchema.parse(text);
       expect(refAttribute(ref)).toBe(`ref=${text}`);
       expect(refFromAttribute(refAttribute(ref))).toBe(ref);
+    }
+  });
+
+  it.each([
+    ["[ref=e5]", "e5"],
+    ["[ ref = e5 ]", "e5"],
+    ["ref=e5", "e5"],
+    ["REF=E5", "e5"],
+    ["E5", "e5"],
+    [" e5 ", "e5"],
+    ["e5", "e5"],
+    ["  [ref=e12]\n", "e12"],
+    ["#save", undefined],
+    ["button.save", undefined],
+    ['role=button[name="Save"]', undefined],
+    ["aria-ref=e5", undefined],
+    ["[ref=e5] button", undefined],
+    ["ref=x5", undefined],
+    ["[ref=s_1]", undefined],
+    ["e", undefined],
+    ["", undefined],
+  ])("reads %j, a ref written another way, as %j", (text, ref) => {
+    expect(refWrittenOtherwise(text)).toBe(ref);
+  });
+
+  it("allocates synthetic refs that do not occur in the text", () => {
+    const text =
+      '- generic:\n  - button "Save" [ref=s_tmp_1]\n  - text: "s_tmp_2"';
+    const refs = syntheticRefsAbsentFrom(text, "tmp_");
+    const allocated = [refs.create(), refs.create()];
+    expect(allocated).toEqual(["s_tmp_3", "s_tmp_4"]);
+    for (const ref of allocated) {
+      expect(isSyntheticRef(ref)).toBe(true);
+      expect(text).not.toContain(ref);
     }
   });
 });

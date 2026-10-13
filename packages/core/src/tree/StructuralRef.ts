@@ -5,9 +5,10 @@ import { AriaRefSchema, type AriaRef } from "./StructuralTypes";
  * `e<number>`, a handle the browser Page can act on through the
  * `aria-ref=…` selector. A synthetic ref is Ayme's `s_<word>` (`s_root`,
  * `s_1`, …): it names a node that exists only in the observation, so no
- * selector reaches it and no tool acts on it.
+ * selector reaches it and no Browser Tool acts on it.
  */
-const REF = /e\d+|s_\w+/;
+const REAL_REF = /e\d+/;
+const REF = new RegExp(`${REAL_REF.source}|s_\\w+`);
 const WHOLE_REF = new RegExp(`^(?:${REF.source})$`);
 // The whole selector, bare or as the one argument of a `locator(…)` string.
 const SELECTOR_REF = new RegExp(
@@ -16,10 +17,27 @@ const SELECTOR_REF = new RegExp(
 const SYNTHETIC_PREFIX = "s_";
 // A snapshot names a node's ref in the attribute `[ref=e5]`.
 const REF_ATTRIBUTE = "ref=";
+// A real ref as Playwright MCP writes it, `[ref=e5]` or `ref=e5`, or with a
+// capital `E` or surrounding spaces.
+const REF_WRITTEN_OTHERWISE = new RegExp(
+  `^\\s*(?:\\[\\s*ref\\s*=\\s*(${REAL_REF.source})\\s*\\]|(?:ref\\s*=\\s*)?(${REAL_REF.source}))\\s*$`,
+  "i"
+);
 
 /** The Structural Ref `text` is, or undefined when it is not one. */
 export function parseStructuralRef(text: string): AriaRef | undefined {
   return WHOLE_REF.test(text) ? AriaRefSchema.parse(text) : undefined;
+}
+
+/**
+ * The real ref `text` writes another way, read leniently: `[ref=e5]`,
+ * `ref=e5`, `E5` and ` e5 ` all read as `e5`. Undefined when `text` writes
+ * no ref, such as a selector.
+ */
+export function refWrittenOtherwise(text: string): AriaRef | undefined {
+  const match = REF_WRITTEN_OTHERWISE.exec(text);
+  const ref = match?.[1] ?? match?.[2];
+  return ref === undefined ? undefined : AriaRefSchema.parse(ref.toLowerCase());
 }
 
 /** Whether `ref` is synthetic: observation-only, with no browser handle. */
@@ -36,6 +54,26 @@ export function syntheticRef(name: string | number): AriaRef {
   if (ref === undefined)
     throw new Error(`"${name}" cannot name a synthetic Structural Ref.`);
   return ref;
+}
+
+/**
+ * Mints synthetic refs named `name` and a counter (`s_<name>1`, …), skipping
+ * any that occur in `text`, so no allocated ref collides with one `text`
+ * already names.
+ */
+export function syntheticRefsAbsentFrom(
+  text: string,
+  name: string
+): { create(): AriaRef } {
+  let counter = 0;
+  return {
+    create() {
+      let ref: AriaRef;
+      do ref = syntheticRef(`${name}${++counter}`);
+      while (text.includes(ref));
+      return ref;
+    },
+  };
 }
 
 /** The ref a fragment that wraps several snapshot roots carries. */
