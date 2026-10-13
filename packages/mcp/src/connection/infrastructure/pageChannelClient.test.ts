@@ -23,11 +23,12 @@ afterEach(async () => {
 
 /**
  * A server that records the procedures the page calls, in the order their
- * frames arrive, and sends `call` once the page subscribes to calls.
+ * frames arrive, and sends `call` once the page subscribes to calls. It
+ * listens on `port`, or on a free one.
  */
-async function startServer(call: object) {
+async function startServer(call: object, port = 0) {
   const paths: string[] = [];
-  server = new WebSocketServer({ port: 0 });
+  server = new WebSocketServer({ port });
   server.on("connection", (socket: WebSocket) =>
     socket.on("message", (data) => {
       const parsed = JSON.parse(String(data)) as Request | Request[];
@@ -45,8 +46,8 @@ async function startServer(call: object) {
     })
   );
   await new Promise((resolve) => server!.once("listening", resolve));
-  const { port } = server.address() as { port: number };
-  return { url: `ws://127.0.0.1:${port}`, paths };
+  const { port: listening } = server.address() as { port: number };
+  return { url: `ws://127.0.0.1:${listening}`, port: listening, paths };
 }
 
 describe("openPageChannel", () => {
@@ -105,6 +106,38 @@ describe("openPageChannel", () => {
     await expect.poll(() => lost).toBe(1);
     await expect.poll(() => connections, { timeout: 5000 }).toBe(2);
   });
+
+  it("reconnects within 2 s of a server coming back after a long wait", async () => {
+    const { url, port } = await startServer({});
+    let attempts = 0;
+    class CountingWebSocket extends globalThis.WebSocket {
+      constructor(address: string | URL) {
+        super(address);
+        attempts += 1;
+      }
+    }
+    channel = openPageChannel(() => url, {
+      hello: () => ({ tab: "tab-1", url: "http://127.0.0.1/" }),
+      onWelcome: () => {},
+      onDisconnected: () => {},
+      onUnknownPairing: () => {},
+      WebSocket: CountingWebSocket,
+    });
+    void channel.publishTools([]).catch(() => {});
+    await expect.poll(() => attempts).toBe(1);
+
+    // The server goes away, and the channel fails to reconnect until its
+    // delays have reached the cap: the next one is 2 s, where tRPC's default
+    // would be 30 s and an uncapped 500 ms step 3 s.
+    for (const socket of server!.clients) socket.terminate();
+    await new Promise((resolve) => server!.close(resolve));
+    await expect.poll(() => attempts, { timeout: 9000 }).toBeGreaterThan(6);
+
+    const returned = await startServer({}, port);
+    await expect
+      .poll(() => returned.paths, { timeout: 2500 })
+      .toContain("hello");
+  }, 15_000);
 
   it("says another tab took the server, not that it lost it, when the server says so", async () => {
     const { url } = await startServer({});
