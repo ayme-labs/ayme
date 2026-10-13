@@ -20,7 +20,7 @@ import { acceptedRefNodes, type TargetField } from "./elementTools";
 import {
   listCollectionToolItems,
   listAvailablePomTools,
-  type RegisteredPomRoot,
+  type CollectionToolItem,
 } from "./registry";
 
 /**
@@ -117,8 +117,11 @@ const parameterNamesOf = (tool: GoalLoopOperation) =>
 /** A closed set of values the model may pick one of. */
 type ClosedSet =
   | { kind: "ref"; filter: (element: Element) => boolean }
-  /** The present roots of one collection path; no filter is involved. */
-  | { kind: "instance"; roots: readonly RegisteredPomRoot[] }
+  /**
+   * The present items of one collection path, each with the tool's verdict on
+   * it; no filter is involved.
+   */
+  | { kind: "instance"; roots: readonly CollectionToolItem[] }
   | { kind: "values"; values: readonly JsonPrimitive[] };
 
 /**
@@ -251,7 +254,7 @@ function specsOfElementToolSchema(
  */
 function specsOfCollectionTool(
   parameters: readonly ToolParameter[],
-  roots: readonly RegisteredPomRoot[]
+  roots: readonly CollectionToolItem[]
 ): ArgumentSpec[] {
   return parameters.flatMap((parameter) =>
     parameter.name === "ref"
@@ -404,11 +407,12 @@ function describeNode(node: StructuralNode): string {
 
 /**
  * One option per present root of a collection path, keyed by the ref the same
- * capture gave that root's element. A root the capture holds no ref for cannot
- * be targeted and is left out.
+ * capture gave that root's element. A root the tool is unavailable on would be
+ * refused, and a root the capture holds no ref for cannot be targeted; both are
+ * left out.
  */
 function instanceOptions(
-  roots: readonly RegisteredPomRoot[],
+  roots: readonly CollectionToolItem[],
   capture: PageStateCapture
 ): ArgumentOption[] {
   const refsByElement = new Map<Element, AriaRef>();
@@ -416,6 +420,7 @@ function instanceOptions(
     refsByElement.set(element, ref);
 
   return roots.flatMap((root) => {
+    if (!root.available) return [];
     const ref = refsByElement.get(root.element);
     const node = ref === undefined ? null : capture.tree.getNode(ref);
     if (ref === undefined || node === null) return [];

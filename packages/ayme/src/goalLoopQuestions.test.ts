@@ -403,6 +403,8 @@ describe("collection instances over the option cap", () => {
     const roots = [...capture.elementsByRef.values()].map((element, index) => ({
       label: `items[${index}]`,
       element,
+      present: true,
+      available: true,
     }));
     const tool: GoalLoopOperation = {
       name: "List.archive",
@@ -424,6 +426,55 @@ describe("collection instances over the option cap", () => {
       parameter: "ref",
       optionCount: 256,
     });
+  });
+});
+
+describe("collection instances", () => {
+  it("offers only the items the tool is available on", () => {
+    const capture = captureOfButtons(2);
+    const [first, second] = [...capture.elementsByRef.values()];
+    const tool: GoalLoopOperation = {
+      name: "List.archive",
+      description: "Archive an item.",
+      execute: async () => null,
+      requiredParams: ["ref"],
+      args: [
+        {
+          name: "ref",
+          path: ["ref"],
+          optional: false,
+          closedSet: {
+            kind: "instance",
+            roots: [
+              {
+                label: "items[0]",
+                element: first,
+                present: true,
+                available: false,
+                reason: "already archived",
+              },
+              {
+                label: "items[1]",
+                element: second,
+                present: true,
+                available: true,
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const plan = planArguments(tool, capture);
+
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    expect(plan.questions).toHaveLength(1);
+    const [question] = plan.questions;
+    if (question.type !== "choice")
+      throw new Error(`Unexpected question ${question.type}`);
+    expect(question.options).toEqual([
+      { key: "e2", description: 'items[1] (button "Item 2")', value: "e2" },
+    ]);
   });
 });
 
