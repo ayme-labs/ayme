@@ -10,7 +10,7 @@ import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
 import type { RunContext } from "./run";
 import type { ToolInput, ToolResult } from "./toolTypes";
 import type { AriaRef, PageStateCapture } from "./pageState";
-import { resolveRefTarget } from "./refTarget";
+import { refHint, resolveRefTarget } from "./refTarget";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { requireAymeRuntimePage } from "./registry";
 import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
@@ -210,21 +210,6 @@ export function validatedToolInput(
  */
 const LOCATOR_EXPRESSION =
   /^\s*(?:await\s+)?(?:[\w$]+\.)*(?:getBy\w+|locator|frameLocator)\(/;
-
-/**
- * A Structural Ref written another way: Playwright MCP's `[ref=e5]` or
- * `ref=e5`, with a capital `E` or surrounding spaces. Such a target is read
- * as a selector, and its failure names the ref to pass instead.
- */
-const REF_WRITTEN_OTHERWISE =
-  /^\s*(?:\[\s*ref\s*=\s*(e\d+)\s*\]|(?:ref\s*=\s*)?(e\d+))\s*$/i;
-
-/** The hint toward the ref `requested` names, if it names one. */
-function refHint(requested: string): string | undefined {
-  const match = REF_WRITTEN_OTHERWISE.exec(requested);
-  const ref = match?.[1] ?? match?.[2];
-  return ref && `Pass the Structural Ref alone: ${ref.toLowerCase()}.`;
-}
 
 /**
  * Package-internal: resolve the element one call addresses. The one place
