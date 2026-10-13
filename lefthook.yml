@@ -16,12 +16,15 @@ pre-commit:
         GIT_CONFIG_VALUE_0: "false"
     # The packed-consumer test type-checks the quickstarts' Page Object
     # Models, which --affected misses since they live outside the package.
+    # Half the cores: running every package at once starves the timed
+    # tests (the Angular ng-add schematic, the packed-consumer cleanup) on
+    # a small machine, and was slower overall than half on four cores.
     - name: test
       run: |
         if git diff --cached --quiet -- 'docs/guide/start/quickstart-*.md'; then
-          pnpm exec turbo run test --affected
+          pnpm exec turbo run test --affected --concurrency=50%
         else
-          pnpm exec turbo run test
+          pnpm exec turbo run test --concurrency=50%
         fi
       env: *affected
 
