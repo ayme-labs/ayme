@@ -357,13 +357,14 @@ export async function pursueGoal(
   const done = async (handover: Handover): Promise<GoalLoopRunResult> => {
     const received = loop.current();
     if (received) {
-      const changes = await interactions.readChange(
-        interactions.received(cursor) ?? received,
-        received
-      );
+      const from = interactions.received(cursor) ?? received;
+      const changes = await interactions.readChange(from, received);
       cursor.move(received);
       if (changes.hasAnyChanges())
-        handover.changes = renderChangeRecord(changes);
+        handover.changes = renderChangeRecord(changes, {
+          before: interactions.pomLabels(from),
+          after: interactions.pomLabels(received),
+        });
     }
     const result = { handover, stepScores };
     runResultStore.last = result;

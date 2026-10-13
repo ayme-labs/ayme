@@ -18,6 +18,9 @@ import {
   type StructuralObservationEntry,
 } from "@ayme-dev/core/structural-observation";
 import type { Cursor } from "./cursors";
+import type { PomLabels } from "./pomLabels";
+
+const noPomLabels: PomLabels = new Map();
 
 /** What core's Structural Action does not carry: the tool call behind it. */
 export type ToolCall = {
@@ -55,6 +58,11 @@ export class InteractionHistory {
   private readonly recorded = new Map<StructuralActionId, RecordedAction>();
   private first: StructuralObservationEntry | undefined;
   private latest: StructuralObservationEntry | undefined;
+  /** What core's observation does not carry: its Page Object Roots' labels. */
+  private readonly labels = new WeakMap<
+    StructuralObservationEntry,
+    PomLabels
+  >();
 
   constructor(
     currentDocument: Document,
@@ -94,9 +102,15 @@ export class InteractionHistory {
   /** Record an already-captured tree as an observation. */
   observe(
     tree: StructuralTree,
-    at: MonotonicTimeMs
+    at: MonotonicTimeMs,
+    pomLabels?: PomLabels
   ): StructuralObservationEntry {
-    return this.record(tree, at);
+    return this.record(tree, at, pomLabels);
+  }
+
+  /** The Page Object labels of an observation's Page Object Roots, by ref. */
+  pomLabels(observation: StructuralObservationEntry): PomLabels {
+    return this.labels.get(observation) ?? noPomLabels;
   }
 
   /** The observation recorded most recently, of any kind. */
@@ -143,9 +157,10 @@ export class InteractionHistory {
   observeBefore(
     actionId: StructuralActionId,
     tree: StructuralTree,
-    at: MonotonicTimeMs
+    at: MonotonicTimeMs,
+    pomLabels?: PomLabels
   ): StructuralObservationEntry {
-    return this.record(tree, at, actionId, "before");
+    return this.record(tree, at, pomLabels, actionId, "before");
   }
 
   /**
@@ -157,9 +172,10 @@ export class InteractionHistory {
   completeAction(
     actionId: StructuralActionId,
     settledPage: StructuralTree,
-    at: MonotonicTimeMs
+    at: MonotonicTimeMs,
+    pomLabels?: PomLabels
   ): StructuralObservationEntry {
-    return this.complete(actionId, settledPage, at);
+    return this.complete(actionId, settledPage, at, pomLabels);
   }
 
   /** What changed between two observations of this document: core's reading. */
@@ -177,13 +193,14 @@ export class InteractionHistory {
   failAction(
     actionId: StructuralActionId,
     page: StructuralTree,
-    at: MonotonicTimeMs
+    at: MonotonicTimeMs,
+    pomLabels?: PomLabels
   ): void {
     this.recorded.set(actionId, {
       ...this.recordedAction(actionId),
       failed: true,
     });
-    this.complete(actionId, page, at);
+    this.complete(actionId, page, at, pomLabels);
   }
 
   /** The tool calls behind the recorded Structural Actions, in start order. */
@@ -201,9 +218,10 @@ export class InteractionHistory {
   private complete(
     actionId: StructuralActionId,
     page: StructuralTree,
-    at: MonotonicTimeMs
+    at: MonotonicTimeMs,
+    pomLabels: PomLabels | undefined
   ): StructuralObservationEntry {
-    const after = this.record(page, at, actionId);
+    const after = this.record(page, at, pomLabels, actionId);
     this.observations.recordActionCompleted({
       kind: "action-completed",
       at: this.now(),
@@ -216,6 +234,7 @@ export class InteractionHistory {
   private record(
     tree: StructuralTree,
     at: MonotonicTimeMs,
+    pomLabels: PomLabels | undefined,
     capturedForActionId?: StructuralActionId,
     relation?: "before"
   ): StructuralObservationEntry {
@@ -227,6 +246,7 @@ export class InteractionHistory {
       ...(capturedForActionId ? { capturedForActionId } : {}),
       ...(relation ? { relation } : {}),
     });
+    if (pomLabels?.size) this.labels.set(entry, pomLabels);
     this.first ??= entry;
     this.latest = entry;
     return entry;
