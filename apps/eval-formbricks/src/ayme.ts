@@ -1,8 +1,8 @@
 /**
  * Everything the Ayme arms set up before the measured window: the Ayme MCP
  * server the agent talks to, `ayme mcp` from `@ayme-dev/mcp`, paired with a
- * headless browser holding the mission's start page, with the Goal Loop
- * switch set for the arm. The pairing follows the tab through the screens
+ * headless browser holding the mission's start page, with the Goal Loop and
+ * page objects switches set for the arm. The pairing follows the tab through the screens
  * the task moves it to: the server tells the agent each time the tools change.
  *
  * A coding agent normally starts its own `ayme mcp` over stdio, and a tab of
@@ -71,6 +71,16 @@ export function aymeSkillDirectory(configDir: string) {
 export const goalLoopCookie = { name: "ayme-lab-goal-loop", value: "on" };
 
 /**
+ * The lab app's page objects switch: with this cookie set before the page
+ * loads, the page registers no page objects, so it publishes `snapshot` and
+ * the Browser Tools but no Page Object Tool. Without it the page objects are on.
+ */
+export const pageObjectsOffCookie = {
+  name: "ayme-lab-page-objects",
+  value: "off",
+};
+
+/**
  * How long Claude Code lets one MCP tool call run. The `goal` tool runs the
  * whole Goal Loop inside one call, far beyond any default per-call limit; the
  * server itself waits for the page's answer however long it takes.
@@ -80,7 +90,11 @@ export const mcpToolTimeoutMs = 320_000;
 /** The ports a page's auto-pair scan probes; the server listens on one of them. */
 export const serverPorts = { first: 9350, last: 9365 };
 
-/** A Page Object Tool each start screen publishes: proof that the paired page is that screen with Ayme's tools. */
+/**
+ * A Page Object Tool each start screen publishes: proof that the paired page
+ * is that screen with Ayme's tools. Without page objects the proof is
+ * `snapshot` and the start page's URL.
+ */
 export const startScreenTool: Record<StartScreen, string> = {
   editor: "SurveyEditorPage.setSurveyName",
   "sign-in": "SignInPage.fillEmail",
@@ -196,6 +210,8 @@ export type AymeEvidence = {
   /** The page's tool names as WebMCP publishes them: the agent's, without the server prefix, but `screenshot`. */
   tools: string[];
   goalToolPublished: boolean;
+  /** Whether the page's page objects were on; off, it published no Page Object Tool. */
+  pageObjects: boolean;
 };
 
 type Page = ReturnType<BrowserContext["pages"]>[number];
@@ -211,6 +227,46 @@ function publishedToolNames(page: Page): Promise<string[]> {
     if (!modelContext) return [];
     return (await modelContext.getTools()).map((tool) => tool.name).sort();
   });
+}
+
+/** Page Object Tools are named `<page object>.<action>`; Ayme's own tools carry no dot. */
+export function pageObjectToolNames(names: string[]): string[] {
+  return names.filter((name) => name.includes("."));
+}
+
+/**
+ * What is wrong with a start page without page objects, looked at again after pairing: it must
+ * still publish its screen tool (and goal exactly when the Goal Loop is on) and no Page Object
+ * Tool, keep this run's pairing, and stay at the start URL. Null when nothing is.
+ */
+export function settledStartPageProblem(look: {
+  tools: string[];
+  screenTool: string;
+  goalLoop: boolean;
+  pairedAddress: string;
+  storedAddress: string | null;
+  pageUrl: string;
+  startUrl: string;
+}): string | null {
+  const pageObjectTools = pageObjectToolNames(look.tools);
+  if (pageObjectTools.length > 0)
+    return `The page publishes ${pageObjectTools.join(", ")} although its page objects should be off.`;
+  if (
+    !look.tools.includes(look.screenTool) ||
+    look.tools.includes("goal") !== look.goalLoop
+  )
+    return `The page publishes ${look.tools.join(", ") || "nothing"} two seconds after pairing, instead of ${look.screenTool} ${look.goalLoop ? "and" : "without"} goal.`;
+  if (look.storedAddress !== look.pairedAddress)
+    return `The page no longer keeps its pairing with ${look.pairedAddress} two seconds after pairing.`;
+  const at = new URL(look.pageUrl);
+  const start = new URL(look.startUrl);
+  if (
+    at.origin !== start.origin ||
+    at.pathname !== start.pathname ||
+    at.search !== start.search
+  )
+    return `The paired page is at ${look.pageUrl} instead of the start page ${look.startUrl}.`;
+  return null;
 }
 
 /** The pairing the tab keeps, once the server has welcomed it with its token. */
@@ -371,12 +427,13 @@ class HarnessedServer {
 
 /**
  * Starts the Ayme MCP server, opens the mission's start page with the Goal
- * Loop switch set for the arm, waits until the page has paired with the
- * server and published the screen's tools, and hands the server to the agent.
+ * Loop and page objects switches set for the arm, waits until the page has
+ * paired with the server and published the screen's tools, and hands the
+ * server to the agent.
  */
 export async function setUpAymeAgent(
   context: ArmContext,
-  options: { goalLoop: boolean }
+  options: { goalLoop: boolean; pageObjects: boolean }
 ): Promise<ArmSetup> {
   // The eval's own skill for the Ayme arms, read from the fresh configuration folder, as the
   // Playwright CLI arm's skill is.
@@ -384,7 +441,9 @@ export async function setUpAymeAgent(
   await cp(aymeSkillSource, skillDir, { recursive: true });
 
   const origin = new URL(context.start.url).origin;
-  const screenTool = startScreenTool[context.start.screen];
+  const screenTool = options.pageObjects
+    ? startScreenTool[context.start.screen]
+    : "snapshot";
   const socketPath = agentSocketPath(context.runId);
   const logPath = path.join(context.runDir, "ayme-mcp.log");
 
@@ -429,6 +488,8 @@ export async function setUpAymeAgent(
     );
     if (options.goalLoop)
       await browser.addCookies([{ ...goalLoopCookie, url: origin }]);
+    if (!options.pageObjects)
+      await browser.addCookies([{ ...pageObjectsOffCookie, url: origin }]);
     const page = browser.pages()[0] ?? (await browser.newPage());
     const opened = Date.now();
     await page.goto(context.start.url);
@@ -449,7 +510,7 @@ export async function setUpAymeAgent(
       throw new Error(
         `The page stored a pairing but the server did not report it. Server log:\n${server.log.join("\n")}`
       );
-    const tools = await waitFor(
+    let tools = await waitFor(
       `Publishing ${options.goalLoop ? `${screenTool} and goal` : screenTool}`,
       60_000,
       async () => {
@@ -466,8 +527,25 @@ export async function setUpAymeAgent(
       throw new Error(
         `The page publishes goal although the Goal Loop should be off for ${context.runId}.`
       );
+    if (!options.pageObjects) {
+      // The provider publishes a screen's Page Object Tools as it mounts them, so look again once
+      // they would have had time to appear. That second look is the one recorded, so it must still
+      // show a complete, paired start page.
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      tools = await publishedToolNames(page);
+      const problem = settledStartPageProblem({
+        tools,
+        screenTool,
+        goalLoop: options.goalLoop,
+        pairedAddress: pairing.address,
+        storedAddress: (await storedPairing(page))?.address ?? null,
+        pageUrl: page.url(),
+        startUrl: context.start.url,
+      });
+      if (problem) throw new Error(`${problem} (${context.runId})`);
+    }
     context.log(
-      `The start page paired with the Ayme MCP server ${pairedAt.getTime() - opened} ms after opening, with ${tools.length} tools; goal ${goalToolPublished ? "is" : "is not"} published.`
+      `The start page paired with the Ayme MCP server ${pairedAt.getTime() - opened} ms after opening, with ${tools.length} tools; goal ${goalToolPublished ? "is" : "is not"} published; page objects are ${options.pageObjects ? "on" : "off"}.`
     );
     await writeLog();
     const evidence: AymeEvidence = {
@@ -478,6 +556,7 @@ export async function setUpAymeAgent(
       pairingMs: pairedAt.getTime() - opened,
       tools,
       goalToolPublished,
+      pageObjects: options.pageObjects,
     };
     return {
       // Claude Code's own per-call limit must outlast a goal call.

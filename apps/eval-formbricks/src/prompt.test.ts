@@ -200,6 +200,8 @@ describe.each([
     "playwright-cli",
     "ayme-goal-loop-off",
     "ayme-goal-loop-on",
+    "ayme-no-page-objects-goal-loop-off",
+    "ayme-no-page-objects-goal-loop-on",
   ] as const)(
     "differs between the Playwright MCP arm and %s in that one line alone",
     (armId) => {
@@ -242,6 +244,18 @@ describe("the interface lines", () => {
       "Hand the goal to the `goal` tool first; use the other tools only if it can't finish."
     );
   });
+
+  it("of the Ayme arms without page objects name no Page Object Tools and differ in the goal-first sentence alone", () => {
+    const off = arms["ayme-no-page-objects-goal-loop-off"].interfaceLine(
+      mission.start
+    );
+    expect(off).toBe(
+      "Use the page's own tools through the `ayme` MCP server, which is already connected to the page, and its `ayme` skill for every browser interaction: `snapshot` and Ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed."
+    );
+    expect(
+      arms["ayme-no-page-objects-goal-loop-on"].interfaceLine(mission.start)
+    ).toBe(`${off} ${goalFirstSentence}`);
+  });
 });
 
 describe("the setup message", () => {
@@ -273,6 +287,8 @@ describe("the setup message", () => {
 describe.each([
   ["ayme-goal-loop-off", false],
   ["ayme-goal-loop-on", true],
+  ["ayme-no-page-objects-goal-loop-off", false],
+  ["ayme-no-page-objects-goal-loop-on", true],
 ] as const)("the %s arm", (armId, goalLoop) => {
   const arm = arms[armId];
 

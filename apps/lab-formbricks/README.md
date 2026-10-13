@@ -32,7 +32,7 @@ pnpm lab:qualify
 pnpm lab:smoke
 ```
 
-`lab:qualify` qualifies the page objects against the running app with Formbricks's own Playwright. It seeds an isolated user, organization and workspace through Formbricks's database package and waits until Formbricks has copied them into its authorization store, signs in through the real UI, creates a survey from scratch, and proves on each screen that every page object locator resolves to exactly one visible element. In the editor it calls the page object actions through an `ayme mcp` server, as an agent does, and checks that each takes effect: the new name, the new question text, and the summary after saving. It also starts an `ayme mcp` server and checks that the page pairs with it by itself, that the server lists the page's tools, Ayme's Browser Tools and the screen's Page Object Tools, and that `goal` is among them only with the Goal Loop switch on. No other Ayme MCP server may listen on ports 9350 to 9365 while it runs, since a page pairs by itself only with exactly one.
+`lab:qualify` qualifies the page objects against the running app with Formbricks's own Playwright. It seeds an isolated user, organization and workspace through Formbricks's database package and waits until Formbricks has copied them into its authorization store, signs in through the real UI, creates a survey from scratch, and proves on each screen that every page object locator resolves to exactly one visible element. In the editor it calls the page object actions through an `ayme mcp` server, as an agent does, and checks that each takes effect: the new name, the new question text, and the summary after saving. It also starts an `ayme mcp` server and checks that the page pairs with it by itself, that the server lists the page's tools, Ayme's Browser Tools and the screen's Page Object Tools, that `goal` is among them only with the Goal Loop switch on, and that with the page objects switch off the page publishes `snapshot` and the Browser Tools and no Page Object Tool. No other Ayme MCP server may listen on ports 9350 to 9365 while it runs, since a page pairs by itself only with exactly one.
 
 `lab:smoke` runs Formbricks's own start-from-scratch Playwright scenario against the running app. At the pinned revision it can fail at sign-in: the scenario writes its user to Postgres and signs in at once, while Formbricks's background worker copies the user into the authorization store a second or more later. When it is sent to "create organization", that race is the cause, not the lab app. Formbricks's own CI runs the scenario against a production build. `lab:qualify` waits for that copy before it signs in.
 
@@ -46,15 +46,20 @@ pnpm lab:stop
 
 ## Ayme in the lab app
 
-The fork's `ayme-overlay` branch, the Ayme overlay, holds everything Ayme adds to Formbricks, on top of the upstream revision the lab app is based on, `8abe0b42`, the fork's `main` as of 2026-10-03. The submodule pins the branch's tip, `b4c77b2`. Its code lives in [`formbricks/apps/web/ayme/`](https://github.com/ayme-labs/formbricks/tree/b4c77b258753d2c4e34e86944eb93dbb507969a0/apps/web/ayme):
+The fork's `ayme-overlay` branch, the Ayme overlay, holds everything Ayme adds to Formbricks, on top of the upstream revision the lab app is based on, `8abe0b42`, the fork's `main` as of 2026-10-03. The submodule pins the branch's tip, `211ad70`. Its code lives in [`formbricks/apps/web/ayme/`](https://github.com/ayme-labs/formbricks/tree/211ad704de30aabf96c059cc1cf00391d5b63a27/apps/web/ayme):
 
 - The React integration owns the runtime in Formbricks's root layout, with WebMCP publication on, so the page publishes `snapshot` and Ayme's Browser Tools but `screenshot`, whose image result WebMCP cannot carry, and with the Agent Connection on in lab mode (see below).
 - Page objects for the screens the eval's mission touches, in `ayme/pom/`: `SignInPage`, `SurveyNavigationPage`, `SurveyEditorPage` and `SurveySummaryPage`. Each screen registers only its own, so the page publishes only that screen's Page Object Tools. Ayme's Turbopack loader compiles them, as in the [Next.js example](../example-next/README.md). The survey editor's question text is a rich-text editor without an accessible name, so its locator goes from the `Question*` label to the editor, as Formbricks's own Playwright helper does. The survey name input's accessible name is `Survey name`.
 - A Decision Endpoint route at `/api/ayme/decisions` for the Goal Loop.
 
-### Goal Loop switch
+### Lab switches
 
-One build serves Ayme with the Goal Loop off and on. The Goal Loop is on for a page load when the browser sends the cookie `ayme-lab-goal-loop=on`; then the page also publishes `goal`. Without it the Goal Loop is off. The page reads the cookie when it loads, so set it before opening the page, for example with Playwright:
+One build serves Ayme with the Goal Loop off and on, and with and without page objects. Each switch is a cookie the page reads when it loads, so set it before opening the page.
+
+- **Goal Loop.** On for a page load when the browser sends `ayme-lab-goal-loop=on`; then the page also publishes `goal`. Without it the Goal Loop is off.
+- **Page objects.** Off for a page load when the browser sends `ayme-lab-page-objects=off`; then the page registers no page object, so it publishes `snapshot` and the Browser Tools, with `goal` when the Goal Loop is on, and no Page Object Tool: Ayme in an app without page objects. Without it the page objects are on.
+
+For example with Playwright:
 
 ```ts
 await context.addCookies([

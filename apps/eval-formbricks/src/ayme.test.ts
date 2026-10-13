@@ -11,9 +11,11 @@ import {
   aymeMcpCliPath,
   aymeMcpServer,
   mcpToolTimeoutMs,
+  pageObjectToolNames,
   proxyScript,
   proxyScriptPath,
   serverPorts,
+  settledStartPageProblem,
 } from "./ayme.ts";
 
 describe("the agent's MCP server entry", () => {
@@ -38,6 +40,65 @@ describe("the agent's MCP server entry", () => {
     expect(aymeMcpCliPath).toMatch(/\/packages\/mcp\/dist\/cli\.mjs$/);
     expect(serverPorts).toEqual({ first: 9350, last: 9365 });
     expect(mcpToolTimeoutMs).toBeGreaterThan(300_000);
+  });
+});
+
+describe("the Page Object Tools among a page's tools", () => {
+  it("are the names with a dot, so neither snapshot, a Browser Tool nor goal counts", () => {
+    expect(
+      pageObjectToolNames([
+        "SignInPage.fillEmail",
+        "click",
+        "fill_form",
+        "goal",
+        "snapshot",
+        "SurveyEditorPage.questions.setHeadline",
+      ])
+    ).toEqual([
+      "SignInPage.fillEmail",
+      "SurveyEditorPage.questions.setHeadline",
+    ]);
+  });
+});
+
+describe("a start page without page objects, looked at again after pairing", () => {
+  const settled = {
+    tools: ["click", "goal", "snapshot"],
+    screenTool: "snapshot",
+    goalLoop: true,
+    pairedAddress: "ws://127.0.0.1:9350",
+    storedAddress: "ws://127.0.0.1:9350",
+    pageUrl: "http://localhost:3000/auth/login",
+    startUrl: "http://localhost:3000/auth/login",
+  };
+
+  it("passes with its screen tool, goal as the Goal Loop says, the pairing and the start URL", () => {
+    expect(settledStartPageProblem(settled)).toBeNull();
+    expect(
+      settledStartPageProblem({
+        ...settled,
+        tools: ["click", "snapshot"],
+        goalLoop: false,
+      })
+    ).toBeNull();
+  });
+
+  it.each([
+    [
+      "a Page Object Tool",
+      { tools: [...settled.tools, "SignInPage.fillEmail"] },
+    ],
+    ["no tools, as during a reload", { tools: [] }],
+    ["goal with the Goal Loop off", { goalLoop: false }],
+    ["a lost pairing", { storedAddress: null }],
+    [
+      "a query the start URL lacks",
+      { pageUrl: `${settled.startUrl}?callbackUrl=/setup/intro` },
+    ],
+    ["another origin", { pageUrl: "http://localhost:3001/auth/login" }],
+    ["another path", { pageUrl: "http://localhost:3000/setup/intro" }],
+  ])("fails with %s", (_, change) => {
+    expect(settledStartPageProblem({ ...settled, ...change })).not.toBeNull();
   });
 });
 
