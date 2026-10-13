@@ -180,9 +180,21 @@ async function readChangeRecord(
   return {
     page_changed: beforeChanged || actionChanged,
     ...(beforeChanged
-      ? { changes_before: renderChangeRecord(changesBefore!) }
+      ? {
+          changes_before: renderChangeRecord(changesBefore!, {
+            before: history.pomLabels(received!),
+            after: history.pomLabels(start),
+          }),
+        }
       : {}),
-    ...(actionChanged ? { changes: renderChangeRecord(changes) } : {}),
+    ...(actionChanged
+      ? {
+          changes: renderChangeRecord(changes, {
+            before: history.pomLabels(start),
+            after: history.pomLabels(after),
+          }),
+        }
+      : {}),
   };
 }
 

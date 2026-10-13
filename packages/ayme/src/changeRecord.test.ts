@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  AriaRefSchema,
   StructuralTree,
   SyntheticAriaRefFactory,
 } from "@ayme-dev/core/structural-observation";
@@ -145,5 +146,117 @@ describe("renderChangeRecord", () => {
       '- button "Save" [ref=e1]'
     );
     expect(renderChangeRecord(reconciled)).toBe("");
+  });
+
+  describe("Page Object Roots", () => {
+    const labels = (entries: Record<string, string[]> = {}) =>
+      new Map(
+        Object.entries(entries).map(
+          ([ref, refLabels]) => [AriaRefSchema.parse(ref), refLabels] as const
+        )
+      );
+    const LIST_PAGE = [
+      "- main [ref=e3]:",
+      '  - heading "Shopping list" [level=1] [ref=e4]',
+      "  - list [ref=e9]:",
+      "    - listitem [ref=e10]: Milk",
+    ].join("\n");
+
+    it("labels a root kept as a path marker with its Page Object's name, role suppressed", () => {
+      const reconciled = reconcile(
+        LIST_PAGE,
+        `${LIST_PAGE}\n    - listitem [ref=e12]: Eggs`
+      );
+
+      expect(
+        renderChangeRecord(reconciled, {
+          before: labels({ e3: ["ListPage"] }),
+          after: labels({ e3: ["ListPage"] }),
+        })
+      ).toBe(
+        [
+          "- e3 ListPage:",
+          "  - e9 list:",
+          "    - e12 <added> listitem: Eggs",
+        ].join("\n")
+      );
+    });
+
+    it("labels a removed root by the label it had before", () => {
+      const reconciled = reconcile(
+        LIST_PAGE,
+        LIST_PAGE.replace("\n    - listitem [ref=e10]: Milk", "")
+      );
+
+      expect(
+        renderChangeRecord(reconciled, {
+          before: labels({ e10: ["ListPage.items[0]"] }),
+          after: labels(),
+        })
+      ).toBe(
+        [
+          "- e3 main:",
+          "  - e9 list:",
+          "    - e10 ListPage.items[0] <removed>: Milk",
+        ].join("\n")
+      );
+    });
+
+    it("labels a present node by the labels it has after", () => {
+      const reconciled = reconcile(
+        LIST_PAGE,
+        `${LIST_PAGE}\n    - listitem [ref=e12]: Eggs`
+      );
+
+      expect(
+        renderChangeRecord(reconciled, {
+          before: labels({ e3: ["ListPage"] }),
+          after: labels({ e12: ["ListPage.items[1]"] }),
+        })
+      ).toBe(
+        [
+          "- e3 main:",
+          "  - e9 list:",
+          "    - e12 ListPage.items[1] <added>: Eggs",
+        ].join("\n")
+      );
+    });
+
+    it("labels a synthetic root the reconciled tree keeps under its before ref", () => {
+      const reconciled = reconcile(
+        "- generic [ref=s_1]:\n  - listitem [ref=e2]: Milk",
+        "- generic [ref=s_2]:\n  - listitem [ref=e2]: Eggs"
+      );
+
+      expect(
+        renderChangeRecord(reconciled, {
+          before: labels({ s_1: ["ListPage.items[0]"] }),
+          after: labels({ s_2: ["ListPage.items[0]"] }),
+        })
+      ).toBe(
+        ["- s_1 ListPage.items[0]:", "  - e2 <changed> listitem: Eggs"].join(
+          "\n"
+        )
+      );
+    });
+
+    it("shows several labels on one root as the pom property", () => {
+      const reconciled = reconcile(
+        LIST_PAGE,
+        `${LIST_PAGE}\n    - listitem [ref=e12]: Eggs`
+      );
+      const shared = labels({ e3: ["ListPage", "Cart"] });
+
+      expect(
+        renderChangeRecord(reconciled, { before: shared, after: shared })
+      ).toBe(
+        [
+          "- e3 main:",
+          '  - /pom: ["Cart","ListPage"]',
+          "  - e9 list:",
+          "    - e12 <added> listitem: Eggs",
+        ].join("\n")
+      );
+    });
   });
 });
