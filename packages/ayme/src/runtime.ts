@@ -23,9 +23,9 @@ import {
   probeRegisteredPomMembers,
   registerPageObject,
   subscribeToRegisteredPoms,
-  unavailableToolMessage,
   type PageObjectConstructor,
 } from "./registry";
+import { assertAvailable } from "./pomInstance";
 import { loadWebMcpPublication } from "./webMcp";
 import { RuntimeStateError } from "./errors";
 import {
@@ -633,8 +633,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       );
     const entry = resolveTools({ peeks }).get(name);
     if (!entry) throw noSuchTool(name);
-    if (!entry.available)
-      throw new RuntimeStateError(unavailableToolMessage(name, entry));
+    assertAvailable(name, entry);
     return entry.tool;
   }
 
