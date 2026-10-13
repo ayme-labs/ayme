@@ -9,9 +9,11 @@ export {
   refAttribute,
   refFromAttribute,
   refFromSelector,
+  refWrittenOtherwise,
   selectorForRef,
   SYNTHETIC_ROOT_REF,
   syntheticRef,
+  syntheticRefsAbsentFrom,
 } from "./tree/StructuralRef";
 export {
   StructuralNode,

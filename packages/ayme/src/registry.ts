@@ -22,7 +22,6 @@ import {
 } from "@ayme-dev/playwright-lite/internal";
 import type { Locator, Page } from "@playwright/test";
 import { observePomRoot } from "./pomRootObservation";
-import { resolvePageStateRefs, type AriaRef } from "./pageState";
 import {
   askPredicates,
   assertAvailable,
@@ -33,7 +32,7 @@ import {
   type PomInstanceObservation,
   type ToolAvailability,
 } from "./pomInstance";
-import { requireStructuralRef } from "./refTarget";
+import { resolveRef } from "./refTarget";
 import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
 import { runAction, type ActionResult } from "./actionSequence";
@@ -735,10 +734,16 @@ function createComponentTool(
   const itemDepth = path.map((member) => member.collection).lastIndexOf(true);
   const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const values = validatedArguments(wrapper, input);
-    const ref = requireStructuralRef(values[0] as string);
+    const ref = values[0] as string;
     const args = values[1] ?? {};
     const toolPath = `${pomId}.${publicComponentPath(path)}`;
-    const element = await resolveRefToElement(ref, wrapper.toolName, toolPath);
+    // A Page Object Root without a role of its own gets a synthetic ref.
+    const { element } = await resolveRef(
+      ref,
+      { synthetic: "allow" },
+      `call ${wrapper.toolName} on`,
+      document
+    );
     const componentInstance = await resolveComponentByElementStep(
       pageInstance,
       path,
@@ -867,23 +872,6 @@ async function resolveSingularComponent(
     current = await readMember(current, member);
   }
   return current;
-}
-
-/**
- * The element a collection tool's ref names now. A synthetic ref resolves
- * too: a Page Object Root without a role of its own gets one in snapshot.
- */
-async function resolveRefToElement(
-  ref: AriaRef,
-  toolName: string,
-  toolPath: string
-): Promise<Element> {
-  const resolution = (await resolvePageStateRefs(document, ref))[0]!;
-  if (resolution.status === "unresolved")
-    throw new RefResolutionError(
-      `Ref "${ref}" does not match a present instance at ${toolPath} (tool ${toolName}): ${resolution.reason}.`
-    );
-  return resolution.node.element;
 }
 
 async function resolveComponentByElementStep(

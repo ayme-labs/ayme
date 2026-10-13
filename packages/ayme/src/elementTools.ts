@@ -10,7 +10,7 @@ import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
 import type { RunContext } from "./run";
 import type { ToolInput, ToolResult } from "./toolTypes";
 import type { AriaRef, PageStateCapture } from "./pageState";
-import { refHint, resolveRefTarget } from "./refTarget";
+import { refHint, resolveRef } from "./refTarget";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { requireAymeRuntimePage } from "./registry";
 import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
@@ -222,9 +222,10 @@ export async function resolveElementTarget(
   currentDocument: Document
 ): Promise<ResolvedTarget> {
   if (definition.targetField === "ref" || parseStructuralRef(requested)) {
-    const node = await resolveRefTarget(
-      definition.label,
+    const node = await resolveRef(
       requested,
+      { synthetic: "refuse" },
+      definition.label,
       currentDocument
     );
     return {

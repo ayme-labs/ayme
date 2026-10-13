@@ -233,7 +233,7 @@ describe("collection instances targeted by ref", () => {
       await expect(
         archiveTool.execute({ ref, args: {} }, runContext())
       ).rejects.toThrow(
-        /does not match a present instance at ItemsPage\.items \(tool ItemsPage\.items\.archive\)/
+        `Cannot call ItemsPage.items.archive on ref "${ref}": `
       );
 
       expect(archiveFns[0]).not.toHaveBeenCalled();
@@ -290,12 +290,12 @@ describe("collection instances targeted by ref", () => {
       await expect(
         archiveTool.execute({ ref: "button.save", args: {} }, runContext())
       ).rejects.toThrow(
-        'The ref "button.save" is not a Structural Ref. Pass a ref from snapshot, such as e5.'
+        'Cannot call ItemsPage.items.archive on ref "button.save": not a Structural Ref. Pass a ref from snapshot, such as e5.'
       );
       await expect(
         archiveTool.execute({ ref: "[ref=e7]", args: {} }, runContext())
       ).rejects.toThrow(
-        'The ref "[ref=e7]" is not a Structural Ref. Pass the Structural Ref alone: e7.'
+        'Cannot call ItemsPage.items.archive on ref "[ref=e7]": not a Structural Ref. Pass the Structural Ref alone: e7.'
       );
 
       const { getPageStateForDocument } = await import("./pageState");
