@@ -451,7 +451,7 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
           {
             name: "goal",
             description:
-              "Drive the page toward a goal in steps. In each step a fast model chooses at most one operation, and the loop runs it. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.",
+              "Drive the page toward a goal in steps. In each step a fast model chooses at most one operation to run. Pass in values anything the goal needs typed in, such as a name or a URL, each under a label of your own; the loop picks among them and never makes up a value. Returns a Handover: why the loop stopped, what it did, and what to do next.",
             inputSchema: {
               type: "object",
               properties: {
