@@ -262,7 +262,7 @@ export function createPursueGoalTool(
           type: "integer",
           minimum: 1,
           description:
-            "The most steps the loop may take before it hands back with step_budget. Each step is one fast model judgement and at most one operation on the page.",
+            "The most steps the loop may take before it hands back with step_budget. Each step runs at most one operation on the page and may ask the model more than once to choose it.",
         },
         values: {
           type: "object",
