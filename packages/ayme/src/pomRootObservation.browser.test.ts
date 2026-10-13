@@ -363,6 +363,19 @@ describe("what is in the way of a present root a click would not reach", () => {
     expect((await observeRoot()).inTheWay).toEqual([byId("second")]);
   });
 
+  it("names a modal it hits over a root in an earlier modal by itself, not what holds it", async () => {
+    document.body.innerHTML =
+      '<dialog id="lower"><section id="root" style="width:200px;height:100px">Content</section></dialog><div id="region"><dialog id="upper" style="width:100vw;height:100vh;max-width:none;max-height:none;padding:0;border:0"></dialog></div>';
+    document.querySelector<HTMLDialogElement>("#lower")!.showModal();
+    document.querySelector<HTMLDialogElement>("#upper")!.showModal();
+
+    expect(await observeRoot()).toEqual({
+      present: true,
+      available: false,
+      inTheWay: [byId("upper")],
+    });
+  });
+
   it("names nothing for a root inside the open modal", async () => {
     document.body.innerHTML =
       '<dialog id="modal"><section id="root" style="width:200px;height:100px">Content</section></dialog>';

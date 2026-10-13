@@ -563,7 +563,7 @@ export function listRegisteredPomTools(): ({
     for (const tool of registration.tools) {
       const availability = combinedAvailability(
         instancesOf(registration, tool).map((instance) =>
-          availabilityOf(instance, tool.methodName, latestPageStateRef)
+          availabilityNow(instance, tool.methodName)
         )
       );
       const listed = tools.get(tool.name);
@@ -575,6 +575,20 @@ export function listRegisteredPomTools(): ({
         tools.set(tool.name, { tool, ...availability });
     }
   return [...tools.values()];
+}
+
+/**
+ * `instance`'s availability for `methodName` now. An observation whose root
+ * element has since left the page is stale: the instance reads as absent
+ * until the next probe observes it again, so no call runs on it.
+ */
+function availabilityNow(
+  instance: PomInstanceObservation,
+  methodName: string
+): ToolAvailability {
+  if (instance.root?.element?.isConnected === false)
+    return { present: false, available: false };
+  return availabilityOf(instance, methodName, latestPageStateRef);
 }
 
 /**
@@ -597,7 +611,7 @@ function assertInstanceAvailable(
       (candidate) => candidate.item?.root?.element === element
     );
   if (!instance) return;
-  const state = availabilityOf(instance, tool.methodName, latestPageStateRef);
+  const state = availabilityNow(instance, tool.methodName);
   if (!state.available)
     throw new RuntimeStateError(unavailableToolMessage(tool.name, state));
 }
@@ -644,11 +658,7 @@ export function listCollectionToolItems(): Map<string, CollectionToolItem[]> {
               {
                 label: `${registration.id}.${instance.item.path}`,
                 element: root.element,
-                ...availabilityOf(
-                  instance,
-                  tool.methodName,
-                  latestPageStateRef
-                ),
+                ...availabilityNow(instance, tool.methodName),
               },
             ]
           : [];

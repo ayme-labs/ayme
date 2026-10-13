@@ -877,6 +877,35 @@ describe("live Page Object registry", () => {
     rootless.dispose();
   });
 
+  it("lists a root's tools absent once its element left the page, before the next probe", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+    const element = { isConnected: true } as { isConnected: boolean };
+
+    class RootedPage {
+      readonly root = brandedLocator(
+        { count: async () => 1 },
+        element as Element
+      );
+      save() {}
+    }
+    registry.registerCompiledPom(RootedPage, {
+      ...emptyManifest("RootedPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    const registration = registry.createPageRegistration(RootedPage);
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools()).toHaveLength(1);
+
+    element.isConnected = false;
+    expect(registry.listRegisteredPomTools()).toEqual([
+      expect.objectContaining({ present: false, available: false }),
+    ]);
+
+    registration.dispose();
+  });
+
   it("does not notify when a probe observes the same present root again", async () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);

@@ -18,9 +18,10 @@ export type ObservedPomRoot = {
    * What an Availability Reason may name as in the way of a present root a
    * click would not reach, nearest first; it names the first the agent's
    * latest page state gave a ref. The open native modal the root is not in,
-   * or the root's inert ancestor, stands alone; else the element hit-testing
-   * found and its ancestors up to the first that holds the root, since what
-   * holds the root is not in its way. Empty when nothing was found, as for
+   * or the root's inert ancestor, stands alone, as does an element
+   * hit-testing found that is a modal or holds the root; else the element
+   * hit-testing found and its ancestors up to the first that holds the root,
+   * since what holds the root is not in its way. Empty when nothing was found, as for
    * every other root.
    */
   inTheWay: readonly Element[];
@@ -74,10 +75,10 @@ async function observeElement(
 /**
  * `hit` and its ancestors up to the first that holds `root`, or `hit` alone
  * when it holds `root` itself, as `root`'s own ancestor does when nothing
- * else takes the click.
+ * else takes the click, or is an open native modal.
  */
 function walkedUp(hit: Element, root: Element): Element[] {
-  if (containsThroughShadow(hit, root)) return [hit];
+  if (containsThroughShadow(hit, root) || isModal(hit)) return [hit];
   const elements: Element[] = [];
   for (
     let node: Element | null = hit;
@@ -86,4 +87,12 @@ function walkedUp(hit: Element, root: Element): Element[] {
   )
     elements.push(node);
   return elements;
+}
+
+function isModal(element: Element): boolean {
+  try {
+    return element.matches(":modal");
+  } catch {
+    return false;
+  }
 }
