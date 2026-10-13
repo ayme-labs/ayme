@@ -94,6 +94,11 @@ export function renderChangeRecord(
 /**
  * The after side's labels by the refs the reconciled tree uses: a synthetic
  * root matched to a synthetic root before keeps its before ref there.
+ *
+ * Reconciliation does this on purpose (`StructuralTree._reconciledRef`), so
+ * the after capture's labels are keyed by the after ref and must be re-keyed
+ * here. Reading them by their own ref finds nothing for a synthetic root and
+ * drops its label from the Change Record.
  */
 function reconciledLabels(
   reconciled: StructuralTree,

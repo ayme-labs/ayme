@@ -995,6 +995,12 @@ export class StructuralTree {
     });
   }
 
+  /**
+   * The ref a reconciled node keeps. Two synthetic roots keep the before ref,
+   * so the reconciled tree names a synthetic root by its before ref; readers
+   * that key by the after capture's refs must map them back (see
+   * `reconciledLabels` in packages/ayme/src/changeRecord.ts).
+   */
   private static _reconciledRef(
     beforeRef: AriaRef,
     afterRef: AriaRef
