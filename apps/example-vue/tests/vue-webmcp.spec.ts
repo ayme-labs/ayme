@@ -456,7 +456,12 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
               type: "object",
               properties: {
                 goal: { type: "string" },
-                maxSteps: { type: "integer" },
+                maxSteps: {
+                  type: "integer",
+                  minimum: 1,
+                  description:
+                    "The most steps the loop may take before it hands back with step_budget. Each step is one fast model judgement and at most one operation on the page.",
+                },
                 values: {
                   type: "object",
                   description:

@@ -1152,6 +1152,19 @@ describe("Goal Loop goal in Chromium", () => {
     ).toMatch(/^ToolInputError: .*maxSteps/);
   });
 
+  it.each([0, -1])(
+    "refuses maxSteps %s as invalid input before the loop starts",
+    async (maxSteps) => {
+      const { requests, decide } = recording(scriptedDecisionFn([]));
+      const tool = await registerPom(decide);
+
+      expect(
+        await tool.execute({ goal: "do the thing", maxSteps }).catch(errorText)
+      ).toMatch(/^ToolInputError: .*maxSteps of at least 1/);
+      expect(requests).toEqual([]);
+    }
+  );
+
   // --- Handover reason: step_budget ---
 
   it("returns step_budget when maxSteps is exhausted", async () => {
