@@ -51,6 +51,45 @@ const MAX_CHUNK_ELEMENTS = MAX_CHOICE_OPTIONS - 1;
  */
 export const MAX_GOAL_VALUES = MAX_CHOICE_OPTIONS - 1;
 
+/**
+ * The target of an element tool is asked as one yes/no question per candidate
+ * element, over the same state: the element with the highest yes-probability
+ * is the target, unless even it scores below this. Below it, no element fits,
+ * as "none of these" would say; a false "no" ends the run with a Handover the
+ * calling agent can recover from, a false "yes" types into the wrong field, so
+ * a yes must at least outweigh a no.
+ */
+export const TARGET_YES_THRESHOLD = 0.5;
+
+/** What one decision request may hold: the state plus every question. */
+const MAX_REQUEST_TOKENS = 64_000;
+
+/**
+ * Characters per token, for an estimate erring on the large side: the page is
+ * JSON of short keys and refs, which tokenizes denser than prose. The estimate
+ * is the request's serialized length divided by this.
+ */
+const CHARS_PER_TOKEN = 3;
+
+/**
+ * How many candidate elements the target's yes/no questions can cover is what
+ * fits in `MAX_REQUEST_TOKENS` with the state and the request's other
+ * questions, checked per request. Each question repeats the element, the
+ * operation and the value. Measured on a survey editor with one text field per
+ * survey question, by this estimate: a 45-field page is about 10k tokens of
+ * state; one question for `type` with a 35-character value is about 115
+ * tokens, for `click` about 60. That leaves room for about 470 `type`
+ * candidates, or about 280 when the state takes 32k, the most the model reads
+ * with any one question. Past that, the target is one choice again.
+ */
+export function targetNoulsFit(
+  state: StepState,
+  questions: readonly StageTwoQuestion[]
+): boolean {
+  const request = buildArgumentRequest(state, questions);
+  return JSON.stringify(request).length / CHARS_PER_TOKEN <= MAX_REQUEST_TOKENS;
+}
+
 // --- Question ids ---
 //
 // A question is normally identified by its parameter's name. A ref parameter
@@ -107,6 +146,20 @@ export function listValueQuestionId(
   parameterNames: readonly string[]
 ): string {
   return `${derivedIdPrefix(parameter, parameterNames)}${ordinal}`;
+}
+
+/**
+ * The id of the question whether the `ordinal`-th candidate element (1-based)
+ * is a ref parameter's target, given the names of every parameter of the
+ * operation. A ref is asked either in chunks or one question per element,
+ * never both.
+ */
+export function elementQuestionId(
+  parameter: string,
+  ordinal: number,
+  parameterNames: readonly string[]
+): string {
+  return `${derivedIdPrefix(parameter, parameterNames)}element_${ordinal}`;
 }
 
 const parameterNamesOf = (tool: GoalLoopOperation) =>
@@ -364,7 +417,14 @@ export type ListValueQuestion = QuestionBase & {
   option: ArgumentOption;
 };
 
-export type StageTwoQuestion = ArgumentQuestion | ListValueQuestion;
+/** Whether one candidate element is the target of the operation. */
+export type ElementQuestion = QuestionBase & {
+  type: "element";
+  option: ArgumentOption;
+};
+
+export type StageTwoQuestion =
+  ArgumentQuestion | ListValueQuestion | ElementQuestion;
 
 /** What the loop does with the chosen operation once its schema is read. */
 export type ArgumentPlan =
@@ -711,6 +771,90 @@ export function planArguments(
   return { kind: "ask", questions };
 }
 
+// --- The target, asked after the values ---
+//
+// Questions asked side by side cannot see each other's answers, so a target
+// asked with the value cannot know which text it will receive. When the
+// operation takes a Goal Value as well as an element, the target is asked in a
+// request of its own once the values are chosen.
+
+/** The ref parameter of an operation: the element it acts on. */
+function targetArg(tool: GoalLoopOperation): ArgumentSpec | undefined {
+  return tool.args.find((arg) => arg.closedSet?.kind === "ref");
+}
+
+/**
+ * The questions to ask before the target: every other one, when the target is
+ * asked and one of them fills a parameter from the Goal Values. Otherwise
+ * none, and every question goes with the target in one request.
+ */
+export function questionsBeforeTarget(
+  tool: GoalLoopOperation,
+  questions: readonly StageTwoQuestion[]
+): StageTwoQuestion[] {
+  const target = targetArg(tool);
+  if (!target || !questions.some((q) => q.parameter === target.name)) return [];
+  const others = questions.filter((q) => q.parameter !== target.name);
+  const takesGoalValue = others.some(
+    (q) => tool.args.find((arg) => arg.name === q.parameter)?.closedSet === null
+  );
+  return takesGoalValue ? others : [];
+}
+
+/** `, receiving the text "…"`: the Goal Values chosen, by parameter. */
+function receivingClause(
+  tool: GoalLoopOperation,
+  args: Record<string, unknown>
+): string {
+  const parts = tool.args.flatMap((arg) => {
+    if (arg.closedSet !== null) return [];
+    const value = readAt(args, arg.path);
+    if (value === undefined) return [];
+    const quoted = (Array.isArray(value) ? value : [value])
+      .map((item) => JSON.stringify(String(item)))
+      .join(", ");
+    return [`the ${arg.name} ${quoted}`];
+  });
+  return parts.length === 0 ? "" : `, receiving ${parts.join(" and ")}`;
+}
+
+/**
+ * Ask the target one yes/no question per candidate element instead of one
+ * choice over them all: a choice leans toward the option that comes first,
+ * and a page of identical fields lists them all alike. Each question names the
+ * element by its description and its ref in `page`, the operation, and the
+ * Goal Values already chosen (`args`). When the questions do not fit one
+ * request with the state and `questions`' others, the choice is kept.
+ */
+export function withElementQuestions(
+  tool: GoalLoopOperation,
+  state: StepState,
+  questions: readonly StageTwoQuestion[],
+  args: Record<string, unknown>
+): StageTwoQuestion[] {
+  const target = targetArg(tool);
+  const asked = questions.filter((q) => q.parameter === target?.name);
+  if (!target || asked.length === 0) return [...questions];
+  const receiving = receivingClause(tool, args);
+  const operation = `the operation "${tool.name}" (${tool.description})`;
+  const candidates = asked.flatMap((q) =>
+    q.type === "choice" ? q.options.filter((option) => "value" in option) : []
+  );
+  const elements: ElementQuestion[] = candidates.map((option, index) => ({
+    type: "element",
+    id: elementQuestionId(target.name, index + 1, parameterNamesOf(tool)),
+    parameter: target.name,
+    path: target.path,
+    instructions: `Should the element ${option.description} (ref "${String(option.value)}" in \`page\`) be the target of ${operation}${receiving}?`,
+    option,
+  }));
+  const together = [
+    ...questions.filter((q) => q.parameter !== target.name),
+    ...elements,
+  ];
+  return targetNoulsFit(state, together) ? together : [...questions];
+}
+
 // --- Decision requests (ADR-0022: built in the browser) ---
 
 /**
@@ -831,7 +975,7 @@ export function buildArgumentRequest(
   const questions: DecisionQuestions = Object.fromEntries(
     argumentQuestions.map((question) => [
       question.id,
-      question.type === "noul"
+      question.type !== "choice"
         ? { type: "noul", instructions: question.instructions }
         : {
             type: "choice",
@@ -916,6 +1060,9 @@ export type ChosenArguments = {
   /**
    * Per question id: the scores, when the decision function supplied them. A
    * list question's score is under the key of the Goal Value it asked about.
+   * A target asked one question per element is recorded under its parameter,
+   * like the choice it replaces: the key, and the yes-probability per
+   * element's ref.
    */
   probabilities: Record<string, Record<string, number>>;
   /**
@@ -927,6 +1074,9 @@ export type ChosenArguments = {
 
 /** A Goal Value the model included in a list, and its score. */
 type ListValuePick = { question: ListValueQuestion; score: number };
+
+/** A candidate element of the target, and its yes-probability. */
+type ElementPick = { question: ElementQuestion; score: number };
 
 /** What was answered, per question id, whether or not an action follows. */
 export type AnswerRecord = Pick<ChosenArguments, "choices" | "probabilities">;
@@ -985,6 +1135,20 @@ function readListValue(
 }
 
 /**
+ * Read whether an element is the target. Its yes-probability is recorded
+ * under the parameter, keyed by the element's ref, beside the other elements'.
+ */
+function readElement(
+  question: ElementQuestion,
+  answers: Record<string, unknown>,
+  record: AnswerRecord
+): number {
+  const { noul } = readNoulAnswer(answers, question.id);
+  (record.probabilities[question.parameter] ??= {})[question.option.key] = noul;
+  return noul;
+}
+
+/**
  * Fill a list parameter with the Goal Values included, in order. Its chosen
  * option joins theirs, as offered.
  */
@@ -1009,7 +1173,7 @@ function chooseList(
 /** Record the option chosen for a parameter; one without a value leaves it unset. */
 function choose(
   into: ChosenArguments,
-  question: ArgumentQuestion,
+  question: QuestionBase,
   option: ArgumentOption
 ): void {
   if ("value" in option) assignAt(into.args, question.path, option.value);
@@ -1024,8 +1188,11 @@ function choose(
  * chunks of one parameter answer together: the one chunk that named an
  * element decides, several call for a run-off, none means no element fits.
  * The Goal Values of a list answer together too: every one scored at least
- * 0.5 is included. A required parameter left without a value, by "none of
- * these" or by an empty list, needs a value from the calling agent.
+ * 0.5 is included. The elements asked about one by one answer together: the
+ * one with the highest yes-probability is the target, the first of them on a
+ * tie, unless it scores below `TARGET_YES_THRESHOLD`; then no element fits.
+ * A required parameter left without a value, by "none of these" or by an
+ * empty list, needs a value from the calling agent.
  * Every answer is read first, so the choice and scores of every question are
  * recorded even when the step ends without an action. They are recorded into
  * `record`, whose maps the result shares, as each is read: an answer that
@@ -1047,11 +1214,17 @@ export function readArgumentAnswers(
   const choicePicks: { question: ArgumentQuestion; option: ArgumentOption }[] =
     [];
   const listPicks: ListValuePick[] = [];
+  const elementPicks: ElementPick[] = [];
   for (const question of argumentQuestions) {
     if (question.type === "noul")
       listPicks.push({
         question,
         score: readListValue(question, answers, chosen),
+      });
+    else if (question.type === "element")
+      elementPicks.push({
+        question,
+        score: readElement(question, answers, chosen),
       });
     else
       choicePicks.push({
@@ -1104,6 +1277,34 @@ export function readArgumentAnswers(
     // An optional list nothing belongs in stays unset.
     else if (required(parameter)) return needsValue(parameter);
   }
+
+  for (const [parameter, group] of groupByParameter(elementPicks)) {
+    const best = group.reduce((top, pick) =>
+      pick.score > top.score ? pick : top
+    );
+    if (best.score >= TARGET_YES_THRESHOLD) {
+      chosen.choices[parameter] = best.question.option.key;
+      choose(chosen, best.question, best.question.option);
+    } else if (required(parameter)) {
+      chosen.choices[parameter] = NONE_OF_THESE_KEY;
+      return {
+        kind: "none_fits",
+        parameter,
+        choices: chosen.choices,
+        probabilities: chosen.probabilities,
+      };
+    } else chosen.choices[parameter] = LEAVE_UNSET_KEY;
+  }
+
+  // The target may be answered after the values; the step record lists the
+  // chosen options in the operation's parameter order all the same.
+  chosen.chosen = Object.fromEntries(
+    tool.args.flatMap((arg) =>
+      Object.hasOwn(chosen.chosen, arg.name)
+        ? [[arg.name, chosen.chosen[arg.name]!]]
+        : []
+    )
+  );
 
   return runOff
     ? { kind: "run_off", chosen, question: runOff }
@@ -1161,6 +1362,24 @@ export function fitListsToTarget(
     );
     chooseList(chosen, parameter, [top]);
   }
+}
+
+/** Read a chosen value from where the operation's input holds it. */
+function readAt(
+  args: Record<string, unknown>,
+  path: readonly string[]
+): unknown {
+  let value: unknown = args;
+  for (const key of path) {
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      !Object.hasOwn(value, key)
+    )
+      return undefined;
+    value = (value as Record<string, unknown>)[key];
+  }
+  return value;
 }
 
 /** Put a chosen value where the operation's input expects it. */

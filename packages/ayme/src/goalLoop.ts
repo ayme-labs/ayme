@@ -27,6 +27,7 @@ import {
   parseGoalMetAnswer,
   parseOperationAnswer,
   planArguments,
+  questionsBeforeTarget,
   readArgumentAnswers,
   readRunOffAnswer,
   type AnswerRecord,
@@ -38,6 +39,7 @@ import {
   type GoalValues,
   MAX_GOAL_VALUES,
   type NoulAnswer,
+  withElementQuestions,
 } from "./goalLoopQuestions";
 import { ToolInputError } from "./errors";
 
@@ -95,7 +97,11 @@ type GoalLoopStepScores = {
    * argument question answered, chunks and run-off included.
    */
   argumentChoices?: Record<string, string>;
-  /** Stage two, per question id: the scores the decision function supplied. */
+  /**
+   * Stage two, per question id: the scores the decision function supplied. A
+   * target asked one question per element is under its parameter, with each
+   * element's yes-probability by ref, so close calls show.
+   */
   argumentProbabilities?: Record<string, Record<string, number>>;
   /**
    * The executed step's Change Record, as its action result carried it: the
@@ -547,7 +553,9 @@ export async function pursueGoal(
       });
     }
 
-    // --- Stage two: the operation's arguments, asked in one parallel request ---
+    // --- Stage two: the operation's arguments ---
+    // The Goal Values first, when the operation takes one and an element; then
+    // the element, one question per candidate, knowing the values it receives.
 
     let chosenArguments: ChosenArguments = {
       args: {},
@@ -562,28 +570,57 @@ export async function pursueGoal(
       const record: AnswerRecord = { choices: {}, probabilities: {} };
       score.argumentChoices = record.choices;
       score.argumentProbabilities = record.probabilities;
-      let stageTwo: DecisionResponse;
-      try {
-        stageTwo = await decisionFn(
-          buildArgumentRequest(state, plan.questions)
-        );
-      } catch (error) {
-        return callFailed(error);
+      const before = questionsBeforeTarget(chosenTool, plan.questions);
+      let answered: Record<string, unknown> = {};
+      let argumentAnswers: ArgumentAnswers | undefined;
+      if (before.length > 0) {
+        let values: DecisionResponse;
+        try {
+          values = await decisionFn(buildArgumentRequest(state, before));
+        } catch (error) {
+          return callFailed(error);
+        }
+        answered = values.answers as Record<string, unknown>;
+        try {
+          argumentAnswers = readArgumentAnswers(
+            chosenTool,
+            before,
+            answered,
+            record
+          );
+        } catch (error) {
+          return invalidDecision(error);
+        }
       }
-      let argumentAnswers: ArgumentAnswers;
-      try {
-        argumentAnswers = readArgumentAnswers(
+      // A value the model judged missing ends the step before the target.
+      if (argumentAnswers?.kind !== "needs_value") {
+        const last = withElementQuestions(
           chosenTool,
-          plan.questions,
-          stageTwo.answers as Record<string, unknown>,
-          record
+          state,
+          plan.questions.filter((question) => !before.includes(question)),
+          argumentAnswers?.kind === "chosen" ? argumentAnswers.chosen.args : {}
         );
-      } catch (error) {
-        return invalidDecision(error);
+        let stageTwo: DecisionResponse;
+        try {
+          stageTwo = await decisionFn(buildArgumentRequest(state, last));
+        } catch (error) {
+          return callFailed(error);
+        }
+        try {
+          argumentAnswers = readArgumentAnswers(
+            chosenTool,
+            [...before, ...last],
+            { ...answered, ...(stageTwo.answers as Record<string, unknown>) },
+            record
+          );
+        } catch (error) {
+          return invalidDecision(error);
+        }
       }
 
-      // Every chunk of a ref over the cap answered "none of these": the step
-      // ran no action, so it leaves no history entry.
+      // No element fits: every chunk of a ref over the cap answered "none of
+      // these", or no element scored a yes. The step ran no action, so it
+      // leaves no history entry.
       if (argumentAnswers.kind === "none_fits") {
         return done({
           reason: "no_fitting_option",

@@ -114,6 +114,17 @@ type ScriptedArgument = ScriptedChoice | ScriptedChoice[];
 /** The score a list question about one Goal Value answers with. */
 type ScriptedNoul = { noul: number };
 
+/**
+ * The yes-probability each candidate element of a target answers with, by
+ * ref or description; an element not named answers `otherwise`, else 0.
+ */
+type ScriptedElements = {
+  elements?: Record<string, number>;
+  /** Yes-probabilities in the order the elements are asked. */
+  inOrder?: number[];
+  otherwise?: number;
+};
+
 type ScriptedAnswer = {
   operation: string;
   goal_met: number;
@@ -121,7 +132,10 @@ type ScriptedAnswer = {
    * Per parameter of the chosen operation, or per question id (a run-off, or
    * a list question about one Goal Value).
    */
-  arguments?: Record<string, ScriptedArgument | ScriptedNoul>;
+  arguments?: Record<
+    string,
+    ScriptedArgument | ScriptedNoul | ScriptedElements
+  >;
 };
 
 const asList = (
@@ -135,11 +149,12 @@ const asList = (
  * chunks here, so chunk ids are those of click's parameters.
  */
 function scriptFor(
-  wanted: Record<string, ScriptedArgument | ScriptedNoul>,
+  wanted: NonNullable<ScriptedAnswer["arguments"]>,
   questionId: string,
   questionCount: number
 ): ScriptedArgument | ScriptedNoul | undefined {
-  if (wanted[questionId] !== undefined) return wanted[questionId];
+  if (wanted[questionId] !== undefined)
+    return wanted[questionId] as ScriptedArgument | ScriptedNoul;
   const parameter = Object.keys(wanted).find((candidate) =>
     Array.from({ length: questionCount }, (_, index) =>
       chunkQuestionId(candidate, index + 1, CLICK_PARAMETERS)
@@ -153,6 +168,60 @@ function scriptFor(
 const isNoul = (
   wanted: ScriptedArgument | ScriptedNoul
 ): wanted is ScriptedNoul => typeof wanted === "object" && "noul" in wanted;
+
+/** A candidate element of a target, as one question per element names it. */
+type AskedElement = { id: string; ref: string; description: string };
+
+const ELEMENT_INSTRUCTIONS =
+  /^Should the element (.*) \(ref "([^"]+)" in `page`\) be the target of /;
+
+/** The candidate elements a request asks about one by one, in order. */
+function elementsAsked(request: DecisionRequest): AskedElement[] {
+  return Object.entries(
+    request.questions as Record<string, { type: string; instructions: string }>
+  ).flatMap(([id, question]) => {
+    const match =
+      question.type === "noul" && /_element_\d+$/.test(id)
+        ? ELEMENT_INSTRUCTIONS.exec(question.instructions)
+        : null;
+    return match ? [{ id, ref: match[2]!, description: match[1]! }] : [];
+  });
+}
+
+/**
+ * The yes-probability of one candidate element, from the script of the
+ * parameter whose element question it is: 0.9 for the element a choice script
+ * names (any of a list's), 0.1 for the others.
+ */
+function elementScore(
+  wanted: NonNullable<ScriptedAnswer["arguments"]>,
+  element: AskedElement
+): number {
+  const parameter = Object.keys(wanted).find((candidate) =>
+    new RegExp(`^${candidate}_+element_\\d+$`).test(element.id)
+  );
+  const want = parameter === undefined ? undefined : wanted[parameter];
+  if (want === undefined)
+    throw new Error(`No scripted argument for "${element.id}"`);
+  const names = (name: string) =>
+    name === element.ref ||
+    name === element.description ||
+    element.description.startsWith(name);
+  if (typeof want === "object" && ("elements" in want || "inOrder" in want)) {
+    const position = Number(/_(\d+)$/.exec(element.id)![1]) - 1;
+    const named = Object.keys(want.elements ?? {}).find(names);
+    return (
+      want.inOrder?.[position] ??
+      (named === undefined ? undefined : want.elements![named]) ??
+      want.otherwise ??
+      0
+    );
+  }
+  const choices = asList(want as ScriptedArgument) ?? [];
+  return choices.some((choice) => typeof choice === "string" && names(choice))
+    ? 0.9
+    : 0.1;
+}
 
 /** Answer every argument question without the optional probabilities. */
 function withoutArgumentProbabilities(
@@ -258,7 +327,14 @@ function scriptedDecisionFn(
       const current = answers[step - 1];
       const wanted = current?.arguments ?? {};
       const stageTwo: Record<string, unknown> = {};
+      const elements = elementsAsked(request);
+      for (const element of elements)
+        stageTwo[element.id] = {
+          type: "noul",
+          noul: elementScore(wanted, element),
+        };
       for (const [id, options] of Object.entries(criteria)) {
+        if (id in stageTwo) continue;
         // A chunk answers from its parameter's script with what it offers.
         const want = scriptFor(wanted, id, Object.keys(criteria).length);
         if (want === undefined)
@@ -575,11 +651,25 @@ describe("Goal Loop goal in Chromium", () => {
       expect((document.querySelector("#name") as HTMLInputElement).value).toBe(
         "Milk"
       );
-      // The number is never offered to a string parameter.
+      // The value is asked first, alone; the number is never offered to a
+      // string parameter.
+      expect(Object.keys(requests[1]!.questions)).toEqual(["text"]);
       expect(criteriaOf(requests[1]!).text).toEqual({
         "item name": "item name: Milk",
         [NONE_OF_THESE_KEY]: expect.any(String),
       });
+      // Then the target, one yes/no question per fillable element, each
+      // knowing the text it would receive.
+      const [element, ...others] = elementsAsked(requests[2]!);
+      expect(others).toEqual([]);
+      expect(element!.description).toBe('textbox "Name"');
+      expect(
+        (requests[2]!.questions as Record<string, { instructions: string }>)[
+          element!.id
+        ]!.instructions
+      ).toBe(
+        `Should the element textbox "Name" (ref "${element!.ref}" in \`page\`) be the target of the operation "fill" (Replace the value of one editable element with text.), receiving the text "Milk"?`
+      );
       // Both stages are decided on a state that carries the values as passed.
       for (const request of requests)
         expect((request.state as Record<string, unknown>).values).toEqual({
@@ -680,6 +770,8 @@ describe("Goal Loop goal in Chromium", () => {
         "list name": "list name: Groceries",
         [NONE_OF_THESE_KEY]: expect.any(String),
       });
+      // Without a value, the target is never asked.
+      expect(requests).toHaveLength(2);
       expect((document.querySelector("#name") as HTMLInputElement).value).toBe(
         ""
       );
@@ -900,17 +992,23 @@ describe("Goal Loop goal in Chromium", () => {
         values: { ...TAGS, count: 2 },
       });
 
-      // One noul per string Goal Value, in the same request as the target.
+      // One noul per string Goal Value, asked before the target.
       const questions = requests[1]!.questions as Record<
         string,
         { type: string; instructions: string }
       >;
       expect(Object.keys(questions)).toEqual([
-        "target",
         optionValueQuestion(1),
         optionValueQuestion(2),
         optionValueQuestion(3),
       ]);
+      // The target knows the values the model included.
+      const [element] = elementsAsked(requests[2]!);
+      expect(
+        (requests[2]!.questions as Record<string, { instructions: string }>)[
+          element!.id
+        ]!.instructions
+      ).toContain('receiving the values "urgent", "spam"?');
       expect(questions[optionValueQuestion(2)]).toEqual({
         type: "noul",
         instructions: expect.stringContaining('"second: billing"'),
@@ -958,13 +1056,15 @@ describe("Goal Loop goal in Chromium", () => {
       });
 
       expect(selected(select)).toEqual(["billing"]);
-      // The target and one noul per Goal Value, in one stage-two request.
+      // One noul per Goal Value first, then one per candidate select.
       expect(questionTypesOf(requests[1]!)).toEqual({
-        target: "choice",
         [optionValueQuestion(1)]: "noul",
         [optionValueQuestion(2)]: "noul",
         [optionValueQuestion(3)]: "noul",
       });
+      expect(elementsAsked(requests[2]!)).toEqual([
+        expect.objectContaining({ description: 'combobox "Tags"' }),
+      ]);
       expect(result).toMatchObject({
         history: [
           {
@@ -1009,10 +1109,9 @@ describe("Goal Loop goal in Chromium", () => {
         needs: { tool: "select_option", parameters: ["values"] },
       });
       expect(selected(select)).toEqual([]);
+      // The values are asked first; without one, the target is never asked.
       expect(requests).toHaveLength(2);
-      // The target and one noul per Goal Value, in one stage-two request.
       expect(questionTypesOf(requests[1]!)).toEqual({
-        target: "choice",
         [optionValueQuestion(1)]: "noul",
         [optionValueQuestion(2)]: "noul",
         [optionValueQuestion(3)]: "noul",
@@ -1550,13 +1649,21 @@ describe("Goal Loop goal in Chromium", () => {
       maxSteps: 5,
     })) as Record<string, unknown>;
 
-    // Only the element click's built-in filter keeps is offered.
-    const [[key, description], ...rest] = Object.entries(
-      criteriaOf(requests[1]!).target!
-    );
+    // Only the element click's built-in filter keeps is asked about, without
+    // a value to receive.
+    const [asked, ...rest] = elementsAsked(requests[1]!);
     expect(rest).toEqual([]);
-    // Options carry the node's ref as their key, as the page state labels it,
-    // and its role and name so the model can tell options apart.
+    expect(Object.keys(requests[1]!.questions)).toEqual([asked!.id]);
+    expect(
+      (requests[1]!.questions as Record<string, { instructions: string }>)[
+        asked!.id
+      ]!.instructions
+    ).toBe(
+      `Should the element button "Save changes" (ref "${asked!.ref}" in \`page\`) be the target of the operation "click" (Click one element.)?`
+    );
+    const { ref: key, description } = asked!;
+    // The question names the node's ref, as the page state labels it, and
+    // its role and name so the model can tell elements apart.
     expect(refsInPage(requests[1]!.state)).toContain(key);
     expect(description).toContain("button");
     expect(description).toContain("Save changes");
@@ -1608,12 +1715,10 @@ describe("Goal Loop goal in Chromium", () => {
 
     await tool.execute({ goal: "highlight the title", maxSteps: 5 });
 
-    const refQuestion = criteriaOf(requests[1]!).ref!;
-    expect(Object.keys(refQuestion)).toHaveLength(1);
-    expect(Object.values(refQuestion)[0]).toContain("Task list");
-    expect(highlighted).toEqual([
-      { ref: Object.keys(refQuestion)[0], tagName: "H1" },
-    ]);
+    const asked = elementsAsked(requests[1]!);
+    expect(asked).toHaveLength(1);
+    expect(asked[0]!.description).toContain("Task list");
+    expect(highlighted).toEqual([{ ref: asked[0]!.ref, tagName: "H1" }]);
   });
 
   it("offers a single-element tool without a filter every node that has a ref", async () => {
@@ -1638,7 +1743,9 @@ describe("Goal Loop goal in Chromium", () => {
 
     await tool.execute({ goal: "highlight something", maxSteps: 5 });
 
-    const descriptions = Object.values(criteriaOf(requests[1]!).ref!);
+    const descriptions = elementsAsked(requests[1]!).map(
+      (element) => element.description
+    );
     const offers = (name: string) =>
       descriptions.some((description) => description.includes(name));
     expect(offers("Task list")).toBe(true);
@@ -1683,7 +1790,12 @@ describe("Goal Loop goal in Chromium", () => {
 
     await tool.execute({ goal: "highlight the save button", maxSteps: 5 });
 
-    const offered = criteriaOf(requests[1]!).ref!;
+    const offered = Object.fromEntries(
+      elementsAsked(requests[1]!).map((element) => [
+        element.ref,
+        element.description,
+      ])
+    );
     const wrapperRefs = Object.keys(offered).filter(
       (ref) => offered[ref] === "generic"
     );
@@ -1730,6 +1842,18 @@ describe("Goal Loop goal in Chromium", () => {
   });
 
   // --- Stage two: a ref question over the option cap ---
+  //
+  // One yes/no question per element is asked while those questions fit one
+  // request with the state; past that, the target is one choice over the
+  // elements again, cut into chunks over the option cap.
+
+  /**
+   * A goal padded so that the state, about 54k tokens by the loop's estimate,
+   * still fits one request with a choice over 300 elements, but not with 300
+   * yes/no questions, one per element.
+   */
+  const beyondElementQuestions = (goal: string) =>
+    `${goal}. ${"Read the whole page first. ".repeat(6000)}`;
 
   /** A page whose clickable elements outnumber one question's options. */
   function setupPageWithManyClickables(count: number): string[] {
@@ -1749,7 +1873,7 @@ describe("Goal Loop goal in Chromium", () => {
     return Object.keys(criteria).filter((key) => key !== NONE_OF_THESE_KEY);
   }
 
-  it("asks for a ref in document-order chunks when the page holds more elements than one question offers", async () => {
+  it("asks for a ref in document-order chunks when the page holds more elements than one question offers and their yes/no questions do not fit", async () => {
     const clicked = setupPageWithManyClickables(300);
     const { requests, decide } = recording(
       scriptedDecisionFn([
@@ -1764,7 +1888,7 @@ describe("Goal Loop goal in Chromium", () => {
     const tool = await getPublishedPursueGoal(decide);
 
     const result = (await tool.execute({
-      goal: "click the last item",
+      goal: beyondElementQuestions("click the last item"),
       maxSteps: 5,
     })) as Record<string, unknown>;
 
@@ -1833,7 +1957,7 @@ describe("Goal Loop goal in Chromium", () => {
     const tool = await getPublishedPursueGoal(decide);
 
     const result = (await tool.execute({
-      goal: "click the last item",
+      goal: beyondElementQuestions("click the last item"),
       maxSteps: 5,
     })) as Record<string, unknown>;
 
@@ -1879,7 +2003,7 @@ describe("Goal Loop goal in Chromium", () => {
     const tool = await getPublishedPursueGoal(decide);
 
     const result = (await tool.execute({
-      goal: "click the last item",
+      goal: beyondElementQuestions("click the last item"),
       maxSteps: 5,
     })) as Record<string, unknown>;
 
@@ -1913,7 +2037,7 @@ describe("Goal Loop goal in Chromium", () => {
     const tool = await getPublishedPursueGoal(decide);
 
     const result = await tool.execute({
-      goal: "click the missing item",
+      goal: beyondElementQuestions("click the missing item"),
       maxSteps: 5,
     });
 
@@ -2094,12 +2218,12 @@ describe("Goal Loop goal in Chromium", () => {
     const runResult = getLastGoalLoopRunResult();
     const probabilities = runResult!.stepScores[0]!.argumentProbabilities;
     expect(probabilities).toBeDefined();
-    expect(Object.values(probabilities!.target!)).toContain(1);
+    expect(Object.values(probabilities!.target!)).toEqual([0.9]);
     expect(runResult!.stepScores[1]!.argumentProbabilities).toBeUndefined();
   });
 
   it("ends the run when the model answers outside the offered options", async () => {
-    setupPageWithOneClickable();
+    const clicked = setupPageWithManyClickables(300);
     const decide = scriptedDecisionFn([
       {
         operation: "click",
@@ -2110,7 +2234,7 @@ describe("Goal Loop goal in Chromium", () => {
     const tool = await getPublishedPursueGoal(decide);
 
     const result = await tool.execute({
-      goal: "save the changes",
+      goal: beyondElementQuestions("click the last item"),
       maxSteps: 5,
     });
 
@@ -2120,7 +2244,163 @@ describe("Goal Loop goal in Chromium", () => {
       next: expect.stringContaining("e999"),
       history: [],
     });
+    expect(clicked).toEqual([]);
+  });
+
+  it("ends the run when an element's answer is not a yes/no probability", async () => {
+    setupPageWithOneClickable();
+    const scripted = scriptedDecisionFn([
+      {
+        operation: "click",
+        goal_met: 0.1,
+        arguments: { target: 'button "Save changes"' },
+      },
+    ]);
+    const decide: GoalLoopDecisionFunction = async (request) => {
+      const response = await scripted(request);
+      const [element] = elementsAsked(request);
+      if (!element) return response;
+      return {
+        ...response,
+        answers: { [element.id]: { type: "noul", noul: Number.NaN } },
+      };
+    };
+    const tool = await getPublishedPursueGoal(decide);
+
+    const result = await tool.execute({
+      goal: "save the changes",
+      maxSteps: 5,
+    });
+
+    expect(result).toMatchObject({
+      reason: "decide_failed",
+      next: expect.stringContaining("invalid response"),
+      history: [],
+    });
     expect(clickCount).toBe(0);
+  });
+
+  // --- Stage two: the value first, then one yes/no question per element ---
+
+  /** A survey editor: `count` questions, each with an identical text field. */
+  function setupIdenticalFields(count: number): HTMLInputElement[] {
+    document.body.innerHTML = `<main>${Array.from(
+      { length: count },
+      (_, index) =>
+        `<section aria-label="Question ${index + 1}"><h3>Question ${index + 1}</h3><label>Question text <input type="text"></label></section>`
+    ).join("")}</main>`;
+    return Array.from(document.querySelectorAll("input"));
+  }
+
+  it("fills the field the model says yes to, not the first of identical ones", async () => {
+    const fields = setupIdenticalFields(4);
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "fill",
+          goal_met: 0.1,
+          arguments: {
+            text: "question 3",
+            // A close call between the second and third field.
+            target: { inOrder: [0.2, 0.62, 0.71, 0.1] },
+          },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+
+    const result = await tool.execute({
+      goal: "Set the text of question 3",
+      maxSteps: 5,
+      values: { "question 3": "How likely are you to recommend us?" },
+    });
+
+    expect(fields.map((field) => field.value)).toEqual([
+      "",
+      "",
+      "How likely are you to recommend us?",
+      "",
+    ]);
+    expect(result).toMatchObject({
+      reason: "done",
+      history: [
+        {
+          operation: "fill",
+          did: 'fill(textbox "Question text", question 3: How likely are you to recommend us?)',
+        },
+      ],
+    });
+    // Stage one, the value, the target, then the next step's stage one.
+    expect(requests).toHaveLength(4);
+    const asked = elementsAsked(requests[2]!);
+    expect(asked.map((element) => element.description)).toEqual(
+      Array(4).fill('textbox "Question text"')
+    );
+    expect(Object.keys(requests[2]!.questions)).toEqual(
+      asked.map((element) => element.id)
+    );
+    // Every element asked about names the value it would receive.
+    for (const question of Object.values(
+      requests[2]!.questions as Record<string, { instructions: string }>
+    ))
+      expect(question.instructions).toContain(
+        'receiving the text "How likely are you to recommend us?"?'
+      );
+    // Each element's yes-probability is on the run result, by ref.
+    const score = getLastGoalLoopRunResult()!.stepScores[0]!;
+    expect(score.argumentProbabilities).toEqual({
+      text: expect.any(Object),
+      target: Object.fromEntries(
+        asked.map((element, index) => [
+          element.ref,
+          [0.2, 0.62, 0.71, 0.1][index],
+        ])
+      ),
+    });
+    expect(score.argumentChoices).toEqual({
+      text: "question 3",
+      target: asked[2]!.ref,
+    });
+  });
+
+  it("hands over with no_fitting_option when no element scores a yes", async () => {
+    const fields = setupIdenticalFields(3);
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "fill",
+          goal_met: 0.1,
+          arguments: {
+            text: "question 9",
+            target: { inOrder: [0.3, 0.49, 0.2] },
+          },
+        },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+
+    const result = await tool.execute({
+      goal: "Set the text of question 9",
+      maxSteps: 5,
+      values: { "question 9": "Anything else?" },
+    });
+
+    expect(withoutChanges(result)).toEqual({
+      reason: "no_fitting_option",
+      next: expect.stringContaining('"fill"'),
+      history: [],
+    });
+    expect(requests).toHaveLength(3);
+    expect(fields.map((field) => field.value)).toEqual(["", "", ""]);
+    const score = getLastGoalLoopRunResult()!.stepScores[0]!;
+    expect(score.argumentChoices).toEqual({
+      text: "question 9",
+      target: NONE_OF_THESE_KEY,
+    });
+    expect(Object.values(score.argumentProbabilities!.target!)).toEqual([
+      0.3, 0.49, 0.2,
+    ]);
   });
 
   // --- Stage two: which instance of a collection ---

@@ -11,13 +11,19 @@ import type { DecisionRequest, DecisionResponse } from "./decisionWire";
 import type { PageStateCapture } from "./pageState";
 import {
   NONE_OF_THESE_KEY,
+  TARGET_YES_THRESHOLD,
   buildArgumentRequest,
+  elementQuestionId,
   planArguments,
+  questionsBeforeTarget,
   readArgumentAnswers,
   readRunOffAnswer,
+  targetNoulsFit,
+  withElementQuestions,
   type ArgumentQuestion,
   type GoalLoopOperation,
   type GoalValues,
+  type StageTwoQuestion,
 } from "./goalLoopQuestions";
 
 // --- Fixtures ---
@@ -596,5 +602,266 @@ describe("Goal Values", () => {
       parameters: ["options"],
       unfilled: ["options"],
     });
+  });
+});
+
+describe("the target, one yes/no question per element", () => {
+  /** A single-element tool that also takes text from the Goal Values. */
+  const fillTool: GoalLoopOperation = {
+    name: "fill",
+    description: "Fill an element.",
+    execute: async () => null,
+    requiredParams: ["ref", "text"],
+    args: [
+      refArg,
+      {
+        name: "text",
+        path: ["text"],
+        optional: false,
+        closedSet: null,
+        free: "string",
+      },
+    ],
+  };
+  const optionalRefTool: GoalLoopOperation = {
+    ...clickTool,
+    name: "maybe_click",
+    requiredParams: [],
+    args: [{ ...refArg, optional: true }],
+  };
+
+  function plannedQuestions(
+    tool: GoalLoopOperation,
+    capture: PageStateCapture,
+    values?: GoalValues
+  ): StageTwoQuestion[] {
+    const plan = planArguments(tool, capture, values);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    return plan.questions;
+  }
+
+  /** Yes-probabilities in the order the elements are asked. */
+  const elementAnswers = (
+    questions: readonly StageTwoQuestion[],
+    scores: readonly number[]
+  ) =>
+    Object.fromEntries(
+      questions
+        .filter((question) => question.type === "element")
+        .map((question, index) => [
+          question.id,
+          { type: "noul", noul: scores[index] ?? 0 },
+        ])
+    );
+
+  it("asks the Goal Values before the target when the operation takes both", () => {
+    const questions = plannedQuestions(fillTool, captureOfButtons(2), {
+      name: "Milk",
+    });
+    expect(questionsBeforeTarget(fillTool, questions).map((q) => q.id)).toEqual(
+      ["text"]
+    );
+  });
+
+  it("asks a target without a Goal Value, and closed sets beside it, in one request", () => {
+    expect(
+      questionsBeforeTarget(
+        clickTool,
+        plannedQuestions(clickTool, captureOfButtons(2))
+      )
+    ).toEqual([]);
+    expect(
+      questionsBeforeTarget(
+        clickWithForceTool,
+        plannedQuestions(clickWithForceTool, captureOfButtons(2))
+      )
+    ).toEqual([]);
+  });
+
+  it("asks one question per candidate, naming the element, the operation and the value it receives", () => {
+    const questions = withElementQuestions(
+      fillTool,
+      {},
+      plannedQuestions(fillTool, captureOfButtons(2), { name: "Milk" }).filter(
+        (q) => q.parameter === "ref"
+      ),
+      { text: "Milk" }
+    );
+    expect(questions).toMatchObject([
+      {
+        type: "element",
+        id: elementQuestionId("ref", 1, ["ref", "text"]),
+        parameter: "ref",
+        option: { key: "e1", value: "e1" },
+        instructions:
+          'Should the element button "Item 1" (ref "e1" in `page`) be the target of the operation "fill" (Fill an element.), receiving the text "Milk"?',
+      },
+      {
+        type: "element",
+        id: elementQuestionId("ref", 2, ["ref", "text"]),
+        option: { key: "e2" },
+      },
+    ]);
+    // They travel as nouls.
+    expect(
+      Object.values(buildArgumentRequest({}, questions).questions)
+    ).toEqual([
+      { type: "noul", instructions: expect.any(String) },
+      { type: "noul", instructions: expect.any(String) },
+    ]);
+  });
+
+  it("keeps the other questions beside the elements and drops the target's choice", () => {
+    const questions = withElementQuestions(
+      clickWithForceTool,
+      {},
+      plannedQuestions(clickWithForceTool, captureOfButtons(2)),
+      {}
+    );
+    expect(questions.map((q) => [q.type, q.id])).toEqual([
+      ["choice", "force"],
+      ["element", elementQuestionId("ref", 1, ["ref", "force"])],
+      ["element", elementQuestionId("ref", 2, ["ref", "force"])],
+    ]);
+    expect(questions[1]!.instructions).toMatch(/\(Click an element\.\)\?$/);
+  });
+
+  it("keeps the choice when the element questions do not fit one request with the state", () => {
+    const asked = plannedQuestions(clickTool, captureOfButtons(300));
+    const state = { goal: "x".repeat(170_000) };
+    // The choice over 300 elements fits with this state; 300 questions do not.
+    expect(targetNoulsFit(state, asked)).toBe(true);
+    expect(withElementQuestions(clickTool, state, asked, {})).toEqual(asked);
+    expect(withElementQuestions(clickTool, {}, asked, {})).toHaveLength(300);
+  });
+
+  it("acts on the element with the highest yes-probability and records every element's", () => {
+    const questions = withElementQuestions(
+      clickTool,
+      {},
+      plannedQuestions(clickTool, captureOfButtons(3)),
+      {}
+    );
+    const answers = readArgumentAnswers(
+      clickTool,
+      questions,
+      elementAnswers(questions, [0.6, 0.85, 0.8])
+    );
+    expect(answers).toMatchObject({
+      kind: "chosen",
+      chosen: {
+        args: { ref: "e2" },
+        chosen: { ref: { key: "e2", description: 'button "Item 2"' } },
+        choices: { ref: "e2" },
+        probabilities: { ref: { e1: 0.6, e2: 0.85, e3: 0.8 } },
+      },
+    });
+  });
+
+  it("takes the first of the elements tied highest", () => {
+    const questions = withElementQuestions(
+      clickTool,
+      {},
+      plannedQuestions(clickTool, captureOfButtons(3)),
+      {}
+    );
+    const answers = readArgumentAnswers(
+      clickTool,
+      questions,
+      elementAnswers(questions, [0.2, 0.7, 0.7])
+    );
+    expect(answers).toMatchObject({
+      kind: "chosen",
+      chosen: { args: { ref: "e2" } },
+    });
+  });
+
+  it("reports that no element fits when the best scores below the threshold", () => {
+    const questions = withElementQuestions(
+      clickTool,
+      {},
+      plannedQuestions(clickTool, captureOfButtons(2)),
+      {}
+    );
+    const below = TARGET_YES_THRESHOLD - 0.01;
+    expect(
+      readArgumentAnswers(
+        clickTool,
+        questions,
+        elementAnswers(questions, [0.1, below])
+      )
+    ).toEqual({
+      kind: "none_fits",
+      parameter: "ref",
+      choices: { ref: NONE_OF_THESE_KEY },
+      probabilities: { ref: { e1: 0.1, e2: below } },
+    });
+    expect(
+      readArgumentAnswers(
+        clickTool,
+        questions,
+        elementAnswers(questions, [0.1, TARGET_YES_THRESHOLD])
+      )
+    ).toMatchObject({ kind: "chosen", chosen: { args: { ref: "e2" } } });
+  });
+
+  it("leaves an optional target unset when no element scores a yes", () => {
+    const questions = withElementQuestions(
+      optionalRefTool,
+      {},
+      plannedQuestions(optionalRefTool, captureOfButtons(2)),
+      {}
+    );
+    // The leave-unset choice is not an element, so it is not asked about.
+    expect(questions).toHaveLength(2);
+    expect(
+      readArgumentAnswers(
+        optionalRefTool,
+        questions,
+        elementAnswers(questions, [0.1, 0.2])
+      )
+    ).toMatchObject({ kind: "chosen", chosen: { args: {}, chosen: {} } });
+  });
+
+  it("reads the values and the target from their two requests together, in parameter order", () => {
+    const planned = plannedQuestions(fillTool, captureOfButtons(2), {
+      name: "Milk",
+    });
+    const before = questionsBeforeTarget(fillTool, planned);
+    const values = {
+      text: { type: "choice", choice: "name" },
+    };
+    const first = readArgumentAnswers(fillTool, before, values);
+    if (first.kind !== "chosen") throw new Error(first.kind);
+    const last = withElementQuestions(
+      fillTool,
+      {},
+      planned.filter((q) => !before.includes(q)),
+      first.chosen.args
+    );
+    const answers = readArgumentAnswers(fillTool, [...before, ...last], {
+      ...values,
+      ...elementAnswers(last, [0.3, 0.9]),
+    });
+    expect(answers).toMatchObject({
+      kind: "chosen",
+      chosen: { args: { ref: "e2", text: "Milk" } },
+    });
+    if (answers.kind !== "chosen") throw new Error(answers.kind);
+    expect(Object.keys(answers.chosen.chosen)).toEqual(["ref", "text"]);
+  });
+
+  it("rejects an element answer that is not a noul", () => {
+    const questions = withElementQuestions(
+      clickTool,
+      {},
+      plannedQuestions(clickTool, captureOfButtons(1)),
+      {}
+    );
+    expect(() =>
+      readArgumentAnswers(clickTool, questions, {
+        [questions[0]!.id]: { type: "choice", choice: "yes" },
+      })
+    ).toThrow(/Invalid/);
   });
 });

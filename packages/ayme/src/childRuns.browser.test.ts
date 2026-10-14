@@ -271,16 +271,26 @@ function decideSteps(steps: Step[]): GoalLoopDecisionFunction {
   return async (request) => {
     const questions = request.questions as Record<
       string,
-      { criteria: Record<string, string> }
+      { type: string; criteria: Record<string, string>; instructions: string }
     >;
     if (!questions.operation) {
       const { target } = steps[step - 1]!;
+      // The target is asked one yes/no question per element.
       return {
         model: "fake",
         answers: Object.fromEntries(
-          Object.entries(questions).map(([id, { criteria }]) => [
+          Object.entries(questions).map(([id, question]) => [
             id,
-            choice(criteria, target!),
+            question.type === "noul"
+              ? {
+                  type: "noul",
+                  noul: question.instructions.startsWith(
+                    `Should the element ${target!} (ref `
+                  )
+                    ? 0.9
+                    : 0.1,
+                }
+              : choice(question.criteria, target!),
           ])
         ),
       };

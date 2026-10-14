@@ -49,13 +49,24 @@ function scriptedGoalLoop() {
         },
       };
     }
+    // The target is asked one yes/no question per element.
     return {
       model: "typesafe/jev-1.13",
-      answers: {
-        ref: choose(questions.ref!.criteria!, (_key, description) =>
-          description.includes("Save changes")
-        ),
-      },
+      answers: Object.fromEntries(
+        Object.entries(
+          request.questions as Record<string, { instructions: string }>
+        ).map(([id, { instructions }]) => [
+          id,
+          {
+            type: "noul",
+            noul: /^Should the element \S+ "Save changes" \(ref /.test(
+              instructions
+            )
+              ? 0.9
+              : 0.1,
+          },
+        ])
+      ),
     };
   };
 }
