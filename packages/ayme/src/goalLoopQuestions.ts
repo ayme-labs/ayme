@@ -356,6 +356,12 @@ type QuestionBase = {
 export type ArgumentQuestion = QuestionBase & {
   type: "choice";
   options: ArgumentOption[];
+  /**
+   * Set on a question over the page's elements: a ref, its chunks and its
+   * run-off. `receiving` names the Goal Values the operation will enter into
+   * the element, when stage one already chose them.
+   */
+  target?: { receiving?: string };
 };
 
 /** Whether one Goal Value belongs in a list parameter. */
@@ -498,20 +504,27 @@ function describeOperation(tool: GoalLoopOperation): string {
   return `The operation is "${tool.name}": ${tool.description}`;
 }
 
-/** The sentence every question about a ref parameter starts with. */
-function pickElementSentence(parameter: string): string {
-  return `Pick the element this operation acts on as its ${parameter} parameter.`;
+/**
+ * The sentence every question about a ref parameter starts with. With the
+ * Goal Values the operation will enter, the element is picked as the one that
+ * should receive them.
+ */
+function pickElementSentence(parameter: string, receiving?: string): string {
+  return receiving
+    ? `Pick the element that should receive ${receiving}, as this operation's ${parameter} parameter.`
+    : `Pick the element this operation acts on as its ${parameter} parameter.`;
 }
 
 function argumentInstructions(
   tool: GoalLoopOperation,
-  arg: ArgumentSpec
+  arg: ArgumentSpec,
+  receiving?: string
 ): string {
   const parameter = describeParameter(arg);
   const operation = describeOperation(tool);
   switch (arg.closedSet?.kind) {
     case "ref":
-      return `${pickElementSentence(parameter)} ${operation}`;
+      return `${pickElementSentence(parameter, receiving)} ${operation}`;
     case "instance":
       return `Pick the instance this operation acts on as its ${parameter} parameter. ${operation}`;
     case undefined:
@@ -531,7 +544,8 @@ function argumentInstructions(
 function chunkedRefQuestions(
   tool: GoalLoopOperation,
   arg: ArgumentSpec,
-  options: readonly ArgumentOption[]
+  options: readonly ArgumentOption[],
+  receiving?: string
 ): ArgumentQuestion[] {
   const count = Math.ceil(options.length / MAX_CHUNK_ELEMENTS);
   const size = Math.ceil(options.length / count);
@@ -545,7 +559,7 @@ function chunkedRefQuestions(
       parameter: arg.name,
       path: arg.path,
       instructions:
-        `${pickElementSentence(parameter)} ` +
+        `${pickElementSentence(parameter, receiving)} ` +
         `The page holds ${options.length} candidate elements, split in document order over ${count} questions; ` +
         `this one offers elements ${from + 1} to ${from + chunk.length}. ` +
         `Choose "${NONE_OF_THESE_KEY}" when the element is not among these. ` +
@@ -557,6 +571,7 @@ function chunkedRefQuestions(
           description: `None of these; the element is offered by another "${arg.name}" question, or no element fits.`,
         },
       ],
+      target: receiving ? { receiving } : {},
     };
   });
 }
@@ -577,9 +592,12 @@ function runOffQuestion(
     path: chunk.path,
     instructions:
       `Several "${chunk.parameter}" questions each named an element. ` +
-      `Pick the one element this operation acts on as its "${chunk.parameter}" parameter. ` +
+      (chunk.target?.receiving
+        ? `Pick the one element that should receive ${chunk.target.receiving}, as this operation's "${chunk.parameter}" parameter. `
+        : `Pick the one element this operation acts on as its "${chunk.parameter}" parameter. `) +
       describeOperation(tool),
     options: [...named],
+    target: chunk.target ?? {},
   };
 }
 
@@ -618,7 +636,8 @@ function listValueQuestions(
 export function planArguments(
   tool: GoalLoopOperation,
   capture: PageStateCapture,
-  values: GoalValues = {}
+  values: GoalValues = {},
+  presets: readonly ValuePreset[] = []
 ): ArgumentPlan {
   const unfilled = tool.args
     .filter(
@@ -635,10 +654,13 @@ export function planArguments(
       unfilled,
     };
 
+  const receiving = receivingPhrase(presets);
   const questions: StageTwoQuestion[] = [];
   for (const arg of tool.args) {
     const closedSet = arg.closedSet;
     if (!closedSet) {
+      // Chosen in stage one: nothing left to ask.
+      if (presets.some((preset) => preset.parameter === arg.name)) continue;
       const candidates = goalValueOptions(arg.free, values);
       // An optional parameter no Goal Value fits is left out.
       if (candidates.length === 0) continue;
@@ -678,7 +700,7 @@ export function planArguments(
     // A ref whose elements outnumber the cap is asked in chunks; other closed
     // sets are not.
     if (closedSet.kind === "ref" && options.length > MAX_CHOICE_OPTIONS) {
-      questions.push(...chunkedRefQuestions(tool, arg, options));
+      questions.push(...chunkedRefQuestions(tool, arg, options, receiving));
       continue;
     }
 
@@ -704,11 +726,196 @@ export function planArguments(
       id: arg.name,
       parameter: arg.name,
       path: arg.path,
-      instructions: argumentInstructions(tool, arg),
+      instructions: argumentInstructions(tool, arg, receiving),
       options,
+      ...(closedSet.kind === "ref"
+        ? { target: receiving ? { receiving } : {} }
+        : {}),
     });
   }
   return { kind: "ask", questions };
+}
+
+// --- Goal Values asked speculatively in stage one ---
+//
+// Stage two asks an operation's questions side by side, so its element would
+// be picked without knowing the value it will receive. A free value is
+// therefore asked in stage one, next to the operation, under an explicit
+// premise: "if the next operation is one of these, which Goal Value does it
+// take?". Code reads the answer only when the chosen operation is one the
+// question covers; an answer naming no Goal Value leaves the parameter to
+// stage two, asked as it is without speculation.
+
+/** At most this many speculative questions ride along with the operation. */
+const MAX_SPECULATIVE_QUESTIONS = 8;
+
+/** The speculative answer for "the next operation is none of these". */
+export const NO_VALUE_NEEDED_KEY = "no_value_needed";
+
+/** A Goal Value question asked before the operation is chosen. */
+export type SpeculativeValueQuestion = {
+  id: string;
+  /** Per operation the question covers: the parameter the answer fills. */
+  covers: readonly { operation: string; parameter: string }[];
+  instructions: string;
+  options: ArgumentOption[];
+};
+
+/** A free value chosen in stage one for the chosen operation. */
+export type ValuePreset = {
+  parameter: string;
+  path: readonly string[];
+  option: ArgumentOption;
+};
+
+/** The parameters a speculative question may cover: required, single free values. */
+function speculativeArgs(tool: GoalLoopOperation, values: GoalValues) {
+  return tool.args.filter(
+    (arg) =>
+      !arg.optional &&
+      arg.closedSet === null &&
+      arg.free !== undefined &&
+      arg.free !== "string_list" &&
+      goalValueOptions(arg.free, values).length > 0
+  );
+}
+
+const quotedList = (names: readonly string[]) =>
+  names.length === 1
+    ? `"${names[0]}"`
+    : `${names
+        .slice(0, -1)
+        .map((name) => `"${name}"`)
+        .join(", ")} or "${names[names.length - 1]}"`;
+
+const textNoun = (kind: FreeKind) => (kind === "string" ? "text" : "number");
+
+/**
+ * The speculative questions for the operations offered. The single-element
+ * tools that take a free parameter of one name and kind share one question:
+ * whichever of them runs, it enters that value into one element. Any other
+ * operation's parameter is a question of its own. Questions are kept in the
+ * order of the operations; past the cap, the parameters left out are asked in
+ * stage two.
+ */
+export function buildSpeculativeValueQuestions(
+  toolOptions: readonly ToolOption[],
+  values: GoalValues = {}
+): SpeculativeValueQuestion[] {
+  type Group = {
+    kind: FreeKind;
+    arg: ArgumentSpec;
+    tools: GoalLoopOperation[];
+    tool?: GoalLoopOperation;
+  };
+  const groups = new Map<string, Group>();
+  for (const { tool } of toolOptions) {
+    const onElement = tool.args.some((arg) => arg.closedSet?.kind === "ref");
+    for (const arg of speculativeArgs(tool, values)) {
+      const kind = arg.free!;
+      const key = JSON.stringify(
+        onElement ? ["element", arg.name, kind] : [tool.name, arg.name]
+      );
+      const group = groups.get(key);
+      if (group) group.tools.push(tool);
+      else if (groups.size < MAX_SPECULATIVE_QUESTIONS)
+        groups.set(key, {
+          kind,
+          arg,
+          tools: [tool],
+          ...(onElement ? {} : { tool }),
+        });
+    }
+  }
+
+  const ids = new Set<string>();
+  return [...groups.values()].map(({ kind, arg, tools, tool }) => {
+    const operations = quotedList(tools.map((each) => each.name));
+    const noun = textNoun(kind);
+    let id = tool ? `value:${tool.name}.${arg.name}` : `value:${arg.name}`;
+    while (ids.has(id)) id += "_";
+    ids.add(id);
+    return {
+      id,
+      covers: tools.map((each) => ({
+        operation: each.name,
+        parameter: arg.name,
+      })),
+      instructions: tool
+        ? `If the next operation is ${operations} (${tool.description}), which Goal Value is its ${describeParameter(arg)} parameter?`
+        : `If the next operation is ${operations} and enters ${kind === "string" ? "text" : "a number"} into one element of the page as its "${arg.name}" parameter, which Goal Value is that ${noun}?`,
+      options: withUniqueKeys([
+        ...goalValueOptions(kind, values),
+        {
+          key: NO_VALUE_NEEDED_KEY,
+          description: `No value needed: the next operation is not ${operations}.`,
+        },
+        {
+          key: NONE_OF_THESE_KEY,
+          description: `None of these Goal Values is the ${tool ? `"${arg.name}" value` : noun} to enter.`,
+        },
+      ]),
+    };
+  });
+}
+
+/**
+ * Read the speculative answers that apply to the chosen operation: one that
+ * names a Goal Value presets its parameter. The answers to the questions that
+ * do not cover it are not read.
+ */
+export function readSpeculativeValues(
+  tool: GoalLoopOperation,
+  questions: readonly SpeculativeValueQuestion[],
+  answers: Record<string, unknown>,
+  record: AnswerRecord
+): ValuePreset[] {
+  return questions.flatMap((question) => {
+    const covered = question.covers.find(
+      (cover) => cover.operation === tool.name
+    );
+    if (!covered) return [];
+    const option = readPick(question, answers, record);
+    const arg = tool.args.find((each) => each.name === covered.parameter);
+    return "value" in option && arg
+      ? [{ parameter: arg.name, path: arg.path, option }]
+      : [];
+  });
+}
+
+/** How the element question names the values stage one chose. */
+function receivingPhrase(presets: readonly ValuePreset[]): string | undefined {
+  if (presets.length === 0) return undefined;
+  return presets
+    .map(({ option }) =>
+      typeof option.value === "string"
+        ? `the text "${option.value}" (the Goal Value "${option.key}")`
+        : `the number ${String(option.value)} (the Goal Value "${option.key}")`
+    )
+    .join(" and ");
+}
+
+/**
+ * Complete the arguments with the values stage one chose, keeping the step
+ * record's parameters in the operation's order.
+ */
+export function addValuePresets(
+  tool: GoalLoopOperation,
+  chosen: ChosenArguments,
+  presets: readonly ValuePreset[]
+): void {
+  if (presets.length === 0) return;
+  for (const { path, option } of presets)
+    assignAt(chosen.args, path, option.value);
+  const before = chosen.chosen;
+  chosen.chosen = {};
+  for (const arg of tool.args) {
+    const preset = presets.find((each) => each.parameter === arg.name);
+    const option = preset
+      ? { key: preset.option.key, description: preset.option.description }
+      : before[arg.name];
+    if (option) chosen.chosen[arg.name] = option;
+  }
 }
 
 // --- Decision requests (ADR-0022: built in the browser) ---
@@ -757,7 +964,13 @@ function renderPage(pageTree: StructuralTree): JsonStructuralNodeForest {
   return renderTree(pageRendering, shown);
 }
 
-export type StepState = Record<string, unknown>;
+/** The state of one step, as both stages of it are sent (or built from) it. */
+export type StepState = {
+  goal?: string;
+  values?: GoalValues;
+  history?: readonly GoalLoopStepRecord[];
+  [field: string]: unknown;
+};
 
 /** The option the model chose for one parameter, exactly as it was offered. */
 export type ChosenOption = { key: string; description: string };
@@ -795,7 +1008,8 @@ export function operationQuestionFits(
 /** Stage one: which operation moves closest to the goal, and is it met. */
 export function buildOperationRequest(
   state: StepState,
-  toolOptions: readonly ToolOption[]
+  toolOptions: readonly ToolOption[],
+  speculative: readonly SpeculativeValueQuestion[] = []
 ): DecisionRequest {
   const criteria: Record<string, string> = {};
   for (const option of toolOptions) criteria[option.key] = option.label;
@@ -811,6 +1025,9 @@ export function buildOperationRequest(
       type: "noul",
       instructions: "Has the goal been fully achieved on the current page?",
     },
+    ...Object.fromEntries(
+      speculative.map((question) => [question.id, choiceQuestion(question)])
+    ),
   };
 
   return { state, questions };
@@ -824,25 +1041,153 @@ export function buildOperationRequest(
  */
 export function buildArgumentRequest(
   state: StepState,
-  argumentQuestions: readonly StageTwoQuestion[]
+  argumentQuestions: readonly StageTwoQuestion[],
+  capture?: PageStateCapture
 ): DecisionRequest {
-  // Built from entries, never by assignment: a key is a Goal Value's label,
-  // which may be any string, `__proto__` included.
+  // A request that only picks an element is sent the candidates instead of
+  // the page: the rest of the page is content unrelated to the decision.
+  const targetOnly =
+    capture !== undefined &&
+    argumentQuestions.every(
+      (question) => question.type === "choice" && question.target
+    );
   const questions: DecisionQuestions = Object.fromEntries(
     argumentQuestions.map((question) => [
       question.id,
       question.type === "noul"
         ? { type: "noul", instructions: question.instructions }
-        : {
-            type: "choice",
-            instructions: question.instructions,
-            criteria: Object.fromEntries(
-              question.options.map((option) => [option.key, option.description])
-            ),
-          },
+        : choiceQuestion(
+            targetOnly
+              ? {
+                  ...question,
+                  instructions: `${question.instructions} ${CANDIDATES_SENTENCE}`,
+                }
+              : question
+          ),
     ])
   );
-  return { state, questions };
+  if (!targetOnly) return { state, questions };
+  const refs = new Set(
+    argumentQuestions.flatMap((question) =>
+      question.type === "choice"
+        ? question.options.flatMap((option) =>
+            "value" in option ? [String(option.value)] : []
+          )
+        : []
+    )
+  );
+  const { goal, values, history } = state;
+  return {
+    state: {
+      goal,
+      ...(values === undefined ? {} : { values }),
+      history,
+      elements: candidateElements(capture.tree, refs),
+    },
+    questions,
+  };
+}
+
+/**
+ * A choice as the request carries it. Built from entries, never by
+ * assignment: a key is a Goal Value's label, which may be any string,
+ * `__proto__` included.
+ */
+function choiceQuestion(question: {
+  instructions: string;
+  options: readonly ArgumentOption[];
+}) {
+  return {
+    type: "choice",
+    instructions: question.instructions,
+    criteria: Object.fromEntries(
+      question.options.map((option) => [option.key, option.description])
+    ),
+  };
+}
+
+const CANDIDATES_SENTENCE =
+  "Each option is an element of `elements` in the state, matched by its `ref`: where it sits on the page and the text around it.";
+
+/** At most this many characters of one text an element description quotes. */
+const MAX_DESCRIPTION_TEXT = 120;
+
+/** At most this many named ancestors an element description lists. */
+const MAX_ANCESTORS = 3;
+
+const clip = (text: string) =>
+  text.length > MAX_DESCRIPTION_TEXT
+    ? `${text.slice(0, MAX_DESCRIPTION_TEXT - 1)}…`
+    : text;
+
+/**
+ * The candidate elements, in document order, each with what the tree carries
+ * about it and around it: its named ancestors (outermost first), the nearest
+ * heading and the nearest text before it, its own text (such as a textbox's
+ * value), its properties and its state.
+ */
+function candidateElements(
+  tree: StructuralTree,
+  refs: ReadonlySet<string>
+): Record<string, unknown>[] {
+  const elements: Record<string, unknown>[] = [];
+  let heading = "";
+  let preceding = "";
+  const visit = (
+    child: StructuralNode["children"][number],
+    parent: StructuralNode | null
+  ) => {
+    if (typeof child === "string") {
+      // A candidate's own text describes it, not the next element.
+      if (!(parent && refs.has(parent.ref)) && child.trim())
+        preceding = child.trim();
+      return;
+    }
+    if (refs.has(child.ref))
+      elements.push(describeCandidate(tree, child, heading, preceding));
+    if (child.role === "heading" && child.name)
+      heading = preceding = child.name;
+    for (const grandchild of child.children) visit(grandchild, child);
+  };
+  for (const root of tree.getRootNodes()) visit(root, null);
+  return elements;
+}
+
+function describeCandidate(
+  tree: StructuralTree,
+  node: StructuralNode,
+  heading: string,
+  preceding: string
+): Record<string, unknown> {
+  const ancestors = tree
+    .getAncestorsOf(node.ref)
+    .filter((ancestor) => ancestor.name !== "")
+    .slice(0, MAX_ANCESTORS)
+    .reverse();
+  const text = node.children
+    .filter((child): child is string => typeof child === "string")
+    .join(" ")
+    .trim();
+  const state = Object.fromEntries(
+    Object.entries(node.state).filter(([, value]) => value !== undefined)
+  );
+  const named = (text: string) =>
+    text !== "" &&
+    text !== node.name &&
+    !ancestors.some((ancestor) => ancestor.name === text);
+  return {
+    ref: node.ref,
+    role: node.role,
+    name: node.name,
+    ...(ancestors.length > 0 ? { within: ancestors.map(describeNode) } : {}),
+    ...(named(heading) ? { heading: clip(heading) } : {}),
+    ...(named(preceding) && preceding !== heading
+      ? { preceding_text: clip(preceding) }
+      : {}),
+    ...(text ? { text: clip(text) } : {}),
+    ...(Object.keys(node.props).length > 0 ? { props: node.props } : {}),
+    ...(Object.keys(state).length > 0 ? { state } : {}),
+  };
 }
 
 // --- Answers ---
@@ -952,7 +1297,7 @@ export type ArgumentAnswers =
  * recorded under the question id.
  */
 function readPick(
-  question: ArgumentQuestion,
+  question: Pick<ArgumentQuestion, "id" | "options">,
   answers: Record<string, unknown>,
   record: AnswerRecord
 ): ArgumentOption {

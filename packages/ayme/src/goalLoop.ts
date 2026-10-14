@@ -18,8 +18,10 @@ import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { probeRegisteredPomMembers } from "./registry";
 import {
+  addValuePresets,
   buildArgumentRequest,
   buildOperationRequest,
+  buildSpeculativeValueQuestions,
   buildStepState,
   buildToolOptions,
   fitListsToTarget,
@@ -29,6 +31,7 @@ import {
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
+  readSpeculativeValues,
   type AnswerRecord,
   type ArgumentAnswers,
   type ChoiceAnswer,
@@ -38,6 +41,7 @@ import {
   type GoalValues,
   MAX_GOAL_VALUES,
   type NoulAnswer,
+  type ValuePreset,
 } from "./goalLoopQuestions";
 import { ToolInputError } from "./errors";
 
@@ -90,6 +94,13 @@ export function getPursueGoalTool(): GoalTool | null {
 type GoalLoopStepScores = {
   operationProbabilities?: Record<string, number>;
   goalMetScore: number;
+  /**
+   * Stage one, per speculative question that covers the chosen operation: the
+   * key of the option chosen.
+   */
+  valueChoices?: Record<string, string>;
+  /** Stage one, per such question: the scores the decision function supplied. */
+  valueProbabilities?: Record<string, Record<string, number>>;
   /**
    * Stage two, per question id: the key of the option chosen for every
    * argument question answered, chunks and run-off included.
@@ -441,6 +452,9 @@ export async function pursueGoal(
       history
     );
     const toolOptions = buildToolOptions();
+    // Free values asked next to the operation, so stage two picks the element
+    // with the value it will receive in view.
+    const speculative = buildSpeculativeValueQuestions(toolOptions, values);
 
     // A question outside the limit is never sent, in either stage.
     if (!operationQuestionFits(toolOptions)) {
@@ -455,7 +469,9 @@ export async function pursueGoal(
 
     let stageOne: DecisionResponse;
     try {
-      stageOne = await decisionFn(buildOperationRequest(state, toolOptions));
+      stageOne = await decisionFn(
+        buildOperationRequest(state, toolOptions, speculative)
+      );
     } catch (error) {
       return callFailed(error);
     }
@@ -508,8 +524,24 @@ export async function pursueGoal(
     }
     const chosenTool = chosenOption.tool;
 
+    // The speculative answers that apply to the chosen operation.
+    let presets: ValuePreset[];
+    try {
+      const record: AnswerRecord = { choices: {}, probabilities: {} };
+      score.valueChoices = record.choices;
+      score.valueProbabilities = record.probabilities;
+      presets = readSpeculativeValues(
+        chosenTool,
+        speculative,
+        stageOne.answers as Record<string, unknown>,
+        record
+      );
+    } catch (error) {
+      return invalidDecision(error);
+    }
+
     // 3. needs_value: the operation needs a value the model cannot pick
-    const plan = planArguments(chosenTool, capture, values);
+    const plan = planArguments(chosenTool, capture, values, presets);
     if (plan.kind === "needs_free_value") {
       return done({
         reason: "needs_value",
@@ -565,7 +597,7 @@ export async function pursueGoal(
       let stageTwo: DecisionResponse;
       try {
         stageTwo = await decisionFn(
-          buildArgumentRequest(state, plan.questions)
+          buildArgumentRequest(state, plan.questions, capture)
         );
       } catch (error) {
         return callFailed(error);
@@ -610,7 +642,7 @@ export async function pursueGoal(
         let runOff: DecisionResponse;
         try {
           runOff = await decisionFn(
-            buildArgumentRequest(state, [argumentAnswers.question])
+            buildArgumentRequest(state, [argumentAnswers.question], capture)
           );
         } catch (error) {
           return callFailed(error);
@@ -630,6 +662,7 @@ export async function pursueGoal(
       score.argumentChoices = chosenArguments.choices;
       score.argumentProbabilities = chosenArguments.probabilities;
     }
+    addValuePresets(chosenTool, chosenArguments, presets);
 
     // Execute the operation through the same action sequence as direct tool calls.
     let actionResult: StepOutcome;
