@@ -149,6 +149,7 @@ export type HandoverReason =
   | "no_fitting_option"
   | "needs_value"
   | "action_failed"
+  | "no_progress"
   | "step_budget"
   | "decide_failed"
   | "page_loading";
@@ -241,6 +242,65 @@ async function executeToolAction(
     ...(action?.changes ? { changes: action.changes } : {}),
     ...(action?.loading ? { loading: action.loading } : {}),
   };
+}
+
+// --- Stuck detection ---
+
+/**
+ * A step the loop would run a second time in a row, with the same operation
+ * and chosen arguments, after a run that did not change the page, ends the run.
+ */
+export const NO_CHANGE_REPEAT_LIMIT = 2;
+/**
+ * A step the loop would run a third time in a row, with the same operation and
+ * chosen arguments, ends the run even when the page changed in between: it is
+ * an alternation that never converges.
+ */
+export const CHANGE_REPEAT_LIMIT = 3;
+
+/** A step's identity for repetition: the operation and the key chosen per parameter. */
+const stepSignature = (
+  operation: string,
+  chosen: Record<string, ChosenOption>
+): string =>
+  JSON.stringify([
+    operation,
+    Object.entries(chosen).map(([parameter, option]) => [
+      parameter,
+      option.key,
+    ]),
+  ]);
+
+/**
+ * The step before the one about to run, when running it would repeat the
+ * limits above; `undefined` otherwise. Only steps that ran to "ok" count: a
+ * failing step is `action_failed`'s to end.
+ */
+function stuckOn(
+  history: readonly GoalLoopStepRecord[],
+  operation: string,
+  chosen: Record<string, ChosenOption>
+): { previous: GoalLoopStepRecord; times: number } | undefined {
+  const signature = stepSignature(operation, chosen);
+  const repeats: GoalLoopStepRecord[] = [];
+  for (let i = history.length - 1; i >= 0; i--) {
+    const entry = history[i]!;
+    if (
+      entry.result !== "ok" ||
+      stepSignature(entry.operation, entry.chosen) !== signature
+    )
+      break;
+    repeats.push(entry);
+  }
+  const times = repeats.length + 1;
+  const previous = repeats[0];
+  if (!previous) return undefined;
+  const unchanged =
+    times >= NO_CHANGE_REPEAT_LIMIT &&
+    repeats.slice(0, NO_CHANGE_REPEAT_LIMIT - 1).every((e) => !e.page_changed);
+  return unchanged || times >= CHANGE_REPEAT_LIMIT
+    ? { previous, times }
+    : undefined;
 }
 
 // --- The loop ---
@@ -664,6 +724,20 @@ export async function pursueGoal(
     }
     addValuePresets(chosenTool, chosenArguments, presets);
 
+    // 4. no_progress: the step would repeat the one before, to no effect.
+    const stuck = stuckOn(history, chosenTool.name, chosenArguments.chosen);
+    if (stuck) {
+      return done({
+        reason: "no_progress",
+        next: `The loop is repeating ${stuck.previous.did}: it chose the same step ${stuck.times} times in a row${stuck.previous.page_changed ? "" : ", and the last run did not change the page"}. It stopped instead of running it again. Perform that step yourself by calling ${chosenTool.name}, or call goal again with a goal that names the element to act on.`,
+        history,
+        needs: {
+          tool: chosenTool.name,
+          parameters: Object.keys(chosenArguments.chosen),
+        },
+      });
+    }
+
     // Execute the operation through the same action sequence as direct tool calls.
     let actionResult: StepOutcome;
     try {
@@ -700,7 +774,7 @@ export async function pursueGoal(
       });
     }
 
-    // 4. action_failed: two failed actions in a row
+    // 5. action_failed: two failed actions in a row
     if (consecutiveFailures >= 2) {
       return done({
         reason: "action_failed",
@@ -710,7 +784,7 @@ export async function pursueGoal(
     }
   }
 
-  // 5. step_budget
+  // 6. step_budget
   return done({
     reason: "step_budget",
     next: "The step budget was exhausted before the goal was achieved. Increase the budget or break the goal into smaller steps.",
