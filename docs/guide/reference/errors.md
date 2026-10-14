@@ -26,7 +26,7 @@ A published tool never throws, because WebMCP drops the reason of a rejected cal
   "content": [
     {
       "type": "text",
-      "text": "RefResolutionError: Cannot click ref \"e12\": removed."
+      "text": "RefResolutionError: Cannot click ref \"e12\": it is no longer on the page; take a snapshot for current refs."
     }
   ],
   "isError": true

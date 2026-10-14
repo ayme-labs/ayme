@@ -294,7 +294,9 @@ describe("generate_locator in Chromium", () => {
     });
 
     expect(errorAt(result, 0, 0)).toMatch(/"e9999"/);
-    expect(errorAt(result, 0, 1)).toMatch(new RegExp(`"${removed}": removed`));
+    expect(errorAt(result, 0, 1)).toMatch(
+      new RegExp(`"${removed}": it is no longer on the page`)
+    );
     expect(account).toMatch(/^s_/);
     expect(errorAt(result, 0, 2)).toMatch(/Page Object AccountPage\.account\b/);
     expect(errorAt(result, 0, 3)).toMatch(/matches no element/);
@@ -321,7 +323,7 @@ describe("generate_locator in Chromium", () => {
     expect(result.groups[0]).toEqual({
       within: dialog,
       error: expect.stringMatching(
-        /^Cannot scope locators to ref "e\d+": .*removed/
+        /^Cannot scope locators to ref "e\d+": it is no longer on the page/
       ),
     });
     expect(result.groups[1]).toEqual({

@@ -4,7 +4,11 @@ import {
   refWrittenOtherwise,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
-import { resolvePageStateRefs, type AymeNode } from "./pageState";
+import {
+  resolvePageStateRefs,
+  type AymeNode,
+  type RefResolution,
+} from "./pageState";
 import { RefResolutionError, ToolInputError } from "./errors";
 
 /**
@@ -15,6 +19,19 @@ export function refHint(requested: string): string | undefined {
   const ref = refWrittenOtherwise(requested);
   return ref && `Pass the Structural Ref alone: ${ref}.`;
 }
+
+/** Why a ref did not resolve, and what to do next, by its ledger code. */
+const UNRESOLVED: Record<
+  Extract<RefResolution, { status: "unresolved" }>["reason"],
+  string
+> = {
+  "unknown-ref": "no snapshot issued it; take a snapshot for current refs",
+  removed: "it is no longer on the page; take a snapshot for current refs",
+  ambiguous:
+    "it cannot be matched unambiguously to the current page; take a snapshot for current refs",
+  "no-element":
+    "it has no element on the page now; take a snapshot for current refs",
+};
 
 /**
  * Package-internal: the node a tool's Structural Ref addresses now, the one
@@ -49,7 +66,8 @@ export async function resolveRef(
   const resolution = (
     await resolvePageStateRefs(currentDocument, requestedRef)
   )[0]!;
-  if (resolution.status === "unresolved") throw fail(resolution.reason);
+  if (resolution.status === "unresolved")
+    throw fail(UNRESOLVED[resolution.reason]);
   if (refused(resolution.node.ref))
     throw fail("synthetic observation-only ref");
   return resolution.node;

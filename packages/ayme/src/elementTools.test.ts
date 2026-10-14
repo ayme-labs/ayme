@@ -112,7 +112,7 @@ describe("Structural Ref interactions", () => {
 
     const page = usePage();
     await expect(clickRef(ref("e999"))).rejects.toThrow(
-      'Cannot click ref "e999": unknown-ref.'
+      'Cannot click ref "e999": no snapshot issued it; take a snapshot for current refs.'
     );
     expect(page.ariaSnapshot).not.toHaveBeenCalled();
     expect(page.click).not.toHaveBeenCalled();
@@ -132,7 +132,7 @@ describe("Structural Ref interactions", () => {
 
     const page = usePage();
     await expect(clickRef(ref("e2"))).rejects.toThrow(
-      'Cannot click ref "e2": removed.'
+      'Cannot click ref "e2": it is no longer on the page; take a snapshot for current refs.'
     );
     await expect(clickRef(ref("e2"))).rejects.toBeInstanceOf(
       RefResolutionError
@@ -166,7 +166,7 @@ describe("Structural Ref interactions", () => {
 
     const page = usePage();
     await expect(clickRef(ref("e2"))).rejects.toThrow(
-      'Cannot click ref "e2": ambiguous.'
+      'Cannot click ref "e2": it cannot be matched unambiguously to the current page; take a snapshot for current refs.'
     );
     expect(page.ariaSnapshot).not.toHaveBeenCalled();
     expect(page.click).not.toHaveBeenCalled();
@@ -178,7 +178,7 @@ describe("Structural Ref interactions", () => {
 
     const page = usePage();
     await expect(clickRef(ref("e2"))).rejects.toThrow(
-      'Cannot click ref "e2": no-element.'
+      'Cannot click ref "e2": it has no element on the page now; take a snapshot for current refs.'
     );
     expect(page.ariaSnapshot).not.toHaveBeenCalled();
     expect(page.click).not.toHaveBeenCalled();
