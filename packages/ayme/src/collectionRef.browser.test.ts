@@ -233,7 +233,7 @@ describe("collection instances targeted by ref", () => {
       await expect(
         archiveTool.execute({ ref, args: {} }, runContext())
       ).rejects.toThrow(
-        `Cannot call ItemsPage.items.archive on ref "${ref}": `
+        `Cannot call ItemsPage.items.archive on ref "${ref}": it is no longer on the page; take a snapshot for current refs.`
       );
 
       expect(archiveFns[0]).not.toHaveBeenCalled();

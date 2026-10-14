@@ -53,12 +53,17 @@ describe("resolveRef", () => {
     );
   });
 
-  it("names why a ref did not resolve", async () => {
+  it.each([
+    ["unknown-ref", "no snapshot issued it"],
+    ["removed", "it is no longer on the page"],
+    ["ambiguous", "it cannot be matched unambiguously to the current page"],
+    ["no-element", "it has no element on the page now"],
+  ])("says what %s means and what to do next", async (reason, why) => {
     resolvePageStateRefs.mockResolvedValueOnce([
-      { status: "unresolved", requestedRef: "e2", reason: "removed" },
+      { status: "unresolved", requestedRef: "e2", reason },
     ]);
     await expect(resolve("e2")).rejects.toThrow(
-      'Cannot click ref "e2": removed.'
+      `Cannot click ref "e2": ${why}; take a snapshot for current refs.`
     );
   });
 
@@ -75,7 +80,7 @@ describe("resolveRef", () => {
       { status: "unresolved", requestedRef: "s_1", reason: "removed" },
     ]);
     await expect(resolve("s_1", "allow")).rejects.toThrow(
-      'Cannot click ref "s_1": removed.'
+      'Cannot click ref "s_1": it is no longer on the page; take a snapshot for current refs.'
     );
   });
 });
