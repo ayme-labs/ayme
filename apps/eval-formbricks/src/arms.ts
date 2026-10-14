@@ -67,6 +67,8 @@ export type Arm = {
   id: ArmId;
   /** The one prompt line that differs between arms; it may say where the browser is. */
   interfaceLine: (start: Mission["start"]) => string;
+  /** The interface's skill, which the setup turn names and loads; none for an arm without one. */
+  skill?: string;
   /** Built-in Claude Code tools the agent keeps. Read-only file tools; the arm's interface does the rest. */
   tools: string[];
   /** Permission rules letting the agent call the arm's interface without a prompt. */
@@ -140,6 +142,7 @@ function aymeArm(
     id,
     interfaceLine: () =>
       goalLoop ? `${interfaceLine} ${goalFirstSentence}` : interfaceLine,
+    skill: aymeSkillName,
     // The skill is loaded through the Skill tool, in the setup turn.
     tools: [...baseTools, "Skill"],
     allowedTools: [`mcp__${aymeServerName}`, `Skill(${aymeSkillName})`],
@@ -189,6 +192,7 @@ export const arms: Record<ArmId, Arm> = {
     id: "playwright-cli",
     interfaceLine: (start) =>
       `Use the \`playwright-cli\` command for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}; start from \`playwright-cli snapshot\`.`,
+    skill: "playwright-cli",
     // The skill is loaded through the Skill tool, in the setup turn; Bash is only the CLI.
     tools: [...baseTools, "Bash", "Skill"],
     allowedTools: ["Bash(playwright-cli:*)", "Skill(playwright-cli)"],

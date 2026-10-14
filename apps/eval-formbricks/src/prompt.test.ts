@@ -259,28 +259,38 @@ describe("the interface lines", () => {
 });
 
 describe("the setup message", () => {
-  it("names no app, no task and no arm, and keeps the agent off the page", () => {
-    for (const word of [
-      "Formbricks",
-      "survey",
-      "ayme",
-      "playwright",
-      "goal",
-      "localhost",
-      "sign",
-    ])
-      expect(setupPrompt.toLowerCase()).not.toContain(word.toLowerCase());
-    expect(setupPrompt).toContain("Don't read files and don't use the browser");
-    expect(setupPrompt).toContain(
-      "If a skill for your browser interface is in your skill list, load it."
+  it("names no app and no task, and keeps the agent off the page", () => {
+    for (const arm of Object.values(arms)) {
+      const prompt = setupPrompt(arm);
+      for (const word of ["Formbricks", "survey", "goal", "localhost", "sign"])
+        expect(prompt.toLowerCase()).not.toContain(word.toLowerCase());
+      expect(prompt).toContain("Don't read files and don't use the browser");
+    }
+  });
+
+  it("names the arm's skill and loads it now", () => {
+    expect(setupPrompt(arms["ayme-goal-loop-off"])).toContain(
+      "Load the `ayme` skill now with the Skill tool."
     );
-    expect(setupPrompt).toContain("Otherwise don't look for one.");
+    expect(setupPrompt(arms["ayme-no-page-objects-goal-loop-on"])).toContain(
+      "Load the `ayme` skill now with the Skill tool."
+    );
+    expect(setupPrompt(arms["playwright-cli"])).toContain(
+      "Load the `playwright-cli` skill now with the Skill tool."
+    );
+  });
+
+  it("tells an arm without a skill not to look for one", () => {
+    const prompt = setupPrompt(arms["playwright-mcp"]);
+    expect(prompt).toContain("Don't look for a skill.");
+    expect(prompt.toLowerCase()).not.toContain("playwright");
   });
 
   it("is not part of the task prompt", () => {
-    expect(
-      createPrompt(mission, arms["playwright-mcp"], baseUrl)
-    ).not.toContain(setupPrompt.trim());
+    for (const arm of Object.values(arms))
+      expect(createPrompt(mission, arm, baseUrl)).not.toContain(
+        setupPrompt(arm).trim()
+      );
   });
 });
 
