@@ -41,7 +41,7 @@ export const callTool: ServerToolFactory = ({ connection, saveImage }) => {
           wasOffered(name)
             ? goneToolResult(name)
             : errorResult(
-                `No connected page or App Process offers a tool "${name}". Call ayme_list_tools for the current tools.`
+                `No connected page or App Process offers a tool "${name}".`
               ),
         saveImage
       );

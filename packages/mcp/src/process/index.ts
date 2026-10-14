@@ -77,7 +77,7 @@ export function startAgentConnection(
     if (servers.length > 1 && !warnedSeveral) {
       warnedSeveral = true;
       console.warn(
-        `[ayme] Found ${servers.length} Ayme MCP servers on ports ${portList(servers)}. Pass \`link\` from the agent's \`ayme_connect\`, or \`port\`, to pick one.`
+        `[ayme] Found ${servers.length} Ayme MCP servers on ports ${portList(servers)}; this process pairs with none of them.`
       );
     }
     later(scan);
@@ -107,7 +107,7 @@ export function startAgentConnection(
         if (!ended()) return;
         if (linked)
           return console.warn(
-            `[ayme] The Ayme MCP server at ${linked.address} does not know this connect link. Ask the agent for a new one with ayme_connect.`
+            `[ayme] The Ayme MCP server at ${linked.address} does not know this connect link.`
           );
         known = undefined;
         void scan();

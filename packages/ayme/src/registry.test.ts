@@ -352,7 +352,7 @@ describe("live Page Object registry", () => {
       expect.objectContaining({
         name: "RuntimeStateError",
         message:
-          'Cannot register the Page Object "Dialog": a different class with that name is already registered. Rename one of them so their tools do not share names.',
+          'Cannot register the Page Object "Dialog": a different class with that name is already registered.',
       })
     );
     expect(
@@ -410,7 +410,7 @@ describe("live Page Object registry", () => {
       expect.objectContaining({
         name: "RuntimeStateError",
         message:
-          'Cannot register the Page Object "UsersPage": it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts. Rename one of them: Ayme tells the classes of Page Objects apart by name.',
+          'Cannot register the Page Object "UsersPage": it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts. Ayme tells the classes of Page Objects apart by name.',
       })
     );
     expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
@@ -444,7 +444,7 @@ describe("live Page Object registry", () => {
     });
 
     expect(() => registry.createPageRegistration(Row)).toThrow(
-      'Cannot register the Page Object "Row": it reaches two different classes named "Row". Rename one of them: Ayme tells the classes of Page Objects apart by name.'
+      'Cannot register the Page Object "Row": it reaches two different classes named "Row". Ayme tells the classes of Page Objects apart by name.'
     );
     expect(registry.listRegisteredPoms()).toEqual([]);
   });
@@ -546,7 +546,7 @@ describe("live Page Object registry", () => {
     });
     registry.createPageRegistration(FirstDialog);
     expect(() => registry.createPageRegistration(SecondDialog)).toThrow(
-      'Cannot register the Page Object "Dialog": a different class with that name is already registered, declared in src/a/Dialog.ts and src/b/Dialog.ts. Rename one of them so their tools do not share names.'
+      'Cannot register the Page Object "Dialog": a different class with that name is already registered, declared in src/a/Dialog.ts and src/b/Dialog.ts.'
     );
   });
 

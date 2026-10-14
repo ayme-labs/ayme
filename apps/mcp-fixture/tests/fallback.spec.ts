@@ -74,10 +74,7 @@ test("ayme_call returns the result a direct call returns", async ({
   }
 });
 
-test("ayme_call with an unknown tool names it and points to ayme_list_tools", async ({
-  agent,
-  connect,
-}) => {
+test("ayme_call with an unknown tool names it", async ({ agent, connect }) => {
   await connect();
 
   const { text, isError } = await agent.call("ayme_call", {
@@ -85,8 +82,9 @@ test("ayme_call with an unknown tool names it and points to ayme_list_tools", as
   });
 
   expect(isError).toBe(true);
-  expect(text).toContain("no_such_tool");
-  expect(text).toContain("ayme_list_tools");
+  expect(text).toContain(
+    'No connected page or App Process offers a tool "no_such_tool".'
+  );
 });
 
 test("ayme_call without a tool name says it needs one", async ({
@@ -101,7 +99,7 @@ test("ayme_call without a tool name says it needs one", async ({
   expect(text).toContain('ayme_call needs "tool"');
 });
 
-test("with no page connected, page tools and fallback tools say to call ayme_connect", async ({
+test("with no page connected, page tools and fallback tools say no page is connected", async ({
   agent,
 }) => {
   for (const [name, input] of [
@@ -111,11 +109,11 @@ test("with no page connected, page tools and fallback tools say to call ayme_con
   ] as const) {
     const { text, isError } = await agent.call(name, input);
     expect(isError, name).toBe(true);
-    expect(text, name).toContain("ayme_connect");
+    expect(text, name).toContain("No page is connected.");
   }
 });
 
-test("a page tool the agent listed before the page left says to call ayme_connect", async ({
+test("a page tool the agent listed before the page left says no page is connected", async ({
   agent,
   connect,
   page,
@@ -128,6 +126,6 @@ test("a page tool the agent listed before the page left says to call ayme_connec
 
   const { text, isError } = await agent.call("snapshot");
   expect(isError).toBe(true);
-  expect(text).toContain("ayme_connect");
+  expect(text).toContain("No page is connected.");
   expect(text).not.toContain("Unknown tool");
 });

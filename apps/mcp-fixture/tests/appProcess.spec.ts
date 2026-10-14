@@ -127,7 +127,7 @@ test("of two App Processes that offer one tool name, the agent gets the first on
   await expect
     .poll(() => second.output(), { timeout: 15_000 })
     .toContain(
-      `[ayme] ${TOOL} is hidden: another App Process offers a tool with the same name. Rename one.`
+      `[ayme] ${TOOL} is hidden: another App Process offers a tool with the same name.`
     );
   const { text, note } = await agent.call(TOOL);
   expect(valueIn(text)).toBe("server");

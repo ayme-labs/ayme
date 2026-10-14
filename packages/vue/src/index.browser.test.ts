@@ -328,8 +328,12 @@ it("C3: rejects child page and ignore options and nested providers", () => {
   apps.push(app);
   app.mount(document.createElement("div"));
   expect(errors.map(String)).toEqual([
-    expect.stringContaining("Configure Ayme's options on the ancestor"),
-    expect.stringContaining("Configure Ayme's options on the ancestor"),
+    expect.stringContaining(
+      "received options beneath an existing AymeProvider"
+    ),
+    expect.stringContaining(
+      "received options beneath an existing AymeProvider"
+    ),
     expect.stringContaining("cannot be nested"),
   ]);
 });
@@ -381,7 +385,7 @@ it("C4: rejects changing a mounted provider's options", async () => {
   await nextTick();
   expect(errors.map(String)).toEqual([
     expect.stringContaining(
-      "The provider options must stay fixed while mounted"
+      "The provider options changed while the provider was mounted"
     ),
   ]);
 });

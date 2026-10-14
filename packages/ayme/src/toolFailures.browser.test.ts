@@ -99,7 +99,7 @@ describe("tool failures an agent gets, in Chromium", () => {
     document.querySelector("#save")!.remove();
 
     expect(await agentCall("click", { target: ref }).catch(errorText)).toBe(
-      `RefResolutionError: Cannot click ref "${ref}": it is no longer on the page; take a snapshot for current refs.`
+      `RefResolutionError: Cannot click ref "${ref}": it is no longer on the page.`
     );
   });
 

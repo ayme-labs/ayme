@@ -58,14 +58,12 @@ export function screenshotRequest(
   now: Date
 ): ScreenshotRequest {
   if (input.fullPage === true && input.target !== undefined)
-    throw new ToolInputError(
-      "fullPage cannot be used with a target: capture the full page or one element."
-    );
+    throw new ToolInputError("fullPage cannot be used with a target.");
   const named =
     input.filename === undefined ? undefined : checkedFilename(input.filename);
   if (input.type !== undefined && named !== undefined && named !== input.type)
     throw new ToolInputError(
-      `The filename "${input.filename}" is a ${named} name, but the type is ${input.type}. Give them the same format, or leave one out.`
+      `The filename "${input.filename}" is a ${named} name, but the type is ${input.type}.`
     );
   const type = input.type ?? named ?? "png";
   return {

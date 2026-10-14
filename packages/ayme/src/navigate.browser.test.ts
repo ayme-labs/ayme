@@ -14,7 +14,7 @@ const NO_CONTENT = new URL("/__no-content", location.href).href;
 
 /** The error for a URL that is not on the test page's origin. */
 const otherOrigin = (url: string) =>
-  `ToolInputError: Cannot navigate to "${url}": it is not on the page's own origin, ${location.origin}. Leaving the origin would lose the connection to this page; navigate to a path or a URL on ${location.origin} instead.`;
+  `ToolInputError: Cannot navigate to "${url}": it is not on the page's own origin, ${location.origin}. Leaving the origin would lose the connection to this page.`;
 
 /** The error for a URL whose protocol the tool does not open. */
 const unsupportedProtocol = (url: string, protocol: string) =>

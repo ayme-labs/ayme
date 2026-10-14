@@ -42,7 +42,7 @@ function ownRuntime(options: UseAymeOptions | undefined): UseAymeResult {
   } catch (error) {
     if (error instanceof RuntimeStateError && error.code === "active-owner")
       throw new RuntimeStateError(
-        "useAyme(options) already has an active owner. Call it once, in the root +layout.svelte or App.svelte.",
+        "useAyme(options) already has an active owner.",
         { cause: error }
       );
     throw error;
@@ -71,7 +71,7 @@ export function useAyme(options?: UseAymeOptions): UseAymeResult {
   const inherited = getContext<UseAymeResult | undefined>(runtimeKey);
   if (inherited && options !== undefined)
     throw new Error(
-      "Configure Ayme on the ancestor useAyme(options) owner, not beneath it."
+      "useAyme(options) received options beneath an existing useAyme(options) owner."
     );
   if (inherited) return inherited;
   const owned = ownRuntime(options);
@@ -91,7 +91,7 @@ export function usePageObject<T extends object>(
   const runtime = getContext<UseAymeResult | undefined>(runtimeKey);
   if (!runtime)
     throw new Error(
-      "usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte."
+      "usePageObject requires useAyme() in an ancestor component."
     );
   const { ayme } = runtime;
   onDestroy(() => ayme.pom.unregister(model));
@@ -110,9 +110,7 @@ let instances = 0;
 export function peek(read: () => unknown, name: string, id?: string): void {
   const runtime = getContext<UseAymeResult | undefined>(runtimeKey);
   if (!runtime)
-    throw new Error(
-      "peek requires useAyme() in an ancestor component, such as the root +layout.svelte."
-    );
+    throw new Error("peek requires useAyme() in an ancestor component.");
   const { ayme } = runtime;
   onMount(() => ayme.peek(read, name, id ?? `svelte-${(instances += 1)}`));
 }

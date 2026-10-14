@@ -195,7 +195,7 @@ it.each([
   // custom-esbuild's string form passes the builder's options.
   [
     { browser: "src/main.ts", tsConfig: "tsconfig.app.json" },
-    "has no option(s): browser, tsConfig. Reference it in angular.json as",
+    "has no option(s): browser, tsConfig. Referenced in angular.json as a plain string",
   ],
   [{ tsconfigPath: 1 }, "tsconfigPath must be a string"],
 ])("rejects the options %j", (options, message) => {

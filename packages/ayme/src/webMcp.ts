@@ -11,7 +11,7 @@ export async function loadWebMcpPublication(): Promise<
     return await import("@ayme-dev/webmcp");
   } catch (error) {
     throw new Error(
-      `The webMCP option could not load @ayme-dev/webmcp. Install it beside @ayme-dev/ayme, or turn the option off. Cause: ${error instanceof Error ? error.message : String(error)}`,
+      `The webMCP option could not load @ayme-dev/webmcp. Cause: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error }
     );
   }

@@ -184,7 +184,7 @@ function acceptPage(
       ) {
         ws.close(
           DISCONNECTED_CLOSE_CODE,
-          "This Ayme MCP server works with another tab; open its connect link to move it here."
+          "This Ayme MCP server works with another tab."
         );
         return {};
       }

@@ -123,7 +123,7 @@ describe("the Ayme page state helper in Chromium", () => {
         .catch((error) => error);
       expect(fillError).toBeInstanceOf(RefResolutionError);
       expect(fillError.message).toBe(
-        `Cannot fill ref "${nameRef}": it is no longer on the page; take a snapshot for current refs.`
+        `Cannot fill ref "${nameRef}": it is no longer on the page.`
       );
     } finally {
       runtime.dispose();

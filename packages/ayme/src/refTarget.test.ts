@@ -22,7 +22,7 @@ describe("resolveRef", () => {
     "refuses %j, which is not a Structural Ref",
     async (requested) => {
       await expect(resolve(requested)).rejects.toThrow(
-        `Cannot click ref "${requested}": not a Structural Ref. Pass a ref from snapshot, such as e5.`
+        `Cannot click ref "${requested}": not a Structural Ref.`
       );
     }
   );
@@ -31,7 +31,7 @@ describe("resolveRef", () => {
     "names the ref %j writes another way",
     async (requested) => {
       await expect(resolve(requested)).rejects.toThrow(
-        `Cannot click ref "${requested}": not a Structural Ref. Pass the Structural Ref alone: e2.`
+        `Cannot click ref "${requested}": not a Structural Ref. It writes the Structural Ref e2 another way.`
       );
     }
   );
@@ -58,12 +58,12 @@ describe("resolveRef", () => {
     ["removed", "it is no longer on the page"],
     ["ambiguous", "it cannot be matched unambiguously to the current page"],
     ["no-element", "it has no element on the page now"],
-  ])("says what %s means and what to do next", async (reason, why) => {
+  ])("says what %s means", async (reason, why) => {
     resolvePageStateRefs.mockResolvedValueOnce([
       { status: "unresolved", requestedRef: "e2", reason },
     ]);
     await expect(resolve("e2")).rejects.toThrow(
-      `Cannot click ref "e2": ${why}; take a snapshot for current refs.`
+      `Cannot click ref "e2": ${why}.`
     );
   });
 
@@ -80,7 +80,7 @@ describe("resolveRef", () => {
       { status: "unresolved", requestedRef: "s_1", reason: "removed" },
     ]);
     await expect(resolve("s_1", "allow")).rejects.toThrow(
-      'Cannot click ref "s_1": it is no longer on the page; take a snapshot for current refs.'
+      'Cannot click ref "s_1": it is no longer on the page.'
     );
   });
 });
