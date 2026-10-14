@@ -522,7 +522,7 @@ it("shares one instance between registrations and withdraws it with the last", (
   expect(listRegisteredPoms()).toHaveLength(1);
 });
 
-it("logs a same-named class instead of throwing, at start and at registration", () => {
+it("logs a same-named class instead of throwing, at start and at registration, and registers it on a later call once the clash is gone", () => {
   const OtherModel = class Model {
     constructor(readonly page: AymePage) {}
   };
@@ -547,6 +547,12 @@ it("logs a same-named class instead of throwing, at start and at registration", 
   runtime.pom.register(OtherModel);
   expect(logged).toHaveBeenCalledWith(refusal);
   runtime.pom.unregister(Model);
+  runtime.pom.register(OtherModel);
+  expect(
+    listRegisteredPoms().map(({ instance }) => instance.constructor)
+  ).toEqual([OtherModel]);
+  runtime.pom.unregister(OtherModel);
+  expect(listRegisteredPoms()).toHaveLength(1);
   runtime.pom.unregister(OtherModel);
   expect(listRegisteredPoms()).toHaveLength(0);
   logged.mockRestore();

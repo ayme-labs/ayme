@@ -115,7 +115,8 @@ export type AymePom = {
    * listed while the session is started and the count is above zero. A
    * Page Object that reaches a different class with the same name as one
    * a registered Page Object reaches lists no tools, and the refusal is
-   * logged to the console instead of thrown.
+   * logged to the console instead of thrown. A later registration of it
+   * tries again.
    */
   register<T extends object>(model: PageObjectConstructor<T>): T;
   /** Removes one registration of `model`. */
@@ -703,7 +704,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       const instance = pom.get(model);
       if (onServer()) return instance;
       const registration = registrations.get(model) ?? { count: 0 };
-      if (owner && registration.count === 0)
+      // A refused registration is tried again, as its clash may be gone.
+      if (owner && !registration.active)
         registration.active = registerOrReport(model, instance);
       registration.count += 1;
       registrations.set(model, registration);
@@ -911,7 +913,7 @@ function startAgentConnectionUntil(
 // A clash between the app's own classes is reported in the console rather
 // than thrown, so it does not take down the component, or the session start,
 // that registered the Page Object. The refused Page Object stays counted but
-// lists no tools.
+// lists no tools until a later registration of it succeeds.
 function registerOrReport<T extends object>(
   model: PageObjectConstructor<T>,
   instance: T
