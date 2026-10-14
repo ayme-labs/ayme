@@ -137,12 +137,12 @@ The [SvelteKit example](https://github.com/ayme-labs/ayme/blob/main/apps/example
 
 ## Troubleshooting
 
-| Error                                                                                                   | Cause                                          |
-| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `useAyme(options) already has an active owner. Call it once, in the root +layout.svelte or App.svelte.` | A second owner, often in a route-group layout. |
-| `Configure Ayme on the ancestor useAyme(options) owner, not beneath it.`                                | `useAyme(options)` beneath an owner.           |
-| `usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte.`           | No owner above.                                |
-| `peek requires useAyme() in an ancestor component, such as the root +layout.svelte.`                    | No owner above.                                |
+| Error                                                                           | Cause                                          |
+| ------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `useAyme(options) already has an active owner.`                                 | A second owner, often in a route-group layout. |
+| `useAyme(options) received options beneath an existing useAyme(options) owner.` | `useAyme(options)` beneath an owner.           |
+| `usePageObject requires useAyme() in an ancestor component.`                    | No owner above.                                |
+| `peek requires useAyme() in an ancestor component.`                             | No owner above.                                |
 
 ## API
 

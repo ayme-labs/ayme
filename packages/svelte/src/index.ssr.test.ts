@@ -104,7 +104,7 @@ it("C9: lets the owner use a Page Object in its own component", () => {
 
 it("C7: requires an owner for a Page Object", () => {
   expect(() => PageObjectUser.render({ model: ServerModel }).html).toThrow(
-    "usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte."
+    "usePageObject requires useAyme() in an ancestor component."
   );
 });
 
@@ -125,6 +125,6 @@ it("C12: adds no Peek instance during server rendering", () => {
 
 it("requires an owner for a Peek", () => {
   expect(() => PeekUser.render({}).html).toThrow(
-    "peek requires useAyme() in an ancestor component, such as the root +layout.svelte."
+    "peek requires useAyme() in an ancestor component."
   );
 });

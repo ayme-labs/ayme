@@ -177,11 +177,11 @@ it("C3: rejects options beneath an owner, naming the owner to configure", () => 
       childProps: { options: {} },
     })
   ).toThrow(
-    "Configure Ayme on the ancestor useAyme(options) owner, not beneath it."
+    "useAyme(options) received options beneath an existing useAyme(options) owner."
   );
 });
 
-it("C3: rejects a second owner while the first is active, naming where to call it", () => {
+it("C3: rejects a second owner while the first is active", () => {
   mount(Owner, { options: { pageFactory } });
   let error: unknown;
   try {
@@ -192,7 +192,7 @@ it("C3: rejects a second owner while the first is active, naming where to call i
   // Svelte's development build appends the component stack to the message.
   expect(error).toBeInstanceOf(RuntimeStateError);
   expect((error as Error).message).toMatch(
-    /^useAyme\(options\) already has an active owner\. Call it once, in the root \+layout\.svelte or App\.svelte\./
+    /^useAyme\(options\) already has an active owner\./
   );
   expect((error as Error).cause).toEqual(
     new RuntimeStateError("The Ayme runtime already has an active owner.", {
@@ -322,7 +322,7 @@ it("C6: lets the owner use a Page Object in its own component", async () => {
 
 it("C7: requires an owner for a Page Object", () => {
   expect(() => mount(PageObjectUser, { model: Model })).toThrow(
-    "usePageObject requires useAyme() in an ancestor component, such as the root +layout.svelte."
+    "usePageObject requires useAyme() in an ancestor component."
   );
 });
 
@@ -449,7 +449,7 @@ describe("peek", () => {
 
   it("requires an owner", () => {
     expect(() => mount(PeekUser, {})).toThrow(
-      "peek requires useAyme() in an ancestor component, such as the root +layout.svelte."
+      "peek requires useAyme() in an ancestor component."
     );
   });
 });

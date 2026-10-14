@@ -66,7 +66,7 @@ export function callerOf(options: ToolRunOptions | undefined): Caller {
   const by = options?.by ?? callers.app;
   if (typeof by !== "string" || by === "")
     throw new RuntimeStateError(
-      "A Run needs a Caller: pass a non-empty name as `by`, or leave it out to run as the app."
+      "A Run needs a Caller: `by` is empty or not a string."
     );
   return by;
 }

@@ -137,7 +137,7 @@ export function resolveTools({
       else if (!warnedClashes.has(tool)) {
         warnedClashes.add(tool);
         console.warn(
-          `[ayme] ${tool.name} is hidden: another tool uses that name. Rename the Peek.`
+          `[ayme] ${tool.name} is hidden: another tool uses that name.`
         );
       }
   return tools;

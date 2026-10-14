@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 
-import { SERVER_HOST, SERVER_PORTS } from "../domain/pairing";
+import { SERVER_HOST } from "../domain/pairing";
 
 /**
  * Starts `server` on the first port of `ports` that is free on the loopback
@@ -37,10 +37,7 @@ export async function listenOnPort(
     return port;
   } catch (error) {
     if (!inUse(error)) throw error;
-    throw new Error(
-      `Port ${port} is in use. Start the Ayme MCP server with another --port, or without --port to take a free one from ${SERVER_PORTS.first} to ${SERVER_PORTS.last}.`,
-      { cause: error }
-    );
+    throw new Error(`Port ${port} is in use.`, { cause: error });
   }
 }
 

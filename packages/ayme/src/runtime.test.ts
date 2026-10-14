@@ -737,7 +737,7 @@ it("shares the retries made while the package loads, resolving once the publicat
 it("shows a load failure as failed publication, and loads again on a retry", async () => {
   vi.mocked(loadWebMcpPublication).mockRejectedValueOnce(
     new Error(
-      "The webMCP option could not load @ayme-dev/webmcp. Install it beside @ayme-dev/ayme, or turn the option off. Cause: Cannot find package."
+      "The webMCP option could not load @ayme-dev/webmcp. Cause: Cannot find package."
     )
   );
   const runtime = session();
@@ -746,7 +746,7 @@ it("shows a load failure as failed publication, and loads again on a retry", asy
   expect(runtime.webMCP.publicationStatus).toEqual({
     state: "failed",
     message:
-      "WebMCP publication failed: The webMCP option could not load @ayme-dev/webmcp. Install it beside @ayme-dev/ayme, or turn the option off. Cause: Cannot find package.",
+      "WebMCP publication failed: The webMCP option could not load @ayme-dev/webmcp. Cause: Cannot find package.",
   });
   expect(startWebMcpPublication).not.toHaveBeenCalled();
 

@@ -187,7 +187,7 @@ describe("Custom Tools in Chromium", () => {
     expect(
       await call("highlight_element", { ref: "e999" }).catch(errorText)
     ).toBe(
-      'RefResolutionError: Cannot run "highlight_element" on ref "e999": no snapshot issued it; take a snapshot for current refs.'
+      'RefResolutionError: Cannot run "highlight_element" on ref "e999": no snapshot issued it.'
     );
     expect(targets).toHaveLength(0);
   });
@@ -201,7 +201,7 @@ describe("Custom Tools in Chromium", () => {
     expect(
       await call("highlight_element", { ref: "#save" }).catch(errorText)
     ).toBe(
-      'ToolInputError: Cannot run "highlight_element" on ref "#save": not a Structural Ref. Pass a ref from snapshot, such as e5.'
+      'ToolInputError: Cannot run "highlight_element" on ref "#save": not a Structural Ref.'
     );
     expect(targets).toHaveLength(0);
   });
@@ -217,7 +217,7 @@ describe("Custom Tools in Chromium", () => {
     expect(
       await call("highlight_element", { ref: saveRef }).catch(errorText)
     ).toBe(
-      `RefResolutionError: Cannot run "highlight_element" on ref "${saveRef}": it is no longer on the page; take a snapshot for current refs.`
+      `RefResolutionError: Cannot run "highlight_element" on ref "${saveRef}": it is no longer on the page.`
     );
     expect(targets).toHaveLength(0);
   });

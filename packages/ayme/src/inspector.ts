@@ -11,7 +11,7 @@ export async function loadInspector(): Promise<
     return await import("@ayme-dev/inspector");
   } catch (error) {
     throw new Error(
-      `The inspector option could not load @ayme-dev/inspector. Install it beside @ayme-dev/ayme, or turn the option off. Cause: ${error instanceof Error ? error.message : String(error)}`,
+      `The inspector option could not load @ayme-dev/inspector. Cause: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error }
     );
   }

@@ -379,7 +379,7 @@ describe("derivePomManifests", () => {
     const clash = (page: string, first: string, second: string) =>
       `Page Object "${page}" reaches two different classes named "Row", declared in ${fixture(
         first
-      )} and ${fixture(second)}. Rename one of them`;
+      )} and ${fixture(second)}. Ayme tells the classes of a Page Object apart by name.`;
 
     it("rejects them as Children of one Page Object", () => {
       expect(() => derivePomManifests(fixture("page"))).toThrow(

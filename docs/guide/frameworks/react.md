@@ -167,12 +167,12 @@ The build needs the Turbopack loader from the [build plugin reference](../refere
 
 ## Troubleshooting
 
-| Error                                                                                                     | Cause                                                                                  |
-| --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `AymeProvider cannot be nested beneath another Ayme runtime owner.`                                       | A second provider beneath the first. Start Ayme once, at the root.                     |
-| `The provider options must stay fixed while mounted. Remount the provider to change them.`                | A provider prop changed while mounted.                                                 |
-| `Ayme hooks require an ancestor AymeProvider.`                                                            | A hook without a provider above, including in the component that renders the provider. |
-| `The Page Object model and provider must stay fixed while mounted. Remount the component to change them.` | `usePageObject` got a different model.                                                 |
+| Error                                                                        | Cause                                                                                  |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `AymeProvider cannot be nested beneath another Ayme runtime owner.`          | A second provider beneath the first. Start Ayme once, at the root.                     |
+| `The provider options changed while the provider was mounted.`               | A provider prop changed while mounted.                                                 |
+| `Ayme hooks require an ancestor AymeProvider.`                               | A hook without a provider above, including in the component that renders the provider. |
+| `The Page Object model or provider changed while the component was mounted.` | `usePageObject` got a different model.                                                 |
 
 ## API
 

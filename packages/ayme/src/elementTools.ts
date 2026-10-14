@@ -239,11 +239,11 @@ export async function resolveElementTarget(
     new RefResolutionError(
       `Cannot ${definition.label} "${requested}": ${reason}.${hint ? ` ${hint}` : ""}`
     );
-  // An agent that passes a locator expression back as a target needs to
-  // hear what to pass instead.
+  // A locator expression is neither a Structural Ref nor a selector, so it
+  // fails as what it is.
   if (LOCATOR_EXPRESSION.test(requested))
     throw new ToolInputError(
-      `The target "${requested}" is a Playwright locator expression, which tools do not take. Pass a Structural Ref from snapshot, or a selector such as role=button[name="Save"] or text=Save.`
+      `The target "${requested}" is a Playwright locator expression, which tools do not take.`
     );
   const page = requireAymeRuntimePage();
   let elements: Element[];

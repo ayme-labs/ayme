@@ -32,7 +32,7 @@ import {
   type PomInstanceObservation,
   type ToolAvailability,
 } from "./pomInstance";
-import { resolveRef } from "./refTarget";
+import { refFailure, resolveRef } from "./refTarget";
 import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
 import { runAction, type ActionResult } from "./actionSequence";
@@ -150,9 +150,7 @@ export function configureAymeRuntime(page: Page) {
 
 export function requireAymeRuntimePage(): Page {
   if (!browserPage)
-    throw new RuntimeStateError(
-      "Configure the Ayme browser runtime before interacting."
-    );
+    throw new RuntimeStateError("The Ayme browser runtime is not configured.");
   return browserPage;
 }
 
@@ -198,7 +196,7 @@ export function createPageRegistration<T extends object>(
   const page = browserPage;
   if (!page)
     throw new RuntimeStateError(
-      "Configure the Ayme browser runtime before registering a page object."
+      "Cannot register a page object: the Ayme browser runtime is not configured."
     );
 
   const compiledPom = compiledPoms.get(PomClass);
@@ -278,7 +276,7 @@ function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
       registered.pomClass !== PomClass
     )
       throw new RuntimeStateError(
-        `Cannot register the Page Object "${manifest.className}": a different class with that name is already registered${declaredIn(registered.manifest, manifest)}. Rename one of them so their tools do not share names.`
+        `Cannot register the Page Object "${manifest.className}": a different class with that name is already registered${declaredIn(registered.manifest, manifest)}.`
       );
 
   type Reached = { pageObject: string; node: PomComponentManifest };
@@ -295,7 +293,7 @@ function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
             other.pageObject === manifest.className
               ? `it reaches two different classes named "${node.className}"`
               : `it reaches a class named "${node.className}" that differs from the one the Page Object "${other.pageObject}" reaches`
-          }${declaredIn(other.node, node)}. Rename one of them: Ayme tells the classes of Page Objects apart by name.`
+          }${declaredIn(other.node, node)}. Ayme tells the classes of Page Objects apart by name.`
         );
       if (!others.some((other) => other.node.file === node.file))
         reached.set(node.className, [...others, { pageObject, node }]);
@@ -753,11 +751,12 @@ function createComponentTool(
     const ref = values[0] as string;
     const args = values[1] ?? {};
     const toolPath = `${pomId}.${publicComponentPath(path)}`;
+    const label = `call ${wrapper.toolName} on`;
     // A Page Object Root without a role of its own gets a synthetic ref.
     const { element } = await resolveRef(
       ref,
       { synthetic: "allow" },
-      `call ${wrapper.toolName} on`,
+      label,
       document
     );
     const componentInstance = await resolveComponentByElementStep(
@@ -768,7 +767,11 @@ function createComponentTool(
     );
     if (!componentInstance || !isRecord(componentInstance)) {
       throw new RefResolutionError(
-        `Ref "${ref}" does not match a present ${component.className} instance at ${toolPath} (tool ${wrapper.toolName}).`
+        refFailure(
+          label,
+          ref,
+          `it is not an instance of ${component.className} at ${toolPath}`
+        )
       );
     }
     // An item the last observation did not find is not on the page yet.

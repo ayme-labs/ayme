@@ -77,7 +77,7 @@ export const navigateTool: PublishedElementTool = {
     const { origin } = currentDocument.location;
     if (destination && destination.origin !== origin)
       throw new ToolInputError(
-        `Cannot navigate to "${url}": it is not on the page's own origin, ${origin}. Leaving the origin would lose the connection to this page; navigate to a path or a URL on ${origin} instead.`
+        `Cannot navigate to "${url}": it is not on the page's own origin, ${origin}. Leaving the origin would lose the connection to this page.`
       );
     const { navigate } = routerStore;
     return runAction(

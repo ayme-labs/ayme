@@ -290,7 +290,7 @@ describe("Browser Tools in Chromium", () => {
         target: "getByRole('button', { name: 'Save' })",
       }).catch(errorText)
     ).toBe(
-      `ToolInputError: The target "getByRole('button', { name: 'Save' })" is a Playwright locator expression, which tools do not take. Pass a Structural Ref from snapshot, or a selector such as role=button[name="Save"] or text=Save.`
+      `ToolInputError: The target "getByRole('button', { name: 'Save' })" is a Playwright locator expression, which tools do not take.`
     );
     expect(log).not.toContain("click save");
   });
@@ -305,7 +305,7 @@ describe("Browser Tools in Chromium", () => {
     "rejects the chained locator expression %s the same way",
     async (target) => {
       expect(await call("click", { target }).catch(errorText)).toBe(
-        `ToolInputError: The target "${target}" is a Playwright locator expression, which tools do not take. Pass a Structural Ref from snapshot, or a selector such as role=button[name="Save"] or text=Save.`
+        `ToolInputError: The target "${target}" is a Playwright locator expression, which tools do not take.`
       );
       expect(log).not.toContain("click save");
     }
@@ -324,7 +324,7 @@ describe("Browser Tools in Chromium", () => {
     async (target, failure) => {
       const text = await call("click", { target }).catch(errorText);
       expect(text).toContain(failure);
-      expect(text).toMatch(/ Pass the Structural Ref alone: e1\.$/);
+      expect(text).toMatch(/ It writes the Structural Ref e1 another way\.$/);
     }
   );
 

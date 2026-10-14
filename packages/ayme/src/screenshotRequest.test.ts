@@ -44,7 +44,7 @@ describe("screenshotRequest", () => {
       screenshotRequest({ type: "png", filename: "shot.jpg" }, NOW)
     ).toThrow(
       new ToolInputError(
-        'The filename "shot.jpg" is a jpeg name, but the type is png. Give them the same format, or leave one out.'
+        'The filename "shot.jpg" is a jpeg name, but the type is png.'
       )
     );
   });
@@ -87,10 +87,6 @@ describe("screenshotRequest", () => {
   it("refuses fullPage together with a target", () => {
     expect(() =>
       screenshotRequest({ fullPage: true, target: "e12" }, NOW)
-    ).toThrow(
-      new ToolInputError(
-        "fullPage cannot be used with a target: capture the full page or one element."
-      )
-    );
+    ).toThrow(new ToolInputError("fullPage cannot be used with a target."));
   });
 });

@@ -11,7 +11,7 @@ export async function loadAgentConnection(): Promise<
     return await import("@ayme-dev/mcp/client");
   } catch (error) {
     throw new Error(
-      `The agentConnection option could not load @ayme-dev/mcp. Install it beside @ayme-dev/ayme, or turn the option off. Cause: ${error instanceof Error ? error.message : String(error)}`,
+      `The agentConnection option could not load @ayme-dev/mcp. Cause: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error }
     );
   }
@@ -30,7 +30,7 @@ export async function loadProcessConnection(): Promise<
     return await import("@ayme-dev/mcp/process");
   } catch (error) {
     throw new Error(
-      `The agentConnection option could not load @ayme-dev/mcp. Install it beside @ayme-dev/ayme, or turn the option off. Cause: ${error instanceof Error ? error.message : String(error)}`,
+      `The agentConnection option could not load @ayme-dev/mcp. Cause: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error }
     );
   }

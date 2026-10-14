@@ -737,7 +737,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       const toolName = peekToolName(name);
       if (registeredToolNames().has(toolName))
         throw new RuntimeStateError(
-          `Cannot add the Peek "${name}": another tool already uses the name ${toolName}. Rename the Peek.`
+          `Cannot add the Peek "${name}": another tool already uses the name ${toolName}.`
         );
       return addPeek(read, name, id);
     },
