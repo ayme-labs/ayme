@@ -107,6 +107,7 @@ describe("Run", () => {
 
     expect(onRun).toHaveBeenCalledExactlyOnceWith({});
     expect(await card.root.getAttribute("data-available")).toBe("true");
+    expect(await card.argumentsToggle.count()).toBe(0);
   });
 
   it("opens the typed form first when an argument is required", async () => {
