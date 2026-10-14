@@ -151,7 +151,9 @@ export async function readDecisionResponse(
         `No Decision Endpoint is mounted at ${url}: it answered 404${statusText ? ` ${statusText}` : ""}`,
         { code: "not-mounted", status }
       );
-    const detail = (error ?? text).trim() || statusText;
+    // A markup body, such as a proxy's error page, is no text to show.
+    const plain = text.trim().startsWith("<") ? "" : text;
+    const detail = (error ?? plain).trim() || statusText;
     throw new DecisionEndpointError(
       `The Decision Endpoint ${url} answered ${status}${detail ? ` ${detail}` : ""}`,
       { code: "rejected", status }

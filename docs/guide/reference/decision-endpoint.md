@@ -76,7 +76,7 @@ const decide = decisionEndpoint("/api/decisions", {
 | `rejected`    | Any other non-2xx: the handler, `authorize` or the provider refused the request, or the provider could not be reached. | `The Decision Endpoint <url> answered <status> <error text>` |
 | `malformed`   | A 2xx whose body is not a decision response.                                                                           | `The Decision Endpoint returned an invalid response.`        |
 
-`status` holds the HTTP status for `not-mounted` and `rejected`. The error text is the body's `error`, the raw body when it is not JSON, or the status text when the body is empty. A provider's own 404 reaches the browser with an `{ "error" }` body, so it is `rejected`, not `not-mounted`.
+`status` holds the HTTP status for `not-mounted` and `rejected`. The error text is the body's `error`, the raw body when it is not JSON, or the status text when the body is empty or is markup, such as a proxy's HTML error page. A provider's own 404 reaches the browser with an `{ "error" }` body, so it is `rejected`, not `not-mounted`.
 
 `retryable` says whether asking again can help. It is `true` only for a `rejected` call with a 5xx, 408 (timeout) or 429 (rate limit) status; a missing endpoint, any other refusal and a malformed answer come back the same.
 
