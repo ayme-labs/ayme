@@ -289,7 +289,7 @@ describe("createDecisionEndpoint", () => {
           message: "Cannot authenticate with the server.",
         },
       }),
-      error: "Cannot authenticate with the server.",
+      error: "The model provider said: Cannot authenticate with the server.",
     },
     {
       provider: "openrouter" as const,
@@ -298,7 +298,7 @@ describe("createDecisionEndpoint", () => {
         error: { message: "Rate limited.", code: 429 },
         user_id: "user_1",
       }),
-      error: "Rate limited.",
+      error: "The model provider said: Rate limited.",
     },
     {
       provider: "typesafe" as const,
@@ -335,6 +335,23 @@ describe("createDecisionEndpoint", () => {
       expect(await response.json()).toEqual({ error });
     }
   );
+
+  it("forwards the provider's Retry-After on its error response", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ error: { message: "Rate limited." } }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", "Retry-After": "20" },
+      })
+    );
+    const handler = createDecisionEndpoint({
+      provider: "openrouter",
+      apiKey: "secret",
+      authorize,
+    });
+    const response = await handler(jsonRequest(validBody));
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("20");
+  });
 
   it("removes compressed representation and hop-by-hop response headers", async () => {
     const decodedBody = JSON.stringify({

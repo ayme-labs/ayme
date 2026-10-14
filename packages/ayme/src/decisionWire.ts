@@ -45,13 +45,21 @@ export function isDecisionResponse(value: unknown): value is DecisionResponse {
   );
 }
 
-/** A failure answered as the handler answers one: `{ error }` as JSON. */
-export function decisionErrorResponse(status: number, error: string): Response {
+/**
+ * A failure answered as the handler answers one: `{ error }` as JSON, with
+ * the provider's `Retry-After` when it sent one.
+ */
+export function decisionErrorResponse(
+  status: number,
+  error: string,
+  retryAfter?: string | null
+): Response {
   const body: DecisionErrorBody = { error };
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (retryAfter) headers["Retry-After"] = retryAfter;
+  return new Response(JSON.stringify(body), { status, headers });
 }
 
 /**
@@ -80,10 +88,11 @@ export type DecisionFailure =
   | { kind: "unknown-choice" };
 
 /**
- * Whether asking again can help: the endpoint or its provider failed, timed
- * out or was rate limited (a `rejected` 5xx, 408 or 429), or the call failed
- * some other way. A missing endpoint, a refusal, a malformed answer or one the
- * caller cannot use comes back the same.
+ * Whether asking again right away can help: the endpoint or its provider
+ * failed or timed out (a `rejected` 5xx other than 501, or 408), or the call
+ * failed some other way. A rate limit (429), a method the endpoint does not
+ * implement (501), a missing endpoint, a refusal, a malformed answer or one
+ * the caller cannot use comes back the same.
  */
 export function isRetryableDecisionFailure(failure: DecisionFailure): boolean {
   switch (failure.kind) {
@@ -91,7 +100,7 @@ export function isRetryableDecisionFailure(failure: DecisionFailure): boolean {
       const status = failure.status ?? 0;
       return (
         failure.code === "rejected" &&
-        (status >= 500 || status === 408 || status === 429)
+        ((status >= 500 && status !== 501) || status === 408)
       );
     }
     case "thrown":
@@ -109,7 +118,7 @@ export class DecisionEndpointError extends AymeError {
   readonly code: DecisionEndpointErrorCode;
   /** The HTTP status, for `not-mounted` and `rejected`. */
   readonly status?: number;
-  /** Whether a retry can help: a `rejected` 5xx, 408 or 429. */
+  /** Whether asking again right away can help: a `rejected` 5xx other than 501, or 408. */
   readonly retryable: boolean;
 
   constructor(
@@ -137,6 +146,19 @@ function errorBodyMessage(text: string): string | undefined {
   return undefined;
 }
 
+/**
+ * A `Retry-After` value as whole seconds from now: delay-seconds as given, an
+ * HTTP date counted from now. Anything else is no wait.
+ */
+function retryAfterSeconds(value: string | null): number | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  const date = Date.parse(trimmed);
+  if (Number.isNaN(date)) return undefined;
+  return Math.max(0, Math.ceil((date - Date.now()) / 1000));
+}
+
 /** Read the endpoint's answer: the decision response, or the failure it is. */
 export async function readDecisionResponse(
   url: string,
@@ -153,7 +175,10 @@ export async function readDecisionResponse(
       );
     // A markup body, such as a proxy's error page, is no text to show.
     const plain = text.trim().startsWith("<") ? "" : text;
-    const detail = (error ?? plain).trim() || statusText;
+    let detail = (error ?? plain).trim() || statusText;
+    const wait = retryAfterSeconds(response.headers.get("Retry-After"));
+    if (wait !== undefined)
+      detail = `${detail.replace(/\.$/, "")} (Retry-After: ${wait} s)`.trim();
     throw new DecisionEndpointError(
       `The Decision Endpoint ${url} answered ${status}${detail ? ` ${detail}` : ""}`,
       { code: "rejected", status }

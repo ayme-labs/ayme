@@ -22,7 +22,7 @@ The handler checks a request in this order and answers the first failure with `{
 | `400`  | The body is not JSON, or `state` or `questions` is missing.      |
 | `502`  | The model provider cannot be reached.                            |
 
-On success it returns the provider's status and body unchanged. When the provider answers with an error, it keeps that status and returns `{ "error": "<message>" }` with the provider's message, the same shape as its own rejections.
+On success it returns the provider's status and body unchanged. When the provider answers with an error, it keeps that status and returns `{ "error": "The model provider said: <message>" }`, the same shape as its own rejections; the prefix tells a provider's refusal from `authorize`'s. It also passes on the provider's `Retry-After` header.
 
 ## What is forwarded
 
@@ -76,8 +76,8 @@ const decide = decisionEndpoint("/api/decisions", {
 | `rejected`    | Any other non-2xx: the handler, `authorize` or the provider refused the request, or the provider could not be reached. | `The Decision Endpoint <url> answered <status> <error text>` |
 | `malformed`   | A 2xx whose body is not a decision response.                                                                           | `The Decision Endpoint returned an invalid response.`        |
 
-`status` holds the HTTP status for `not-mounted` and `rejected`. The error text is the body's `error`, the raw body when it is not JSON, or the status text when the body is empty or is markup, such as a proxy's HTML error page. A provider's own 404 reaches the browser with an `{ "error" }` body, so it is `rejected`, not `not-mounted`.
+`status` holds the HTTP status for `not-mounted` and `rejected`. The error text is the body's `error`, the raw body when it is not JSON, or the status text when the body is empty or is markup, such as a proxy's HTML error page. A provider's own 404 reaches the browser with an `{ "error" }` body, so it is `rejected`, not `not-mounted`. When the response carries a `Retry-After` header, the message ends with the wait in seconds, such as `(Retry-After: 20 s)`; an HTTP date is counted from now.
 
-`retryable` says whether asking again can help. It is `true` only for a `rejected` call with a 5xx, 408 (timeout) or 429 (rate limit) status; a missing endpoint, any other refusal and a malformed answer come back the same.
+`retryable` says whether asking again right away can help. It is `true` only for a `rejected` call with a 5xx status other than 501, or 408 (timeout). A 429 (rate limit), a 501, a missing endpoint, any other refusal and a malformed answer are not.
 
 In the Goal Loop, any of them ends the run with the Handover reason `decide_failed`. Its `next` advises a retry only when the error is `retryable`, and for errors other than `DecisionEndpointError`, such as a network failure.
