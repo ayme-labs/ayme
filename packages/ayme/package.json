@@ -66,7 +66,7 @@
     "@ayme-dev/core": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#91fe465749b420f351ea10f035e005cbd6019d4d",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@playwright/test": "^1.64.0",
