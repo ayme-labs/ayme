@@ -15,6 +15,8 @@ import {
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
+  splitValueQuestions,
+  withChosenValues,
   type ArgumentQuestion,
   type GoalLoopOperation,
   type GoalValues,
@@ -596,5 +598,170 @@ describe("Goal Values", () => {
       parameters: ["options"],
       unfilled: ["options"],
     });
+  });
+});
+
+describe("stage two in two requests", () => {
+  /** A fill-like tool: an element to act on, a text, and a closed set. */
+  const fillTool: GoalLoopOperation = {
+    name: "fill",
+    description: "Fill a field.",
+    execute: async () => null,
+    requiredParams: ["ref", "text"],
+    args: [
+      refArg,
+      {
+        name: "text",
+        path: ["text"],
+        optional: false,
+        closedSet: null,
+        free: "string",
+      },
+      {
+        name: "submit",
+        path: ["submit"],
+        optional: true,
+        closedSet: { kind: "values", values: [true, false] },
+      },
+    ],
+  };
+
+  function planOf(tool: GoalLoopOperation, values: GoalValues) {
+    const plan = planArguments(tool, captureOfButtons(2), values);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    return plan.questions;
+  }
+
+  it("asks the Goal Values first, then the element and the closed sets", () => {
+    const split = splitValueQuestions(
+      fillTool,
+      planOf(fillTool, { "item name": "Milk" })
+    );
+
+    expect(split?.values.map((question) => question.id)).toEqual(["text"]);
+    expect(split?.rest.map((question) => question.id)).toEqual([
+      "ref",
+      "submit",
+    ]);
+  });
+
+  it("keeps one request without a Goal Value or without an element to pick", () => {
+    expect(
+      splitValueQuestions(
+        clickWithForceTool,
+        askedQuestions(clickWithForceTool, captureOfButtons(2))
+      )
+    ).toBeUndefined();
+    const textOnly: GoalLoopOperation = {
+      ...fillTool,
+      args: fillTool.args.filter((arg) => arg.name !== "ref"),
+    };
+    expect(
+      splitValueQuestions(textOnly, planOf(textOnly, { name: "Milk" }))
+    ).toBeUndefined();
+  });
+
+  it("writes the chosen value into the element question only", () => {
+    const questions = planOf(fillTool, { "item name": "Milk", count: 3 });
+    const split = splitValueQuestions(fillTool, questions)!;
+    const values = readArgumentAnswers(fillTool, split.values, {
+      text: { type: "choice", choice: "item name" },
+    });
+    if (values.kind !== "chosen") throw new Error(values.kind);
+
+    const coupled = withChosenValues(
+      fillTool,
+      questions,
+      split.values,
+      values.chosen
+    );
+
+    expect(coupled[0]!.instructions).toBe(
+      'Pick the element this operation acts on as its "ref" parameter. It will receive the text "Milk" (the Goal Value "item name"). The operation is "fill": Fill a field.'
+    );
+    expect(coupled.slice(1)).toEqual(questions.slice(1));
+  });
+
+  it("names each parameter when the operation receives several values", () => {
+    const orderTool: GoalLoopOperation = {
+      ...fillTool,
+      args: [
+        refArg,
+        {
+          name: "quantity",
+          path: ["quantity"],
+          optional: false,
+          closedSet: null,
+          free: "integer",
+        },
+        {
+          name: "labels",
+          path: ["labels"],
+          optional: false,
+          closedSet: null,
+          free: "string_list",
+        },
+      ],
+    };
+    const questions = planOf(orderTool, { count: 3, first: "a", second: "b" });
+    const split = splitValueQuestions(orderTool, questions)!;
+    const values = readArgumentAnswers(orderTool, split.values, {
+      quantity: { type: "choice", choice: "count" },
+      labels_1: { type: "noul", noul: 0.9 },
+      labels_2: { type: "noul", noul: 0.8 },
+    });
+    if (values.kind !== "chosen") throw new Error(values.kind);
+
+    const [target] = withChosenValues(
+      orderTool,
+      split.rest,
+      split.values,
+      values.chosen
+    );
+
+    expect(target!.instructions).toContain(
+      'It will receive the number 3 (the Goal Value "count") as its "quantity" parameter and the list "a", "b" (the Goal Values "first", "second") as its "labels" parameter. The operation is "fill"'
+    );
+  });
+
+  it("writes the chosen value into a run-off among the chunks too", () => {
+    const tool: GoalLoopOperation = {
+      ...fillTool,
+      args: fillTool.args.slice(0, 2),
+    };
+    const plan = planArguments(tool, captureOfButtons(300), { name: "Milk" });
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    const split = splitValueQuestions(tool, plan.questions)!;
+    const values = readArgumentAnswers(tool, split.values, {
+      text: { type: "choice", choice: "name" },
+    });
+    if (values.kind !== "chosen") throw new Error(values.kind);
+    const coupled = withChosenValues(
+      tool,
+      plan.questions,
+      split.values,
+      values.chosen
+    );
+    const [first, second] = coupled.filter(
+      (question): question is ArgumentQuestion => question.parameter === "ref"
+    );
+    const answers = readArgumentAnswers(tool, coupled, {
+      text: { type: "choice", choice: "name" },
+      [first!.id]: { type: "choice", choice: "e1" },
+      [second!.id]: { type: "choice", choice: "e300" },
+    });
+    if (answers.kind !== "run_off") throw new Error(answers.kind);
+
+    const [runOff] = withChosenValues(
+      tool,
+      [answers.question],
+      split.values,
+      values.chosen
+    );
+
+    for (const question of [first!, second!, runOff!])
+      expect(question.instructions).toContain(
+        'It will receive the text "Milk" (the Goal Value "name"). The operation is "fill"'
+      );
   });
 });

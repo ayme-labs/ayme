@@ -580,6 +580,19 @@ describe("Goal Loop goal in Chromium", () => {
         "item name": "item name: Milk",
         [NONE_OF_THESE_KEY]: expect.any(String),
       });
+      // Stage two asks the value, then the element knowing the value.
+      expect(requests.map(questionTypesOf)).toEqual([
+        { operation: "choice", goal_met: "noul" },
+        { text: "choice" },
+        { target: "choice" },
+        { operation: "choice", goal_met: "noul" },
+      ]);
+      const target = (
+        requests[2]!.questions as Record<string, { instructions: string }>
+      ).target!;
+      expect(target.instructions).toBe(
+        'Pick the element this operation acts on as its "target" (A Structural Ref from the page snapshot, or a selector that matches exactly one element.) parameter. It will receive the text "Milk" (the Goal Value "item name"). The operation is "fill": Replace the value of one editable element with text.'
+      );
       // Both stages are decided on a state that carries the values as passed.
       for (const request of requests)
         expect((request.state as Record<string, unknown>).values).toEqual({
@@ -680,6 +693,8 @@ describe("Goal Loop goal in Chromium", () => {
         "list name": "list name: Groceries",
         [NONE_OF_THESE_KEY]: expect.any(String),
       });
+      // The element is never asked for once no value fits.
+      expect(requests).toHaveLength(2);
       expect((document.querySelector("#name") as HTMLInputElement).value).toBe(
         ""
       );
@@ -900,13 +915,12 @@ describe("Goal Loop goal in Chromium", () => {
         values: { ...TAGS, count: 2 },
       });
 
-      // One noul per string Goal Value, in the same request as the target.
+      // One noul per string Goal Value, asked before the target.
       const questions = requests[1]!.questions as Record<
         string,
         { type: string; instructions: string }
       >;
       expect(Object.keys(questions)).toEqual([
-        "target",
         optionValueQuestion(1),
         optionValueQuestion(2),
         optionValueQuestion(3),
@@ -915,6 +929,12 @@ describe("Goal Loop goal in Chromium", () => {
         type: "noul",
         instructions: expect.stringContaining('"second: billing"'),
       });
+      expect(
+        (requests[2]!.questions as Record<string, { instructions: string }>)
+          .target!.instructions
+      ).toContain(
+        'It will receive the list "urgent", "spam" (the Goal Values "first", "third"). The operation is "select_option"'
+      );
       expect(selected(select)).toEqual(["urgent", "spam"]);
       expect(result).toMatchObject({
         reason: "done",
@@ -958,13 +978,13 @@ describe("Goal Loop goal in Chromium", () => {
       });
 
       expect(selected(select)).toEqual(["billing"]);
-      // The target and one noul per Goal Value, in one stage-two request.
+      // One noul per Goal Value, then the target.
       expect(questionTypesOf(requests[1]!)).toEqual({
-        target: "choice",
         [optionValueQuestion(1)]: "noul",
         [optionValueQuestion(2)]: "noul",
         [optionValueQuestion(3)]: "noul",
       });
+      expect(questionTypesOf(requests[2]!)).toEqual({ target: "choice" });
       expect(result).toMatchObject({
         history: [
           {
@@ -1009,10 +1029,9 @@ describe("Goal Loop goal in Chromium", () => {
         needs: { tool: "select_option", parameters: ["values"] },
       });
       expect(selected(select)).toEqual([]);
+      // One noul per Goal Value; the target is never asked.
       expect(requests).toHaveLength(2);
-      // The target and one noul per Goal Value, in one stage-two request.
       expect(questionTypesOf(requests[1]!)).toEqual({
-        target: "choice",
         [optionValueQuestion(1)]: "noul",
         [optionValueQuestion(2)]: "noul",
         [optionValueQuestion(3)]: "noul",

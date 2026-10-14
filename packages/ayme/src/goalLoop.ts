@@ -29,6 +29,8 @@ import {
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
+  splitValueQuestions,
+  withChosenValues,
   type AnswerRecord,
   type ArgumentAnswers,
   type ChoiceAnswer,
@@ -38,6 +40,7 @@ import {
   type GoalValues,
   MAX_GOAL_VALUES,
   type NoulAnswer,
+  type StageTwoQuestion,
 } from "./goalLoopQuestions";
 import { ToolInputError } from "./errors";
 
@@ -547,7 +550,7 @@ export async function pursueGoal(
       });
     }
 
-    // --- Stage two: the operation's arguments, asked in one parallel request ---
+    // --- Stage two: the operation's arguments ---
 
     let chosenArguments: ChosenArguments = {
       args: {},
@@ -562,24 +565,69 @@ export async function pursueGoal(
       const record: AnswerRecord = { choices: {}, probabilities: {} };
       score.argumentChoices = record.choices;
       score.argumentProbabilities = record.probabilities;
-      let stageTwo: DecisionResponse;
-      try {
-        stageTwo = await decisionFn(
-          buildArgumentRequest(state, plan.questions)
-        );
-      } catch (error) {
-        return callFailed(error);
+      // With a Goal Value and an element to pick, stage two is two requests:
+      // 2a the values, 2b the rest with the chosen values written into the
+      // element question. Otherwise one request asks every question.
+      const split = splitValueQuestions(chosenTool, plan.questions);
+      let questions: readonly StageTwoQuestion[] = plan.questions;
+      let valueAnswers: Record<string, unknown> = {};
+      let argumentAnswers: ArgumentAnswers | undefined;
+      let couple = (asked: readonly StageTwoQuestion[]) => asked;
+      if (split) {
+        let stageTwoA: DecisionResponse;
+        try {
+          stageTwoA = await decisionFn(
+            buildArgumentRequest(state, split.values)
+          );
+        } catch (error) {
+          return callFailed(error);
+        }
+        valueAnswers = stageTwoA.answers as Record<string, unknown>;
+        let values: ArgumentAnswers;
+        try {
+          values = readArgumentAnswers(
+            chosenTool,
+            split.values,
+            valueAnswers,
+            record
+          );
+        } catch (error) {
+          return invalidDecision(error);
+        }
+        // When no Goal Value fits, the step ends without asking 2b.
+        if (values.kind === "chosen") {
+          const chosenValues = values.chosen;
+          couple = (asked) =>
+            withChosenValues(chosenTool, asked, split.values, chosenValues);
+          questions = couple(plan.questions);
+        } else argumentAnswers = values;
       }
-      let argumentAnswers: ArgumentAnswers;
-      try {
-        argumentAnswers = readArgumentAnswers(
-          chosenTool,
-          plan.questions,
-          stageTwo.answers as Record<string, unknown>,
-          record
-        );
-      } catch (error) {
-        return invalidDecision(error);
+      if (!argumentAnswers) {
+        let stageTwo: DecisionResponse;
+        try {
+          stageTwo = await decisionFn(
+            buildArgumentRequest(
+              state,
+              questions.filter((question) => !split?.values.includes(question))
+            )
+          );
+        } catch (error) {
+          return callFailed(error);
+        }
+        try {
+          // Every answer is read together, as if asked in one request.
+          argumentAnswers = readArgumentAnswers(
+            chosenTool,
+            questions,
+            {
+              ...(stageTwo.answers as Record<string, unknown>),
+              ...valueAnswers,
+            },
+            record
+          );
+        } catch (error) {
+          return invalidDecision(error);
+        }
       }
 
       // Every chunk of a ref over the cap answered "none of these": the step
@@ -610,7 +658,7 @@ export async function pursueGoal(
         let runOff: DecisionResponse;
         try {
           runOff = await decisionFn(
-            buildArgumentRequest(state, [argumentAnswers.question])
+            buildArgumentRequest(state, couple([argumentAnswers.question]))
           );
         } catch (error) {
           return callFailed(error);

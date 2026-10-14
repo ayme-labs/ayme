@@ -711,6 +711,116 @@ export function planArguments(
   return { kind: "ask", questions };
 }
 
+// --- Stage two in two requests: the values, then the element ---
+
+/** Stage two split so the element is picked knowing the values it will receive. */
+export type ValueFirstQuestions = {
+  /** Stage 2a: every question about a Goal Value, as `planArguments` asks it. */
+  values: StageTwoQuestion[];
+  /** Stage 2b: every other question, the element the operation acts on among them. */
+  rest: StageTwoQuestion[];
+};
+
+const argOf = (tool: GoalLoopOperation, question: QuestionBase) =>
+  tool.args.find((arg) => arg.name === question.parameter);
+
+/** A question about the element or instance the operation acts on. */
+const asksTarget = (tool: GoalLoopOperation, question: QuestionBase) => {
+  const kind = argOf(tool, question)?.closedSet?.kind;
+  return kind === "ref" || kind === "instance";
+};
+
+/**
+ * Split stage two when the operation takes a Goal Value and acts on an
+ * element or instance; otherwise it stays one request (undefined).
+ */
+export function splitValueQuestions(
+  tool: GoalLoopOperation,
+  questions: readonly StageTwoQuestion[]
+): ValueFirstQuestions | undefined {
+  const values = questions.filter(
+    (question) => !argOf(tool, question)?.closedSet
+  );
+  const rest = questions.filter((question) => !values.includes(question));
+  if (
+    values.length === 0 ||
+    !rest.some((question) => asksTarget(tool, question))
+  )
+    return undefined;
+  return { values, rest };
+}
+
+/** How the Goal Values chosen for one parameter read where the element is picked. */
+function describeReceived(
+  options: readonly ArgumentOption[],
+  list: boolean
+): string {
+  const labels = options.map((option) => `"${option.key}"`).join(", ");
+  if (list)
+    return `the list ${options.map((option) => `"${String(option.value)}"`).join(", ")} (the Goal Value${options.length > 1 ? "s" : ""} ${labels})`;
+  const value = options[0]!.value;
+  return typeof value === "number"
+    ? `the number ${value} (the Goal Value ${labels})`
+    : `the text "${String(value)}" (the Goal Value ${labels})`;
+}
+
+/**
+ * The sentence that tells the element question what stage 2a chose: `It will
+ * receive the text "Milk" (the Goal Value "item name").` Empty when every
+ * value parameter was left unset.
+ */
+function receivedSentence(
+  valueQuestions: readonly StageTwoQuestion[],
+  chosen: ChosenArguments
+): string {
+  const parts: string[] = [];
+  const parameters = [...new Set(valueQuestions.map((q) => q.parameter))];
+  for (const parameter of parameters) {
+    const list = chosen.lists[parameter];
+    const choice = valueQuestions.find(
+      (question): question is ArgumentQuestion =>
+        question.parameter === parameter && question.type === "choice"
+    );
+    const options = list
+      ? list.map((pick) => pick.question.option)
+      : (choice?.options ?? []).filter(
+          (option) =>
+            option.key === chosen.choices[choice!.id] && "value" in option
+        );
+    if (options.length === 0) continue;
+    parts.push(
+      describeReceived(options, list !== undefined) +
+        (parameters.length > 1 ? ` as its "${parameter}" parameter` : "")
+    );
+  }
+  return parts.length === 0 ? "" : `It will receive ${parts.join(" and ")}.`;
+}
+
+/**
+ * Stage 2b: the questions about the element or instance the operation acts
+ * on, a run-off among them included, with the values stage 2a chose written
+ * in just before the operation is described. Other questions are unchanged.
+ */
+export function withChosenValues(
+  tool: GoalLoopOperation,
+  questions: readonly StageTwoQuestion[],
+  valueQuestions: readonly StageTwoQuestion[],
+  chosen: ChosenArguments
+): StageTwoQuestion[] {
+  const sentence = receivedSentence(valueQuestions, chosen);
+  const operation = describeOperation(tool);
+  return questions.map((question) =>
+    sentence &&
+    asksTarget(tool, question) &&
+    question.instructions.endsWith(operation)
+      ? {
+          ...question,
+          instructions: `${question.instructions.slice(0, -operation.length)}${sentence} ${operation}`,
+        }
+      : question
+  );
+}
+
 // --- Decision requests (ADR-0022: built in the browser) ---
 
 /**
