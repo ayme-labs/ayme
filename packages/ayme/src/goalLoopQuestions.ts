@@ -1025,12 +1025,14 @@ export function buildOperationRequest(
   const questions: DecisionQuestions = {
     operation: {
       type: "choice",
-      instructions: "Which operation moves closest to the goal?",
+      instructions:
+        'Which operation moves closest to the goal? `history` lists the steps already taken, newest last, each with what it changed on the page. A step that changed the page has taken effect; do not choose it again unless the goal needs it a second time. Choose the operation for the next thing the goal still needs; choose "none" when nothing fits.',
       criteria,
     },
     goal_met: {
       type: "noul",
-      instructions: "Has the goal been fully achieved on the current page?",
+      instructions:
+        "Has the goal been fully achieved on the current page? Judge from `page` and `history`.",
     },
     ...Object.fromEntries(
       speculative.map((question) => [question.id, choiceQuestion(question)])

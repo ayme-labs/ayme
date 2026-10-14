@@ -755,6 +755,20 @@ describe("Goal Values asked speculatively in stage one", () => {
     });
   });
 
+  it("tells the model how to read history in both stage-one questions", () => {
+    const request = buildOperationRequest({ goal: "g" }, options(fillTool));
+
+    expect(request.questions.operation).toMatchObject({
+      instructions:
+        'Which operation moves closest to the goal? `history` lists the steps already taken, newest last, each with what it changed on the page. A step that changed the page has taken effect; do not choose it again unless the goal needs it a second time. Choose the operation for the next thing the goal still needs; choose "none" when nothing fits.',
+    });
+    expect(request.questions.goal_met).toEqual({
+      type: "noul",
+      instructions:
+        "Has the goal been fully achieved on the current page? Judge from `page` and `history`.",
+    });
+  });
+
   const speculativeOf = (...tools: GoalLoopOperation[]) =>
     buildSpeculativeValueQuestions(options(...tools), values);
   const choice = (key: string) => ({ type: "choice", choice: key });
