@@ -16,7 +16,12 @@
  *   one-sentence description paragraph,
  * - the README of a published package (one under `packages/` that is not
  *   private) contains a bare issue reference, a relative link or a banned
- *   phrase, since npm shows it without the repository around it.
+ *   phrase, since npm shows it without the repository around it,
+ * - a published package's source marks an API `@experimental` that the
+ *   Experimental APIs page does not list, or the page lists one that no
+ *   published package marks (ADR-0037). The page lists an API as a list item
+ *   that opens with a code span, by its last name: `ayme.peek(...)` lists
+ *   `peek`.
  *
  * Code spans and fenced code blocks are ignored. Uses only `node:` modules.
  */
@@ -25,6 +30,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const GUIDE_DIR = "docs/guide";
+const EXPERIMENTAL_PAGE = `${GUIDE_DIR}/reference/experimental-apis.md`;
 const SKIPPED_DIRS = new Set(["node_modules", "dist", "build", "build-spa"]);
 const REPOSITORY_URL =
   /^https?:\/\/github\.com\/ayme-labs\/ayme\/(?:blob|tree)\/main(?:\/([^?#]*))?/;
@@ -54,22 +60,65 @@ function markdownFiles(root, dir = "") {
   return files;
 }
 
-/** READMEs of the packages npm publishes: those not marked private. */
-function publishedReadmes(root) {
+/** The packages npm publishes, those not marked private, as `packages/<dir>`. */
+function publishedPackages(root) {
   const packages = path.join(root, "packages");
-  if (!fs.existsSync(packages)) return new Set();
-  return new Set(
-    fs
-      .readdirSync(packages)
-      .filter((dir) => {
-        const manifest = path.join(packages, dir, "package.json");
-        return (
-          fs.existsSync(manifest) &&
-          !JSON.parse(fs.readFileSync(manifest, "utf8")).private
-        );
-      })
-      .map((dir) => `packages/${dir}/README.md`)
-  );
+  if (!fs.existsSync(packages)) return [];
+  return fs
+    .readdirSync(packages)
+    .filter((dir) => {
+      const manifest = path.join(packages, dir, "package.json");
+      return (
+        fs.existsSync(manifest) &&
+        !JSON.parse(fs.readFileSync(manifest, "utf8")).private
+      );
+    })
+    .map((dir) => `packages/${dir}`);
+}
+
+/** Each API a published package's source marks `@experimental`, by name. */
+function experimentalMarks(root) {
+  const marks = [];
+  for (const dir of publishedPackages(root)) {
+    const src = path.join(root, dir, "src");
+    if (!fs.existsSync(src)) continue;
+    for (const entry of fs.readdirSync(src, { recursive: true })) {
+      if (!/\.tsx?$/.test(entry) || entry.includes("node_modules")) continue;
+      const file = path.posix.join(dir, "src", entry.split(path.sep).join("/"));
+      const text = fs.readFileSync(path.join(root, file), "utf8");
+      for (const comment of text.matchAll(/\/\*\*([\s\S]*?)\*\/\s*/g)) {
+        if (!/(?:^|\s)@experimental\b/.test(comment[1])) continue;
+        // The declaration the comment documents: an export, or a member.
+        const declaration =
+          /(?:export\s+)?(?:default\s+)?(?:declare\s+)?(?:async\s+)?(?:(?:function\*?|const|let|type|interface|class|readonly)\s+)?([A-Za-z_$][\w$]*)/y;
+        declaration.lastIndex = comment.index + comment[0].length;
+        const name = declaration.exec(text)?.[1];
+        if (name)
+          marks.push({ name, file, line: lineOf(text, declaration.lastIndex) });
+      }
+    }
+  }
+  return marks;
+}
+
+/** The APIs the Experimental APIs page lists, by their last name. */
+function experimentalListing(root) {
+  const page = path.join(root, EXPERIMENTAL_PAGE);
+  if (!fs.existsSync(page)) return [];
+  return fs
+    .readFileSync(page, "utf8")
+    .split("\n")
+    .flatMap((text, index) => {
+      const span = /^\s*[-*+]\s+`([^`]+)`/.exec(text)?.[1];
+      if (span === undefined) return [];
+      const name = span.replace(/\(.*$/s, "").split(".").pop().trim();
+      return [{ name, line: index + 1 }];
+    });
+}
+
+/** READMEs of the packages npm publishes. */
+function publishedReadmes(root) {
+  return new Set(publishedPackages(root).map((dir) => `${dir}/README.md`));
 }
 
 /** The text with code blocks, code spans and comments blanked, lines kept. */
@@ -273,6 +322,25 @@ export function checkDocs(root) {
   for (const page of pages)
     if (page !== `${GUIDE_DIR}/README.md` && !indexed.has(page))
       report(page, 1, `page is not listed in ${GUIDE_DIR}/README.md`);
+
+  const marks = experimentalMarks(root);
+  const listing = experimentalListing(root);
+  const listed = new Set(listing.map(({ name }) => name));
+  const marked = new Set(marks.map(({ name }) => name));
+  for (const { name, file, line } of marks)
+    if (!listed.has(name))
+      report(
+        file,
+        line,
+        `\`${name}\` is marked @experimental but not listed in ${EXPERIMENTAL_PAGE}`
+      );
+  for (const { name, line } of listing)
+    if (!marked.has(name))
+      report(
+        EXPERIMENTAL_PAGE,
+        line,
+        `lists \`${name}\`, which no published package marks @experimental`
+      );
 
   return problems;
 }
