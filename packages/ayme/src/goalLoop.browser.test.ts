@@ -1170,18 +1170,170 @@ describe("Goal Loop goal in Chromium", () => {
   it("returns step_budget when maxSteps is exhausted", async () => {
     const decide = scriptedDecisionFn([
       { operation: "App.save", goal_met: 0.1 },
-      { operation: "App.save", goal_met: 0.2 },
+      { operation: "App.fail", goal_met: 0.2 },
     ]);
-    const tool = await registerPom(decide);
+    const tool = await registerCombinedPom(decide);
     const result = await tool.execute({ goal: "save many times", maxSteps: 2 });
     expect(result).toMatchObject({
       reason: "step_budget",
       history: [
         { operation: "App.save", result: "ok", page_changed: false },
-        { operation: "App.save", result: "ok", page_changed: false },
+        { operation: "App.fail", result: "action exploded" },
       ],
     });
+    expect(clickCount).toBe(1);
+  });
+
+  // --- Handover reason: no_progress ---
+
+  /** A POM whose add action changes the page every time it runs. */
+  async function registerPageChangingPom(goalLoop: GoalLoopDecisionFunction) {
+    setupDom();
+    class App {
+      root = page.locator("main");
+      add() {
+        clickCount++;
+        const row = document.createElement("div");
+        row.setAttribute("role", "alert");
+        row.textContent = `Row ${clickCount}`;
+        document.querySelector("main")!.appendChild(row);
+      }
+    }
+    registerCompiledPom(
+      App,
+      manifest("App", [root()], [action("add", "App.add")])
+    );
+    const tool = await getPublishedPursueGoal(goalLoop);
+    createPageRegistration(App);
+    return tool;
+  }
+
+  it("returns no_progress instead of repeating a step that changed nothing", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.save", goal_met: 0.1 },
+      { operation: "App.save", goal_met: 0.1 },
+      { operation: "App.save", goal_met: 0.1 },
+    ]);
+    const tool = await registerPom(decide);
+    const result = await tool.execute({ goal: "save changes", maxSteps: 10 });
+    expect(withoutChanges(result)).toEqual({
+      reason: "no_progress",
+      next: "The loop is repeating App.save(): it chose the same step 2 times in a row, and the last run did not change the page. It stopped instead of running it again. Perform that step yourself by calling App.save, or call goal again with a goal that names the element to act on.",
+      history: [
+        {
+          operation: "App.save",
+          chosen: {},
+          result: "ok",
+          page_changed: false,
+          did: "App.save()",
+        },
+      ],
+      needs: { tool: "App.save", parameters: [] },
+    });
+    expect((result as { next: string }).next).not.toMatch(/budget/i);
+    // The repeat is not run.
+    expect(clickCount).toBe(1);
+  });
+
+  it("returns no_progress when a step that changed the page is chosen a third time in a row", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "App.add", goal_met: 0.1 },
+    ]);
+    const tool = await registerPageChangingPom(decide);
+    const result = await tool.execute({ goal: "add rows", maxSteps: 10 });
+    expect(result).toMatchObject({
+      reason: "no_progress",
+      next: "The loop is repeating App.add(): it chose the same step 3 times in a row. It stopped instead of running it again. Perform that step yourself by calling App.add, or call goal again with a goal that names the element to act on.",
+      history: [
+        { operation: "App.add", result: "ok", page_changed: true },
+        { operation: "App.add", result: "ok", page_changed: true },
+      ],
+      needs: { tool: "App.add", parameters: [] },
+    });
     expect(clickCount).toBe(2);
+  });
+
+  it("names the element and the value of the repeated step", async () => {
+    setupDom();
+    const answer = {
+      operation: "fill",
+      goal_met: 0.1,
+      arguments: { target: 'textbox "Name"', text: "item name" },
+    };
+    const decide = scriptedDecisionFn([answer, answer, answer]);
+    const tool = await getPublishedPursueGoal(decide);
+    const result = await tool.execute({
+      goal: "Add an item called Milk",
+      maxSteps: 10,
+      values: { "item name": "Milk" },
+    });
+    // The first fill changed the page and the second did not.
+    expect(result).toMatchObject({
+      reason: "no_progress",
+      next: expect.stringContaining(
+        'fill(textbox "Name", item name: Milk): it chose the same step 3 times in a row, and the last run did not change the page.'
+      ),
+      history: [
+        { operation: "fill", page_changed: true },
+        { operation: "fill", page_changed: false },
+      ],
+      needs: { tool: "fill", parameters: ["target", "text"] },
+    });
+  });
+
+  it("does not stop steps that differ in their arguments", async () => {
+    setupDom();
+    const fill = (text: string): ScriptedAnswer => ({
+      operation: "fill",
+      goal_met: 0.1,
+      arguments: { target: 'textbox "Name"', text },
+    });
+    const decide = scriptedDecisionFn([
+      fill("a"),
+      fill("b"),
+      fill("c"),
+      fill("a"),
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await getPublishedPursueGoal(decide);
+    const result = await tool.execute({
+      goal: "Fill the name",
+      maxSteps: 10,
+      values: { a: "A", b: "B", c: "C" },
+    });
+    expect(result).toMatchObject({
+      reason: "done",
+      history: [
+        { chosen: { text: { key: "a" } }, page_changed: true },
+        { chosen: { text: { key: "b" } }, page_changed: true },
+        { chosen: { text: { key: "c" } }, page_changed: true },
+        { chosen: { text: { key: "a" } }, page_changed: true },
+      ],
+    });
+  });
+
+  it("lets a step that changed the page run twice in a row", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await registerPageChangingPom(decide);
+    const result = await tool.execute({ goal: "add rows", maxSteps: 10 });
+    expect(result).toMatchObject({ reason: "done" });
+    expect(clickCount).toBe(2);
+  });
+
+  it("does not count a failed step as a repeat", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.fail", goal_met: 0.1 },
+      { operation: "App.fail", goal_met: 0.1 },
+    ]);
+    const tool = await registerFailingPom(decide);
+    const result = await tool.execute({ goal: "do the thing", maxSteps: 5 });
+    expect((result as Record<string, unknown>).reason).toBe("action_failed");
   });
 
   // --- Handover reason: decide_failed ---
