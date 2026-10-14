@@ -22,6 +22,9 @@
  *    at each adapter's framework floor.
  * 9. A fresh Vite app from the React quickstart loads once on its first dev
  *    server start, without the optimizer finding a dependency late.
+ * 10. A Next.js app configured as the build plugin reference shows compiles
+ *     its Page Object Model with the packed Turbopack loader, and the
+ *     production build runs it.
  *
  * With `AYME_PACKED_DIR` set, the tarballs are packed into that empty
  * directory and kept, so the release workflow publishes exactly the
@@ -1282,6 +1285,207 @@ createRoot(document.getElementById('root')!).render(
       await page.waitForLoadState("networkidle");
       expect(log).not.toContain("optimized dependencies changed");
       expect(documentLoads, log).toBe(1);
+    } finally {
+      await browser.close();
+      server.kill();
+    }
+  }
+);
+
+it(
+  "a Next.js app compiles its Page Object Model with the packed Turbopack loader",
+  { timeout: 300_000 },
+  async () => {
+    const consumer = path.join(tmp, "next-consumer");
+    fs.mkdirSync(path.join(consumer, "app"), { recursive: true });
+    fs.mkdirSync(path.join(consumer, "pom"));
+    const { tarballs, workspaceYaml } = tarballDependencies([
+      "@ayme-dev/ayme",
+      "@ayme-dev/react",
+      "@ayme-dev/unplugin-ayme",
+    ]);
+    fs.writeFileSync(
+      path.join(consumer, "package.json"),
+      JSON.stringify({
+        name: "ayme-next-consumer",
+        private: true,
+        type: "module",
+        dependencies: {
+          ...tarballs,
+          next: "16.3.4",
+          react: "19.2.8",
+          "react-dom": "19.2.8",
+        },
+        devDependencies: {
+          "@playwright/test": lastPlaywright,
+          "@types/node": "24.0.0",
+          "@types/react": "19.2.0",
+          typescript: "6.0.3",
+        },
+      })
+    );
+    fs.writeFileSync(path.join(consumer, "pnpm-workspace.yaml"), workspaceYaml);
+    await execAsync(
+      "pnpm",
+      ["install", "--ignore-scripts", "--no-lockfile"],
+      consumer
+    );
+    // create-next-app's tsconfig with decorators, and the build plugin
+    // reference's Next.js config as written there.
+    const files: Record<string, string> = {
+      "tsconfig.json": JSON.stringify({
+        compilerOptions: {
+          target: "ES2017",
+          lib: ["dom", "dom.iterable", "esnext"],
+          skipLibCheck: true,
+          strict: true,
+          noEmit: true,
+          esModuleInterop: true,
+          module: "esnext",
+          moduleResolution: "bundler",
+          resolveJsonModule: true,
+          isolatedModules: true,
+          jsx: "react-jsx",
+          incremental: true,
+          experimentalDecorators: true,
+          plugins: [{ name: "next" }],
+        },
+        include: ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+        exclude: ["node_modules"],
+      }),
+      "next.config.mjs": `
+import { fileURLToPath } from "node:url";
+
+export default {
+  turbopack: {
+    rules: {
+      "*.ts": {
+        condition: {
+          all: ["browser", { not: "foreign" }, { content: /@ayme|extends/ }],
+        },
+        loaders: [
+          {
+            loader: "@ayme-dev/unplugin-ayme/turbopack-loader",
+            options: {
+              tsconfigPath: fileURLToPath(
+                new URL("./tsconfig.json", import.meta.url)
+              ),
+            },
+          },
+        ],
+        as: "*.js",
+      },
+    },
+  },
+};
+`,
+      "pom/CounterPage.ts": `
+import { ayme } from '@ayme-dev/ayme';
+import type { Page } from '@playwright/test';
+@ayme
+export class CounterPage {
+  private readonly page: Page;
+  constructor(page: Page) { this.page = page; }
+  @ayme.action({ description: 'Increment the counter.' })
+  async increment() {
+    await this.page.getByRole('button', { name: 'Increment' }).click();
+  }
+}
+`,
+      "app/layout.tsx": `
+import type { ReactNode } from 'react';
+import Runtime from './runtime';
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return <html lang="en"><body><Runtime>{children}</Runtime></body></html>;
+}
+`,
+      "app/runtime.tsx": `
+'use client';
+import type { ReactNode } from 'react';
+import { AymeProvider } from '@ayme-dev/react';
+export default function Runtime({ children }: { children: ReactNode }) {
+  return <AymeProvider>{children}</AymeProvider>;
+}
+`,
+      "app/counter.tsx": `
+'use client';
+import { useState } from 'react';
+import { usePageObject } from '@ayme-dev/react';
+import { CounterPage } from '../pom/CounterPage';
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  const pom = usePageObject(CounterPage);
+  return (
+    <>
+      <output>{count}</output>
+      <button onClick={() => setCount((value) => value + 1)}>Increment</button>
+      <button onClick={() => void pom.increment()}>Call Page Object</button>
+    </>
+  );
+}
+`,
+      "app/page.tsx": `
+import Counter from './counter';
+export default function Home() {
+  return <main><Counter /></main>;
+}
+`,
+    };
+    for (const [file, contents] of Object.entries(files))
+      fs.writeFileSync(path.join(consumer, file), contents);
+
+    const env = { ...process.env, NODE_PATH: "", NEXT_TELEMETRY_DISABLED: "1" };
+    const next = path.join(consumer, "node_modules/next/dist/bin/next");
+    try {
+      await promisify(execFile)(process.execPath, [next, "build"], {
+        cwd: consumer,
+        env,
+      });
+    } catch (error) {
+      throw execFailure(error);
+    }
+
+    // The loader ran on the browser graph: a client chunk registers the
+    // compiled Page Object Model with its tool.
+    const chunks = path.join(consumer, ".next/static/chunks");
+    const registrations = fs
+      .readdirSync(chunks, { recursive: true, encoding: "utf8" })
+      .filter((file) => file.endsWith(".js"))
+      .map((file) => fs.readFileSync(path.join(chunks, file), "utf8"))
+      .filter((code) => /toolName"?:\s*"CounterPage\.increment"/.test(code));
+    expect(registrations).toHaveLength(1);
+
+    // The production app hydrates and runs the compiled Page Object Model.
+    const server = spawn(
+      process.execPath,
+      [next, "start", "--hostname", "127.0.0.1", "--port", "0"],
+      { cwd: consumer, env: { ...env, NO_COLOR: "1" } }
+    );
+    let log = "";
+    const url = new Promise<string>((resolveUrl, reject) => {
+      server.on("exit", (code) =>
+        reject(new Error(`next start exited with ${code}\n${log}`))
+      );
+      const onData = (chunk: Buffer) => {
+        log += chunk;
+        const match = /Local:\s+(http:\/\/\S+)/.exec(log);
+        if (match) resolveUrl(match[1]!);
+      };
+      server.stdout.on("data", onData);
+      server.stderr.on("data", onData);
+    });
+    const { chromium } = await import("playwright");
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      const errors: string[] = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.goto(await url);
+      await page.getByRole("button", { name: "Call Page Object" }).click();
+      await expect
+        .poll(() => page.locator("output").textContent(), { timeout: 10_000 })
+        .toBe("1");
+      expect(errors).toEqual([]);
     } finally {
       await browser.close();
       server.kill();
