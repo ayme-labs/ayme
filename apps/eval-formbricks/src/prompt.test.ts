@@ -106,7 +106,7 @@ describe("the prompt of the default mission", () => {
 
   it("names the Playwright CLI session as signed in on the editor", () => {
     expect(arms["playwright-cli"].interfaceLine(mission.start)).toBe(
-      "Use the `playwright-cli` command and its `playwright-cli` skill for every browser interaction. Its browser session is already open and signed in on the editor; start from `playwright-cli snapshot`."
+      "Use the `playwright-cli` command for every browser interaction. Its browser session is already open and signed in on the editor; start from `playwright-cli snapshot`."
     );
   });
 
@@ -157,7 +157,7 @@ describe("the prompt of the sign-in mission", () => {
 
   it("names the Playwright CLI session as open on the sign-in page, signed out", () => {
     expect(arms["playwright-cli"].interfaceLine(signInMission.start)).toBe(
-      "Use the `playwright-cli` command and its `playwright-cli` skill for every browser interaction. Its browser session is already open on the sign-in page, not signed in; start from `playwright-cli snapshot`."
+      "Use the `playwright-cli` command for every browser interaction. Its browser session is already open on the sign-in page, not signed in; start from `playwright-cli snapshot`."
     );
   });
 
@@ -250,7 +250,7 @@ describe("the interface lines", () => {
       mission.start
     );
     expect(off).toBe(
-      "Use the page's own tools through the `ayme` MCP server, which is already connected to the page, and its `ayme` skill for every browser interaction: `snapshot` and Ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed."
+      "Use the page's own tools through the `ayme` MCP server, which is already connected to the page, for every browser interaction: `snapshot` and Ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed."
     );
     expect(
       arms["ayme-no-page-objects-goal-loop-on"].interfaceLine(mission.start)
@@ -310,7 +310,8 @@ describe.each([
     expect(arm.tools).toEqual(["Read", "Glob", "Grep", "ToolSearch", "Skill"]);
     expect(arm.allowedTools).toEqual(["mcp__ayme", "Skill(ayme)"]);
     expect(arm.disallowedTools).toBeUndefined();
-    expect(arm.interfaceLine(mission.start)).toContain("its `ayme` skill");
+    // The skill is loaded in the setup turn; the task turn does not name it again.
+    expect(arm.interfaceLine(mission.start)).not.toContain("skill");
   });
 
   it("checks the server's build and ports first, and the Decision Endpoint with the Goal Loop on, and sets the server and the page up outside the measured window", () => {
@@ -361,9 +362,9 @@ describe("the playwright-mcp arm", () => {
 describe("the playwright-cli arm", () => {
   const arm = arms["playwright-cli"];
 
-  it("names the command and its skill, and no MCP server", () => {
+  it("names the command, no skill and no MCP server", () => {
     expect(arm.interfaceLine(mission.start)).toContain("`playwright-cli`");
-    expect(arm.interfaceLine(mission.start)).toContain("skill");
+    expect(arm.interfaceLine(mission.start)).not.toContain("skill");
     expect(arm.mcpServers(armContext)).toEqual({});
   });
 

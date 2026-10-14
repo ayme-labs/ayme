@@ -135,12 +135,12 @@ function aymeArm(
   const toolsLine = pageObjects
     ? "`snapshot`, Ayme's Browser Tools and the Page Object Tools of the screen you are on."
     : "`snapshot` and Ayme's Browser Tools. The app has no page objects, so no Page Object Tools are listed.";
-  const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, and its \`${aymeSkillName}\` skill for every browser interaction: ${toolsLine}`;
+  const interfaceLine = `Use the page's own tools through the \`${aymeServerName}\` MCP server, which is already connected to the page, for every browser interaction: ${toolsLine}`;
   return {
     id,
     interfaceLine: () =>
       goalLoop ? `${interfaceLine} ${goalFirstSentence}` : interfaceLine,
-    // The skill is invoked through the Skill tool.
+    // The skill is loaded through the Skill tool, in the setup turn.
     tools: [...baseTools, "Skill"],
     allowedTools: [`mcp__${aymeServerName}`, `Skill(${aymeSkillName})`],
     mcpServers: (context) => ({ [aymeServerName]: aymeMcpServer(context) }),
@@ -188,8 +188,8 @@ export const arms: Record<ArmId, Arm> = {
   "playwright-cli": {
     id: "playwright-cli",
     interfaceLine: (start) =>
-      `Use the \`playwright-cli\` command and its \`playwright-cli\` skill for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}; start from \`playwright-cli snapshot\`.`,
-    // The skill is invoked through the Skill tool; Bash is only the CLI.
+      `Use the \`playwright-cli\` command for every browser interaction. Its browser session is already open ${start.signedIn ? "and signed in on the editor" : "on the sign-in page, not signed in"}; start from \`playwright-cli snapshot\`.`,
+    // The skill is loaded through the Skill tool, in the setup turn; Bash is only the CLI.
     tools: [...baseTools, "Bash", "Skill"],
     allowedTools: ["Bash(playwright-cli:*)", "Skill(playwright-cli)"],
     disallowedTools: [
