@@ -33,6 +33,7 @@ async function buildHeaders(
   return { "Content-Type": contentType, ...headers };
 }
 
+/** @experimental */
 export function decisionEndpoint(
   url: string,
   options: DecisionEndpointOptions = {}

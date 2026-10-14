@@ -111,6 +111,7 @@ export function usePageObject<T extends object>(
  * Adds this component's instance of the Peek `name` while it is mounted,
  * through `ayme.peek`. The agent reads `values` from the latest committed
  * render. `id` defaults to one per mounted component.
+ * @experimental
  */
 export function usePeek(values: unknown, name: string, id?: string): void {
   const runtime = useRuntime();

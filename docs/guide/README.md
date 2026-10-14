@@ -37,6 +37,7 @@ How to turn your app's Page Object Models into tools that coding agents and your
 - [Browser Tools](reference/browser-tools.md): every built-in tool Ayme publishes, with its input.
 - [Decision Endpoint](reference/decision-endpoint.md): the contract of the route that adds your key to each decision model request.
 - [Build plugin](reference/build-plugin.md): the options of `@ayme-dev/unplugin-ayme` and how its Playwright settings resolve.
+- [Experimental APIs](reference/experimental-apis.md): the APIs whose shape is not settled yet, and what that means for code that uses them.
 - [Errors](reference/errors.md): the errors Ayme's packages throw and how an agent sees a failure.
 - [Playwright in the browser](reference/playwright-in-the-browser.md): which Playwright calls a Page Object Model can make when Ayme runs it in your app.
 

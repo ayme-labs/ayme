@@ -187,9 +187,9 @@ The [Nuxt example](https://github.com/ayme-labs/ayme/blob/main/apps/example-nuxt
 
 ## API
 
-| Export                       | Kind       | Does                                                                                                                |
-| ---------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------- |
-| `AymeProvider`               | Component  | Starts and owns Ayme for its subtree. Props are the `createAyme` options.                                           |
-| `useAyme(options?)`          | Composable | Without an owner above, starts and owns Ayme. Returns `{ ayme, webMCP }`.                                           |
-| `usePageObject(Model)`       | Composable | Registers the class for the current scope and returns its instance.                                                 |
-| `usePeek(values, name, id?)` | Composable | Adds the component's instance of the Peek `name` while it is mounted, reading the current values of `values`' refs. |
+| Export                       | Kind       | Does                                                                                                                                                                   |
+| ---------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AymeProvider`               | Component  | Starts and owns Ayme for its subtree. Props are the `createAyme` options.                                                                                              |
+| `useAyme(options?)`          | Composable | Without an owner above, starts and owns Ayme. Returns `{ ayme, webMCP }`.                                                                                              |
+| `usePageObject(Model)`       | Composable | Registers the class for the current scope and returns its instance.                                                                                                    |
+| `usePeek(values, name, id?)` | Composable | [Experimental](../reference/experimental-apis.md). Adds the component's instance of the Peek `name` while it is mounted, reading the current values of `values`' refs. |

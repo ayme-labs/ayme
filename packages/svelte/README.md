@@ -27,6 +27,8 @@ Start Ayme in the root `+layout.svelte`, or `App.svelte` without SvelteKit:
 
 ## Peek at component state
 
+> **Experimental:** this may change in any release. See [Experimental APIs](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/experimental-apis.md).
+
 While a coding agent or the Inspector is connected, `peek(read, name, id?)` lets the agent read a component's state through the Peek Tool `peek.<name>`:
 
 ```svelte

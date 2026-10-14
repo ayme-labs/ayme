@@ -141,6 +141,7 @@ export type Ayme = {
    * `RuntimeStateError` when `name` is empty, or when another tool
    * already uses the Peek Tool's name. Does nothing unless the session has
    * `agentConnection` on, or `inspector` in the browser.
+   * @experimental
    */
   peek(read: PeekRead, name: string, id?: string): () => void;
   /**
@@ -165,6 +166,7 @@ export type AymeOptions = {
   pageFactory?: () => AymePage;
   ignore?: (element: Element) => boolean;
   customTools?: CustomTool[];
+  /** @experimental */
   goalLoop?: GoalLoopDecisionFunction;
   webMCP?: AymeWebMcpOptions;
   /**

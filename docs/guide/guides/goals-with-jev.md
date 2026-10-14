@@ -2,6 +2,8 @@
 
 How to let a decision model drive your page toward a goal, with the Goal Loop, your Decision Endpoint and the Handover.
 
+> **Experimental:** this may change in any release. See [Experimental APIs](../reference/experimental-apis.md).
+
 ## What the Goal Loop does
 
 An agent connected to your page can hand Ayme a goal in natural language, such as "archive the oldest item", through the `goal` tool. The Goal Loop drives the page toward it in steps. In each step a decision model, a fast model that picks among options it is given, chooses at most one operation to run, not the calling agent's LLM. The model Ayme uses today is Jev, TypeSafe's System One model. When the loop stops, it hands control back to the calling agent with a Handover: why it stopped, what it did and what to do next.

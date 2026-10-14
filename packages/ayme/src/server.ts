@@ -107,6 +107,7 @@ function responseHeaders(headers: Headers): Headers {
   return filtered;
 }
 
+/** @experimental */
 export function createDecisionEndpoint({
   provider,
   apiKey,

@@ -2,6 +2,8 @@
 
 The contract of the route in your backend that adds your key to each decision model request the Goal Loop makes.
 
+> **Experimental:** this may change in any release. See [Experimental APIs](experimental-apis.md).
+
 ## The route
 
 The Goal Loop asks a decision model for each step. The request goes to the Decision Endpoint, a route in your own backend: it holds the model key, decides who may use it, and forwards the request to the model provider. Ayme ships the handler, `createDecisionEndpoint` from `@ayme-dev/ayme/server`, and the browser helper, `decisionEndpoint` from `@ayme-dev/ayme`; you mount the route and gate it. [Goals with Jev](../guides/goals-with-jev.md) shows the setup.
