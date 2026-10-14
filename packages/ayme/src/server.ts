@@ -166,12 +166,17 @@ export function createDecisionEndpoint({
           questions: body.questions,
         }),
       });
-      if (!response.ok)
+      if (!response.ok) {
+        // Prefixed, so a provider's refusal does not read like `authorize`'s.
+        const message = upstreamErrorMessage(await response.text());
         return decisionErrorResponse(
           response.status,
-          upstreamErrorMessage(await response.text()) ??
-            `The model provider answered with status ${response.status}.`
+          message === undefined
+            ? `The model provider answered with status ${response.status}.`
+            : `The model provider said: ${message}`,
+          response.headers.get("Retry-After")
         );
+      }
       return new Response(await response.arrayBuffer(), {
         status: response.status,
         headers: responseHeaders(response.headers),

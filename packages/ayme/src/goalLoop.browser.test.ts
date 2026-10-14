@@ -1232,8 +1232,8 @@ describe("Goal Loop goal in Chromium", () => {
     [
       "rejected",
       429,
-      "The Decision Endpoint /api/decisions answered 429 Rate limit reached.",
-      "The Decision Endpoint /api/decisions answered 429 Rate limit reached. Retry, or handle",
+      "The Decision Endpoint /api/decisions answered 429 Rate limit reached (Retry-After: 20 s)",
+      "The Decision Endpoint /api/decisions answered 429 Rate limit reached (Retry-After: 20 s). Handle",
     ],
     [
       "rejected",
