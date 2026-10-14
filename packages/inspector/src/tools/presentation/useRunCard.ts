@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, type FormEvent } from "react";
 
 import type { ToolArguments } from "../../runs";
 import { needsInput } from "../application/needsInput";
-import { press } from "../domain/press";
+import { runCardLook } from "../domain/press";
 import {
   argumentsFromJson,
   argumentsToJson,
@@ -97,9 +97,6 @@ export function useRunCard({
     item ??
     items.find((candidate) => candidate.path === pickedPath) ??
     items[0];
-  const canOpen = fields.length > 0 || picking;
-  const { present } = tool;
-  const showBody = present && (!head || open);
   const needs = needsInput(tool, {
     itemGiven: item !== undefined,
     givenArguments: refField ? [refField] : [],
@@ -113,16 +110,20 @@ export function useRunCard({
   const running = last?.status === "running";
   const argumentsInvalid =
     invalid.size > 0 || json?.error !== undefined || violations.length > 0;
-  const pressed = press({
-    present,
+  const look = runCardLook({
+    action: tool.action,
+    present: tool.present,
     running,
     needsInput: needs,
-    formOpen: showBody,
+    head,
+    open,
+    hasForm: fields.length > 0 || picking,
     invalid: argumentsInvalid,
     args,
     collection,
     target,
   });
+  const pressed = look.press;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -143,12 +144,9 @@ export function useRunCard({
     collection,
     picking,
     target,
-    canOpen,
-    showBody,
-    press: pressed,
+    look,
     last,
     lastSuccess,
-    invalid: argumentsInvalid,
     setValidity,
     submit,
     setFormFields,
