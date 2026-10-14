@@ -1456,39 +1456,40 @@ export default function Home() {
     expect(registrations).toHaveLength(1);
 
     // The production app hydrates and runs the compiled Page Object Model.
+    const { chromium } = await import("playwright");
+    const browser = await chromium.launch();
     const server = spawn(
       process.execPath,
       [next, "start", "--hostname", "127.0.0.1", "--port", "0"],
       { cwd: consumer, env: { ...env, NO_COLOR: "1" } }
     );
-    let log = "";
-    const url = new Promise<string>((resolveUrl, reject) => {
-      server.on("exit", (code) =>
-        reject(new Error(`next start exited with ${code}\n${log}`))
-      );
-      const onData = (chunk: Buffer) => {
-        log += chunk;
-        const match = /Local:\s+(http:\/\/\S+)/.exec(log);
-        if (match) resolveUrl(match[1]!);
-      };
-      server.stdout.on("data", onData);
-      server.stderr.on("data", onData);
-    });
-    const { chromium } = await import("playwright");
-    const browser = await chromium.launch();
     try {
+      let log = "";
+      // Awaited at once, so an early exit is never an unhandled rejection.
+      const appUrl = await new Promise<string>((resolveUrl, reject) => {
+        server.on("exit", (code) =>
+          reject(new Error(`next start exited with ${code}\n${log}`))
+        );
+        const onData = (chunk: Buffer) => {
+          log += chunk;
+          const match = /Local:\s+(http:\/\/\S+)/.exec(log);
+          if (match) resolveUrl(match[1]!);
+        };
+        server.stdout.on("data", onData);
+        server.stderr.on("data", onData);
+      });
       const page = await browser.newPage();
       const errors: string[] = [];
       page.on("pageerror", (error) => errors.push(error.message));
-      await page.goto(await url);
+      await page.goto(appUrl);
       await page.getByRole("button", { name: "Call Page Object" }).click();
       await expect
         .poll(() => page.locator("output").textContent(), { timeout: 10_000 })
         .toBe("1");
       expect(errors).toEqual([]);
     } finally {
-      await browser.close();
       server.kill();
+      await browser.close();
     }
   }
 );
