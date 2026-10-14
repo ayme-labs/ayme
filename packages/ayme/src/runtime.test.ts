@@ -522,23 +522,40 @@ it("shares one instance between registrations and withdraws it with the last", (
   expect(listRegisteredPoms()).toHaveLength(1);
 });
 
-it("fails to start with two distinct classes sharing a name, and starts once one is gone", () => {
+it("logs a same-named class instead of throwing, at start and at registration, and registers it on a later call once the clash is gone", () => {
   const OtherModel = class Model {
     constructor(readonly page: AymePage) {}
   };
   registerCompiledPom(OtherModel, manifest);
+  const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+  const refusal = expect.objectContaining({
+    code: "same-named-class",
+    message: expect.stringContaining('Cannot register the Page Object "Model"'),
+  });
   const runtime = session(false);
   runtime.pom.register(Model);
   runtime.pom.register(OtherModel);
-  expect(() => runtime.start()).toThrow(
-    'Cannot register the Page Object "Model"'
-  );
-  expect(listRegisteredPoms()).toHaveLength(0);
-  runtime.pom.unregister(OtherModel);
-  start(runtime);
+  const stop = start(runtime);
+  expect(logged).toHaveBeenCalledWith(refusal);
   expect(
     listRegisteredPoms().map(({ instance }) => instance.constructor)
   ).toEqual([Model]);
+  stop();
+  runtime.pom.unregister(OtherModel);
+  logged.mockClear();
+  start(runtime);
+  runtime.pom.register(OtherModel);
+  expect(logged).toHaveBeenCalledWith(refusal);
+  runtime.pom.unregister(Model);
+  runtime.pom.register(OtherModel);
+  expect(
+    listRegisteredPoms().map(({ instance }) => instance.constructor)
+  ).toEqual([OtherModel]);
+  runtime.pom.unregister(OtherModel);
+  expect(listRegisteredPoms()).toHaveLength(1);
+  runtime.pom.unregister(OtherModel);
+  expect(listRegisteredPoms()).toHaveLength(0);
+  logged.mockRestore();
 });
 
 it("C3: rejects concurrent owners with the active-owner code and permits a fresh owner after disposal", () => {

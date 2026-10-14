@@ -526,6 +526,47 @@ it("C6: keeps a model registered until its last consumer is disposed", async () 
   expect(listRegisteredPoms()).toHaveLength(0);
 });
 
+it("keeps rendering when the registry refuses a Page Object, and logs the refusal", () => {
+  const SameNamed = class Model {
+    constructor(readonly page: Page) {}
+  };
+  registerCompiledPom(SameNamed, {
+    className: "Model",
+    components: [],
+    members: [],
+    tools: [],
+  });
+  const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+  const Consumer = defineComponent({
+    props: { model: { type: Function, required: true } },
+    setup(props) {
+      usePageObject(props.model as typeof Model);
+      return () => h("p", "rendered");
+    },
+  });
+  const app = mount({
+    render: () =>
+      h(
+        AymeProvider,
+        { pageFactory },
+        {
+          default: () => [
+            h(Consumer, { model: Model }),
+            h(Consumer, { model: SameNamed }),
+          ],
+        }
+      ),
+  });
+  expect(app._container?.textContent).toBe("renderedrendered");
+  expect(logged).toHaveBeenCalledWith(
+    expect.objectContaining({ code: "same-named-class" })
+  );
+  expect(
+    listRegisteredPoms().map(({ instance }) => instance.constructor)
+  ).toEqual([Model]);
+  logged.mockRestore();
+});
+
 class FakeMutationObserver {
   observe() {}
   disconnect() {}
