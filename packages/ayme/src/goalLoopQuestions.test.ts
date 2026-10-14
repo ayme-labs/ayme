@@ -11,13 +11,19 @@ import type { DecisionRequest, DecisionResponse } from "./decisionWire";
 import type { PageStateCapture } from "./pageState";
 import {
   NONE_OF_THESE_KEY,
+  NO_VALUE_NEEDED_KEY,
+  addValuePresets,
   buildArgumentRequest,
+  buildOperationRequest,
+  buildSpeculativeValueQuestions,
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
+  readSpeculativeValues,
   type ArgumentQuestion,
   type GoalLoopOperation,
   type GoalValues,
+  type ToolOption,
 } from "./goalLoopQuestions";
 
 // --- Fixtures ---
@@ -596,5 +602,431 @@ describe("Goal Values", () => {
       parameters: ["options"],
       unfilled: ["options"],
     });
+  });
+});
+
+describe("Goal Values asked speculatively in stage one", () => {
+  const textArg = {
+    name: "text",
+    path: ["text"],
+    optional: false,
+    closedSet: null,
+    free: "string",
+  } as const;
+  const elementTool = (name: string): GoalLoopOperation => ({
+    name,
+    description: `${name} text into one element.`,
+    execute: async () => null,
+    requiredParams: ["ref", "text"],
+    args: [refArg, textArg],
+  });
+  const typeTool = elementTool("type");
+  const fillTool = elementTool("fill");
+  /** A Page Object tool with a required name, an optional note and a list. */
+  const pomTool = (name: string): GoalLoopOperation => ({
+    name,
+    description: `Do ${name}.`,
+    execute: async () => null,
+    requiredParams: ["name"],
+    args: [
+      {
+        name: "name",
+        path: ["name"],
+        optional: false,
+        closedSet: null,
+        free: "string",
+        description: "The item's name.",
+      },
+      {
+        name: "note",
+        path: ["note"],
+        optional: true,
+        closedSet: null,
+        free: "string",
+      },
+      {
+        name: "tags",
+        path: ["tags"],
+        optional: false,
+        closedSet: null,
+        free: "string_list",
+      },
+      {
+        name: "count",
+        path: ["count"],
+        optional: false,
+        closedSet: null,
+        free: "integer",
+      },
+    ],
+  });
+  const options = (...tools: GoalLoopOperation[]): ToolOption[] =>
+    tools.map((tool) => ({ key: tool.name, label: tool.description, tool }));
+  const values: GoalValues = { "item name": "Milk", price: 2.5 };
+
+  it("asks one question per free value the element tools share, and one per other operation's", () => {
+    const questions = buildSpeculativeValueQuestions(
+      options(typeTool, clickTool, fillTool, pomTool("List.add")),
+      values
+    );
+
+    // type and fill share the question; the list, the optional note and the
+    // integer no Goal Value fits are not asked.
+    expect(
+      questions.map(({ id, covers, instructions, options }) => ({
+        id,
+        covers,
+        instructions,
+        options: options.map((option) => option.key),
+      }))
+    ).toEqual([
+      {
+        id: "value:text",
+        covers: [
+          { operation: "type", parameter: "text" },
+          { operation: "fill", parameter: "text" },
+        ],
+        instructions:
+          'If the next operation is "type" or "fill" and enters text into one element of the page as its "text" parameter, which Goal Value is that text?',
+        options: ["item name", NO_VALUE_NEEDED_KEY, NONE_OF_THESE_KEY],
+      },
+      {
+        id: "value:List.add.name",
+        covers: [{ operation: "List.add", parameter: "name" }],
+        instructions:
+          'If the next operation is "List.add" (Do List.add.), which Goal Value is its "name" (The item\'s name.) parameter?',
+        options: ["item name", NO_VALUE_NEEDED_KEY, NONE_OF_THESE_KEY],
+      },
+    ]);
+    expect(questions[0]!.options.at(-2)!.description).toBe(
+      'No value needed: the next operation is not "type" or "fill".'
+    );
+  });
+
+  it("asks nothing without Goal Values", () => {
+    expect(
+      buildSpeculativeValueQuestions(options(typeTool, pomTool("List.add")))
+    ).toEqual([]);
+  });
+
+  it("leaves a parameter to stage two when its Goal Values fill a question", () => {
+    const many = Object.fromEntries(
+      Array.from({ length: 254 }, (_, index) => [`v${index}`, `V${index}`])
+    );
+    expect(buildSpeculativeValueQuestions(options(fillTool), many)).toEqual([]);
+    const fitting = Object.fromEntries(Object.entries(many).slice(0, 253));
+    expect(
+      buildSpeculativeValueQuestions(options(fillTool), fitting)[0]?.options
+    ).toHaveLength(255);
+  });
+
+  it("asks at most eight questions, in the order of the operations", () => {
+    const tools = Array.from({ length: 10 }, (_, index) =>
+      pomTool(`List.add${index}`)
+    );
+
+    const questions = buildSpeculativeValueQuestions(
+      options(fillTool, ...tools),
+      values
+    );
+
+    expect(questions.map((question) => question.id)).toEqual([
+      "value:text",
+      ...tools.slice(0, 7).map((tool) => `value:${tool.name}.name`),
+    ]);
+  });
+
+  it("travels in the operation request next to the operation", () => {
+    const toolOptions = options(fillTool);
+    const request = buildOperationRequest(
+      { goal: "g" },
+      toolOptions,
+      buildSpeculativeValueQuestions(toolOptions, values)
+    );
+
+    expect(Object.keys(request.questions)).toEqual([
+      "operation",
+      "goal_met",
+      "value:text",
+    ]);
+    expect(request.questions["value:text"]).toMatchObject({
+      type: "choice",
+      criteria: { "item name": "item name: Milk" },
+    });
+  });
+
+  const speculativeOf = (...tools: GoalLoopOperation[]) =>
+    buildSpeculativeValueQuestions(options(...tools), values);
+  const choice = (key: string) => ({ type: "choice", choice: key });
+
+  it("reads only the answers that cover the chosen operation", () => {
+    const questions = speculativeOf(fillTool, pomTool("List.add"));
+    const record = { choices: {}, probabilities: {} };
+
+    // The List.add answer is not one it offered, and is never read.
+    const presets = readSpeculativeValues(
+      fillTool,
+      questions,
+      {
+        "value:text": {
+          ...choice("item name"),
+          probabilities: { "item name": 0.9 },
+        },
+        "value:List.add.name": choice("not offered"),
+      },
+      record
+    );
+
+    expect(presets).toEqual([
+      {
+        parameter: "text",
+        path: ["text"],
+        option: {
+          key: "item name",
+          description: "item name: Milk",
+          value: "Milk",
+        },
+      },
+    ]);
+    expect(record).toEqual({
+      choices: { "value:text": "item name" },
+      probabilities: { "value:text": { "item name": 0.9 } },
+    });
+  });
+
+  it.each([NO_VALUE_NEEDED_KEY, NONE_OF_THESE_KEY])(
+    "leaves the parameter to stage two when the answer is %s",
+    (key) => {
+      const questions = speculativeOf(fillTool);
+      const presets = readSpeculativeValues(
+        fillTool,
+        questions,
+        { "value:text": choice(key) },
+        { choices: {}, probabilities: {} }
+      );
+
+      expect(presets).toEqual([]);
+      const plan = planArguments(
+        fillTool,
+        captureOfButtons(1),
+        values,
+        presets
+      );
+      if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+      expect(plan.questions.map((question) => question.id)).toEqual([
+        "ref",
+        "text",
+      ]);
+      expect(plan.questions[0]!.instructions).toMatch(
+        /^Pick the element this operation acts on/
+      );
+    }
+  );
+
+  it("rejects an answer outside the options for the chosen operation", () => {
+    expect(() =>
+      readSpeculativeValues(
+        fillTool,
+        speculativeOf(fillTool),
+        { "value:text": choice("Milk") },
+        { choices: {}, probabilities: {} }
+      )
+    ).toThrow(/not one of the offered options/);
+  });
+
+  const presetsFor = (tool: GoalLoopOperation, key: string) =>
+    readSpeculativeValues(
+      tool,
+      speculativeOf(tool),
+      {
+        [`value:${tool === fillTool ? "text" : `${tool.name}.name`}`]:
+          choice(key),
+      },
+      { choices: {}, probabilities: {} }
+    );
+
+  it("asks stage two only for the element, naming the value it will receive", () => {
+    const plan = planArguments(
+      fillTool,
+      captureOfButtons(2),
+      values,
+      presetsFor(fillTool, "item name")
+    );
+
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    expect(plan.questions).toHaveLength(1);
+    expect(plan.questions[0]).toMatchObject({
+      id: "ref",
+      target: { receiving: 'the text "Milk" (the Goal Value "item name")' },
+      instructions:
+        'Pick the element that should receive the text "Milk" (the Goal Value "item name"), as this operation\'s "ref" parameter. The operation is "fill": fill text into one element.',
+    });
+  });
+
+  it("names the value in every chunk and in the run-off", async () => {
+    const presets = presetsFor(fillTool, "item name");
+    const plan = planArguments(
+      fillTool,
+      captureOfButtons(300),
+      values,
+      presets
+    );
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    const questions = plan.questions as ArgumentQuestion[];
+
+    for (const question of questions)
+      expect(question.instructions).toMatch(
+        /^Pick the element that should receive the text "Milk" \(the Goal Value "item name"\), as this operation's "ref" parameter\. The page holds 300/
+      );
+    const answers = readArgumentAnswers(
+      fillTool,
+      questions,
+      Object.fromEntries(
+        questions.map((question) => [
+          question.id,
+          choice(question.options[0]!.key),
+        ])
+      )
+    );
+    if (answers.kind !== "run_off") throw new Error(answers.kind);
+    expect(answers.question.instructions).toMatch(
+      /Pick the one element that should receive the text "Milk" \(the Goal Value "item name"\), as this operation's "ref" parameter\./
+    );
+    expect(answers.question.target).toEqual({
+      receiving: 'the text "Milk" (the Goal Value "item name")',
+    });
+  });
+
+  it("completes the arguments with the preset, in the operation's order", () => {
+    const tool: GoalLoopOperation = { ...fillTool, args: [textArg, refArg] };
+    const plan = planArguments(
+      tool,
+      captureOfButtons(1),
+      values,
+      presetsFor(fillTool, "item name")
+    );
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    const answers = readArgumentAnswers(tool, plan.questions, {
+      ref: choice("e1"),
+    });
+    if (answers.kind !== "chosen") throw new Error(answers.kind);
+
+    addValuePresets(tool, answers.chosen, presetsFor(fillTool, "item name"));
+
+    expect(answers.chosen.args).toEqual({ ref: "e1", text: "Milk" });
+    expect(Object.entries(answers.chosen.chosen)).toEqual([
+      ["text", { key: "item name", description: "item name: Milk" }],
+      ["ref", { key: "e1", description: 'button "Item 1"' }],
+    ]);
+  });
+});
+
+describe("the state a request that only picks an element is sent", () => {
+  /** Unnamed textboxes under named regions, with text around them. */
+  function surveyCapture(): PageStateCapture {
+    const yaml = [
+      '- form "Survey editor" [ref=e1]:',
+      '  - region "Question 1" [ref=e2]:',
+      '    - heading "Basics" [level=3] [ref=e3]',
+      "    - text: Question",
+      "    - textbox [ref=e4]: Draft",
+      "    - text: Description",
+      '    - textbox "Optional" [ref=e5]:',
+      "      - /placeholder: Optional",
+      '  - region "Question 2" [ref=e6]:',
+      '    - heading "Question 2" [level=3] [ref=e7]',
+      "    - textbox [ref=e8]",
+      '- button "Save" [ref=e9]',
+    ].join("\n");
+    const tree = StructuralTree.fromAriaSnapshotYaml(
+      yaml,
+      new SyntheticAriaRefFactory()
+    );
+    const elementsByRef = new Map<AriaRef, Element>();
+    for (const ref of ["e4", "e5", "e8"])
+      elementsByRef.set(
+        AriaRefSchema.parse(ref),
+        document.createElement("input")
+      );
+    elementsByRef.set(
+      AriaRefSchema.parse("e9"),
+      document.createElement("button")
+    );
+    return { tree, elementsByRef };
+  }
+
+  const state = {
+    goal: "g",
+    values: { name: "Milk" },
+    page: ["the page"],
+    page_objects: "",
+    history: [],
+  };
+  const inputsOnly = {
+    ...refArg,
+    closedSet: {
+      kind: "ref",
+      filter: (element: Element) => element instanceof HTMLInputElement,
+    },
+  } as const;
+
+  it("carries the candidates, each with where it sits and the text around it, instead of the page", () => {
+    const capture = surveyCapture();
+    const tool: GoalLoopOperation = { ...clickTool, args: [inputsOnly] };
+    const plan = planArguments(tool, capture);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+
+    const request = buildArgumentRequest(state, plan.questions, capture);
+
+    expect(request.state).toEqual({
+      goal: "g",
+      values: { name: "Milk" },
+      history: [],
+      elements: [
+        {
+          ref: "e4",
+          role: "textbox",
+          name: "",
+          within: ['form "Survey editor"', 'region "Question 1"'],
+          heading: "Basics",
+          preceding_text: "Question",
+          text: "Draft",
+        },
+        {
+          ref: "e5",
+          role: "textbox",
+          name: "Optional",
+          within: ['form "Survey editor"', 'region "Question 1"'],
+          heading: "Basics",
+          preceding_text: "Description",
+          props: { placeholder: "Optional" },
+        },
+        // The heading names the region it is in, so only the region is listed.
+        {
+          ref: "e8",
+          role: "textbox",
+          name: "",
+          within: ['form "Survey editor"', 'region "Question 2"'],
+        },
+      ],
+    });
+    expect(
+      (request.questions as Record<string, { instructions: string }>).ref!
+        .instructions
+    ).toMatch(/Each option is an element of `elements` in the state/);
+  });
+
+  it("keeps the page when the request asks anything besides the element", () => {
+    const capture = surveyCapture();
+    const plan = planArguments(clickWithForceTool, capture);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+
+    const request = buildArgumentRequest(state, plan.questions, capture);
+
+    expect(request.state).toBe(state);
+    expect(
+      (request.questions as Record<string, { instructions: string }>).ref!
+        .instructions
+    ).not.toMatch(/`elements`/);
   });
 });

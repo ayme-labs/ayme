@@ -98,7 +98,10 @@ The model decides each step on the current Structural Page State as JSON, one ob
 
 A step first asks which operation moves closest to the goal and whether the goal is met. The operations are the available Page Object Tools, Custom Tools and single-element Browser Tools; a Page Object Tool that cannot run now is not offered. When the chosen operation takes arguments from a closed set, a Structural Ref, an enum value or a boolean, a second request asks for all of them at once, and the operation runs with the chosen values.
 
+The first request also asks which [Goal Value](#goal-values) the next operation would enter, before the operation is known: one question per required text or number parameter, shared by the single-element tools whose parameter has the same name and kind, at most eight. Only the answers that cover the chosen operation are read; one that names a Goal Value fills its parameter, and the second request then picks the element that should receive that value. Past eight, or when the answer names no Goal Value, the parameter is asked in the second request as below.
+
 - The ref options are the elements the operation's filter keeps, one per element in document order; nothing is merged or ranked.
+- A second request that only picks an element is sent the candidates instead of the page: each with its named ancestors, the nearest heading and the nearest text before it, its own text, props and state. The goal, the Goal Values and the history travel with it.
 - One question offers at most 255 options. More elements are cut into chunks of at most 254 plus "none of these", asked side by side. When exactly one chunk names an element, the operation runs on it; when several do, one more question offers just those; when none does, the loop ends with `no_fitting_option`.
 - An optional closed-set parameter gets an extra choice that leaves it unset.
 - The model never writes a free value: it picks one from the [Goal Values](#goal-values), or the loop ends with `needs_value` so that the calling agent supplies it.
