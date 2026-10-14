@@ -27,7 +27,7 @@ export class RefResolutionError extends AymeError {
  * `active-owner`: another runtime session is already started in the document,
  * or in the Node process, as its App Process.
  */
-export type RuntimeStateErrorCode = "active-owner";
+export type RuntimeStateErrorCode = "active-owner" | "same-named-class";
 
 /** Ayme is not set up for this call. */
 export class RuntimeStateError extends AymeError {
