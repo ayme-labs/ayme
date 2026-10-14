@@ -121,6 +121,12 @@ it.each([
     false,
     "Fill in the arguments, then run",
   ],
+  [
+    "reopening a closed form with invalid input",
+    { needsInput: true, hasForm: true, invalid: true },
+    false,
+    "Fill in the arguments, then run",
+  ],
   ["running", {}, false, "Run add_item"],
   [
     "running a collection action on its item",
