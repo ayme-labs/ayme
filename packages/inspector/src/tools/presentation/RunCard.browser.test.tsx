@@ -107,6 +107,7 @@ describe("Run", () => {
 
     expect(onRun).toHaveBeenCalledExactlyOnceWith({});
     expect(await card.root.getAttribute("data-available")).toBe("true");
+    expect(await card.argumentsToggle.count()).toBe(0);
   });
 
   it("opens the typed form first when an argument is required", async () => {
@@ -644,6 +645,18 @@ describe("a collection action", () => {
       { ref: "e6", args: { text: "Oat milk" } },
       eggs
     );
+  });
+
+  it("is off once its form is open with no item on the page", async () => {
+    const { card, onRun } = renderCard({ tool: rename, items: [] });
+
+    await card.runButton.click();
+
+    await expect.poll(() => card.runButton.isDisabled()).toBe(true);
+    expect(await card.runButton.getAttribute("title")).toBe(
+      "No item on the page to run on"
+    );
+    expect(onRun).not.toHaveBeenCalled();
   });
 
   it("runs on the view's item without a picker", async () => {
