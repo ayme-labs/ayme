@@ -18,6 +18,8 @@
     "playwright.config.ts",
     "playwright.goals.config.ts",
     "playwright.harness.config.ts",
+    "playwright.bench.config.ts",
+    "playwright.benchScripted.config.ts",
     "vitest.config.ts"
   ]
 }

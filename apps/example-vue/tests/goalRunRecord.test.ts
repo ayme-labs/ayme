@@ -82,8 +82,8 @@ it("counts a chunk conflict and keeps the chunk choices when the run-off fails",
     {
       model,
       questions: {
-        ref__1: { criteria: { e1: "", none_of_these: "" } },
-        ref__2: { criteria: { e9: "", none_of_these: "" } },
+        ref__1: { criteria: { e1: 'button "Archive"', none_of_these: "" } },
+        ref__2: { criteria: { e9: 'button "Archive"', none_of_these: "" } },
       },
       answers: { ref__1: { choice: "e1" }, ref__2: { choice: "e9" } },
     },
@@ -122,6 +122,10 @@ it("counts a chunk conflict and keeps the chunk choices when the run-off fails",
       pageBytes: 0,
       historyBytes: 0,
       argumentChoices: { ref__1: "e1", ref__2: "e9" },
+      argumentDescriptions: {
+        ref__1: 'button "Archive"',
+        ref__2: 'button "Archive"',
+      },
     },
   ]);
   expect(aggregate([run])).toMatchObject({
@@ -211,4 +215,92 @@ it("reports done at the expected step, no fitting option, and state bytes per st
   const unstated = runOf("done", ["none"], null);
   expect(unstated.doneAtExpectedStep).toBeUndefined();
   expect(aggregate([unstated]).doneAtExpectedStepRate).toBeNull();
+});
+
+it("counts repeated and wrong-target steps and sums the reported token usage", () => {
+  const usage = { input_tokens: 100, output_tokens: 4 };
+  /** One step: stage one chose `fill`, stage two the target and the text. */
+  const fillStep = (target: string): Decision[] => [
+    { ...stageOne("fill", {}), usage },
+    {
+      model: "typesafe/jev-1.13",
+      questions: {
+        target: {
+          criteria: {
+            e1: 'textbox "First name"',
+            e2: 'textbox "Display name"',
+          },
+        },
+        text: { criteria: { "display name": "display name: countess" } },
+      },
+      answers: { target: { choice: target }, text: { choice: "display name" } },
+      usage,
+    },
+  ];
+  const runOf = (reason: string, decisions: Decision[]) =>
+    toGoalRun(
+      testResultOf(
+        goalRunRecordOf(
+          {
+            goal: "Change the display name",
+            expectedTargets: { "display name": 'textbox "Display name"' },
+            reason,
+            wallTimeMs: 1,
+          },
+          decisions,
+          undefined
+        )
+      )
+    ).run;
+
+  // The same wrong step three times, until the step budget ran out.
+  const stuck = runOf("step_budget", [
+    ...fillStep("e1"),
+    ...fillStep("e1"),
+    ...fillStep("e1"),
+  ]);
+  expect(stuck.steps[0]!.argumentDescriptions).toEqual({
+    target: 'textbox "First name"',
+    text: "display name: countess",
+  });
+  expect(stuck).toMatchObject({
+    repeatedSteps: 2,
+    wrongTargetSteps: 3,
+    inputTokens: 600,
+    outputTokens: 24,
+  });
+
+  // The right step, then a step that judged the goal met with the same
+  // operation chosen: it ran nothing, so it repeats nothing.
+  const done = runOf("done", [
+    ...fillStep("e2"),
+    { ...stageOne("fill", {}), usage },
+  ]);
+  expect(done).toMatchObject({ repeatedSteps: 0, wrongTargetSteps: 0 });
+
+  expect(aggregate([stuck, done])).toMatchObject({
+    repeatedSteps: 2,
+    wrongTargetSteps: 3,
+    meanInputTokensPerStep: 900 / 5,
+    meanOutputTokensPerStep: 36 / 5,
+    meanTokensPerRun: (624 + 312) / 2,
+  });
+  // Without usage in any response, and without expected targets, both are null.
+  expect(
+    aggregate([
+      toGoalRun(
+        testResultOf(
+          goalRunRecordOf(
+            { goal: "archive it", reason: "done", wallTimeMs: 1 },
+            [stageOne("none", {})],
+            undefined
+          )
+        )
+      ).run,
+    ])
+  ).toMatchObject({
+    wrongTargetSteps: null,
+    meanInputTokensPerStep: null,
+    meanTokensPerRun: null,
+  });
 });
