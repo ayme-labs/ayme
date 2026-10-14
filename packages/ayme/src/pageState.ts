@@ -50,6 +50,11 @@ export type RefResolution =
   | {
       status: "unresolved";
       requestedRef: AriaRef;
+      /**
+       * `unknown-ref`, `removed` and `ambiguous` come from the identity ledger
+       * (see `StructuralIdentityResolution`). `no-element`: the ref resolved to a
+       * current ref, but the latest capture holds no live element for it.
+       */
       reason: "unknown-ref" | "removed" | "ambiguous" | "no-element";
     };
 
