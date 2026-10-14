@@ -12,8 +12,10 @@ import { agentTools } from "./publication.testSupport";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
 import {
+  CHANGES_CUT_MARKER,
   configureGoalLoop,
   getLastGoalLoopRunResult,
+  MAX_STEP_CHANGES,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
 import type { CustomTool } from "./elementTools";
@@ -1630,9 +1632,104 @@ describe("Goal Loop goal in Chromium", () => {
         chosen: {},
         result: "ok",
         page_changed: true,
+        changes: expect.stringContaining("<added> alert: Changes saved"),
         did: expect.any(String),
       },
     ]);
+  });
+
+  it("carries what a step changed in its history entry, and nothing for a step that changed nothing", async () => {
+    document.body.innerHTML = `
+      <main>
+        <button id="save">Save changes</button>
+      </main>
+    `;
+    class App {
+      root = page.locator("main");
+      save() {
+        const banner = document.createElement("div");
+        banner.setAttribute("role", "alert");
+        banner.textContent = "Changes saved";
+        document.querySelector("main")!.appendChild(banner);
+      }
+      wait() {}
+    }
+    registerCompiledPom(
+      App,
+      manifest(
+        "App",
+        [root()],
+        [action("save", "App.save"), action("wait", "App.wait")]
+      )
+    );
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        { operation: "App.save", goal_met: 0.1 },
+        { operation: "App.wait", goal_met: 0.1 },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(App);
+    const result = (await tool.execute({
+      goal: "save",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+    expect(result.reason).toBe("done");
+    const [saved, waited] = result.history as Array<Record<string, unknown>>;
+    expect(saved).toMatchObject({ operation: "App.save", page_changed: true });
+    expect(saved!.changes).toMatch(/- e\d+ <added> alert: Changes saved/);
+    expect(waited).toMatchObject({
+      operation: "App.wait",
+      page_changed: false,
+    });
+    expect(waited).not.toHaveProperty("changes");
+    // The model reads the same entries in the state of the step after them.
+    expect((requests[1]!.state as Record<string, unknown>).history).toEqual([
+      saved,
+    ]);
+    expect((requests[2]!.state as Record<string, unknown>).history).toEqual([
+      saved,
+      waited,
+    ]);
+  });
+
+  it("cuts a long Change Record in the history entry, and keeps it whole in the run result", async () => {
+    document.body.innerHTML = `<main><h1>Import</h1><ul></ul></main>`;
+    class App {
+      root = page.locator("main");
+      fill() {
+        const list = document.querySelector("ul")!;
+        for (let i = 0; i < 40; i++) {
+          const item = document.createElement("li");
+          item.textContent = `Imported item number ${i}`;
+          list.appendChild(item);
+        }
+      }
+    }
+    registerCompiledPom(
+      App,
+      manifest("App", [root()], [action("fill", "App.fill")])
+    );
+    const decide = scriptedDecisionFn([
+      { operation: "App.fill", goal_met: 0.1 },
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(App);
+    const result = (await tool.execute({
+      goal: "import",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+    const [entry] = result.history as Array<{ changes: string }>;
+    const full = getLastGoalLoopRunResult()!.stepScores[0]!.changes!;
+    expect(full.length).toBeGreaterThan(MAX_STEP_CHANGES);
+    expect(full).toContain("Imported item number 39");
+    expect(entry!.changes.length).toBeLessThanOrEqual(MAX_STEP_CHANGES);
+    expect(entry!.changes.endsWith(CHANGES_CUT_MARKER)).toBe(true);
+    // Cut at a whole line of the full record.
+    const kept = entry!.changes.slice(0, -CHANGES_CUT_MARKER.length);
+    expect(full.startsWith(`${kept}\n`)).toBe(true);
   });
 
   it("records a failed step as a bare step record with the error as its result", async () => {
@@ -1802,6 +1899,10 @@ describe("Goal Loop goal in Chromium", () => {
       // Whether a click changes the page (focus among others) is the
       // interaction history's promise, pinned in its own tests.
       page_changed: expect.any(Boolean),
+      // A focus change, when the click made one, is what it changed.
+      ...("changes" in (result.history as object[])[0]!
+        ? { changes: expect.any(String) }
+        : {}),
       did: expect.any(String),
     };
     expect(description).toBe('button "Save changes"');

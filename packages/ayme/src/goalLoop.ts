@@ -109,9 +109,10 @@ type GoalLoopStepScores = {
   /** Stage two, per question id: the scores the decision function supplied. */
   argumentProbabilities?: Record<string, Record<string, number>>;
   /**
-   * The executed step's Change Record, as its action result carried it: the
-   * page the model decided on against the Settled Page after the action.
-   * Recorded, not sent; absent when the step ran no action or nothing changed.
+   * The executed step's Change Record in full, as its action result carried
+   * it: what the action changed, up to the Settled Page after it. The step
+   * record sends it cut to `MAX_STEP_CHANGES`; absent when the step ran no
+   * action or the action changed nothing.
    */
   changes?: string;
 };
@@ -167,6 +168,12 @@ export type GoalLoopStepRecord = {
   /** `"ok"`, or the error the action failed with. */
   result: string;
   page_changed: boolean;
+  /**
+   * What the action changed on the page, its Change Record, cut to
+   * `MAX_STEP_CHANGES` characters. Absent when the action changed nothing,
+   * even where `page_changed` counts a change made while the model decided.
+   */
+  changes?: string;
   /** A one-line label derived from the fields above; nothing reads it back. */
   did: string;
 };
@@ -205,6 +212,27 @@ type StepOutcome = Pick<GoalLoopStepRecord, "result" | "page_changed"> & {
   loading?: string;
 };
 
+/**
+ * At most this many characters of a step's Change Record go into its history
+ * entry, so that the history the model is sent grows by a bounded amount with
+ * each step.
+ */
+export const MAX_STEP_CHANGES = 400;
+
+/** Marks a step's Change Record that was cut to `MAX_STEP_CHANGES`. */
+export const CHANGES_CUT_MARKER = "\n… (cut)";
+
+/**
+ * A Change Record cut to `MAX_STEP_CHANGES` characters, the marker included:
+ * at the last whole line that fits, or mid-line when not even one does.
+ */
+function cutChanges(changes: string): string {
+  if (changes.length <= MAX_STEP_CHANGES) return changes;
+  const kept = changes.slice(0, MAX_STEP_CHANGES - CHANGES_CUT_MARKER.length);
+  const lineEnd = kept.lastIndexOf("\n");
+  return `${lineEnd > 0 ? kept.slice(0, lineEnd) : kept}${CHANGES_CUT_MARKER}`;
+}
+
 /** Record an executed step; `did` is derived, e.g. `click(button "Add item")`. */
 function stepRecord(
   operation: string,
@@ -219,6 +247,7 @@ function stepRecord(
     chosen,
     result: outcome.result,
     page_changed: outcome.page_changed,
+    ...(outcome.changes ? { changes: cutChanges(outcome.changes) } : {}),
     did: `${operation}(${descriptions.join(", ")})`,
   };
 }
@@ -747,7 +776,6 @@ export async function pursueGoal(
         run
       );
       consecutiveFailures = 0;
-      if (actionResult.changes) score.changes = actionResult.changes;
     } catch (error) {
       const errorText = error instanceof Error ? error.message : String(error);
       actionResult = { result: errorText, page_changed: false };
@@ -762,6 +790,8 @@ export async function pursueGoal(
     );
     history.push(record);
     Object.assign(score, record);
+    // The run result keeps the step's Change Record in full.
+    if (actionResult.changes) score.changes = actionResult.changes;
 
     // A step that started a full page load is the last: the loop ends with
     // the document it runs in.
