@@ -21,7 +21,7 @@ export default defineConfig({
 });
 ```
 
-Enable `compilerOptions.experimentalDecorators` in your Page Object Models' tsconfig, and import them from the application. On Angular, `ng add @ayme-dev/angular` sets the plugin up. On Next.js, the experimental Turbopack loader compiles them.
+Enable `compilerOptions.experimentalDecorators` in your Page Object Models' tsconfig, and import them from the application. On Angular, `ng add @ayme-dev/angular` sets the plugin up. On Next.js, the Turbopack loader compiles them.
 
 ## Documentation
 

@@ -31,8 +31,8 @@ export const INJECTED_IMPORTS = [REGISTRATION_MODULE];
 export type PomPrograms = Map<string, ts.Program>;
 
 /**
- * The source transform shared by Vite, Angular and the experimental Turbopack
- * loader. With `programs`, transforms of one tsconfig project share a Program.
+ * The source transform shared by Vite, Angular and the Turbopack loader. With
+ * `programs`, transforms of one tsconfig project share a Program.
  */
 export function createPomTransform(
   options: PomCompilerOptions = {},

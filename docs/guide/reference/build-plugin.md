@@ -8,7 +8,7 @@ The options of `@ayme-dev/unplugin-ayme`, which compiles your Page Object Models
 | ------------------------------------------ | ------------------------------------------------------------------------------------- |
 | `@ayme-dev/unplugin-ayme/vite`             | Vite 7 and 8, including Nuxt and SvelteKit. ESM-only, so the config must load as ESM. |
 | `@ayme-dev/unplugin-ayme/angular`          | The Angular CLI's application builder, through `@angular-builders/custom-esbuild`.    |
-| `@ayme-dev/unplugin-ayme/turbopack-loader` | Next.js 16 with Turbopack. Experimental.                                              |
+| `@ayme-dev/unplugin-ayme/turbopack-loader` | Next.js 16 with Turbopack.                                                            |
 
 The plugin runs on Node.js 20.19 and later 20.x, or 22.12 and later. It compiles Page Object Models with its own TypeScript dependency, whichever TypeScript version your project uses.
 
@@ -73,7 +73,7 @@ The plugin compiles Page Object Models imported with relative paths or through t
 
 ## Next.js
 
-`@ayme-dev/unplugin-ayme/turbopack-loader` is an experimental loader for Turbopack's browser graph. Its one option is `tsconfigPath`, the tsconfig the compiler reads. Apply it to the `.ts` files on the browser graph that contain `@ayme` or `extends`:
+`@ayme-dev/unplugin-ayme/turbopack-loader` is a loader for Turbopack's browser graph. Its one option is `tsconfigPath`, the tsconfig the compiler reads. Apply it to the `.ts` files on the browser graph that contain `@ayme` or `extends`:
 
 ```js
 // next.config.mjs

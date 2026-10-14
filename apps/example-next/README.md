@@ -29,9 +29,9 @@ through `usePageObject(CounterPage)`. It can be removed and remounted.
 
 ## How it works
 
-`@ayme-dev/unplugin-ayme/turbopack-loader` is an experimental ESM loader using
-the webpack loader calling convention supported by Turbopack. It calls the same
-source transform as Vite, then transpiles the result with the package's existing
+`@ayme-dev/unplugin-ayme/turbopack-loader` is an ESM loader using the webpack
+loader calling convention supported by Turbopack. It calls the same source
+transform as Vite, then transpiles the result with the package's existing
 TypeScript dependency. Its only configuration option is `tsconfigPath`.
 
 The loader reports the TypeScript configuration files and non-default-library
@@ -115,9 +115,11 @@ sets no build constants. The initial status is `waiting` on the server and in
 the browser, so the server snapshot is stable. Default test-id and timeout settings
 are unchanged.
 
-Server Component POM execution, Edge deployments, Pages Router, source-map
-fidelity and packaged-consumer certification are not covered. POMs must use
-`.ts` and the explicit `@ayme` convention.
+Server Component POM execution, Edge deployments, Pages Router and source-map
+fidelity are not covered. The packed-consumer check in `@ayme-dev/ayme` builds
+a separate Next.js app from the packed packages, with the build plugin
+reference's configuration. POMs must use `.ts` and the explicit `@ayme`
+convention.
 
 React Fast Refresh is not part of the POM lifetime contract. Recompiling a POM
 module replaces its class identity, while `usePageObject` deliberately requires

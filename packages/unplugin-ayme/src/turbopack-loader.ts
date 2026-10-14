@@ -11,7 +11,7 @@ type LoaderContext = {
   addDependency?: (fileName: string) => void;
 };
 
-/** Experimental .ts POM loader. Configure it on Turbopack's browser graph only. */
+/** The .ts POM loader for Next.js. Configure it on Turbopack's browser graph only. */
 export default function turbopackLoader(this: LoaderContext, source: string) {
   const options = this.getOptions();
   const transformed = createPomTransform(options)(

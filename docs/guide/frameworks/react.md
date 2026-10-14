@@ -23,7 +23,7 @@ export default defineConfig({
 });
 ```
 
-On Next.js, use the experimental Turbopack loader, as the [build plugin reference](../reference/build-plugin.md#nextjs) shows. Mark your Page Object Models as [Page Object Models](../guides/page-object-models.md) shows.
+On Next.js, use the Turbopack loader, as the [build plugin reference](../reference/build-plugin.md#nextjs) shows. Mark your Page Object Models as [Page Object Models](../guides/page-object-models.md) shows.
 
 ## Start Ayme at the root
 
