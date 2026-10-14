@@ -29,6 +29,13 @@ export type StructuralIdentityResolution =
   | {
       readonly status: "unresolved";
       readonly requestedRef: AriaRef;
+      /**
+       * - `unknown-ref`: the ledger never observed this ref.
+       * - `removed`: the identity this ref belonged to is no longer on the page.
+       * - `ambiguous`: the ledger cannot tell which identity this ref continues
+       *   as (several earlier identities claim one current node, or one node has
+       *   several candidate identities). Not "matches several elements".
+       */
       readonly reason: "unknown-ref" | "removed" | "ambiguous";
     };
 
