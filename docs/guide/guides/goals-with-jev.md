@@ -145,6 +145,7 @@ Each step sends the pruned page state, the goal and the step's question from the
     chosen: Record<string, { key: string, description: string }>,
     result: string,      // "ok", or the error the action failed with
     page_changed: boolean,
+    changes?: string,    // what the step changed, cut to 400 characters; absent when nothing
     did: string,         // operation(description, …), for a human skimming
   }[],
   needs?:  { tool: string, parameters: string[] },  // only with needs_value or no_progress
@@ -166,7 +167,7 @@ Each step sends the pruned page state, the goal and the step's question from the
 
 A step repeats to no effect when it has the same operation and chosen arguments as the step before, and that step did not change the page, or when it would be the third in a row even though the page changed. The loop does not run it again: `next` names the step, and tells the calling agent to perform it itself or to call `goal` again with a goal that names the element.
 
-`history` records each operation the loop ran: the tool in `operation`; in `chosen`, per parameter asked, the key of the option the model chose and its description exactly as offered, a choice to leave it unset included; `"ok"` or an error message in `result`; whether the page changed in `page_changed`; and `did`, a one-line label such as `click(button "Add item")`. A step that hands over before acting records nothing. The model is sent the same entries as its history.
+`history` records each operation the loop ran: the tool in `operation`; in `chosen`, per parameter asked, the key of the option the model chose and its description exactly as offered, a choice to leave it unset included; `"ok"` or an error message in `result`; whether the page changed in `page_changed`; in `changes`, what the step changed, its Change Record cut to 400 characters with `… (cut)` on a line of its own where it was cut, absent when the step changed nothing; and `did`, a one-line label such as `click(button "Add item")`. A step that hands over before acting records nothing. The model is sent the same entries as its history.
 
 `changes` is one Change Record for the whole run: the page the calling agent last received against the page after the run, which becomes the agent's page for its next Change Record. A run that opened a dialog, closed it and archived an item hands over only the net result:
 
@@ -176,13 +177,19 @@ A step repeats to no effect when it has the same operation and chosen arguments 
   next: "The goal has been achieved. Continue with your next task.",
   history: [
     { operation: "InboxPage.openDialog", chosen: {}, result: "ok",
-      page_changed: true, did: "InboxPage.openDialog()" },
+      page_changed: true, changes: '- e12 <added> dialog "Archive invoice"',
+      did: "InboxPage.openDialog()" },
     { operation: "InboxPage.closeDialog", chosen: {}, result: "ok",
-      page_changed: true, did: "InboxPage.closeDialog()" },
+      page_changed: true, changes: '- e12 <removed> dialog "Archive invoice"',
+      did: "InboxPage.closeDialog()" },
     { operation: "InboxPage.invoices.archive",
       chosen: { ref: { key: "e5",
         description: 'InboxPage.invoices[0] (listitem "Invoice 7")' } },
       result: "ok", page_changed: true,
+      changes: `- e2 main:
+  - e4 list:
+    - e5 <removed> listitem: Invoice 7
+  - e9 <added> paragraph: Archived Invoice 7`,
       did: 'InboxPage.invoices.archive(InboxPage.invoices[0] (listitem "Invoice 7"))' },
   ],
   changes: `- e2 main:

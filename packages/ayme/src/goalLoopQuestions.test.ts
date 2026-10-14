@@ -955,12 +955,23 @@ describe("the state a request that only picks an element is sent", () => {
     return { tree, elementsByRef };
   }
 
+  // A step that changed the page: its history entry carries what it changed.
+  const history = [
+    {
+      operation: "check",
+      chosen: { target: { key: "e7", description: 'checkbox "Required"' } },
+      result: "ok",
+      page_changed: true,
+      changes: '- e7 <changed> checkbox "Required" [checked]',
+      did: 'check(checkbox "Required")',
+    },
+  ];
   const state = {
     goal: "g",
     values: { name: "Milk" },
     page: ["the page"],
     page_objects: "",
-    history: [],
+    history,
   };
   const inputsOnly = {
     ...refArg,
@@ -981,7 +992,7 @@ describe("the state a request that only picks an element is sent", () => {
     expect(request.state).toEqual({
       goal: "g",
       values: { name: "Milk" },
-      history: [],
+      history,
       elements: [
         {
           ref: "e4",
