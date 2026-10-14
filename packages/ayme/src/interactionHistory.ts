@@ -64,11 +64,13 @@ export class InteractionHistory {
     PomLabels
   >();
 
-  constructor(
-    currentDocument: Document,
-    private readonly clock: MonotonicClock
-  ) {
-    this.observations = new StructuralObservationSession({ clock });
+  private readonly clock: MonotonicClock;
+
+  constructor(currentDocument: Document, clock: MonotonicClock) {
+    this.clock = strictlyIncreasing(clock);
+    this.observations = new StructuralObservationSession({
+      clock: this.clock,
+    });
     this.observations.recordNavigation({
       pageId: this.pageId,
       url: currentDocument.URL,
@@ -86,7 +88,7 @@ export class InteractionHistory {
   }
 
   now(): MonotonicTimeMs {
-    return MonotonicTimeMsSchema.parse(this.clock.now());
+    return this.clock.now();
   }
 
   /** Whether anything was observed yet; the first observation stands in for an unset cursor. */
@@ -251,6 +253,23 @@ export class InteractionHistory {
     this.latest = entry;
     return entry;
   }
+}
+
+/**
+ * `clock`, never reading the same time twice. A browser coarsens
+ * `performance.now()`, so a capture and the action started right after it
+ * could share a time, and core leaves an observation stamped at an action's
+ * start out of its before: the change up to it would read as the action's.
+ */
+function strictlyIncreasing(clock: MonotonicClock): MonotonicClock {
+  let last = -Infinity;
+  return {
+    now: () => {
+      const reading = clock.now();
+      last = reading > last ? reading : last + 0.001;
+      return MonotonicTimeMsSchema.parse(last);
+    },
+  };
 }
 
 /**

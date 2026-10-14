@@ -138,6 +138,38 @@ describe("InteractionHistory actions", () => {
     ).toEqual([["Drifted"]]);
   });
 
+  it("reads a page captured in the same clock tick an action starts in as that action's before", async () => {
+    // A browser coarsens performance.now(): a capture that resolves a ref and
+    // the action started right after it can read the same time.
+    const coarse = { now: () => MonotonicTimeMsSchema.parse(7) };
+    const history = new InteractionHistory(document, coarse);
+    history.observe(empty(), history.now());
+    history.observe(
+      tree('- button "Save" [ref=e1]\n- status "Drifted" [ref=e3]'),
+      history.now()
+    );
+    const actionId = history.startAction({ tool: "App.save", args: {} });
+
+    history.completeAction(
+      actionId,
+      tree(
+        '- button "Save" [ref=e1]\n- status "Drifted" [ref=e3]\n- status "Saved" [ref=e2]'
+      ),
+      history.now()
+    );
+
+    const { actionChange, unassignedChanges } =
+      await history.observations.getActionEvidence(actionId);
+    expect(
+      actionChange.changeTree.getNodesByStatus("added").map((node) => node.name)
+    ).toEqual(["Saved"]);
+    expect(
+      unassignedChanges.map((change) =>
+        change.changeTree.getNodesByStatus("added").map((node) => node.name)
+      )
+    ).toEqual([["Drifted"]]);
+  });
+
   it("completes an action whose tool call failed with its page", async () => {
     const history = new InteractionHistory(document, clock);
     history.observe(empty(), history.now());
