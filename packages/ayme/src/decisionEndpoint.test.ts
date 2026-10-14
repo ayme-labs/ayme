@@ -172,6 +172,24 @@ describe("decisionEndpoint", () => {
     });
   });
 
+  it("names an HTML error page by its status text, not its markup", async () => {
+    // Such as a reverse proxy's error page in front of the endpoint.
+    const page = `<!DOCTYPE html><html><head><style>${"body{}".repeat(500)}</style></head><body><h1>502 Bad Gateway</h1></body></html>`;
+    fetchMock.mockResolvedValue(
+      new Response(page, { status: 502, statusText: "Bad Gateway" })
+    );
+    const decide = decisionEndpoint("/api/decisions");
+    await expect(decide(request)).rejects.toMatchObject({
+      code: "rejected",
+      status: 502,
+      message: "The Decision Endpoint /api/decisions answered 502 Bad Gateway",
+    });
+    fetchMock.mockResolvedValue(new Response(page, { status: 502 }));
+    await expect(decide(request)).rejects.toThrow(
+      /^The Decision Endpoint \/api\/decisions answered 502$/
+    );
+  });
+
   it.each([
     JSON.stringify(null),
     JSON.stringify([]),
