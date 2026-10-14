@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { toolChangeNote, type SeenTool } from "./toolChangeNote";
 
@@ -107,4 +107,27 @@ it("says which App Process tool is newly hidden, and why", () => {
       state(["peek.node.jobs"], ["peek.node.jobs"])
     )
   ).toBeUndefined();
+});
+
+describe("toolChangeNote with schemas (pilot)", () => {
+  it("carries each appeared tool's description and input schema", () => {
+    const note = toolChangeNote(
+      { tools: [], hidden: [] },
+      {
+        tools: [
+          {
+            name: "Dialog.confirm",
+            available: true,
+            description: "Confirms",
+            inputSchema: { type: "object" },
+          },
+        ],
+        hidden: [],
+      },
+      { schemas: true }
+    );
+    expect(note).toContain(
+      '- Dialog.confirm: Confirms Input schema: {"type":"object"}'
+    );
+  });
 });
