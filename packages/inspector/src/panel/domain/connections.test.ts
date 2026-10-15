@@ -42,6 +42,16 @@ describe("agentPill", () => {
       "agent not connected",
     ],
     [
+      { state: "not-connected", reason: "reconnecting" },
+      "Reconnecting",
+      "agent reconnecting",
+    ],
+    [
+      { state: "not-connected", reason: "no-answer" },
+      "Not connected",
+      "agent not connected",
+    ],
+    [
       { state: "connected", agent: "claude-code" },
       "Claude Code",
       "Claude Code connected",
@@ -54,6 +64,7 @@ describe("agentPill", () => {
   it.each<[AgentConnectionStatus, Tone]>([
     [{ state: "off" }, "off"],
     [{ state: "not-connected" }, "waiting"],
+    [{ state: "not-connected", reason: "reconnecting" }, "waiting"],
     [{ state: "connected" }, "ok"],
   ])("marks %j %s", (status, tone) => {
     expect(agentPill(status).tone).toBe(tone);
@@ -119,6 +130,11 @@ describe("agentRow", () => {
       ],
     ],
     [
+      "reconnecting",
+      { state: "not-connected", reason: "reconnecting" },
+      ["Lost the ayme MCP server this tab was connected to. Trying again."],
+    ],
+    [
       "no answer",
       { state: "not-connected", reason: "no-answer" },
       ["The ayme MCP server this tab connected to stopped answering.", FIX],
@@ -140,6 +156,8 @@ describe("agentRow", () => {
 
   it.each<[AgentConnectionStatus, string]>([
     [{ state: "not-connected" }, "Not connected"],
+    [{ state: "not-connected", reason: "reconnecting" }, "Reconnecting"],
+    [{ state: "not-connected", reason: "no-answer" }, "Not connected"],
     [{ state: "connected" }, "Connected"],
   ])("labels %j %s", (status, label) => {
     expect(agentRow(status).label).toBe(label);
