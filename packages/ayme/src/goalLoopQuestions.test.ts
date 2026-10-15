@@ -21,6 +21,7 @@ import {
   readArgumentAnswers,
   readRunOffAnswer,
   readSpeculativeValues,
+  requiredParamsOf,
   specsOfParameters,
   type ArgumentQuestion,
   type GoalLoopOperation,
@@ -938,7 +939,72 @@ describe("parameter shapes", () => {
 
     expect(read.chosen.args).toEqual({ param: ["Milk"] });
     // The step record shows what runs, so a repeat reads as one.
-    expect(Object.keys(read.chosen.chosen)).toEqual(["param.0", "param.1"]);
+    expect(Object.keys(read.chosen.chosen)).toEqual(["param.0"]);
+
+    const again = readArgumentAnswers(tool, questions, {
+      "param.0": { type: "choice", choice: "name" },
+      "param.1": { type: "choice", choice: "leave_unset" },
+      "param.2": { type: "choice", choice: "leave_unset" },
+    });
+    if (again.kind !== "chosen") throw new Error(again.kind);
+    completeArguments(tool, again.chosen, []);
+    expect(again.chosen.chosen).toEqual(read.chosen.chosen);
+  });
+
+  it("names the whole tuple when a slot's enum is too large to ask", () => {
+    const tool = actionWith({
+      type: "array",
+      prefixItems: [
+        {
+          type: "string",
+          enum: Array.from({ length: 256 }, (_, index) => `v${index}`),
+        },
+      ],
+      minItems: 1,
+      maxItems: 1,
+    });
+
+    expect(planArguments(tool, captureOfButtons(0), {})).toMatchObject({
+      kind: "needs_value_choice",
+      parameter: "param",
+    });
+  });
+
+  it("requires a collection tool's ref and the required parameters in its args, whole", () => {
+    expect(
+      requiredParamsOf(
+        [
+          { name: "ref", optional: false, schema: { type: "string" } },
+          {
+            name: "args",
+            optional: false,
+            schema: {
+              type: "object",
+              properties: {
+                value: {
+                  type: "array",
+                  prefixItems: [{ type: "string" }],
+                  maxItems: 1,
+                },
+                payload: { type: "object", properties: {} },
+                note: { type: "string" },
+              },
+              required: ["value", "payload"],
+            },
+          },
+        ],
+        true
+      )
+    ).toEqual(["ref", "args.value", "args.payload"]);
+    expect(
+      requiredParamsOf(
+        [
+          { name: "value", optional: false, schema: { type: "string" } },
+          { name: "note", optional: true, schema: { type: "string" } },
+        ],
+        false
+      )
+    ).toEqual(["value"]);
   });
 
   it("keeps enum list values that print alike apart", () => {

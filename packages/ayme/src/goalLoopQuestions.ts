@@ -392,6 +392,25 @@ function specsOfCollectionTool(
 }
 
 /**
+ * The parameters a caller must pass, by name: for a tool that goes through a
+ * collection, its `ref` and the required ones inside `args`, dotted.
+ */
+export function requiredParamsOf(
+  parameters: readonly ToolParameter[],
+  throughCollection: boolean
+): string[] {
+  return parameters.flatMap((parameter) =>
+    throughCollection && parameter.name !== "ref"
+      ? parametersOfObjectSchema(parameter.schema)
+          .filter((inner) => !inner.optional)
+          .map((inner) => `${parameter.name}.${inner.name}`)
+      : parameter.optional
+        ? []
+        : [parameter.name]
+  );
+}
+
+/**
  * Build the flat list of tool options offered to the model each step: every
  * single-element tool, a Browser Tool or a Custom Tool (ADR-0023), every
  * Browser Tool that moves the page, and every registered POM tool.
@@ -429,11 +448,7 @@ export function buildToolOptions(): ToolOption[] {
           roots ? { args: {}, ...(input as Record<string, unknown>) } : input
         ),
       // A tuple is required as a whole, not slot by slot.
-      requiredParams: roots
-        ? wholeParameters(args.filter((arg) => !arg.optional))
-        : t.parameters
-            .filter((parameter) => !parameter.optional)
-            .map((parameter) => parameter.name),
+      requiredParams: requiredParamsOf(t.parameters, roots !== undefined),
       args,
     };
   });
@@ -853,7 +868,7 @@ export function planArguments(
           closedSet.kind === "values"
             ? "needs_value_choice"
             : "needs_instance_choice",
-        parameter: arg.name,
+        parameter: wholeParameters([arg])[0]!,
         optionCount: options.length,
       };
     }
@@ -1617,16 +1632,14 @@ export function readArgumentAnswers(
  * Close the gaps the slots left unset leave in their tuples, innermost first:
  * a tuple ends at its first unset slot, an optional tuple that lacks a slot it
  * requires is left out, and a required tuple with no slot set is empty. A
- * required tuple always has its required slots by now. A slot value this
- * drops leaves the step record too, so the step reads as what runs.
+ * required tuple always has its required slots by now. A slot left without a
+ * value, unset or dropped here, leaves the step record too, so a step reads
+ * as what runs and a repeat is seen as one.
  */
 function completeTuples(
   tool: GoalLoopOperation,
   { args, chosen }: ChosenArguments
 ): void {
-  const assigned = tool.args.filter(
-    (arg) => valueAt(args, arg.path) !== undefined
-  );
   const tuples = new Map<string, TupleSpec>();
   for (const arg of tool.args)
     for (const tuple of arg.tuples ?? [])
@@ -1647,8 +1660,9 @@ function completeTuples(
     if (gap !== -1) tuple.length = gap;
     if (tuple.length < minItems) delete parent![key];
   }
-  for (const arg of assigned)
-    if (valueAt(args, arg.path) === undefined) delete chosen[arg.name];
+  for (const arg of tool.args)
+    if (arg.tuples && valueAt(args, arg.path) === undefined)
+      delete chosen[arg.name];
 }
 
 /** The value at `path` in the operation's input; a tuple's parent is never a list. */
