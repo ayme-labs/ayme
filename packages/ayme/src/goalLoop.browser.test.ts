@@ -1225,6 +1225,12 @@ describe("Goal Loop goal in Chromium", () => {
     ],
     [
       "rejected",
+      403,
+      "The Decision Endpoint /api/decisions answered 403 Who are you?",
+      "The Decision Endpoint /api/decisions answered 403 Who are you? Handle",
+    ],
+    [
+      "rejected",
       408,
       "The Decision Endpoint /api/decisions answered 408 The model provider timed out.",
       "The Decision Endpoint /api/decisions answered 408 The model provider timed out. Retry, or handle",

@@ -39,7 +39,7 @@ import {
   MAX_GOAL_VALUES,
   type NoulAnswer,
 } from "./goalLoopQuestions";
-import { ToolInputError } from "./errors";
+import { asSentence, ToolInputError } from "./errors";
 
 export type GoalLoopDecisionFunction = (
   request: DecisionRequest
@@ -396,7 +396,7 @@ export async function pursueGoal(
   ): Promise<GoalLoopRunResult> =>
     done({
       reason: "decide_failed",
-      next: `${what.replace(/\.$/, "")}. ${isRetryableDecisionFailure(failure) ? "Retry, or handle" : "Handle"} the goal without the Goal Loop.`,
+      next: `${asSentence(what)} ${isRetryableDecisionFailure(failure) ? "Retry, or handle" : "Handle"} the goal without the Goal Loop.`,
       history,
     });
 
