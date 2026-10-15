@@ -112,6 +112,18 @@ export function listValueQuestionId(
 const parameterNamesOf = (tool: GoalLoopOperation) =>
   tool.args.map((arg) => arg.name);
 
+/**
+ * The parameters a caller passes, for a handover: a tuple slot stands for its
+ * outermost tuple, named once.
+ */
+function wholeParameters(args: readonly ArgumentSpec[]): string[] {
+  return [
+    ...new Set(
+      args.map((arg) => (arg.tuples ? arg.tuples[0]!.path.join(".") : arg.name))
+    ),
+  ];
+}
+
 // --- Operations offered in stage one ---
 
 /** A closed set of values the model may pick one of. */
@@ -137,7 +149,11 @@ type FreeKind = "string" | "number" | "integer";
 type PathKey = string | number;
 
 /** A tuple some parameters are slots of, and how many slots it requires. */
-type TupleSpec = { path: readonly PathKey[]; minItems: number };
+type TupleSpec = {
+  path: readonly PathKey[];
+  minItems: number;
+  optional: boolean;
+};
 
 /** One parameter of an operation, classified by what the model may fill. */
 type ArgumentSpec = {
@@ -254,7 +270,11 @@ function specsOf(
   const { schema } = parameter;
   const path = [...prefix, parameter.name];
   if (schema.prefixItems) {
-    const tuple = { path, minItems: schema.minItems ?? 0 };
+    const tuple = {
+      path,
+      minItems: schema.minItems ?? 0,
+      optional: parameter.optional,
+    };
     return schema.prefixItems.flatMap((slot, index) =>
       specsOf(
         {
@@ -410,7 +430,7 @@ export function buildToolOptions(): ToolOption[] {
         ),
       // A tuple is required as a whole, not slot by slot.
       requiredParams: roots
-        ? args.filter((arg) => !arg.optional).map((arg) => arg.name)
+        ? wholeParameters(args.filter((arg) => !arg.optional))
         : t.parameters
             .filter((parameter) => !parameter.optional)
             .map((parameter) => parameter.name),
@@ -723,23 +743,19 @@ function listValueQuestions(
 ): ListValueQuestion[] {
   const closedValues =
     arg.closedSet?.kind === "values" ? arg.closedSet.values : [];
-  const candidates = [
-    ...valueOptions(closedValues).map((option) => ({
-      option,
-      what: `the value "${option.description}"`,
-    })),
-    ...goalValueOptions(arg.free, values).map((option) => ({
-      option,
-      what: `the Goal Value "${option.description}"`,
-    })),
-  ];
-  return candidates.map(({ option, what }, index) => ({
+  const closed = valueOptions(closedValues);
+  // An answer is recorded by key, so `1` and `"1"` must not share one.
+  const options = withUniqueKeys([
+    ...closed,
+    ...goalValueOptions(arg.free, values),
+  ]);
+  return options.map((option, index) => ({
     type: "noul",
     id: listValueQuestionId(arg.name, index + 1, parameterNamesOf(tool)),
     parameter: arg.name,
     path: arg.path,
     instructions:
-      `Does ${what} belong in the list ${describeParameter(arg)} of this operation? ` +
+      `Does ${index < closed.length ? "the value" : "the Goal Value"} "${option.description}" belong in the list ${describeParameter(arg)} of this operation? ` +
       describeOperation(tool),
     option,
   }));
@@ -756,14 +772,14 @@ export function planArguments(
   values: GoalValues = {},
   presets: readonly ValuePreset[] = []
 ): ArgumentPlan {
-  const unfilled = tool.args
-    .filter(
+  const unfilled = wholeParameters(
+    tool.args.filter(
       (arg) =>
         !arg.optional &&
         arg.closedSet === null &&
         goalValueOptions(arg.free, values).length === 0
     )
-    .map((arg) => arg.name);
+  );
   if (unfilled.length > 0)
     return {
       kind: "needs_free_value",
@@ -1034,7 +1050,7 @@ export function completeArguments(
   presets: readonly ValuePreset[]
 ): void {
   addValuePresets(tool, chosen, presets);
-  completeTuples(tool, chosen.args);
+  completeTuples(tool, chosen);
 }
 
 function addValuePresets(
@@ -1549,7 +1565,9 @@ export function readArgumentAnswers(
     tool.args.some((arg) => arg.name === parameter && !arg.optional);
   const needsValue = (parameter: string): ArgumentAnswers => ({
     kind: "needs_value",
-    parameter,
+    parameter: wholeParameters(
+      tool.args.filter((arg) => arg.name === parameter)
+    )[0]!,
     choices: chosen.choices,
     probabilities: chosen.probabilities,
   });
@@ -1597,14 +1615,18 @@ export function readArgumentAnswers(
 
 /**
  * Close the gaps the slots left unset leave in their tuples, innermost first:
- * a tuple ends at its first unset slot, and an optional tuple that lacks a
- * slot it requires is left out. A required tuple always has its required
- * slots by now.
+ * a tuple ends at its first unset slot, an optional tuple that lacks a slot it
+ * requires is left out, and a required tuple with no slot set is empty. A
+ * required tuple always has its required slots by now. A slot value this
+ * drops leaves the step record too, so the step reads as what runs.
  */
 function completeTuples(
   tool: GoalLoopOperation,
-  args: Record<string, unknown>
+  { args, chosen }: ChosenArguments
 ): void {
+  const assigned = tool.args.filter(
+    (arg) => valueAt(args, arg.path) !== undefined
+  );
   const tuples = new Map<string, TupleSpec>();
   for (const arg of tool.args)
     for (const tuple of arg.tuples ?? [])
@@ -1612,21 +1634,29 @@ function completeTuples(
   const innermostFirst = [...tuples.values()].sort(
     (a, b) => b.path.length - a.path.length
   );
-  for (const { path, minItems } of innermostFirst) {
-    // A tuple's parent is the input, an object or a tuple, never a list.
-    const parent = path
-      .slice(0, -1)
-      .reduce<Record<PathKey, unknown> | undefined>(
-        (value, key) => value?.[key] as Record<PathKey, unknown> | undefined,
-        args
-      );
+  for (const { path, minItems, optional } of innermostFirst) {
+    const parent = valueAt(args, path.slice(0, -1)) as
+      Record<PathKey, unknown> | undefined;
     const key = path[path.length - 1]!;
-    const slots = parent?.[key];
-    if (!Array.isArray(slots)) continue;
-    const gap = slots.findIndex((_, index) => !(index in slots));
-    if (gap !== -1) slots.length = gap;
-    if (slots.length < minItems) delete parent![key];
+    const tuple = parent?.[key];
+    if (!Array.isArray(tuple)) {
+      if (!optional) assignAt(args, path, []);
+      continue;
+    }
+    const gap = tuple.findIndex((_, index) => !(index in tuple));
+    if (gap !== -1) tuple.length = gap;
+    if (tuple.length < minItems) delete parent![key];
   }
+  for (const arg of assigned)
+    if (valueAt(args, arg.path) === undefined) delete chosen[arg.name];
+}
+
+/** The value at `path` in the operation's input; a tuple's parent is never a list. */
+function valueAt(args: Record<string, unknown>, path: readonly PathKey[]) {
+  return path.reduce<unknown>(
+    (value, key) => (value as Record<PathKey, unknown> | undefined)?.[key],
+    args
+  );
 }
 
 function groupByParameter<T extends { question: QuestionBase }>(
