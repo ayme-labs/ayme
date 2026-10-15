@@ -18,8 +18,10 @@ import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { probeRegisteredPomMembers } from "./registry";
 import {
+  addValuePresets,
   buildArgumentRequest,
   buildOperationRequest,
+  buildSpeculativeValueQuestions,
   buildStepState,
   buildToolOptions,
   fitListsToTarget,
@@ -29,6 +31,7 @@ import {
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
+  readSpeculativeValues,
   type AnswerRecord,
   type ArgumentAnswers,
   type ChoiceAnswer,
@@ -38,6 +41,7 @@ import {
   type GoalValues,
   MAX_GOAL_VALUES,
   type NoulAnswer,
+  type ValuePreset,
 } from "./goalLoopQuestions";
 import { asSentence, ToolInputError } from "./errors";
 
@@ -91,6 +95,13 @@ type GoalLoopStepScores = {
   operationProbabilities?: Record<string, number>;
   goalMetScore: number;
   /**
+   * Stage one, per speculative question that covers the chosen operation: the
+   * key of the option chosen.
+   */
+  valueChoices?: Record<string, string>;
+  /** Stage one, per such question: the scores the decision function supplied. */
+  valueProbabilities?: Record<string, Record<string, number>>;
+  /**
    * Stage two, per question id: the key of the option chosen for every
    * argument question answered, chunks and run-off included.
    */
@@ -98,9 +109,10 @@ type GoalLoopStepScores = {
   /** Stage two, per question id: the scores the decision function supplied. */
   argumentProbabilities?: Record<string, Record<string, number>>;
   /**
-   * The executed step's Change Record, as its action result carried it: the
-   * page the model decided on against the Settled Page after the action.
-   * Recorded, not sent; absent when the step ran no action or nothing changed.
+   * The executed step's Change Record in full, as its action result carried
+   * it: what the action changed, up to the Settled Page after it. The step
+   * record sends it cut to `MAX_STEP_CHANGES`; absent when the step ran no
+   * action or the action changed nothing.
    */
   changes?: string;
 };
@@ -138,6 +150,7 @@ export type HandoverReason =
   | "no_fitting_option"
   | "needs_value"
   | "action_failed"
+  | "no_progress"
   | "step_budget"
   | "decide_failed"
   | "page_loading";
@@ -155,6 +168,12 @@ export type GoalLoopStepRecord = {
   /** `"ok"`, or the error the action failed with. */
   result: string;
   page_changed: boolean;
+  /**
+   * What the action changed on the page, its Change Record, cut to
+   * `MAX_STEP_CHANGES` characters. Absent when the action changed nothing,
+   * even where `page_changed` counts a change made while the model decided.
+   */
+  changes?: string;
   /** A one-line label derived from the fields above; nothing reads it back. */
   did: string;
 };
@@ -193,6 +212,27 @@ type StepOutcome = Pick<GoalLoopStepRecord, "result" | "page_changed"> & {
   loading?: string;
 };
 
+/**
+ * At most this many characters of a step's Change Record go into its history
+ * entry, so that the history the model is sent grows by a bounded amount with
+ * each step.
+ */
+export const MAX_STEP_CHANGES = 400;
+
+/** Marks a step's Change Record that was cut to `MAX_STEP_CHANGES`. */
+export const CHANGES_CUT_MARKER = "\n… (cut)";
+
+/**
+ * A Change Record cut to `MAX_STEP_CHANGES` characters, the marker included:
+ * at the last whole line that fits, or mid-line when not even one does.
+ */
+function cutChanges(changes: string): string {
+  if (changes.length <= MAX_STEP_CHANGES) return changes;
+  const kept = changes.slice(0, MAX_STEP_CHANGES - CHANGES_CUT_MARKER.length);
+  const lineEnd = kept.lastIndexOf("\n");
+  return `${lineEnd > 0 ? kept.slice(0, lineEnd) : kept}${CHANGES_CUT_MARKER}`;
+}
+
 /** Record an executed step; `did` is derived, e.g. `click(button "Add item")`. */
 function stepRecord(
   operation: string,
@@ -207,6 +247,7 @@ function stepRecord(
     chosen,
     result: outcome.result,
     page_changed: outcome.page_changed,
+    ...(outcome.changes ? { changes: cutChanges(outcome.changes) } : {}),
     did: `${operation}(${descriptions.join(", ")})`,
   };
 }
@@ -230,6 +271,68 @@ async function executeToolAction(
     ...(action?.changes ? { changes: action.changes } : {}),
     ...(action?.loading ? { loading: action.loading } : {}),
   };
+}
+
+// --- Stuck detection ---
+
+/**
+ * A step the loop would run a second time in a row, with the same operation
+ * and chosen arguments, after a run that did not change the page, ends the run.
+ */
+export const NO_CHANGE_REPEAT_LIMIT = 2;
+/**
+ * A step the loop would run a third time in a row, with the same operation and
+ * chosen arguments, ends the run even when the page changed in between: it is
+ * an alternation that never converges.
+ */
+export const CHANGE_REPEAT_LIMIT = 3;
+
+/**
+ * A step's identity for repetition: the operation and the key chosen per
+ * parameter, in parameter-name order, as stage one and stage two may record
+ * the same choices in different orders.
+ */
+const stepSignature = (
+  operation: string,
+  chosen: Record<string, ChosenOption>
+): string =>
+  JSON.stringify([
+    operation,
+    Object.entries(chosen)
+      .map(([parameter, option]) => [parameter, option.key])
+      .sort(([a], [b]) => (a! < b! ? -1 : a! > b! ? 1 : 0)),
+  ]);
+
+/**
+ * The step before the one about to run, when running it would repeat the
+ * limits above; `undefined` otherwise. Only steps that ran to "ok" count: a
+ * failing step is `action_failed`'s to end.
+ */
+function stuckOn(
+  history: readonly GoalLoopStepRecord[],
+  operation: string,
+  chosen: Record<string, ChosenOption>
+): { previous: GoalLoopStepRecord; times: number } | undefined {
+  const signature = stepSignature(operation, chosen);
+  const repeats: GoalLoopStepRecord[] = [];
+  for (let i = history.length - 1; i >= 0; i--) {
+    const entry = history[i]!;
+    if (
+      entry.result !== "ok" ||
+      stepSignature(entry.operation, entry.chosen) !== signature
+    )
+      break;
+    repeats.push(entry);
+  }
+  const times = repeats.length + 1;
+  const previous = repeats[0];
+  if (!previous) return undefined;
+  const unchanged =
+    times >= NO_CHANGE_REPEAT_LIMIT &&
+    repeats.slice(0, NO_CHANGE_REPEAT_LIMIT - 1).every((e) => !e.page_changed);
+  return unchanged || times >= CHANGE_REPEAT_LIMIT
+    ? { previous, times }
+    : undefined;
 }
 
 // --- The loop ---
@@ -441,6 +544,9 @@ export async function pursueGoal(
       history
     );
     const toolOptions = buildToolOptions();
+    // Free values asked next to the operation, so stage two picks the element
+    // with the value it will receive in view.
+    const speculative = buildSpeculativeValueQuestions(toolOptions, values);
 
     // A question outside the limit is never sent, in either stage.
     if (!operationQuestionFits(toolOptions)) {
@@ -455,7 +561,9 @@ export async function pursueGoal(
 
     let stageOne: DecisionResponse;
     try {
-      stageOne = await decisionFn(buildOperationRequest(state, toolOptions));
+      stageOne = await decisionFn(
+        buildOperationRequest(state, toolOptions, speculative)
+      );
     } catch (error) {
       return callFailed(error);
     }
@@ -508,8 +616,24 @@ export async function pursueGoal(
     }
     const chosenTool = chosenOption.tool;
 
+    // The speculative answers that apply to the chosen operation.
+    let presets: ValuePreset[];
+    try {
+      const record: AnswerRecord = { choices: {}, probabilities: {} };
+      score.valueChoices = record.choices;
+      score.valueProbabilities = record.probabilities;
+      presets = readSpeculativeValues(
+        chosenTool,
+        speculative,
+        stageOne.answers as Record<string, unknown>,
+        record
+      );
+    } catch (error) {
+      return invalidDecision(error);
+    }
+
     // 3. needs_value: the operation needs a value the model cannot pick
-    const plan = planArguments(chosenTool, capture, values);
+    const plan = planArguments(chosenTool, capture, values, presets);
     if (plan.kind === "needs_free_value") {
       return done({
         reason: "needs_value",
@@ -565,7 +689,7 @@ export async function pursueGoal(
       let stageTwo: DecisionResponse;
       try {
         stageTwo = await decisionFn(
-          buildArgumentRequest(state, plan.questions)
+          buildArgumentRequest(state, plan.questions, capture)
         );
       } catch (error) {
         return callFailed(error);
@@ -610,7 +734,7 @@ export async function pursueGoal(
         let runOff: DecisionResponse;
         try {
           runOff = await decisionFn(
-            buildArgumentRequest(state, [argumentAnswers.question])
+            buildArgumentRequest(state, [argumentAnswers.question], capture)
           );
         } catch (error) {
           return callFailed(error);
@@ -630,6 +754,21 @@ export async function pursueGoal(
       score.argumentChoices = chosenArguments.choices;
       score.argumentProbabilities = chosenArguments.probabilities;
     }
+    addValuePresets(chosenTool, chosenArguments, presets);
+
+    // 4. no_progress: the step would repeat the one before, to no effect.
+    const stuck = stuckOn(history, chosenTool.name, chosenArguments.chosen);
+    if (stuck) {
+      return done({
+        reason: "no_progress",
+        next: `The loop is repeating ${stuck.previous.did}: it chose the same step ${stuck.times} times in a row${stuck.previous.page_changed ? "" : ", and the last run did not change the page"}. It stopped instead of running it again. Perform that step yourself by calling ${chosenTool.name}, or call goal again with a goal that names the element to act on.`,
+        history,
+        needs: {
+          tool: chosenTool.name,
+          parameters: Object.keys(chosenArguments.chosen),
+        },
+      });
+    }
 
     // Execute the operation through the same action sequence as direct tool calls.
     let actionResult: StepOutcome;
@@ -640,7 +779,6 @@ export async function pursueGoal(
         run
       );
       consecutiveFailures = 0;
-      if (actionResult.changes) score.changes = actionResult.changes;
     } catch (error) {
       const errorText = error instanceof Error ? error.message : String(error);
       actionResult = { result: errorText, page_changed: false };
@@ -655,6 +793,8 @@ export async function pursueGoal(
     );
     history.push(record);
     Object.assign(score, record);
+    // The run result keeps the step's Change Record in full.
+    if (actionResult.changes) score.changes = actionResult.changes;
 
     // A step that started a full page load is the last: the loop ends with
     // the document it runs in.
@@ -667,7 +807,7 @@ export async function pursueGoal(
       });
     }
 
-    // 4. action_failed: two failed actions in a row
+    // 5. action_failed: two failed actions in a row
     if (consecutiveFailures >= 2) {
       return done({
         reason: "action_failed",
@@ -677,7 +817,7 @@ export async function pursueGoal(
     }
   }
 
-  // 5. step_budget
+  // 6. step_budget
   return done({
     reason: "step_budget",
     next: "The step budget was exhausted before the goal was achieved. Increase the budget or break the goal into smaller steps.",
