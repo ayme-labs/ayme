@@ -124,7 +124,7 @@ The values are candidates, not instructions. At any step, a parameter the loop c
 - **Optional parameter.** One question offers the fitting values plus "leave unset". With no fitting value it stays unset.
 - **List of strings or numbers.** Each fitting value is a yes-or-no question of its own, asked in the same request; every value scored 0.5 or more is included, in the order of `values`. A select that holds one option at a time receives only the value scored highest. A required list that includes nothing ends with `needs_value`; an optional one stays unset.
 - **List of enum values.** Each enum value is a yes-or-no question of its own, in the same way; Goal Values are never offered, so the list holds only enum values.
-- **Tuple.** Each slot is a parameter of its own, filled by its own rule. A tuple ends at its first slot left unset, an optional tuple missing a slot it requires is left out, and a required tuple with no slot set is passed empty. A handover names the tuple, not its slot, and a step's `chosen` leaves out the slots that hold no value.
+- **Tuple.** Each slot is a parameter of its own, filled by its own rule. A tuple ends at its first slot left unset, an optional tuple that ends up empty or missing a slot it requires is left out, and a required tuple with no slot set is passed empty. A handover names the tuple, not its slot, and a step's `chosen` leaves out the slots that hold no value.
 - **Union of primitives**, such as `string | boolean`. One question offers its enum values and booleans together with the values that fit its other types.
 - **Map, list of booleans, list of objects, list of lists, object.** Never filled from values: a required one ends with `needs_value`, an optional one stays unset.
 

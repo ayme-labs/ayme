@@ -873,6 +873,25 @@ describe("parameter shapes", () => {
     ).toEqual({});
   });
 
+  it("leaves out an optional tuple that ends up empty, like one with nothing set", () => {
+    const tool = actionWith(
+      {
+        type: "array",
+        prefixItems: [{ type: "boolean" }, { type: "boolean" }],
+        maxItems: 2,
+      },
+      true
+    );
+    const questions = plannedQuestions(tool, {});
+
+    expect(
+      completedArgs(tool, questions, {
+        "param.0": { type: "choice", choice: "leave_unset" },
+        "param.1": { type: "choice", choice: "true" },
+      })
+    ).toEqual({});
+  });
+
   it("completes nested tuples innermost first", () => {
     // [[string, string], "a" | "b"]?: the inner tuple misses a slot, so it is
     // left out, which leaves the outer tuple without a slot it requires.

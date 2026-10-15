@@ -1631,7 +1631,8 @@ export function readArgumentAnswers(
 /**
  * Close the gaps the slots left unset leave in their tuples, innermost first:
  * a tuple ends at its first unset slot, an optional tuple that lacks a slot it
- * requires is left out, and a required tuple with no slot set is empty. A
+ * requires or ends up empty is left out, and a required tuple with no slot
+ * set is empty. A
  * required tuple always has its required slots by now. A slot left without a
  * value, unset or dropped here, leaves the step record too, so a step reads
  * as what runs and a repeat is seen as one.
@@ -1658,7 +1659,10 @@ function completeTuples(
     }
     const gap = tuple.findIndex((_, index) => !(index in tuple));
     if (gap !== -1) tuple.length = gap;
-    if (tuple.length < minItems) delete parent![key];
+    // An optional tuple left empty is left out, the same call as one no
+    // slot was set in.
+    if (tuple.length < minItems || (optional && tuple.length === 0))
+      delete parent![key];
   }
   for (const arg of tool.args)
     if (arg.tuples && valueAt(args, arg.path) === undefined)
