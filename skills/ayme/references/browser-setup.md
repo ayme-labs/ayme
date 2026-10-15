@@ -14,7 +14,10 @@ version. Diagnose with the "The agent cannot reach the page" section of
   the user to open, or to paste into the tab they already have open.
 - When the page's tools are missing from your tool list after the page
   pairs, list them with `ayme_list_tools` and run them with `ayme_call`.
-- When a tool answers that no page is connected, call `ayme_connect` again
+- When a tool answers that no page is connected right after your MCP server
+  restarted, and a tab was paired before, wait a few seconds: the tab pairs
+  again by itself, and the page's tools come back with a tool list change.
+  If they don't come back, or no tab was paired, call `ayme_connect` again
   and open the new link.
 - When a tool answers that it is unavailable, read the reason. A runtime
   reason, `a click would not reach it; e42 is in the way`, names the element
