@@ -421,7 +421,9 @@ async function replay(runDirs: readonly string[], repeats: number) {
 // --- CLI ---
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const [command, ...rest] = process.argv.slice(2);
+  const [command, ...rest] = process.argv
+    .slice(2)
+    .filter((arg) => arg !== "--");
   let repeats = 3;
   const dirs: string[] = [];
   for (let i = 0; i < rest.length; i++) {
