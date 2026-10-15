@@ -94,58 +94,44 @@ const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
 const mean = (values: number[]) =>
   values.length === 0 ? 0 : sum(values) / values.length;
 
-/** Handover reasons after which the last step ran its operation; after any
- *  other, the last step ended the run before acting. */
-const lastStepActed = new Set(["step_budget", "action_failed", "page_loading"]);
-
-/** The steps of a run that ran their operation. */
-function actedSteps(steps: GoalRunStep[], reason: string | null) {
-  return reason !== null && lastStepActed.has(reason)
-    ? steps
-    : steps.slice(0, -1);
-}
-
-const sameChoices = (a: GoalRunStep, b: GoalRunStep) =>
+/** Two steps that ran the same operation with the same arguments. */
+const sameStep = (a: GoalRunStep, b: GoalRunStep) =>
   a.operation === b.operation &&
-  JSON.stringify(Object.entries(a.argumentChoices ?? {}).sort()) ===
-    JSON.stringify(Object.entries(b.argumentChoices ?? {}).sort());
+  JSON.stringify(
+    Object.entries(a.chosen ?? {})
+      .map(([parameter, { key }]) => [parameter, key])
+      .sort()
+  ) ===
+    JSON.stringify(
+      Object.entries(b.chosen ?? {})
+        .map(([parameter, { key }]) => [parameter, key])
+        .sort()
+    );
 
-/** Steps that ran what the step before them ran, choice for choice. */
-function countRepeatedSteps(steps: GoalRunStep[], reason: string | null) {
-  return actedSteps(steps, reason).filter(
-    (step, index, acted) => index > 0 && sameChoices(step, acted[index - 1]!)
-  ).length;
-}
-
-/** The parameter every single-element Browser Tool targets with. */
-const targetParameter = "target";
-
-/**
- * The element a step's target question chose, as offered: the run-off's
- * choice when there was one, else the question, or the one chunk, that named
- * an element.
- */
-function chosenTarget(step: GoalRunStep): string | undefined {
-  const named = Object.entries(step.argumentDescriptions ?? {}).filter(
-    ([id]) =>
-      (id === targetParameter || id.startsWith(`${targetParameter}_`)) &&
-      step.argumentChoices?.[id] !== noneOfTheseKey
-  );
-  return (named.find(([id]) => id.endsWith("run_off")) ?? named[0])?.[1];
+/** Steps that ran what the step before them ran, argument for argument. */
+function countRepeatedSteps(steps: GoalRunStep[]) {
+  return steps
+    .filter((step) => step.chosen)
+    .filter((step, index, ran) => index > 0 && sameStep(step, ran[index - 1]!))
+    .length;
 }
 
 /** The text-entering Browser Tools; their Goal Value is the `text` argument. */
 const textOperations = new Set(["fill", "type"]);
 
+/** The fill and type steps that ran a Goal Value into another element than
+ *  the test expects. */
 function countWrongTargetSteps(
   steps: GoalRunStep[],
   expectedTargets: Record<string, string>
 ) {
   return steps.filter((step) => {
     if (!step.operation || !textOperations.has(step.operation)) return false;
-    const label = step.argumentChoices?.text;
+    const label = step.chosen?.text?.key;
     const expected = label === undefined ? undefined : expectedTargets[label];
-    return expected !== undefined && chosenTarget(step) !== expected;
+    return (
+      expected !== undefined && step.chosen?.target?.description !== expected
+    );
   }).length;
 }
 
@@ -187,7 +173,7 @@ export function toGoalRun(testResult: ReportResult): {
     noneOfTheseAnswers: choices
       .flatMap(Object.values)
       .filter((key) => key === noneOfTheseKey).length,
-    repeatedSteps: countRepeatedSteps(steps, record?.reason ?? null),
+    repeatedSteps: countRepeatedSteps(steps),
     inputTokens: tokens(steps, "inputTokens"),
     outputTokens: tokens(steps, "outputTokens"),
   };

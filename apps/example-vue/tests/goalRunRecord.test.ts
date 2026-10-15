@@ -8,6 +8,7 @@ import {
   goalRunRecordOf,
   recordGoalRun,
   type Decision,
+  type GoalLoopRunResult,
   type GoalRunRecord,
 } from "./goalRunRecord";
 
@@ -237,7 +238,23 @@ it("counts repeated and wrong-target steps and sums the reported token usage", (
       usage,
     },
   ];
-  const runOf = (reason: string, decisions: Decision[]) =>
+  const descriptions: Record<string, string> = {
+    e1: 'textbox "First name"',
+    e2: 'textbox "Display name"',
+  };
+  /** The loop's record of a fill step that ran into `target`. */
+  const ranFill = (target: string) => ({
+    goalMetScore: 0.1,
+    chosen: {
+      target: { key: target, description: descriptions[target]! },
+      text: { key: "display name", description: "display name: countess" },
+    },
+  });
+  const runOf = (
+    reason: string,
+    decisions: Decision[],
+    stepScores: GoalLoopRunResult["stepScores"]
+  ) =>
     toGoalRun(
       testResultOf(
         goalRunRecordOf(
@@ -248,17 +265,17 @@ it("counts repeated and wrong-target steps and sums the reported token usage", (
             wallTimeMs: 1,
           },
           decisions,
-          undefined
+          { handover: { reason }, stepScores }
         )
       )
     ).run;
 
   // The same wrong step three times, until the step budget ran out.
-  const stuck = runOf("step_budget", [
-    ...fillStep("e1"),
-    ...fillStep("e1"),
-    ...fillStep("e1"),
-  ]);
+  const stuck = runOf(
+    "step_budget",
+    [...fillStep("e1"), ...fillStep("e1"), ...fillStep("e1")],
+    [ranFill("e1"), ranFill("e1"), ranFill("e1")]
+  );
   expect(stuck.steps[0]!.argumentDescriptions).toEqual({
     target: 'textbox "First name"',
     text: "display name: countess",
@@ -272,11 +289,21 @@ it("counts repeated and wrong-target steps and sums the reported token usage", (
 
   // The right step, then a step that judged the goal met with the same
   // operation chosen: it ran nothing, so it repeats nothing.
-  const done = runOf("done", [
-    ...fillStep("e2"),
-    { ...stageOne("fill", {}), usage },
-  ]);
+  const done = runOf(
+    "done",
+    [...fillStep("e2"), { ...stageOne("fill", {}), usage }],
+    [ranFill("e2"), { goalMetScore: 0.9 }]
+  );
   expect(done).toMatchObject({ repeatedSteps: 0, wrongTargetSteps: 0 });
+
+  // A step whose decision failed before it acted fills nothing, so it is no
+  // wrong-element fill.
+  const failed = runOf(
+    "decide_failed",
+    [{ ...stageOne("fill", {}), usage }],
+    [{ goalMetScore: 0.1 }]
+  );
+  expect(failed).toMatchObject({ repeatedSteps: 0, wrongTargetSteps: 0 });
 
   expect(aggregate([stuck, done])).toMatchObject({
     repeatedSteps: 2,
@@ -285,6 +312,22 @@ it("counts repeated and wrong-target steps and sums the reported token usage", (
     meanOutputTokensPerStep: 36 / 5,
     meanTokensPerRun: (624 + 312) / 2,
   });
+
+  // Steps on the same element with different values are no repeat: a select
+  // corrected to another option ran other arguments.
+  const select = (value: string) => ({
+    goalMetScore: 0.1,
+    chosen: {
+      target: { key: "e3", description: 'combobox "Visibility"' },
+      values: { key: value, description: `${value}: …` },
+    },
+  });
+  const corrected = runOf(
+    "done",
+    [stageOne("select_option", {}), stageOne("select_option", {})],
+    [select("role"), select("visibility")]
+  );
+  expect(corrected.repeatedSteps).toBe(0);
   // Without usage in any response, and without expected targets, both are null.
   expect(
     aggregate([

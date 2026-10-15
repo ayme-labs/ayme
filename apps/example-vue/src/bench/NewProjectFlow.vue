@@ -133,6 +133,9 @@ function create() {
       <p class="text-sm text-muted-foreground">
         Step 2 of 2: invite people to {{ details.name }}
       </p>
+      <p v-if="details.description" data-testid="draft-description">
+        {{ details.description }}
+      </p>
       <form
         aria-label="Invite teammates"
         class="grid gap-3"

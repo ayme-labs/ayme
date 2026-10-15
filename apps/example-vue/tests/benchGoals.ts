@@ -331,6 +331,9 @@ export const benchGoals: BenchGoal[] = [
         page.getByRole("heading", { name: "Invite teammates" })
       ).toBeVisible();
       await expect(page.getByText("invite people to Atlas")).toBeVisible();
+      await expect(page.getByTestId("draft-description")).toHaveText(
+        project.description
+      );
     },
   },
   {

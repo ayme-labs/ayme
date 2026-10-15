@@ -23,6 +23,13 @@ export type GoalRunStep = {
    * element or `email: ada@example.com` for a Goal Value.
    */
   argumentDescriptions?: Record<string, string>;
+  /**
+   * The arguments the step ran its operation with, per parameter: the key and
+   * description of the option chosen, as the loop's step record holds them.
+   * Absent for a step that ran no operation, or when the loop's run result
+   * could not be read.
+   */
+  chosen?: Record<string, { key: string; description: string }>;
   /** The step requested a run-off: several chunks of a ref question each named
    *  an element. Counted even when the run-off then failed. */
   runOff: boolean;
@@ -83,6 +90,7 @@ const runOffSuffix = "run_off";
 type GoalLoopStepScore = {
   goalMetScore: number;
   argumentChoices?: Record<string, string>;
+  chosen?: Record<string, { key: string; description: string }>;
 };
 export type GoalLoopRunResult = {
   handover: { reason: string };
@@ -217,6 +225,7 @@ function stepsOf(
     const step = steps[index];
     if (!step) return;
     step.goalMetScore = score.goalMetScore;
+    if (score.chosen) step.chosen = score.chosen;
     if (score.argumentChoices)
       step.argumentChoices = {
         ...step.argumentChoices,

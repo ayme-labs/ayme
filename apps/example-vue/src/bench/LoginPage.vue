@@ -7,9 +7,16 @@ const remember = ref(false);
 const error = ref("");
 const signedInAs = ref("");
 
+/** The one password this page accepts, so a sign-in with another fails. */
+const knownPassword = "correct-horse-battery";
+
 function signIn() {
   if (!email.value.trim() || !password.value) {
     error.value = "Enter your email and password.";
+    return;
+  }
+  if (password.value !== knownPassword) {
+    error.value = "Wrong password.";
     return;
   }
   error.value = "";
