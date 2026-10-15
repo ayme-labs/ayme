@@ -892,6 +892,29 @@ describe("parameter shapes", () => {
     ).toEqual({});
   });
 
+  it("keeps an optional tuple with a slot set, and a required one cut to empty", () => {
+    const schema: JsonSchema = {
+      type: "array",
+      prefixItems: [{ type: "boolean" }, { type: "boolean" }],
+      maxItems: 2,
+    };
+    const optional = actionWith(schema, true);
+    const required = actionWith(schema);
+
+    expect(
+      completedArgs(optional, plannedQuestions(optional, {}), {
+        "param.0": { type: "choice", choice: "true" },
+        "param.1": { type: "choice", choice: "leave_unset" },
+      })
+    ).toEqual({ param: [true] });
+    expect(
+      completedArgs(required, plannedQuestions(required, {}), {
+        "param.0": { type: "choice", choice: "leave_unset" },
+        "param.1": { type: "choice", choice: "true" },
+      })
+    ).toEqual({ param: [] });
+  });
+
   it("completes nested tuples innermost first", () => {
     // [[string, string], "a" | "b"]?: the inner tuple misses a slot, so it is
     // left out, which leaves the outer tuple without a slot it requires.
