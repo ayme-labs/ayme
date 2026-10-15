@@ -1,5 +1,7 @@
 # Peeks
 
+> **Experimental:** this may change in any release. See [Experimental APIs](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/experimental-apis.md).
+
 A Peek Tool reads app state at the moment you call it: unsaved form edits, a
 component's internal state, a store, or what the server holds. When the
 answer you need is state the page does not render, call the Peek Tool that

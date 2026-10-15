@@ -109,6 +109,7 @@ let instances = 0;
  * server. The agent reads `values` when it asks, calling `values` if it is a
  * signal, or each top-level property that is one. `id` defaults to one per
  * caller. Call in an injection context.
+ * @experimental
  */
 export function injectPeek(values: unknown, name: string, id?: string): void {
   assertInInjectionContext(injectPeek);

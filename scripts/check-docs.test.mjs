@@ -212,3 +212,84 @@ test("fails on a banned phrase in a published README", () => {
     /^packages\/lib\/README\.md:3: banned phrase in a published README: "prototype does not certify"$/
   );
 });
+
+const EXPERIMENTAL = "docs/guide/reference/experimental-apis.md";
+const experimentalPage = (list) => ({
+  "docs/guide/README.md": `# Guide\n\nEvery page, in sidebar order.\n\n- [A page](start/page.md)\n- [Experimental APIs](reference/experimental-apis.md)\n`,
+  [EXPERIMENTAL]: `# Experimental APIs\n\nThe APIs whose shape is not settled yet.\n\n${list}`,
+});
+const tagged = `/** Reads state. */\nexport function readState(): void {}\n\nexport type Options = {\n  /**\n   * Turns the loop on.\n   * @experimental\n   */\n  loop?: () => void;\n};\n\n/** @experimental */\nexport default function loader() {}\n`;
+
+test("passes when the page lists every API a published package marks experimental", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/src/index.ts": tagged,
+        ...experimentalPage(
+          "- `options.loop(read, name?)` in `lib/server`: turns the loop on with `x`.\n- `loader` in `lib`: the loader.\n"
+        ),
+      })
+    ),
+    []
+  );
+});
+
+test("fails on an API marked experimental that the page does not list", () => {
+  assertOneProblem(
+    {
+      "packages/lib/src/index.ts": tagged,
+      ...experimentalPage("- `loader` in `lib`: the loader.\n"),
+    },
+    /^packages\/lib\/src\/index\.ts:9: `loop` in lib is marked @experimental but not listed in docs\/guide\/reference\/experimental-apis\.md$/
+  );
+});
+
+test("fails on a listed API that no published package marks experimental", () => {
+  assertOneProblem(
+    {
+      "packages/lib/src/index.ts": tagged,
+      ...experimentalPage(
+        "- `loop` in `lib`: the loop.\n- `loader` in `lib`: the loader.\n- `readState()` in `lib`: settled.\n"
+      ),
+    },
+    /^docs\/guide\/reference\/experimental-apis\.md:7: lists `readState` in lib, which does not mark it @experimental$/
+  );
+});
+
+test("tells apart APIs of the same name in different packages", () => {
+  assert.deepEqual(
+    checkDocs(
+      fixture({
+        "packages/lib/src/index.ts": tagged,
+        "packages/other/package.json": `{ "name": "other" }`,
+        "packages/other/src/index.ts": "export function loader() {}\n",
+        ...experimentalPage(
+          "- `loop` in `lib`: the loop.\n- `loader` in `other`: the loader.\n"
+        ),
+      })
+    ),
+    [
+      "packages/lib/src/index.ts:13: `loader` in lib is marked @experimental but not listed in docs/guide/reference/experimental-apis.md",
+      "docs/guide/reference/experimental-apis.md:6: lists `loader` in other, which does not mark it @experimental",
+    ]
+  );
+});
+
+test("fails on a listed API that names no published package", () => {
+  assertOneProblem(
+    {
+      "packages/lib/src/index.ts": tagged,
+      ...experimentalPage(
+        "- `loop` in `lib`: the loop.\n- `loader` in `lib`: the loader.\n- `loader` in `internal`: private.\n"
+      ),
+    },
+    /^docs\/guide\/reference\/experimental-apis\.md:7: lists `loader` without naming a published package it is in$/
+  );
+});
+
+test("ignores the experimental mark in a private package", () => {
+  assert.deepEqual(
+    checkDocs(fixture({ "packages/internal/src/index.ts": tagged })),
+    []
+  );
+});

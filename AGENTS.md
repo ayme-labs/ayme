@@ -13,6 +13,7 @@ Write each rule once, next to the config or code that enforces it. Other docs, t
 - Before a pull request goes ready, run `pnpm analyze:changed` and act on its report as [docs/testing.md](docs/testing.md#change-analysis) says.
 - `docs/framework-integrations.md`: what a framework integration ships, its behaviour contract and the files a new framework touches. Read it before adding or changing a framework integration.
 - `docs/releasing.md`: how the published packages are versioned and released.
+- `docs/guide/reference/experimental-apis.md`: the APIs whose shape is not settled yet. Read [ADR-0037](docs/adr/0037-unsettled-apis-ship-marked-experimental.md) before marking an API experimental or graduating one.
 
 ## Agent skills
 

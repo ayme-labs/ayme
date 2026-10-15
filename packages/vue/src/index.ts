@@ -80,6 +80,7 @@ const providerProps = {
     required: false,
   },
   customTools: { type: Array as PropType<CustomTool[]>, required: false },
+  /** @experimental */
   goalLoop: {
     type: Function as PropType<GoalLoopDecisionFunction>,
     required: false,
@@ -179,6 +180,7 @@ export function usePageObject<T extends object>(
  * through `ayme.peek`. `values` may be a ref, a reactive object or an object
  * of refs; the agent reads their current values. `id` defaults to one per
  * component instance.
+ * @experimental
  */
 export function usePeek(values: unknown, name: string, id?: string): void {
   const component = getCurrentInstance();
