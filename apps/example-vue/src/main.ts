@@ -1,4 +1,4 @@
-import { createApp } from "vue";
+import { createApp, defineAsyncComponent } from "vue";
 import { initializeWebMCPPolyfill } from "@mcp-b/webmcp-polyfill";
 import App from "./App.vue";
 import CounterRoute from "./counter/CounterRoute.vue";
@@ -15,10 +15,17 @@ const routes: Record<string, typeof App> = {
   other: OtherRoute,
 };
 
+// The run harness's bench pages live under `bench/` on the dev server only,
+// where `goal` can be published; the production build leaves them out.
+const BenchRoute = import.meta.env.DEV
+  ? defineAsyncComponent(() => import("./bench/BenchRoute.vue"))
+  : undefined;
+
 export function startExampleApp() {
   window.__AYME_VUE_ACTIONS__ = [];
   const route = location.pathname.slice(import.meta.env.BASE_URL.length);
-  return createApp(routes[route] ?? App).mount("#app");
+  const bench = route.startsWith("bench/") ? BenchRoute : undefined;
+  return createApp(routes[route] ?? bench ?? App).mount("#app");
 }
 
 startExampleApp();

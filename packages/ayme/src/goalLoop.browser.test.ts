@@ -12,13 +12,16 @@ import { agentTools } from "./publication.testSupport";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
 import {
+  CHANGES_CUT_MARKER,
   configureGoalLoop,
   getLastGoalLoopRunResult,
+  MAX_STEP_CHANGES,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
 import type { CustomTool } from "./elementTools";
 import {
   NONE_OF_THESE_KEY,
+  NO_VALUE_NEEDED_KEY,
   listValueQuestionId,
   chunkQuestionId,
   runOffQuestionId,
@@ -279,9 +282,37 @@ function scriptedDecisionFn(
       answers: {
         operation: choiceAnswer(criteria.operation, current.operation),
         goal_met: { type: "noul", noul: current.goal_met },
+        ...speculativeAnswers(criteria, current.arguments ?? {}),
       },
     };
   };
+}
+
+/**
+ * Stage one's speculative Goal Value questions, each answered from the script
+ * of the parameter it asks about (its id is `value:` and the parameter's name,
+ * or the operation's qualified name and the parameter's), else with "no value
+ * needed".
+ */
+function speculativeAnswers(
+  criteria: Record<string, Criteria>,
+  wanted: Record<string, ScriptedArgument | ScriptedNoul>
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(criteria)
+      .filter(([id]) => id.startsWith("value:"))
+      .map(([id, options]) => {
+        const parameter = Object.keys(wanted).find(
+          (name) => id === `value:${name}` || id.endsWith(`.${name}`)
+        );
+        const want = parameter === undefined ? undefined : wanted[parameter];
+        const key =
+          want === undefined || isNoul(want) || Array.isArray(want)
+            ? undefined
+            : offeredKey(options, want);
+        return [id, choiceAnswer(options, key ?? NO_VALUE_NEEDED_KEY)];
+      })
+  );
 }
 
 function failingDecisionFn(error: Error): GoalLoopDecisionFunction {
@@ -575,10 +606,44 @@ describe("Goal Loop goal in Chromium", () => {
       expect((document.querySelector("#name") as HTMLInputElement).value).toBe(
         "Milk"
       );
-      // The number is never offered to a string parameter.
-      expect(criteriaOf(requests[1]!).text).toEqual({
+      // The text is asked in stage one, next to the operation, under the
+      // premise that the next operation enters text into an element. The
+      // number is never offered to a string parameter.
+      const stageOne = requests[0]!.questions as Record<
+        string,
+        { instructions: string }
+      >;
+      expect(stageOne["value:text"]!.instructions).toMatch(
+        /^If the next operation is .*"fill".* enters text into one element of the page as its "text" parameter, which Goal Value is that text\?$/
+      );
+      expect(criteriaOf(requests[0]!)["value:text"]).toEqual({
         "item name": "item name: Milk",
+        [NO_VALUE_NEEDED_KEY]: expect.any(String),
         [NONE_OF_THESE_KEY]: expect.any(String),
+      });
+      // Stage two only picks the element, with the value it will receive in
+      // view.
+      const stageTwo = requests[1]!.questions as Record<
+        string,
+        { instructions: string }
+      >;
+      expect(Object.keys(stageTwo)).toEqual(["target"]);
+      // It is sent the candidates instead of the page.
+      const stageTwoState = requests[1]!.state as Record<string, unknown>;
+      expect(Object.keys(stageTwoState)).toEqual([
+        "goal",
+        "values",
+        "history",
+        "elements",
+      ]);
+      expect(stageTwoState.elements).toEqual([
+        expect.objectContaining({ role: "textbox", name: "Name" }),
+      ]);
+      expect(stageTwo.target!.instructions).toMatch(
+        /^Pick the element that should receive the text "Milk" \(the Goal Value "item name"\), as this operation's "target" .* parameter\./
+      );
+      expect(getLastGoalLoopRunResult()!.stepScores[0]!.valueChoices).toEqual({
+        "value:text": "item name",
       });
       // Both stages are decided on a state that carries the values as passed.
       for (const request of requests)
@@ -610,8 +675,9 @@ describe("Goal Loop goal in Chromium", () => {
         values,
       });
 
-      expect(Object.keys(criteriaOf(requests[1]!).text!)).toEqual([
+      expect(Object.keys(criteriaOf(requests[0]!)["value:text"]!)).toEqual([
         "__proto__",
+        NO_VALUE_NEEDED_KEY,
         NONE_OF_THESE_KEY,
       ]);
       expect(result).toMatchObject({
@@ -793,7 +859,17 @@ describe("Goal Loop goal in Chromium", () => {
         values: { "survey name": "Q4 Feedback", score: 4.5 },
       });
 
-      expect(Object.keys(criteriaOf(requests[1]!))).toEqual(["name"]);
+      // The name is asked in stage one, as are the free text parameters of
+      // the Browser Tools; the optional stars no Goal Value fits is asked
+      // nowhere, so no stage two follows.
+      expect(Object.keys(criteriaOf(requests[0]!))).toEqual([
+        "operation",
+        "goal_met",
+        "value:text",
+        "value:navigate.url",
+        "value:App.rate.name",
+      ]);
+      expect(requests).toHaveLength(2);
       expect(calls).toEqual([["Q4 Feedback", undefined]]);
     });
 
@@ -842,14 +918,16 @@ describe("Goal Loop goal in Chromium", () => {
         values: { product: "Milk", count: 3, price: 2.5 },
       });
 
-      const stageTwo = criteriaOf(requests[1]!);
-      expect(Object.keys(stageTwo.quantity!)).toEqual([
+      const stageOne = criteriaOf(requests[0]!);
+      expect(Object.keys(stageOne["value:App.order.quantity"]!)).toEqual([
         "count",
+        NO_VALUE_NEEDED_KEY,
         NONE_OF_THESE_KEY,
       ]);
-      expect(Object.keys(stageTwo.price!)).toEqual([
+      expect(Object.keys(stageOne["value:App.order.price"]!)).toEqual([
         "count",
         "price",
+        NO_VALUE_NEEDED_KEY,
         NONE_OF_THESE_KEY,
       ]);
       expect(calls).toEqual([[3, 2.5]]);
@@ -1170,18 +1248,170 @@ describe("Goal Loop goal in Chromium", () => {
   it("returns step_budget when maxSteps is exhausted", async () => {
     const decide = scriptedDecisionFn([
       { operation: "App.save", goal_met: 0.1 },
-      { operation: "App.save", goal_met: 0.2 },
+      { operation: "App.fail", goal_met: 0.2 },
     ]);
-    const tool = await registerPom(decide);
+    const tool = await registerCombinedPom(decide);
     const result = await tool.execute({ goal: "save many times", maxSteps: 2 });
     expect(result).toMatchObject({
       reason: "step_budget",
       history: [
         { operation: "App.save", result: "ok", page_changed: false },
-        { operation: "App.save", result: "ok", page_changed: false },
+        { operation: "App.fail", result: "action exploded" },
       ],
     });
+    expect(clickCount).toBe(1);
+  });
+
+  // --- Handover reason: no_progress ---
+
+  /** A POM whose add action changes the page every time it runs. */
+  async function registerPageChangingPom(goalLoop: GoalLoopDecisionFunction) {
+    setupDom();
+    class App {
+      root = page.locator("main");
+      add() {
+        clickCount++;
+        const row = document.createElement("div");
+        row.setAttribute("role", "alert");
+        row.textContent = `Row ${clickCount}`;
+        document.querySelector("main")!.appendChild(row);
+      }
+    }
+    registerCompiledPom(
+      App,
+      manifest("App", [root()], [action("add", "App.add")])
+    );
+    const tool = await getPublishedPursueGoal(goalLoop);
+    createPageRegistration(App);
+    return tool;
+  }
+
+  it("returns no_progress instead of repeating a step that changed nothing", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.save", goal_met: 0.1 },
+      { operation: "App.save", goal_met: 0.1 },
+      { operation: "App.save", goal_met: 0.1 },
+    ]);
+    const tool = await registerPom(decide);
+    const result = await tool.execute({ goal: "save changes", maxSteps: 10 });
+    expect(withoutChanges(result)).toEqual({
+      reason: "no_progress",
+      next: "The loop is repeating App.save(): it chose the same step 2 times in a row, and the last run did not change the page. It stopped instead of running it again. Perform that step yourself by calling App.save, or call goal again with a goal that names the element to act on.",
+      history: [
+        {
+          operation: "App.save",
+          chosen: {},
+          result: "ok",
+          page_changed: false,
+          did: "App.save()",
+        },
+      ],
+      needs: { tool: "App.save", parameters: [] },
+    });
+    expect((result as { next: string }).next).not.toMatch(/budget/i);
+    // The repeat is not run.
+    expect(clickCount).toBe(1);
+  });
+
+  it("returns no_progress when a step that changed the page is chosen a third time in a row", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "App.add", goal_met: 0.1 },
+    ]);
+    const tool = await registerPageChangingPom(decide);
+    const result = await tool.execute({ goal: "add rows", maxSteps: 10 });
+    expect(result).toMatchObject({
+      reason: "no_progress",
+      next: "The loop is repeating App.add(): it chose the same step 3 times in a row. It stopped instead of running it again. Perform that step yourself by calling App.add, or call goal again with a goal that names the element to act on.",
+      history: [
+        { operation: "App.add", result: "ok", page_changed: true },
+        { operation: "App.add", result: "ok", page_changed: true },
+      ],
+      needs: { tool: "App.add", parameters: [] },
+    });
     expect(clickCount).toBe(2);
+  });
+
+  it("names the element and the value of the repeated step", async () => {
+    setupDom();
+    const answer = {
+      operation: "fill",
+      goal_met: 0.1,
+      arguments: { target: 'textbox "Name"', text: "item name" },
+    };
+    const decide = scriptedDecisionFn([answer, answer, answer]);
+    const tool = await getPublishedPursueGoal(decide);
+    const result = await tool.execute({
+      goal: "Add an item called Milk",
+      maxSteps: 10,
+      values: { "item name": "Milk" },
+    });
+    // The first fill changed the page and the second did not.
+    expect(result).toMatchObject({
+      reason: "no_progress",
+      next: expect.stringContaining(
+        'fill(textbox "Name", item name: Milk): it chose the same step 3 times in a row, and the last run did not change the page.'
+      ),
+      history: [
+        { operation: "fill", page_changed: true },
+        { operation: "fill", page_changed: false },
+      ],
+      needs: { tool: "fill", parameters: ["target", "text"] },
+    });
+  });
+
+  it("does not stop steps that differ in their arguments", async () => {
+    setupDom();
+    const fill = (text: string): ScriptedAnswer => ({
+      operation: "fill",
+      goal_met: 0.1,
+      arguments: { target: 'textbox "Name"', text },
+    });
+    const decide = scriptedDecisionFn([
+      fill("a"),
+      fill("b"),
+      fill("c"),
+      fill("a"),
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await getPublishedPursueGoal(decide);
+    const result = await tool.execute({
+      goal: "Fill the name",
+      maxSteps: 10,
+      values: { a: "A", b: "B", c: "C" },
+    });
+    expect(result).toMatchObject({
+      reason: "done",
+      history: [
+        { chosen: { text: { key: "a" } }, page_changed: true },
+        { chosen: { text: { key: "b" } }, page_changed: true },
+        { chosen: { text: { key: "c" } }, page_changed: true },
+        { chosen: { text: { key: "a" } }, page_changed: true },
+      ],
+    });
+  });
+
+  it("lets a step that changed the page run twice in a row", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await registerPageChangingPom(decide);
+    const result = await tool.execute({ goal: "add rows", maxSteps: 10 });
+    expect(result).toMatchObject({ reason: "done" });
+    expect(clickCount).toBe(2);
+  });
+
+  it("does not count a failed step as a repeat", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.fail", goal_met: 0.1 },
+      { operation: "App.fail", goal_met: 0.1 },
+    ]);
+    const tool = await registerFailingPom(decide);
+    const result = await tool.execute({ goal: "do the thing", maxSteps: 5 });
+    expect((result as Record<string, unknown>).reason).toBe("action_failed");
   });
 
   // --- Handover reason: decide_failed ---
@@ -1408,9 +1638,104 @@ describe("Goal Loop goal in Chromium", () => {
         chosen: {},
         result: "ok",
         page_changed: true,
+        changes: expect.stringContaining("<added> alert: Changes saved"),
         did: expect.any(String),
       },
     ]);
+  });
+
+  it("carries what a step changed in its history entry, and nothing for a step that changed nothing", async () => {
+    document.body.innerHTML = `
+      <main>
+        <button id="save">Save changes</button>
+      </main>
+    `;
+    class App {
+      root = page.locator("main");
+      save() {
+        const banner = document.createElement("div");
+        banner.setAttribute("role", "alert");
+        banner.textContent = "Changes saved";
+        document.querySelector("main")!.appendChild(banner);
+      }
+      wait() {}
+    }
+    registerCompiledPom(
+      App,
+      manifest(
+        "App",
+        [root()],
+        [action("save", "App.save"), action("wait", "App.wait")]
+      )
+    );
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        { operation: "App.save", goal_met: 0.1 },
+        { operation: "App.wait", goal_met: 0.1 },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(App);
+    const result = (await tool.execute({
+      goal: "save",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+    expect(result.reason).toBe("done");
+    const [saved, waited] = result.history as Array<Record<string, unknown>>;
+    expect(saved).toMatchObject({ operation: "App.save", page_changed: true });
+    expect(saved!.changes).toMatch(/- e\d+ <added> alert: Changes saved/);
+    expect(waited).toMatchObject({
+      operation: "App.wait",
+      page_changed: false,
+    });
+    expect(waited).not.toHaveProperty("changes");
+    // The model reads the same entries in the state of the step after them.
+    expect((requests[1]!.state as Record<string, unknown>).history).toEqual([
+      saved,
+    ]);
+    expect((requests[2]!.state as Record<string, unknown>).history).toEqual([
+      saved,
+      waited,
+    ]);
+  });
+
+  it("cuts a long Change Record in the history entry, and keeps it whole in the run result", async () => {
+    document.body.innerHTML = `<main><h1>Import</h1><ul></ul></main>`;
+    class App {
+      root = page.locator("main");
+      fill() {
+        const list = document.querySelector("ul")!;
+        for (let i = 0; i < 40; i++) {
+          const item = document.createElement("li");
+          item.textContent = `Imported item number ${i}`;
+          list.appendChild(item);
+        }
+      }
+    }
+    registerCompiledPom(
+      App,
+      manifest("App", [root()], [action("fill", "App.fill")])
+    );
+    const decide = scriptedDecisionFn([
+      { operation: "App.fill", goal_met: 0.1 },
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(App);
+    const result = (await tool.execute({
+      goal: "import",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+    const [entry] = result.history as Array<{ changes: string }>;
+    const full = getLastGoalLoopRunResult()!.stepScores[0]!.changes!;
+    expect(full.length).toBeGreaterThan(MAX_STEP_CHANGES);
+    expect(full).toContain("Imported item number 39");
+    expect(entry!.changes.length).toBeLessThanOrEqual(MAX_STEP_CHANGES);
+    expect(entry!.changes.endsWith(CHANGES_CUT_MARKER)).toBe(true);
+    // Cut at a whole line of the full record.
+    const kept = entry!.changes.slice(0, -CHANGES_CUT_MARKER.length);
+    expect(full.startsWith(`${kept}\n`)).toBe(true);
   });
 
   it("records a failed step as a bare step record with the error as its result", async () => {
@@ -1523,7 +1848,10 @@ describe("Goal Loop goal in Chromium", () => {
     });
   }
 
-  /** Every ref the page state sent to the model contains. */
+  /**
+   * Every ref the state sent to the model contains: in the page, or among the
+   * candidate elements a request that only picks an element is sent.
+   */
   function refsInPage(state: unknown): string[] {
     const refs: string[] = [];
     const walk = (node: unknown) => {
@@ -1534,6 +1862,7 @@ describe("Goal Loop goal in Chromium", () => {
       walk(record.children);
     };
     walk((state as Record<string, unknown>).page);
+    walk((state as Record<string, unknown>).elements);
     return refs;
   }
 
@@ -1576,6 +1905,10 @@ describe("Goal Loop goal in Chromium", () => {
       // Whether a click changes the page (focus among others) is the
       // interaction history's promise, pinned in its own tests.
       page_changed: expect.any(Boolean),
+      // A focus change, when the click made one, is what it changed.
+      ...("changes" in (result.history as object[])[0]!
+        ? { changes: expect.any(String) }
+        : {}),
       did: expect.any(String),
     };
     expect(description).toBe('button "Save changes"');
@@ -1700,8 +2033,10 @@ describe("Goal Loop goal in Chromium", () => {
     expect(buttonRef).toBeDefined();
 
     // The page sent holds the button but none of the wrappers, and the text
-    // of the single-character leaves hoisted, each string as it was.
-    const page = requests[1]!.state as { page: unknown };
+    // of the single-character leaves hoisted, each string as it was. Stage
+    // one is sent the page; stage two, which only picks the element, is sent
+    // the candidates instead.
+    const page = requests[0]!.state as { page: unknown };
     const refs = refsInPage(page);
     expect(refs).toContain(buttonRef);
     for (const ref of wrapperRefs) expect(refs).not.toContain(ref);
@@ -2127,6 +2462,35 @@ describe("Goal Loop goal in Chromium", () => {
       history: [],
     });
     expect(clickCount).toBe(0);
+  });
+
+  it("ends the run when a speculative answer for the chosen operation is not one it offered", async () => {
+    setupDom();
+    const decide = scriptedDecisionFn([
+      {
+        operation: "fill",
+        goal_met: 0.1,
+        arguments: { target: 'textbox "Name"', text: { raw: "Bread" } },
+      },
+    ]);
+    const tool = await getPublishedPursueGoal(decide);
+
+    const result = await tool.execute({
+      goal: "Add an item called Milk",
+      maxSteps: 5,
+      values: { "item name": "Milk" },
+    });
+
+    expect(withoutChanges(result)).toEqual({
+      reason: "decide_failed",
+      next: expect.stringMatching(
+        /^The decision function returned an invalid response: .*"Bread".*Handle the goal without the Goal Loop\.$/
+      ),
+      history: [],
+    });
+    expect((document.querySelector("#name") as HTMLInputElement).value).toBe(
+      ""
+    );
   });
 
   // --- Stage two: which instance of a collection ---

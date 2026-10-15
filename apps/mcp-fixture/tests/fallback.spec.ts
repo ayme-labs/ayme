@@ -113,7 +113,7 @@ test("with no page connected, page tools and fallback tools say no page is conne
   }
 });
 
-test("a page tool the agent listed before the page left says no page is connected", async ({
+test("a page tool the agent listed before the tab closed says the tab did not come back", async ({
   agent,
   connect,
   page,
@@ -124,8 +124,10 @@ test("a page tool the agent listed before the page left says no page is connecte
   await page.close();
   await expect.poll(() => agent.pageToolNames()).toEqual([]);
 
+  // The server holds the call while it waits for the tab to reconnect.
   const { text, isError } = await agent.call("snapshot");
   expect(isError).toBe(true);
-  expect(text).toContain("No page is connected.");
-  expect(text).not.toContain("Unknown tool");
+  expect(text).toBe(
+    "The page's connection closed and its tab did not reconnect, so the call did not run."
+  );
 });

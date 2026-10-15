@@ -98,7 +98,10 @@ The model decides each step on the current Structural Page State as JSON, one ob
 
 A step first asks which operation moves closest to the goal and whether the goal is met. The operations are the available Page Object Tools, Custom Tools and single-element Browser Tools; a Page Object Tool that cannot run now is not offered. When the chosen operation takes arguments from a closed set, a Structural Ref, an enum value or a boolean, a second request asks for all of them at once, and the operation runs with the chosen values.
 
+The first request also asks which [Goal Value](#goal-values) the next operation would enter, before the operation is known: one question per required text or number parameter, shared by the single-element tools whose parameter has the same name and kind, at most eight. Only the answers that cover the chosen operation are read; one that names a Goal Value fills its parameter, and the second request then picks the element that should receive that value. Past eight, or when the answer names no Goal Value, the parameter is asked in the second request as below.
+
 - The ref options are the elements the operation's filter keeps, one per element in document order; nothing is merged or ranked.
+- A second request that only picks an element is sent the candidates instead of the page: each with its named ancestors, the nearest heading and the nearest text before it, its own text, props and state. The goal, the Goal Values and the history travel with it.
 - One question offers at most 255 options. More elements are cut into chunks of at most 254 plus "none of these", asked side by side. When exactly one chunk names an element, the operation runs on it; when several do, one more question offers just those; when none does, the loop ends with `no_fitting_option`.
 - An optional closed-set parameter gets an extra choice that leaves it unset.
 - The model never writes a free value: it picks one from the [Goal Values](#goal-values), or the loop ends with `needs_value` so that the calling agent supplies it.
@@ -138,17 +141,18 @@ Each step sends the pruned page state, the goal and the step's question from the
 ```ts
 {
   reason:  "done" | "no_fitting_option" | "needs_value"
-         | "action_failed" | "step_budget" | "decide_failed"
-         | "page_loading",
+         | "action_failed" | "no_progress" | "step_budget"
+         | "decide_failed" | "page_loading",
   next:    string,     // plain words: what the calling agent should do now
   history: {
     operation: string,   // the tool's name; a Page Object Tool's qualified name
     chosen: Record<string, { key: string, description: string }>,
     result: string,      // "ok", or the error the action failed with
     page_changed: boolean,
+    changes?: string,    // what the step changed, cut to 400 characters; absent when nothing
     did: string,         // operation(description, …), for a human skimming
   }[],
-  needs?:  { tool: string, parameters: string[] },  // only with needs_value
+  needs?:  { tool: string, parameters: string[] },  // only with needs_value or no_progress
   loading?: string,    // only with page_loading: the URL the load started for
   changes?: string,    // what the whole run changed; absent when nothing did
 }
@@ -160,11 +164,14 @@ Each step sends the pruned page state, the goal and the step's question from the
 | `no_fitting_option` | The model chose "none", as no available operation fits, or every chunk of a ref question answered "none of these".                   |
 | `needs_value`       | The chosen operation needs values the loop cannot fill, from the page or the Goal Values. `needs` names the tool and its parameters. |
 | `action_failed`     | Two operations failed in a row.                                                                                                      |
+| `no_progress`       | The loop stopped before repeating its last step to no effect. `needs` names the tool and its parameters.                             |
 | `step_budget`       | `maxSteps` ran out before the goal was achieved.                                                                                     |
 | `decide_failed`     | The decision function failed: network, no endpoint mounted, rejected or malformed. `next` advises a retry only when one can help.    |
 | `page_loading`      | The last step started a [full page load](page-state.md#full-page-loads) of the URL in `loading`; call `snapshot` once it has loaded. |
 
-`history` records each operation the loop ran: the tool in `operation`; in `chosen`, per parameter asked, the key of the option the model chose and its description exactly as offered, a choice to leave it unset included; `"ok"` or an error message in `result`; whether the page changed in `page_changed`; and `did`, a one-line label such as `click(button "Add item")`. A step that hands over before acting records nothing. The model is sent the same entries as its history.
+A step repeats to no effect when it has the same operation and chosen arguments as the step before, and that step did not change the page, or when it would be the third in a row even though the page changed. The loop does not run it again: `next` names the step, and tells the calling agent to perform it itself or to call `goal` again with a goal that names the element.
+
+`history` records each operation the loop ran: the tool in `operation`; in `chosen`, per parameter asked, the key of the option the model chose and its description exactly as offered, a choice to leave it unset included; `"ok"` or an error message in `result`; whether the page changed in `page_changed`; in `changes`, what the step changed, its Change Record cut to 400 characters with `… (cut)` on a line of its own where it was cut, absent when the step changed nothing; and `did`, a one-line label such as `click(button "Add item")`. A step that hands over before acting records nothing. The model is sent the same entries as its history.
 
 `changes` is one Change Record for the whole run: the page the calling agent last received against the page after the run, which becomes the agent's page for its next Change Record. A run that opened a dialog, closed it and archived an item hands over only the net result:
 
@@ -174,13 +181,19 @@ Each step sends the pruned page state, the goal and the step's question from the
   next: "The goal has been achieved. Continue with your next task.",
   history: [
     { operation: "InboxPage.openDialog", chosen: {}, result: "ok",
-      page_changed: true, did: "InboxPage.openDialog()" },
+      page_changed: true, changes: '- e12 <added> dialog "Archive invoice"',
+      did: "InboxPage.openDialog()" },
     { operation: "InboxPage.closeDialog", chosen: {}, result: "ok",
-      page_changed: true, did: "InboxPage.closeDialog()" },
+      page_changed: true, changes: '- e12 <removed> dialog "Archive invoice"',
+      did: "InboxPage.closeDialog()" },
     { operation: "InboxPage.invoices.archive",
       chosen: { ref: { key: "e5",
         description: 'InboxPage.invoices[0] (listitem "Invoice 7")' } },
       result: "ok", page_changed: true,
+      changes: `- e2 main:
+  - e4 list:
+    - e5 <removed> listitem: Invoice 7
+  - e9 <added> paragraph: Archived Invoice 7`,
       did: 'InboxPage.invoices.archive(InboxPage.invoices[0] (listitem "Invoice 7"))' },
   ],
   changes: `- e2 main:
