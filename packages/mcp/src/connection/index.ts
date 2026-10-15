@@ -6,6 +6,7 @@ export {
   RECONNECT_WAIT_MS,
 } from "./application/agentConnection";
 export type { ConnectionEvent } from "./application/agentConnection";
+export { heldCallText } from "./domain/unansweredCall";
 export type {
   AgentImageRun,
   ClientBehaviour,

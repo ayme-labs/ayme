@@ -69,3 +69,34 @@ function unansweredCall(exit: PageExit) {
     }
   }
 }
+
+/**
+ * How the page left when the server held a call for it and no page came
+ * back: it started loading a new document and its tab did not reconnect,
+ * its channel closed without a word and its tab did not reconnect, or the
+ * server stopped.
+ */
+export type HeldCallExit =
+  | { type: "reloaded" | "navigated"; url: string }
+  | { type: "closed" }
+  | { type: "stopped" };
+
+/**
+ * The text the server answers a held call with when no page came back for
+ * it: what happened, and that the call did not run.
+ */
+export function heldCallText(exit: HeldCallExit): string {
+  switch (exit.type) {
+    case "stopped":
+      return "The Ayme MCP server stopped before the page reconnected, so the call did not run.";
+    case "closed":
+      return "The page's connection closed and its tab did not reconnect, so the call did not run.";
+    default: {
+      const what =
+        exit.type === "reloaded"
+          ? "The page started reloading"
+          : `The page started loading ${exit.url}`;
+      return `${what} and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run Ayme's Agent Connection.`;
+    }
+  }
+}

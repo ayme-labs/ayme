@@ -149,7 +149,7 @@ navigation to another origin ends the connection.
 Every call gets one answer. When the page answers, that is the answer. When
 the page goes away first, the server answers with an error result whose text
 is a JSON object: `error` says what happened and that the call's outcome is
-unknown, and `next` what to do now. The server waits up to 3 seconds for the
+unknown, and `next` what to do now. The server waits up to 5 seconds for the
 tab to reconnect, then tells the cases apart like this:
 
 - **Reloaded or navigated:** the same tab reconnected. It reloaded when the
@@ -169,6 +169,18 @@ tab to reconnect, then tells the cases apart like this:
 
 While the page is away, no page is paired. A closed tab leaves it that way
 until a tab pairs again.
+
+A call for the page that comes while its tab is loading a new document waits
+for the new page instead of failing: from when the page says it started
+loading, through the wait for its tab to reconnect, until the new page has
+reported its tools. It then runs on the new page, so a `snapshot` sent right
+after a full-load answer reads the new page. When no page comes back, the call
+fails without running, and its text says how the page left: it started
+loading a URL and no page reconnected in its place, as when the tab closed or
+the new page does not run the Agent Connection, or its connection closed
+without a word. A page that said it started loading but stays, as when the
+load was cancelled, gets the call once the wait ends. Calls for an App
+Process never wait.
 
 ## Security
 

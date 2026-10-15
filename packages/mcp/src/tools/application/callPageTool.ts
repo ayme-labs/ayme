@@ -1,5 +1,6 @@
-import type { AgentConnection } from "../../connection";
+import { heldCallText, type AgentConnection } from "../../connection";
 import {
+  errorResult,
   errorText,
   imageOf,
   imageToolResult,
@@ -17,8 +18,10 @@ export type SaveImage = (filename: string, data: string) => Promise<string>;
  * result. A name no connection offers gets `unknown(name)` while a page or
  * App Process is paired; otherwise, or when the connection leaves before
  * the call goes out, it answers that no page is connected, since the name
- * may be a page tool the agent listed before. An image the tool returns is
- * saved with `saveImage` too.
+ * may be a page tool the agent listed before. While the page's tab is
+ * loading a new document, a call for the page waits for the new page, and
+ * fails without running when no page comes back. An image the tool returns
+ * is saved with `saveImage` too.
  */
 export async function callPageTool(
   connection: AgentConnection,
@@ -27,6 +30,8 @@ export async function callPageTool(
   unknown: (name: string) => ToolResult,
   saveImage: SaveImage
 ): Promise<ToolResult> {
+  const exit = await connection.pageReady(name);
+  if (exit) return errorResult(heldCallText(exit));
   if (!connection.offers(name))
     return connection.connected ? unknown(name) : notConnectedResult();
   let outcome;
