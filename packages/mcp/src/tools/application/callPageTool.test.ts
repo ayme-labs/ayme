@@ -239,6 +239,97 @@ describe("a call while the tab loads a new document", () => {
     expect(await result).toEqual(textResult(url));
   });
 
+  it("never goes to another tab that paired in its place", async () => {
+    vi.useFakeTimers();
+    const { connection, page } = connected();
+    page.leaving = { url: `${url}other`, reload: false };
+
+    const { result } = call(connection);
+    await flush();
+    const other = connection.attach({ tab: "b", url }, () => {})!;
+    void answerAs(other, ending.signal);
+    other.publishTools([pageTool("snapshot")]);
+
+    expect(await result).toEqual(
+      errorResult(
+        "Another tab connected to this server before the page reconnected, so the call did not run."
+      )
+    );
+  });
+
+  it("never goes to another tab that paired while the tab was away", async () => {
+    vi.useFakeTimers();
+    const { connection, page } = connected();
+    connection.detach(page);
+
+    const { result } = call(connection);
+    await flush();
+    const other = connection.attach({ tab: "b", url }, () => {})!;
+    void answerAs(other, ending.signal);
+    other.publishTools([pageTool("snapshot")]);
+
+    expect(await result).toEqual(
+      errorResult(
+        "Another tab connected to this server before the page reconnected, so the call did not run."
+      )
+    );
+  });
+
+  it("runs on the tab's new page when it pairs before the old page's channel closes", async () => {
+    vi.useFakeTimers();
+    const { connection, page } = connected();
+    page.leaving = { url: `${url}other`, reload: false };
+
+    const { result } = call(connection);
+    await flush();
+    reconnect(connection, `${url}other`);
+
+    expect(await result).toEqual(textResult(`${url}other`));
+  });
+
+  it("goes to a page that paired but never reports its tools, once the wait ends", async () => {
+    vi.useFakeTimers();
+    const connection = new AgentConnection();
+    connection.attach({ tab: "a", url }, () => {});
+
+    const { result, answered } = call(connection);
+    await vi.advanceTimersByTimeAsync(RECONNECT_WAIT_MS - 1);
+    expect(answered()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(answered()).toBe(true);
+    expect((await result).isError).toBe(true);
+  });
+
+  it("waits for a tab that reconnected just before the wait ended to report its tools", async () => {
+    vi.useFakeTimers();
+    const { connection, page } = connected();
+    connection.detach(page);
+
+    const { result } = call(connection);
+    await vi.advanceTimersByTimeAsync(RECONNECT_WAIT_MS - 100);
+    const next = connection.attach({ tab: "a", url }, () => {})!;
+    void answerAs(next, ending.signal);
+    await vi.advanceTimersByTimeAsync(200);
+    next.publishTools([pageTool("snapshot")]);
+
+    expect(await result).toEqual(textResult(url));
+  });
+
+  it("sends later calls at once to a page that said it was leaving but stayed", async () => {
+    vi.useFakeTimers();
+    const { connection, page } = connected();
+    page.leaving = { url: `${url}download`, reload: false };
+    void answerAs(page, ending.signal);
+    await vi.advanceTimersByTimeAsync(RECONNECT_WAIT_MS);
+
+    const { result, answered } = call(connection);
+    await flush();
+
+    expect(answered()).toBe(true);
+    expect(await result).toEqual(textResult(url));
+  });
+
   it("fails without running when the server stops", async () => {
     const { connection, page } = connected();
     connection.detach(page);

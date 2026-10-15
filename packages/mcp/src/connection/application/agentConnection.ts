@@ -128,8 +128,11 @@ export class PageSession extends ChannelSession {
   readonly url: string;
   /** Ends the page's channel and tells it another tab paired in its place. */
   readonly disconnect: () => void;
-  /** The new document the page said it started loading, if any. */
-  leaving: PageLeaving | undefined;
+  /** When the page connected, by `Date.now()`. */
+  readonly connectedAt = Date.now();
+  #leaving: PageLeaving | undefined;
+  /** When the page last said it started loading, by `Date.now()`. */
+  leftAt = 0;
 
   constructor(
     hello: PageHello,
@@ -140,6 +143,16 @@ export class PageSession extends ChannelSession {
     this.tab = hello.tab;
     this.url = hello.url;
     this.disconnect = disconnect;
+  }
+
+  /** The new document the page said it started loading, if any. */
+  get leaving(): PageLeaving | undefined {
+    return this.#leaving;
+  }
+
+  set leaving(leaving: PageLeaving | undefined) {
+    this.#leaving = leaving;
+    this.leftAt = Date.now();
   }
 }
 
@@ -255,6 +268,9 @@ export class AgentConnection {
       return undefined;
     }
     const previous = this.#page;
+    const replacing =
+      (previous !== undefined && previous.tab !== hello.tab) ||
+      (this.#away !== undefined && this.#away.tab !== hello.tab);
     // The same tab's earlier document is gone, whether or not its channel
     // has closed yet.
     if (previous?.tab === hello.tab) this.detach(previous);
@@ -263,6 +279,8 @@ export class AgentConnection {
       this.#replacedTabs.add(this.#away.tab);
       this.#answerAway({ type: "replaced" });
     }
+    // Calls held for the replaced tab's next page never go to another tab.
+    if (replacing) this.#releaseHeld({ type: "replaced" });
 
     const page = new PageSession(hello, disconnect, (tools) => {
       if (this.#page !== page) return;
@@ -329,7 +347,8 @@ export class AgentConnection {
         ? { type: left.reload ? "reloaded" : "navigated", url: left.url }
         : { type: "closed" };
       this.#answerAway(exit);
-      this.#releaseHeld(exit);
+      // A page of the tab reconnected and is about to report its tools.
+      this.#releaseHeld(this.#page?.tab === tab ? undefined : exit);
     }, RECONNECT_WAIT_MS);
     // In Node, the wait never keeps a stopping server running.
     (timer as { unref?: () => void }).unref?.();
@@ -342,9 +361,10 @@ export class AgentConnection {
    * loading a new document: from when the page says it is leaving, through
    * the wait for its tab to reconnect, until a page has reported its
    * tools. It resolves with how the page left when its tab did not
-   * reconnect in time or the server stopped, so the call never ran. A page
-   * that said it was leaving but stays, as when its navigation was
-   * cancelled, gets the call after `RECONNECT_WAIT_MS`.
+   * reconnect in time, another tab paired in its place or the server
+   * stopped, so the call never ran. A page that said it was leaving but
+   * stays, as when its navigation was cancelled, gets the call after
+   * `RECONNECT_WAIT_MS`, and later calls at once.
    */
   pageReady(name: string): Promise<HeldCallExit | undefined> {
     if (!this.#pageSettling || this.#holderOf(name) instanceof ProcessSession)
@@ -359,14 +379,13 @@ export class AgentConnection {
       const release = (exit?: HeldCallExit) => {
         if (exit || !this.#pageSettling) settle(exit);
       };
-      // While the tab is away, its own wait ends the hold.
       const expire = () => {
-        if (!this.#away) return settle();
-        timer = setTimeout(expire, RECONNECT_WAIT_MS);
+        const wait = this.#settlingFor();
+        if (wait <= 0) return settle();
+        timer = setTimeout(expire, wait);
         (timer as { unref?: () => void }).unref?.();
       };
-      timer = setTimeout(expire, RECONNECT_WAIT_MS);
-      (timer as { unref?: () => void }).unref?.();
+      expire();
       this.#held.add(release);
     });
   }
@@ -538,9 +557,25 @@ export class AgentConnection {
    * tools yet.
    */
   get #pageSettling(): boolean {
+    return this.#settlingFor() > 0;
+  }
+
+  /**
+   * How long, in milliseconds, the page may go on settling: until
+   * `RECONNECT_WAIT_MS` after it said it is leaving, or after it paired
+   * without reporting its tools. A page still there after that stays, as
+   * when its navigation was cancelled. While its tab is away, the wait for
+   * the tab ends the settling, so this is a time to look again.
+   */
+  #settlingFor(): number {
     const page = this.#page;
-    if (page) return page.leaving !== undefined || !page.reported;
-    return this.#away !== undefined;
+    if (!page) return this.#away ? RECONNECT_WAIT_MS : 0;
+    const now = Date.now();
+    const leaving = page.leaving ? page.leftAt + RECONNECT_WAIT_MS - now : 0;
+    const reporting = page.reported
+      ? 0
+      : page.connectedAt + RECONNECT_WAIT_MS - now;
+    return Math.max(leaving, reporting, 0);
   }
 
   /**

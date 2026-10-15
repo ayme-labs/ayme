@@ -178,9 +178,10 @@ after a full-load answer reads the new page. When no page comes back, the call
 fails without running, and its text says how the page left: it started
 loading a URL and no page reconnected in its place, as when the tab closed or
 the new page does not run the Agent Connection, or its connection closed
-without a word. A page that said it started loading but stays, as when the
-load was cancelled, gets the call once the wait ends. Calls for an App
-Process never wait.
+without a word. When another tab pairs in its place, the held calls fail
+without running too; they never go to the other tab. A page that said it
+started loading but stays, as when the load was cancelled, gets the call once
+the wait ends, and later calls at once. Calls for an App Process never wait.
 
 ## Security
 
