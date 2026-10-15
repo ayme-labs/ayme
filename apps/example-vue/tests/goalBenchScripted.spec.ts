@@ -98,10 +98,18 @@ async function answerDecisions(page: Page, intended: IntendedStep[]) {
       let answers: Record<string, unknown>;
       if ("operation" in questions) {
         const step = intended[next++];
-        answers = {
+        // Stage one also asks speculative Goal Value questions; the script
+        // leaves every value to stage two.
+        answers = Object.fromEntries(
+          Object.keys(questions).map((id) => [
+            id,
+            { type: "choice", choice: "no_value_needed" },
+          ])
+        );
+        Object.assign(answers, {
           operation: { type: "choice", choice: step?.operation ?? "none" },
           goal_met: { type: "noul", noul: step ? 0.05 : 0.95 },
-        };
+        });
       } else {
         answers = argumentAnswers(intended[next - 1]!, questions);
       }
@@ -184,14 +192,17 @@ test("scripted: the harness counts repeated and wrong-target steps", async ({
     expectedTargets: expectedTargetsOf(bench),
   });
 
-  expect(handover.reason).toBe("step_budget");
+  // The loop runs the wrong fill twice and stops the third time it chooses
+  // it, before running it: the step was decided, so it counts and costs
+  // tokens, but it neither repeats nor misses a target.
+  expect(handover.reason).toBe("no_progress");
   await expect(page.getByLabel("First name")).toHaveValue("amazing-grace");
   const run = reportedRun();
   expect(run).toMatchObject({
     stepCount: 3,
     doneAtExpectedStep: false,
-    repeatedSteps: 2,
-    wrongTargetSteps: 3,
+    repeatedSteps: 1,
+    wrongTargetSteps: 2,
     inputTokens: 600,
     outputTokens: 24,
   });
@@ -200,8 +211,8 @@ test("scripted: the harness counts repeated and wrong-target steps", async ({
     text: "display name: amazing-grace",
   });
   expect(aggregate([run])).toMatchObject({
-    repeatedSteps: 2,
-    wrongTargetSteps: 3,
+    repeatedSteps: 1,
+    wrongTargetSteps: 2,
     meanInputTokensPerStep: 200,
     meanOutputTokensPerStep: 8,
     meanTokensPerRun: 624,
