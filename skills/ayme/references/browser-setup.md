@@ -19,6 +19,16 @@ version. Diagnose with the "The agent cannot reach the page" section of
   again by itself, and the page's tools come back with a tool list change.
   If they don't come back, or no tab was paired, call `ayme_connect` again
   and open the new link.
+- When a ref fails to resolve, call `snapshot` and use the ref it prints for
+  that node; if that ref fails the same way, use a selector such as
+  `role=button[name="Save"]`. Pass a ref alone, such as `e36`, and for a
+  collection tool the ref of the item's Page Object Root.
+  [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md#structural-refs)
+  says what each failure reason means.
+- When a Page Object's tools never appear, read the browser console, or ask
+  the user to: a refused registration, `Cannot register the Page Object …`,
+  is logged there and does not reach you. It names two classes that share a
+  name; rename one.
 - When a tool answers that it is unavailable, read the reason. A runtime
   reason, `a click would not reach it; e42 is in the way`, names the element
   in the way in the page state, such as an open dialog to close first, and
