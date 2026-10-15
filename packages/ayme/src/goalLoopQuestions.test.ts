@@ -776,7 +776,70 @@ describe("parameter shapes", () => {
       "param.0": { type: "choice", choice: "asc" },
       "param.1": { type: "choice", choice: "leave_unset" },
     });
-    expect(answers).toMatchObject({ kind: "chosen", chosen: { args: {} } });
+    if (answers.kind !== "chosen") throw new Error(answers.kind);
+    expect(answers.chosen.args).toEqual({});
+  });
+
+  it("leaves an optional tuple out when every slot stays unset", () => {
+    const tool = actionWith(
+      {
+        type: "array",
+        prefixItems: [{ type: "string", enum: ["asc", "desc"] }],
+        minItems: 1,
+        maxItems: 1,
+      },
+      true
+    );
+    const questions = plannedQuestions(tool, {});
+
+    const answers = readArgumentAnswers(tool, questions, {
+      "param.0": { type: "choice", choice: "leave_unset" },
+    });
+    if (answers.kind !== "chosen") throw new Error(answers.kind);
+    expect(answers.chosen.args).toEqual({});
+  });
+
+  it("completes nested tuples innermost first", () => {
+    // [[string, string], "a" | "b"]?: the inner tuple misses a slot, so it is
+    // left out, which leaves the outer tuple without a slot it requires.
+    const tool = actionWith(
+      {
+        type: "array",
+        prefixItems: [
+          {
+            type: "array",
+            prefixItems: [{ type: "string" }, { type: "string" }],
+            minItems: 2,
+            maxItems: 2,
+          },
+          { type: "string", enum: ["a", "b"] },
+        ],
+        minItems: 2,
+        maxItems: 2,
+      },
+      true
+    );
+    expect(tool.args.map((arg) => arg.name)).toEqual([
+      "param.0.0",
+      "param.0.1",
+      "param.1",
+    ]);
+    const questions = plannedQuestions(tool, { name: "Milk" });
+
+    const answers = readArgumentAnswers(tool, questions, {
+      "param.0.0": { type: "choice", choice: "name" },
+      "param.0.1": { type: "choice", choice: "leave_unset" },
+      "param.1": { type: "choice", choice: "a" },
+    });
+    if (answers.kind !== "chosen") throw new Error(answers.kind);
+    expect(answers.chosen.args).toEqual({});
+    const nothingSet = readArgumentAnswers(tool, questions, {
+      "param.0.0": { type: "choice", choice: "leave_unset" },
+      "param.0.1": { type: "choice", choice: "leave_unset" },
+      "param.1": { type: "choice", choice: "leave_unset" },
+    });
+    if (nothingSet.kind !== "chosen") throw new Error(nothingSet.kind);
+    expect(nothingSet.chosen.args).toEqual({});
   });
 
   it("ends a tuple at its first unset optional slot", () => {
@@ -814,6 +877,7 @@ describe("parameter shapes", () => {
     expect(questions).toHaveLength(1);
     const [question] = questions;
     if (question?.type !== "choice") throw new Error("Expected a choice");
+    expect(question.instructions).toMatch(/^Pick the value or Goal Value /);
     expect(question.options.map(({ key, value }) => ({ key, value }))).toEqual([
       { key: "true", value: true },
       { key: "false", value: false },
@@ -824,6 +888,48 @@ describe("parameter shapes", () => {
         param: { type: "choice", choice: "name" },
       })
     ).toMatchObject({ kind: "chosen", chosen: { args: { param: "Milk" } } });
+  });
+
+  it("offers a union of string and number every Goal Value of either type", () => {
+    const tool = actionWith({
+      anyOf: [{ type: "string" }, { type: "number" }],
+    });
+    const [question] = plannedQuestions(tool, { name: "Milk", count: 2 });
+    if (question?.type !== "choice") throw new Error("Expected a choice");
+
+    expect(question.options.map((option) => option.key)).toEqual([
+      "name",
+      "count",
+      NONE_OF_THESE_KEY,
+    ]);
+  });
+
+  it("offers null as the closed value of a nullable union", () => {
+    const tool = actionWith({
+      anyOf: [{ type: "string" }, { type: "null" }],
+    });
+    const [question] = plannedQuestions(tool, { name: "Milk" });
+    if (question?.type !== "choice") throw new Error("Expected a choice");
+
+    expect(question.options.map(({ key, value }) => ({ key, value }))).toEqual([
+      { key: "null", value: null },
+      { key: "name", value: "Milk" },
+    ]);
+  });
+
+  it("hands over a required union with a variant that is not a primitive", () => {
+    const tool = actionWith({
+      anyOf: [
+        { type: "string" },
+        { type: "object", properties: {}, additionalProperties: false },
+      ],
+    });
+
+    expect(planArguments(tool, captureOfButtons(0), { name: "Milk" })).toEqual({
+      kind: "needs_free_value",
+      parameters: ["param"],
+      unfilled: ["param"],
+    });
   });
 
   it("keeps a Goal Value labelled like a boolean apart from the boolean", () => {

@@ -190,29 +190,31 @@ export type ToolOption = {
 /** What a primitive schema may be filled with. */
 type PrimitiveFill = { values: JsonPrimitive[]; free: FreeKind[] };
 
+function closedFill(values: JsonPrimitive[]): PrimitiveFill {
+  return { values, free: [] };
+}
+
 /**
  * The closed values (enum values, booleans, null) and the Goal Value kinds a
  * primitive schema, or a union of them, takes; undefined for any other schema.
  */
 function primitiveFillOf(schema: JsonSchema): PrimitiveFill | undefined {
   if (schema.anyOf) {
-    const fill: PrimitiveFill = { values: [], free: [] };
-    for (const variant of schema.anyOf) {
-      const variantFill = primitiveFillOf(variant);
-      if (!variantFill) return undefined;
-      for (const value of variantFill.values)
-        if (!fill.values.includes(value)) fill.values.push(value);
-      for (const kind of variantFill.free)
-        if (!fill.free.includes(kind)) fill.free.push(kind);
-    }
-    return fill;
+    const fills = schema.anyOf.map(primitiveFillOf);
+    if (fills.includes(undefined)) return undefined;
+    // The build plugin merges literals of one type into one enum, so the
+    // variants never share a value or a kind.
+    return {
+      values: fills.flatMap((fill) => fill!.values),
+      free: fills.flatMap((fill) => fill!.free),
+    };
   }
-  if (schema.enum) return { values: [...schema.enum], free: [] };
+  if (schema.enum) return closedFill([...schema.enum]);
   switch (schema.type) {
     case "boolean":
-      return { values: [true, false], free: [] };
+      return closedFill([true, false]);
     case "null":
-      return { values: [null], free: [] };
+      return closedFill([null]);
     case "string":
     case "number":
     case "integer":
@@ -251,7 +253,7 @@ function specsOf(
 ): ArgumentSpec[] {
   const { schema } = parameter;
   const path = [...prefix, parameter.name];
-  if (schema.type === "array" && schema.prefixItems) {
+  if (schema.prefixItems) {
     const tuple = { path, minItems: schema.minItems ?? 0 };
     return schema.prefixItems.flatMap((slot, index) =>
       specsOf(
@@ -1247,30 +1249,21 @@ function completeTuples(
   const innermostFirst = [...tuples.values()].sort(
     (a, b) => b.path.length - a.path.length
   );
-  for (const tuple of innermostFirst) {
-    const parent = valueAt(args, tuple.path.slice(0, -1));
-    const key = tuple.path[tuple.path.length - 1]!;
-    const slots = (parent as Record<PathKey, unknown> | undefined)?.[key];
+  for (const { path, minItems } of innermostFirst) {
+    // A tuple's parent is the input, an object or a tuple, never a list.
+    const parent = path
+      .slice(0, -1)
+      .reduce<Record<PathKey, unknown> | undefined>(
+        (value, key) => value?.[key] as Record<PathKey, unknown> | undefined,
+        args
+      );
+    const key = path[path.length - 1]!;
+    const slots = parent?.[key];
     if (!Array.isArray(slots)) continue;
     const gap = slots.findIndex((_, index) => !(index in slots));
-    slots.length = gap === -1 ? slots.length : gap;
-    if (slots.length < tuple.minItems)
-      delete (parent as Record<PathKey, unknown>)[key];
+    if (gap !== -1) slots.length = gap;
+    if (slots.length < minItems) delete parent![key];
   }
-}
-
-/** The value at `path` in the operation's input, if there is one. */
-function valueAt(
-  args: Record<string, unknown>,
-  path: readonly PathKey[]
-): unknown {
-  let value: unknown = args;
-  for (const key of path)
-    value =
-      value !== null && typeof value === "object"
-        ? (value as Record<PathKey, unknown>)[key]
-        : undefined;
-  return value;
 }
 
 function groupByParameter<T extends { question: QuestionBase }>(
