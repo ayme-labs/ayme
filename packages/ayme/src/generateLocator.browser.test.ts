@@ -305,6 +305,12 @@ describe("generate_locator in Chromium", () => {
     expect(errorAt(result, 1, 0)).toMatch(/not inside the container "e\d+"/);
   });
 
+  it("keeps the closing punctuation of a reason that already ends a sentence", async () => {
+    const result = await run({ groups: [{ targets: ["##"] }] });
+
+    expect(errorAt(result, 0, 0)).toMatch(/CSS\.escape it\?$/);
+  });
+
   it("fails a group whose container cannot be resolved and keeps the other groups", async () => {
     const dialog = await ref("dialog", "Archive order");
     const confirm = await ref("button", "Confirm archive");
