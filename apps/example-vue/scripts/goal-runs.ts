@@ -3,7 +3,8 @@
  * real Decision Endpoint and writes one JSON file per invocation, or
  * compares two such files. Run by hand only; see the README.
  *
- *   node scripts/goal-runs.ts --runs <N> [--live-lane]
+ *   node scripts/goal-runs.ts --runs <N> [--goal-set <harness|live-lane|bench>]
+ *   node scripts/goal-runs.ts --runs <N> --live-lane
  *   node scripts/goal-runs.ts compare <runA.json> <runB.json>
  */
 import { execFileSync, spawnSync } from "node:child_process";
@@ -27,10 +28,12 @@ import {
 
 const outputDirectory = path.join(appRoot, "goal-runs");
 
-/** The goal sets: the harness's own by default, the live lane on request. */
+/** The goal sets: the harness's own by default, the live lane or the bench
+ *  pages without Page Objects on request. */
 const goalSets = {
   harness: "playwright.harness.config.ts",
   "live-lane": "playwright.goals.config.ts",
+  bench: "playwright.bench.config.ts",
 } as const;
 type GoalSet = keyof typeof goalSets;
 
@@ -90,9 +93,20 @@ function readRunsArguments(args: string[]) {
     fail(
       "Pass the number of runs per goal, e.g. --runs 3. Every run makes real model calls."
     );
-  const goalSet: GoalSet = args.includes("--live-lane")
-    ? "live-lane"
-    : "harness";
+  const named = optionValue(args, "--goal-set");
+  if (named !== undefined && !Object.hasOwn(goalSets, named))
+    fail(
+      `Unknown goal set "${named}"; pass one of ${Object.keys(goalSets).join(", ")}.`
+    );
+  if (
+    named !== undefined &&
+    args.includes("--live-lane") &&
+    named !== "live-lane"
+  )
+    fail(`--live-lane and --goal-set ${named} name different goal sets.`);
+  const goalSet: GoalSet =
+    (named as GoalSet | undefined) ??
+    (args.includes("--live-lane") ? "live-lane" : "harness");
   return { runsPerGoal: runs, goalSet };
 }
 
@@ -191,7 +205,7 @@ function runGoals({
   );
   for (const [title, { aggregate: summary }] of Object.entries(runsFile.goals))
     console.log(
-      `  ${title}\n    pass rate ${format(summary.passRate)}, done at expected step ${format(summary.doneAtExpectedStepRate)}, steps mean ${format(summary.meanSteps)} max ${summary.maxSteps}, model calls per step ${format(summary.meanModelCallsPerStep)}, page bytes per step ${format(summary.meanPageBytesPerStep)}, reasons ${JSON.stringify(summary.reasons)}`
+      `  ${title}\n    pass rate ${format(summary.passRate)}, done at expected step ${format(summary.doneAtExpectedStepRate)}, steps mean ${format(summary.meanSteps)} max ${summary.maxSteps}, repeated steps ${summary.repeatedSteps}, wrong target steps ${format(summary.wrongTargetSteps)}, model calls per step ${format(summary.meanModelCallsPerStep)}, page bytes per step ${format(summary.meanPageBytesPerStep)}, tokens per run ${format(summary.meanTokensPerRun)}, reasons ${JSON.stringify(summary.reasons)}`
     );
   console.log(`Wrote ${path.relative(process.cwd(), file)}`);
 }
@@ -210,6 +224,11 @@ const comparedFields = [
   "meanWallTimeMs",
   "chunkConflicts",
   "noneOfTheseAnswers",
+  "repeatedSteps",
+  "wrongTargetSteps",
+  "meanInputTokensPerStep",
+  "meanOutputTokensPerStep",
+  "meanTokensPerRun",
 ] as const;
 
 function delta(

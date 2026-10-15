@@ -17,6 +17,19 @@ export type GoalRunStep = {
    * survive a run-off that failed.
    */
   argumentChoices?: Record<string, string>;
+  /**
+   * Per argument question id in `argumentChoices`, the chosen option's
+   * description as the question offered it, such as `textbox "Email"` for an
+   * element or `email: ada@example.com` for a Goal Value.
+   */
+  argumentDescriptions?: Record<string, string>;
+  /**
+   * The arguments the step ran its operation with, per parameter: the key and
+   * description of the option chosen, as the loop's step record holds them.
+   * Absent for a step that ran no operation, or when the loop's run result
+   * could not be read.
+   */
+  chosen?: Record<string, { key: string; description: string }>;
   /** The step requested a run-off: several chunks of a ref question each named
    *  an element. Counted even when the run-off then failed. */
   runOff: boolean;
@@ -24,6 +37,10 @@ export type GoalRunStep = {
    *  JSON; stage two sends the same state. */
   pageBytes: number;
   historyBytes: number;
+  /** The tokens the step's calls used, summed over the calls whose response
+   *  reported `usage`; absent when none did. */
+  inputTokens?: number;
+  outputTokens?: number;
 };
 
 /** What one `goal` call did, attached to the test that made it. */
@@ -32,6 +49,12 @@ export type GoalRunRecord = {
   /** The step count of a run that ends `done` as the test intends, when the
    *  test states one. */
   expectedSteps?: number;
+  /**
+   * Per Goal Value label, the description of the element a `fill` or `type`
+   * of that value should target, such as `textbox "Display name"`, when the
+   * test states them.
+   */
+  expectedTargets?: Record<string, string>;
   /** The Handover reason; null when `pursue` threw. */
   reason: string | null;
   /** The model identifiers that answered the run's decisions. */
@@ -49,6 +72,9 @@ export type Decision = {
   state?: { page?: unknown; history?: unknown };
   questions: Record<string, { criteria?: Record<string, unknown> }>;
   answers?: Record<string, { choice?: unknown }>;
+  /** The provider's token usage, which the Decision Endpoint passes through
+   *  with the answers when the provider reports it. */
+  usage?: { input_tokens?: unknown; output_tokens?: unknown };
 };
 
 /** A run-off question's id ends with this, as `runOffQuestionId` in
@@ -64,6 +90,7 @@ const runOffSuffix = "run_off";
 type GoalLoopStepScore = {
   goalMetScore: number;
   argumentChoices?: Record<string, string>;
+  chosen?: Record<string, { key: string; description: string }>;
 };
 export type GoalLoopRunResult = {
   handover: { reason: string };
@@ -90,11 +117,11 @@ function recordDecisions(page: Page) {
           .response()
           .then(async (response) => {
             if (!response?.ok()) return body;
-            const { model, answers } = (await response.json()) as Pick<
+            const { model, answers, usage } = (await response.json()) as Pick<
               Decision,
-              "model" | "answers"
+              "model" | "answers" | "usage"
             >;
-            return { ...body, model, answers };
+            return { ...body, model, answers, usage };
           })
           .catch(asError)
       );
@@ -129,6 +156,29 @@ function offeredChoices(decision: Decision): Record<string, string> {
   return choices;
 }
 
+/** The description of the option each answer of `choices` picked, from the
+ *  criteria of the question that offered it. */
+function choiceDescriptions(
+  decision: Decision,
+  choices: Record<string, string>
+): Record<string, string> {
+  const descriptions: Record<string, string> = {};
+  for (const [id, choice] of Object.entries(choices)) {
+    const description = decision.questions[id]?.criteria?.[choice];
+    if (typeof description === "string") descriptions[id] = description;
+  }
+  return descriptions;
+}
+
+/** Add the call's reported token usage, if any, to the step's. */
+function addUsage(step: GoalRunStep, decision: Decision) {
+  const input = decision.usage?.input_tokens;
+  const output = decision.usage?.output_tokens;
+  if (typeof input !== "number" || typeof output !== "number") return;
+  step.inputTokens = (step.inputTokens ?? 0) + input;
+  step.outputTokens = (step.outputTokens ?? 0) + output;
+}
+
 const byteLength = (value: unknown) =>
   value === undefined
     ? 0
@@ -140,22 +190,29 @@ function stepsOf(
   stepScores: GoalLoopStepScore[]
 ): GoalRunStep[] {
   const steps: GoalRunStep[] = [];
+  // Per step, its argument calls in order, to describe the choices with.
+  const argumentCalls: Decision[][] = [];
   for (const decision of decisions) {
     if ("operation" in decision.questions) {
       const choice = decision.answers?.operation?.choice;
-      steps.push({
+      const step: GoalRunStep = {
         operation: typeof choice === "string" ? choice : null,
         goalMetScore: null,
         modelCalls: 1,
         runOff: false,
         pageBytes: byteLength(decision.state?.page),
         historyBytes: byteLength(decision.state?.history),
-      });
+      };
+      addUsage(step, decision);
+      steps.push(step);
+      argumentCalls.push([]);
       continue;
     }
     const step = steps.at(-1);
     if (!step) continue;
     step.modelCalls++;
+    addUsage(step, decision);
+    argumentCalls.at(-1)!.push(decision);
     if (Object.keys(decision.questions).some((id) => id.endsWith(runOffSuffix)))
       step.runOff = true;
     const choices = offeredChoices(decision);
@@ -168,18 +225,33 @@ function stepsOf(
     const step = steps[index];
     if (!step) return;
     step.goalMetScore = score.goalMetScore;
+    if (score.chosen) step.chosen = score.chosen;
     if (score.argumentChoices)
       step.argumentChoices = {
         ...step.argumentChoices,
         ...score.argumentChoices,
       };
   });
+  steps.forEach((step, index) => {
+    if (!step.argumentChoices) return;
+    const descriptions = Object.assign(
+      {},
+      ...argumentCalls[index]!.map((decision) =>
+        choiceDescriptions(decision, step.argumentChoices!)
+      )
+    ) as Record<string, string>;
+    if (Object.keys(descriptions).length > 0)
+      step.argumentDescriptions = descriptions;
+  });
   return steps;
 }
 
 /** What a run did, from the calls seen from the page and the loop's run result. */
 export function goalRunRecordOf(
-  base: Pick<GoalRunRecord, "goal" | "expectedSteps" | "reason" | "wallTimeMs">,
+  base: Pick<
+    GoalRunRecord,
+    "goal" | "expectedSteps" | "expectedTargets" | "reason" | "wallTimeMs"
+  >,
   decisions: Decision[],
   runResult: GoalLoopRunResult | undefined
 ): GoalRunRecord {
@@ -219,7 +291,11 @@ async function readRunResult(page: Page) {
 export async function recordGoalRun<T extends { reason: string }>(
   page: Page,
   testInfo: TestInfo,
-  { goal, expectedSteps }: Pick<GoalRunRecord, "goal" | "expectedSteps">,
+  {
+    goal,
+    expectedSteps,
+    expectedTargets,
+  }: Pick<GoalRunRecord, "goal" | "expectedSteps" | "expectedTargets">,
   pursue: () => Promise<T>
 ): Promise<T> {
   if (process.env[goalRunsVariable] !== "1") return pursue();
@@ -251,6 +327,7 @@ export async function recordGoalRun<T extends { reason: string }>(
   let record: GoalRunRecord = {
     goal,
     ...(expectedSteps === undefined ? {} : { expectedSteps }),
+    ...(expectedTargets === undefined ? {} : { expectedTargets }),
     reason,
     models: [],
     wallTimeMs,
