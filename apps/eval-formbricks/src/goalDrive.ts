@@ -82,7 +82,9 @@ class McpClient {
   private nextId = 1;
   private buffer = "";
   private readonly waiting = new Map<number, (message: unknown) => void>();
-  private constructor(private readonly socket: net.Socket) {
+  private readonly socket: net.Socket;
+  private constructor(socket: net.Socket) {
+    this.socket = socket;
     socket.on("data", (chunk) => {
       this.buffer += String(chunk);
       let newline: number;
