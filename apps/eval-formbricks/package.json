@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "eval:decisions": "node src/decisionStudy.ts",
+    "eval:drive": "node src/goalDrive.ts",
     "eval:report": "node src/report.ts",
     "eval:run": "node src/run.ts",
     "eval:suite": "node src/suite.ts",
