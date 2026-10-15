@@ -78,11 +78,14 @@ export function labAppPrecondition(baseUrl: string): Precondition {
  * the key is set, refused before any model call, and 503 when it is not.
  * The lab app records the 400 in its usage file, before any run's window.
  */
+/** The lab app's Decision Endpoint, the route the Goal Loop posts each decision to. */
+export const decisionEndpointPath = "/api/ayme/decisions";
+
 export function decisionEndpointPrecondition(
   baseUrl: string,
   fetchImpl: typeof fetch = fetch
 ): Precondition {
-  const url = `${baseUrl}/api/ayme/decisions`;
+  const url = `${baseUrl}${decisionEndpointPath}`;
   return {
     name: "Decision Endpoint",
     check: async () => {

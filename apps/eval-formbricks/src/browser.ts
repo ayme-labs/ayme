@@ -7,6 +7,7 @@
 import { createRequire } from "node:module";
 
 import { playwrightMcpRoot } from "./arms.ts";
+import type { RequestEvents } from "./decisionRecorder.ts";
 import { signInPath, type Mission } from "./missions.ts";
 
 type Locator = {
@@ -37,7 +38,7 @@ export type Page = {
   waitForTimeout(ms: number): Promise<void>;
 };
 
-export type BrowserContext = {
+export type BrowserContext = RequestEvents & {
   newPage(): Promise<Page>;
   pages(): Page[];
   addCookies(

@@ -28,6 +28,7 @@ import { fileURLToPath } from "node:url";
 import type { ArmContext, ArmSetup, McpServer } from "./arms.ts";
 import { playwright, viewport, type BrowserContext } from "./browser.ts";
 import { withoutClaudeVariables } from "./claude.ts";
+import { recordDecisions } from "./decisionRecorder.ts";
 import type { StartScreen } from "./missions.ts";
 import { labUrl } from "./paths.ts";
 import {
@@ -459,8 +460,10 @@ export async function setUpAymeAgent(
     writeFile(logPath, `${server.log.join("\n")}\n`).catch(() => {});
 
   let browser: BrowserContext | null = null;
+  let decisions: { flush(): Promise<void> } | null = null;
   const dispose = async () => {
     for (const close of [
+      () => decisions?.flush(),
       () => browser?.close(),
       () => server.stop(socketPath),
     ]) {
@@ -486,8 +489,13 @@ export async function setUpAymeAgent(
       context.profileDir,
       { channel: "chrome", headless: true, viewport }
     );
-    if (options.goalLoop)
+    if (options.goalLoop) {
       await browser.addCookies([{ ...goalLoopCookie, url: origin }]);
+      decisions = recordDecisions(
+        browser,
+        path.join(context.runDir, "decisions.jsonl")
+      );
+    }
     if (!options.pageObjects)
       await browser.addCookies([{ ...pageObjectsOffCookie, url: origin }]);
     const page = browser.pages()[0] ?? (await browser.newPage());
