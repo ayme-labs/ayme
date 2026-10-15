@@ -45,6 +45,9 @@ export function itemIds(items: Locator) {
  * `pnpm run goals:runs` also record what the run did. `expectedSteps` is the
  * step count of a run that ends `done` as intended, the step that judges the
  * goal met included; the harness reports how often a run ends there.
+ * `expectedTargets` names, per Goal Value label, the element a `fill` or
+ * `type` of that value should target, as the loop describes elements (`role
+ * "name"`); the harness counts the steps that targeted another.
  */
 export async function pursueGoal(
   page: Page,
@@ -53,18 +56,28 @@ export async function pursueGoal(
   {
     values,
     expectedSteps,
-  }: { values?: Record<string, string | number>; expectedSteps?: number } = {}
+    expectedTargets,
+  }: {
+    values?: Record<string, string | number>;
+    expectedSteps?: number;
+    expectedTargets?: Record<string, string>;
+  } = {}
 ) {
-  return recordGoalRun(page, test.info(), { goal, expectedSteps }, async () => {
-    return (await page.evaluate(
-      async (input) => {
-        const tool = (
-          document.modelContext as unknown as RecordingDriver
-        ).tools.find((candidate) => candidate.name === "goal");
-        if (!tool) throw new Error("goal tool was not published.");
-        return await tool.execute(input);
-      },
-      { goal, maxSteps, values }
-    )) as Handover;
-  });
+  return recordGoalRun(
+    page,
+    test.info(),
+    { goal, expectedSteps, expectedTargets },
+    async () => {
+      return (await page.evaluate(
+        async (input) => {
+          const tool = (
+            document.modelContext as unknown as RecordingDriver
+          ).tools.find((candidate) => candidate.name === "goal");
+          if (!tool) throw new Error("goal tool was not published.");
+          return await tool.execute(input);
+        },
+        { goal, maxSteps, values }
+      )) as Handover;
+    }
+  );
 }
