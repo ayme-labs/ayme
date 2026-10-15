@@ -130,25 +130,42 @@ type ClosedSet =
  */
 export type GoalValues = Readonly<Record<string, string | number>>;
 
-/** The Goal Values a parameter outside the closed sets can take. */
-type FreeKind = "string" | "number" | "integer" | "string_list";
+/** The Goal Values a parameter or list item outside the closed sets can take. */
+type FreeKind = "string" | "number" | "integer";
+
+/** A key of an operation's input: a property name, or a tuple slot's index. */
+type PathKey = string | number;
+
+/** A tuple some parameters are slots of, and how many slots it requires. */
+type TupleSpec = { path: readonly PathKey[]; minItems: number };
 
 /** One parameter of an operation, classified by what the model may fill. */
 type ArgumentSpec = {
-  /** The parameter's name, dotted inside a nested object. */
+  /** The parameter's name, dotted inside a nested object or tuple. */
   name: string;
   /** Where the chosen value goes in the operation's input. */
-  path: readonly string[];
+  path: readonly PathKey[];
   optional: boolean;
   /** The parameter's own description, when its schema carries one. */
   description?: string;
-  /** null = a value the model cannot pick from a closed set. */
+  /**
+   * The values the model may pick from; null when there are none. A union of
+   * primitives carries its enum values, booleans and null here, next to the
+   * Goal Values its other variants take.
+   */
   closedSet: ClosedSet | null;
   /**
-   * Outside the closed sets: the Goal Values that fit the parameter. Absent
-   * when none ever can, such as for an object.
+   * The Goal Values that fit the parameter, by type. Absent when none ever
+   * can, such as for an object or a map.
    */
-  free?: FreeKind;
+  free?: readonly FreeKind[];
+  /**
+   * A list: each value of its closed set and each fitting Goal Value is asked
+   * about on its own, and the ones included are the list.
+   */
+  list?: true;
+  /** The tuples the parameter is a slot of, outermost first. */
+  tuples?: readonly TupleSpec[];
 };
 
 export type GoalLoopOperation = {
@@ -170,34 +187,111 @@ export type ToolOption = {
   tool: GoalLoopOperation;
 };
 
-/** A ref, an enum value or a boolean: what the model is allowed to fill. */
-function closedSetOf(schema: JsonSchema): ClosedSet | null {
-  if (schema.enum) return { kind: "values", values: schema.enum };
-  if (schema.type === "boolean")
-    return { kind: "values", values: [true, false] };
-  return null;
-}
+/** What a primitive schema may be filled with. */
+type PrimitiveFill = { values: JsonPrimitive[]; free: FreeKind[] };
 
-function freeKindOf(schema: JsonSchema): FreeKind | undefined {
+/**
+ * The closed values (enum values, booleans, null) and the Goal Value kinds a
+ * primitive schema, or a union of them, takes; undefined for any other schema.
+ */
+function primitiveFillOf(schema: JsonSchema): PrimitiveFill | undefined {
+  if (schema.anyOf) {
+    const fill: PrimitiveFill = { values: [], free: [] };
+    for (const variant of schema.anyOf) {
+      const variantFill = primitiveFillOf(variant);
+      if (!variantFill) return undefined;
+      for (const value of variantFill.values)
+        if (!fill.values.includes(value)) fill.values.push(value);
+      for (const kind of variantFill.free)
+        if (!fill.free.includes(kind)) fill.free.push(kind);
+    }
+    return fill;
+  }
+  if (schema.enum) return { values: [...schema.enum], free: [] };
   switch (schema.type) {
+    case "boolean":
+      return { values: [true, false], free: [] };
+    case "null":
+      return { values: [null], free: [] };
     case "string":
     case "number":
     case "integer":
-      return schema.type;
-    case "array":
-      return schema.items?.type === "string" ? "string_list" : undefined;
+      return { values: [], free: [schema.type] };
     default:
       return undefined;
   }
 }
 
-function specOf(
-  parameter: ToolParameter,
-  prefix: readonly string[] = [],
-  closedSet = closedSetOf(parameter.schema)
-): ArgumentSpec {
+/**
+ * What the items of an array schema may be filled with. A list of booleans,
+ * of objects or of lists is never filled.
+ */
+function listFillOf(schema: JsonSchema): PrimitiveFill | undefined {
+  if (!schema.items || schema.items.type === "boolean") return undefined;
+  return primitiveFillOf(schema.items);
+}
+
+/** A parameter, or a tuple slot, read the way `specsOf` reads it. */
+type ParameterToClassify = {
+  name: PathKey;
+  optional: boolean;
+  schema: JsonSchema;
+};
+
+/**
+ * Classify a parameter. A tuple is not one parameter but its slots, each
+ * classified on its own like an object property; a slot of an optional tuple,
+ * or past the tuple's required ones, is optional. Elements after the slots,
+ * as in `[string, ...number[]]`, are never filled.
+ */
+function specsOf(
+  parameter: ParameterToClassify,
+  prefix: readonly PathKey[] = [],
+  tuples: readonly TupleSpec[] = []
+): ArgumentSpec[] {
+  const { schema } = parameter;
   const path = [...prefix, parameter.name];
-  const free = closedSet ? undefined : freeKindOf(parameter.schema);
+  if (schema.type === "array" && schema.prefixItems) {
+    const tuple = { path, minItems: schema.minItems ?? 0 };
+    return schema.prefixItems.flatMap((slot, index) =>
+      specsOf(
+        {
+          name: index,
+          optional: parameter.optional || index >= tuple.minItems,
+          schema: slot,
+        },
+        path,
+        [...tuples, tuple]
+      )
+    );
+  }
+  const list = schema.type === "array";
+  const fill = list ? listFillOf(schema) : primitiveFillOf(schema);
+  return [
+    {
+      ...specBase(path, parameter),
+      closedSet: fill?.values.length
+        ? { kind: "values", values: fill.values }
+        : null,
+      ...(fill?.free.length ? { free: fill.free } : {}),
+      ...(list ? { list: true as const } : {}),
+      ...(tuples.length ? { tuples } : {}),
+    },
+  ];
+}
+
+/** A parameter whose closed set is given, such as the ref a tool acts on. */
+function closedSpecOf(
+  parameter: ToolParameter,
+  closedSet: ClosedSet
+): ArgumentSpec {
+  return { ...specBase([parameter.name], parameter), closedSet };
+}
+
+function specBase(
+  path: readonly PathKey[],
+  parameter: ParameterToClassify
+): Pick<ArgumentSpec, "name" | "path" | "optional" | "description"> {
   return {
     name: path.join("."),
     path,
@@ -205,9 +299,14 @@ function specOf(
     ...(parameter.schema.description
       ? { description: parameter.schema.description }
       : {}),
-    closedSet,
-    ...(free ? { free } : {}),
   };
+}
+
+/** Classify every parameter of an action, its tuples' slots one by one. */
+export function specsOfParameters(
+  parameters: readonly ToolParameter[]
+): ArgumentSpec[] {
+  return parameters.flatMap((parameter) => specsOf(parameter));
 }
 
 /** The parameters of an object schema, each a `ToolParameter`. */
@@ -225,10 +324,10 @@ function parametersOfObjectSchema(schema: JsonSchema): ToolParameter[] {
 /** Read an object schema as the parameters the loop may fill, under `prefix`. */
 function specsOfObjectSchema(
   schema: JsonSchema,
-  prefix: readonly string[] = []
+  prefix: readonly PathKey[] = []
 ): ArgumentSpec[] {
-  return parametersOfObjectSchema(schema).map((parameter) =>
-    specOf(parameter, prefix)
+  return parametersOfObjectSchema(schema).flatMap((parameter) =>
+    specsOf(parameter, prefix)
   );
 }
 
@@ -238,12 +337,12 @@ function specsOfElementToolSchema(
   targetField: TargetField,
   refFilter: (element: Element) => boolean
 ): ArgumentSpec[] {
-  return parametersOfObjectSchema(schema).map((parameter) =>
+  return parametersOfObjectSchema(schema).flatMap((parameter) =>
     // Its `ref` or `target` is the Structural Ref it acts on; the elements its
     // filter keeps are the closed set (ADR-0023).
     parameter.name === targetField
-      ? specOf(parameter, [], { kind: "ref", filter: refFilter })
-      : specOf(parameter)
+      ? [closedSpecOf(parameter, { kind: "ref", filter: refFilter })]
+      : specsOf(parameter)
   );
 }
 
@@ -297,7 +396,7 @@ export function buildToolOptions(): ToolOption[] {
     const roots = collectionRoots.get(t.name);
     const args = roots
       ? specsOfCollectionTool(t.parameters, roots)
-      : t.parameters.map((parameter) => specOf(parameter));
+      : specsOfParameters(t.parameters);
     return {
       name: t.name,
       description: t.description,
@@ -307,9 +406,12 @@ export function buildToolOptions(): ToolOption[] {
           t.name,
           roots ? { args: {}, ...(input as Record<string, unknown>) } : input
         ),
-      requiredParams: args
-        .filter((arg) => !arg.optional)
-        .map((arg) => arg.name),
+      // A tuple is required as a whole, not slot by slot.
+      requiredParams: roots
+        ? args.filter((arg) => !arg.optional).map((arg) => arg.name)
+        : t.parameters
+            .filter((parameter) => !parameter.optional)
+            .map((parameter) => parameter.name),
       args,
     };
   });
@@ -348,7 +450,7 @@ type QuestionBase = {
   /** The parameter the answer fills: its name, dotted inside a nested object. */
   parameter: string;
   /** Where the chosen value goes in the operation's input. */
-  path: readonly string[];
+  path: readonly PathKey[];
   instructions: string;
 };
 
@@ -358,7 +460,7 @@ export type ArgumentQuestion = QuestionBase & {
   options: ArgumentOption[];
 };
 
-/** Whether one Goal Value belongs in a list parameter. */
+/** Whether one value or Goal Value belongs in a list parameter. */
 export type ListValueQuestion = QuestionBase & {
   type: "noul";
   option: ArgumentOption;
@@ -445,7 +547,6 @@ function valueOptions(values: readonly JsonPrimitive[]): ArgumentOption[] {
 function fits(kind: FreeKind, value: string | number): boolean {
   switch (kind) {
     case "string":
-    case "string_list":
       return typeof value === "string";
     case "number":
       return typeof value === "number";
@@ -459,12 +560,12 @@ function fits(kind: FreeKind, value: string | number): boolean {
  * values map, keyed by its label. The model reads `label: value`.
  */
 function goalValueOptions(
-  kind: FreeKind | undefined,
+  kinds: readonly FreeKind[] | undefined,
   values: GoalValues
 ): ArgumentOption[] {
-  if (!kind) return [];
+  if (!kinds) return [];
   return Object.entries(values)
-    .filter(([, value]) => fits(kind, value))
+    .filter(([, value]) => kinds.some((kind) => fits(kind, value)))
     .map(([label, value]) => ({
       key: label,
       description: `${label}: ${value}`,
@@ -517,7 +618,9 @@ function argumentInstructions(
     case undefined:
       return `Pick the Goal Value to use as the ${parameter} parameter of this operation. ${operation}`;
     default:
-      return `Pick the value for the ${parameter} parameter of this operation. ${operation}`;
+      return arg.free
+        ? `Pick the value or Goal Value to use as the ${parameter} parameter of this operation. ${operation}`
+        : `Pick the value for the ${parameter} parameter of this operation. ${operation}`;
   }
 }
 
@@ -590,21 +693,33 @@ const leaveUnsetOption = (arg: ArgumentSpec): ArgumentOption => ({
 });
 
 /**
- * One question per Goal Value that fits a list parameter, asked side by side:
- * does this value belong in the list?
+ * One question per value of a list parameter's closed set and per Goal Value
+ * that fits it, asked side by side: does this value belong in the list?
  */
 function listValueQuestions(
   tool: GoalLoopOperation,
   arg: ArgumentSpec,
-  options: readonly ArgumentOption[]
+  values: GoalValues
 ): ListValueQuestion[] {
-  return options.map((option, index) => ({
+  const closedValues =
+    arg.closedSet?.kind === "values" ? arg.closedSet.values : [];
+  const candidates = [
+    ...valueOptions(closedValues).map((option) => ({
+      option,
+      what: `the value "${option.description}"`,
+    })),
+    ...goalValueOptions(arg.free, values).map((option) => ({
+      option,
+      what: `the Goal Value "${option.description}"`,
+    })),
+  ];
+  return candidates.map(({ option, what }, index) => ({
     type: "noul",
     id: listValueQuestionId(arg.name, index + 1, parameterNamesOf(tool)),
     parameter: arg.name,
     path: arg.path,
     instructions:
-      `Does the Goal Value "${option.description}" belong in the list ${describeParameter(arg)} of this operation? ` +
+      `Does ${what} belong in the list ${describeParameter(arg)} of this operation? ` +
       describeOperation(tool),
     option,
   }));
@@ -637,15 +752,17 @@ export function planArguments(
 
   const questions: StageTwoQuestion[] = [];
   for (const arg of tool.args) {
+    // A list nothing can go in is optional by now, and left out.
+    if (arg.list) {
+      questions.push(...listValueQuestions(tool, arg, values));
+      continue;
+    }
     const closedSet = arg.closedSet;
+    const goalValues = goalValueOptions(arg.free, values);
     if (!closedSet) {
-      const candidates = goalValueOptions(arg.free, values);
+      const candidates = goalValues;
       // An optional parameter no Goal Value fits is left out.
       if (candidates.length === 0) continue;
-      if (arg.free === "string_list") {
-        questions.push(...listValueQuestions(tool, arg, candidates));
-        continue;
-      }
       // MAX_GOAL_VALUES leaves room for the extra option within the cap.
       questions.push({
         type: "choice",
@@ -672,6 +789,8 @@ export function planArguments(
         : closedSet.kind === "instance"
           ? instanceOptions(closedSet.roots, capture)
           : valueOptions(closedSet.values)),
+      // A union of primitives offers its fitting Goal Values next to them.
+      ...goalValues,
       ...(arg.optional ? [leaveUnsetOption(arg)] : []),
     ]);
 
@@ -1105,9 +1224,53 @@ export function readArgumentAnswers(
     else if (required(parameter)) return needsValue(parameter);
   }
 
+  completeTuples(tool, chosen.args);
   return runOff
     ? { kind: "run_off", chosen, question: runOff }
     : { kind: "chosen", chosen };
+}
+
+/**
+ * Close the gaps the slots left unset leave in their tuples, innermost first:
+ * a tuple ends at its first unset slot, and an optional tuple that lacks a
+ * slot it requires is left out. A required tuple always has its required
+ * slots by now.
+ */
+function completeTuples(
+  tool: GoalLoopOperation,
+  args: Record<string, unknown>
+): void {
+  const tuples = new Map<string, TupleSpec>();
+  for (const arg of tool.args)
+    for (const tuple of arg.tuples ?? [])
+      tuples.set(JSON.stringify(tuple.path), tuple);
+  const innermostFirst = [...tuples.values()].sort(
+    (a, b) => b.path.length - a.path.length
+  );
+  for (const tuple of innermostFirst) {
+    const parent = valueAt(args, tuple.path.slice(0, -1));
+    const key = tuple.path[tuple.path.length - 1]!;
+    const slots = (parent as Record<PathKey, unknown> | undefined)?.[key];
+    if (!Array.isArray(slots)) continue;
+    const gap = slots.findIndex((_, index) => !(index in slots));
+    slots.length = gap === -1 ? slots.length : gap;
+    if (slots.length < tuple.minItems)
+      delete (parent as Record<PathKey, unknown>)[key];
+  }
+}
+
+/** The value at `path` in the operation's input, if there is one. */
+function valueAt(
+  args: Record<string, unknown>,
+  path: readonly PathKey[]
+): unknown {
+  let value: unknown = args;
+  for (const key of path)
+    value =
+      value !== null && typeof value === "object"
+        ? (value as Record<PathKey, unknown>)[key]
+        : undefined;
+  return value;
 }
 
 function groupByParameter<T extends { question: QuestionBase }>(
@@ -1163,14 +1326,21 @@ export function fitListsToTarget(
   }
 }
 
-/** Put a chosen value where the operation's input expects it. */
+/**
+ * Put a chosen value where the operation's input expects it; a tuple slot's
+ * index makes its tuple an array.
+ */
 function assignAt(
   args: Record<string, unknown>,
-  path: readonly string[],
+  path: readonly PathKey[],
   value: unknown
 ): void {
-  let target = args;
-  for (const key of path.slice(0, -1))
-    target = (target[key] ??= {}) as Record<string, unknown>;
+  let target = args as Record<PathKey, unknown>;
+  for (const [index, key] of path.slice(0, -1).entries())
+    target = (target[key] ??=
+      typeof path[index + 1] === "number" ? [] : {}) as Record<
+      PathKey,
+      unknown
+    >;
   target[path[path.length - 1]!] = value;
 }

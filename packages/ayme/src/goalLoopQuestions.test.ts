@@ -7,6 +7,7 @@ import {
   SyntheticAriaRefFactory,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
+import type { JsonSchema } from "./contracts";
 import type { DecisionRequest, DecisionResponse } from "./decisionWire";
 import type { PageStateCapture } from "./pageState";
 import {
@@ -15,6 +16,7 @@ import {
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
+  specsOfParameters,
   type ArgumentQuestion,
   type GoalLoopOperation,
   type GoalValues,
@@ -491,14 +493,15 @@ describe("Goal Values", () => {
         path: ["labels"],
         optional: false,
         closedSet: null,
-        free: "string_list",
+        free: ["string"],
+        list: true,
       },
       {
         name: "labels_1",
         path: ["labels_1"],
         optional: true,
         closedSet: null,
-        free: "integer",
+        free: ["integer"],
       },
       { name: "options", path: ["options"], optional: true, closedSet: null },
     ],
@@ -596,5 +599,308 @@ describe("Goal Values", () => {
       parameters: ["options"],
       unfilled: ["options"],
     });
+  });
+});
+
+describe("parameter shapes", () => {
+  /** An action with the one parameter, classified as the loop reads it. */
+  function actionWith(schema: JsonSchema, optional = false): GoalLoopOperation {
+    const parameters = [{ name: "param", optional, schema }];
+    return {
+      name: "act",
+      description: "Act on the page.",
+      execute: async () => null,
+      requiredParams: optional ? [] : ["param"],
+      args: specsOfParameters(parameters),
+    };
+  }
+
+  function plannedQuestions(tool: GoalLoopOperation, values: GoalValues) {
+    const plan = planArguments(tool, captureOfButtons(0), values);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    return plan.questions;
+  }
+
+  /** A noul answer per question id, from the score of the value it asks about. */
+  function noulAnswers(
+    questions: readonly { id: string; type: string }[],
+    scores: readonly number[]
+  ): Record<string, unknown> {
+    return Object.fromEntries(
+      questions.map((question, index) => [
+        question.id,
+        { type: "noul", noul: scores[index] },
+      ])
+    );
+  }
+
+  const enumList: JsonSchema = {
+    type: "array",
+    items: { type: "string", enum: ["low", "high"] },
+  };
+
+  it("asks one noul per enum value of an enum list, never a Goal Value", () => {
+    const tool = actionWith(enumList);
+    const questions = plannedQuestions(tool, { other: "urgent", extra: "low" });
+
+    expect(
+      questions.map((question) =>
+        question.type === "noul" ? question.option : question
+      )
+    ).toEqual([
+      { key: "low", description: "low", value: "low" },
+      { key: "high", description: "high", value: "high" },
+    ]);
+    expect(questions[0]!.instructions).toContain('Does the value "low"');
+
+    const answers = readArgumentAnswers(
+      tool,
+      questions,
+      noulAnswers(questions, [0.2, 0.9])
+    );
+    expect(answers).toMatchObject({
+      kind: "chosen",
+      chosen: { args: { param: ["high"] } },
+    });
+  });
+
+  it("asks about an enum list without any Goal Values", () => {
+    expect(plannedQuestions(actionWith(enumList), {})).toHaveLength(2);
+  });
+
+  it("fills a number list from the numeric Goal Values, one noul each", () => {
+    const tool = actionWith({ type: "array", items: { type: "number" } });
+    const questions = plannedQuestions(tool, {
+      name: "Milk",
+      quantity: 2,
+      price: 1.5,
+    });
+
+    expect(
+      questions.map((question) =>
+        question.type === "noul" ? question.option.key : question.id
+      )
+    ).toEqual(["quantity", "price"]);
+    expect(
+      readArgumentAnswers(tool, questions, noulAnswers(questions, [0.9, 0.7]))
+    ).toMatchObject({ kind: "chosen", chosen: { args: { param: [2, 1.5] } } });
+  });
+
+  it("offers an integer list only the whole-number Goal Values", () => {
+    const tool = actionWith({ type: "array", items: { type: "integer" } });
+    const questions = plannedQuestions(tool, { quantity: 2, price: 1.5 });
+
+    expect(questions).toHaveLength(1);
+  });
+
+  it("hands a required number list over when no numeric Goal Value fits", () => {
+    const tool = actionWith({ type: "array", items: { type: "number" } });
+
+    expect(planArguments(tool, captureOfButtons(0), { name: "Milk" })).toEqual({
+      kind: "needs_free_value",
+      parameters: ["param"],
+      unfilled: ["param"],
+    });
+  });
+
+  it("fills a tuple slot by slot: the enum slot by choice, the string slot from a Goal Value", async () => {
+    const tool = actionWith({
+      type: "array",
+      prefixItems: [
+        { type: "string", enum: ["asc", "desc"] },
+        { type: "string" },
+      ],
+      minItems: 2,
+      maxItems: 2,
+    });
+    expect(tool.args.map(({ name, path }) => ({ name, path }))).toEqual([
+      { name: "param.0", path: ["param", 0] },
+      { name: "param.1", path: ["param", 1] },
+    ]);
+
+    const questions = plannedQuestions(tool, { column: "price", count: 3 });
+    expect(
+      questions.map((question) =>
+        question.type === "choice"
+          ? question.options.map((option) => option.key)
+          : []
+      )
+    ).toEqual([
+      ["asc", "desc"],
+      ["column", NONE_OF_THESE_KEY],
+    ]);
+
+    const answers = readArgumentAnswers(tool, questions, {
+      "param.0": { type: "choice", choice: "desc" },
+      "param.1": { type: "choice", choice: "column" },
+    });
+    expect(answers).toMatchObject({
+      kind: "chosen",
+      chosen: { args: { param: ["desc", "price"] } },
+    });
+    if (answers.kind === "chosen")
+      expect(Array.isArray(answers.chosen.args.param)).toBe(true);
+  });
+
+  it("hands a required tuple over when no Goal Value fits a slot, naming the slot", () => {
+    const tool = actionWith({
+      type: "array",
+      prefixItems: [{ type: "boolean" }, { type: "string" }],
+      minItems: 2,
+      maxItems: 2,
+    });
+
+    expect(planArguments(tool, captureOfButtons(0), { count: 3 })).toEqual({
+      kind: "needs_free_value",
+      parameters: ["param"],
+      unfilled: ["param.1"],
+    });
+  });
+
+  it("leaves an optional tuple out when a slot it requires stays unset", () => {
+    const tool = actionWith(
+      {
+        type: "array",
+        prefixItems: [
+          { type: "string", enum: ["asc", "desc"] },
+          { type: "string" },
+        ],
+        minItems: 2,
+        maxItems: 2,
+      },
+      true
+    );
+    const questions = plannedQuestions(tool, { column: "price" });
+
+    const answers = readArgumentAnswers(tool, questions, {
+      "param.0": { type: "choice", choice: "asc" },
+      "param.1": { type: "choice", choice: "leave_unset" },
+    });
+    expect(answers).toMatchObject({ kind: "chosen", chosen: { args: {} } });
+  });
+
+  it("ends a tuple at its first unset optional slot", () => {
+    const tool = actionWith({
+      type: "array",
+      prefixItems: [
+        { type: "string" },
+        { type: "string", enum: ["a", "b"] },
+        { type: "boolean" },
+      ],
+      minItems: 1,
+      maxItems: 3,
+    });
+    const questions = plannedQuestions(tool, { name: "Milk" });
+
+    const answers = readArgumentAnswers(tool, questions, {
+      "param.0": { type: "choice", choice: "name" },
+      "param.1": { type: "choice", choice: "leave_unset" },
+      "param.2": { type: "choice", choice: "true" },
+    });
+    expect(answers).toMatchObject({
+      kind: "chosen",
+      chosen: { args: { param: ["Milk"] } },
+    });
+    if (answers.kind === "chosen")
+      expect(answers.chosen.args.param).toHaveLength(1);
+  });
+
+  it("offers a union of primitives its booleans and the fitting string Goal Values in one question", () => {
+    const tool = actionWith({
+      anyOf: [{ type: "string" }, { type: "boolean" }],
+    });
+    const questions = plannedQuestions(tool, { name: "Milk", count: 2 });
+
+    expect(questions).toHaveLength(1);
+    const [question] = questions;
+    if (question?.type !== "choice") throw new Error("Expected a choice");
+    expect(question.options.map(({ key, value }) => ({ key, value }))).toEqual([
+      { key: "true", value: true },
+      { key: "false", value: false },
+      { key: "name", value: "Milk" },
+    ]);
+    expect(
+      readArgumentAnswers(tool, questions, {
+        param: { type: "choice", choice: "name" },
+      })
+    ).toMatchObject({ kind: "chosen", chosen: { args: { param: "Milk" } } });
+  });
+
+  it("keeps a Goal Value labelled like a boolean apart from the boolean", () => {
+    const tool = actionWith({
+      anyOf: [{ type: "string" }, { type: "boolean" }],
+    });
+    const [question] = plannedQuestions(tool, { true: "yes" });
+    if (question?.type !== "choice") throw new Error("Expected a choice");
+
+    expect(question.options.map(({ key, value }) => ({ key, value }))).toEqual([
+      { key: "true", value: true },
+      { key: "false", value: false },
+      { key: "true (2)", value: "yes" },
+    ]);
+  });
+
+  it("hands a required map over and leaves an optional one out", () => {
+    const map: JsonSchema = {
+      type: "object",
+      additionalProperties: { type: "string" },
+    };
+
+    expect(
+      planArguments(actionWith(map), captureOfButtons(0), { name: "Milk" })
+    ).toEqual({
+      kind: "needs_free_value",
+      parameters: ["param"],
+      unfilled: ["param"],
+    });
+    expect(
+      planArguments(actionWith(map, true), captureOfButtons(0), {
+        name: "Milk",
+      })
+    ).toEqual({ kind: "ask", questions: [] });
+  });
+
+  it.each<[string, JsonSchema]>([
+    ["booleans", { type: "array", items: { type: "boolean" } }],
+    [
+      "objects",
+      {
+        type: "array",
+        items: { type: "object", properties: {}, additionalProperties: false },
+      },
+    ],
+    [
+      "lists",
+      { type: "array", items: { type: "array", items: { type: "string" } } },
+    ],
+  ])(
+    "hands a required list of %s over and leaves an optional one out",
+    (_, schema) => {
+      const values = { name: "Milk", count: 2 };
+      expect(
+        planArguments(actionWith(schema), captureOfButtons(0), values)
+      ).toEqual({
+        kind: "needs_free_value",
+        parameters: ["param"],
+        unfilled: ["param"],
+      });
+      expect(
+        planArguments(actionWith(schema, true), captureOfButtons(0), values)
+      ).toEqual({ kind: "ask", questions: [] });
+    }
+  );
+
+  it("keeps string lists filled from string Goal Values only", () => {
+    const tool = actionWith({ type: "array", items: { type: "string" } });
+    const questions = plannedQuestions(tool, { name: "Milk", count: 2 });
+
+    expect(
+      questions.map((question) =>
+        question.type === "noul" ? question.option.key : question.id
+      )
+    ).toEqual(["name"]);
+    expect(questions[0]!.instructions).toContain(
+      'Does the Goal Value "name: Milk"'
+    );
   });
 });
