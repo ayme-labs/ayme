@@ -1438,8 +1438,8 @@ describe("Goal Loop goal in Chromium", () => {
     [
       "malformed",
       undefined,
-      "The Decision Endpoint returned an invalid response.",
-      "The Decision Endpoint returned an invalid response. Handle",
+      "The Decision Endpoint /api/decisions answered 200 with a body that is not a decision response",
+      "The Decision Endpoint /api/decisions answered 200 with a body that is not a decision response. Handle",
     ],
     [
       "rejected",
@@ -2490,7 +2490,7 @@ describe("Goal Loop goal in Chromium", () => {
     expect(withoutChanges(result)).toEqual({
       reason: "decide_failed",
       next: expect.stringMatching(
-        /^The decision function returned an invalid response: .*"Bread".*Handle the goal without the Goal Loop\.$/
+        /^The decision function's answers could not be read: .*"Bread".*Handle the goal without the Goal Loop\.$/
       ),
       history: [],
     });
@@ -3022,7 +3022,13 @@ describe("Goal Loop goal in Chromium", () => {
 
     const result = await tool.execute({ goal: "do something", maxSteps: 5 });
 
-    expect(result).toMatchObject({ reason: "decide_failed", history: [] });
+    expect(result).toMatchObject({
+      reason: "decide_failed",
+      next: expect.stringMatching(
+        /^The page offers \d+ operations, more than one decision can choose from\. Handle the goal without the Goal Loop\.$/
+      ),
+      history: [],
+    });
     // The oversized question is never sent.
     expect(requests).toEqual([]);
   });
