@@ -2275,7 +2275,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     expect(withoutChanges(result)).toEqual({
       reason: "no_fitting_option",
-      next: expect.stringContaining('"click"'),
+      next: 'No element on the current page fits the operation "click". Navigate to a different page or try a different approach.',
       // The step ran no action, so it leaves no history entry.
       history: [],
     });
@@ -2743,7 +2743,9 @@ describe("Goal Loop goal in Chromium", () => {
     // operation acts on.
     expect(result).toMatchObject({
       reason: "needs_value",
-      next: expect.stringContaining("acts on a collection instance"),
+      next: expect.stringContaining(
+        "acts on a collection instance, and the current page holds more of them than one decision can offer."
+      ),
       needs: { tool: "ItemsPage.items.archive", parameters: ["ref"] },
     });
     expect(result.next).not.toContain("one element");
@@ -3010,6 +3012,12 @@ describe("Goal Loop goal in Chromium", () => {
       reason: "no_fitting_option",
       history: [],
     });
+    expect(result.next).toMatch(
+      /^No element on the current page fits the operation "ItemsPage\.items\.archive"\. Left out: /
+    );
+    expect(result.next).toMatch(
+      /and 2 more\. Navigate to a different page or try a different approach\.$/
+    );
     expect(result.next).toContain(
       "Left out: ItemsPage.items[0] (unavailable: it is already archived), ItemsPage.items[1] (unavailable: it is already archived),"
     );
@@ -3064,11 +3072,9 @@ describe("Goal Loop goal in Chromium", () => {
       reason: "needs_value",
       needs: { tool: "ItemsPage.items.archive", parameters: ["ref"] },
     });
-    expect(result.next).toContain(
-      "ItemsPage.items[0] (no ref in the page state)"
+    expect(result.next).toBe(
+      'The operation "ItemsPage.items.archive" acts on a collection instance, and the loop could offer none of its items. Left out: ItemsPage.items[0] (no ref in the page state). Try a different approach.'
     );
-    expect(result.next).not.toContain("no instance");
-    expect(result.next).not.toContain("yourself");
   });
 
   it("asks a collection tool's enum and boolean arguments with the instance", async () => {

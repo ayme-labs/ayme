@@ -511,6 +511,22 @@ export type ArgumentQuestion = QuestionBase & {
 /** A present collection item the loop did not offer, and why, as a fact. */
 export type LeftOutItem = { label: string; why: string };
 
+/** At most this many left-out items are named, each with why. */
+const MAX_LEFT_OUT_NAMED = 10;
+
+/**
+ * The sentence naming the items a collection's question left out, each with
+ * why; past `MAX_LEFT_OUT_NAMED`, only how many more. Empty when none was.
+ */
+export function describeLeftOut(leftOut: readonly LeftOutItem[]): string {
+  if (leftOut.length === 0) return "";
+  const named = leftOut
+    .slice(0, MAX_LEFT_OUT_NAMED)
+    .map(({ label, why }) => `${label} (${why})`);
+  const more = leftOut.length - named.length;
+  return `Left out: ${named.join(", ")}${more > 0 ? `, and ${more} more` : ""}.`;
+}
+
 /** Whether one value or Goal Value belongs in a list parameter. */
 export type ListValueQuestion = QuestionBase & {
   type: "noul";
@@ -768,14 +784,29 @@ function runOffQuestion(
   };
 }
 
-/** The extra option of a required element choice: the one needed is not offered. */
-const noneOfTheseOption = (kind: "ref" | "instance"): ArgumentOption => ({
-  key: NONE_OF_THESE_KEY,
-  description:
-    kind === "ref"
-      ? "None of these; no element fits."
-      : "None of these; the item is not offered.",
-});
+/**
+ * A required element choice ends with an option that names no element, and
+ * its instructions say when to choose it. An optional one says the same by
+ * leaving the parameter unset; a closed set of values has nothing to add.
+ */
+function withNoneOfThese(
+  arg: ArgumentSpec,
+  kind: ClosedSet["kind"],
+  question: { options: ArgumentOption[]; instructions: string }
+): { options: ArgumentOption[]; instructions: string } {
+  if (arg.optional || kind === "values") return question;
+  const noun = kind === "ref" ? "element" : "item";
+  return {
+    options: [
+      ...question.options,
+      {
+        key: NONE_OF_THESE_KEY,
+        description: `None of these; the ${noun} is not offered.`,
+      },
+    ],
+    instructions: `${question.instructions} Choose "${NONE_OF_THESE_KEY}" when the ${noun} is not among these.`,
+  };
+}
 
 /** The extra option of an optional parameter: leave it unset. */
 const leaveUnsetOption = (arg: ArgumentSpec): ArgumentOption => ({
@@ -886,24 +917,21 @@ export function planArguments(
       ...goalValues,
       ...(arg.optional ? [leaveUnsetOption(arg)] : []),
     ]);
-    // A required element choice can say the element it needs is not offered;
-    // an optional one says so by leaving the parameter unset.
-    const noneOfThese =
-      !arg.optional && closedSet.kind !== "values"
-        ? noneOfTheseOption(closedSet.kind)
-        : undefined;
-    const asked = noneOfThese ? [...options, noneOfThese] : options;
+    const asked = withNoneOfThese(arg, closedSet.kind, {
+      options,
+      instructions: argumentInstructions(tool, arg, receiving),
+    });
 
     // A ref whose elements outnumber the cap is asked in chunks; other closed
     // sets are not.
-    if (closedSet.kind === "ref" && asked.length > MAX_CHOICE_OPTIONS) {
+    if (closedSet.kind === "ref" && asked.options.length > MAX_CHOICE_OPTIONS) {
       questions.push(...chunkedRefQuestions(tool, arg, options, receiving));
       continue;
     }
 
     // A question outside the limit is never sent. An optional parameter the
     // loop cannot ask about is left unset, like the choice it would have had.
-    if (options.length === 0 || asked.length > MAX_CHOICE_OPTIONS) {
+    if (options.length === 0 || asked.options.length > MAX_CHOICE_OPTIONS) {
       if (arg.optional) continue;
       // A ref gets here only with no element left to offer.
       if (closedSet.kind === "ref")
@@ -923,20 +951,17 @@ export function planArguments(
           };
     }
 
-    const instructions = argumentInstructions(tool, arg, receiving);
     questions.push({
       type: "choice",
       id: arg.name,
       parameter: arg.name,
       path: arg.path,
-      instructions: noneOfThese
-        ? `${instructions} Choose "${NONE_OF_THESE_KEY}" when the ${closedSet.kind === "ref" ? "element" : "item"} is not among these.`
-        : instructions,
-      options: asked,
+      instructions: asked.instructions,
+      options: asked.options,
       ...(closedSet.kind === "ref"
         ? { target: receiving ? { receiving } : {} }
         : {}),
-      ...(offered.leftOut ? { leftOut: offered.leftOut } : {}),
+      leftOut: offered.leftOut,
     });
   }
   return { kind: "ask", questions };

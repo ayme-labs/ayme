@@ -18,6 +18,7 @@ import {
   buildOperationRequest,
   buildSpeculativeValueQuestions,
   completeArguments,
+  describeLeftOut,
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
@@ -204,8 +205,23 @@ describe("a required element choice", () => {
       "e2",
       NONE_OF_THESE_KEY,
     ]);
-    expect("value" in question!.options.at(-1)!).toBe(false);
-    expect(question!.instructions).toContain(`"${NONE_OF_THESE_KEY}"`);
+    expect(question!.options.at(-1)).toEqual({
+      key: NONE_OF_THESE_KEY,
+      description: "None of these; the element is not offered.",
+    });
+    expect(question!.instructions).toContain(
+      `Choose "${NONE_OF_THESE_KEY}" when the element is not among these.`
+    );
+  });
+
+  it("reads none of these on the ref as no element fitting, next to other parameters", async () => {
+    const { answers } = await askStageTwo(
+      clickWithForceTool,
+      captureOfButtons(2),
+      { ref: "none", force: "true" }
+    );
+
+    expect(answers).toMatchObject({ kind: "none_fits", parameter: "ref" });
   });
 
   it("reads none of these on a lone ref question as no element fitting", async () => {
@@ -538,6 +554,9 @@ describe("collection instances", () => {
         description: "None of these; the item is not offered.",
       },
     ]);
+    expect(question!.instructions).toContain(
+      `Choose "${NONE_OF_THESE_KEY}" when the item is not among these.`
+    );
     expect(question!.leftOut).toEqual([
       { label: "items[0]", why: "unavailable: already archived" },
       { label: "items[2]", why: "no ref in the page state" },
@@ -595,6 +614,45 @@ describe("collection instances", () => {
         { label: "items[1]", why: "unavailable: already archived" },
       ],
     });
+  });
+});
+
+describe("describeLeftOut", () => {
+  const item = (index: number) => ({
+    label: `items[${index}]`,
+    why: "unavailable: it is archived",
+  });
+
+  it("says nothing when no item was left out", () => {
+    expect(describeLeftOut([])).toBe("");
+  });
+
+  it("names each item with why", () => {
+    expect(
+      describeLeftOut([
+        item(0),
+        { label: "items[1]", why: "no ref in the page state" },
+      ])
+    ).toBe(
+      "Left out: items[0] (unavailable: it is archived), items[1] (no ref in the page state)."
+    );
+  });
+
+  it("names ten items and counts the rest", () => {
+    const sentence = describeLeftOut(
+      Array.from({ length: 12 }, (_, index) => item(index))
+    );
+
+    expect(sentence).toContain(
+      "items[9] (unavailable: it is archived), and 2 more."
+    );
+    expect(sentence).not.toContain("items[10]");
+  });
+
+  it("names exactly ten items without a count", () => {
+    expect(
+      describeLeftOut(Array.from({ length: 10 }, (_, index) => item(index)))
+    ).toMatch(/items\[9\] \(unavailable: it is archived\)\.$/);
   });
 });
 
