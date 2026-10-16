@@ -7,11 +7,7 @@ import { createPage } from "./browserPage";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { getPageStateForElements } from "./pageState";
 import { agentTools } from "./publication.testSupport";
-import {
-  createPageRegistration,
-  probeRegisteredPomMembers,
-  registerCompiledPom,
-} from "./registry";
+import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
 
 type ActionResultShape = {
@@ -42,6 +38,7 @@ describe("Change Record baseline in Chromium", () => {
   function startRuntime(goalLoop?: GoalLoopDecisionFunction) {
     const runtime = createAyme({ pageFactory: () => page, goalLoop });
     stop = runtime.start();
+    return runtime;
   }
 
   /** Register a Page Object whose only action leaves the page untouched. */
@@ -53,8 +50,7 @@ describe("Change Record baseline in Chromium", () => {
       noop() {}
     }
     registerCompiledPom(App, manifest("App", [action("noop", "App.noop")]));
-    startRuntime(goalLoop);
-    createPageRegistration(App);
+    startRuntime(goalLoop).pom.register(App);
     // Its tool is published once a probe finds the Page Object available.
     await probeRegisteredPomMembers();
   }

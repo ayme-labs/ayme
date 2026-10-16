@@ -1130,7 +1130,6 @@ it(
         'if (typeof main.createPage !== "function") throw new Error("missing createPage");',
         'if (typeof main.createAyme !== "function") throw new Error("missing createAyme");',
         'if ("createAyme" in internal) throw new Error("createAyme must not be on /internal");',
-        'if (typeof internal.configureAymeRuntime !== "function") throw new Error("missing configureAymeRuntime");',
         'const webmcp = await import("@ayme-dev/webmcp");',
         'if (JSON.stringify(Object.keys(webmcp)) !== JSON.stringify(["startWebMcpPublication"])) throw new Error("unexpected @ayme-dev/webmcp exports: " + Object.keys(webmcp));',
         'const testing = await import("@ayme-dev/webmcp/testing");',

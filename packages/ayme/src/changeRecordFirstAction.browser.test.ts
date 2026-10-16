@@ -3,11 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { PomManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { agentTools } from "./publication.testSupport";
-import {
-  createPageRegistration,
-  probeRegisteredPomMembers,
-  registerCompiledPom,
-} from "./registry";
+import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
 
 /**
@@ -43,7 +39,7 @@ describe("Change Record of the first action in Chromium", () => {
 
     const runtime = createAyme({ pageFactory: () => page });
     stop = runtime.start();
-    createPageRegistration(App);
+    runtime.pom.register(App);
     // Its tool is published once a probe finds the Page Object available.
     await probeRegisteredPomMembers();
 

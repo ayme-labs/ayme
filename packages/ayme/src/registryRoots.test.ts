@@ -1,18 +1,21 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
 
-import {
-  configureAymeRuntime,
-  createPageRegistration,
-  listRegisteredPomRoots,
-  registerCompiledPom,
-} from "./registry";
+import { listRegisteredPomRoots, registerCompiledPom } from "./registry";
+import { startSession, type TestSession } from "./session.testSupport";
 
 describe("registered Page Object roots", () => {
+  let page: ReturnType<typeof createPage>;
+  let session: TestSession;
+  beforeEach(() => {
+    page = createPage();
+    session = startSession(page);
+  });
   afterEach(() => {
+    session.stop();
     document.body.innerHTML = "";
   });
 
@@ -22,8 +25,6 @@ describe("registered Page Object roots", () => {
       <div class="many"></div>
       <div class="many"></div>
     `;
-    const page = createPage();
-    configureAymeRuntime(page);
 
     class ExamplePage {
       readonly ignored = page.locator("body");
@@ -66,7 +67,7 @@ describe("registered Page Object roots", () => {
         },
       ],
     });
-    const registration = createPageRegistration(ExamplePage);
+    session.register(ExamplePage);
 
     await expect(listRegisteredPomRoots()).resolves.toEqual([
       {
@@ -74,7 +75,5 @@ describe("registered Page Object roots", () => {
         element: document.querySelector(".one"),
       },
     ]);
-
-    registration.dispose();
   });
 });

@@ -49,6 +49,8 @@ vi.mock("./actionSequence", async (importOriginal) => ({
 }));
 import type { Page } from "@playwright/test";
 import type { PomManifest } from "./contracts";
+import type { AymePage } from "./runtime";
+import type { TestSession } from "./session.testSupport";
 
 function brandedLocator(
   overrides: Record<string, unknown> = {},
@@ -90,16 +92,30 @@ const action = (methodName: string) => ({
   returnPoms: [],
 });
 
+let started: TestSession | undefined;
+
+/** Imports a fresh registry and starts a session on a page of its own. */
+async function setup() {
+  const registry = await import("./registry");
+  const { startSession } = await import("./session.testSupport");
+  const session = startSession({} as AymePage);
+  started = session;
+  return { registry, session };
+}
+
 describe("live Page Object registry", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.useFakeTimers();
     FakeMutationObserver.instances = [];
+    vi.stubGlobal("window", {});
     vi.stubGlobal("document", { documentElement: {} });
     vi.stubGlobal("MutationObserver", FakeMutationObserver);
   });
 
   afterEach(() => {
+    started?.stop();
+    started = undefined;
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
@@ -123,7 +139,7 @@ describe("live Page Object registry", () => {
 
     class OwnedPage {}
     registry.registerCompiledPom(OwnedPage, emptyManifest("OwnedPage"));
-    registry.createPageRegistration(OwnedPage);
+    registry.registerPageObject(OwnedPage, new OwnedPage());
     expect(registry.listRegisteredPoms()).toHaveLength(1);
 
     first.dispose();
@@ -139,9 +155,7 @@ describe("live Page Object registry", () => {
   });
 
   it("observes while at least one Page Object is registered", async () => {
-    const registry = await import("./registry");
-    const page = {} as Page;
-    registry.configureAymeRuntime(page);
+    const { registry, session } = await setup();
 
     class FirstPage {
       constructor(readonly page: unknown) {}
@@ -152,12 +166,12 @@ describe("live Page Object registry", () => {
     registry.registerCompiledPom(FirstPage, emptyManifest("FirstPage"));
     registry.registerCompiledPom(SecondPage, emptyManifest("SecondPage"));
 
-    const first = registry.createPageRegistration(FirstPage);
-    const second = registry.createPageRegistration(SecondPage);
+    const first = session.register(FirstPage);
+    const second = session.register(SecondPage);
 
-    expect(first.instance).toBeInstanceOf(FirstPage);
-    expect((first.instance as FirstPage).page).toBe(page);
-    expect((second.instance as SecondPage).page).toBe(page);
+    expect(first).toBeInstanceOf(FirstPage);
+    expect(first.page).toBeDefined();
+    expect(second.page).toBe(first.page);
 
     expect(FakeMutationObserver.instances).toHaveLength(1);
     expect(FakeMutationObserver.instances[0]?.observe).toHaveBeenCalledWith(
@@ -171,12 +185,12 @@ describe("live Page Object registry", () => {
     );
     expect(vi.getTimerCount()).toBe(1);
 
-    first.dispose();
+    session.unregister(FirstPage);
     expect(
       FakeMutationObserver.instances[0]?.disconnect
     ).not.toHaveBeenCalled();
 
-    second.dispose();
+    session.unregister(SecondPage);
     expect(
       FakeMutationObserver.instances[0]?.disconnect
     ).toHaveBeenCalledOnce();
@@ -184,8 +198,7 @@ describe("live Page Object registry", () => {
   });
 
   it("coalesces DOM mutations and ignores unchanged observations", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     const count = vi.fn(async () => 1);
     class PageWithLocator {
@@ -195,7 +208,7 @@ describe("live Page Object registry", () => {
       ...emptyManifest("PageWithLocator"),
       members: [{ memberName: "item", kind: "locator", access: "field" }],
     });
-    const registration = registry.createPageRegistration(PageWithLocator);
+    session.register(PageWithLocator);
     const subscriber = vi.fn();
     registry.subscribeToRegisteredPoms(subscriber);
 
@@ -212,13 +225,10 @@ describe("live Page Object registry", () => {
     await vi.runOnlyPendingTimersAsync();
     expect(count).toHaveBeenCalledTimes(2);
     expect(subscriber).toHaveBeenCalledOnce();
-
-    registration.dispose();
   });
 
   it("completes refreshes during continuous mutations without a probe backlog", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
     const count = vi.fn(async () => {
       await new Promise((resolve) => setTimeout(resolve, 30));
       return 1;
@@ -230,7 +240,7 @@ describe("live Page Object registry", () => {
       ...emptyManifest("UpdatingPage"),
       members: [{ memberName: "item", kind: "locator", access: "field" }],
     });
-    const registration = registry.createPageRegistration(UpdatingPage);
+    session.register(UpdatingPage);
     const subscriber = vi.fn();
     const unsubscribe = registry.subscribeToRegisteredPoms(subscriber);
     const activity = setInterval(
@@ -259,17 +269,15 @@ describe("live Page Object registry", () => {
     } finally {
       clearInterval(activity);
       unsubscribe();
-      registration.dispose();
     }
   });
 
   it("schedules an initial probe for every added Page Object", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     class FirstPage {}
     registry.registerCompiledPom(FirstPage, emptyManifest("FirstPage"));
-    const first = registry.createPageRegistration(FirstPage);
+    session.register(FirstPage);
     await vi.runOnlyPendingTimersAsync();
 
     const count = vi.fn(async () => 1);
@@ -280,57 +288,15 @@ describe("live Page Object registry", () => {
       ...emptyManifest("LaterPage"),
       members: [{ memberName: "item", kind: "locator", access: "field" }],
     });
-    const later = registry.createPageRegistration(LaterPage);
+    session.register(LaterPage);
 
     expect(vi.getTimerCount()).toBe(1);
     await vi.runOnlyPendingTimersAsync();
     expect(count).toHaveBeenCalledOnce();
-
-    first.dispose();
-    later.dispose();
-  });
-
-  it("keeps same-class registrations independent", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
-
-    class ReusedPage {
-      open() {}
-    }
-    registry.registerCompiledPom(ReusedPage, {
-      ...emptyManifest("ReusedPage"),
-      tools: [{ ...action("open"), toolName: "ReusedPage.open" }],
-    });
-
-    const first = registry.createPageRegistration(ReusedPage);
-    const second = registry.createPageRegistration(ReusedPage);
-    await vi.runOnlyPendingTimersAsync();
-
-    expect(registry.listRegisteredPoms()).toHaveLength(2);
-    expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
-      "ReusedPage",
-      "ReusedPage",
-    ]);
-    expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
-      "ReusedPage.open",
-    ]);
-
-    first.dispose();
-    expect(registry.listRegisteredPoms()).toHaveLength(1);
-    expect(
-      FakeMutationObserver.instances[0]?.disconnect
-    ).not.toHaveBeenCalled();
-
-    second.dispose();
-    expect(registry.listRegisteredPoms()).toHaveLength(0);
-    expect(
-      FakeMutationObserver.instances[0]?.disconnect
-    ).toHaveBeenCalledOnce();
   });
 
   it("rejects a distinct class whose name is already registered", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     // Two bundles can each compile their own Dialog with the same definition.
     const manifest = (): PomManifest => ({
@@ -346,11 +312,14 @@ describe("live Page Object registry", () => {
     registry.registerCompiledPom(FirstDialog, manifest());
     registry.registerCompiledPom(SecondDialog, manifest());
 
-    const first = registry.createPageRegistration(FirstDialog);
+    session.register(FirstDialog);
     await vi.runOnlyPendingTimersAsync();
-    expect(() => registry.createPageRegistration(SecondDialog)).toThrow(
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(SecondDialog);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         name: "RuntimeStateError",
+        code: "same-named-class",
         message:
           'Cannot register the Page Object "Dialog": a different class with that name is already registered.',
       })
@@ -362,19 +331,18 @@ describe("live Page Object registry", () => {
       "Dialog.confirm",
     ]);
 
-    // A failed registration leaves nothing behind, so retrying after the
-    // other class is gone succeeds.
-    first.dispose();
-    const second = registry.createPageRegistration(SecondDialog);
+    // The refused registration waits, and gets in once the other class is
+    // gone, without being logged again.
+    session.unregister(FirstDialog);
     expect(
       registry.listRegisteredPoms().map(({ instance }) => instance.constructor)
     ).toEqual([SecondDialog]);
-    second.dispose();
+    expect(logged).toHaveBeenCalledOnce();
+    logged.mockRestore();
   });
 
   it("rejects a Page Object reaching a different class with a reached name", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     const reachingRow = (className: string, rowFile: string): PomManifest => ({
       ...emptyManifest(className),
@@ -405,10 +373,13 @@ describe("live Page Object registry", () => {
       reachingRow("InvoicesPage", "src/orders/Row.ts")
     );
 
-    const orders = registry.createPageRegistration(OrdersPage);
-    expect(() => registry.createPageRegistration(UsersPage)).toThrow(
+    session.register(OrdersPage);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(UsersPage);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         name: "RuntimeStateError",
+        code: "same-named-class",
         message:
           'Cannot register the Page Object "UsersPage": it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts. Ayme tells the classes of Page Objects apart by name.',
       })
@@ -417,25 +388,28 @@ describe("live Page Object registry", () => {
       "OrdersPage",
     ]);
 
-    const invoices = registry.createPageRegistration(InvoicesPage);
+    session.register(InvoicesPage);
     expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
       "OrdersPage",
       "InvoicesPage",
     ]);
 
-    // Unregistering releases the name.
-    orders.dispose();
-    invoices.dispose();
-    const users = registry.createPageRegistration(UsersPage);
+    // Unregistering releases the name. InvoicesPage reaches the same Row
+    // as OrdersPage, so UsersPage waits for both.
+    session.unregister(OrdersPage);
+    expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
+      "InvoicesPage",
+    ]);
+    session.unregister(InvoicesPage);
     expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
       "UsersPage",
     ]);
-    users.dispose();
+    expect(logged).toHaveBeenCalledOnce();
+    logged.mockRestore();
   });
 
   it("rejects a Page Object that reaches two different classes with one name", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     class Row {}
     registry.registerCompiledPom(Row, {
@@ -443,15 +417,21 @@ describe("live Page Object registry", () => {
       components: [{ className: "Row", members: [], tools: [action("open")] }],
     });
 
-    expect(() => registry.createPageRegistration(Row)).toThrow(
-      'Cannot register the Page Object "Row": it reaches two different classes named "Row". Ayme tells the classes of Page Objects apart by name.'
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(Row);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        code: "same-named-class",
+        message:
+          'Cannot register the Page Object "Row": it reaches two different classes named "Row". Ayme tells the classes of Page Objects apart by name.',
+      })
     );
     expect(registry.listRegisteredPoms()).toEqual([]);
+    logged.mockRestore();
   });
 
   it("lets an HMR update of a shared child remount its Page Objects one by one", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     const compile = (className: string, rowTool: string, rowFile: string) => {
       const PomClass = { [className]: class {} }[className]!;
@@ -468,38 +448,37 @@ describe("live Page Object registry", () => {
       });
       return PomClass;
     };
-    const orders = registry.createPageRegistration(
-      compile("OrdersPage", "open", "src/Row.ts")
-    );
-    const invoices = registry.createPageRegistration(
-      compile("InvoicesPage", "open", "src/Row.ts")
-    );
+    const Orders = compile("OrdersPage", "open", "src/Row.ts");
+    const Invoices = compile("InvoicesPage", "open", "src/Row.ts");
+    session.register(Orders);
+    session.register(Invoices);
 
     // Editing Row gives it a new tool. OrdersPage remounts with it while
     // InvoicesPage still holds the old Row, from the same file.
-    orders.dispose();
+    session.unregister(Orders);
     const UpdatedOrders = compile("OrdersPage", "remove", "src/Row.ts");
-    const updatedOrders = registry.createPageRegistration(UpdatedOrders);
-    expect(
-      registry.listRegisteredPoms().map(({ instance }) => instance.constructor)
-    ).toEqual([invoices.instance.constructor, UpdatedOrders]);
+    session.register(UpdatedOrders);
+    const registered = () =>
+      registry.listRegisteredPoms().map(({ instance }) => instance.constructor);
+    expect(registered()).toEqual([Invoices, UpdatedOrders]);
 
     // A Row from another file still clashes.
-    expect(() =>
-      registry.createPageRegistration(
-        compile("UsersPage", "open", "src/users/Row.ts")
-      )
-    ).toThrow(
-      'Cannot register the Page Object "UsersPage": it reaches a class named "Row" that differs from the one the Page Object "InvoicesPage" reaches, declared in src/Row.ts and src/users/Row.ts.'
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(compile("UsersPage", "open", "src/users/Row.ts"));
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        code: "same-named-class",
+        message: expect.stringContaining(
+          'Cannot register the Page Object "UsersPage": it reaches a class named "Row" that differs from the one the Page Object "InvoicesPage" reaches, declared in src/Row.ts and src/users/Row.ts.'
+        ),
+      })
     );
-
-    updatedOrders.dispose();
-    invoices.dispose();
+    expect(registered()).toEqual([Invoices, UpdatedOrders]);
+    logged.mockRestore();
   });
 
   it("compares a reached class with every same-named class, not the first", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     const reachingRow = (className: string, rowFile?: string) => {
       const PomClass = { [className]: class {} }[className]!;
@@ -517,22 +496,80 @@ describe("live Page Object registry", () => {
       return PomClass;
     };
     // A manifest without a file matches both Rows by shape.
-    registry.createPageRegistration(reachingRow("LegacyPage"));
-    registry.createPageRegistration(
-      reachingRow("OrdersPage", "src/orders/Row.ts")
+    session.register(reachingRow("LegacyPage"));
+    session.register(reachingRow("OrdersPage", "src/orders/Row.ts"));
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(reachingRow("UsersPage", "src/users/Row.ts"));
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        code: "same-named-class",
+        message: expect.stringContaining(
+          'it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts.'
+        ),
+      })
     );
-    expect(() =>
-      registry.createPageRegistration(
-        reachingRow("UsersPage", "src/users/Row.ts")
-      )
-    ).toThrow(
-      'it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts.'
+    expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
+      "LegacyPage",
+      "OrdersPage",
+    ]);
+    logged.mockRestore();
+  });
+
+  it("keeps a Page Object waiting when the registered ones stop matching each other", async () => {
+    const { registry, session } = await setup();
+
+    const reaching = (
+      className: string,
+      ...components: { className: string; file?: string; description: string }[]
+    ) => {
+      const PomClass = { [className]: class {} }[className]!;
+      registry.registerCompiledPom(PomClass, {
+        ...emptyManifest(className),
+        components: components.map((component) => ({
+          ...component,
+          members: [],
+          tools: [],
+        })),
+      });
+      return PomClass;
+    };
+    // An HMR update of Row: one file, two shapes, so A and B match by file.
+    const A = reaching("A", {
+      className: "Row",
+      file: "src/Row.ts",
+      description: "old",
+    });
+    const B = reaching("B", {
+      className: "Row",
+      file: "src/Row.ts",
+      description: "new",
+    });
+    // C's Row has no file, so it matches A's Row by shape.
+    const C = reaching(
+      "C",
+      { className: "Row", description: "old" },
+      { className: "Badge", description: "open" }
     );
+    const D = reaching("D", { className: "Badge", description: "remove" });
+    session.register(A);
+    session.register(B);
+    session.register(C);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(D);
+    expect(logged).toHaveBeenCalledOnce();
+    // Without A, C's Row no longer matches B's, but D still clashes with
+    // C's Badge.
+    session.unregister(A);
+    expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
+      "B",
+      "C",
+    ]);
+    expect(logged).toHaveBeenCalledOnce();
+    logged.mockRestore();
   });
 
   it("names both files when two top-level Page Objects share a name", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     const FirstDialog = class Dialog {};
     const SecondDialog = class Dialog {};
@@ -544,15 +581,24 @@ describe("live Page Object registry", () => {
       ...emptyManifest("Dialog"),
       file: "src/b/Dialog.ts",
     });
-    registry.createPageRegistration(FirstDialog);
-    expect(() => registry.createPageRegistration(SecondDialog)).toThrow(
-      'Cannot register the Page Object "Dialog": a different class with that name is already registered, declared in src/a/Dialog.ts and src/b/Dialog.ts.'
+    session.register(FirstDialog);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(SecondDialog);
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        code: "same-named-class",
+        message:
+          'Cannot register the Page Object "Dialog": a different class with that name is already registered, declared in src/a/Dialog.ts and src/b/Dialog.ts.',
+      })
     );
+    expect(
+      registry.listRegisteredPoms().map(({ instance }) => instance.constructor)
+    ).toEqual([FirstDialog]);
+    logged.mockRestore();
   });
 
   it("registers an HMR-updated Page Object after its old class is gone", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     const OldPage = class SettingsPage {};
     const NewPage = class SettingsPage {};
@@ -562,18 +608,17 @@ describe("live Page Object registry", () => {
       tools: [{ ...action("save"), toolName: "SettingsPage.save" }],
     });
 
-    registry.createPageRegistration(OldPage).dispose();
-    const updated = registry.createPageRegistration(NewPage);
+    session.register(OldPage);
+    session.unregister(OldPage);
+    session.register(NewPage);
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "SettingsPage.save",
     ]);
-    updated.dispose();
   });
 
   it("reports an observation error for a manifest-declared locator without a brand", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     class UnbrandedLocatorPage {
       readonly link = { count: async () => 1 };
@@ -582,7 +627,7 @@ describe("live Page Object registry", () => {
       ...emptyManifest("UnbrandedLocatorPage"),
       members: [{ memberName: "link", kind: "locator", access: "field" }],
     });
-    const registration = registry.createPageRegistration(UnbrandedLocatorPage);
+    session.register(UnbrandedLocatorPage);
 
     await vi.runOnlyPendingTimersAsync();
 
@@ -592,14 +637,11 @@ describe("live Page Object registry", () => {
     expect(linkObs).toBeDefined();
     expect(linkObs?.count).toBe(0);
     expect(linkObs?.error).toMatch(/not a browser locator/);
-
-    registration.dispose();
   });
 
   it("lists no Page Object's tools before its first observation, whatever its kind", async () => {
-    const registry = await import("./registry");
+    const { registry, session } = await setup();
     const { ayme } = await import("./decorators");
-    registry.configureAymeRuntime({} as Page);
 
     class RootedPage {
       readonly root = brandedLocator({ count: async () => 1 });
@@ -629,11 +671,9 @@ describe("live Page Object registry", () => {
       ...emptyManifest("PredicatePage"),
       tools: [action("close")],
     });
-    const registrations = [
-      registry.createPageRegistration(RootedPage),
-      registry.createPageRegistration(RootlessPage),
-      registry.createPageRegistration(PredicatePage),
-    ];
+    session.register(RootedPage);
+    session.register(RootlessPage);
+    session.register(PredicatePage);
     const listed = () =>
       registry
         .listRegisteredPomTools()
@@ -657,13 +697,10 @@ describe("live Page Object registry", () => {
         { present: true, available: false, reason: "Nothing to close" },
       ],
     ]);
-
-    for (const registration of registrations) registration.dispose();
   });
 
   it("lists a Page Object's tools once its own observation completes, while another's is still pending", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     class StuckPage {
       // A root that never answers how many elements it matches.
@@ -682,10 +719,8 @@ describe("live Page Object registry", () => {
       ...emptyManifest("Toolbar"),
       tools: [action("reset")],
     });
-    const registrations = [
-      registry.createPageRegistration(StuckPage),
-      registry.createPageRegistration(Toolbar),
-    ];
+    session.register(StuckPage);
+    session.register(Toolbar);
     const listed = () =>
       registry
         .listRegisteredPomTools()
@@ -699,13 +734,10 @@ describe("live Page Object registry", () => {
       ["save", { present: false, available: false }],
       ["reset", { present: true, available: true }],
     ]);
-
-    for (const registration of registrations) registration.dispose();
   });
 
   it("ends a probe only once every observation has, even when a subscriber throws", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     let answering = false;
     const pendingCounts: ((count: number) => void)[] = [];
@@ -730,10 +762,8 @@ describe("live Page Object registry", () => {
       ...emptyManifest("Toolbar"),
       tools: [action("reset")],
     });
-    const registrations = [
-      registry.createPageRegistration(SlowPage),
-      registry.createPageRegistration(Toolbar),
-    ];
+    session.register(SlowPage);
+    session.register(Toolbar);
     const unsubscribe = registry.subscribeToRegisteredPoms(() => {
       throw new Error("subscriber failed");
     });
@@ -758,12 +788,10 @@ describe("live Page Object registry", () => {
     await expect(probe).rejects.toThrow("subscriber failed");
 
     unsubscribe();
-    for (const registration of registrations) registration.dispose();
   });
 
   it("keeps tools inactive when a manifest-declared root is missing", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     class MissingRootPage {
       readonly save = vi.fn();
@@ -773,7 +801,7 @@ describe("live Page Object registry", () => {
       members: [{ memberName: "root", kind: "locator", access: "field" }],
       tools: [action("save")],
     });
-    const registration = registry.createPageRegistration(MissingRootPage);
+    session.register(MissingRootPage);
 
     await vi.runOnlyPendingTimersAsync();
 
@@ -783,13 +811,10 @@ describe("live Page Object registry", () => {
         .listRegisteredPomTools()
         .map(({ tool, available }) => [tool.name, available])
     ).toEqual([["save", false]]);
-
-    registration.dispose();
   });
 
   it("lists one tool per name, the available one when registrations share it", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     class MissingRootPage {
       readonly save = vi.fn();
@@ -806,25 +831,21 @@ describe("live Page Object registry", () => {
       ...emptyManifest("RootlessPage"),
       tools: [action("save")],
     });
-    const missing = registry.createPageRegistration(MissingRootPage);
-    const rootless = registry.createPageRegistration(RootlessPage);
+    const missing = session.register(MissingRootPage);
+    const rootless = session.register(RootlessPage);
     await vi.runOnlyPendingTimersAsync();
 
     const listed = registry.listRegisteredPomTools();
     expect(listed).toHaveLength(1);
     expect(listed[0]).toMatchObject({ available: true });
     await listed[0]!.tool.execute({}, runContext());
-    expect(rootless.instance.save).toHaveBeenCalledOnce();
-    expect(missing.instance.save).not.toHaveBeenCalled();
-
-    missing.dispose();
-    rootless.dispose();
+    expect(rootless.save).toHaveBeenCalledOnce();
+    expect(missing.save).not.toHaveBeenCalled();
   });
 
   it("lists a shared tool name by the present registration, and by the available one among those", async () => {
-    const registry = await import("./registry");
+    const { registry, session } = await setup();
     const { ayme } = await import("./decorators");
-    registry.configureAymeRuntime({} as Page);
 
     class MissingRootPage {
       save() {}
@@ -859,27 +880,22 @@ describe("live Page Object registry", () => {
           reason,
         }));
 
-    const missing = registry.createPageRegistration(MissingRootPage);
-    const unavailable = registry.createPageRegistration(UnavailablePage);
+    session.register(MissingRootPage);
+    session.register(UnavailablePage);
     await vi.runOnlyPendingTimersAsync();
     expect(availability()).toEqual([
       { present: true, available: false, reason: "Nothing to save" },
     ]);
 
-    const rootless = registry.createPageRegistration(RootlessPage);
+    session.register(RootlessPage);
     await vi.runOnlyPendingTimersAsync();
     expect(availability()).toEqual([
       { present: true, available: true, reason: undefined },
     ]);
-
-    missing.dispose();
-    unavailable.dispose();
-    rootless.dispose();
   });
 
   it("lists a root's tools absent once its element left the page, before the next probe", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
     const element = { isConnected: true } as { isConnected: boolean };
 
     class RootedPage {
@@ -894,7 +910,7 @@ describe("live Page Object registry", () => {
       members: [{ memberName: "root", kind: "locator", access: "field" }],
       tools: [action("save")],
     });
-    const registration = registry.createPageRegistration(RootedPage);
+    session.register(RootedPage);
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools()).toHaveLength(1);
 
@@ -902,13 +918,10 @@ describe("live Page Object registry", () => {
     expect(registry.listRegisteredPomTools()).toEqual([
       expect.objectContaining({ present: false, available: false }),
     ]);
-
-    registration.dispose();
   });
 
   it("does not notify when a probe observes the same present root again", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     class RootedPage {
       readonly root = brandedLocator({
@@ -923,7 +936,7 @@ describe("live Page Object registry", () => {
       members: [{ memberName: "root", kind: "locator", access: "field" }],
       tools: [action("save")],
     });
-    const registration = registry.createPageRegistration(RootedPage);
+    session.register(RootedPage);
     const subscriber = vi.fn();
     registry.subscribeToRegisteredPoms(subscriber);
 
@@ -936,14 +949,11 @@ describe("live Page Object registry", () => {
     FakeMutationObserver.instances[0]?.trigger();
     await vi.runOnlyPendingTimersAsync();
     expect(subscriber).toHaveBeenCalledOnce();
-
-    registration.dispose();
   });
 
   it("lists an obstructed root's tools unavailable, and reads them again when a page state may name what is in the way", async () => {
-    const registry = await import("./registry");
+    const { registry, session } = await setup();
     const { measurePomRoot } = await import("./pomRootMeasurement");
-    registry.configureAymeRuntime({} as Page);
     vi.mocked(measurePomRoot).mockResolvedValue({
       present: true,
       available: false,
@@ -959,7 +969,7 @@ describe("live Page Object registry", () => {
       members: [{ memberName: "root", kind: "locator", access: "field" }],
       tools: [action("save")],
     });
-    const registration = registry.createPageRegistration(CoveredPage);
+    session.register(CoveredPage);
     const subscriber = vi.fn();
     registry.subscribeToRegisteredPoms(subscriber);
     await vi.runOnlyPendingTimersAsync();
@@ -976,12 +986,10 @@ describe("live Page Object registry", () => {
     expect(subscriber).toHaveBeenCalledOnce();
 
     vi.mocked(measurePomRoot).mockReset();
-    registration.dispose();
   });
 
   it("bounds recursive component manifests to the current component path", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     class RecursivePage {
       readonly node = {
@@ -1019,19 +1027,16 @@ describe("live Page Object registry", () => {
       ],
     });
 
-    const registration = registry.createPageRegistration(RecursivePage);
+    session.register(RecursivePage);
     await vi.runOnlyPendingTimersAsync();
 
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "RecursivePage.node.open",
     ]);
-
-    registration.dispose();
   });
 
   it("lists tools for live singular and nested component roots", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     let dialogRootCount = 1;
     let panelRootCount = 0;
@@ -1081,7 +1086,7 @@ describe("live Page Object registry", () => {
         },
       ],
     });
-    const registration = registry.createPageRegistration(NestedPage);
+    session.register(NestedPage);
 
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
@@ -1109,13 +1114,10 @@ describe("live Page Object registry", () => {
     FakeMutationObserver.instances[0]?.trigger();
     await vi.runOnlyPendingTimersAsync();
     expect(registry.listAvailablePomTools()).toHaveLength(0);
-
-    registration.dispose();
   });
 
   it("lists collection tools as available only for their direct available roots", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     let rootCount = 0;
     class ItemsPage {
@@ -1162,7 +1164,7 @@ describe("live Page Object registry", () => {
         },
       ],
     });
-    const registration = registry.createPageRegistration(ItemsPage);
+    session.register(ItemsPage);
 
     // Nothing is listed before the first observation has run.
     expect(registry.listAvailablePomTools()).toEqual([]);
@@ -1199,13 +1201,10 @@ describe("live Page Object registry", () => {
     expect(registry.listAvailablePomTools().map(({ name }) => name)).toEqual([
       "addItem",
     ]);
-
-    registration.dispose();
   });
 
   it("resolves method-backed collections from the current returned array", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     const firstElement = { isConnected: true } as Element;
     const secondElement = { isConnected: true } as Element;
@@ -1257,7 +1256,7 @@ describe("live Page Object registry", () => {
         },
       ],
     });
-    const registration = registry.createPageRegistration(ItemsPage);
+    session.register(ItemsPage);
 
     await vi.runOnlyPendingTimersAsync();
     const tool = registry.listAvailablePomTools()[0];
@@ -1285,13 +1284,11 @@ describe("live Page Object registry", () => {
     expect(replacementArchive).toHaveBeenCalledOnce();
     expect(getItems).toHaveBeenCalledTimes(4);
 
-    registration.dispose();
     pageStateResolutions.clear();
   });
 
   it("refuses a collection call on an item the last observation did not find, rather than running it", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     const knownElement = { isConnected: true } as Element;
     const addedElement = { isConnected: true } as Element;
@@ -1325,7 +1322,7 @@ describe("live Page Object registry", () => {
         },
       ],
     });
-    const registration = registry.createPageRegistration(ItemsPage);
+    session.register(ItemsPage);
     await vi.runOnlyPendingTimersAsync();
     const tool = registry.listAvailablePomTools()[0];
     if (!tool) throw new Error("Expected a collection tool.");
@@ -1342,13 +1339,11 @@ describe("live Page Object registry", () => {
     );
     expect(addedArchive).not.toHaveBeenCalled();
 
-    registration.dispose();
     pageStateResolutions.clear();
   });
 
   it("lets an instance tool omit args only when its action needs no input", async () => {
-    const registry = await import("./registry");
-    registry.configureAymeRuntime({} as Page);
+    const { registry, session } = await setup();
 
     const element = { isConnected: true } as Element;
     const archive = vi.fn(() => "archived");
@@ -1398,7 +1393,7 @@ describe("live Page Object registry", () => {
         },
       ],
     });
-    const registration = registry.createPageRegistration(ItemsPage);
+    session.register(ItemsPage);
 
     await vi.runOnlyPendingTimersAsync();
     const tool = (name: string) => {
@@ -1425,7 +1420,6 @@ describe("live Page Object registry", () => {
     ).rejects.toThrow(/args/);
     expect(rename).not.toHaveBeenCalled();
 
-    registration.dispose();
     pageStateResolutions.clear();
   });
 });
