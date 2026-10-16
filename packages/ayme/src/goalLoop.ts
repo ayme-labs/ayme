@@ -44,6 +44,7 @@ import {
   type ValuePreset,
 } from "./goalLoopQuestions";
 import { asSentence, ToolInputError } from "./errors";
+import { goalLoopRunResultKey } from "./goalLoopRunResultKey";
 
 export type GoalLoopDecisionFunction = (
   request: DecisionRequest
@@ -115,6 +116,11 @@ type GoalLoopStepScores = {
    * action or the action changed nothing.
    */
   changes?: string;
+  /**
+   * The step asked a run-off: several chunks of a ref question each named an
+   * element. Set before the run-off is asked, so it stays when that fails.
+   */
+  runOff?: true;
 };
 
 /**
@@ -130,18 +136,14 @@ export type GoalLoopRunResult = {
   stepScores: GoalLoopStepScore[];
 };
 
-type RunResultStore = { last?: GoalLoopRunResult };
+export type GoalLoopRunResultStore = { last?: GoalLoopRunResult };
 
-const runResultStore: RunResultStore = ((
+/** Where the last run's result is kept; the testing entry reads it. */
+const runResultStore: GoalLoopRunResultStore = ((
   globalThis as typeof globalThis & {
-    __aymeGoalLoopRunResultStore?: RunResultStore;
+    [goalLoopRunResultKey]?: GoalLoopRunResultStore;
   }
-).__aymeGoalLoopRunResultStore ??= {});
-
-/** Package-internal: access the last Goal Loop run result (scores + handover). */
-export function getLastGoalLoopRunResult(): GoalLoopRunResult | undefined {
-  return runResultStore.last;
-}
+)[goalLoopRunResultKey] ??= {});
 
 // --- Public result types (the Handover interface) ---
 
@@ -731,6 +733,7 @@ export async function pursueGoal(
 
       // Several chunks each named an element: one run-off among exactly those.
       if (argumentAnswers.kind === "run_off") {
+        score.runOff = true;
         let runOff: DecisionResponse;
         try {
           runOff = await decisionFn(
