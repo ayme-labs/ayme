@@ -14,6 +14,7 @@ export type AgentConnectionStatus = Readonly<
       state: "not-connected";
       reason?:
         | "connecting"
+        | "reconnecting"
         | "no-answer"
         | "no-server"
         | "several-servers"
