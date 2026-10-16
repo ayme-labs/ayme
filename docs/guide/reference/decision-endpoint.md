@@ -72,11 +72,11 @@ const decide = decisionEndpoint("/api/decisions", {
 
 `decisionEndpoint(url, options?)` returns the decision function for `goalLoop`. It posts each `DecisionRequest` as JSON to `url`, sends `headers` (a value, or a function it calls for each request), passes `credentials` to `fetch`, and throws a `DecisionEndpointError` when the call fails. Its `code` says why, so callers need not match the message:
 
-| `code`        | When                                                                                                                   | Message                                                      |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `not-mounted` | A `404` without an `{ "error" }` body: nothing serves the route, such as a dev server started without a model key.     | `No Decision Endpoint is mounted at <url>: it answered 404`  |
-| `rejected`    | Any other non-2xx: the handler, `authorize` or the provider refused the request, or the provider could not be reached. | `The Decision Endpoint <url> answered <status> <error text>` |
-| `malformed`   | A 2xx whose body is not a decision response.                                                                           | `The Decision Endpoint returned an invalid response.`        |
+| `code`        | When                                                                                                                   | Message                                                                                     |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `not-mounted` | A `404` without an `{ "error" }` body: nothing serves the route, such as a dev server started without a model key.     | `No Decision Endpoint is mounted at <url>: it answered 404`                                 |
+| `rejected`    | Any other non-2xx: the handler, `authorize` or the provider refused the request, or the provider could not be reached. | `The Decision Endpoint <url> answered <status> <error text>`                                |
+| `malformed`   | A 2xx whose body is not a decision response.                                                                           | `The Decision Endpoint <url> answered <status> with a body that is not a decision response` |
 
 `status` holds the HTTP status for `not-mounted` and `rejected`. The error text is the body's `error`, the raw body when it is not JSON, or the status text when the body is empty or is markup, such as a proxy's HTML error page. A provider's own 404 reaches the browser with an `{ "error" }` body, so it is `rejected`, not `not-mounted`. When the response carries a `Retry-After` header, the message ends with the wait in seconds, such as `(Retry-After: 20 s)`; an HTTP date is counted from now.
 

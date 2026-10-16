@@ -1,5 +1,10 @@
 import type { Page, Request, TestInfo } from "@playwright/test";
 
+import {
+  readLastGoalLoopRunResult,
+  type GoalLoopStepScore,
+} from "@ayme-dev/ayme/testing";
+
 import { goalRunsVariable } from "../scripts/appEnvironment";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 
@@ -11,10 +16,9 @@ export type GoalRunStep = {
   /** Decision Endpoint calls the step made: stage one, stage two, run-offs. */
   modelCalls: number;
   /**
-   * Per argument question id, the chosen option key; only steps with stage
-   * two. The loop's record where it has one, else every answer the Decision
-   * Endpoint returned for an option the question offered, so chunk answers
-   * survive a run-off that failed.
+   * Per argument question id, the chosen option key, as the loop's step
+   * record holds it; only steps with stage two. Chunk answers stay when a
+   * run-off then failed.
    */
   argumentChoices?: Record<string, string>;
   /**
@@ -30,8 +34,9 @@ export type GoalRunStep = {
    * could not be read.
    */
   chosen?: Record<string, { key: string; description: string }>;
-  /** The step requested a run-off: several chunks of a ref question each named
-   *  an element. Counted even when the run-off then failed. */
+  /** The step asked a run-off, as the loop's step record says: several
+   *  chunks of a ref question each named an element. Counted even when the
+   *  run-off then failed. */
   runOff: boolean;
   /** UTF-8 bytes of the `page` and `history` state fields stage one sent, as
    *  JSON; stage two sends the same state. */
@@ -77,27 +82,6 @@ export type Decision = {
   usage?: { input_tokens?: unknown; output_tokens?: unknown };
 };
 
-/** A run-off question's id ends with this, as `runOffQuestionId` in
- *  `packages/ayme/src/goalLoopQuestions.ts` builds it. */
-const runOffSuffix = "run_off";
-
-/**
- * Mirrors `GoalLoopStepScore` and the run result store in
- * `packages/ayme/src/goalLoop.ts`, reduced to the fields read here. The store
- * is package-internal (`getLastGoalLoopRunResult` is not exported); the page
- * shares it through `globalThis`, so the browser side can read it.
- */
-type GoalLoopStepScore = {
-  goalMetScore: number;
-  argumentChoices?: Record<string, string>;
-  chosen?: Record<string, { key: string; description: string }>;
-};
-export type GoalLoopRunResult = {
-  handover: { reason: string };
-  stepScores: GoalLoopStepScore[];
-};
-type RunResultStore = { last?: GoalLoopRunResult };
-
 const asError = (error: unknown) =>
   error instanceof Error ? error : new Error(String(error));
 
@@ -141,21 +125,6 @@ function recordDecisions(page: Page) {
   };
 }
 
-/** The answers of an argument call that pick an option its question offered. */
-function offeredChoices(decision: Decision): Record<string, string> {
-  const choices: Record<string, string> = {};
-  for (const [id, question] of Object.entries(decision.questions)) {
-    const choice = decision.answers?.[id]?.choice;
-    if (
-      typeof choice === "string" &&
-      question.criteria &&
-      choice in question.criteria
-    )
-      choices[id] = choice;
-  }
-  return choices;
-}
-
 /** The description of the option each answer of `choices` picked, from the
  *  criteria of the question that offered it. */
 function choiceDescriptions(
@@ -187,7 +156,7 @@ const byteLength = (value: unknown) =>
 /** Group the calls into steps: every stage-one call asks `operation`. */
 function stepsOf(
   decisions: Decision[],
-  stepScores: GoalLoopStepScore[]
+  stepScores: readonly GoalLoopStepScore[]
 ): GoalRunStep[] {
   const steps: GoalRunStep[] = [];
   // Per step, its argument calls in order, to describe the choices with.
@@ -213,24 +182,16 @@ function stepsOf(
     step.modelCalls++;
     addUsage(step, decision);
     argumentCalls.at(-1)!.push(decision);
-    if (Object.keys(decision.questions).some((id) => id.endsWith(runOffSuffix)))
-      step.runOff = true;
-    const choices = offeredChoices(decision);
-    if (Object.keys(choices).length > 0)
-      step.argumentChoices = { ...step.argumentChoices, ...choices };
   }
-  // A step score exists for every step whose stage one the loop could read;
-  // where it records a choice, the loop's record wins.
+  // A step score exists for every step whose stage one the loop could read.
   stepScores.forEach((score, index) => {
     const step = steps[index];
     if (!step) return;
     step.goalMetScore = score.goalMetScore;
-    if (score.chosen) step.chosen = score.chosen;
-    if (score.argumentChoices)
-      step.argumentChoices = {
-        ...step.argumentChoices,
-        ...score.argumentChoices,
-      };
+    if (score.runOff) step.runOff = true;
+    if ("chosen" in score) step.chosen = score.chosen;
+    if (score.argumentChoices && Object.keys(score.argumentChoices).length > 0)
+      step.argumentChoices = { ...score.argumentChoices };
   });
   steps.forEach((step, index) => {
     if (!step.argumentChoices) return;
@@ -246,18 +207,18 @@ function stepsOf(
   return steps;
 }
 
-/** What a run did, from the calls seen from the page and the loop's run result. */
+/** What a run did, from the calls seen from the page and the loop's step
+ *  scores, empty when its run result could not be read. */
 export function goalRunRecordOf(
   base: Pick<
     GoalRunRecord,
     "goal" | "expectedSteps" | "expectedTargets" | "reason" | "wallTimeMs"
   >,
   decisions: Decision[],
-  runResult: GoalLoopRunResult | undefined
+  stepScores: readonly GoalLoopStepScore[]
 ): GoalRunRecord {
   return {
     ...base,
-    reason: runResult?.handover.reason ?? base.reason,
     models: [
       ...new Set(
         decisions.flatMap((decision) =>
@@ -265,19 +226,8 @@ export function goalRunRecordOf(
         )
       ),
     ],
-    steps: stepsOf(decisions, runResult?.stepScores ?? []),
+    steps: stepsOf(decisions, stepScores),
   };
-}
-
-async function readRunResult(page: Page) {
-  return page.evaluate(
-    () =>
-      (
-        globalThis as typeof globalThis & {
-          __aymeGoalLoopRunResultStore?: RunResultStore;
-        }
-      ).__aymeGoalLoopRunResultStore?.last
-  );
 }
 
 /**
@@ -336,9 +286,8 @@ export async function recordGoalRun<T extends { reason: string }>(
   try {
     if (recorderError) throw recorderError;
     const decisions = await recorder!.decisions();
-    const runResult = await readRunResult(page);
-    record = goalRunRecordOf(record, decisions, runResult);
-    if (reason === null) record.reason = null;
+    const runResult = await readLastGoalLoopRunResult(page);
+    record = goalRunRecordOf(record, decisions, runResult?.stepScores ?? []);
   } catch (error) {
     record.recorderError = asError(error).message;
   }

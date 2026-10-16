@@ -7,14 +7,15 @@ import {
 import { agentCursor } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
+import { ayme } from "./decorators";
 import { errorText } from "./errors";
 import { agentTools } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
+import { getLastGoalLoopRunResult } from "./testing";
 import {
   CHANGES_CUT_MARKER,
   configureGoalLoop,
-  getLastGoalLoopRunResult,
   MAX_STEP_CHANGES,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
@@ -173,6 +174,18 @@ function withoutArgumentProbabilities(
 }
 
 type Criteria = Record<string, string>;
+
+/**
+ * A required collection item question's options without the "none of these"
+ * it always ends with.
+ */
+function offeredElements(criteria: Criteria): Criteria {
+  const keys = Object.keys(criteria);
+  expect(keys.at(-1)).toBe(NONE_OF_THESE_KEY);
+  return Object.fromEntries(
+    Object.entries(criteria).filter(([key]) => key !== NONE_OF_THESE_KEY)
+  );
+}
 
 function criteriaOf(request: DecisionRequest): Record<string, Criteria> {
   const questions = request.questions as Record<
@@ -350,7 +363,7 @@ function withoutChanges(handover: unknown): unknown {
 describe("Goal Loop goal in Chromium", () => {
   let page: ReturnType<typeof createPage>;
   let stop: (() => void) | undefined;
-  let ayme: Ayme;
+  let session: Ayme;
   let clickCount: number;
 
   beforeEach(() => {
@@ -370,12 +383,12 @@ describe("Goal Loop goal in Chromium", () => {
     goalLoop: GoalLoopDecisionFunction,
     customTools?: CustomTool[]
   ) {
-    ayme = createAyme({
+    session = createAyme({
       pageFactory: () => page,
       goalLoop,
       customTools,
     });
-    stop = ayme.start();
+    stop = session.start();
   }
 
   /** Start a runtime session; its `goal` tool as the agent calls it. */
@@ -414,7 +427,7 @@ describe("Goal Loop goal in Chromium", () => {
       manifest("App", [root()], [action("save", "App.save")])
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    ayme.pom.register(App);
+    session.pom.register(App);
     return tool;
   }
 
@@ -431,7 +444,7 @@ describe("Goal Loop goal in Chromium", () => {
       manifest("App", [root()], [actionWithParam("fill", "App.fill")])
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    ayme.pom.register(App);
+    session.pom.register(App);
     return tool;
   }
 
@@ -448,7 +461,7 @@ describe("Goal Loop goal in Chromium", () => {
       manifest("App", [root()], [action("fail", "App.fail")])
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    ayme.pom.register(App);
+    session.pom.register(App);
     return tool;
   }
 
@@ -778,7 +791,7 @@ describe("Goal Loop goal in Chromium", () => {
         )
       );
       const tool = await getPublishedPursueGoal(decide);
-      ayme.pom.register(App);
+      session.pom.register(App);
       return { tool, calls };
     }
 
@@ -851,7 +864,7 @@ describe("Goal Loop goal in Chromium", () => {
         ])
       );
       const tool = await getPublishedPursueGoal(decide);
-      ayme.pom.register(App);
+      session.pom.register(App);
 
       await tool.execute({
         goal: "Rate the Q4 Feedback survey",
@@ -910,7 +923,7 @@ describe("Goal Loop goal in Chromium", () => {
         ])
       );
       const tool = await getPublishedPursueGoal(decide);
-      ayme.pom.register(App);
+      session.pom.register(App);
 
       await tool.execute({
         goal: "Order three at 2.5 each",
@@ -1135,7 +1148,7 @@ describe("Goal Loop goal in Chromium", () => {
         ])
       );
       const tool = await getPublishedPursueGoal(decide);
-      ayme.pom.register(App);
+      session.pom.register(App);
 
       const result = await tool.execute({
         goal: "Tag it",
@@ -1282,7 +1295,7 @@ describe("Goal Loop goal in Chromium", () => {
       manifest("App", [root()], [action("add", "App.add")])
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    ayme.pom.register(App);
+    session.pom.register(App);
     return tool;
   }
 
@@ -1438,8 +1451,8 @@ describe("Goal Loop goal in Chromium", () => {
     [
       "malformed",
       undefined,
-      "The Decision Endpoint returned an invalid response.",
-      "The Decision Endpoint returned an invalid response. Handle",
+      "The Decision Endpoint /api/decisions answered 200 with a body that is not a decision response",
+      "The Decision Endpoint /api/decisions answered 200 with a body that is not a decision response. Handle",
     ],
     [
       "rejected",
@@ -1565,7 +1578,7 @@ describe("Goal Loop goal in Chromium", () => {
       )
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    ayme.pom.register(App);
+    session.pom.register(App);
     return tool;
   }
 
@@ -1624,7 +1637,7 @@ describe("Goal Loop goal in Chromium", () => {
       { operation: "none", goal_met: 0.9 },
     ]);
     const tool = await getPublishedPursueGoal(decide);
-    ayme.pom.register(App);
+    session.pom.register(App);
     const result = (await tool.execute({
       goal: "save",
       maxSteps: 5,
@@ -1676,7 +1689,7 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     const tool = await getPublishedPursueGoal(decide);
-    ayme.pom.register(App);
+    session.pom.register(App);
     const result = (await tool.execute({
       goal: "save",
       maxSteps: 5,
@@ -1722,7 +1735,7 @@ describe("Goal Loop goal in Chromium", () => {
       { operation: "none", goal_met: 0.9 },
     ]);
     const tool = await getPublishedPursueGoal(decide);
-    ayme.pom.register(App);
+    session.pom.register(App);
     const result = (await tool.execute({
       goal: "import",
       maxSteps: 5,
@@ -2146,9 +2159,12 @@ describe("Goal Loop goal in Chromium", () => {
       },
     ]);
     // Each chunk's answer is recorded in the step's scores.
-    const score =
-      getLastGoalLoopRunResult()!.stepScores[0]!.argumentProbabilities!;
-    expect(Object.keys(score)).toEqual(Object.keys(stageTwo));
+    const score = getLastGoalLoopRunResult()!.stepScores[0]!;
+    expect(Object.keys(score.argumentProbabilities!)).toEqual(
+      Object.keys(stageTwo)
+    );
+    // One chunk named an element, so the step asked no run-off.
+    expect(score.runOff).toBeUndefined();
   });
 
   it("asks one run-off among exactly the elements several chunks named", async () => {
@@ -2200,6 +2216,7 @@ describe("Goal Loop goal in Chromium", () => {
       [runOffId]: named[1],
     });
     expect(score.argumentProbabilities).toEqual({});
+    expect(score.runOff).toBe(true);
   });
 
   it("keeps the chunks' choices on the run result when the run-off answer is invalid", async () => {
@@ -2229,7 +2246,9 @@ describe("Goal Loop goal in Chromium", () => {
     const stageTwo = criteriaOf(requests[1]!);
     const [firstChunkId, secondChunkId] = Object.keys(stageTwo);
     const score = getLastGoalLoopRunResult()!.stepScores[0]!;
-    // Both chunks named an element; the run-off's answer is not recorded.
+    // Both chunks named an element, so the step asked a run-off, whose
+    // answer is not recorded.
+    expect(score.runOff).toBe(true);
     expect(score.argumentChoices).toEqual({
       [firstChunkId!]: keyFor(stageTwo[firstChunkId!]!, 'button "Item 3"'),
       [secondChunkId!]: keyFor(stageTwo[secondChunkId!]!, 'button "Item 299"'),
@@ -2260,7 +2279,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     expect(withoutChanges(result)).toEqual({
       reason: "no_fitting_option",
-      next: expect.stringContaining('"click"'),
+      next: 'No element on the current page fits the operation "click". Navigate to a different page or try a different approach.',
       // The step ran no action, so it leaves no history entry.
       history: [],
     });
@@ -2333,7 +2352,7 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     const tool = await getPublishedPursueGoal(decide);
-    ayme.pom.register(App);
+    session.pom.register(App);
 
     const result = (await tool.execute({
       goal: "configure the app",
@@ -2396,7 +2415,7 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     const tool = await getPublishedPursueGoal(decide);
-    ayme.pom.register(App);
+    session.pom.register(App);
 
     const result = (await tool.execute({
       goal: "sort the list",
@@ -2484,7 +2503,7 @@ describe("Goal Loop goal in Chromium", () => {
     expect(withoutChanges(result)).toEqual({
       reason: "decide_failed",
       next: expect.stringMatching(
-        /^The decision function returned an invalid response: .*"Bread".*Handle the goal without the Goal Loop\.$/
+        /^The decision function's answers could not be read: .*"Bread".*Handle the goal without the Goal Loop\.$/
       ),
       history: [],
     });
@@ -2537,7 +2556,7 @@ describe("Goal Loop goal in Chromium", () => {
       )
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    ayme.pom.register(ItemsPage);
+    session.pom.register(ItemsPage);
     return tool;
   }
 
@@ -2568,7 +2587,7 @@ describe("Goal Loop goal in Chromium", () => {
     // One question, over the present roots of the tool's collection path.
     const stageTwo = criteriaOf(requests[1]!);
     expect(Object.keys(stageTwo)).toEqual(["ref"]);
-    const descriptions = Object.values(stageTwo.ref!);
+    const descriptions = Object.values(offeredElements(stageTwo.ref!));
     expect(descriptions).toHaveLength(3);
     descriptions.forEach((description, index) => {
       // Label, role and name: what tells one instance from another.
@@ -2578,7 +2597,7 @@ describe("Goal Loop goal in Chromium", () => {
     });
     // The option keys are the refs the page state gave the model.
     expect(refsInPage(requests[1]!.state)).toEqual(
-      expect.arrayContaining(Object.keys(stageTwo.ref!))
+      expect.arrayContaining(Object.keys(offeredElements(stageTwo.ref!)))
     );
     expect(archived).toEqual([1]);
     expect(result.reason).toBe("done");
@@ -2654,7 +2673,7 @@ describe("Goal Loop goal in Chromium", () => {
       )
     );
     const tool = await getPublishedPursueGoal(decide);
-    ayme.pom.register(ItemsPage);
+    session.pom.register(ItemsPage);
 
     const result = (await tool.execute({
       goal: "archive the second item",
@@ -2667,7 +2686,9 @@ describe("Goal Loop goal in Chromium", () => {
     expect(sent).toContain('"name":"Item 1","children":["t","ask"]');
 
     // The instance options come from the full capture and still resolve.
-    const instanceRefs = Object.keys(criteriaOf(requests[1]!).ref!);
+    const instanceRefs = Object.keys(
+      offeredElements(criteriaOf(requests[1]!).ref!)
+    );
     expect(instanceRefs).toHaveLength(count);
     const resolutions = await resolvePageStateRefs(
       document,
@@ -2726,7 +2747,9 @@ describe("Goal Loop goal in Chromium", () => {
     // operation acts on.
     expect(result).toMatchObject({
       reason: "needs_value",
-      next: expect.stringContaining("acts on a collection instance"),
+      next: expect.stringContaining(
+        "acts on a collection instance, and the current page holds more of them than one decision can offer."
+      ),
       needs: { tool: "ItemsPage.items.archive", parameters: ["ref"] },
     });
     expect(result.next).not.toContain("one element");
@@ -2785,14 +2808,14 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     const tool = await getPublishedPursueGoal(decide);
-    ayme.pom.register(GroupsPage);
+    session.pom.register(GroupsPage);
 
     await tool.execute({ goal: "open the second item", maxSteps: 5 });
 
     const stageTwo = criteriaOf(requests[1]!);
     // One question, over the innermost roots only.
     expect(Object.keys(stageTwo)).toEqual(["ref"]);
-    expect(Object.values(stageTwo.ref!)).toEqual([
+    expect(Object.values(offeredElements(stageTwo.ref!))).toEqual([
       expect.stringContaining("GroupsPage.groups[0].items[0]"),
       expect.stringContaining("GroupsPage.groups[0].items[1]"),
       expect.stringContaining("GroupsPage.groups[1].items[0]"),
@@ -2853,13 +2876,15 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     const tool = await getPublishedPursueGoal(decide);
-    ayme.pom.register(ItemsPage);
+    session.pom.register(ItemsPage);
 
     await tool.execute({ goal: "open the second item", maxSteps: 5 });
 
     // The instance is addressed through the last collection, not through the
     // singular child the action lives on.
-    const descriptions = Object.values(criteriaOf(requests[1]!).ref!);
+    const descriptions = Object.values(
+      offeredElements(criteriaOf(requests[1]!).ref!)
+    );
     expect(descriptions).toEqual([
       expect.stringContaining("ItemsPage.items[0]"),
       expect.stringContaining("ItemsPage.items[1]"),
@@ -2891,6 +2916,166 @@ describe("Goal Loop goal in Chromium", () => {
     // No question without options is ever sent.
     expect(requests).toHaveLength(1);
     expect(result.reason).toBe("no_fitting_option");
+  });
+
+  it("hands over, naming why the goal's item was left out, instead of acting on another item", async () => {
+    const archived: number[] = [];
+    class Item {
+      constructor(
+        readonly root: ReturnType<typeof page.locator>,
+        readonly index: number
+      ) {}
+      archive() {
+        archived.push(this.index);
+      }
+    }
+    ayme.action({
+      available: (self: Item) =>
+        self.index === last || "it is already archived",
+    })(
+      Item.prototype,
+      "archive",
+      Object.getOwnPropertyDescriptor(Item.prototype, "archive")!
+    );
+    // Every item but the last is unavailable, and the Handover names each.
+    const last = 12;
+    setupCollectionDom(last + 1);
+    class ItemsPage {
+      readonly items = Array.from(
+        { length: last + 1 },
+        (_, index) => index
+      ).map((index) => new Item(page.locator(`#item-${index}`), index));
+    }
+    registerCompiledPom(
+      ItemsPage,
+      manifest(
+        "ItemsPage",
+        [collection("items", "Item")],
+        [],
+        [
+          {
+            className: "Item",
+            members: [root()],
+            tools: [action("archive", "archive")],
+          },
+        ]
+      )
+    );
+    // A model that knows the goal means Item 0: it picks that item, or "none
+    // of these" when offered, and otherwise the best of what it is given.
+    const stageTwoOptions: Record<string, string>[] = [];
+    let step = 0;
+    const { requests, decide } = recording(async (request) => {
+      const criteria = criteriaOf(request);
+      if (criteria.operation) {
+        step++;
+        return {
+          model: "typesafe/jev-1.13",
+          answers: {
+            operation: choiceAnswer(
+              criteria.operation,
+              step === 1 ? "ItemsPage.items.archive" : "none"
+            ),
+            goal_met: { type: "noul", noul: step === 1 ? 0.1 : 0.9 },
+          },
+        };
+      }
+      const options = criteria.ref!;
+      stageTwoOptions.push(options);
+      const keys = Object.keys(options);
+      const wanted =
+        keys.find((key) => options[key]!.includes("items[0]")) ??
+        keys.find((key) => key === NONE_OF_THESE_KEY) ??
+        keys[0]!;
+      return {
+        model: "typesafe/jev-1.13",
+        answers: { ref: choiceAnswer(options, wanted) },
+      };
+    });
+    const tool = await getPublishedPursueGoal(decide);
+    session.pom.register(ItemsPage);
+
+    const result = (await tool.execute({
+      goal: "archive Item 0",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    // Stage two offers the last item and "none of these"; the rest are left
+    // out.
+    expect(stageTwoOptions).toHaveLength(1);
+    expect(Object.keys(stageTwoOptions[0]!)).toHaveLength(2);
+    expect(Object.values(stageTwoOptions[0]!)[0]).toContain(
+      `ItemsPage.items[${last}]`
+    );
+    expect(Object.keys(stageTwoOptions[0]!)[1]).toBe(NONE_OF_THESE_KEY);
+    // The model answers "none of these": nothing runs, and the Handover says
+    // why the item it wanted was not offered.
+    expect(archived).toEqual([]);
+    expect(requests).toHaveLength(2);
+    expect(result).toMatchObject({
+      reason: "no_fitting_option",
+      history: [],
+    });
+    expect(result.next).toMatch(
+      /^No element on the current page fits the operation "ItemsPage\.items\.archive"\. Left out: /
+    );
+    expect(result.next).toMatch(
+      /ItemsPage\.items\[11\] \(unavailable: it is already archived\)\. Navigate to a different page or try a different approach\.$/
+    );
+    expect(result.next).toContain(
+      "Left out: ItemsPage.items[0] (unavailable: it is already archived), ItemsPage.items[1] (unavailable: it is already archived),"
+    );
+  });
+
+  it("names the items it could not offer when none has a ref in the page state", async () => {
+    // The item is available, but inside a subtree the page state ignores,
+    // here the Inspector's host, so the capture holds no ref for it.
+    document.body.innerHTML = `
+      <main>
+        <ul data-ayme-inspector-host>
+          <li id="item-0">Item 0</li>
+        </ul>
+      </main>
+    `;
+    class ItemsPage {
+      readonly items = [{ root: page.locator("#item-0"), archive() {} }];
+    }
+    registerCompiledPom(
+      ItemsPage,
+      manifest(
+        "ItemsPage",
+        [collection("items", "Item")],
+        [],
+        [
+          {
+            className: "Item",
+            members: [root()],
+            tools: [action("archive", "archive")],
+          },
+        ]
+      )
+    );
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        { operation: "ItemsPage.items.archive", goal_met: 0.1 },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+    session.pom.register(ItemsPage);
+
+    const result = (await tool.execute({
+      goal: "archive Item 0",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    expect(requests).toHaveLength(1);
+    expect(result).toMatchObject({
+      reason: "needs_value",
+      needs: { tool: "ItemsPage.items.archive", parameters: ["ref"] },
+    });
+    expect(result.next).toBe(
+      'The operation "ItemsPage.items.archive" acts on a collection instance, and the loop could offer none of its items. Left out: ItemsPage.items[0] (no ref in the page state). Try a different approach.'
+    );
   });
 
   it("asks a collection tool's enum and boolean arguments with the instance", async () => {
@@ -3016,7 +3201,13 @@ describe("Goal Loop goal in Chromium", () => {
 
     const result = await tool.execute({ goal: "do something", maxSteps: 5 });
 
-    expect(result).toMatchObject({ reason: "decide_failed", history: [] });
+    expect(result).toMatchObject({
+      reason: "decide_failed",
+      next: expect.stringMatching(
+        /^The page offers \d+ operations, more than one decision can choose from\. Handle the goal without the Goal Loop\.$/
+      ),
+      history: [],
+    });
     // The oversized question is never sent.
     expect(requests).toEqual([]);
   });
@@ -3051,7 +3242,7 @@ describe("Goal Loop goal in Chromium", () => {
       )
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    ayme.pom.register(App);
+    session.pom.register(App);
     return tool;
   }
 

@@ -253,3 +253,24 @@ it("keeps a moved node authoritative over an identical destination sibling", () 
   expect(change.getNode(ref("e2"))?.status).toEqual({ kind: "removed" });
   expect(change.getNodesByStatus("added")).toEqual([]);
 });
+
+describe("a surviving root ref", () => {
+  const WRAPPED =
+    "- generic [ref=e1]:\n  - generic [ref=e2]:\n    - generic [ref=e5]:\n      - main [ref=e12]\n  - dialog [ref=e64]";
+  const BARE = "- generic [ref=e5]:\n  - main [ref=e12]";
+
+  it("is not matched to a new root that wraps it", () => {
+    const before = parse(BARE);
+    const change = StructuralTree.reconcile(before, parse(WRAPPED));
+    expect(change.getBeforeNodeForAfterRef(ref("e5"))).toBe(before.root);
+    expect(change.getBeforeNodeForAfterRef(ref("e1"))).toBeNull();
+  });
+
+  it("keeps its own match when the wrapping root goes away", () => {
+    const before = parse(WRAPPED);
+    const change = StructuralTree.reconcile(before, parse(BARE));
+    expect(change.getBeforeNodeForAfterRef(ref("e5"))).toBe(
+      before.getNode(ref("e5"))
+    );
+  });
+});

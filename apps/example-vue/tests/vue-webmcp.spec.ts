@@ -295,6 +295,44 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   expect(normalizeAppSubtree(snapshot)).toMatchSnapshot("page-state.yml");
 });
 
+test("resolves every ref of a snapshot taken after the archive dialog closes", async ({
+  page,
+}) => {
+  await openWithInspectorCollapsed(page);
+  const snapshot = () =>
+    page.evaluate(async () => {
+      const tool = (
+        document.modelContext as unknown as RecordingDriver
+      ).tools.find((candidate) => candidate.name === "snapshot");
+      if (!tool) throw new Error("snapshot WebMCP tool was not published.");
+      return ((await tool.execute({})) as { structure: string }).structure;
+    });
+
+  const archive = /- (e\d+) button "Archive item-1"/.exec(await snapshot());
+  if (!archive) throw new Error("No ref for the Archive item-1 button.");
+  await executePublishedTool(page, "click", { target: archive[1] });
+  await executePublishedTool(page, "press_key", { key: "Escape" });
+
+  // The dialog's portal wrapped the page's root and then left again.
+  const refs = [...new Set((await snapshot()).match(/\be\d+\b/g))];
+  expect(refs.length).toBeGreaterThan(0);
+  const refused = await page.evaluate(async (refs) => {
+    const hover = (
+      document.modelContext as unknown as RecordingDriver
+    ).tools.find((candidate) => candidate.name === "hover");
+    if (!hover) throw new Error("hover WebMCP tool was not published.");
+    const failures: string[] = [];
+    for (const target of refs) {
+      const result = (await hover.execute({ target })) as {
+        isError?: boolean;
+      };
+      if (result.isError) failures.push(target);
+    }
+    return failures;
+  }, refs);
+  expect(refused).toEqual([]);
+});
+
 test("runs the same POM behavior through registered WebMCP tools", async ({
   page,
 }) => {
