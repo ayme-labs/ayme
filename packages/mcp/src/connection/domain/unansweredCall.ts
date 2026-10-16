@@ -1,6 +1,7 @@
 /**
  * How a page or App Process left before it answered a call. `tools` is there once the tab
- * reconnected: the names of the tools the new document offers.
+ * reconnected: the names of the tools the new document offers. Without it, the
+ * wait for the tab to reconnect ended and no page came back.
  */
 export type PageExit =
   | {
@@ -57,14 +58,19 @@ function unansweredCall(exit: PageExit) {
           : tools
             ? `The page navigated to ${url}`
             : `The page started loading ${url}`;
+      if (!tools)
+        return {
+          error: `${what} before it answered, ${UNKNOWN}. No page reconnected in its place: the tab closed, or the page it loaded does not run Ayme's Agent Connection.`,
+          settled: false,
+          loading: url,
+          next: "No page is connected.",
+        };
       return {
         error: `${what} before it answered, ${UNKNOWN}.`,
         settled: false,
         loading: url,
-        ...(tools ? { tools } : {}),
-        next: tools
-          ? "The page reconnected with the tools in `tools`. Call snapshot to read it before you call the tool again."
-          : "The page has not reconnected yet. Its tools return once it has loaded; then call snapshot to read it.",
+        tools,
+        next: "The page reconnected with the tools in `tools`. Call snapshot to read it before you call the tool again.",
       };
     }
   }
