@@ -706,9 +706,8 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       const instance = pom.get(model);
       if (onServer()) return instance;
       const registration = registrations.get(model) ?? { count: 0 };
-      // A refused registration is tried again, as its clash may be gone.
       if (owner && !registration.active)
-        registration.active = registerOrReport(model, instance);
+        registration.active = registerPageObject(model, instance);
       registration.count += 1;
       registrations.set(model, registration);
       return instance;
@@ -766,7 +765,7 @@ export function createAyme(options: AymeOptions = {}): Ayme {
       controller = new AbortController();
       try {
         for (const [model, registration] of registrations)
-          registration.active = registerOrReport(model, pom.get(model));
+          registration.active = registerPageObject(model, pom.get(model));
         unsubscribeFromPoms = subscribeToRegisteredPoms(refreshTools);
         if (peeks) unsubscribeFromPeeks = subscribeToPeekTools(refreshTools);
         refreshTools();
@@ -910,25 +909,4 @@ function startAgentConnectionUntil(
       throw error;
     }
   );
-}
-
-// A clash between the app's own classes is reported in the console rather
-// than thrown, so it does not take down the component, or the session start,
-// that registered the Page Object. The refused Page Object stays counted but
-// lists no tools until a later registration of it succeeds.
-function registerOrReport<T extends object>(
-  model: PageObjectConstructor<T>,
-  instance: T
-) {
-  try {
-    return registerPageObject(model, instance);
-  } catch (error) {
-    if (
-      !(error instanceof RuntimeStateError) ||
-      error.code !== "same-named-class"
-    )
-      throw error;
-    console.error(error);
-    return undefined;
-  }
 }
