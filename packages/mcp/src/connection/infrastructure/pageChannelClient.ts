@@ -96,13 +96,13 @@ export function openPageChannel(
   // The tRPC client sends a request in a later task, to batch it with
   // others. A document that started loading another may unload before that
   // task runs, and what it said would be lost (#578). So an answer and the
-  // leaving report go out on the open socket at once, in tRPC's own message
+  // navigating report go out on the open socket at once, in tRPC's own message
   // format, under an id no tRPC request uses; the client ignores the reply.
   // The router has no transformer, so the input goes as it is. The tools go
   // the same way, so a change a call made reaches the server before its
   // answer.
   const sendAtOnce = (
-    path: "publishTools" | "answer" | "leaving",
+    path: "publishTools" | "answer" | "navigating",
     input: unknown
   ) => {
     const { connection } = socket;
@@ -140,8 +140,9 @@ export function openPageChannel(
       });
       return () => subscription.unsubscribe();
     },
-    async reportLeaving(leaving) {
-      if (!sendAtOnce("leaving", leaving)) await client.leaving.mutate(leaving);
+    async reportNavigating(navigating) {
+      if (!sendAtOnce("navigating", navigating))
+        await client.navigating.mutate(navigating);
     },
     followProcessTools(listener) {
       processToolListeners.add(listener);

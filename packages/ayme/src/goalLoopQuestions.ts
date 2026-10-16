@@ -12,20 +12,15 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import type { JsonPrimitive, JsonSchema, ToolParameter } from "./contracts";
 import type { DecisionQuestions, DecisionRequest } from "./decisionWire";
-import type { GoalLoopStepRecord } from "./goalLoop";
+import type { ChosenOption, GoalLoopStepRecord } from "./handover";
 import type { AriaRef, PageStateCapture } from "./pageState";
-import { listElementTools, NAVIGATION_TOOLS } from "./browserTools";
 import type { StartChildRun } from "./run";
 import { acceptedRefNodes, type TargetField } from "./elementTools";
-import {
-  listCollectionToolItems,
-  listAvailablePomTools,
-  type CollectionToolItem,
-} from "./registry";
+import type { CollectionToolItem } from "./registry";
 
 /**
  * What the Goal Loop asks the model, and how an answer maps back to what it
- * offered. The loop itself owns only the sequence of steps.
+ * offered. The Step Decision (`stepDecision.ts`) puts these in order.
  */
 
 /** The decisions API answers a choice over at most this many options. Every
@@ -128,7 +123,12 @@ function wholeParameters(args: readonly ArgumentSpec[]): string[] {
 
 /** A closed set of values the model may pick one of. */
 type ClosedSet =
-  | { kind: "ref"; filter: (element: Element) => boolean }
+  | {
+      kind: "ref";
+      filter: (element: Element) => boolean;
+      /** The filter before reach, for a tool that needs reach. */
+      matches?: (element: Element) => boolean;
+    }
   /**
    * The present items of one collection path, each with the tool's verdict on
    * it; no filter is involved.
@@ -344,7 +344,7 @@ function parametersOfObjectSchema(schema: JsonSchema): ToolParameter[] {
 }
 
 /** Read an object schema as the parameters the loop may fill, under `prefix`. */
-function specsOfObjectSchema(
+export function specsOfObjectSchema(
   schema: JsonSchema,
   prefix: readonly PathKey[] = []
 ): ArgumentSpec[] {
@@ -354,16 +354,16 @@ function specsOfObjectSchema(
 }
 
 /** Read a single-element tool's input schema the same way. */
-function specsOfElementToolSchema(
+export function specsOfElementToolSchema(
   schema: JsonSchema,
   targetField: TargetField,
-  refFilter: (element: Element) => boolean
+  refs: Extract<ClosedSet, { kind: "ref" }>
 ): ArgumentSpec[] {
   return parametersOfObjectSchema(schema).flatMap((parameter) =>
     // Its `ref` or `target` is the Structural Ref it acts on; the elements its
     // filter keeps are the closed set (ADR-0023).
     parameter.name === targetField
-      ? [closedSpecOf(parameter, { kind: "ref", filter: refFilter })]
+      ? [closedSpecOf(parameter, refs)]
       : specsOf(parameter)
   );
 }
@@ -373,7 +373,7 @@ function specsOfElementToolSchema(
  * addresses one present instance of its path, the action's own parameters sit
  * inside `args` and are classified like any other parameter.
  */
-function specsOfCollectionTool(
+export function specsOfCollectionTool(
   parameters: readonly ToolParameter[],
   roots: readonly CollectionToolItem[]
 ): ArgumentSpec[] {
@@ -410,59 +410,9 @@ export function requiredParamsOf(
   );
 }
 
-/**
- * Build the flat list of tool options offered to the model each step: every
- * single-element tool, a Browser Tool or a Custom Tool (ADR-0023), every
- * Browser Tool that moves the page, and every registered POM tool.
- */
-export function buildToolOptions(): ToolOption[] {
-  const elementTools: GoalLoopOperation[] = listElementTools().map(
-    ({ tool, targetField, loopInputSchema, filter }) => ({
-      name: tool.name,
-      description: tool.description,
-      execute: (input: unknown, run: StartChildRun) => run(tool.name, input),
-      requiredParams: [...(loopInputSchema.required ?? [])],
-      args: specsOfElementToolSchema(loopInputSchema, targetField, filter),
-    })
-  );
-  const navigationTools: GoalLoopOperation[] = NAVIGATION_TOOLS.map((tool) => ({
-    name: tool.name,
-    description: tool.description,
-    execute: (input: unknown, run: StartChildRun) => run(tool.name, input),
-    requiredParams: [...(tool.inputSchema.required ?? [])],
-    args: specsOfObjectSchema(tool.inputSchema),
-  }));
-  const collectionRoots = listCollectionToolItems();
-  const pomTools: GoalLoopOperation[] = listAvailablePomTools().map((t) => {
-    const roots = collectionRoots.get(t.name);
-    const args = roots
-      ? specsOfCollectionTool(t.parameters, roots)
-      : specsOfParameters(t.parameters);
-    return {
-      name: t.name,
-      description: t.description,
-      // An action without parameters of its own still takes the empty `args`.
-      execute: (input: unknown, run: StartChildRun) =>
-        run(
-          t.name,
-          roots ? { args: {}, ...(input as Record<string, unknown>) } : input
-        ),
-      // A tuple is required as a whole, not slot by slot.
-      requiredParams: requiredParamsOf(t.parameters, roots !== undefined),
-      args,
-    };
-  });
-
-  return [...elementTools, ...navigationTools, ...pomTools].map((tool) => ({
-    key: tool.name,
-    label: tool.description,
-    tool,
-  }));
-}
-
 // --- Arguments asked in stage two ---
 
-export type ArgumentOption = {
+type ArgumentOption = {
   key: string;
   description: string;
   /**
@@ -522,7 +472,7 @@ export function describeLeftOut(leftOut: readonly LeftOutItem[]): string {
 }
 
 /** Whether one value or Goal Value belongs in a list parameter. */
-export type ListValueQuestion = QuestionBase & {
+type ListValueQuestion = QuestionBase & {
   type: "noul";
   option: ArgumentOption;
 };
@@ -544,8 +494,12 @@ export type ArgumentPlan =
       /** The required parameters no Goal Value fits. */
       unfilled: string[];
     }
-  /** No element on the page is one the operation's ref may address. */
-  | { kind: "needs_ref_choice"; parameter: string }
+  /**
+   * No element on the page is one the operation's ref may address; when
+   * `unreachable` is set, that many match the operation's filter but a click
+   * would reach none of them.
+   */
+  | { kind: "needs_ref_choice"; parameter: string; unreachable?: number }
   /** The instances of a collection do not make a choice the model can answer. */
   | {
       kind: "needs_instance_choice";
@@ -929,8 +883,14 @@ export function planArguments(
     if (options.length === 0 || asked.options.length > MAX_CHOICE_OPTIONS) {
       if (arg.optional) continue;
       // A ref gets here only with no element left to offer.
-      if (closedSet.kind === "ref")
-        return { kind: "needs_ref_choice", parameter: arg.name };
+      if (closedSet.kind === "ref") {
+        const unreachable = closedSet.matches
+          ? acceptedRefNodes(closedSet.matches, capture).length
+          : 0;
+        return unreachable > 0
+          ? { kind: "needs_ref_choice", parameter: arg.name, unreachable }
+          : { kind: "needs_ref_choice", parameter: arg.name };
+      }
       const parameter = wholeParameters([arg])[0]!;
       return offered.leftOut
         ? {
@@ -979,7 +939,7 @@ const MAX_SPECULATIVE_QUESTIONS = 8;
 export const NO_VALUE_NEEDED_KEY = "no_value_needed";
 
 /** A Goal Value question asked before the operation is chosen. */
-export type SpeculativeValueQuestion = {
+type SpeculativeValueQuestion = {
   id: string;
   /** Per operation the question covers: the parameter the answer fills. */
   covers: readonly { operation: string; parameter: string }[];
@@ -1215,8 +1175,7 @@ export type StepState = {
   [field: string]: unknown;
 };
 
-/** The option the model chose for one parameter, exactly as it was offered. */
-export type ChosenOption = { key: string; description: string };
+export type { ChosenOption } from "./handover";
 
 /**
  * The state both stages of one step are decided on. It carries the Goal
@@ -1437,14 +1396,14 @@ function describeCandidate(
 
 // --- Answers ---
 
-export type ChoiceAnswer = {
+type ChoiceAnswer = {
   type: "choice";
   choice: string;
   probabilities?: Record<string, number>;
   confidence?: number;
 };
 
-export type NoulAnswer = {
+type NoulAnswer = {
   type: "noul";
   noul: number;
 };
@@ -1522,7 +1481,7 @@ type ListValuePick = { question: ListValueQuestion; score: number };
 export type AnswerRecord = Pick<ChosenArguments, "choices" | "probabilities">;
 
 /** What the stage-two answers amount to. */
-export type ArgumentAnswers =
+type ArgumentAnswers =
   /** Every parameter has its value: run the operation. */
   | { kind: "chosen"; chosen: ChosenArguments }
   /**

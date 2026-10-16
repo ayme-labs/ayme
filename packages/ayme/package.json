@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/ayme",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.0",
   "description": "Ayme main library.",
   "license": "FSL-1.1-ALv2",
   "repository": {
@@ -71,7 +71,7 @@
     "@ayme-dev/core": "workspace:*",
     "@ayme-dev/eslint-config": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#91fe465749b420f351ea10f035e005cbd6019d4d",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#7834ce7866e47e4b8b95523342252d37ae5a3bbd",
     "@ayme-dev/test-config": "workspace:*",
     "@ayme-dev/typescript-config": "workspace:*",
     "@playwright/test": "^1.64.0",

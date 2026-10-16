@@ -1,6 +1,6 @@
 {
   "name": "@ayme-dev/webmcp",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.0",
   "description": "Publishes an Ayme session's tools through WebMCP.",
   "license": "FSL-1.1-ALv2",
   "repository": {

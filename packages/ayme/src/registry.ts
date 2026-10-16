@@ -32,6 +32,7 @@ import {
   type PomInstanceObservation,
   type ToolAvailability,
 } from "./pomInstance";
+import { registerRefSelectorEngine } from "./refSelectorEngine";
 import { refFailure, resolveRef } from "./refTarget";
 import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
@@ -121,6 +122,9 @@ let browserPage: Page | undefined;
 let runtimeOwner: object | undefined;
 const compiledPoms = new WeakMap<object, PomManifest>();
 const registeredPoms = new Set<ObservedRegisteredPom>();
+// Registrations refused for a same-named class, in the order they were
+// made: each gets in once the registration it clashes with is disposed.
+const waitingPoms = new Set<ObservedRegisteredPom>();
 const subscribers = new Set<() => void>();
 let mutationObserver: MutationObserver | undefined;
 let probeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -138,15 +142,6 @@ const layoutEvents = [
   "animationend",
   "animationcancel",
 ] as const;
-
-export function configureAymeRuntime(page: Page) {
-  if (runtimeOwner)
-    throw new RuntimeStateError(
-      "The Ayme runtime already has an active owner.",
-      { code: "active-owner" }
-    );
-  browserPage = page;
-}
 
 export function requireAymeRuntimePage(): Page {
   if (!browserPage)
@@ -167,6 +162,8 @@ export function createAymeRuntime(page?: object) {
   const runtimePage = page ?? createPage();
   runtimeOwner = owner;
   browserPage = runtimePage as Page;
+  // The page's locators for Structural Refs resolve through Ayme's engine.
+  registerRefSelectorEngine();
 
   return {
     page: runtimePage,
@@ -182,31 +179,13 @@ export function createAymeRuntime(page?: object) {
 function resetRegisteredPoms() {
   const hadRegistrations = registeredPoms.size > 0;
   registeredPoms.clear();
+  waitingPoms.clear();
   stopObservingPage();
   if (hadRegistrations) notifySubscribers();
 }
 
 export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
   compiledPoms.set(PomClass, manifest);
-}
-
-export function createPageRegistration<T extends object>(
-  PomClass: PageObjectConstructor<T>
-) {
-  const page = browserPage;
-  if (!page)
-    throw new RuntimeStateError(
-      "Cannot register a page object: the Ayme browser runtime is not configured."
-    );
-
-  const compiledPom = compiledPoms.get(PomClass);
-  if (!compiledPom)
-    throw new RuntimeStateError(
-      "The imported page object has no compiler-derived Ayme metadata."
-    );
-
-  const instance = constructPageObject(PomClass, page);
-  return registerPageObject(PomClass, instance);
 }
 
 export function constructPageObject<T extends object>(
@@ -229,7 +208,6 @@ export function registerPageObject<T extends object>(
     throw new RuntimeStateError(
       "The imported page object has no compiler-derived Ayme metadata."
     );
-  rejectSameNamedClasses(PomClass, compiledPom);
   const registration: ObservedRegisteredPom = {
     id: compiledPom.className,
     pomClass: PomClass,
@@ -241,20 +219,41 @@ export function registerPageObject<T extends object>(
   };
   // Its collection tools read the instances observed of this registration.
   registration.tools = createRegisteredTools(registration);
-  const registryWasEmpty = registeredPoms.size === 0;
-  registeredPoms.add(registration);
-  if (registryWasEmpty) startObservingPage();
-  else schedulePomMemberProbe();
-  notifySubscribers();
+  // A clash between the app's own classes is logged rather than thrown, so
+  // it does not take down the component, or the session start, that
+  // registered the Page Object. It lists no tools until the clash is gone.
+  const refusal = sameNamedClassRefusal(PomClass, compiledPom);
+  if (refusal) {
+    console.error(refusal);
+    waitingPoms.add(registration);
+  } else {
+    admitRegisteredPom(registration);
+    notifySubscribers();
+  }
 
   return {
     instance,
     dispose() {
+      if (waitingPoms.delete(registration)) return;
       if (!registeredPoms.delete(registration)) return;
       if (registeredPoms.size === 0) stopObservingPage();
+      // Only leaving can clear a clash. A registration still refused is
+      // not logged again.
+      for (const waiting of waitingPoms)
+        if (!sameNamedClassRefusal(waiting.pomClass, waiting.manifest)) {
+          waitingPoms.delete(waiting);
+          admitRegisteredPom(waiting);
+        }
       notifySubscribers();
     },
   };
+}
+
+function admitRegisteredPom(registration: ObservedRegisteredPom) {
+  const registryWasEmpty = registeredPoms.size === 0;
+  registeredPoms.add(registration);
+  if (registryWasEmpty) startObservingPage();
+  else schedulePomMemberProbe();
 }
 
 /**
@@ -267,7 +266,10 @@ export function registerPageObject<T extends object>(
  * Page Objects reaching its old version are still registered. A manifest
  * without a file is the same class when it is the same manifest.
  */
-function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
+function sameNamedClassRefusal(
+  PomClass: object,
+  manifest: PomManifest
+): RuntimeStateError | undefined {
   // A different class with the same name would have its tools hidden by the
   // first one registered.
   for (const registered of registeredPoms)
@@ -275,7 +277,7 @@ function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
       registered.id === manifest.className &&
       registered.pomClass !== PomClass
     )
-      throw new RuntimeStateError(
+      return new RuntimeStateError(
         `Cannot register the Page Object "${manifest.className}": a different class with that name is already registered${declaredIn(registered.manifest, manifest)}.`,
         { code: "same-named-class" }
       );
@@ -289,7 +291,7 @@ function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
       const others = reached.get(node.className) ?? [];
       const other = others.find((other) => !sameClass(other.node, node));
       if (other)
-        throw new RuntimeStateError(
+        return new RuntimeStateError(
           `Cannot register the Page Object "${manifest.className}": ${
             other.pageObject === manifest.className
               ? `it reaches two different classes named "${node.className}"`
@@ -300,10 +302,16 @@ function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
       if (!others.some((other) => other.node.file === node.file))
         reached.set(node.className, [...others, { pageObject, node }]);
     }
+    return undefined;
   };
-  for (const registered of registeredPoms)
-    reach(registered.id, registered.manifest);
-  reach(manifest.className, manifest);
+  // Registered Page Objects can stop matching each other once one leaves,
+  // as a manifest without a file matches by shape: the new one is refused
+  // then too.
+  for (const registered of registeredPoms) {
+    const refusal = reach(registered.id, registered.manifest);
+    if (refusal) return refusal;
+  }
+  return reach(manifest.className, manifest);
 }
 
 function sameClass(first: PomComponentManifest, second: PomComponentManifest) {
@@ -754,13 +762,7 @@ function createComponentTool(
     const args = values[1] ?? {};
     const toolPath = `${pomId}.${publicComponentPath(path)}`;
     const label = `call ${wrapper.toolName} on`;
-    // A Page Object Root without a role of its own gets a synthetic ref.
-    const { element } = await resolveRef(
-      ref,
-      { synthetic: "allow" },
-      label,
-      document
-    );
+    const { element } = await resolveRef(ref, label, document);
     const componentInstance = await resolveComponentByElementStep(
       pageInstance,
       path,

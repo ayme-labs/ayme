@@ -16,6 +16,7 @@ import { listRegisteredPomTools, type CallerAwarePomTool } from "./registry";
 import type { ToolAvailability } from "./pomInstance";
 import { RuntimeStateError } from "./errors";
 import { listPeekTools, type PeekTool } from "./peek";
+import { inReachBatch } from "./reachMeasurement";
 
 /**
  * A tool of the session: `execute` runs it for a Run, whose context carries
@@ -180,11 +181,14 @@ export async function listElementToolTargets(
 ): Promise<Map<string, AriaRef[]>> {
   const elementTools = listElementTools();
   const current = capture ?? (await lookAtPageStateForDocument(document));
-  return new Map(
-    elementTools.map(({ tool, filter }) => [
-      tool.name,
-      acceptedRefNodes(filter, current).map((node) => node.ref),
-    ])
+  return inReachBatch(
+    () =>
+      new Map(
+        elementTools.map(({ tool, filter }) => [
+          tool.name,
+          acceptedRefNodes(filter, current).map((node) => node.ref),
+        ])
+      )
   );
 }
 

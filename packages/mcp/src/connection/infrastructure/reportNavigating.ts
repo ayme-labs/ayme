@@ -8,7 +8,7 @@ import type { ClientBehaviour } from "../application/behaviours";
  * listener intercepted, such as a router, or cancelled, and a download.
  * Without the Navigation API it reports nothing.
  */
-export const reportLeaving: ClientBehaviour = ({ channel }) => {
+export const reportNavigating: ClientBehaviour = ({ channel }) => {
   const { navigation } = window;
   if (!navigation) return () => {};
   const watching = new AbortController();
@@ -23,7 +23,7 @@ export const reportLeaving: ClientBehaviour = ({ channel }) => {
         if (watching.signal.aborted) return;
         if (navigation.transition !== null || event.defaultPrevented) return;
         void channel
-          .reportLeaving({
+          .reportNavigating({
             url: event.destination.url,
             reload: event.navigationType === "reload",
           })

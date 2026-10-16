@@ -101,9 +101,9 @@ describe("the Ayme page state helper in Chromium", () => {
   });
 
   it("rejects click and fill with the thrown error", async () => {
+    // A click reaches the disabled button and times out waiting for it.
     document.body.innerHTML =
-      '<button id="save">Save changes</button><input id="name" aria-label="Name">' +
-      '<div style="position: fixed; inset: 0"></div>';
+      '<button id="save" disabled>Save changes</button><input id="name" aria-label="Name">';
     const runtime = createAymeRuntime(
       createPlaywrightLitePage({ actionTimeout: 1000 })
     );
