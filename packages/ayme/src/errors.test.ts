@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  asSentence,
   AymeError,
   RefResolutionError,
   RuntimeStateError,
@@ -37,5 +38,14 @@ describe("Ayme errors", () => {
     expect(publicEntry.RefResolutionError).toBe(RefResolutionError);
     expect(publicEntry.RuntimeStateError).toBe(RuntimeStateError);
     expect(publicEntry.DecisionEndpointError).toBe(DecisionEndpointError);
+  });
+
+  it.each([
+    ["It failed", "It failed."],
+    ["It failed.", "It failed."],
+    ["Did you mean it?", "Did you mean it?"],
+    ["Stop!", "Stop!"],
+  ])("closes %o as a sentence", (text, sentence) => {
+    expect(asSentence(text)).toBe(sentence);
   });
 });

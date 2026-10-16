@@ -106,6 +106,7 @@ let instances = 0;
  * `ayme.peek` and removes it when the component is destroyed. The agent reads
  * the values `read` returns when it asks. `id` defaults to one per mounted
  * component. On the server, adds nothing.
+ * @experimental
  */
 export function peek(read: () => unknown, name: string, id?: string): void {
   const runtime = getContext<UseAymeResult | undefined>(runtimeKey);

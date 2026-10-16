@@ -10,13 +10,13 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "test:e2e": "pnpm run test:e2e:dev && pnpm run test:e2e:prod",
-    "test:e2e:dev": "AYME_E2E_RENDER=spa playwright test",
+    "test:e2e:dev": "AYME_E2E_RENDER=spa playwright test && playwright test --config playwright.benchScripted.config.ts",
     "test:e2e:prod": "AYME_E2E_SERVER=production AYME_E2E_RENDER=spa playwright test",
     "test:goals": "playwright test --config playwright.goals.config.ts --reporter=list",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e",
+    "@ayme-dev/playwright-lite": "github:ayme-labs/playwright-lite#91fe465749b420f351ea10f035e005cbd6019d4d",
     "@ayme-dev/ayme": "workspace:*",
     "@ayme-dev/inspector": "workspace:*",
     "@ayme-dev/mcp": "workspace:*",

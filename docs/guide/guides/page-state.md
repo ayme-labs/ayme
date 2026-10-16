@@ -12,7 +12,16 @@ Page state works without WebMCP publication. An agent reads it with the `snapsho
 
 ## Structural Refs
 
-Each node in the state carries a Structural Ref, such as `e5`. An agent passes it back as the `target` of a Browser Tool, as the `ref` of a Custom Tool, or as the `ref` that picks an item of a Page Object collection. A ref belongs to the capture it came from; within one document, Ayme keeps refs continuous on a best-effort basis, so an earlier ref can resolve to the current version of the same node. A ref that no longer matches anything fails with a `RefResolutionError`.
+Each node in the state carries a Structural Ref, such as `e5`. An agent passes it back as the `target` of a Browser Tool, as the `ref` of a Custom Tool, or as the `ref` that picks an item of a Page Object collection. A ref belongs to the capture it came from; within one document, Ayme keeps refs continuous on a best-effort basis, so an earlier ref can resolve to the current version of the same node. A ref that cannot be used fails with a `RefResolutionError` whose reason says why:
+
+| Reason                                                   | Meaning                                                                                                      |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `no snapshot of the current document issued it`          | No capture in this document printed the ref, such as one written by hand or one from before a full load.     |
+| `it is no longer on the page`                            | The node the ref named was removed.                                                                          |
+| `it cannot be matched unambiguously to the current page` | Ayme cannot tell which current node the ref continues as. It does not mean the ref matches several elements. |
+| `it has no element on the page now`                      | The ref names a node of the latest capture that has no live element.                                         |
+
+In each case, take a `snapshot` and use the ref it prints for the node. When an input writes a ref another way, such as `[ref=e36]`, the message names the ref it writes, `e36`, and the tool takes that ref alone.
 
 ## Keep parts of the page out
 

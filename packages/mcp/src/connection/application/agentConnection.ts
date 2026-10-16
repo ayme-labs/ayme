@@ -6,13 +6,18 @@ import type {
   ToolCall,
   ToolCallOutcome,
 } from "../../contract";
-import { unansweredCallText, type PageExit } from "../domain/unansweredCall";
+import {
+  unansweredCallText,
+  type HeldCallExit,
+  type PageExit,
+} from "../domain/unansweredCall";
 
 /**
- * How long the server waits for a tab that went away with calls in flight to
- * reconnect, so it can answer them with the new page's tools.
+ * How long the server waits for a tab that went away to reconnect, so it
+ * can answer the calls in flight with the new page's tools and send the
+ * calls it holds to the new page.
  */
-export const RECONNECT_WAIT_MS = 3_000;
+export const RECONNECT_WAIT_MS = 5_000;
 
 /** What happened on the Agent Connection. */
 export type ConnectionEvent =
@@ -37,6 +42,7 @@ function answerUnanswered(calls: Map<string, Answer>, exit: PageExit) {
  */
 export class ChannelSession {
   #tools: readonly PageTool[] = [];
+  #reported = false;
   readonly #outbox: ToolCall[] = [];
   #wake: (() => void) | undefined;
   #pending = new Map<string, Answer>();
@@ -50,9 +56,15 @@ export class ChannelSession {
     return this.#tools;
   }
 
+  /** Whether the page or App Process has reported its tools yet. */
+  get reported(): boolean {
+    return this.#reported;
+  }
+
   /** The page or App Process reports its tools. */
   publishTools(tools: readonly PageTool[]) {
     this.#tools = tools;
+    this.#reported = true;
     this.#onToolsChanged(tools);
   }
 
@@ -116,8 +128,11 @@ export class PageSession extends ChannelSession {
   readonly url: string;
   /** Ends the page's channel and tells it another tab paired in its place. */
   readonly disconnect: () => void;
-  /** The new document the page said it started loading, if any. */
-  leaving: PageLeaving | undefined;
+  /** When the page connected, by `Date.now()`. */
+  readonly connectedAt = Date.now();
+  #leaving: PageLeaving | undefined;
+  /** When the page last said it started loading, by `Date.now()`. */
+  leftAt = 0;
 
   constructor(
     hello: PageHello,
@@ -128,6 +143,16 @@ export class PageSession extends ChannelSession {
     this.tab = hello.tab;
     this.url = hello.url;
     this.disconnect = disconnect;
+  }
+
+  /** The new document the page said it started loading, if any. */
+  get leaving(): PageLeaving | undefined {
+    return this.#leaving;
+  }
+
+  set leaving(leaving: PageLeaving | undefined) {
+    this.#leaving = leaving;
+    this.leftAt = Date.now();
   }
 }
 
@@ -172,13 +197,16 @@ type Away = {
  * Process that connected first among those that offer it, and each call
  * goes to that connection. Every call gets one answer: its connection's,
  * or the server's when the connection left first (see
- * `unansweredCallText`).
+ * `unansweredCallText`). While the page's tab is loading a new document, a
+ * call for the page waits for the new page (see `pageReady`).
  */
 export class AgentConnection {
   #page: PageSession | undefined;
   /** In the order they connected, which decides who keeps a name. */
   readonly #processes = new Map<string, ProcessSession>();
   #away: Away | undefined;
+  /** Calls held until the page settles; see `pageReady`. */
+  readonly #held = new Set<(exit?: HeldCallExit) => void>();
   readonly #replacedTabs = new Set<string>();
   #nextCallId = 1;
   readonly #listeners = new Set<(event: ConnectionEvent) => void>();
@@ -240,6 +268,9 @@ export class AgentConnection {
       return undefined;
     }
     const previous = this.#page;
+    const replacing =
+      (previous !== undefined && previous.tab !== hello.tab) ||
+      (this.#away !== undefined && this.#away.tab !== hello.tab);
     // The same tab's earlier document is gone, whether or not its channel
     // has closed yet.
     if (previous?.tab === hello.tab) this.detach(previous);
@@ -248,6 +279,8 @@ export class AgentConnection {
       this.#replacedTabs.add(this.#away.tab);
       this.#answerAway({ type: "replaced" });
     }
+    // Calls held for the replaced tab's next page never go to another tab.
+    if (replacing) this.#releaseHeld({ type: "replaced" });
 
     const page = new PageSession(hello, disconnect, (tools) => {
       if (this.#page !== page) return;
@@ -260,6 +293,7 @@ export class AgentConnection {
           tools: tools.map((tool) => tool.name),
         });
       }
+      this.#releaseHeld();
       this.#emit({ type: "toolsChanged", tools: this.tools });
     });
     this.#page = page;
@@ -309,15 +343,51 @@ export class AgentConnection {
     const { tab, url, leaving } = page;
     const timer = setTimeout(() => {
       const left = this.#away?.leaving;
-      this.#answerAway(
-        left
-          ? { type: left.reload ? "reloaded" : "navigated", url: left.url }
-          : { type: "closed" }
-      );
+      const exit: HeldCallExit = left
+        ? { type: left.reload ? "reloaded" : "navigated", url: left.url }
+        : { type: "closed" };
+      this.#answerAway(exit);
+      // A page of the tab reconnected and is about to report its tools.
+      this.#releaseHeld(this.#page?.tab === tab ? undefined : exit);
     }, RECONNECT_WAIT_MS);
     // In Node, the wait never keeps a stopping server running.
     (timer as { unref?: () => void }).unref?.();
     this.#away = { tab, url, leaving, calls, timer };
+  }
+
+  /**
+   * Resolves when a call of the tool `name` can go out. A call for an App
+   * Process goes at once. A call for the page waits while the page's tab is
+   * loading a new document: from when the page says it is leaving, through
+   * the wait for its tab to reconnect, until a page has reported its
+   * tools. It resolves with how the page left when its tab did not
+   * reconnect in time, another tab paired in its place or the server
+   * stopped, so the call never ran. A page that said it was leaving but
+   * stays, as when its navigation was cancelled, gets the call after
+   * `RECONNECT_WAIT_MS`, and later calls at once.
+   */
+  pageReady(name: string): Promise<HeldCallExit | undefined> {
+    if (!this.#pageSettling || this.#holderOf(name) instanceof ProcessSession)
+      return Promise.resolve(undefined);
+    return new Promise((resolve) => {
+      let timer: ReturnType<typeof setTimeout>;
+      const settle = (exit?: HeldCallExit) => {
+        clearTimeout(timer);
+        this.#held.delete(release);
+        resolve(exit);
+      };
+      const release = (exit?: HeldCallExit) => {
+        if (exit || !this.#pageSettling) settle(exit);
+      };
+      const expire = () => {
+        const wait = this.#settlingFor();
+        if (wait <= 0) return settle();
+        timer = setTimeout(expire, wait);
+        (timer as { unref?: () => void }).unref?.();
+      };
+      expire();
+      this.#held.add(release);
+    });
   }
 
   /**
@@ -428,6 +498,7 @@ export class AgentConnection {
       this.#emit({ type: "unpaired" });
     }
     this.#answerAway({ type: "stopped" });
+    this.#releaseHeld({ type: "stopped" });
   }
 
   /** Calls `listener` with every event; returns what unsubscribes it. */
@@ -478,6 +549,41 @@ export class AgentConnection {
     answerUnanswered(page.takeUnanswered(), { type: "replaced" });
     this.#emit({ type: "unpaired" });
     page.disconnect();
+  }
+
+  /**
+   * Whether the page's tab is loading a new document: the page said it is
+   * leaving, its tab is away, or a page paired and has not reported its
+   * tools yet.
+   */
+  get #pageSettling(): boolean {
+    return this.#settlingFor() > 0;
+  }
+
+  /**
+   * How long, in milliseconds, the page may go on settling: until
+   * `RECONNECT_WAIT_MS` after it said it is leaving, or after it paired
+   * without reporting its tools. A page still there after that stays, as
+   * when its navigation was cancelled. While its tab is away, the wait for
+   * the tab ends the settling, so this is a time to look again.
+   */
+  #settlingFor(): number {
+    const page = this.#page;
+    if (!page) return this.#away ? RECONNECT_WAIT_MS : 0;
+    const now = Date.now();
+    const leaving = page.leaving ? page.leftAt + RECONNECT_WAIT_MS - now : 0;
+    const reporting = page.reported
+      ? 0
+      : page.connectedAt + RECONNECT_WAIT_MS - now;
+    return Math.max(leaving, reporting, 0);
+  }
+
+  /**
+   * Lets the held calls go out once the page has settled, or answers them
+   * with `exit` when it never will.
+   */
+  #releaseHeld(exit?: HeldCallExit) {
+    for (const release of this.#held) release(exit);
   }
 
   #answerAway(exit: PageExit) {

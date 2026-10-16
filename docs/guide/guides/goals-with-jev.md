@@ -2,6 +2,8 @@
 
 How to let a decision model drive your page toward a goal, with the Goal Loop, your Decision Endpoint and the Handover.
 
+> **Experimental:** this may change in any release. See [Experimental APIs](../reference/experimental-apis.md).
+
 ## What the Goal Loop does
 
 An agent connected to your page can hand Ayme a goal in natural language, such as "archive the oldest item", through the `goal` tool. The Goal Loop drives the page toward it in steps. In each step a decision model, a fast model that picks among options it is given, chooses at most one operation to run, not the calling agent's LLM. The model Ayme uses today is Jev, TypeSafe's System One model. When the loop stops, it hands control back to the calling agent with a Handover: why it stopped, what it did and what to do next.
@@ -98,8 +100,13 @@ The model decides each step on the current Structural Page State as JSON, one ob
 
 A step first asks which operation moves closest to the goal and whether the goal is met. The operations are the available Page Object Tools, Custom Tools and single-element Browser Tools; a Page Object Tool that cannot run now is not offered. When the chosen operation takes arguments from a closed set, a Structural Ref, an enum value or a boolean, a second request asks for all of them at once, and the operation runs with the chosen values.
 
+The first request also asks which [Goal Value](#goal-values) the next operation would enter, before the operation is known: one question per required text or number parameter, shared by the single-element tools whose parameter has the same name and kind, at most eight. Only the answers that cover the chosen operation are read; one that names a Goal Value fills its parameter, and the second request then picks the element that should receive that value. Past eight, or when the answer names no Goal Value, the parameter is asked in the second request as below.
+
 - The ref options are the elements the operation's filter keeps, one per element in document order; nothing is merged or ranked.
+- A second request that only picks an element is sent the candidates instead of the page: each with its named ancestors, the nearest heading and the nearest text before it, its own text, props and state. The goal, the Goal Values and the history travel with it.
+- A required choice of a collection item ends with "none of these", so the model is never made to act on an item the goal does not mean. That answer ends the loop with `no_fitting_option`. A ref within the cap has no such option.
 - One question offers at most 255 options. More elements are cut into chunks of at most 254 plus "none of these", asked side by side. When exactly one chunk names an element, the operation runs on it; when several do, one more question offers just those; when none does, the loop ends with `no_fitting_option`.
+- An item of a collection is offered while its action is available on it and the page state gives it a ref. A Handover that ends at such a choice names each item left out and why: `unavailable: ` and its Availability Reason, or `no ref in the page state`.
 - An optional closed-set parameter gets an extra choice that leaves it unset.
 - The model never writes a free value: it picks one from the [Goal Values](#goal-values), or the loop ends with `needs_value` so that the calling agent supplies it.
 
@@ -115,11 +122,15 @@ goal({
 });
 ```
 
-The values are candidates, not instructions. At any step, a parameter the loop cannot fill from the page is offered the values whose type fits it: strings for a string or a list of strings, any number for a `number`, whole numbers for an `integer`. Booleans, objects and lists of other types are never filled from values. One value may be used at several steps and for several parameters. `values` takes 1 to 254 entries; anything else is refused as invalid input before the loop starts. Both stages of every step see the values as passed, in their state.
+The values are candidates, not instructions. At any step, a parameter the loop cannot fill from the page is offered the values whose type fits it: strings for a `string`, any number for a `number`, whole numbers for an `integer`, and the same for the items of a list. One value may be used at several steps and for several parameters. `values` takes 1 to 254 entries; anything else is refused as invalid input before the loop starts. Both stages of every step see the values as passed, in their state.
 
 - **Required parameter.** One question offers each fitting value as `label: value`, plus "none of these". With no fitting value the loop ends with `needs_value` without asking, naming the operation and its required parameters; when the model answers "none of these", it ends with `needs_value` naming the operation and that parameter.
 - **Optional parameter.** One question offers the fitting values plus "leave unset". With no fitting value it stays unset.
-- **List of strings.** Each fitting value is a yes-or-no question of its own, asked in the same request; every value scored 0.5 or more is included, in the order of `values`. A select that holds one option at a time receives only the value scored highest. A required list that includes nothing ends with `needs_value`; an optional one stays unset.
+- **List of strings or numbers.** Each fitting value is a yes-or-no question of its own, asked in the same request; every value scored 0.5 or more is included, in the order of `values`. A select that holds one option at a time receives only the value scored highest. A required list that includes nothing ends with `needs_value`; an optional one stays unset.
+- **List of enum values.** Each enum value is a yes-or-no question of its own, in the same way; Goal Values are never offered, so the list holds only enum values. A required list that includes nothing ends with `needs_value`, and `next` says none of its allowed values belongs in it.
+- **Tuple.** Each slot is a parameter of its own, filled by its own rule. A tuple ends at its first slot left unset, an optional tuple that ends up empty or missing a slot it requires is left out, and a required tuple with no slot set is passed empty. A handover names the tuple, not its slot, and a step's `chosen` leaves out the slots that hold no value.
+- **Union of primitives**, such as `string | boolean`. One question offers its enum values and booleans together with the values that fit its other types.
+- **Map, list of booleans, list of objects, list of lists, object.** Never filled from values: a required one ends with `needs_value`, an optional one stays unset.
 
 The history shows the value a step used as `label: value`, such as `fill(textbox "Survey name", survey name: Q4 Feedback)`. After a `needs_value`, call `goal` again with the missing value added; the steps already taken stay done, and the new run continues from the current page.
 
@@ -134,33 +145,37 @@ Each step sends the pruned page state, the goal and the step's question from the
 ```ts
 {
   reason:  "done" | "no_fitting_option" | "needs_value"
-         | "action_failed" | "step_budget" | "decide_failed"
-         | "page_loading",
+         | "action_failed" | "no_progress" | "step_budget"
+         | "decide_failed" | "page_loading",
   next:    string,     // plain words: what the calling agent should do now
   history: {
     operation: string,   // the tool's name; a Page Object Tool's qualified name
     chosen: Record<string, { key: string, description: string }>,
     result: string,      // "ok", or the error the action failed with
     page_changed: boolean,
+    changes?: string,    // what the step changed, cut to 400 characters; absent when nothing
     did: string,         // operation(description, …), for a human skimming
   }[],
-  needs?:  { tool: string, parameters: string[] },  // only with needs_value
+  needs?:  { tool: string, parameters: string[] },  // only with needs_value or no_progress
   loading?: string,    // only with page_loading: the URL the load started for
   changes?: string,    // what the whole run changed; absent when nothing did
 }
 ```
 
-| Reason              | Meaning                                                                                                                              |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `done`              | The model judged the goal achieved (goal_met ≥ 0.5).                                                                                 |
-| `no_fitting_option` | The model chose "none", as no available operation fits, or every chunk of a ref question answered "none of these".                   |
-| `needs_value`       | The chosen operation needs values the loop cannot fill, from the page or the Goal Values. `needs` names the tool and its parameters. |
-| `action_failed`     | Two operations failed in a row.                                                                                                      |
-| `step_budget`       | `maxSteps` ran out before the goal was achieved.                                                                                     |
-| `decide_failed`     | The decision function failed: network, no endpoint mounted, rejected or malformed. `next` advises a retry only when one can help.    |
-| `page_loading`      | The last step started a [full page load](page-state.md#full-page-loads) of the URL in `loading`; call `snapshot` once it has loaded. |
+| Reason              | Meaning                                                                                                                                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `done`              | The model judged the goal achieved (goal_met ≥ 0.5).                                                                                                                                                                                   |
+| `no_fitting_option` | The model chose "none", as no available operation fits, or answered "none of these" to a collection item or in every chunk of a ref.                                                                                                   |
+| `needs_value`       | The chosen operation needs values the loop cannot fill, from the page or the Goal Values. `needs` names the tool and its parameters.                                                                                                   |
+| `action_failed`     | Two operations failed in a row.                                                                                                                                                                                                        |
+| `no_progress`       | The loop stopped before repeating its last step to no effect. `needs` names the tool and its parameters.                                                                                                                               |
+| `step_budget`       | `maxSteps` ran out before the goal was achieved.                                                                                                                                                                                       |
+| `decide_failed`     | The decision function failed (network, no endpoint mounted, rejected or malformed), its answer could not be used, or the page offers more operations than one decision can choose from. `next` advises a retry only when one can help. |
+| `page_loading`      | The last step started a [full page load](page-state.md#full-page-loads) of the URL in `loading`; call `snapshot` once it has loaded.                                                                                                   |
 
-`history` records each operation the loop ran: the tool in `operation`; in `chosen`, per parameter asked, the key of the option the model chose and its description exactly as offered, a choice to leave it unset included; `"ok"` or an error message in `result`; whether the page changed in `page_changed`; and `did`, a one-line label such as `click(button "Add item")`. A step that hands over before acting records nothing. The model is sent the same entries as its history.
+A step repeats to no effect when it has the same operation and chosen arguments as the step before, and that step did not change the page, or when it would be the third in a row even though the page changed. The loop does not run it again: `next` names the step, and tells the calling agent to perform it itself or to call `goal` again with a goal that names the element.
+
+`history` records each operation the loop ran: the tool in `operation`; in `chosen`, per parameter asked, the key of the option the model chose and its description exactly as offered, a choice to leave it unset included; `"ok"` or an error message in `result`; whether the page changed in `page_changed`; in `changes`, what the step changed, its Change Record cut to 400 characters with `… (cut)` on a line of its own where it was cut, absent when the step changed nothing; and `did`, a one-line label such as `click(button "Add item")`. A step that hands over before acting records nothing. The model is sent the same entries as its history.
 
 `changes` is one Change Record for the whole run: the page the calling agent last received against the page after the run, which becomes the agent's page for its next Change Record. A run that opened a dialog, closed it and archived an item hands over only the net result:
 
@@ -170,13 +185,19 @@ Each step sends the pruned page state, the goal and the step's question from the
   next: "The goal has been achieved. Continue with your next task.",
   history: [
     { operation: "InboxPage.openDialog", chosen: {}, result: "ok",
-      page_changed: true, did: "InboxPage.openDialog()" },
+      page_changed: true, changes: '- e12 <added> dialog "Archive invoice"',
+      did: "InboxPage.openDialog()" },
     { operation: "InboxPage.closeDialog", chosen: {}, result: "ok",
-      page_changed: true, did: "InboxPage.closeDialog()" },
+      page_changed: true, changes: '- e12 <removed> dialog "Archive invoice"',
+      did: "InboxPage.closeDialog()" },
     { operation: "InboxPage.invoices.archive",
       chosen: { ref: { key: "e5",
         description: 'InboxPage.invoices[0] (listitem "Invoice 7")' } },
       result: "ok", page_changed: true,
+      changes: `- e2 main:
+  - e4 list:
+    - e5 <removed> listitem: Invoice 7
+  - e9 <added> paragraph: Archived Invoice 7`,
       did: 'InboxPage.invoices.archive(InboxPage.invoices[0] (listitem "Invoice 7"))' },
   ],
   changes: `- e2 main:

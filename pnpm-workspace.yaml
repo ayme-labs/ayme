@@ -2,7 +2,7 @@ packages:
   - apps/*
   - packages/*
 allowBuilds:
-  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/cd81df2eb2887e4b3bdfb3dba3cda29f29f4075e": true
+  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/91fe465749b420f351ea10f035e005cbd6019d4d": true
   "@parcel/watcher": false
   esbuild: true
   lefthook: true

@@ -6,13 +6,13 @@ import type { DecisionResponse } from "./decisionWire";
 import { createPage } from "./browserPage";
 import {
   configureGoalLoop,
-  getLastGoalLoopRunResult,
   type GoalLoopDecisionFunction,
   type Handover,
 } from "./goalLoop";
 import { agentTools } from "./publication.testSupport";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
+import { getLastGoalLoopRunResult } from "./testing";
 
 type ActionResultShape = {
   page_changed: boolean;

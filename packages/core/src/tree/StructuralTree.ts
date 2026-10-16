@@ -430,7 +430,11 @@ export class StructuralTree {
       refAllocator,
       sameIdentity: options.sameIdentity ?? (() => true),
     };
-    const rootsAreCompatible = before.root.role === after.root.role;
+    // Roots pair under the same ref rule as children, so a root that survives
+    // below a new wrapper root is not also matched to that wrapper.
+    const rootsAreCompatible =
+      before.root.role === after.root.role &&
+      StructuralTree._refsMayPair(before.root, after.root, context);
     const beforeRoot = rootsAreCompatible
       ? before.root
       : StructuralTree._wrapInFragment(before.root);
@@ -458,6 +462,24 @@ export class StructuralTree {
       beforeByAfterRef,
       ambiguousBeforeRefs,
     });
+  }
+
+  /**
+   * A surviving ref reserves both ends of its match, even across parents; two
+   * refs are a candidate pair only when the caller's identity record does not
+   * tell them apart.
+   */
+  private static _refsMayPair(
+    beforeNode: StructuralNode,
+    afterNode: StructuralNode,
+    context: ReconcileContext
+  ): boolean {
+    return (
+      beforeNode.ref === afterNode.ref ||
+      (!context.afterNodesByRef.has(beforeNode.ref) &&
+        !context.beforeNodesByRef.has(afterNode.ref) &&
+        context.sameIdentity(beforeNode.ref, afterNode.ref))
+    );
   }
 
   private static _wrapInFragment(node: StructuralNode): StructuralNode {
@@ -631,17 +653,12 @@ export class StructuralTree {
         const afterChild = afterChildren[afterIndex];
         if (afterChild === undefined || typeof afterChild === "string")
           continue;
-        // A surviving ref reserves both ends of its match, even across parents; two refs are a
-        // candidate pair only when the caller's identity record does not tell them apart.
         const candidates = StructuralTree._findNodeCandidates(
           beforeChildren,
           beforeMatches,
           afterChild,
           (beforeNode, afterNode) =>
-            (beforeNode.ref === afterNode.ref ||
-              (!context.afterNodesByRef.has(beforeNode.ref) &&
-                !context.beforeNodesByRef.has(afterNode.ref) &&
-                context.sameIdentity(beforeNode.ref, afterNode.ref))) &&
+            StructuralTree._refsMayPair(beforeNode, afterNode, context) &&
             comparator(beforeNode, afterNode)
         );
         candidatesByAfterIndex.set(afterIndex, candidates);

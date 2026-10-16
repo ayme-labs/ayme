@@ -243,7 +243,7 @@ export async function resolveElementTarget(
   // fails as what it is.
   if (LOCATOR_EXPRESSION.test(requested))
     throw new ToolInputError(
-      `The target "${requested}" is a Playwright locator expression, which tools do not take.`
+      `Cannot ${definition.label} "${requested}": it is a Playwright locator expression, which tools do not take.`
     );
   const page = requireAymeRuntimePage();
   let elements: Element[];
@@ -251,7 +251,7 @@ export async function resolveElementTarget(
     elements = resolveLocatorElements(page.locator(requested));
   } catch (error) {
     throw new ToolInputError(
-      `The target "${requested}" is neither a Structural Ref nor a selector this runtime supports: ${
+      `Cannot ${definition.label} "${requested}": it is neither a Structural Ref nor a selector this runtime supports: ${
         error instanceof Error ? error.message : String(error)
       }${hint ? `. ${hint}` : ""}`
     );

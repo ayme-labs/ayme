@@ -10,6 +10,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import { generateLocator } from "@ayme-dev/playwright-lite/internal";
 import type { JsonSchema } from "./contracts";
+import { asSentence } from "./errors";
 import {
   requireCurrentDocument,
   resolveElementTarget,
@@ -122,9 +123,9 @@ function recommendLocator(
   return locator as PlaywrightLocatorString;
 }
 
-/** A failure's reason, without its closing full stop. */
+/** A failure's reason, as thrown. */
 const reason = (error: unknown) =>
-  (error instanceof Error ? error.message : String(error)).replace(/\.$/, "");
+  error instanceof Error ? error.message : String(error);
 
 type Container = { within: string; element: Element };
 
@@ -135,13 +136,13 @@ async function entryFor(
 ): Promise<Entry> {
   const fail = (why: string) => ({
     target,
-    error: `Cannot ${TARGET_LABEL} "${target}": ${why}.`,
+    error: asSentence(`Cannot ${TARGET_LABEL} "${target}": ${why}`),
   });
   let element: Element;
   try {
     element = await resolve(TARGET_LABEL, target, currentDocument);
   } catch (error) {
-    return { target, error: `${reason(error)}.` };
+    return { target, error: asSentence(reason(error)) };
   }
   if (container && !isInside(element, container.element))
     return fail(`it is not inside the container "${container.within}"`);
@@ -164,7 +165,7 @@ async function groupFor(
         element: await resolve(WITHIN_LABEL, group.within, currentDocument),
       };
     } catch (error) {
-      return { within: group.within, error: `${reason(error)}.` };
+      return { within: group.within, error: asSentence(reason(error)) };
     }
   const locators: Entry[] = [];
   for (const target of group.targets)

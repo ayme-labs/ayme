@@ -187,7 +187,7 @@ describe("Custom Tools in Chromium", () => {
     expect(
       await call("highlight_element", { ref: "e999" }).catch(errorText)
     ).toBe(
-      'RefResolutionError: Cannot run "highlight_element" on ref "e999": no snapshot issued it.'
+      'RefResolutionError: Cannot run "highlight_element" on ref "e999": no snapshot of the current document issued it.'
     );
     expect(targets).toHaveLength(0);
   });

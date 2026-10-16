@@ -53,3 +53,7 @@ export function errorText(error: unknown): string {
   if (!error.name || error.name === "Error") return error.message;
   return `${error.name}: ${error.message}`;
 }
+
+/** `text` closed with a full stop, unless it already ends in `.`, `?` or `!`. */
+export const asSentence = (text: string): string =>
+  /[.?!]$/.test(text) ? text : `${text}.`;

@@ -146,8 +146,8 @@ The [SvelteKit example](https://github.com/ayme-labs/ayme/blob/main/apps/example
 
 ## API
 
-| Export                  | Kind       | Does                                                                                                     |
-| ----------------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
-| `useAyme(options?)`     | Composable | Without an owner above, creates and owns the session. Returns `{ ayme, webMCP }`.                        |
-| `usePageObject(Model)`  | Composable | Registers the class while the component lives and returns its instance.                                  |
-| `peek(read, name, id?)` | Composable | Adds the component's instance of the Peek `name` while it is mounted, reading the values `read` returns. |
+| Export                  | Kind       | Does                                                                                                                                                        |
+| ----------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useAyme(options?)`     | Composable | Without an owner above, creates and owns the session. Returns `{ ayme, webMCP }`.                                                                           |
+| `usePageObject(Model)`  | Composable | Registers the class while the component lives and returns its instance.                                                                                     |
+| `peek(read, name, id?)` | Composable | [Experimental](../reference/experimental-apis.md). Adds the component's instance of the Peek `name` while it is mounted, reading the values `read` returns. |

@@ -78,6 +78,8 @@ const unsubscribe = ayme.runs.subscribe((runs) => {
 
 ## Peek at app state
 
+> **Experimental:** this may change in any release. See [Experimental APIs](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/experimental-apis.md).
+
 While a coding agent or the Inspector is connected, `ayme.peek` lets the agent read state the page does not show. Each name becomes a Peek Tool, `peek.<name>`, which reads the values when the agent calls it:
 
 ```ts
@@ -91,6 +93,8 @@ await ayme.tools.run("peek.cart", {}); // { name: "cart", instances: [{ values: 
 `read` may be async. Pass an id as the third argument for one instance per id, such as one per mounted component; without one, a later call replaces the earlier one. The returned function removes the instance. Peeks do nothing unless the session has `agentConnection` on, or `inspector` in the browser, and WebMCP never publishes them. The [reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/ayme.md#aymepeek) has the details.
 
 ## Peek at server state
+
+> **Experimental:** this may change in any release. See [Experimental APIs](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/experimental-apis.md).
 
 Your app's own Node processes, such as its dev server or an Express backend, can offer Peeks too, as `peek.node.<name>`. Install `@ayme-dev/mcp` beside `@ayme-dev/ayme` there, and start Ayme once, in the server's entry point: the session becomes the process's App Process, and a process has one. The sessions your framework package creates to render on the server never claim it. An Express backend, in `server/ayme.ts`:
 
