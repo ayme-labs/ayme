@@ -953,7 +953,7 @@ describe("live Page Object registry", () => {
 
   it("lists an obstructed root's tools unavailable, and reads them again when a page state may name what is in the way", async () => {
     const { registry, session } = await setup();
-    const { measurePomRoot } = await import("./pomRootMeasurement");
+    const { measurePomRoot } = await import("./reachMeasurement");
     vi.mocked(measurePomRoot).mockResolvedValue({
       present: true,
       available: false,

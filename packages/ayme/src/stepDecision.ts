@@ -290,7 +290,9 @@ function planStop(
     case "needs_ref_choice":
       return stop(
         "needs_value",
-        `The operation "${tool.name}" acts on one element, and the loop found no element on the current page it applies to. ${pickYourself(plan.parameter)}`,
+        plan.unreachable
+          ? `The operation "${tool.name}" acts on one element; ${plan.unreachable === 1 ? "1 element" : `${plan.unreachable} elements`} on the current page match it, and the operation would reach none of them.`
+          : `The operation "${tool.name}" acts on one element, and the loop found no element on the current page it applies to. ${pickYourself(plan.parameter)}`,
         { tool: tool.name, parameters: [plan.parameter] }
       );
     case "needs_instance_choice":

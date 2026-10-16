@@ -10,7 +10,7 @@ vi.mock("@ayme-dev/playwright-lite/internal", () => ({
 }));
 
 import type { Locator } from "@playwright/test";
-import { measurePomRoot } from "./pomRootMeasurement";
+import { measurePomRoot } from "./reachMeasurement";
 import { observePomRoot } from "./pomRootObservation";
 
 // Unit tests: what one observation of a Page Object Root names as in the

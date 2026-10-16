@@ -42,7 +42,11 @@ const refSelectorEngine = () => ({
   },
 });
 
-let registered = false;
+// On the global object, not in this module: the selectors registry outlives
+// a reload of this module (as a test's `vi.resetModules` does), and refuses a
+// second registration of the name.
+const REGISTERED = Symbol.for("ayme.refSelectorEngine.registered");
+const registry = globalThis as { [REGISTERED]?: true };
 
 /**
  * Package-internal: registers `ayme-ref`, the selector engine that resolves
@@ -52,8 +56,8 @@ let registered = false;
  * refused by the selectors registry.
  */
 export function registerRefSelectorEngine(): void {
-  if (registered) return;
-  registered = true;
+  if (registry[REGISTERED]) return;
+  registry[REGISTERED] = true;
   // Registration completes synchronously; the promise only reports a name
   // this guard already excludes.
   void selectors.register(ENGINE_NAME, refSelectorEngine);

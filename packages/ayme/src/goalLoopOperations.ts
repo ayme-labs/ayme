@@ -19,12 +19,16 @@ import type { StartChildRun } from "./run";
  */
 export function buildToolOptions(): ToolOption[] {
   const elementTools: GoalLoopOperation[] = listElementTools().map(
-    ({ tool, targetField, loopInputSchema, filter }) => ({
+    ({ tool, targetField, loopInputSchema, filter, matches }) => ({
       name: tool.name,
       description: tool.description,
       execute: (input: unknown, run: StartChildRun) => run(tool.name, input),
       requiredParams: [...(loopInputSchema.required ?? [])],
-      args: specsOfElementToolSchema(loopInputSchema, targetField, filter),
+      args: specsOfElementToolSchema(
+        loopInputSchema,
+        targetField,
+        matches ? { kind: "ref", filter, matches } : { kind: "ref", filter }
+      ),
     })
   );
   const navigationTools: GoalLoopOperation[] = NAVIGATION_TOOLS.map((tool) => ({

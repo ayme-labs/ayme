@@ -531,6 +531,27 @@ describe("Goal Loop goal in Chromium", () => {
     });
   });
 
+  it("says a click would reach none of the elements a chosen Browser Tool matches", async () => {
+    setupDom();
+    const dialog = document.createElement("dialog");
+    dialog.textContent = "Saving…";
+    document.body.append(dialog);
+    dialog.showModal();
+    const tool = await getPublishedPursueGoal(
+      scriptedDecisionFn([{ operation: "click", goal_met: 0.1 }])
+    );
+
+    const result = await tool.execute({ goal: "save", maxSteps: 5 });
+
+    expect(withoutChanges(result)).toEqual({
+      reason: "needs_value",
+      next: 'The operation "click" acts on one element; 2 elements on the current page match it, and the operation would reach none of them.',
+      history: [],
+      needs: { tool: "click", parameters: ["target"] },
+    });
+    expect(clickCount).toBe(0);
+  });
+
   it("offers a Custom Tool as an operation", async () => {
     setupDom();
     const { requests, decide } = recording(

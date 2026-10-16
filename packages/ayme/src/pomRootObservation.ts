@@ -1,7 +1,7 @@
 import type { Locator } from "@playwright/test";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
-import { containsThroughShadow, parentElement } from "./composedTree";
-import { measurePomRoot } from "./pomRootMeasurement";
+import { inTheWayOf } from "./elementReach";
+import { measurePomRoot } from "./reachMeasurement";
 
 /**
  * Package-internal: what one observation of a Page Object Root found
@@ -16,13 +16,7 @@ export type ObservedPomRoot = {
   available: boolean;
   /**
    * What an Availability Reason may name as in the way of a present root a
-   * click would not reach, nearest first; it names the first the agent's
-   * latest page state gave a ref. The open native modal the root is not in,
-   * or the root's inert ancestor, stands alone, as does an element
-   * hit-testing found that is a modal or holds the root; else the element
-   * hit-testing found and its ancestors up to the first that holds the root,
-   * since what holds the root is not in its way. Empty when nothing was found, as for
-   * every other root.
+   * click would not reach (see `inTheWayOf`); empty for every other root.
    */
   inTheWay: readonly Element[];
 };
@@ -59,40 +53,12 @@ async function observeElement(
   locator: Locator,
   element: Element
 ): Promise<ObservedPomRoot> {
-  const { present, available, blocker, hit } = await measurePomRoot(
-    locator,
-    element
-  );
-  if (!present) return { ...absent, element };
+  const measurement = await measurePomRoot(locator, element);
+  if (!measurement.present) return { ...absent, element };
   return {
     element,
-    present,
-    available,
-    inTheWay: blocker ? [blocker] : hit ? walkedUp(hit, element) : [],
+    present: true,
+    available: measurement.available,
+    inTheWay: inTheWayOf(measurement, element),
   };
-}
-
-/**
- * `hit` and its ancestors up to the first that holds `root`, or `hit` alone
- * when it holds `root` itself, as `root`'s own ancestor does when nothing
- * else takes the click, or is an open native modal.
- */
-function walkedUp(hit: Element, root: Element): Element[] {
-  if (containsThroughShadow(hit, root) || isModal(hit)) return [hit];
-  const elements: Element[] = [];
-  for (
-    let node: Element | null = hit;
-    node && !containsThroughShadow(node, root);
-    node = parentElement(node)
-  )
-    elements.push(node);
-  return elements;
-}
-
-function isModal(element: Element): boolean {
-  try {
-    return element.matches(":modal");
-  } catch {
-    return false;
-  }
 }

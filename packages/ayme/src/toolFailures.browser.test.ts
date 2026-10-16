@@ -64,9 +64,10 @@ describe("tool failures an agent gets, in Chromium", () => {
   let stop: () => void;
 
   beforeEach(async () => {
-    // The fixed overlay covers the button, so a click on it times out.
+    // The button sits above the fixed overlay, so a click reaches it, but it
+    // is disabled, so the click times out. The overlay covers the item.
     document.body.innerHTML = `
-      <button id="save">Save changes</button>
+      <button id="save" disabled style="position: relative; z-index: 1">Save changes</button>
       <ul><li id="item">Draft</li></ul>
       <div style="position: fixed; inset: 0"></div>
     `;
