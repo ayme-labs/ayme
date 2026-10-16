@@ -19,10 +19,12 @@ version. Diagnose with the "The agent cannot reach the page" section of
   again by itself, and the page's tools come back with a tool list change.
   If they don't come back, or no tab was paired, call `ayme_connect` again
   and open the new link.
-- When a tool answers that no page reconnected in its place, the tab loaded a
-  page that doesn't run Ayme's Agent Connection, and that page never pairs,
-  through `ayme_connect` either. Go back to a page of the app in that tab, in
-  your browser tool or by asking the user, and its tools return.
+- When a tool answers that no page reconnected in its place, the page the tab
+  loaded did not pair within a few seconds. A slow page of the app pairs
+  later by itself, and its tools come back with a tool list change. A page
+  that doesn't run Ayme's Agent Connection never pairs, through `ayme_connect`
+  either: go back to a page of the app in that tab, in your browser tool or by
+  asking the user, and its tools return.
 - When a ref fails to resolve, call `snapshot` and use the ref it prints for
   that node; if that ref fails the same way, use a selector such as
   `role=button[name="Save"]`. Pass a ref alone, such as `e36`, and for a
