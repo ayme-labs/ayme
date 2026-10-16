@@ -63,6 +63,74 @@ describe("StructuralIdentityLedger", () => {
     });
   });
 
+  it("resolves every ref the latest observation printed after a wrapper above the root came and went", () => {
+    const ledger = new StructuralIdentityLedger();
+    ledger.advance(
+      tree("- generic [ref=e5]:", '  - main "Playground" [ref=e12]'),
+      BEFORE_ANY_ACTION
+    );
+    ledger.advance(
+      tree(
+        "- generic [ref=e1]:",
+        "  - generic [ref=e2]:",
+        "    - generic [ref=e5]:",
+        "      - main [ref=e76]",
+        '  - dialog "Archive item" [ref=e64]'
+      ),
+      AFTER_SAVE
+    );
+    for (const printed of ["e1", "e5", "e64"])
+      expect(ledger.resolve(ref(printed))).toMatchObject({
+        currentRef: ref(printed),
+      });
+
+    ledger.advance(
+      tree("- generic [ref=e5]:", '  - main "Playground" [ref=e98]'),
+      AFTER_CLEAR
+    );
+    for (const printed of ["e5", "e98"])
+      expect(ledger.resolve(ref(printed))).toMatchObject({
+        currentRef: ref(printed),
+      });
+  });
+
+  it("lets a ref printed again continue its identity after that identity was ambiguous", () => {
+    const ledger = new StructuralIdentityLedger();
+    ledger.advance(tree('- button "Item" [ref=e1]'), BEFORE_ANY_ACTION);
+    ledger.advance(
+      tree('- button "Item" [ref=e2]', '- button "Item" [ref=e3]'),
+      AFTER_SAVE
+    );
+    for (const printed of ["e2", "e3"])
+      expect(ledger.resolve(ref(printed))).toMatchObject({
+        currentRef: ref(printed),
+      });
+
+    ledger.advance(tree('- button "Item" [ref=e1]'), AFTER_CLEAR);
+    expect(ledger.resolve(ref("e1"))).toMatchObject({ currentRef: ref("e1") });
+    expect(ledger.lifecycle(ref("e1"))).toEqual({
+      appeared: BEFORE_ANY_ACTION,
+      disappeared: null,
+    });
+  });
+
+  it("follows a node's own ref over a structural match to another identity", () => {
+    const ledger = new StructuralIdentityLedger();
+    ledger.advance(
+      tree('- button "Save" [ref=e1]', '- button "Undo" [ref=e2]'),
+      BEFORE_ANY_ACTION
+    );
+    ledger.advance(tree('- button "Save" [ref=e3]'), AFTER_SAVE);
+    expect(ledger.resolve(ref("e1"))).toMatchObject({ currentRef: ref("e3") });
+
+    ledger.advance(
+      tree('- button "Save" [ref=e3]', '- button "Undo" [ref=e2]'),
+      AFTER_CLEAR
+    );
+    expect(ledger.resolve(ref("e2"))).toMatchObject({ currentRef: ref("e2") });
+    expect(ledger.resolve(ref("e1"))).toMatchObject({ currentRef: ref("e3") });
+  });
+
   it("leaves a ref unresolved as ambiguous when two nodes claim its identity", () => {
     const ledger = new StructuralIdentityLedger();
     ledger.advance(tree('- button "Item" [ref=e1]'), BEFORE_ANY_ACTION);

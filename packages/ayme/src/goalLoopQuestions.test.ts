@@ -10,6 +10,7 @@ import {
 import type { JsonSchema } from "./contracts";
 import type { DecisionRequest, DecisionResponse } from "./decisionWire";
 import type { PageStateCapture } from "./pageState";
+import type { CollectionToolItem } from "./registry";
 import {
   NONE_OF_THESE_KEY,
   NO_VALUE_NEEDED_KEY,
@@ -17,6 +18,7 @@ import {
   buildOperationRequest,
   buildSpeculativeValueQuestions,
   completeArguments,
+  describeLeftOut,
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
@@ -193,6 +195,15 @@ async function askStageTwo(
     ),
   };
 }
+
+describe("a required ref within the cap", () => {
+  it("offers its elements only, without none of these", () => {
+    const [question] = askedQuestions(clickTool, captureOfButtons(2));
+
+    expect(question!.options.map((option) => option.key)).toEqual(["e1", "e2"]);
+    expect(question!.instructions).not.toContain(NONE_OF_THESE_KEY);
+  });
+});
 
 describe("ref questions over the option cap", () => {
   it("cuts the options into document-order chunks of at most 254 plus none of these", () => {
@@ -436,56 +447,159 @@ describe("collection instances over the option cap", () => {
       kind: "needs_instance_choice",
       parameter: "ref",
       optionCount: 256,
+      leftOut: [],
     });
   });
 });
 
 describe("collection instances", () => {
-  it("offers only the items the tool is available on", () => {
+  /** A collection tool over `roots`, as the Goal Loop lists it. */
+  const archiveTool = (
+    roots: readonly CollectionToolItem[]
+  ): GoalLoopOperation => ({
+    name: "List.archive",
+    description: "Archive an item.",
+    execute: async () => null,
+    requiredParams: ["ref"],
+    args: [
+      {
+        name: "ref",
+        path: ["ref"],
+        optional: false,
+        closedSet: { kind: "instance", roots },
+      },
+    ],
+  });
+
+  it("offers the items the tool is available on, then none of these, and keeps why the others were left out", () => {
     const capture = captureOfButtons(2);
     const [first, second] = [...capture.elementsByRef.values()];
-    const tool: GoalLoopOperation = {
-      name: "List.archive",
-      description: "Archive an item.",
-      execute: async () => null,
-      requiredParams: ["ref"],
-      args: [
-        {
-          name: "ref",
-          path: ["ref"],
-          optional: false,
-          closedSet: {
-            kind: "instance",
-            roots: [
-              {
-                label: "items[0]",
-                element: first,
-                present: true,
-                available: false,
-                reason: "already archived",
-              },
-              {
-                label: "items[1]",
-                element: second,
-                present: true,
-                available: true,
-              },
-            ],
-          },
-        },
-      ],
-    };
-
-    const plan = planArguments(tool, capture);
-
-    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
-    expect(plan.questions).toHaveLength(1);
-    const [question] = plan.questions;
-    if (question.type !== "choice")
-      throw new Error(`Unexpected question ${question.type}`);
-    expect(question.options).toEqual([
-      { key: "e2", description: 'items[1] (button "Item 2")', value: "e2" },
+    const tool = archiveTool([
+      {
+        label: "items[0]",
+        element: first!,
+        present: true,
+        available: false,
+        reason: "already archived",
+      },
+      { label: "items[1]", element: second!, present: true, available: true },
+      // An available item the capture holds no ref for.
+      {
+        label: "items[2]",
+        element: document.createElement("li"),
+        present: true,
+        available: true,
+      },
+      // Unavailable without an Availability Reason.
+      {
+        label: "items[3]",
+        element: document.createElement("li"),
+        present: true,
+        available: false,
+      },
     ]);
+
+    const [question] = askedQuestions(tool, capture);
+
+    expect(question!.options).toEqual([
+      { key: "e2", description: 'items[1] (button "Item 2")', value: "e2" },
+      {
+        key: NONE_OF_THESE_KEY,
+        description: "None of these; the item is not offered.",
+      },
+    ]);
+    expect(question!.instructions).toContain(
+      `Choose "${NONE_OF_THESE_KEY}" when the item is not among these.`
+    );
+    expect(question!.leftOut).toEqual([
+      { label: "items[0]", why: "unavailable: already archived" },
+      { label: "items[2]", why: "no ref in the page state" },
+      { label: "items[3]", why: "unavailable" },
+    ]);
+  });
+
+  it("hands the left-out items on when the model answers none of these", async () => {
+    const capture = captureOfButtons(2);
+    const [first, second] = [...capture.elementsByRef.values()];
+    const tool = archiveTool([
+      {
+        label: "items[0]",
+        element: first!,
+        present: true,
+        available: false,
+        reason: "already archived",
+      },
+      { label: "items[1]", element: second!, present: true, available: true },
+    ]);
+
+    const { answers } = await askStageTwo(tool, capture, { ref: "none" });
+
+    expect(answers).toMatchObject({
+      kind: "none_fits",
+      parameter: "ref",
+      leftOut: [{ label: "items[0]", why: "unavailable: already archived" }],
+    });
+  });
+
+  it("names the items it left out when none can be offered", () => {
+    const capture = captureOfButtons(1);
+    const tool = archiveTool([
+      {
+        label: "items[0]",
+        element: document.createElement("li"),
+        present: true,
+        available: true,
+      },
+      {
+        label: "items[1]",
+        element: [...capture.elementsByRef.values()][0]!,
+        present: true,
+        available: false,
+        reason: "already archived",
+      },
+    ]);
+
+    expect(planArguments(tool, capture)).toEqual({
+      kind: "needs_instance_choice",
+      parameter: "ref",
+      optionCount: 0,
+      leftOut: [
+        { label: "items[0]", why: "no ref in the page state" },
+        { label: "items[1]", why: "unavailable: already archived" },
+      ],
+    });
+  });
+});
+
+describe("describeLeftOut", () => {
+  const item = (index: number) => ({
+    label: `items[${index}]`,
+    why: "unavailable: it is archived",
+  });
+
+  it("says nothing when no item was left out", () => {
+    expect(describeLeftOut([])).toBe("");
+  });
+
+  it("names each item with why", () => {
+    expect(
+      describeLeftOut([
+        item(0),
+        { label: "items[1]", why: "no ref in the page state" },
+      ])
+    ).toBe(
+      "Left out: items[0] (unavailable: it is archived), items[1] (no ref in the page state)."
+    );
+  });
+
+  it("names every item, however many were left out", () => {
+    const sentence = describeLeftOut(
+      Array.from({ length: 12 }, (_, index) => item(index))
+    );
+
+    expect(sentence).toMatch(
+      /items\[10\] \(unavailable: it is archived\), items\[11\] \(unavailable: it is archived\)\.$/
+    );
   });
 });
 
@@ -683,6 +797,32 @@ describe("parameter shapes", () => {
     expect(answers).toMatchObject({
       kind: "chosen",
       chosen: { args: { param: ["high"] } },
+    });
+  });
+
+  it("says no Goal Value was offered when nothing belongs in a required enum list", () => {
+    const tool = actionWith(enumList);
+    const questions = plannedQuestions(tool, { other: "urgent" });
+
+    expect(
+      readArgumentAnswers(tool, questions, noulAnswers(questions, [0.1, 0.2]))
+    ).toMatchObject({
+      kind: "needs_value",
+      parameter: "param",
+      goalValuesOffered: false,
+    });
+  });
+
+  it("says Goal Values were offered when none belongs in a required number list", () => {
+    const tool = actionWith({ type: "array", items: { type: "number" } });
+    const questions = plannedQuestions(tool, { quantity: 2 });
+
+    expect(
+      readArgumentAnswers(tool, questions, noulAnswers(questions, [0.1]))
+    ).toMatchObject({
+      kind: "needs_value",
+      parameter: "param",
+      goalValuesOffered: true,
     });
   });
 
