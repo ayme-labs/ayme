@@ -42,7 +42,7 @@ vi.mock("../connection", async (importOriginal) => ({
     return {
       publishTools: async () => {},
       answerCalls: () => () => {},
-      reportLeaving: async () => {},
+      reportNavigating: async () => {},
       followHiddenTools(listener: (hidden: string[]) => void) {
         hiddenListeners.add(listener);
         return () => hiddenListeners.delete(listener);

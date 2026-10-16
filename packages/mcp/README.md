@@ -149,8 +149,8 @@ navigation to another origin ends the connection.
 Every call gets one answer. When the page answers, that is the answer. When
 the page goes away first, the server answers with an error result whose text
 is a JSON object: `error` says what happened and that the call's outcome is
-unknown, and `next` what to do now. The server waits up to 5 seconds for the
-tab to reconnect, then tells the cases apart like this:
+unknown. The server waits up to 5 seconds for the tab to reconnect, then tells
+the cases apart like this:
 
 - **Reloaded or navigated:** the same tab reconnected. It reloaded when the
   page said it started a reload, or, without a word from the page, when the

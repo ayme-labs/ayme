@@ -1,6 +1,6 @@
 import type {
   ImageResult,
-  PageLeaving,
+  PageNavigating,
   PageTool,
   ToolCall,
   ToolCallOutcome,
@@ -44,7 +44,7 @@ export type PageChannel = {
     handler: (call: ToolCall) => Promise<ToolCallOutcome>
   ): () => void;
   /** Tells the server the page started loading a new document. */
-  reportLeaving(leaving: PageLeaving): Promise<void>;
+  reportNavigating(navigating: PageNavigating): Promise<void>;
   /**
    * Calls `listener` with the App Processes' tools the server sends the
    * page, at once and after every change, and with none when the channel
