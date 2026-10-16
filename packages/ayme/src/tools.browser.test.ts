@@ -5,7 +5,8 @@ import { createPage } from "./browserPage";
 import type { PomManifest } from "./contracts";
 import type { CustomTool } from "./elementTools";
 import { AymeError, ToolInputError } from "./errors";
-import { buildToolOptions, planArguments } from "./goalLoopQuestions";
+import { buildToolOptions } from "./goalLoopOperations";
+import { planArguments } from "./goalLoopQuestions";
 import { getPomDefinitionText } from "./pageContext";
 import {
   getInteractionHistory,

@@ -9,7 +9,7 @@ import {
   isUncheckableElement,
 } from "./browserTools";
 import { errorText } from "./errors";
-import { buildToolOptions } from "./goalLoopQuestions";
+import { buildToolOptions } from "./goalLoopOperations";
 import {
   FILL_SCHEMA,
   PLAYWRIGHT_MCP_COUNTERPARTS,

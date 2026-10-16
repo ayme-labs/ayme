@@ -1,6 +1,6 @@
 import { expectTypeOf, it } from "vitest";
 import type { ActionResult } from "./actionSequence";
-import type { Handover } from "./goalLoop";
+import type { Handover } from "./handover";
 import type { PageContextPayload } from "./pageContext";
 import type { Ayme } from "./runtime";
 import type { BuiltInCaller, Caller, CustomToolContext } from "./index";
