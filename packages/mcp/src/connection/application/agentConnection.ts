@@ -245,16 +245,11 @@ export class AgentConnection {
     const previous = this.#page;
     if (previous) {
       this.#page = undefined;
-      const calls = previous.takeUnanswered();
-      // The same tab's earlier document is gone, whether or not its channel
-      // has closed yet.
-      if (previous.tab === hello.tab)
-        for (const [callId, answer] of calls)
-          this.#leftCalls.set(callId, answer);
-      else {
-        answerUnanswered(calls, { type: "replaced" });
-        previous.disconnect();
-      }
+      // The earlier page is gone, whether or not its channel has closed yet;
+      // the lifecycle says how its calls are answered.
+      for (const [callId, answer] of previous.takeUnanswered())
+        this.#leftCalls.set(callId, answer);
+      if (previous.tab !== hello.tab) previous.disconnect();
       this.#emit({ type: "unpaired" });
     }
     const lifecycle = this.#lifecycle;

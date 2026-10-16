@@ -22,10 +22,12 @@ type Left = { url: string; to?: PageNavigating; until: number };
  * caller passes as `now`.
  *
  * - `unpaired`: no tab.
- * - `paired`: the page reported its tools; calls go out.
+ * - `paired`: the page reported its tools; calls go out. `to` is where it
+ *   last said it was navigating, if it is still there after the wait.
  * - `navigating`: the page said it started a cross-document navigation and
- *   is still there, until `until`. A page still there after that stayed, as
- *   when its navigation was cancelled, and is paired again.
+ *   is still there, until `until`. A page still there after that is paired
+ *   again, as when its navigation was cancelled or is slow, and keeps `to`
+ *   for when it leaves.
  * - `disconnected`: the page's channel closed, and the server waits for its
  *   tab to reconnect until `left.until`.
  * - `reconnected`: a page connected, as the tab's new document or for the
@@ -37,7 +39,7 @@ type Left = { url: string; to?: PageNavigating; until: number };
  */
 export type TabLifecycle =
   | { name: "unpaired" }
-  | { name: "paired"; tab: string; url: string }
+  | { name: "paired"; tab: string; url: string; to?: PageNavigating }
   | {
       name: "navigating";
       tab: string;
@@ -179,8 +181,8 @@ export function reported(
 /**
  * Time passed to `now`. The previous document's calls are answered with how
  * it left once the wait for it ends, and the held calls too when no page of
- * the tab came back. A page that navigated but stayed, or never reported
- * its tools, is paired.
+ * the tab came back. A page that said it was navigating but is still there,
+ * or never reported its tools, is paired.
  */
 export function elapsed(lifecycle: TabLifecycle, now: number): Transition {
   if (lifecycle.name === "unpaired" || lifecycle.name === "paired")
@@ -194,9 +196,9 @@ export function elapsed(lifecycle: TabLifecycle, now: number): Transition {
   }
   if (lifecycle.name === "disconnected" || lifecycle.until > now)
     return { lifecycle };
-  return {
-    lifecycle: { name: "paired", tab: lifecycle.tab, url: lifecycle.url },
-  };
+  const { tab, url } = lifecycle;
+  const to = lifecycle.name === "navigating" ? lifecycle.to : undefined;
+  return { lifecycle: { name: "paired", tab, url, ...(to ? { to } : {}) } };
 }
 
 /** The server stopped: every call still waiting is answered. */
@@ -218,7 +220,7 @@ function leave(
   now: number
 ): Left {
   if (lifecycle.name === "disconnected") return lifecycle.left;
-  const to = lifecycle.name === "navigating" ? lifecycle.to : undefined;
+  const to = lifecycle.name === "reconnected" ? undefined : lifecycle.to;
   const earlier = lifecycle.name === "paired" ? undefined : lifecycle.left;
   if (earlier) return to ? { ...earlier, to } : earlier;
   return {

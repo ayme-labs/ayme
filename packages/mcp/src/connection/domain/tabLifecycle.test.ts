@@ -74,15 +74,24 @@ describe("the tab's lifecycle", () => {
     expect(deadline(later.lifecycle)).toBe(2 * WAIT - 100);
   });
 
-  it("pairs a page that said it was navigating but stayed, once the wait ends", () => {
-    const left = navigating(
-      paired,
-      { url: `${url}download`, reload: false },
-      0
-    ).lifecycle;
+  it("pairs a page that said it was navigating but is still there once the wait ends", () => {
+    const to = { url: `${url}download`, reload: false };
+    const left = navigating(paired, to, 0).lifecycle;
 
     expect(reported(left, ["snapshot"]).lifecycle).toEqual(left);
-    expect(elapsed(left, WAIT)).toEqual({ lifecycle: paired });
+    expect(elapsed(left, WAIT)).toEqual({ lifecycle: { ...paired, to } });
+  });
+
+  it("answers with where a slow navigation went when the page leaves after the wait", () => {
+    const to = { url, reload: false };
+    const slow = elapsed(navigating(paired, to, 0).lifecycle, WAIT).lifecycle;
+    const away = disconnected(slow, 2 * WAIT).lifecycle;
+
+    expect(elapsed(away, 3 * WAIT)).toMatchObject({
+      held: { type: "navigated", url },
+    });
+    const back = attached(away, "a", url, 2 * WAIT + 10).lifecycle;
+    expect(reported(back, []).left).toMatchObject({ type: "navigated" });
   });
 
   it("answers every call when another tab's page replaces the tab", () => {
