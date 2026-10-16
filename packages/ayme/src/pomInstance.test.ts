@@ -7,6 +7,7 @@ import {
 } from "@ayme-dev/core/structural-observation";
 import {
   askPredicates,
+  assertAvailable,
   availabilityOf as availabilityWithRefs,
   combinedAvailability,
   type PomInstanceObservation,
@@ -192,5 +193,35 @@ describe("a tool's availability over its instances", () => {
     expect(combinedAvailability([absent, blocked])).toEqual(blocked);
     expect(combinedAvailability([absent])).toEqual(absent);
     expect(combinedAvailability([])).toEqual(absent);
+  });
+});
+
+describe("refusing an unavailable tool's call", () => {
+  // The whole message: `toThrow(string)` would accept a trailing "?." too.
+  const refusal = (availability: Parameters<typeof assertAvailable>[1]) => {
+    try {
+      assertAvailable("Panel.remove", availability);
+    } catch (error) {
+      return (error as Error).message;
+    }
+    return undefined;
+  };
+
+  it.each([
+    ["Busy", "Panel.remove is unavailable: Busy."],
+    ["Not ready.", "Panel.remove is unavailable: Not ready."],
+    ["Signed in?", "Panel.remove is unavailable: Signed in?"],
+    ["Stop!", "Panel.remove is unavailable: Stop!"],
+  ])("closes the reason %j as a sentence once", (reason, message) => {
+    expect(refusal({ present: true, available: false, reason })).toBe(message);
+  });
+
+  it("ends without a reason when there is none", () => {
+    expect(refusal({ present: true, available: false })).toBe(
+      "Panel.remove is unavailable."
+    );
+    expect(refusal({ present: false, available: false })).toBe(
+      "Panel.remove is unavailable: its Page Object is not on the page."
+    );
   });
 });
