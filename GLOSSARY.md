@@ -23,7 +23,7 @@ A tool generated from a Page Object Action. The Goal Loop may choose it, and Web
 A model-facing observation of the currently presented page structure and its Page Object associations. Normally scrollable content and modal-blocked content remain represented. Known hidden or unreachable off-canvas Page Object subtrees are omitted. Structural inclusion does not imply interaction availability.
 
 **Structural Ref**:
-A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node. Its grammar (a real `e…` ref, a synthetic `s_…` ref, and its `aria-ref=…` selector) is owned by core's structural observation module; nothing else restates it.
+A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node. Its grammar (a real `e…` ref, a synthetic `s_…` ref, and its `ayme-ref=…` selector) is owned by core's structural observation module; nothing else restates it. A ref is acted on through Ayme's own selector engine, which resolves it from the current capture, so a synthetic ref is as actionable as a real one.
 
 **Page State Session**:
 The lifetime within one browser document during which Ayme maintains best-effort continuity between successive Structural Page States. It also records the document's interaction history: its Visits, the actions taken and what each caused.

@@ -32,9 +32,12 @@ vi.mock("@ayme-dev/core/structural-observation", async (importOriginal) => ({
   waitForSettled,
 }));
 
-import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
+import {
+  AriaRefSchema,
+  refFromSelector,
+} from "@ayme-dev/core/structural-observation";
 import { RefResolutionError } from "./errors";
-import { getPageStateForDocument } from "./pageState";
+import { getPageStateForDocument, latestPageStateElement } from "./pageState";
 import { listPublishedBrowserTools } from "./browserTools";
 import { ayme, runContext } from "./agentCalls.testSupport";
 
@@ -61,24 +64,17 @@ describe("Structural Ref interactions", () => {
     vi.unstubAllGlobals();
   });
 
-  it("refreshes the public ARIA snapshot before clicking the current resolved ref", async () => {
+  it("clicks the current resolved ref through Ayme's selector engine", async () => {
     const button = document.querySelector("#save");
     if (!button) throw new Error("Expected the save button.");
     mockCapture(button, "e2");
     await getPageStateForDocument(document);
-    const ariaSnapshot = vi
-      .fn()
-      .mockResolvedValue('- button "Save changes" [ref=e2]');
     const click = vi.fn().mockResolvedValue(undefined);
-    usePage({ ariaSnapshot, click });
+    usePage({ click });
 
     await clickRef(ref("e2"));
 
-    expect(ariaSnapshot).toHaveBeenCalledWith({ mode: "ai" });
-    expect(click).toHaveBeenCalledWith("aria-ref=e2");
-    expect(ariaSnapshot.mock.invocationCallOrder[0]).toBeLessThan(
-      click.mock.invocationCallOrder[0]!
-    );
+    expect(click).toHaveBeenCalledWith("ayme-ref=e2");
   });
 
   it("retargets a historical ref to the current ref before filling", async () => {
@@ -93,18 +89,14 @@ describe("Structural Ref interactions", () => {
     original.replaceWith(replacement);
     mockCapture(replacement, "e4", "e3");
 
-    const ariaSnapshot = vi
-      .fn()
-      .mockResolvedValue('textbox "Save changes" [ref=e4]');
     const fill = vi.fn().mockResolvedValue(undefined);
-    usePage({ ariaSnapshot, fill });
+    usePage({ fill });
     await fillRef(ref("e2"), "updated");
 
-    expect(ariaSnapshot).toHaveBeenCalledWith({ mode: "ai" });
-    expect(fill).toHaveBeenCalledWith("aria-ref=e4", "updated");
+    expect(fill).toHaveBeenCalledWith("ayme-ref=e4", "updated");
   });
 
-  it("rejects an unknown ref without refreshing or acting", async () => {
+  it("rejects an unknown ref without acting", async () => {
     const button = document.querySelector("#save");
     if (!button) throw new Error("Expected the save button.");
     mockCapture(button, "e2");
@@ -114,11 +106,10 @@ describe("Structural Ref interactions", () => {
     await expect(clickRef(ref("e999"))).rejects.toThrow(
       'Cannot click ref "e999": no snapshot issued it.'
     );
-    expect(page.ariaSnapshot).not.toHaveBeenCalled();
     expect(page.click).not.toHaveBeenCalled();
   });
 
-  it("rejects a removed ref without refreshing or acting", async () => {
+  it("rejects a removed ref without acting", async () => {
     const button = document.querySelector("#save");
     if (!button) throw new Error("Expected the save button.");
     mockCapture(button, "e2");
@@ -137,11 +128,10 @@ describe("Structural Ref interactions", () => {
     await expect(clickRef(ref("e2"))).rejects.toBeInstanceOf(
       RefResolutionError
     );
-    expect(page.ariaSnapshot).not.toHaveBeenCalled();
     expect(page.click).not.toHaveBeenCalled();
   });
 
-  it("rejects an ambiguous ref without refreshing or acting", async () => {
+  it("rejects an ambiguous ref without acting", async () => {
     const button = document.querySelector("#save");
     if (!button) throw new Error("Expected the save button.");
     mockCapture(button, "e2");
@@ -168,7 +158,6 @@ describe("Structural Ref interactions", () => {
     await expect(clickRef(ref("e2"))).rejects.toThrow(
       'Cannot click ref "e2": it cannot be matched unambiguously to the current page.'
     );
-    expect(page.ariaSnapshot).not.toHaveBeenCalled();
     expect(page.click).not.toHaveBeenCalled();
   });
 
@@ -180,11 +169,10 @@ describe("Structural Ref interactions", () => {
     await expect(clickRef(ref("e2"))).rejects.toThrow(
       'Cannot click ref "e2": it has no element on the page now.'
     );
-    expect(page.ariaSnapshot).not.toHaveBeenCalled();
     expect(page.click).not.toHaveBeenCalled();
   });
 
-  it("rejects synthetic refs as observation-only", async () => {
+  it("clicks a Page Object Root's synthetic ref like any other", async () => {
     const root = document.createElement("div");
     const button = document.querySelector("#save");
     if (!button) throw new Error("Expected the save button.");
@@ -195,14 +183,25 @@ describe("Structural Ref interactions", () => {
       absentElements: [],
     });
     mockCapture(button, "e2");
-    await getPageStateForDocument(document);
+    const { text } = await getPageStateForDocument(document);
+    const rootRef = text.match(/(s_\w+) Page\.root\b/)?.[1];
+    if (!rootRef) throw new Error("Expected a synthetic ref for the root.");
+    // At click time the selector names the root's current ref, the one the
+    // engine resolves in the latest capture.
+    const clicked: { selector?: string; element?: Element } = {};
+    const click = vi.fn(async (selector: string) => {
+      clicked.selector = selector;
+      clicked.element = latestPageStateElement(
+        document,
+        refFromSelector(selector)!
+      );
+    });
+    usePage({ click });
 
-    const page = usePage();
-    await expect(clickRef(ref("s_1"))).rejects.toThrow(
-      'Cannot click ref "s_1": synthetic observation-only ref.'
-    );
-    expect(page.ariaSnapshot).not.toHaveBeenCalled();
-    expect(page.click).not.toHaveBeenCalled();
+    await clickRef(ref(rootRef));
+
+    expect(clicked.selector).toMatch(/^ayme-ref=s_\w+$/);
+    expect(clicked.element).toBe(root);
   });
 
   it("reports page_changed and settled after act, wait, capture and reconcile", async () => {
@@ -211,11 +210,8 @@ describe("Structural Ref interactions", () => {
     mockCapture(button, "e2");
     await getPageStateForDocument(document);
 
-    const ariaSnapshot = vi
-      .fn()
-      .mockResolvedValue('- button "Save changes" [ref=e2]');
     const click = vi.fn().mockResolvedValue(undefined);
-    usePage({ ariaSnapshot, click });
+    usePage({ click });
 
     await expect(clickRef(ref("e2"))).resolves.toEqual({
       page_changed: false,
@@ -231,12 +227,7 @@ describe("Structural Ref interactions", () => {
     await getPageStateForDocument(document);
     waitForSettled.mockResolvedValueOnce({ stable: false });
 
-    usePage({
-      ariaSnapshot: vi
-        .fn()
-        .mockResolvedValue('- button "Save changes" [ref=e2]'),
-      click: vi.fn().mockResolvedValue(undefined),
-    });
+    usePage({ click: vi.fn().mockResolvedValue(undefined) });
 
     await expect(clickRef(ref("e2"))).resolves.toEqual({
       page_changed: false,
@@ -249,12 +240,9 @@ describe("Structural Ref interactions", () => {
     if (!button) throw new Error("Expected the save button.");
     mockCapture(button, "e2");
     await getPageStateForDocument(document);
-    const ariaSnapshot = vi
-      .fn()
-      .mockResolvedValue('button "Save changes" [ref=e2]');
     const click = vi.fn().mockResolvedValue(undefined);
     const fill = vi.fn().mockResolvedValue(undefined);
-    usePage({ ariaSnapshot, click, fill });
+    usePage({ click, fill });
     const published = (name: string) =>
       listPublishedBrowserTools().find((tool) => tool.name === name)!;
 
@@ -264,15 +252,14 @@ describe("Structural Ref interactions", () => {
     await expect(
       published("fill").execute({ target: "e2", text: "updated" }, runContext())
     ).resolves.toEqual({ page_changed: false, settled: true });
-    expect(click).toHaveBeenCalledWith("aria-ref=e2");
-    expect(fill).toHaveBeenCalledWith("aria-ref=e2", "updated");
+    expect(click).toHaveBeenCalledWith("ayme-ref=e2");
+    expect(fill).toHaveBeenCalledWith("ayme-ref=e2", "updated");
   });
 });
 
 /** Make a fake Playwright Page the Ayme runtime hands to single-element tool actions. */
 function usePage(
   overrides: {
-    ariaSnapshot?: ReturnType<typeof vi.fn>;
     click?: ReturnType<typeof vi.fn>;
     fill?: ReturnType<typeof vi.fn>;
   } = {}
@@ -284,7 +271,6 @@ function usePage(
   const fill = (overrides.fill ??
     vi.fn().mockResolvedValue(undefined)) as unknown as Act;
   const page = {
-    ariaSnapshot: overrides.ariaSnapshot ?? vi.fn().mockResolvedValue(""),
     click,
     fill,
     locator: (selector: string) => ({

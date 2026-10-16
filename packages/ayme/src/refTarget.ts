@@ -1,15 +1,13 @@
 import {
-  isSyntheticRef,
   parseStructuralRef,
   refWrittenOtherwise,
-  type AriaRef,
 } from "@ayme-dev/core/structural-observation";
 import {
   resolvePageStateRefs,
   type AymeNode,
   type RefResolution,
 } from "./pageState";
-import { RefResolutionError, ToolInputError } from "./errors";
+import { asSentence, RefResolutionError, ToolInputError } from "./errors";
 
 /**
  * Package-internal: the sentence saying which Structural Ref `requested`
@@ -31,35 +29,49 @@ const UNRESOLVED: Record<
   "no-element": "it has no element on the page now",
 };
 
+/** The one format every target failure shares; a reason that ends a sentence keeps its mark. */
+function targetFailure(label: string, target: string, reason: string): string {
+  return asSentence(`Cannot ${label} ${target}: ${reason}`);
+}
+
 /**
- * Package-internal: the message for a tool's ref that cannot be used, the
- * one format every ref failure shares.
+ * Package-internal: the message for a tool's ref that cannot be used:
+ * `Cannot click ref "e1": …`.
  */
 export function refFailure(
   label: string,
   requested: string,
   reason: string
 ): string {
-  return `Cannot ${label} ref "${requested}": ${reason}.`;
+  return targetFailure(label, `ref "${requested}"`, reason);
+}
+
+/**
+ * Package-internal: the message for a tool's selector that cannot be used,
+ * `Cannot click "#save": …`, with the sentence `hint` adds, if any.
+ */
+export function selectorFailure(
+  label: string,
+  requested: string,
+  reason: string,
+  hint?: string
+): string {
+  return `${targetFailure(label, `"${requested}"`, reason)}${hint ? ` ${hint}` : ""}`;
 }
 
 /**
  * Package-internal: the node a tool's Structural Ref addresses now, the one
- * resolver every tool's `ref` goes through. A synthetic ref, which names an
- * observation-only node, resolves only when `synthetic` is `"allow"`: a
- * collection tool's Page Object Root may have one. A value that is not a
- * Structural Ref, a ref that names nothing now, or a refused synthetic one
- * fails as `Cannot ${label} ref "e1": …`; the first as input, naming the
+ * resolver every tool's `ref` goes through; a synthetic ref resolves like any
+ * other. A value that is not a Structural Ref or a ref that names nothing
+ * now fails as `Cannot ${label} ref "e1": …`; the first as input, naming the
  * Structural Ref it writes another way, if it does.
  */
 export async function resolveRef(
   requested: string,
-  { synthetic }: { synthetic: "allow" | "refuse" },
   label: string,
   currentDocument: Document
 ): Promise<AymeNode> {
   const failure = (reason: string) => refFailure(label, requested, reason);
-  const fail = (reason: string) => new RefResolutionError(failure(reason));
   const requestedRef = parseStructuralRef(requested);
   if (requestedRef === undefined) {
     const hint = refHint(requested);
@@ -67,17 +79,10 @@ export async function resolveRef(
       `${failure("not a Structural Ref")}${hint ? ` ${hint}` : ""}`
     );
   }
-  const refused = (ref: AriaRef) =>
-    synthetic === "refuse" && isSyntheticRef(ref);
-
-  if (refused(requestedRef)) throw fail("synthetic observation-only ref");
-
   const resolution = (
     await resolvePageStateRefs(currentDocument, requestedRef)
   )[0]!;
   if (resolution.status === "unresolved")
-    throw fail(UNRESOLVED[resolution.reason]);
-  if (refused(resolution.node.ref))
-    throw fail("synthetic observation-only ref");
+    throw new RefResolutionError(failure(UNRESOLVED[resolution.reason]));
   return resolution.node;
 }

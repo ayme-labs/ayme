@@ -28,7 +28,7 @@ describe("Structural Ref grammar", () => {
     ["s_a b", undefined],
     ["role=button", undefined],
     ["#save", undefined],
-    ["aria-ref=e1", undefined],
+    ["ayme-ref=e1", undefined],
     ["", undefined],
   ])("parses %j as %j", (text, ref) => {
     expect(parseStructuralRef(text)).toBe(ref);
@@ -43,22 +43,22 @@ describe("Structural Ref grammar", () => {
     expect(isSyntheticRef(AriaRefSchema.parse(ref))).toBe(synthetic);
   });
 
-  it("builds the aria-ref selector for a ref", () => {
-    expect(selectorForRef(AriaRefSchema.parse("e12"))).toBe("aria-ref=e12");
+  it("builds the ayme-ref selector for a ref", () => {
+    expect(selectorForRef(AriaRefSchema.parse("e12"))).toBe("ayme-ref=e12");
   });
 
   it.each([
-    ["aria-ref=e12", "e12"],
-    ["locator('aria-ref=e2')", "e2"],
-    ['locator("aria-ref=s_root")', "s_root"],
+    ["ayme-ref=e12", "e12"],
+    ["locator('ayme-ref=e2')", "e2"],
+    ['locator("ayme-ref=s_root")', "s_root"],
     ["getByRole('button', { name: 'Save' })", undefined],
     ['role=button[name="Save"]', undefined],
-    ["aria-ref=", undefined],
-    ["aria-ref=x1", undefined],
-    ["aria-ref=e12junk", undefined],
-    ["getByText('aria-ref=s_root')", undefined],
-    ["locator('aria-ref=e2').first()", undefined],
-    ["#list aria-ref=e2", undefined],
+    ["ayme-ref=", undefined],
+    ["ayme-ref=x1", undefined],
+    ["ayme-ref=e12junk", undefined],
+    ["getByText('ayme-ref=s_root')", undefined],
+    ["locator('ayme-ref=e2').first()", undefined],
+    ["#list ayme-ref=e2", undefined],
   ])("reads the ref out of %j as %j", (selector, ref) => {
     expect(refFromSelector(selector)).toBe(ref);
   });
@@ -100,7 +100,7 @@ describe("Structural Ref grammar", () => {
     ["ref=a", "a"],
     ["active", undefined],
     ["level=2", undefined],
-    ["aria-ref=e1", undefined],
+    ["ayme-ref=e1", undefined],
   ])("reads the ref the snapshot attribute %j names as %j", (content, ref) => {
     expect(refFromAttribute(content)).toBe(ref);
   });
@@ -125,7 +125,7 @@ describe("Structural Ref grammar", () => {
     ["#save", undefined],
     ["button.save", undefined],
     ['role=button[name="Save"]', undefined],
-    ["aria-ref=e5", undefined],
+    ["ayme-ref=e5", undefined],
     ["[ref=e5] button", undefined],
     ["ref=x5", undefined],
     ["[ref=s_1]", undefined],

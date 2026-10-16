@@ -32,6 +32,7 @@ import {
   type PomInstanceObservation,
   type ToolAvailability,
 } from "./pomInstance";
+import { registerRefSelectorEngine } from "./refSelectorEngine";
 import { refFailure, resolveRef } from "./refTarget";
 import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
@@ -167,6 +168,8 @@ export function createAymeRuntime(page?: object) {
   const runtimePage = page ?? createPage();
   runtimeOwner = owner;
   browserPage = runtimePage as Page;
+  // The page's locators for Structural Refs resolve through Ayme's engine.
+  registerRefSelectorEngine();
 
   return {
     page: runtimePage,
@@ -754,13 +757,7 @@ function createComponentTool(
     const args = values[1] ?? {};
     const toolPath = `${pomId}.${publicComponentPath(path)}`;
     const label = `call ${wrapper.toolName} on`;
-    // A Page Object Root without a role of its own gets a synthetic ref.
-    const { element } = await resolveRef(
-      ref,
-      { synthetic: "allow" },
-      label,
-      document
-    );
+    const { element } = await resolveRef(ref, label, document);
     const componentInstance = await resolveComponentByElementStep(
       pageInstance,
       path,

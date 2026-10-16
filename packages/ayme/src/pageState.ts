@@ -277,6 +277,18 @@ export function latestPageStateRef(element: Element): AriaRef | undefined {
   return pageStateSessions.get(element.ownerDocument)?.latestRefOf(element);
 }
 
+/**
+ * Package-internal: the element the latest recorded page state of
+ * `currentDocument` maps `ref` to; undefined until one is recorded, or when
+ * that page state printed no such ref.
+ */
+export function latestPageStateElement(
+  currentDocument: Document,
+  ref: AriaRef
+): Element | undefined {
+  return pageStateSessions.get(currentDocument)?.latestElementOf(ref);
+}
+
 function getPageStateSession(currentDocument: Document) {
   let session = pageStateSessions.get(currentDocument);
   if (!session) {
@@ -480,6 +492,11 @@ class PageStateSession {
       this.latestRefsByElement = refs;
     }
     return this.latestRefsByElement.get(element);
+  }
+
+  /** The element the latest recorded page state maps `ref` to, if any. */
+  latestElementOf(ref: AriaRef): Element | undefined {
+    return this.latestElements?.elementsByRef.get(ref);
   }
 
   /** Capture the page for recording, rejecting a capture the identity ledger could not accept. */

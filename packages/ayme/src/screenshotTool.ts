@@ -101,7 +101,7 @@ export const screenshotTool: PublishedElementTool = {
         request.target,
         requireCurrentDocument()
       );
-      bytes = await (await locatorOf(target)).screenshot(options);
+      bytes = await locatorOf(target).screenshot(options);
       subject = `element ${request.target}`;
     } else {
       bytes = await requireAymeRuntimePage().screenshot({
