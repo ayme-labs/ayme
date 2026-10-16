@@ -187,10 +187,17 @@ function stuckOn(
 
 // --- The decision ---
 
-/** The decision function's answers, or the stop its failure comes to. */
+/**
+ * The decision function's response, or the stop its failure comes to. Its
+ * answers are taken out inside `read`, so a response without them is answers
+ * the loop could not read, not a failed call.
+ */
 type Asked =
-  | { answers: Record<string, unknown>; stop?: undefined }
-  | { answers?: undefined; stop: StepStop };
+  | { response: DecisionResponse; stop?: undefined }
+  | { response?: undefined; stop: StepStop };
+
+const answersOf = (response: DecisionResponse) =>
+  response.answers as Record<string, unknown>;
 
 /** What a read of the answers came to, or the stop its failure comes to. */
 type Read<T> =
@@ -233,8 +240,7 @@ function stepAsker(decide: GoalLoopDecisionFunction): StepAsker {
       ),
     ask: async (request) => {
       try {
-        const response = await decide(request);
-        return { answers: response.answers as Record<string, unknown> };
+        return { response: await decide(request) };
       } catch (error) {
         return {
           stop:
@@ -332,7 +338,7 @@ async function decideArguments(
   );
   if (stageTwo.stop) return stageTwo;
   const read = asker.read(() =>
-    readArgumentAnswers(tool, questions, stageTwo.answers, record)
+    readArgumentAnswers(tool, questions, answersOf(stageTwo.response), record)
   );
   if (read.stop) return read;
   const answers = read.value;
@@ -374,7 +380,7 @@ async function decideArguments(
     );
     if (runOff.stop) return runOff;
     const completed = asker.read(() =>
-      readRunOffAnswer(answers, runOff.answers)
+      readRunOffAnswer(answers, answersOf(runOff.response))
     );
     if (completed.stop) return completed;
     chosen = completed.value;
@@ -429,8 +435,8 @@ export async function decideStep({
   );
   if (stageOne.stop) return stageOne.stop;
   const stageOneAnswers = asker.read(() => ({
-    operation: parseOperationAnswer(stageOne.answers),
-    goalMet: parseGoalMetAnswer(stageOne.answers),
+    operation: parseOperationAnswer(answersOf(stageOne.response)),
+    goalMet: parseGoalMetAnswer(answersOf(stageOne.response)),
   }));
   if (stageOneAnswers.stop) return stageOneAnswers.stop;
   const { operation: operationAnswer, goalMet } = stageOneAnswers.value;
@@ -472,7 +478,7 @@ export async function decideStep({
     readSpeculativeValues(
       chosenTool,
       speculative,
-      stageOne.answers,
+      answersOf(stageOne.response),
       valueRecord
     )
   );

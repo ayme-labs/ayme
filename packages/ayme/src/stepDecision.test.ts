@@ -105,7 +105,6 @@ const forceClickTool: GoalLoopOperation = {
   ],
 };
 
-/** A tool that goes through a collection, one instance per button of the capture. */
 /** A collection item the tool is unavailable on, so never offered. */
 const archivedItem: CollectionToolItem = {
   label: "items[archived]",
@@ -115,6 +114,10 @@ const archivedItem: CollectionToolItem = {
   reason: "already archived",
 };
 
+/**
+ * A tool that goes through a collection, one instance per button of the
+ * capture, plus any `unavailable` items.
+ */
 const collectionTool = (
   capture: PageStateCapture,
   unavailable: CollectionToolItem[] = []
@@ -156,6 +159,7 @@ const optionOf = (tool: GoalLoopOperation): ToolOption => ({
 type Turn =
   | { answers: Record<string, unknown> }
   | { answer: (request: DecisionRequest) => Record<string, unknown> }
+  | { responds: unknown }
   | { throws: unknown };
 
 /**
@@ -171,6 +175,7 @@ function scripted(...turns: Turn[]) {
     const turn = turns[requests.length - 1];
     if (!turn) throw new Error(`Unexpected request ${requests.length}`);
     if ("throws" in turn) throw turn.throws;
+    if ("responds" in turn) return turn.responds as DecisionResponse;
     const answers = "answers" in turn ? turn.answers : turn.answer(request);
     return { model: "typesafe/jev-1.13", answers };
   };
@@ -337,22 +342,28 @@ describe("a Step Decision", () => {
 
     it("with needs_value, saying which parameters no Goal Value fits", async () => {
       const { decide } = scripted(stageOne("Project.rename"));
-      const renameWithOwner: GoalLoopOperation = {
+      // The ref is one the loop can ask about; the two free strings are not.
+      const renameItem: GoalLoopOperation = {
         ...renameTool,
-        requiredParams: ["name", "owner"],
+        requiredParams: ["ref", "name", "owner"],
         args: [
+          ...clickTool.args,
           ...renameTool.args,
           { ...renameTool.args[0]!, name: "owner", path: ["owner"] },
         ],
       };
 
-      const verdict = await step(decide, {
-        toolOptions: [optionOf(renameWithOwner)],
+      expect(
+        await step(decide, { toolOptions: [optionOf(renameItem)] })
+      ).toMatchObject({
+        kind: "stop",
+        reason: "needs_value",
+        next: 'The operation "Project.rename" needs values for: ref, name, owner, and no Goal Value fits name, owner. Call goal again with a value for name, owner in values, or call Project.rename directly.',
+        needs: {
+          tool: "Project.rename",
+          parameters: ["ref", "name", "owner"],
+        },
       });
-
-      expect(verdict.kind === "stop" && verdict.next).toBe(
-        'The operation "Project.rename" needs values for: name, owner, and no Goal Value fits name, owner. Call goal again with a value for name, owner in values, or call Project.rename directly.'
-      );
     });
 
     it("with needs_value when no element on the page is one the ref may address", async () => {
@@ -514,6 +525,39 @@ describe("a Step Decision", () => {
       expect(requests).toHaveLength(1);
     });
 
+    it("says a response without answers could not be read, without retry advice", async () => {
+      const { decide } = scripted({ responds: null });
+
+      const verdict = await step(decide);
+
+      expect(verdict).toMatchObject({ kind: "stop", reason: "decide_failed" });
+      expect(verdict.kind === "stop" && verdict.next).toMatch(
+        /^The decision function's answers could not be read: .*Handle the goal without the Goal Loop\.$/
+      );
+    });
+
+    it("keeps the stage-two answers read before one it cannot read", async () => {
+      const { decide } = scripted(stageOne("force_click"), {
+        answers: { ref: choice("e2"), force: choice("not_offered") },
+      });
+
+      const verdict = await step(decide, {
+        toolOptions: [optionOf(forceClickTool)],
+      });
+
+      expect(verdict).toMatchObject({
+        kind: "stop",
+        reason: "decide_failed",
+        scores: {
+          argumentChoices: { ref: "e2" },
+          argumentProbabilities: { ref: { e2: 1 } },
+        },
+      });
+      expect(verdict.kind === "stop" && verdict.next).toMatch(
+        /^The decision function's answers could not be read: .*Handle the goal without the Goal Loop\.$/
+      );
+    });
+
     it("keeps the stage-one scores when stage two fails", async () => {
       const { decide } = scripted(stageOne("click"), {
         throws: new Error("socket hang up"),
@@ -564,6 +608,14 @@ describe("a Step Decision", () => {
       });
       expect(requests).toHaveLength(3);
       expect(Object.keys(requests[2]!.questions)).toEqual([runOff]);
+      expect(requests[2]!.questions[runOff]).toMatchObject({
+        criteria: { e10: 'button "Item 10"', e280: 'button "Item 280"' },
+      });
+      expect(
+        Object.keys(
+          (requests[2]!.questions[runOff] as { criteria: object }).criteria
+        )
+      ).toEqual(["e10", "e280"]);
     });
 
     it("marks the run-off on the scores even when asking it fails", async () => {
