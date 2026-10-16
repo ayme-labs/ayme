@@ -11,10 +11,10 @@ import { errorText } from "./errors";
 import { agentTools } from "./publication.testSupport";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
+import { getLastGoalLoopRunResult } from "./testing";
 import {
   CHANGES_CUT_MARKER,
   configureGoalLoop,
-  getLastGoalLoopRunResult,
   MAX_STEP_CHANGES,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
@@ -2146,9 +2146,12 @@ describe("Goal Loop goal in Chromium", () => {
       },
     ]);
     // Each chunk's answer is recorded in the step's scores.
-    const score =
-      getLastGoalLoopRunResult()!.stepScores[0]!.argumentProbabilities!;
-    expect(Object.keys(score)).toEqual(Object.keys(stageTwo));
+    const score = getLastGoalLoopRunResult()!.stepScores[0]!;
+    expect(Object.keys(score.argumentProbabilities!)).toEqual(
+      Object.keys(stageTwo)
+    );
+    // One chunk named an element, so the step asked no run-off.
+    expect(score.runOff).toBeUndefined();
   });
 
   it("asks one run-off among exactly the elements several chunks named", async () => {
@@ -2200,6 +2203,7 @@ describe("Goal Loop goal in Chromium", () => {
       [runOffId]: named[1],
     });
     expect(score.argumentProbabilities).toEqual({});
+    expect(score.runOff).toBe(true);
   });
 
   it("keeps the chunks' choices on the run result when the run-off answer is invalid", async () => {
@@ -2229,7 +2233,9 @@ describe("Goal Loop goal in Chromium", () => {
     const stageTwo = criteriaOf(requests[1]!);
     const [firstChunkId, secondChunkId] = Object.keys(stageTwo);
     const score = getLastGoalLoopRunResult()!.stepScores[0]!;
-    // Both chunks named an element; the run-off's answer is not recorded.
+    // Both chunks named an element, so the step asked a run-off, whose
+    // answer is not recorded.
+    expect(score.runOff).toBe(true);
     expect(score.argumentChoices).toEqual({
       [firstChunkId!]: keyFor(stageTwo[firstChunkId!]!, 'button "Item 3"'),
       [secondChunkId!]: keyFor(stageTwo[secondChunkId!]!, 'button "Item 299"'),
