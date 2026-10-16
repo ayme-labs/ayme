@@ -638,21 +638,14 @@ describe("describeLeftOut", () => {
     );
   });
 
-  it("names ten items and counts the rest", () => {
+  it("names every item, however many were left out", () => {
     const sentence = describeLeftOut(
       Array.from({ length: 12 }, (_, index) => item(index))
     );
 
-    expect(sentence).toContain(
-      "items[9] (unavailable: it is archived), and 2 more."
+    expect(sentence).toMatch(
+      /items\[10\] \(unavailable: it is archived\), items\[11\] \(unavailable: it is archived\)\.$/
     );
-    expect(sentence).not.toContain("items[10]");
-  });
-
-  it("names exactly ten items without a count", () => {
-    expect(
-      describeLeftOut(Array.from({ length: 10 }, (_, index) => item(index)))
-    ).toMatch(/items\[9\] \(unavailable: it is archived\)\.$/);
   });
 });
 

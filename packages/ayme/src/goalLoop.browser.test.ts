@@ -2933,7 +2933,7 @@ describe("Goal Loop goal in Chromium", () => {
       "archive",
       Object.getOwnPropertyDescriptor(Item.prototype, "archive")!
     );
-    // Every item but the last is unavailable: more than a Handover names.
+    // Every item but the last is unavailable, and the Handover names each.
     const last = 12;
     setupCollectionDom(last + 1);
     class ItemsPage {
@@ -3016,13 +3016,10 @@ describe("Goal Loop goal in Chromium", () => {
       /^No element on the current page fits the operation "ItemsPage\.items\.archive"\. Left out: /
     );
     expect(result.next).toMatch(
-      /and 2 more\. Navigate to a different page or try a different approach\.$/
+      /ItemsPage\.items\[11\] \(unavailable: it is already archived\)\. Navigate to a different page or try a different approach\.$/
     );
     expect(result.next).toContain(
       "Left out: ItemsPage.items[0] (unavailable: it is already archived), ItemsPage.items[1] (unavailable: it is already archived),"
-    );
-    expect(result.next).toContain(
-      "ItemsPage.items[9] (unavailable: it is already archived), and 2 more."
     );
   });
 

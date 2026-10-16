@@ -511,20 +511,14 @@ export type ArgumentQuestion = QuestionBase & {
 /** A present collection item the loop did not offer, and why, as a fact. */
 export type LeftOutItem = { label: string; why: string };
 
-/** At most this many left-out items are named, each with why. */
-const MAX_LEFT_OUT_NAMED = 10;
-
 /**
  * The sentence naming the items a collection's question left out, each with
- * why; past `MAX_LEFT_OUT_NAMED`, only how many more. Empty when none was.
+ * why. Empty when none was.
  */
 export function describeLeftOut(leftOut: readonly LeftOutItem[]): string {
   if (leftOut.length === 0) return "";
-  const named = leftOut
-    .slice(0, MAX_LEFT_OUT_NAMED)
-    .map(({ label, why }) => `${label} (${why})`);
-  const more = leftOut.length - named.length;
-  return `Left out: ${named.join(", ")}${more > 0 ? `, and ${more} more` : ""}.`;
+  const named = leftOut.map(({ label, why }) => `${label} (${why})`);
+  return `Left out: ${named.join(", ")}.`;
 }
 
 /** Whether one value or Goal Value belongs in a list parameter. */
