@@ -3026,7 +3026,7 @@ describe("Goal Loop goal in Chromium", () => {
   /** Register a POM whose single tool takes one closed-set parameter. */
   async function registerPomWithParameter(
     goalLoop: GoalLoopDecisionFunction,
-    parameter: ToolManifest["parameters"][number],
+    parameter: ToolManifest["parameters"][number] | ToolManifest["parameters"],
     calls: unknown[][]
   ) {
     setupDom();
@@ -3041,7 +3041,13 @@ describe("Goal Loop goal in Chromium", () => {
       manifest(
         "App",
         [root()],
-        [actionWithParameters("pick", "App.pick", [parameter])]
+        [
+          actionWithParameters(
+            "pick",
+            "App.pick",
+            Array.isArray(parameter) ? parameter : [parameter]
+          ),
+        ]
       )
     );
     const tool = await getPublishedPursueGoal(goalLoop);
@@ -3140,6 +3146,63 @@ describe("Goal Loop goal in Chromium", () => {
     // The oversized question is never sent.
     expect(requests).toHaveLength(1);
     expect(calls).toEqual([]);
+  });
+
+  const sortTuple = {
+    name: "value",
+    optional: false,
+    schema: {
+      type: "array",
+      prefixItems: [
+        { type: "string", enum: ["asc", "desc"] },
+        { type: "string" },
+      ],
+      minItems: 2,
+      maxItems: 2,
+    },
+  } as const;
+
+  it("fills a tuple slot by slot and runs the action with it", async () => {
+    const calls: unknown[][] = [];
+    const tool = await registerPomWithParameter(
+      scriptedDecisionFn([
+        {
+          operation: "App.pick",
+          goal_met: 0.1,
+          arguments: { "value.0": "desc", "value.1": "column" },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ]),
+      sortTuple,
+      calls
+    );
+
+    await tool.execute({
+      goal: "sort by price, highest first",
+      maxSteps: 5,
+      values: { column: "price" },
+    });
+
+    expect(calls).toEqual([[["desc", "price"]]]);
+  });
+
+  it("names a required tuple as a whole, and no optional parameter, when it hands over", async () => {
+    const tool = await registerPomWithParameter(
+      scriptedDecisionFn([{ operation: "App.pick", goal_met: 0.1 }]),
+      [sortTuple, { name: "note", optional: true, schema: { type: "string" } }],
+      []
+    );
+
+    const result = await tool.execute({
+      goal: "sort by price",
+      maxSteps: 5,
+      values: { count: 3 },
+    });
+
+    expect(result).toMatchObject({
+      reason: "needs_value",
+      needs: { tool: "App.pick", parameters: ["value"] },
+    });
   });
 
   it("leaves an optional parameter unset when its options exceed the limit", async () => {

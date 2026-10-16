@@ -18,7 +18,7 @@ import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { probeRegisteredPomMembers } from "./registry";
 import {
-  addValuePresets,
+  completeArguments,
   buildArgumentRequest,
   buildOperationRequest,
   buildSpeculativeValueQuestions,
@@ -754,7 +754,7 @@ export async function pursueGoal(
       score.argumentChoices = chosenArguments.choices;
       score.argumentProbabilities = chosenArguments.probabilities;
     }
-    addValuePresets(chosenTool, chosenArguments, presets);
+    completeArguments(chosenTool, chosenArguments, presets);
 
     // 4. no_progress: the step would repeat the one before, to no effect.
     const stuck = stuckOn(history, chosenTool.name, chosenArguments.chosen);

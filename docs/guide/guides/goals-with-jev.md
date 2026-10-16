@@ -120,11 +120,15 @@ goal({
 });
 ```
 
-The values are candidates, not instructions. At any step, a parameter the loop cannot fill from the page is offered the values whose type fits it: strings for a string or a list of strings, any number for a `number`, whole numbers for an `integer`. Booleans, objects and lists of other types are never filled from values. One value may be used at several steps and for several parameters. `values` takes 1 to 254 entries; anything else is refused as invalid input before the loop starts. Both stages of every step see the values as passed, in their state.
+The values are candidates, not instructions. At any step, a parameter the loop cannot fill from the page is offered the values whose type fits it: strings for a `string`, any number for a `number`, whole numbers for an `integer`, and the same for the items of a list. One value may be used at several steps and for several parameters. `values` takes 1 to 254 entries; anything else is refused as invalid input before the loop starts. Both stages of every step see the values as passed, in their state.
 
 - **Required parameter.** One question offers each fitting value as `label: value`, plus "none of these". With no fitting value the loop ends with `needs_value` without asking, naming the operation and its required parameters; when the model answers "none of these", it ends with `needs_value` naming the operation and that parameter.
 - **Optional parameter.** One question offers the fitting values plus "leave unset". With no fitting value it stays unset.
-- **List of strings.** Each fitting value is a yes-or-no question of its own, asked in the same request; every value scored 0.5 or more is included, in the order of `values`. A select that holds one option at a time receives only the value scored highest. A required list that includes nothing ends with `needs_value`; an optional one stays unset.
+- **List of strings or numbers.** Each fitting value is a yes-or-no question of its own, asked in the same request; every value scored 0.5 or more is included, in the order of `values`. A select that holds one option at a time receives only the value scored highest. A required list that includes nothing ends with `needs_value`; an optional one stays unset.
+- **List of enum values.** Each enum value is a yes-or-no question of its own, in the same way; Goal Values are never offered, so the list holds only enum values.
+- **Tuple.** Each slot is a parameter of its own, filled by its own rule. A tuple ends at its first slot left unset, an optional tuple that ends up empty or missing a slot it requires is left out, and a required tuple with no slot set is passed empty. A handover names the tuple, not its slot, and a step's `chosen` leaves out the slots that hold no value.
+- **Union of primitives**, such as `string | boolean`. One question offers its enum values and booleans together with the values that fit its other types.
+- **Map, list of booleans, list of objects, list of lists, object.** Never filled from values: a required one ends with `needs_value`, an optional one stays unset.
 
 The history shows the value a step used as `label: value`, such as `fill(textbox "Survey name", survey name: Q4 Feedback)`. After a `needs_value`, call `goal` again with the missing value added; the steps already taken stay done, and the new run continues from the current page.
 
