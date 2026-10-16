@@ -315,7 +315,7 @@ describe("Browser Tools in Chromium", () => {
       ])
     );
     await expect(call("click", { target: "s_root" })).rejects.toThrow(
-      'Cannot click ref "s_root": no snapshot issued it'
+      'Cannot click ref "s_root": no snapshot of the current document issued it'
     );
   });
 
