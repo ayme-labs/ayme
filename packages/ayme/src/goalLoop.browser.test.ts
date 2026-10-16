@@ -7,6 +7,7 @@ import {
 import { agentCursor } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
+import { ayme } from "./decorators";
 import { errorText } from "./errors";
 import { agentTools } from "./publication.testSupport";
 import { createPageRegistration, registerCompiledPom } from "./registry";
@@ -2891,6 +2892,97 @@ describe("Goal Loop goal in Chromium", () => {
     // No question without options is ever sent.
     expect(requests).toHaveLength(1);
     expect(result.reason).toBe("no_fitting_option");
+  });
+
+  // Reproduction for "the Goal Loop acts on the wrong collection item when the
+  // one the goal means isn't offered": asserts today's behaviour.
+  it("REPRO: archives another item when the goal's item is unavailable", async () => {
+    const archived: number[] = [];
+    class Item {
+      constructor(
+        readonly root: ReturnType<typeof page.locator>,
+        readonly index: number
+      ) {}
+      archive() {
+        archived.push(this.index);
+      }
+    }
+    ayme.action({
+      available: (self: Item) => self.index !== 0 || "it is already archived",
+    })(
+      Item.prototype,
+      "archive",
+      Object.getOwnPropertyDescriptor(Item.prototype, "archive")!
+    );
+    setupCollectionDom(2);
+    class ItemsPage {
+      readonly items = [0, 1].map(
+        (index) => new Item(page.locator(`#item-${index}`), index)
+      );
+    }
+    registerCompiledPom(
+      ItemsPage,
+      manifest(
+        "ItemsPage",
+        [collection("items", "Item")],
+        [],
+        [
+          {
+            className: "Item",
+            members: [root()],
+            tools: [action("archive", "archive")],
+          },
+        ]
+      )
+    );
+    // A model that knows the goal means Item 0: it picks that item, or "none
+    // of these" when offered, and otherwise the best of what it is given.
+    const stageTwoOptions: Record<string, string>[] = [];
+    let step = 0;
+    const { requests, decide } = recording(async (request) => {
+      const criteria = criteriaOf(request);
+      if (criteria.operation) {
+        step++;
+        return {
+          model: "typesafe/jev-1.13",
+          answers: {
+            operation: choiceAnswer(
+              criteria.operation,
+              step === 1 ? "ItemsPage.items.archive" : "none"
+            ),
+            goal_met: { type: "noul", noul: step === 1 ? 0.1 : 0.9 },
+          },
+        };
+      }
+      const options = criteria.ref!;
+      stageTwoOptions.push(options);
+      const keys = Object.keys(options);
+      const wanted =
+        keys.find((key) => options[key]!.includes("items[0]")) ??
+        keys.find((key) => key === NONE_OF_THESE_KEY) ??
+        keys[0]!;
+      return {
+        model: "typesafe/jev-1.13",
+        answers: { ref: choiceAnswer(options, wanted) },
+      };
+    });
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(ItemsPage);
+
+    const result = (await tool.execute({
+      goal: "archive Item 0",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    // Stage two offers only Item 1, with no "none of these".
+    expect(stageTwoOptions).toHaveLength(1);
+    expect(Object.values(stageTwoOptions[0]!)).toEqual([
+      expect.stringContaining("ItemsPage.items[1]"),
+    ]);
+    // So the loop archives the item the goal did not mean, and reports done.
+    expect(archived).toEqual([1]);
+    expect(result.reason).toBe("done");
+    expect(requests).toHaveLength(3);
   });
 
   it("asks a collection tool's enum and boolean arguments with the instance", async () => {

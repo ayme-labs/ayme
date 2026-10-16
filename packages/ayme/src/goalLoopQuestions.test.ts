@@ -194,6 +194,15 @@ async function askStageTwo(
   };
 }
 
+// Reproduction for "the Goal Loop acts on the wrong collection item when the
+// one the goal means isn't offered", element refs: asserts today's behaviour.
+describe("REPRO: a required ref under the cap", () => {
+  it("offers no none of these, so the model must pick one of the elements", () => {
+    const [question] = askedQuestions(clickTool, captureOfButtons(2));
+    expect(question!.options.map((option) => option.key)).toEqual(["e1", "e2"]);
+  });
+});
+
 describe("ref questions over the option cap", () => {
   it("cuts the options into document-order chunks of at most 254 plus none of these", () => {
     const capture = captureOfButtons(600);
