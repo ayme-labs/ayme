@@ -446,7 +446,25 @@ export type ArgumentQuestion = QuestionBase & {
    * the element, when stage one already chose them.
    */
   target?: { receiving?: string };
+  /**
+   * Set on a question over a collection's items: the present items it does
+   * not offer, and why.
+   */
+  leftOut?: LeftOutItem[];
 };
+
+/** A present collection item the loop did not offer, and why, as a fact. */
+export type LeftOutItem = { label: string; why: string };
+
+/**
+ * The sentence naming the items a collection's question left out, each with
+ * why. Empty when none was.
+ */
+export function describeLeftOut(leftOut: readonly LeftOutItem[]): string {
+  if (leftOut.length === 0) return "";
+  const named = leftOut.map(({ label, why }) => `${label} (${why})`);
+  return `Left out: ${named.join(", ")}.`;
+}
 
 /** Whether one value or Goal Value belongs in a list parameter. */
 type ListValueQuestion = QuestionBase & {
@@ -474,7 +492,13 @@ export type ArgumentPlan =
   /** No element on the page is one the operation's ref may address. */
   | { kind: "needs_ref_choice"; parameter: string }
   /** The instances of a collection do not make a choice the model can answer. */
-  | { kind: "needs_instance_choice"; parameter: string; optionCount: number }
+  | {
+      kind: "needs_instance_choice";
+      parameter: string;
+      optionCount: number;
+      /** The present items the loop could not offer, and why. */
+      leftOut: LeftOutItem[];
+    }
   /** The values of a closed set do not make a choice the model can answer. */
   | { kind: "needs_value_choice"; parameter: string; optionCount: number };
 
@@ -499,29 +523,42 @@ function describeNode(node: StructuralNode): string {
  * One option per present root of a collection path, keyed by the ref the same
  * capture gave that root's element. A root the tool is unavailable on would be
  * refused, and a root the capture holds no ref for cannot be targeted; both are
- * left out.
+ * left out, each with why.
  */
 function instanceOptions(
   roots: readonly CollectionToolItem[],
   capture: PageStateCapture
-): ArgumentOption[] {
+): { options: ArgumentOption[]; leftOut: LeftOutItem[] } {
   const refsByElement = new Map<Element, AriaRef>();
   for (const [ref, element] of capture.elementsByRef)
     refsByElement.set(element, ref);
 
-  return roots.flatMap((root) => {
-    if (!root.available) return [];
+  const options: ArgumentOption[] = [];
+  const leftOut: LeftOutItem[] = [];
+  for (const root of roots) {
+    if (!root.available) {
+      leftOut.push({
+        label: root.label,
+        why:
+          root.reason === undefined
+            ? "unavailable"
+            : `unavailable: ${root.reason}`,
+      });
+      continue;
+    }
     const ref = refsByElement.get(root.element);
     const node = ref === undefined ? null : capture.tree.getNode(ref);
-    if (ref === undefined || node === null) return [];
-    return [
-      {
-        key: ref,
-        description: `${root.label} (${describeNode(node)})`,
-        value: ref,
-      },
-    ];
-  });
+    if (ref === undefined || node === null) {
+      leftOut.push({ label: root.label, why: "no ref in the page state" });
+      continue;
+    }
+    options.push({
+      key: ref,
+      description: `${root.label} (${describeNode(node)})`,
+      value: ref,
+    });
+  }
+  return { options, leftOut };
 }
 
 function valueOptions(values: readonly JsonPrimitive[]): ArgumentOption[] {
@@ -686,6 +723,31 @@ function runOffQuestion(
   };
 }
 
+/**
+ * A required choice of a collection item ends with an option that names no
+ * item, and its instructions say when to choose it, so the model is never
+ * made to act on an item the goal does not mean. An optional one says the
+ * same by leaving the parameter unset. A ref within the cap gets none: on the
+ * bench goal set, Jev answered it where an offered element fitted.
+ */
+function withNoneOfThese(
+  arg: ArgumentSpec,
+  kind: ClosedSet["kind"],
+  question: { options: ArgumentOption[]; instructions: string }
+): { options: ArgumentOption[]; instructions: string } {
+  if (arg.optional || kind !== "instance") return question;
+  return {
+    options: [
+      ...question.options,
+      {
+        key: NONE_OF_THESE_KEY,
+        description: "None of these; the item is not offered.",
+      },
+    ],
+    instructions: `${question.instructions} Choose "${NONE_OF_THESE_KEY}" when the item is not among these.`,
+  };
+}
+
 /** The extra option of an optional parameter: leave it unset. */
 const leaveUnsetOption = (arg: ArgumentSpec): ArgumentOption => ({
   key: LEAVE_UNSET_KEY,
@@ -783,16 +845,22 @@ export function planArguments(
       continue;
     }
 
-    const options = withUniqueKeys([
-      ...(closedSet.kind === "ref"
-        ? refOptions(closedSet.filter, capture)
+    const offered: { options: ArgumentOption[]; leftOut?: LeftOutItem[] } =
+      closedSet.kind === "ref"
+        ? { options: refOptions(closedSet.filter, capture) }
         : closedSet.kind === "instance"
           ? instanceOptions(closedSet.roots, capture)
-          : valueOptions(closedSet.values)),
+          : { options: valueOptions(closedSet.values) };
+    const options = withUniqueKeys([
+      ...offered.options,
       // A union of primitives offers its fitting Goal Values next to them.
       ...goalValues,
       ...(arg.optional ? [leaveUnsetOption(arg)] : []),
     ]);
+    const asked = withNoneOfThese(arg, closedSet.kind, {
+      options,
+      instructions: argumentInstructions(tool, arg, receiving),
+    });
 
     // A ref whose elements outnumber the cap is asked in chunks; other closed
     // sets are not.
@@ -803,19 +871,24 @@ export function planArguments(
 
     // A question outside the limit is never sent. An optional parameter the
     // loop cannot ask about is left unset, like the choice it would have had.
-    if (options.length === 0 || options.length > MAX_CHOICE_OPTIONS) {
+    if (options.length === 0 || asked.options.length > MAX_CHOICE_OPTIONS) {
       if (arg.optional) continue;
       // A ref gets here only with no element left to offer.
       if (closedSet.kind === "ref")
         return { kind: "needs_ref_choice", parameter: arg.name };
-      return {
-        kind:
-          closedSet.kind === "values"
-            ? "needs_value_choice"
-            : "needs_instance_choice",
-        parameter: wholeParameters([arg])[0]!,
-        optionCount: options.length,
-      };
+      const parameter = wholeParameters([arg])[0]!;
+      return offered.leftOut
+        ? {
+            kind: "needs_instance_choice",
+            parameter,
+            optionCount: options.length,
+            leftOut: offered.leftOut,
+          }
+        : {
+            kind: "needs_value_choice",
+            parameter,
+            optionCount: options.length,
+          };
     }
 
     questions.push({
@@ -823,11 +896,12 @@ export function planArguments(
       id: arg.name,
       parameter: arg.name,
       path: arg.path,
-      instructions: argumentInstructions(tool, arg, receiving),
-      options,
+      instructions: asked.instructions,
+      options: asked.options,
       ...(closedSet.kind === "ref"
         ? { target: receiving ? { receiving } : {} }
         : {}),
+      leftOut: offered.leftOut,
     });
   }
   return { kind: "ask", questions };
@@ -1400,8 +1474,16 @@ type ArgumentAnswers =
    * other parameters; `question` is the run-off to ask before running.
    */
   | { kind: "run_off"; chosen: ChosenArguments; question: ArgumentQuestion }
-  /** Every chunk of one parameter answered "none of these". */
-  | ({ kind: "none_fits"; parameter: string } & AnswerRecord)
+  /**
+   * A required collection item answered "none of these", or every chunk of a
+   * ref over the cap did. `leftOut` holds the items a collection's question did
+   * not offer, and why.
+   */
+  | ({
+      kind: "none_fits";
+      parameter: string;
+      leftOut: LeftOutItem[];
+    } & AnswerRecord)
   /** No Goal Value fits a required parameter, by the model's answer. */
   | ({ kind: "needs_value"; parameter: string } & AnswerRecord);
 
@@ -1522,6 +1604,20 @@ export function readArgumentAnswers(
 
   const required = (parameter: string) =>
     tool.args.some((arg) => arg.name === parameter && !arg.optional);
+  const picksItem = (parameter: string) =>
+    tool.args.some(
+      (arg) => arg.name === parameter && arg.closedSet?.kind === "instance"
+    );
+  const noneFits = (
+    parameter: string,
+    question: ArgumentQuestion
+  ): ArgumentAnswers => ({
+    kind: "none_fits",
+    parameter,
+    leftOut: question.leftOut ?? [],
+    choices: chosen.choices,
+    probabilities: chosen.probabilities,
+  });
   const needsValue = (parameter: string): ArgumentAnswers => ({
     kind: "needs_value",
     parameter: wholeParameters(
@@ -1536,20 +1632,16 @@ export function readArgumentAnswers(
   for (const [parameter, group] of groupByParameter(choicePicks)) {
     const named = group.filter((pick) => "value" in pick.option);
     // A lone question: an option without a value leaves the parameter unset,
-    // or, for a required one, says no Goal Value fits it.
+    // or, for a required one, says no item or no Goal Value fits it.
     if (group.length === 1) {
       if (named.length === 0 && required(parameter))
-        return needsValue(parameter);
+        return picksItem(parameter)
+          ? noneFits(parameter, group[0]!.question)
+          : needsValue(parameter);
       choose(chosen, group[0]!.question, group[0]!.option);
       continue;
     }
-    if (named.length === 0)
-      return {
-        kind: "none_fits",
-        parameter,
-        choices: chosen.choices,
-        probabilities: chosen.probabilities,
-      };
+    if (named.length === 0) return noneFits(parameter, group[0]!.question);
     if (named.length === 1)
       choose(chosen, named[0]!.question, named[0]!.option);
     else

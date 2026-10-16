@@ -290,7 +290,7 @@ describe("Browser Tools in Chromium", () => {
         target: "getByRole('button', { name: 'Save' })",
       }).catch(errorText)
     ).toBe(
-      `ToolInputError: The target "getByRole('button', { name: 'Save' })" is a Playwright locator expression, which tools do not take.`
+      `ToolInputError: Cannot click "getByRole('button', { name: 'Save' })": it is a Playwright locator expression, which tools do not take.`
     );
     expect(log).not.toContain("click save");
   });
@@ -305,7 +305,7 @@ describe("Browser Tools in Chromium", () => {
     "rejects the chained locator expression %s the same way",
     async (target) => {
       expect(await call("click", { target }).catch(errorText)).toBe(
-        `ToolInputError: The target "${target}" is a Playwright locator expression, which tools do not take.`
+        `ToolInputError: Cannot click "${target}": it is a Playwright locator expression, which tools do not take.`
       );
       expect(log).not.toContain("click save");
     }
@@ -317,7 +317,7 @@ describe("Browser Tools in Chromium", () => {
     ["E1", 'Cannot click "E1": the selector matches no element.'],
     [
       "ref=e1",
-      'ToolInputError: The target "ref=e1" is neither a Structural Ref nor a selector this runtime supports:',
+      'ToolInputError: Cannot click "ref=e1": it is neither a Structural Ref nor a selector this runtime supports:',
     ],
   ])(
     "names the ref to pass when the target %j is a ref written another way",
@@ -377,6 +377,25 @@ describe("Browser Tools in Chromium", () => {
     });
     expect(value("#name")).toBe("Dee");
     expect(value("#email")).toBe("");
+  });
+
+  it.each([
+    ["an unparsable selector", "input[placeholder="],
+    ["a locator expression", "getByRole('textbox')"],
+  ])("names the field when its target is %s", async (_kind, target) => {
+    const result = await call("fill_form", {
+      fields: [{ target, name: "New item", type: "textbox", value: "x" }],
+    });
+    expect(result).toMatchObject({
+      result: {
+        failed: {
+          name: "New item",
+          error: expect.stringContaining(
+            `Cannot fill the field "New item" at "${target}": it is `
+          ),
+        },
+      },
+    });
   });
 
   it("fills a checkbox and a combobox through fill_form, by ref or selector", async () => {

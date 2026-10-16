@@ -14,6 +14,7 @@ import {
 } from "./decisionWire";
 import type { GoalLoopStepRecord } from "./handover";
 import type { PageStateCapture } from "./pageState";
+import type { CollectionToolItem } from "./registry";
 import {
   NONE_OF_THESE_KEY,
   chunkQuestionId,
@@ -105,7 +106,19 @@ const forceClickTool: GoalLoopOperation = {
 };
 
 /** A tool that goes through a collection, one instance per button of the capture. */
-const collectionTool = (capture: PageStateCapture): GoalLoopOperation => ({
+/** A collection item the tool is unavailable on, so never offered. */
+const archivedItem: CollectionToolItem = {
+  label: "items[archived]",
+  element: document.createElement("li"),
+  present: true,
+  available: false,
+  reason: "already archived",
+};
+
+const collectionTool = (
+  capture: PageStateCapture,
+  unavailable: CollectionToolItem[] = []
+): GoalLoopOperation => ({
   name: "List.archive",
   description: "Archive an item.",
   execute: async () => null,
@@ -117,12 +130,15 @@ const collectionTool = (capture: PageStateCapture): GoalLoopOperation => ({
       optional: false,
       closedSet: {
         kind: "instance",
-        roots: [...capture.elementsByRef.values()].map((element, index) => ({
-          label: `items[${index}]`,
-          element,
-          present: true,
-          available: true,
-        })),
+        roots: [
+          ...[...capture.elementsByRef.values()].map((element, index) => ({
+            label: `items[${index}]`,
+            element,
+            present: true,
+            available: true,
+          })),
+          ...unavailable,
+        ],
       },
     },
   ],
@@ -352,26 +368,35 @@ describe("a Step Decision", () => {
       });
     });
 
-    it.each([
-      [0, "the loop found no instance on the current page"],
-      [256, "the current page holds more of them than one decision can offer"],
-    ])(
-      "with needs_value when a collection holds %i instances",
-      async (count, why) => {
-        const capture = captureOfButtons(count);
-        const archiveTool = collectionTool(capture);
-        const { decide } = scripted(stageOne(archiveTool.name));
+    it("with needs_value when a collection holds more instances than one decision can offer", async () => {
+      const capture = captureOfButtons(256);
+      const archiveTool = collectionTool(capture);
+      const { decide } = scripted(stageOne(archiveTool.name));
 
-        expect(
-          await step(decide, { capture, toolOptions: [optionOf(archiveTool)] })
-        ).toMatchObject({
-          kind: "stop",
-          reason: "needs_value",
-          next: `The operation "List.archive" acts on a collection instance, and ${why}. Read the page again, pick "ref" yourself and call the operation directly, or try a different approach.`,
-          needs: { tool: "List.archive", parameters: ["ref"] },
-        });
-      }
-    );
+      expect(
+        await step(decide, { capture, toolOptions: [optionOf(archiveTool)] })
+      ).toMatchObject({
+        kind: "stop",
+        reason: "needs_value",
+        next: 'The operation "List.archive" acts on a collection instance, and the current page holds more of them than one decision can offer. Read the page again, pick "ref" yourself and call the operation directly, or try a different approach.',
+        needs: { tool: "List.archive", parameters: ["ref"] },
+      });
+    });
+
+    it("with needs_value naming the items it left out when it can offer none", async () => {
+      const capture = captureOfButtons(0);
+      const archiveTool = collectionTool(capture, [archivedItem]);
+      const { decide } = scripted(stageOne(archiveTool.name));
+
+      expect(
+        await step(decide, { capture, toolOptions: [optionOf(archiveTool)] })
+      ).toMatchObject({
+        kind: "stop",
+        reason: "needs_value",
+        next: 'The operation "List.archive" acts on a collection instance, and the loop could offer none of its items. Left out: items[archived] (unavailable: already archived). Try a different approach.',
+        needs: { tool: "List.archive", parameters: ["ref"] },
+      });
+    });
 
     it("with needs_value when a closed set holds more values than one decision can answer", async () => {
       const pickTool: GoalLoopOperation = {
@@ -414,6 +439,21 @@ describe("a Step Decision", () => {
         kind: "stop",
         reason: "no_fitting_option",
         next: 'No element on the current page fits the operation "click". Navigate to a different page or try a different approach.',
+      });
+    });
+    it("with no_fitting_option naming the items left out when a collection item answers none of these", async () => {
+      const capture = captureOfButtons(2);
+      const archiveTool = collectionTool(capture, [archivedItem]);
+      const { decide } = scripted(stageOne(archiveTool.name), {
+        answer: answering(() => "none"),
+      });
+
+      expect(
+        await step(decide, { capture, toolOptions: [optionOf(archiveTool)] })
+      ).toMatchObject({
+        kind: "stop",
+        reason: "no_fitting_option",
+        next: 'No element on the current page fits the operation "List.archive". Left out: items[archived] (unavailable: already archived). Navigate to a different page or try a different approach.',
       });
     });
   });

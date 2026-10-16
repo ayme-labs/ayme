@@ -19,6 +19,7 @@ import {
   buildSpeculativeValueQuestions,
   buildStepState,
   completeArguments,
+  describeLeftOut,
   fitListsToTarget,
   operationQuestionFits,
   parseGoalMetAnswer,
@@ -289,11 +290,15 @@ function planStop(
     case "needs_instance_choice":
       return stop(
         "needs_value",
-        `The operation "${tool.name}" acts on a collection instance, and ${
-          plan.optionCount === 0
-            ? "the loop found no instance on the current page"
-            : "the current page holds more of them than one decision can offer"
-        }. ${pickYourself(plan.parameter)}`,
+        plan.optionCount > 0
+          ? `The operation "${tool.name}" acts on a collection instance, and the current page holds more of them than one decision can offer. ${pickYourself(plan.parameter)}`
+          : [
+              `The operation "${tool.name}" acts on a collection instance, and the loop could offer none of its items.`,
+              describeLeftOut(plan.leftOut),
+              "Try a different approach.",
+            ]
+              .filter(Boolean)
+              .join(" "),
         { tool: tool.name, parameters: [plan.parameter] }
       );
     case "needs_value_choice":
@@ -338,7 +343,13 @@ async function decideArguments(
     return {
       stop: asker.stop(
         "no_fitting_option",
-        `No element on the current page fits the operation "${tool.name}". Navigate to a different page or try a different approach.`
+        [
+          `No element on the current page fits the operation "${tool.name}".`,
+          describeLeftOut(answers.leftOut),
+          "Navigate to a different page or try a different approach.",
+        ]
+          .filter(Boolean)
+          .join(" ")
       ),
     };
   }
