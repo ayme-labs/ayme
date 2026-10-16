@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Page } from "@playwright/test";
 import type { PomManifest, ToolManifest } from "./contracts";
+import type { AymePage } from "./runtime";
+import type { TestSession } from "./session.testSupport";
 
 class FakeMutationObserver {
   observe() {}
@@ -33,26 +34,33 @@ function manifest(
   };
 }
 
+let started: TestSession | undefined;
+
 async function setup() {
   vi.resetModules();
   const registry = await import("./registry");
   const definitions = await import("./pomDefinitions");
-  registry.configureAymeRuntime({} as Page);
-  return { registry, definitions };
+  const { startSession } = await import("./session.testSupport");
+  const session = startSession({} as AymePage);
+  started = session;
+  return { registry, definitions, session };
 }
 
 describe("POM definition catalog", () => {
   beforeEach(() => {
+    vi.stubGlobal("window", {});
     vi.stubGlobal("document", { documentElement: {} });
     vi.stubGlobal("MutationObserver", FakeMutationObserver);
   });
 
   afterEach(() => {
+    started?.stop();
+    started = undefined;
     vi.unstubAllGlobals();
   });
 
   it("discovers child and return POMs that are not mounted, then drops them on disposal", async () => {
-    const { definitions, registry } = await setup();
+    const { definitions, registry, session } = await setup();
     class StartPage {}
     registry.registerCompiledPom(
       StartPage,
@@ -85,7 +93,7 @@ describe("POM definition catalog", () => {
         ],
       })
     );
-    const registration = registry.createPageRegistration(StartPage);
+    session.register(StartPage);
 
     expect(definitions.getPomDefinitions()).toEqual({
       definitions: [
@@ -135,12 +143,12 @@ describe("POM definition catalog", () => {
       ],
     });
 
-    registration.dispose();
+    session.unregister(StartPage);
     expect(definitions.getPomDefinitions()).toEqual({ definitions: [] });
   });
 
   it("uses one result shape for all, named, unknown, and duplicate definitions", async () => {
-    const { definitions, registry } = await setup();
+    const { definitions, registry, session } = await setup();
     class SharedPage {}
     class FirstRoot {}
     class SecondRoot {}
@@ -148,10 +156,7 @@ describe("POM definition catalog", () => {
       SharedPage,
       manifest("SharedPage", { description: "Shared." })
     );
-    const registrations = [
-      registry.createPageRegistration(SharedPage),
-      registry.createPageRegistration(SharedPage),
-    ];
+    session.register(SharedPage);
 
     expect(definitions.getPomDefinitions()).toEqual({
       definitions: [
@@ -204,10 +209,8 @@ describe("POM definition catalog", () => {
       });
     registry.registerCompiledPom(FirstRoot, reachingShared("FirstRoot"));
     registry.registerCompiledPom(SecondRoot, reachingShared("SecondRoot"));
-    registrations.push(
-      registry.createPageRegistration(FirstRoot),
-      registry.createPageRegistration(SecondRoot)
-    );
+    session.register(FirstRoot);
+    session.register(SecondRoot);
 
     expect(definitions.getPomDefinitions("SharedChild")).toEqual({
       definitions: [
@@ -222,8 +225,6 @@ describe("POM definition catalog", () => {
     expect(
       definitions.getPomDefinitions().definitions.map(({ name }) => name)
     ).toEqual(["SharedPage", "FirstRoot", "SharedChild", "SecondRoot"]);
-
-    registrations.forEach((registration) => registration.dispose());
   });
 
   it("rejects runtime-invalid POM definition names", async () => {
@@ -247,7 +248,7 @@ describe("POM definition catalog", () => {
   });
 
   it("keeps definition action descriptions and schemas equal to callable tools", async () => {
-    const { definitions, registry } = await setup();
+    const { definitions, registry, session } = await setup();
     class ToolPage {
       run(value: string) {
         return value;
@@ -258,7 +259,7 @@ describe("POM definition catalog", () => {
       ToolPage,
       manifest("ToolPage", { tools: [tool] })
     );
-    const registration = registry.createPageRegistration(ToolPage);
+    session.register(ToolPage);
     await registry.probeRegisteredPomMembers();
 
     const definition = definitions.getPomDefinitions("ToolPage");
@@ -279,12 +280,10 @@ describe("POM definition catalog", () => {
         },
       ],
     });
-
-    registration.dispose();
   });
 
   it("gives an action without a description none, not the one agents read", async () => {
-    const { definitions, registry } = await setup();
+    const { definitions, registry, session } = await setup();
     class BarePage {
       run(value: string) {
         return value;
@@ -295,13 +294,11 @@ describe("POM definition catalog", () => {
       BarePage,
       manifest("BarePage", { tools: [{ methodName, toolName, parameters }] })
     );
-    const registration = registry.createPageRegistration(BarePage);
+    session.register(BarePage);
     await registry.probeRegisteredPomMembers();
 
     const [definition] = definitions.getPomDefinitions("BarePage").definitions;
     expect(definition?.actions[0]).not.toHaveProperty("description");
     expect(registry.listAvailablePomTools()[0]?.description).toBe("Run run.");
-
-    registration.dispose();
   });
 });

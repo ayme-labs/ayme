@@ -194,25 +194,6 @@ export function registerCompiledPom(PomClass: object, manifest: PomManifest) {
   compiledPoms.set(PomClass, manifest);
 }
 
-export function createPageRegistration<T extends object>(
-  PomClass: PageObjectConstructor<T>
-) {
-  const page = browserPage;
-  if (!page)
-    throw new RuntimeStateError(
-      "Cannot register a page object: the Ayme browser runtime is not configured."
-    );
-
-  const compiledPom = compiledPoms.get(PomClass);
-  if (!compiledPom)
-    throw new RuntimeStateError(
-      "The imported page object has no compiler-derived Ayme metadata."
-    );
-
-  const instance = constructPageObject(PomClass, page);
-  return registerPageObject(PomClass, instance);
-}
-
 export function constructPageObject<T extends object>(
   PomClass: PageObjectConstructor<T>,
   page: Page

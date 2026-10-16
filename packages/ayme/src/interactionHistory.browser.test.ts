@@ -16,11 +16,7 @@ import {
   resolvePageStateRefs,
 } from "./pageState";
 import { agentTools } from "./publication.testSupport";
-import {
-  createPageRegistration,
-  probeRegisteredPomMembers,
-  registerCompiledPom,
-} from "./registry";
+import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
 
 type ActionResultShape = {
@@ -54,7 +50,9 @@ describe("Interaction history in Chromium", () => {
   });
 
   function startRuntime(goalLoop?: GoalLoopDecisionFunction) {
-    stop = createAyme({ pageFactory: () => page, goalLoop }).start();
+    const ayme = createAyme({ pageFactory: () => page, goalLoop });
+    stop = ayme.start();
+    return ayme;
   }
 
   /** A Page Object whose one action appends a paragraph. */
@@ -70,8 +68,7 @@ describe("Interaction history in Chromium", () => {
       }
     }
     registerCompiledPom(App, manifest("App", [action("add", "App.add")]));
-    startRuntime(goalLoop);
-    createPageRegistration(App);
+    startRuntime(goalLoop).pom.register(App);
     // Its tool is published once a probe finds the Page Object available.
     await probeRegisteredPomMembers();
   }
@@ -382,8 +379,7 @@ describe("Interaction history in Chromium", () => {
       App,
       manifest("App", [action("add", "App.add"), action("noop", "App.noop")])
     );
-    startRuntime(decide);
-    createPageRegistration(App);
+    startRuntime(decide).pom.register(App);
     await probeRegisteredPomMembers();
     await readStructure();
 

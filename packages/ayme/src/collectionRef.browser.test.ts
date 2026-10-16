@@ -2,14 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createPage } from "./browserPage";
 import {
-  createAymeRuntime,
   registerCompiledPom,
-  createPageRegistration,
   listAvailablePomTools,
   probeRegisteredPomMembers,
 } from "./registry";
 import type { PomManifest } from "./contracts";
 import { runContext } from "./agentCalls.testSupport";
+import { startSession } from "./session.testSupport";
 
 const action = (methodName: string, description: string) => ({
   methodName,
@@ -43,7 +42,7 @@ describe("collection instances targeted by ref", () => {
       </ul>
     `;
     const page = createPage();
-    const runtime = createAymeRuntime(page);
+    const session = startSession(page);
     try {
       const archiveFns = [vi.fn(), vi.fn(), vi.fn()];
       const items = [0, 1, 2].map((i) => ({
@@ -77,7 +76,7 @@ describe("collection instances targeted by ref", () => {
       };
 
       registerCompiledPom(ItemsPage, manifest);
-      const registration = createPageRegistration(ItemsPage);
+      session.register(ItemsPage);
       await probeRegisteredPomMembers();
 
       const tools = listAvailablePomTools();
@@ -96,9 +95,9 @@ describe("collection instances targeted by ref", () => {
       expect(archiveFns[1]).toHaveBeenCalledOnce();
       expect(archiveFns[2]).not.toHaveBeenCalled();
 
-      registration.dispose();
+      session.unregister(ItemsPage);
     } finally {
-      runtime.dispose();
+      session.stop();
     }
   });
 
@@ -111,7 +110,7 @@ describe("collection instances targeted by ref", () => {
       </ul>
     `;
     const page = createPage();
-    const runtime = createAymeRuntime(page);
+    const session = startSession(page);
     try {
       const archiveFns = [vi.fn(), vi.fn(), vi.fn()];
       const items = [0, 1, 2].map((i) => ({
@@ -143,7 +142,7 @@ describe("collection instances targeted by ref", () => {
           },
         ],
       });
-      const registration = createPageRegistration(ItemsPage);
+      session.register(ItemsPage);
       await probeRegisteredPomMembers();
 
       const tools = listAvailablePomTools();
@@ -167,9 +166,9 @@ describe("collection instances targeted by ref", () => {
       expect(archiveFns[1]).toHaveBeenCalledOnce();
       expect(archiveFns[2]).not.toHaveBeenCalled();
 
-      registration.dispose();
+      session.unregister(ItemsPage);
     } finally {
-      runtime.dispose();
+      session.stop();
     }
   });
 
@@ -181,7 +180,7 @@ describe("collection instances targeted by ref", () => {
       </ul>
     `;
     const page = createPage();
-    const runtime = createAymeRuntime(page);
+    const session = startSession(page);
     try {
       const archiveFns = [vi.fn(), vi.fn()];
       const items = [0, 1].map((i) => ({
@@ -213,7 +212,7 @@ describe("collection instances targeted by ref", () => {
           },
         ],
       });
-      const registration = createPageRegistration(ItemsPage);
+      session.register(ItemsPage);
       await probeRegisteredPomMembers();
 
       const tools = listAvailablePomTools();
@@ -239,9 +238,9 @@ describe("collection instances targeted by ref", () => {
       expect(archiveFns[0]).not.toHaveBeenCalled();
       expect(archiveFns[1]).not.toHaveBeenCalled();
 
-      registration.dispose();
+      session.unregister(ItemsPage);
     } finally {
-      runtime.dispose();
+      session.stop();
     }
   });
 
@@ -253,7 +252,7 @@ describe("collection instances targeted by ref", () => {
       </ul>
     `;
     const page = createPage();
-    const runtime = createAymeRuntime(page);
+    const session = startSession(page);
     try {
       const archive = vi.fn();
       class ItemsPage {
@@ -280,7 +279,7 @@ describe("collection instances targeted by ref", () => {
           },
         ],
       });
-      const registration = createPageRegistration(ItemsPage);
+      session.register(ItemsPage);
       await probeRegisteredPomMembers();
       const archiveTool = listAvailablePomTools().find(
         (t) => t.name === "ItemsPage.items.archive"
@@ -308,9 +307,9 @@ describe("collection instances targeted by ref", () => {
       );
 
       expect(archive).not.toHaveBeenCalled();
-      registration.dispose();
+      session.unregister(ItemsPage);
     } finally {
-      runtime.dispose();
+      session.stop();
     }
   });
 
@@ -319,7 +318,7 @@ describe("collection instances targeted by ref", () => {
       <main><div id="item-0" role="none"><button>Archive item-0</button></div></main>
     `;
     const page = createPage();
-    const runtime = createAymeRuntime(page);
+    const session = startSession(page);
     try {
       const archive = vi.fn();
       class ItemsPage {
@@ -346,7 +345,7 @@ describe("collection instances targeted by ref", () => {
           },
         ],
       });
-      const registration = createPageRegistration(ItemsPage);
+      session.register(ItemsPage);
       await probeRegisteredPomMembers();
       const archiveTool = listAvailablePomTools().find(
         (t) => t.name === "ItemsPage.items.archive"
@@ -361,9 +360,9 @@ describe("collection instances targeted by ref", () => {
       await archiveTool.execute({ ref, args: {} }, runContext());
       expect(archive).toHaveBeenCalledOnce();
 
-      registration.dispose();
+      session.unregister(ItemsPage);
     } finally {
-      runtime.dispose();
+      session.stop();
     }
   });
 
@@ -382,7 +381,7 @@ describe("collection instances targeted by ref", () => {
       </div>
     `;
     const page = createPage();
-    const runtime = createAymeRuntime(page);
+    const session = startSession(page);
     try {
       const actionFns = [[vi.fn(), vi.fn()], [vi.fn()]];
       const groups = [0, 1].map((g) => ({
@@ -431,7 +430,7 @@ describe("collection instances targeted by ref", () => {
           },
         ],
       });
-      const registration = createPageRegistration(GroupsPage);
+      session.register(GroupsPage);
       await probeRegisteredPomMembers();
 
       const tools = listAvailablePomTools();
@@ -451,9 +450,9 @@ describe("collection instances targeted by ref", () => {
       expect(actionFns[0]![1]).toHaveBeenCalledOnce();
       expect(actionFns[1]![0]).not.toHaveBeenCalled();
 
-      registration.dispose();
+      session.unregister(GroupsPage);
     } finally {
-      runtime.dispose();
+      session.stop();
     }
   });
 
@@ -463,7 +462,7 @@ describe("collection instances targeted by ref", () => {
       <div id="item-1"><button id="child-1">Open</button></div>
     `;
     const page = createPage();
-    const runtime = createAymeRuntime(page);
+    const session = startSession(page);
     try {
       const openFns = [vi.fn(), vi.fn()];
       const items = [0, 1].map((i) => ({
@@ -512,7 +511,7 @@ describe("collection instances targeted by ref", () => {
           },
         ],
       });
-      const registration = createPageRegistration(ItemsPage);
+      session.register(ItemsPage);
       await probeRegisteredPomMembers();
 
       const tools = listAvailablePomTools();
@@ -530,9 +529,9 @@ describe("collection instances targeted by ref", () => {
       expect(openFns[0]).not.toHaveBeenCalled();
       expect(openFns[1]).toHaveBeenCalledOnce();
 
-      registration.dispose();
+      session.unregister(ItemsPage);
     } finally {
-      runtime.dispose();
+      session.stop();
     }
   });
 });

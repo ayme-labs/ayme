@@ -20,7 +20,6 @@ import {
   type ToolInfo,
 } from "./publishedTools";
 import {
-  createPageRegistration,
   probeRegisteredPomMembers,
   registerCompiledPom,
   type PageObjectConstructor,
@@ -54,10 +53,7 @@ class TodoPage {
 }
 
 class SettingsPage {
-  saves = 0;
-  save() {
-    this.saves += 1;
-  }
+  save() {}
 }
 
 /** A Page Object whose action takes a rest parameter. */
@@ -382,26 +378,6 @@ describe("the session's tools in Chromium", () => {
     document.querySelector<HTMLDialogElement>("#confirm")!.close();
     await expect.poll(archive).toMatchObject({ available: true });
     expect(archive()).not.toHaveProperty("reason");
-  });
-
-  it("lists a tool two registrations of one class share once, and runs it on the first one still registered", async () => {
-    await startSession();
-    const first = createPageRegistration(SettingsPage);
-    const second = createPageRegistration(SettingsPage);
-    cleanups.push(first.dispose, second.dispose);
-    await probeRegisteredPomMembers();
-    const listed = () =>
-      names(ayme.tools.list()).filter((name) => name === "SettingsPage.save");
-    const saves = () => [first.instance.saves, second.instance.saves];
-
-    expect(listed()).toHaveLength(1);
-    await agentCall("SettingsPage.save", { title: "Draft" });
-    expect(saves()).toEqual([1, 0]);
-
-    first.dispose();
-    expect(listed()).toHaveLength(1);
-    await agentCall("SettingsPage.save", { title: "Draft" });
-    expect(saves()).toEqual([1, 1]);
   });
 
   it("gives each single-element tool the refs the Goal Loop offers it for the same page", async () => {
