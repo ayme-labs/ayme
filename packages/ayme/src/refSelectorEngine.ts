@@ -4,52 +4,43 @@ import { latestPageStateElement } from "./pageState";
 
 /** The engine's name, the one core's Structural Ref grammar writes as `ayme-ref=…`. */
 const ENGINE_NAME = "ayme-ref";
-/** The page-world global the engine reads a ref's element through. */
-const LOOKUP_GLOBAL = "__aymeRefElement";
-
-type RefLookup = (
-  currentDocument: Document,
-  ref: string
-) => Element | undefined;
 
 /** The element the latest capture of the document's Page State Session maps `ref` to. */
-const lookup: RefLookup = (currentDocument, ref) => {
+function lookup(currentDocument: Document, ref: string): Element | undefined {
   const structuralRef = parseStructuralRef(ref);
   return (
     structuralRef && latestPageStateElement(currentDocument, structuralRef)
   );
-};
+}
 
-// Stryker disable all
 /**
- * The engine, evaluated in the page's own JavaScript world, where nothing of
- * this package is in scope, `LOOKUP_GLOBAL` included: it reaches the lookup
- * through the global alone, by name.
+ * `root` holds `element` when it is an ancestor across shadow roots, which
+ * `Node.contains` does not cross.
  */
-const refSelectorEngine = () => {
-  // `root` holds the element when it is an ancestor across shadow roots,
-  // which `Node.contains` does not cross.
-  const holds = (root: Node, element: Element): boolean => {
-    for (let node: Node | null = element; node;)
-      if (node === root) return true;
-      else node = node instanceof ShadowRoot ? node.host : node.parentNode;
-    return false;
-  };
-  const find = (root: Node, ref: string): Element | undefined => {
-    const lookup = (globalThis as { __aymeRefElement?: RefLookup })
-      .__aymeRefElement;
-    const element = lookup?.(root.ownerDocument ?? (root as Document), ref);
-    return element && holds(root, element) ? element : undefined;
-  };
-  return {
-    query: (root: Node, ref: string) => find(root, ref) ?? null,
-    queryAll: (root: Node, ref: string) => {
-      const element = find(root, ref);
-      return element ? [element] : [];
-    },
-  };
-};
-// Stryker restore all
+function holds(root: Node, element: Element): boolean {
+  for (let node: Node | null = element; node;)
+    if (node === root) return true;
+    else node = node instanceof ShadowRoot ? node.host : node.parentNode;
+  return false;
+}
+
+function find(root: Node, ref: string): Element | undefined {
+  const element = lookup(root.ownerDocument ?? (root as Document), ref);
+  return element && holds(root, element) ? element : undefined;
+}
+
+/**
+ * The engine. playwright-lite calls the function as it is, in the page's one
+ * JavaScript world, so it keeps this module in scope and needs no `eval`: it
+ * registers on a page whose Content Security Policy forbids one.
+ */
+const refSelectorEngine = () => ({
+  query: (root: Node, ref: string) => find(root, ref) ?? null,
+  queryAll: (root: Node, ref: string) => {
+    const element = find(root, ref);
+    return element ? [element] : [];
+  },
+});
 
 let registered = false;
 
@@ -63,7 +54,6 @@ let registered = false;
 export function registerRefSelectorEngine(): void {
   if (registered) return;
   registered = true;
-  (globalThis as { [LOOKUP_GLOBAL]?: RefLookup })[LOOKUP_GLOBAL] = lookup;
   // Registration completes synchronously; the promise only reports a name
   // this guard already excludes.
   void selectors.register(ENGINE_NAME, refSelectorEngine);
