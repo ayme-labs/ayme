@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { Page } from "@playwright/test";
 
 import { createPage } from "./browserPage";
+import type { PomManifest } from "./contracts";
 import {
   isCheckableElement,
   isClickableElement,
@@ -18,7 +20,9 @@ import {
   withoutElement,
 } from "./playwrightMcp.testSupport";
 import { agentTools } from "./publication.testSupport";
+import { lookAtPageStateForDocument } from "./pageState";
 import { listElementToolTargets } from "./publishedTools";
+import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
 
 type Schema = {
@@ -61,6 +65,44 @@ const FIXTURE = `
   <button class="twin" type="button">Twin</button>
   <button class="twin" type="button">Twin</button>
 `;
+
+/**
+ * Two Page Object Roots Playwright's snapshot gives no ref, so `snapshot`
+ * prints each as `s_…`: a plain wrapper and one with a pointer cursor.
+ */
+const ROOTS = `
+  <div id="account" role="none"><button type="button">Save changes</button></div>
+  <div id="card" role="none" style="cursor: pointer"><button type="button">Open card</button></div>
+`;
+
+class RootsPage {
+  readonly account;
+  readonly card;
+  constructor(page: Page) {
+    this.account = { root: page.locator("#account") };
+    this.card = { root: page.locator("#card") };
+  }
+}
+
+const rootsManifest: PomManifest = {
+  className: "RootsPage",
+  members: ["account", "card"].map((memberName) => ({
+    memberName,
+    kind: "component",
+    access: "field",
+    componentClassName: "Root",
+    collection: false,
+  })),
+  tools: [],
+  components: [
+    {
+      className: "Root",
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [],
+    },
+  ],
+};
+registerCompiledPom(RootsPage, rootsManifest);
 
 describe("Browser Tools in Chromium", () => {
   let ayme: Ayme;
@@ -273,8 +315,69 @@ describe("Browser Tools in Chromium", () => {
       ])
     );
     await expect(call("click", { target: "s_root" })).rejects.toThrow(
-      'Cannot click ref "s_root": synthetic observation-only ref'
+      'Cannot click ref "s_root": no snapshot of the current document issued it'
     );
+  });
+
+  /** The synthetic ref `text` prints for the RootsPage member's root. */
+  function rootRef(text: string, member: string) {
+    const ref = text.match(
+      new RegExp(`(s_\\w+) RootsPage\\.${member}\\b`)
+    )?.[1];
+    if (!ref) throw new Error(`Expected a synthetic ref for ${member}.`);
+    return ref;
+  }
+
+  it("clicks a Page Object Root through its synthetic ref", async () => {
+    document.body.insertAdjacentHTML("beforeend", ROOTS);
+    ayme.pom.register(RootsPage);
+    const { structure } = (await call("snapshot", {})) as {
+      structure: string;
+    };
+
+    await call("click", { target: rootRef(structure, "account") });
+
+    expect(log).toContain("click account");
+  });
+
+  it("clicks the root a look's synthetic ref shows once an earlier root is gone", async () => {
+    document.body.insertAdjacentHTML("beforeend", ROOTS);
+    ayme.pom.register(RootsPage);
+    await call("snapshot", {});
+    document.getElementById("account")!.remove();
+    // The Inspector runs a tool on a ref its unrecorded look printed.
+    const look = await lookAtPageStateForDocument(document);
+
+    await call("click", { target: rootRef(look.text, "card") });
+
+    expect(log).toContain("click card");
+  });
+
+  it("fills an element that receives no pointer events through its ref", async () => {
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<input id="locked" aria-label="Locked" style="pointer-events: none">'
+    );
+
+    await call("fill", { target: await refOf("Locked"), text: "open" });
+
+    expect(value("#locked")).toBe("open");
+  });
+
+  it("clicks an element inside an open shadow root through its ref", async () => {
+    document.body.insertAdjacentHTML("beforeend", '<div id="host"></div>');
+    const shadow = document
+      .getElementById("host")!
+      .attachShadow({ mode: "open" });
+    shadow.innerHTML = '<button id="inner">Shadowed</button>';
+    let clicked = false;
+    shadow.getElementById("inner")!.addEventListener("click", () => {
+      clicked = true;
+    });
+
+    await call("click", { target: await refOf("Shadowed") });
+
+    expect(clicked).toBe(true);
   });
 
   it("fails a selector that matches several elements", async () => {
@@ -455,6 +558,16 @@ describe("Browser Tools in Chromium", () => {
         .find((option) => option.key === "type")!
         .tool.args.map((arg) => arg.name)
     ).toEqual(["target", "text"]);
+  });
+
+  it("offers a Page Object Root's synthetic ref by the tool's filter alone", async () => {
+    document.body.insertAdjacentHTML("beforeend", ROOTS);
+    ayme.pom.register(RootsPage);
+    const look = await lookAtPageStateForDocument(document);
+    const targets = await listElementToolTargets(look);
+
+    expect(targets.get("click")).toContain(rootRef(look.text, "card"));
+    expect(targets.get("click")).not.toContain(rootRef(look.text, "account"));
   });
 });
 

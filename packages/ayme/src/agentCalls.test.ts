@@ -160,13 +160,13 @@ describe("the Ayme page state helper", () => {
       {
         status: "resolved",
         requestedRef: AriaRefSchema.parse("s_1"),
-        node: { ref: AriaRefSchema.parse("s_2"), element: account },
+        node: { ref: AriaRefSchema.parse("s_1"), element: account },
       },
     ]);
   });
 
   // Alias continuity; a removed ref fails explicitly and is never rebound.
-  it("retargets reordered synthetic roots and does not rebind a removed root", async () => {
+  it("keeps reordered synthetic roots' refs and does not rebind a removed root", async () => {
     document.body.innerHTML = `
       <section id="account"><button id="account-button">Account</button></section>
       <section id="billing"><button id="billing-button">Billing</button></section>
@@ -226,30 +226,22 @@ describe("the Ayme page state helper", () => {
     expect(state.text).toContain("s_2 Billing.root");
     document.body.prepend(billing);
     const reorderedState = await ayme.getPageState();
-    expect(reorderedState.text).toContain("s_3 Account.root");
-    expect(reorderedState.text).toContain("s_4 Billing.root");
+    expect(reorderedState.text).toContain("s_1 Account.root");
+    expect(reorderedState.text).toContain("s_2 Billing.root");
     account.remove();
 
-    await expect(
-      state.resolve(ref("s_1"), ref("s_2"), ref("s_3"), ref("s_4"))
-    ).resolves.toEqual([
+    await expect(state.resolve(ref("s_1"), ref("s_2"))).resolves.toEqual([
       { status: "unresolved", requestedRef: ref("s_1"), reason: "removed" },
       {
         status: "resolved",
         requestedRef: ref("s_2"),
-        node: { ref: ref("s_5"), element: billing },
-      },
-      { status: "unresolved", requestedRef: ref("s_3"), reason: "removed" },
-      {
-        status: "resolved",
-        requestedRef: ref("s_4"),
-        node: { ref: ref("s_5"), element: billing },
+        node: { ref: ref("s_2"), element: billing },
       },
     ]);
   });
 
-  // Alias continuity for synthetic refs survives child re-renders.
-  it("retargets an earlier synthetic ref when the same root element survives a re-render", async () => {
+  // A root keeps its synthetic ref through child re-renders.
+  it("keeps a root's synthetic ref when the root element survives a re-render", async () => {
     document.body.innerHTML = `
       <div id="account"><button id="save">Save</button></div>
     `;
@@ -306,13 +298,13 @@ describe("the Ayme page state helper", () => {
     ]);
 
     const rerendered = await ayme.getPageState();
-    expect(rerendered.text).toContain("s_2 AccountPage.root");
+    expect(rerendered.text).toContain("s_1 AccountPage.root");
 
     await expect(state.resolve(ref("s_1"))).resolves.toEqual([
       {
         status: "resolved",
         requestedRef: ref("s_1"),
-        node: { ref: ref("s_3"), element: account },
+        node: { ref: ref("s_1"), element: account },
       },
     ]);
   });

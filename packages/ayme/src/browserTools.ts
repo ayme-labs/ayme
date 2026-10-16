@@ -109,7 +109,7 @@ const clickDefinition = browserTool(
     modifiers: MODIFIERS,
   }),
   async (target, input) => {
-    const locator = await locatorOf(target);
+    const locator = locatorOf(target);
     if (input.doubleClick === true) await locator.dblclick(clickOptions(input));
     else await locator.click(clickOptions(input));
   }
@@ -119,7 +119,7 @@ const hoverDefinition = browserTool(
   "hover",
   "Move the pointer over one element.",
   elementInput(),
-  async (target) => (await locatorOf(target)).hover()
+  async (target) => locatorOf(target).hover()
 );
 
 const typeDefinition = browserTool(
@@ -141,7 +141,7 @@ const typeDefinition = browserTool(
     ["text"]
   ),
   async (target, input) => {
-    const locator = await locatorOf(target);
+    const locator = locatorOf(target);
     const text = input.text as string;
     if (input.slowly === true) await locator.pressSequentially(text);
     else await locator.fill(text);
@@ -155,21 +155,21 @@ const fillDefinition = browserTool(
   elementInput({ text: { type: "string", description: "Text to fill." } }, [
     "text",
   ]),
-  async (target, input) => (await locatorOf(target)).fill(input.text as string)
+  async (target, input) => locatorOf(target).fill(input.text as string)
 );
 
 const checkDefinition = browserTool(
   "check",
   "Check one checkbox or radio button.",
   elementInput(),
-  async (target) => (await locatorOf(target)).check()
+  async (target) => locatorOf(target).check()
 );
 
 const uncheckDefinition = browserTool(
   "uncheck",
   "Uncheck one checkbox.",
   elementInput(),
-  async (target) => (await locatorOf(target)).uncheck()
+  async (target) => locatorOf(target).uncheck()
 );
 
 const selectOptionDefinition = browserTool(
@@ -186,7 +186,7 @@ const selectOptionDefinition = browserTool(
     ["values"]
   ),
   async (target, input) =>
-    (await locatorOf(target)).selectOption(input.values as string[])
+    locatorOf(target).selectOption(input.values as string[])
 );
 
 // --- Built-in filters ---
@@ -351,7 +351,7 @@ type FormField = {
 };
 
 async function fillField(field: FormField, currentDocument: Document) {
-  const locator = await locatorOf(
+  const locator = locatorOf(
     await resolveElementTarget(
       { label: `fill the field "${field.name}" at`, targetField: "target" },
       field.target,

@@ -279,16 +279,13 @@ describe("generate_locator in Chromium", () => {
 
   it("fails each target that cannot be resolved on its own entry and keeps the rest", async () => {
     const heading = await ref("heading", "Orders");
-    const account = await accountRootRef();
     const cancel = await ref("button", "Cancel");
     const removed = await ref("button", "Gone");
     element("#gone").remove();
 
     const result = await run({
       groups: [
-        {
-          targets: ["e9999", removed, account, "#missing", ".twin", heading],
-        },
+        { targets: ["e9999", removed, "#missing", ".twin", heading] },
         { targets: [cancel], within: await ref("listitem", "Order 1") },
       ],
     });
@@ -297,12 +294,37 @@ describe("generate_locator in Chromium", () => {
     expect(errorAt(result, 0, 1)).toMatch(
       new RegExp(`"${removed}": it is no longer on the page`)
     );
-    expect(account).toMatch(/^s_/);
-    expect(errorAt(result, 0, 2)).toMatch(/Page Object AccountPage\.account\b/);
-    expect(errorAt(result, 0, 3)).toMatch(/matches no element/);
-    expect(errorAt(result, 0, 4)).toMatch(/matches 2 elements/);
-    expect(elementsOf(page, locatorAt(result, 0, 5))).toEqual([element("h1")]);
+    expect(errorAt(result, 0, 2)).toMatch(/matches no element/);
+    expect(errorAt(result, 0, 3)).toMatch(/matches 2 elements/);
+    expect(elementsOf(page, locatorAt(result, 0, 4))).toEqual([element("h1")]);
     expect(errorAt(result, 1, 0)).toMatch(/not inside the container "e\d+"/);
+  });
+
+  it("returns a page-level locator for a Page Object Root's synthetic ref", async () => {
+    const account = await accountRootRef();
+    expect(account).toMatch(/^s_/);
+
+    const result = await run({ groups: [{ targets: [account] }] });
+
+    expect(elementsOf(page, locatorAt(result, 0, 0))).toEqual([
+      element("#account"),
+    ]);
+  });
+
+  it("scopes locators to a Page Object Root's synthetic ref", async () => {
+    const account = await accountRootRef();
+    const save = await ref("button", "Save changes");
+
+    const result = await run({
+      groups: [{ targets: [save], within: account }],
+    });
+
+    expect(result.groups[0]?.within).toBe(account);
+    const relative = locatorAt(result, 0, 0);
+    expect(relative).toBe("getByRole('button', { name: 'Save changes' })");
+    expect(elementsOf(page.locator("#account"), relative)).toEqual([
+      element("#account button"),
+    ]);
   });
 
   it("keeps the closing punctuation of a reason that already ends a sentence", async () => {
@@ -311,7 +333,7 @@ describe("generate_locator in Chromium", () => {
     expect(errorAt(result, 0, 0)).toMatch(/CSS\.escape it\?$/);
   });
 
-  it("fails a group whose container cannot be resolved and keeps the other groups", async () => {
+  it("fails a group whose container cannot be resolved, and a target outside its container, and keeps the other groups", async () => {
     const dialog = await ref("dialog", "Archive order");
     const confirm = await ref("button", "Confirm archive");
     const account = await accountRootRef();
@@ -332,10 +354,10 @@ describe("generate_locator in Chromium", () => {
         /^Cannot scope locators to ref "e\d+": it is no longer on the page/
       ),
     });
-    expect(result.groups[1]).toEqual({
-      within: account,
-      error: expect.stringMatching(/Page Object AccountPage\.account\b/),
-    });
+    expect(result.groups[1]?.within).toBe(account);
+    expect(errorAt(result, 1, 0)).toMatch(
+      new RegExp(`not inside the container "${account}"`)
+    );
     expect(elementsOf(page, locatorAt(result, 2, 0))).toEqual([element("h1")]);
   });
 
