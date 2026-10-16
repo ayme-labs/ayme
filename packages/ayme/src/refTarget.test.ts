@@ -53,7 +53,7 @@ describe("resolveRef", () => {
   });
 
   it.each([
-    ["unknown-ref", "no snapshot issued it"],
+    ["unknown-ref", "no snapshot of the current document issued it"],
     ["removed", "it is no longer on the page"],
     ["ambiguous", "it cannot be matched unambiguously to the current page"],
     ["no-element", "it has no element on the page now"],

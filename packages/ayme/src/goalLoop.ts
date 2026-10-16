@@ -726,11 +726,14 @@ export async function pursueGoal(
         });
       }
 
-      // The model judged that no Goal Value fits a required parameter.
+      // The model judged that nothing offered fits a required parameter.
       if (argumentAnswers.kind === "needs_value") {
+        const { parameter, goalValuesOffered } = argumentAnswers;
         return done({
           reason: "needs_value",
-          next: `The operation "${chosenTool.name}" needs a value for "${argumentAnswers.parameter}", and the model judged that none of the Goal Values fits. Call goal again with a value for "${argumentAnswers.parameter}" in values, or call ${chosenTool.name} directly.`,
+          next: goalValuesOffered
+            ? `The operation "${chosenTool.name}" needs a value for "${parameter}", and the model judged that none of the Goal Values fits. Call goal again with a value for "${parameter}" in values, or call ${chosenTool.name} directly.`
+            : `The operation "${chosenTool.name}" needs a value for "${parameter}", and the model judged that none of its allowed values belongs in it.`,
           history,
           needs: {
             tool: chosenTool.name,

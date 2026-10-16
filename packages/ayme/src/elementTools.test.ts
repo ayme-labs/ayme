@@ -104,7 +104,7 @@ describe("Structural Ref interactions", () => {
 
     const page = usePage();
     await expect(clickRef(ref("e999"))).rejects.toThrow(
-      'Cannot click ref "e999": no snapshot issued it.'
+      'Cannot click ref "e999": no snapshot of the current document issued it.'
     );
     expect(page.click).not.toHaveBeenCalled();
   });
