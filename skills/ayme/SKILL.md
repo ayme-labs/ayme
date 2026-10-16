@@ -8,8 +8,9 @@ description: Set up Ayme in a consumer project, expose existing Page Object Acti
 For package installation, application integration, or exposing an existing POM,
 read [Onboarding](references/onboarding.md).
 
-For connecting yourself to the app's page with `ayme_connect`, or diagnosing
-missing page tools, read [Browser setup](references/browser-setup.md).
+For connecting yourself to the app's page with `ayme_connect`, diagnosing
+missing page tools, or a call the page didn't answer because it reloaded,
+navigated or closed, read [Browser setup](references/browser-setup.md).
 
 For designing or restructuring Page Object Models, read
 [Page object design](references/page-object-design.md). Where it conflicts with

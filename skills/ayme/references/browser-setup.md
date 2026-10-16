@@ -19,6 +19,10 @@ version. Diagnose with the "The agent cannot reach the page" section of
   again by itself, and the page's tools come back with a tool list change.
   If they don't come back, or no tab was paired, call `ayme_connect` again
   and open the new link.
+- When a call answers that the page reloaded or navigated before it
+  answered, the call's outcome is unknown: read the page with `snapshot`
+  before deciding whether to call it again. When it answers that the tab
+  closed, call `ayme_connect` again and open the new link.
 - When a tool answers that no page reconnected in its place, the page the tab
   loaded did not pair within a few seconds. A slow page of the app pairs
   later by itself, and its tools come back with a tool list change. A page
