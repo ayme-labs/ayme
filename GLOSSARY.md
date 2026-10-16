@@ -82,6 +82,9 @@ Labelled strings or numbers the calling agent passes with a goal. At any step th
 **Handover**:
 The Goal Loop returning control to the calling agent, with the reason it stopped, what it did, and what to do next.
 
+**Step Decision**:
+What one step of the Goal Loop does, decided from the page the loop received, the goal, the Goal Values and the steps so far: an operation with its arguments, or the reason the loop stops. The Goal Loop runs the operation and records the step; it does not decide.
+
 **Decision Endpoint**:
 The route in an app's own backend that adds the provider's key and Jev model to a decision request and forwards it to that provider. Ayme provides its definition; the app deploys and gates it.
 _Avoid_: relay (means the WebMCP local relay), proxy.

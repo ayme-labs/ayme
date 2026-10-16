@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
 import { ToolInputError } from "./errors";
-import { buildToolOptions } from "./goalLoopQuestions";
+import { buildToolOptions } from "./goalLoopOperations";
 import { INSPECTOR_DOGFOOD_ATTRIBUTE } from "./pageState";
 import {
   PLAYWRIGHT_MCP_SCREENSHOT_SCHEMA,
