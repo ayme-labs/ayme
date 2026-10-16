@@ -1540,8 +1540,16 @@ export type ArgumentAnswers =
       parameter: string;
       leftOut: LeftOutItem[];
     } & AnswerRecord)
-  /** No Goal Value fits a required parameter, by the model's answer. */
-  | ({ kind: "needs_value"; parameter: string } & AnswerRecord);
+  /**
+   * Nothing the question offered fits a required parameter, by the model's
+   * answer. `goalValuesOffered` is false for a list asked only about its own
+   * allowed values.
+   */
+  | ({
+      kind: "needs_value";
+      parameter: string;
+      goalValuesOffered: boolean;
+    } & AnswerRecord);
 
 /**
  * The option the model picked for one question. Model output is never read as
@@ -1660,6 +1668,12 @@ export function readArgumentAnswers(
 
   const required = (parameter: string) =>
     tool.args.some((arg) => arg.name === parameter && !arg.optional);
+  const allowedValueCount = (parameter: string) => {
+    const closedSet = tool.args.find(
+      (arg) => arg.name === parameter
+    )?.closedSet;
+    return closedSet?.kind === "values" ? closedSet.values.length : 0;
+  };
   const picksItem = (parameter: string) =>
     tool.args.some(
       (arg) => arg.name === parameter && arg.closedSet?.kind === "instance"
@@ -1674,11 +1688,15 @@ export function readArgumentAnswers(
     choices: chosen.choices,
     probabilities: chosen.probabilities,
   });
-  const needsValue = (parameter: string): ArgumentAnswers => ({
+  const needsValue = (
+    parameter: string,
+    goalValuesOffered = true
+  ): ArgumentAnswers => ({
     kind: "needs_value",
     parameter: wholeParameters(
       tool.args.filter((arg) => arg.name === parameter)
     )[0]!,
+    goalValuesOffered,
     choices: chosen.choices,
     probabilities: chosen.probabilities,
   });
@@ -1711,8 +1729,10 @@ export function readArgumentAnswers(
   for (const [parameter, group] of groupByParameter(listPicks)) {
     const included = group.filter((pick) => pick.score >= 0.5);
     if (included.length > 0) chooseList(chosen, parameter, included);
-    // An optional list nothing belongs in stays unset.
-    else if (required(parameter)) return needsValue(parameter);
+    // An optional list nothing belongs in stays unset. Its own allowed values
+    // are asked first, so any question past them offered a Goal Value.
+    else if (required(parameter))
+      return needsValue(parameter, group.length > allowedValueCount(parameter));
   }
 
   return runOff
