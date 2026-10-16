@@ -305,7 +305,12 @@
         "min": 4,
         "max": 6
       },
-      "combinedCostUsd": null,
+      "combinedCostUsd": {
+        "n": 2,
+        "median": 0.072338613,
+        "min": 0.065179158,
+        "max": 0.079498068
+      },
       "runList": [
         {
           "runId": "2026-10-15T21-15-36-043Z-ayme-goal-loop-on-7f37d6",
@@ -331,7 +336,7 @@
             "output": 945
           },
           "totalTokens": 120314,
-          "combinedCostUsd": null
+          "combinedCostUsd": 0.065179158
         },
         {
           "runId": "2026-10-15T21-24-37-259Z-ayme-goal-loop-on-2afb69",
@@ -344,7 +349,7 @@
             "output": 1045
           },
           "totalTokens": 146114,
-          "combinedCostUsd": null
+          "combinedCostUsd": 0.079498068
         }
       ]
     },
@@ -454,7 +459,12 @@
         "min": 4,
         "max": 6
       },
-      "combinedCostUsd": null,
+      "combinedCostUsd": {
+        "n": 3,
+        "median": 0.07892498799999999,
+        "min": 0.054681084,
+        "max": 0.09536277200000001
+      },
       "runList": [
         {
           "runId": "2026-10-15T21-16-57-160Z-ayme-no-page-objects-goal-loop-on-87f5f1",
@@ -467,7 +477,7 @@
             "output": 1082
           },
           "totalTokens": 157777,
-          "combinedCostUsd": null
+          "combinedCostUsd": 0.09536277200000001
         },
         {
           "runId": "2026-10-15T21-21-28-582Z-ayme-no-page-objects-goal-loop-on-dd2bc5",
@@ -480,7 +490,7 @@
             "output": 812
           },
           "totalTokens": 112959,
-          "combinedCostUsd": null
+          "combinedCostUsd": 0.07892498799999999
         },
         {
           "runId": "2026-10-15T21-25-59-153Z-ayme-no-page-objects-goal-loop-on-234c31",
@@ -493,16 +503,14 @@
             "output": 836
           },
           "totalTokens": 101653,
-          "combinedCostUsd": null
+          "combinedCostUsd": 0.054681084
         }
       ]
     }
   ],
   "notes": [
-    "ayme-goal-loop-on: no run has combined cost.",
-    "ayme-goal-loop-on: the Goal Loop's cost is unknown in 3 of 3 runs, so their combined cost is unknown.",
-    "ayme-no-page-objects-goal-loop-on: no run has combined cost.",
-    "ayme-no-page-objects-goal-loop-on: the Goal Loop's cost is unknown in 3 of 3 runs, so their combined cost is unknown.",
+    "ayme-goal-loop-on: combined cost is over 2 of 3 runs; the others have no data.",
+    "ayme-goal-loop-on: the Goal Loop's cost is unknown in 1 of 3 runs, so their combined cost is unknown.",
     "1 run(s) changed the lab app checkout while running."
   ]
 }

@@ -305,7 +305,12 @@
         "min": 5,
         "max": 6
       },
-      "combinedCostUsd": null,
+      "combinedCostUsd": {
+        "n": 3,
+        "median": 0.108715016,
+        "min": 0.107244012,
+        "max": 0.11078919599999999
+      },
       "runList": [
         {
           "runId": "2026-10-15T21-38-26-662Z-ayme-goal-loop-on-fc7651",
@@ -318,7 +323,7 @@
             "output": 2235
           },
           "totalTokens": 145086,
-          "combinedCostUsd": null
+          "combinedCostUsd": 0.107244012
         },
         {
           "runId": "2026-10-15T21-46-42-664Z-ayme-goal-loop-on-cd92e9",
@@ -331,7 +336,7 @@
             "output": 1814
           },
           "totalTokens": 161207,
-          "combinedCostUsd": null
+          "combinedCostUsd": 0.108715016
         },
         {
           "runId": "2026-10-15T21-53-51-025Z-ayme-goal-loop-on-482e78",
@@ -344,7 +349,7 @@
             "output": 2006
           },
           "totalTokens": 161793,
-          "combinedCostUsd": null
+          "combinedCostUsd": 0.11078919599999999
         }
       ]
     },
@@ -454,7 +459,12 @@
         "min": 10,
         "max": 24
       },
-      "combinedCostUsd": null,
+      "combinedCostUsd": {
+        "n": 3,
+        "median": 0.28095015199999995,
+        "min": 0.162899896,
+        "max": 0.334830272
+      },
       "runList": [
         {
           "runId": "2026-10-15T21-41-18-580Z-ayme-no-page-objects-goal-loop-on-2b88d9",
@@ -467,7 +477,7 @@
             "output": 2898
           },
           "totalTokens": 835148,
-          "combinedCostUsd": null
+          "combinedCostUsd": 0.334830272
         },
         {
           "runId": "2026-10-15T21-48-26-127Z-ayme-no-page-objects-goal-loop-on-a5cb3e",
@@ -480,7 +490,7 @@
             "output": 2264
           },
           "totalTokens": 304944,
-          "combinedCostUsd": null
+          "combinedCostUsd": 0.162899896
         },
         {
           "runId": "2026-10-15T21-55-50-405Z-ayme-no-page-objects-goal-loop-on-3ed33c",
@@ -493,16 +503,10 @@
             "output": 3041
           },
           "totalTokens": 690497,
-          "combinedCostUsd": null
+          "combinedCostUsd": 0.28095015199999995
         }
       ]
     }
   ],
-  "notes": [
-    "ayme-goal-loop-on: no run has combined cost.",
-    "ayme-goal-loop-on: the Goal Loop's cost is unknown in 3 of 3 runs, so their combined cost is unknown.",
-    "ayme-no-page-objects-goal-loop-on: no run has combined cost.",
-    "ayme-no-page-objects-goal-loop-on: the Goal Loop's cost is unknown in 3 of 3 runs, so their combined cost is unknown.",
-    "1 run(s) changed the lab app checkout while running."
-  ]
+  "notes": ["1 run(s) changed the lab app checkout while running."]
 }
