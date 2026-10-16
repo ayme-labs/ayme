@@ -12,10 +12,10 @@ import { errorText } from "./errors";
 import { agentTools } from "./publication.testSupport";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
+import { getLastGoalLoopRunResult } from "./testing";
 import {
   CHANGES_CUT_MARKER,
   configureGoalLoop,
-  getLastGoalLoopRunResult,
   MAX_STEP_CHANGES,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
@@ -1451,8 +1451,8 @@ describe("Goal Loop goal in Chromium", () => {
     [
       "malformed",
       undefined,
-      "The Decision Endpoint returned an invalid response.",
-      "The Decision Endpoint returned an invalid response. Handle",
+      "The Decision Endpoint /api/decisions answered 200 with a body that is not a decision response",
+      "The Decision Endpoint /api/decisions answered 200 with a body that is not a decision response. Handle",
     ],
     [
       "rejected",
@@ -2159,9 +2159,12 @@ describe("Goal Loop goal in Chromium", () => {
       },
     ]);
     // Each chunk's answer is recorded in the step's scores.
-    const score =
-      getLastGoalLoopRunResult()!.stepScores[0]!.argumentProbabilities!;
-    expect(Object.keys(score)).toEqual(Object.keys(stageTwo));
+    const score = getLastGoalLoopRunResult()!.stepScores[0]!;
+    expect(Object.keys(score.argumentProbabilities!)).toEqual(
+      Object.keys(stageTwo)
+    );
+    // One chunk named an element, so the step asked no run-off.
+    expect(score.runOff).toBeUndefined();
   });
 
   it("asks one run-off among exactly the elements several chunks named", async () => {
@@ -2213,6 +2216,7 @@ describe("Goal Loop goal in Chromium", () => {
       [runOffId]: named[1],
     });
     expect(score.argumentProbabilities).toEqual({});
+    expect(score.runOff).toBe(true);
   });
 
   it("keeps the chunks' choices on the run result when the run-off answer is invalid", async () => {
@@ -2242,7 +2246,9 @@ describe("Goal Loop goal in Chromium", () => {
     const stageTwo = criteriaOf(requests[1]!);
     const [firstChunkId, secondChunkId] = Object.keys(stageTwo);
     const score = getLastGoalLoopRunResult()!.stepScores[0]!;
-    // Both chunks named an element; the run-off's answer is not recorded.
+    // Both chunks named an element, so the step asked a run-off, whose
+    // answer is not recorded.
+    expect(score.runOff).toBe(true);
     expect(score.argumentChoices).toEqual({
       [firstChunkId!]: keyFor(stageTwo[firstChunkId!]!, 'button "Item 3"'),
       [secondChunkId!]: keyFor(stageTwo[secondChunkId!]!, 'button "Item 299"'),
@@ -2497,7 +2503,7 @@ describe("Goal Loop goal in Chromium", () => {
     expect(withoutChanges(result)).toEqual({
       reason: "decide_failed",
       next: expect.stringMatching(
-        /^The decision function returned an invalid response: .*"Bread".*Handle the goal without the Goal Loop\.$/
+        /^The decision function's answers could not be read: .*"Bread".*Handle the goal without the Goal Loop\.$/
       ),
       history: [],
     });
@@ -3195,7 +3201,13 @@ describe("Goal Loop goal in Chromium", () => {
 
     const result = await tool.execute({ goal: "do something", maxSteps: 5 });
 
-    expect(result).toMatchObject({ reason: "decide_failed", history: [] });
+    expect(result).toMatchObject({
+      reason: "decide_failed",
+      next: expect.stringMatching(
+        /^The page offers \d+ operations, more than one decision can choose from\. Handle the goal without the Goal Loop\.$/
+      ),
+      history: [],
+    });
     // The oversized question is never sent.
     expect(requests).toEqual([]);
   });

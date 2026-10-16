@@ -45,6 +45,7 @@ import {
   type ValuePreset,
 } from "./goalLoopQuestions";
 import { asSentence, ToolInputError } from "./errors";
+import { goalLoopRunResultKey } from "./goalLoopRunResultKey";
 
 export type GoalLoopDecisionFunction = (
   request: DecisionRequest
@@ -116,6 +117,11 @@ type GoalLoopStepScores = {
    * action or the action changed nothing.
    */
   changes?: string;
+  /**
+   * The step asked a run-off: several chunks of a ref question each named an
+   * element. Set before the run-off is asked, so it stays when that fails.
+   */
+  runOff?: true;
 };
 
 /**
@@ -131,18 +137,14 @@ export type GoalLoopRunResult = {
   stepScores: GoalLoopStepScore[];
 };
 
-type RunResultStore = { last?: GoalLoopRunResult };
+export type GoalLoopRunResultStore = { last?: GoalLoopRunResult };
 
-const runResultStore: RunResultStore = ((
+/** Where the last run's result is kept; the testing entry reads it. */
+const runResultStore: GoalLoopRunResultStore = ((
   globalThis as typeof globalThis & {
-    __aymeGoalLoopRunResultStore?: RunResultStore;
+    [goalLoopRunResultKey]?: GoalLoopRunResultStore;
   }
-).__aymeGoalLoopRunResultStore ??= {});
-
-/** Package-internal: access the last Goal Loop run result (scores + handover). */
-export function getLastGoalLoopRunResult(): GoalLoopRunResult | undefined {
-  return runResultStore.last;
-}
+)[goalLoopRunResultKey] ??= {});
 
 // --- Public result types (the Handover interface) ---
 
@@ -508,11 +510,7 @@ export async function pursueGoal(
   const callFailed = (error: unknown): Promise<GoalLoopRunResult> =>
     error instanceof DecisionEndpointError
       ? // Its message already says what the endpoint did.
-        decideFailed(error.message, {
-          kind: "endpoint",
-          code: error.code,
-          status: error.status,
-        })
+        decideFailed(error.message, { kind: "endpoint", error })
       : decideFailed(`The decision function failed: ${errorTextOf(error)}`, {
           kind: "thrown",
         });
@@ -520,7 +518,7 @@ export async function pursueGoal(
   /** The decision function answered with something the loop could not read. */
   const invalidDecision = (error: unknown): Promise<GoalLoopRunResult> =>
     decideFailed(
-      `The decision function returned an invalid response: ${errorTextOf(error)}`,
+      `The decision function's answers could not be read: ${errorTextOf(error)}`,
       { kind: "invalid" }
     );
 
@@ -551,11 +549,10 @@ export async function pursueGoal(
 
     // A question outside the limit is never sent, in either stage.
     if (!operationQuestionFits(toolOptions)) {
-      return done({
-        reason: "decide_failed",
-        next: `The page offers ${toolOptions.length} operations, more than one decision can choose from. Read the page again and call the tools you need directly.`,
-        history,
-      });
+      return decideFailed(
+        `The page offers ${toolOptions.length} operations, more than one decision can choose from`,
+        { kind: "too-many-operations" }
+      );
     }
 
     // --- Stage one: the operation, and whether the goal is met ---
@@ -744,6 +741,7 @@ export async function pursueGoal(
 
       // Several chunks each named an element: one run-off among exactly those.
       if (argumentAnswers.kind === "run_off") {
+        score.runOff = true;
         let runOff: DecisionResponse;
         try {
           runOff = await decisionFn(
