@@ -15,7 +15,7 @@ describe("AgentConnection", () => {
 
   it("answers every call still waiting when the server stops, and unpairs", async () => {
     const connection = new AgentConnection();
-    connection.attach(hello("a"), () => {});
+    connection.attach(hello("a"), () => {})!.publishTools([tool("hold")]);
     const call = connection.call("hold", {});
 
     connection.close();
@@ -29,6 +29,7 @@ describe("AgentConnection", () => {
   it("answers the calls of a page that went away when the server stops during the wait", async () => {
     const connection = new AgentConnection();
     const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("hold")]);
     const call = connection.call("hold", {});
     connection.detach(page);
 
@@ -43,6 +44,7 @@ describe("AgentConnection", () => {
     vi.useFakeTimers();
     const connection = new AgentConnection();
     const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("hold")]);
     const call = connection.call("hold", {});
     connection.detach(page);
 
@@ -67,6 +69,7 @@ describe("AgentConnection", () => {
   it("ignores the page's answer to a call the server already answered", async () => {
     const connection = new AgentConnection();
     const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("hold")]);
     const call = connection.call("hold", {});
     connection.attach(hello("b"), () => {});
 
@@ -75,6 +78,61 @@ describe("AgentConnection", () => {
     expect(await errorOf(call)).toMatchObject({
       error: expect.stringMatching(/^Another tab connected/),
     });
+  });
+});
+
+describe("AgentConnection as a tab loads new documents", () => {
+  it("disconnects a page another tab replaces, and refuses its tab afterwards", () => {
+    const connection = new AgentConnection();
+    const events: string[] = [];
+    connection.subscribe((event) => events.push(event.type));
+    const disconnectA = vi.fn();
+    connection.attach(hello("a"), disconnectA);
+
+    connection.attach(hello("b"), () => {});
+    const refused = vi.fn();
+
+    expect(connection.attach(hello("a"), refused)).toBeUndefined();
+    expect(disconnectA).toHaveBeenCalledOnce();
+    expect(refused).toHaveBeenCalledOnce();
+    expect(events).toEqual(["paired", "unpaired", "paired"]);
+  });
+
+  it("pairs a tab's new documents again and again, without disconnecting the earlier ones", () => {
+    const connection = new AgentConnection();
+    const disconnect = vi.fn();
+    connection.detach(connection.attach(hello("a"), disconnect)!);
+    connection.detach(connection.attach(hello("a"), disconnect)!);
+    connection.attach(hello("a"), disconnect);
+
+    expect(connection.attach(hello("a"), disconnect)).toBeDefined();
+    expect(disconnect).not.toHaveBeenCalled();
+  });
+
+  it("answers the earlier document's call once the tab's new page reports its tools, and ignores the earlier document afterwards", async () => {
+    const connection = new AgentConnection();
+    const earlier = connection.attach(hello("a"), () => {})!;
+    earlier.publishTools([tool("hold")]);
+    const call = connection.call("hold", {});
+
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("snapshot")]);
+
+    expect(await errorOf(call)).toEqual({
+      error:
+        "The page reloaded before it answered, so the call's outcome is unknown.",
+      settled: false,
+      loading: "http://127.0.0.1:5173/",
+      tools: ["snapshot"],
+    });
+    connection.navigating(earlier, {
+      url: "http://127.0.0.1:5173/",
+      reload: true,
+    });
+    connection.detach(earlier);
+    void connection.call("snapshot", {});
+    expect(connection.paired).toBe(true);
+    expect(await sentCalls(page)).toEqual(["snapshot"]);
   });
 });
 

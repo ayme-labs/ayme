@@ -126,10 +126,10 @@ describe("a call while the tab loads a new document", () => {
   const leftFor = (to: string) =>
     `The page started loading ${to} and no page reconnected in its place, so the call did not run: the tab closed, or the page it loaded does not run Ayme's Agent Connection.`;
 
-  it("waits for the new page when sent after the page said it is leaving, and runs there", async () => {
+  it("waits for the new page when sent after the page said it is navigating, and runs there", async () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
-    page.leaving = { url: `${url}other`, reload: false };
+    connection.navigating(page, { url: `${url}other`, reload: false });
 
     const { result } = call(connection);
     await flush();
@@ -142,7 +142,7 @@ describe("a call while the tab loads a new document", () => {
     expect(await result).toEqual(textResult(`${url}other`));
   });
 
-  it("waits for the new page when sent while the tab is away, and runs there", async () => {
+  it("waits for the new page when sent while the tab is disconnected, and runs there", async () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
     connection.detach(page);
@@ -170,7 +170,7 @@ describe("a call while the tab loads a new document", () => {
   it("fails without running when the tab does not come back", async () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
-    page.leaving = { url: `${url}plain.html`, reload: false };
+    connection.navigating(page, { url: `${url}plain.html`, reload: false });
     connection.detach(page);
 
     const { result } = call(connection);
@@ -182,7 +182,7 @@ describe("a call while the tab loads a new document", () => {
   it("says the page started reloading when a reloading tab does not come back", async () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
-    page.leaving = { url, reload: true };
+    connection.navigating(page, { url, reload: true });
     connection.detach(page);
 
     const { result } = call(connection);
@@ -213,7 +213,7 @@ describe("a call while the tab loads a new document", () => {
   it("waits out the whole reconnect wait of a page that left after the call came", async () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
-    page.leaving = { url: `${url}slow`, reload: false };
+    connection.navigating(page, { url: `${url}slow`, reload: false });
 
     const { result, answered } = call(connection);
     await vi.advanceTimersByTimeAsync(RECONNECT_WAIT_MS / 2);
@@ -225,10 +225,10 @@ describe("a call while the tab loads a new document", () => {
     expect(await result).toEqual(errorResult(leftFor(`${url}slow`)));
   });
 
-  it("goes to a page that said it was leaving but stayed, once the wait ends", async () => {
+  it("goes to a page that said it was navigating but stayed, once the wait ends", async () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
-    page.leaving = { url: `${url}download`, reload: false };
+    connection.navigating(page, { url: `${url}download`, reload: false });
     void answerAs(page, ending.signal);
 
     const { result, answered } = call(connection);
@@ -242,7 +242,7 @@ describe("a call while the tab loads a new document", () => {
   it("never goes to another tab that paired in its place", async () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
-    page.leaving = { url: `${url}other`, reload: false };
+    connection.navigating(page, { url: `${url}other`, reload: false });
 
     const { result } = call(connection);
     await flush();
@@ -257,7 +257,7 @@ describe("a call while the tab loads a new document", () => {
     );
   });
 
-  it("never goes to another tab that paired while the tab was away", async () => {
+  it("never goes to another tab that paired while the tab was disconnected", async () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
     connection.detach(page);
@@ -278,7 +278,7 @@ describe("a call while the tab loads a new document", () => {
   it("runs on the tab's new page when it pairs before the old page's channel closes", async () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
-    page.leaving = { url: `${url}other`, reload: false };
+    connection.navigating(page, { url: `${url}other`, reload: false });
 
     const { result } = call(connection);
     await flush();
@@ -316,10 +316,10 @@ describe("a call while the tab loads a new document", () => {
     expect(await result).toEqual(textResult(url));
   });
 
-  it("sends later calls at once to a page that said it was leaving but stayed", async () => {
+  it("sends later calls at once to a page that said it was navigating but stayed", async () => {
     vi.useFakeTimers();
     const { connection, page } = connected();
-    page.leaving = { url: `${url}download`, reload: false };
+    connection.navigating(page, { url: `${url}download`, reload: false });
     void answerAs(page, ending.signal);
     await vi.advanceTimersByTimeAsync(RECONNECT_WAIT_MS);
 
