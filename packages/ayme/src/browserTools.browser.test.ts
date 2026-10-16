@@ -340,6 +340,19 @@ describe("Browser Tools in Chromium", () => {
     expect(log).toContain("click account");
   });
 
+  it("clicks the root a look's synthetic ref shows once an earlier root is gone", async () => {
+    document.body.insertAdjacentHTML("beforeend", ROOTS);
+    ayme.pom.register(RootsPage);
+    await call("snapshot", {});
+    document.getElementById("account")!.remove();
+    // The Inspector runs a tool on a ref its unrecorded look printed.
+    const look = await lookAtPageStateForDocument(document);
+
+    await call("click", { target: rootRef(look.text, "card") });
+
+    expect(log).toContain("click card");
+  });
+
   it("fills an element that receives no pointer events through its ref", async () => {
     document.body.insertAdjacentHTML(
       "beforeend",
