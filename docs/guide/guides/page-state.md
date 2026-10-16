@@ -16,7 +16,7 @@ Each node in the state carries a Structural Ref, such as `e5`. An agent passes i
 
 | Reason                                                   | Meaning                                                                                                      |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `no snapshot issued it`                                  | No capture in this document printed the ref, such as one written by hand.                                    |
+| `no snapshot of the current document issued it`          | No capture in this document printed the ref, such as one written by hand or one from before a full load.     |
 | `it is no longer on the page`                            | The node the ref named was removed.                                                                          |
 | `it cannot be matched unambiguously to the current page` | Ayme cannot tell which current node the ref continues as. It does not mean the ref matches several elements. |
 | `it has no element on the page now`                      | The ref names a node of the latest capture that has no live element.                                         |
