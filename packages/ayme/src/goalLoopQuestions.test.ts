@@ -800,6 +800,32 @@ describe("parameter shapes", () => {
     });
   });
 
+  it("says no Goal Value was offered when nothing belongs in a required enum list", () => {
+    const tool = actionWith(enumList);
+    const questions = plannedQuestions(tool, { other: "urgent" });
+
+    expect(
+      readArgumentAnswers(tool, questions, noulAnswers(questions, [0.1, 0.2]))
+    ).toMatchObject({
+      kind: "needs_value",
+      parameter: "param",
+      goalValuesOffered: false,
+    });
+  });
+
+  it("says Goal Values were offered when none belongs in a required number list", () => {
+    const tool = actionWith({ type: "array", items: { type: "number" } });
+    const questions = plannedQuestions(tool, { quantity: 2 });
+
+    expect(
+      readArgumentAnswers(tool, questions, noulAnswers(questions, [0.1]))
+    ).toMatchObject({
+      kind: "needs_value",
+      parameter: "param",
+      goalValuesOffered: true,
+    });
+  });
+
   it("asks about an enum list without any Goal Values", () => {
     expect(plannedQuestions(actionWith(enumList), {})).toHaveLength(2);
   });

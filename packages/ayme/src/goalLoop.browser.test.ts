@@ -1166,6 +1166,62 @@ describe("Goal Loop goal in Chromium", () => {
       });
     });
 
+    it("hands over without asking for Goal Values when no allowed value belongs in a required enum list", async () => {
+      setupDom();
+      const calls: unknown[] = [];
+      class App {
+        root = page.locator("main");
+        tag(labels: ("urgent" | "later")[]) {
+          calls.push(labels);
+        }
+      }
+      registerCompiledPom(
+        App,
+        manifest(
+          "App",
+          [root()],
+          [
+            actionWithParameters("tag", "App.tag", [
+              {
+                name: "labels",
+                optional: false,
+                schema: {
+                  type: "array",
+                  items: { type: "string", enum: ["urgent", "later"] },
+                },
+              },
+            ]),
+          ]
+        )
+      );
+      const decide = scriptedDecisionFn([
+        {
+          operation: "App.tag",
+          goal_met: 0.1,
+          arguments: {
+            [listValueQuestionId("labels", 1, ["labels"])]: { noul: 0.1 },
+            [listValueQuestionId("labels", 2, ["labels"])]: { noul: 0.1 },
+          },
+        },
+      ]);
+      const tool = await getPublishedPursueGoal(decide);
+      session.pom.register(App);
+
+      const result = await tool.execute({
+        goal: "Tag it",
+        maxSteps: 5,
+        values: { label: "blocked" },
+      });
+
+      expect(withoutChanges(result)).toEqual({
+        reason: "needs_value",
+        next: 'The operation "App.tag" needs a value for "labels", and the model judged that none of its allowed values belongs in it.',
+        history: [],
+        needs: { tool: "App.tag", parameters: ["labels"] },
+      });
+      expect(calls).toEqual([]);
+    });
+
     it("runs without Goal Values when values is undefined", async () => {
       const { requests, decide } = recording(
         scriptedDecisionFn([{ operation: "none", goal_met: 0.9 }])
