@@ -179,7 +179,10 @@ export class StructuralIdentityLedger {
   /**
    * Whether two observed refs are aliases of one identity: the same node
    * followed across captures. A ref the ledger has not observed is only the
-   * same as itself.
+   * same as itself. The answer reflects the latest observation: when a ref
+   * matched to a successor is printed again beside it, the two become separate
+   * identities, so a later reading of an older change sees them as different
+   * nodes.
    */
   sameIdentity(a: AriaRef, b: AriaRef): boolean {
     if (a === b) return true;
