@@ -509,11 +509,7 @@ export async function pursueGoal(
   const callFailed = (error: unknown): Promise<GoalLoopRunResult> =>
     error instanceof DecisionEndpointError
       ? // Its message already says what the endpoint did.
-        decideFailed(error.message, {
-          kind: "endpoint",
-          code: error.code,
-          status: error.status,
-        })
+        decideFailed(error.message, { kind: "endpoint", error })
       : decideFailed(`The decision function failed: ${errorTextOf(error)}`, {
           kind: "thrown",
         });
@@ -521,7 +517,7 @@ export async function pursueGoal(
   /** The decision function answered with something the loop could not read. */
   const invalidDecision = (error: unknown): Promise<GoalLoopRunResult> =>
     decideFailed(
-      `The decision function returned an invalid response: ${errorTextOf(error)}`,
+      `The decision function's answers could not be read: ${errorTextOf(error)}`,
       { kind: "invalid" }
     );
 
@@ -552,11 +548,10 @@ export async function pursueGoal(
 
     // A question outside the limit is never sent, in either stage.
     if (!operationQuestionFits(toolOptions)) {
-      return done({
-        reason: "decide_failed",
-        next: `The page offers ${toolOptions.length} operations, more than one decision can choose from. Read the page again and call the tools you need directly.`,
-        history,
-      });
+      return decideFailed(
+        `The page offers ${toolOptions.length} operations, more than one decision can choose from`,
+        { kind: "too-many-operations" }
+      );
     }
 
     // --- Stage one: the operation, and whether the goal is met ---

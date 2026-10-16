@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { decisionEndpoint } from "./decisionEndpoint";
 import {
   DecisionEndpointError,
+  type DecisionEndpointErrorCode,
   type DecisionFailure,
   type DecisionRequest,
   isRetryableDecisionFailure,
@@ -143,7 +144,8 @@ describe("the Decision Endpoint wire contract, client against handler", () => {
     const error = await failure(decisionEndpoint("/api/decisions")(request));
     expect(error).toMatchObject({
       code: "malformed",
-      message: "The Decision Endpoint returned an invalid response.",
+      message:
+        "The Decision Endpoint /api/decisions answered 200 with a body that is not a decision response",
     });
     expect(error.status).toBeUndefined();
   });
@@ -219,18 +221,21 @@ describe("readDecisionResponse", () => {
 });
 
 describe("whether a decision failure is worth a retry", () => {
-  it.each<[DecisionFailure, boolean]>([
-    [{ kind: "endpoint", code: "rejected", status: 503 }, true],
-    [{ kind: "endpoint", code: "rejected", status: 429 }, false],
-    [{ kind: "endpoint", code: "rejected", status: 501 }, false],
-    [{ kind: "endpoint", code: "rejected", status: 408 }, true],
-    [{ kind: "endpoint", code: "rejected", status: 400 }, false],
-    [{ kind: "endpoint", code: "not-mounted", status: 404 }, false],
-    [{ kind: "endpoint", code: "malformed" }, false],
-    [{ kind: "thrown" }, true],
-    [{ kind: "invalid" }, false],
-    [{ kind: "unknown-choice" }, false],
-  ])("%j is retryable: %s", (failure, retryable) => {
+  const endpoint = (code: DecisionEndpointErrorCode, status?: number) =>
+    ({
+      kind: "endpoint",
+      error: new DecisionEndpointError("The endpoint failed", { code, status }),
+    }) as const;
+
+  it.each<[string, DecisionFailure, boolean]>([
+    ["a rejected 503", endpoint("rejected", 503), true],
+    ["a rejected 429", endpoint("rejected", 429), false],
+    ["a malformed answer", endpoint("malformed"), false],
+    ["a thrown error", { kind: "thrown" }, true],
+    ["an invalid answer", { kind: "invalid" }, false],
+    ["an unknown choice", { kind: "unknown-choice" }, false],
+    ["too many operations", { kind: "too-many-operations" }, false],
+  ])("%s is retryable: %s", (_, failure, retryable) => {
     expect(isRetryableDecisionFailure(failure)).toBe(retryable);
   });
 });

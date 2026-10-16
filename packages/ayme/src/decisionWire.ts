@@ -75,40 +75,53 @@ export type DecisionEndpointErrorCode =
 
 /**
  * Every way obtaining a usable decision can fail.
- * `endpoint`: a Decision Endpoint call failed, as its `code` and `status` say.
+ * `endpoint`: a Decision Endpoint call failed; the error says why and whether
+ * it is `retryable`.
  * `thrown`: any other error from the decision function, such as a network
  * failure.
  * `invalid`: an answer the caller could not read.
  * `unknown-choice`: an answer naming an option the caller did not offer.
+ * `too-many-operations`: the page offers more operations than one decision
+ * can choose from, so the question is never asked.
  */
 export type DecisionFailure =
-  | { kind: "endpoint"; code: DecisionEndpointErrorCode; status?: number }
+  | { kind: "endpoint"; error: DecisionEndpointError }
   | { kind: "thrown" }
   | { kind: "invalid" }
-  | { kind: "unknown-choice" };
+  | { kind: "unknown-choice" }
+  | { kind: "too-many-operations" };
 
 /**
- * Whether asking again right away can help: the endpoint or its provider
- * failed or timed out (a `rejected` 5xx other than 501, or 408), or the call
- * failed some other way. A rate limit (429), a method the endpoint does not
- * implement (501), a missing endpoint, a refusal, a malformed answer or one
- * the caller cannot use comes back the same.
+ * Whether asking again right away can help: the endpoint error says so, and
+ * any other error from the decision function can. An answer the caller cannot
+ * use, or a question it cannot ask, comes back the same.
  */
 export function isRetryableDecisionFailure(failure: DecisionFailure): boolean {
   switch (failure.kind) {
-    case "endpoint": {
-      const status = failure.status ?? 0;
-      return (
-        failure.code === "rejected" &&
-        ((status >= 500 && status !== 501) || status === 408)
-      );
-    }
+    case "endpoint":
+      return failure.error.retryable;
     case "thrown":
       return true;
     case "invalid":
     case "unknown-choice":
+    case "too-many-operations":
       return false;
   }
+}
+
+/**
+ * Whether asking the endpoint again right away can help: the endpoint or its
+ * provider failed or timed out (a `rejected` 5xx other than 501, or 408). A
+ * rate limit (429), a method the endpoint does not implement (501), a missing
+ * endpoint, a refusal or a malformed answer comes back the same.
+ */
+function isRetryableEndpointFailure(
+  code: DecisionEndpointErrorCode,
+  status = 0
+): boolean {
+  return (
+    code === "rejected" && ((status >= 500 && status !== 501) || status === 408)
+  );
 }
 
 /** A Decision Endpoint call failed; `code` says why. */
@@ -128,11 +141,7 @@ export class DecisionEndpointError extends AymeError {
     super(message, options);
     this.code = options.code;
     this.status = options.status;
-    this.retryable = isRetryableDecisionFailure({
-      kind: "endpoint",
-      code: options.code,
-      status: options.status,
-    });
+    this.retryable = isRetryableEndpointFailure(options.code, options.status);
   }
 }
 
@@ -193,7 +202,7 @@ export async function readDecisionResponse(
   }
   if (!isDecisionResponse(body))
     throw new DecisionEndpointError(
-      "The Decision Endpoint returned an invalid response.",
+      `The Decision Endpoint ${url} answered ${status} with a body that is not a decision response`,
       { code: "malformed" }
     );
   return body;
