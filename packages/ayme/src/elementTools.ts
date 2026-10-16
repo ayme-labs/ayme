@@ -13,6 +13,9 @@ import type { AriaRef, PageStateCapture } from "./pageState";
 import { refHint, resolveRef } from "./refTarget";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { requireAymeRuntimePage } from "./registry";
+import { reaches, unreachableReason } from "./elementReach";
+import { latestPageStateRef } from "./pageState";
+import { assertAvailable } from "./pomInstance";
 import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
 import {
   RefResolutionError,
@@ -74,8 +77,17 @@ export type RegisteredElementTool = {
   readonly targetField: TargetField;
   /** The input the Goal Loop fills; publication-only options are left out. */
   readonly loopInputSchema: JsonSchema;
-  /** true = the Goal Loop may offer this element; not enforced on direct calls. */
+  /**
+   * true = the Goal Loop may offer this element; not enforced on direct
+   * calls. For a tool that needs reach, it keeps only elements a click would
+   * reach, which a direct call does enforce.
+   */
   readonly filter: (element: Element) => boolean;
+  /**
+   * For a tool that needs reach, its filter before reach: what it may act on
+   * whether or not a click would reach it.
+   */
+  readonly matches?: (element: Element) => boolean;
 };
 
 /**
@@ -102,6 +114,12 @@ export type ElementToolDefinition = {
   label: string;
   inputSchema: JsonSchema;
   targetField: TargetField;
+  /**
+   * The element must be one a click would reach (ADR-0035): the Goal Loop
+   * and the Inspector offer only those, and a call on another is refused
+   * with its Availability Reason.
+   */
+  needsReach?: boolean;
   perform(
     target: ResolvedTarget,
     input: Record<string, unknown>,
@@ -142,6 +160,7 @@ function elementToolExecution(
       fields[definition.targetField] as string,
       currentDocument
     );
+    if (definition.needsReach) assertReachable(definition.name, target.element);
     return runAction(
       currentDocument,
       context.cursor,
@@ -169,8 +188,24 @@ export function registerElementTool(
     },
     targetField: definition.targetField,
     loopInputSchema: requiredInputOnly(definition.inputSchema),
-    filter,
+    // The cheap filter first: only the elements it keeps are measured.
+    ...(definition.needsReach
+      ? {
+          filter: (element: Element) => filter(element) && reaches(element),
+          matches: filter,
+        }
+      : { filter }),
   };
+}
+
+/**
+ * Package-internal: refuses the call of `toolName` on `element` when a click
+ * would not reach it, with the Availability Reason a Page Object Tool gives.
+ */
+export function assertReachable(toolName: string, element: Element) {
+  const reason = unreachableReason(element, latestPageStateRef);
+  if (reason !== undefined)
+    assertAvailable(toolName, { present: true, available: false, reason });
 }
 
 /**

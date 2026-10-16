@@ -5,6 +5,7 @@
 import type { JsonSchema } from "./contracts";
 import { ACTION_RESULT_NOTE, runAction } from "./actionSequence";
 import {
+  assertReachable,
   listCustomTools,
   locatorOf,
   registerElementTool,
@@ -89,6 +90,7 @@ function browserTool(
     label: name,
     inputSchema,
     targetField: "target",
+    needsReach: true,
     // An action's own result would appear under `result`; Browser Tools have
     // none, as in Playwright MCP, so `selectOption`'s values are dropped.
     perform: async (target, input) => {
@@ -351,13 +353,13 @@ type FormField = {
 };
 
 async function fillField(field: FormField, currentDocument: Document) {
-  const locator = await locatorOf(
-    await resolveElementTarget(
-      { label: `fill the field "${field.name}" at`, targetField: "target" },
-      field.target,
-      currentDocument
-    )
+  const target = await resolveElementTarget(
+    { label: `fill the field "${field.name}" at`, targetField: "target" },
+    field.target,
+    currentDocument
   );
+  assertReachable("fill_form", target.element);
+  const locator = await locatorOf(target);
   switch (field.type) {
     case "textbox":
     case "slider":

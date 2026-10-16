@@ -275,6 +275,24 @@ describe("ref questions over the option cap", () => {
     });
   });
 
+  it("counts the elements that match but that a click would not reach", () => {
+    const unreachableClick: GoalLoopOperation = {
+      ...clickTool,
+      args: [
+        {
+          ...refArg,
+          closedSet: { kind: "ref", filter: () => false, matches: () => true },
+        },
+      ],
+    };
+
+    expect(planArguments(unreachableClick, captureOfButtons(3))).toEqual({
+      kind: "needs_ref_choice",
+      parameter: "ref",
+      unreachable: 3,
+    });
+  });
+
   it("acts on the one chunk that names an element", async () => {
     const { questions, answers } = await askStageTwo(
       clickTool,

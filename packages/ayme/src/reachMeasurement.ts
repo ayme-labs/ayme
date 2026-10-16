@@ -4,27 +4,28 @@ import {
   hitElements,
   parentElement,
 } from "./composedTree";
+import { INSPECTOR_HOST_SELECTOR } from "./pageState";
 
 /**
- * Package-internal: what the layout shows of one Page Object Root's element
- * (ADR-0035), measured without scrolling or sending input: whether it is
- * visible and some part of it is or would scroll into view, whether a click
- * there would reach it, and, for a shown root a click would not reach, what
- * stopped it: `blocker`, the open native modal the root is not in or the
- * root's inert ancestor, which blocks every click; else `hit`, the element
- * hit-testing found over the area the reachability check sampled, when it
- * found one. Scroll reachability describes the current layout, not content
- * a scroll handler might create. Only the Page Object Root observation
- * reads it.
+ * Package-internal: what the layout shows of one element (ADR-0035),
+ * measured without scrolling or sending input: whether some part of it is
+ * or would scroll into view, whether a click there would reach it, and, for
+ * a shown element a click would not reach, what stopped it: `blocker`, the
+ * open native modal the element is not in or the element's inert ancestor,
+ * which blocks every click; else `hit`, the element hit-testing found over
+ * the area the reachability check sampled, when it found one. Scroll
+ * reachability describes the current layout, not content a scroll handler
+ * might create. It names no kind of widget: a Page Object Root and an
+ * element a Browser Tool addresses are measured alike.
  */
-export type PomRootMeasurement = {
+export type ReachMeasurement = {
   present: boolean;
   available: boolean;
   blocker?: Element;
   hit?: Element;
 };
 
-const absent: PomRootMeasurement = { present: false, available: false };
+const absent: ReachMeasurement = { present: false, available: false };
 
 type Rect = { left: number; right: number; top: number; bottom: number };
 type Scroll = { element: Element; x: number; y: number };
@@ -40,16 +41,41 @@ function establishesContainingBlock(style: CSSStyleDeclaration): boolean {
   );
 }
 
-function layoutAncestors(current: Element) {
-  const view = current.ownerDocument.defaultView!;
+/**
+ * Memoizes `measure` for the rest of the current task: measuring sends no
+ * input and never scrolls, so the layout it reads cannot change before the
+ * next microtask, and a batch of elements (every candidate of every tool)
+ * shares the work for their common ancestors and siblings.
+ */
+function memoizedForTask<R>(measure: (element: Element) => R) {
+  let memo: WeakMap<Element, R> | undefined;
+  return (element: Element): R => {
+    if (!memo) {
+      memo = new WeakMap();
+      queueMicrotask(() => (memo = undefined));
+    }
+    if (memo.has(element)) return memo.get(element)!;
+    const result = measure(element);
+    memo.set(element, result);
+    return result;
+  };
+}
+
+const layoutAncestors = memoizedForTask(measureLayoutAncestors);
+
+const styleOf = memoizedForTask((element) =>
+  element.ownerDocument.defaultView!.getComputedStyle(element)
+);
+
+function measureLayoutAncestors(current: Element) {
   const ancestors: Element[] = [];
   let node = current;
   while (true) {
-    const position = view.getComputedStyle(node).position;
+    const position = styleOf(node).position;
     let parent = parentElement(node);
     if (position === "fixed" || position === "absolute") {
       while (parent && parent !== current.ownerDocument.documentElement) {
-        const style = view.getComputedStyle(parent);
+        const style = styleOf(parent);
         if (
           establishesContainingBlock(style) ||
           (position === "absolute" && style.position !== "static")
@@ -59,7 +85,7 @@ function layoutAncestors(current: Element) {
       }
       if (
         position === "fixed" &&
-        (!parent || !establishesContainingBlock(view.getComputedStyle(parent)))
+        (!parent || !establishesContainingBlock(styleOf(parent)))
       )
         return { ancestors, fixedToViewport: true };
     }
@@ -108,7 +134,7 @@ function projectIntoPort(
   scaleY: number,
   alignment: ScrollAlignment
 ): Scroll {
-  const style = scroller.ownerDocument.defaultView!.getComputedStyle(scroller);
+  const style = styleOf(scroller);
   const reverseX =
     style.direction === "rtl" || style.writingMode === "vertical-rl";
   const x = scrollDelta(
@@ -162,7 +188,7 @@ function clip(
 // ponytail: rectangular px/% inset clips and collapsed basic shapes only;
 // other clip geometry needs browser support rather than a CSS shape parser.
 function clipBounds(current: Element): Rect | null | undefined {
-  const style = current.ownerDocument.defaultView!.getComputedStyle(current);
+  const style = styleOf(current);
   if (/^(?:circle|ellipse)\(0(?:px|%)?(?:\s|\))/.test(style.clipPath))
     return null;
   const inset = /^inset\(([^()]*)\)$/
@@ -231,11 +257,11 @@ function projectedSiblingOccluders(
   for (let branch = current; ;) {
     const parent = parentElement(branch);
     if (!parent) break;
-    const branchStyle = view.getComputedStyle(branch);
+    const branchStyle = styleOf(branch);
     const branchZ = zIndex(branchStyle);
     for (const sibling of parent.children) {
       if (sibling === branch) continue;
-      const style = view.getComputedStyle(sibling);
+      const style = styleOf(sibling);
       if (
         style.display === "none" ||
         style.visibility === "hidden" ||
@@ -311,9 +337,11 @@ function sampleReach(
       continue;
     }
     for (const hit of hitElements(current.ownerDocument, x, y)) {
+      // Ayme's own Inspector lets the runtime's actions through to the page.
+      if (inInspector(hit)) continue;
       if (contains(current, hit)) return true;
       // Ancestors are evidence only for a simulated scroll destination,
-      // never proof that the current root itself is exposed.
+      // never proof that the current element itself is exposed.
       if (
         scrolls.some(({ x, y }) => x !== 0 || y !== 0) &&
         contains(hit, current)
@@ -330,9 +358,15 @@ function sampleReach(
   return inTheWay;
 }
 
+function inInspector(element: Element): boolean {
+  for (let node: Element | null = element; node; node = parentElement(node))
+    if (node.matches(INSPECTOR_HOST_SELECTOR)) return true;
+  return false;
+}
+
 /**
  * What blocks every click on `element` whatever covers it: the last opened
- * native modal when the root is not in one, else the root's inert ancestor.
+ * native modal when the element is not in one, else its inert ancestor.
  */
 function blockingAncestor(element: Element): Element | undefined {
   let modals: Element[];
@@ -358,17 +392,28 @@ function blockingAncestor(element: Element): Element | undefined {
 
 /**
  * Package-internal: measures `element`, the one element `locator` resolves
- * to; see `PomRootMeasurement`.
+ * to, as a Page Object Root: present only while the locator finds it
+ * visible; see `ReachMeasurement`.
  */
 export async function measurePomRoot(
   locator: Locator,
   element: Element
-): Promise<PomRootMeasurement> {
+): Promise<ReachMeasurement> {
   try {
     if (!(await locator.isVisible())) return absent;
   } catch {
     return absent;
   }
+  return measureReach(element);
+}
+
+/**
+ * Package-internal: measures `element`; see `ReachMeasurement`. It takes
+ * the element as shown: a caller that needs it visible checks that first.
+ */
+export const measureReach = memoizedForTask(measureReachNow);
+
+function measureReachNow(element: Element): ReachMeasurement {
   if (!element.isConnected || !element.ownerDocument.defaultView) return absent;
   const blocker = blockingAncestor(element);
   let present = false;
@@ -399,16 +444,15 @@ const alignments = [
 ] as const satisfies readonly ScrollAlignment[];
 
 /**
- * The boxes a click on `element` could land in: its own, or for a root that
+ * The boxes a click on `element` could land in: its own, or for one that
  * renders none (such as `display: contents`), its visible descendants'.
  */
 function renderedBoxes(element: Element) {
-  const view = element.ownerDocument.defaultView!;
-  const rootRects = [...element.getClientRects()];
-  return rootRects.length
-    ? rootRects.map((bounds) => ({ source: element, bounds }))
+  const ownRects = [...element.getClientRects()];
+  return ownRects.length
+    ? ownRects.map((bounds) => ({ source: element, bounds }))
     : [...element.querySelectorAll("*")].flatMap((source) => {
-        const style = view.getComputedStyle(source);
+        const style = styleOf(source);
         if (style.visibility === "hidden" || style.visibility === "collapse")
           return [];
         return [...source.getClientRects()].map((bounds) => ({
@@ -430,8 +474,7 @@ function scrolledIntoView(
   alignment: ScrollAlignment
 ): { rect: Rect; scrolls: Scroll[] } | undefined {
   const document = source.ownerDocument;
-  const view = document.defaultView!;
-  const htmlStyle = view.getComputedStyle(document.documentElement);
+  const htmlStyle = styleOf(document.documentElement);
   let rect = clippedBy(source, {
     left: bounds.left,
     right: bounds.right,
@@ -444,7 +487,7 @@ function scrolledIntoView(
     // The body's overflow scrolls the viewport unless the root element's
     // own overflow takes that over.
     if (ancestor === document.body && overflowsVisibly(htmlStyle)) continue;
-    const style = view.getComputedStyle(ancestor);
+    const style = styleOf(ancestor);
     const { port, scaleX, scaleY } = scrollport(ancestor);
     scrolls.push(
       projectIntoPort(
@@ -528,8 +571,7 @@ function documentScroll(
   alignment: ScrollAlignment
 ) {
   const document = scroller.ownerDocument;
-  const bodyStyle =
-    document.body && document.defaultView!.getComputedStyle(document.body);
+  const bodyStyle = document.body && styleOf(document.body);
   const overflowX =
     htmlStyle.overflowX === "visible"
       ? (bodyStyle?.overflowX ?? "visible")

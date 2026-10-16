@@ -128,7 +128,12 @@ function wholeParameters(args: readonly ArgumentSpec[]): string[] {
 
 /** A closed set of values the model may pick one of. */
 type ClosedSet =
-  | { kind: "ref"; filter: (element: Element) => boolean }
+  | {
+      kind: "ref";
+      filter: (element: Element) => boolean;
+      /** The filter before reach, for a tool that needs reach. */
+      matches?: (element: Element) => boolean;
+    }
   /**
    * The present items of one collection path, each with the tool's verdict on
    * it; no filter is involved.
@@ -357,13 +362,13 @@ function specsOfObjectSchema(
 function specsOfElementToolSchema(
   schema: JsonSchema,
   targetField: TargetField,
-  refFilter: (element: Element) => boolean
+  refs: Extract<ClosedSet, { kind: "ref" }>
 ): ArgumentSpec[] {
   return parametersOfObjectSchema(schema).flatMap((parameter) =>
     // Its `ref` or `target` is the Structural Ref it acts on; the elements its
     // filter keeps are the closed set (ADR-0023).
     parameter.name === targetField
-      ? [closedSpecOf(parameter, { kind: "ref", filter: refFilter })]
+      ? [closedSpecOf(parameter, refs)]
       : specsOf(parameter)
   );
 }
@@ -417,12 +422,16 @@ export function requiredParamsOf(
  */
 export function buildToolOptions(): ToolOption[] {
   const elementTools: GoalLoopOperation[] = listElementTools().map(
-    ({ tool, targetField, loopInputSchema, filter }) => ({
+    ({ tool, targetField, loopInputSchema, filter, matches }) => ({
       name: tool.name,
       description: tool.description,
       execute: (input: unknown, run: StartChildRun) => run(tool.name, input),
       requiredParams: [...(loopInputSchema.required ?? [])],
-      args: specsOfElementToolSchema(loopInputSchema, targetField, filter),
+      args: specsOfElementToolSchema(
+        loopInputSchema,
+        targetField,
+        matches ? { kind: "ref", filter, matches } : { kind: "ref", filter }
+      ),
     })
   );
   const navigationTools: GoalLoopOperation[] = NAVIGATION_TOOLS.map((tool) => ({
@@ -544,8 +553,12 @@ export type ArgumentPlan =
       /** The required parameters no Goal Value fits. */
       unfilled: string[];
     }
-  /** No element on the page is one the operation's ref may address. */
-  | { kind: "needs_ref_choice"; parameter: string }
+  /**
+   * No element on the page is one the operation's ref may address; when
+   * `unreachable` is set, that many match the operation's filter but a click
+   * would reach none of them.
+   */
+  | { kind: "needs_ref_choice"; parameter: string; unreachable?: number }
   /** The instances of a collection do not make a choice the model can answer. */
   | {
       kind: "needs_instance_choice";
@@ -929,8 +942,14 @@ export function planArguments(
     if (options.length === 0 || asked.options.length > MAX_CHOICE_OPTIONS) {
       if (arg.optional) continue;
       // A ref gets here only with no element left to offer.
-      if (closedSet.kind === "ref")
-        return { kind: "needs_ref_choice", parameter: arg.name };
+      if (closedSet.kind === "ref") {
+        const unreachable = closedSet.matches
+          ? acceptedRefNodes(closedSet.matches, capture).length
+          : 0;
+        return unreachable > 0
+          ? { kind: "needs_ref_choice", parameter: arg.name, unreachable }
+          : { kind: "needs_ref_choice", parameter: arg.name };
+      }
       const parameter = wholeParameters([arg])[0]!;
       return offered.leftOut
         ? {
