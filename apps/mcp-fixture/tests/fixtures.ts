@@ -169,7 +169,6 @@ export function unanswered(answer: { text: string; isError: boolean }) {
     settled?: false;
     loading?: string;
     tools?: string[];
-    next: string;
   };
 }
 

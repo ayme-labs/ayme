@@ -216,8 +216,9 @@ test("a call in flight when the tab closes says the tab closed, and the connecti
   await page.close();
 
   const answer = unanswered(await call);
-  expect(answer.error).toMatch(/^The tab closed.*outcome is unknown/);
-  expect(answer.next).toContain("ayme_connect");
+  expect(answer).toEqual({
+    error: expect.stringMatching(/^The tab closed.*outcome is unknown/),
+  });
   expect(await agent.pageToolNames()).toEqual([]);
   expect((await agent.call("snapshot")).isError).toBe(true);
 });
