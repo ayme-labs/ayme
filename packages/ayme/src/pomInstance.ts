@@ -1,7 +1,7 @@
 import type { AriaRef } from "@ayme-dev/core/structural-observation";
 import type { ToolManifest } from "./contracts";
 import { availabilityPredicateOf } from "./decorators";
-import { errorText, RuntimeStateError } from "./errors";
+import { asSentence, errorText, RuntimeStateError } from "./errors";
 import type { ObservedPomRoot } from "./pomRootObservation";
 
 /**
@@ -93,7 +93,7 @@ export function assertAvailable(
   throw new RuntimeStateError(
     why === undefined
       ? `${toolName} is unavailable.`
-      : `${toolName} is unavailable: ${why}.`
+      : asSentence(`${toolName} is unavailable: ${why}`)
   );
 }
 
