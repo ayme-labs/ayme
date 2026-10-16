@@ -8,7 +8,7 @@ The options of `@ayme-dev/unplugin-ayme`, which compiles your Page Object Models
 | ------------------------------------------ | ------------------------------------------------------------------------------------- |
 | `@ayme-dev/unplugin-ayme/vite`             | Vite 7 and 8, including Nuxt and SvelteKit. ESM-only, so the config must load as ESM. |
 | `@ayme-dev/unplugin-ayme/angular`          | The Angular CLI's application builder, through `@angular-builders/custom-esbuild`.    |
-| `@ayme-dev/unplugin-ayme/turbopack-loader` | Next.js 16 with Turbopack. Experimental.                                              |
+| `@ayme-dev/unplugin-ayme/turbopack-loader` | Next.js 16 with Turbopack.                                                            |
 
 The plugin runs on Node.js 20.19 and later 20.x, or 22.12 and later. It compiles Page Object Models with its own TypeScript dependency, whichever TypeScript version your project uses.
 
@@ -73,7 +73,7 @@ The plugin compiles Page Object Models imported with relative paths or through t
 
 ## Next.js
 
-`@ayme-dev/unplugin-ayme/turbopack-loader` is an experimental loader for Turbopack's browser graph. Its one option is `tsconfigPath`, the tsconfig the compiler reads. Apply it to the `.ts` files on the browser graph that contain `@ayme` or `extends`:
+`@ayme-dev/unplugin-ayme/turbopack-loader` is a loader for Turbopack's browser graph. Its one option is `tsconfigPath`, the tsconfig the compiler reads. Apply it to the `.ts` files on the browser graph that contain `@ayme` or `extends`:
 
 ```js
 // next.config.mjs
@@ -151,7 +151,7 @@ These fail the build or the dev server.
 | `Could not load Playwright config "<path>": …`                                                                                                         | The config file is missing or failed to load.                                                                                             |
 | `Unsupported Playwright config loader …`                                                                                                               | Loading a config needs Playwright 1.62 to 1.64; the installed loader has another version or shape.                                        |
 | `Playwright project "<name>" must exist exactly once in <path>; found <count>.`                                                                        | `project` names no project, or several.                                                                                                   |
-| `Playwright projects have different supported settings (<fields>); set playwright.project explicitly.`                                                 | Several projects disagree and no `project` was set.                                                                                       |
+| `Playwright projects have different supported settings (<fields>).`                                                                                    | Several projects disagree and no `project` was set.                                                                                       |
 | `Ayme's Angular plugin has no option(s): …` (`TypeError`)                                                                                              | An unknown Angular plugin option, or the plugin referenced as a plain string.                                                             |
 | `Ayme did not compile Page Object Model <file>.`                                                                                                       | The Angular plugin could not compile a model it claimed.                                                                                  |
 | `tsconfigPath must be a string` (`TypeError`)                                                                                                          | A non-string Angular `tsconfigPath`.                                                                                                      |

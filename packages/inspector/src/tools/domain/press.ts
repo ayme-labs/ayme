@@ -62,3 +62,54 @@ export function asksForArguments(pressed: Press) {
     (pressed.kind === "busy" && pressed.opensForm)
   );
 }
+
+/** How a run card looks: what Run does and whether it's off, and its form. */
+export type RunCardLook = {
+  press: Press;
+  /** Whether Run is off: its press would do nothing. */
+  runDisabled: boolean;
+  /** Run's tooltip. */
+  runTitle: string;
+  /** Whether the head can open and close the form. */
+  canToggle: boolean;
+  /** Whether the form shows. */
+  showBody: boolean;
+};
+
+/**
+ * How a run card looks, from the same state as what pressing Run does: Run
+ * is off whenever its press would do nothing, and the form shows only for a
+ * present tool, under the head once opened or always without one.
+ */
+export function runCardLook(card: {
+  /** The tool's action, which Run's tooltip names. */
+  action: string;
+  present: boolean;
+  running: boolean;
+  needsInput: boolean;
+  /** Whether it shows its head, under which the form opens. */
+  head: boolean;
+  /** Whether the form is opened under the head. */
+  open: boolean;
+  /** Whether it has a form: fields to fill in, or an item to pick. */
+  hasForm: boolean;
+  invalid: boolean;
+  args: ToolArguments;
+  collection: boolean;
+  target: CollectionItem | undefined;
+}): RunCardLook {
+  const showBody = card.present && (!card.head || card.open);
+  const pressed = press({ ...card, formOpen: showBody });
+  return {
+    press: pressed,
+    runDisabled: pressed.kind === "busy" || pressed.kind === "blocked",
+    runTitle:
+      pressed.kind === "blocked" && pressed.why === "no-item"
+        ? "No item on the page to run on"
+        : asksForArguments(pressed)
+          ? "Fill in the arguments, then run"
+          : `Run ${card.action}`,
+    canToggle: card.present && card.hasForm,
+    showBody,
+  };
+}

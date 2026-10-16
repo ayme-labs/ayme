@@ -16,7 +16,13 @@
  *   one-sentence description paragraph,
  * - the README of a published package (one under `packages/` that is not
  *   private) contains a bare issue reference, a relative link or a banned
- *   phrase, since npm shows it without the repository around it.
+ *   phrase, since npm shows it without the repository around it,
+ * - a published package's source marks an API `@experimental` that the
+ *   Experimental APIs page does not list, or the page lists one that no
+ *   published package marks (ADR-0037). The page lists an API as a list item
+ *   that opens with a code span, by its last name, in each package the item
+ *   names in a later code span: ``- `ayme.peek(...)` in `@ayme-dev/ayme` ``
+ *   lists `peek` in `@ayme-dev/ayme`. An item that names no package fails.
  *
  * Code spans and fenced code blocks are ignored. Uses only `node:` modules.
  */
@@ -25,6 +31,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const GUIDE_DIR = "docs/guide";
+const EXPERIMENTAL_PAGE = `${GUIDE_DIR}/reference/experimental-apis.md`;
 const SKIPPED_DIRS = new Set(["node_modules", "dist", "build", "build-spa"]);
 const REPOSITORY_URL =
   /^https?:\/\/github\.com\/ayme-labs\/ayme\/(?:blob|tree)\/main(?:\/([^?#]*))?/;
@@ -54,22 +61,75 @@ function markdownFiles(root, dir = "") {
   return files;
 }
 
-/** READMEs of the packages npm publishes: those not marked private. */
-function publishedReadmes(root) {
+/** The packages npm publishes, those not marked private, as `packages/<dir>` and their npm name. */
+function publishedPackages(root) {
   const packages = path.join(root, "packages");
-  if (!fs.existsSync(packages)) return new Set();
-  return new Set(
-    fs
-      .readdirSync(packages)
-      .filter((dir) => {
-        const manifest = path.join(packages, dir, "package.json");
-        return (
-          fs.existsSync(manifest) &&
-          !JSON.parse(fs.readFileSync(manifest, "utf8")).private
-        );
-      })
-      .map((dir) => `packages/${dir}/README.md`)
-  );
+  if (!fs.existsSync(packages)) return [];
+  return fs.readdirSync(packages).flatMap((dir) => {
+    const manifest = path.join(packages, dir, "package.json");
+    if (!fs.existsSync(manifest)) return [];
+    const { name, private: internal } = JSON.parse(
+      fs.readFileSync(manifest, "utf8")
+    );
+    return internal ? [] : [{ dir: `packages/${dir}`, name }];
+  });
+}
+
+/** Each API a published package's source marks `@experimental`, by name and package. */
+function experimentalMarks(root) {
+  const marks = [];
+  for (const { dir, name: pkg } of publishedPackages(root)) {
+    const src = path.join(root, dir, "src");
+    if (!fs.existsSync(src)) continue;
+    for (const entry of fs.readdirSync(src, { recursive: true })) {
+      if (!/\.tsx?$/.test(entry) || entry.includes("node_modules")) continue;
+      const file = path.posix.join(dir, "src", entry.split(path.sep).join("/"));
+      const text = fs.readFileSync(path.join(root, file), "utf8");
+      for (const comment of text.matchAll(/\/\*\*([\s\S]*?)\*\/\s*/g)) {
+        if (!/(?:^|\s)@experimental\b/.test(comment[1])) continue;
+        // The declaration the comment documents: an export, or a member.
+        const declaration =
+          /(?:export\s+)?(?:default\s+)?(?:declare\s+)?(?:async\s+)?(?:(?:function\*?|const|let|type|interface|class|readonly)\s+)?([A-Za-z_$][\w$]*)/y;
+        declaration.lastIndex = comment.index + comment[0].length;
+        const name = declaration.exec(text)?.[1];
+        if (name)
+          marks.push({
+            name,
+            pkg,
+            file,
+            line: lineOf(text, declaration.lastIndex),
+          });
+      }
+    }
+  }
+  return marks;
+}
+
+/** The APIs the Experimental APIs page lists, by their last name and the published packages the item names. */
+function experimentalListing(root) {
+  const page = path.join(root, EXPERIMENTAL_PAGE);
+  if (!fs.existsSync(page)) return [];
+  const published = publishedPackages(root).map(({ name }) => name);
+  return fs
+    .readFileSync(page, "utf8")
+    .split("\n")
+    .flatMap((text, index) => {
+      if (!/^\s*[-*+]\s+`/.test(text)) return [];
+      const [span, ...rest] = [...text.matchAll(/`([^`]+)`/g)].map(
+        (match) => match[1]
+      );
+      const name = span.replace(/\(.*$/s, "").split(".").pop().trim();
+      // A subpath export such as `@ayme-dev/ayme/server` is its package.
+      const packages = published.filter((pkg) =>
+        rest.some((other) => other === pkg || other.startsWith(`${pkg}/`))
+      );
+      return [{ name, packages, line: index + 1 }];
+    });
+}
+
+/** READMEs of the packages npm publishes. */
+function publishedReadmes(root) {
+  return new Set(publishedPackages(root).map(({ dir }) => `${dir}/README.md`));
 }
 
 /** The text with code blocks, code spans and comments blanked, lines kept. */
@@ -273,6 +333,37 @@ export function checkDocs(root) {
   for (const page of pages)
     if (page !== `${GUIDE_DIR}/README.md` && !indexed.has(page))
       report(page, 1, `page is not listed in ${GUIDE_DIR}/README.md`);
+
+  const marks = experimentalMarks(root);
+  const listing = experimentalListing(root);
+  const listed = new Set(
+    listing.flatMap(({ name, packages }) =>
+      packages.map((pkg) => `${name} ${pkg}`)
+    )
+  );
+  const marked = new Set(marks.map(({ name, pkg }) => `${name} ${pkg}`));
+  for (const { name, pkg, file, line } of marks)
+    if (!listed.has(`${name} ${pkg}`))
+      report(
+        file,
+        line,
+        `\`${name}\` in ${pkg} is marked @experimental but not listed in ${EXPERIMENTAL_PAGE}`
+      );
+  for (const { name, packages, line } of listing) {
+    if (packages.length === 0)
+      report(
+        EXPERIMENTAL_PAGE,
+        line,
+        `lists \`${name}\` without naming a published package it is in`
+      );
+    for (const pkg of packages)
+      if (!marked.has(`${name} ${pkg}`))
+        report(
+          EXPERIMENTAL_PAGE,
+          line,
+          `lists \`${name}\` in ${pkg}, which does not mark it @experimental`
+        );
+  }
 
   return problems;
 }

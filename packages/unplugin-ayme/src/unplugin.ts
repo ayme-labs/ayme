@@ -492,7 +492,7 @@ function selectPlaywrightSettings(
   );
   if (differingFields.length > 0)
     throw new Error(
-      `Playwright projects have different supported settings (${differingFields.join(", ")}); set playwright.project explicitly.`
+      `Playwright projects have different supported settings (${differingFields.join(", ")}).`
     );
   return common;
 }

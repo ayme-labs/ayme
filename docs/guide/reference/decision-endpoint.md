@@ -2,6 +2,8 @@
 
 The contract of the route in your backend that adds your key to each decision model request the Goal Loop makes.
 
+> **Experimental:** this may change in any release. See [Experimental APIs](experimental-apis.md).
+
 ## The route
 
 The Goal Loop asks a decision model for each step. The request goes to the Decision Endpoint, a route in your own backend: it holds the model key, decides who may use it, and forwards the request to the model provider. Ayme ships the handler, `createDecisionEndpoint` from `@ayme-dev/ayme/server`, and the browser helper, `decisionEndpoint` from `@ayme-dev/ayme`; you mount the route and gate it. [Goals with Jev](../guides/goals-with-jev.md) shows the setup.
@@ -22,7 +24,7 @@ The handler checks a request in this order and answers the first failure with `{
 | `400`  | The body is not JSON, or `state` or `questions` is missing.      |
 | `502`  | The model provider cannot be reached.                            |
 
-On success it returns the provider's status and body unchanged. When the provider answers with an error, it keeps that status and returns `{ "error": "<message>" }` with the provider's message, the same shape as its own rejections.
+On success it returns the provider's status and body unchanged. When the provider answers with an error, it keeps that status and returns `{ "error": "The model provider said: <message>" }`, the same shape as its own rejections; the prefix tells a provider's refusal from `authorize`'s. It also passes on the provider's `Retry-After` header.
 
 ## What is forwarded
 
@@ -70,14 +72,14 @@ const decide = decisionEndpoint("/api/decisions", {
 
 `decisionEndpoint(url, options?)` returns the decision function for `goalLoop`. It posts each `DecisionRequest` as JSON to `url`, sends `headers` (a value, or a function it calls for each request), passes `credentials` to `fetch`, and throws a `DecisionEndpointError` when the call fails. Its `code` says why, so callers need not match the message:
 
-| `code`        | When                                                                                                                   | Message                                                      |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `not-mounted` | A `404` without an `{ "error" }` body: nothing serves the route, such as a dev server started without a model key.     | `No Decision Endpoint is mounted at <url>: it answered 404`  |
-| `rejected`    | Any other non-2xx: the handler, `authorize` or the provider refused the request, or the provider could not be reached. | `The Decision Endpoint <url> answered <status> <error text>` |
-| `malformed`   | A 2xx whose body is not a decision response.                                                                           | `The Decision Endpoint returned an invalid response.`        |
+| `code`        | When                                                                                                                   | Message                                                                                     |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `not-mounted` | A `404` without an `{ "error" }` body: nothing serves the route, such as a dev server started without a model key.     | `No Decision Endpoint is mounted at <url>: it answered 404`                                 |
+| `rejected`    | Any other non-2xx: the handler, `authorize` or the provider refused the request, or the provider could not be reached. | `The Decision Endpoint <url> answered <status> <error text>`                                |
+| `malformed`   | A 2xx whose body is not a decision response.                                                                           | `The Decision Endpoint <url> answered <status> with a body that is not a decision response` |
 
-`status` holds the HTTP status for `not-mounted` and `rejected`. The error text is the body's `error`, the raw body when it is not JSON, or the status text when the body is empty. A provider's own 404 reaches the browser with an `{ "error" }` body, so it is `rejected`, not `not-mounted`.
+`status` holds the HTTP status for `not-mounted` and `rejected`. The error text is the body's `error`, the raw body when it is not JSON, or the status text when the body is empty or is markup, such as a proxy's HTML error page. A provider's own 404 reaches the browser with an `{ "error" }` body, so it is `rejected`, not `not-mounted`. When the response carries a `Retry-After` header, the message ends with the wait in seconds, such as `(Retry-After: 20 s)`; an HTTP date is counted from now.
 
-`retryable` says whether asking again can help. It is `true` only for a `rejected` call with a 5xx, 408 (timeout) or 429 (rate limit) status; a missing endpoint, any other refusal and a malformed answer come back the same.
+`retryable` says whether asking again right away can help. It is `true` only for a `rejected` call with a 5xx status other than 501, or 408 (timeout). A 429 (rate limit), a 501, a missing endpoint, any other refusal and a malformed answer are not.
 
 In the Goal Loop, any of them ends the run with the Handover reason `decide_failed`. Its `next` advises a retry only when the error is `retryable`, and for errors other than `DecisionEndpointError`, such as a network failure.

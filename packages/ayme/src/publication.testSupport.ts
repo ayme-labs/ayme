@@ -17,7 +17,7 @@ import { getStartedAyme } from "./runtime";
  */
 export function agentTools() {
   const ayme = getStartedAyme();
-  if (!ayme) throw new Error("Start a session before calling its tools.");
+  if (!ayme) throw new Error("No session is started.");
   /** The names of the available tools, in publication order. */
   const names = () =>
     ayme.tools

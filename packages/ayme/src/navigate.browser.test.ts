@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DecisionRequest, DecisionResponse } from "./decisionWire";
 import { createPage } from "./browserPage";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
+import { NO_VALUE_NEEDED_KEY } from "./goalLoopQuestions";
 import { agentTools, operations } from "./publication.testSupport";
 import { createAyme, type Ayme } from "./runtime";
 import { errorText } from "./errors";
@@ -14,7 +15,7 @@ const NO_CONTENT = new URL("/__no-content", location.href).href;
 
 /** The error for a URL that is not on the test page's origin. */
 const otherOrigin = (url: string) =>
-  `ToolInputError: Cannot navigate to "${url}": it is not on the page's own origin, ${location.origin}. Leaving the origin would lose the connection to this page; navigate to a path or a URL on ${location.origin} instead.`;
+  `ToolInputError: Cannot navigate to "${url}": it is not on the page's own origin, ${location.origin}. Leaving the origin would lose the connection to this page.`;
 
 /** The error for a URL whose protocol the tool does not open. */
 const unsupportedProtocol = (url: string, protocol: string) =>
@@ -202,15 +203,20 @@ describe("the navigate tool, in Chromium", () => {
       ],
     });
     expect(location.pathname).toBe("/routes/settings");
-    // The number is never offered as a URL.
-    expect(requests[1]!.questions).toEqual({
-      url: {
-        type: "choice",
-        instructions: expect.any(String),
-        criteria: {
-          "settings page": "settings page: /routes/settings",
-          none_of_these: expect.any(String),
-        },
+    // The URL is asked in stage one, next to the operation, so no stage two
+    // follows. The number is never offered as a URL.
+    expect(requests).toHaveLength(2);
+    expect(
+      (requests[0]!.questions as Record<string, unknown>)["value:navigate.url"]
+    ).toEqual({
+      type: "choice",
+      instructions: expect.stringMatching(
+        /^If the next operation is "navigate"/
+      ),
+      criteria: {
+        "settings page": "settings page: /routes/settings",
+        [NO_VALUE_NEEDED_KEY]: expect.any(String),
+        none_of_these: expect.any(String),
       },
     });
   });
@@ -384,20 +390,32 @@ describe("the navigate tool on a Page that navigates late, in Chromium", () => {
  * judges the goal met.
  */
 function navigatingWith(label: string): GoalLoopDecisionFunction {
-  let navigated = false;
+  let steps = 0;
   return async (request): Promise<DecisionResponse> => {
     if (!("operation" in request.questions)) {
-      navigated = true;
       return {
         model: "typesafe/jev-1.13",
         answers: { url: { type: "choice", choice: label, confidence: 1 } },
       };
     }
+    // The URL is asked in stage one, next to the operation; every other
+    // speculative Goal Value question answers that no value is needed.
+    const speculative = Object.keys(request.questions)
+      .filter((id) => id.startsWith("value:"))
+      .map((id) => [
+        id,
+        {
+          type: "choice",
+          choice: id === "value:navigate.url" ? label : NO_VALUE_NEEDED_KEY,
+          confidence: 1,
+        },
+      ]);
     return {
       model: "typesafe/jev-1.13",
       answers: {
         operation: { type: "choice", choice: "navigate", confidence: 1 },
-        goal_met: { type: "noul", noul: navigated ? 0.9 : 0.1 },
+        goal_met: { type: "noul", noul: steps++ > 0 ? 0.9 : 0.1 },
+        ...Object.fromEntries(speculative),
       },
     };
   };

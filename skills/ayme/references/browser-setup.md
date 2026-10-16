@@ -14,8 +14,34 @@ version. Diagnose with the "The agent cannot reach the page" section of
   the user to open, or to paste into the tab they already have open.
 - When the page's tools are missing from your tool list after the page
   pairs, list them with `ayme_list_tools` and run them with `ayme_call`.
-- When a tool answers that no page is connected, call `ayme_connect` again
+- When a tool answers that no page is connected right after your MCP server
+  restarted, and a tab was paired before, wait a few seconds: the tab pairs
+  again by itself, and the page's tools come back with a tool list change.
+  If they don't come back, or no tab was paired, call `ayme_connect` again
   and open the new link.
+- When a tool answers that no page reconnected in its place, the page the tab
+  loaded did not pair within a few seconds. A slow page of the app pairs
+  later by itself, and its tools come back with a tool list change. A page
+  that doesn't run Ayme's Agent Connection never pairs, through `ayme_connect`
+  either: go back to a page of the app in that tab, in your browser tool or by
+  asking the user, and its tools return.
+- When a ref fails to resolve, call `snapshot` and use the ref it prints for
+  that node; if that ref fails the same way, use a selector such as
+  `role=button[name="Save"]`. Pass a ref alone, such as `e36`, and for a
+  collection tool the ref of the item's Page Object Root.
+  [Page state](https://github.com/ayme-labs/ayme/blob/main/docs/guide/guides/page-state.md#structural-refs)
+  says what each failure reason means. Refs belong to one document: after a
+  full load, call `snapshot` before you use a ref, since a ref printed before
+  the load can name another element on the new page.
+- When `goal` hands over with `needs_value` because none of a parameter's
+  allowed values belongs in it, the loop offered that parameter only its
+  allowed values, so a Goal Value of a type it does not take changes nothing.
+  Call the tool named in `needs` yourself with the value, or call `goal` again
+  with a goal that names it.
+- When a Page Object's tools never appear, read the browser console, or ask
+  the user to: a refused registration, `Cannot register the Page Object …`,
+  is logged there and does not reach you. It names two classes that share a
+  name; rename one.
 - When a tool answers that it is unavailable, read the reason. A runtime
   reason, `a click would not reach it; e42 is in the way`, names the element
   in the way in the page state, such as an open dialog to close first, and

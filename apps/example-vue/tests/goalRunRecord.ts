@@ -1,5 +1,10 @@
 import type { Page, Request, TestInfo } from "@playwright/test";
 
+import {
+  readLastGoalLoopRunResult,
+  type GoalLoopStepScore,
+} from "@ayme-dev/ayme/testing";
+
 import { goalRunsVariable } from "../scripts/appEnvironment";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 
@@ -11,19 +16,36 @@ export type GoalRunStep = {
   /** Decision Endpoint calls the step made: stage one, stage two, run-offs. */
   modelCalls: number;
   /**
-   * Per argument question id, the chosen option key; only steps with stage
-   * two. The loop's record where it has one, else every answer the Decision
-   * Endpoint returned for an option the question offered, so chunk answers
-   * survive a run-off that failed.
+   * Per argument question id, the chosen option key, as the loop's step
+   * record holds it; only steps with stage two. Chunk answers stay when a
+   * run-off then failed.
    */
   argumentChoices?: Record<string, string>;
-  /** The step requested a run-off: several chunks of a ref question each named
-   *  an element. Counted even when the run-off then failed. */
+  /**
+   * Per argument question id in `argumentChoices`, the chosen option's
+   * description as the question offered it, such as `textbox "Email"` for an
+   * element or `email: ada@example.com` for a Goal Value.
+   */
+  argumentDescriptions?: Record<string, string>;
+  /**
+   * The arguments the step ran its operation with, per parameter: the key and
+   * description of the option chosen, as the loop's step record holds them.
+   * Absent for a step that ran no operation, or when the loop's run result
+   * could not be read.
+   */
+  chosen?: Record<string, { key: string; description: string }>;
+  /** The step asked a run-off, as the loop's step record says: several
+   *  chunks of a ref question each named an element. Counted even when the
+   *  run-off then failed. */
   runOff: boolean;
   /** UTF-8 bytes of the `page` and `history` state fields stage one sent, as
    *  JSON; stage two sends the same state. */
   pageBytes: number;
   historyBytes: number;
+  /** The tokens the step's calls used, summed over the calls whose response
+   *  reported `usage`; absent when none did. */
+  inputTokens?: number;
+  outputTokens?: number;
 };
 
 /** What one `goal` call did, attached to the test that made it. */
@@ -32,6 +54,12 @@ export type GoalRunRecord = {
   /** The step count of a run that ends `done` as the test intends, when the
    *  test states one. */
   expectedSteps?: number;
+  /**
+   * Per Goal Value label, the description of the element a `fill` or `type`
+   * of that value should target, such as `textbox "Display name"`, when the
+   * test states them.
+   */
+  expectedTargets?: Record<string, string>;
   /** The Handover reason; null when `pursue` threw. */
   reason: string | null;
   /** The model identifiers that answered the run's decisions. */
@@ -49,27 +77,10 @@ export type Decision = {
   state?: { page?: unknown; history?: unknown };
   questions: Record<string, { criteria?: Record<string, unknown> }>;
   answers?: Record<string, { choice?: unknown }>;
+  /** The provider's token usage, which the Decision Endpoint passes through
+   *  with the answers when the provider reports it. */
+  usage?: { input_tokens?: unknown; output_tokens?: unknown };
 };
-
-/** A run-off question's id ends with this, as `runOffQuestionId` in
- *  `packages/ayme/src/goalLoopQuestions.ts` builds it. */
-const runOffSuffix = "run_off";
-
-/**
- * Mirrors `GoalLoopStepScore` and the run result store in
- * `packages/ayme/src/goalLoop.ts`, reduced to the fields read here. The store
- * is package-internal (`getLastGoalLoopRunResult` is not exported); the page
- * shares it through `globalThis`, so the browser side can read it.
- */
-type GoalLoopStepScore = {
-  goalMetScore: number;
-  argumentChoices?: Record<string, string>;
-};
-export type GoalLoopRunResult = {
-  handover: { reason: string };
-  stepScores: GoalLoopStepScore[];
-};
-type RunResultStore = { last?: GoalLoopRunResult };
 
 const asError = (error: unknown) =>
   error instanceof Error ? error : new Error(String(error));
@@ -90,11 +101,11 @@ function recordDecisions(page: Page) {
           .response()
           .then(async (response) => {
             if (!response?.ok()) return body;
-            const { model, answers } = (await response.json()) as Pick<
+            const { model, answers, usage } = (await response.json()) as Pick<
               Decision,
-              "model" | "answers"
+              "model" | "answers" | "usage"
             >;
-            return { ...body, model, answers };
+            return { ...body, model, answers, usage };
           })
           .catch(asError)
       );
@@ -114,19 +125,27 @@ function recordDecisions(page: Page) {
   };
 }
 
-/** The answers of an argument call that pick an option its question offered. */
-function offeredChoices(decision: Decision): Record<string, string> {
-  const choices: Record<string, string> = {};
-  for (const [id, question] of Object.entries(decision.questions)) {
-    const choice = decision.answers?.[id]?.choice;
-    if (
-      typeof choice === "string" &&
-      question.criteria &&
-      choice in question.criteria
-    )
-      choices[id] = choice;
+/** The description of the option each answer of `choices` picked, from the
+ *  criteria of the question that offered it. */
+function choiceDescriptions(
+  decision: Decision,
+  choices: Record<string, string>
+): Record<string, string> {
+  const descriptions: Record<string, string> = {};
+  for (const [id, choice] of Object.entries(choices)) {
+    const description = decision.questions[id]?.criteria?.[choice];
+    if (typeof description === "string") descriptions[id] = description;
   }
-  return choices;
+  return descriptions;
+}
+
+/** Add the call's reported token usage, if any, to the step's. */
+function addUsage(step: GoalRunStep, decision: Decision) {
+  const input = decision.usage?.input_tokens;
+  const output = decision.usage?.output_tokens;
+  if (typeof input !== "number" || typeof output !== "number") return;
+  step.inputTokens = (step.inputTokens ?? 0) + input;
+  step.outputTokens = (step.outputTokens ?? 0) + output;
 }
 
 const byteLength = (value: unknown) =>
@@ -137,55 +156,69 @@ const byteLength = (value: unknown) =>
 /** Group the calls into steps: every stage-one call asks `operation`. */
 function stepsOf(
   decisions: Decision[],
-  stepScores: GoalLoopStepScore[]
+  stepScores: readonly GoalLoopStepScore[]
 ): GoalRunStep[] {
   const steps: GoalRunStep[] = [];
+  // Per step, its argument calls in order, to describe the choices with.
+  const argumentCalls: Decision[][] = [];
   for (const decision of decisions) {
     if ("operation" in decision.questions) {
       const choice = decision.answers?.operation?.choice;
-      steps.push({
+      const step: GoalRunStep = {
         operation: typeof choice === "string" ? choice : null,
         goalMetScore: null,
         modelCalls: 1,
         runOff: false,
         pageBytes: byteLength(decision.state?.page),
         historyBytes: byteLength(decision.state?.history),
-      });
+      };
+      addUsage(step, decision);
+      steps.push(step);
+      argumentCalls.push([]);
       continue;
     }
     const step = steps.at(-1);
     if (!step) continue;
     step.modelCalls++;
-    if (Object.keys(decision.questions).some((id) => id.endsWith(runOffSuffix)))
-      step.runOff = true;
-    const choices = offeredChoices(decision);
-    if (Object.keys(choices).length > 0)
-      step.argumentChoices = { ...step.argumentChoices, ...choices };
+    addUsage(step, decision);
+    argumentCalls.at(-1)!.push(decision);
   }
-  // A step score exists for every step whose stage one the loop could read;
-  // where it records a choice, the loop's record wins.
+  // A step score exists for every step whose stage one the loop could read.
   stepScores.forEach((score, index) => {
     const step = steps[index];
     if (!step) return;
     step.goalMetScore = score.goalMetScore;
-    if (score.argumentChoices)
-      step.argumentChoices = {
-        ...step.argumentChoices,
-        ...score.argumentChoices,
-      };
+    if (score.runOff) step.runOff = true;
+    if ("chosen" in score) step.chosen = score.chosen;
+    if (score.argumentChoices && Object.keys(score.argumentChoices).length > 0)
+      step.argumentChoices = { ...score.argumentChoices };
+  });
+  steps.forEach((step, index) => {
+    if (!step.argumentChoices) return;
+    const descriptions = Object.assign(
+      {},
+      ...argumentCalls[index]!.map((decision) =>
+        choiceDescriptions(decision, step.argumentChoices!)
+      )
+    ) as Record<string, string>;
+    if (Object.keys(descriptions).length > 0)
+      step.argumentDescriptions = descriptions;
   });
   return steps;
 }
 
-/** What a run did, from the calls seen from the page and the loop's run result. */
+/** What a run did, from the calls seen from the page and the loop's step
+ *  scores, empty when its run result could not be read. */
 export function goalRunRecordOf(
-  base: Pick<GoalRunRecord, "goal" | "expectedSteps" | "reason" | "wallTimeMs">,
+  base: Pick<
+    GoalRunRecord,
+    "goal" | "expectedSteps" | "expectedTargets" | "reason" | "wallTimeMs"
+  >,
   decisions: Decision[],
-  runResult: GoalLoopRunResult | undefined
+  stepScores: readonly GoalLoopStepScore[]
 ): GoalRunRecord {
   return {
     ...base,
-    reason: runResult?.handover.reason ?? base.reason,
     models: [
       ...new Set(
         decisions.flatMap((decision) =>
@@ -193,19 +226,8 @@ export function goalRunRecordOf(
         )
       ),
     ],
-    steps: stepsOf(decisions, runResult?.stepScores ?? []),
+    steps: stepsOf(decisions, stepScores),
   };
-}
-
-async function readRunResult(page: Page) {
-  return page.evaluate(
-    () =>
-      (
-        globalThis as typeof globalThis & {
-          __aymeGoalLoopRunResultStore?: RunResultStore;
-        }
-      ).__aymeGoalLoopRunResultStore?.last
-  );
 }
 
 /**
@@ -219,7 +241,11 @@ async function readRunResult(page: Page) {
 export async function recordGoalRun<T extends { reason: string }>(
   page: Page,
   testInfo: TestInfo,
-  { goal, expectedSteps }: Pick<GoalRunRecord, "goal" | "expectedSteps">,
+  {
+    goal,
+    expectedSteps,
+    expectedTargets,
+  }: Pick<GoalRunRecord, "goal" | "expectedSteps" | "expectedTargets">,
   pursue: () => Promise<T>
 ): Promise<T> {
   if (process.env[goalRunsVariable] !== "1") return pursue();
@@ -251,6 +277,7 @@ export async function recordGoalRun<T extends { reason: string }>(
   let record: GoalRunRecord = {
     goal,
     ...(expectedSteps === undefined ? {} : { expectedSteps }),
+    ...(expectedTargets === undefined ? {} : { expectedTargets }),
     reason,
     models: [],
     wallTimeMs,
@@ -259,9 +286,8 @@ export async function recordGoalRun<T extends { reason: string }>(
   try {
     if (recorderError) throw recorderError;
     const decisions = await recorder!.decisions();
-    const runResult = await readRunResult(page);
-    record = goalRunRecordOf(record, decisions, runResult);
-    if (reason === null) record.reason = null;
+    const runResult = await readLastGoalLoopRunResult(page);
+    record = goalRunRecordOf(record, decisions, runResult?.stepScores ?? []);
   } catch (error) {
     record.recorderError = asError(error).message;
   }

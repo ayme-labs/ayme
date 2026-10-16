@@ -66,6 +66,8 @@ export function pairingFromFragment(hash: string): Pairing | undefined {
  * Why a tab that turned the Agent Connection on is not connected to an
  * agent's server:
  * - `connecting`: it has a pairing and its channel is opening;
+ * - `reconnecting`: it lost the server it paired with a moment ago, and is
+ *   trying again;
  * - `no-answer`: the server it paired with stopped answering, and it keeps
  *   trying;
  * - `no-server`: its last look found no Ayme MCP server;
@@ -78,6 +80,7 @@ export function pairingFromFragment(hash: string): Pairing | undefined {
  */
 export type NotConnectedReason =
   | "connecting"
+  | "reconnecting"
   | "no-answer"
   | "no-server"
   | "several-servers"

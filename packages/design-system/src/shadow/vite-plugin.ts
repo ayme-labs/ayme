@@ -32,7 +32,7 @@ const unwrapPropertyFallback = (): PostcssPlugin => ({
       throw new Error(
         "shadow-tailwind: Tailwind no longer emits the @layer properties fallback this build " +
           "depends on. @property is ignored inside shadow roots, so the --tw-* initial values " +
-          "must come from somewhere else."
+          "are missing."
       );
     }
   },

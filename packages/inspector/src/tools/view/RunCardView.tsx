@@ -21,7 +21,7 @@ import {
   type Run,
 } from "../../runs";
 import type { Field } from "../domain/fields";
-import { asksForArguments, type Press } from "../domain/press";
+import type { RunCardLook } from "../domain/press";
 import type { RunnableTool } from "../domain/runnableTools";
 
 /**
@@ -41,12 +41,9 @@ export function RunCardView({
   open,
   picking,
   target,
-  canOpen,
-  showBody,
-  press,
+  look,
   last,
   lastSuccess,
-  invalid,
   submit,
   toggleOpen,
   pickItem,
@@ -80,20 +77,11 @@ export function RunCardView({
   picking: boolean;
   /** The item it runs on. */
   target: CollectionItem | undefined;
-  /** Whether it has a form to open. */
-  canOpen: boolean;
-  /** Whether the form shows. */
-  showBody: boolean;
-  /** What pressing Run does. */
-  press: Press;
+  /** What pressing Run does, whether Run is off, and whether the form shows. */
+  look: RunCardLook;
   /** Its last run, and its last successful one. */
   last: Run | undefined;
   lastSuccess: Run | undefined;
-  /**
-   * Whether the arguments can't be sent as they are, so Run is off: a field
-   * is invalid, or the JSON is, or it breaks the tool's schema.
-   */
-  invalid: boolean;
   submit: (event: FormEvent) => void;
   toggleOpen: () => void;
   pickItem: (path: string) => void;
@@ -102,17 +90,14 @@ export function RunCardView({
   form: ReactNode;
 }) {
   const { present, available, reason } = tool;
+  const { press, showBody } = look;
   const runButton = press.kind !== "absent" && (
     <Button
       type="submit"
       size="sm"
       className="h-7 px-2.5 text-xs"
-      disabled={press.kind === "busy" || invalid}
-      title={
-        asksForArguments(press)
-          ? "Fill in the arguments, then run"
-          : `Run ${tool.action}`
-      }
+      disabled={look.runDisabled}
+      title={look.runTitle}
     >
       <PlayIcon className="size-3.5" aria-hidden />
       Run
@@ -139,7 +124,7 @@ export function RunCardView({
       {head && (
         <>
           <div className="flex items-center gap-1.5">
-            {press.kind !== "absent" && canOpen ? (
+            {look.canToggle ? (
               <button
                 type="button"
                 aria-expanded={open}

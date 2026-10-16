@@ -3,13 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 const resolvePageStateRefs = vi.hoisted(() => vi.fn());
 vi.mock("./pageState", () => ({ resolvePageStateRefs }));
 
-import { resolveRefTarget } from "./refTarget";
+import { resolveRef } from "./refTarget";
 
 const element = {} as Element;
-const resolve = (requested: string) =>
-  resolveRefTarget("click", requested, {} as Document);
+const resolve = (requested: string, synthetic: "allow" | "refuse" = "refuse") =>
+  resolveRef(requested, { synthetic }, "click", {} as Document);
 
-describe("resolveRefTarget", () => {
+describe("resolveRef", () => {
   it("resolves a ref to the node it addresses now", async () => {
     const node = { ref: "e4", element };
     resolvePageStateRefs.mockResolvedValueOnce([
@@ -22,7 +22,7 @@ describe("resolveRefTarget", () => {
     "refuses %j, which is not a Structural Ref",
     async (requested) => {
       await expect(resolve(requested)).rejects.toThrow(
-        `The ref "${requested}" is not a Structural Ref. Pass a ref from snapshot, such as e5.`
+        `Cannot click ref "${requested}": not a Structural Ref.`
       );
     }
   );
@@ -31,7 +31,7 @@ describe("resolveRefTarget", () => {
     "names the ref %j writes another way",
     async (requested) => {
       await expect(resolve(requested)).rejects.toThrow(
-        `The ref "${requested}" is not a Structural Ref. Pass the Structural Ref alone: e2.`
+        `Cannot click ref "${requested}": not a Structural Ref. It writes the Structural Ref e2 another way.`
       );
     }
   );
@@ -53,12 +53,34 @@ describe("resolveRefTarget", () => {
     );
   });
 
-  it("names why a ref did not resolve", async () => {
+  it.each([
+    ["unknown-ref", "no snapshot of the current document issued it"],
+    ["removed", "it is no longer on the page"],
+    ["ambiguous", "it cannot be matched unambiguously to the current page"],
+    ["no-element", "it has no element on the page now"],
+  ])("says what %s means", async (reason, why) => {
     resolvePageStateRefs.mockResolvedValueOnce([
-      { status: "unresolved", requestedRef: "e2", reason: "removed" },
+      { status: "unresolved", requestedRef: "e2", reason },
     ]);
     await expect(resolve("e2")).rejects.toThrow(
-      'Cannot click ref "e2": removed.'
+      `Cannot click ref "e2": ${why}.`
+    );
+  });
+
+  it("resolves a synthetic ref when the policy allows one", async () => {
+    const node = { ref: "s_1", element };
+    resolvePageStateRefs.mockResolvedValueOnce([
+      { status: "resolved", requestedRef: "s_1", node },
+    ]);
+    await expect(resolve("s_1", "allow")).resolves.toBe(node);
+  });
+
+  it("names why a ref did not resolve, whichever the policy", async () => {
+    resolvePageStateRefs.mockResolvedValueOnce([
+      { status: "unresolved", requestedRef: "s_1", reason: "removed" },
+    ]);
+    await expect(resolve("s_1", "allow")).rejects.toThrow(
+      'Cannot click ref "s_1": it is no longer on the page.'
     );
   });
 });

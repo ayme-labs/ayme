@@ -211,7 +211,8 @@ export async function runOnce(
       log,
     };
     const prompt = createPrompt(mission, options.arm, labUrl);
-    await writeFile(path.join(runDir, "setup-prompt.txt"), setupPrompt);
+    const setup = setupPrompt(options.arm);
+    await writeFile(path.join(runDir, "setup-prompt.txt"), setup);
     await writeFile(path.join(runDir, "prompt.txt"), prompt);
     await writeFile(initPagePath, initPageScript(mission.start.url));
     await writeJson(mcpConfigPath, {
@@ -230,7 +231,7 @@ export async function runOnce(
       arm: options.arm,
       mcpConfigPath,
       readableDirectories: armSetup?.readableDirectories,
-      setupPrompt,
+      setupPrompt: setup,
       prompt,
       timeoutMs: options.timeoutSeconds * 1000,
       transcriptPath: path.join(runDir, "transcript.jsonl"),

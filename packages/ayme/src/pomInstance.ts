@@ -1,7 +1,8 @@
+import type { AriaRef } from "@ayme-dev/core/structural-observation";
 import type { ToolManifest } from "./contracts";
 import { availabilityPredicateOf } from "./decorators";
-import { errorText } from "./errors";
-import { latestRefInTheWay } from "./pageState";
+import { asSentence, errorText, RuntimeStateError } from "./errors";
+import type { ObservedPomRoot } from "./pomRootObservation";
 
 /**
  * Package-internal: whether a tool, or an action on one Page Object
@@ -15,15 +16,11 @@ export type ToolAvailability = {
   reason?: string;
 };
 
-/** Package-internal: what the last observation found of one Page Object Root. */
-export type ObservedPomRoot = {
-  /** Its element, while the locator resolved to that one element throughout. */
-  element: Element | undefined;
-  present: boolean;
-  available: boolean;
-  /** What a click would reach instead, for a present root that is not available. */
-  obstruction: Element | undefined;
-};
+/**
+ * Package-internal: the Structural Ref the agent's latest page state gave
+ * `element`, if any; how an Availability Reason names what is in the way.
+ */
+export type LatestRefLookup = (element: Element) => AriaRef | undefined;
 
 /** What an action's availability predicate answered. */
 export type PredicateAnswer = { available: boolean; reason?: string };
@@ -58,26 +55,46 @@ export type PomInstanceObservation = {
 /**
  * Package-internal: whether the action `methodName` can run on `instance`
  * now, by ADR-0035's precedence: an absent root, then a root a click would
- * not reach, then the action's predicate.
+ * not reach, then the action's predicate. It reads only the observation and,
+ * to name what is in the way, `latestRefOf`.
  */
 export function availabilityOf(
   instance: PomInstanceObservation,
-  methodName: string
+  methodName: string,
+  latestRefOf: LatestRefLookup
 ): ToolAvailability {
   const { root } = instance;
   if (root !== undefined) {
-    if (!root.present || root.element?.isConnected !== true)
-      return { present: false, available: false };
+    if (!root.present) return { present: false, available: false };
     if (!root.available)
       return {
         present: true,
         available: false,
-        reason: obstructionReason(root.obstruction, root.element),
+        reason: obstructionReason(root.inTheWay, latestRefOf),
       };
   }
   const answer = instance.predicates.get(methodName);
   if (!answer || answer.available) return { present: true, available: true };
   return { present: true, available: false, reason: answer.reason };
+}
+
+/**
+ * Package-internal: refuses a call of the tool `toolName` that `availability`
+ * says would not run, the tool's own or the one on the instance the call
+ * names: `<tool> is unavailable: <reason>.`, or without the reason when there
+ * is none.
+ */
+export function assertAvailable(
+  toolName: string,
+  { present, available, reason }: ToolAvailability
+) {
+  if (available) return;
+  const why = present ? reason : "its Page Object is not on the page";
+  throw new RuntimeStateError(
+    why === undefined
+      ? `${toolName} is unavailable.`
+      : asSentence(`${toolName} is unavailable: ${why}`)
+  );
 }
 
 /**
@@ -97,11 +114,14 @@ export function combinedAvailability(
 
 /**
  * The runtime's Availability Reason for a present root a click would not
- * reach: it names the Structural Ref of the element in the way when the
- * agent's latest page state gave it or an ancestor of it one.
+ * reach: it names the Structural Ref of the first element in the way the
+ * agent's latest page state gave one.
  */
-function obstructionReason(obstruction: Element | undefined, root: Element) {
-  const ref = obstruction && latestRefInTheWay(obstruction, root);
+function obstructionReason(
+  inTheWay: readonly Element[],
+  latestRefOf: LatestRefLookup
+) {
+  const ref = inTheWay.map(latestRefOf).find((ref) => ref !== undefined);
   return ref === undefined
     ? "a click would not reach it"
     : `a click would not reach it; ${ref} is in the way`;
@@ -185,6 +205,7 @@ function sameRoot(
     left.element === right.element &&
     left.present === right.present &&
     left.available === right.available &&
-    left.obstruction === right.obstruction
+    left.inTheWay.length === right.inTheWay.length &&
+    left.inTheWay.every((element, index) => element === right.inTheWay[index])
   );
 }

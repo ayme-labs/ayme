@@ -7,17 +7,30 @@ import {
   SyntheticAriaRefFactory,
   type AriaRef,
 } from "@ayme-dev/core/structural-observation";
+import type { JsonSchema } from "./contracts";
 import type { DecisionRequest, DecisionResponse } from "./decisionWire";
 import type { PageStateCapture } from "./pageState";
+import type { CollectionToolItem } from "./registry";
 import {
   NONE_OF_THESE_KEY,
+  NO_VALUE_NEEDED_KEY,
   buildArgumentRequest,
+  buildOperationRequest,
+  buildSpeculativeValueQuestions,
+  completeArguments,
+  describeLeftOut,
   planArguments,
   readArgumentAnswers,
   readRunOffAnswer,
+  readSpeculativeValues,
+  requiredParamsOf,
+  specsOfParameters,
   type ArgumentQuestion,
   type GoalLoopOperation,
   type GoalValues,
+  type StageTwoQuestion,
+  type ToolOption,
+  type ValuePreset,
 } from "./goalLoopQuestions";
 
 // --- Fixtures ---
@@ -182,6 +195,15 @@ async function askStageTwo(
     ),
   };
 }
+
+describe("a required ref within the cap", () => {
+  it("offers its elements only, without none of these", () => {
+    const [question] = askedQuestions(clickTool, captureOfButtons(2));
+
+    expect(question!.options.map((option) => option.key)).toEqual(["e1", "e2"]);
+    expect(question!.instructions).not.toContain(NONE_OF_THESE_KEY);
+  });
+});
 
 describe("ref questions over the option cap", () => {
   it("cuts the options into document-order chunks of at most 254 plus none of these", () => {
@@ -403,6 +425,8 @@ describe("collection instances over the option cap", () => {
     const roots = [...capture.elementsByRef.values()].map((element, index) => ({
       label: `items[${index}]`,
       element,
+      present: true,
+      available: true,
     }));
     const tool: GoalLoopOperation = {
       name: "List.archive",
@@ -423,7 +447,159 @@ describe("collection instances over the option cap", () => {
       kind: "needs_instance_choice",
       parameter: "ref",
       optionCount: 256,
+      leftOut: [],
     });
+  });
+});
+
+describe("collection instances", () => {
+  /** A collection tool over `roots`, as the Goal Loop lists it. */
+  const archiveTool = (
+    roots: readonly CollectionToolItem[]
+  ): GoalLoopOperation => ({
+    name: "List.archive",
+    description: "Archive an item.",
+    execute: async () => null,
+    requiredParams: ["ref"],
+    args: [
+      {
+        name: "ref",
+        path: ["ref"],
+        optional: false,
+        closedSet: { kind: "instance", roots },
+      },
+    ],
+  });
+
+  it("offers the items the tool is available on, then none of these, and keeps why the others were left out", () => {
+    const capture = captureOfButtons(2);
+    const [first, second] = [...capture.elementsByRef.values()];
+    const tool = archiveTool([
+      {
+        label: "items[0]",
+        element: first!,
+        present: true,
+        available: false,
+        reason: "already archived",
+      },
+      { label: "items[1]", element: second!, present: true, available: true },
+      // An available item the capture holds no ref for.
+      {
+        label: "items[2]",
+        element: document.createElement("li"),
+        present: true,
+        available: true,
+      },
+      // Unavailable without an Availability Reason.
+      {
+        label: "items[3]",
+        element: document.createElement("li"),
+        present: true,
+        available: false,
+      },
+    ]);
+
+    const [question] = askedQuestions(tool, capture);
+
+    expect(question!.options).toEqual([
+      { key: "e2", description: 'items[1] (button "Item 2")', value: "e2" },
+      {
+        key: NONE_OF_THESE_KEY,
+        description: "None of these; the item is not offered.",
+      },
+    ]);
+    expect(question!.instructions).toContain(
+      `Choose "${NONE_OF_THESE_KEY}" when the item is not among these.`
+    );
+    expect(question!.leftOut).toEqual([
+      { label: "items[0]", why: "unavailable: already archived" },
+      { label: "items[2]", why: "no ref in the page state" },
+      { label: "items[3]", why: "unavailable" },
+    ]);
+  });
+
+  it("hands the left-out items on when the model answers none of these", async () => {
+    const capture = captureOfButtons(2);
+    const [first, second] = [...capture.elementsByRef.values()];
+    const tool = archiveTool([
+      {
+        label: "items[0]",
+        element: first!,
+        present: true,
+        available: false,
+        reason: "already archived",
+      },
+      { label: "items[1]", element: second!, present: true, available: true },
+    ]);
+
+    const { answers } = await askStageTwo(tool, capture, { ref: "none" });
+
+    expect(answers).toMatchObject({
+      kind: "none_fits",
+      parameter: "ref",
+      leftOut: [{ label: "items[0]", why: "unavailable: already archived" }],
+    });
+  });
+
+  it("names the items it left out when none can be offered", () => {
+    const capture = captureOfButtons(1);
+    const tool = archiveTool([
+      {
+        label: "items[0]",
+        element: document.createElement("li"),
+        present: true,
+        available: true,
+      },
+      {
+        label: "items[1]",
+        element: [...capture.elementsByRef.values()][0]!,
+        present: true,
+        available: false,
+        reason: "already archived",
+      },
+    ]);
+
+    expect(planArguments(tool, capture)).toEqual({
+      kind: "needs_instance_choice",
+      parameter: "ref",
+      optionCount: 0,
+      leftOut: [
+        { label: "items[0]", why: "no ref in the page state" },
+        { label: "items[1]", why: "unavailable: already archived" },
+      ],
+    });
+  });
+});
+
+describe("describeLeftOut", () => {
+  const item = (index: number) => ({
+    label: `items[${index}]`,
+    why: "unavailable: it is archived",
+  });
+
+  it("says nothing when no item was left out", () => {
+    expect(describeLeftOut([])).toBe("");
+  });
+
+  it("names each item with why", () => {
+    expect(
+      describeLeftOut([
+        item(0),
+        { label: "items[1]", why: "no ref in the page state" },
+      ])
+    ).toBe(
+      "Left out: items[0] (unavailable: it is archived), items[1] (no ref in the page state)."
+    );
+  });
+
+  it("names every item, however many were left out", () => {
+    const sentence = describeLeftOut(
+      Array.from({ length: 12 }, (_, index) => item(index))
+    );
+
+    expect(sentence).toMatch(
+      /items\[10\] \(unavailable: it is archived\), items\[11\] \(unavailable: it is archived\)\.$/
+    );
   });
 });
 
@@ -440,14 +616,15 @@ describe("Goal Values", () => {
         path: ["labels"],
         optional: false,
         closedSet: null,
-        free: "string_list",
+        free: ["string"],
+        list: true,
       },
       {
         name: "labels_1",
         path: ["labels_1"],
         optional: true,
         closedSet: null,
-        free: "integer",
+        free: ["integer"],
       },
       { name: "options", path: ["options"], optional: true, closedSet: null },
     ],
@@ -545,5 +722,1158 @@ describe("Goal Values", () => {
       parameters: ["options"],
       unfilled: ["options"],
     });
+  });
+});
+
+describe("parameter shapes", () => {
+  /** An action with the one parameter, classified as the loop reads it. */
+  function actionWith(schema: JsonSchema, optional = false): GoalLoopOperation {
+    const parameters = [{ name: "param", optional, schema }];
+    return {
+      name: "act",
+      description: "Act on the page.",
+      execute: async () => null,
+      requiredParams: optional ? [] : ["param"],
+      args: specsOfParameters(parameters),
+    };
+  }
+
+  function plannedQuestions(tool: GoalLoopOperation, values: GoalValues) {
+    const plan = planArguments(tool, captureOfButtons(0), values);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    return plan.questions;
+  }
+
+  /** A noul answer per question id, from the score of the value it asks about. */
+  function noulAnswers(
+    questions: readonly { id: string; type: string }[],
+    scores: readonly number[]
+  ): Record<string, unknown> {
+    return Object.fromEntries(
+      questions.map((question, index) => [
+        question.id,
+        { type: "noul", noul: scores[index] },
+      ])
+    );
+  }
+
+  /** The arguments once stage two's answers, and stage one's presets, are in. */
+  function completedArgs(
+    tool: GoalLoopOperation,
+    questions: readonly StageTwoQuestion[],
+    answers: Record<string, unknown>,
+    presets: readonly ValuePreset[] = []
+  ) {
+    const read = readArgumentAnswers(tool, questions, answers);
+    if (read.kind !== "chosen") throw new Error(read.kind);
+    completeArguments(tool, read.chosen, presets);
+    return read.chosen.args;
+  }
+
+  const enumList: JsonSchema = {
+    type: "array",
+    items: { type: "string", enum: ["low", "high"] },
+  };
+
+  it("asks one noul per enum value of an enum list, never a Goal Value", () => {
+    const tool = actionWith(enumList);
+    const questions = plannedQuestions(tool, { other: "urgent", extra: "low" });
+
+    expect(
+      questions.map((question) =>
+        question.type === "noul" ? question.option : question
+      )
+    ).toEqual([
+      { key: "low", description: "low", value: "low" },
+      { key: "high", description: "high", value: "high" },
+    ]);
+    expect(questions[0]!.instructions).toContain('Does the value "low"');
+
+    const answers = readArgumentAnswers(
+      tool,
+      questions,
+      noulAnswers(questions, [0.2, 0.9])
+    );
+    expect(answers).toMatchObject({
+      kind: "chosen",
+      chosen: { args: { param: ["high"] } },
+    });
+  });
+
+  it("says no Goal Value was offered when nothing belongs in a required enum list", () => {
+    const tool = actionWith(enumList);
+    const questions = plannedQuestions(tool, { other: "urgent" });
+
+    expect(
+      readArgumentAnswers(tool, questions, noulAnswers(questions, [0.1, 0.2]))
+    ).toMatchObject({
+      kind: "needs_value",
+      parameter: "param",
+      goalValuesOffered: false,
+    });
+  });
+
+  it("says Goal Values were offered when none belongs in a required number list", () => {
+    const tool = actionWith({ type: "array", items: { type: "number" } });
+    const questions = plannedQuestions(tool, { quantity: 2 });
+
+    expect(
+      readArgumentAnswers(tool, questions, noulAnswers(questions, [0.1]))
+    ).toMatchObject({
+      kind: "needs_value",
+      parameter: "param",
+      goalValuesOffered: true,
+    });
+  });
+
+  it("asks about an enum list without any Goal Values", () => {
+    expect(plannedQuestions(actionWith(enumList), {})).toHaveLength(2);
+  });
+
+  it("fills a number list from the numeric Goal Values, one noul each", () => {
+    const tool = actionWith({ type: "array", items: { type: "number" } });
+    const questions = plannedQuestions(tool, {
+      name: "Milk",
+      quantity: 2,
+      price: 1.5,
+    });
+
+    expect(
+      questions.map((question) =>
+        question.type === "noul" ? question.option.key : question.id
+      )
+    ).toEqual(["quantity", "price"]);
+    expect(
+      readArgumentAnswers(tool, questions, noulAnswers(questions, [0.9, 0.7]))
+    ).toMatchObject({ kind: "chosen", chosen: { args: { param: [2, 1.5] } } });
+  });
+
+  it("offers an integer list only the whole-number Goal Values", () => {
+    const tool = actionWith({ type: "array", items: { type: "integer" } });
+    const questions = plannedQuestions(tool, { quantity: 2, price: 1.5 });
+
+    expect(questions).toHaveLength(1);
+  });
+
+  it("hands a required number list over when no numeric Goal Value fits", () => {
+    const tool = actionWith({ type: "array", items: { type: "number" } });
+
+    expect(planArguments(tool, captureOfButtons(0), { name: "Milk" })).toEqual({
+      kind: "needs_free_value",
+      parameters: ["param"],
+      unfilled: ["param"],
+    });
+  });
+
+  it("fills a tuple slot by slot: the enum slot by choice, the string slot from a Goal Value", async () => {
+    const tool = actionWith({
+      type: "array",
+      prefixItems: [
+        { type: "string", enum: ["asc", "desc"] },
+        { type: "string" },
+      ],
+      minItems: 2,
+      maxItems: 2,
+    });
+    expect(tool.args.map(({ name, path }) => ({ name, path }))).toEqual([
+      { name: "param.0", path: ["param", 0] },
+      { name: "param.1", path: ["param", 1] },
+    ]);
+
+    const questions = plannedQuestions(tool, { column: "price", count: 3 });
+    expect(
+      questions.map((question) =>
+        question.type === "choice"
+          ? question.options.map((option) => option.key)
+          : []
+      )
+    ).toEqual([
+      ["asc", "desc"],
+      ["column", NONE_OF_THESE_KEY],
+    ]);
+
+    const answers = readArgumentAnswers(tool, questions, {
+      "param.0": { type: "choice", choice: "desc" },
+      "param.1": { type: "choice", choice: "column" },
+    });
+    expect(answers).toMatchObject({
+      kind: "chosen",
+      chosen: { args: { param: ["desc", "price"] } },
+    });
+    if (answers.kind === "chosen")
+      expect(Array.isArray(answers.chosen.args.param)).toBe(true);
+  });
+
+  it("hands a required tuple over when no Goal Value fits a slot, naming the tuple", () => {
+    const tool = actionWith({
+      type: "array",
+      prefixItems: [{ type: "boolean" }, { type: "string" }],
+      minItems: 2,
+      maxItems: 2,
+    });
+
+    expect(planArguments(tool, captureOfButtons(0), { count: 3 })).toEqual({
+      kind: "needs_free_value",
+      parameters: ["param"],
+      unfilled: ["param"],
+    });
+  });
+
+  it("names the whole tuple when the model finds no Goal Value for a slot", () => {
+    const tool = actionWith({
+      type: "array",
+      prefixItems: [
+        { type: "string", enum: ["asc", "desc"] },
+        { type: "string" },
+      ],
+      minItems: 2,
+      maxItems: 2,
+    });
+    const questions = plannedQuestions(tool, { column: "price" });
+
+    expect(
+      readArgumentAnswers(tool, questions, {
+        "param.0": { type: "choice", choice: "asc" },
+        "param.1": { type: "choice", choice: NONE_OF_THESE_KEY },
+      })
+    ).toMatchObject({ kind: "needs_value", parameter: "param" });
+  });
+
+  it("names a tuple inside an object by its whole path", () => {
+    const tuple = { path: ["args", "coords"], minItems: 2, optional: false };
+    const slot = (index: number) => ({
+      name: `args.coords.${index}`,
+      path: ["args", "coords", index],
+      optional: false,
+      closedSet: null,
+      free: ["number"] as const,
+      tuples: [tuple],
+    });
+    const tool: GoalLoopOperation = {
+      ...actionWith({ type: "string" }),
+      args: [slot(0), slot(1)],
+    };
+
+    expect(planArguments(tool, captureOfButtons(0), {})).toMatchObject({
+      unfilled: ["args.coords"],
+    });
+  });
+
+  it("passes a required tuple with no slot set as an empty tuple", () => {
+    const tool = actionWith({
+      type: "array",
+      prefixItems: [{ type: "string" }],
+      maxItems: 1,
+    });
+    const questions = plannedQuestions(tool, { count: 3 });
+
+    expect(questions).toEqual([]);
+    expect(completedArgs(tool, questions, {})).toEqual({ param: [] });
+  });
+
+  it("leaves an optional tuple out when a slot it requires stays unset", () => {
+    const tool = actionWith(
+      {
+        type: "array",
+        prefixItems: [
+          { type: "string", enum: ["asc", "desc"] },
+          { type: "string" },
+        ],
+        minItems: 2,
+        maxItems: 2,
+      },
+      true
+    );
+    const questions = plannedQuestions(tool, { column: "price" });
+
+    expect(
+      completedArgs(tool, questions, {
+        "param.0": { type: "choice", choice: "asc" },
+        "param.1": { type: "choice", choice: "leave_unset" },
+      })
+    ).toEqual({});
+  });
+
+  it("leaves an optional tuple out when every slot stays unset", () => {
+    const tool = actionWith(
+      {
+        type: "array",
+        prefixItems: [{ type: "string", enum: ["asc", "desc"] }],
+        minItems: 1,
+        maxItems: 1,
+      },
+      true
+    );
+    const questions = plannedQuestions(tool, {});
+
+    expect(
+      completedArgs(tool, questions, {
+        "param.0": { type: "choice", choice: "leave_unset" },
+      })
+    ).toEqual({});
+  });
+
+  it("leaves out an optional tuple that ends up empty, like one with nothing set", () => {
+    const tool = actionWith(
+      {
+        type: "array",
+        prefixItems: [{ type: "boolean" }, { type: "boolean" }],
+        maxItems: 2,
+      },
+      true
+    );
+    const questions = plannedQuestions(tool, {});
+
+    expect(
+      completedArgs(tool, questions, {
+        "param.0": { type: "choice", choice: "leave_unset" },
+        "param.1": { type: "choice", choice: "true" },
+      })
+    ).toEqual({});
+  });
+
+  it("keeps an optional tuple with a slot set, and a required one cut to empty", () => {
+    const schema: JsonSchema = {
+      type: "array",
+      prefixItems: [{ type: "boolean" }, { type: "boolean" }],
+      maxItems: 2,
+    };
+    const optional = actionWith(schema, true);
+    const required = actionWith(schema);
+
+    expect(
+      completedArgs(optional, plannedQuestions(optional, {}), {
+        "param.0": { type: "choice", choice: "true" },
+        "param.1": { type: "choice", choice: "leave_unset" },
+      })
+    ).toEqual({ param: [true] });
+    expect(
+      completedArgs(required, plannedQuestions(required, {}), {
+        "param.0": { type: "choice", choice: "leave_unset" },
+        "param.1": { type: "choice", choice: "true" },
+      })
+    ).toEqual({ param: [] });
+  });
+
+  it("completes nested tuples innermost first", () => {
+    // [[string, string], "a" | "b"]?: the inner tuple misses a slot, so it is
+    // left out, which leaves the outer tuple without a slot it requires.
+    const tool = actionWith(
+      {
+        type: "array",
+        prefixItems: [
+          {
+            type: "array",
+            prefixItems: [{ type: "string" }, { type: "string" }],
+            minItems: 2,
+            maxItems: 2,
+          },
+          { type: "string", enum: ["a", "b"] },
+        ],
+        minItems: 2,
+        maxItems: 2,
+      },
+      true
+    );
+    expect(tool.args.map((arg) => arg.name)).toEqual([
+      "param.0.0",
+      "param.0.1",
+      "param.1",
+    ]);
+    const questions = plannedQuestions(tool, { name: "Milk" });
+
+    expect(
+      completedArgs(tool, questions, {
+        "param.0.0": { type: "choice", choice: "name" },
+        "param.0.1": { type: "choice", choice: "leave_unset" },
+        "param.1": { type: "choice", choice: "a" },
+      })
+    ).toEqual({});
+    expect(
+      completedArgs(tool, questions, {
+        "param.0.0": { type: "choice", choice: "leave_unset" },
+        "param.0.1": { type: "choice", choice: "leave_unset" },
+        "param.1": { type: "choice", choice: "leave_unset" },
+      })
+    ).toEqual({});
+  });
+
+  it("ends a tuple at its first unset optional slot", () => {
+    const tool = actionWith({
+      type: "array",
+      prefixItems: [
+        { type: "string" },
+        { type: "string", enum: ["a", "b"] },
+        { type: "boolean" },
+      ],
+      minItems: 1,
+      maxItems: 3,
+    });
+    const questions = plannedQuestions(tool, { name: "Milk" });
+
+    const read = readArgumentAnswers(tool, questions, {
+      "param.0": { type: "choice", choice: "name" },
+      "param.1": { type: "choice", choice: "leave_unset" },
+      "param.2": { type: "choice", choice: "true" },
+    });
+    if (read.kind !== "chosen") throw new Error(read.kind);
+    completeArguments(tool, read.chosen, []);
+
+    expect(read.chosen.args).toEqual({ param: ["Milk"] });
+    // The step record shows what runs, so a repeat reads as one.
+    expect(Object.keys(read.chosen.chosen)).toEqual(["param.0"]);
+
+    const again = readArgumentAnswers(tool, questions, {
+      "param.0": { type: "choice", choice: "name" },
+      "param.1": { type: "choice", choice: "leave_unset" },
+      "param.2": { type: "choice", choice: "leave_unset" },
+    });
+    if (again.kind !== "chosen") throw new Error(again.kind);
+    completeArguments(tool, again.chosen, []);
+    expect(again.chosen.chosen).toEqual(read.chosen.chosen);
+  });
+
+  it("names the whole tuple when a slot's enum is too large to ask", () => {
+    const tool = actionWith({
+      type: "array",
+      prefixItems: [
+        {
+          type: "string",
+          enum: Array.from({ length: 256 }, (_, index) => `v${index}`),
+        },
+      ],
+      minItems: 1,
+      maxItems: 1,
+    });
+
+    expect(planArguments(tool, captureOfButtons(0), {})).toMatchObject({
+      kind: "needs_value_choice",
+      parameter: "param",
+    });
+  });
+
+  it("requires a collection tool's ref and the required parameters in its args, whole", () => {
+    expect(
+      requiredParamsOf(
+        [
+          { name: "ref", optional: false, schema: { type: "string" } },
+          {
+            name: "args",
+            optional: false,
+            schema: {
+              type: "object",
+              properties: {
+                value: {
+                  type: "array",
+                  prefixItems: [{ type: "string" }],
+                  maxItems: 1,
+                },
+                payload: { type: "object", properties: {} },
+                note: { type: "string" },
+              },
+              required: ["value", "payload"],
+            },
+          },
+        ],
+        true
+      )
+    ).toEqual(["ref", "args.value", "args.payload"]);
+    expect(
+      requiredParamsOf(
+        [
+          { name: "value", optional: false, schema: { type: "string" } },
+          { name: "note", optional: true, schema: { type: "string" } },
+        ],
+        false
+      )
+    ).toEqual(["value"]);
+  });
+
+  it("keeps enum list values that print alike apart", () => {
+    const tool = actionWith({
+      type: "array",
+      items: {
+        anyOf: [
+          { type: "number", enum: [1] },
+          { type: "string", enum: ["1"] },
+        ],
+      },
+    });
+    const questions = plannedQuestions(tool, {});
+
+    expect(
+      questions.map((question) =>
+        question.type === "noul"
+          ? [question.option.key, question.option.value]
+          : []
+      )
+    ).toEqual([
+      ["1", 1],
+      ["1 (2)", "1"],
+    ]);
+  });
+
+  it("keeps a tuple whose slots the two stages filled between them", () => {
+    const tool = actionWith({
+      type: "array",
+      prefixItems: [
+        { type: "string", enum: ["asc", "desc"] },
+        { type: "string" },
+      ],
+      minItems: 2,
+      maxItems: 2,
+    });
+    const [slot] = tool.args.filter((arg) => arg.name === "param.1");
+    const presets: ValuePreset[] = [
+      {
+        parameter: slot!.name,
+        path: slot!.path,
+        option: { key: "column", description: "column: price", value: "price" },
+      },
+    ];
+    const plan = planArguments(
+      tool,
+      captureOfButtons(0),
+      { column: "price" },
+      presets
+    );
+    if (plan.kind !== "ask") throw new Error(plan.kind);
+    expect(plan.questions.map((question) => question.id)).toEqual(["param.0"]);
+
+    expect(
+      completedArgs(
+        tool,
+        plan.questions,
+        { "param.0": { type: "choice", choice: "desc" } },
+        presets
+      )
+    ).toEqual({ param: ["desc", "price"] });
+  });
+
+  it("offers a union of primitives its booleans and the fitting string Goal Values in one question", () => {
+    const tool = actionWith({
+      anyOf: [{ type: "string" }, { type: "boolean" }],
+    });
+    const questions = plannedQuestions(tool, { name: "Milk", count: 2 });
+
+    expect(questions).toHaveLength(1);
+    const [question] = questions;
+    if (question?.type !== "choice") throw new Error("Expected a choice");
+    expect(question.instructions).toMatch(/^Pick the value or Goal Value /);
+    expect(question.options.map(({ key, value }) => ({ key, value }))).toEqual([
+      { key: "true", value: true },
+      { key: "false", value: false },
+      { key: "name", value: "Milk" },
+    ]);
+    expect(
+      readArgumentAnswers(tool, questions, {
+        param: { type: "choice", choice: "name" },
+      })
+    ).toMatchObject({ kind: "chosen", chosen: { args: { param: "Milk" } } });
+  });
+
+  it("offers a union of string and number every Goal Value of either type", () => {
+    const tool = actionWith({
+      anyOf: [{ type: "string" }, { type: "number" }],
+    });
+    const [question] = plannedQuestions(tool, { name: "Milk", count: 2 });
+    if (question?.type !== "choice") throw new Error("Expected a choice");
+
+    expect(question.options.map((option) => option.key)).toEqual([
+      "name",
+      "count",
+      NONE_OF_THESE_KEY,
+    ]);
+  });
+
+  it("offers null as the closed value of a nullable union", () => {
+    const tool = actionWith({
+      anyOf: [{ type: "string" }, { type: "null" }],
+    });
+    const [question] = plannedQuestions(tool, { name: "Milk" });
+    if (question?.type !== "choice") throw new Error("Expected a choice");
+
+    expect(question.options.map(({ key, value }) => ({ key, value }))).toEqual([
+      { key: "null", value: null },
+      { key: "name", value: "Milk" },
+    ]);
+  });
+
+  it("hands over a required union with a variant that is not a primitive", () => {
+    const tool = actionWith({
+      anyOf: [
+        { type: "string" },
+        { type: "object", properties: {}, additionalProperties: false },
+      ],
+    });
+
+    expect(planArguments(tool, captureOfButtons(0), { name: "Milk" })).toEqual({
+      kind: "needs_free_value",
+      parameters: ["param"],
+      unfilled: ["param"],
+    });
+  });
+
+  it("keeps a Goal Value labelled like a boolean apart from the boolean", () => {
+    const tool = actionWith({
+      anyOf: [{ type: "string" }, { type: "boolean" }],
+    });
+    const [question] = plannedQuestions(tool, { true: "yes" });
+    if (question?.type !== "choice") throw new Error("Expected a choice");
+
+    expect(question.options.map(({ key, value }) => ({ key, value }))).toEqual([
+      { key: "true", value: true },
+      { key: "false", value: false },
+      { key: "true (2)", value: "yes" },
+    ]);
+  });
+
+  it("hands a required map over and leaves an optional one out", () => {
+    const map: JsonSchema = {
+      type: "object",
+      additionalProperties: { type: "string" },
+    };
+
+    expect(
+      planArguments(actionWith(map), captureOfButtons(0), { name: "Milk" })
+    ).toEqual({
+      kind: "needs_free_value",
+      parameters: ["param"],
+      unfilled: ["param"],
+    });
+    expect(
+      planArguments(actionWith(map, true), captureOfButtons(0), {
+        name: "Milk",
+      })
+    ).toEqual({ kind: "ask", questions: [] });
+  });
+
+  it.each<[string, JsonSchema]>([
+    ["booleans", { type: "array", items: { type: "boolean" } }],
+    [
+      "objects",
+      {
+        type: "array",
+        items: { type: "object", properties: {}, additionalProperties: false },
+      },
+    ],
+    [
+      "lists",
+      { type: "array", items: { type: "array", items: { type: "string" } } },
+    ],
+  ])(
+    "hands a required list of %s over and leaves an optional one out",
+    (_, schema) => {
+      const values = { name: "Milk", count: 2 };
+      expect(
+        planArguments(actionWith(schema), captureOfButtons(0), values)
+      ).toEqual({
+        kind: "needs_free_value",
+        parameters: ["param"],
+        unfilled: ["param"],
+      });
+      expect(
+        planArguments(actionWith(schema, true), captureOfButtons(0), values)
+      ).toEqual({ kind: "ask", questions: [] });
+    }
+  );
+
+  it("keeps string lists filled from string Goal Values only", () => {
+    const tool = actionWith({ type: "array", items: { type: "string" } });
+    const questions = plannedQuestions(tool, { name: "Milk", count: 2 });
+
+    expect(
+      questions.map((question) =>
+        question.type === "noul" ? question.option.key : question.id
+      )
+    ).toEqual(["name"]);
+    expect(questions[0]!.instructions).toContain(
+      'Does the Goal Value "name: Milk"'
+    );
+  });
+});
+
+describe("Goal Values asked speculatively in stage one", () => {
+  const textArg = {
+    name: "text",
+    path: ["text"],
+    optional: false,
+    closedSet: null,
+    free: ["string"],
+  } as const;
+  const elementTool = (name: string): GoalLoopOperation => ({
+    name,
+    description: `${name} text into one element.`,
+    execute: async () => null,
+    requiredParams: ["ref", "text"],
+    args: [refArg, textArg],
+  });
+  const typeTool = elementTool("type");
+  const fillTool = elementTool("fill");
+  /** A Page Object tool with a required name, an optional note and a list. */
+  const pomTool = (name: string): GoalLoopOperation => ({
+    name,
+    description: `Do ${name}.`,
+    execute: async () => null,
+    requiredParams: ["name"],
+    args: [
+      {
+        name: "name",
+        path: ["name"],
+        optional: false,
+        closedSet: null,
+        free: ["string"],
+        description: "The item's name.",
+      },
+      {
+        name: "note",
+        path: ["note"],
+        optional: true,
+        closedSet: null,
+        free: ["string"],
+      },
+      {
+        name: "tags",
+        path: ["tags"],
+        optional: false,
+        closedSet: null,
+        free: ["string"],
+        list: true,
+      },
+      {
+        name: "count",
+        path: ["count"],
+        optional: false,
+        closedSet: null,
+        free: ["integer"],
+      },
+    ],
+  });
+  const options = (...tools: GoalLoopOperation[]): ToolOption[] =>
+    tools.map((tool) => ({ key: tool.name, label: tool.description, tool }));
+  const values: GoalValues = { "item name": "Milk", price: 2.5 };
+
+  it("asks one question per free value the element tools share, and one per other operation's", () => {
+    const questions = buildSpeculativeValueQuestions(
+      options(typeTool, clickTool, fillTool, pomTool("List.add")),
+      values
+    );
+
+    // type and fill share the question; the list, the optional note and the
+    // integer no Goal Value fits are not asked.
+    expect(
+      questions.map(({ id, covers, instructions, options }) => ({
+        id,
+        covers,
+        instructions,
+        options: options.map((option) => option.key),
+      }))
+    ).toEqual([
+      {
+        id: "value:text",
+        covers: [
+          { operation: "type", parameter: "text" },
+          { operation: "fill", parameter: "text" },
+        ],
+        instructions:
+          'If the next operation is "type" or "fill" and enters text into one element of the page as its "text" parameter, which Goal Value is that text?',
+        options: ["item name", NO_VALUE_NEEDED_KEY, NONE_OF_THESE_KEY],
+      },
+      {
+        id: "value:List.add.name",
+        covers: [{ operation: "List.add", parameter: "name" }],
+        instructions:
+          'If the next operation is "List.add" (Do List.add.), which Goal Value is its "name" (The item\'s name.) parameter?',
+        options: ["item name", NO_VALUE_NEEDED_KEY, NONE_OF_THESE_KEY],
+      },
+    ]);
+    expect(questions[0]!.options.at(-2)!.description).toBe(
+      'No value needed: the next operation is not "type" or "fill".'
+    );
+  });
+
+  it("asks nothing without Goal Values", () => {
+    expect(
+      buildSpeculativeValueQuestions(options(typeTool, pomTool("List.add")))
+    ).toEqual([]);
+  });
+
+  it("leaves a parameter to stage two when its Goal Values fill a question", () => {
+    const many = Object.fromEntries(
+      Array.from({ length: 254 }, (_, index) => [`v${index}`, `V${index}`])
+    );
+    expect(buildSpeculativeValueQuestions(options(fillTool), many)).toEqual([]);
+    const fitting = Object.fromEntries(Object.entries(many).slice(0, 253));
+    expect(
+      buildSpeculativeValueQuestions(options(fillTool), fitting)[0]?.options
+    ).toHaveLength(255);
+  });
+
+  it("asks at most eight questions, in the order of the operations", () => {
+    const tools = Array.from({ length: 10 }, (_, index) =>
+      pomTool(`List.add${index}`)
+    );
+
+    const questions = buildSpeculativeValueQuestions(
+      options(fillTool, ...tools),
+      values
+    );
+
+    expect(questions.map((question) => question.id)).toEqual([
+      "value:text",
+      ...tools.slice(0, 7).map((tool) => `value:${tool.name}.name`),
+    ]);
+  });
+
+  it("travels in the operation request next to the operation", () => {
+    const toolOptions = options(fillTool);
+    const request = buildOperationRequest(
+      { goal: "g" },
+      toolOptions,
+      buildSpeculativeValueQuestions(toolOptions, values)
+    );
+
+    expect(Object.keys(request.questions)).toEqual([
+      "operation",
+      "goal_met",
+      "value:text",
+    ]);
+    expect(request.questions["value:text"]).toMatchObject({
+      type: "choice",
+      criteria: { "item name": "item name: Milk" },
+    });
+  });
+
+  it("tells the model how to read history in both stage-one questions", () => {
+    const request = buildOperationRequest({ goal: "g" }, options(fillTool));
+
+    expect(request.questions.operation).toMatchObject({
+      instructions:
+        'Which operation moves closest to the goal? `history` lists the steps already taken, newest last, each with what it changed on the page. A step that changed the page has taken effect; do not choose it again unless the goal needs it a second time. Choose the operation for the next thing the goal still needs; choose "none" when nothing fits.',
+    });
+    expect(request.questions.goal_met).toEqual({
+      type: "noul",
+      instructions:
+        "Has the goal been fully achieved on the current page? Judge from `page` and `history`.",
+    });
+  });
+
+  const speculativeOf = (...tools: GoalLoopOperation[]) =>
+    buildSpeculativeValueQuestions(options(...tools), values);
+  const choice = (key: string) => ({ type: "choice", choice: key });
+
+  it("asks only single values of one kind: no lists, unions or objects", () => {
+    const tool = {
+      ...pomTool("List.add"),
+      requiredParams: ["name", "tags", "either", "options"],
+      args: [
+        ...specsOfParameters([
+          { name: "name", optional: false, schema: { type: "string" } },
+          {
+            name: "tags",
+            optional: false,
+            schema: { type: "array", items: { type: "string" } },
+          },
+          {
+            name: "either",
+            optional: false,
+            schema: { anyOf: [{ type: "string" }, { type: "number" }] },
+          },
+          {
+            name: "options",
+            optional: false,
+            schema: { type: "object", properties: {} },
+          },
+        ]),
+      ],
+    };
+
+    expect(
+      speculativeOf(tool).flatMap((question) =>
+        question.covers.map((cover) => cover.parameter)
+      )
+    ).toEqual(["name"]);
+  });
+
+  it("reads only the answers that cover the chosen operation", () => {
+    const questions = speculativeOf(fillTool, pomTool("List.add"));
+    const record = { choices: {}, probabilities: {} };
+
+    // The List.add answer is not one it offered, and is never read.
+    const presets = readSpeculativeValues(
+      fillTool,
+      questions,
+      {
+        "value:text": {
+          ...choice("item name"),
+          probabilities: { "item name": 0.9 },
+        },
+        "value:List.add.name": choice("not offered"),
+      },
+      record
+    );
+
+    expect(presets).toEqual([
+      {
+        parameter: "text",
+        path: ["text"],
+        option: {
+          key: "item name",
+          description: "item name: Milk",
+          value: "Milk",
+        },
+      },
+    ]);
+    expect(record).toEqual({
+      choices: { "value:text": "item name" },
+      probabilities: { "value:text": { "item name": 0.9 } },
+    });
+  });
+
+  it.each([NO_VALUE_NEEDED_KEY, NONE_OF_THESE_KEY])(
+    "leaves the parameter to stage two when the answer is %s",
+    (key) => {
+      const questions = speculativeOf(fillTool);
+      const presets = readSpeculativeValues(
+        fillTool,
+        questions,
+        { "value:text": choice(key) },
+        { choices: {}, probabilities: {} }
+      );
+
+      expect(presets).toEqual([]);
+      const plan = planArguments(
+        fillTool,
+        captureOfButtons(1),
+        values,
+        presets
+      );
+      if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+      expect(plan.questions.map((question) => question.id)).toEqual([
+        "ref",
+        "text",
+      ]);
+      expect(plan.questions[0]!.instructions).toMatch(
+        /^Pick the element this operation acts on/
+      );
+    }
+  );
+
+  it("rejects an answer outside the options for the chosen operation", () => {
+    expect(() =>
+      readSpeculativeValues(
+        fillTool,
+        speculativeOf(fillTool),
+        { "value:text": choice("Milk") },
+        { choices: {}, probabilities: {} }
+      )
+    ).toThrow(/not one of the offered options/);
+  });
+
+  const presetsFor = (tool: GoalLoopOperation, key: string) =>
+    readSpeculativeValues(
+      tool,
+      speculativeOf(tool),
+      {
+        [`value:${tool === fillTool ? "text" : `${tool.name}.name`}`]:
+          choice(key),
+      },
+      { choices: {}, probabilities: {} }
+    );
+
+  it("asks stage two only for the element, naming the value it will receive", () => {
+    const plan = planArguments(
+      fillTool,
+      captureOfButtons(2),
+      values,
+      presetsFor(fillTool, "item name")
+    );
+
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    expect(plan.questions).toHaveLength(1);
+    expect(plan.questions[0]).toMatchObject({
+      id: "ref",
+      target: { receiving: 'the text "Milk" (the Goal Value "item name")' },
+      instructions:
+        'Pick the element that should receive the text "Milk" (the Goal Value "item name"), as this operation\'s "ref" parameter. The operation is "fill": fill text into one element.',
+    });
+  });
+
+  it("names the value in every chunk and in the run-off", async () => {
+    const presets = presetsFor(fillTool, "item name");
+    const plan = planArguments(
+      fillTool,
+      captureOfButtons(300),
+      values,
+      presets
+    );
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    const questions = plan.questions as ArgumentQuestion[];
+
+    for (const question of questions)
+      expect(question.instructions).toMatch(
+        /^Pick the element that should receive the text "Milk" \(the Goal Value "item name"\), as this operation's "ref" parameter\. The page holds 300/
+      );
+    const answers = readArgumentAnswers(
+      fillTool,
+      questions,
+      Object.fromEntries(
+        questions.map((question) => [
+          question.id,
+          choice(question.options[0]!.key),
+        ])
+      )
+    );
+    if (answers.kind !== "run_off") throw new Error(answers.kind);
+    expect(answers.question.instructions).toMatch(
+      /Pick the one element that should receive the text "Milk" \(the Goal Value "item name"\), as this operation's "ref" parameter\./
+    );
+    expect(answers.question.target).toEqual({
+      receiving: 'the text "Milk" (the Goal Value "item name")',
+    });
+  });
+
+  it("completes the arguments with the preset, in the operation's order", () => {
+    const tool: GoalLoopOperation = { ...fillTool, args: [textArg, refArg] };
+    const plan = planArguments(
+      tool,
+      captureOfButtons(1),
+      values,
+      presetsFor(fillTool, "item name")
+    );
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+    const answers = readArgumentAnswers(tool, plan.questions, {
+      ref: choice("e1"),
+    });
+    if (answers.kind !== "chosen") throw new Error(answers.kind);
+
+    completeArguments(tool, answers.chosen, presetsFor(fillTool, "item name"));
+
+    expect(answers.chosen.args).toEqual({ ref: "e1", text: "Milk" });
+    expect(Object.entries(answers.chosen.chosen)).toEqual([
+      ["text", { key: "item name", description: "item name: Milk" }],
+      ["ref", { key: "e1", description: 'button "Item 1"' }],
+    ]);
+  });
+});
+
+describe("the state a request that only picks an element is sent", () => {
+  /** Unnamed textboxes under named regions, with text around them. */
+  function surveyCapture(): PageStateCapture {
+    const yaml = [
+      '- form "Survey editor" [ref=e1]:',
+      '  - region "Question 1" [ref=e2]:',
+      '    - heading "Basics" [level=3] [ref=e3]',
+      "    - text: Question",
+      "    - textbox [ref=e4]: Draft",
+      "    - text: Description",
+      '    - textbox "Optional" [ref=e5]:',
+      "      - /placeholder: Optional",
+      '  - region "Question 2" [ref=e6]:',
+      '    - heading "Question 2" [level=3] [ref=e7]',
+      "    - textbox [ref=e8]",
+      '- button "Save" [ref=e9]',
+    ].join("\n");
+    const tree = StructuralTree.fromAriaSnapshotYaml(
+      yaml,
+      new SyntheticAriaRefFactory()
+    );
+    const elementsByRef = new Map<AriaRef, Element>();
+    for (const ref of ["e4", "e5", "e8"])
+      elementsByRef.set(
+        AriaRefSchema.parse(ref),
+        document.createElement("input")
+      );
+    elementsByRef.set(
+      AriaRefSchema.parse("e9"),
+      document.createElement("button")
+    );
+    return { tree, elementsByRef };
+  }
+
+  // A step that changed the page: its history entry carries what it changed.
+  const history = [
+    {
+      operation: "check",
+      chosen: { target: { key: "e7", description: 'checkbox "Required"' } },
+      result: "ok",
+      page_changed: true,
+      changes: '- e7 <changed> checkbox "Required" [checked]',
+      did: 'check(checkbox "Required")',
+    },
+  ];
+  const state = {
+    goal: "g",
+    values: { name: "Milk" },
+    page: ["the page"],
+    page_objects: "",
+    history,
+  };
+  const inputsOnly = {
+    ...refArg,
+    closedSet: {
+      kind: "ref",
+      filter: (element: Element) => element instanceof HTMLInputElement,
+    },
+  } as const;
+
+  it("carries the candidates, each with where it sits and the text around it, instead of the page", () => {
+    const capture = surveyCapture();
+    const tool: GoalLoopOperation = { ...clickTool, args: [inputsOnly] };
+    const plan = planArguments(tool, capture);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+
+    const request = buildArgumentRequest(state, plan.questions, capture);
+
+    expect(request.state).toEqual({
+      goal: "g",
+      values: { name: "Milk" },
+      history,
+      elements: [
+        {
+          ref: "e4",
+          role: "textbox",
+          name: "",
+          within: ['form "Survey editor"', 'region "Question 1"'],
+          heading: "Basics",
+          preceding_text: "Question",
+          text: "Draft",
+        },
+        {
+          ref: "e5",
+          role: "textbox",
+          name: "Optional",
+          within: ['form "Survey editor"', 'region "Question 1"'],
+          heading: "Basics",
+          preceding_text: "Description",
+          props: { placeholder: "Optional" },
+        },
+        // The heading names the region it is in, so only the region is listed.
+        {
+          ref: "e8",
+          role: "textbox",
+          name: "",
+          within: ['form "Survey editor"', 'region "Question 2"'],
+        },
+      ],
+    });
+    expect(
+      (request.questions as Record<string, { instructions: string }>).ref!
+        .instructions
+    ).toMatch(/Each option is an element of `elements` in the state/);
+  });
+
+  it("keeps the page when the request asks anything besides the element", () => {
+    const capture = surveyCapture();
+    const plan = planArguments(clickWithForceTool, capture);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+
+    const request = buildArgumentRequest(state, plan.questions, capture);
+
+    expect(request.state).toBe(state);
+    expect(
+      (request.questions as Record<string, { instructions: string }>).ref!
+        .instructions
+    ).not.toMatch(/`elements`/);
   });
 });

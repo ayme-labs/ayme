@@ -366,7 +366,7 @@ it("C1, C4: passes inspector to the runtime session and rejects changing it", as
     act(async () =>
       app.render(h(AymeProvider, { pageFactory, inspector: false }))
     )
-  ).rejects.toThrow("provider options must stay fixed");
+  ).rejects.toThrow("provider options changed while the provider was mounted");
 });
 
 it("C1, C4: passes agentConnection to the runtime session and rejects changing it", async () => {
@@ -382,7 +382,7 @@ it("C1, C4: passes agentConnection to the runtime session and rejects changing i
     act(async () =>
       app.render(h(AymeProvider, { pageFactory, agentConnection: false }))
     )
-  ).rejects.toThrow("provider options must stay fixed");
+  ).rejects.toThrow("provider options changed while the provider was mounted");
 });
 
 it("C1, C4: passes navigate to the runtime session and rejects changing it", async () => {
@@ -396,7 +396,7 @@ it("C1, C4: passes navigate to the runtime session and rejects changing it", asy
     act(async () =>
       app.render(h(AymeProvider, { pageFactory, navigate: vi.fn() }))
     )
-  ).rejects.toThrow("provider options must stay fixed");
+  ).rejects.toThrow("provider options changed while the provider was mounted");
 });
 
 it("C1, C4: passes an inline inspector demo setting and keeps it fixed across renders", async () => {
@@ -415,7 +415,7 @@ it("C1, C4: passes an inline inspector demo setting and keeps it fixed across re
     act(async () =>
       app.render(h(AymeProvider, { pageFactory, inspector: true }))
     )
-  ).rejects.toThrow("provider options must stay fixed");
+  ).rejects.toThrow("provider options changed while the provider was mounted");
 });
 
 it("C7: requires an ancestor provider", async () => {
@@ -445,7 +445,7 @@ it("C4: rejects changing a mounted provider's page factory", async () => {
     act(async () =>
       app.render(h(AymeProvider, { pageFactory: () => ({}) as Page }))
     )
-  ).rejects.toThrow("provider options must stay fixed");
+  ).rejects.toThrow("provider options changed while the provider was mounted");
 });
 
 it("C6: requires remounting to change the model class", async () => {
@@ -463,7 +463,9 @@ it("C6: requires remounting to change the model class", async () => {
         h(AymeProvider, { pageFactory }, h(Child, { model: OtherModel }))
       )
     )
-  ).rejects.toThrow("model and provider must stay fixed");
+  ).rejects.toThrow(
+    "model or provider changed while the component was mounted"
+  );
 });
 
 it("C4: changes the options when the provider is remounted", async () => {

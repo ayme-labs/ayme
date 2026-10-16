@@ -23,7 +23,9 @@ Ayme also describes the page to the agent. The Structural Page State is a model-
 
 ## The Goal Loop
 
-The calling agent can hand Ayme a goal in natural language instead of choosing every step itself. The Goal Loop drives the page toward that goal in steps, and each step is one judgement by Jev, TypeSafe's System One model, not by the calling agent's LLM. When it stops, the Goal Loop returns a Handover: why it stopped, what it did and what to do next. Requests to the model go through the Decision Endpoint, a route in your own backend that adds your key to each request.
+> **Experimental:** this may change in any release. See [Experimental APIs](../reference/experimental-apis.md).
+
+The calling agent can hand Ayme a goal in natural language instead of choosing every step itself. The Goal Loop drives the page toward that goal in steps, and in each step Jev, TypeSafe's System One model, chooses at most one operation to run, not the calling agent's LLM. When it stops, the Goal Loop returns a Handover: why it stopped, what it did and what to do next. Requests to the model go through the Decision Endpoint, a route in your own backend that adds your key to each request.
 
 ## Your app calls the same actions
 

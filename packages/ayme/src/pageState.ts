@@ -6,7 +6,6 @@
 import { captureAriaSnapshot } from "@ayme-dev/playwright-lite/internal";
 import {
   AriaRefSchema,
-  isSyntheticRef,
   renderCompactStructuralNodeForest,
   projectStructuralNodeForest,
   StructuralTree,
@@ -14,7 +13,6 @@ import {
   type AriaRef,
   type ProjectedStructuralNode,
   type ProjectedStructuralNodeForest,
-  type ProjectedStructuralProperty,
   type StructuralActionId,
   type StructuralIdentityLedger,
   type StructuralObservationEntry,
@@ -26,7 +24,6 @@ import {
   announceRegisteredPomChange,
   getRegisteredPomStructure,
 } from "./registry";
-import { containsThroughShadow, parentElement } from "./composedTree";
 
 import {
   placeCapturedRoots,
@@ -34,6 +31,7 @@ import {
   type ReferencedCapturedRoot,
 } from "./pomRootPlacement";
 import { parseCapturedTree } from "./capturedTree";
+import { pomLabelProjection, type PomLabels } from "./pomLabels";
 import { RuntimeStateError, ToolInputError } from "./errors";
 
 export type { AriaRef };
@@ -52,6 +50,11 @@ export type RefResolution =
   | {
       status: "unresolved";
       requestedRef: AriaRef;
+      /**
+       * `unknown-ref`, `removed` and `ambiguous` come from the identity ledger
+       * (see `StructuralIdentityResolution`). `no-element`: the ref resolved to a
+       * current ref, but the latest capture holds no live element for it.
+       */
       reason: "unknown-ref" | "removed" | "ambiguous" | "no-element";
     };
 
@@ -68,6 +71,8 @@ export type PageStateCapture = {
 
 type CapturedPageState = PageStateCapture & {
   readonly text: string;
+  /** The Page Object labels of the tree's Page Object Roots, by ref. */
+  readonly pomLabels: PomLabels;
   /** The projected forest `text` is rendered from: what the model is shown. */
   readonly projected: ProjectedStructuralNodeForest;
 };
@@ -76,7 +81,7 @@ type CapturedPageState = PageStateCapture & {
  * A capture that recorded nothing: its tree, element map, rendered text and
  * the projected forest the text is rendered from.
  */
-export type PageStateLook = CapturedPageState;
+export type PageStateLook = Omit<CapturedPageState, "pomLabels">;
 
 /**
  * Package-internal: a projected node's own entry in the page state text, as
@@ -265,40 +270,11 @@ export async function getPageStateForElements(
 }
 
 /**
- * Package-internal: the Structural Ref an Availability Reason names for
- * `obstruction`, the element a click on `root` would reach instead: the ref
- * the agent's latest recorded page state gave it, or its nearest ancestor
- * that has one and does not hold `root` (what holds the root is not in its
- * way). An inert ancestor, which holds the root, and an open native modal
- * are named by their own ref only. Undefined when none has one, as for
- * `<html>` when `body` takes no pointer events, or until the agent has
- * recorded a page state that shows the obstruction.
+ * Package-internal: the Structural Ref the agent's latest recorded page
+ * state gave `element`, when it gave it exactly one; undefined until then.
  */
-export function latestRefInTheWay(
-  obstruction: Element,
-  root: Element
-): AriaRef | undefined {
-  const session = pageStateSessions.get(obstruction.ownerDocument);
-  if (!session) return undefined;
-  if (containsThroughShadow(obstruction, root) || isModal(obstruction))
-    return session.latestRefOf(obstruction);
-  for (
-    let node: Element | null = obstruction;
-    node && !containsThroughShadow(node, root);
-    node = parentElement(node)
-  ) {
-    const ref = session.latestRefOf(node);
-    if (ref !== undefined) return ref;
-  }
-  return undefined;
-}
-
-function isModal(element: Element): boolean {
-  try {
-    return element.matches(":modal");
-  } catch {
-    return false;
-  }
+export function latestPageStateRef(element: Element): AriaRef | undefined {
+  return pageStateSessions.get(element.ownerDocument)?.latestRefOf(element);
 }
 
 function getPageStateSession(currentDocument: Document) {
@@ -374,11 +350,18 @@ class PageStateSession {
       await latest.tree.resolve(),
       capture.tree
     );
-    if (!sinceLatest.hasAnyChanges()) return undefined;
+    // A Page Object registered or unregistered without the DOM changing
+    // still makes a before: a removed root is labelled by it.
+    if (
+      !sinceLatest.hasAnyChanges() &&
+      sameLabels(this.history.pomLabels(latest), capture.pomLabels, sinceLatest)
+    )
+      return undefined;
     const before = this.history.observeBefore(
       actionId,
       capture.tree,
-      this.history.now()
+      this.history.now(),
+      capture.pomLabels
     );
     this.rememberElements(capture);
     return before;
@@ -397,7 +380,8 @@ class PageStateSession {
     const after = this.history.completeAction(
       actionId,
       capture.tree,
-      this.history.now()
+      this.history.now(),
+      capture.pomLabels
     );
     this.rememberElements(capture);
     return after;
@@ -410,7 +394,12 @@ class PageStateSession {
     } catch {
       return this.failAtLatestObservation(actionId);
     }
-    this.history.failAction(actionId, capture.tree, this.history.now());
+    this.history.failAction(
+      actionId,
+      capture.tree,
+      this.history.now(),
+      capture.pomLabels
+    );
     this.rememberElements(capture);
   }
 
@@ -422,7 +411,12 @@ class PageStateSession {
     // elements. Read before awaiting, so the tree and its elements match.
     const latest = this.latestElements!;
     const tree = await latest.observation.tree.resolve();
-    this.history.failAction(actionId, tree, this.history.now());
+    this.history.failAction(
+      actionId,
+      tree,
+      this.history.now(),
+      this.history.pomLabels(latest.observation)
+    );
     this.rememberElements(latest);
   }
 
@@ -442,7 +436,11 @@ class PageStateSession {
     const capture = await this.captureTree();
     // Stamped once the capture is taken, so it cannot share its time with an
     // action started right after it.
-    const observation = this.history.observe(capture.tree, this.history.now());
+    const observation = this.history.observe(
+      capture.tree,
+      this.history.now(),
+      capture.pomLabels
+    );
     cursor?.move(observation);
     this.rememberElements(capture);
     return capture;
@@ -685,35 +683,18 @@ async function captureCurrentPageState(
     }
   }
 
-  const inlineLabels = new Map<AriaRef, string>();
-  const properties = new Map<AriaRef, ProjectedStructuralProperty[]>();
-  for (const [ref, labels] of labelsByRef) {
-    const sorted = [...labels].sort();
-    const value = sorted.length === 1 ? sorted[0]! : sorted;
-    if (
-      typeof value === "string" &&
-      /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\[\d+\])*$/.test(value)
-    )
-      inlineLabels.set(ref, value);
-    else properties.set(ref, [{ key: "pom", label: "pom", value }]);
-  }
+  const labels = pomLabelProjection(labelsByRef);
   const projected = projectStructuralNodeForest(
     {
       roots: currentTree.getRootNodes(),
-      structuralNode: (node) =>
-        inlineLabels.has(node.ref) || isSyntheticRef(node.ref)
-          ? node.copy({ role: "generic" })
-          : node,
+      structuralNode: labels.structuralNode,
       children: (node) => node.children,
     },
     {
       includeIdentity: false,
       includeStatus: false,
-      prefixes: (node) => [
-        node.ref,
-        ...(inlineLabels.has(node.ref) ? [inlineLabels.get(node.ref)!] : []),
-      ],
-      properties: (node) => properties.get(node.ref) ?? [],
+      prefixes: labels.prefixes,
+      properties: labels.properties,
     }
   );
   const text = renderCompactStructuralNodeForest(projected);
@@ -724,7 +705,33 @@ async function captureCurrentPageState(
     if (currentRefs.has(ref)) elementsByRef.set(ref, element);
   }
 
-  return { text, projected, tree: currentTree, elementsByRef };
+  return {
+    text,
+    projected,
+    tree: currentTree,
+    elementsByRef,
+    pomLabels: labelsByRef,
+  };
+}
+
+/**
+ * Whether two captures give the same nodes the same labels: each `after`
+ * label is read on the `before` node `reconciled` matched it to.
+ */
+function sameLabels(
+  before: PomLabels,
+  after: PomLabels,
+  reconciled: StructuralTree
+): boolean {
+  const key = (labels: readonly string[]) => [...labels].sort().join("\n");
+  return (
+    before.size === after.size &&
+    [...after].every(([ref, labels]) => {
+      const beforeRef = reconciled.getBeforeNodeForAfterRef(ref)?.ref ?? ref;
+      const beforeLabels = before.get(beforeRef);
+      return beforeLabels !== undefined && key(beforeLabels) === key(labels);
+    })
+  );
 }
 
 function coalesceByElement(

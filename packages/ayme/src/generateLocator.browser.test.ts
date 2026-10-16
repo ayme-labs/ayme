@@ -294,13 +294,21 @@ describe("generate_locator in Chromium", () => {
     });
 
     expect(errorAt(result, 0, 0)).toMatch(/"e9999"/);
-    expect(errorAt(result, 0, 1)).toMatch(new RegExp(`"${removed}": removed`));
+    expect(errorAt(result, 0, 1)).toMatch(
+      new RegExp(`"${removed}": it is no longer on the page`)
+    );
     expect(account).toMatch(/^s_/);
     expect(errorAt(result, 0, 2)).toMatch(/Page Object AccountPage\.account\b/);
     expect(errorAt(result, 0, 3)).toMatch(/matches no element/);
     expect(errorAt(result, 0, 4)).toMatch(/matches 2 elements/);
     expect(elementsOf(page, locatorAt(result, 0, 5))).toEqual([element("h1")]);
     expect(errorAt(result, 1, 0)).toMatch(/not inside the container "e\d+"/);
+  });
+
+  it("keeps the closing punctuation of a reason that already ends a sentence", async () => {
+    const result = await run({ groups: [{ targets: ["##"] }] });
+
+    expect(errorAt(result, 0, 0)).toMatch(/CSS\.escape it\?$/);
   });
 
   it("fails a group whose container cannot be resolved and keeps the other groups", async () => {
@@ -321,7 +329,7 @@ describe("generate_locator in Chromium", () => {
     expect(result.groups[0]).toEqual({
       within: dialog,
       error: expect.stringMatching(
-        /^Cannot scope locators to ref "e\d+": .*removed/
+        /^Cannot scope locators to ref "e\d+": it is no longer on the page/
       ),
     });
     expect(result.groups[1]).toEqual({

@@ -11,9 +11,7 @@ export const logHiddenTools: ClientBehaviour = ({ channel }) => {
   return channel.followHiddenTools((hidden) => {
     for (const name of hidden)
       if (!logged.has(name))
-        console.warn(
-          `[ayme] ${name} is hidden: ${HIDDEN_BECAUSE}. Rename one.`
-        );
+        console.warn(`[ayme] ${name} is hidden: ${HIDDEN_BECAUSE}.`);
     logged = new Set(hidden);
   });
 };

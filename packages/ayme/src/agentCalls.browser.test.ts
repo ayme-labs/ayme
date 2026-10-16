@@ -122,7 +122,9 @@ describe("the Ayme page state helper in Chromium", () => {
         .fill(nameRef, "Updated name")
         .catch((error) => error);
       expect(fillError).toBeInstanceOf(RefResolutionError);
-      expect(fillError.message).toBe(`Cannot fill ref "${nameRef}": removed.`);
+      expect(fillError.message).toBe(
+        `Cannot fill ref "${nameRef}": it is no longer on the page.`
+      );
     } finally {
       runtime.dispose();
     }

@@ -80,6 +80,7 @@ const providerProps = {
     required: false,
   },
   customTools: { type: Array as PropType<CustomTool[]>, required: false },
+  /** @experimental */
   goalLoop: {
     type: Function as PropType<GoalLoopDecisionFunction>,
     required: false,
@@ -129,7 +130,7 @@ export const AymeProvider: DefineComponent<UseAymeOptions> = defineComponent({
       (next) => {
         if (!sameRuntimeOptions(next, options))
           throw new Error(
-            "The provider options must stay fixed while mounted. Remount the provider to change them."
+            "The provider options changed while the provider was mounted."
           );
       },
       { flush: "sync" }
@@ -144,7 +145,7 @@ export function useAyme(options: UseAymeOptions = {}): UseAymeResult {
   const inherited = inheritedRuntime();
   if (inherited && Object.values(options).some((value) => value !== undefined))
     throw new Error(
-      "Configure Ayme's options on the ancestor AymeProvider or standalone useAyme owner."
+      "useAyme(options) received options beneath an existing AymeProvider or useAyme owner."
     );
   return consumeRuntime(inherited ?? ownRuntime(options));
 }
@@ -179,6 +180,7 @@ export function usePageObject<T extends object>(
  * through `ayme.peek`. `values` may be a ref, a reactive object or an object
  * of refs; the agent reads their current values. `id` defaults to one per
  * component instance.
+ * @experimental
  */
 export function usePeek(values: unknown, name: string, id?: string): void {
   const component = getCurrentInstance();

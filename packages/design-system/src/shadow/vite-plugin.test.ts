@@ -51,7 +51,7 @@ describe("compileShadowCss", () => {
     await expect(
       compilePanel('<div class="translate-x-1"></div>', { theme: false })
     ).rejects.toThrow(
-      /no longer emits the @layer properties fallback .+ @property is ignored inside shadow roots, .+ must come from somewhere else\./
+      /no longer emits the @layer properties fallback .+ @property is ignored inside shadow roots, .+ are missing\./
     );
   }, 30_000);
 

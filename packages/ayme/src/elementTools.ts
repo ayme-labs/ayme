@@ -10,7 +10,7 @@ import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
 import type { RunContext } from "./run";
 import type { ToolInput, ToolResult } from "./toolTypes";
 import type { AriaRef, PageStateCapture } from "./pageState";
-import { refHint, resolveRefTarget } from "./refTarget";
+import { refHint, resolveRef } from "./refTarget";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { requireAymeRuntimePage } from "./registry";
 import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
@@ -222,9 +222,10 @@ export async function resolveElementTarget(
   currentDocument: Document
 ): Promise<ResolvedTarget> {
   if (definition.targetField === "ref" || parseStructuralRef(requested)) {
-    const node = await resolveRefTarget(
-      definition.label,
+    const node = await resolveRef(
       requested,
+      { synthetic: "refuse" },
+      definition.label,
       currentDocument
     );
     return {
@@ -238,11 +239,11 @@ export async function resolveElementTarget(
     new RefResolutionError(
       `Cannot ${definition.label} "${requested}": ${reason}.${hint ? ` ${hint}` : ""}`
     );
-  // An agent that passes a locator expression back as a target needs to
-  // hear what to pass instead.
+  // A locator expression is neither a Structural Ref nor a selector, so it
+  // fails as what it is.
   if (LOCATOR_EXPRESSION.test(requested))
     throw new ToolInputError(
-      `The target "${requested}" is a Playwright locator expression, which tools do not take. Pass a Structural Ref from snapshot, or a selector such as role=button[name="Save"] or text=Save.`
+      `Cannot ${definition.label} "${requested}": it is a Playwright locator expression, which tools do not take.`
     );
   const page = requireAymeRuntimePage();
   let elements: Element[];
@@ -250,7 +251,7 @@ export async function resolveElementTarget(
     elements = resolveLocatorElements(page.locator(requested));
   } catch (error) {
     throw new ToolInputError(
-      `The target "${requested}" is neither a Structural Ref nor a selector this runtime supports: ${
+      `Cannot ${definition.label} "${requested}": it is neither a Structural Ref nor a selector this runtime supports: ${
         error instanceof Error ? error.message : String(error)
       }${hint ? `. ${hint}` : ""}`
     );

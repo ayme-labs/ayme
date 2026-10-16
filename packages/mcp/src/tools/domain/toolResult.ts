@@ -106,9 +106,7 @@ export function imageToolResult(
 
 /** The answer of a page tool or fallback tool while no page is paired. */
 export function notConnectedResult(): ToolResult {
-  return errorResult(
-    "No page is connected. Call ayme_connect with the app's URL and open the link it returns, in your browser tool or in the developer's browser."
-  );
+  return errorResult("No page is connected.");
 }
 
 /**

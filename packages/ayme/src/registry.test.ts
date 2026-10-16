@@ -352,7 +352,7 @@ describe("live Page Object registry", () => {
       expect.objectContaining({
         name: "RuntimeStateError",
         message:
-          'Cannot register the Page Object "Dialog": a different class with that name is already registered. Rename one of them so their tools do not share names.',
+          'Cannot register the Page Object "Dialog": a different class with that name is already registered.',
       })
     );
     expect(
@@ -410,7 +410,7 @@ describe("live Page Object registry", () => {
       expect.objectContaining({
         name: "RuntimeStateError",
         message:
-          'Cannot register the Page Object "UsersPage": it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts. Rename one of them: Ayme tells the classes of Page Objects apart by name.',
+          'Cannot register the Page Object "UsersPage": it reaches a class named "Row" that differs from the one the Page Object "OrdersPage" reaches, declared in src/orders/Row.ts and src/users/Row.ts. Ayme tells the classes of Page Objects apart by name.',
       })
     );
     expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
@@ -444,7 +444,7 @@ describe("live Page Object registry", () => {
     });
 
     expect(() => registry.createPageRegistration(Row)).toThrow(
-      'Cannot register the Page Object "Row": it reaches two different classes named "Row". Rename one of them: Ayme tells the classes of Page Objects apart by name.'
+      'Cannot register the Page Object "Row": it reaches two different classes named "Row". Ayme tells the classes of Page Objects apart by name.'
     );
     expect(registry.listRegisteredPoms()).toEqual([]);
   });
@@ -546,7 +546,7 @@ describe("live Page Object registry", () => {
     });
     registry.createPageRegistration(FirstDialog);
     expect(() => registry.createPageRegistration(SecondDialog)).toThrow(
-      'Cannot register the Page Object "Dialog": a different class with that name is already registered, declared in src/a/Dialog.ts and src/b/Dialog.ts. Rename one of them so their tools do not share names.'
+      'Cannot register the Page Object "Dialog": a different class with that name is already registered, declared in src/a/Dialog.ts and src/b/Dialog.ts.'
     );
   });
 
@@ -877,6 +877,35 @@ describe("live Page Object registry", () => {
     rootless.dispose();
   });
 
+  it("lists a root's tools absent once its element left the page, before the next probe", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+    const element = { isConnected: true } as { isConnected: boolean };
+
+    class RootedPage {
+      readonly root = brandedLocator(
+        { count: async () => 1 },
+        element as Element
+      );
+      save() {}
+    }
+    registry.registerCompiledPom(RootedPage, {
+      ...emptyManifest("RootedPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    const registration = registry.createPageRegistration(RootedPage);
+    await vi.runOnlyPendingTimersAsync();
+    expect(registry.listAvailablePomTools()).toHaveLength(1);
+
+    element.isConnected = false;
+    expect(registry.listRegisteredPomTools()).toEqual([
+      expect.objectContaining({ present: false, available: false }),
+    ]);
+
+    registration.dispose();
+  });
+
   it("does not notify when a probe observes the same present root again", async () => {
     const registry = await import("./registry");
     registry.configureAymeRuntime({} as Page);
@@ -908,6 +937,45 @@ describe("live Page Object registry", () => {
     await vi.runOnlyPendingTimersAsync();
     expect(subscriber).toHaveBeenCalledOnce();
 
+    registration.dispose();
+  });
+
+  it("lists an obstructed root's tools unavailable, and reads them again when a page state may name what is in the way", async () => {
+    const registry = await import("./registry");
+    const { measurePomRoot } = await import("./pomRootMeasurement");
+    registry.configureAymeRuntime({} as Page);
+    vi.mocked(measurePomRoot).mockResolvedValue({
+      present: true,
+      available: false,
+      blocker: {} as Element,
+    });
+
+    class CoveredPage {
+      readonly root = brandedLocator({ count: async () => 1 });
+      save() {}
+    }
+    registry.registerCompiledPom(CoveredPage, {
+      ...emptyManifest("CoveredPage"),
+      members: [{ memberName: "root", kind: "locator", access: "field" }],
+      tools: [action("save")],
+    });
+    const registration = registry.createPageRegistration(CoveredPage);
+    const subscriber = vi.fn();
+    registry.subscribeToRegisteredPoms(subscriber);
+    await vi.runOnlyPendingTimersAsync();
+
+    expect(registry.listRegisteredPomTools()).toEqual([
+      expect.objectContaining({
+        present: true,
+        available: false,
+        reason: "a click would not reach it",
+      }),
+    ]);
+    subscriber.mockClear();
+    registry.announceRegisteredPomChange();
+    expect(subscriber).toHaveBeenCalledOnce();
+
+    vi.mocked(measurePomRoot).mockReset();
     registration.dispose();
   });
 
@@ -1206,6 +1274,7 @@ describe("live Page Object registry", () => {
     expect(firstArchive).not.toHaveBeenCalled();
 
     currentItems = [replacement];
+    await registry.probeRegisteredPomMembers();
     await expect(
       tool.execute({ ref: "e3", args: {} }, runContext())
     ).resolves.toEqual({
@@ -1214,7 +1283,64 @@ describe("live Page Object registry", () => {
       result: "replacement",
     });
     expect(replacementArchive).toHaveBeenCalledOnce();
-    expect(getItems).toHaveBeenCalledTimes(3);
+    expect(getItems).toHaveBeenCalledTimes(4);
+
+    registration.dispose();
+    pageStateResolutions.clear();
+  });
+
+  it("refuses a collection call on an item the last observation did not find, rather than running it", async () => {
+    const registry = await import("./registry");
+    registry.configureAymeRuntime({} as Page);
+
+    const knownElement = { isConnected: true } as Element;
+    const addedElement = { isConnected: true } as Element;
+    const addedArchive = vi.fn();
+    const items = [
+      { root: brandedLocator({ count: async () => 1 }, knownElement) },
+    ];
+    pageStateResolutions.set("e2", {
+      node: { ref: "e2", element: addedElement },
+    });
+    class ItemsPage {
+      readonly items = items;
+    }
+    registry.registerCompiledPom(ItemsPage, {
+      className: "ItemsPage",
+      tools: [],
+      members: [
+        {
+          memberName: "items",
+          kind: "component",
+          access: "field",
+          componentClassName: "Item",
+          collection: true,
+        },
+      ],
+      components: [
+        {
+          className: "Item",
+          members: [{ memberName: "root", kind: "locator", access: "field" }],
+          tools: [action("archive")],
+        },
+      ],
+    });
+    const registration = registry.createPageRegistration(ItemsPage);
+    await vi.runOnlyPendingTimersAsync();
+    const tool = registry.listAvailablePomTools()[0];
+    if (!tool) throw new Error("Expected a collection tool.");
+    // Held by the Page Object since the last observation.
+    items.push({
+      root: brandedLocator({ count: async () => 1 }, addedElement),
+      archive: addedArchive,
+    } as never);
+
+    await expect(
+      tool.execute({ ref: "e2", args: {} }, runContext())
+    ).rejects.toThrow(
+      "ItemsPage.items.archive is unavailable: its Page Object is not on the page."
+    );
+    expect(addedArchive).not.toHaveBeenCalled();
 
     registration.dispose();
     pageStateResolutions.clear();

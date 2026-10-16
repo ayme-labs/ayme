@@ -170,6 +170,41 @@ test("a reload the agent calls answers with its loading URL even when a task hol
   }
 });
 
+test("a snapshot sent right after a full-load answer waits for the new page and reads it", async ({
+  agent,
+  baseURL,
+  connect,
+}) => {
+  await connect();
+
+  const loading = await agent.call("navigate", { url: "/other" });
+  const snapshot = await agent.call("snapshot");
+
+  expect(JSON.parse(loading.text)).toMatchObject({
+    loading: `${baseURL}/other`,
+  });
+  expect(snapshot.isError, snapshot.text).toBe(false);
+  expect(await agent.pageToolNames()).toContain("read_other");
+});
+
+test("a call after a full load to a page without Ayme says no page came back, and did not run", async ({
+  agent,
+  baseURL,
+  connect,
+}) => {
+  await connect();
+
+  await agent.call("navigate", { url: "/plain.html" });
+  const { text, isError } = await agent.call("snapshot");
+
+  expect(isError).toBe(true);
+  expect(text).toMatch(
+    new RegExp(
+      `^The page started loading ${baseURL}/plain\\.html and no page reconnected in its place, so the call did not run`
+    )
+  );
+});
+
 test("a call in flight when the tab closes says the tab closed, and the connection ends", async ({
   agent,
   connect,

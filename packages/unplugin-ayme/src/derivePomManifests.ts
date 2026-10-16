@@ -346,7 +346,7 @@ function rejectSameNamedClasses(
           other.getSourceFile().fileName
         } and ${
           declaration.getSourceFile().fileName
-        }. Rename one of them: Ayme tells the classes of a Page Object apart by name.`
+        }. Ayme tells the classes of a Page Object apart by name.`
       );
   }
 }

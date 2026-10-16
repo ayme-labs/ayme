@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { decisionEndpoint } from "./decisionEndpoint";
 import {
   DecisionEndpointError,
+  type DecisionEndpointErrorCode,
+  type DecisionFailure,
   type DecisionRequest,
+  isRetryableDecisionFailure,
   readDecisionResponse,
 } from "./decisionWire";
 import { AymeError } from "./errors";
@@ -86,9 +89,29 @@ describe("the Decision Endpoint wire contract, client against handler", () => {
       code: "rejected",
       status: 404,
       message:
-        "The Decision Endpoint /api/decisions answered 404 Unknown model.",
+        "The Decision Endpoint /api/decisions answered 404 The model provider said: Unknown model.",
     });
     expect(error).toBeInstanceOf(AymeError);
+  });
+
+  it("states a provider's Retry-After in the message of a rate limit, which is not retryable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      wire(() =>
+        Response.json(
+          { error: { message: "Rate limited." } },
+          { status: 429, headers: { "Retry-After": "20" } }
+        )
+      )
+    );
+    const error = await failure(decisionEndpoint("/api/decisions")(request));
+    expect(error).toMatchObject({
+      code: "rejected",
+      status: 429,
+      retryable: false,
+      message:
+        "The Decision Endpoint /api/decisions answered 429 The model provider said: Rate limited (Retry-After: 20 s)",
+    });
   });
 
   it("reports a provider outage as rejected with a 5xx", async () => {
@@ -121,7 +144,8 @@ describe("the Decision Endpoint wire contract, client against handler", () => {
     const error = await failure(decisionEndpoint("/api/decisions")(request));
     expect(error).toMatchObject({
       code: "malformed",
-      message: "The Decision Endpoint returned an invalid response.",
+      message:
+        "The Decision Endpoint /api/decisions answered 200 with a body that is not a decision response",
     });
     expect(error.status).toBeUndefined();
   });
@@ -140,7 +164,7 @@ describe("readDecisionResponse", () => {
       false,
     ],
     [408, errorBody("Timed out."), "rejected", true],
-    [429, errorBody("Rate limit reached."), "rejected", true],
+    [429, errorBody("Rate limit reached."), "rejected", false],
     [500, "", "rejected", true],
     [
       502,
@@ -148,6 +172,7 @@ describe("readDecisionResponse", () => {
       "rejected",
       true,
     ],
+    [501, errorBody("Not implemented."), "rejected", false],
     [503, "Service Unavailable", "rejected", true],
   ] as const)(
     "classifies a %i (body %j) as %s, retryable: %s",
@@ -159,11 +184,58 @@ describe("readDecisionResponse", () => {
     }
   );
 
+  it.each([
+    ["20", "Rate limit reached (Retry-After: 20 s)"],
+    [
+      new Date(Date.now() + 30_000).toUTCString(),
+      /Rate limit reached \(Retry-After: (29|30) s\)$/,
+    ],
+    ["soon", "Rate limit reached."],
+  ])(
+    "states a Retry-After of %j in the message",
+    async (retryAfter, ending) => {
+      const error = await failure(
+        readDecisionResponse(
+          "/api/decisions",
+          new Response(errorBody("Rate limit reached."), {
+            status: 429,
+            headers: { "Retry-After": retryAfter },
+          })
+        )
+      );
+      expect(error.message).toMatch(
+        typeof ending === "string"
+          ? `The Decision Endpoint /api/decisions answered 429 ${ending}`
+          : ending
+      );
+    }
+  );
+
   it("classifies a 2xx that is not a decision response as malformed, not retryable", async () => {
     const error = await failure(
       readDecisionResponse("/api/decisions", Response.json({ model: "jev" }))
     );
     expect(error).toMatchObject({ code: "malformed", retryable: false });
     expect(error.status).toBeUndefined();
+  });
+});
+
+describe("whether a decision failure is worth a retry", () => {
+  const endpoint = (code: DecisionEndpointErrorCode, status?: number) =>
+    ({
+      kind: "endpoint",
+      error: new DecisionEndpointError("The endpoint failed", { code, status }),
+    }) as const;
+
+  it.each<[string, DecisionFailure, boolean]>([
+    ["a rejected 503", endpoint("rejected", 503), true],
+    ["a rejected 429", endpoint("rejected", 429), false],
+    ["a malformed answer", endpoint("malformed"), false],
+    ["a thrown error", { kind: "thrown" }, true],
+    ["an invalid answer", { kind: "invalid" }, false],
+    ["an unknown choice", { kind: "unknown-choice" }, false],
+    ["too many operations", { kind: "too-many-operations" }, false],
+  ])("%s is retryable: %s", (_, failure, retryable) => {
+    expect(isRetryableDecisionFailure(failure)).toBe(retryable);
   });
 });

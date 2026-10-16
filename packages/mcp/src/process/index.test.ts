@@ -144,7 +144,7 @@ describe("startAgentConnection in an App Process", () => {
   it("warns once while several servers answer, naming their ports, and again after it has paired and lost its server", async () => {
     const warn = vi.mocked(console.warn);
     const several =
-      "[ayme] Found 2 Ayme MCP servers on ports 9352 and 9353. Pass `link` from the agent's `ayme_connect`, or `port`, to pick one.";
+      "[ayme] Found 2 Ayme MCP servers on ports 9352 and 9353; this process pairs with none of them.";
     await start();
     await scans[0]!.answer([SERVER, OTHER]);
     for (const scan of [1, 2, 3]) {
@@ -253,7 +253,7 @@ describe("startAgentConnection in an App Process", () => {
     channels[0]!.hide([jobs]);
     channels[0]!.hide([jobs]);
     expect(warn).toHaveBeenCalledExactlyOnceWith(
-      "[ayme] peek.node.jobs is hidden: another App Process offers a tool with the same name. Rename one."
+      "[ayme] peek.node.jobs is hidden: another App Process offers a tool with the same name."
     );
 
     channels[0]!.hide([]);

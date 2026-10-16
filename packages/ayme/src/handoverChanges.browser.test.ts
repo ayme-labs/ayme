@@ -6,13 +6,13 @@ import type { DecisionResponse } from "./decisionWire";
 import { createPage } from "./browserPage";
 import {
   configureGoalLoop,
-  getLastGoalLoopRunResult,
   type GoalLoopDecisionFunction,
   type Handover,
 } from "./goalLoop";
 import { agentTools } from "./publication.testSupport";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
+import { getLastGoalLoopRunResult } from "./testing";
 
 type ActionResultShape = {
   page_changed: boolean;
@@ -118,6 +118,8 @@ describe("Handover changes in Chromium", () => {
     expect(handover.changes).toContain(ARCHIVED);
     expect(handover.changes).toContain("<removed> listitem: Invoice 7");
     expect(handover.changes).not.toContain(DIALOG);
+    // The Page Object Root reads as the snapshot labels it.
+    expect(handover.changes).toMatch(/^- e\d+ Inbox:\n/);
     // Each executed step's own Change Record stays on the run result.
     const steps = getLastGoalLoopRunResult()!.stepScores;
     expect(steps.map((step) => step.changes !== undefined)).toEqual([

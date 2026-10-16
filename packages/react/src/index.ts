@@ -53,7 +53,7 @@ export function AymeProvider({
     );
   if (!sameRuntimeOptions(options, setup.options))
     throw new Error(
-      "The provider options must stay fixed while mounted. Remount the provider to change them."
+      "The provider options changed while the provider was mounted."
     );
   useEffect(() => setup.runtime.start(), [setup]);
   return createElement(
@@ -98,7 +98,7 @@ export function usePageObject<T extends object>(
   const [retained] = useState(() => ({ model, runtime }));
   if (retained.model !== model || retained.runtime !== runtime)
     throw new Error(
-      "The Page Object model and provider must stay fixed while mounted. Remount the component to change them."
+      "The Page Object model or provider changed while the component was mounted."
     );
   useEffect(() => {
     runtime.pom.register(model);
@@ -111,6 +111,7 @@ export function usePageObject<T extends object>(
  * Adds this component's instance of the Peek `name` while it is mounted,
  * through `ayme.peek`. The agent reads `values` from the latest committed
  * render. `id` defaults to one per mounted component.
+ * @experimental
  */
 export function usePeek(values: unknown, name: string, id?: string): void {
   const runtime = useRuntime();

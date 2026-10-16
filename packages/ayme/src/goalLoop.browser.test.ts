@@ -7,18 +7,22 @@ import {
 import { agentCursor } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
+import { ayme } from "./decorators";
 import { errorText } from "./errors";
 import { agentTools } from "./publication.testSupport";
 import { createPageRegistration, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
+import { getLastGoalLoopRunResult } from "./testing";
 import {
+  CHANGES_CUT_MARKER,
   configureGoalLoop,
-  getLastGoalLoopRunResult,
+  MAX_STEP_CHANGES,
   type GoalLoopDecisionFunction,
 } from "./goalLoop";
 import type { CustomTool } from "./elementTools";
 import {
   NONE_OF_THESE_KEY,
+  NO_VALUE_NEEDED_KEY,
   listValueQuestionId,
   chunkQuestionId,
   runOffQuestionId,
@@ -171,6 +175,18 @@ function withoutArgumentProbabilities(
 
 type Criteria = Record<string, string>;
 
+/**
+ * A required collection item question's options without the "none of these"
+ * it always ends with.
+ */
+function offeredElements(criteria: Criteria): Criteria {
+  const keys = Object.keys(criteria);
+  expect(keys.at(-1)).toBe(NONE_OF_THESE_KEY);
+  return Object.fromEntries(
+    Object.entries(criteria).filter(([key]) => key !== NONE_OF_THESE_KEY)
+  );
+}
+
 function criteriaOf(request: DecisionRequest): Record<string, Criteria> {
   const questions = request.questions as Record<
     string,
@@ -279,9 +295,37 @@ function scriptedDecisionFn(
       answers: {
         operation: choiceAnswer(criteria.operation, current.operation),
         goal_met: { type: "noul", noul: current.goal_met },
+        ...speculativeAnswers(criteria, current.arguments ?? {}),
       },
     };
   };
+}
+
+/**
+ * Stage one's speculative Goal Value questions, each answered from the script
+ * of the parameter it asks about (its id is `value:` and the parameter's name,
+ * or the operation's qualified name and the parameter's), else with "no value
+ * needed".
+ */
+function speculativeAnswers(
+  criteria: Record<string, Criteria>,
+  wanted: Record<string, ScriptedArgument | ScriptedNoul>
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(criteria)
+      .filter(([id]) => id.startsWith("value:"))
+      .map(([id, options]) => {
+        const parameter = Object.keys(wanted).find(
+          (name) => id === `value:${name}` || id.endsWith(`.${name}`)
+        );
+        const want = parameter === undefined ? undefined : wanted[parameter];
+        const key =
+          want === undefined || isNoul(want) || Array.isArray(want)
+            ? undefined
+            : offeredKey(options, want);
+        return [id, choiceAnswer(options, key ?? NO_VALUE_NEEDED_KEY)];
+      })
+  );
 }
 
 function failingDecisionFn(error: Error): GoalLoopDecisionFunction {
@@ -575,10 +619,44 @@ describe("Goal Loop goal in Chromium", () => {
       expect((document.querySelector("#name") as HTMLInputElement).value).toBe(
         "Milk"
       );
-      // The number is never offered to a string parameter.
-      expect(criteriaOf(requests[1]!).text).toEqual({
+      // The text is asked in stage one, next to the operation, under the
+      // premise that the next operation enters text into an element. The
+      // number is never offered to a string parameter.
+      const stageOne = requests[0]!.questions as Record<
+        string,
+        { instructions: string }
+      >;
+      expect(stageOne["value:text"]!.instructions).toMatch(
+        /^If the next operation is .*"fill".* enters text into one element of the page as its "text" parameter, which Goal Value is that text\?$/
+      );
+      expect(criteriaOf(requests[0]!)["value:text"]).toEqual({
         "item name": "item name: Milk",
+        [NO_VALUE_NEEDED_KEY]: expect.any(String),
         [NONE_OF_THESE_KEY]: expect.any(String),
+      });
+      // Stage two only picks the element, with the value it will receive in
+      // view.
+      const stageTwo = requests[1]!.questions as Record<
+        string,
+        { instructions: string }
+      >;
+      expect(Object.keys(stageTwo)).toEqual(["target"]);
+      // It is sent the candidates instead of the page.
+      const stageTwoState = requests[1]!.state as Record<string, unknown>;
+      expect(Object.keys(stageTwoState)).toEqual([
+        "goal",
+        "values",
+        "history",
+        "elements",
+      ]);
+      expect(stageTwoState.elements).toEqual([
+        expect.objectContaining({ role: "textbox", name: "Name" }),
+      ]);
+      expect(stageTwo.target!.instructions).toMatch(
+        /^Pick the element that should receive the text "Milk" \(the Goal Value "item name"\), as this operation's "target" .* parameter\./
+      );
+      expect(getLastGoalLoopRunResult()!.stepScores[0]!.valueChoices).toEqual({
+        "value:text": "item name",
       });
       // Both stages are decided on a state that carries the values as passed.
       for (const request of requests)
@@ -610,8 +688,9 @@ describe("Goal Loop goal in Chromium", () => {
         values,
       });
 
-      expect(Object.keys(criteriaOf(requests[1]!).text!)).toEqual([
+      expect(Object.keys(criteriaOf(requests[0]!)["value:text"]!)).toEqual([
         "__proto__",
+        NO_VALUE_NEEDED_KEY,
         NONE_OF_THESE_KEY,
       ]);
       expect(result).toMatchObject({
@@ -793,7 +872,17 @@ describe("Goal Loop goal in Chromium", () => {
         values: { "survey name": "Q4 Feedback", score: 4.5 },
       });
 
-      expect(Object.keys(criteriaOf(requests[1]!))).toEqual(["name"]);
+      // The name is asked in stage one, as are the free text parameters of
+      // the Browser Tools; the optional stars no Goal Value fits is asked
+      // nowhere, so no stage two follows.
+      expect(Object.keys(criteriaOf(requests[0]!))).toEqual([
+        "operation",
+        "goal_met",
+        "value:text",
+        "value:navigate.url",
+        "value:App.rate.name",
+      ]);
+      expect(requests).toHaveLength(2);
       expect(calls).toEqual([["Q4 Feedback", undefined]]);
     });
 
@@ -842,14 +931,16 @@ describe("Goal Loop goal in Chromium", () => {
         values: { product: "Milk", count: 3, price: 2.5 },
       });
 
-      const stageTwo = criteriaOf(requests[1]!);
-      expect(Object.keys(stageTwo.quantity!)).toEqual([
+      const stageOne = criteriaOf(requests[0]!);
+      expect(Object.keys(stageOne["value:App.order.quantity"]!)).toEqual([
         "count",
+        NO_VALUE_NEEDED_KEY,
         NONE_OF_THESE_KEY,
       ]);
-      expect(Object.keys(stageTwo.price!)).toEqual([
+      expect(Object.keys(stageOne["value:App.order.price"]!)).toEqual([
         "count",
         "price",
+        NO_VALUE_NEEDED_KEY,
         NONE_OF_THESE_KEY,
       ]);
       expect(calls).toEqual([[3, 2.5]]);
@@ -1075,6 +1166,62 @@ describe("Goal Loop goal in Chromium", () => {
       });
     });
 
+    it("hands over without asking for Goal Values when no allowed value belongs in a required enum list", async () => {
+      setupDom();
+      const calls: unknown[] = [];
+      class App {
+        root = page.locator("main");
+        tag(labels: ("urgent" | "later")[]) {
+          calls.push(labels);
+        }
+      }
+      registerCompiledPom(
+        App,
+        manifest(
+          "App",
+          [root()],
+          [
+            actionWithParameters("tag", "App.tag", [
+              {
+                name: "labels",
+                optional: false,
+                schema: {
+                  type: "array",
+                  items: { type: "string", enum: ["urgent", "later"] },
+                },
+              },
+            ]),
+          ]
+        )
+      );
+      const decide = scriptedDecisionFn([
+        {
+          operation: "App.tag",
+          goal_met: 0.1,
+          arguments: {
+            [listValueQuestionId("labels", 1, ["labels"])]: { noul: 0.1 },
+            [listValueQuestionId("labels", 2, ["labels"])]: { noul: 0.1 },
+          },
+        },
+      ]);
+      const tool = await getPublishedPursueGoal(decide);
+      createPageRegistration(App);
+
+      const result = await tool.execute({
+        goal: "Tag it",
+        maxSteps: 5,
+        values: { label: "blocked" },
+      });
+
+      expect(withoutChanges(result)).toEqual({
+        reason: "needs_value",
+        next: 'The operation "App.tag" needs a value for "labels", and the model judged that none of its allowed values belongs in it.',
+        history: [],
+        needs: { tool: "App.tag", parameters: ["labels"] },
+      });
+      expect(calls).toEqual([]);
+    });
+
     it("runs without Goal Values when values is undefined", async () => {
       const { requests, decide } = recording(
         scriptedDecisionFn([{ operation: "none", goal_met: 0.9 }])
@@ -1152,23 +1299,188 @@ describe("Goal Loop goal in Chromium", () => {
     ).toMatch(/^ToolInputError: .*maxSteps/);
   });
 
+  it.each([0, -1])(
+    "refuses maxSteps %s as invalid input before the loop starts",
+    async (maxSteps) => {
+      const { requests, decide } = recording(scriptedDecisionFn([]));
+      const tool = await registerPom(decide);
+
+      expect(
+        await tool.execute({ goal: "do the thing", maxSteps }).catch(errorText)
+      ).toMatch(/^ToolInputError: .*maxSteps of at least 1/);
+      expect(requests).toEqual([]);
+    }
+  );
+
   // --- Handover reason: step_budget ---
 
   it("returns step_budget when maxSteps is exhausted", async () => {
     const decide = scriptedDecisionFn([
       { operation: "App.save", goal_met: 0.1 },
-      { operation: "App.save", goal_met: 0.2 },
+      { operation: "App.fail", goal_met: 0.2 },
     ]);
-    const tool = await registerPom(decide);
+    const tool = await registerCombinedPom(decide);
     const result = await tool.execute({ goal: "save many times", maxSteps: 2 });
     expect(result).toMatchObject({
       reason: "step_budget",
       history: [
         { operation: "App.save", result: "ok", page_changed: false },
-        { operation: "App.save", result: "ok", page_changed: false },
+        { operation: "App.fail", result: "action exploded" },
       ],
     });
+    expect(clickCount).toBe(1);
+  });
+
+  // --- Handover reason: no_progress ---
+
+  /** A POM whose add action changes the page every time it runs. */
+  async function registerPageChangingPom(goalLoop: GoalLoopDecisionFunction) {
+    setupDom();
+    class App {
+      root = page.locator("main");
+      add() {
+        clickCount++;
+        const row = document.createElement("div");
+        row.setAttribute("role", "alert");
+        row.textContent = `Row ${clickCount}`;
+        document.querySelector("main")!.appendChild(row);
+      }
+    }
+    registerCompiledPom(
+      App,
+      manifest("App", [root()], [action("add", "App.add")])
+    );
+    const tool = await getPublishedPursueGoal(goalLoop);
+    createPageRegistration(App);
+    return tool;
+  }
+
+  it("returns no_progress instead of repeating a step that changed nothing", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.save", goal_met: 0.1 },
+      { operation: "App.save", goal_met: 0.1 },
+      { operation: "App.save", goal_met: 0.1 },
+    ]);
+    const tool = await registerPom(decide);
+    const result = await tool.execute({ goal: "save changes", maxSteps: 10 });
+    expect(withoutChanges(result)).toEqual({
+      reason: "no_progress",
+      next: "The loop is repeating App.save(): it chose the same step 2 times in a row, and the last run did not change the page. It stopped instead of running it again. Perform that step yourself by calling App.save, or call goal again with a goal that names the element to act on.",
+      history: [
+        {
+          operation: "App.save",
+          chosen: {},
+          result: "ok",
+          page_changed: false,
+          did: "App.save()",
+        },
+      ],
+      needs: { tool: "App.save", parameters: [] },
+    });
+    expect((result as { next: string }).next).not.toMatch(/budget/i);
+    // The repeat is not run.
+    expect(clickCount).toBe(1);
+  });
+
+  it("returns no_progress when a step that changed the page is chosen a third time in a row", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "App.add", goal_met: 0.1 },
+    ]);
+    const tool = await registerPageChangingPom(decide);
+    const result = await tool.execute({ goal: "add rows", maxSteps: 10 });
+    expect(result).toMatchObject({
+      reason: "no_progress",
+      next: "The loop is repeating App.add(): it chose the same step 3 times in a row. It stopped instead of running it again. Perform that step yourself by calling App.add, or call goal again with a goal that names the element to act on.",
+      history: [
+        { operation: "App.add", result: "ok", page_changed: true },
+        { operation: "App.add", result: "ok", page_changed: true },
+      ],
+      needs: { tool: "App.add", parameters: [] },
+    });
     expect(clickCount).toBe(2);
+  });
+
+  it("names the element and the value of the repeated step", async () => {
+    setupDom();
+    const answer = {
+      operation: "fill",
+      goal_met: 0.1,
+      arguments: { target: 'textbox "Name"', text: "item name" },
+    };
+    const decide = scriptedDecisionFn([answer, answer, answer]);
+    const tool = await getPublishedPursueGoal(decide);
+    const result = await tool.execute({
+      goal: "Add an item called Milk",
+      maxSteps: 10,
+      values: { "item name": "Milk" },
+    });
+    // The first fill changed the page and the second did not.
+    expect(result).toMatchObject({
+      reason: "no_progress",
+      next: expect.stringContaining(
+        'fill(textbox "Name", item name: Milk): it chose the same step 3 times in a row, and the last run did not change the page.'
+      ),
+      history: [
+        { operation: "fill", page_changed: true },
+        { operation: "fill", page_changed: false },
+      ],
+      needs: { tool: "fill", parameters: ["target", "text"] },
+    });
+  });
+
+  it("does not stop steps that differ in their arguments", async () => {
+    setupDom();
+    const fill = (text: string): ScriptedAnswer => ({
+      operation: "fill",
+      goal_met: 0.1,
+      arguments: { target: 'textbox "Name"', text },
+    });
+    const decide = scriptedDecisionFn([
+      fill("a"),
+      fill("b"),
+      fill("c"),
+      fill("a"),
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await getPublishedPursueGoal(decide);
+    const result = await tool.execute({
+      goal: "Fill the name",
+      maxSteps: 10,
+      values: { a: "A", b: "B", c: "C" },
+    });
+    expect(result).toMatchObject({
+      reason: "done",
+      history: [
+        { chosen: { text: { key: "a" } }, page_changed: true },
+        { chosen: { text: { key: "b" } }, page_changed: true },
+        { chosen: { text: { key: "c" } }, page_changed: true },
+        { chosen: { text: { key: "a" } }, page_changed: true },
+      ],
+    });
+  });
+
+  it("lets a step that changed the page run twice in a row", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "App.add", goal_met: 0.1 },
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await registerPageChangingPom(decide);
+    const result = await tool.execute({ goal: "add rows", maxSteps: 10 });
+    expect(result).toMatchObject({ reason: "done" });
+    expect(clickCount).toBe(2);
+  });
+
+  it("does not count a failed step as a repeat", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.fail", goal_met: 0.1 },
+      { operation: "App.fail", goal_met: 0.1 },
+    ]);
+    const tool = await registerFailingPom(decide);
+    const result = await tool.execute({ goal: "do the thing", maxSteps: 5 });
+    expect((result as Record<string, unknown>).reason).toBe("action_failed");
   });
 
   // --- Handover reason: decide_failed ---
@@ -1195,8 +1507,8 @@ describe("Goal Loop goal in Chromium", () => {
     [
       "malformed",
       undefined,
-      "The Decision Endpoint returned an invalid response.",
-      "The Decision Endpoint returned an invalid response. Handle",
+      "The Decision Endpoint /api/decisions answered 200 with a body that is not a decision response",
+      "The Decision Endpoint /api/decisions answered 200 with a body that is not a decision response. Handle",
     ],
     [
       "rejected",
@@ -1212,6 +1524,12 @@ describe("Goal Loop goal in Chromium", () => {
     ],
     [
       "rejected",
+      403,
+      "The Decision Endpoint /api/decisions answered 403 Who are you?",
+      "The Decision Endpoint /api/decisions answered 403 Who are you? Handle",
+    ],
+    [
+      "rejected",
       408,
       "The Decision Endpoint /api/decisions answered 408 The model provider timed out.",
       "The Decision Endpoint /api/decisions answered 408 The model provider timed out. Retry, or handle",
@@ -1219,8 +1537,8 @@ describe("Goal Loop goal in Chromium", () => {
     [
       "rejected",
       429,
-      "The Decision Endpoint /api/decisions answered 429 Rate limit reached.",
-      "The Decision Endpoint /api/decisions answered 429 Rate limit reached. Retry, or handle",
+      "The Decision Endpoint /api/decisions answered 429 Rate limit reached (Retry-After: 20 s)",
+      "The Decision Endpoint /api/decisions answered 429 Rate limit reached (Retry-After: 20 s). Handle",
     ],
     [
       "rejected",
@@ -1253,6 +1571,19 @@ describe("Goal Loop goal in Chromium", () => {
       next: expect.stringMatching(
         /Invalid goal_met answer.*\. Handle the goal without the Goal Loop\.$/
       ),
+      history: [],
+    });
+  });
+
+  it("ends the run without retry advice when the model chooses an unknown operation", async () => {
+    const decide = scriptedDecisionFn([
+      { operation: "App.missing", goal_met: 0.1 },
+    ]);
+    const tool = await registerPom(decide);
+    const result = await tool.execute({ goal: "save changes", maxSteps: 5 });
+    expect(withoutChanges(result)).toEqual({
+      reason: "decide_failed",
+      next: 'The model chose an unknown operation "App.missing". Handle the goal without the Goal Loop.',
       history: [],
     });
   });
@@ -1376,9 +1707,104 @@ describe("Goal Loop goal in Chromium", () => {
         chosen: {},
         result: "ok",
         page_changed: true,
+        changes: expect.stringContaining("<added> alert: Changes saved"),
         did: expect.any(String),
       },
     ]);
+  });
+
+  it("carries what a step changed in its history entry, and nothing for a step that changed nothing", async () => {
+    document.body.innerHTML = `
+      <main>
+        <button id="save">Save changes</button>
+      </main>
+    `;
+    class App {
+      root = page.locator("main");
+      save() {
+        const banner = document.createElement("div");
+        banner.setAttribute("role", "alert");
+        banner.textContent = "Changes saved";
+        document.querySelector("main")!.appendChild(banner);
+      }
+      wait() {}
+    }
+    registerCompiledPom(
+      App,
+      manifest(
+        "App",
+        [root()],
+        [action("save", "App.save"), action("wait", "App.wait")]
+      )
+    );
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        { operation: "App.save", goal_met: 0.1 },
+        { operation: "App.wait", goal_met: 0.1 },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(App);
+    const result = (await tool.execute({
+      goal: "save",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+    expect(result.reason).toBe("done");
+    const [saved, waited] = result.history as Array<Record<string, unknown>>;
+    expect(saved).toMatchObject({ operation: "App.save", page_changed: true });
+    expect(saved!.changes).toMatch(/- e\d+ <added> alert: Changes saved/);
+    expect(waited).toMatchObject({
+      operation: "App.wait",
+      page_changed: false,
+    });
+    expect(waited).not.toHaveProperty("changes");
+    // The model reads the same entries in the state of the step after them.
+    expect((requests[1]!.state as Record<string, unknown>).history).toEqual([
+      saved,
+    ]);
+    expect((requests[2]!.state as Record<string, unknown>).history).toEqual([
+      saved,
+      waited,
+    ]);
+  });
+
+  it("cuts a long Change Record in the history entry, and keeps it whole in the run result", async () => {
+    document.body.innerHTML = `<main><h1>Import</h1><ul></ul></main>`;
+    class App {
+      root = page.locator("main");
+      fill() {
+        const list = document.querySelector("ul")!;
+        for (let i = 0; i < 40; i++) {
+          const item = document.createElement("li");
+          item.textContent = `Imported item number ${i}`;
+          list.appendChild(item);
+        }
+      }
+    }
+    registerCompiledPom(
+      App,
+      manifest("App", [root()], [action("fill", "App.fill")])
+    );
+    const decide = scriptedDecisionFn([
+      { operation: "App.fill", goal_met: 0.1 },
+      { operation: "none", goal_met: 0.9 },
+    ]);
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(App);
+    const result = (await tool.execute({
+      goal: "import",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+    const [entry] = result.history as Array<{ changes: string }>;
+    const full = getLastGoalLoopRunResult()!.stepScores[0]!.changes!;
+    expect(full.length).toBeGreaterThan(MAX_STEP_CHANGES);
+    expect(full).toContain("Imported item number 39");
+    expect(entry!.changes.length).toBeLessThanOrEqual(MAX_STEP_CHANGES);
+    expect(entry!.changes.endsWith(CHANGES_CUT_MARKER)).toBe(true);
+    // Cut at a whole line of the full record.
+    const kept = entry!.changes.slice(0, -CHANGES_CUT_MARKER.length);
+    expect(full.startsWith(`${kept}\n`)).toBe(true);
   });
 
   it("records a failed step as a bare step record with the error as its result", async () => {
@@ -1491,7 +1917,10 @@ describe("Goal Loop goal in Chromium", () => {
     });
   }
 
-  /** Every ref the page state sent to the model contains. */
+  /**
+   * Every ref the state sent to the model contains: in the page, or among the
+   * candidate elements a request that only picks an element is sent.
+   */
   function refsInPage(state: unknown): string[] {
     const refs: string[] = [];
     const walk = (node: unknown) => {
@@ -1502,6 +1931,7 @@ describe("Goal Loop goal in Chromium", () => {
       walk(record.children);
     };
     walk((state as Record<string, unknown>).page);
+    walk((state as Record<string, unknown>).elements);
     return refs;
   }
 
@@ -1544,6 +1974,10 @@ describe("Goal Loop goal in Chromium", () => {
       // Whether a click changes the page (focus among others) is the
       // interaction history's promise, pinned in its own tests.
       page_changed: expect.any(Boolean),
+      // A focus change, when the click made one, is what it changed.
+      ...("changes" in (result.history as object[])[0]!
+        ? { changes: expect.any(String) }
+        : {}),
       did: expect.any(String),
     };
     expect(description).toBe('button "Save changes"');
@@ -1668,8 +2102,10 @@ describe("Goal Loop goal in Chromium", () => {
     expect(buttonRef).toBeDefined();
 
     // The page sent holds the button but none of the wrappers, and the text
-    // of the single-character leaves hoisted, each string as it was.
-    const page = requests[1]!.state as { page: unknown };
+    // of the single-character leaves hoisted, each string as it was. Stage
+    // one is sent the page; stage two, which only picks the element, is sent
+    // the candidates instead.
+    const page = requests[0]!.state as { page: unknown };
     const refs = refsInPage(page);
     expect(refs).toContain(buttonRef);
     for (const ref of wrapperRefs) expect(refs).not.toContain(ref);
@@ -1779,9 +2215,12 @@ describe("Goal Loop goal in Chromium", () => {
       },
     ]);
     // Each chunk's answer is recorded in the step's scores.
-    const score =
-      getLastGoalLoopRunResult()!.stepScores[0]!.argumentProbabilities!;
-    expect(Object.keys(score)).toEqual(Object.keys(stageTwo));
+    const score = getLastGoalLoopRunResult()!.stepScores[0]!;
+    expect(Object.keys(score.argumentProbabilities!)).toEqual(
+      Object.keys(stageTwo)
+    );
+    // One chunk named an element, so the step asked no run-off.
+    expect(score.runOff).toBeUndefined();
   });
 
   it("asks one run-off among exactly the elements several chunks named", async () => {
@@ -1833,6 +2272,7 @@ describe("Goal Loop goal in Chromium", () => {
       [runOffId]: named[1],
     });
     expect(score.argumentProbabilities).toEqual({});
+    expect(score.runOff).toBe(true);
   });
 
   it("keeps the chunks' choices on the run result when the run-off answer is invalid", async () => {
@@ -1862,7 +2302,9 @@ describe("Goal Loop goal in Chromium", () => {
     const stageTwo = criteriaOf(requests[1]!);
     const [firstChunkId, secondChunkId] = Object.keys(stageTwo);
     const score = getLastGoalLoopRunResult()!.stepScores[0]!;
-    // Both chunks named an element; the run-off's answer is not recorded.
+    // Both chunks named an element, so the step asked a run-off, whose
+    // answer is not recorded.
+    expect(score.runOff).toBe(true);
     expect(score.argumentChoices).toEqual({
       [firstChunkId!]: keyFor(stageTwo[firstChunkId!]!, 'button "Item 3"'),
       [secondChunkId!]: keyFor(stageTwo[secondChunkId!]!, 'button "Item 299"'),
@@ -1893,7 +2335,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     expect(withoutChanges(result)).toEqual({
       reason: "no_fitting_option",
-      next: expect.stringContaining('"click"'),
+      next: 'No element on the current page fits the operation "click". Navigate to a different page or try a different approach.',
       // The step ran no action, so it leaves no history entry.
       history: [],
     });
@@ -2097,6 +2539,35 @@ describe("Goal Loop goal in Chromium", () => {
     expect(clickCount).toBe(0);
   });
 
+  it("ends the run when a speculative answer for the chosen operation is not one it offered", async () => {
+    setupDom();
+    const decide = scriptedDecisionFn([
+      {
+        operation: "fill",
+        goal_met: 0.1,
+        arguments: { target: 'textbox "Name"', text: { raw: "Bread" } },
+      },
+    ]);
+    const tool = await getPublishedPursueGoal(decide);
+
+    const result = await tool.execute({
+      goal: "Add an item called Milk",
+      maxSteps: 5,
+      values: { "item name": "Milk" },
+    });
+
+    expect(withoutChanges(result)).toEqual({
+      reason: "decide_failed",
+      next: expect.stringMatching(
+        /^The decision function's answers could not be read: .*"Bread".*Handle the goal without the Goal Loop\.$/
+      ),
+      history: [],
+    });
+    expect((document.querySelector("#name") as HTMLInputElement).value).toBe(
+      ""
+    );
+  });
+
   // --- Stage two: which instance of a collection ---
 
   /** A list of `count` items, each the root of one collection instance. */
@@ -2172,7 +2643,7 @@ describe("Goal Loop goal in Chromium", () => {
     // One question, over the present roots of the tool's collection path.
     const stageTwo = criteriaOf(requests[1]!);
     expect(Object.keys(stageTwo)).toEqual(["ref"]);
-    const descriptions = Object.values(stageTwo.ref!);
+    const descriptions = Object.values(offeredElements(stageTwo.ref!));
     expect(descriptions).toHaveLength(3);
     descriptions.forEach((description, index) => {
       // Label, role and name: what tells one instance from another.
@@ -2182,7 +2653,7 @@ describe("Goal Loop goal in Chromium", () => {
     });
     // The option keys are the refs the page state gave the model.
     expect(refsInPage(requests[1]!.state)).toEqual(
-      expect.arrayContaining(Object.keys(stageTwo.ref!))
+      expect.arrayContaining(Object.keys(offeredElements(stageTwo.ref!)))
     );
     expect(archived).toEqual([1]);
     expect(result.reason).toBe("done");
@@ -2271,7 +2742,9 @@ describe("Goal Loop goal in Chromium", () => {
     expect(sent).toContain('"name":"Item 1","children":["t","ask"]');
 
     // The instance options come from the full capture and still resolve.
-    const instanceRefs = Object.keys(criteriaOf(requests[1]!).ref!);
+    const instanceRefs = Object.keys(
+      offeredElements(criteriaOf(requests[1]!).ref!)
+    );
     expect(instanceRefs).toHaveLength(count);
     const resolutions = await resolvePageStateRefs(
       document,
@@ -2330,7 +2803,9 @@ describe("Goal Loop goal in Chromium", () => {
     // operation acts on.
     expect(result).toMatchObject({
       reason: "needs_value",
-      next: expect.stringContaining("acts on a collection instance"),
+      next: expect.stringContaining(
+        "acts on a collection instance, and the current page holds more of them than one decision can offer."
+      ),
       needs: { tool: "ItemsPage.items.archive", parameters: ["ref"] },
     });
     expect(result.next).not.toContain("one element");
@@ -2396,7 +2871,7 @@ describe("Goal Loop goal in Chromium", () => {
     const stageTwo = criteriaOf(requests[1]!);
     // One question, over the innermost roots only.
     expect(Object.keys(stageTwo)).toEqual(["ref"]);
-    expect(Object.values(stageTwo.ref!)).toEqual([
+    expect(Object.values(offeredElements(stageTwo.ref!))).toEqual([
       expect.stringContaining("GroupsPage.groups[0].items[0]"),
       expect.stringContaining("GroupsPage.groups[0].items[1]"),
       expect.stringContaining("GroupsPage.groups[1].items[0]"),
@@ -2463,7 +2938,9 @@ describe("Goal Loop goal in Chromium", () => {
 
     // The instance is addressed through the last collection, not through the
     // singular child the action lives on.
-    const descriptions = Object.values(criteriaOf(requests[1]!).ref!);
+    const descriptions = Object.values(
+      offeredElements(criteriaOf(requests[1]!).ref!)
+    );
     expect(descriptions).toEqual([
       expect.stringContaining("ItemsPage.items[0]"),
       expect.stringContaining("ItemsPage.items[1]"),
@@ -2495,6 +2972,166 @@ describe("Goal Loop goal in Chromium", () => {
     // No question without options is ever sent.
     expect(requests).toHaveLength(1);
     expect(result.reason).toBe("no_fitting_option");
+  });
+
+  it("hands over, naming why the goal's item was left out, instead of acting on another item", async () => {
+    const archived: number[] = [];
+    class Item {
+      constructor(
+        readonly root: ReturnType<typeof page.locator>,
+        readonly index: number
+      ) {}
+      archive() {
+        archived.push(this.index);
+      }
+    }
+    ayme.action({
+      available: (self: Item) =>
+        self.index === last || "it is already archived",
+    })(
+      Item.prototype,
+      "archive",
+      Object.getOwnPropertyDescriptor(Item.prototype, "archive")!
+    );
+    // Every item but the last is unavailable, and the Handover names each.
+    const last = 12;
+    setupCollectionDom(last + 1);
+    class ItemsPage {
+      readonly items = Array.from(
+        { length: last + 1 },
+        (_, index) => index
+      ).map((index) => new Item(page.locator(`#item-${index}`), index));
+    }
+    registerCompiledPom(
+      ItemsPage,
+      manifest(
+        "ItemsPage",
+        [collection("items", "Item")],
+        [],
+        [
+          {
+            className: "Item",
+            members: [root()],
+            tools: [action("archive", "archive")],
+          },
+        ]
+      )
+    );
+    // A model that knows the goal means Item 0: it picks that item, or "none
+    // of these" when offered, and otherwise the best of what it is given.
+    const stageTwoOptions: Record<string, string>[] = [];
+    let step = 0;
+    const { requests, decide } = recording(async (request) => {
+      const criteria = criteriaOf(request);
+      if (criteria.operation) {
+        step++;
+        return {
+          model: "typesafe/jev-1.13",
+          answers: {
+            operation: choiceAnswer(
+              criteria.operation,
+              step === 1 ? "ItemsPage.items.archive" : "none"
+            ),
+            goal_met: { type: "noul", noul: step === 1 ? 0.1 : 0.9 },
+          },
+        };
+      }
+      const options = criteria.ref!;
+      stageTwoOptions.push(options);
+      const keys = Object.keys(options);
+      const wanted =
+        keys.find((key) => options[key]!.includes("items[0]")) ??
+        keys.find((key) => key === NONE_OF_THESE_KEY) ??
+        keys[0]!;
+      return {
+        model: "typesafe/jev-1.13",
+        answers: { ref: choiceAnswer(options, wanted) },
+      };
+    });
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(ItemsPage);
+
+    const result = (await tool.execute({
+      goal: "archive Item 0",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    // Stage two offers the last item and "none of these"; the rest are left
+    // out.
+    expect(stageTwoOptions).toHaveLength(1);
+    expect(Object.keys(stageTwoOptions[0]!)).toHaveLength(2);
+    expect(Object.values(stageTwoOptions[0]!)[0]).toContain(
+      `ItemsPage.items[${last}]`
+    );
+    expect(Object.keys(stageTwoOptions[0]!)[1]).toBe(NONE_OF_THESE_KEY);
+    // The model answers "none of these": nothing runs, and the Handover says
+    // why the item it wanted was not offered.
+    expect(archived).toEqual([]);
+    expect(requests).toHaveLength(2);
+    expect(result).toMatchObject({
+      reason: "no_fitting_option",
+      history: [],
+    });
+    expect(result.next).toMatch(
+      /^No element on the current page fits the operation "ItemsPage\.items\.archive"\. Left out: /
+    );
+    expect(result.next).toMatch(
+      /ItemsPage\.items\[11\] \(unavailable: it is already archived\)\. Navigate to a different page or try a different approach\.$/
+    );
+    expect(result.next).toContain(
+      "Left out: ItemsPage.items[0] (unavailable: it is already archived), ItemsPage.items[1] (unavailable: it is already archived),"
+    );
+  });
+
+  it("names the items it could not offer when none has a ref in the page state", async () => {
+    // The item is available, but inside a subtree the page state ignores,
+    // here the Inspector's host, so the capture holds no ref for it.
+    document.body.innerHTML = `
+      <main>
+        <ul data-ayme-inspector-host>
+          <li id="item-0">Item 0</li>
+        </ul>
+      </main>
+    `;
+    class ItemsPage {
+      readonly items = [{ root: page.locator("#item-0"), archive() {} }];
+    }
+    registerCompiledPom(
+      ItemsPage,
+      manifest(
+        "ItemsPage",
+        [collection("items", "Item")],
+        [],
+        [
+          {
+            className: "Item",
+            members: [root()],
+            tools: [action("archive", "archive")],
+          },
+        ]
+      )
+    );
+    const { requests, decide } = recording(
+      scriptedDecisionFn([
+        { operation: "ItemsPage.items.archive", goal_met: 0.1 },
+      ])
+    );
+    const tool = await getPublishedPursueGoal(decide);
+    createPageRegistration(ItemsPage);
+
+    const result = (await tool.execute({
+      goal: "archive Item 0",
+      maxSteps: 5,
+    })) as Record<string, unknown>;
+
+    expect(requests).toHaveLength(1);
+    expect(result).toMatchObject({
+      reason: "needs_value",
+      needs: { tool: "ItemsPage.items.archive", parameters: ["ref"] },
+    });
+    expect(result.next).toBe(
+      'The operation "ItemsPage.items.archive" acts on a collection instance, and the loop could offer none of its items. Left out: ItemsPage.items[0] (no ref in the page state). Try a different approach.'
+    );
   });
 
   it("asks a collection tool's enum and boolean arguments with the instance", async () => {
@@ -2620,7 +3257,13 @@ describe("Goal Loop goal in Chromium", () => {
 
     const result = await tool.execute({ goal: "do something", maxSteps: 5 });
 
-    expect(result).toMatchObject({ reason: "decide_failed", history: [] });
+    expect(result).toMatchObject({
+      reason: "decide_failed",
+      next: expect.stringMatching(
+        /^The page offers \d+ operations, more than one decision can choose from\. Handle the goal without the Goal Loop\.$/
+      ),
+      history: [],
+    });
     // The oversized question is never sent.
     expect(requests).toEqual([]);
   });
@@ -2630,7 +3273,7 @@ describe("Goal Loop goal in Chromium", () => {
   /** Register a POM whose single tool takes one closed-set parameter. */
   async function registerPomWithParameter(
     goalLoop: GoalLoopDecisionFunction,
-    parameter: ToolManifest["parameters"][number],
+    parameter: ToolManifest["parameters"][number] | ToolManifest["parameters"],
     calls: unknown[][]
   ) {
     setupDom();
@@ -2645,7 +3288,13 @@ describe("Goal Loop goal in Chromium", () => {
       manifest(
         "App",
         [root()],
-        [actionWithParameters("pick", "App.pick", [parameter])]
+        [
+          actionWithParameters(
+            "pick",
+            "App.pick",
+            Array.isArray(parameter) ? parameter : [parameter]
+          ),
+        ]
       )
     );
     const tool = await getPublishedPursueGoal(goalLoop);
@@ -2744,6 +3393,63 @@ describe("Goal Loop goal in Chromium", () => {
     // The oversized question is never sent.
     expect(requests).toHaveLength(1);
     expect(calls).toEqual([]);
+  });
+
+  const sortTuple = {
+    name: "value",
+    optional: false,
+    schema: {
+      type: "array",
+      prefixItems: [
+        { type: "string", enum: ["asc", "desc"] },
+        { type: "string" },
+      ],
+      minItems: 2,
+      maxItems: 2,
+    },
+  } as const;
+
+  it("fills a tuple slot by slot and runs the action with it", async () => {
+    const calls: unknown[][] = [];
+    const tool = await registerPomWithParameter(
+      scriptedDecisionFn([
+        {
+          operation: "App.pick",
+          goal_met: 0.1,
+          arguments: { "value.0": "desc", "value.1": "column" },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ]),
+      sortTuple,
+      calls
+    );
+
+    await tool.execute({
+      goal: "sort by price, highest first",
+      maxSteps: 5,
+      values: { column: "price" },
+    });
+
+    expect(calls).toEqual([[["desc", "price"]]]);
+  });
+
+  it("names a required tuple as a whole, and no optional parameter, when it hands over", async () => {
+    const tool = await registerPomWithParameter(
+      scriptedDecisionFn([{ operation: "App.pick", goal_met: 0.1 }]),
+      [sortTuple, { name: "note", optional: true, schema: { type: "string" } }],
+      []
+    );
+
+    const result = await tool.execute({
+      goal: "sort by price",
+      maxSteps: 5,
+      values: { count: 3 },
+    });
+
+    expect(result).toMatchObject({
+      reason: "needs_value",
+      needs: { tool: "App.pick", parameters: ["value"] },
+    });
   });
 
   it("leaves an optional parameter unset when its options exceed the limit", async () => {

@@ -29,6 +29,13 @@ export type StructuralIdentityResolution =
   | {
       readonly status: "unresolved";
       readonly requestedRef: AriaRef;
+      /**
+       * - `unknown-ref`: the ledger never observed this ref.
+       * - `removed`: the identity this ref belonged to is no longer on the page.
+       * - `ambiguous`: several nodes of a later observation claimed this ref's
+       *   identity and none of them could be told to continue it. Never a ref
+       *   the latest observation carries. Not "matches several elements".
+       */
       readonly reason: "unknown-ref" | "removed" | "ambiguous";
     };
 
@@ -68,9 +75,9 @@ export class StructuralIdentityLedger {
     const baseline = this._baseline;
     if (baseline === null) {
       for (const node of tree.getAllNodes()) {
-        const identity = this._createIdentity(moment, null);
+        const identity = this._createIdentity(moment);
         identity.currentRef = node.ref;
-        this._bindAlias(node.ref, identity);
+        this._byAlias.set(node.ref, identity);
         this._currentByRef.set(node.ref, identity);
       }
       this._baseline = tree;
@@ -80,62 +87,58 @@ export class StructuralIdentityLedger {
     const previousByRef = this._currentByRef;
     const reconciled = StructuralTree.reconcile(baseline, tree);
     this._baseline = tree;
-    const assignments = tree.getAllNodes().map((node) => {
+
+    // A capture's ref stays on one element, so a node whose ref the ledger has
+    // observed claims that ref's identity, whatever reconciliation matched it
+    // to. Only a node with a new ref claims through its reconciliation match.
+    const claims = tree.getAllNodes().map((node) => {
+      const own = previousByRef.get(node.ref) ?? this._byAlias.get(node.ref);
+      if (own !== undefined) return { node, identity: own, byOwnRef: true };
       const beforeRef = reconciled.getBeforeNodeForAfterRef(node.ref)?.ref;
-      const candidates = new Set<Identity>();
-      const current = previousByRef.get(node.ref);
-      const historical = this._byAlias.get(node.ref);
       const lineage =
         beforeRef === undefined ? undefined : previousByRef.get(beforeRef);
-      if (current) candidates.add(current);
-      if (historical) candidates.add(historical);
-      if (lineage) candidates.add(lineage);
-      return {
-        node,
-        candidates,
-        hasAmbiguousCandidate: [...candidates].some(
-          (identity) => identity.unresolvedReason === "ambiguous"
-        ),
-      };
+      return { node, identity: lineage, byOwnRef: false };
     });
 
-    const claimsByIdentity = new Map<Identity, number>();
-    for (const { candidates } of assignments) {
-      if (candidates.size !== 1) continue;
-      const identity = [...candidates][0]!;
-      claimsByIdentity.set(identity, (claimsByIdentity.get(identity) ?? 0) + 1);
+    const claimantsByIdentity = new Map<Identity, typeof claims>();
+    for (const claim of claims) {
+      if (claim.identity === undefined) continue;
+      const claimants = claimantsByIdentity.get(claim.identity) ?? [];
+      claimants.push(claim);
+      claimantsByIdentity.set(claim.identity, claimants);
     }
 
+    // An identity continues as the node still carrying its current ref, else
+    // its one claimant by own ref, else its one claimant by match. With
+    // several claimants and none of those, no node continues it.
     const ambiguous = new Set<Identity>();
-    for (const { candidates, hasAmbiguousCandidate } of assignments) {
-      if (candidates.size > 1 || hasAmbiguousCandidate)
-        for (const identity of candidates) ambiguous.add(identity);
+    const winners = new Set<(typeof claims)[number]>();
+    for (const [identity, claimants] of claimantsByIdentity) {
+      const byOwnRef = claimants.filter((claim) => claim.byOwnRef);
+      const winner =
+        claimants.find((claim) => claim.node.ref === identity.currentRef) ??
+        (byOwnRef.length === 1
+          ? byOwnRef[0]
+          : byOwnRef.length === 0 && claimants.length === 1
+            ? claimants[0]
+            : undefined);
+      if (winner) winners.add(winner);
+      if (claimants.length > 1) ambiguous.add(identity);
     }
-    for (const [identity, claims] of claimsByIdentity)
-      if (claims > 1) ambiguous.add(identity);
 
     const nextByRef = new Map<AriaRef, Identity>();
     const retained = new Set<Identity>();
-    for (const { node, candidates, hasAmbiguousCandidate } of assignments) {
-      const identity = candidates.size === 1 ? [...candidates][0] : undefined;
-      if (
-        candidates.size > 1 ||
-        hasAmbiguousCandidate ||
-        (identity !== undefined && claimsByIdentity.get(identity)! > 1)
-      ) {
-        if (!this._byAlias.has(node.ref))
-          this._byAlias.set(
-            node.ref,
-            this._createIdentity(moment, "ambiguous")
-          );
-        continue;
-      }
-
-      const selected = identity ?? this._createIdentity(moment, null);
+    for (const claim of claims) {
+      const { node } = claim;
+      const selected = winners.has(claim)
+        ? claim.identity!
+        : this._createIdentity(moment);
       selected.currentRef = node.ref;
       selected.unresolvedReason = null;
       selected.disappeared = null;
-      this._bindAlias(node.ref, selected);
+      // A ref printed now names its node now, even if it once named an
+      // identity another node continues.
+      this._byAlias.set(node.ref, selected);
       nextByRef.set(node.ref, selected);
       retained.add(selected);
     }
@@ -149,6 +152,8 @@ export class StructuralIdentityLedger {
           ? "ambiguous"
           : "removed";
     }
+    for (const identity of ambiguous)
+      if (!retained.has(identity)) identity.unresolvedReason = "ambiguous";
 
     this._currentByRef = nextByRef;
   }
@@ -174,7 +179,10 @@ export class StructuralIdentityLedger {
   /**
    * Whether two observed refs are aliases of one identity: the same node
    * followed across captures. A ref the ledger has not observed is only the
-   * same as itself.
+   * same as itself. The answer reflects the latest observation: when a ref
+   * matched to a successor is printed again beside it, the two become separate
+   * identities, so a later reading of an older change sees them as different
+   * nodes.
    */
   sameIdentity(a: AriaRef, b: AriaRef): boolean {
     if (a === b) return true;
@@ -190,24 +198,12 @@ export class StructuralIdentityLedger {
       : undefined;
   }
 
-  private _createIdentity(
-    moment: StructuralLifecycleMoment,
-    unresolvedReason: Identity["unresolvedReason"]
-  ): Identity {
+  private _createIdentity(moment: StructuralLifecycleMoment): Identity {
     return {
       currentRef: null,
-      unresolvedReason,
+      unresolvedReason: null,
       appeared: moment,
-      disappeared: unresolvedReason === null ? null : moment,
+      disappeared: null,
     };
-  }
-
-  private _bindAlias(ref: AriaRef, identity: Identity): void {
-    const existing = this._byAlias.get(ref);
-    if (existing !== undefined && existing !== identity)
-      throw new Error(
-        `Structural Ref alias ${ref} is already bound to another identity.`
-      );
-    this._byAlias.set(ref, identity);
   }
 }

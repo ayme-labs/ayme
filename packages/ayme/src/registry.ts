@@ -21,18 +21,18 @@ import {
   resolveLocatorElements,
 } from "@ayme-dev/playwright-lite/internal";
 import type { Locator, Page } from "@playwright/test";
-import { observePomRoot } from "./pomRootObservation";
-import { resolvePageStateRefs, type AriaRef } from "./pageState";
+import { observePomRoot, type ObservedPomRoot } from "./pomRootObservation";
+import { latestPageStateRef } from "./pageState";
 import {
   askPredicates,
+  assertAvailable,
   availabilityOf,
   combinedAvailability,
   sameInstance,
-  type ObservedPomRoot,
   type PomInstanceObservation,
   type ToolAvailability,
 } from "./pomInstance";
-import { requireStructuralRef } from "./refTarget";
+import { refFailure, resolveRef } from "./refTarget";
 import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
 import { runAction, type ActionResult } from "./actionSequence";
@@ -150,9 +150,7 @@ export function configureAymeRuntime(page: Page) {
 
 export function requireAymeRuntimePage(): Page {
   if (!browserPage)
-    throw new RuntimeStateError(
-      "Configure the Ayme browser runtime before interacting."
-    );
+    throw new RuntimeStateError("The Ayme browser runtime is not configured.");
   return browserPage;
 }
 
@@ -198,7 +196,7 @@ export function createPageRegistration<T extends object>(
   const page = browserPage;
   if (!page)
     throw new RuntimeStateError(
-      "Configure the Ayme browser runtime before registering a page object."
+      "Cannot register a page object: the Ayme browser runtime is not configured."
     );
 
   const compiledPom = compiledPoms.get(PomClass);
@@ -239,8 +237,10 @@ export function registerPageObject<T extends object>(
     manifest: compiledPom,
     memberObservations: [],
     instances: undefined,
-    tools: createRegisteredTools(compiledPom, instance),
+    tools: [],
   };
+  // Its collection tools read the instances observed of this registration.
+  registration.tools = createRegisteredTools(registration);
   const registryWasEmpty = registeredPoms.size === 0;
   registeredPoms.add(registration);
   if (registryWasEmpty) startObservingPage();
@@ -276,7 +276,8 @@ function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
       registered.pomClass !== PomClass
     )
       throw new RuntimeStateError(
-        `Cannot register the Page Object "${manifest.className}": a different class with that name is already registered${declaredIn(registered.manifest, manifest)}. Rename one of them so their tools do not share names.`
+        `Cannot register the Page Object "${manifest.className}": a different class with that name is already registered${declaredIn(registered.manifest, manifest)}.`,
+        { code: "same-named-class" }
       );
 
   type Reached = { pageObject: string; node: PomComponentManifest };
@@ -293,7 +294,8 @@ function rejectSameNamedClasses(PomClass: object, manifest: PomManifest) {
             other.pageObject === manifest.className
               ? `it reaches two different classes named "${node.className}"`
               : `it reaches a class named "${node.className}" that differs from the one the Page Object "${other.pageObject}" reaches`
-          }${declaredIn(other.node, node)}. Rename one of them: Ayme tells the classes of Page Objects apart by name.`
+          }${declaredIn(other.node, node)}. Ayme tells the classes of Page Objects apart by name.`,
+          { code: "same-named-class" }
         );
       if (!others.some((other) => other.node.file === node.file))
         reached.set(node.className, [...others, { pageObject, node }]);
@@ -560,7 +562,7 @@ export function listRegisteredPomTools(): ({
     for (const tool of registration.tools) {
       const availability = combinedAvailability(
         instancesOf(registration, tool).map((instance) =>
-          availabilityOf(instance, tool.methodName)
+          availabilityNow(instance, tool.methodName)
         )
       );
       const listed = tools.get(tool.name);
@@ -575,42 +577,17 @@ export function listRegisteredPomTools(): ({
 }
 
 /**
- * Package-internal: refuses a call of `tool`, of Page Object `pomId`, on the
- * instance a ref resolved to, the one in the collection item whose root is
- * `element`, when the last observation found that instance unavailable: the
- * tool is listed available because another instance is.
+ * `instance`'s availability for `methodName` now. An observation whose root
+ * element has since left the page is stale: the instance reads as absent
+ * until the next probe observes it again, so no call runs on it.
  */
-function assertInstanceAvailable(
-  pomId: string,
-  tool: ScopedPomTool,
-  element: Element
-) {
-  const registration = [...registeredPoms].find(
-    (candidate) => candidate.id === pomId
-  );
-  const instance =
-    registration &&
-    instancesOf(registration, tool).find(
-      (candidate) => candidate.item?.root?.element === element
-    );
-  if (!instance) return;
-  const state = availabilityOf(instance, tool.methodName);
-  if (!state.available)
-    throw new RuntimeStateError(unavailableToolMessage(tool.name, state));
-}
-
-/**
- * Package-internal: how a refused call of an unavailable tool reads:
- * `<tool> is unavailable: <reason>.`, or without the reason when there is none.
- */
-export function unavailableToolMessage(
-  toolName: string,
-  { present, reason }: ToolAvailability
-) {
-  const why = present ? reason : "its Page Object is not on the page";
-  return why === undefined
-    ? `${toolName} is unavailable.`
-    : `${toolName} is unavailable: ${why}.`;
+function availabilityNow(
+  instance: PomInstanceObservation,
+  methodName: string
+): ToolAvailability {
+  if (instance.root?.element?.isConnected === false)
+    return { present: false, available: false };
+  return availabilityOf(instance, methodName, latestPageStateRef);
 }
 
 /**
@@ -634,25 +611,36 @@ export function listCollectionToolItems(): Map<string, CollectionToolItem[]> {
   for (const registration of registeredPoms) {
     for (const tool of registration.tools) {
       if (tool.collectionPath === undefined) continue;
-      const items = instancesOf(registration, tool).flatMap((instance) => {
-        const root = instance.item?.root;
-        return instance.item && root && isRootPresent(root)
-          ? [
-              {
-                label: `${registration.id}.${instance.item.path}`,
-                element: root.element,
-                ...availabilityOf(instance, tool.methodName),
-              },
-            ]
-          : [];
-      });
       itemsByTool.set(tool.name, [
         ...(itemsByTool.get(tool.name) ?? []),
-        ...items,
+        ...collectionItemsOf(registration, tool),
       ]);
     }
   }
   return itemsByTool;
+}
+
+/**
+ * The present items `tool` of `registration` goes through, as last observed,
+ * each with the tool's verdict on it: what the Goal Loop offers and what a
+ * call on an item is refused by.
+ */
+function collectionItemsOf(
+  registration: ObservedRegisteredPom,
+  tool: ScopedPomTool
+): CollectionToolItem[] {
+  return instancesOf(registration, tool).flatMap((instance) => {
+    const root = instance.item?.root;
+    return instance.item && root && isRootPresent(root)
+      ? [
+          {
+            label: `${registration.id}.${instance.item.path}`,
+            element: root.element,
+            ...availabilityNow(instance, tool.methodName),
+          },
+        ]
+      : [];
+  });
 }
 
 export function subscribeToRegisteredPoms(subscriber: () => void) {
@@ -671,12 +659,15 @@ function notifySubscribers() {
  */
 export function announceRegisteredPomChange() {
   const obstructed = [...registeredPoms].some((registration) =>
-    registration.instances?.all.some((instance) => instance.root?.obstruction)
+    registration.instances?.all.some(
+      (instance) => instance.root?.inTheWay.length
+    )
   );
   if (obstructed) notifySubscribers();
 }
 
-function createRegisteredTools(manifest: PomManifest, instance: object) {
+function createRegisteredTools(registration: ObservedRegisteredPom) {
+  const { manifest, instance } = registration;
   const pageTools = manifest.tools.map((tool) =>
     createRegisteredTool(manifest.className, instance, tool)
   );
@@ -687,13 +678,7 @@ function createRegisteredTools(manifest: PomManifest, instance: object) {
     if (member.kind !== "component") return [];
     const component = components.get(member.componentClassName);
     if (!component) return [];
-    return createComponentTools(
-      manifest.className,
-      instance,
-      [member],
-      component,
-      components
-    );
+    return createComponentTools(registration, [member], component, components);
   });
   return [...pageTools, ...componentTools];
 }
@@ -716,8 +701,7 @@ function createRegisteredTool(
 }
 
 function createComponentTools(
-  pomId: string,
-  pageInstance: object,
+  registration: ObservedRegisteredPom,
   path: readonly PomComponentMemberManifest[],
   component: PomComponentManifest,
   components: ReadonlyMap<string, PomComponentManifest>,
@@ -726,15 +710,14 @@ function createComponentTools(
   if (componentPath.has(component.className)) return [];
   const nextComponentPath = new Set(componentPath).add(component.className);
   const tools = component.tools.map((action) =>
-    createComponentTool(pomId, pageInstance, path, component, action)
+    createComponentTool(registration, path, component, action)
   );
   const nestedTools = component.members.flatMap((member) => {
     if (member.kind !== "component") return [];
     const childComponent = components.get(member.componentClassName);
     if (!childComponent) return [];
     return createComponentTools(
-      pomId,
-      pageInstance,
+      registration,
       [...path, member],
       childComponent,
       components,
@@ -745,12 +728,12 @@ function createComponentTools(
 }
 
 function createComponentTool(
-  pomId: string,
-  pageInstance: object,
+  registration: ObservedRegisteredPom,
   path: readonly PomComponentMemberManifest[],
   component: PomComponentManifest,
   action: ToolManifest
 ): CallerAwarePomTool {
+  const { id: pomId, instance: pageInstance } = registration;
   const componentPath = componentPathFor(path);
   const collectionCount = path.filter((member) => member.collection).length;
   if (collectionCount === 0)
@@ -767,10 +750,17 @@ function createComponentTool(
   const itemDepth = path.map((member) => member.collection).lastIndexOf(true);
   const execute: CallerAwarePomTool["execute"] = async (input, { cursor }) => {
     const values = validatedArguments(wrapper, input);
-    const ref = requireStructuralRef(values[0] as string);
+    const ref = values[0] as string;
     const args = values[1] ?? {};
     const toolPath = `${pomId}.${publicComponentPath(path)}`;
-    const element = await resolveRefToElement(ref, wrapper.toolName, toolPath);
+    const label = `call ${wrapper.toolName} on`;
+    // A Page Object Root without a role of its own gets a synthetic ref.
+    const { element } = await resolveRef(
+      ref,
+      { synthetic: "allow" },
+      label,
+      document
+    );
     const componentInstance = await resolveComponentByElementStep(
       pageInstance,
       path,
@@ -779,10 +769,18 @@ function createComponentTool(
     );
     if (!componentInstance || !isRecord(componentInstance)) {
       throw new RefResolutionError(
-        `Ref "${ref}" does not match a present ${component.className} instance at ${toolPath} (tool ${wrapper.toolName}).`
+        refFailure(
+          label,
+          ref,
+          `it is not an instance of ${component.className} at ${toolPath}`
+        )
       );
     }
-    assertInstanceAvailable(pomId, tool, element);
+    // An item the last observation did not find is not on the page yet.
+    const item = collectionItemsOf(registration, tool).find(
+      (candidate) => candidate.element === element
+    );
+    assertAvailable(tool.name, item ?? { present: false, available: false });
     return await performPageObjectAction(
       componentInstance,
       action,
@@ -897,23 +895,6 @@ async function resolveSingularComponent(
   return current;
 }
 
-/**
- * The element a collection tool's ref names now. A synthetic ref resolves
- * too: a Page Object Root without a role of its own gets one in snapshot.
- */
-async function resolveRefToElement(
-  ref: AriaRef,
-  toolName: string,
-  toolPath: string
-): Promise<Element> {
-  const resolution = (await resolvePageStateRefs(document, ref))[0]!;
-  if (resolution.status === "unresolved")
-    throw new RefResolutionError(
-      `Ref "${ref}" does not match a present instance at ${toolPath} (tool ${toolName}): ${resolution.reason}.`
-    );
-  return resolution.node.element;
-}
-
 async function resolveComponentByElementStep(
   current: unknown,
   path: readonly PomComponentMemberManifest[],
@@ -1022,7 +1003,7 @@ async function observeDeclaredRoot(
 ): Promise<ObservedPomRoot> {
   try {
     const root = await readMember(instance, rootMember);
-    if (isLocator(root)) return (await observeRoot(root)).root;
+    if (isLocator(root)) return (await observePomRoot(root)).root;
   } catch {
     // A root that cannot be read is not on the page.
   }
@@ -1033,34 +1014,8 @@ const absentRoot: ObservedPomRoot = {
   element: undefined,
   present: false,
   available: false,
-  obstruction: undefined,
+  inTheWay: [],
 };
-
-async function observeRoot(
-  locator: Locator
-): Promise<{ count: number; root: ObservedPomRoot }> {
-  const count = await locator.count();
-  const elements = locatorElements(locator);
-  const element =
-    count === 1 && elements.length === 1 ? elements[0] : undefined;
-  const state =
-    element === undefined
-      ? { present: false, available: false }
-      : await observePomRoot(locator);
-  const current = locatorElements(locator);
-  const sameElement = current.length === 1 && current[0] === element;
-  const present = sameElement && state.present;
-  const available = sameElement && state.available;
-  return {
-    count,
-    root: {
-      element: sameElement ? element : undefined,
-      present,
-      available,
-      obstruction: present && !available ? state.obstruction : undefined,
-    },
-  };
-}
 
 async function collectPomTargets(
   instance: object,
@@ -1202,7 +1157,7 @@ async function probeComponentMember(
       });
       continue;
     }
-    const { count, root } = await observeRoot(component.root);
+    const { count, root } = await observePomRoot(component.root);
     observations.push({
       memberName: `${path}.root`,
       kind: "component-root",

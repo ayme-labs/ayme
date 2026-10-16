@@ -20,7 +20,7 @@ import { acceptedRefNodes, type TargetField } from "./elementTools";
 import {
   listCollectionToolItems,
   listAvailablePomTools,
-  type RegisteredPomRoot,
+  type CollectionToolItem,
 } from "./registry";
 
 /**
@@ -112,13 +112,28 @@ export function listValueQuestionId(
 const parameterNamesOf = (tool: GoalLoopOperation) =>
   tool.args.map((arg) => arg.name);
 
+/**
+ * The parameters a caller passes, for a handover: a tuple slot stands for its
+ * outermost tuple, named once.
+ */
+function wholeParameters(args: readonly ArgumentSpec[]): string[] {
+  return [
+    ...new Set(
+      args.map((arg) => (arg.tuples ? arg.tuples[0]!.path.join(".") : arg.name))
+    ),
+  ];
+}
+
 // --- Operations offered in stage one ---
 
 /** A closed set of values the model may pick one of. */
 type ClosedSet =
   | { kind: "ref"; filter: (element: Element) => boolean }
-  /** The present roots of one collection path; no filter is involved. */
-  | { kind: "instance"; roots: readonly RegisteredPomRoot[] }
+  /**
+   * The present items of one collection path, each with the tool's verdict on
+   * it; no filter is involved.
+   */
+  | { kind: "instance"; roots: readonly CollectionToolItem[] }
   | { kind: "values"; values: readonly JsonPrimitive[] };
 
 /**
@@ -127,25 +142,46 @@ type ClosedSet =
  */
 export type GoalValues = Readonly<Record<string, string | number>>;
 
-/** The Goal Values a parameter outside the closed sets can take. */
-type FreeKind = "string" | "number" | "integer" | "string_list";
+/** The Goal Values a parameter or list item outside the closed sets can take. */
+type FreeKind = "string" | "number" | "integer";
+
+/** A key of an operation's input: a property name, or a tuple slot's index. */
+type PathKey = string | number;
+
+/** A tuple some parameters are slots of, and how many slots it requires. */
+type TupleSpec = {
+  path: readonly PathKey[];
+  minItems: number;
+  optional: boolean;
+};
 
 /** One parameter of an operation, classified by what the model may fill. */
 type ArgumentSpec = {
-  /** The parameter's name, dotted inside a nested object. */
+  /** The parameter's name, dotted inside a nested object or tuple. */
   name: string;
   /** Where the chosen value goes in the operation's input. */
-  path: readonly string[];
+  path: readonly PathKey[];
   optional: boolean;
   /** The parameter's own description, when its schema carries one. */
   description?: string;
-  /** null = a value the model cannot pick from a closed set. */
+  /**
+   * The values the model may pick from; null when there are none. A union of
+   * primitives carries its enum values, booleans and null here, next to the
+   * Goal Values its other variants take.
+   */
   closedSet: ClosedSet | null;
   /**
-   * Outside the closed sets: the Goal Values that fit the parameter. Absent
-   * when none ever can, such as for an object.
+   * The Goal Values that fit the parameter, by type. Absent when none ever
+   * can, such as for an object or a map.
    */
-  free?: FreeKind;
+  free?: readonly FreeKind[];
+  /**
+   * A list: each value of its closed set and each fitting Goal Value is asked
+   * about on its own, and the ones included are the list.
+   */
+  list?: true;
+  /** The tuples the parameter is a slot of, outermost first. */
+  tuples?: readonly TupleSpec[];
 };
 
 export type GoalLoopOperation = {
@@ -167,34 +203,117 @@ export type ToolOption = {
   tool: GoalLoopOperation;
 };
 
-/** A ref, an enum value or a boolean: what the model is allowed to fill. */
-function closedSetOf(schema: JsonSchema): ClosedSet | null {
-  if (schema.enum) return { kind: "values", values: schema.enum };
-  if (schema.type === "boolean")
-    return { kind: "values", values: [true, false] };
-  return null;
+/** What a primitive schema may be filled with. */
+type PrimitiveFill = { values: JsonPrimitive[]; free: FreeKind[] };
+
+function closedFill(values: JsonPrimitive[]): PrimitiveFill {
+  return { values, free: [] };
 }
 
-function freeKindOf(schema: JsonSchema): FreeKind | undefined {
+/**
+ * The closed values (enum values, booleans, null) and the Goal Value kinds a
+ * primitive schema, or a union of them, takes; undefined for any other schema.
+ */
+function primitiveFillOf(schema: JsonSchema): PrimitiveFill | undefined {
+  if (schema.anyOf) {
+    const fills = schema.anyOf.map(primitiveFillOf);
+    if (fills.includes(undefined)) return undefined;
+    // The build plugin merges literals of one type into one enum, so the
+    // variants never share a value or a kind.
+    return {
+      values: fills.flatMap((fill) => fill!.values),
+      free: fills.flatMap((fill) => fill!.free),
+    };
+  }
+  if (schema.enum) return closedFill([...schema.enum]);
   switch (schema.type) {
+    case "boolean":
+      return closedFill([true, false]);
+    case "null":
+      return closedFill([null]);
     case "string":
     case "number":
     case "integer":
-      return schema.type;
-    case "array":
-      return schema.items?.type === "string" ? "string_list" : undefined;
+      return { values: [], free: [schema.type] };
     default:
       return undefined;
   }
 }
 
-function specOf(
-  parameter: ToolParameter,
-  prefix: readonly string[] = [],
-  closedSet = closedSetOf(parameter.schema)
-): ArgumentSpec {
+/**
+ * What the items of an array schema may be filled with. A list of booleans,
+ * of objects or of lists is never filled.
+ */
+function listFillOf(schema: JsonSchema): PrimitiveFill | undefined {
+  if (!schema.items || schema.items.type === "boolean") return undefined;
+  return primitiveFillOf(schema.items);
+}
+
+/** A parameter, or a tuple slot, read the way `specsOf` reads it. */
+type ParameterToClassify = {
+  name: PathKey;
+  optional: boolean;
+  schema: JsonSchema;
+};
+
+/**
+ * Classify a parameter. A tuple is not one parameter but its slots, each
+ * classified on its own like an object property; a slot of an optional tuple,
+ * or past the tuple's required ones, is optional. Elements after the slots,
+ * as in `[string, ...number[]]`, are never filled.
+ */
+function specsOf(
+  parameter: ParameterToClassify,
+  prefix: readonly PathKey[] = [],
+  tuples: readonly TupleSpec[] = []
+): ArgumentSpec[] {
+  const { schema } = parameter;
   const path = [...prefix, parameter.name];
-  const free = closedSet ? undefined : freeKindOf(parameter.schema);
+  if (schema.prefixItems) {
+    const tuple = {
+      path,
+      minItems: schema.minItems ?? 0,
+      optional: parameter.optional,
+    };
+    return schema.prefixItems.flatMap((slot, index) =>
+      specsOf(
+        {
+          name: index,
+          optional: parameter.optional || index >= tuple.minItems,
+          schema: slot,
+        },
+        path,
+        [...tuples, tuple]
+      )
+    );
+  }
+  const list = schema.type === "array";
+  const fill = list ? listFillOf(schema) : primitiveFillOf(schema);
+  return [
+    {
+      ...specBase(path, parameter),
+      closedSet: fill?.values.length
+        ? { kind: "values", values: fill.values }
+        : null,
+      ...(fill?.free.length ? { free: fill.free } : {}),
+      ...(list ? { list: true as const } : {}),
+      ...(tuples.length ? { tuples } : {}),
+    },
+  ];
+}
+
+/** A parameter whose closed set is given, such as the ref a tool acts on. */
+function closedSpecOf(
+  parameter: ToolParameter,
+  closedSet: ClosedSet
+): ArgumentSpec {
+  return { ...specBase([parameter.name], parameter), closedSet };
+}
+
+function specBase(
+  path: readonly PathKey[],
+  parameter: ParameterToClassify
+): Pick<ArgumentSpec, "name" | "path" | "optional" | "description"> {
   return {
     name: path.join("."),
     path,
@@ -202,9 +321,14 @@ function specOf(
     ...(parameter.schema.description
       ? { description: parameter.schema.description }
       : {}),
-    closedSet,
-    ...(free ? { free } : {}),
   };
+}
+
+/** Classify every parameter of an action, its tuples' slots one by one. */
+export function specsOfParameters(
+  parameters: readonly ToolParameter[]
+): ArgumentSpec[] {
+  return parameters.flatMap((parameter) => specsOf(parameter));
 }
 
 /** The parameters of an object schema, each a `ToolParameter`. */
@@ -222,10 +346,10 @@ function parametersOfObjectSchema(schema: JsonSchema): ToolParameter[] {
 /** Read an object schema as the parameters the loop may fill, under `prefix`. */
 function specsOfObjectSchema(
   schema: JsonSchema,
-  prefix: readonly string[] = []
+  prefix: readonly PathKey[] = []
 ): ArgumentSpec[] {
-  return parametersOfObjectSchema(schema).map((parameter) =>
-    specOf(parameter, prefix)
+  return parametersOfObjectSchema(schema).flatMap((parameter) =>
+    specsOf(parameter, prefix)
   );
 }
 
@@ -235,12 +359,12 @@ function specsOfElementToolSchema(
   targetField: TargetField,
   refFilter: (element: Element) => boolean
 ): ArgumentSpec[] {
-  return parametersOfObjectSchema(schema).map((parameter) =>
+  return parametersOfObjectSchema(schema).flatMap((parameter) =>
     // Its `ref` or `target` is the Structural Ref it acts on; the elements its
     // filter keeps are the closed set (ADR-0023).
     parameter.name === targetField
-      ? specOf(parameter, [], { kind: "ref", filter: refFilter })
-      : specOf(parameter)
+      ? [closedSpecOf(parameter, { kind: "ref", filter: refFilter })]
+      : specsOf(parameter)
   );
 }
 
@@ -251,7 +375,7 @@ function specsOfElementToolSchema(
  */
 function specsOfCollectionTool(
   parameters: readonly ToolParameter[],
-  roots: readonly RegisteredPomRoot[]
+  roots: readonly CollectionToolItem[]
 ): ArgumentSpec[] {
   return parameters.flatMap((parameter) =>
     parameter.name === "ref"
@@ -264,6 +388,25 @@ function specsOfCollectionTool(
           },
         ]
       : specsOfObjectSchema(parameter.schema, [parameter.name])
+  );
+}
+
+/**
+ * The parameters a caller must pass, by name: for a tool that goes through a
+ * collection, its `ref` and the required ones inside `args`, dotted.
+ */
+export function requiredParamsOf(
+  parameters: readonly ToolParameter[],
+  throughCollection: boolean
+): string[] {
+  return parameters.flatMap((parameter) =>
+    throughCollection && parameter.name !== "ref"
+      ? parametersOfObjectSchema(parameter.schema)
+          .filter((inner) => !inner.optional)
+          .map((inner) => `${parameter.name}.${inner.name}`)
+      : parameter.optional
+        ? []
+        : [parameter.name]
   );
 }
 
@@ -294,7 +437,7 @@ export function buildToolOptions(): ToolOption[] {
     const roots = collectionRoots.get(t.name);
     const args = roots
       ? specsOfCollectionTool(t.parameters, roots)
-      : t.parameters.map((parameter) => specOf(parameter));
+      : specsOfParameters(t.parameters);
     return {
       name: t.name,
       description: t.description,
@@ -304,9 +447,8 @@ export function buildToolOptions(): ToolOption[] {
           t.name,
           roots ? { args: {}, ...(input as Record<string, unknown>) } : input
         ),
-      requiredParams: args
-        .filter((arg) => !arg.optional)
-        .map((arg) => arg.name),
+      // A tuple is required as a whole, not slot by slot.
+      requiredParams: requiredParamsOf(t.parameters, roots !== undefined),
       args,
     };
   });
@@ -345,7 +487,7 @@ type QuestionBase = {
   /** The parameter the answer fills: its name, dotted inside a nested object. */
   parameter: string;
   /** Where the chosen value goes in the operation's input. */
-  path: readonly string[];
+  path: readonly PathKey[];
   instructions: string;
 };
 
@@ -353,9 +495,33 @@ type QuestionBase = {
 export type ArgumentQuestion = QuestionBase & {
   type: "choice";
   options: ArgumentOption[];
+  /**
+   * Set on a question over the page's elements: a ref, its chunks and its
+   * run-off. `receiving` names the Goal Values the operation will enter into
+   * the element, when stage one already chose them.
+   */
+  target?: { receiving?: string };
+  /**
+   * Set on a question over a collection's items: the present items it does
+   * not offer, and why.
+   */
+  leftOut?: LeftOutItem[];
 };
 
-/** Whether one Goal Value belongs in a list parameter. */
+/** A present collection item the loop did not offer, and why, as a fact. */
+export type LeftOutItem = { label: string; why: string };
+
+/**
+ * The sentence naming the items a collection's question left out, each with
+ * why. Empty when none was.
+ */
+export function describeLeftOut(leftOut: readonly LeftOutItem[]): string {
+  if (leftOut.length === 0) return "";
+  const named = leftOut.map(({ label, why }) => `${label} (${why})`);
+  return `Left out: ${named.join(", ")}.`;
+}
+
+/** Whether one value or Goal Value belongs in a list parameter. */
 export type ListValueQuestion = QuestionBase & {
   type: "noul";
   option: ArgumentOption;
@@ -381,7 +547,13 @@ export type ArgumentPlan =
   /** No element on the page is one the operation's ref may address. */
   | { kind: "needs_ref_choice"; parameter: string }
   /** The instances of a collection do not make a choice the model can answer. */
-  | { kind: "needs_instance_choice"; parameter: string; optionCount: number }
+  | {
+      kind: "needs_instance_choice";
+      parameter: string;
+      optionCount: number;
+      /** The present items the loop could not offer, and why. */
+      leftOut: LeftOutItem[];
+    }
   /** The values of a closed set do not make a choice the model can answer. */
   | { kind: "needs_value_choice"; parameter: string; optionCount: number };
 
@@ -404,29 +576,44 @@ function describeNode(node: StructuralNode): string {
 
 /**
  * One option per present root of a collection path, keyed by the ref the same
- * capture gave that root's element. A root the capture holds no ref for cannot
- * be targeted and is left out.
+ * capture gave that root's element. A root the tool is unavailable on would be
+ * refused, and a root the capture holds no ref for cannot be targeted; both are
+ * left out, each with why.
  */
 function instanceOptions(
-  roots: readonly RegisteredPomRoot[],
+  roots: readonly CollectionToolItem[],
   capture: PageStateCapture
-): ArgumentOption[] {
+): { options: ArgumentOption[]; leftOut: LeftOutItem[] } {
   const refsByElement = new Map<Element, AriaRef>();
   for (const [ref, element] of capture.elementsByRef)
     refsByElement.set(element, ref);
 
-  return roots.flatMap((root) => {
+  const options: ArgumentOption[] = [];
+  const leftOut: LeftOutItem[] = [];
+  for (const root of roots) {
+    if (!root.available) {
+      leftOut.push({
+        label: root.label,
+        why:
+          root.reason === undefined
+            ? "unavailable"
+            : `unavailable: ${root.reason}`,
+      });
+      continue;
+    }
     const ref = refsByElement.get(root.element);
     const node = ref === undefined ? null : capture.tree.getNode(ref);
-    if (ref === undefined || node === null) return [];
-    return [
-      {
-        key: ref,
-        description: `${root.label} (${describeNode(node)})`,
-        value: ref,
-      },
-    ];
-  });
+    if (ref === undefined || node === null) {
+      leftOut.push({ label: root.label, why: "no ref in the page state" });
+      continue;
+    }
+    options.push({
+      key: ref,
+      description: `${root.label} (${describeNode(node)})`,
+      value: ref,
+    });
+  }
+  return { options, leftOut };
 }
 
 function valueOptions(values: readonly JsonPrimitive[]): ArgumentOption[] {
@@ -440,7 +627,6 @@ function valueOptions(values: readonly JsonPrimitive[]): ArgumentOption[] {
 function fits(kind: FreeKind, value: string | number): boolean {
   switch (kind) {
     case "string":
-    case "string_list":
       return typeof value === "string";
     case "number":
       return typeof value === "number";
@@ -454,12 +640,12 @@ function fits(kind: FreeKind, value: string | number): boolean {
  * values map, keyed by its label. The model reads `label: value`.
  */
 function goalValueOptions(
-  kind: FreeKind | undefined,
+  kinds: readonly FreeKind[] | undefined,
   values: GoalValues
 ): ArgumentOption[] {
-  if (!kind) return [];
+  if (!kinds) return [];
   return Object.entries(values)
-    .filter(([, value]) => fits(kind, value))
+    .filter(([, value]) => kinds.some((kind) => fits(kind, value)))
     .map(([label, value]) => ({
       key: label,
       description: `${label}: ${value}`,
@@ -493,26 +679,35 @@ function describeOperation(tool: GoalLoopOperation): string {
   return `The operation is "${tool.name}": ${tool.description}`;
 }
 
-/** The sentence every question about a ref parameter starts with. */
-function pickElementSentence(parameter: string): string {
-  return `Pick the element this operation acts on as its ${parameter} parameter.`;
+/**
+ * The sentence every question about a ref parameter starts with. With the
+ * Goal Values the operation will enter, the element is picked as the one that
+ * should receive them.
+ */
+function pickElementSentence(parameter: string, receiving?: string): string {
+  return receiving
+    ? `Pick the element that should receive ${receiving}, as this operation's ${parameter} parameter.`
+    : `Pick the element this operation acts on as its ${parameter} parameter.`;
 }
 
 function argumentInstructions(
   tool: GoalLoopOperation,
-  arg: ArgumentSpec
+  arg: ArgumentSpec,
+  receiving?: string
 ): string {
   const parameter = describeParameter(arg);
   const operation = describeOperation(tool);
   switch (arg.closedSet?.kind) {
     case "ref":
-      return `${pickElementSentence(parameter)} ${operation}`;
+      return `${pickElementSentence(parameter, receiving)} ${operation}`;
     case "instance":
       return `Pick the instance this operation acts on as its ${parameter} parameter. ${operation}`;
     case undefined:
       return `Pick the Goal Value to use as the ${parameter} parameter of this operation. ${operation}`;
     default:
-      return `Pick the value for the ${parameter} parameter of this operation. ${operation}`;
+      return arg.free
+        ? `Pick the value or Goal Value to use as the ${parameter} parameter of this operation. ${operation}`
+        : `Pick the value for the ${parameter} parameter of this operation. ${operation}`;
   }
 }
 
@@ -526,7 +721,8 @@ function argumentInstructions(
 function chunkedRefQuestions(
   tool: GoalLoopOperation,
   arg: ArgumentSpec,
-  options: readonly ArgumentOption[]
+  options: readonly ArgumentOption[],
+  receiving?: string
 ): ArgumentQuestion[] {
   const count = Math.ceil(options.length / MAX_CHUNK_ELEMENTS);
   const size = Math.ceil(options.length / count);
@@ -540,7 +736,7 @@ function chunkedRefQuestions(
       parameter: arg.name,
       path: arg.path,
       instructions:
-        `${pickElementSentence(parameter)} ` +
+        `${pickElementSentence(parameter, receiving)} ` +
         `The page holds ${options.length} candidate elements, split in document order over ${count} questions; ` +
         `this one offers elements ${from + 1} to ${from + chunk.length}. ` +
         `Choose "${NONE_OF_THESE_KEY}" when the element is not among these. ` +
@@ -552,6 +748,7 @@ function chunkedRefQuestions(
           description: `None of these; the element is offered by another "${arg.name}" question, or no element fits.`,
         },
       ],
+      target: receiving ? { receiving } : {},
     };
   });
 }
@@ -572,9 +769,37 @@ function runOffQuestion(
     path: chunk.path,
     instructions:
       `Several "${chunk.parameter}" questions each named an element. ` +
-      `Pick the one element this operation acts on as its "${chunk.parameter}" parameter. ` +
+      (chunk.target?.receiving
+        ? `Pick the one element that should receive ${chunk.target.receiving}, as this operation's "${chunk.parameter}" parameter. `
+        : `Pick the one element this operation acts on as its "${chunk.parameter}" parameter. `) +
       describeOperation(tool),
     options: [...named],
+    target: chunk.target ?? {},
+  };
+}
+
+/**
+ * A required choice of a collection item ends with an option that names no
+ * item, and its instructions say when to choose it, so the model is never
+ * made to act on an item the goal does not mean. An optional one says the
+ * same by leaving the parameter unset. A ref within the cap gets none: on the
+ * bench goal set, Jev answered it where an offered element fitted.
+ */
+function withNoneOfThese(
+  arg: ArgumentSpec,
+  kind: ClosedSet["kind"],
+  question: { options: ArgumentOption[]; instructions: string }
+): { options: ArgumentOption[]; instructions: string } {
+  if (arg.optional || kind !== "instance") return question;
+  return {
+    options: [
+      ...question.options,
+      {
+        key: NONE_OF_THESE_KEY,
+        description: "None of these; the item is not offered.",
+      },
+    ],
+    instructions: `${question.instructions} Choose "${NONE_OF_THESE_KEY}" when the item is not among these.`,
   };
 }
 
@@ -585,21 +810,29 @@ const leaveUnsetOption = (arg: ArgumentSpec): ArgumentOption => ({
 });
 
 /**
- * One question per Goal Value that fits a list parameter, asked side by side:
- * does this value belong in the list?
+ * One question per value of a list parameter's closed set and per Goal Value
+ * that fits it, asked side by side: does this value belong in the list?
  */
 function listValueQuestions(
   tool: GoalLoopOperation,
   arg: ArgumentSpec,
-  options: readonly ArgumentOption[]
+  values: GoalValues
 ): ListValueQuestion[] {
+  const closedValues =
+    arg.closedSet?.kind === "values" ? arg.closedSet.values : [];
+  const closed = valueOptions(closedValues);
+  // An answer is recorded by key, so `1` and `"1"` must not share one.
+  const options = withUniqueKeys([
+    ...closed,
+    ...goalValueOptions(arg.free, values),
+  ]);
   return options.map((option, index) => ({
     type: "noul",
     id: listValueQuestionId(arg.name, index + 1, parameterNamesOf(tool)),
     parameter: arg.name,
     path: arg.path,
     instructions:
-      `Does the Goal Value "${option.description}" belong in the list ${describeParameter(arg)} of this operation? ` +
+      `Does ${index < closed.length ? "the value" : "the Goal Value"} "${option.description}" belong in the list ${describeParameter(arg)} of this operation? ` +
       describeOperation(tool),
     option,
   }));
@@ -613,16 +846,17 @@ function listValueQuestions(
 export function planArguments(
   tool: GoalLoopOperation,
   capture: PageStateCapture,
-  values: GoalValues = {}
+  values: GoalValues = {},
+  presets: readonly ValuePreset[] = []
 ): ArgumentPlan {
-  const unfilled = tool.args
-    .filter(
+  const unfilled = wholeParameters(
+    tool.args.filter(
       (arg) =>
         !arg.optional &&
         arg.closedSet === null &&
         goalValueOptions(arg.free, values).length === 0
     )
-    .map((arg) => arg.name);
+  );
   if (unfilled.length > 0)
     return {
       kind: "needs_free_value",
@@ -630,17 +864,22 @@ export function planArguments(
       unfilled,
     };
 
+  const receiving = receivingPhrase(presets);
   const questions: StageTwoQuestion[] = [];
   for (const arg of tool.args) {
+    // A list nothing can go in is optional by now, and left out.
+    if (arg.list) {
+      questions.push(...listValueQuestions(tool, arg, values));
+      continue;
+    }
     const closedSet = arg.closedSet;
+    const goalValues = goalValueOptions(arg.free, values);
     if (!closedSet) {
-      const candidates = goalValueOptions(arg.free, values);
+      // Chosen in stage one: nothing left to ask.
+      if (presets.some((preset) => preset.parameter === arg.name)) continue;
+      const candidates = goalValues;
       // An optional parameter no Goal Value fits is left out.
       if (candidates.length === 0) continue;
-      if (arg.free === "string_list") {
-        questions.push(...listValueQuestions(tool, arg, candidates));
-        continue;
-      }
       // MAX_GOAL_VALUES leaves room for the extra option within the cap.
       questions.push({
         type: "choice",
@@ -661,37 +900,50 @@ export function planArguments(
       continue;
     }
 
-    const options = withUniqueKeys([
-      ...(closedSet.kind === "ref"
-        ? refOptions(closedSet.filter, capture)
+    const offered: { options: ArgumentOption[]; leftOut?: LeftOutItem[] } =
+      closedSet.kind === "ref"
+        ? { options: refOptions(closedSet.filter, capture) }
         : closedSet.kind === "instance"
           ? instanceOptions(closedSet.roots, capture)
-          : valueOptions(closedSet.values)),
+          : { options: valueOptions(closedSet.values) };
+    const options = withUniqueKeys([
+      ...offered.options,
+      // A union of primitives offers its fitting Goal Values next to them.
+      ...goalValues,
       ...(arg.optional ? [leaveUnsetOption(arg)] : []),
     ]);
+    const asked = withNoneOfThese(arg, closedSet.kind, {
+      options,
+      instructions: argumentInstructions(tool, arg, receiving),
+    });
 
     // A ref whose elements outnumber the cap is asked in chunks; other closed
     // sets are not.
     if (closedSet.kind === "ref" && options.length > MAX_CHOICE_OPTIONS) {
-      questions.push(...chunkedRefQuestions(tool, arg, options));
+      questions.push(...chunkedRefQuestions(tool, arg, options, receiving));
       continue;
     }
 
     // A question outside the limit is never sent. An optional parameter the
     // loop cannot ask about is left unset, like the choice it would have had.
-    if (options.length === 0 || options.length > MAX_CHOICE_OPTIONS) {
+    if (options.length === 0 || asked.options.length > MAX_CHOICE_OPTIONS) {
       if (arg.optional) continue;
       // A ref gets here only with no element left to offer.
       if (closedSet.kind === "ref")
         return { kind: "needs_ref_choice", parameter: arg.name };
-      return {
-        kind:
-          closedSet.kind === "values"
-            ? "needs_value_choice"
-            : "needs_instance_choice",
-        parameter: arg.name,
-        optionCount: options.length,
-      };
+      const parameter = wholeParameters([arg])[0]!;
+      return offered.leftOut
+        ? {
+            kind: "needs_instance_choice",
+            parameter,
+            optionCount: options.length,
+            leftOut: offered.leftOut,
+          }
+        : {
+            kind: "needs_value_choice",
+            parameter,
+            optionCount: options.length,
+          };
     }
 
     questions.push({
@@ -699,11 +951,214 @@ export function planArguments(
       id: arg.name,
       parameter: arg.name,
       path: arg.path,
-      instructions: argumentInstructions(tool, arg),
-      options,
+      instructions: asked.instructions,
+      options: asked.options,
+      ...(closedSet.kind === "ref"
+        ? { target: receiving ? { receiving } : {} }
+        : {}),
+      leftOut: offered.leftOut,
     });
   }
   return { kind: "ask", questions };
+}
+
+// --- Goal Values asked speculatively in stage one ---
+//
+// Stage two asks an operation's questions side by side, so its element would
+// be picked without knowing the value it will receive. A free value is
+// therefore asked in stage one, next to the operation, under an explicit
+// premise: "if the next operation is one of these, which Goal Value does it
+// take?". Code reads the answer only when the chosen operation is one the
+// question covers; an answer naming no Goal Value leaves the parameter to
+// stage two, asked as it is without speculation.
+
+/** At most this many speculative questions ride along with the operation. */
+const MAX_SPECULATIVE_QUESTIONS = 8;
+
+/** The speculative answer for "the next operation is none of these". */
+export const NO_VALUE_NEEDED_KEY = "no_value_needed";
+
+/** A Goal Value question asked before the operation is chosen. */
+export type SpeculativeValueQuestion = {
+  id: string;
+  /** Per operation the question covers: the parameter the answer fills. */
+  covers: readonly { operation: string; parameter: string }[];
+  instructions: string;
+  options: ArgumentOption[];
+};
+
+/** A free value chosen in stage one for the chosen operation. */
+export type ValuePreset = {
+  parameter: string;
+  path: readonly PathKey[];
+  option: ArgumentOption;
+};
+
+/**
+ * The parameters a speculative question may cover: required, single free
+ * values of one kind whose fitting Goal Values leave room in one question for
+ * "no value needed" and "none of these". The others are asked in stage two.
+ */
+function speculativeArgs(tool: GoalLoopOperation, values: GoalValues) {
+  return tool.args.filter((arg) => {
+    if (
+      arg.optional ||
+      arg.closedSet !== null ||
+      arg.list ||
+      arg.free?.length !== 1
+    )
+      return false;
+    const count = goalValueOptions(arg.free, values).length;
+    return count > 0 && count + 2 <= MAX_CHOICE_OPTIONS;
+  });
+}
+
+const quotedList = (names: readonly string[]) =>
+  names.length === 1
+    ? `"${names[0]}"`
+    : `${names
+        .slice(0, -1)
+        .map((name) => `"${name}"`)
+        .join(", ")} or "${names[names.length - 1]}"`;
+
+const textNoun = (kind: FreeKind) => (kind === "string" ? "text" : "number");
+
+/**
+ * The speculative questions for the operations offered. The single-element
+ * tools that take a free parameter of one name and kind share one question:
+ * whichever of them runs, it enters that value into one element. Any other
+ * operation's parameter is a question of its own. Questions are kept in the
+ * order of the operations; past the cap, the parameters left out are asked in
+ * stage two.
+ */
+export function buildSpeculativeValueQuestions(
+  toolOptions: readonly ToolOption[],
+  values: GoalValues = {}
+): SpeculativeValueQuestion[] {
+  type Group = {
+    kind: FreeKind;
+    arg: ArgumentSpec;
+    tools: GoalLoopOperation[];
+    tool?: GoalLoopOperation;
+  };
+  const groups = new Map<string, Group>();
+  for (const { tool } of toolOptions) {
+    const onElement = tool.args.some((arg) => arg.closedSet?.kind === "ref");
+    for (const arg of speculativeArgs(tool, values)) {
+      const kind = arg.free![0]!;
+      const key = JSON.stringify(
+        onElement ? ["element", arg.name, kind] : [tool.name, arg.name]
+      );
+      const group = groups.get(key);
+      if (group) group.tools.push(tool);
+      else if (groups.size < MAX_SPECULATIVE_QUESTIONS)
+        groups.set(key, {
+          kind,
+          arg,
+          tools: [tool],
+          ...(onElement ? {} : { tool }),
+        });
+    }
+  }
+
+  const ids = new Set<string>();
+  return [...groups.values()].map(({ kind, arg, tools, tool }) => {
+    const operations = quotedList(tools.map((each) => each.name));
+    const noun = textNoun(kind);
+    let id = tool ? `value:${tool.name}.${arg.name}` : `value:${arg.name}`;
+    while (ids.has(id)) id += "_";
+    ids.add(id);
+    return {
+      id,
+      covers: tools.map((each) => ({
+        operation: each.name,
+        parameter: arg.name,
+      })),
+      instructions: tool
+        ? `If the next operation is ${operations} (${tool.description}), which Goal Value is its ${describeParameter(arg)} parameter?`
+        : `If the next operation is ${operations} and enters ${kind === "string" ? "text" : "a number"} into one element of the page as its "${arg.name}" parameter, which Goal Value is that ${noun}?`,
+      options: withUniqueKeys([
+        ...goalValueOptions([kind], values),
+        {
+          key: NO_VALUE_NEEDED_KEY,
+          description: `No value needed: the next operation is not ${operations}.`,
+        },
+        {
+          key: NONE_OF_THESE_KEY,
+          description: `None of these Goal Values is the ${tool ? `"${arg.name}" value` : noun} to enter.`,
+        },
+      ]),
+    };
+  });
+}
+
+/**
+ * Read the speculative answers that apply to the chosen operation: one that
+ * names a Goal Value presets its parameter. The answers to the questions that
+ * do not cover it are not read.
+ */
+export function readSpeculativeValues(
+  tool: GoalLoopOperation,
+  questions: readonly SpeculativeValueQuestion[],
+  answers: Record<string, unknown>,
+  record: AnswerRecord
+): ValuePreset[] {
+  return questions.flatMap((question) => {
+    const covered = question.covers.find(
+      (cover) => cover.operation === tool.name
+    );
+    if (!covered) return [];
+    const option = readPick(question, answers, record);
+    const arg = tool.args.find((each) => each.name === covered.parameter);
+    return "value" in option && arg
+      ? [{ parameter: arg.name, path: arg.path, option }]
+      : [];
+  });
+}
+
+/** How the element question names the values stage one chose. */
+function receivingPhrase(presets: readonly ValuePreset[]): string | undefined {
+  if (presets.length === 0) return undefined;
+  return presets
+    .map(({ option }) =>
+      typeof option.value === "string"
+        ? `the text "${option.value}" (the Goal Value "${option.key}")`
+        : `the number ${String(option.value)} (the Goal Value "${option.key}")`
+    )
+    .join(" and ");
+}
+
+/**
+ * Complete the arguments once every one is chosen: add the values stage one
+ * chose, keeping the step record's parameters in the operation's order, then
+ * close the tuples (`completeTuples`), whose slots either stage may fill.
+ */
+export function completeArguments(
+  tool: GoalLoopOperation,
+  chosen: ChosenArguments,
+  presets: readonly ValuePreset[]
+): void {
+  addValuePresets(tool, chosen, presets);
+  completeTuples(tool, chosen);
+}
+
+function addValuePresets(
+  tool: GoalLoopOperation,
+  chosen: ChosenArguments,
+  presets: readonly ValuePreset[]
+): void {
+  if (presets.length === 0) return;
+  for (const { path, option } of presets)
+    assignAt(chosen.args, path, option.value);
+  const before = chosen.chosen;
+  chosen.chosen = {};
+  for (const arg of tool.args) {
+    const preset = presets.find((each) => each.parameter === arg.name);
+    const option = preset
+      ? { key: preset.option.key, description: preset.option.description }
+      : before[arg.name];
+    if (option) chosen.chosen[arg.name] = option;
+  }
 }
 
 // --- Decision requests (ADR-0022: built in the browser) ---
@@ -752,7 +1207,13 @@ function renderPage(pageTree: StructuralTree): JsonStructuralNodeForest {
   return renderTree(pageRendering, shown);
 }
 
-export type StepState = Record<string, unknown>;
+/** The state of one step, as both stages of it are sent (or built from) it. */
+export type StepState = {
+  goal?: string;
+  values?: GoalValues;
+  history?: readonly GoalLoopStepRecord[];
+  [field: string]: unknown;
+};
 
 /** The option the model chose for one parameter, exactly as it was offered. */
 export type ChosenOption = { key: string; description: string };
@@ -790,7 +1251,8 @@ export function operationQuestionFits(
 /** Stage one: which operation moves closest to the goal, and is it met. */
 export function buildOperationRequest(
   state: StepState,
-  toolOptions: readonly ToolOption[]
+  toolOptions: readonly ToolOption[],
+  speculative: readonly SpeculativeValueQuestion[] = []
 ): DecisionRequest {
   const criteria: Record<string, string> = {};
   for (const option of toolOptions) criteria[option.key] = option.label;
@@ -799,13 +1261,18 @@ export function buildOperationRequest(
   const questions: DecisionQuestions = {
     operation: {
       type: "choice",
-      instructions: "Which operation moves closest to the goal?",
+      instructions:
+        'Which operation moves closest to the goal? `history` lists the steps already taken, newest last, each with what it changed on the page. A step that changed the page has taken effect; do not choose it again unless the goal needs it a second time. Choose the operation for the next thing the goal still needs; choose "none" when nothing fits.',
       criteria,
     },
     goal_met: {
       type: "noul",
-      instructions: "Has the goal been fully achieved on the current page?",
+      instructions:
+        "Has the goal been fully achieved on the current page? Judge from `page` and `history`.",
     },
+    ...Object.fromEntries(
+      speculative.map((question) => [question.id, choiceQuestion(question)])
+    ),
   };
 
   return { state, questions };
@@ -819,25 +1286,153 @@ export function buildOperationRequest(
  */
 export function buildArgumentRequest(
   state: StepState,
-  argumentQuestions: readonly StageTwoQuestion[]
+  argumentQuestions: readonly StageTwoQuestion[],
+  capture?: PageStateCapture
 ): DecisionRequest {
-  // Built from entries, never by assignment: a key is a Goal Value's label,
-  // which may be any string, `__proto__` included.
+  // A request that only picks an element is sent the candidates instead of
+  // the page: the rest of the page is content unrelated to the decision.
+  const targetOnly =
+    capture !== undefined &&
+    argumentQuestions.every(
+      (question) => question.type === "choice" && question.target
+    );
   const questions: DecisionQuestions = Object.fromEntries(
     argumentQuestions.map((question) => [
       question.id,
       question.type === "noul"
         ? { type: "noul", instructions: question.instructions }
-        : {
-            type: "choice",
-            instructions: question.instructions,
-            criteria: Object.fromEntries(
-              question.options.map((option) => [option.key, option.description])
-            ),
-          },
+        : choiceQuestion(
+            targetOnly
+              ? {
+                  ...question,
+                  instructions: `${question.instructions} ${CANDIDATES_SENTENCE}`,
+                }
+              : question
+          ),
     ])
   );
-  return { state, questions };
+  if (!targetOnly) return { state, questions };
+  const refs = new Set(
+    argumentQuestions.flatMap((question) =>
+      question.type === "choice"
+        ? question.options.flatMap((option) =>
+            "value" in option ? [String(option.value)] : []
+          )
+        : []
+    )
+  );
+  const { goal, values, history } = state;
+  return {
+    state: {
+      goal,
+      ...(values === undefined ? {} : { values }),
+      history,
+      elements: candidateElements(capture.tree, refs),
+    },
+    questions,
+  };
+}
+
+/**
+ * A choice as the request carries it. Built from entries, never by
+ * assignment: a key is a Goal Value's label, which may be any string,
+ * `__proto__` included.
+ */
+function choiceQuestion(question: {
+  instructions: string;
+  options: readonly ArgumentOption[];
+}) {
+  return {
+    type: "choice",
+    instructions: question.instructions,
+    criteria: Object.fromEntries(
+      question.options.map((option) => [option.key, option.description])
+    ),
+  };
+}
+
+const CANDIDATES_SENTENCE =
+  "Each option is an element of `elements` in the state, matched by its `ref`: where it sits on the page and the text around it.";
+
+/** At most this many characters of one text an element description quotes. */
+const MAX_DESCRIPTION_TEXT = 120;
+
+/** At most this many named ancestors an element description lists. */
+const MAX_ANCESTORS = 3;
+
+const clip = (text: string) =>
+  text.length > MAX_DESCRIPTION_TEXT
+    ? `${text.slice(0, MAX_DESCRIPTION_TEXT - 1)}…`
+    : text;
+
+/**
+ * The candidate elements, in document order, each with what the tree carries
+ * about it and around it: its named ancestors (outermost first), the nearest
+ * heading and the nearest text before it, its own text (such as a textbox's
+ * value), its properties and its state.
+ */
+function candidateElements(
+  tree: StructuralTree,
+  refs: ReadonlySet<string>
+): Record<string, unknown>[] {
+  const elements: Record<string, unknown>[] = [];
+  let heading = "";
+  let preceding = "";
+  const visit = (
+    child: StructuralNode["children"][number],
+    parent: StructuralNode | null
+  ) => {
+    if (typeof child === "string") {
+      // A candidate's own text describes it, not the next element.
+      if (!(parent && refs.has(parent.ref)) && child.trim())
+        preceding = child.trim();
+      return;
+    }
+    if (refs.has(child.ref))
+      elements.push(describeCandidate(tree, child, heading, preceding));
+    if (child.role === "heading" && child.name)
+      heading = preceding = child.name;
+    for (const grandchild of child.children) visit(grandchild, child);
+  };
+  for (const root of tree.getRootNodes()) visit(root, null);
+  return elements;
+}
+
+function describeCandidate(
+  tree: StructuralTree,
+  node: StructuralNode,
+  heading: string,
+  preceding: string
+): Record<string, unknown> {
+  const ancestors = tree
+    .getAncestorsOf(node.ref)
+    .filter((ancestor) => ancestor.name !== "")
+    .slice(0, MAX_ANCESTORS)
+    .reverse();
+  const text = node.children
+    .filter((child): child is string => typeof child === "string")
+    .join(" ")
+    .trim();
+  const state = Object.fromEntries(
+    Object.entries(node.state).filter(([, value]) => value !== undefined)
+  );
+  const named = (text: string) =>
+    text !== "" &&
+    text !== node.name &&
+    !ancestors.some((ancestor) => ancestor.name === text);
+  return {
+    ref: node.ref,
+    role: node.role,
+    name: node.name,
+    ...(ancestors.length > 0 ? { within: ancestors.map(describeNode) } : {}),
+    ...(named(heading) ? { heading: clip(heading) } : {}),
+    ...(named(preceding) && preceding !== heading
+      ? { preceding_text: clip(preceding) }
+      : {}),
+    ...(text ? { text: clip(text) } : {}),
+    ...(Object.keys(node.props).length > 0 ? { props: node.props } : {}),
+    ...(Object.keys(state).length > 0 ? { state } : {}),
+  };
 }
 
 // --- Answers ---
@@ -935,10 +1530,26 @@ export type ArgumentAnswers =
    * other parameters; `question` is the run-off to ask before running.
    */
   | { kind: "run_off"; chosen: ChosenArguments; question: ArgumentQuestion }
-  /** Every chunk of one parameter answered "none of these". */
-  | ({ kind: "none_fits"; parameter: string } & AnswerRecord)
-  /** No Goal Value fits a required parameter, by the model's answer. */
-  | ({ kind: "needs_value"; parameter: string } & AnswerRecord);
+  /**
+   * A required collection item answered "none of these", or every chunk of a
+   * ref over the cap did. `leftOut` holds the items a collection's question did
+   * not offer, and why.
+   */
+  | ({
+      kind: "none_fits";
+      parameter: string;
+      leftOut: LeftOutItem[];
+    } & AnswerRecord)
+  /**
+   * Nothing the question offered fits a required parameter, by the model's
+   * answer. `goalValuesOffered` is false for a list asked only about its own
+   * allowed values.
+   */
+  | ({
+      kind: "needs_value";
+      parameter: string;
+      goalValuesOffered: boolean;
+    } & AnswerRecord);
 
 /**
  * The option the model picked for one question. Model output is never read as
@@ -947,7 +1558,7 @@ export type ArgumentAnswers =
  * recorded under the question id.
  */
 function readPick(
-  question: ArgumentQuestion,
+  question: Pick<ArgumentQuestion, "id" | "options">,
   answers: Record<string, unknown>,
   record: AnswerRecord
 ): ArgumentOption {
@@ -1057,9 +1668,35 @@ export function readArgumentAnswers(
 
   const required = (parameter: string) =>
     tool.args.some((arg) => arg.name === parameter && !arg.optional);
-  const needsValue = (parameter: string): ArgumentAnswers => ({
-    kind: "needs_value",
+  const allowedValueCount = (parameter: string) => {
+    const closedSet = tool.args.find(
+      (arg) => arg.name === parameter
+    )?.closedSet;
+    return closedSet?.kind === "values" ? closedSet.values.length : 0;
+  };
+  const picksItem = (parameter: string) =>
+    tool.args.some(
+      (arg) => arg.name === parameter && arg.closedSet?.kind === "instance"
+    );
+  const noneFits = (
+    parameter: string,
+    question: ArgumentQuestion
+  ): ArgumentAnswers => ({
+    kind: "none_fits",
     parameter,
+    leftOut: question.leftOut ?? [],
+    choices: chosen.choices,
+    probabilities: chosen.probabilities,
+  });
+  const needsValue = (
+    parameter: string,
+    goalValuesOffered = true
+  ): ArgumentAnswers => ({
+    kind: "needs_value",
+    parameter: wholeParameters(
+      tool.args.filter((arg) => arg.name === parameter)
+    )[0]!,
+    goalValuesOffered,
     choices: chosen.choices,
     probabilities: chosen.probabilities,
   });
@@ -1069,20 +1706,16 @@ export function readArgumentAnswers(
   for (const [parameter, group] of groupByParameter(choicePicks)) {
     const named = group.filter((pick) => "value" in pick.option);
     // A lone question: an option without a value leaves the parameter unset,
-    // or, for a required one, says no Goal Value fits it.
+    // or, for a required one, says no item or no Goal Value fits it.
     if (group.length === 1) {
       if (named.length === 0 && required(parameter))
-        return needsValue(parameter);
+        return picksItem(parameter)
+          ? noneFits(parameter, group[0]!.question)
+          : needsValue(parameter);
       choose(chosen, group[0]!.question, group[0]!.option);
       continue;
     }
-    if (named.length === 0)
-      return {
-        kind: "none_fits",
-        parameter,
-        choices: chosen.choices,
-        probabilities: chosen.probabilities,
-      };
+    if (named.length === 0) return noneFits(parameter, group[0]!.question);
     if (named.length === 1)
       choose(chosen, named[0]!.question, named[0]!.option);
     else
@@ -1096,13 +1729,64 @@ export function readArgumentAnswers(
   for (const [parameter, group] of groupByParameter(listPicks)) {
     const included = group.filter((pick) => pick.score >= 0.5);
     if (included.length > 0) chooseList(chosen, parameter, included);
-    // An optional list nothing belongs in stays unset.
-    else if (required(parameter)) return needsValue(parameter);
+    // An optional list nothing belongs in stays unset. Its own allowed values
+    // are asked first, so any question past them offered a Goal Value.
+    else if (required(parameter))
+      return needsValue(parameter, group.length > allowedValueCount(parameter));
   }
 
   return runOff
     ? { kind: "run_off", chosen, question: runOff }
     : { kind: "chosen", chosen };
+}
+
+/**
+ * Close the gaps the slots left unset leave in their tuples, innermost first:
+ * a tuple ends at its first unset slot, an optional tuple that lacks a slot it
+ * requires or ends up empty is left out, and a required tuple with no slot
+ * set is empty. A
+ * required tuple always has its required slots by now. A slot left without a
+ * value, unset or dropped here, leaves the step record too, so a step reads
+ * as what runs and a repeat is seen as one.
+ */
+function completeTuples(
+  tool: GoalLoopOperation,
+  { args, chosen }: ChosenArguments
+): void {
+  const tuples = new Map<string, TupleSpec>();
+  for (const arg of tool.args)
+    for (const tuple of arg.tuples ?? [])
+      tuples.set(JSON.stringify(tuple.path), tuple);
+  const innermostFirst = [...tuples.values()].sort(
+    (a, b) => b.path.length - a.path.length
+  );
+  for (const { path, minItems, optional } of innermostFirst) {
+    const parent = valueAt(args, path.slice(0, -1)) as
+      Record<PathKey, unknown> | undefined;
+    const key = path[path.length - 1]!;
+    const tuple = parent?.[key];
+    if (!Array.isArray(tuple)) {
+      if (!optional) assignAt(args, path, []);
+      continue;
+    }
+    const gap = tuple.findIndex((_, index) => !(index in tuple));
+    if (gap !== -1) tuple.length = gap;
+    // An optional tuple left empty is left out, the same call as one no
+    // slot was set in.
+    if (tuple.length < minItems || (optional && tuple.length === 0))
+      delete parent![key];
+  }
+  for (const arg of tool.args)
+    if (arg.tuples && valueAt(args, arg.path) === undefined)
+      delete chosen[arg.name];
+}
+
+/** The value at `path` in the operation's input; a tuple's parent is never a list. */
+function valueAt(args: Record<string, unknown>, path: readonly PathKey[]) {
+  return path.reduce<unknown>(
+    (value, key) => (value as Record<PathKey, unknown> | undefined)?.[key],
+    args
+  );
 }
 
 function groupByParameter<T extends { question: QuestionBase }>(
@@ -1158,14 +1842,21 @@ export function fitListsToTarget(
   }
 }
 
-/** Put a chosen value where the operation's input expects it. */
+/**
+ * Put a chosen value where the operation's input expects it; a tuple slot's
+ * index makes its tuple an array.
+ */
 function assignAt(
   args: Record<string, unknown>,
-  path: readonly string[],
+  path: readonly PathKey[],
   value: unknown
 ): void {
-  let target = args;
-  for (const key of path.slice(0, -1))
-    target = (target[key] ??= {}) as Record<string, unknown>;
+  let target = args as Record<PathKey, unknown>;
+  for (const [index, key] of path.slice(0, -1).entries())
+    target = (target[key] ??=
+      typeof path[index + 1] === "number" ? [] : {}) as Record<
+      PathKey,
+      unknown
+    >;
   target[path[path.length - 1]!] = value;
 }

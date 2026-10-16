@@ -178,8 +178,8 @@ The [Nuxt example](https://github.com/ayme-labs/ayme/blob/main/apps/example-nuxt
 | Error                                                                                         | Cause                                                           |
 | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | `AymeProvider cannot be nested beneath another Ayme runtime owner.`                           | A second owner beneath the first. Start Ayme once, at the root. |
-| `The provider options must stay fixed while mounted. Remount the provider to change them.`    | A provider prop changed while mounted.                          |
-| `Configure Ayme's options on the ancestor AymeProvider or standalone useAyme owner.`          | `useAyme(options)` beneath an owner.                            |
+| `The provider options changed while the provider was mounted.`                                | A provider prop changed while mounted.                          |
+| `useAyme(options) received options beneath an existing AymeProvider or useAyme owner.`        | `useAyme(options)` beneath an owner.                            |
 | `useAyme must be called within an active Vue effect scope`, and the same for `usePageObject`  | Called outside `setup` or an effect scope.                      |
 | `usePageObject requires useAyme() or an AymeProvider in this scope or an ancestor component.` | No owner above.                                                 |
 | `usePeek must be called in a component's setup`                                               | `usePeek` called outside a component's `setup`.                 |
@@ -187,9 +187,9 @@ The [Nuxt example](https://github.com/ayme-labs/ayme/blob/main/apps/example-nuxt
 
 ## API
 
-| Export                       | Kind       | Does                                                                                                                |
-| ---------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------- |
-| `AymeProvider`               | Component  | Starts and owns Ayme for its subtree. Props are the `createAyme` options.                                           |
-| `useAyme(options?)`          | Composable | Without an owner above, starts and owns Ayme. Returns `{ ayme, webMCP }`.                                           |
-| `usePageObject(Model)`       | Composable | Registers the class for the current scope and returns its instance.                                                 |
-| `usePeek(values, name, id?)` | Composable | Adds the component's instance of the Peek `name` while it is mounted, reading the current values of `values`' refs. |
+| Export                       | Kind       | Does                                                                                                                                                                   |
+| ---------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AymeProvider`               | Component  | Starts and owns Ayme for its subtree. Props are the `createAyme` options.                                                                                              |
+| `useAyme(options?)`          | Composable | Without an owner above, starts and owns Ayme. Returns `{ ayme, webMCP }`.                                                                                              |
+| `usePageObject(Model)`       | Composable | Registers the class for the current scope and returns its instance.                                                                                                    |
+| `usePeek(values, name, id?)` | Composable | [Experimental](../reference/experimental-apis.md). Adds the component's instance of the Peek `name` while it is mounted, reading the current values of `values`' refs. |
