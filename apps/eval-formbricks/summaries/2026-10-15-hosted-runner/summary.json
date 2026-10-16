@@ -1,0 +1,508 @@
+{
+  "suiteId": "2026-10-15T21-11-38-852Z-suite-bdd6c7",
+  "date": "2026-10-15",
+  "missions": ["rename-survey-and-question"],
+  "timeoutSeconds": [600],
+  "versions": {
+    "claudeCode": ["2.1.281"],
+    "modelRequested": ["sonnet"],
+    "modelUsed": ["claude-sonnet-5"],
+    "effort": ["medium"],
+    "browserInterfaces": [
+      {
+        "arm": "playwright-mcp",
+        "name": "@playwright/mcp",
+        "version": "0.0.83"
+      },
+      {
+        "arm": "playwright-cli",
+        "name": "@playwright/cli",
+        "version": "0.1.22"
+      },
+      {
+        "arm": "ayme-goal-loop-off",
+        "name": "@ayme-dev/mcp",
+        "version": "0.1.0"
+      },
+      {
+        "arm": "ayme-goal-loop-on",
+        "name": "@ayme-dev/mcp",
+        "version": "0.1.0"
+      },
+      {
+        "arm": "ayme-no-page-objects-goal-loop-off",
+        "name": "@ayme-dev/mcp",
+        "version": "0.1.0"
+      },
+      {
+        "arm": "ayme-no-page-objects-goal-loop-on",
+        "name": "@ayme-dev/mcp",
+        "version": "0.1.0"
+      }
+    ],
+    "browser": ["155.0.8059.39"],
+    "aymeCommit": ["1f300f8f0a2188b07027532217c34c9e9b944492"],
+    "formbricksCommit": ["211ad704de30aabf96c059cc1cf00391d5b63a27"]
+  },
+  "arms": [
+    {
+      "arm": "playwright-mcp",
+      "runs": 3,
+      "requestedRuns": 3,
+      "passes": 3,
+      "wallTimeMs": {
+        "n": 3,
+        "median": 44578,
+        "min": 35340,
+        "max": 51071
+      },
+      "tokens": {
+        "n": 3,
+        "median": 377084,
+        "min": 328139,
+        "max": 378674
+      },
+      "inputOutputTokens": {
+        "n": 3,
+        "median": 2011,
+        "min": 1619,
+        "max": 2266
+      },
+      "toolCalls": {
+        "n": 3,
+        "median": 17,
+        "min": 14,
+        "max": 18
+      },
+      "combinedCostUsd": {
+        "n": 3,
+        "median": 0.1487658,
+        "min": 0.1436272,
+        "max": 0.1495058
+      },
+      "runList": [
+        {
+          "runId": "2026-10-15T21-13-07-589Z-playwright-mcp-b114bc",
+          "pass": true,
+          "wallTimeMs": 44578,
+          "usage": {
+            "input": 30,
+            "cacheCreation": 17961,
+            "cacheRead": 308559,
+            "output": 1589
+          },
+          "totalTokens": 328139,
+          "combinedCostUsd": 0.1495058
+        },
+        {
+          "runId": "2026-10-15T21-17-38-690Z-playwright-mcp-738073",
+          "pass": true,
+          "wallTimeMs": 51071,
+          "usage": {
+            "input": 34,
+            "cacheCreation": 14104,
+            "cacheRead": 362559,
+            "output": 1977
+          },
+          "totalTokens": 378674,
+          "combinedCostUsd": 0.1487658
+        },
+        {
+          "runId": "2026-10-15T21-22-18-104Z-playwright-mcp-4e0a62",
+          "pass": true,
+          "wallTimeMs": 35340,
+          "usage": {
+            "input": 36,
+            "cacheCreation": 12182,
+            "cacheRead": 362636,
+            "output": 2230
+          },
+          "totalTokens": 377084,
+          "combinedCostUsd": 0.1436272
+        }
+      ]
+    },
+    {
+      "arm": "playwright-cli",
+      "runs": 3,
+      "requestedRuns": 3,
+      "passes": 3,
+      "wallTimeMs": {
+        "n": 3,
+        "median": 41857,
+        "min": 34366,
+        "max": 41955
+      },
+      "tokens": {
+        "n": 3,
+        "median": 465080,
+        "min": 329642,
+        "max": 468394
+      },
+      "inputOutputTokens": {
+        "n": 3,
+        "median": 1260,
+        "min": 1057,
+        "max": 1857
+      },
+      "toolCalls": {
+        "n": 3,
+        "median": 13,
+        "min": 10,
+        "max": 14
+      },
+      "combinedCostUsd": {
+        "n": 3,
+        "median": 0.159569,
+        "min": 0.1307436,
+        "max": 0.170874
+      },
+      "runList": [
+        {
+          "runId": "2026-10-15T21-14-04-433Z-playwright-cli-47c42f",
+          "pass": true,
+          "wallTimeMs": 41857,
+          "usage": {
+            "input": 30,
+            "cacheCreation": 15763,
+            "cacheRead": 447460,
+            "output": 1827
+          },
+          "totalTokens": 465080,
+          "combinedCostUsd": 0.170874
+        },
+        {
+          "runId": "2026-10-15T21-18-42-967Z-playwright-cli-45b03f",
+          "pass": true,
+          "wallTimeMs": 34366,
+          "usage": {
+            "input": 22,
+            "cacheCreation": 14377,
+            "cacheRead": 314208,
+            "output": 1035
+          },
+          "totalTokens": 329642,
+          "combinedCostUsd": 0.1307436
+        },
+        {
+          "runId": "2026-10-15T21-23-01-402Z-playwright-cli-a1320c",
+          "pass": true,
+          "wallTimeMs": 41955,
+          "usage": {
+            "input": 28,
+            "cacheCreation": 14149,
+            "cacheRead": 452985,
+            "output": 1232
+          },
+          "totalTokens": 468394,
+          "combinedCostUsd": 0.159569
+        }
+      ]
+    },
+    {
+      "arm": "ayme-goal-loop-off",
+      "runs": 3,
+      "requestedRuns": 3,
+      "passes": 3,
+      "wallTimeMs": {
+        "n": 3,
+        "median": 21871,
+        "min": 20446,
+        "max": 22018
+      },
+      "tokens": {
+        "n": 3,
+        "median": 134304,
+        "min": 134079,
+        "max": 134607
+      },
+      "inputOutputTokens": {
+        "n": 3,
+        "median": 842,
+        "min": 803,
+        "max": 1076
+      },
+      "toolCalls": {
+        "n": 3,
+        "median": 6,
+        "min": 6,
+        "max": 6
+      },
+      "combinedCostUsd": {
+        "n": 3,
+        "median": 0.0603432,
+        "min": 0.0601162,
+        "max": 0.0631258
+      },
+      "runList": [
+        {
+          "runId": "2026-10-15T21-15-02-480Z-ayme-goal-loop-off-914fd3",
+          "pass": true,
+          "wallTimeMs": 20446,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 6681,
+            "cacheRead": 126556,
+            "output": 828
+          },
+          "totalTokens": 134079,
+          "combinedCostUsd": 0.0603432
+        },
+        {
+          "runId": "2026-10-15T21-19-30-101Z-ayme-goal-loop-off-76cd0a",
+          "pass": true,
+          "wallTimeMs": 22018,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 6710,
+            "cacheRead": 126791,
+            "output": 789
+          },
+          "totalTokens": 134304,
+          "combinedCostUsd": 0.0601162
+        },
+        {
+          "runId": "2026-10-15T21-24-00-018Z-ayme-goal-loop-off-2a8eef",
+          "pass": true,
+          "wallTimeMs": 21871,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 6782,
+            "cacheRead": 126749,
+            "output": 1062
+          },
+          "totalTokens": 134607,
+          "combinedCostUsd": 0.0631258
+        }
+      ]
+    },
+    {
+      "arm": "ayme-goal-loop-on",
+      "runs": 3,
+      "requestedRuns": 3,
+      "passes": 3,
+      "wallTimeMs": {
+        "n": 3,
+        "median": 22816,
+        "min": 21878,
+        "max": 23724
+      },
+      "tokens": {
+        "n": 3,
+        "median": 120314,
+        "min": 98319,
+        "max": 146114
+      },
+      "inputOutputTokens": {
+        "n": 3,
+        "median": 957,
+        "min": 844,
+        "max": 1059
+      },
+      "toolCalls": {
+        "n": 3,
+        "median": 5,
+        "min": 4,
+        "max": 6
+      },
+      "combinedCostUsd": null,
+      "runList": [
+        {
+          "runId": "2026-10-15T21-15-36-043Z-ayme-goal-loop-on-7f37d6",
+          "pass": true,
+          "wallTimeMs": 21878,
+          "usage": {
+            "input": 10,
+            "cacheCreation": 7670,
+            "cacheRead": 89805,
+            "output": 834
+          },
+          "totalTokens": 98319,
+          "combinedCostUsd": null
+        },
+        {
+          "runId": "2026-10-15T21-20-07-653Z-ayme-goal-loop-on-a2f747",
+          "pass": true,
+          "wallTimeMs": 22816,
+          "usage": {
+            "input": 12,
+            "cacheCreation": 8059,
+            "cacheRead": 111298,
+            "output": 945
+          },
+          "totalTokens": 120314,
+          "combinedCostUsd": null
+        },
+        {
+          "runId": "2026-10-15T21-24-37-259Z-ayme-goal-loop-on-2afb69",
+          "pass": true,
+          "wallTimeMs": 23724,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 10212,
+            "cacheRead": 134843,
+            "output": 1045
+          },
+          "totalTokens": 146114,
+          "combinedCostUsd": null
+        }
+      ]
+    },
+    {
+      "arm": "ayme-no-page-objects-goal-loop-off",
+      "runs": 3,
+      "requestedRuns": 3,
+      "passes": 3,
+      "wallTimeMs": {
+        "n": 3,
+        "median": 25783,
+        "min": 24031,
+        "max": 26257
+      },
+      "tokens": {
+        "n": 3,
+        "median": 211305,
+        "min": 211282,
+        "max": 220183
+      },
+      "inputOutputTokens": {
+        "n": 3,
+        "median": 1095,
+        "min": 1038,
+        "max": 1198
+      },
+      "toolCalls": {
+        "n": 3,
+        "median": 9,
+        "min": 8,
+        "max": 9
+      },
+      "combinedCostUsd": {
+        "n": 3,
+        "median": 0.0917174,
+        "min": 0.0907082,
+        "max": 0.1089902
+      },
+      "runList": [
+        {
+          "runId": "2026-10-15T21-16-13-490Z-ayme-no-page-objects-goal-loop-off-9cc81b",
+          "pass": true,
+          "wallTimeMs": 24031,
+          "usage": {
+            "input": 18,
+            "cacheCreation": 14454,
+            "cacheRead": 204691,
+            "output": 1020
+          },
+          "totalTokens": 220183,
+          "combinedCostUsd": 0.1089902
+        },
+        {
+          "runId": "2026-10-15T21-20-44-932Z-ayme-no-page-objects-goal-loop-off-118784",
+          "pass": true,
+          "wallTimeMs": 25783,
+          "usage": {
+            "input": 20,
+            "cacheCreation": 9703,
+            "cacheRead": 200381,
+            "output": 1178
+          },
+          "totalTokens": 211282,
+          "combinedCostUsd": 0.0907082
+        },
+        {
+          "runId": "2026-10-15T21-25-17-258Z-ayme-no-page-objects-goal-loop-off-73360a",
+          "pass": true,
+          "wallTimeMs": 26257,
+          "usage": {
+            "input": 20,
+            "cacheCreation": 10233,
+            "cacheRead": 199977,
+            "output": 1075
+          },
+          "totalTokens": 211305,
+          "combinedCostUsd": 0.0917174
+        }
+      ]
+    },
+    {
+      "arm": "ayme-no-page-objects-goal-loop-on",
+      "runs": 3,
+      "requestedRuns": 3,
+      "passes": 3,
+      "wallTimeMs": {
+        "n": 3,
+        "median": 21941,
+        "min": 20622,
+        "max": 25369
+      },
+      "tokens": {
+        "n": 3,
+        "median": 112959,
+        "min": 101653,
+        "max": 157777
+      },
+      "inputOutputTokens": {
+        "n": 3,
+        "median": 846,
+        "min": 822,
+        "max": 1096
+      },
+      "toolCalls": {
+        "n": 3,
+        "median": 4,
+        "min": 4,
+        "max": 6
+      },
+      "combinedCostUsd": null,
+      "runList": [
+        {
+          "runId": "2026-10-15T21-16-57-160Z-ayme-no-page-objects-goal-loop-on-87f5f1",
+          "pass": true,
+          "wallTimeMs": 25369,
+          "usage": {
+            "input": 14,
+            "cacheCreation": 13609,
+            "cacheRead": 143072,
+            "output": 1082
+          },
+          "totalTokens": 157777,
+          "combinedCostUsd": null
+        },
+        {
+          "runId": "2026-10-15T21-21-28-582Z-ayme-no-page-objects-goal-loop-on-dd2bc5",
+          "pass": true,
+          "wallTimeMs": 21941,
+          "usage": {
+            "input": 10,
+            "cacheCreation": 12342,
+            "cacheRead": 99795,
+            "output": 812
+          },
+          "totalTokens": 112959,
+          "combinedCostUsd": null
+        },
+        {
+          "runId": "2026-10-15T21-25-59-153Z-ayme-no-page-objects-goal-loop-on-234c31",
+          "pass": true,
+          "wallTimeMs": 20622,
+          "usage": {
+            "input": 10,
+            "cacheCreation": 6429,
+            "cacheRead": 94378,
+            "output": 836
+          },
+          "totalTokens": 101653,
+          "combinedCostUsd": null
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "ayme-goal-loop-on: no run has combined cost.",
+    "ayme-goal-loop-on: the Goal Loop's cost is unknown in 3 of 3 runs, so their combined cost is unknown.",
+    "ayme-no-page-objects-goal-loop-on: no run has combined cost.",
+    "ayme-no-page-objects-goal-loop-on: the Goal Loop's cost is unknown in 3 of 3 runs, so their combined cost is unknown.",
+    "1 run(s) changed the lab app checkout while running."
+  ]
+}
