@@ -39,6 +39,7 @@ import {
   type ChosenOption,
   type GoalLoopOperation,
   type GoalValues,
+  type LeftOutItem,
   MAX_GOAL_VALUES,
   type NoulAnswer,
   type ValuePreset,
@@ -218,6 +219,9 @@ type StepOutcome = Pick<GoalLoopStepRecord, "result" | "page_changed"> & {
  * each step.
  */
 export const MAX_STEP_CHANGES = 400;
+
+/** At most this many left-out items are named in a Handover, each with why. */
+const MAX_LEFT_OUT_NAMED = 10;
 
 /** Marks a step's Change Record that was cut to `MAX_STEP_CHANGES`. */
 export const CHANGES_CUT_MARKER = "\n… (cut)";
@@ -485,6 +489,18 @@ export async function pursueGoal(
   const errorTextOf = (error: unknown) =>
     error instanceof Error ? error.message : String(error);
 
+  /**
+   * The items a collection's question left out, each with why; past
+   * `MAX_LEFT_OUT_NAMED`, only how many more.
+   */
+  const leftOutSentence = (leftOut: readonly LeftOutItem[]) => {
+    const named = leftOut
+      .slice(0, MAX_LEFT_OUT_NAMED)
+      .map(({ label, why }) => `${label} (${why})`);
+    const more = leftOut.length - named.length;
+    return `Left out: ${named.join(", ")}${more > 0 ? `, and ${more} more` : ""}.`;
+  };
+
   /** How a `needs_value` Handover ends when the model could not pick a closed-set value. */
   const pickYourself = (parameter: string) =>
     `Read the page again, pick "${parameter}" yourself and call the operation directly, or try a different approach.`;
@@ -654,10 +670,12 @@ export async function pursueGoal(
       return done({
         reason: "needs_value",
         next: `The operation "${chosenTool.name}" acts on a collection instance, and ${
-          plan.optionCount === 0
-            ? "the loop found no instance on the current page"
-            : "the current page holds more of them than one decision can offer"
-        }. ${pickYourself(plan.parameter)}`,
+          plan.optionCount > 0
+            ? `the current page holds more of them than one decision can offer. ${pickYourself(plan.parameter)}`
+            : plan.leftOut.length > 0
+              ? `the loop could offer none of its items. ${leftOutSentence(plan.leftOut)} Try a different approach.`
+              : `the loop found no instance on the current page. ${pickYourself(plan.parameter)}`
+        }`,
         history,
         needs: { tool: chosenTool.name, parameters: [plan.parameter] },
       });
@@ -706,12 +724,15 @@ export async function pursueGoal(
         return invalidDecision(error);
       }
 
-      // Every chunk of a ref over the cap answered "none of these": the step
-      // ran no action, so it leaves no history entry.
+      // A required element choice answered "none of these": the step ran no
+      // action, so it leaves no history entry.
       if (argumentAnswers.kind === "none_fits") {
+        const { leftOut } = argumentAnswers;
         return done({
           reason: "no_fitting_option",
-          next: `No element on the current page fits the operation "${chosenTool.name}". Navigate to a different page or try a different approach.`,
+          next: `No ${leftOut.length > 0 ? "offered item" : "element on the current page"} fits the operation "${chosenTool.name}".${
+            leftOut.length > 0 ? ` ${leftOutSentence(leftOut)}` : ""
+          } Navigate to a different page or try a different approach.`,
           history,
         });
       }

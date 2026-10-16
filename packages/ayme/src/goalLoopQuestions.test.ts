@@ -10,6 +10,7 @@ import {
 import type { JsonSchema } from "./contracts";
 import type { DecisionRequest, DecisionResponse } from "./decisionWire";
 import type { PageStateCapture } from "./pageState";
+import type { CollectionToolItem } from "./registry";
 import {
   NONE_OF_THESE_KEY,
   NO_VALUE_NEEDED_KEY,
@@ -194,12 +195,40 @@ async function askStageTwo(
   };
 }
 
-// Reproduction for "the Goal Loop acts on the wrong collection item when the
-// one the goal means isn't offered", element refs: asserts today's behaviour.
-describe("REPRO: a required ref under the cap", () => {
-  it("offers no none of these, so the model must pick one of the elements", () => {
+describe("a required element choice", () => {
+  it("offers none of these after a ref's elements", () => {
     const [question] = askedQuestions(clickTool, captureOfButtons(2));
-    expect(question!.options.map((option) => option.key)).toEqual(["e1", "e2"]);
+
+    expect(question!.options.map((option) => option.key)).toEqual([
+      "e1",
+      "e2",
+      NONE_OF_THESE_KEY,
+    ]);
+    expect("value" in question!.options.at(-1)!).toBe(false);
+    expect(question!.instructions).toContain(`"${NONE_OF_THESE_KEY}"`);
+  });
+
+  it("reads none of these on a lone ref question as no element fitting", async () => {
+    const { questions, answers } = await askStageTwo(
+      clickTool,
+      captureOfButtons(2),
+      { ref: "none" }
+    );
+
+    expect(answers).toEqual({
+      kind: "none_fits",
+      parameter: "ref",
+      leftOut: [],
+      choices: { ref: NONE_OF_THESE_KEY },
+      probabilities: {
+        ref: Object.fromEntries(
+          questions[0]!.options.map((option) => [
+            option.key,
+            option.key === NONE_OF_THESE_KEY ? 1 : 0,
+          ])
+        ),
+      },
+    });
   });
 });
 
@@ -252,18 +281,21 @@ describe("ref questions over the option cap", () => {
       expect(Object.keys(question.criteria).length).toBeLessThanOrEqual(255);
   });
 
-  it("keeps a question within the cap as one question without none of these", () => {
-    const capture = captureOfButtons(255);
-
-    const questions = askedQuestions(clickTool, capture);
+  it("keeps a question within the cap, none of these included, as one question", () => {
+    const questions = askedQuestions(clickTool, captureOfButtons(254));
 
     expect(questions).toHaveLength(1);
     expect(questions[0]!.id).toBe("ref");
     expect(questions[0]!.parameter).toBe("ref");
     expect(questions[0]!.options).toHaveLength(255);
-    expect(questions[0]!.options.every((option) => "value" in option)).toBe(
-      true
-    );
+    expect(questions[0]!.options.at(-1)!.key).toBe(NONE_OF_THESE_KEY);
+  });
+
+  it("chunks a ref whose elements fill the cap without room for none of these", () => {
+    const questions = askedQuestions(clickTool, captureOfButtons(255));
+
+    expect(questions).toHaveLength(2);
+    expect(questions.flatMap(refsOf)).toHaveLength(255);
   });
 
   it("still reports zero options as a choice the model cannot make", () => {
@@ -445,56 +477,124 @@ describe("collection instances over the option cap", () => {
       kind: "needs_instance_choice",
       parameter: "ref",
       optionCount: 256,
+      leftOut: [],
     });
   });
 });
 
 describe("collection instances", () => {
-  it("offers only the items the tool is available on", () => {
+  /** A collection tool over `roots`, as the Goal Loop lists it. */
+  const archiveTool = (
+    roots: readonly CollectionToolItem[]
+  ): GoalLoopOperation => ({
+    name: "List.archive",
+    description: "Archive an item.",
+    execute: async () => null,
+    requiredParams: ["ref"],
+    args: [
+      {
+        name: "ref",
+        path: ["ref"],
+        optional: false,
+        closedSet: { kind: "instance", roots },
+      },
+    ],
+  });
+
+  it("offers the items the tool is available on, then none of these, and keeps why the others were left out", () => {
     const capture = captureOfButtons(2);
     const [first, second] = [...capture.elementsByRef.values()];
-    const tool: GoalLoopOperation = {
-      name: "List.archive",
-      description: "Archive an item.",
-      execute: async () => null,
-      requiredParams: ["ref"],
-      args: [
-        {
-          name: "ref",
-          path: ["ref"],
-          optional: false,
-          closedSet: {
-            kind: "instance",
-            roots: [
-              {
-                label: "items[0]",
-                element: first,
-                present: true,
-                available: false,
-                reason: "already archived",
-              },
-              {
-                label: "items[1]",
-                element: second,
-                present: true,
-                available: true,
-              },
-            ],
-          },
-        },
-      ],
-    };
-
-    const plan = planArguments(tool, capture);
-
-    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
-    expect(plan.questions).toHaveLength(1);
-    const [question] = plan.questions;
-    if (question.type !== "choice")
-      throw new Error(`Unexpected question ${question.type}`);
-    expect(question.options).toEqual([
-      { key: "e2", description: 'items[1] (button "Item 2")', value: "e2" },
+    const tool = archiveTool([
+      {
+        label: "items[0]",
+        element: first!,
+        present: true,
+        available: false,
+        reason: "already archived",
+      },
+      { label: "items[1]", element: second!, present: true, available: true },
+      // An available item the capture holds no ref for.
+      {
+        label: "items[2]",
+        element: document.createElement("li"),
+        present: true,
+        available: true,
+      },
+      // Unavailable without an Availability Reason.
+      {
+        label: "items[3]",
+        element: document.createElement("li"),
+        present: true,
+        available: false,
+      },
     ]);
+
+    const [question] = askedQuestions(tool, capture);
+
+    expect(question!.options).toEqual([
+      { key: "e2", description: 'items[1] (button "Item 2")', value: "e2" },
+      {
+        key: NONE_OF_THESE_KEY,
+        description: "None of these; the item is not offered.",
+      },
+    ]);
+    expect(question!.leftOut).toEqual([
+      { label: "items[0]", why: "unavailable: already archived" },
+      { label: "items[2]", why: "no ref in the page state" },
+      { label: "items[3]", why: "unavailable" },
+    ]);
+  });
+
+  it("hands the left-out items on when the model answers none of these", async () => {
+    const capture = captureOfButtons(2);
+    const [first, second] = [...capture.elementsByRef.values()];
+    const tool = archiveTool([
+      {
+        label: "items[0]",
+        element: first!,
+        present: true,
+        available: false,
+        reason: "already archived",
+      },
+      { label: "items[1]", element: second!, present: true, available: true },
+    ]);
+
+    const { answers } = await askStageTwo(tool, capture, { ref: "none" });
+
+    expect(answers).toMatchObject({
+      kind: "none_fits",
+      parameter: "ref",
+      leftOut: [{ label: "items[0]", why: "unavailable: already archived" }],
+    });
+  });
+
+  it("names the items it left out when none can be offered", () => {
+    const capture = captureOfButtons(1);
+    const tool = archiveTool([
+      {
+        label: "items[0]",
+        element: document.createElement("li"),
+        present: true,
+        available: true,
+      },
+      {
+        label: "items[1]",
+        element: [...capture.elementsByRef.values()][0]!,
+        present: true,
+        available: false,
+        reason: "already archived",
+      },
+    ]);
+
+    expect(planArguments(tool, capture)).toEqual({
+      kind: "needs_instance_choice",
+      parameter: "ref",
+      optionCount: 0,
+      leftOut: [
+        { label: "items[0]", why: "no ref in the page state" },
+        { label: "items[1]", why: "unavailable: already archived" },
+      ],
+    });
   });
 });
 
@@ -1564,7 +1664,7 @@ describe("Goal Values asked speculatively in stage one", () => {
       id: "ref",
       target: { receiving: 'the text "Milk" (the Goal Value "item name")' },
       instructions:
-        'Pick the element that should receive the text "Milk" (the Goal Value "item name"), as this operation\'s "ref" parameter. The operation is "fill": fill text into one element.',
+        'Pick the element that should receive the text "Milk" (the Goal Value "item name"), as this operation\'s "ref" parameter. The operation is "fill": fill text into one element. Choose "none_of_these" when the element is not among these.',
     });
   });
 
