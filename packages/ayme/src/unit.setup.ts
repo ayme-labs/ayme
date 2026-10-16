@@ -7,4 +7,5 @@ import { vi } from "vitest";
 vi.mock("./reachMeasurement", () => ({
   measurePomRoot: vi.fn(async () => ({ present: true, available: true })),
   measureReach: vi.fn(() => ({ present: true, available: true })),
+  inReachBatch: <T>(measureAll: () => T): T => measureAll(),
 }));

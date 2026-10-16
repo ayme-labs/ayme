@@ -177,6 +177,25 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     }
   );
 
+  it("sees an overlay removed between two listings in the same task", async () => {
+    document.body.innerHTML = `
+      <style>
+        #overlay { position: fixed; inset: 0; background: rgb(0 0 0 / 0.3); }
+      </style>
+      <button id="save" type="button">Save</button>
+      <div id="overlay"></div>
+    `;
+    const save = await refOf("button", "Save");
+    const capture = await lookAtPageStateForDocument(document);
+
+    const covered = listElementToolTargets(capture);
+    document.querySelector("#overlay")!.remove();
+    const uncovered = listElementToolTargets(capture);
+
+    expect((await covered).get("click")).not.toContain(save);
+    expect((await uncovered).get("click")).toContain(save);
+  });
+
   it("fails fill_form at a field behind the open modal and keeps the fields filled before it", async () => {
     openRenameDialog();
     const dialog = await refOf("dialog", "Rename project");

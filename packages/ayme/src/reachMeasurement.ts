@@ -41,19 +41,30 @@ function establishesContainingBlock(style: CSSStyleDeclaration): boolean {
   );
 }
 
+let batch: Map<unknown, WeakMap<Element, unknown>> | undefined;
+
 /**
- * Memoizes `measure` for the rest of the current task: measuring sends no
- * input and never scrolls, so the layout it reads cannot change before the
- * next microtask, and a batch of elements (every candidate of every tool)
- * shares the work for their common ancestors and siblings.
+ * Package-internal: runs `measureAll`, a synchronous pass that measures a
+ * batch of elements (every candidate of every tool) without changing the
+ * page, sharing the work for their common ancestors and siblings. Each
+ * element is measured at most once in the pass; outside one, every call
+ * measures afresh, so a page change between calls is always seen.
  */
-function memoizedForTask<R>(measure: (element: Element) => R) {
-  let memo: WeakMap<Element, R> | undefined;
+export function inReachBatch<T>(measureAll: () => T): T {
+  if (batch) return measureAll();
+  batch = new Map();
+  try {
+    return measureAll();
+  } finally {
+    batch = undefined;
+  }
+}
+
+function memoizedInBatch<R>(measure: (element: Element) => R) {
   return (element: Element): R => {
-    if (!memo) {
-      memo = new WeakMap();
-      queueMicrotask(() => (memo = undefined));
-    }
+    if (!batch) return measure(element);
+    let memo = batch.get(measure) as WeakMap<Element, R> | undefined;
+    if (!memo) batch.set(measure, (memo = new WeakMap()));
     if (memo.has(element)) return memo.get(element)!;
     const result = measure(element);
     memo.set(element, result);
@@ -61,9 +72,9 @@ function memoizedForTask<R>(measure: (element: Element) => R) {
   };
 }
 
-const layoutAncestors = memoizedForTask(measureLayoutAncestors);
+const layoutAncestors = memoizedInBatch(measureLayoutAncestors);
 
-const styleOf = memoizedForTask((element) =>
+const styleOf = memoizedInBatch((element) =>
   element.ownerDocument.defaultView!.getComputedStyle(element)
 );
 
@@ -411,7 +422,7 @@ export async function measurePomRoot(
  * Package-internal: measures `element`; see `ReachMeasurement`. It takes
  * the element as shown: a caller that needs it visible checks that first.
  */
-export const measureReach = memoizedForTask(measureReachNow);
+export const measureReach = memoizedInBatch(measureReachNow);
 
 function measureReachNow(element: Element): ReachMeasurement {
   if (!element.isConnected || !element.ownerDocument.defaultView) return absent;

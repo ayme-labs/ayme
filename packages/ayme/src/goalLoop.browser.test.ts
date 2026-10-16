@@ -545,7 +545,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     expect(withoutChanges(result)).toEqual({
       reason: "needs_value",
-      next: 'The operation "click" acts on one element; 2 elements on the current page match it, and a click would reach none of them. Try a different approach.',
+      next: 'The operation "click" acts on one element; 2 elements on the current page match it, and a click would reach none of them.',
       history: [],
       needs: { tool: "click", parameters: ["target"] },
     });

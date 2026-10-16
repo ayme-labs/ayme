@@ -14,6 +14,7 @@ import { refHint, resolveRef } from "./refTarget";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { requireAymeRuntimePage } from "./registry";
 import { reaches, unreachableReason } from "./elementReach";
+import { inReachBatch } from "./reachMeasurement";
 import { latestPageStateRef } from "./pageState";
 import { assertAvailable } from "./pomInstance";
 import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
@@ -365,15 +366,17 @@ export function acceptedRefNodes(
   filter: (element: Element) => boolean,
   capture: PageStateCapture
 ): StructuralNode[] {
-  const nodes: StructuralNode[] = [];
-  for (const node of walkNodes(capture.tree)) {
-    // Synthetic refs are observation-only: a single-element tool rejects them.
-    if (isSyntheticRef(node.ref)) continue;
-    const element = capture.elementsByRef.get(node.ref);
-    if (!element || !filter(element)) continue;
-    nodes.push(node);
-  }
-  return nodes;
+  return inReachBatch(() => {
+    const nodes: StructuralNode[] = [];
+    for (const node of walkNodes(capture.tree)) {
+      // Synthetic refs are observation-only: a single-element tool rejects them.
+      if (isSyntheticRef(node.ref)) continue;
+      const element = capture.elementsByRef.get(node.ref);
+      if (!element || !filter(element)) continue;
+      nodes.push(node);
+    }
+    return nodes;
+  });
 }
 
 function* walkNodes(tree: StructuralTree): Generator<StructuralNode> {

@@ -644,7 +644,7 @@ export async function pursueGoal(
       return done({
         reason: "needs_value",
         next: plan.unreachable
-          ? `The operation "${chosenTool.name}" acts on one element; ${plan.unreachable === 1 ? "1 element" : `${plan.unreachable} elements`} on the current page match it, and a click would reach none of them. Try a different approach.`
+          ? `The operation "${chosenTool.name}" acts on one element; ${plan.unreachable === 1 ? "1 element" : `${plan.unreachable} elements`} on the current page match it, and a click would reach none of them.`
           : `The operation "${chosenTool.name}" acts on one element, and the loop found no element on the current page it applies to. ${pickYourself(plan.parameter)}`,
         history,
         needs: { tool: chosenTool.name, parameters: [plan.parameter] },
