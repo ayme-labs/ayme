@@ -141,11 +141,11 @@ export type PageWelcome = z.infer<typeof PageWelcomeSchema>;
  * The page started loading a new document, which ends its channel: the URL
  * that is loading, and whether it is a reload.
  */
-export const PageLeavingSchema = z.object({
+export const PageNavigatingSchema = z.object({
   url: z.string(),
   reload: z.boolean(),
 });
-export type PageLeaving = z.infer<typeof PageLeavingSchema>;
+export type PageNavigating = z.infer<typeof PageNavigatingSchema>;
 
 /**
  * The WebSocket close code the server ends a page's channel with when

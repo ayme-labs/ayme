@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 
 import {
   HelloSchema,
-  PageLeavingSchema,
+  PageNavigatingSchema,
   PageToolSchema,
   PageWelcomeSchema,
   ProcessToolCallSchema,
@@ -39,7 +39,11 @@ it.each([
   ["a page's hello", HelloSchema, { tab: "a", url: "http://localhost/" }],
   ["a process's hello", HelloSchema, { process: "server" }],
   ["a welcome", PageWelcomeSchema, { token: "f00d" }],
-  ["a page leaving", PageLeavingSchema, { url: "http://x/", reload: true }],
+  [
+    "a page navigating",
+    PageNavigatingSchema,
+    { url: "http://x/", reload: true },
+  ],
 ])("keeps every field of %s", (_label, schema, message) => {
   expect(schema.parse(message)).toEqual(message);
 });
