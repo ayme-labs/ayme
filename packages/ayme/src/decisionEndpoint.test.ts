@@ -202,7 +202,8 @@ describe("decisionEndpoint", () => {
     const decide = decisionEndpoint("/api/decisions");
     await expect(decide(request)).rejects.toMatchObject({
       code: "malformed",
-      message: "The Decision Endpoint returned an invalid response.",
+      message:
+        "The Decision Endpoint /api/decisions answered 200 with a body that is not a decision response",
     });
   });
 });

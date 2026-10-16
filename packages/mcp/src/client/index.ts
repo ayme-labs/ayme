@@ -66,18 +66,26 @@ export type AgentConnectionStatusSource = {
 const NO_TOOLS: readonly PageTool[] = Object.freeze([]);
 
 /**
+ * How long a tab that lost its server says it is reconnecting before it
+ * says the server stopped answering. It keeps trying after that.
+ */
+const RECONNECTING_MS = 10_000;
+
+/**
  * Starts the page's side of the Agent Connection for the runtime object
  * Ayme's setup returns. Ayme calls it for the `agentConnection` option.
  * Each pairing the page learns, such as from a connect link or the tab's
  * stored pairing, opens a channel to that server in place of the previous
- * one. A page that paired without a token keeps the token the server hands
- * it, and reconnects with it. When the server says another tab paired in
- * this tab's place, the tab forgets its pairing; when it does not know the
- * pairing, the tab forgets it and looks for a server again. When a busy
- * server refuses its pairing without a token, it looks again from its next
- * focus. Returns what ends the connection, the tools of the App
- * Processes paired with the server, which the server sends the tab, and
- * whether the tab is connected.
+ * one. When the channel loses its server, the tab says it is reconnecting,
+ * and after 10 s without a welcome that the server stopped answering,
+ * while it keeps trying. A page that paired without a token keeps the
+ * token the server hands it, and reconnects with it. When the server says
+ * another tab paired in this tab's place, the tab forgets its pairing; when
+ * it does not know the pairing, the tab forgets it and looks for a server
+ * again. When a busy server refuses its pairing without a token, it looks
+ * again from its next focus. Returns what ends the connection, the tools of
+ * the App Processes paired with the server, which the server sends the
+ * tab, and whether the tab is connected.
  */
 export function startAgentConnection(ayme: AgentConnectionRuntime): {
   dispose(): void;
@@ -88,8 +96,11 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
     state: "not-connected",
   });
   const statusListeners = new Set<(status: AgentConnectionStatus) => void>();
+  // The wait after a loss, which any other change of status ends.
+  let reconnecting: ReturnType<typeof setTimeout> | undefined;
   const setStatus = (next: AgentConnectionStatus) => {
     if (JSON.stringify(next) === JSON.stringify(currentStatus)) return;
+    clearTimeout(reconnecting);
     currentStatus = Object.freeze(next);
     for (const listener of statusListeners) listener(currentStatus);
   };
@@ -149,9 +160,13 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
     open?.close();
     notConnected("connecting");
     let current: Pairing = pairing;
+    // Whether it lost the server since its last welcome: the channel
+    // reports each failed retry as a loss too.
+    let lost = false;
     const channel = openPageChannel(() => socketUrl(current), {
       hello: () => ({ tab, url: window.location.href }),
       onWelcome({ token, agent }) {
+        lost = false;
         if (open === opened)
           setStatus(
             agent ? { state: "connected", agent } : { state: "connected" }
@@ -169,7 +184,12 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
         startSources();
       },
       onLost() {
-        if (open === opened) notConnected("no-answer");
+        if (open !== opened || lost) return;
+        lost = true;
+        notConnected("reconnecting");
+        reconnecting = setTimeout(() => {
+          if (open === opened) notConnected("no-answer");
+        }, RECONNECTING_MS);
       },
       onDisconnected() {
         if (open !== opened) return;
@@ -209,6 +229,7 @@ export function startAgentConnection(ayme: AgentConnectionRuntime): {
   startSources();
   return {
     dispose() {
+      clearTimeout(reconnecting);
       for (const stop of stopSources) stop();
       open?.close();
       open = undefined;

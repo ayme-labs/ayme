@@ -96,6 +96,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe("startAgentConnection", () => {
@@ -161,11 +162,39 @@ describe("startAgentConnection's status", () => {
     expect(status.get()).toEqual({ state: "connected" });
   });
 
-  it("is not connected while the server it paired with stops answering, and connected again once it answers", () => {
+  it("is reconnecting once it loses the server it paired with, and connected again once it answers, for good", () => {
+    vi.useFakeTimers();
     const { status } = startAgentConnection({ tools: {} as never });
     sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
     channels[0]!.onWelcome({});
 
+    channels[0]!.onLost();
+    expect(status.get()).toEqual({
+      state: "not-connected",
+      reason: "reconnecting",
+    });
+
+    channels[0]!.onWelcome({});
+    vi.advanceTimersByTime(10_000);
+    expect(status.get()).toEqual({ state: "connected" });
+  });
+
+  it("says the server stopped answering 10 s after it lost it, counted from the loss and not each retry, and is connected once it answers", () => {
+    vi.useFakeTimers();
+    const { status } = startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+    channels[0]!.onWelcome({});
+
+    channels[0]!.onLost();
+    vi.advanceTimersByTime(5_000);
+    channels[0]!.onLost();
+    vi.advanceTimersByTime(4_999);
+    expect(status.get()).toEqual({
+      state: "not-connected",
+      reason: "reconnecting",
+    });
+
+    vi.advanceTimersByTime(1);
     channels[0]!.onLost();
     expect(status.get()).toEqual({
       state: "not-connected",
@@ -174,6 +203,39 @@ describe("startAgentConnection's status", () => {
 
     channels[0]!.onWelcome({});
     expect(status.get()).toEqual({ state: "connected" });
+  });
+
+  it("is reconnecting again when it loses the server once more after it answered", () => {
+    vi.useFakeTimers();
+    const { status } = startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+    channels[0]!.onWelcome({});
+    channels[0]!.onLost();
+    vi.advanceTimersByTime(10_000);
+    channels[0]!.onWelcome({});
+
+    channels[0]!.onLost();
+
+    expect(status.get()).toEqual({
+      state: "not-connected",
+      reason: "reconnecting",
+    });
+  });
+
+  it("does not say a server it no longer pairs with stopped answering", () => {
+    vi.useFakeTimers();
+    const { status } = startAgentConnection({ tools: {} as never });
+    sourceStarts[0]!.onPairing({ address: ADDRESS, token: "token" });
+    channels[0]!.onWelcome({});
+    channels[0]!.onLost();
+
+    sourceStarts[0]!.onPairing({ address: "ws://127.0.0.1:9351", token: "t" });
+    vi.advanceTimersByTime(10_000);
+
+    expect(status.get()).toEqual({
+      state: "not-connected",
+      reason: "connecting",
+    });
   });
 
   it.each([

@@ -8,6 +8,7 @@ export type PublicationStatus = Readonly<{
 /** Why the Agent Connection is on and the tab is not connected. */
 export type NotConnectedReason =
   | "connecting"
+  | "reconnecting"
   | "no-answer"
   | "no-server"
   | "several-servers"
@@ -59,6 +60,8 @@ const FIX =
 
 const REASONS: Record<NotConnectedReason, string> = {
   connecting: "Connecting to your agent's ayme MCP server.",
+  reconnecting:
+    "Lost the ayme MCP server this tab was connected to. Trying again.",
   "no-answer": "The ayme MCP server this tab connected to stopped answering.",
   "no-server": "No ayme MCP server answered on the ports ayme looks at.",
   "several-servers":
@@ -73,6 +76,7 @@ const REASONS: Record<NotConnectedReason, string> = {
 // Reasons that asking the agent to call ayme_connect would not fix.
 const NO_FIX: ReadonlySet<NotConnectedReason> = new Set([
   "connecting",
+  "reconnecting",
   "no-client",
 ]);
 
@@ -92,7 +96,7 @@ export function agentRow(status: AgentConnectionStatus): ConnectionRow {
       const { reason } = status;
       return {
         tone: "waiting",
-        label: "Not connected",
+        label: reason === "reconnecting" ? "Reconnecting" : "Not connected",
         lines:
           reason === undefined
             ? [FIX]
@@ -190,11 +194,17 @@ export function agentPill(status: AgentConnectionStatus): {
         label: "agent connection off",
       };
     case "not-connected":
-      return {
-        tone: "waiting",
-        text: "Not connected",
-        label: "agent not connected",
-      };
+      return status.reason === "reconnecting"
+        ? {
+            tone: "waiting",
+            text: "Reconnecting",
+            label: "agent reconnecting",
+          }
+        : {
+            tone: "waiting",
+            text: "Not connected",
+            label: "agent not connected",
+          };
     case "connected": {
       const name = agentName(status.agent) ?? "Agent";
       return { tone: "ok", text: name, label: `${name} connected` };
