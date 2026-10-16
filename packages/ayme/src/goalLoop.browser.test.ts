@@ -176,8 +176,8 @@ function withoutArgumentProbabilities(
 type Criteria = Record<string, string>;
 
 /**
- * A required element question's options without the "none of these" it
- * always ends with.
+ * A required collection item question's options without the "none of these"
+ * it always ends with.
  */
 function offeredElements(criteria: Criteria): Criteria {
   const keys = Object.keys(criteria);
@@ -1900,7 +1900,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     // Only the element click's built-in filter keeps is offered.
     const [[key, description], ...rest] = Object.entries(
-      offeredElements(criteriaOf(requests[1]!).target!)
+      criteriaOf(requests[1]!).target!
     );
     expect(rest).toEqual([]);
     // Options carry the node's ref as their key, as the page state labels it,
@@ -1960,7 +1960,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     await tool.execute({ goal: "highlight the title", maxSteps: 5 });
 
-    const refQuestion = offeredElements(criteriaOf(requests[1]!).ref!);
+    const refQuestion = criteriaOf(requests[1]!).ref!;
     expect(Object.keys(refQuestion)).toHaveLength(1);
     expect(Object.values(refQuestion)[0]).toContain("Task list");
     expect(highlighted).toEqual([
@@ -1990,9 +1990,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     await tool.execute({ goal: "highlight something", maxSteps: 5 });
 
-    const descriptions = Object.values(
-      offeredElements(criteriaOf(requests[1]!).ref!)
-    );
+    const descriptions = Object.values(criteriaOf(requests[1]!).ref!);
     const offers = (name: string) =>
       descriptions.some((description) => description.includes(name));
     expect(offers("Task list")).toBe(true);
@@ -2037,7 +2035,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     await tool.execute({ goal: "highlight the save button", maxSteps: 5 });
 
-    const offered = offeredElements(criteriaOf(requests[1]!).ref!);
+    const offered = criteriaOf(requests[1]!).ref!;
     const wrapperRefs = Object.keys(offered).filter(
       (ref) => offered[ref] === "generic"
     );

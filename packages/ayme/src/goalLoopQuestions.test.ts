@@ -196,55 +196,12 @@ async function askStageTwo(
   };
 }
 
-describe("a required element choice", () => {
-  it("offers none of these after a ref's elements", () => {
+describe("a required ref within the cap", () => {
+  it("offers its elements only, without none of these", () => {
     const [question] = askedQuestions(clickTool, captureOfButtons(2));
 
-    expect(question!.options.map((option) => option.key)).toEqual([
-      "e1",
-      "e2",
-      NONE_OF_THESE_KEY,
-    ]);
-    expect(question!.options.at(-1)).toEqual({
-      key: NONE_OF_THESE_KEY,
-      description: "None of these; the element is not offered.",
-    });
-    expect(question!.instructions).toContain(
-      `Choose "${NONE_OF_THESE_KEY}" when the element is not among these.`
-    );
-  });
-
-  it("reads none of these on the ref as no element fitting, next to other parameters", async () => {
-    const { answers } = await askStageTwo(
-      clickWithForceTool,
-      captureOfButtons(2),
-      { ref: "none", force: "true" }
-    );
-
-    expect(answers).toMatchObject({ kind: "none_fits", parameter: "ref" });
-  });
-
-  it("reads none of these on a lone ref question as no element fitting", async () => {
-    const { questions, answers } = await askStageTwo(
-      clickTool,
-      captureOfButtons(2),
-      { ref: "none" }
-    );
-
-    expect(answers).toEqual({
-      kind: "none_fits",
-      parameter: "ref",
-      leftOut: [],
-      choices: { ref: NONE_OF_THESE_KEY },
-      probabilities: {
-        ref: Object.fromEntries(
-          questions[0]!.options.map((option) => [
-            option.key,
-            option.key === NONE_OF_THESE_KEY ? 1 : 0,
-          ])
-        ),
-      },
-    });
+    expect(question!.options.map((option) => option.key)).toEqual(["e1", "e2"]);
+    expect(question!.instructions).not.toContain(NONE_OF_THESE_KEY);
   });
 });
 
@@ -297,21 +254,18 @@ describe("ref questions over the option cap", () => {
       expect(Object.keys(question.criteria).length).toBeLessThanOrEqual(255);
   });
 
-  it("keeps a question within the cap, none of these included, as one question", () => {
-    const questions = askedQuestions(clickTool, captureOfButtons(254));
+  it("keeps a question within the cap as one question without none of these", () => {
+    const capture = captureOfButtons(255);
+
+    const questions = askedQuestions(clickTool, capture);
 
     expect(questions).toHaveLength(1);
     expect(questions[0]!.id).toBe("ref");
     expect(questions[0]!.parameter).toBe("ref");
     expect(questions[0]!.options).toHaveLength(255);
-    expect(questions[0]!.options.at(-1)!.key).toBe(NONE_OF_THESE_KEY);
-  });
-
-  it("chunks a ref whose elements fill the cap without room for none of these", () => {
-    const questions = askedQuestions(clickTool, captureOfButtons(255));
-
-    expect(questions).toHaveLength(2);
-    expect(questions.flatMap(refsOf)).toHaveLength(255);
+    expect(questions[0]!.options.every((option) => "value" in option)).toBe(
+      true
+    );
   });
 
   it("still reports zero options as a choice the model cannot make", () => {
@@ -1715,7 +1669,7 @@ describe("Goal Values asked speculatively in stage one", () => {
       id: "ref",
       target: { receiving: 'the text "Milk" (the Goal Value "item name")' },
       instructions:
-        'Pick the element that should receive the text "Milk" (the Goal Value "item name"), as this operation\'s "ref" parameter. The operation is "fill": fill text into one element. Choose "none_of_these" when the element is not among these.',
+        'Pick the element that should receive the text "Milk" (the Goal Value "item name"), as this operation\'s "ref" parameter. The operation is "fill": fill text into one element.',
     });
   });
 

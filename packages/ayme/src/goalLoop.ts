@@ -712,8 +712,9 @@ export async function pursueGoal(
         return invalidDecision(error);
       }
 
-      // A required element choice answered "none of these": the step ran no
-      // action, so it leaves no history entry.
+      // A required collection item, or every chunk of a ref over the cap,
+      // answered "none of these": the step ran no action, so it leaves no
+      // history entry.
       if (argumentAnswers.kind === "none_fits") {
         return done({
           reason: "no_fitting_option",

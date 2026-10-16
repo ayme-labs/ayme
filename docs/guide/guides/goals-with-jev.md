@@ -104,7 +104,7 @@ The first request also asks which [Goal Value](#goal-values) the next operation 
 
 - The ref options are the elements the operation's filter keeps, one per element in document order; nothing is merged or ranked.
 - A second request that only picks an element is sent the candidates instead of the page: each with its named ancestors, the nearest heading and the nearest text before it, its own text, props and state. The goal, the Goal Values and the history travel with it.
-- A required element choice, a ref or an item of a collection, ends with "none of these", so the model is never made to pick an element the goal does not mean. That answer ends the loop with `no_fitting_option`.
+- A required choice of a collection item ends with "none of these", so the model is never made to act on an item the goal does not mean. That answer ends the loop with `no_fitting_option`. A ref within the cap has no such option.
 - One question offers at most 255 options. More elements are cut into chunks of at most 254 plus "none of these", asked side by side. When exactly one chunk names an element, the operation runs on it; when several do, one more question offers just those; when none does, the loop ends with `no_fitting_option`.
 - An item of a collection is offered while its action is available on it and the page state gives it a ref. A Handover that ends at such a choice names each item left out and why: `unavailable: ` and its Availability Reason, or `no ref in the page state`.
 - An optional closed-set parameter gets an extra choice that leaves it unset.
@@ -165,7 +165,7 @@ Each step sends the pruned page state, the goal and the step's question from the
 | Reason              | Meaning                                                                                                                              |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `done`              | The model judged the goal achieved (goal_met ≥ 0.5).                                                                                 |
-| `no_fitting_option` | The model chose "none", as no available operation fits, or answered "none of these" to an element choice, in every chunk of a ref.   |
+| `no_fitting_option` | The model chose "none", as no available operation fits, or answered "none of these" to a collection item or in every chunk of a ref. |
 | `needs_value`       | The chosen operation needs values the loop cannot fill, from the page or the Goal Values. `needs` names the tool and its parameters. |
 | `action_failed`     | Two operations failed in a row.                                                                                                      |
 | `no_progress`       | The loop stopped before repeating its last step to no effect. `needs` names the tool and its parameters.                             |

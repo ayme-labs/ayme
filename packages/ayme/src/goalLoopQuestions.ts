@@ -779,26 +779,27 @@ function runOffQuestion(
 }
 
 /**
- * A required element choice ends with an option that names no element, and
- * its instructions say when to choose it. An optional one says the same by
- * leaving the parameter unset; a closed set of values has nothing to add.
+ * A required choice of a collection item ends with an option that names no
+ * item, and its instructions say when to choose it, so the model is never
+ * made to act on an item the goal does not mean. An optional one says the
+ * same by leaving the parameter unset. A ref within the cap gets none: on the
+ * bench goal set, Jev answered it where an offered element fitted.
  */
 function withNoneOfThese(
   arg: ArgumentSpec,
   kind: ClosedSet["kind"],
   question: { options: ArgumentOption[]; instructions: string }
 ): { options: ArgumentOption[]; instructions: string } {
-  if (arg.optional || kind === "values") return question;
-  const noun = kind === "ref" ? "element" : "item";
+  if (arg.optional || kind !== "instance") return question;
   return {
     options: [
       ...question.options,
       {
         key: NONE_OF_THESE_KEY,
-        description: `None of these; the ${noun} is not offered.`,
+        description: "None of these; the item is not offered.",
       },
     ],
-    instructions: `${question.instructions} Choose "${NONE_OF_THESE_KEY}" when the ${noun} is not among these.`,
+    instructions: `${question.instructions} Choose "${NONE_OF_THESE_KEY}" when the item is not among these.`,
   };
 }
 
@@ -918,7 +919,7 @@ export function planArguments(
 
     // A ref whose elements outnumber the cap is asked in chunks; other closed
     // sets are not.
-    if (closedSet.kind === "ref" && asked.options.length > MAX_CHOICE_OPTIONS) {
+    if (closedSet.kind === "ref" && options.length > MAX_CHOICE_OPTIONS) {
       questions.push(...chunkedRefQuestions(tool, arg, options, receiving));
       continue;
     }
@@ -1530,8 +1531,8 @@ export type ArgumentAnswers =
    */
   | { kind: "run_off"; chosen: ChosenArguments; question: ArgumentQuestion }
   /**
-   * A required element choice answered "none of these", in every chunk of a
-   * ref over the cap. `leftOut` holds the items a collection's question did
+   * A required collection item answered "none of these", or every chunk of a
+   * ref over the cap did. `leftOut` holds the items a collection's question did
    * not offer, and why.
    */
   | ({
@@ -1659,11 +1660,9 @@ export function readArgumentAnswers(
 
   const required = (parameter: string) =>
     tool.args.some((arg) => arg.name === parameter && !arg.optional);
-  const picksElement = (parameter: string) =>
+  const picksItem = (parameter: string) =>
     tool.args.some(
-      (arg) =>
-        arg.name === parameter &&
-        (arg.closedSet?.kind === "ref" || arg.closedSet?.kind === "instance")
+      (arg) => arg.name === parameter && arg.closedSet?.kind === "instance"
     );
   const noneFits = (
     parameter: string,
@@ -1689,10 +1688,10 @@ export function readArgumentAnswers(
   for (const [parameter, group] of groupByParameter(choicePicks)) {
     const named = group.filter((pick) => "value" in pick.option);
     // A lone question: an option without a value leaves the parameter unset,
-    // or, for a required one, says no element or no Goal Value fits it.
+    // or, for a required one, says no item or no Goal Value fits it.
     if (group.length === 1) {
       if (named.length === 0 && required(parameter))
-        return picksElement(parameter)
+        return picksItem(parameter)
           ? noneFits(parameter, group[0]!.question)
           : needsValue(parameter);
       choose(chosen, group[0]!.question, group[0]!.option);
