@@ -457,7 +457,7 @@ type ListValueQuestion = QuestionBase & {
 export type StageTwoQuestion = ArgumentQuestion | ListValueQuestion;
 
 /** What the loop does with the chosen operation once its schema is read. */
-type ArgumentPlan =
+export type ArgumentPlan =
   /** Run it, after the model answered these questions (none = run it now). */
   | { kind: "ask"; questions: StageTwoQuestion[] }
   /**
@@ -1079,7 +1079,7 @@ function renderPage(pageTree: StructuralTree): JsonStructuralNodeForest {
 }
 
 /** The state of one step, as both stages of it are sent (or built from) it. */
-type StepState = {
+export type StepState = {
   goal?: string;
   values?: GoalValues;
   history?: readonly GoalLoopStepRecord[];

@@ -28,9 +28,12 @@ import {
   readRunOffAnswer,
   readSpeculativeValues,
   type AnswerRecord,
+  type ArgumentPlan,
   type ChosenArguments,
   type GoalLoopOperation,
   type GoalValues,
+  type StageTwoQuestion,
+  type StepState,
   type ToolOption,
 } from "./goalLoopQuestions";
 
@@ -195,16 +198,187 @@ type Read<T> =
 const errorTextOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
+/**
+ * How one step asks and stops. A stop carries the step's scores once stage
+ * one has set them.
+ */
+type StepAsker = {
+  scores?: StepScores;
+  stop(reason: HandoverReason, next: string, needs?: HandoverNeeds): StepStop;
+  /**
+   * A decision the loop could not obtain or use ends the run; `what` says
+   * what went wrong and `failure` decides whether the advice includes a retry.
+   */
+  decideFailed(what: string, failure: DecisionFailure): StepStop;
+  /** Ask the decision function; a throw becomes the stop it comes to. */
+  ask(request: DecisionRequest): Promise<Asked>;
+  /** Read answers; one the loop cannot read becomes the stop it comes to. */
+  read<T>(reader: () => T): Read<T>;
+};
+
+function stepAsker(decide: GoalLoopDecisionFunction): StepAsker {
+  const asker: StepAsker = {
+    stop: (reason, next, needs) => ({
+      kind: "stop",
+      reason,
+      next,
+      ...(needs ? { needs } : {}),
+      ...(asker.scores ? { scores: asker.scores } : {}),
+    }),
+    decideFailed: (what, failure) =>
+      asker.stop(
+        "decide_failed",
+        `${asSentence(what)} ${isRetryableDecisionFailure(failure) ? "Retry, or handle" : "Handle"} the goal without the Goal Loop.`
+      ),
+    ask: async (request) => {
+      try {
+        const response = await decide(request);
+        return { answers: response.answers as Record<string, unknown> };
+      } catch (error) {
+        return {
+          stop:
+            error instanceof DecisionEndpointError
+              ? // Its message already says what the endpoint did.
+                asker.decideFailed(error.message, { kind: "endpoint", error })
+              : asker.decideFailed(
+                  `The decision function failed: ${errorTextOf(error)}`,
+                  { kind: "thrown" }
+                ),
+        };
+      }
+    },
+    read: (reader) => {
+      try {
+        return { value: reader() };
+      } catch (error) {
+        return {
+          stop: asker.decideFailed(
+            `The decision function's answers could not be read: ${errorTextOf(error)}`,
+            { kind: "invalid" }
+          ),
+        };
+      }
+    },
+  };
+  return asker;
+}
+
 /** How a `needs_value` Handover ends when the model could not pick a closed-set value. */
 const pickYourself = (parameter: string) =>
   `Read the page again, pick "${parameter}" yourself and call the operation directly, or try a different approach.`;
 
+/** The `needs_value` stop a plan that cannot ask the model comes to, worded. */
+function planStop(
+  tool: GoalLoopOperation,
+  plan: Exclude<ArgumentPlan, { kind: "ask" }>,
+  stop: StepAsker["stop"]
+): StepStop {
+  switch (plan.kind) {
+    case "needs_free_value":
+      return stop(
+        "needs_value",
+        `The operation "${tool.name}" needs values for: ${plan.parameters.join(", ")}, and no Goal Value fits ${plan.unfilled.join(", ")}. Call goal again with a value for ${plan.unfilled.join(", ")} in values, or call ${tool.name} directly.`,
+        { tool: tool.name, parameters: plan.parameters }
+      );
+    case "needs_ref_choice":
+      return stop(
+        "needs_value",
+        `The operation "${tool.name}" acts on one element, and the loop found no element on the current page it applies to. ${pickYourself(plan.parameter)}`,
+        { tool: tool.name, parameters: [plan.parameter] }
+      );
+    case "needs_instance_choice":
+      return stop(
+        "needs_value",
+        `The operation "${tool.name}" acts on a collection instance, and ${
+          plan.optionCount === 0
+            ? "the loop found no instance on the current page"
+            : "the current page holds more of them than one decision can offer"
+        }. ${pickYourself(plan.parameter)}`,
+        { tool: tool.name, parameters: [plan.parameter] }
+      );
+    case "needs_value_choice":
+      return stop(
+        "needs_value",
+        `The operation "${tool.name}" needs a value for "${plan.parameter}", and its ${plan.optionCount} allowed values are not a choice one decision can answer. Provide the value and call the operation directly, or try a different approach.`,
+        { tool: tool.name, parameters: [plan.parameter] }
+      );
+  }
+}
+
+/**
+ * Stage two: the chosen operation's arguments, asked in one parallel request,
+ * and a run-off when several chunks of a ref each named an element.
+ */
+async function decideArguments(
+  asker: StepAsker,
+  scores: StepScores,
+  tool: GoalLoopOperation,
+  questions: readonly StageTwoQuestion[],
+  state: StepState,
+  capture: PageStateCapture
+): Promise<{ chosen: ChosenArguments; stop?: undefined } | { stop: StepStop }> {
+  // The scores share the record's maps, so an answer that fails to read
+  // leaves the ones read before it on the run result.
+  const record: AnswerRecord = { choices: {}, probabilities: {} };
+  scores.argumentChoices = record.choices;
+  scores.argumentProbabilities = record.probabilities;
+  const stageTwo = await asker.ask(
+    buildArgumentRequest(state, questions, capture)
+  );
+  if (stageTwo.stop) return stageTwo;
+  const read = asker.read(() =>
+    readArgumentAnswers(tool, questions, stageTwo.answers, record)
+  );
+  if (read.stop) return read;
+  const answers = read.value;
+
+  // Every chunk of a ref over the cap answered "none of these": the step
+  // ran no action, so it leaves no history entry.
+  if (answers.kind === "none_fits") {
+    return {
+      stop: asker.stop(
+        "no_fitting_option",
+        `No element on the current page fits the operation "${tool.name}". Navigate to a different page or try a different approach.`
+      ),
+    };
+  }
+
+  // The model judged that no Goal Value fits a required parameter.
+  if (answers.kind === "needs_value") {
+    return {
+      stop: asker.stop(
+        "needs_value",
+        `The operation "${tool.name}" needs a value for "${answers.parameter}", and the model judged that none of the Goal Values fits. Call goal again with a value for "${answers.parameter}" in values, or call ${tool.name} directly.`,
+        { tool: tool.name, parameters: [answers.parameter] }
+      ),
+    };
+  }
+
+  let chosen = answers.chosen;
+  // Several chunks each named an element: one run-off among exactly those.
+  if (answers.kind === "run_off") {
+    scores.runOff = true;
+    const runOff = await asker.ask(
+      buildArgumentRequest(state, [answers.question], capture)
+    );
+    if (runOff.stop) return runOff;
+    const completed = asker.read(() =>
+      readRunOffAnswer(answers, runOff.answers)
+    );
+    if (completed.stop) return completed;
+    chosen = completed.value;
+  }
+  fitListsToTarget(tool, chosen, capture);
+  scores.argumentChoices = chosen.choices;
+  scores.argumentProbabilities = chosen.probabilities;
+  return { chosen };
+}
+
 /**
  * Decide one step: stage one asks which operation moves closest to the goal,
  * whether the goal is met, and which Goal Value each candidate would take;
- * stage two asks the chosen operation's arguments, with a run-off when several
- * chunks of a ref each named an element. Every verdict that ends the run
- * before an action is decided here, the repeat stop included.
+ * stage two asks the chosen operation's arguments. Every verdict that ends
+ * the run before an action is decided here, the repeat stop included.
  */
 export async function decideStep({
   goal,
@@ -215,64 +389,16 @@ export async function decideStep({
   pomDefinitions,
   decide,
 }: StepInput): Promise<StepVerdict> {
-  // The step's scores, there once stage one is read; a stop after that
-  // carries them.
-  const step: { scores?: StepScores } = {};
+  const asker = stepAsker(decide);
+  const { stop } = asker;
 
-  const stop = (
-    reason: HandoverReason,
-    next: string,
-    needs?: HandoverNeeds
-  ): StepStop => ({
-    kind: "stop",
-    reason,
-    next,
-    ...(needs ? { needs } : {}),
-    ...(step.scores ? { scores: step.scores } : {}),
-  });
-
-  /**
-   * A decision the loop could not obtain or use ends the run; `what` says what
-   * went wrong and `failure` decides whether the advice includes a retry.
-   */
-  const decideFailed = (what: string, failure: DecisionFailure): StepStop =>
-    stop(
-      "decide_failed",
-      `${asSentence(what)} ${isRetryableDecisionFailure(failure) ? "Retry, or handle" : "Handle"} the goal without the Goal Loop.`
+  // A question outside the limit is never sent, in either stage.
+  if (!operationQuestionFits(toolOptions)) {
+    return asker.decideFailed(
+      `The page offers ${toolOptions.length} operations, more than one decision can choose from`,
+      { kind: "too-many-operations" }
     );
-
-  /** The decision function threw; the error travels on. */
-  const callFailed = (error: unknown): StepStop =>
-    error instanceof DecisionEndpointError
-      ? // Its message already says what the endpoint did.
-        decideFailed(error.message, { kind: "endpoint", error })
-      : decideFailed(`The decision function failed: ${errorTextOf(error)}`, {
-          kind: "thrown",
-        });
-
-  /** The decision function answered with something the loop could not read. */
-  const invalidDecision = (error: unknown): StepStop =>
-    decideFailed(
-      `The decision function's answers could not be read: ${errorTextOf(error)}`,
-      { kind: "invalid" }
-    );
-
-  const ask = async (request: DecisionRequest): Promise<Asked> => {
-    try {
-      const response = await decide(request);
-      return { answers: response.answers as Record<string, unknown> };
-    } catch (error) {
-      return { stop: callFailed(error) };
-    }
-  };
-
-  const read = <T>(reader: () => T): Read<T> => {
-    try {
-      return { value: reader() };
-    } catch (error) {
-      return { stop: invalidDecision(error) };
-    }
-  };
+  }
 
   const state = buildStepState(
     goal,
@@ -285,21 +411,13 @@ export async function decideStep({
   // with the value it will receive in view.
   const speculative = buildSpeculativeValueQuestions(toolOptions, values);
 
-  // A question outside the limit is never sent, in either stage.
-  if (!operationQuestionFits(toolOptions)) {
-    return decideFailed(
-      `The page offers ${toolOptions.length} operations, more than one decision can choose from`,
-      { kind: "too-many-operations" }
-    );
-  }
-
   // --- Stage one: the operation, and whether the goal is met ---
 
-  const stageOne = await ask(
+  const stageOne = await asker.ask(
     buildOperationRequest(state, toolOptions, speculative)
   );
   if (stageOne.stop) return stageOne.stop;
-  const stageOneAnswers = read(() => ({
+  const stageOneAnswers = asker.read(() => ({
     operation: parseOperationAnswer(stageOne.answers),
     goalMet: parseGoalMetAnswer(stageOne.answers),
   }));
@@ -310,40 +428,36 @@ export async function decideStep({
     operationProbabilities: operationAnswer.probabilities,
     goalMetScore: goalMet.noul,
   };
-  step.scores = scores;
+  asker.scores = scores;
 
   // 1. done: goal_met >= 0.5
-  if (goalMet.noul >= 0.5) {
+  if (goalMet.noul >= 0.5)
     return stop(
       "done",
       "The goal has been achieved. Continue with your next task."
     );
-  }
 
   // 2. no_fitting_option: model chose "none"
   const chosenKey = operationAnswer.choice;
-  if (chosenKey === "none") {
+  if (chosenKey === "none")
     return stop(
       "no_fitting_option",
       "No available operation fits the goal on the current page. Navigate to a different page or try a different approach."
     );
-  }
 
-  const chosenOption = toolOptions.find((opt) => opt.key === chosenKey);
-  if (!chosenOption) {
-    return decideFailed(`The model chose an unknown operation "${chosenKey}"`, {
-      kind: "unknown-choice",
-    });
-  }
-  const chosenTool = chosenOption.tool;
+  const chosenTool = toolOptions.find((opt) => opt.key === chosenKey)?.tool;
+  if (!chosenTool)
+    return asker.decideFailed(
+      `The model chose an unknown operation "${chosenKey}"`,
+      { kind: "unknown-choice" }
+    );
 
-  // The speculative answers that apply to the chosen operation. The scores
-  // share the record's maps, so an answer that fails to read leaves the ones
-  // read before it on the run result.
+  // The speculative answers that apply to the chosen operation, recorded as
+  // they are read.
   const valueRecord: AnswerRecord = { choices: {}, probabilities: {} };
   scores.valueChoices = valueRecord.choices;
   scores.valueProbabilities = valueRecord.probabilities;
-  const presets = read(() =>
+  const presets = asker.read(() =>
     readSpeculativeValues(
       chosenTool,
       speculative,
@@ -355,40 +469,9 @@ export async function decideStep({
 
   // 3. needs_value: the operation needs a value the model cannot pick
   const plan = planArguments(chosenTool, capture, values, presets.value);
-  if (plan.kind === "needs_free_value") {
-    return stop(
-      "needs_value",
-      `The operation "${chosenTool.name}" needs values for: ${plan.parameters.join(", ")}, and no Goal Value fits ${plan.unfilled.join(", ")}. Call goal again with a value for ${plan.unfilled.join(", ")} in values, or call ${chosenTool.name} directly.`,
-      { tool: chosenTool.name, parameters: plan.parameters }
-    );
-  }
-  if (plan.kind === "needs_ref_choice") {
-    return stop(
-      "needs_value",
-      `The operation "${chosenTool.name}" acts on one element, and the loop found no element on the current page it applies to. ${pickYourself(plan.parameter)}`,
-      { tool: chosenTool.name, parameters: [plan.parameter] }
-    );
-  }
-  if (plan.kind === "needs_instance_choice") {
-    return stop(
-      "needs_value",
-      `The operation "${chosenTool.name}" acts on a collection instance, and ${
-        plan.optionCount === 0
-          ? "the loop found no instance on the current page"
-          : "the current page holds more of them than one decision can offer"
-      }. ${pickYourself(plan.parameter)}`,
-      { tool: chosenTool.name, parameters: [plan.parameter] }
-    );
-  }
-  if (plan.kind === "needs_value_choice") {
-    return stop(
-      "needs_value",
-      `The operation "${chosenTool.name}" needs a value for "${plan.parameter}", and its ${plan.optionCount} allowed values are not a choice one decision can answer. Provide the value and call the operation directly, or try a different approach.`,
-      { tool: chosenTool.name, parameters: [plan.parameter] }
-    );
-  }
+  if (plan.kind !== "ask") return planStop(chosenTool, plan, stop);
 
-  // --- Stage two: the operation's arguments, asked in one parallel request ---
+  // --- Stage two: the operation's arguments ---
 
   let chosenArguments: ChosenArguments = {
     args: {},
@@ -398,64 +481,22 @@ export async function decideStep({
     lists: {},
   };
   if (plan.questions.length > 0) {
-    const argumentRecord: AnswerRecord = { choices: {}, probabilities: {} };
-    scores.argumentChoices = argumentRecord.choices;
-    scores.argumentProbabilities = argumentRecord.probabilities;
-    const stageTwo = await ask(
-      buildArgumentRequest(state, plan.questions, capture)
+    const decided = await decideArguments(
+      asker,
+      scores,
+      chosenTool,
+      plan.questions,
+      state,
+      capture
     );
-    if (stageTwo.stop) return stageTwo.stop;
-    const argumentAnswers = read(() =>
-      readArgumentAnswers(
-        chosenTool,
-        plan.questions,
-        stageTwo.answers,
-        argumentRecord
-      )
-    );
-    if (argumentAnswers.stop) return argumentAnswers.stop;
-    const answers = argumentAnswers.value;
-
-    // Every chunk of a ref over the cap answered "none of these": the step
-    // ran no action, so it leaves no history entry.
-    if (answers.kind === "none_fits") {
-      return stop(
-        "no_fitting_option",
-        `No element on the current page fits the operation "${chosenTool.name}". Navigate to a different page or try a different approach.`
-      );
-    }
-
-    // The model judged that no Goal Value fits a required parameter.
-    if (answers.kind === "needs_value") {
-      return stop(
-        "needs_value",
-        `The operation "${chosenTool.name}" needs a value for "${answers.parameter}", and the model judged that none of the Goal Values fits. Call goal again with a value for "${answers.parameter}" in values, or call ${chosenTool.name} directly.`,
-        { tool: chosenTool.name, parameters: [answers.parameter] }
-      );
-    }
-
-    // Several chunks each named an element: one run-off among exactly those.
-    if (answers.kind === "run_off") {
-      scores.runOff = true;
-      const runOff = await ask(
-        buildArgumentRequest(state, [answers.question], capture)
-      );
-      if (runOff.stop) return runOff.stop;
-      const completed = read(() => readRunOffAnswer(answers, runOff.answers));
-      if (completed.stop) return completed.stop;
-      chosenArguments = completed.value;
-    } else {
-      chosenArguments = answers.chosen;
-    }
-    fitListsToTarget(chosenTool, chosenArguments, capture);
-    scores.argumentChoices = chosenArguments.choices;
-    scores.argumentProbabilities = chosenArguments.probabilities;
+    if (decided.stop) return decided.stop;
+    chosenArguments = decided.chosen;
   }
   completeArguments(chosenTool, chosenArguments, presets.value);
 
   // 4. no_progress: the step would repeat the one before, to no effect.
   const stuck = stuckOn(history, chosenTool.name, chosenArguments.chosen);
-  if (stuck) {
+  if (stuck)
     return stop(
       "no_progress",
       `The loop is repeating ${stuck.previous.did}: it chose the same step ${stuck.times} times in a row${stuck.previous.page_changed ? "" : ", and the last run did not change the page"}. It stopped instead of running it again. Perform that step yourself by calling ${chosenTool.name}, or call goal again with a goal that names the element to act on.`,
@@ -464,7 +505,6 @@ export async function decideStep({
         parameters: Object.keys(chosenArguments.chosen),
       }
     );
-  }
 
   return {
     kind: "act",

@@ -88,6 +88,46 @@ const renameTool: GoalLoopOperation = {
   ],
 };
 
+/** A single-element tool with a boolean parameter next to its ref. */
+const forceClickTool: GoalLoopOperation = {
+  ...clickTool,
+  name: "force_click",
+  requiredParams: ["ref", "force"],
+  args: [
+    ...clickTool.args,
+    {
+      name: "force",
+      path: ["force"],
+      optional: false,
+      closedSet: { kind: "values", values: [true, false] },
+    },
+  ],
+};
+
+/** A tool that goes through a collection, one instance per button of the capture. */
+const collectionTool = (capture: PageStateCapture): GoalLoopOperation => ({
+  name: "List.archive",
+  description: "Archive an item.",
+  execute: async () => null,
+  requiredParams: ["ref"],
+  args: [
+    {
+      name: "ref",
+      path: ["ref"],
+      optional: false,
+      closedSet: {
+        kind: "instance",
+        roots: [...capture.elementsByRef.values()].map((element, index) => ({
+          label: `items[${index}]`,
+          element,
+          present: true,
+          available: true,
+        })),
+      },
+    },
+  ],
+});
+
 const optionOf = (tool: GoalLoopOperation): ToolOption => ({
   key: tool.name,
   label: tool.description,
@@ -279,6 +319,82 @@ describe("a Step Decision", () => {
       expect(requests).toHaveLength(1);
     });
 
+    it("with needs_value, saying which parameters no Goal Value fits", async () => {
+      const { decide } = scripted(stageOne("Project.rename"));
+
+      const verdict = await step(decide, {
+        toolOptions: [optionOf(renameTool)],
+      });
+
+      expect(verdict.kind === "stop" && verdict.next).toBe(
+        'The operation "Project.rename" needs values for: name, and no Goal Value fits name. Call goal again with a value for name in values, or call Project.rename directly.'
+      );
+    });
+
+    it("with needs_value when no element on the page is one the ref may address", async () => {
+      const { decide } = scripted(stageOne("click"));
+
+      expect(
+        await step(decide, { capture: captureOfButtons(0) })
+      ).toMatchObject({
+        kind: "stop",
+        reason: "needs_value",
+        next: 'The operation "click" acts on one element, and the loop found no element on the current page it applies to. Read the page again, pick "ref" yourself and call the operation directly, or try a different approach.',
+        needs: { tool: "click", parameters: ["ref"] },
+      });
+    });
+
+    it.each([
+      [0, "the loop found no instance on the current page"],
+      [256, "the current page holds more of them than one decision can offer"],
+    ])(
+      "with needs_value when a collection holds %i instances",
+      async (count, why) => {
+        const capture = captureOfButtons(count);
+        const archiveTool = collectionTool(capture);
+        const { decide } = scripted(stageOne(archiveTool.name));
+
+        expect(
+          await step(decide, { capture, toolOptions: [optionOf(archiveTool)] })
+        ).toMatchObject({
+          kind: "stop",
+          reason: "needs_value",
+          next: `The operation "List.archive" acts on a collection instance, and ${why}. Read the page again, pick "ref" yourself and call the operation directly, or try a different approach.`,
+          needs: { tool: "List.archive", parameters: ["ref"] },
+        });
+      }
+    );
+
+    it("with needs_value when a closed set holds more values than one decision can answer", async () => {
+      const pickTool: GoalLoopOperation = {
+        name: "Form.pick",
+        description: "Pick a code.",
+        execute: async () => null,
+        requiredParams: ["code"],
+        args: [
+          {
+            name: "code",
+            path: ["code"],
+            optional: false,
+            closedSet: {
+              kind: "values",
+              values: Array.from({ length: 300 }, (_, index) => `c${index}`),
+            },
+          },
+        ],
+      };
+      const { decide } = scripted(stageOne("Form.pick"));
+
+      expect(
+        await step(decide, { toolOptions: [optionOf(pickTool)] })
+      ).toMatchObject({
+        kind: "stop",
+        reason: "needs_value",
+        next: 'The operation "Form.pick" needs a value for "code", and its 300 allowed values are not a choice one decision can answer. Provide the value and call the operation directly, or try a different approach.',
+        needs: { tool: "Form.pick", parameters: ["code"] },
+      });
+    });
+
     it("with no_fitting_option when every chunk of a ref answers none of these", async () => {
       const { decide } = scripted(stageOne("click"), {
         answer: answering(() => "none"),
@@ -320,6 +436,34 @@ describe("a Step Decision", () => {
         /^The decision function's answers could not be read: .*goal_met.*Handle the goal without the Goal Loop\.$/
       );
       expect(verdict.scores).toBeUndefined();
+    });
+
+    it("says so when stage one's Goal Value answer names no option it offered", async () => {
+      const { decide, requests } = scripted({
+        answer: (request) => ({
+          ...stageOne("Project.rename").answers,
+          ...Object.fromEntries(
+            Object.keys(request.questions)
+              .filter((id) => id !== "operation" && id !== "goal_met")
+              .map((id) => [id, choice("not_offered")])
+          ),
+        }),
+      });
+
+      const verdict = await step(decide, {
+        toolOptions: [optionOf(renameTool)],
+        values: { newName: "Apollo" },
+      });
+
+      expect(verdict).toMatchObject({
+        kind: "stop",
+        reason: "decide_failed",
+        scores: { goalMetScore: 0.1 },
+      });
+      expect(verdict.kind === "stop" && verdict.next).toMatch(
+        /^The decision function's answers could not be read: .*Handle the goal without the Goal Loop\.$/
+      );
+      expect(requests).toHaveLength(1);
     });
 
     it("keeps the stage-one scores when stage two fails", async () => {
@@ -388,6 +532,7 @@ describe("a Step Decision", () => {
       expect(await step(decide, { capture })).toMatchObject({
         kind: "stop",
         reason: "decide_failed",
+        next: "The decision function failed: socket hang up. Retry, or handle the goal without the Goal Loop.",
         scores: {
           runOff: true,
           argumentChoices: { [firstChunk]: "e10", [secondChunk]: "e280" },
@@ -419,6 +564,82 @@ describe("a Step Decision", () => {
       });
       expect(verdict.kind === "stop" && verdict.next).toMatch(
         /^The loop is repeating click\(…\): it chose the same step 2 times in a row, and the last run did not change the page\./
+      );
+    });
+
+    it("knows a step by its operation and the keys chosen, not their descriptions", async () => {
+      const { decide } = scripted(stageOne("click"), {
+        answers: { ref: choice("e2") },
+      });
+
+      const verdict = await step(decide, {
+        history: [
+          ranOk({
+            operation: "click",
+            chosen: { ref: { key: "e2", description: 'button "Renamed"' } },
+            page_changed: false,
+          }),
+        ],
+      });
+
+      expect(verdict).toMatchObject({ kind: "stop", reason: "no_progress" });
+    });
+
+    it("knows the same choices recorded in another parameter order as the same step", async () => {
+      const { decide } = scripted(stageOne("force_click"), {
+        answers: { ref: choice("e2"), force: choice("true") },
+      });
+
+      const verdict = await step(decide, {
+        toolOptions: [optionOf(forceClickTool)],
+        history: [
+          ranOk({
+            operation: "force_click",
+            chosen: {
+              force: { key: "true", description: "true" },
+              ref: { key: "e2", description: 'button "Item 2"' },
+            },
+            page_changed: false,
+          }),
+        ],
+      });
+
+      expect(verdict).toMatchObject({ kind: "stop", reason: "no_progress" });
+    });
+
+    it("runs a step that differs from the one before", async () => {
+      const { decide } = scripted(stageOne("click"), {
+        answers: { ref: choice("e2") },
+      });
+
+      const verdict = await step(decide, {
+        history: [
+          ranOk({
+            operation: "click",
+            chosen: { ref: { key: "e1", description: 'button "Item 1"' } },
+            page_changed: false,
+          }),
+        ],
+      });
+
+      expect(verdict.kind).toBe("act");
+    });
+
+    it("stops a step chosen a third time in a row even though the page changed each time", async () => {
+      const { decide } = scripted(stageOne("click"), {
+        answers: { ref: choice("e2") },
+      });
+
+      const verdict = await step(decide, {
+        history: [
+          ranOk({ ...clickedE2, page_changed: true }),
+          ranOk({ ...clickedE2, page_changed: true }),
+        ],
+      });
+
+      expect(verdict).toMatchObject({ kind: "stop", reason: "no_progress" });
+      expect(verdict.kind === "stop" && verdict.next).toMatch(
+        /chose the same step 3 times in a row\. It stopped/
       );
     });
 
