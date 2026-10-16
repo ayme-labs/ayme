@@ -19,6 +19,7 @@ import { renderPomDefinitions } from "./pomDefinitionText";
 import { probeRegisteredPomMembers } from "./registry";
 import {
   completeArguments,
+  describeLeftOut,
   buildArgumentRequest,
   buildOperationRequest,
   buildSpeculativeValueQuestions,
@@ -650,11 +651,16 @@ export async function pursueGoal(
     if (plan.kind === "needs_instance_choice") {
       return done({
         reason: "needs_value",
-        next: `The operation "${chosenTool.name}" acts on a collection instance, and ${
-          plan.optionCount === 0
-            ? "the loop found no instance on the current page"
-            : "the current page holds more of them than one decision can offer"
-        }. ${pickYourself(plan.parameter)}`,
+        next:
+          plan.optionCount > 0
+            ? `The operation "${chosenTool.name}" acts on a collection instance, and the current page holds more of them than one decision can offer. ${pickYourself(plan.parameter)}`
+            : [
+                `The operation "${chosenTool.name}" acts on a collection instance, and the loop could offer none of its items.`,
+                describeLeftOut(plan.leftOut),
+                "Try a different approach.",
+              ]
+                .filter(Boolean)
+                .join(" "),
         history,
         needs: { tool: chosenTool.name, parameters: [plan.parameter] },
       });
@@ -703,12 +709,19 @@ export async function pursueGoal(
         return invalidDecision(error);
       }
 
-      // Every chunk of a ref over the cap answered "none of these": the step
-      // ran no action, so it leaves no history entry.
+      // A required collection item, or every chunk of a ref over the cap,
+      // answered "none of these": the step ran no action, so it leaves no
+      // history entry.
       if (argumentAnswers.kind === "none_fits") {
         return done({
           reason: "no_fitting_option",
-          next: `No element on the current page fits the operation "${chosenTool.name}". Navigate to a different page or try a different approach.`,
+          next: [
+            `No element on the current page fits the operation "${chosenTool.name}".`,
+            describeLeftOut(argumentAnswers.leftOut),
+            "Navigate to a different page or try a different approach.",
+          ]
+            .filter(Boolean)
+            .join(" "),
           history,
         });
       }
