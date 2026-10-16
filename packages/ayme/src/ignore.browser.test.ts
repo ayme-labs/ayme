@@ -3,7 +3,6 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { createPage } from "./browserPage";
 import { ayme } from "./agentCalls.testSupport";
 import {
-  createPageRegistration,
   listAvailablePomTools,
   probeRegisteredPomMembers,
   registerCompiledPom,
@@ -91,8 +90,7 @@ describe("ignore predicate in page state capture", () => {
       Panel,
       manifest("Panel", [root()], [action("act", "Panel.act")])
     );
-    startRuntime((element) => element.id === "assistant");
-    createPageRegistration(Panel);
+    startRuntime((element) => element.id === "assistant").pom.register(Panel);
 
     await probeRegisteredPomMembers();
     const state = await ayme.getPageState();
@@ -115,8 +113,7 @@ describe("ignore predicate in page state capture", () => {
       Panel,
       manifest("Panel", [root()], [action("act", "Panel.act")])
     );
-    startRuntime((element) => element.id === "assistant");
-    createPageRegistration(Panel);
+    startRuntime((element) => element.id === "assistant").pom.register(Panel);
 
     await probeRegisteredPomMembers();
     expect(listAvailablePomTools().map((tool) => tool.name)).toEqual([

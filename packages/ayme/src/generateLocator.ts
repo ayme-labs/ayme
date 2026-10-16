@@ -2,10 +2,7 @@
 // Recommendations for Page Object Model code. It reads and never acts, so it
 // records no Structural Action and leaves the Goal Loop's operations alone.
 import {
-  isSyntheticRef,
-  parseStructuralRef,
   refFromSelector,
-  type AriaRef,
   type PlaywrightLocatorString,
 } from "@ayme-dev/core/structural-observation";
 import { generateLocator } from "@ayme-dev/playwright-lite/internal";
@@ -18,8 +15,7 @@ import {
   validatedToolInput,
   type PublishedElementTool,
 } from "./elementTools";
-import { resolvePageStateRefs } from "./pageState";
-import { listRegisteredPomRoots, requireAymeRuntimePage } from "./registry";
+import { requireAymeRuntimePage } from "./registry";
 import type { ToolResult } from "./toolTypes";
 
 type Result = ToolResult<"generate_locator">;
@@ -65,33 +61,12 @@ async function resolve(
   requested: string,
   currentDocument: Document
 ): Promise<Element> {
-  const ref = parseStructuralRef(requested);
-  if (ref && isSyntheticRef(ref))
-    throw new Error(await syntheticRefReason(label, ref, currentDocument));
   const { element } = await resolveElementTarget(
     { label, targetField: "target" },
     requested,
     currentDocument
   );
   return element;
-}
-
-/** A synthetic ref is a Page Object root: name it, as it is already modelled. */
-async function syntheticRefReason(
-  label: string,
-  requested: AriaRef,
-  currentDocument: Document
-): Promise<string> {
-  const [resolution] = await resolvePageStateRefs(currentDocument, requested);
-  const labels =
-    resolution?.status === "resolved"
-      ? (await listRegisteredPomRoots())
-          .filter((root) => root.element === resolution.node.element)
-          .map((root) => root.label)
-      : [];
-  return labels.length > 0
-    ? `Cannot ${label} ref "${requested}": it is the root of the Page Object ${labels.join(", ")}, which already models it.`
-    : `Cannot ${label} ref "${requested}": synthetic observation-only ref.`;
 }
 
 /** Whether `element` lies inside `container`, across shadow roots. */

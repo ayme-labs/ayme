@@ -113,11 +113,11 @@ export function combinedAvailability(
 }
 
 /**
- * The runtime's Availability Reason for a present root a click would not
- * reach: it names the Structural Ref of the first element in the way the
- * agent's latest page state gave one.
+ * Package-internal: the runtime's Availability Reason for a present element a
+ * click would not reach: it names the Structural Ref of the first element in
+ * the way the agent's latest page state gave one.
  */
-function obstructionReason(
+export function obstructionReason(
   inTheWay: readonly Element[],
   latestRefOf: LatestRefLookup
 ) {

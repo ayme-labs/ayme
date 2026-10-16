@@ -14,6 +14,8 @@ export type ReferencedCapturedRoot = {
 
 export type OmittedCapturedRoot = {
   kind: "omitted";
+  /** The root's element, which its synthetic ref stays with. */
+  element: Element;
   ancestorRef: AriaRef | undefined;
   descendantRefs: readonly AriaRef[];
   role: StructuralRole;
@@ -28,12 +30,31 @@ export type CapturedStructuralRootPlacement = {
   refs: readonly (AriaRef | null)[];
 };
 
+/**
+ * Mints a Page Object Root's synthetic ref once per element, as Playwright
+ * keeps a real ref with its element, so a ref one capture printed names the
+ * same root in every later capture of the same page, and the ref-to-element
+ * map of the latest capture still holds it.
+ */
+export class SyntheticRootRefFactory extends SyntheticAriaRefFactory {
+  private readonly refs = new WeakMap<Element, AriaRef>();
+
+  createFor(element: Element): AriaRef {
+    let ref = this.refs.get(element);
+    if (ref === undefined) {
+      ref = this.create();
+      this.refs.set(element, ref);
+    }
+    return ref;
+  }
+}
+
 /** Places captured roots using full-tree ancestry and retained-tree order. */
 export function placeCapturedRoots(
   retainedTree: StructuralTree,
   fullTree: StructuralTree,
   roots: readonly CapturedStructuralRoot[],
-  refFactory: SyntheticAriaRefFactory
+  refFactory: SyntheticRootRefFactory
 ): CapturedStructuralRootPlacement {
   let tree = retainedTree;
   const placedRefs: Array<AriaRef | null> = [];
@@ -103,7 +124,7 @@ export function placeCapturedRoots(
       continue;
     }
 
-    const syntheticRef = refFactory.create();
+    const syntheticRef = refFactory.createFor(root.element);
     const boundary = new StructuralNode({
       ref: syntheticRef,
       role: root.role,

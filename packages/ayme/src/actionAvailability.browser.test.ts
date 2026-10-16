@@ -5,11 +5,10 @@ import { ayme as agent, runContext } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { ayme } from "./decorators";
 import { createPage } from "./browserPage";
-import { buildToolOptions } from "./goalLoopQuestions";
+import { buildToolOptions } from "./goalLoopOperations";
 import { configurePageStateIgnore } from "./pageState";
 import { listTools } from "./publishedTools";
 import {
-  createPageRegistration,
   listAvailablePomTools,
   listCollectionToolItems,
   listRegisteredPomTools,
@@ -99,7 +98,7 @@ describe("Action Availability", () => {
         tools: [action("remove", "Panel.remove")],
         components: [],
       });
-      createPageRegistration(Panel);
+      session.pom.register(Panel);
       await probeRegisteredPomMembers();
 
       expect(listed("Panel.remove")).toMatchObject({
@@ -158,8 +157,8 @@ describe("Action Availability", () => {
       ],
       components: [],
     });
-    createPageRegistration(Toolbar);
-    const registration = createPageRegistration(Panel);
+    session.pom.register(Toolbar);
+    const panel = session.pom.register(Panel);
     await probeRegisteredPomMembers();
 
     expect(published("Toolbar.reset")).toMatchObject({ available: true });
@@ -171,7 +170,7 @@ describe("Action Availability", () => {
     await expect(session.tools.run("Panel.remove", {})).rejects.toThrow(
       "Panel.remove is unavailable: No item is selected."
     );
-    expect(registration.instance.removed).toBe(0);
+    expect(panel.removed).toBe(0);
     await session.tools.run("Panel.duplicate", {});
   });
 
@@ -205,7 +204,7 @@ describe("Action Availability", () => {
         },
       ],
     });
-    createPageRegistration(Shell);
+    session.pom.register(Shell);
     await probeRegisteredPomMembers();
 
     expect(published("Shell.panel.close")).toMatchObject({ available: true });
@@ -246,10 +245,10 @@ describe("Action Availability", () => {
       ],
       components: [],
     });
-    const registration = createPageRegistration(Panel);
+    const panel = session.pom.register(Panel);
     await probeRegisteredPomMembers();
 
-    expect(seen).toEqual([registration.instance, registration.instance]);
+    expect(seen).toEqual([panel, panel]);
     for (const name of ["Panel.remove", "Panel.duplicate"])
       expect(published(name)).toMatchObject({
         available: false,
@@ -277,7 +276,7 @@ describe("Action Availability", () => {
       tools: [action("reset", "Toolbar.reset")],
       components: [],
     });
-    createPageRegistration(Toolbar);
+    session.pom.register(Toolbar);
     class Item {
       constructor(readonly root: ReturnType<Page["locator"]>) {}
       recall() {
@@ -321,11 +320,11 @@ describe("Action Availability", () => {
         },
       ],
     } satisfies PomManifest);
-    const registration = createPageRegistration(Outbox);
+    const outbox = session.pom.register(Outbox);
     await probeRegisteredPomMembers();
-    expect(judged).toContain(registration.instance.items[0]);
-    expect(judged).toContain(registration.instance.items[1]);
-    expect(judged).not.toContain(registration.instance.items[2]);
+    expect(judged).toContain(outbox.items[0]);
+    expect(judged).toContain(outbox.items[1]);
+    expect(judged).not.toContain(outbox.items[2]);
     const state = await agent.getPageState();
     const refOf = (index: number) =>
       state.text.match(new RegExp(`(e\\d+) Outbox\\.items\\[${index}\\]`))?.[1];
@@ -394,8 +393,8 @@ describe("Action Availability", () => {
         },
       ],
     } satisfies PomManifest);
-    const registration = createPageRegistration(Inbox);
-    const archived = vi.spyOn(registration.instance.rows[1]!, "archive");
+    const inbox = session.pom.register(Inbox);
+    const archived = vi.spyOn(inbox.rows[1]!, "archive");
     await probeRegisteredPomMembers();
     const { text } = await agent.getPageState();
     const refOf = (pattern: string) =>
@@ -486,7 +485,7 @@ describe("Action Availability", () => {
         },
       ],
     } satisfies PomManifest);
-    createPageRegistration(Outbox);
+    session.pom.register(Outbox);
     await probeRegisteredPomMembers();
     const state = await agent.getPageState();
     const refOf = (index: number) =>
@@ -554,7 +553,7 @@ describe("Action Availability", () => {
         },
       ],
     });
-    createPageRegistration(Shell);
+    session.pom.register(Shell);
     document.querySelector("#inertWrapper")!.setAttribute("inert", "");
     await probeRegisteredPomMembers();
     // The agent's page state gives the elements in the way their refs, which
@@ -629,7 +628,7 @@ describe("Action Availability", () => {
       tools: [action("act", "Panel.act")],
       components: [],
     });
-    createPageRegistration(Panel);
+    session.pom.register(Panel);
     await agent.getPageState();
 
     expect(published("Panel.act")).toMatchObject({
@@ -653,7 +652,7 @@ describe("Action Availability", () => {
       tools: [action("act", "Panel.act")],
       components: [],
     });
-    createPageRegistration(Panel);
+    session.pom.register(Panel);
     const { text } = await agent.getPageState();
     const middle = text.match(/(e\d+) dialog "Middle"/)?.[1];
     expect(middle).toBeDefined();
@@ -678,7 +677,7 @@ describe("Action Availability", () => {
       tools: [action("remove", "Panel.remove")],
       components: [],
     });
-    createPageRegistration(Panel);
+    session.pom.register(Panel);
     await probeRegisteredPomMembers();
 
     expect(listed("Panel.remove")).toMatchObject({
@@ -712,7 +711,7 @@ describe("Action Availability", () => {
       tools: [action("remove", "Panel.remove")],
       components: [],
     });
-    const registration = createPageRegistration(Panel);
+    const panel = session.pom.register(Panel);
     await probeRegisteredPomMembers();
     expect(published("Panel.remove")).toMatchObject({ available: true });
     // A page state changes nothing about an available tool's listing, so
@@ -727,7 +726,7 @@ describe("Action Availability", () => {
     // changing its mind and the call: the call goes by the last observation.
     verdict = "Nothing is selected";
     await listed("Panel.remove")!.tool.execute({}, runContext());
-    expect(registration.instance.removed).toBe(1);
+    expect(panel.removed).toBe(1);
 
     await probeRegisteredPomMembers();
     expect(published("Panel.remove")).toMatchObject({
@@ -751,7 +750,7 @@ describe("Action Availability", () => {
       tools: [action("remove", "Panel.remove")],
       components: [],
     });
-    createPageRegistration(Panel);
+    session.pom.register(Panel);
     await probeRegisteredPomMembers();
 
     expect(published("Panel.remove")).toMatchObject({
@@ -775,7 +774,7 @@ describe("Action Availability", () => {
       ],
       components: [],
     });
-    createPageRegistration(Rootless);
+    session.pom.register(Rootless);
     // All its tools wait for the observation that asks the predicate, so no
     // agent sees any of them before it has been, and that observation is
     // announced like an appearing root.
@@ -809,7 +808,7 @@ describe("Action Availability", () => {
       tools: [action("remove", "Panel.remove")],
       components: [],
     });
-    createPageRegistration(Panel);
+    session.pom.register(Panel);
     await probeRegisteredPomMembers();
 
     expect(published("Panel.remove")).toMatchObject({
@@ -873,7 +872,7 @@ describe("Action Availability", () => {
         },
       ],
     } satisfies PomManifest);
-    const { instance: outbox } = createPageRegistration(Outbox);
+    const outbox = session.pom.register(Outbox);
     await probeRegisteredPomMembers();
     const state = await agent.getPageState();
     // A shared element's node lists its members under a /pom line.

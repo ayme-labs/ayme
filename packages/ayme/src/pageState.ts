@@ -9,7 +9,6 @@ import {
   renderCompactStructuralNodeForest,
   projectStructuralNodeForest,
   StructuralTree,
-  SyntheticAriaRefFactory,
   type AriaRef,
   type ProjectedStructuralNode,
   type ProjectedStructuralNodeForest,
@@ -27,6 +26,7 @@ import {
 
 import {
   placeCapturedRoots,
+  SyntheticRootRefFactory,
   type OmittedCapturedRoot,
   type ReferencedCapturedRoot,
 } from "./pomRootPlacement";
@@ -277,6 +277,18 @@ export function latestPageStateRef(element: Element): AriaRef | undefined {
   return pageStateSessions.get(element.ownerDocument)?.latestRefOf(element);
 }
 
+/**
+ * Package-internal: the element the latest recorded page state of
+ * `currentDocument` maps `ref` to; undefined until one is recorded, or when
+ * that page state printed no such ref.
+ */
+export function latestPageStateElement(
+  currentDocument: Document,
+  ref: AriaRef
+): Element | undefined {
+  return pageStateSessions.get(currentDocument)?.latestElementOf(ref);
+}
+
 function getPageStateSession(currentDocument: Document) {
   let session = pageStateSessions.get(currentDocument);
   if (!session) {
@@ -287,7 +299,11 @@ function getPageStateSession(currentDocument: Document) {
 }
 
 class PageStateSession {
-  private readonly refFactory = new SyntheticAriaRefFactory();
+  /**
+   * Mints the session's synthetic refs, for recorded captures and looks
+   * alike, so a root keeps one ref across them.
+   */
+  private readonly refFactory = new SyntheticRootRefFactory();
   /**
    * Every capture is an observation in it; the observation a cursor stands
    * at is the "before" of its next Change Record, and its identity ledger
@@ -324,15 +340,12 @@ class PageStateSession {
   /**
    * Capture the page without recording it: no observation, no cursor, no
    * element map. What callers see next is the same as if it never ran. Its
-   * `e` refs are the ones the page's next recorded capture gives the same
-   * elements; a fresh synthetic-ref factory keeps the `s_` refs a caller
-   * sees next from shifting.
+   * refs, `e` and `s_` alike, are the ones the page's next recorded capture
+   * gives the same elements, so a tool run on a ref the look printed acts on
+   * the element it showed.
    */
   async look(): Promise<PageStateLook> {
-    return captureCurrentPageState(
-      this.currentDocument.body,
-      new SyntheticAriaRefFactory()
-    );
+    return captureCurrentPageState(this.currentDocument.body, this.refFactory);
   }
 
   async startAction(call: ToolCall): Promise<StructuralActionId> {
@@ -482,6 +495,11 @@ class PageStateSession {
     return this.latestRefsByElement.get(element);
   }
 
+  /** The element the latest recorded page state maps `ref` to, if any. */
+  latestElementOf(ref: AriaRef): Element | undefined {
+    return this.latestElements?.elementsByRef.get(ref);
+  }
+
   /** Capture the page for recording, rejecting a capture the identity ledger could not accept. */
   private async captureTree(): Promise<CapturedPageState> {
     const capture = await captureCurrentPageState(
@@ -575,13 +593,13 @@ class PageStateSession {
 export async function capturePageState(
   root: Element = document.body
 ): Promise<string> {
-  return (await captureCurrentPageState(root, new SyntheticAriaRefFactory()))
+  return (await captureCurrentPageState(root, new SyntheticRootRefFactory()))
     .text;
 }
 
 async function captureCurrentPageState(
   root: Element,
-  refFactory: SyntheticAriaRefFactory
+  refFactory: SyntheticRootRefFactory
 ): Promise<CapturedPageState> {
   const structure = await getRegisteredPomStructure();
   const registrations = structure.roots.filter(
@@ -799,6 +817,7 @@ function omittedCapturedRoot(
 
   return {
     kind: "omitted",
+    element,
     ancestorRef,
     descendantRefs,
     role: "generic",

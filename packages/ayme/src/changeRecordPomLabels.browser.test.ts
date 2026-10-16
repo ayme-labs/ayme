@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
 import { agentTools } from "./publication.testSupport";
-import { createPageRegistration, registerCompiledPom } from "./registry";
-import { createAyme } from "./runtime";
+import { registerCompiledPom } from "./registry";
+import { startSession, type TestSession } from "./session.testSupport";
 
 // Runtime object seam: a Change Record names a Page Object Root the way the
 // snapshot does, so an agent reading only the diff can tell which Page Object
@@ -19,7 +19,7 @@ type ActionResultShape = {
 
 describe("Page Object labels in a Change Record, in Chromium", () => {
   let page: ReturnType<typeof createPage>;
-  let stop: (() => void) | undefined;
+  let session: TestSession | undefined;
 
   beforeEach(() => {
     document.body.innerHTML = "";
@@ -27,8 +27,8 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
   });
 
   afterEach(() => {
-    stop?.();
-    stop = undefined;
+    session?.stop();
+    session = undefined;
     document.body.innerHTML = "";
   });
 
@@ -81,10 +81,11 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
       registerCompiledPom(Shared, manifest(name, []));
       return Shared;
     });
-    stop = createAyme({ pageFactory: () => page }).start();
-    createPageRegistration(ListPage);
-    createPageRegistration(Banner);
-    for (const Shared of sharing) createPageRegistration(Shared);
+    session = startSession(page);
+    session.register(ListPage);
+    session.register(Banner);
+    for (const Shared of sharing) session.register(Shared);
+    return session;
   }
 
   async function readStructure(): Promise<string> {
@@ -136,14 +137,14 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
   });
 
   it("labels a removed root by a Page Object registered after the Caller last looked", async () => {
-    startShoppingList();
+    const { register } = startShoppingList();
     await readStructure();
     const currentPage = page;
     class Panel {
       root = currentPage.locator("aside");
     }
     registerCompiledPom(Panel, manifest("Panel", []));
-    createPageRegistration(Panel);
+    register(Panel);
 
     const result = await run("ListPage.dismissBanner");
 
@@ -153,7 +154,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
   });
 
   it("labels a removed root by a Page Object moved onto it after the Caller last looked", async () => {
-    startShoppingList();
+    const { register } = startShoppingList();
     const currentPage = page;
     let target = "h1";
     class Panel {
@@ -162,7 +163,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
       }
     }
     registerCompiledPom(Panel, manifest("Panel", []));
-    createPageRegistration(Panel);
+    register(Panel);
     expect(await readStructure()).toMatch(/- e\d+ Panel "Shopping list"/);
     target = "ul";
 

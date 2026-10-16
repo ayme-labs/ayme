@@ -1,6 +1,5 @@
-import { heldCallText, type AgentConnection } from "../../connection";
+import type { AgentConnection } from "../../connection";
 import {
-  errorResult,
   errorText,
   imageOf,
   imageToolResult,
@@ -16,12 +15,10 @@ export type SaveImage = (filename: string, data: string) => Promise<string>;
 /**
  * Runs the tool `name` of the page or App Process that offers it, as an MCP
  * result. A name no connection offers gets `unknown(name)` while a page or
- * App Process is paired; otherwise, or when the connection leaves before
- * the call goes out, it answers that no page is connected, since the name
- * may be a page tool the agent listed before. While the page's tab is
- * loading a new document, a call for the page waits for the new page, and
- * fails without running when no page comes back. An image the tool returns
- * is saved with `saveImage` too.
+ * App Process is paired; otherwise it answers that no page is connected,
+ * since the name may be a page tool the agent listed before. A call for the
+ * page waits while its tab loads a new document (see `AgentConnection.call`).
+ * An image the tool returns is saved with `saveImage` too.
  */
 export async function callPageTool(
   connection: AgentConnection,
@@ -30,17 +27,9 @@ export async function callPageTool(
   unknown: (name: string) => ToolResult,
   saveImage: SaveImage
 ): Promise<ToolResult> {
-  const exit = await connection.pageReady(name);
-  if (exit) return errorResult(heldCallText(exit));
-  if (!connection.offers(name))
+  const outcome = await connection.call(name, input);
+  if (!outcome)
     return connection.connected ? unknown(name) : notConnectedResult();
-  let outcome;
-  try {
-    outcome = await connection.call(name, input);
-  } catch {
-    // The connection left between the check and the call.
-    return notConnectedResult();
-  }
   const image = imageOf(outcome);
   if (!image) return pageToolResult(outcome);
   let saved: SavedImage;

@@ -4,13 +4,10 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { PomManifest, ToolManifest } from "./contracts";
 import type { DecisionResponse } from "./decisionWire";
 import { createPage } from "./browserPage";
-import {
-  configureGoalLoop,
-  type GoalLoopDecisionFunction,
-  type Handover,
-} from "./goalLoop";
+import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
+import type { Handover } from "./handover";
 import { agentTools } from "./publication.testSupport";
-import { createPageRegistration, registerCompiledPom } from "./registry";
+import { registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
 import { getLastGoalLoopRunResult } from "./testing";
 
@@ -82,8 +79,9 @@ describe("Handover changes in Chromium", () => {
         action("archive", "Inbox.archive"),
       ])
     );
-    stop = createAyme({ pageFactory: () => page, goalLoop }).start();
-    createPageRegistration(Inbox);
+    const ayme = createAyme({ pageFactory: () => page, goalLoop });
+    stop = ayme.start();
+    ayme.pom.register(Inbox);
   }
 
   async function readStructure(): Promise<string> {

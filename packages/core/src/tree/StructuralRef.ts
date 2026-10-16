@@ -2,17 +2,18 @@ import { AriaRefSchema, type AriaRef } from "./StructuralTypes";
 
 /**
  * The grammar of a Structural Ref, in one place. A real ref is Playwright's
- * `e<number>`, a handle the browser Page can act on through the
- * `aria-ref=…` selector. A synthetic ref is Ayme's `s_<word>` (`s_root`,
- * `s_1`, …): it names a node that exists only in the observation, so no
- * selector reaches it and no Browser Tool acts on it.
+ * `e<number>`; a synthetic ref is Ayme's `s_<word>` (`s_root`, `s_1`, …),
+ * minted for a node Playwright's snapshot gave no ref, such as a Page Object
+ * Root. The browser Page acts on either through the `ayme-ref=…` selector,
+ * which Ayme's own selector engine resolves from the current capture
+ * (ADR-0038).
  */
 const REAL_REF = /e\d+/;
 const REF = new RegExp(`${REAL_REF.source}|s_\\w+`);
 const WHOLE_REF = new RegExp(`^(?:${REF.source})$`);
 // The whole selector, bare or as the one argument of a `locator(…)` string.
 const SELECTOR_REF = new RegExp(
-  `^(?:locator\\(['"])?aria-ref=(${REF.source})(?:['"]\\))?$`
+  `^(?:locator\\(['"])?ayme-ref=(${REF.source})(?:['"]\\))?$`
 );
 const SYNTHETIC_PREFIX = "s_";
 // A snapshot names a node's ref in the attribute `[ref=e5]`.
@@ -40,7 +41,7 @@ export function refWrittenOtherwise(text: string): AriaRef | undefined {
   return ref === undefined ? undefined : AriaRefSchema.parse(ref.toLowerCase());
 }
 
-/** Whether `ref` is synthetic: observation-only, with no browser handle. */
+/** Whether `ref` is synthetic: minted by Ayme, not by Playwright's snapshot. */
 export function isSyntheticRef(ref: AriaRef): boolean {
   return ref.startsWith(SYNTHETIC_PREFIX);
 }
@@ -81,12 +82,12 @@ export const SYNTHETIC_ROOT_REF = syntheticRef("root");
 
 /** The selector the browser Page resolves to the element `ref` names. */
 export function selectorForRef(ref: AriaRef): string {
-  return `aria-ref=${ref}`;
+  return `ayme-ref=${ref}`;
 }
 
 /**
  * The Structural Ref a selector, or a locator string made of one selector,
- * addresses through `aria-ref=…`; undefined when it addresses its element
+ * addresses through `ayme-ref=…`; undefined when it addresses its element
  * another way, including a selector that merely contains the text.
  */
 export function refFromSelector(selector: string): AriaRef | undefined {

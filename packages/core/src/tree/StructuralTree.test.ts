@@ -467,7 +467,7 @@ describe("StructuralTree.getNode", () => {
   });
 });
 
-describe("StructuralTree.reconcile aria-ref identity", () => {
+describe("StructuralTree.reconcile Structural Ref identity", () => {
   describe("name-presence transitions", () => {
     it("reconciles a re-reffed container that gains a name when its child subtree is unchanged", () => {
       const [before, after] = parsePair(

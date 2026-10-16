@@ -1,5 +1,4 @@
 import {
-  isSyntheticRef,
   parseStructuralRef,
   selectorForRef,
   type StructuralNode,
@@ -10,9 +9,13 @@ import type { JsonSchema, JsonValue, ToolDescriptor } from "./contracts";
 import type { RunContext } from "./run";
 import type { ToolInput, ToolResult } from "./toolTypes";
 import type { AriaRef, PageStateCapture } from "./pageState";
-import { refHint, resolveRef } from "./refTarget";
+import { refHint, resolveRef, selectorFailure } from "./refTarget";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { requireAymeRuntimePage } from "./registry";
+import { reaches, unreachableReason, type ElementInput } from "./elementReach";
+import { inReachBatch } from "./reachMeasurement";
+import { latestPageStateRef } from "./pageState";
+import { assertAvailable } from "./pomInstance";
 import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
 import {
   RefResolutionError,
@@ -74,8 +77,17 @@ export type RegisteredElementTool = {
   readonly targetField: TargetField;
   /** The input the Goal Loop fills; publication-only options are left out. */
   readonly loopInputSchema: JsonSchema;
-  /** true = the Goal Loop may offer this element; not enforced on direct calls. */
+  /**
+   * true = the Goal Loop may offer this element; not enforced on direct
+   * calls. For a tool that needs reach, it keeps only elements a click would
+   * reach, which a direct call does enforce.
+   */
   readonly filter: (element: Element) => boolean;
+  /**
+   * For a tool that needs reach, its filter before reach: what it may act on
+   * whether or not a click would reach it.
+   */
+  readonly matches?: (element: Element) => boolean;
 };
 
 /**
@@ -90,7 +102,7 @@ export type ResolvedTarget = {
   /** Its current Structural Ref; absent when a selector addressed it. */
   ref?: AriaRef;
   element: Element;
-  /** A selector for it, for the browser Page: `aria-ref=…` or the one given. */
+  /** A selector for it, for the browser Page: `ayme-ref=…` or the one given. */
   selector: string;
 };
 
@@ -102,6 +114,12 @@ export type ElementToolDefinition = {
   label: string;
   inputSchema: JsonSchema;
   targetField: TargetField;
+  /**
+   * The input the tool sends its element, which must reach it (ADR-0035,
+   * ADR-0039): the Goal Loop and the Inspector offer only those elements,
+   * and a call on another is refused with its Availability Reason.
+   */
+  needsReach?: ElementInput;
   perform(
     target: ResolvedTarget,
     input: Record<string, unknown>,
@@ -142,6 +160,8 @@ function elementToolExecution(
       fields[definition.targetField] as string,
       currentDocument
     );
+    if (definition.needsReach)
+      assertReachable(definition.name, target.element, definition.needsReach);
     return runAction(
       currentDocument,
       context.cursor,
@@ -169,8 +189,29 @@ export function registerElementTool(
     },
     targetField: definition.targetField,
     loopInputSchema: requiredInputOnly(definition.inputSchema),
-    filter,
+    // The cheap filter first: only the elements it keeps are measured.
+    ...(definition.needsReach
+      ? {
+          filter: (element: Element) =>
+            filter(element) && reaches(element, definition.needsReach!),
+          matches: filter,
+        }
+      : { filter }),
   };
+}
+
+/**
+ * Package-internal: refuses the call of `toolName` on `element` when `input`
+ * would not reach it, with the Availability Reason a Page Object Tool gives.
+ */
+export function assertReachable(
+  toolName: string,
+  element: Element,
+  input: ElementInput
+) {
+  const reason = unreachableReason(element, latestPageStateRef, input);
+  if (reason !== undefined)
+    assertAvailable(toolName, { present: true, available: false, reason });
 }
 
 /**
@@ -222,12 +263,7 @@ export async function resolveElementTarget(
   currentDocument: Document
 ): Promise<ResolvedTarget> {
   if (definition.targetField === "ref" || parseStructuralRef(requested)) {
-    const node = await resolveRef(
-      requested,
-      { synthetic: "refuse" },
-      definition.label,
-      currentDocument
-    );
+    const node = await resolveRef(requested, definition.label, currentDocument);
     return {
       ref: node.ref,
       element: node.element,
@@ -235,15 +271,13 @@ export async function resolveElementTarget(
     };
   }
   const hint = refHint(requested);
-  const fail = (reason: string, hint?: string) =>
-    new RefResolutionError(
-      `Cannot ${definition.label} "${requested}": ${reason}.${hint ? ` ${hint}` : ""}`
-    );
+  const failure = (reason: string, hint?: string) =>
+    selectorFailure(definition.label, requested, reason, hint);
   // A locator expression is neither a Structural Ref nor a selector, so it
   // fails as what it is.
   if (LOCATOR_EXPRESSION.test(requested))
     throw new ToolInputError(
-      `Cannot ${definition.label} "${requested}": it is a Playwright locator expression, which tools do not take.`
+      failure("it is a Playwright locator expression, which tools do not take")
     );
   const page = requireAymeRuntimePage();
   let elements: Element[];
@@ -251,27 +285,30 @@ export async function resolveElementTarget(
     elements = resolveLocatorElements(page.locator(requested));
   } catch (error) {
     throw new ToolInputError(
-      `Cannot ${definition.label} "${requested}": it is neither a Structural Ref nor a selector this runtime supports: ${
-        error instanceof Error ? error.message : String(error)
-      }${hint ? `. ${hint}` : ""}`
+      failure(
+        `it is neither a Structural Ref nor a selector this runtime supports: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        hint
+      )
     );
   }
   if (elements.length === 0)
-    throw fail("the selector matches no element", hint);
+    throw new RefResolutionError(
+      failure("the selector matches no element", hint)
+    );
   if (elements.length > 1)
-    throw fail(
-      `the selector matches ${elements.length} elements; it must match exactly one`
+    throw new RefResolutionError(
+      failure(
+        `the selector matches ${elements.length} elements; it must match exactly one`
+      )
     );
   return { element: elements[0]!, selector: requested };
 }
 
 /** Package-internal: the browser Page's locator for a resolved element. */
-export async function locatorOf(target: ResolvedTarget) {
-  const page = requireAymeRuntimePage();
-  // Page.ariaSnapshot updates Playwright-lite's public aria-ref lookup. The
-  // action must use the ref returned by the current Page State resolution.
-  if (target.ref) await page.ariaSnapshot({ mode: "ai" });
-  return page.locator(target.selector);
+export function locatorOf(target: ResolvedTarget) {
+  return requireAymeRuntimePage().locator(target.selector);
 }
 
 export function requireCurrentDocument(): Document {
@@ -330,15 +367,15 @@ export function acceptedRefNodes(
   filter: (element: Element) => boolean,
   capture: PageStateCapture
 ): StructuralNode[] {
-  const nodes: StructuralNode[] = [];
-  for (const node of walkNodes(capture.tree)) {
-    // Synthetic refs are observation-only: a single-element tool rejects them.
-    if (isSyntheticRef(node.ref)) continue;
-    const element = capture.elementsByRef.get(node.ref);
-    if (!element || !filter(element)) continue;
-    nodes.push(node);
-  }
-  return nodes;
+  return inReachBatch(() => {
+    const nodes: StructuralNode[] = [];
+    for (const node of walkNodes(capture.tree)) {
+      const element = capture.elementsByRef.get(node.ref);
+      if (!element || !filter(element)) continue;
+      nodes.push(node);
+    }
+    return nodes;
+  });
 }
 
 function* walkNodes(tree: StructuralTree): Generator<StructuralNode> {

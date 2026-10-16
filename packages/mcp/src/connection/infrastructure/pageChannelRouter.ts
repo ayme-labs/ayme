@@ -3,7 +3,7 @@ import { initTRPC } from "@trpc/server";
 import {
   HelloSchema,
   HiddenToolListSchema,
-  PageLeavingSchema,
+  PageNavigatingSchema,
   PageToolListSchema,
   ProcessToolCallSchema,
   ToolCallOutcomeSchema,
@@ -59,12 +59,13 @@ export const pageChannelRouter = t.router({
   answer: t.procedure
     .input(ToolCallOutcomeSchema)
     .mutation(async ({ ctx, input }) => (await ctx.page.session).answer(input)),
-  leaving: t.procedure
-    .input(PageLeavingSchema)
+  navigating: t.procedure
+    .input(PageNavigatingSchema)
     .mutation(async ({ ctx, input }) => {
       const session = await ctx.page.session;
       // An App Process has no document to leave.
-      if (session instanceof PageSession) session.leaving = input;
+      if (session instanceof PageSession)
+        ctx.connection.navigating(session, input);
     }),
   processTools: t.procedure.subscription(async function* ({ ctx, signal }) {
     // An App Process does not see the other App Processes' tools.
