@@ -321,13 +321,21 @@ describe("a Step Decision", () => {
 
     it("with needs_value, saying which parameters no Goal Value fits", async () => {
       const { decide } = scripted(stageOne("Project.rename"));
+      const renameWithOwner: GoalLoopOperation = {
+        ...renameTool,
+        requiredParams: ["name", "owner"],
+        args: [
+          ...renameTool.args,
+          { ...renameTool.args[0]!, name: "owner", path: ["owner"] },
+        ],
+      };
 
       const verdict = await step(decide, {
-        toolOptions: [optionOf(renameTool)],
+        toolOptions: [optionOf(renameWithOwner)],
       });
 
       expect(verdict.kind === "stop" && verdict.next).toBe(
-        'The operation "Project.rename" needs values for: name, and no Goal Value fits name. Call goal again with a value for name in values, or call Project.rename directly.'
+        'The operation "Project.rename" needs values for: name, owner, and no Goal Value fits name, owner. Call goal again with a value for name, owner in values, or call Project.rename directly.'
       );
     });
 
