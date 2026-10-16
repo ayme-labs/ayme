@@ -33,6 +33,11 @@ version. Diagnose with the "The agent cannot reach the page" section of
   says what each failure reason means. Refs belong to one document: after a
   full load, call `snapshot` before you use a ref, since a ref printed before
   the load can name another element on the new page.
+- When `goal` hands over with `needs_value` because none of a parameter's
+  allowed values belongs in it, the loop offered that parameter only its
+  allowed values, so a Goal Value of a type it does not take changes nothing.
+  Call the tool named in `needs` yourself with the value, or call `goal` again
+  with a goal that names it.
 - When a Page Object's tools never appear, read the browser console, or ask
   the user to: a refused registration, `Cannot register the Page Object …`,
   is logged there and does not reach you. It names two classes that share a

@@ -360,13 +360,16 @@ async function decideArguments(
     };
   }
 
-  // The model judged that no Goal Value fits a required parameter.
+  // The model judged that nothing offered fits a required parameter.
   if (answers.kind === "needs_value") {
+    const { parameter, goalValuesOffered } = answers;
     return {
       stop: asker.stop(
         "needs_value",
-        `The operation "${tool.name}" needs a value for "${answers.parameter}", and the model judged that none of the Goal Values fits. Call goal again with a value for "${answers.parameter}" in values, or call ${tool.name} directly.`,
-        { tool: tool.name, parameters: [answers.parameter] }
+        goalValuesOffered
+          ? `The operation "${tool.name}" needs a value for "${parameter}", and the model judged that none of the Goal Values fits. Call goal again with a value for "${parameter}" in values, or call ${tool.name} directly.`
+          : `The operation "${tool.name}" needs a value for "${parameter}", and the model judged that none of its allowed values belongs in it.`,
+        { tool: tool.name, parameters: [parameter] }
       ),
     };
   }
