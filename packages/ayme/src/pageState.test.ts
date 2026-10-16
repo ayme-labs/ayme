@@ -22,12 +22,15 @@ import {
   type ProjectedStructuralNode,
 } from "@ayme-dev/core/structural-observation";
 import {
+  captureBeforeActionForDocument,
   configurePageStateIgnore,
   getPageStateCaptureForDocument,
+  latestPageStateElement,
   latestPageStateRef,
   pageStateNodeEntry,
   lookAtPageStateForDocument,
   resolvePageStateRefs,
+  startActionForDocument,
 } from "./pageState";
 import { getPageStateTool } from "./pageContext";
 import { ayme } from "./agentCalls.testSupport";
@@ -56,7 +59,7 @@ describe("get_page_state", () => {
   it("names the tool and describes structural refs and root POM decoration", () => {
     expect(getPageStateTool.name).toBe("get_page_state");
     expect(getPageStateTool.description).toBe(
-      "Return the top-level structural page state, decorated with root POM labels. Real nodes use Playwright refs; synthetic POM roots use observation-only synthetic refs. Capture is limited to the top-level document."
+      "Return the top-level structural page state, decorated with root POM labels. Real nodes use Playwright refs; a POM root without one uses a synthetic ref; tools take either. Capture is limited to the top-level document."
     );
   });
 
@@ -419,6 +422,51 @@ describe("get_page_state", () => {
         - s_1 Unrelated.root:
           - e3 button "Other""
     `);
+  });
+
+  it("keeps a root's synthetic ref in the element map across a before capture that records a change", async () => {
+    document.body.innerHTML = `
+      <div id="root"><button id="save">Save</button></div>
+      <button id="other">Other</button>
+    `;
+    const root = document.querySelector("#root")!;
+    const save = document.querySelector("#save")!;
+    const other = document.querySelector("#other")!;
+    captureAriaSnapshot
+      .mockReturnValueOnce({
+        distilledText: '- generic [ref=e1]:\n  - button "Save" [ref=e2]',
+        fullText:
+          '- generic [ref=e1]:\n  - generic:\n    - button "Save" [ref=e2]',
+        refsByElement: new Map([
+          [document.body, "e1"],
+          [save, "e2"],
+        ]),
+      })
+      .mockReturnValueOnce({
+        distilledText:
+          '- generic [ref=e1]:\n  - button "Save" [ref=e2]\n  - button "Other" [ref=e3]',
+        fullText:
+          '- generic [ref=e1]:\n  - generic:\n    - button "Save" [ref=e2]\n  - button "Other" [ref=e3]',
+        refsByElement: new Map([
+          [document.body, "e1"],
+          [save, "e2"],
+          [other, "e3"],
+        ]),
+      });
+    listRegisteredPomRoots.mockResolvedValue([
+      { label: "Root.root", element: root },
+    ]);
+    expect(await getPageStateTool.execute()).toContain("s_1 Root.root");
+
+    // The page changed since, so the action's before capture is recorded
+    // and the element map is the new capture's.
+    const actionId = await startActionForDocument(document, {
+      tool: "click",
+      args: {},
+    });
+    await captureBeforeActionForDocument(document, actionId);
+
+    expect(latestPageStateElement(document, ref("s_1"))).toBe(root);
   });
 
   it("resolves root candidates before capture and correlates only those candidates", async () => {

@@ -522,7 +522,26 @@ it("shares one instance between registrations and withdraws it with the last", (
   expect(listRegisteredPoms()).toHaveLength(1);
 });
 
-it("logs a same-named class instead of throwing, at start and at registration, and registers it on a later call once the clash is gone", () => {
+it("registers a refused class once the class it clashed with is unregistered, logging the refusal once", () => {
+  const OtherModel = class Model {
+    constructor(readonly page: AymePage) {}
+  };
+  registerCompiledPom(OtherModel, manifest);
+  const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+  const runtime = session(false);
+  start(runtime);
+  runtime.pom.register(Model);
+  runtime.pom.register(OtherModel);
+  expect(logged).toHaveBeenCalledOnce();
+  runtime.pom.unregister(Model);
+  expect(
+    listRegisteredPoms().map(({ instance }) => instance.constructor)
+  ).toEqual([OtherModel]);
+  expect(logged).toHaveBeenCalledOnce();
+  logged.mockRestore();
+});
+
+it("logs a same-named class instead of throwing, at start and at registration", () => {
   const OtherModel = class Model {
     constructor(readonly page: AymePage) {}
   };

@@ -18,6 +18,7 @@ import {
   type RegisteredElementTool,
   type ResolvedTarget,
 } from "./elementTools";
+import type { ElementInput } from "./elementReach";
 import { generateLocatorTool } from "./generateLocator";
 import {
   navigateBackTool,
@@ -82,6 +83,7 @@ function browserTool(
   name: string,
   description: string,
   inputSchema: JsonSchema,
+  needsReach: ElementInput,
   perform: (target: ResolvedTarget, input: Fields) => Promise<unknown>
 ): ElementToolDefinition {
   return {
@@ -90,7 +92,7 @@ function browserTool(
     label: name,
     inputSchema,
     targetField: "target",
-    needsReach: true,
+    needsReach,
     // An action's own result would appear under `result`; Browser Tools have
     // none, as in Playwright MCP, so `selectOption`'s values are dropped.
     perform: async (target, input) => {
@@ -110,8 +112,9 @@ const clickDefinition = browserTool(
     button: BUTTON,
     modifiers: MODIFIERS,
   }),
+  "click",
   async (target, input) => {
-    const locator = await locatorOf(target);
+    const locator = locatorOf(target);
     if (input.doubleClick === true) await locator.dblclick(clickOptions(input));
     else await locator.click(clickOptions(input));
   }
@@ -121,7 +124,8 @@ const hoverDefinition = browserTool(
   "hover",
   "Move the pointer over one element.",
   elementInput(),
-  async (target) => (await locatorOf(target)).hover()
+  "click",
+  async (target) => locatorOf(target).hover()
 );
 
 const typeDefinition = browserTool(
@@ -142,8 +146,9 @@ const typeDefinition = browserTool(
     },
     ["text"]
   ),
+  "focus",
   async (target, input) => {
-    const locator = await locatorOf(target);
+    const locator = locatorOf(target);
     const text = input.text as string;
     if (input.slowly === true) await locator.pressSequentially(text);
     else await locator.fill(text);
@@ -157,21 +162,24 @@ const fillDefinition = browserTool(
   elementInput({ text: { type: "string", description: "Text to fill." } }, [
     "text",
   ]),
-  async (target, input) => (await locatorOf(target)).fill(input.text as string)
+  "focus",
+  async (target, input) => locatorOf(target).fill(input.text as string)
 );
 
 const checkDefinition = browserTool(
   "check",
   "Check one checkbox or radio button.",
   elementInput(),
-  async (target) => (await locatorOf(target)).check()
+  "click",
+  async (target) => locatorOf(target).check()
 );
 
 const uncheckDefinition = browserTool(
   "uncheck",
   "Uncheck one checkbox.",
   elementInput(),
-  async (target) => (await locatorOf(target)).uncheck()
+  "click",
+  async (target) => locatorOf(target).uncheck()
 );
 
 const selectOptionDefinition = browserTool(
@@ -187,8 +195,9 @@ const selectOptionDefinition = browserTool(
     },
     ["values"]
   ),
+  "focus",
   async (target, input) =>
-    (await locatorOf(target)).selectOption(input.values as string[])
+    locatorOf(target).selectOption(input.values as string[])
 );
 
 // --- Built-in filters ---
@@ -358,8 +367,12 @@ async function fillField(field: FormField, currentDocument: Document) {
     field.target,
     currentDocument
   );
-  assertReachable("fill_form", target.element);
-  const locator = await locatorOf(target);
+  assertReachable(
+    "fill_form",
+    target.element,
+    field.type === "checkbox" || field.type === "radio" ? "click" : "focus"
+  );
+  const locator = locatorOf(target);
   switch (field.type) {
     case "textbox":
     case "slider":

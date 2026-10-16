@@ -1,6 +1,7 @@
 import type { PlaywrightLocatorString } from "@ayme-dev/core/structural-observation";
 import type { ActionResult } from "./actionSequence";
-import type { GoalInput, Handover } from "./goalLoop";
+import type { GoalInput } from "./goalLoop";
+import type { Handover } from "./handover";
 import type { PageContextPayload } from "./pageContext";
 
 /** A Structural Ref from the page snapshot, or a selector that matches exactly one element. */

@@ -379,7 +379,11 @@ function inInspector(element: Element): boolean {
  * What blocks every click on `element` whatever covers it: the last opened
  * native modal when the element is not in one, else its inert ancestor.
  */
-function blockingAncestor(element: Element): Element | undefined {
+/**
+ * Package-internal: the open native modal `element` is not in, or its inert
+ * ancestor: what blocks both a click on it and its focus.
+ */
+export function blockingAncestor(element: Element): Element | undefined {
   let modals: Element[];
   try {
     modals = [...element.ownerDocument.querySelectorAll(":modal")];

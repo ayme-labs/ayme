@@ -39,7 +39,7 @@ export type { AymeRuns, Run } from "./runLog";
 export type { Interaction } from "./interactions";
 export type { PeekRead, PeekResult } from "./peek";
 export type { BuiltInTools, ToolInput, ToolResult } from "./toolTypes";
-export type { Handover } from "./goalLoop";
+export type { Handover } from "./handover";
 export { decisionEndpoint } from "./decisionEndpoint";
 export type {
   DecisionEndpointOptions,

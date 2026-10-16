@@ -10,8 +10,8 @@ import { createPage } from "./browserPage";
 import { ayme } from "./decorators";
 import { errorText } from "./errors";
 import { agentTools } from "./publication.testSupport";
-import { createPageRegistration, registerCompiledPom } from "./registry";
-import { createAyme } from "./runtime";
+import { registerCompiledPom } from "./registry";
+import { createAyme, type Ayme } from "./runtime";
 import { getLastGoalLoopRunResult } from "./testing";
 import {
   CHANGES_CUT_MARKER,
@@ -363,6 +363,7 @@ function withoutChanges(handover: unknown): unknown {
 describe("Goal Loop goal in Chromium", () => {
   let page: ReturnType<typeof createPage>;
   let stop: (() => void) | undefined;
+  let session: Ayme;
   let clickCount: number;
 
   beforeEach(() => {
@@ -382,13 +383,12 @@ describe("Goal Loop goal in Chromium", () => {
     goalLoop: GoalLoopDecisionFunction,
     customTools?: CustomTool[]
   ) {
-    const runtime = createAyme({
+    session = createAyme({
       pageFactory: () => page,
       goalLoop,
       customTools,
     });
-    stop = runtime.start();
-    return runtime;
+    stop = session.start();
   }
 
   /** Start a runtime session; its `goal` tool as the agent calls it. */
@@ -427,7 +427,7 @@ describe("Goal Loop goal in Chromium", () => {
       manifest("App", [root()], [action("save", "App.save")])
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    createPageRegistration(App);
+    session.pom.register(App);
     return tool;
   }
 
@@ -444,7 +444,7 @@ describe("Goal Loop goal in Chromium", () => {
       manifest("App", [root()], [actionWithParam("fill", "App.fill")])
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    createPageRegistration(App);
+    session.pom.register(App);
     return tool;
   }
 
@@ -461,7 +461,7 @@ describe("Goal Loop goal in Chromium", () => {
       manifest("App", [root()], [action("fail", "App.fail")])
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    createPageRegistration(App);
+    session.pom.register(App);
     return tool;
   }
 
@@ -545,7 +545,7 @@ describe("Goal Loop goal in Chromium", () => {
 
     expect(withoutChanges(result)).toEqual({
       reason: "needs_value",
-      next: 'The operation "click" acts on one element; 2 elements on the current page match it, and a click would reach none of them.',
+      next: 'The operation "click" acts on one element; 2 elements on the current page match it, and the operation would reach none of them.',
       history: [],
       needs: { tool: "click", parameters: ["target"] },
     });
@@ -812,7 +812,7 @@ describe("Goal Loop goal in Chromium", () => {
         )
       );
       const tool = await getPublishedPursueGoal(decide);
-      createPageRegistration(App);
+      session.pom.register(App);
       return { tool, calls };
     }
 
@@ -885,7 +885,7 @@ describe("Goal Loop goal in Chromium", () => {
         ])
       );
       const tool = await getPublishedPursueGoal(decide);
-      createPageRegistration(App);
+      session.pom.register(App);
 
       await tool.execute({
         goal: "Rate the Q4 Feedback survey",
@@ -944,7 +944,7 @@ describe("Goal Loop goal in Chromium", () => {
         ])
       );
       const tool = await getPublishedPursueGoal(decide);
-      createPageRegistration(App);
+      session.pom.register(App);
 
       await tool.execute({
         goal: "Order three at 2.5 each",
@@ -1169,7 +1169,7 @@ describe("Goal Loop goal in Chromium", () => {
         ])
       );
       const tool = await getPublishedPursueGoal(decide);
-      createPageRegistration(App);
+      session.pom.register(App);
 
       const result = await tool.execute({
         goal: "Tag it",
@@ -1226,7 +1226,7 @@ describe("Goal Loop goal in Chromium", () => {
         },
       ]);
       const tool = await getPublishedPursueGoal(decide);
-      createPageRegistration(App);
+      session.pom.register(App);
 
       const result = await tool.execute({
         goal: "Tag it",
@@ -1372,7 +1372,7 @@ describe("Goal Loop goal in Chromium", () => {
       manifest("App", [root()], [action("add", "App.add")])
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    createPageRegistration(App);
+    session.pom.register(App);
     return tool;
   }
 
@@ -1655,7 +1655,7 @@ describe("Goal Loop goal in Chromium", () => {
       )
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    createPageRegistration(App);
+    session.pom.register(App);
     return tool;
   }
 
@@ -1714,7 +1714,7 @@ describe("Goal Loop goal in Chromium", () => {
       { operation: "none", goal_met: 0.9 },
     ]);
     const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(App);
+    session.pom.register(App);
     const result = (await tool.execute({
       goal: "save",
       maxSteps: 5,
@@ -1766,7 +1766,7 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(App);
+    session.pom.register(App);
     const result = (await tool.execute({
       goal: "save",
       maxSteps: 5,
@@ -1812,7 +1812,7 @@ describe("Goal Loop goal in Chromium", () => {
       { operation: "none", goal_met: 0.9 },
     ]);
     const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(App);
+    session.pom.register(App);
     const result = (await tool.execute({
       goal: "import",
       maxSteps: 5,
@@ -2429,7 +2429,7 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(App);
+    session.pom.register(App);
 
     const result = (await tool.execute({
       goal: "configure the app",
@@ -2492,7 +2492,7 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(App);
+    session.pom.register(App);
 
     const result = (await tool.execute({
       goal: "sort the list",
@@ -2633,7 +2633,7 @@ describe("Goal Loop goal in Chromium", () => {
       )
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    createPageRegistration(ItemsPage);
+    session.pom.register(ItemsPage);
     return tool;
   }
 
@@ -2750,7 +2750,7 @@ describe("Goal Loop goal in Chromium", () => {
       )
     );
     const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(ItemsPage);
+    session.pom.register(ItemsPage);
 
     const result = (await tool.execute({
       goal: "archive the second item",
@@ -2885,7 +2885,7 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(GroupsPage);
+    session.pom.register(GroupsPage);
 
     await tool.execute({ goal: "open the second item", maxSteps: 5 });
 
@@ -2953,7 +2953,7 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(ItemsPage);
+    session.pom.register(ItemsPage);
 
     await tool.execute({ goal: "open the second item", maxSteps: 5 });
 
@@ -3070,7 +3070,7 @@ describe("Goal Loop goal in Chromium", () => {
       };
     });
     const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(ItemsPage);
+    session.pom.register(ItemsPage);
 
     const result = (await tool.execute({
       goal: "archive Item 0",
@@ -3138,7 +3138,7 @@ describe("Goal Loop goal in Chromium", () => {
       ])
     );
     const tool = await getPublishedPursueGoal(decide);
-    createPageRegistration(ItemsPage);
+    session.pom.register(ItemsPage);
 
     const result = (await tool.execute({
       goal: "archive Item 0",
@@ -3319,7 +3319,7 @@ describe("Goal Loop goal in Chromium", () => {
       )
     );
     const tool = await getPublishedPursueGoal(goalLoop);
-    createPageRegistration(App);
+    session.pom.register(App);
     return tool;
   }
 

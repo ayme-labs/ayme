@@ -36,7 +36,7 @@ describe("reconciliation facts", () => {
 function parsePair(before: string, after: string) {
   return [parse(before), parse(after)] as const;
 }
-describe("StructuralTree.reconcile aria-ref identity", () => {
+describe("StructuralTree.reconcile Structural Ref identity", () => {
   const BEFORE = `
 - list [ref=e1]:
   - checkbox "Buy milk" [ref=e2]

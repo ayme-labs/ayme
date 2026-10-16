@@ -1,18 +1,21 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
 
-import {
-  configureAymeRuntime,
-  createPageRegistration,
-  listRegisteredPomTargets,
-  registerCompiledPom,
-} from "./registry";
+import { listRegisteredPomTargets, registerCompiledPom } from "./registry";
+import { startSession, type TestSession } from "./session.testSupport";
 
 describe("registered Page Object targets", () => {
+  let page: ReturnType<typeof createPage>;
+  let session: TestSession;
+  beforeEach(() => {
+    page = createPage();
+    session = startSession(page);
+  });
   afterEach(() => {
+    session.stop();
     document.body.innerHTML = "";
   });
 
@@ -27,8 +30,6 @@ describe("registered Page Object targets", () => {
         <header><h1>List</h1></header>
       </main>
     `;
-    const page = createPage();
-    configureAymeRuntime(page);
 
     const item = (index: number) => {
       const root = page.locator(".item").nth(index);
@@ -99,7 +100,7 @@ describe("registered Page Object targets", () => {
         },
       ],
     });
-    const registration = createPageRegistration(ListPage);
+    session.register(ListPage);
 
     const targets = await listRegisteredPomTargets();
     const [milk, eggs] = document.querySelectorAll(".item");
@@ -120,16 +121,12 @@ describe("registered Page Object targets", () => {
         .filter(({ element }) => element === milk || element === eggs)
         .map(({ path }) => path)
     ).toEqual(["ListPage.items[0].root", "ListPage.items[1].root"]);
-
-    registration.dispose();
   });
 
   it("names each target's member locator, as an Interaction on it names it", async () => {
     document.body.innerHTML = `
       <ul><li class="item"><button>Milk</button></li></ul>
     `;
-    const page = createPage();
-    configureAymeRuntime(page);
     class ListPage {
       readonly addItemButton = page.getByRole("button", { name: "Milk" });
       readonly items = [{ root: page.locator(".item").nth(0) }];
@@ -155,7 +152,7 @@ describe("registered Page Object targets", () => {
         },
       ],
     });
-    const registration = createPageRegistration(ListPage);
+    session.register(ListPage);
 
     const targets = await listRegisteredPomTargets();
 
@@ -166,7 +163,5 @@ describe("registered Page Object targets", () => {
       },
       { path: "ListPage.items[0].root", locator: "locator('.item').first()" },
     ]);
-
-    registration.dispose();
   });
 });

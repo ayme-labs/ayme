@@ -3,8 +3,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createPage } from "./browserPage";
 import { ayme } from "./agentCalls.testSupport";
 import {
-  createAymeRuntime,
-  createPageRegistration,
   listRegisteredPomRoots,
   listAvailablePomTools,
   listRegisteredPoms,
@@ -16,6 +14,7 @@ import type {
   PomManifest,
   ToolManifest,
 } from "./contracts";
+import { startSession, type TestSession } from "./session.testSupport";
 
 const action = (methodName: string, toolName = methodName): ToolManifest => ({
   methodName,
@@ -55,14 +54,14 @@ const names = () => listAvailablePomTools().map((tool) => tool.name);
 
 describe("live Page Object availability", () => {
   let page: ReturnType<typeof createPage>;
-  let runtime: ReturnType<typeof createAymeRuntime>;
+  let session: TestSession;
   beforeEach(() => {
     document.body.innerHTML = "";
     page = createPage();
-    runtime = createAymeRuntime(page);
+    session = startSession(page);
   });
   afterEach(() => {
-    runtime.dispose();
+    session.stop();
     document.body.innerHTML = "";
   });
 
@@ -77,7 +76,7 @@ describe("live Page Object availability", () => {
       Shell,
       manifest("Shell", [child("sidebar")], [action("open", "Shell.open")])
     );
-    createPageRegistration(Shell);
+    session.register(Shell);
     const sidebar = document.getElementById("sidebar")!;
     let clicks = 0;
     sidebar.addEventListener("click", () => clicks++);
@@ -128,7 +127,7 @@ describe("live Page Object availability", () => {
       sidebar = { root: page.locator("#sidebar"), close() {} };
     }
     registerCompiledPom(Shell, manifest("Shell", [child("sidebar")]));
-    createPageRegistration(Shell);
+    session.register(Shell);
     expect((await ayme.getPageState()).text).toContain("Shell.sidebar");
     document.getElementById("sidebar")!.style.visibility = "hidden";
     expect((await ayme.getPageState()).text).not.toContain("Shell.sidebar");
@@ -155,7 +154,7 @@ describe("live Page Object availability", () => {
       Sidebar,
       manifest("Sidebar", [root()], [action("open", "Sidebar.open")])
     );
-    createPageRegistration(Sidebar);
+    session.register(Sidebar);
 
     const state = await ayme.getPageState();
     expect(state.text).not.toContain("Hidden profile");
@@ -185,8 +184,8 @@ describe("live Page Object availability", () => {
       Rootless,
       manifest("Rootless", [], [action("open", "Rootless.open")])
     );
-    createPageRegistration(Rooted);
-    createPageRegistration(Rootless);
+    session.register(Rooted);
+    session.register(Rootless);
     // Neither lists a tool before the first observation has run.
     expect(names()).toEqual([]);
     await probeRegisteredPomMembers();
@@ -209,7 +208,7 @@ describe("live Page Object availability", () => {
       }));
     }
     registerCompiledPom(Shell, manifest("Shell", [child("panels", true)]));
-    createPageRegistration(Shell);
+    session.register(Shell);
     await probeRegisteredPomMembers();
     expect(names()).toEqual(["Shell.panels.close"]);
     expect((await listRegisteredPomRoots()).map((root) => root.label)).toEqual([
@@ -221,30 +220,6 @@ describe("live Page Object availability", () => {
     expect(await listRegisteredPomRoots()).toEqual([]);
   });
 
-  it("keeps same-class registrations independent", async () => {
-    document.body.innerHTML =
-      '<section id="first" hidden>First</section><section id="second">Second</section>';
-    class Shared {
-      root = page.locator("#first");
-      close() {}
-    }
-    registerCompiledPom(
-      Shared,
-      manifest("Shared", [root()], [action("close", "Shared.close")])
-    );
-    const first = createPageRegistration(Shared);
-    const second = createPageRegistration(Shared);
-    second.instance.root = page.locator("#second");
-    await probeRegisteredPomMembers();
-    expect(names()).toEqual(["Shared.close"]);
-    expect(
-      (await listRegisteredPomRoots()).map((root) => root.element.id)
-    ).toEqual(["second"]);
-    second.dispose();
-    expect(names()).toEqual([]);
-    first.dispose();
-  });
-
   it("updates availability after layout events without a DOM mutation", async () => {
     document.body.innerHTML =
       '<style id="availability-style">#sidebar { visibility: visible; }</style><aside id="sidebar">Sidebar</aside>';
@@ -252,7 +227,7 @@ describe("live Page Object availability", () => {
       sidebar = { root: page.locator("#sidebar"), close() {} };
     }
     registerCompiledPom(Shell, manifest("Shell", [child("sidebar")]));
-    createPageRegistration(Shell);
+    session.register(Shell);
     await expect.poll(names).toEqual(["Shell.sidebar.close"]);
     const rule = document.querySelector<HTMLStyleElement>(
       "#availability-style"
@@ -284,10 +259,10 @@ describe("live Page Object availability", () => {
       Shell,
       manifest("Shell", [{ ...child("panels", true), access: "method" }])
     );
-    const registration = createPageRegistration(Shell);
+    session.register(Shell);
     const probe = probeRegisteredPomMembers();
     await Promise.resolve();
-    registration.dispose();
+    session.unregister(Shell);
     release();
     await probe;
     expect(names()).toEqual([]);
@@ -315,11 +290,11 @@ describe("live Page Object availability", () => {
       SlowShell,
       manifest("SlowShell", [{ ...child("panels", true), access: "method" }])
     );
-    createPageRegistration(SlowShell);
+    session.register(SlowShell);
     const previousProbe = probeRegisteredPomMembers();
     await entered;
-    runtime.dispose();
-    runtime = createAymeRuntime(page);
+    session.stop();
+    session = startSession(page);
     class FreshShell {
       root = page.locator("#root");
       close() {}
@@ -328,7 +303,7 @@ describe("live Page Object availability", () => {
       FreshShell,
       manifest("FreshShell", [root()], [action("close", "FreshShell.close")])
     );
-    createPageRegistration(FreshShell);
+    session.register(FreshShell);
     try {
       await expect.poll(names).toEqual(["FreshShell.close"]);
     } finally {
@@ -347,7 +322,7 @@ describe("live Page Object availability", () => {
       sidebar = { root: page.locator("#sidebar"), close() {} };
     }
     registerCompiledPom(Shell, manifest("Shell", [child("sidebar")]));
-    createPageRegistration(Shell);
+    session.register(Shell);
     const before = await ayme.getPageState();
     const ref = before.text.match(/(e\d+|s_\w+) Shell\.sidebar/)?.[1];
     expect(ref).toBeDefined();
@@ -382,7 +357,7 @@ describe("live Page Object availability", () => {
       Shell,
       manifest("Shell", [child("background"), child("first"), child("second")])
     );
-    createPageRegistration(Shell);
+    session.register(Shell);
     document.querySelector<HTMLDialogElement>("#second")!.showModal();
     document.querySelector<HTMLDialogElement>("#first")!.showModal();
     const state = await ayme.getPageState();
@@ -414,7 +389,7 @@ describe("live Page Object availability", () => {
       Clipped,
       manifest("Clipped", [root()], [action("close", "Clipped.close")])
     );
-    createPageRegistration(Clipped);
+    session.register(Clipped);
     const state = await ayme.getPageState();
     expect(state.text).not.toContain("CLIPPED CONTENT");
     expect(state.text).not.toContain("Clipped action");
@@ -433,7 +408,7 @@ describe("live Page Object availability", () => {
       Clipped,
       manifest("Clipped", [root()], [action("close", "Clipped.close")])
     );
-    createPageRegistration(Clipped);
+    session.register(Clipped);
     const state = await ayme.getPageState();
     expect(state.text).not.toContain("CLIPPED CONTENT");
     expect(state.text).toContain("MAIN CONTENT");
@@ -453,7 +428,7 @@ describe("live Page Object availability", () => {
       SlowShell,
       manifest("SlowShell", [{ ...child("panels", true), access: "method" }])
     );
-    createPageRegistration(SlowShell);
+    session.register(SlowShell);
     let ticks = 0;
     const ticker = document.getElementById("ticker")!;
     const timer = setInterval(() => {
@@ -489,7 +464,7 @@ describe("live Page Object availability", () => {
       BelowFold,
       manifest("BelowFold", [root()], [action("close", "BelowFold.close")])
     );
-    createPageRegistration(BelowFold);
+    session.register(BelowFold);
     const scroll = [window.scrollX, window.scrollY];
     const state = await ayme.getPageState();
     expect(state.text).toContain("BELOW FOLD CONTENT");
@@ -505,7 +480,7 @@ describe("live Page Object availability", () => {
       dialog = { root: page.locator("#modal"), close() {} };
     }
     registerCompiledPom(Shell, manifest("Shell", [child("dialog")]));
-    createPageRegistration(Shell);
+    session.register(Shell);
     document.querySelector<HTMLDialogElement>("#modal")!.showModal();
     const state = await ayme.getPageState();
     expect(state.text).toContain("Shell.dialog");

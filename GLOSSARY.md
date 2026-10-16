@@ -23,7 +23,7 @@ A tool generated from a Page Object Action. The Goal Loop may choose it, and Web
 A model-facing observation of the currently presented page structure and its Page Object associations. Normally scrollable content and modal-blocked content remain represented. Known hidden or unreachable off-canvas Page Object subtrees are omitted. Structural inclusion does not imply interaction availability.
 
 **Structural Ref**:
-A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node. Its grammar (a real `e…` ref, a synthetic `s_…` ref, and its `aria-ref=…` selector) is owned by core's structural observation module; nothing else restates it.
+A capture-scoped address for a node in Structural Page State. The ref itself has no identity guarantee across captures; within a Page State Session, an earlier ref may resolve to the current incarnation of a reconciled node. Its grammar (a real `e…` ref, a synthetic `s_…` ref, and its `ayme-ref=…` selector) is owned by core's structural observation module; nothing else restates it. A ref is acted on through Ayme's own selector engine, which resolves it from the current capture, so a synthetic ref is as actionable as a real one; a synthetic ref stays with its root element across the session's captures, as Playwright keeps a real ref with its element.
 
 **Page State Session**:
 The lifetime within one browser document during which Ayme maintains best-effort continuity between successive Structural Page States. It also records the document's interaction history: its Visits, the actions taken and what each caused.
@@ -44,10 +44,10 @@ Whether a live Page Object is currently available for interaction through its ro
 Whether a Page Object Action can run right now. An action is available when its Page Object is available and its availability predicate, if it declares one, holds. Actions without a predicate share their Page Object's availability. Availability never adds or removes a Page Object Tool; it says whether a listed tool would run. On a collection action, availability is judged once per present instance: the tool is available while any instance passes, and otherwise carries the first failing instance's Availability Reason.
 
 **Availability Reason**:
-The one fact that makes a Page Object Action, or a Browser Tool call on a single element, unavailable, as a string. The runtime writes it when a click would not reach the root or the element, naming the Structural Ref of the element in the way when it has one; the author's predicate writes it otherwise. The runtime never infers more than it measured.
+The one fact that makes a Page Object Action, or a Browser Tool call on a single element, unavailable, as a string. The runtime writes it when a click would not reach the root or the element, or when an element a tool types into cannot take focus, naming the Structural Ref of the element in the way when it has one; the author's predicate writes it otherwise. The runtime never infers more than it measured.
 
 **Browser Tool**:
-A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose, and offers and accepts only elements a click would reach.
+A built-in operation on the page itself, as opposed to one a Page Object provides. It addresses its target by Structural Ref or by selector. One that acts on a single element is also an operation the Goal Loop may choose, and offers and accepts only elements its input would reach: a click for one that clicks or hovers, focus for one that types or selects.
 
 **Locator Recommendation**:
 A Playwright locator string derived for one element, optionally relative to a container element. It matches exactly that element and never contains a Structural Ref. It is code for a Page Object Model, not an address for a later tool call.
@@ -81,6 +81,9 @@ Labelled strings or numbers the calling agent passes with a goal. At any step th
 
 **Handover**:
 The Goal Loop returning control to the calling agent, with the reason it stopped, what it did, and what to do next.
+
+**Step Decision**:
+What one step of the Goal Loop does, decided from the page the loop received, the goal, the Goal Values and the steps so far: an operation with its arguments, or the reason the loop stops. The Goal Loop runs the operation and records the step; it does not decide.
 
 **Decision Endpoint**:
 The route in an app's own backend that adds the provider's key and Jev model to a decision request and forwards it to that provider. Ayme provides its definition; the app deploys and gates it.

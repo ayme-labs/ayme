@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createPage } from "./browserPage";
 import { reaches } from "./elementReach";
 import { errorText } from "./errors";
-import { buildToolOptions, planArguments } from "./goalLoopQuestions";
+import { buildToolOptions } from "./goalLoopOperations";
+import { planArguments } from "./goalLoopQuestions";
 import { lookAtPageStateForDocument } from "./pageState";
 import { agentTools } from "./publication.testSupport";
 import { listElementToolTargets } from "./publishedTools";
@@ -213,7 +214,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
         filled: ["Name"],
         failed: {
           name: "Search",
-          error: `fill_form is unavailable: a click would not reach it; ${dialog} is in the way.`,
+          error: `fill_form is unavailable: it cannot take focus; ${dialog} is in the way.`,
         },
       },
     });
@@ -242,6 +243,25 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     await call("check", { target: agree });
     expect(document.querySelector<HTMLInputElement>("#agree")!.checked).toBe(
       true
+    );
+  });
+
+  it("offers and fills a field under an overlay, which a click would not reach", async () => {
+    document.body.innerHTML = `
+      <style>
+        #overlay { position: fixed; inset: 0; background: rgb(0 0 0 / 0.3); }
+      </style>
+      <input id="name" aria-label="Name">
+      <div id="overlay"></div>
+    `;
+    const name = await refOf("textbox", "Name");
+
+    const targets = await listElementToolTargets();
+    expect(targets.get("fill")).toContain(name);
+    expect(targets.get("click")).not.toContain(name);
+    await call("fill", { target: name, text: "Beta" });
+    expect(document.querySelector<HTMLInputElement>("#name")!.value).toBe(
+      "Beta"
     );
   });
 
@@ -346,7 +366,8 @@ describe("Element reach timing in Chromium", () => {
       const listing = await medianMs(() => listElementToolTargets(capture));
       const planning = await medianMs(() => planArguments(targetOnly, capture));
       const measuring = await medianMs(() => {
-        for (const element of capture.elementsByRef.values()) reaches(element);
+        for (const element of capture.elementsByRef.values())
+          reaches(element, "click");
       });
       const offered = (await listElementToolTargets(capture)).get("click")!;
 
