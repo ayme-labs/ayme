@@ -40,7 +40,6 @@ export {
 export { listElementToolTargets } from "./publishedTools";
 export type { PublishedToolGroup, PublishedToolInfo } from "./publishedTools";
 export {
-  configureAymeRuntime,
   createAymeRuntime,
   listAvailablePomTools,
   listCollectionToolItems,

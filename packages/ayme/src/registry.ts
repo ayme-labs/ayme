@@ -142,15 +142,6 @@ const layoutEvents = [
   "animationcancel",
 ] as const;
 
-export function configureAymeRuntime(page: Page) {
-  if (runtimeOwner)
-    throw new RuntimeStateError(
-      "The Ayme runtime already has an active owner.",
-      { code: "active-owner" }
-    );
-  browserPage = page;
-}
-
 export function requireAymeRuntimePage(): Page {
   if (!browserPage)
     throw new RuntimeStateError("The Ayme browser runtime is not configured.");
@@ -310,10 +301,13 @@ function sameNamedClassRefusal(
     }
     return undefined;
   };
-  // The registered Page Objects were each checked against the ones before
-  // them, so only the new one can clash.
-  for (const registered of registeredPoms)
-    reach(registered.id, registered.manifest);
+  // Registered Page Objects can stop matching each other once one leaves,
+  // as a manifest without a file matches by shape: the new one is refused
+  // then too.
+  for (const registered of registeredPoms) {
+    const refusal = reach(registered.id, registered.manifest);
+    if (refusal) return refusal;
+  }
   return reach(manifest.className, manifest);
 }
 

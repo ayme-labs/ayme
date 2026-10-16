@@ -515,6 +515,59 @@ describe("live Page Object registry", () => {
     logged.mockRestore();
   });
 
+  it("keeps a Page Object waiting when the registered ones stop matching each other", async () => {
+    const { registry, session } = await setup();
+
+    const reaching = (
+      className: string,
+      ...components: { className: string; file?: string; description: string }[]
+    ) => {
+      const PomClass = { [className]: class {} }[className]!;
+      registry.registerCompiledPom(PomClass, {
+        ...emptyManifest(className),
+        components: components.map((component) => ({
+          ...component,
+          members: [],
+          tools: [],
+        })),
+      });
+      return PomClass;
+    };
+    // An HMR update of Row: one file, two shapes, so A and B match by file.
+    const A = reaching("A", {
+      className: "Row",
+      file: "src/Row.ts",
+      description: "old",
+    });
+    const B = reaching("B", {
+      className: "Row",
+      file: "src/Row.ts",
+      description: "new",
+    });
+    // C's Row has no file, so it matches A's Row by shape.
+    const C = reaching(
+      "C",
+      { className: "Row", description: "old" },
+      { className: "Badge", description: "open" }
+    );
+    const D = reaching("D", { className: "Badge", description: "remove" });
+    session.register(A);
+    session.register(B);
+    session.register(C);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    session.register(D);
+    expect(logged).toHaveBeenCalledOnce();
+    // Without A, C's Row no longer matches B's, but D still clashes with
+    // C's Badge.
+    session.unregister(A);
+    expect(registry.listRegisteredPoms().map(({ id }) => id)).toEqual([
+      "B",
+      "C",
+    ]);
+    expect(logged).toHaveBeenCalledOnce();
+    logged.mockRestore();
+  });
+
   it("names both files when two top-level Page Objects share a name", async () => {
     const { registry, session } = await setup();
 

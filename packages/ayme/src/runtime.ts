@@ -115,8 +115,8 @@ export type AymePom = {
    * listed while the session is started and the count is above zero. A
    * Page Object that reaches a different class with the same name as one
    * a registered Page Object reaches lists no tools, and the refusal is
-   * logged to the console instead of thrown. A later registration of it
-   * tries again.
+   * logged to the console instead of thrown. It is registered once the
+   * Page Object it clashes with is unregistered.
    */
   register<T extends object>(model: PageObjectConstructor<T>): T;
   /** Removes one registration of `model`. */
