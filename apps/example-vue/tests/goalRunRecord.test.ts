@@ -8,7 +8,6 @@ import {
   goalRunRecordOf,
   recordGoalRun,
   type Decision,
-  type GoalLoopRunResult,
   type GoalRunRecord,
 } from "./goalRunRecord";
 
@@ -66,7 +65,7 @@ it("records a run whose pursue throws, so it counts as not done at the expected 
   vi.unstubAllEnvs();
 });
 
-it("counts a chunk conflict and keeps the chunk choices when the run-off fails", () => {
+it("counts a chunk conflict and keeps the chunk choices when the run-off fails, from the loop's record", () => {
   const model = "typesafe/jev-1.13";
   const decisions: Decision[] = [
     {
@@ -94,10 +93,13 @@ it("counts a chunk conflict and keeps the chunk choices when the run-off fails",
   const record = goalRunRecordOf(
     { goal: "Archive the second item", reason: "decide_failed", wallTimeMs: 1 },
     decisions,
-    {
-      handover: { reason: "decide_failed" },
-      stepScores: [{ goalMetScore: 0.1 }],
-    }
+    [
+      {
+        goalMetScore: 0.1,
+        runOff: true,
+        argumentChoices: { ref__1: "e1", ref__2: "e9" },
+      },
+    ]
   );
   const { run } = toGoalRun({
     status: "failed",
@@ -182,7 +184,7 @@ it("reports done at the expected step, no fitting option, and state bytes per st
           operations.map((operation, index) =>
             stageOne(operation, { page, history: index === 0 ? [] : history })
           ),
-          undefined
+          []
         )
       )
     ).run;
@@ -245,6 +247,7 @@ it("counts repeated and wrong-target steps and sums the reported token usage", (
   /** The loop's record of a fill step that ran into `target`. */
   const ranFill = (target: string) => ({
     goalMetScore: 0.1,
+    argumentChoices: { target, text: "display name" },
     chosen: {
       target: { key: target, description: descriptions[target]! },
       text: { key: "display name", description: "display name: countess" },
@@ -253,7 +256,7 @@ it("counts repeated and wrong-target steps and sums the reported token usage", (
   const runOf = (
     reason: string,
     decisions: Decision[],
-    stepScores: GoalLoopRunResult["stepScores"]
+    stepScores: Parameters<typeof goalRunRecordOf>[2]
   ) =>
     toGoalRun(
       testResultOf(
@@ -265,7 +268,7 @@ it("counts repeated and wrong-target steps and sums the reported token usage", (
             wallTimeMs: 1,
           },
           decisions,
-          { handover: { reason }, stepScores }
+          stepScores
         )
       )
     ).run;
@@ -336,7 +339,7 @@ it("counts repeated and wrong-target steps and sums the reported token usage", (
           goalRunRecordOf(
             { goal: "archive it", reason: "done", wallTimeMs: 1 },
             [stageOne("none", {})],
-            undefined
+            []
           )
         )
       ).run,

@@ -55,6 +55,56 @@ describe("AgentConnection", () => {
     });
   });
 
+  it("answers the calls of a page that started loading a new document and did not come back once the wait ends", async () => {
+    vi.useFakeTimers();
+    const connection = new AgentConnection();
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("hold")]);
+    const call = connection.call("hold", {});
+    connection.navigating(page, {
+      url: "http://127.0.0.1:5173/counter",
+      reload: false,
+    });
+    connection.detach(page);
+
+    vi.advanceTimersByTime(RECONNECT_WAIT_MS);
+
+    const answer = await errorOf(call);
+    expect(answer).toEqual({
+      error:
+        "The page started loading http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown. No page reconnected in its place: the tab closed, or the page it loaded does not run Ayme's Agent Connection.",
+      settled: false,
+      loading: "http://127.0.0.1:5173/counter",
+    });
+  });
+
+  it("answers the calls of a page that started loading a new document with the tools of the page that came back", async () => {
+    vi.useFakeTimers();
+    const connection = new AgentConnection();
+    const page = connection.attach(hello("a"), () => {})!;
+    page.publishTools([tool("hold")]);
+    const call = connection.call("hold", {});
+    connection.navigating(page, {
+      url: "http://127.0.0.1:5173/counter",
+      reload: false,
+    });
+    connection.detach(page);
+
+    const next = connection.attach(
+      hello("a", "http://127.0.0.1:5173/counter"),
+      () => {}
+    )!;
+    next.publishTools([tool("snapshot")]);
+
+    expect(await errorOf(call)).toEqual({
+      error:
+        "The page navigated to http://127.0.0.1:5173/counter before it answered, so the call's outcome is unknown.",
+      settled: false,
+      loading: "http://127.0.0.1:5173/counter",
+      tools: ["snapshot"],
+    });
+  });
+
   it("stays busy with a tab that went away, calls or not, until the wait ends", () => {
     vi.useFakeTimers();
     const connection = new AgentConnection();

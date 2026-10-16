@@ -18,7 +18,8 @@ import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
 import { probeRegisteredPomMembers } from "./registry";
 import {
-  addValuePresets,
+  completeArguments,
+  describeLeftOut,
   buildArgumentRequest,
   buildOperationRequest,
   buildSpeculativeValueQuestions,
@@ -44,6 +45,7 @@ import {
   type ValuePreset,
 } from "./goalLoopQuestions";
 import { asSentence, ToolInputError } from "./errors";
+import { goalLoopRunResultKey } from "./goalLoopRunResultKey";
 
 export type GoalLoopDecisionFunction = (
   request: DecisionRequest
@@ -115,6 +117,11 @@ type GoalLoopStepScores = {
    * action or the action changed nothing.
    */
   changes?: string;
+  /**
+   * The step asked a run-off: several chunks of a ref question each named an
+   * element. Set before the run-off is asked, so it stays when that fails.
+   */
+  runOff?: true;
 };
 
 /**
@@ -130,18 +137,14 @@ export type GoalLoopRunResult = {
   stepScores: GoalLoopStepScore[];
 };
 
-type RunResultStore = { last?: GoalLoopRunResult };
+export type GoalLoopRunResultStore = { last?: GoalLoopRunResult };
 
-const runResultStore: RunResultStore = ((
+/** Where the last run's result is kept; the testing entry reads it. */
+const runResultStore: GoalLoopRunResultStore = ((
   globalThis as typeof globalThis & {
-    __aymeGoalLoopRunResultStore?: RunResultStore;
+    [goalLoopRunResultKey]?: GoalLoopRunResultStore;
   }
-).__aymeGoalLoopRunResultStore ??= {});
-
-/** Package-internal: access the last Goal Loop run result (scores + handover). */
-export function getLastGoalLoopRunResult(): GoalLoopRunResult | undefined {
-  return runResultStore.last;
-}
+)[goalLoopRunResultKey] ??= {});
 
 // --- Public result types (the Handover interface) ---
 
@@ -507,11 +510,7 @@ export async function pursueGoal(
   const callFailed = (error: unknown): Promise<GoalLoopRunResult> =>
     error instanceof DecisionEndpointError
       ? // Its message already says what the endpoint did.
-        decideFailed(error.message, {
-          kind: "endpoint",
-          code: error.code,
-          status: error.status,
-        })
+        decideFailed(error.message, { kind: "endpoint", error })
       : decideFailed(`The decision function failed: ${errorTextOf(error)}`, {
           kind: "thrown",
         });
@@ -519,7 +518,7 @@ export async function pursueGoal(
   /** The decision function answered with something the loop could not read. */
   const invalidDecision = (error: unknown): Promise<GoalLoopRunResult> =>
     decideFailed(
-      `The decision function returned an invalid response: ${errorTextOf(error)}`,
+      `The decision function's answers could not be read: ${errorTextOf(error)}`,
       { kind: "invalid" }
     );
 
@@ -550,11 +549,10 @@ export async function pursueGoal(
 
     // A question outside the limit is never sent, in either stage.
     if (!operationQuestionFits(toolOptions)) {
-      return done({
-        reason: "decide_failed",
-        next: `The page offers ${toolOptions.length} operations, more than one decision can choose from. Read the page again and call the tools you need directly.`,
-        history,
-      });
+      return decideFailed(
+        `The page offers ${toolOptions.length} operations, more than one decision can choose from`,
+        { kind: "too-many-operations" }
+      );
     }
 
     // --- Stage one: the operation, and whether the goal is met ---
@@ -653,11 +651,16 @@ export async function pursueGoal(
     if (plan.kind === "needs_instance_choice") {
       return done({
         reason: "needs_value",
-        next: `The operation "${chosenTool.name}" acts on a collection instance, and ${
-          plan.optionCount === 0
-            ? "the loop found no instance on the current page"
-            : "the current page holds more of them than one decision can offer"
-        }. ${pickYourself(plan.parameter)}`,
+        next:
+          plan.optionCount > 0
+            ? `The operation "${chosenTool.name}" acts on a collection instance, and the current page holds more of them than one decision can offer. ${pickYourself(plan.parameter)}`
+            : [
+                `The operation "${chosenTool.name}" acts on a collection instance, and the loop could offer none of its items.`,
+                describeLeftOut(plan.leftOut),
+                "Try a different approach.",
+              ]
+                .filter(Boolean)
+                .join(" "),
         history,
         needs: { tool: chosenTool.name, parameters: [plan.parameter] },
       });
@@ -706,12 +709,19 @@ export async function pursueGoal(
         return invalidDecision(error);
       }
 
-      // Every chunk of a ref over the cap answered "none of these": the step
-      // ran no action, so it leaves no history entry.
+      // A required collection item, or every chunk of a ref over the cap,
+      // answered "none of these": the step ran no action, so it leaves no
+      // history entry.
       if (argumentAnswers.kind === "none_fits") {
         return done({
           reason: "no_fitting_option",
-          next: `No element on the current page fits the operation "${chosenTool.name}". Navigate to a different page or try a different approach.`,
+          next: [
+            `No element on the current page fits the operation "${chosenTool.name}".`,
+            describeLeftOut(argumentAnswers.leftOut),
+            "Navigate to a different page or try a different approach.",
+          ]
+            .filter(Boolean)
+            .join(" "),
           history,
         });
       }
@@ -731,6 +741,7 @@ export async function pursueGoal(
 
       // Several chunks each named an element: one run-off among exactly those.
       if (argumentAnswers.kind === "run_off") {
+        score.runOff = true;
         let runOff: DecisionResponse;
         try {
           runOff = await decisionFn(
@@ -754,7 +765,7 @@ export async function pursueGoal(
       score.argumentChoices = chosenArguments.choices;
       score.argumentProbabilities = chosenArguments.probabilities;
     }
-    addValuePresets(chosenTool, chosenArguments, presets);
+    completeArguments(chosenTool, chosenArguments, presets);
 
     // 4. no_progress: the step would repeat the one before, to no effect.
     const stuck = stuckOn(history, chosenTool.name, chosenArguments.chosen);
