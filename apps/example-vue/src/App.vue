@@ -65,13 +65,21 @@ function show(next: View) {
 }
 
 // Follows the strip where it comes to rest, at one end or the other, so a
-// slide in progress doesn't flip the switch midway.
+// slide in progress doesn't flip the switch midway. Only the end the strip
+// moves towards counts: a slide's first step still lies next to the end it
+// leaves.
+let lastScrollLeft = 0;
 function followScroll() {
   const strip = panes.value!;
+  const delta = strip.scrollLeft - lastScrollLeft;
+  lastScrollLeft = strip.scrollLeft;
   // A swipe reaches the code without the switch, so it loads it too.
   if (strip.scrollLeft > 0) codeOpened.value = true;
-  if (strip.scrollLeft <= 0) view.value = "app";
-  else if (strip.scrollLeft >= strip.scrollWidth - strip.clientWidth - 1)
+  if (delta < 0 && strip.scrollLeft <= 0) view.value = "app";
+  else if (
+    delta > 0 &&
+    strip.scrollLeft >= strip.scrollWidth - strip.clientWidth - 1
+  )
     view.value = "code";
 }
 </script>
