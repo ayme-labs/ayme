@@ -6,6 +6,14 @@ import { appRoot, readModelKeys } from "./appEnvironment.ts";
 
 const openRouterKeyPrefix = "sk-or-v1-";
 
+// The code view shows the playground's Page Objects as text, so their source
+// appears in the output verbatim, naming Playwright. Only what is outside it
+// counts: a Page Object that leaked as code would be compiled, not verbatim.
+const pomDirectory = path.join(appRoot, "playwright", "pom");
+const shownSources = fs
+  .readdirSync(pomDirectory)
+  .map((file) => fs.readFileSync(path.join(pomDirectory, file), "utf8"));
+
 function verifyBrowserOutput(directory, mode) {
   const serverOnlyMarkers = [
     "@playwright/test",
@@ -25,9 +33,9 @@ function verifyBrowserOutput(directory, mode) {
 
   const hits = [];
   for (const file of files) {
-    const contents = fs.readFileSync(
-      path.join(directory, "assets", file),
-      "utf8"
+    const contents = shownSources.reduce(
+      (rest, source) => rest.replaceAll(source, ""),
+      fs.readFileSync(path.join(directory, "assets", file), "utf8")
     );
     for (const marker of serverOnlyMarkers) {
       if (contents.includes(marker)) hits.push(`${file}: ${marker}`);

@@ -1,36 +1,33 @@
 - e1 main "Playground":
-  - e2:
-    - e3 paragraph: Playground
-    - e4: DOM-backed browser runtime
-  - e5 region "Demo application":
-    - e6:
-      - e7:
-        - e8 paragraph: Demo application
-        - e9 heading "My list" [level=2]
-        - e10: 2 active
-      - e11 form "Add a list item":
-        - e12: New item
-        - e13:
-          - e14 textbox "New item":
+  - e2 region "Demo application":
+    - e3:
+      - e4:
+        - e5 paragraph: Demo application
+        - e6 heading "My list" [level=2]
+        - e7: 2 active
+      - e8 form "Add a list item":
+        - e9: New item
+        - e10:
+          - e11 textbox "New item":
             - /placeholder: e.g. Send the project update
-          - e15 button "Add item"
-    - e16:
-      - e17:
-        - e18 heading "Active items" [level=3]
-        - e19: 2
-      - e20 list "Active items":
-        - e21 ListPage.items[0]:
-          - e22:
-            - e23 button "Prepare launch notes"
-            - e24 code: item-1
-          - e25 button "Archive item-1": Archive
-        - e26 ListPage.items[1]:
-          - e27:
-            - e28 button "Review onboarding flow"
-            - e29 code: item-2
-          - e30 button "Archive item-2": Archive
-    - e31:
-      - e32:
-        - e33 heading "Archived items" [level=3]
-        - e34: 0
-      - e35 paragraph: Archived items will appear here.
+          - e12 button "Add item"
+    - e13:
+      - e14:
+        - e15 heading "Active items" [level=3]
+        - e16: 2
+      - e17 list "Active items":
+        - e18 ListPage.items[0]:
+          - e19:
+            - e20 button "Prepare launch notes"
+            - e21 code: item-1
+          - e22 button "Archive item-1": Archive
+        - e23 ListPage.items[1]:
+          - e24:
+            - e25 button "Review onboarding flow"
+            - e26 code: item-2
+          - e27 button "Archive item-2": Archive
+    - e28:
+      - e29:
+        - e30 heading "Archived items" [level=3]
+        - e31: 0
+      - e32 paragraph: Archived items will appear here.

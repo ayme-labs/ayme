@@ -3,6 +3,7 @@
 This browser playground combines a functional list app with an Ayme inspector so the same Page Object behavior can be exercised by a person or an agent. It is published at [ayme-labs.github.io/ayme](https://ayme-labs.github.io/ayme/) so developers can try Ayme WebMCP before adding it to their own project. This README is for people reading the repository; visitors follow the instructions on the page itself.
 
 - The demo app lets you add items and archive them through a confirmation dialog.
+- A switch above the app shows its Page Object code instead: the files in `playwright/pom` as they are, highlighted, and the two lines that wire them into `App.vue`. The app and the code sit side by side in a strip that scrolls sideways, so the app stays on the page, a scroll away, and a tool that acts on it scrolls it back into view. `ignore` keeps the switch and the code out of Structural Page State, and `scripts/verify-browser-output.mjs` allows the Page Object source in the output only verbatim, as the text the code view shows.
 - `ListPage` is a normal TypeScript class using `Page` and `Locator` types from Playwright. Vite bundles that same class for WebMCP and constructs it with the DOM-backed browser implementation.
 - `@ayme` and `@ayme.action` choose the Page Object Tools. Tool descriptions come from the decorator.
 - Registered page tools use their fully qualified POM method name, such as `ListPage.addItem`. A collection component action is registered once, at its collection path, such as `ListPage.items.archive`.
