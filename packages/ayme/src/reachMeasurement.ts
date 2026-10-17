@@ -352,9 +352,11 @@ function sampleReach(
       if (inInspector(hit)) continue;
       if (contains(current, hit)) return true;
       // Ancestors are evidence only for a simulated scroll destination,
-      // never proof that the current element itself is exposed.
+      // never proof that the current element itself is exposed. An element
+      // without pointer events always leaves its ancestor as the hit.
       if (
         scrolls.some(({ x, y }) => x !== 0 || y !== 0) &&
+        styleOf(current).pointerEvents !== "none" &&
         contains(hit, current)
       )
         return true;

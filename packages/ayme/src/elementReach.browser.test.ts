@@ -265,6 +265,24 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     );
   });
 
+  it("neither offers nor clicks a button without pointer events on a page that scrolls", async () => {
+    document.body.innerHTML = `
+      <div style="height: 200px"></div>
+      <button id="ghost" type="button" style="pointer-events: none">Ghost</button>
+      <div style="height: 3000px"></div>
+    `;
+    const ghost = await refOf("button", "Ghost");
+
+    expect((await listElementToolTargets()).get("click")).not.toContain(ghost);
+    const { error, elapsed } = await refusal("click", ghost);
+    // What a click hits instead is the button's ancestor.
+    expect(error).toMatch(
+      /^RuntimeStateError: click is unavailable: a click would not reach it/
+    );
+    expect(clicks).toEqual([]);
+    expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
+  });
+
   // Playwright's own check never reached these either: the box takes the
   // click, or the clip leaves nothing to click. The tool now refuses at
   // once instead of timing out.
