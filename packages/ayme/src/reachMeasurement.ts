@@ -373,8 +373,8 @@ function sampleReach(
 }
 
 /**
- * Whether `element`, or a rendered element in it, open shadow roots
- * included, takes pointer events.
+ * Whether `element`, or a rendered element in it, through open shadow roots
+ * and slots, takes pointer events.
  */
 const takesPointerEvents = memoizedInBatch((element: Element): boolean => {
   if (styleOf(element).pointerEvents !== "none") return true;
@@ -387,12 +387,17 @@ const takesPointerEvents = memoizedInBatch((element: Element): boolean => {
       node.getClientRects().length > 0
     )
       return true;
-    return [...node.children, ...(node.shadowRoot?.children ?? [])].some(takes);
+    return renderedChildren(node).some(takes);
   };
-  return [...element.children, ...(element.shadowRoot?.children ?? [])].some(
-    takes
-  );
+  return renderedChildren(element).some(takes);
 });
+
+/** The elements `node` renders as its children in the composed tree. */
+function renderedChildren(node: Element): Element[] {
+  if (node.localName === "slot")
+    return (node as HTMLSlotElement).assignedElements({ flatten: true });
+  return [...(node.shadowRoot ?? node).children];
+}
 
 function inInspector(element: Element): boolean {
   for (let node: Element | null = element; node; node = parentElement(node))
