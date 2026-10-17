@@ -6,13 +6,13 @@ import { appRoot, readModelKeys } from "./appEnvironment.ts";
 
 const openRouterKeyPrefix = "sk-or-v1-";
 
-// The code view shows the playground's Page Objects as text, so their source
-// appears in the output verbatim, naming Playwright. Only what is outside it
-// counts: a Page Object that leaked as code would be compiled, not verbatim.
-const pomDirectory = path.join(appRoot, "playwright", "pom");
-const shownSources = fs
-  .readdirSync(pomDirectory)
-  .map((file) => fs.readFileSync(path.join(pomDirectory, file), "utf8"));
+// The code view (src/demo/PageObjectCode.vue) shows these Page Objects as
+// text, so their source appears in the output verbatim, naming Playwright.
+// Only what is outside it counts: a Page Object that leaked as code would be
+// compiled, not verbatim.
+const shownSources = ["ListPage.ts", "ListItem.ts", "ArchiveDialog.ts"].map(
+  (file) => fs.readFileSync(path.join(appRoot, "playwright/pom", file), "utf8")
+);
 
 function verifyBrowserOutput(directory, mode) {
   const serverOnlyMarkers = [

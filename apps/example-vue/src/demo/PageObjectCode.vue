@@ -6,14 +6,19 @@ import listPage from "../../playwright/pom/ListPage.ts?raw";
 import listItem from "../../playwright/pom/ListItem.ts?raw";
 import archiveDialog from "../../playwright/pom/ArchiveDialog.ts?raw";
 
-// The Page Object files are shown as they are in the repository. The wiring
-// is what App.vue boils down to without the playground's own options; the
-// closing tag is split so the SFC compiler doesn't end this block at it.
+// The Page Object files are shown as they are in the repository; the
+// verifier in scripts/verify-browser-output.mjs names the same files. The
+// wiring is App.vue as the Vue guide sets it up, not with the playground's
+// own options; the closing tag is split so the SFC compiler doesn't end this
+// block at it.
 const wiring = `<script setup lang="ts">
 import { useAyme, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "../playwright/pom/ListPage";
 
-useAyme();
+useAyme({
+  inspector: import.meta.env.DEV,
+  agentConnection: import.meta.env.DEV,
+});
 usePageObject(ListPage);
 </${"script"}>`;
 
@@ -31,7 +36,7 @@ const highlighter = createHighlighterCore({
 });
 
 /** The lines that make a class a Page Object, an action a tool, or wire it in. */
-const aymeLine = /^\s*(@ayme\b|usePageObject\()/;
+const aymeLine = /^\s*(@ayme\b|useAyme\(|usePageObject\()/;
 
 const selected = ref(0);
 const file = computed(() => files[selected.value]!);
