@@ -1,5 +1,6 @@
 /**
- * Checks the consumer docs in `docs/guide/` and every README.
+ * Checks the consumer docs in `docs/guide/`, every README and the Markdown
+ * files at the repository root.
  *
  *   node scripts/check-docs.mjs    check the repository, print each problem
  *
@@ -255,7 +256,10 @@ export function checkDocs(root) {
   const all = markdownFiles(root);
   const pages = all.filter((file) => file.startsWith(`${GUIDE_DIR}/`));
   const checked = all.filter(
-    (file) => path.posix.basename(file) === "README.md" || pages.includes(file)
+    (file) =>
+      path.posix.basename(file) === "README.md" ||
+      !file.includes("/") ||
+      pages.includes(file)
   );
   const indexed = new Set();
   const anchorsOf = new Map();

@@ -295,6 +295,47 @@ test("publishes the current page as ref-bearing ARIA state", async ({
   expect(normalizeAppSubtree(snapshot)).toMatchSnapshot("page-state.yml");
 });
 
+test("scrolls the app back into view when a tool acts on it from the code view", async ({
+  page,
+}) => {
+  await openWithInspector(page);
+  await expect
+    .poll(async () => await recordedToolNames(page))
+    .toEqual(initialToolNames);
+  const ref = await getInstanceRef(page, "ListPage.items[0]");
+  const appView = page.getByRole("button", { name: "App", exact: true });
+
+  await page.getByRole("button", { name: "Page Object code" }).click();
+  await expect(page.getByRole("tabpanel")).toContainText(
+    "export class ListPage"
+  );
+  await expect(appView).toHaveAttribute("aria-pressed", "false");
+  // The app stays on the page, a scroll away.
+  expect(await recordedToolNames(page)).toEqual(initialToolNames);
+
+  await executePublishedTool(page, "ListPage.items.rename", {
+    ref,
+    args: { text: "Renamed from the code view" },
+  });
+  await expect(appView).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByText("Renamed from the code view", { exact: true })
+  ).toBeVisible();
+});
+
+test("loads the code view when a swipe reaches it", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("region", { name: "Demo application" }).hover();
+  await page.mouse.wheel(2000, 0);
+
+  await expect(
+    page.getByRole("button", { name: "App", exact: true })
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("tabpanel")).toContainText(
+    "export class ListPage"
+  );
+});
+
 test("resolves every ref of a snapshot taken after the archive dialog closes", async ({
   page,
 }) => {

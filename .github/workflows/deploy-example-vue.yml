@@ -71,6 +71,8 @@ jobs:
       # built once for each place it is served from. Only this copy loads the
       # landing's Google Tag Manager container, so its analytics cover
       # ayme.dev alone.
+      # VITE_AGENT_CONNECTION=false leaves out the "Try with your own coding
+      # agent" wizard until @ayme-dev/mcp is on npm; drop it then.
       - name: Build the playground for ayme.dev/playground/
         run: |
           pnpm exec turbo run build --filter=@ayme-dev/example-vue... --env-mode=strict
@@ -78,16 +80,22 @@ jobs:
         env:
           VITE_BASE_PATH: /playground/
           VITE_GTM_ID: GTM-T3H5D4DX
+          VITE_AGENT_CONNECTION: "false"
       - name: Build the Pages artifact
         run: pnpm exec turbo run build --filter=@ayme-dev/example-vue... --env-mode=strict
         env:
           VITE_BASE_PATH: /ayme/
+          VITE_AGENT_CONNECTION: "false"
       - name: Add the ayme.dev playground to the Pages artifact
         run: |
           mv "$RUNNER_TEMP/playground" apps/example-vue/dist/playground
           grep -q 'src="/playground/assets/' apps/example-vue/dist/playground/index.html
           grep -q 'GTM-T3H5D4DX' apps/example-vue/dist/playground/index.html
           if grep -q 'googletagmanager' apps/example-vue/dist/index.html; then exit 1; fi
+          if grep -rq open-agent-wizard apps/example-vue/dist; then
+            echo "The hosted playground still contains the agent wizard" >&2
+            exit 1
+          fi
       - name: Build the docs into the Pages artifact
         uses: actions/jekyll-build-pages@v1
         with:
