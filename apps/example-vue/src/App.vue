@@ -5,6 +5,7 @@ import { useAyme, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "../playwright/pom/ListPage";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 import AgentPanel from "./AgentPanel.vue";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import ListDemo from "./demo/ListDemo.vue";
 import PeekCheck from "./peek/PeekCheck.vue";
 
@@ -64,6 +65,8 @@ function show(next: View) {
 // slide in progress doesn't flip the switch midway.
 function followScroll() {
   const strip = panes.value!;
+  // A swipe reaches the code without the switch, so it loads it too.
+  if (strip.scrollLeft > 0) codeOpened.value = true;
   if (strip.scrollLeft <= 0) view.value = "app";
   else if (strip.scrollLeft >= strip.scrollWidth - strip.clientWidth - 1)
     view.value = "code";
@@ -124,30 +127,17 @@ function followScroll() {
             >
               Playground
             </p>
-            <div
-              role="group"
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
               aria-label="View"
-              class="inline-flex rounded-lg border bg-background p-0.5 text-sm"
+              :model-value="view"
+              @update:model-value="(next) => next && show(next as View)"
             >
-              <button
-                v-for="option in [
-                  { value: 'app', label: 'App' },
-                  { value: 'code', label: 'Page Object code' },
-                ] as const"
-                :key="option.value"
-                type="button"
-                :aria-pressed="view === option.value"
-                class="rounded-md px-3 py-1 font-medium transition-colors"
-                :class="
-                  view === option.value
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                "
-                @click="show(option.value)"
-              >
-                {{ option.label }}
-              </button>
-            </div>
+              <ToggleGroupItem value="app">App</ToggleGroupItem>
+              <ToggleGroupItem value="code">Page Object code</ToggleGroupItem>
+            </ToggleGroup>
           </div>
           <div
             ref="panes"
