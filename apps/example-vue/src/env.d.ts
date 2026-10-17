@@ -16,6 +16,9 @@ declare global {
     /** Whether the dev server mounted the Decision Endpoint; set by
      *  `vite.config.ts`. */
     readonly AYME_DECISION_ENDPOINT?: boolean;
+    /** `"false"` builds the playground without the agent wizard or the Agent
+     *  Connection; anything else keeps them. */
+    readonly VITE_AGENT_CONNECTION?: string;
   }
 
   interface Window {

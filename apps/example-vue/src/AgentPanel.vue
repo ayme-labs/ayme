@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from "vue";
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  useTemplateRef,
+  watch,
+} from "vue";
 import { Check, Plug } from "@lucide/vue";
 import { ConfigProvider } from "reka-ui";
 import { Button } from "@/components/ui/button";
@@ -20,6 +27,7 @@ import {
   StepperTrigger,
 } from "@/components/ui/stepper";
 import { setupPrompt } from "./agentPrompts";
+import { track } from "./analytics";
 import PromptBlock from "./PromptBlock.vue";
 
 const prompt = setupPrompt(window.location.origin + window.location.pathname);
@@ -33,6 +41,14 @@ const open = ref(false);
 const step = ref(1);
 const currentStep = computed(
   () => steps.find((candidate) => candidate.step === step.value) ?? steps[0]
+);
+
+watch(open, (isOpen) => {
+  if (isOpen) track({ event: "playground_agent_panel_open" });
+});
+// Every way to change step counts: Next, Back and the stepper itself.
+watch(currentStep, ({ step, label }) =>
+  track({ event: "playground_agent_panel_step", step, step_name: label })
 );
 
 // The wizard belongs to the site chrome, not to the playground, so its dialog

@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { Check, Copy } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+import { track } from "./analytics";
 
 // A prompt the visitor reads in full before copying it to their agent.
 const props = defineProps<{ name: string; text: string }>();
@@ -12,6 +13,7 @@ async function copy() {
   try {
     await navigator.clipboard.writeText(props.text);
     copyState.value = "copied";
+    track({ event: "playground_prompt_copy", prompt: props.name });
   } catch {
     copyState.value = "blocked";
   }

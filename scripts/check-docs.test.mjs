@@ -76,6 +76,16 @@ test("fails on a relative link that does not resolve", () => {
   );
 });
 
+test("fails on a relative link in a root Markdown file that does not resolve", () => {
+  assertOneProblem(
+    {
+      "ARCHITECTURE.md":
+        "# Architecture\n\nSee [the runtime](packages/ayme/src/gone.ts).\n",
+    },
+    /^ARCHITECTURE\.md:3: link does not resolve: packages\/ayme\/src\/gone\.ts$/
+  );
+});
+
 test("fails on a relative link in a guide page that does not resolve", () => {
   assertOneProblem(
     { "docs/guide/start/page.md": `${PAGE}\n[Next](next.md)\n` },
