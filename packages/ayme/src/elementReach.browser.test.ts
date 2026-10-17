@@ -320,6 +320,22 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     expect(reaches(shadow.querySelector("#toolbar")!, "click")).toBe(true);
   });
 
+  it.each([
+    ["a slot outside a shadow tree", ""],
+    ["a slot's fallback content", "shadow"],
+  ])(
+    "still reaches such a container through a button in %s",
+    async (_kind, where) => {
+      const html = `<div id="toolbar" style="pointer-events: none"><slot><button type="button" style="pointer-events: auto">Inside</button></slot></div>`;
+      document.body.innerHTML = `<div style="height: 3000px"></div><div id="host"></div>`;
+      const host = document.querySelector("#host")!;
+      const root = where ? host.attachShadow({ mode: "open" }) : host;
+      root.innerHTML = html;
+
+      expect(reaches(root.querySelector("#toolbar")!, "click")).toBe(true);
+    }
+  );
+
   it("does not reach a button without pointer events through a hidden element in it", async () => {
     document.body.innerHTML = `
       <div style="height: 200px"></div>
