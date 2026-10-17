@@ -1,12 +1,17 @@
 <script setup lang="ts">
+import { defineAsyncComponent, ref, useTemplateRef } from "vue";
 import { decisionEndpoint } from "@ayme-dev/ayme";
 import { useAyme, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "../playwright/pom/ListPage";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
-import { Badge } from "@/components/ui/badge";
 import AgentPanel from "./AgentPanel.vue";
 import ListDemo from "./demo/ListDemo.vue";
 import PeekCheck from "./peek/PeekCheck.vue";
+
+// The highlighter loads with the code view, not with the app.
+const PageObjectCode = defineAsyncComponent(
+  () => import("./demo/PageObjectCode.vue")
+);
 
 // Ordinary apps call useAyme() without options. This demo keeps its site
 // chrome and the dev server's Peek check out of Structural Page State.
@@ -33,6 +38,36 @@ useAyme({
     agentConnection && import.meta.env.MODE !== "inspector-disabled",
 });
 usePageObject(ListPage);
+
+// The app and its Page Object code sit side by side in a strip that
+// scrolls sideways, and the switch scrolls it. The app stays on the page
+// while the code shows, a scroll away, so the inspector and agents can still
+// reach it, and acting on it scrolls it back into view.
+type View = "app" | "code";
+const view = ref<View>("app");
+const codeOpened = ref(false);
+const panes = useTemplateRef("panes");
+
+function show(next: View) {
+  view.value = next;
+  if (next === "code") codeOpened.value = true;
+  // Only the switch slides: a smooth scroll in CSS would also slow the
+  // scroll Playwright makes before acting on the app.
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  panes.value?.scrollTo({
+    left: next === "code" ? panes.value.scrollWidth : 0,
+    behavior: still ? "instant" : "smooth",
+  });
+}
+
+// Follows the strip where it comes to rest, at one end or the other, so a
+// slide in progress doesn't flip the switch midway.
+function followScroll() {
+  const strip = panes.value!;
+  if (strip.scrollLeft <= 0) view.value = "app";
+  else if (strip.scrollLeft >= strip.scrollWidth - strip.clientWidth - 1)
+    view.value = "code";
+}
 </script>
 
 <template>
@@ -80,15 +115,51 @@ usePageObject(ListPage);
           aria-label="Playground"
           class="rounded-xl border bg-muted/40 p-4 sm:p-6"
         >
-          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div
+            class="mb-4 flex flex-wrap items-center justify-between gap-3"
+            data-site-chrome
+          >
             <p
               class="text-xs font-semibold tracking-widest text-muted-foreground uppercase"
             >
               Playground
             </p>
-            <Badge variant="secondary">DOM-backed browser runtime</Badge>
+            <div
+              role="group"
+              aria-label="View"
+              class="inline-flex rounded-lg border bg-background p-0.5 text-sm"
+            >
+              <button
+                v-for="option in [
+                  { value: 'app', label: 'App' },
+                  { value: 'code', label: 'Page Object code' },
+                ] as const"
+                :key="option.value"
+                type="button"
+                :aria-pressed="view === option.value"
+                class="rounded-md px-3 py-1 font-medium transition-colors"
+                :class="
+                  view === option.value
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                "
+                @click="show(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
           </div>
-          <ListDemo />
+          <div
+            ref="panes"
+            class="grid snap-x snap-mandatory auto-cols-[100%] grid-flow-col gap-6 overflow-x-auto [scrollbar-width:none]"
+            @scroll="followScroll"
+          >
+            <ListDemo class="snap-start" />
+            <!-- As tall as the app: the code scrolls inside it. -->
+            <div class="relative snap-start" data-site-chrome>
+              <PageObjectCode v-if="codeOpened" class="absolute inset-0" />
+            </div>
+          </div>
         </main>
         <PeekCheck v-if="peekCheck" />
       </div>
