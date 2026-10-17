@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { enableAutoUnmount, mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import AgentPanel from "./AgentPanel.vue";
 
@@ -78,5 +78,29 @@ describe("The agent wizard", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
+  });
+
+  it("tells analytics when it opens, changes step and copies the prompt", async () => {
+    window.dataLayer = [];
+    onTestFinished(() => {
+      delete window.dataLayer;
+      vi.unstubAllGlobals();
+    });
+    vi.stubGlobal("navigator", {
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
+    const wrapper = await openWizard();
+    await wrapper.get('[data-action="copy-prompt"]').trigger("click");
+    await wrapper.get('[data-action="wizard-next"]').trigger("click");
+    await wrapper.get('[data-action="wizard-back"]').trigger("click");
+
+    await vi.waitFor(() =>
+      expect(window.dataLayer).toEqual([
+        { event: "playground_agent_panel_open" },
+        { event: "playground_prompt_copy", prompt: "prompt" },
+        { event: "playground_agent_panel_step", step: 2, step_name: "Connect" },
+        { event: "playground_agent_panel_step", step: 1, step_name: "Set up" },
+      ])
+    );
   });
 });

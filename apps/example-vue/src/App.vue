@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref, useTemplateRef } from "vue";
+import {
+  defineAsyncComponent,
+  onScopeDispose,
+  ref,
+  useTemplateRef,
+  watch,
+} from "vue";
 import { decisionEndpoint } from "@ayme-dev/ayme";
 import { useAyme, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "../playwright/pom/ListPage";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 import AgentPanel from "./AgentPanel.vue";
+import { track, trackToolRuns } from "./analytics";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import ListDemo from "./demo/ListDemo.vue";
 import PeekCheck from "./peek/PeekCheck.vue";
@@ -22,7 +29,7 @@ const peekCheck = import.meta.env.DEV;
 // `VITE_AGENT_CONNECTION=false` builds the playground without the agent
 // wizard or the Agent Connection, while `@ayme-dev/mcp` is not on npm yet.
 const agentConnection = import.meta.env.VITE_AGENT_CONNECTION !== "false";
-useAyme({
+const { ayme } = useAyme({
   ignore: isNotPlayground,
   // Only the dev server mounts a Decision Endpoint, and only when it has a
   // model key, so the page publishes `goal` only then: never in the deployed
@@ -39,6 +46,7 @@ useAyme({
     agentConnection && import.meta.env.MODE !== "inspector-disabled",
 });
 usePageObject(ListPage);
+onScopeDispose(trackToolRuns(ayme.runs));
 
 // The app and its Page Object code sit side by side in a strip that
 // scrolls sideways, and the switch scrolls it. The app stays on the page
@@ -48,6 +56,8 @@ type View = "app" | "code";
 const view = ref<View>("app");
 const codeOpened = ref(false);
 const panes = useTemplateRef("panes");
+// Both ways to change view count: the switch and a swipe.
+watch(view, (next) => track({ event: "playground_view_switch", view: next }));
 
 function show(next: View) {
   view.value = next;
@@ -62,13 +72,21 @@ function show(next: View) {
 }
 
 // Follows the strip where it comes to rest, at one end or the other, so a
-// slide in progress doesn't flip the switch midway.
+// slide in progress doesn't flip the switch midway. Only the end the strip
+// moves towards counts: a slide's first step still lies next to the end it
+// leaves.
+let lastScrollLeft = 0;
 function followScroll() {
   const strip = panes.value!;
+  const delta = strip.scrollLeft - lastScrollLeft;
+  lastScrollLeft = strip.scrollLeft;
   // A swipe reaches the code without the switch, so it loads it too.
   if (strip.scrollLeft > 0) codeOpened.value = true;
-  if (strip.scrollLeft <= 0) view.value = "app";
-  else if (strip.scrollLeft >= strip.scrollWidth - strip.clientWidth - 1)
+  if (delta < 0 && strip.scrollLeft <= 0) view.value = "app";
+  else if (
+    delta > 0 &&
+    strip.scrollLeft >= strip.scrollWidth - strip.clientWidth - 1
+  )
     view.value = "code";
 }
 </script>

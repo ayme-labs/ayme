@@ -68,7 +68,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       # ayme.dev proxies /playground/ to this copy, so the playground runs on
       # the landing's domain. The base path is baked into the build, so it is
-      # built once for each place it is served from.
+      # built once for each place it is served from. Only this copy loads the
+      # landing's Google Tag Manager container, so its analytics cover
+      # ayme.dev alone.
       # VITE_AGENT_CONNECTION=false leaves out the "Try with your own coding
       # agent" wizard until @ayme-dev/mcp is on npm; drop it then.
       - name: Build the playground for ayme.dev/playground/
@@ -77,6 +79,7 @@ jobs:
           mv apps/example-vue/dist "$RUNNER_TEMP/playground"
         env:
           VITE_BASE_PATH: /playground/
+          VITE_GTM_ID: GTM-T3H5D4DX
           VITE_AGENT_CONNECTION: "false"
       - name: Build the Pages artifact
         run: pnpm exec turbo run build --filter=@ayme-dev/example-vue... --env-mode=strict
@@ -87,6 +90,8 @@ jobs:
         run: |
           mv "$RUNNER_TEMP/playground" apps/example-vue/dist/playground
           grep -q 'src="/playground/assets/' apps/example-vue/dist/playground/index.html
+          grep -q 'GTM-T3H5D4DX' apps/example-vue/dist/playground/index.html
+          if grep -q 'googletagmanager' apps/example-vue/dist/index.html; then exit 1; fi
           if grep -rq open-agent-wizard apps/example-vue/dist; then
             echo "The hosted playground still contains the agent wizard" >&2
             exit 1
