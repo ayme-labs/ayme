@@ -5,7 +5,10 @@ import App from "./App.vue";
 
 // Only App.vue's view switch is under test, so Ayme, the playground and the
 // code view are stubbed out.
-vi.mock("@ayme-dev/vue", () => ({ useAyme: vi.fn(), usePageObject: vi.fn() }));
+vi.mock("@ayme-dev/vue", () => ({
+  useAyme: () => ({ ayme: { runs: { subscribe: () => () => {} } } }),
+  usePageObject: vi.fn(),
+}));
 const stubs = { ListDemo: true, PeekCheck: true, PageObjectCode: true };
 
 enableAutoUnmount(afterEach);

@@ -5,7 +5,9 @@ import App from "./App.vue";
 
 // Only App.vue's own template and its useAyme options are under test, so Ayme
 // and the playground itself are stubbed out.
-const useAyme = vi.hoisted(() => vi.fn());
+const useAyme = vi.hoisted(() =>
+  vi.fn(() => ({ ayme: { runs: { subscribe: () => () => {} } } }))
+);
 vi.mock("@ayme-dev/vue", () => ({ useAyme, usePageObject: vi.fn() }));
 const stubs = { ListDemo: true, PeekCheck: true };
 

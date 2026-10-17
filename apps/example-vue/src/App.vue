@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref, useTemplateRef, watch } from "vue";
+import {
+  defineAsyncComponent,
+  onScopeDispose,
+  ref,
+  useTemplateRef,
+  watch,
+} from "vue";
 import { decisionEndpoint } from "@ayme-dev/ayme";
 import { useAyme, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "../playwright/pom/ListPage";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 import AgentPanel from "./AgentPanel.vue";
-import { track } from "./analytics";
+import { track, trackToolRuns } from "./analytics";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import ListDemo from "./demo/ListDemo.vue";
 import PeekCheck from "./peek/PeekCheck.vue";
@@ -23,7 +29,7 @@ const peekCheck = import.meta.env.DEV;
 // `VITE_AGENT_CONNECTION=false` builds the playground without the agent
 // wizard or the Agent Connection, while `@ayme-dev/mcp` is not on npm yet.
 const agentConnection = import.meta.env.VITE_AGENT_CONNECTION !== "false";
-useAyme({
+const { ayme } = useAyme({
   ignore: isNotPlayground,
   // Only the dev server mounts a Decision Endpoint, and only when it has a
   // model key, so the page publishes `goal` only then: never in the deployed
@@ -40,6 +46,7 @@ useAyme({
     agentConnection && import.meta.env.MODE !== "inspector-disabled",
 });
 usePageObject(ListPage);
+onScopeDispose(trackToolRuns(ayme.runs));
 
 // The app and its Page Object code sit side by side in a strip that
 // scrolls sideways, and the switch scrolls it. The app stays on the page

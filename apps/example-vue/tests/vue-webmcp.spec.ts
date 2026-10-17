@@ -676,3 +676,41 @@ test("opens the Inspector and runs a tool from it", async ({ page }) => {
       .getByText("Added from the Inspector", { exact: true })
   ).toBeVisible();
 });
+
+test("tells analytics who ran which tool", async ({ page }) => {
+  await page.goto("/");
+  const inspector = new Inspector(page);
+  await expect
+    .poll(async () => await recordedToolNames(page))
+    .toEqual(initialToolNames);
+
+  await executePublishedTool(page, "ListPage.addItem", {
+    text: "Added by a browser agent",
+  });
+  await inspector.open();
+  const addItem = await inspector.tool("ListPage.addItem");
+  await addItem.run({ text: "Added from the Inspector" });
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.dataLayer?.filter(
+          (entry) => "event" in entry && entry.event === "playground_tool_run"
+        )
+      )
+    )
+    .toEqual([
+      {
+        event: "playground_tool_run",
+        tool: "ListPage.addItem",
+        caller: "webmcp",
+        status: "succeeded",
+      },
+      {
+        event: "playground_tool_run",
+        tool: "ListPage.addItem",
+        caller: "inspector",
+        status: "succeeded",
+      },
+    ]);
+});
