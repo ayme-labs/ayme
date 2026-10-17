@@ -396,8 +396,11 @@ const takesPointerEvents = memoizedInBatch((element: Element): boolean => {
 function renderedChildren(node: Element): Element[] {
   // A slot in a shadow tree renders what is assigned to it, else its own
   // children as fallback; elsewhere a slot is an ordinary element.
-  if (node.localName === "slot" && "host" in node.getRootNode()) {
-    const assigned = (node as HTMLSlotElement).assignedElements();
+  if (
+    node instanceof node.ownerDocument.defaultView!.HTMLSlotElement &&
+    "host" in node.getRootNode()
+  ) {
+    const assigned = node.assignedElements();
     if (assigned.length) return assigned;
   }
   return [...(node.shadowRoot ?? node).children];
