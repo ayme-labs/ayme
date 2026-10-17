@@ -13,6 +13,9 @@ import PeekCheck from "./peek/PeekCheck.vue";
 const isNotPlayground = (element: Element) =>
   element.matches("[data-site-chrome], [data-peek-check]");
 const peekCheck = import.meta.env.DEV;
+// `VITE_AGENT_CONNECTION=false` builds the playground without the agent
+// wizard or the Agent Connection, while `@ayme-dev/mcp` is not on npm yet.
+const agentConnection = import.meta.env.VITE_AGENT_CONNECTION !== "false";
 useAyme({
   ignore: isNotPlayground,
   // Only the dev server mounts a Decision Endpoint, and only when it has a
@@ -26,7 +29,8 @@ useAyme({
   // follow each action, and lets a visitor's coding agent connect;
   // `--mode inspector-disabled` builds it without either.
   inspector: import.meta.env.MODE !== "inspector-disabled" && { demo: true },
-  agentConnection: import.meta.env.MODE !== "inspector-disabled",
+  agentConnection:
+    agentConnection && import.meta.env.MODE !== "inspector-disabled",
 });
 usePageObject(ListPage);
 </script>
@@ -59,10 +63,17 @@ usePageObject(ListPage);
             class="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground"
           >
             A small list app whose Page Object actions are published as WebMCP
-            tools. Try it here — from the inspector or your own coding agent —
-            before adding Ayme WebMCP to your project.
+            tools.
+            <template v-if="agentConnection">
+              Try it here — from the inspector or your own coding agent — before
+              adding Ayme WebMCP to your project.
+            </template>
+            <template v-else>
+              Try it here from the inspector before adding Ayme WebMCP to your
+              project.
+            </template>
           </p>
-          <AgentPanel class="mt-5" />
+          <AgentPanel v-if="agentConnection" class="mt-5" />
         </header>
 
         <main
