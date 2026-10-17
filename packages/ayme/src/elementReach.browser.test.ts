@@ -283,6 +283,17 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
   });
 
+  it("still reaches a container without pointer events below the fold through a button in it that takes them", async () => {
+    document.body.innerHTML = `
+      <div style="height: 3000px"></div>
+      <div id="toolbar" style="pointer-events: none">
+        <button type="button" style="pointer-events: auto">Inside</button>
+      </div>
+    `;
+
+    expect(reaches(document.querySelector("#toolbar")!, "click")).toBe(true);
+  });
+
   // Playwright's own check never reached these either: the box takes the
   // click, or the clip leaves nothing to click. The tool now refuses at
   // once instead of timing out.

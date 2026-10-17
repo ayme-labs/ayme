@@ -353,11 +353,12 @@ function sampleReach(
       if (contains(current, hit)) return true;
       // Ancestors are evidence only for a simulated scroll destination,
       // never proof that the current element itself is exposed. An element
-      // without pointer events always leaves its ancestor as the hit.
+      // nothing in which takes pointer events always leaves its ancestor as
+      // the hit.
       if (
         scrolls.some(({ x, y }) => x !== 0 || y !== 0) &&
-        styleOf(current).pointerEvents !== "none" &&
-        contains(hit, current)
+        contains(hit, current) &&
+        takesPointerEvents(current)
       )
         return true;
       const { left, top } = projectedOffset(hit, scrolls);
@@ -369,6 +370,16 @@ function sampleReach(
     }
   }
   return inTheWay;
+}
+
+/** Whether `element`, or an element in it, takes pointer events. */
+function takesPointerEvents(element: Element): boolean {
+  return (
+    styleOf(element).pointerEvents !== "none" ||
+    [...element.querySelectorAll("*")].some(
+      (descendant) => styleOf(descendant).pointerEvents !== "none"
+    )
+  );
 }
 
 function inInspector(element: Element): boolean {
