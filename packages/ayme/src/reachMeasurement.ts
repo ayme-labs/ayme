@@ -372,15 +372,27 @@ function sampleReach(
   return inTheWay;
 }
 
-/** Whether `element`, or an element in it, takes pointer events. */
-function takesPointerEvents(element: Element): boolean {
-  return (
-    styleOf(element).pointerEvents !== "none" ||
-    [...element.querySelectorAll("*")].some(
-      (descendant) => styleOf(descendant).pointerEvents !== "none"
+/**
+ * Whether `element`, or a rendered element in it, open shadow roots
+ * included, takes pointer events.
+ */
+const takesPointerEvents = memoizedInBatch((element: Element): boolean => {
+  if (styleOf(element).pointerEvents !== "none") return true;
+  const takes = (node: Element): boolean => {
+    const style = styleOf(node);
+    if (style.display === "none") return false;
+    if (
+      style.pointerEvents !== "none" &&
+      style.visibility === "visible" &&
+      node.getClientRects().length > 0
     )
+      return true;
+    return [...node.children, ...(node.shadowRoot?.children ?? [])].some(takes);
+  };
+  return [...element.children, ...(element.shadowRoot?.children ?? [])].some(
+    takes
   );
-}
+});
 
 function inInspector(element: Element): boolean {
   for (let node: Element | null = element; node; node = parentElement(node))

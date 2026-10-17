@@ -294,6 +294,31 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     expect(reaches(document.querySelector("#toolbar")!, "click")).toBe(true);
   });
 
+  it("still reaches such a container through a button in its open shadow root", async () => {
+    document.body.innerHTML = `
+      <div style="height: 3000px"></div>
+      <div id="toolbar" style="pointer-events: none"></div>
+    `;
+    document
+      .querySelector("#toolbar")!
+      .attachShadow({ mode: "open" }).innerHTML =
+      `<button type="button" style="pointer-events: auto">Inside</button>`;
+
+    expect(reaches(document.querySelector("#toolbar")!, "click")).toBe(true);
+  });
+
+  it("does not reach a button without pointer events through a hidden element in it", async () => {
+    document.body.innerHTML = `
+      <div style="height: 200px"></div>
+      <button id="ghost" type="button" style="pointer-events: none">
+        Ghost<span style="display: none; pointer-events: auto">hidden</span>
+      </button>
+      <div style="height: 3000px"></div>
+    `;
+
+    expect(reaches(document.querySelector("#ghost")!, "click")).toBe(false);
+  });
+
   // Playwright's own check never reached these either: the box takes the
   // click, or the clip leaves nothing to click. The tool now refuses at
   // once instead of timing out.
