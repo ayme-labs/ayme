@@ -323,6 +323,19 @@ test("scrolls the app back into view when a tool acts on it from the code view",
   ).toBeVisible();
 });
 
+test("loads the code view when a swipe reaches it", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("region", { name: "Demo application" }).hover();
+  await page.mouse.wheel(2000, 0);
+
+  await expect(
+    page.getByRole("button", { name: "App", exact: true })
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("tabpanel")).toContainText(
+    "export class ListPage"
+  );
+});
+
 test("resolves every ref of a snapshot taken after the archive dialog closes", async ({
   page,
 }) => {

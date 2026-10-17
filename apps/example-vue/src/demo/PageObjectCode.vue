@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from "vue";
+import { ref, watchEffect } from "vue";
 import { createHighlighterCore } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import listPage from "../../playwright/pom/ListPage.ts?raw";
 import listItem from "../../playwright/pom/ListItem.ts?raw";
 import archiveDialog from "../../playwright/pom/ArchiveDialog.ts?raw";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // The Page Object files are shown as they are in the repository; the
 // verifier in scripts/verify-browser-output.mjs names the same files. The
@@ -38,13 +39,18 @@ const highlighter = createHighlighterCore({
 /** The lines that make a class a Page Object, an action a tool, or wire it in. */
 const aymeLine = /^\s*(@ayme\b|useAyme\(|usePageObject\()/;
 
-const selected = ref(0);
-const file = computed(() => files[selected.value]!);
+const selected = ref<string>(files[0].name);
 const html = ref("");
+
+// Shiki's markup is styled by classes it is given here, since the app has no
+// stylesheet of its own: line numbers, and the lines that make it a Page Object.
+const lineClass =
+  "inline-block w-full pr-6 before:inline-block before:w-11 before:pr-4 before:text-right before:text-muted-foreground/60 before:content-[counter(line)] before:[counter-increment:line]";
+const aymeLineClass = "bg-accent shadow-[inset_2px_0_0_var(--ring)]";
 
 let latest = 0;
 watchEffect(async () => {
-  const { code, lang } = file.value;
+  const { code, lang } = files.find((f) => f.name === selected.value)!;
   const request = ++latest;
   const lines = code.trimEnd().split("\n");
   const rendered = (await highlighter).codeToHtml(lines.join("\n"), {
@@ -52,9 +58,16 @@ watchEffect(async () => {
     theme: "github-light",
     transformers: [
       {
+        pre(node) {
+          this.addClassToHast(
+            node,
+            "overflow-x-auto bg-transparent! py-4 [counter-reset:line]"
+          );
+        },
         line(node, line) {
+          this.addClassToHast(node, lineClass);
           if (aymeLine.test(lines[line - 1]!))
-            this.addClassToHast(node, "ayme-line");
+            this.addClassToHast(node, aymeLineClass);
         },
       },
     ],
@@ -76,69 +89,31 @@ watchEffect(async () => {
       >
       method becomes a tool you can run from the inspector.
     </p>
-    <div
-      role="tablist"
-      aria-label="Files"
-      class="mt-4 flex gap-1 overflow-x-auto border-b px-3 sm:px-5"
-    >
-      <button
-        v-for="(f, index) in files"
-        :id="`page-object-file-${index}`"
-        :key="f.name"
-        role="tab"
-        type="button"
-        :aria-selected="index === selected"
-        aria-controls="page-object-code"
-        class="-mb-px shrink-0 border-b-2 px-2.5 py-2 font-mono text-xs transition-colors"
-        :class="
-          index === selected
-            ? 'border-foreground text-foreground'
-            : 'border-transparent text-muted-foreground hover:text-foreground'
-        "
-        @click="selected = index"
+    <Tabs v-model="selected" class="mt-4 min-h-0 flex-1 gap-0">
+      <TabsList
+        aria-label="Files"
+        class="mx-3 mb-3 max-w-[calc(100%-1.5rem)] justify-start overflow-x-auto sm:mx-5"
       >
-        {{ f.name
-        }}<span
-          v-if="'note' in f"
-          class="ml-1.5 font-sans text-muted-foreground"
-          >· {{ f.note }}</span
+        <TabsTrigger
+          v-for="f in files"
+          :key="f.name"
+          :value="f.name"
+          class="flex-none font-mono text-xs"
         >
-      </button>
-    </div>
-    <div
-      id="page-object-code"
-      role="tabpanel"
-      :aria-labelledby="`page-object-file-${selected}`"
-      class="code min-h-0 flex-1 overflow-y-auto bg-muted/30 text-[13px] leading-relaxed"
-      v-html="html"
-    />
+          {{ f.name
+          }}<span v-if="'note' in f" class="font-sans text-muted-foreground"
+            >· {{ f.note }}</span
+          >
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent
+        v-for="f in files"
+        :key="f.name"
+        :value="f.name"
+        class="min-h-0 overflow-y-auto border-t bg-muted/30 text-[13px] leading-relaxed"
+      >
+        <div v-html="html" />
+      </TabsContent>
+    </Tabs>
   </section>
 </template>
-
-<style scoped>
-.code :deep(pre) {
-  background: transparent !important;
-  padding: 1rem 0;
-  overflow-x: auto;
-  counter-reset: line;
-}
-.code :deep(.line) {
-  display: inline-block;
-  width: 100%;
-  padding-right: 1.5rem;
-}
-.code :deep(.line)::before {
-  counter-increment: line;
-  content: counter(line);
-  display: inline-block;
-  width: 2.75rem;
-  padding-right: 1rem;
-  text-align: right;
-  color: var(--muted-foreground);
-  opacity: 0.6;
-}
-.code :deep(.ayme-line) {
-  background: oklch(0.95 0.04 250);
-  box-shadow: inset 2px 0 0 oklch(0.6 0.15 250);
-}
-</style>
