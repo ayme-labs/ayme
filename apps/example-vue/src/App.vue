@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref, useTemplateRef } from "vue";
+import { defineAsyncComponent, ref, useTemplateRef, watch } from "vue";
 import { decisionEndpoint } from "@ayme-dev/ayme";
 import { useAyme, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "../playwright/pom/ListPage";
 import { decisionEndpointPath } from "../vite/decisionEndpointPath";
 import AgentPanel from "./AgentPanel.vue";
+import { track } from "./analytics";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import ListDemo from "./demo/ListDemo.vue";
 import PeekCheck from "./peek/PeekCheck.vue";
@@ -48,6 +49,8 @@ type View = "app" | "code";
 const view = ref<View>("app");
 const codeOpened = ref(false);
 const panes = useTemplateRef("panes");
+// Both ways to change view count: the switch and a swipe.
+watch(view, (next) => track({ event: "playground_view_switch", view: next }));
 
 function show(next: View) {
   view.value = next;
