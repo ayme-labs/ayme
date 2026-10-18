@@ -53,8 +53,8 @@ version. Diagnose with the "The agent cannot reach the page" section of
   types or selects (`type`, `fill`, `select_option`, or a `fill_form` field
   other than a checkbox or radio) gives
   `it cannot take focus; e42 is in the way` instead, for a field outside an
-  open modal dialog or inside an inert region. Any other reason is the app's
-  own, such as `No item is selected`. A Page Object Tool stays listed:
+  open native modal dialog or inside an inert region. Any other reason is the
+  app's own, such as `No item is selected`. A Page Object Tool stays listed:
   `ayme_list_tools` shows whether each tool is available and why not,
   and a tool result says which tools became available or unavailable since
   your previous call.
