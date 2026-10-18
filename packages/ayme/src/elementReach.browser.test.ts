@@ -265,6 +265,99 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     );
   });
 
+  it("neither offers nor clicks a button without pointer events on a page that scrolls", async () => {
+    document.body.innerHTML = `
+      <div style="height: 200px"></div>
+      <button id="ghost" type="button" style="pointer-events: none">Ghost</button>
+      <div style="height: 3000px"></div>
+    `;
+    const ghost = await refOf("button", "Ghost");
+
+    expect((await listElementToolTargets()).get("click")).not.toContain(ghost);
+    const { error, elapsed } = await refusal("click", ghost);
+    // What a click hits instead is the button's ancestor.
+    expect(error).toMatch(
+      /^RuntimeStateError: click is unavailable: a click would not reach it/
+    );
+    expect(clicks).toEqual([]);
+    expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
+  });
+
+  it("still reaches a container without pointer events below the fold through a button in it that takes them", async () => {
+    document.body.innerHTML = `
+      <div style="height: 3000px"></div>
+      <div id="toolbar" style="pointer-events: none">
+        <button type="button" style="pointer-events: auto">Inside</button>
+      </div>
+    `;
+
+    expect(reaches(document.querySelector("#toolbar")!, "click")).toBe(true);
+  });
+
+  it("still reaches such a container through a button in its open shadow root", async () => {
+    document.body.innerHTML = `
+      <div style="height: 3000px"></div>
+      <div id="toolbar" style="pointer-events: none"></div>
+    `;
+    document
+      .querySelector("#toolbar")!
+      .attachShadow({ mode: "open" }).innerHTML =
+      `<button type="button" style="pointer-events: auto">Inside</button>`;
+
+    expect(reaches(document.querySelector("#toolbar")!, "click")).toBe(true);
+  });
+
+  it("still reaches such a container in a shadow root through a button assigned to its slot", async () => {
+    document.body.innerHTML = `
+      <div style="height: 3000px"></div>
+      <div id="host"><button type="button" style="pointer-events: auto">Inside</button></div>
+    `;
+    const shadow = document
+      .querySelector("#host")!
+      .attachShadow({ mode: "open" });
+    shadow.innerHTML = `<div id="toolbar" style="pointer-events: none"><slot></slot></div>`;
+
+    expect(reaches(shadow.querySelector("#toolbar")!, "click")).toBe(true);
+  });
+
+  it.each([
+    ["a slot outside a shadow tree", ""],
+    ["a slot's fallback content", "shadow"],
+  ])(
+    "still reaches such a container through a button in %s",
+    async (_kind, where) => {
+      const html = `<div id="toolbar" style="pointer-events: none"><slot><button type="button" style="pointer-events: auto">Inside</button></slot></div>`;
+      document.body.innerHTML = `<div style="height: 3000px"></div><div id="host"></div>`;
+      const host = document.querySelector("#host")!;
+      const root = where ? host.attachShadow({ mode: "open" }) : host;
+      root.innerHTML = html;
+
+      expect(reaches(root.querySelector("#toolbar")!, "click")).toBe(true);
+    }
+  );
+
+  it("walks past an SVG element named slot in a shadow tree", async () => {
+    document.body.innerHTML = `<div style="height: 3000px"></div><div id="host"></div>`;
+    const shadow = document
+      .querySelector("#host")!
+      .attachShadow({ mode: "open" });
+    shadow.innerHTML = `<div id="toolbar" style="pointer-events: none"><svg width="20" height="20"><slot></slot><rect width="20" height="20" style="pointer-events: auto"></rect></svg></div>`;
+
+    expect(reaches(shadow.querySelector("#toolbar")!, "click")).toBe(true);
+  });
+
+  it("does not reach a button without pointer events through a hidden element in it", async () => {
+    document.body.innerHTML = `
+      <div style="height: 200px"></div>
+      <button id="ghost" type="button" style="pointer-events: none">
+        Ghost<span style="display: none; pointer-events: auto">hidden</span>
+      </button>
+      <div style="height: 3000px"></div>
+    `;
+
+    expect(reaches(document.querySelector("#ghost")!, "click")).toBe(false);
+  });
+
   // Playwright's own check never reached these either: the box takes the
   // click, or the clip leaves nothing to click. The tool now refuses at
   // once instead of timing out.

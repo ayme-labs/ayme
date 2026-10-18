@@ -352,10 +352,13 @@ function sampleReach(
       if (inInspector(hit)) continue;
       if (contains(current, hit)) return true;
       // Ancestors are evidence only for a simulated scroll destination,
-      // never proof that the current element itself is exposed.
+      // never proof that the current element itself is exposed. An element
+      // nothing in which takes pointer events always leaves its ancestor as
+      // the hit.
       if (
         scrolls.some(({ x, y }) => x !== 0 || y !== 0) &&
-        contains(hit, current)
+        contains(hit, current) &&
+        takesPointerEvents(current)
       )
         return true;
       const { left, top } = projectedOffset(hit, scrolls);
@@ -367,6 +370,40 @@ function sampleReach(
     }
   }
   return inTheWay;
+}
+
+/**
+ * Whether `element`, or a rendered element in it, through open shadow roots
+ * and slots, takes pointer events.
+ */
+const takesPointerEvents = memoizedInBatch((element: Element): boolean => {
+  if (styleOf(element).pointerEvents !== "none") return true;
+  const takes = (node: Element): boolean => {
+    const style = styleOf(node);
+    if (style.display === "none") return false;
+    if (
+      style.pointerEvents !== "none" &&
+      style.visibility === "visible" &&
+      node.getClientRects().length > 0
+    )
+      return true;
+    return renderedChildren(node).some(takes);
+  };
+  return renderedChildren(element).some(takes);
+});
+
+/** The elements `node` renders as its children in the composed tree. */
+function renderedChildren(node: Element): Element[] {
+  // A slot in a shadow tree renders what is assigned to it, else its own
+  // children as fallback; elsewhere a slot is an ordinary element.
+  if (
+    node instanceof node.ownerDocument.defaultView!.HTMLSlotElement &&
+    "host" in node.getRootNode()
+  ) {
+    const assigned = node.assignedElements();
+    if (assigned.length) return assigned;
+  }
+  return [...(node.shadowRoot ?? node).children];
 }
 
 function inInspector(element: Element): boolean {
