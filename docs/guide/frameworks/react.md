@@ -119,16 +119,51 @@ export default function PublicationStatus() {
 
 ## Server rendering
 
-The provider and hooks render on the server without starting anything, and hydration constructs the real Page Objects. `usePeek` adds its instance in an effect, which never runs on the server. In the Next.js App Router, put `AymeProvider` and the components that call its hooks in a `"use client"` module, and render it from a server component:
+The provider and hooks render on the server without starting anything, and hydration constructs the real Page Objects. `usePeek` adds its instance in an effect, which never runs on the server. In the Next.js App Router, put `AymeProvider` in a `"use client"` module that the root layout renders, so it owns every page and stays mounted across navigation, and call its hooks from `"use client"` components:
+
+```tsx
+// app/ayme-runtime.tsx
+"use client";
+
+import type { ReactNode } from "react";
+import { AymeProvider } from "@ayme-dev/react";
+
+export default function AymeRuntime({ children }: { children: ReactNode }) {
+  return (
+    <AymeProvider
+      inspector={process.env.NODE_ENV === "development"}
+      agentConnection={process.env.NODE_ENV === "development"}
+    >
+      {children}
+    </AymeProvider>
+  );
+}
+```
+
+```tsx
+// app/layout.tsx
+import type { ReactNode } from "react";
+import AymeRuntime from "./ayme-runtime";
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <AymeRuntime>{children}</AymeRuntime>
+      </body>
+    </html>
+  );
+}
+```
 
 ```tsx
 // app/projects.tsx
 "use client";
 
-import { AymeProvider, usePageObject } from "@ayme-dev/react";
+import { usePageObject } from "@ayme-dev/react";
 import { ProjectsPage } from "../pom/ProjectsPage";
 
-function Projects() {
+export default function Projects() {
   const pom = usePageObject(ProjectsPage);
   return (
     <button onClick={() => void pom.createProject("My first project")}>
@@ -136,25 +171,14 @@ function Projects() {
     </button>
   );
 }
-
-export default function ProjectsWithAyme() {
-  return (
-    <AymeProvider
-      inspector={process.env.NODE_ENV === "development"}
-      agentConnection={process.env.NODE_ENV === "development"}
-    >
-      <Projects />
-    </AymeProvider>
-  );
-}
 ```
 
 ```tsx
 // app/page.tsx
-import ProjectsWithAyme from "./projects";
+import Projects from "./projects";
 
 export default function Home() {
-  return <ProjectsWithAyme />;
+  return <Projects />;
 }
 ```
 

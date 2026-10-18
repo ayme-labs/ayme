@@ -103,6 +103,8 @@ export default {
 };
 ```
 
+In a `next.config.ts`, put the same `turbopack` block in the config object it exports, next to the options already there.
+
 The loader reports the tsconfig and source files the compiler read, so Turbopack recompiles a Page Object Model when a type it imports changes. A bundler without loader dependency tracking makes it fail rather than serve a stale schema. Next.js 15 and webpack are not supported.
 
 ## Playwright settings
