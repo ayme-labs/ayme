@@ -96,6 +96,25 @@ it("provides an inert session with a disabled status, a Page Object of the model
   for (const session of sessions) expect(session.peek).not.toHaveBeenCalled();
 });
 
+it("injects the provider's session, and one shared inert session where nothing provides one", async () => {
+  const Provided = Component({ selector: "test-provided", template: "" })(
+    class {
+      readonly setup: AymeSetup = injectAyme();
+    }
+  );
+  const { instance } = await mount(Provided);
+  expect(instance.setup.ayme).toBe(sessions[0]);
+
+  const bare = await createApplication({ providers: [] });
+  apps.push(bare);
+  const first = bare.injector.runInContext(injectAyme);
+  const second = bare.injector.runInContext(injectAyme);
+  expect(first).toBe(second);
+  expect(first.ayme).not.toBe(instance.setup.ayme);
+  expect(first.ayme.tools.list()).toEqual([]);
+  expect(first.webMCP.publicationStatus().state).toBe("disabled");
+});
+
 it("passes the provider's options to the absent runtime, which logs the publication error", async () => {
   const logged = vi.spyOn(console, "error").mockImplementation(() => {});
   apps.push(
