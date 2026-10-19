@@ -19,7 +19,9 @@ import { INSPECTOR_HOST_SELECTOR } from "./pageState";
  * inert ancestor, which blocks every click; else `hit`, the element
  * playwright-lite's own hit test found at the point it would click, when
  * that point is in a part of the element shown now. Otherwise the element is
- * not hit-tested: the call scrolls to it first and tests it there. Presence
+ * not hit-tested: the call scrolls it into view first and tests it there,
+ * as it does every element, since that scroll also moves one partly shown.
+ * Presence
  * describes the current layout, not content a scroll handler might create.
  * It names no kind of widget: a Page Object Root and an element a Browser
  * Tool addresses are measured alike.
@@ -175,30 +177,28 @@ export function measureReach(page: Page, element: Element): ReachMeasurement {
 
 /**
  * Package-internal: measures `element`, the one element `locator` resolves
- * to, for a call that clicks it, see `ReachMeasurement`: when the point the
- * click would use is in no part of it shown now, the call's own scroll,
- * `locator.scrollIntoViewIfNeeded()`, is run first, so the hit test is where
- * the click will land. A scroll that fails leaves the measurement to the
- * action, whose own error says why.
+ * to, for a call that clicks it, see `ReachMeasurement`: the call's own
+ * scroll, `locator.scrollIntoViewIfNeeded()`, is run first, so the hit test
+ * is where the click will land. The scroll moves an element only partly
+ * shown, too, until its nearest edge shows, and the click's point moves with
+ * it. A scroll that fails leaves the measurement to the action, whose own
+ * error says why.
  */
 export async function measureReachAtCall(
   locator: Locator,
   element: Element
 ): Promise<ReachMeasurement> {
-  let shown = shownParts(element, "current");
-  if (!isPresent(element, shown)) return absent;
+  if (!isPresent(element, shownParts(element, "current"))) return absent;
   const blocker = blockingAncestor(element);
   if (blocker) return { present: true, available: false, blocker };
-  const page = locator.page();
-  if (!clickTarget(page, element, shown)) {
-    try {
-      await locator.scrollIntoViewIfNeeded();
-    } catch {
-      return reached;
-    }
-    shown = shownParts(element, "current");
+  try {
+    await locator.scrollIntoViewIfNeeded();
+  } catch {
+    return reached;
   }
-  return inTheWay(clickTarget(page, element, shown));
+  return inTheWay(
+    clickTarget(locator.page(), element, shownParts(element, "current"))
+  );
 }
 
 /**

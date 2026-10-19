@@ -262,6 +262,35 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
   });
 
+  // The click's own scroll moves an element only partly shown until its
+  // nearest edge shows, so the click lands elsewhere than the centre of the
+  // part shown now: here 10px higher, under a band the shown part was clear of.
+  it("offers a button partly below the fold that is covered where the click's own scroll moves it, and refuses the click at once after the scroll, naming the cover", async () => {
+    document.body.innerHTML = `
+      <style>
+        #spacer { height: calc(100vh - 20px); }
+        #save { display: block; height: 40px; }
+        #band { position: fixed; left: 0; right: 0; top: calc(100vh - 30px); height: 15px; }
+      </style>
+      <div id="spacer"></div>
+      <button id="save" type="button">Save</button>
+      <div style="height: 3000px"></div>
+      <div id="band" role="dialog" aria-label="Saving"></div>
+    `;
+    const save = await refOf("button", "Save");
+    const band = await refOf("dialog", "Saving");
+
+    // The part shown now, its top 20px, is bare.
+    expect((await listElementToolTargets()).get("click")).toContain(save);
+    const { error, elapsed } = await refusal("click", save);
+    expect(error).toBe(
+      `RuntimeStateError: click is unavailable: a click would not reach it; ${band} is in the way.`
+    );
+    expect(clicks).toEqual([]);
+    expect(window.scrollY).toBeGreaterThan(0);
+    expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
+  });
+
   it("sees an overlay removed between two listings in the same task", async () => {
     document.body.innerHTML = `
       <style>

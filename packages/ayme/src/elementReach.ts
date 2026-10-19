@@ -59,8 +59,8 @@ export function reaches(
  * reach it, with the Availability Reason a Page Object Tool gives: the same
  * measurement and wording as a Page Object Root's (ADR-0035), which never
  * names a kind of widget. A click's reach is measured where the click would
- * land: an element that shows no part now is scrolled into view first, as
- * the call's own action would scroll it.
+ * land: the element is scrolled into view first, as the call's own action
+ * scrolls it, which also moves an element only partly shown.
  */
 export async function assertReachable(
   toolName: string,
