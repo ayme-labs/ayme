@@ -144,16 +144,18 @@ function objectViolations(
 }
 
 /**
- * Package-internal: throw the first violation as a ToolInputError, e.g.
- * "Input property values.zip must be a string or a number."
+ * Package-internal: throw every violation as one ToolInputError, a sentence
+ * each, e.g. "Input property name is not supported. Input property title is
+ * required."
  */
-export function throwFirstViolation(violations: readonly SchemaViolation[]) {
-  const [first] = violations;
-  if (!first) return;
+export function throwViolations(violations: readonly SchemaViolation[]) {
+  if (violations.length === 0) return;
   throw new ToolInputError(
-    first.path
-      ? `Input property ${first.path} ${first.message}.`
-      : `Tool input ${first.message}.`
+    violations
+      .map(({ path, message }) =>
+        path ? `Input property ${path} ${message}.` : `Tool input ${message}.`
+      )
+      .join(" ")
   );
 }
 
