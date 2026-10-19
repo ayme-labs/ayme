@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   absentPageObject,
@@ -18,7 +18,12 @@ const removed = expect.objectContaining({
 });
 
 describe("the absent session", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("starts nothing, publishes nothing and lists no tools or runs", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const session = createAyme({ webMCP: { enabled: true }, inspector: true });
     const stop = session.start();
     expect(getStartedAyme()).toBeUndefined();
@@ -32,6 +37,28 @@ describe("the absent session", () => {
     expect(session.webMCP.retryPublication()).toBeInstanceOf(Promise);
     expect(session.peek(() => 1, "state")).toBeTypeOf("function");
     stop();
+  });
+
+  describe("set up with WebMCP publication enabled", () => {
+    it("logs one error saying so and stays inert", () => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      const session = createAyme({ webMCP: { enabled: true } });
+      expect(logged).toHaveBeenCalledTimes(1);
+      expect(logged).toHaveBeenCalledWith(
+        "Ayme was removed from this build, but setup enables WebMCP publication."
+      );
+      expect(session.webMCP.publicationStatus.state).toBe("disabled");
+      expect(session.tools.list()).toEqual([]);
+    });
+
+    it("logs nothing when publication is off or unset", () => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      createAyme({ webMCP: { enabled: false } });
+      createAyme({ webMCP: {} });
+      createAyme({});
+      createAyme();
+      expect(logged).not.toHaveBeenCalled();
+    });
   });
 
   it("rejects a tool run, naming the tool", async () => {
