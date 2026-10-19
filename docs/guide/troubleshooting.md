@@ -6,7 +6,8 @@ The common reasons an Ayme setup fails, by what you see.
 
 - **`Unsupported Page Object Tool input type for …`**: an action takes a parameter type the compiler cannot describe, such as a function or a class instance. [Page Object Models](guides/page-object-models.md#tool-names-and-inputs) lists the supported types. When the type is an import, check that the tsconfig the message names resolves it, for example through its `paths`.
 - **`Could not find a tsconfig.json for POM source …`**: the Page Object Model is outside every tsconfig. Add one, or pass `tsconfigPath` to the [build plugin](reference/build-plugin.md).
-- **Angular's `maximumError` budget fails**: Ayme adds about 240 kB transferred to the initial chunk. Raise the `initial` budget; see [Angular](frameworks/angular.md#bundle-size).
+- **Angular's `maximumError` budget fails**, or **Vite warns about a chunk over 500 kB**: Ayme adds about 250 kB transferred to the initial chunk. Raise the `initial` budget; see [Angular](frameworks/angular.md#bundle-size). A build that does not use Ayme can leave it out; see [Remove Ayme from a build](reference/build-plugin.md#remove-ayme-from-a-build).
+- **`Ayme was removed from this build. <Model>.<action> is not in it.`**: the app called a Page Object in a build with `remove` on. Keep Ayme in builds whose own code drives Page Objects; see [Remove Ayme from a build](reference/build-plugin.md#remove-ayme-from-a-build).
 - **`Unsupported Playwright config loader version …`**: loading a Playwright config through `playwright.config` needs `@playwright/test` 1.62 to 1.64. Remove `config` and pass `use` values directly, or upgrade.
 
 ## A Page Object has no tools

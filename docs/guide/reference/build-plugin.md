@@ -12,7 +12,7 @@ The options of `@ayme-dev/unplugin-ayme`, which compiles your Page Object Models
 
 The plugin runs on Node.js 20.19 and later 20.x, or 22.12 and later. It compiles Page Object Models with its own TypeScript dependency, whichever TypeScript version your project uses.
 
-It has no publication or Inspector setting: you turn both on where Ayme starts in your app. Turning publication off does not remove Page Object Model code from the bundle.
+It has no publication or Inspector setting: you turn both on where Ayme starts in your app. Turning publication off does not remove Page Object Model code from the bundle; a build that ships none of Ayme sets `remove`, as [Remove Ayme from a build](#remove-ayme-from-a-build) describes.
 
 ## What it compiles
 
@@ -67,13 +67,13 @@ export { default } from "@ayme-dev/unplugin-ayme/angular";
 "plugins": [{ "path": "./ayme.plugin.mjs", "options": { "tsconfigPath": "tsconfig.app.json" } }]
 ```
 
-Reference it in this object form only: custom-esbuild calls a plain string entry with the builder's options, which the plugin rejects. Its one option, `tsconfigPath`, is the tsconfig the compiler reads, resolved from the workspace root. Point it at the app's own tsconfig, which Angular's watcher also reads, so editing a type a Page Object Model imports updates its schema during `ng serve`. Unknown options and a non-string `tsconfigPath` throw a `TypeError`.
+Reference it in this object form only: custom-esbuild calls a plain string entry with the builder's options, which the plugin rejects. `tsconfigPath` is the tsconfig the compiler reads, resolved from the workspace root. Point it at the app's own tsconfig, which Angular's watcher also reads, so editing a type a Page Object Model imports updates its schema during `ng serve`. `remove` builds without Ayme; see [Remove Ayme from a build](#remove-ayme-from-a-build). Unknown options, a non-string `tsconfigPath` and a non-boolean `remove` throw a `TypeError`.
 
 The plugin compiles Page Object Models imported with relative paths or through tsconfig `paths`, skips modules under `node_modules`, and leaves every other module, including Angular components, to Angular's compiler. It compiles only the browser bundles; the server bundles keep Angular's own output. It sets no Playwright settings: pass them through `provideAyme({ pageFactory })`.
 
 ## Next.js
 
-`@ayme-dev/unplugin-ayme/turbopack-loader` is a loader for Turbopack's browser graph. Its one option is `tsconfigPath`, the tsconfig the compiler reads. Apply it to the `.ts` files on the browser graph that contain `@ayme` or `extends`:
+`@ayme-dev/unplugin-ayme/turbopack-loader` is a loader for Turbopack's browser graph. Its options are `tsconfigPath`, the tsconfig the compiler reads, and `remove`, which builds without Ayme as [Remove Ayme from a build](#remove-ayme-from-a-build) describes. Apply it to the `.ts` files on the browser graph that contain `@ayme` or `extends`:
 
 ```js
 // next.config.mjs
@@ -106,6 +106,69 @@ export default {
 In a `next.config.ts`, put the same `turbopack` block in the config object it exports, next to the options already there.
 
 The loader reports the tsconfig and source files the compiler read, so Turbopack recompiles a Page Object Model when a type it imports changes. A bundler without loader dependency tracking makes it fail rather than serve a stale schema. Next.js 15 and webpack are not supported.
+
+## Remove Ayme from a build
+
+A production build that neither publishes tools nor calls Page Objects from the app's own code has no use for Ayme, and without `remove` it still carries the runtime, with Playwright in the browser, and every Page Object Model the app imports: their Playwright code, the generated schemas and the action descriptions, about 800 to 950 kB raw in a hello-world app, plus the Inspector as a chunk that loads only when it is on. With `remove`, the output contains none of that, checked on the built files: `@ayme-dev/ayme` and its internal entry resolve to a small absent entry, which also leaves the Inspector, WebMCP and the Agent Connection out, and each Page Object Model the plugin compiles becomes a stand-in with the same class name and exports. Everything else in a Page Object Model's module stays. The framework packages are unchanged and keep working: `useAyme`, `AymeProvider` and `provideAyme` create an inert session whose publication status stays `disabled` and whose tool list is empty, and `usePageObject` returns the stand-in. An action of a stand-in rejects, and a Page Object Child throws, with a `RuntimeStateError` naming it: `Ayme was removed from this build. ProjectsPage.createProject is not in it.` So an app that drives a Page Object from its own code in production, as the quickstarts' "Show me how" button does, keeps Ayme in that build.
+
+`remove` guarantees nothing about Page Object Models the plugin does not compile, such as classes under `node_modules` or ones a bundler rule keeps from it, nor about Playwright code the app imports outside a Page Object Model. Turning publication off at runtime removes nothing; `remove` is the one way to a build without Ayme.
+
+On Vite, set it for the production build only:
+
+```ts
+export default defineConfig(({ command }) => ({
+  plugins: [ayme({ remove: command === "build" })],
+}));
+```
+
+On Angular, give the production configuration its own plugin entry in `angular.json`, keeping the development one as it is:
+
+```jsonc
+"configurations": {
+  "production": {
+    "plugins": [{ "path": "./ayme.plugin.mjs", "options": { "tsconfigPath": "tsconfig.app.json", "remove": true } }]
+  }
+}
+```
+
+On Next.js, the loader compiles the stand-ins with `remove: true` in its options, and `turbopack.resolveAlias` points the runtime's two entries at the absent one for the browser, both only when `process.env.NODE_ENV` is `production`, which `next build` sets:
+
+```js
+// next.config.mjs
+import { fileURLToPath } from "node:url";
+
+const remove = process.env.NODE_ENV === "production";
+
+export default {
+  turbopack: {
+    resolveAlias: remove
+      ? {
+          "@ayme-dev/ayme": { browser: "@ayme-dev/ayme/absent" },
+          "@ayme-dev/ayme/internal": { browser: "@ayme-dev/ayme/absent" },
+        }
+      : {},
+    rules: {
+      "*.ts": {
+        condition: {
+          all: ["browser", { not: "foreign" }, { content: /@ayme|extends/ }],
+        },
+        loaders: [
+          {
+            loader: "@ayme-dev/unplugin-ayme/turbopack-loader",
+            options: {
+              tsconfigPath: fileURLToPath(
+                new URL("./tsconfig.json", import.meta.url)
+              ),
+              remove,
+            },
+          },
+        ],
+        as: "*.js",
+      },
+    },
+  },
+};
+```
 
 ## Playwright settings
 
@@ -147,6 +210,7 @@ These fail the build or the dev server.
 | `Could not read POM source <file>.`                                                                                                                    | The model's file could not be read.                                                                                                       |
 | `A Page Object Model needs a class name.`, `Page Object Action in <Model> needs an identifier method name.`                                            | An anonymous class, or an action with a computed name.                                                                                    |
 | `Could not transpile Ayme POM <file>: …`                                                                                                               | TypeScript could not compile the model.                                                                                                   |
+| `Ayme could not remove Page Object Model <Model> from <file>: it is not a top-level class.`                                                            | With `remove`, a model declared inside another statement, which the plugin cannot replace.                                                |
 | `report must be "none", "unsupported" or "all"` (`TypeError`)                                                                                          | A `report` option of another value.                                                                                                       |
 | `playwright contains unsupported option(s): …`, `playwright.config must be a non-empty string`, and the other `playwright` option checks (`TypeError`) | A malformed `playwright` option; see [Playwright settings](#playwright-settings).                                                         |
 | `playwright.project requires an explicit playwright.config path` (`TypeError`)                                                                         | `project` without `config`.                                                                                                               |
@@ -156,5 +220,5 @@ These fail the build or the dev server.
 | `Playwright projects have different supported settings (<fields>).`                                                                                    | Several projects disagree and no `project` was set.                                                                                       |
 | `Ayme's Angular plugin has no option(s): …` (`TypeError`)                                                                                              | An unknown Angular plugin option, or the plugin referenced as a plain string.                                                             |
 | `Ayme did not compile Page Object Model <file>.`                                                                                                       | The Angular plugin could not compile a model it claimed.                                                                                  |
-| `tsconfigPath must be a string` (`TypeError`)                                                                                                          | A non-string Angular `tsconfigPath`.                                                                                                      |
+| `tsconfigPath must be a string`, `remove must be a boolean` (`TypeError`)                                                                              | A non-string Angular `tsconfigPath`, or a non-boolean `remove`.                                                                           |
 | `Ayme's Turbopack loader requires loader dependency tracking.`                                                                                         | The bundler running the loader cannot track dependencies.                                                                                 |

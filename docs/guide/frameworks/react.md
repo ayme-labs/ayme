@@ -184,6 +184,10 @@ export default function Home() {
 
 The build needs the Turbopack loader from the [build plugin reference](../reference/build-plugin.md#nextjs). The [Next.js example](https://github.com/ayme-labs/ayme/blob/main/apps/example-next/README.md) runs this setup, and [Server rendering](../guides/server-rendering.md) says what runs where.
 
+## Bundle size
+
+Ayme's runtime adds about 800 to 950 kB raw (about 250 kB transferred) to the entry chunk of a production build, which trips Vite's warning for chunks over 500 kB, and the Inspector is a separate chunk that loads only when it is on. A build that neither publishes tools nor calls Page Objects from your own code can leave all of it out; see [Remove Ayme from a build](../reference/build-plugin.md#remove-ayme-from-a-build).
+
 ## Limits
 
 - The supported React and Next.js versions are on [Install](../start/install.md#supported-versions).

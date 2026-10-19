@@ -23,6 +23,10 @@ export default defineConfig({
 
 Enable `compilerOptions.experimentalDecorators` in your Page Object Models' tsconfig, and import them from the application. On Angular, `ng add @ayme-dev/angular` sets the plugin up. On Next.js, the Turbopack loader compiles them.
 
+## Production builds
+
+A build that neither publishes tools nor calls Page Objects from your own code can ship none of Ayme: with `ayme({ remove: true })`, the runtime, the Inspector and WebMCP stay out of the output, and each Page Object Model compiles to a stand-in of the same name whose actions reject with an error naming them. Without it, a production build carries the runtime and every Page Object Model the app imports, whether or not publication is on. The [build plugin reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/build-plugin.md#remove-ayme-from-a-build) states what the option guarantees, what it does not, and how to set it per bundler.
+
 ## Documentation
 
 - [Build plugin reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/build-plugin.md): the Vite, Angular and Next.js entries, their options and the Playwright settings.

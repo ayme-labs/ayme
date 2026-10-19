@@ -131,7 +131,7 @@ On the server, `provideAyme` creates a session per request but never starts it, 
 
 ## Bundle size
 
-Ayme adds about 240 kB transferred (about 900 kB raw) to the initial chunk of a production build. That trips Angular's default 500 kB initial-budget warning, and a blank application then reaches the default 1 MB `maximumError`, so applications need a higher error budget. `ng add` leaves budgets to you: raise `maximumError` of the `initial` budget under `configurations.production.budgets` in `angular.json`.
+Ayme adds about 240 kB transferred (about 900 kB raw) to the initial chunk of a production build. That trips Angular's default 500 kB initial-budget warning, and a blank application then reaches the default 1 MB `maximumError`, so applications need a higher error budget. `ng add` leaves budgets to you: raise `maximumError` of the `initial` budget under `configurations.production.budgets` in `angular.json`. A build that neither publishes tools nor calls Page Objects from your own code can leave Ayme out instead; see [Remove Ayme from a build](../reference/build-plugin.md#remove-ayme-from-a-build).
 
 ## Limits
 
