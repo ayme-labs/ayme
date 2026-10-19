@@ -14,7 +14,7 @@ import {
   methodArguments,
   toolDescription,
 } from "./actionTool";
-import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
+import { throwViolations, toolInputViolations } from "./schemaValidation";
 import { createPage } from "./browserPage";
 import {
   isPlaywrightLiteLocator,
@@ -1295,9 +1295,7 @@ function requireCurrentDocument(): Document {
 }
 
 function validatedArguments(tool: ToolManifest, args: unknown) {
-  throwFirstViolation(
-    toolInputViolations(inputSchemaFor(tool.parameters), args)
-  );
+  throwViolations(toolInputViolations(inputSchemaFor(tool.parameters), args));
   const input = args as Record<string, unknown>;
   // An inherited name, such as constructor, is no argument.
   return tool.parameters.map((parameter) =>
