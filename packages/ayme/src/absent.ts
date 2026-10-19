@@ -49,12 +49,17 @@ export function decisionEndpoint(): () => Promise<never> {
   return () => Promise.reject(removed("The Decision Endpoint"));
 }
 
+const PUBLICATION_ENABLED =
+  "Ayme was removed from this build, but setup enables WebMCP publication.";
+
 /**
  * An inert session: it starts nothing, lists no tools and runs none, and its
  * Page Objects are the stand-ins the build compiled, one instance per class.
+ * Setup that enables WebMCP publication logs an error, once, and goes on: a
+ * build option the app forgot must not take the page down for its users.
  */
 export function createAyme(options: AymeOptions = {}): Ayme {
-  void options;
+  if (options.webMCP?.enabled === true) console.error(PUBLICATION_ENABLED);
   const instances = new Map<PageObjectConstructor, object>();
   const session: Ayme = {
     webMCP: {
