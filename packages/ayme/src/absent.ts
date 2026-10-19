@@ -116,7 +116,7 @@ export function absentPageObject(
     properties: readonly string[];
     methods: readonly string[];
   }
-): new (...args: unknown[]) => object {
+): new () => object {
   const StandIn = class {};
   const missing = (member: string) => removed(`${className}.${member}`);
   const define = (name: string, descriptor: PropertyDescriptor) =>
