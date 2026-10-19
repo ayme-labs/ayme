@@ -17,6 +17,7 @@ API names follow [ADR-0017](adr/0017-keep-framework-integration-apis-closely-ali
 - An integration does not declare the `@playwright/test` peer. `@ayme-dev/ayme` and `@ayme-dev/webmcp` declare it as optional.
 - The owner takes the runtime options type as is, instead of re-declaring each option.
 - The integration uses the public runtime session. It imports `@ayme-dev/ayme/internal` only for what the public API does not export yet, such as the Page Object constructor type.
+- An absent entry, `src/absent.ts`, published as `@ayme-dev/<framework>/absent` through an exports map entry and a tsdown entry, with a browser test of its own (`src/absent.browser.test.ts`). It is what a Build without Ayme resolves the package to: the index's names and types over the runtime's absent entry, so a component tree renders as with the real package. Its behaviour is the inert contract the runtime's absent entry defines, so the rows of the behaviour contract do not apply to it.
 - Every row of the behaviour contract holds, or is n/a where the row allows it.
 
 ## Behaviour contract
@@ -46,7 +47,7 @@ On the server, `start()` on an ordinary session claims the Node process as its A
 
 The lanes, their commands and where test-only code lives are in the [testing guide](testing.md). An integration has:
 
-- **Client tests** of the owner and consumer API in a real browser, Vitest browser mode on Chromium as the Inspector's component tests use. They cite the contract rows they cover. A row an integration skips is marked n/a in its tests with the reason the row allows.
+- **Client tests** of the owner and consumer API in a real browser, Vitest browser mode on Chromium as the Inspector's component tests use. They cite the contract rows they cover. A row an integration skips is marked n/a in its tests with the reason the row allows. The absent entry has a client test of its own, over the runtime's absent entry.
 - **Server tests** in Node that render concurrent requests, for C9 and C10.
 - **Example certification**: the example apps' end-to-end tests, below.
 - **Packed-consumer checks**: the package in the tarball lists and a type-check consumer at its framework floor.
