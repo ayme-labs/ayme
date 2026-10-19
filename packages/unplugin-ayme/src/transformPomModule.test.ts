@@ -15,7 +15,11 @@ vi.mock("./pomProgram", async (importOriginal) => {
   return { ...actual, createPomProgram };
 });
 
-import { createPomTransform, type PomPrograms } from "./transformPomModule";
+import {
+  absentEntryFor,
+  createPomTransform,
+  type PomPrograms,
+} from "./transformPomModule";
 
 it("builds one TypeScript program per POM transform", () => {
   const fixturePath = fileURLToPath(
@@ -310,5 +314,32 @@ describe("a build without Ayme", () => {
     expect(() =>
       createPomTransform({ include: "yes" as unknown as boolean })
     ).toThrow(new TypeError("include must be a boolean"));
+  });
+});
+
+describe("the absent entry of a specifier", () => {
+  it("maps the runtime's root and internal entries and the framework packages' roots", () => {
+    expect(absentEntryFor("@ayme-dev/ayme")).toBe("@ayme-dev/ayme/absent");
+    expect(absentEntryFor("@ayme-dev/ayme/internal")).toBe(
+      "@ayme-dev/ayme/absent"
+    );
+    for (const framework of ["vue", "react", "svelte", "angular"])
+      expect(absentEntryFor(`@ayme-dev/${framework}`)).toBe(
+        `@ayme-dev/${framework}/absent`
+      );
+  });
+
+  it("maps nothing else", () => {
+    for (const untouched of [
+      "@ayme-dev/ayme/server",
+      "@ayme-dev/ayme/absent",
+      "@ayme-dev/ayme/internal/x",
+      "@ayme-dev/vue/absent",
+      "@ayme-dev/angular/package.json",
+      "@ayme-dev/webmcp",
+      "@ayme-dev/unplugin-ayme",
+      "./ListPage",
+    ])
+      expect(absentEntryFor(untouched)).toBeUndefined();
   });
 });

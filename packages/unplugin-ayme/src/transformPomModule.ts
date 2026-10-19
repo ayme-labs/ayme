@@ -18,6 +18,7 @@ import {
 } from "./pomProgram";
 import { rewritePomImports } from "./rewritePomImports";
 
+const RUNTIME_MODULE = "@ayme-dev/ayme";
 const REGISTRATION_MODULE = "@ayme-dev/ayme/internal";
 /** The entry a build without Ayme resolves `@ayme-dev/ayme` and its internal entry to. */
 export const ABSENT_MODULE = "@ayme-dev/ayme/absent";
@@ -25,7 +26,20 @@ export const ABSENT_MODULE = "@ayme-dev/ayme/absent";
  * The framework packages, whose root entry a build without Ayme resolves to
  * their own absent entry, `@ayme-dev/<framework>/absent`.
  */
-export const FRAMEWORK_MODULES = /^@ayme-dev\/(vue|react|svelte|angular)$/;
+const FRAMEWORK_MODULES = /^@ayme-dev\/(vue|react|svelte|angular)$/;
+
+/**
+ * The absent entry a build without Ayme resolves `specifier` to, or
+ * undefined when the specifier is not one of the entries that leave such a
+ * build: the runtime's root and internal entries and the four framework
+ * packages' root entries. Every bundler adapter maps through this one table.
+ */
+export function absentEntryFor(specifier: string): string | undefined {
+  if (specifier === RUNTIME_MODULE || specifier === REGISTRATION_MODULE)
+    return ABSENT_MODULE;
+  if (FRAMEWORK_MODULES.test(specifier)) return `${specifier}/absent`;
+  return undefined;
+}
 
 export type PomTransformOptions = PomCompilerOptions & {
   /**

@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 import { resolveConfig, type InlineConfig } from "vite";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { type AymeOptions } from "./index";
 import { ayme } from "./vite";
@@ -115,37 +115,95 @@ describe("ayme Vite integration", () => {
     });
   });
 
-  it("resolves the runtime's entries and the framework packages to their absent ones in a build without Ayme, the default", async () => {
-    const config = await applyPluginConfig({});
-    const aliases = (
-      config as { resolve: { alias: { find: RegExp; replacement: string }[] } }
-    ).resolve.alias;
-    const resolve = (specifier: string) => {
-      const matches = aliases.filter(({ find }) => find.test(specifier));
-      expect(matches.length).toBeLessThanOrEqual(1);
-      const alias = matches[0];
-      return alias && specifier.replace(alias.find, alias.replacement);
-    };
-    expect(resolve("@ayme-dev/ayme")).toBe("@ayme-dev/ayme/absent");
-    expect(resolve("@ayme-dev/ayme/internal")).toBe("@ayme-dev/ayme/absent");
-    for (const framework of ["vue", "react", "svelte", "angular"])
-      expect(resolve(`@ayme-dev/${framework}`)).toBe(
-        `@ayme-dev/${framework}/absent`
+  describe("resolving in a build without Ayme, the default", () => {
+    const resolveThrough = async (
+      specifier: string,
+      context: {
+        ssr?: boolean;
+        consumer?: string;
+        options?: AymeOptions;
+      } = {}
+    ) => {
+      const plugin = ayme(context.options);
+      if (Array.isArray(plugin)) throw new Error("Expected a single plugin");
+      const hook = plugin.resolveId;
+      if (typeof hook !== "function")
+        throw new Error("Expected the Vite plugin to define a resolveId hook");
+      const resolve = vi.fn(async (id: string) => ({ id: `/resolved/${id}` }));
+      const resolved = await Reflect.apply(
+        hook,
+        {
+          resolve,
+          environment:
+            context.consumer === undefined
+              ? undefined
+              : { config: { consumer: context.consumer } },
+        },
+        [specifier, "/app/main.ts", { ssr: context.ssr }]
       );
-    for (const untouched of [
-      "@ayme-dev/ayme/server",
-      "@ayme-dev/ayme/absent",
-      "@ayme-dev/vue/absent",
-      "@ayme-dev/angular/package.json",
-      "@ayme-dev/webmcp",
-    ])
-      expect(resolve(untouched)).toBeUndefined();
-  });
+      return { resolved, resolve };
+    };
 
-  it("aliases nothing once include is true", async () => {
-    expect(await applyPluginConfig({}, { include: true })).not.toHaveProperty(
-      "resolve"
-    );
+    it("resolves the runtime's entries and the framework packages to their absent ones, through the next resolver", async () => {
+      for (const [specifier, absent] of [
+        ["@ayme-dev/ayme", "@ayme-dev/ayme/absent"],
+        ["@ayme-dev/ayme/internal", "@ayme-dev/ayme/absent"],
+        ...["vue", "react", "svelte", "angular"].map((framework) => [
+          `@ayme-dev/${framework}`,
+          `@ayme-dev/${framework}/absent`,
+        ]),
+      ]) {
+        const { resolved, resolve } = await resolveThrough(specifier!, {
+          consumer: "client",
+        });
+        expect(resolved).toEqual({ id: `/resolved/${absent}` });
+        expect(resolve).toHaveBeenCalledWith(absent, "/app/main.ts", {
+          skipSelf: true,
+        });
+      }
+    });
+
+    it("leaves every other specifier to Vite", async () => {
+      for (const untouched of [
+        "@ayme-dev/ayme/server",
+        "@ayme-dev/ayme/absent",
+        "@ayme-dev/vue/absent",
+        "@ayme-dev/angular/package.json",
+        "@ayme-dev/webmcp",
+        "./ListPage",
+      ]) {
+        const { resolved, resolve } = await resolveThrough(untouched, {
+          consumer: "client",
+        });
+        expect(resolved).toBeNull();
+        expect(resolve).not.toHaveBeenCalled();
+      }
+    });
+
+    it("leaves a server module to Vite, on Vite 6 environments and the earlier ssr flag alike", async () => {
+      for (const context of [{ consumer: "server" }, { ssr: true }]) {
+        const { resolved, resolve } = await resolveThrough(
+          "@ayme-dev/ayme",
+          context
+        );
+        expect(resolved).toBeNull();
+        expect(resolve).not.toHaveBeenCalled();
+      }
+    });
+
+    it("resolves without environments, as Vite before 6 calls it", async () => {
+      const { resolved } = await resolveThrough("@ayme-dev/ayme");
+      expect(resolved).toEqual({ id: "/resolved/@ayme-dev/ayme/absent" });
+    });
+
+    it("resolves nothing once include is true", async () => {
+      const { resolved, resolve } = await resolveThrough("@ayme-dev/ayme", {
+        consumer: "client",
+        options: { include: true },
+      });
+      expect(resolved).toBeNull();
+      expect(resolve).not.toHaveBeenCalled();
+    });
   });
 
   it("rejects an include that is not a boolean", () => {

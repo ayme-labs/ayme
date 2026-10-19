@@ -11,8 +11,7 @@ import playwrightRange from "../../../playwright-range.json";
 import type { SkippedPomMethod } from "./derivePomManifests";
 import type { AymeOptions, AymePlaywrightOptions, AymeReport } from "./options";
 import {
-  ABSENT_MODULE,
-  FRAMEWORK_MODULES,
+  absentEntryFor,
   createPomTransform,
   includeLine,
   includeOption,
@@ -123,6 +122,22 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         // Once per build, and once when a dev server starts.
         config.logger.info(includeLine(options.include));
       },
+      // A build without Ayme resolves the runtime's two entries and the
+      // framework packages to their absent entries, in the client output
+      // only: a server bundle keeps Vite's own emit, as the transform below
+      // leaves server modules alone.
+      async resolveId(source, importer, resolveOptions) {
+        if (include) return null;
+        const absent = absentEntryFor(source);
+        if (absent === undefined) return null;
+        if (resolveOptions?.ssr) return null;
+        // Vite before 6 has no environments; from 6, one per consumer.
+        const environment = this.environment as
+          { config: { consumer: string } } | undefined;
+        if (environment && environment.config.consumer !== "client")
+          return null;
+        return this.resolve(absent, importer, { skipSelf: true });
+      },
       transform: {
         filter: { id: /\.[cm]?[jt]sx?$/ },
         handler(code, id, transformOptions) {
@@ -198,25 +213,6 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
 
         return {
           define,
-          // A build without Ayme resolves the runtime's two entries and the
-          // framework packages to their absent entries; nothing else of
-          // them is imported.
-          ...(include
-            ? {}
-            : {
-                resolve: {
-                  alias: [
-                    {
-                      find: /^@ayme-dev\/ayme(\/internal)?$/,
-                      replacement: ABSENT_MODULE,
-                    },
-                    {
-                      find: FRAMEWORK_MODULES,
-                      replacement: "@ayme-dev/$1/absent",
-                    },
-                  ],
-                },
-              }),
           optimizeDeps: {
             ...config.optimizeDeps,
             exclude: [...new Set([...exclude, PLAYWRIGHT_TEST_PACKAGE])],
