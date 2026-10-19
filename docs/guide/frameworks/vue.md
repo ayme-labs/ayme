@@ -18,10 +18,12 @@ import vue from "@vitejs/plugin-vue";
 import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 import { defineConfig } from "vite";
 
-export default defineConfig({
-  plugins: [vue(), ayme()],
-});
+export default defineConfig(({ command }) => ({
+  plugins: [vue(), ayme({ include: command === "serve" })],
+}));
 ```
+
+`include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
 Mark your Page Object Models as [Page Object Models](../guides/page-object-models.md) shows.
 
@@ -145,7 +147,8 @@ export default defineNuxtConfig({
   typescript: {
     tsConfig: { compilerOptions: { experimentalDecorators: true } },
   },
-  vite: { plugins: [ayme()] },
+  // nuxi build sets NODE_ENV to production: Ayme stays in the dev server only.
+  vite: { plugins: [ayme({ include: process.env.NODE_ENV !== "production" })] },
 });
 ```
 
@@ -170,7 +173,7 @@ The [Nuxt example](https://github.com/ayme-labs/ayme/blob/main/apps/example-nuxt
 
 ## Bundle size
 
-Ayme's runtime adds about 800 to 950 kB raw (about 250 kB transferred) to the entry chunk of a production build, which trips Vite's warning for chunks over 500 kB, and the Inspector is a separate chunk that loads only when it is on. A build that neither publishes tools nor calls Page Objects from your own code can leave all of it out; see [Remove Ayme from a build](../reference/build-plugin.md#remove-ayme-from-a-build).
+Ayme's runtime adds about 800 to 950 kB raw (about 250 kB transferred) to the entry chunk of a build that includes it, which trips Vite's warning for chunks over 500 kB, and the Inspector is a separate chunk that loads only when it is on. A build includes Ayme only with the plugin's `include: true`; the config above keeps it in the dev server and out of `vite build`. See [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
 
 ## Limits
 

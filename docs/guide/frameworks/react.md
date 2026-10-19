@@ -18,10 +18,12 @@ import react from "@vitejs/plugin-react";
 import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 import { defineConfig } from "vite";
 
-export default defineConfig({
-  plugins: [react(), ayme()],
-});
+export default defineConfig(({ command }) => ({
+  plugins: [react(), ayme({ include: command === "serve" })],
+}));
 ```
+
+`include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
 On Next.js, use the Turbopack loader, as the [build plugin reference](../reference/build-plugin.md#nextjs) shows. Mark your Page Object Models as [Page Object Models](../guides/page-object-models.md) shows.
 
@@ -186,7 +188,7 @@ The build needs the Turbopack loader from the [build plugin reference](../refere
 
 ## Bundle size
 
-Ayme's runtime adds about 800 to 950 kB raw (about 250 kB transferred) to the entry chunk of a production build, which trips Vite's warning for chunks over 500 kB, and the Inspector is a separate chunk that loads only when it is on. A build that neither publishes tools nor calls Page Objects from your own code can leave all of it out; see [Remove Ayme from a build](../reference/build-plugin.md#remove-ayme-from-a-build).
+Ayme's runtime adds about 800 to 950 kB raw (about 250 kB transferred) to the entry chunk of a build that includes it, which trips Vite's warning for chunks over 500 kB, and the Inspector is a separate chunk that loads only when it is on. A build includes Ayme only with the plugin's `include: true`; the config above keeps it in the dev server and out of `vite build`. See [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build).
 
 ## Limits
 

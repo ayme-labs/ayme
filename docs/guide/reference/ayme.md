@@ -9,7 +9,7 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 | `@ayme-dev/ayme`        | Your app: the decorators, `createAyme`, `createPage`, `decisionEndpoint`, the errors and their types. |
 | `@ayme-dev/ayme/server` | Your backend: `createDecisionEndpoint`, the Decision Endpoint handler.                                |
 
-`@ayme-dev/ayme/internal` serves Ayme's own packages and the code the build plugin generates, and `@ayme-dev/ayme/absent` is what a build without Ayme resolves `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` to; see [Remove Ayme from a build](build-plugin.md#remove-ayme-from-a-build). Applications do not import either, and both may change in any release.
+`@ayme-dev/ayme/internal` serves Ayme's own packages and the code the build plugin generates, and `@ayme-dev/ayme/absent` is what a build without Ayme resolves `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` to; see [Include Ayme in a build](build-plugin.md#include-ayme-in-a-build). Applications do not import either, and both may change in any release.
 
 ## Decorators
 
