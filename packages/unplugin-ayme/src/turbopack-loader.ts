@@ -2,6 +2,7 @@ import path from "node:path";
 
 import {
   createPomTransform,
+  includeLine,
   type PomTransformOptions,
 } from "./transformPomModule";
 import { transpilePomModule } from "./transpilePomModule";
@@ -13,9 +14,17 @@ type LoaderContext = {
   addDependency?: (fileName: string) => void;
 };
 
+// The loader runs per module, so the line saying whether Ayme is in the
+// build is printed once per process.
+let announced = false;
+
 /** The .ts POM loader for Next.js. Configure it on Turbopack's browser graph only. */
 export default function turbopackLoader(this: LoaderContext, source: string) {
   const options = this.getOptions();
+  if (!announced) {
+    console.info(includeLine(options.include));
+    announced = true;
+  }
   const transformed = createPomTransform(options)(
     source,
     this.resourcePath,

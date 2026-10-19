@@ -6,6 +6,7 @@ import type { Plugin } from "esbuild";
 import {
   ABSENT_MODULE,
   createPomTransform,
+  includeLine,
   includeOption,
   type PomPrograms,
 } from "./transformPomModule";
@@ -71,6 +72,8 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
       build.onStart(() => {
         compiled = new Map();
         programs.clear();
+        // esbuild gives a plugin no logger, so the line goes to the console.
+        console.info(includeLine(options.include));
       });
       build.onEnd(() => {
         programs.clear();

@@ -44,6 +44,17 @@ export function includeOption(value: unknown): boolean {
 }
 
 /**
+ * The one line a build prints saying whether Ayme is in it and why, so a
+ * build log shows the decision before anything reaches users. Each adapter
+ * prints it once per build.
+ */
+export function includeLine(value: unknown): string {
+  if (includeOption(value))
+    return "[ayme] Ayme is in this build: include is true.";
+  return `[ayme] Ayme is not in this build: include is ${value === undefined ? "not set" : "false"}.`;
+}
+
+/**
  * The bare specifier the transform adds to a Page Object module. Vite's
  * dependency scan reads sources untransformed, so it must be told about it.
  */
