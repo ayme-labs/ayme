@@ -61,7 +61,16 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "plugins": [
+                {
+                  "path": "./ayme.plugin.mjs",
+                  "options": {
+                    "tsconfigPath": "tsconfig.app.json",
+                    "include": true
+                  }
+                }
+              ]
             },
             "spa": {
               "outputPath": "dist/spa",
