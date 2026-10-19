@@ -12,6 +12,7 @@ import type { SkippedPomMethod } from "./derivePomManifests";
 import type { AymeOptions, AymePlaywrightOptions, AymeReport } from "./options";
 import {
   ABSENT_MODULE,
+  FRAMEWORK_MODULES,
   createPomTransform,
   includeOption,
   injectedImport,
@@ -194,8 +195,9 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
 
         return {
           define,
-          // A build without Ayme resolves the runtime's two entries to the
-          // absent one; the framework packages import nothing else of it.
+          // A build without Ayme resolves the runtime's two entries and the
+          // framework packages to their absent entries; nothing else of
+          // them is imported.
           ...(include
             ? {}
             : {
@@ -204,6 +206,10 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
                     {
                       find: /^@ayme-dev\/ayme(\/internal)?$/,
                       replacement: ABSENT_MODULE,
+                    },
+                    {
+                      find: FRAMEWORK_MODULES,
+                      replacement: "@ayme-dev/$1/absent",
                     },
                   ],
                 },

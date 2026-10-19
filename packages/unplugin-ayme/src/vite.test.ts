@@ -115,19 +115,31 @@ describe("ayme Vite integration", () => {
     });
   });
 
-  it("resolves the runtime's entries to its absent one in a build without Ayme, the default", async () => {
+  it("resolves the runtime's entries and the framework packages to their absent ones in a build without Ayme, the default", async () => {
     const config = await applyPluginConfig({});
     const aliases = (
       config as { resolve: { alias: { find: RegExp; replacement: string }[] } }
     ).resolve.alias;
-    expect(aliases).toHaveLength(1);
-    const [{ find, replacement }] = aliases;
-    expect(replacement).toBe("@ayme-dev/ayme/absent");
-    expect(find.test("@ayme-dev/ayme")).toBe(true);
-    expect(find.test("@ayme-dev/ayme/internal")).toBe(true);
-    expect(find.test("@ayme-dev/ayme/server")).toBe(false);
-    expect(find.test("@ayme-dev/ayme/absent")).toBe(false);
-    expect(find.test("@ayme-dev/vue")).toBe(false);
+    const resolve = (specifier: string) => {
+      const matches = aliases.filter(({ find }) => find.test(specifier));
+      expect(matches.length).toBeLessThanOrEqual(1);
+      const alias = matches[0];
+      return alias && specifier.replace(alias.find, alias.replacement);
+    };
+    expect(resolve("@ayme-dev/ayme")).toBe("@ayme-dev/ayme/absent");
+    expect(resolve("@ayme-dev/ayme/internal")).toBe("@ayme-dev/ayme/absent");
+    for (const framework of ["vue", "react", "svelte", "angular"])
+      expect(resolve(`@ayme-dev/${framework}`)).toBe(
+        `@ayme-dev/${framework}/absent`
+      );
+    for (const untouched of [
+      "@ayme-dev/ayme/server",
+      "@ayme-dev/ayme/absent",
+      "@ayme-dev/vue/absent",
+      "@ayme-dev/angular/package.json",
+      "@ayme-dev/webmcp",
+    ])
+      expect(resolve(untouched)).toBeUndefined();
   });
 
   it("aliases nothing once include is true", async () => {

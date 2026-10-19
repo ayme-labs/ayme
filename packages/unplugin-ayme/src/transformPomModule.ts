@@ -21,6 +21,11 @@ import { rewritePomImports } from "./rewritePomImports";
 const REGISTRATION_MODULE = "@ayme-dev/ayme/internal";
 /** The entry a build without Ayme resolves `@ayme-dev/ayme` and its internal entry to. */
 export const ABSENT_MODULE = "@ayme-dev/ayme/absent";
+/**
+ * The framework packages, whose root entry a build without Ayme resolves to
+ * their own absent entry, `@ayme-dev/<framework>/absent`.
+ */
+export const FRAMEWORK_MODULES = /^@ayme-dev\/(vue|react|svelte|angular)$/;
 
 export type PomTransformOptions = PomCompilerOptions & {
   /**

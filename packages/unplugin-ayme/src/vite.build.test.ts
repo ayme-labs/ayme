@@ -97,3 +97,45 @@ it("ships neither the runtime nor the Page Object Models in a build without Ayme
     rmSync(outDir, { recursive: true, force: true });
   }
 }, 30_000);
+
+// Integration on the built packages: a framework package leaves a build
+// without Ayme with the runtime, so none of its hook code ships. React is the
+// integration the plugin's tests can bundle with the fewest dependencies.
+it("ships none of a framework package's hook code in a build without Ayme", async () => {
+  const root = fileURLToPath(
+    new URL("./__tests__/fixtures/withoutAymeReact/", import.meta.url)
+  );
+  const outDir = mkdtempSync(join(tmpdir(), "ayme-without-react-"));
+  try {
+    await build({
+      configFile: false,
+      logLevel: "silent",
+      root,
+      plugins: [ayme({ report: "none" })],
+      build: {
+        outDir,
+        lib: { entry: join(root, "main.ts"), formats: ["es"], fileName: "app" },
+        rolldownOptions: { external: ["react"] },
+      },
+    });
+    const code = readFileSync(join(outDir, "app.js"), "utf8");
+
+    // The absent entries are in; the index's errors and hooks are not.
+    expect(code).toContain("Ayme was removed from this build.");
+    expect(code).not.toContain("Ayme hooks require an ancestor AymeProvider.");
+    expect(code).not.toContain(
+      "AymeProvider cannot be nested beneath another Ayme runtime owner."
+    );
+    expect(code).not.toContain(
+      "The provider options changed while the provider was mounted."
+    );
+    expect(code).not.toContain(
+      "The Page Object model or provider changed while the component was mounted."
+    );
+    expect(code).not.toContain("useSyncExternalStore");
+    expect(code).not.toContain("Waiting for the WebMCP driver.");
+    expect(code.length).toBeLessThan(20_000);
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+}, 30_000);

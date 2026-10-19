@@ -167,6 +167,61 @@ it("resolves the runtime to its absent entry and compiles stand-ins in a build w
   expect(code).not.toContain("Waiting for the WebMCP driver.");
 }, 30_000);
 
+it("resolves the framework packages to their absent entries in a build without Ayme", async () => {
+  const frameworks = ["vue", "react", "svelte", "angular"];
+  // Stand-ins for the installed packages: each entry names itself.
+  const root = await workspace({
+    "tsconfig.json": tsconfig,
+    "main.ts": frameworks
+      .map(
+        (framework) =>
+          `import { entry as ${framework} } from "@ayme-dev/${framework}";\nconsole.log(${framework});\n`
+      )
+      .join(""),
+    ...Object.fromEntries(
+      frameworks.flatMap((framework) => [
+        [
+          `node_modules/@ayme-dev/${framework}/package.json`,
+          JSON.stringify({
+            name: `@ayme-dev/${framework}`,
+            exports: { ".": "./index.js", "./absent": "./absent.js" },
+          }),
+        ],
+        [
+          `node_modules/@ayme-dev/${framework}/index.js`,
+          `export const entry = "${framework} index";\n`,
+        ],
+        [
+          `node_modules/@ayme-dev/${framework}/absent.js`,
+          `export const entry = "${framework} absent";\n`,
+        ],
+      ])
+    ),
+  });
+  try {
+    const result = await build({
+      absWorkingDir: root,
+      entryPoints: ["main.ts"],
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "browser",
+      plugins: [
+        angularCompiler,
+        aymeAngularPlugin({ tsconfigPath: "tsconfig.json" }),
+      ],
+      logLevel: "silent",
+    });
+    const code = result.outputFiles[0]!.text;
+    for (const framework of frameworks) {
+      expect(code).toContain(`"${framework} absent"`);
+      expect(code).not.toContain(`"${framework} index"`);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 it("leaves the server bundle to Angular", async () => {
   const { code, inputs } = await bundle("node");
 

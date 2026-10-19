@@ -1,10 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { Plugin } from "esbuild";
+import type { OnResolveArgs, Plugin } from "esbuild";
 
 import {
   ABSENT_MODULE,
+  FRAMEWORK_MODULES,
   createPomTransform,
   includeOption,
   type PomPrograms,
@@ -86,17 +87,24 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         };
       };
 
-      // A build without Ayme resolves the runtime's two entries to the
-      // absent one, wherever they are imported from.
-      if (!include)
-        build.onResolve({ filter: /^@ayme-dev\/ayme(\/internal)?$/ }, (args) =>
-          build.resolve(ABSENT_MODULE, {
+      // A build without Ayme resolves the runtime's two entries and the
+      // framework packages to their absent entries, wherever they are
+      // imported from.
+      if (!include) {
+        const absent = (entry: string, args: OnResolveArgs) =>
+          build.resolve(entry, {
             kind: args.kind,
             importer: args.importer,
             resolveDir: args.resolveDir,
             namespace: "file",
-          })
+          });
+        build.onResolve({ filter: /^@ayme-dev\/ayme(\/internal)?$/ }, (args) =>
+          absent(ABSENT_MODULE, args)
         );
+        build.onResolve({ filter: FRAMEWORK_MODULES }, (args) =>
+          absent(`${args.path}/absent`, args)
+        );
+      }
 
       // Angular's compiler plugin runs first and serves every program file
       // from its own `onLoad`, which has no namespace filter. So a Page Object
