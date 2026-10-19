@@ -111,7 +111,7 @@ The loader reports the tsconfig and source files the compiler read, so Turbopack
 
 ## Include Ayme in a build
 
-`include` is the one setting that decides whether a build has Ayme in it, and it defaults to `false`. Without `include: true`, a build or a dev server is a build without Ayme: `@ayme-dev/ayme` and its internal entry resolve to a small absent entry, which leaves the runtime, Playwright in the browser, the Inspector, WebMCP and the Agent Connection out of the output, and each Page Object Model the plugin compiles becomes a stand-in with the same class name and exports, without the imports only the model used. Everything else in a Page Object Model's module stays. The framework packages keep working: `useAyme`, `AymeProvider` and `provideAyme` create an inert session whose publication status stays `disabled` and whose tool list is empty, and `usePageObject` returns the stand-in. An action of a stand-in rejects, and a Page Object Child throws, with a `RuntimeStateError` naming it: `Ayme was removed from this build. ProjectsPage.createProject is not in it.`
+`include` is the one setting that decides whether a build has Ayme in it, and it defaults to `false`. Without `include: true`, a build or a dev server is a build without Ayme: `@ayme-dev/ayme` and its internal entry resolve to a small absent entry, which leaves the runtime, Playwright in the browser, the Inspector, WebMCP and the Agent Connection out of the output, and each Page Object Model the plugin compiles becomes a stand-in with the same class name and exports, without the imports only the model used. Everything else in a Page Object Model's module stays. The framework packages leave the build too: `@ayme-dev/vue`, `@ayme-dev/react`, `@ayme-dev/svelte` and `@ayme-dev/angular` resolve to an absent entry of their own, with the same names and types as the package, so a component tree renders as before. `AymeProvider`, `useAyme` and `provideAyme` hand out an inert session whose publication status stays `disabled` and whose tool list is empty, `usePageObject` and `injectPageObject` return the stand-in, an instance of the model's class, and the Peek hook does nothing. An action of a stand-in rejects, and a Page Object Child throws, with a `RuntimeStateError` naming it: `Ayme was removed from this build. ProjectsPage.createProject is not in it.`
 
 With `include: true`, the build carries the runtime, with Playwright in the browser, and every Page Object Model the app imports: their Playwright code, the generated schemas and the action descriptions, about 800 to 950 kB raw in a hello-world app, plus the Inspector as a chunk that loads only when it is on. That is the build for development, for a test build that a Playwright suite drives, and for an app that publishes tools in production or drives a Page Object from its own code there, as the quickstarts' "Show me how" button does.
 
@@ -150,7 +150,7 @@ On Angular, the plugin entry under the builder's `options`, which `ng serve` and
 
 A staging configuration that keeps Ayme repeats the entry with `"include": true`.
 
-On Next.js, the config function computes the boolean from the phase Next passes it. The loader takes `include`, and because a loader cannot alias, `turbopack.resolveAlias` points the runtime's two entries at the absent one for the browser when the build is without Ayme:
+On Next.js, the config function computes the boolean from the phase Next passes it. The loader takes `include`, and because a loader cannot alias, `turbopack.resolveAlias` points the runtime's two entries and the framework package at their absent entries for the browser when the build is without Ayme:
 
 ```js
 // next.config.mjs
@@ -166,6 +166,7 @@ export default function nextConfig(phase) {
         : {
             "@ayme-dev/ayme": { browser: "@ayme-dev/ayme/absent" },
             "@ayme-dev/ayme/internal": { browser: "@ayme-dev/ayme/absent" },
+            "@ayme-dev/react": { browser: "@ayme-dev/react/absent" },
           },
       rules: {
         "*.ts": {
