@@ -117,7 +117,7 @@ With `include: true`, the build carries the runtime, with Playwright in the brow
 
 Nothing is inferred from the bundler: Vite treats every `vite build` as production, staging included, and Next.js tells only its dev server from a build, so no mode could say what your team means. A config file is code, and the rule for staging, test or any other mode is the boolean you compute in it. The option is checked on built output, in the plugin's own tests and on a built example app. A value that is not a boolean throws a `TypeError`.
 
-A build without Ayme guarantees nothing about Page Object Models the plugin does not compile, such as classes under `node_modules` or ones a bundler rule keeps from it, nor about Playwright code the app imports outside a Page Object Model. Turning publication off at runtime removes nothing; `include` is the one way to decide.
+A build without Ayme guarantees nothing about Page Object Models the plugin does not compile, such as classes under `node_modules` or ones a bundler rule keeps from it, nor about Playwright code the app imports outside a Page Object Model. Turning publication off at runtime removes nothing; `include` is the one way to decide. Every build, and a dev server when it starts, prints one line saying what it decided and why, such as `[ayme] Ayme is not in this build: include is not set.`, so a build log shows it before anything reaches users.
 
 On Vite, keep Ayme in the dev server and out of every `vite build`:
 
