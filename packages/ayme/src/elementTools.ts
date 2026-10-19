@@ -12,10 +12,8 @@ import type { AriaRef, PageStateCapture } from "./pageState";
 import { refHint, resolveRef, selectorFailure } from "./refTarget";
 import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { requireAymeRuntimePage } from "./registry";
-import { reaches, unreachableReason, type ElementInput } from "./elementReach";
+import { assertReachable, reaches, type ElementInput } from "./elementReach";
 import { inReachBatch } from "./reachMeasurement";
-import { latestPageStateRef } from "./pageState";
-import { assertAvailable } from "./pomInstance";
 import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
 import {
   RefResolutionError,
@@ -161,7 +159,12 @@ function elementToolExecution(
       currentDocument
     );
     if (definition.needsReach)
-      assertReachable(definition.name, target.element, definition.needsReach);
+      await assertReachable(
+        definition.name,
+        locatorOf(target),
+        target.element,
+        definition.needsReach
+      );
     return runAction(
       currentDocument,
       context.cursor,
@@ -193,25 +196,12 @@ export function registerElementTool(
     ...(definition.needsReach
       ? {
           filter: (element: Element) =>
-            filter(element) && reaches(element, definition.needsReach!),
+            filter(element) &&
+            reaches(requireAymeRuntimePage(), element, definition.needsReach!),
           matches: filter,
         }
       : { filter }),
   };
-}
-
-/**
- * Package-internal: refuses the call of `toolName` on `element` when `input`
- * would not reach it, with the Availability Reason a Page Object Tool gives.
- */
-export function assertReachable(
-  toolName: string,
-  element: Element,
-  input: ElementInput
-) {
-  const reason = unreachableReason(element, latestPageStateRef, input);
-  if (reason !== undefined)
-    assertAvailable(toolName, { present: true, available: false, reason });
 }
 
 /**

@@ -1,22 +1,28 @@
-import type { Locator } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+import {
+  pointerHitTarget,
+  type PointerHitTarget,
+} from "@ayme-dev/playwright-lite/internal";
 import {
   containsThroughShadow as contains,
-  hitElements,
   parentElement,
 } from "./composedTree";
 import { INSPECTOR_HOST_SELECTOR } from "./pageState";
 
 /**
- * Package-internal: what the layout shows of one element (ADR-0035),
- * measured without scrolling or sending input: whether some part of it is
- * or would scroll into view, whether a click there would reach it, and, for
- * a shown element a click would not reach, what stopped it: `blocker`, the
- * open native modal the element is not in or the element's inert ancestor,
- * which blocks every click; else `hit`, the element hit-testing found over
- * the area the reachability check sampled, when it found one. Scroll
- * reachability describes the current layout, not content a scroll handler
- * might create. It names no kind of widget: a Page Object Root and an
- * element a Browser Tool addresses are measured alike.
+ * Package-internal: what the layout shows of one element (ADR-0035,
+ * ADR-0040), measured without scrolling or sending input: `present` while
+ * some part of it shows, or would once its scroll containers and the
+ * viewport scrolled to it; `available` while a click would reach it; and,
+ * for a present element a click would not reach, what stopped it:
+ * `blocker`, the open native modal the element is not in or the element's
+ * inert ancestor, which blocks every click; else `hit`, the element
+ * playwright-lite's own hit test found at the point it would click, when
+ * that point is in a part of the element shown now. Otherwise the element is
+ * not hit-tested: the call scrolls to it first and tests it there. Presence
+ * describes the current layout, not content a scroll handler might create.
+ * It names no kind of widget: a Page Object Root and an element a Browser
+ * Tool addresses are measured alike.
  */
 export type ReachMeasurement = {
   present: boolean;
@@ -26,29 +32,20 @@ export type ReachMeasurement = {
 };
 
 const absent: ReachMeasurement = { present: false, available: false };
+const reached: ReachMeasurement = { present: true, available: true };
 
 type Rect = { left: number; right: number; top: number; bottom: number };
-type Scroll = { element: Element; x: number; y: number };
-type ScrollAlignment = "current" | "center" | "start" | "end";
-
-function establishesContainingBlock(style: CSSStyleDeclaration): boolean {
-  return (
-    style.transform !== "none" ||
-    style.perspective !== "none" ||
-    style.filter !== "none" ||
-    /layout|paint|strict|content/.test(style.contain) ||
-    /transform|perspective|filter/.test(style.willChange)
-  );
-}
+/** Where the scroll containers stand: as now, or scrolled to centre the element. */
+type ScrollAlignment = "current" | "center";
 
 let batch: Map<unknown, WeakMap<Element, unknown>> | undefined;
 
 /**
  * Package-internal: runs `measureAll`, a synchronous pass that measures a
  * batch of elements (every candidate of every tool) without changing the
- * page, sharing the work for their common ancestors and siblings. Each
- * element is measured at most once in the pass; outside one, every call
- * measures afresh, so a page change between calls is always seen.
+ * page, sharing the work for their common ancestors. Each element is
+ * measured at most once in the pass; outside one, every call measures
+ * afresh, so a page change between calls is always seen.
  */
 export function inReachBatch<T>(measureAll: () => T): T {
   if (batch) return measureAll();
@@ -60,357 +57,61 @@ export function inReachBatch<T>(measureAll: () => T): T {
   }
 }
 
-function memoizedInBatch<R>(measure: (element: Element) => R) {
-  return (element: Element): R => {
-    if (!batch) return measure(element);
-    let memo = batch.get(measure) as WeakMap<Element, R> | undefined;
-    if (!memo) batch.set(measure, (memo = new WeakMap()));
-    if (memo.has(element)) return memo.get(element)!;
-    const result = measure(element);
-    memo.set(element, result);
-    return result;
-  };
+/** `compute()` for `element`, once per batch under `key`. */
+function inBatch<R>(key: object, element: Element, compute: () => R): R {
+  if (!batch) return compute();
+  let memo = batch.get(key) as WeakMap<Element, R> | undefined;
+  if (!memo) batch.set(key, (memo = new WeakMap()));
+  if (memo.has(element)) return memo.get(element)!;
+  const result = compute();
+  memo.set(element, result);
+  return result;
 }
 
-const layoutAncestors = memoizedInBatch(measureLayoutAncestors);
-
-const styleOf = memoizedInBatch((element) =>
-  element.ownerDocument.defaultView!.getComputedStyle(element)
-);
-
-function measureLayoutAncestors(current: Element) {
-  const ancestors: Element[] = [];
-  let node = current;
-  while (true) {
-    const position = styleOf(node).position;
-    let parent = parentElement(node);
-    if (position === "fixed" || position === "absolute") {
-      while (parent && parent !== current.ownerDocument.documentElement) {
-        const style = styleOf(parent);
-        if (
-          establishesContainingBlock(style) ||
-          (position === "absolute" && style.position !== "static")
-        )
-          break;
-        parent = parentElement(parent);
-      }
-      if (
-        position === "fixed" &&
-        (!parent || !establishesContainingBlock(styleOf(parent)))
-      )
-        return { ancestors, fixedToViewport: true };
-    }
-    if (!parent) return { ancestors, fixedToViewport: false };
-    ancestors.push(parent);
-    node = parent;
-  }
-}
-
-function scrollDelta(
-  start: number,
-  end: number,
-  portStart: number,
-  portEnd: number,
-  current: number,
-  maximum: number,
-  scrollable: boolean,
-  scale: number,
-  reverse: boolean,
-  alignment: ScrollAlignment
-): number {
-  if (!scrollable || maximum === 0 || scale <= 0 || alignment === "current")
-    return 0;
-
-  const offset =
-    alignment === "start"
-      ? start - portStart
-      : alignment === "end"
-        ? end - portEnd
-        : (start + end) / 2 - (portStart + portEnd) / 2;
-  const desired = current + offset / scale;
-  const next = Math.max(
-    reverse ? -maximum : 0,
-    Math.min(reverse ? 0 : maximum, desired)
+const styleOf = (element: Element) =>
+  inBatch(styleOf, element, () =>
+    element.ownerDocument.defaultView!.getComputedStyle(element)
   );
-  return (current - next) * scale;
-}
 
-function projectIntoPort(
-  rect: Rect,
-  port: Rect,
-  scroller: Element,
-  overflowX: string,
-  overflowY: string,
-  scaleX: number,
-  scaleY: number,
-  alignment: ScrollAlignment
-): Scroll {
-  const style = styleOf(scroller);
-  const reverseX =
-    style.direction === "rtl" || style.writingMode === "vertical-rl";
-  const x = scrollDelta(
-    rect.left,
-    rect.right,
-    port.left,
-    port.right,
-    scroller.scrollLeft,
-    Math.max(0, scroller.scrollWidth - scroller.clientWidth),
-    /^(auto|scroll|overlay)$/.test(overflowX),
-    scaleX,
-    reverseX,
-    alignment
-  );
-  const y = scrollDelta(
-    rect.top,
-    rect.bottom,
-    port.top,
-    port.bottom,
-    scroller.scrollTop,
-    Math.max(0, scroller.scrollHeight - scroller.clientHeight),
-    /^(auto|scroll|overlay)$/.test(overflowY),
-    scaleY,
-    false,
-    alignment
-  );
-  rect.left += x;
-  rect.right += x;
-  rect.top += y;
-  rect.bottom += y;
-  return { element: scroller, x, y };
-}
-
-function clip(
-  rect: Rect,
-  port: Rect,
-  x: boolean,
-  y: boolean
-): Rect | undefined {
-  const result = {
-    left: x ? Math.max(rect.left, port.left) : rect.left,
-    right: x ? Math.min(rect.right, port.right) : rect.right,
-    top: y ? Math.max(rect.top, port.top) : rect.top,
-    bottom: y ? Math.min(rect.bottom, port.bottom) : rect.bottom,
-  };
-  return result.right > result.left && result.bottom > result.top
-    ? result
-    : undefined;
-}
-
-// ponytail: rectangular px/% inset clips and collapsed basic shapes only;
-// other clip geometry needs browser support rather than a CSS shape parser.
-function clipBounds(current: Element): Rect | null | undefined {
-  const style = styleOf(current);
-  if (/^(?:circle|ellipse)\(0(?:px|%)?(?:\s|\))/.test(style.clipPath))
-    return null;
-  const inset = /^inset\(([^()]*)\)$/
-    .exec(style.clipPath)?.[1]
-    ?.split(" round ")[0];
-  if (!inset) return;
-  const values = inset.trim().split(/\s+/);
-  if (!values.every((value) => /^-?[\d.]+(?:px|%)?$/.test(value))) return;
-  const [top, right = top, bottom = top, left = right] = values;
-  const box = current.getBoundingClientRect();
-  const distance = (value: string, size: number, layoutSize: number) =>
-    value.endsWith("%")
-      ? (Number.parseFloat(value) * size) / 100
-      : Number.parseFloat(value) * (layoutSize ? size / layoutSize : 1);
-  const width = (current as HTMLElement).offsetWidth;
-  const height = (current as HTMLElement).offsetHeight;
-  return {
-    left: box.left + distance(left!, box.width, width),
-    right: box.right - distance(right!, box.width, width),
-    top: box.top + distance(top!, box.height, height),
-    bottom: box.bottom - distance(bottom!, box.height, height),
-  };
-}
-
-function projectedOffset(current: Element, scrolls: readonly Scroll[]) {
-  const { ancestors, fixedToViewport } = layoutAncestors(current);
-  let left = 0;
-  let top = 0;
-  for (const scroll of scrolls) {
-    if (scroll.element === current || !ancestors.includes(scroll.element))
-      continue;
-    if (
-      fixedToViewport &&
-      scroll.element === current.ownerDocument.scrollingElement
-    )
-      continue;
-    left += scroll.x;
-    top += scroll.y;
-  }
-  return { left, top };
-}
-
-function zIndex(style: CSSStyleDeclaration): number {
-  if (style.zIndex === "auto") return 0;
-  const value = Number(style.zIndex);
-  return Number.isFinite(value) ? value : 0;
-}
-
-type Occluder = {
-  element: Element;
-  bounds: DOMRect;
-  left: number;
-  top: number;
-};
-
-function projectedSiblingOccluders(
-  current: Element,
-  scrolls: readonly Scroll[]
-): Occluder[] {
-  const view = current.ownerDocument.defaultView!;
-  const NodeCtor = view.Node;
-  const occluders: Occluder[] = [];
-
-  // ponytail: sibling branch boxes cover the practical moving-overlay
-  // case without reimplementing the browser's stacking algorithm.
-  for (let branch = current; ;) {
-    const parent = parentElement(branch);
-    if (!parent) break;
-    const branchStyle = styleOf(branch);
-    const branchZ = zIndex(branchStyle);
-    for (const sibling of parent.children) {
-      if (sibling === branch) continue;
-      const style = styleOf(sibling);
-      if (
-        style.display === "none" ||
-        style.visibility === "hidden" ||
-        style.visibility === "collapse" ||
-        style.pointerEvents === "none"
-      )
-        continue;
-      const siblingZ = zIndex(style);
-      const follows = Boolean(
-        branch.compareDocumentPosition(sibling) &
-        NodeCtor.DOCUMENT_POSITION_FOLLOWING
-      );
-      if (siblingZ < branchZ || (siblingZ === branchZ && !follows)) continue;
-      const { left, top } = projectedOffset(sibling, scrolls);
-      if (left === 0 && top === 0) continue;
-      occluders.push({
-        element: sibling,
-        bounds: sibling.getBoundingClientRect(),
-        left,
-        top,
-      });
-    }
-    branch = parent;
-  }
-  return occluders;
-}
-
-function containsPoint(
-  bounds: { left: number; right: number; top: number; bottom: number },
-  left: number,
-  top: number,
-  x: number,
-  y: number
-) {
+function establishesContainingBlock(style: CSSStyleDeclaration): boolean {
   return (
-    x >= bounds.left + left &&
-    x < bounds.right + left &&
-    y >= bounds.top + top &&
-    y < bounds.bottom + top
+    style.transform !== "none" ||
+    style.perspective !== "none" ||
+    style.filter !== "none" ||
+    /layout|paint|strict|content/.test(style.contain) ||
+    /transform|perspective|filter/.test(style.willChange)
   );
 }
 
-// The centre first, so the element named in the way is the one over it
-// whenever that one is.
-const samples = [
-  [0.5, 0.5],
-  ...[0.05, 0.5, 0.95].flatMap((horizontal) =>
-    [0.05, 0.5, 0.95].map((vertical) => [horizontal, vertical] as const)
-  ),
-].filter(([h, v], index) => index === 0 || h !== 0.5 || v !== 0.5);
-
-/**
- * Hit-tests `rect`, the area of `current` a scroll by `scrolls` would show:
- * true when a click on some sampled point would reach `current`, else the
- * first element found in the way, if any.
- */
-function sampleReach(
-  current: Element,
-  rect: Rect,
-  scrolls: readonly Scroll[]
-): true | Element | undefined {
-  const projectedOccluders = projectedSiblingOccluders(current, scrolls);
-  let inTheWay: Element | undefined;
-  // ponytail: bounded hit sampling, not pixel-perfect occlusion.
-  for (const [horizontal, vertical] of samples) {
-    const x = rect.left + (rect.right - rect.left) * horizontal!;
-    const y = rect.top + (rect.bottom - rect.top) * vertical!;
-    const occluder = projectedOccluders.find(({ bounds, left, top }) =>
-      containsPoint(bounds, left, top, x, y)
-    );
-    if (occluder) {
-      inTheWay ??= occluder.element;
-      continue;
-    }
-    for (const hit of hitElements(current.ownerDocument, x, y)) {
-      // Ayme's own Inspector lets the runtime's actions through to the page.
-      if (inInspector(hit)) continue;
-      if (contains(current, hit)) return true;
-      // Ancestors are evidence only for a simulated scroll destination,
-      // never proof that the current element itself is exposed. An element
-      // nothing in which takes pointer events always leaves its ancestor as
-      // the hit.
-      if (
-        scrolls.some(({ x, y }) => x !== 0 || y !== 0) &&
-        contains(hit, current) &&
-        takesPointerEvents(current)
-      )
-        return true;
-      const { left, top } = projectedOffset(hit, scrolls);
-      const bounds = hit.getBoundingClientRect();
-      if (containsPoint(bounds, left, top, x, y)) {
-        inTheWay ??= hit;
-        break;
+/** The ancestors whose scrolling moves `element`, nearest first. */
+const layoutAncestors = (element: Element) =>
+  inBatch(layoutAncestors, element, () => {
+    const ancestors: Element[] = [];
+    let node = element;
+    while (true) {
+      const position = styleOf(node).position;
+      let parent = parentElement(node);
+      if (position === "fixed" || position === "absolute") {
+        while (parent && parent !== element.ownerDocument.documentElement) {
+          const style = styleOf(parent);
+          if (
+            establishesContainingBlock(style) ||
+            (position === "absolute" && style.position !== "static")
+          )
+            break;
+          parent = parentElement(parent);
+        }
+        if (
+          position === "fixed" &&
+          (!parent || !establishesContainingBlock(styleOf(parent)))
+        )
+          return { ancestors, fixedToViewport: true };
       }
+      if (!parent) return { ancestors, fixedToViewport: false };
+      ancestors.push(parent);
+      node = parent;
     }
-  }
-  return inTheWay;
-}
-
-/**
- * Whether `element`, or a rendered element in it, through open shadow roots
- * and slots, takes pointer events.
- */
-const takesPointerEvents = memoizedInBatch((element: Element): boolean => {
-  if (styleOf(element).pointerEvents !== "none") return true;
-  const takes = (node: Element): boolean => {
-    const style = styleOf(node);
-    if (style.display === "none") return false;
-    if (
-      style.pointerEvents !== "none" &&
-      style.visibility === "visible" &&
-      node.getClientRects().length > 0
-    )
-      return true;
-    return renderedChildren(node).some(takes);
-  };
-  return renderedChildren(element).some(takes);
-});
-
-/** The elements `node` renders as its children in the composed tree. */
-function renderedChildren(node: Element): Element[] {
-  // A slot in a shadow tree renders what is assigned to it, else its own
-  // children as fallback; elsewhere a slot is an ordinary element.
-  if (
-    node instanceof node.ownerDocument.defaultView!.HTMLSlotElement &&
-    "host" in node.getRootNode()
-  ) {
-    const assigned = node.assignedElements();
-    if (assigned.length) return assigned;
-  }
-  return [...(node.shadowRoot ?? node).children];
-}
-
-function inInspector(element: Element): boolean {
-  for (let node: Element | null = element; node; node = parentElement(node))
-    if (node.matches(INSPECTOR_HOST_SELECTOR)) return true;
-  return false;
-}
+  });
 
 /**
  * Package-internal: what blocks both every click on `element`, whatever
@@ -453,103 +154,151 @@ export async function measurePomRoot(
   } catch {
     return absent;
   }
-  return measureReach(element);
+  return measureReach(locator.page(), element);
 }
 
 /**
- * Package-internal: measures `element`; see `ReachMeasurement`. It takes
- * the element as shown: a caller that needs it visible checks that first.
+ * Package-internal: measures `element` for offering it, see
+ * `ReachMeasurement`: the hit test is `page`'s own, at the point a click of
+ * `page` would use. It takes the element as shown: a caller that needs it
+ * visible checks that first.
  */
-export const measureReach = memoizedInBatch(measureReachNow);
+export function measureReach(page: Page, element: Element): ReachMeasurement {
+  return inBatch(measureReach, element, () => {
+    const shown = shownParts(element, "current");
+    if (!isPresent(element, shown)) return absent;
+    const blocker = blockingAncestor(element);
+    if (blocker) return { present: true, available: false, blocker };
+    return inTheWay(clickTarget(page, element, shown));
+  });
+}
 
-function measureReachNow(element: Element): ReachMeasurement {
-  if (!element.isConnected || !element.ownerDocument.defaultView) return absent;
+/**
+ * Package-internal: measures `element`, the one element `locator` resolves
+ * to, for a call that clicks it, see `ReachMeasurement`: when the point the
+ * click would use is in no part of it shown now, the call's own scroll,
+ * `locator.scrollIntoViewIfNeeded()`, is run first, so the hit test is where
+ * the click will land. A scroll that fails leaves the measurement to the
+ * action, whose own error says why.
+ */
+export async function measureReachAtCall(
+  locator: Locator,
+  element: Element
+): Promise<ReachMeasurement> {
+  let shown = shownParts(element, "current");
+  if (!isPresent(element, shown)) return absent;
   const blocker = blockingAncestor(element);
-  let present = false;
-  let inTheWay: Element | undefined;
-  for (const { source, bounds } of renderedBoxes(element)) {
-    const layout = layoutAncestors(source);
-    for (const alignment of alignments) {
-      const shown = scrolledIntoView(source, bounds, layout, alignment);
-      if (!shown) continue;
-      if (blocker) return { present: true, available: false, blocker };
-      present = true;
-      const reach = sampleReach(element, shown.rect, shown.scrolls);
-      if (reach === true) return { present: true, available: true };
-      inTheWay ??= reach;
+  if (blocker) return { present: true, available: false, blocker };
+  const page = locator.page();
+  if (!clickTarget(page, element, shown)) {
+    try {
+      await locator.scrollIntoViewIfNeeded();
+    } catch {
+      return reached;
     }
+    shown = shownParts(element, "current");
   }
-  if (!present) return absent;
-  return inTheWay
-    ? { present, available: false, hit: inTheWay }
-    : { present, available: false };
+  return inTheWay(clickTarget(page, element, shown));
 }
 
-const alignments = [
-  "current",
-  "center",
-  "start",
-  "end",
-] as const satisfies readonly ScrollAlignment[];
-
 /**
- * The boxes a click on `element` could land in: its own, or for one that
- * renders none (such as `display: contents`), its visible descendants'.
+ * Where a click of `page` on `element` would land and what it would hit, when
+ * that point is in a part of the element `shown` now; undefined when it is
+ * not, so there is nothing to test yet: the click scrolls there first.
  */
-function renderedBoxes(element: Element) {
-  const ownRects = [...element.getClientRects()];
-  return ownRects.length
-    ? ownRects.map((bounds) => ({ source: element, bounds }))
-    : [...element.querySelectorAll("*")].flatMap((source) => {
-        const style = styleOf(source);
-        if (style.visibility === "hidden" || style.visibility === "collapse")
-          return [];
-        return [...source.getClientRects()].map((bounds) => ({
-          source,
-          bounds,
-        }));
-      });
+function clickTarget(
+  page: Page,
+  element: Element,
+  shown: readonly Rect[]
+): PointerHitTarget | undefined {
+  const target = pointerHitTarget(page, element);
+  return target &&
+    shown.some(
+      ({ left, right, top, bottom }) =>
+        target.point.x >= left &&
+        target.point.x < right &&
+        target.point.y >= top &&
+        target.point.y < bottom
+    )
+    ? target
+    : undefined;
 }
 
 /**
- * The part of `bounds`, a box of `source`, the viewport would show once its
- * scroll containers scrolled it to `alignment`, and the scrolls that takes;
- * undefined when no part would show.
+ * The measurement `target` makes of a present element: in the way is what
+ * the click would hit instead, unless that is Ayme's own Inspector, which
+ * lets a runtime action through.
+ */
+function inTheWay(target: PointerHitTarget | undefined): ReachMeasurement {
+  const hit = target?.hit;
+  return hit && !inInspector(hit)
+    ? { present: true, available: false, hit }
+    : reached;
+}
+
+function inInspector(element: Element): boolean {
+  for (let node: Element | null = element; node; node = parentElement(node))
+    if (node.matches(INSPECTOR_HOST_SELECTOR)) return true;
+  return false;
+}
+
+/**
+ * Whether some part of `element` shows now (`shown`, its parts that do), or
+ * would once its scroll containers and the viewport scrolled it to their
+ * centre.
+ */
+function isPresent(element: Element, shown: readonly Rect[]): boolean {
+  return shown.length > 0 || shownParts(element, "center").length > 0;
+}
+
+/**
+ * The parts of `element`'s boxes the viewport shows with its scroll
+ * containers at `alignment`, through their clipping. The boxes are its own,
+ * or for an element that renders none (such as `display: contents`) its
+ * contents', as playwright-lite picks its point.
+ */
+function shownParts(element: Element, alignment: ScrollAlignment): Rect[] {
+  if (!element.isConnected || !element.ownerDocument.defaultView) return [];
+  let boxes: DOMRect[] = [...element.getClientRects()];
+  if (!boxes.length && styleOf(element).display === "contents") {
+    const range = element.ownerDocument.createRange();
+    range.selectNodeContents(element);
+    boxes = [...range.getClientRects()];
+  }
+  const layout = layoutAncestors(element);
+  return boxes.flatMap((box) => {
+    const rect = scrolledIntoView(element, box, layout, alignment);
+    return rect ? [rect] : [];
+  });
+}
+
+/**
+ * The part of `box`, a box of `element`, the viewport shows with its scroll
+ * containers at `alignment`; undefined when it shows none of it.
  */
 function scrolledIntoView(
-  source: Element,
-  bounds: DOMRect,
+  element: Element,
+  box: DOMRect,
   { ancestors, fixedToViewport }: ReturnType<typeof layoutAncestors>,
   alignment: ScrollAlignment
-): { rect: Rect; scrolls: Scroll[] } | undefined {
-  const document = source.ownerDocument;
-  const htmlStyle = styleOf(document.documentElement);
-  let rect = clippedBy(source, {
-    left: bounds.left,
-    right: bounds.right,
-    top: bounds.top,
-    bottom: bounds.bottom,
+): Rect | undefined {
+  const document = element.ownerDocument;
+  const html = styleOf(document.documentElement);
+  let rect = clippedBy(element, {
+    left: box.left,
+    right: box.right,
+    top: box.top,
+    bottom: box.bottom,
   });
-  const scrolls: Scroll[] = [];
   for (const ancestor of ancestors) {
     if (!rect || ancestor === document.documentElement) break;
     // The body's overflow scrolls the viewport unless the root element's
     // own overflow takes that over.
-    if (ancestor === document.body && overflowsVisibly(htmlStyle)) continue;
+    if (ancestor === document.body && overflowsVisibly(html)) continue;
     const style = styleOf(ancestor);
-    const { port, scaleX, scaleY } = scrollport(ancestor);
-    scrolls.push(
-      projectIntoPort(
-        rect,
-        port,
-        ancestor,
-        style.overflowX,
-        style.overflowY,
-        scaleX,
-        scaleY,
-        alignment
-      )
-    );
+    const port = scrollport(ancestor);
+    if (alignment === "center")
+      scrollToCentre(rect, port, ancestor, style.overflowX, style.overflowY);
     rect = clip(
       rect,
       port,
@@ -566,12 +315,116 @@ function scrolledIntoView(
     bottom: document.documentElement.clientHeight,
   };
   const scroller = document.scrollingElement;
-  if (scroller && !fixedToViewport)
-    scrolls.push(
-      documentScroll(rect, viewport, scroller, htmlStyle, alignment)
+  if (scroller && !fixedToViewport && alignment === "center") {
+    // The root element's overflow scrolls the viewport, or the body's when
+    // the root's is visible, and a visible one scrolls as auto does.
+    const body = document.body && styleOf(document.body);
+    const overflow = (axis: "overflowX" | "overflowY") => {
+      const value = html[axis] === "visible" ? body?.[axis] : html[axis];
+      return value && value !== "visible" ? value : "auto";
+    };
+    scrollToCentre(
+      rect,
+      viewport,
+      scroller,
+      overflow("overflowX"),
+      overflow("overflowY")
     );
-  const shown = clip(rect, viewport, true, true);
-  return shown && { rect: shown, scrolls };
+  }
+  return clip(rect, viewport, true, true);
+}
+
+/**
+ * Moves `rect` as the scroll of `scroller` that centres it in `port` would,
+ * within the scroll range on each axis the overflow lets scroll.
+ */
+function scrollToCentre(
+  rect: Rect,
+  port: Rect,
+  scroller: Element,
+  overflowX: string,
+  overflowY: string
+) {
+  const scrollable = (overflow: string) =>
+    /^(auto|scroll|overlay)$/.test(overflow);
+  const style = styleOf(scroller);
+  const reversed =
+    style.direction === "rtl" || style.writingMode === "vertical-rl";
+  const shift = (
+    start: number,
+    end: number,
+    portStart: number,
+    portEnd: number,
+    current: number,
+    maximum: number,
+    reverse: boolean
+  ) => {
+    if (maximum <= 0) return 0;
+    const desired = current + (start + end) / 2 - (portStart + portEnd) / 2;
+    const next = Math.max(
+      reverse ? -maximum : 0,
+      Math.min(reverse ? 0 : maximum, desired)
+    );
+    return current - next;
+  };
+  const x = scrollable(overflowX)
+    ? shift(
+        rect.left,
+        rect.right,
+        port.left,
+        port.right,
+        scroller.scrollLeft,
+        scroller.scrollWidth - scroller.clientWidth,
+        reversed
+      )
+    : 0;
+  const y = scrollable(overflowY)
+    ? shift(
+        rect.top,
+        rect.bottom,
+        port.top,
+        port.bottom,
+        scroller.scrollTop,
+        scroller.scrollHeight - scroller.clientHeight,
+        false
+      )
+    : 0;
+  rect.left += x;
+  rect.right += x;
+  rect.top += y;
+  rect.bottom += y;
+}
+
+/** The box `ancestor` scrolls its content within, in the viewport's coordinates. */
+function scrollport(ancestor: Element): Rect {
+  const box = ancestor.getBoundingClientRect();
+  return {
+    left: box.left + ancestor.clientLeft,
+    top: box.top + ancestor.clientTop,
+    right: box.left + ancestor.clientLeft + ancestor.clientWidth,
+    bottom: box.top + ancestor.clientTop + ancestor.clientHeight,
+  };
+}
+
+function overflowsVisibly(style: CSSStyleDeclaration) {
+  return style.overflowX === "visible" && style.overflowY === "visible";
+}
+
+function clip(
+  rect: Rect,
+  port: Rect,
+  x: boolean,
+  y: boolean
+): Rect | undefined {
+  const result = {
+    left: x ? Math.max(rect.left, port.left) : rect.left,
+    right: x ? Math.min(rect.right, port.right) : rect.right,
+    top: y ? Math.max(rect.top, port.top) : rect.top,
+    bottom: y ? Math.min(rect.bottom, port.bottom) : rect.bottom,
+  };
+  return result.right > result.left && result.bottom > result.top
+    ? result
+    : undefined;
 }
 
 /**
@@ -584,59 +437,30 @@ function clippedBy(element: Element, rect: Rect): Rect | undefined {
   return bounds ? clip(rect, bounds, true, true) : rect;
 }
 
-function overflowsVisibly(style: CSSStyleDeclaration) {
-  return style.overflowX === "visible" && style.overflowY === "visible";
-}
-
-/**
- * The box `ancestor` scrolls its content within, in the viewport's
- * coordinates, and how much a transform scales it.
- */
-function scrollport(ancestor: Element) {
-  const box = ancestor.getBoundingClientRect();
-  const width = (ancestor as HTMLElement).offsetWidth || box.width;
-  const height = (ancestor as HTMLElement).offsetHeight || box.height;
-  const scaleX = width ? box.width / width : 1;
-  const scaleY = height ? box.height / height : 1;
-  const port: Rect = {
-    left: box.left + ancestor.clientLeft * scaleX,
-    top: box.top + ancestor.clientTop * scaleY,
-    right: box.left + (ancestor.clientLeft + ancestor.clientWidth) * scaleX,
-    bottom: box.top + (ancestor.clientTop + ancestor.clientHeight) * scaleY,
+// ponytail: rectangular px/% inset clips and collapsed basic shapes only;
+// other clip geometry needs browser support rather than a CSS shape parser.
+function clipBounds(element: Element): Rect | null | undefined {
+  const style = styleOf(element);
+  if (/^(?:circle|ellipse)\(0(?:px|%)?(?:\s|\))/.test(style.clipPath))
+    return null;
+  const inset = /^inset\(([^()]*)\)$/
+    .exec(style.clipPath)?.[1]
+    ?.split(" round ")[0];
+  if (!inset) return;
+  const values = inset.trim().split(/\s+/);
+  if (!values.every((value) => /^-?[\d.]+(?:px|%)?$/.test(value))) return;
+  const [top, right = top, bottom = top, left = right] = values;
+  const box = element.getBoundingClientRect();
+  const distance = (value: string, size: number, layoutSize: number) =>
+    value.endsWith("%")
+      ? (Number.parseFloat(value) * size) / 100
+      : Number.parseFloat(value) * (layoutSize ? size / layoutSize : 1);
+  const width = (element as HTMLElement).offsetWidth;
+  const height = (element as HTMLElement).offsetHeight;
+  return {
+    left: box.left + distance(left!, box.width, width),
+    right: box.right - distance(right!, box.width, width),
+    top: box.top + distance(top!, box.height, height),
+    bottom: box.bottom - distance(bottom!, box.height, height),
   };
-  return { port, scaleX, scaleY };
-}
-
-/**
- * The document scroll that brings `rect` into `viewport`: the root
- * element's overflow, or the body's when the root's is visible, and a
- * visible one scrolls the viewport as auto does.
- */
-function documentScroll(
-  rect: Rect,
-  viewport: Rect,
-  scroller: Element,
-  htmlStyle: CSSStyleDeclaration,
-  alignment: ScrollAlignment
-) {
-  const document = scroller.ownerDocument;
-  const bodyStyle = document.body && styleOf(document.body);
-  const overflowX =
-    htmlStyle.overflowX === "visible"
-      ? (bodyStyle?.overflowX ?? "visible")
-      : htmlStyle.overflowX;
-  const overflowY =
-    htmlStyle.overflowY === "visible"
-      ? (bodyStyle?.overflowY ?? "visible")
-      : htmlStyle.overflowY;
-  return projectIntoPort(
-    rect,
-    viewport,
-    scroller,
-    overflowX === "visible" ? "auto" : overflowX,
-    overflowY === "visible" ? "auto" : overflowY,
-    1,
-    1,
-    alignment
-  );
 }

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
+import { listElementTools } from "./browserTools";
 import { reaches } from "./elementReach";
 import { errorText } from "./errors";
 import { buildToolOptions } from "./goalLoopOperations";
@@ -8,6 +9,7 @@ import { planArguments } from "./goalLoopQuestions";
 import { lookAtPageStateForDocument } from "./pageState";
 import { agentTools } from "./publication.testSupport";
 import { listElementToolTargets } from "./publishedTools";
+import { requireAymeRuntimePage } from "./registry";
 import { createAyme } from "./runtime";
 
 // A refusal answers before Playwright's actionability wait would time out.
@@ -25,6 +27,10 @@ const RENAME_DIALOG = `
   </dialog>
 `;
 
+// Browser Tools offer and accept elements by playwright-lite's own hit test
+// at the point it would click (ADR-0040): an element shown now is tested
+// where it is; one below the fold is offered, and tested once the call has
+// scrolled to it.
 describe("Browser Tools on elements a click would not reach, in Chromium", () => {
   let stop: () => void;
   let listening: AbortController;
@@ -48,6 +54,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     listening.abort();
     stop();
     document.body.innerHTML = "";
+    window.scrollTo(0, 0);
   });
 
   const call = (name: string, input: unknown) => agentTools().call(name, input);
@@ -178,6 +185,83 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     }
   );
 
+  // The drift of ayme-labs/ayme#828: the button was offered because a corner
+  // of it was bare, and the click, which lands at its centre, timed out.
+  it("neither offers nor clicks a button covered only where the click would land, naming the cover", async () => {
+    document.body.innerHTML = `
+      <style>
+        #save { position: fixed; left: 0; top: 0; width: 200px; height: 40px; }
+        #badge { position: fixed; left: 90px; top: 10px; width: 20px; height: 20px; }
+      </style>
+      <button id="save" type="button">Save</button>
+      <div id="badge" role="status" aria-label="Saving"></div>
+    `;
+    const save = await refOf("button", "Save");
+    const badge = await refOf("status", "Saving");
+
+    expect((await listElementToolTargets()).get("click")).not.toContain(save);
+    const { error, elapsed } = await refusal("click", save);
+    expect(error).toBe(
+      `RuntimeStateError: click is unavailable: a click would not reach it; ${badge} is in the way.`
+    );
+    expect(clicks).toEqual([]);
+    expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
+  });
+
+  it("offers a button covered away from where the click would land, and clicks it", async () => {
+    document.body.innerHTML = `
+      <style>
+        #save { position: fixed; left: 0; top: 0; width: 200px; height: 40px; }
+        #badge { position: fixed; left: 0; top: 0; width: 20px; height: 20px; }
+      </style>
+      <button id="save" type="button">Save</button>
+      <div id="badge"></div>
+    `;
+    const save = await refOf("button", "Save");
+
+    expect((await listElementToolTargets()).get("click")).toContain(save);
+    await call("click", { target: save });
+    expect(clicks).toEqual(["save"]);
+  });
+
+  it("offers a button below the fold and clicks it, scrolling to it first", async () => {
+    document.body.innerHTML = `
+      <div style="height: 3000px"></div>
+      <button id="save" type="button">Save</button>
+    `;
+    const save = await refOf("button", "Save");
+
+    expect((await listElementToolTargets()).get("click")).toContain(save);
+    expect(window.scrollY).toBe(0);
+    await call("click", { target: save });
+    expect(clicks).toEqual(["save"]);
+    expect(window.scrollY).toBeGreaterThan(0);
+  });
+
+  it("offers a button below the fold that is covered where it will land, and refuses the click at once after the scroll, naming the cover", async () => {
+    document.body.innerHTML = `
+      <style>
+        #band { position: fixed; left: 0; right: 0; top: 30%; height: 40%; }
+      </style>
+      <div style="height: 3000px"></div>
+      <button id="save" type="button">Save</button>
+      <div style="height: 3000px"></div>
+      <div id="band" role="dialog" aria-label="Saving"></div>
+    `;
+    const save = await refOf("button", "Save");
+    const band = await refOf("dialog", "Saving");
+
+    // Nothing shows of it now, so there is no point to hit-test yet.
+    expect((await listElementToolTargets()).get("click")).toContain(save);
+    const { error, elapsed } = await refusal("click", save);
+    expect(error).toBe(
+      `RuntimeStateError: click is unavailable: a click would not reach it; ${band} is in the way.`
+    );
+    expect(clicks).toEqual([]);
+    expect(window.scrollY).toBeGreaterThan(0);
+    expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
+  });
+
   it("sees an overlay removed between two listings in the same task", async () => {
     document.body.innerHTML = `
       <style>
@@ -225,12 +309,12 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     expect(value("#note")).toBe("");
   });
 
-  // A custom checkbox: the input transparent under the styled box beside it,
-  // which leaves part of the input bare, so Playwright's check reaches it.
+  // A custom checkbox: the input transparent beside the styled box, so the
+  // click, at the input's centre, reaches it.
   it("offers and checks a transparent checkbox the styled box sits beside", async () => {
     document.body.innerHTML = `
       <style>
-        .box { display: inline-block; width: 20px; height: 20px; border: 1px solid; }
+        .box { display: inline-block; width: 20px; height: 20px; border: 1px solid; margin-left: 24px; }
       </style>
       <label>
         <input id="agree" type="checkbox" style="opacity: 0; position: absolute">
@@ -265,102 +349,68 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     );
   });
 
-  it("neither offers nor clicks a button without pointer events on a page that scrolls", async () => {
+  it("neither offers nor clicks a shown button without pointer events, naming its ancestor", async () => {
     document.body.innerHTML = `
-      <div style="height: 200px"></div>
-      <button id="ghost" type="button" style="pointer-events: none">Ghost</button>
+      <div role="region" aria-label="Footer">
+        <button id="ghost" type="button" style="pointer-events: none">Ghost</button>
+      </div>
       <div style="height: 3000px"></div>
     `;
     const ghost = await refOf("button", "Ghost");
+    const footer = await refOf("region", "Footer");
 
     expect((await listElementToolTargets()).get("click")).not.toContain(ghost);
     const { error, elapsed } = await refusal("click", ghost);
     // What a click hits instead is the button's ancestor.
-    expect(error).toMatch(
-      /^RuntimeStateError: click is unavailable: a click would not reach it/
+    expect(error).toBe(
+      `RuntimeStateError: click is unavailable: a click would not reach it; ${footer} is in the way.`
     );
     expect(clicks).toEqual([]);
     expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
   });
 
-  it("still reaches a container without pointer events below the fold through a button in it that takes them", async () => {
+  it("offers a button without pointer events below the fold, and refuses the click at once after the scroll, naming its ancestor", async () => {
     document.body.innerHTML = `
       <div style="height: 3000px"></div>
-      <div id="toolbar" style="pointer-events: none">
-        <button type="button" style="pointer-events: auto">Inside</button>
+      <div role="region" aria-label="Footer">
+        <button id="ghost" type="button" style="pointer-events: none">Ghost</button>
       </div>
     `;
+    const ghost = await refOf("button", "Ghost");
+    const footer = await refOf("region", "Footer");
 
-    expect(reaches(document.querySelector("#toolbar")!, "click")).toBe(true);
+    expect((await listElementToolTargets()).get("click")).toContain(ghost);
+    const { error, elapsed } = await refusal("click", ghost);
+    expect(error).toBe(
+      `RuntimeStateError: click is unavailable: a click would not reach it; ${footer} is in the way.`
+    );
+    expect(clicks).toEqual([]);
+    expect(window.scrollY).toBeGreaterThan(0);
+    expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
   });
 
-  it("still reaches such a container through a button in its open shadow root", async () => {
+  // The Inspector's panel takes pointer events, but lets a runtime action
+  // through while its target is under it, so it is never in the way.
+  it("does not count the Inspector host as in the way", async () => {
     document.body.innerHTML = `
-      <div style="height: 3000px"></div>
-      <div id="toolbar" style="pointer-events: none"></div>
+      <button id="save" type="button" style="position: fixed; left: 0; top: 0">Save</button>
+      <ayme-inspector data-ayme-inspector-host style="position: fixed; inset: 0; pointer-events: none; z-index: 2147483647"></ayme-inspector>
     `;
-    document
-      .querySelector("#toolbar")!
-      .attachShadow({ mode: "open" }).innerHTML =
-      `<button type="button" style="pointer-events: auto">Inside</button>`;
+    const host = document.querySelector("ayme-inspector")!;
+    host.attachShadow({ mode: "closed" }).innerHTML =
+      `<div style="position: fixed; inset: 0; pointer-events: auto; background: white"></div>`;
+    const save = document.querySelector("#save")!;
+    expect(document.elementFromPoint(20, 10)).toBe(host);
 
-    expect(reaches(document.querySelector("#toolbar")!, "click")).toBe(true);
-  });
-
-  it("still reaches such a container in a shadow root through a button assigned to its slot", async () => {
-    document.body.innerHTML = `
-      <div style="height: 3000px"></div>
-      <div id="host"><button type="button" style="pointer-events: auto">Inside</button></div>
-    `;
-    const shadow = document
-      .querySelector("#host")!
-      .attachShadow({ mode: "open" });
-    shadow.innerHTML = `<div id="toolbar" style="pointer-events: none"><slot></slot></div>`;
-
-    expect(reaches(shadow.querySelector("#toolbar")!, "click")).toBe(true);
-  });
-
-  it.each([
-    ["a slot outside a shadow tree", ""],
-    ["a slot's fallback content", "shadow"],
-  ])(
-    "still reaches such a container through a button in %s",
-    async (_kind, where) => {
-      const html = `<div id="toolbar" style="pointer-events: none"><slot><button type="button" style="pointer-events: auto">Inside</button></slot></div>`;
-      document.body.innerHTML = `<div style="height: 3000px"></div><div id="host"></div>`;
-      const host = document.querySelector("#host")!;
-      const root = where ? host.attachShadow({ mode: "open" }) : host;
-      root.innerHTML = html;
-
-      expect(reaches(root.querySelector("#toolbar")!, "click")).toBe(true);
-    }
-  );
-
-  it("walks past an SVG element named slot in a shadow tree", async () => {
-    document.body.innerHTML = `<div style="height: 3000px"></div><div id="host"></div>`;
-    const shadow = document
-      .querySelector("#host")!
-      .attachShadow({ mode: "open" });
-    shadow.innerHTML = `<div id="toolbar" style="pointer-events: none"><svg width="20" height="20"><slot></slot><rect width="20" height="20" style="pointer-events: auto"></rect></svg></div>`;
-
-    expect(reaches(shadow.querySelector("#toolbar")!, "click")).toBe(true);
-  });
-
-  it("does not reach a button without pointer events through a hidden element in it", async () => {
-    document.body.innerHTML = `
-      <div style="height: 200px"></div>
-      <button id="ghost" type="button" style="pointer-events: none">
-        Ghost<span style="display: none; pointer-events: auto">hidden</span>
-      </button>
-      <div style="height: 3000px"></div>
-    `;
-
-    expect(reaches(document.querySelector("#ghost")!, "click")).toBe(false);
+    expect(reaches(requireAymeRuntimePage(), save, "click")).toBe(true);
+    expect((await listElementToolTargets()).get("click")).toContain(
+      await refOf("button", "Save")
+    );
   });
 
   // Playwright's own check never reached these either: the box takes the
-  // click, or the clip leaves nothing to click. The tool now refuses at
-  // once instead of timing out.
+  // click, or the clip leaves nothing to click. The tool refuses at once
+  // instead of timing out.
   it.each([
     [
       "the styled box covers whole",
@@ -439,14 +489,15 @@ describe("Element reach timing in Chromium", () => {
   }
 
   // An open modal blocks every click before any hit-testing; a plain overlay
-  // makes each element sample every point at every scroll alignment.
+  // is hit at the click point of every element shown now, and leaves the
+  // ones below the fold to the call.
   it.each([
-    ["uncovered", "none", BUTTONS + 4],
-    ["behind an open modal", "modal", 1],
-    ["under a fixed overlay", "overlay", 0],
+    ["uncovered", "none"],
+    ["behind an open modal", "modal"],
+    ["under a fixed overlay", "overlay"],
   ] as const)(
     "lists and plans the click targets of 200 buttons %s",
-    async (kind, cover, offeredCount) => {
+    async (kind, cover) => {
       longList(cover);
       const capture = await lookAtPageStateForDocument(document);
       const click = buildToolOptions().find(({ key }) => key === "click")!;
@@ -455,12 +506,13 @@ describe("Element reach timing in Chromium", () => {
         args: click.tool.args.filter((arg) => arg.name === "target"),
         requiredParams: ["target"],
       };
+      const page = requireAymeRuntimePage();
 
       const listing = await medianMs(() => listElementToolTargets(capture));
       const planning = await medianMs(() => planArguments(targetOnly, capture));
       const measuring = await medianMs(() => {
         for (const element of capture.elementsByRef.values())
-          reaches(element, "click");
+          reaches(page, element, "click");
       });
       const offered = (await listElementToolTargets(capture)).get("click")!;
 
@@ -470,9 +522,24 @@ describe("Element reach timing in Chromium", () => {
           `reaches over all ${capture.elementsByRef.size} refs ${measuring.toFixed(1)}ms, ` +
           `median of 5; ${offered.length} click targets`
       );
-      expect(offered.length).toBe(offeredCount);
-      // Loose, so a slow CI runner does not fail it: under the overlay a
-      // listing takes nearly 2s locally.
+      const { matches } = listElementTools().find(
+        ({ tool }) => tool.name === "click"
+      )!;
+      const belowTheFold = [...capture.elementsByRef.values()].filter(
+        (element) =>
+          matches!(element) &&
+          element.getBoundingClientRect().top >=
+            document.documentElement.clientHeight
+      );
+      expect(belowTheFold.length).toBeGreaterThan(0);
+      expect(offered.length).toBe(
+        cover === "none"
+          ? BUTTONS + 4
+          : cover === "modal"
+            ? 1
+            : belowTheFold.length
+      );
+      // Loose, so a slow CI runner does not fail it.
       expect(listing).toBeLessThan(5000);
       expect(planning).toBeLessThan(5000);
       expect(measuring).toBeLessThan(5000);

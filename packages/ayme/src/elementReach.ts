@@ -1,8 +1,16 @@
+import type { Locator, Page } from "@playwright/test";
+import { resolveLocatorElements } from "@ayme-dev/playwright-lite/internal";
 import { containsThroughShadow, parentElement } from "./composedTree";
-import { obstructionReason, type LatestRefLookup } from "./pomInstance";
+import { latestPageStateRef } from "./pageState";
+import {
+  assertAvailable,
+  obstructionReason,
+  type LatestRefLookup,
+} from "./pomInstance";
 import {
   blockingAncestor,
   measureReach,
+  measureReachAtCall,
   type ReachMeasurement,
 } from "./reachMeasurement";
 
@@ -31,16 +39,66 @@ export function inTheWayOf(
 }
 
 /**
- * Package-internal: the Availability Reason for sending `input` to `element`,
- * one element of the page a Browser Tool addresses, or undefined while the
- * input would reach it. The same measurement and wording as a Page Object
- * Root's (ADR-0035): it never names a kind of widget.
+ * Package-internal: whether `input` would reach `element` now, as the Goal
+ * Loop and the Inspector offer refs for the tools that need one; the hit
+ * test is `page`'s own (ADR-0040).
  */
-export function unreachableReason(
+export function reaches(
+  page: Page,
+  element: Element,
+  input: ElementInput
+): boolean {
+  return input === "focus"
+    ? !blockingAncestor(element)
+    : measureReach(page, element).available;
+}
+
+/**
+ * Package-internal: refuses the call of `toolName` that sends `input` to
+ * `element`, the one element `locator` resolves to, when the input would not
+ * reach it, with the Availability Reason a Page Object Tool gives: the same
+ * measurement and wording as a Page Object Root's (ADR-0035), which never
+ * names a kind of widget. A click's reach is measured where the click would
+ * land: an element that shows no part now is scrolled into view first, as
+ * the call's own action would scroll it.
+ */
+export async function assertReachable(
+  toolName: string,
+  locator: Locator,
+  element: Element,
+  input: ElementInput
+): Promise<void> {
+  const reason = await unreachableReason(
+    locator,
+    element,
+    latestPageStateRef,
+    input
+  );
+  if (reason !== undefined)
+    assertAvailable(toolName, { present: true, available: false, reason });
+}
+
+/**
+ * Package-internal: refuses the call of the Page Object Tool `toolName` when
+ * a click would not reach `root`, its Page Object Root, as `assertReachable`
+ * does for an element. A root that is not one element now is left to the
+ * observation that listed the tool and to the action itself.
+ */
+export async function assertRootReachable(
+  toolName: string,
+  root: Locator
+): Promise<void> {
+  const elements = resolveLocatorElements(root);
+  if (elements.length === 1)
+    await assertReachable(toolName, root, elements[0]!, "click");
+}
+
+async function unreachableReason(
+  locator: Locator,
   element: Element,
   latestRefOf: LatestRefLookup,
   input: ElementInput
-): string | undefined {
+): Promise<string | undefined> {
   if (input === "focus") {
     const blocker = blockingAncestor(element);
     if (!blocker) return undefined;
@@ -49,19 +107,9 @@ export function unreachableReason(
       ? "it cannot take focus"
       : `it cannot take focus; ${ref} is in the way`;
   }
-  const measurement = measureReach(element);
+  const measurement = await measureReachAtCall(locator, element);
   if (measurement.available) return undefined;
   return obstructionReason(inTheWayOf(measurement, element), latestRefOf);
-}
-
-/**
- * Package-internal: whether `input` would reach `element`, as the Goal Loop
- * and the Inspector offer refs for the tools that need one.
- */
-export function reaches(element: Element, input: ElementInput): boolean {
-  return input === "focus"
-    ? !blockingAncestor(element)
-    : measureReach(element).available;
 }
 
 /**

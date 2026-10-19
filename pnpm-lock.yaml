@@ -452,8 +452,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/mcp
       "@ayme-dev/playwright-lite":
-        specifier: github:ayme-labs/playwright-lite#7834ce7866e47e4b8b95523342252d37ae5a3bbd
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/7834ce7866e47e4b8b95523342252d37ae5a3bbd(@playwright/test@1.64.0)
+        specifier: github:ayme-labs/playwright-lite#3863d47ec65cf523379d04359d9e7bbe3eb51cdd
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/3863d47ec65cf523379d04359d9e7bbe3eb51cdd(@playwright/test@1.64.0)
       "@ayme-dev/vue":
         specifier: workspace:*
         version: link:../../packages/vue
@@ -735,8 +735,8 @@ importers:
         specifier: workspace:*
         version: link:../mcp
       "@ayme-dev/playwright-lite":
-        specifier: github:ayme-labs/playwright-lite#7834ce7866e47e4b8b95523342252d37ae5a3bbd
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/7834ce7866e47e4b8b95523342252d37ae5a3bbd(@playwright/test@1.64.0)
+        specifier: github:ayme-labs/playwright-lite#3863d47ec65cf523379d04359d9e7bbe3eb51cdd
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/3863d47ec65cf523379d04359d9e7bbe3eb51cdd(@playwright/test@1.64.0)
       "@ayme-dev/test-config":
         specifier: workspace:*
         version: link:../test-config
@@ -937,8 +937,8 @@ importers:
         specifier: workspace:*
         version: link:../eslint-config
       "@ayme-dev/playwright-lite":
-        specifier: github:ayme-labs/playwright-lite#7834ce7866e47e4b8b95523342252d37ae5a3bbd
-        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/7834ce7866e47e4b8b95523342252d37ae5a3bbd(@playwright/test@1.64.0)
+        specifier: github:ayme-labs/playwright-lite#3863d47ec65cf523379d04359d9e7bbe3eb51cdd
+        version: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/3863d47ec65cf523379d04359d9e7bbe3eb51cdd(@playwright/test@1.64.0)
       "@ayme-dev/test-config":
         specifier: workspace:*
         version: link:../test-config
@@ -1598,12 +1598,12 @@ packages:
       }
     engines: { node: ^22.13.0 || >=24.0.0 }
 
-  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/7834ce7866e47e4b8b95523342252d37ae5a3bbd":
+  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/3863d47ec65cf523379d04359d9e7bbe3eb51cdd":
     resolution:
       {
         gitHosted: true,
-        integrity: sha512-PGrNrwGUWXb6VHsLGH31qQxdDeBxo7c5iiVvZRWaOqu9s9aiwNn+SB/vJ++MNiOFbpFkHCOv/tihJbQ8C/AL1g==,
-        tarball: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/7834ce7866e47e4b8b95523342252d37ae5a3bbd,
+        integrity: sha512-vmGfZMszmcEJfwV7HqR0yRedtrOkGffMon2Uz1DG+Yu+PCZAObidN0mSW8OM23B4/38Yfl/3zlt7ecFECdSlgQ==,
+        tarball: https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/3863d47ec65cf523379d04359d9e7bbe3eb51cdd,
       }
     version: 0.9.1
     peerDependencies:
@@ -14278,7 +14278,7 @@ snapshots:
       is-potential-custom-element-name: 1.0.1
       lru-cache: 11.5.2
 
-  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/7834ce7866e47e4b8b95523342252d37ae5a3bbd(@playwright/test@1.64.0)":
+  "@ayme-dev/playwright-lite@https://codeload.github.com/ayme-labs/playwright-lite/tar.gz/3863d47ec65cf523379d04359d9e7bbe3eb51cdd(@playwright/test@1.64.0)":
     dependencies:
       "@playwright/test": 1.64.0
 
@@ -17835,9 +17835,9 @@ snapshots:
       obug: 2.1.4
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
+      vitest: 4.1.11(@types/node@24.13.3)(@vitest/browser-playwright@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1(@noble/hashes@1.8.0))(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))
     optionalDependencies:
-      "@vitest/browser": 4.1.11(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
+      "@vitest/browser": 4.1.11(vite@8.3.0(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.104.1)(sass@1.104.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.11)
 
   "@vitest/expect@4.1.11":
     dependencies:
