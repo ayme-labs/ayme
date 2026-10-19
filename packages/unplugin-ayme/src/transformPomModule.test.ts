@@ -309,12 +309,6 @@ describe("a build without Ayme", () => {
     expect(code).toContain("Add an item to the list.");
     expect(code).not.toContain("@ayme-dev/ayme/absent");
   });
-
-  it("rejects an include that is not a boolean", () => {
-    expect(() =>
-      createPomTransform({ include: "yes" as unknown as boolean })
-    ).toThrow(new TypeError("include must be a boolean"));
-  });
 });
 
 describe("the absent entry of a specifier", () => {

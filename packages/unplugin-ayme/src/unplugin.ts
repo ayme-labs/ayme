@@ -79,7 +79,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   // Upgrade: also drop the Programs when a package manifest or lockfile changes.
   const programs: PomPrograms = new Map();
   const transformPom = createPomTransform(
-    options,
+    { ...options, include },
     report === "none"
       ? undefined
       : (fileName, methods) => {
@@ -179,7 +179,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         // the first page load would find them late and reload.
         const injected =
           env?.command === "serve"
-            ? installedImports(injectedImport(options), root, exclude)
+            ? installedImports(injectedImport(include), root, exclude)
             : [];
         const settings = await resolvePlaywrightSettings(
           options.playwright,

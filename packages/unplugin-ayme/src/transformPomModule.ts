@@ -52,8 +52,9 @@ export type PomTransformOptions = PomCompilerOptions & {
 };
 
 /**
- * The `include` option as a boolean. Every adapter validates it the same
- * way, so a typo never silently picks the default.
+ * The `include` option as a boolean. Each adapter validates it once, where
+ * it takes its options, so a typo never silently picks the default, and
+ * passes the boolean on from there.
  */
 export function includeOption(value: unknown): boolean {
   if (value === undefined) return false;
@@ -65,20 +66,19 @@ export function includeOption(value: unknown): boolean {
 /**
  * The one line a build prints saying whether Ayme is in it and why, so a
  * build log shows the decision before anything reaches users. Each adapter
- * prints it once per build.
+ * prints it once per build, with the option as given, once validated.
  */
-export function includeLine(value: unknown): string {
-  if (includeOption(value))
-    return "[ayme] Ayme is in this build: include is true.";
-  return `[ayme] Ayme is not in this build: include is ${value === undefined ? "not set" : "false"}.`;
+export function includeLine(include: boolean | undefined): string {
+  if (include) return "[ayme] Ayme is in this build: include is true.";
+  return `[ayme] Ayme is not in this build: include is ${include === undefined ? "not set" : "false"}.`;
 }
 
 /**
  * The bare specifier the transform adds to a Page Object module. Vite's
  * dependency scan reads sources untransformed, so it must be told about it.
  */
-export function injectedImport(options: PomTransformOptions) {
-  return includeOption(options.include) ? REGISTRATION_MODULE : ABSENT_MODULE;
+export function injectedImport(include: boolean) {
+  return include ? REGISTRATION_MODULE : ABSENT_MODULE;
 }
 
 /**
@@ -89,14 +89,15 @@ export type PomPrograms = Map<string, ts.Program>;
 
 /**
  * The source transform shared by Vite, Angular and the Turbopack loader. With
- * `programs`, transforms of one tsconfig project share a Program.
+ * `programs`, transforms of one tsconfig project share a Program. The
+ * adapter has validated `include` before it gets here.
  */
 export function createPomTransform(
   options: PomTransformOptions = {},
   onSkipped?: (fileName: string, methods: SkippedPomMethod[]) => void,
   programs?: PomPrograms
 ) {
-  const include = includeOption(options.include);
+  const include = options.include === true;
   return (
     code: string,
     id: string,

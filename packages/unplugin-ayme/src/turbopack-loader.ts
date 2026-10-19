@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   createPomTransform,
   includeLine,
+  includeOption,
   type PomTransformOptions,
 } from "./transformPomModule";
 import { transpilePomModule } from "./transpilePomModule";
@@ -21,11 +22,12 @@ let announced = false;
 /** The .ts POM loader for Next.js. Configure it on Turbopack's browser graph only. */
 export default function turbopackLoader(this: LoaderContext, source: string) {
   const options = this.getOptions();
+  const include = includeOption(options.include);
   if (!announced) {
     console.info(includeLine(options.include));
     announced = true;
   }
-  const transformed = createPomTransform(options)(
+  const transformed = createPomTransform({ ...options, include })(
     source,
     this.resourcePath,
     (dependencies) => {
