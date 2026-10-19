@@ -65,10 +65,17 @@ export { default } from "@ayme-dev/unplugin-ayme/angular";
 ```
 
 ```jsonc
-"plugins": [{ "path": "./ayme.plugin.mjs", "options": { "tsconfigPath": "tsconfig.app.json", "include": true } }]
+"options": {
+  "plugins": [{ "path": "./ayme.plugin.mjs", "options": { "tsconfigPath": "tsconfig.app.json" } }]
+},
+"configurations": {
+  "development": {
+    "plugins": [{ "path": "./ayme.plugin.mjs", "options": { "tsconfigPath": "tsconfig.app.json", "include": true } }]
+  }
+}
 ```
 
-Reference it in this object form only: custom-esbuild calls a plain string entry with the builder's options, which the plugin rejects. `tsconfigPath` is the tsconfig the compiler reads, resolved from the workspace root. Point it at the app's own tsconfig, which Angular's watcher also reads, so editing a type a Page Object Model imports updates its schema during `ng serve`. `include` is whether the build includes Ayme, false by default; [Include Ayme in a build](#include-ayme-in-a-build) shows how the production configuration leaves it out. Unknown options, a non-string `tsconfigPath` and a non-boolean `include` throw a `TypeError`.
+Reference it in this object form only: custom-esbuild calls a plain string entry with the builder's options, which the plugin rejects. `tsconfigPath` is the tsconfig the compiler reads, resolved from the workspace root. Point it at the app's own tsconfig, which Angular's watcher also reads, so editing a type a Page Object Model imports updates its schema during `ng serve`. `include` is whether the build includes Ayme, false by default: the entry under the build target's `options` leaves it out, so `ng build` is a build without Ayme, and the development configuration's entry, which `ng serve` uses, sets it. A configuration's `plugins` array replaces the option's, so the development entry repeats `tsconfigPath`. [Include Ayme in a build](#include-ayme-in-a-build) covers the other configurations. Unknown options, a non-string `tsconfigPath` and a non-boolean `include` throw a `TypeError`.
 
 The plugin compiles Page Object Models imported with relative paths or through tsconfig `paths`, skips modules under `node_modules`, and leaves every other module, including Angular components, to Angular's compiler. It compiles only the browser bundles; the server bundles keep Angular's own output. It sets no Playwright settings: pass them through `provideAyme({ pageFactory })`.
 
@@ -117,7 +124,7 @@ With `include: true`, the build carries the runtime, with Playwright in the brow
 
 Nothing is inferred from the bundler: Vite treats every `vite build` as production, staging included, and Next.js tells only its dev server from a build, so no mode could say what your team means. A config file is code, and the rule for staging, test or any other mode is the boolean you compute in it. The option is checked on built output, in the plugin's own tests and on a built example app. A value that is not a boolean throws a `TypeError`.
 
-A build without Ayme guarantees nothing about Page Object Models the plugin does not compile, such as classes under `node_modules` or ones a bundler rule keeps from it, nor about Playwright code the app imports outside a Page Object Model. Turning publication off at runtime removes nothing; `include` is the one way to decide.
+A build without Ayme guarantees nothing about Page Object Models the plugin does not compile, such as classes under `node_modules` or ones a bundler rule keeps from it, nor about Playwright code the app imports outside a Page Object Model. Turning publication off at runtime removes nothing; `include` is the one way to decide. Every build, and a dev server when it starts, prints one line saying what it decided and why, such as `[ayme] Ayme is not in this build: include is not set.`, so a build log shows it before anything reaches users.
 
 On Vite, keep Ayme in the dev server and out of every `vite build`:
 
@@ -135,20 +142,15 @@ export default defineConfig(({ mode }) => ({
 }));
 ```
 
-On Angular, the plugin entry under the builder's `options`, which `ng serve` and the development configuration use, keeps Ayme, and the production configuration gets its own entry without `include` in `angular.json`:
+On Angular, the plugin entry under the build target's `options` has no `include`, so every configuration is a build without Ayme unless it carries its own entry, and the development configuration, which `ng serve` uses, carries one with `"include": true`, as [Angular](#angular) shows and `ng add` writes. A staging configuration that keeps Ayme repeats the development entry:
 
 ```jsonc
-"options": {
-  "plugins": [{ "path": "./ayme.plugin.mjs", "options": { "tsconfigPath": "tsconfig.app.json", "include": true } }]
-},
 "configurations": {
-  "production": {
-    "plugins": [{ "path": "./ayme.plugin.mjs", "options": { "tsconfigPath": "tsconfig.app.json" } }]
+  "staging": {
+    "plugins": [{ "path": "./ayme.plugin.mjs", "options": { "tsconfigPath": "tsconfig.app.json", "include": true } }]
   }
 }
 ```
-
-A staging configuration that keeps Ayme repeats the entry with `"include": true`.
 
 On Next.js, the config function computes the boolean from the phase Next passes it. The loader takes `include`, and because a loader cannot alias, `turbopack.resolveAlias` points the runtime's two entries and the framework package at their absent entries for the browser when the build is without Ayme:
 

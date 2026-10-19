@@ -14,6 +14,7 @@ import {
   ABSENT_MODULE,
   FRAMEWORK_MODULES,
   createPomTransform,
+  includeLine,
   includeOption,
   injectedImport,
   type PomPrograms,
@@ -119,6 +120,8 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
     vite: {
       configResolved(config) {
         command = config.command;
+        // Once per build, and once when a dev server starts.
+        config.logger.info(includeLine(options.include));
       },
       transform: {
         filter: { id: /\.[cm]?[jt]sx?$/ },

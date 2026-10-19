@@ -289,3 +289,50 @@ it.each([
   expect(create).toThrow(TypeError);
   expect(create).toThrow(message);
 });
+
+it.each([
+  [
+    "include unset",
+    {},
+    "[ayme] Ayme is not in this build: include is not set.",
+  ],
+  [
+    "include false",
+    { include: false },
+    "[ayme] Ayme is not in this build: include is false.",
+  ],
+  [
+    "include true",
+    { include: true },
+    "[ayme] Ayme is in this build: include is true.",
+  ],
+])(
+  "prints once per build whether Ayme is in it, with %s",
+  async (_, options, line) => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    try {
+      await build({
+        absWorkingDir: fixtures,
+        entryPoints: ["main.ts"],
+        bundle: true,
+        write: false,
+        format: "esm",
+        platform: "browser",
+        external: ["@ayme-dev/*", "@playwright/*"],
+        plugins: [
+          angularCompiler,
+          aymeAngularPlugin({ ...options, tsconfigPath: "tsconfig.json" }),
+        ],
+        logLevel: "silent",
+      });
+      expect(
+        info.mock.calls
+          .map(([message]) => String(message))
+          .filter((message) => message.startsWith("[ayme] Ayme"))
+      ).toEqual([line]);
+    } finally {
+      info.mockRestore();
+    }
+  },
+  30_000
+);

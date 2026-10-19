@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
 import turbopackLoader from "./turbopack-loader";
 
@@ -131,3 +131,43 @@ it("rejects an include that is not a boolean", () => {
     )
   ).toThrow(new TypeError("include must be a boolean"));
 });
+
+it.each([
+  [
+    "include unset",
+    {},
+    "[ayme] Ayme is not in this build: include is not set.",
+  ],
+  [
+    "include false",
+    { include: false },
+    "[ayme] Ayme is not in this build: include is false.",
+  ],
+  [
+    "include true",
+    { include: true },
+    "[ayme] Ayme is in this build: include is true.",
+  ],
+])(
+  "prints once per process whether Ayme is in it, with %s",
+  async (_, options, line) => {
+    // The loader runs per module, so the line belongs to the process: a fresh
+    // module instance stands in for a fresh one.
+    vi.resetModules();
+    const { default: loader } = await import("./turbopack-loader");
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    try {
+      const { context } = loaderContext();
+      const source = readFileSync(resourcePath, "utf8");
+      loader.call({ ...context, getOptions: () => options }, source);
+      loader.call({ ...context, getOptions: () => options }, source);
+      expect(
+        info.mock.calls
+          .map(([message]) => String(message))
+          .filter((message) => message.startsWith("[ayme] Ayme"))
+      ).toEqual([line]);
+    } finally {
+      info.mockRestore();
+    }
+  }
+);
