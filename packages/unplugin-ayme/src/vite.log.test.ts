@@ -61,6 +61,21 @@ it.each(cases)(
   30_000
 );
 
+it("a server build prints no line: a client build already did", async () => {
+  const { logger, aymeLines } = spiedLogger();
+  await build({
+    configFile: false,
+    customLogger: logger,
+    plugins: [ayme({ report: "none" })],
+    build: {
+      write: false,
+      ssr: entry,
+      rolldownOptions: { external: [/^@ayme-dev\//, /^@playwright\//] },
+    },
+  });
+  expect(aymeLines()).toEqual([]);
+}, 30_000);
+
 it("a dev server prints the line once at start, not per module", async () => {
   const { logger, aymeLines } = spiedLogger();
   const server = await createServer({

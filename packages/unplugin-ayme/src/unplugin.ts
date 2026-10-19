@@ -119,8 +119,10 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
     vite: {
       configResolved(config) {
         command = config.command;
-        // Once per build, and once when a dev server starts.
-        config.logger.info(includeLine(options.include));
+        // Once per build, and once when a dev server starts. A SvelteKit or
+        // Nuxt `vite build` runs a client and a server build; the line
+        // belongs to the client one, which the option decides about.
+        if (!config.build.ssr) config.logger.info(includeLine(options.include));
       },
       // A build without Ayme resolves the runtime's two entries and the
       // framework packages to their absent entries, in the client output
