@@ -1,7 +1,9 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 
-export const ITEM_NAME = "Item name";
+import { fieldLabel, listName } from "./removedPomLabels";
+
+export const ITEM_NAME = fieldLabel("Item name");
 
 @ayme
 export default class ListPage {
@@ -17,6 +19,6 @@ export default class ListPage {
 
   @ayme.action({ description: "Add an item to the list." })
   async addItem(name: string) {
-    await this.page.getByLabel(ITEM_NAME).fill(name);
+    await this.page.getByLabel(ITEM_NAME).fill(`${listName()} ${name}`);
   }
 }

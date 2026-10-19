@@ -247,7 +247,12 @@ describe("a build without Ayme", () => {
     expect(code).toContain(
       'export default class ListPage extends absentPageObject("ListPage", {"actions":["addItem"],"properties":["dialog"],"methods":[]}) {}'
     );
-    expect(code).toContain('export const ITEM_NAME = "Item name";');
+    expect(code).toContain('export const ITEM_NAME = fieldLabel("Item name");');
+    // The decorator import and the binding only the model used are gone;
+    // the one the rest of the module uses stays.
+    expect(code).toContain('import { fieldLabel } from "./removedPomLabels";');
+    expect(code).not.toContain("listName");
+    expect(code).not.toContain('@ayme-dev/ayme"');
     expect(code).not.toContain("registerCompiledPom");
     expect(code).not.toContain("getByLabel");
     expect(code).not.toContain("Add an item to the list.");

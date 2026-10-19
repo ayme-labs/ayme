@@ -1,6 +1,8 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Page } from "@playwright/test";
 
+import { itemLabel } from "./labels";
+
 @ayme
 export class ListPage {
   private readonly page: Page;
@@ -11,6 +13,6 @@ export class ListPage {
 
   @ayme.action({ description: "Add an item to the list." })
   async addItem(name: string) {
-    await this.page.getByLabel("Item name").fill(name);
+    await this.page.getByLabel(itemLabel()).fill(name);
   }
 }

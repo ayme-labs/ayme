@@ -165,7 +165,67 @@ function standInModule(
       `${modifiers}class ${manifest.className} extends absentPageObject(${JSON.stringify(manifest.className)}, ${JSON.stringify(shape)}) {}`;
     cursor = declaration.getEnd();
   }
-  return `import { absentPageObject } from '${ABSENT_MODULE}';\n${result}${code.slice(cursor)}`;
+  return `import { absentPageObject } from '${ABSENT_MODULE}';\n${withoutUnusedImports(result + code.slice(cursor), fileName)}`;
+}
+
+/**
+ * The module without the imports only its replaced Page Object Models used,
+ * so what they imported for their implementation, Ayme's decorators
+ * included, leaves the build with them. A bare import for its side effects
+ * stays, as does every binding the rest of the module references.
+ */
+function withoutUnusedImports(code: string, fileName: string) {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    code,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const referenced = new Set<string>();
+  const collect = (node: ts.Node) => {
+    if (ts.isImportDeclaration(node)) return;
+    if (ts.isIdentifier(node)) referenced.add(node.text);
+    ts.forEachChild(node, collect);
+  };
+  collect(sourceFile);
+
+  let result = "";
+  let cursor = 0;
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !statement.importClause) continue;
+    const { name, namedBindings } = statement.importClause;
+    const defaultName = name && referenced.has(name.text) ? name.text : "";
+    const named =
+      namedBindings && ts.isNamedImports(namedBindings)
+        ? namedBindings.elements
+            .filter((element) => referenced.has(element.name.text))
+            .map((element) => element.getText(sourceFile))
+        : [];
+    const namespace =
+      namedBindings &&
+      ts.isNamespaceImport(namedBindings) &&
+      referenced.has(namedBindings.name.text)
+        ? namedBindings.getText(sourceFile)
+        : "";
+    const bindings = [
+      defaultName,
+      namespace,
+      named.length > 0 ? `{ ${named.join(", ")} }` : "",
+    ].filter(Boolean);
+    const unchanged =
+      (!name || defaultName) &&
+      (!namedBindings ||
+        namespace ||
+        (ts.isNamedImports(namedBindings) &&
+          named.length === namedBindings.elements.length));
+    if (unchanged) continue;
+    result += code.slice(cursor, statement.getStart(sourceFile));
+    if (bindings.length > 0)
+      result += `import ${statement.importClause.isTypeOnly ? "type " : ""}${bindings.join(", ")} from ${statement.moduleSpecifier.getText(sourceFile)};`;
+    cursor = statement.getEnd();
+  }
+  return result + code.slice(cursor);
 }
 
 function pomProgramFor(

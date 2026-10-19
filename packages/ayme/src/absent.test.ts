@@ -29,6 +29,7 @@ describe("the absent session", () => {
     expect(session.tools.list()).toEqual([]);
     expect(session.runs.list()).toEqual([]);
     expect(session.tools.subscribe(() => {})).toBeTypeOf("function");
+    expect(session.webMCP.retryPublication()).toBeInstanceOf(Promise);
     expect(session.peek(() => 1, "state")).toBeTypeOf("function");
     stop();
   });

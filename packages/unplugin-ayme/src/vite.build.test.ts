@@ -80,6 +80,8 @@ it("ships neither the runtime nor the Page Object Models in a build without Ayme
     expect(code).not.toContain("Add an item to the list.");
     expect(code).not.toContain("getByLabel");
     expect(code).not.toContain("playwright");
+    // The module only the Page Object Model imported.
+    expect(code).not.toContain("Item name");
     expect(code.length).toBeLessThan(20_000);
 
     const app = (await import(

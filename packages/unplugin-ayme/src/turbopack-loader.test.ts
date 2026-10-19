@@ -116,4 +116,5 @@ it("compiles a Page Object Model to a stand-in in a build without Ayme", () => {
   expect(code).not.toContain("registerCompiledPom");
   expect(code).not.toContain("Increment the counter.");
   expect(code).not.toContain("getByRole");
+  expect(code).not.toContain('@ayme-dev/ayme"');
 });
