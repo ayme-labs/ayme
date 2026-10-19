@@ -137,6 +137,36 @@ it("builds one Program per tsconfig project and build, and a rebuild starts afre
   }
 }, 30_000);
 
+it("resolves the runtime to its absent entry and compiles stand-ins in a build without Ayme", async () => {
+  const result = await build({
+    absWorkingDir: fixtures,
+    entryPoints: ["main.ts"],
+    bundle: true,
+    write: false,
+    metafile: true,
+    format: "esm",
+    platform: "browser",
+    external: ["@playwright/test"],
+    plugins: [
+      angularCompiler,
+      aymeAngularPlugin({ tsconfigPath: "tsconfig.json", remove: true }),
+    ],
+    logLevel: "silent",
+  });
+  const code = result.outputFiles[0]!.text;
+  const inputs = Object.keys(result.metafile.inputs);
+
+  expect(inputs.some((input) => input.endsWith("/dist/absent.mjs"))).toBe(true);
+  expect(inputs.some((input) => input.endsWith("/dist/index.mjs"))).toBe(false);
+  expect(code).toContain("Ayme was removed from this build.");
+  expect(code).toMatch(
+    /absentPageObject\("CounterPage", \{ "actions": \["increment", "setMode"\]/
+  );
+  expect(code).not.toContain("registerCompiledPom");
+  expect(code).not.toContain("Increment the counter.");
+  expect(code).not.toContain("Waiting for the WebMCP driver.");
+}, 30_000);
+
 it("leaves the server bundle to Angular", async () => {
   const { code, inputs } = await bundle("node");
 
@@ -198,6 +228,7 @@ it.each([
     "has no option(s): browser, tsConfig. Referenced in angular.json as a plain string",
   ],
   [{ tsconfigPath: 1 }, "tsconfigPath must be a string"],
+  [{ remove: "yes" }, "remove must be a boolean"],
 ])("rejects the options %j", (options, message) => {
   const create = () => aymeAngularPlugin(options as AymeAngularOptions);
   expect(create).toThrow(TypeError);

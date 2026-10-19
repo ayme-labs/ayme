@@ -1,13 +1,15 @@
 import path from "node:path";
 
-import type { PomCompilerOptions } from "./derivePomManifests";
-import { createPomTransform } from "./transformPomModule";
+import {
+  createPomTransform,
+  type PomTransformOptions,
+} from "./transformPomModule";
 import { transpilePomModule } from "./transpilePomModule";
 
 // Only the webpack loader methods used by this integration. No webpack dependency.
 type LoaderContext = {
   resourcePath: string;
-  getOptions(): PomCompilerOptions;
+  getOptions(): PomTransformOptions;
   addDependency?: (fileName: string) => void;
 };
 

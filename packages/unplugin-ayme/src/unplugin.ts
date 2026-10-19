@@ -11,8 +11,9 @@ import playwrightRange from "../../../playwright-range.json";
 import type { SkippedPomMethod } from "./derivePomManifests";
 import type { AymeOptions, AymePlaywrightOptions, AymeReport } from "./options";
 import {
+  ABSENT_MODULE,
   createPomTransform,
-  INJECTED_IMPORTS,
+  injectedImport,
   type PomPrograms,
 } from "./transformPomModule";
 
@@ -156,7 +157,9 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         // The dependency scan misses the imports the transform injects, so
         // the first page load would find them late and reload.
         const injected =
-          env?.command === "serve" ? installedImports(root, exclude) : [];
+          env?.command === "serve"
+            ? installedImports(injectedImport(options), root, exclude)
+            : [];
         const settings = await resolvePlaywrightSettings(
           options.playwright,
           root
@@ -189,6 +192,20 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
 
         return {
           define,
+          // A build without Ayme resolves the runtime's two entries to the
+          // absent one; the framework packages import nothing else of it.
+          ...(options.remove
+            ? {
+                resolve: {
+                  alias: [
+                    {
+                      find: /^@ayme-dev\/ayme(\/internal)?$/,
+                      replacement: ABSENT_MODULE,
+                    },
+                  ],
+                },
+              }
+            : {}),
           optimizeDeps: {
             ...config.optimizeDeps,
             exclude: [...new Set([...exclude, PLAYWRIGHT_TEST_PACKAGE])],
@@ -244,14 +261,18 @@ function reportLines(
 }
 
 /**
- * The injected imports that resolve from an installed package the consumer
- * has not excluded. Vite does not pre-bundle a linked or excluded package, and
- * forcing a subpath of one in would load a second copy of the runtime beside
- * the one its other imports get.
+ * The injected import when it resolves from an installed package the
+ * consumer has not excluded. Vite does not pre-bundle a linked or excluded
+ * package, and forcing a subpath of one in would load a second copy of the
+ * runtime beside the one its other imports get.
  */
-function installedImports(root: string, exclude: string[]): string[] {
+function installedImports(
+  specifier: string,
+  root: string,
+  exclude: string[]
+): string[] {
   const consumerRequire = createRequire(resolve(root, "package.json"));
-  return INJECTED_IMPORTS.filter((specifier) => {
+  return [specifier].filter((specifier) => {
     if (exclude.some((name) => specifier.startsWith(`${name}/`))) return false;
     try {
       const file = realpathSync(consumerRequire.resolve(specifier));

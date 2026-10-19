@@ -1,6 +1,8 @@
 import path from "node:path";
 
-import type ts from "typescript";
+import ts from "typescript";
+
+import type { PomManifest } from "@ayme-dev/ayme/internal";
 
 import {
   derivePomManifestsFromProgram,
@@ -17,12 +19,24 @@ import {
 import { rewritePomImports } from "./rewritePomImports";
 
 const REGISTRATION_MODULE = "@ayme-dev/ayme/internal";
+/** The entry a build without Ayme resolves `@ayme-dev/ayme` and its internal entry to. */
+export const ABSENT_MODULE = "@ayme-dev/ayme/absent";
+
+export type PomTransformOptions = PomCompilerOptions & {
+  /**
+   * Compiles each Page Object Model to a stand-in from the absent entry
+   * instead of its implementation, for a build without Ayme.
+   */
+  remove?: boolean;
+};
 
 /**
- * The bare specifiers the transform adds to a Page Object module. Vite's
- * dependency scan reads sources untransformed, so it must be told about them.
+ * The bare specifier the transform adds to a Page Object module. Vite's
+ * dependency scan reads sources untransformed, so it must be told about it.
  */
-export const INJECTED_IMPORTS = [REGISTRATION_MODULE];
+export function injectedImport(options: PomTransformOptions) {
+  return options.remove ? ABSENT_MODULE : REGISTRATION_MODULE;
+}
 
 /**
  * Page Object compile Programs by tsconfig path. The bundler adapter that owns
@@ -35,7 +49,7 @@ export type PomPrograms = Map<string, ts.Program>;
  * `programs`, transforms of one tsconfig project share a Program.
  */
 export function createPomTransform(
-  options: PomCompilerOptions = {},
+  options: PomTransformOptions = {},
   onSkipped?: (fileName: string, methods: SkippedPomMethod[]) => void,
   programs?: PomPrograms
 ) {
@@ -72,6 +86,12 @@ export function createPomTransform(
     if (manifests.length === 0) return null;
 
     const rewrittenCode = rewritePomImports(code, fileName, program);
+    if (options.remove)
+      return {
+        code: standInModule(rewrittenCode, fileName, manifests),
+        map: null,
+        dependencies,
+      };
     const registrations = manifests
       .map(
         (manifest) =>
@@ -85,6 +105,67 @@ export function createPomTransform(
       dependencies,
     };
   };
+}
+
+/**
+ * The module with each Page Object Model replaced by a stand-in of the same
+ * name and export, whose actions and Page Object Children fail naming
+ * themselves. Everything else in the module stays.
+ */
+function standInModule(
+  code: string,
+  fileName: string,
+  manifests: readonly PomManifest[]
+) {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    code,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const byName = new Map(
+    manifests.map((manifest) => [manifest.className, manifest])
+  );
+  const classes = sourceFile.statements.filter(
+    (statement): statement is ts.ClassDeclaration & { name: ts.Identifier } =>
+      ts.isClassDeclaration(statement) &&
+      statement.name !== undefined &&
+      byName.has(statement.name.text)
+  );
+  for (const className of byName.keys())
+    if (!classes.some((declaration) => declaration.name.text === className))
+      throw new Error(
+        `Ayme could not remove Page Object Model ${className} from ${fileName}: it is not a top-level class.`
+      );
+
+  let result = "";
+  let cursor = 0;
+  for (const declaration of classes) {
+    const manifest = byName.get(declaration.name.text)!;
+    const modifiers = (declaration.modifiers ?? [])
+      .filter(
+        (modifier) =>
+          modifier.kind === ts.SyntaxKind.ExportKeyword ||
+          modifier.kind === ts.SyntaxKind.DefaultKeyword
+      )
+      .map((modifier) => `${modifier.getText(sourceFile)} `)
+      .join("");
+    const shape = {
+      actions: manifest.tools.map((tool) => tool.methodName),
+      properties: manifest.members
+        .filter((member) => member.access !== "method")
+        .map((member) => member.memberName),
+      methods: manifest.members
+        .filter((member) => member.access === "method")
+        .map((member) => member.memberName),
+    };
+    result +=
+      code.slice(cursor, declaration.getStart(sourceFile)) +
+      `${modifiers}class ${manifest.className} extends absentPageObject(${JSON.stringify(manifest.className)}, ${JSON.stringify(shape)}) {}`;
+    cursor = declaration.getEnd();
+  }
+  return `import { absentPageObject } from '${ABSENT_MODULE}';\n${result}${code.slice(cursor)}`;
 }
 
 function pomProgramFor(

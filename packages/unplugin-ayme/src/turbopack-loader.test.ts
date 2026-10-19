@@ -102,3 +102,18 @@ it("reports invalid TypeScript instead of returning broken JavaScript", () => {
     turbopackLoader.call(context, "export const broken: = ;")
   ).toThrow("Could not transpile Ayme POM");
 });
+
+it("compiles a Page Object Model to a stand-in in a build without Ayme", () => {
+  const { context } = loaderContext();
+  const code = turbopackLoader.call(
+    { ...context, getOptions: () => ({ remove: true }) },
+    readFileSync(resourcePath, "utf8")
+  );
+  expect(code).toContain("from '@ayme-dev/ayme/absent'");
+  expect(code).toMatch(
+    /class CounterPage extends absentPageObject\("CounterPage", \{ "actions": \["increment", "setMode"\]/
+  );
+  expect(code).not.toContain("registerCompiledPom");
+  expect(code).not.toContain("Increment the counter.");
+  expect(code).not.toContain("getByRole");
+});

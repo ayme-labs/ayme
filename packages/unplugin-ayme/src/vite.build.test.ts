@@ -1,4 +1,7 @@
-import { fileURLToPath } from "node:url";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { build } from "vite";
 import { expect, it, vi } from "vitest";
@@ -44,4 +47,51 @@ it("builds one Program per tsconfig project and build", async () => {
   // The cache ends with the build.
   await buildBoth();
   expect(createPomProgram).toHaveBeenCalledTimes(2);
+}, 30_000);
+
+// Integration on the built packages: a build without Ayme ships none of its
+// runtime and none of a Page Object Model's implementation, and the app's
+// setup still runs.
+it("ships neither the runtime nor the Page Object Models in a build without Ayme, and still runs the app's setup", async () => {
+  const root = fileURLToPath(
+    new URL("./__tests__/fixtures/removed/", import.meta.url)
+  );
+  const outDir = mkdtempSync(join(tmpdir(), "ayme-removed-"));
+  try {
+    await build({
+      configFile: false,
+      logLevel: "silent",
+      root,
+      plugins: [ayme({ report: "none", remove: true })],
+      build: {
+        outDir,
+        lib: { entry: join(root, "main.ts"), formats: ["es"], fileName: "app" },
+        rolldownOptions: { external: [/^@playwright\//] },
+      },
+    });
+    const files = readdirSync(outDir).filter((file) => file.endsWith(".js"));
+    const code = files
+      .map((file) => readFileSync(join(outDir, file), "utf8"))
+      .join("\n");
+
+    // The runtime's own strings, the compiled manifest and the action's body.
+    expect(code).not.toContain("Waiting for the WebMCP driver.");
+    expect(code).not.toContain("registerCompiledPom");
+    expect(code).not.toContain("Add an item to the list.");
+    expect(code).not.toContain("getByLabel");
+    expect(code).not.toContain("playwright");
+    expect(code.length).toBeLessThan(20_000);
+
+    const app = (await import(
+      pathToFileURL(join(outDir, "app.js")).href
+    )) as typeof import("./__tests__/fixtures/removed/main");
+    expect(app.ayme.tools.list()).toEqual([]);
+    expect(app.ayme.webMCP.publicationStatus.state).toBe("disabled");
+    await expect(app.page.addItem("Eggs")).rejects.toThrow(
+      "Ayme was removed from this build. ListPage.addItem is not in it."
+    );
+    app.stop();
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
 }, 30_000);

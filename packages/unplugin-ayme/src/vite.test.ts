@@ -112,6 +112,25 @@ describe("ayme Vite integration", () => {
     });
   });
 
+  it("resolves the runtime's entries to its absent one in a build without Ayme", async () => {
+    const config = await applyPluginConfig({}, { remove: true });
+    const aliases = (
+      config as { resolve: { alias: { find: RegExp; replacement: string }[] } }
+    ).resolve.alias;
+    expect(aliases).toHaveLength(1);
+    const [{ find, replacement }] = aliases;
+    expect(replacement).toBe("@ayme-dev/ayme/absent");
+    expect(find.test("@ayme-dev/ayme")).toBe(true);
+    expect(find.test("@ayme-dev/ayme/internal")).toBe(true);
+    expect(find.test("@ayme-dev/ayme/server")).toBe(false);
+    expect(find.test("@ayme-dev/ayme/absent")).toBe(false);
+    expect(find.test("@ayme-dev/vue")).toBe(false);
+  });
+
+  it("aliases nothing otherwise", async () => {
+    expect(await applyPluginConfig({})).not.toHaveProperty("resolve");
+  });
+
   it.each<[string, InlineConfig, unknown]>([
     ["sets it when the consumer has not", {}, true],
     [

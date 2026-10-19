@@ -228,3 +228,54 @@ describe("a solution-style tsconfig", () => {
     );
   });
 });
+
+describe("a build without Ayme", () => {
+  const fixture = (name: string) => {
+    const fixturePath = fileURLToPath(
+      new URL(`./fixtures/${name}.ts`, import.meta.url)
+    );
+    return [readFileSync(fixturePath, "utf8"), fixturePath] as const;
+  };
+  const transform = createPomTransform({ remove: true });
+
+  it("compiles each Page Object Model to a stand-in of its name, keeping the rest of the module", () => {
+    const code = transform(...fixture("removedPom"))?.code;
+
+    expect(code).toContain(
+      "import { absentPageObject } from '@ayme-dev/ayme/absent';"
+    );
+    expect(code).toContain(
+      'export default class ListPage extends absentPageObject("ListPage", {"actions":["addItem"],"properties":["dialog"],"methods":[]}) {}'
+    );
+    expect(code).toContain('export const ITEM_NAME = "Item name";');
+    expect(code).not.toContain("registerCompiledPom");
+    expect(code).not.toContain("getByLabel");
+    expect(code).not.toContain("Add an item to the list.");
+    expect(code).not.toContain("@ayme.action");
+  });
+
+  it("replaces every Page Object Model of a module, Children included", () => {
+    const code = transform(...fixture("twoPagesPom"))?.code;
+
+    expect(code).toContain(
+      'export class SearchPage extends absentPageObject("SearchPage", {"actions":["search"],"properties":["searchBox"],"methods":[]}) {}'
+    );
+    for (const name of ["SearchBox", "ResultsPage", "SettingsPage"])
+      expect(code).toContain(
+        `export class ${name} extends absentPageObject("${name}", {"actions":[],"properties":[],"methods":[]}) {}`
+      );
+    expect(code).not.toContain("new ResultsPage()");
+  });
+
+  it("lists a Child a method returns as a method", () => {
+    const code = transform(...fixture("annotatedChildrenPom"))?.code;
+
+    expect(code).toMatch(
+      /class AnnotatedChildrenPom extends absentPageObject\("AnnotatedChildrenPom", \{"actions":\[\],"properties":\["directField","directGetter",.*"methods":\["componentCollection",/
+    );
+  });
+
+  it("leaves a module without a Page Object Model alone", () => {
+    expect(transform("export const x = 1;", "/app/x.ts")).toBeNull();
+  });
+});
