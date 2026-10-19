@@ -11,7 +11,7 @@ ng add @ayme-dev/angular
 npm install -D @ayme-dev/inspector @ayme-dev/mcp
 ```
 
-`ng add` installs `@ayme-dev/ayme`, and as dev dependencies `@ayme-dev/unplugin-ayme`, the `@angular-builders/custom-esbuild` major that matches your Angular major, and `@playwright/test` for the types Page Object Models use. It switches the project's build and serve builders to custom-esbuild, keeping their options, adds Ayme's plugin, writes the one-line plugin file and adds `provideAyme()` to the application config. It leaves bundle budgets alone; see [Bundle size](#bundle-size). When your app uses another custom builder or bootstraps an NgModule, it changes only what it can change safely and prints the remaining steps.
+`ng add` installs `@ayme-dev/ayme`, and as dev dependencies `@ayme-dev/unplugin-ayme`, the `@angular-builders/custom-esbuild` major that matches your Angular major, and `@playwright/test` for the types Page Object Models use. It switches the project's build and serve builders to custom-esbuild, keeping their options, adds Ayme's plugin to the build target and, with `include: true`, to its development configuration, so that `ng serve` has Ayme and `ng build` does not, writes the one-line plugin file and adds `provideAyme()` to the application config. It leaves bundle budgets alone; see [Bundle size](#bundle-size). When your app uses another custom builder or bootstraps an NgModule, it changes only what it can change safely and prints the remaining steps.
 
 ### Manual setup
 
@@ -20,7 +20,7 @@ npm install @ayme-dev/ayme @ayme-dev/angular
 npm install -D @ayme-dev/unplugin-ayme @angular-builders/custom-esbuild @playwright/test @ayme-dev/inspector @ayme-dev/mcp
 ```
 
-Install the `@angular-builders/custom-esbuild` major that matches your Angular major. Then set up the plugin as the [build plugin reference](../reference/build-plugin.md#angular) describes: a one-line `ayme.plugin.mjs` at the workspace root, and in `angular.json` the custom-esbuild `application` and `dev-server` builders with the plugin entry, keeping the existing options.
+Install the `@angular-builders/custom-esbuild` major that matches your Angular major. Then set up the plugin as the [build plugin reference](../reference/build-plugin.md#angular) describes: a one-line `ayme.plugin.mjs` at the workspace root, and in `angular.json` the custom-esbuild `application` and `dev-server` builders, keeping the existing options, with the plugin entry under the build target's options and, with `include: true`, under its development configuration.
 
 Finally add `provideAyme()` to the application config, as shown below.
 
@@ -131,7 +131,7 @@ On the server, `provideAyme` creates a session per request but never starts it, 
 
 ## Bundle size
 
-Ayme adds about 240 kB transferred (about 900 kB raw) to the initial chunk of a build that includes it. That trips Angular's default 500 kB initial-budget warning, and a blank application then reaches the default 1 MB `maximumError`, so applications need a higher error budget. `ng add` leaves budgets to you: raise `maximumError` of the `initial` budget under `configurations.production.budgets` in `angular.json`. A build includes Ayme only with the plugin's `include: true`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) shows the production configuration without it.
+Ayme adds about 240 kB transferred (about 900 kB raw) to the initial chunk of a build that includes it. That trips Angular's default 500 kB initial-budget warning, and a blank application then reaches the default 1 MB `maximumError`, so applications need a higher error budget. `ng add` leaves budgets to you: raise `maximumError` of the `initial` budget under `configurations.production.budgets` in `angular.json`. A build includes Ayme only with the plugin's `include: true`, which `ng add` sets in the development configuration alone; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) shows a configuration that keeps it.
 
 ## Limits
 

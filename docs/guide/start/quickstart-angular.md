@@ -9,7 +9,7 @@ ng add @ayme-dev/angular
 npm install -D @ayme-dev/inspector @ayme-dev/mcp
 ```
 
-`ng add` installs Ayme, the build plugin and `@playwright/test`, switches the build and serve builders to `@angular-builders/custom-esbuild`, adds the plugin, and adds `provideAyme()` to the application config. New Angular workspaces already enable `experimentalDecorators`. [Angular](../frameworks/angular.md) lists the manual steps.
+`ng add` installs Ayme, the build plugin and `@playwright/test`, switches the build and serve builders to `@angular-builders/custom-esbuild`, adds the plugin, kept in the development configuration so that `ng serve` has Ayme and `ng build` does not, and adds `provideAyme()` to the application config. New Angular workspaces already enable `experimentalDecorators`. [Angular](../frameworks/angular.md) lists the manual steps.
 
 ## 2. Write a Page Object Model
 
