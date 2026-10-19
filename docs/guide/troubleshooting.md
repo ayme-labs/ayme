@@ -49,6 +49,7 @@ These are for [Peeks](reference/ayme.md#aymepeek), which reach a coding agent th
 These are for agents that run in the browser and read the tools Ayme publishes through WebMCP.
 
 - **The publication status is `disabled`**: pass `webMCP: { enabled: true }` where Ayme starts. See [Publish tools](guides/publish-tools.md).
+- **`Ayme was removed from this build, but setup enables WebMCP publication.`** in the console: setup passes `webMCP: { enabled: true }`, but the build left Ayme out, so the session is inert, its publication status stays `disabled` and no tool is published. Set the [build plugin](reference/build-plugin.md)'s `include: true` for the build that publishes tools.
 - **The status is `unavailable`**: no WebMCP driver appeared within two seconds. Load the polyfill or enable Chrome's flag before your app's entry module, as [Publish tools](guides/publish-tools.md#give-the-page-webmcp) shows, or call `retryPublication()` once it is there.
 - **The status is `failed`**: `@ayme-dev/webmcp` is not installed beside `@ayme-dev/ayme`, or the WebMCP driver rejected a registration. The message says which.
 - **The status is `active` but no tool is published**: two tools share a name, such as a Custom Tool named like a Page Object Tool, which leaves `ayme.tools.list()` empty. `ayme.tools.run` throws the error that names the tool.
