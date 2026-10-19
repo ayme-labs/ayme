@@ -20,7 +20,11 @@ type AngularJson = {
     {
       architect: Record<
         string,
-        { builder: string; options?: Record<string, unknown> }
+        {
+          builder: string;
+          options?: Record<string, unknown>;
+          configurations?: Record<string, Record<string, unknown>>;
+        }
       >;
     }
   >;
@@ -61,8 +65,21 @@ async function ngAdd(tree: UnitTestTree) {
 const architect = (tree: UnitTestTree) =>
   tree.readJson("angular.json") as AngularJson;
 
+// The entry under the build target's options, without `include`, so that
+// `ng build` is a Build without Ayme.
+const buildEntry = {
+  path: "./ayme.plugin.mjs",
+  options: { tsconfigPath: "projects/app/tsconfig.app.json" },
+};
+// The development configuration's entry, which `ng serve` uses: it repeats
+// `tsconfigPath` because a configuration's array replaces the option's.
+const developmentEntry = {
+  path: "./ayme.plugin.mjs",
+  options: { tsconfigPath: "projects/app/tsconfig.app.json", include: true },
+};
+
 describe.each([true, false])("a standalone app with ssr=%s", (ssr) => {
-  it("switches the builders to custom-esbuild with Ayme's plugin, writes the plugin file and adds provideAyme()", async () => {
+  it("switches the builders to custom-esbuild with Ayme's plugin in development only, writes the plugin file and adds provideAyme()", async () => {
     const before = await workspace({ ssr });
     const buildBefore = architect(before).projects["app"]!.architect["build"]!;
 
@@ -74,16 +91,15 @@ describe.each([true, false])("a standalone app with ssr=%s", (ssr) => {
     // Every existing option stays, including the budgets and SSR settings.
     expect(build!.options).toEqual({
       ...buildBefore.options,
-      plugins: [
-        {
-          path: "./ayme.plugin.mjs",
-          options: { tsconfigPath: "projects/app/tsconfig.app.json" },
-        },
-      ],
+      plugins: [buildEntry],
     });
-    expect((build as { configurations?: unknown }).configurations).toEqual(
-      (buildBefore as { configurations?: unknown }).configurations
-    );
+    expect(build!.configurations).toEqual({
+      ...buildBefore.configurations,
+      development: {
+        ...buildBefore.configurations!["development"],
+        plugins: [developmentEntry],
+      },
+    });
     expect(tree.readText("ayme.plugin.mjs")).toBe(
       'export { default } from "@ayme-dev/unplugin-ayme/angular";\n'
     );
@@ -188,6 +204,12 @@ it("leaves angular.json alone and prints the manual steps for another custom bui
   expect(warnings).toContain(
     'export { default } from "@ayme-dev/unplugin-ayme/angular";'
   );
+  expect(warnings).toContain(
+    '{ "path": "./<plugin file>", "options": { "tsconfigPath": "<your app tsconfig>" } } to the build target\'s "plugins"'
+  );
+  expect(warnings).toContain(
+    '{ "path": "./<plugin file>", "options": { "tsconfigPath": "<your app tsconfig>", "include": true } } to the development configuration\'s "plugins"'
+  );
   expect(warnings).toContain("ng add could not add provideAyme()");
 });
 
@@ -221,6 +243,11 @@ it("is safe to run again: no second plugin entry, no second provider, no warning
 
   const { tree: twice, messages } = await ngAdd(once);
 
+  const build = architect(twice).projects["app"]!.architect["build"]!;
+  expect(build.options!["plugins"]).toEqual([buildEntry]);
+  expect(build.configurations!["development"]!["plugins"]).toEqual([
+    developmentEntry,
+  ]);
   for (const file of [
     "angular.json",
     "ayme.plugin.mjs",
@@ -261,17 +288,37 @@ it("adds its entry beside a plugin whose path only contains ayme.plugin.mjs", as
     ...build.options,
     plugins: [{ path: "./ayme.plugin.mjs.previous" }],
   };
+  build.configurations!["development"]!["plugins"] = [
+    { path: "./ayme.plugin.mjs.previous" },
+  ];
   before.overwrite("angular.json", JSON.stringify(json, null, 2));
 
   const { tree } = await ngAdd(before);
 
-  expect(
-    architect(tree).projects["app"]!.architect["build"]!.options!["plugins"]
-  ).toEqual([
+  const after = architect(tree).projects["app"]!.architect["build"]!;
+  expect(after.options!["plugins"]).toEqual([
     { path: "./ayme.plugin.mjs.previous" },
-    {
-      path: "./ayme.plugin.mjs",
-      options: { tsconfigPath: "projects/app/tsconfig.app.json" },
-    },
+    buildEntry,
   ]);
+  expect(after.configurations!["development"]!["plugins"]).toEqual([
+    { path: "./ayme.plugin.mjs.previous" },
+    developmentEntry,
+  ]);
+});
+
+it("adds the development entry to a workspace whose build target has no development configuration", async () => {
+  const before = await workspace({ ssr: false });
+  const json = architect(before);
+  delete json.projects["app"]!.architect["build"]!.configurations![
+    "development"
+  ];
+  before.overwrite("angular.json", JSON.stringify(json, null, 2));
+
+  const { tree } = await ngAdd(before);
+
+  const build = architect(tree).projects["app"]!.architect["build"]!;
+  expect(build.options!["plugins"]).toEqual([buildEntry]);
+  expect(build.configurations!["development"]).toEqual({
+    plugins: [developmentEntry],
+  });
 });
