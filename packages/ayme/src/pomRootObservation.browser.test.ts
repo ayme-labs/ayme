@@ -174,7 +174,7 @@ describe("POM root reachability", () => {
   });
 
   // Nothing shows of a below-fold root now, so there is no point to
-  // hit-test: a call scrolls to it and tests it there (ADR-0040).
+  // hit-test: a call scrolls to it and tests it there (ADR-0041).
   it("accepts a below-fold root under a fullscreen overlay, which a call finds", async () => {
     document.body.innerHTML =
       '<div style="height:2000px"></div><section id="root" style="height:100px">Below fold</section><div style="position:fixed;inset:0;z-index:10"></div>';

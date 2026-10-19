@@ -28,7 +28,7 @@ const RENAME_DIALOG = `
 `;
 
 // Browser Tools offer and accept elements by playwright-lite's own hit test
-// at the point it would click (ADR-0040): an element shown now is tested
+// at the point it would click (ADR-0041): an element shown now is tested
 // where it is; one below the fold is offered, and tested once the call has
 // scrolled to it.
 describe("Browser Tools on elements a click would not reach, in Chromium", () => {

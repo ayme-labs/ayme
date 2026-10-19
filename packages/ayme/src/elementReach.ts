@@ -41,7 +41,7 @@ export function inTheWayOf(
 /**
  * Package-internal: whether `input` would reach `element` now, as the Goal
  * Loop and the Inspector offer refs for the tools that need one; the hit
- * test is `page`'s own (ADR-0040).
+ * test is `page`'s own (ADR-0041).
  */
 export function reaches(
   page: Page,

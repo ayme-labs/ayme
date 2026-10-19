@@ -1257,7 +1257,7 @@ async function readMember(instance: object, member: PomMemberManifest) {
  * Performs a Page Object Action for a Run whose Change Record is read from
  * `cursor`. With `root`, the instance's Page Object Root, the call is refused
  * first when a click would not reach the root where the action would find it
- * (ADR-0040), as the observation that listed the tool could not tell for a
+ * (ADR-0041), as the observation that listed the tool could not tell for a
  * root it had to scroll to.
  */
 async function performPageObjectAction(

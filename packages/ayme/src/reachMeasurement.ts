@@ -11,7 +11,7 @@ import { INSPECTOR_HOST_SELECTOR } from "./pageState";
 
 /**
  * Package-internal: what the layout shows of one element (ADR-0035,
- * ADR-0040), measured without scrolling or sending input: `present` while
+ * ADR-0041), measured without scrolling or sending input: `present` while
  * some part of it shows, or would once its scroll containers and the
  * viewport scrolled to it; `available` while a click would reach it; and,
  * for a present element a click would not reach, what stopped it:
