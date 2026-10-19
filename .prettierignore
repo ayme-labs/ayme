@@ -19,6 +19,7 @@ apps/example-nuxt/*.tsbuildinfo
 apps/example-sveltekit/.svelte-kit/
 apps/example-sveltekit/build/
 apps/example-sveltekit/build-spa/
+apps/example-vue/dist-without-ayme/
 apps/example-vue/tests/vue-webmcp.spec.ts-snapshots/
 
 
