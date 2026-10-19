@@ -202,7 +202,7 @@ describe("toolInputViolations", () => {
 });
 
 describe("validatedToolInput", () => {
-  it("throws the first violation with its path", () => {
+  it("throws a single violation with its path", () => {
     expect(() =>
       validatedToolInput(goalSchema, {
         goal: "x",
@@ -216,6 +216,23 @@ describe("validatedToolInput", () => {
     );
     expect(() => validatedToolInput(goalSchema, "x")).toThrow(
       "Tool input must be an object."
+    );
+  });
+
+  it("throws every violation, a sentence each, in order", () => {
+    expect(() =>
+      validatedToolInput(goalSchema, { maxSteps: 1, name: "x" })
+    ).toThrow(
+      new ToolInputError(
+        "Input property name is not supported. Input property goal is required."
+      )
+    );
+    expect(() =>
+      validatedToolInput(goalSchema, { maxSteps: 0.5, name: "x" })
+    ).toThrow(
+      new ToolInputError(
+        "Input property maxSteps must be an integer. Input property name is not supported. Input property goal is required."
+      )
     );
   });
 });

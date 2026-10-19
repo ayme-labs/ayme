@@ -31,6 +31,14 @@ const failingManifest: PomManifest = {
       description: "Always fails.",
       parameters: [],
     },
+    {
+      methodName: "addTodo",
+      toolName: "FailingPage.addTodo",
+      description: "Add a todo.",
+      parameters: [
+        { name: "title", optional: false, schema: { type: "string" } },
+      ],
+    },
   ],
   components: [
     {
@@ -56,6 +64,7 @@ class FailingPage {
   explode() {
     throw new Error("The page object action exploded.");
   }
+  addTodo() {}
 }
 
 registerCompiledPom(FailingPage, failingManifest);
@@ -114,6 +123,14 @@ describe("tool failures an agent gets, in Chromium", () => {
     expect(
       await agentCall("FailingPage.explode", { extra: true }).catch(errorText)
     ).toMatch(/^ToolInputError: .*extra/);
+  });
+
+  it("names every problem with a Page Object tool's input", async () => {
+    expect(
+      await agentCall("FailingPage.addTodo", { name: "x" }).catch(errorText)
+    ).toBe(
+      "ToolInputError: Input property name is not supported. Input property title is required."
+    );
   });
 
   it("returns a collection tool's ref that matches no element as a RefResolutionError", async () => {

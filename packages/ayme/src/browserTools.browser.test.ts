@@ -445,7 +445,7 @@ describe("Browser Tools in Chromium", () => {
     );
   });
 
-  it("rejects an option it does not support, naming it", async () => {
+  it("rejects an option it does not support, naming it and every other problem", async () => {
     expect(
       await call("click", { target: "#save", force: true }).catch(errorText)
     ).toBe("ToolInputError: Input property force is not supported.");
@@ -457,6 +457,11 @@ describe("Browser Tools in Chromium", () => {
         constructor: "x",
       }).catch(errorText)
     ).toBe("ToolInputError: Input property constructor is not supported.");
+    expect(
+      await call("fill", { target: "#name", force: true }).catch(errorText)
+    ).toBe(
+      "ToolInputError: Input property force is not supported. Input property text is required."
+    );
     expect(log).not.toContain("click save");
     expect(value("#name")).toBe("Old");
   });

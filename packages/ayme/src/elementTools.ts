@@ -16,7 +16,7 @@ import { reaches, unreachableReason, type ElementInput } from "./elementReach";
 import { inReachBatch } from "./reachMeasurement";
 import { latestPageStateRef } from "./pageState";
 import { assertAvailable } from "./pomInstance";
-import { throwFirstViolation, toolInputViolations } from "./schemaValidation";
+import { throwViolations, toolInputViolations } from "./schemaValidation";
 import {
   RefResolutionError,
   RuntimeStateError,
@@ -240,7 +240,7 @@ export function validatedToolInput(
   schema: JsonSchema,
   input: unknown
 ): Record<string, unknown> {
-  throwFirstViolation(toolInputViolations(schema, input));
+  throwViolations(toolInputViolations(schema, input));
   return input as Record<string, unknown>;
 }
 
