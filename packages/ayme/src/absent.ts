@@ -1,11 +1,12 @@
 /**
- * What a build with Ayme removed resolves `@ayme-dev/ayme` and
- * `@ayme-dev/ayme/internal` to: the build plugin's `remove` option aliases
- * both here, so the runtime, the Inspector, WebMCP and the Agent Connection
- * stay out of the output. Setup calls create an inert session, and each Page
- * Object Model the plugin compiles becomes a stand-in from `absentPageObject`.
- * The exports mirror the two entries' values the framework packages and the
- * plugin's generated code use; a missing one fails the build, naming it.
+ * What a Build without Ayme resolves `@ayme-dev/ayme` and
+ * `@ayme-dev/ayme/internal` to: unless the build plugin's configuration
+ * includes Ayme, its adapters resolve both entries here, so the runtime, the
+ * Inspector, WebMCP and the Agent Connection stay out of the output. Setup
+ * calls create an inert session, and each Page Object Model the plugin
+ * compiles becomes a stand-in from `absentPageObject`. The exports mirror
+ * the two entries' values the framework packages and the plugin's generated
+ * code use; a missing one fails the build, naming it.
  */
 import type { PageObjectConstructor } from "./registry";
 import type { Run } from "./runLog";

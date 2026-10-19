@@ -12,7 +12,7 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/internal.ts",
-    // What a build with Ayme removed resolves the two entries above to.
+    // What a Build without Ayme resolves the two entries above to.
     "src/absent.ts",
     "src/server.ts",
     // The last Goal Loop run's result, for tests only (ADR-0026).
