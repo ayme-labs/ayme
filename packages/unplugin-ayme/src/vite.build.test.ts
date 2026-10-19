@@ -25,7 +25,7 @@ const fixture = (name: string) =>
   fileURLToPath(new URL(`./fixtures/${name}.ts`, import.meta.url));
 
 it("builds one Program per tsconfig project and build", async () => {
-  const plugin = ayme({ report: "none" });
+  const plugin = ayme({ include: true, report: "none" });
   const buildBoth = () =>
     build({
       configFile: false,
@@ -49,20 +49,20 @@ it("builds one Program per tsconfig project and build", async () => {
   expect(createPomProgram).toHaveBeenCalledTimes(2);
 }, 30_000);
 
-// Integration on the built packages: a build without Ayme ships none of its
-// runtime and none of a Page Object Model's implementation, and the app's
-// setup still runs.
+// Integration on the built packages: a build without Ayme, which every build
+// is unless it says `include: true`, ships none of the runtime and none of a
+// Page Object Model's implementation, and the app's setup still runs.
 it("ships neither the runtime nor the Page Object Models in a build without Ayme, and still runs the app's setup", async () => {
   const root = fileURLToPath(
-    new URL("./__tests__/fixtures/removed/", import.meta.url)
+    new URL("./__tests__/fixtures/withoutAyme/", import.meta.url)
   );
-  const outDir = mkdtempSync(join(tmpdir(), "ayme-removed-"));
+  const outDir = mkdtempSync(join(tmpdir(), "ayme-without-"));
   try {
     await build({
       configFile: false,
       logLevel: "silent",
       root,
-      plugins: [ayme({ report: "none", remove: true })],
+      plugins: [ayme({ report: "none" })],
       build: {
         outDir,
         lib: { entry: join(root, "main.ts"), formats: ["es"], fileName: "app" },
@@ -86,7 +86,7 @@ it("ships neither the runtime nor the Page Object Models in a build without Ayme
 
     const app = (await import(
       pathToFileURL(join(outDir, "app.js")).href
-    )) as typeof import("./__tests__/fixtures/removed/main");
+    )) as typeof import("./__tests__/fixtures/withoutAyme/main");
     expect(app.ayme.tools.list()).toEqual([]);
     expect(app.ayme.webMCP.publicationStatus.state).toBe("disabled");
     await expect(app.page.addItem("Eggs")).rejects.toThrow(

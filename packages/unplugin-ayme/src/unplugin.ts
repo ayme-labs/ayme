@@ -13,6 +13,7 @@ import type { AymeOptions, AymePlaywrightOptions, AymeReport } from "./options";
 import {
   ABSENT_MODULE,
   createPomTransform,
+  includeOption,
   injectedImport,
   type PomPrograms,
 } from "./transformPomModule";
@@ -65,6 +66,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   options = {}
 ) => {
   const report = reportOption(options.report);
+  const include = includeOption(options.include);
   // The latest skipped methods of each transformed module, by file.
   const skipped = new Map<string, SkippedPomMethod[]>();
   let command: string | undefined;
@@ -194,8 +196,9 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
           define,
           // A build without Ayme resolves the runtime's two entries to the
           // absent one; the framework packages import nothing else of it.
-          ...(options.remove
-            ? {
+          ...(include
+            ? {}
+            : {
                 resolve: {
                   alias: [
                     {
@@ -204,8 +207,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
                     },
                   ],
                 },
-              }
-            : {}),
+              }),
           optimizeDeps: {
             ...config.optimizeDeps,
             exclude: [...new Set([...exclude, PLAYWRIGHT_TEST_PACKAGE])],

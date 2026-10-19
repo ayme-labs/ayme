@@ -28,7 +28,8 @@
               {
                 "path": "./ayme.plugin.mjs",
                 "options": {
-                  "tsconfigPath": "tsconfig.app.json"
+                  "tsconfigPath": "tsconfig.app.json",
+                  "include": true
                 }
               }
             ],

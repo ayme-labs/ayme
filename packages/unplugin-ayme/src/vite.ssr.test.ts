@@ -9,7 +9,7 @@ const fileName = fileURLToPath(
 const source = readFileSync(fileName, "utf8");
 
 it("only compiles Page Objects for the browser graph", async () => {
-  const result = ayme();
+  const result = ayme({ include: true });
   const plugin = Array.isArray(result) ? result[0] : result;
   const hook = plugin?.transform;
   if (!hook) throw new Error("Expected the Vite transform hook.");

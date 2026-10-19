@@ -40,6 +40,8 @@ export default defineNuxtConfig({
   vite: {
     plugins: [
       ayme({
+        // Ayme stays in every build: the Playwright suite runs against the production build.
+        include: true,
         // POMs live outside Nuxt's generated app TypeScript project.
         tsconfigPath: fileURLToPath(
           new URL("./tsconfig.pom.json", import.meta.url)

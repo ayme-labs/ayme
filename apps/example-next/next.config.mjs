@@ -18,6 +18,8 @@ export default function nextConfig(phase) {
             {
               loader: "@ayme-dev/unplugin-ayme/turbopack-loader",
               options: {
+                // Ayme stays in every build: the Playwright suite runs against the production build.
+                include: true,
                 tsconfigPath: fileURLToPath(
                   new URL("./tsconfig.pom.json", import.meta.url)
                 ),

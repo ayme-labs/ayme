@@ -6,6 +6,7 @@ import type { Plugin } from "esbuild";
 import {
   ABSENT_MODULE,
   createPomTransform,
+  includeOption,
   type PomPrograms,
 } from "./transformPomModule";
 import { transpilePomModule } from "./transpilePomModule";
@@ -17,10 +18,11 @@ export type AymeAngularOptions = {
    */
   tsconfigPath?: string;
   /**
-   * Builds without Ayme: the runtime's entries resolve to its absent entry
-   * and each Page Object Model compiles to a stand-in.
+   * Whether the build includes Ayme. Defaults to false: the runtime's
+   * entries then resolve to its absent entry and each Page Object Model
+   * compiles to a stand-in.
    */
-  remove?: boolean;
+  include?: boolean;
 };
 
 const namespace = "ayme-pom";
@@ -34,7 +36,7 @@ type CompiledPom = { contents: string; watchFiles: readonly string[] };
  */
 export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
   const unknown = Object.keys(options).filter(
-    (key) => key !== "tsconfigPath" && key !== "remove"
+    (key) => key !== "tsconfigPath" && key !== "include"
   );
   if (unknown.length > 0)
     throw new TypeError(
@@ -45,8 +47,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
     typeof options.tsconfigPath !== "string"
   )
     throw new TypeError("tsconfigPath must be a string");
-  if (options.remove !== undefined && typeof options.remove !== "boolean")
-    throw new TypeError("remove must be a boolean");
+  const include = includeOption(options.include);
   return {
     name: "ayme-angular",
     setup(build) {
@@ -59,7 +60,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         {
           tsconfigPath:
             options.tsconfigPath && path.resolve(root, options.tsconfigPath),
-          remove: options.remove,
+          include,
         },
         undefined,
         programs
@@ -87,7 +88,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
 
       // A build without Ayme resolves the runtime's two entries to the
       // absent one, wherever they are imported from.
-      if (options.remove)
+      if (!include)
         build.onResolve({ filter: /^@ayme-dev\/ayme(\/internal)?$/ }, (args) =>
           build.resolve(ABSENT_MODULE, {
             kind: args.kind,

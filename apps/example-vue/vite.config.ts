@@ -19,7 +19,8 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       vue(),
       tailwindcss(),
-      ayme(),
+      // Ayme stays in every build: the Playwright suite runs against the production build.
+      ayme({ include: true }),
       decisionEndpointDev(decisionProvider),
       // Only the build ayme.dev serves at /playground/ sets VITE_GTM_ID.
       googleTagManager(loadEnv(mode, process.cwd(), "VITE_").VITE_GTM_ID),

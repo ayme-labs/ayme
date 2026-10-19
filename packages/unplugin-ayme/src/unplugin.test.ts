@@ -333,7 +333,7 @@ exports.configLoader = {
     );
     const source = readFileSync(fixturePath, "utf8");
     const pluginResult = unpluginFactory(
-      {},
+      { include: true },
       { framework: "vite", versions: {} }
     );
     const plugin = Array.isArray(pluginResult) ? pluginResult[0] : pluginResult;

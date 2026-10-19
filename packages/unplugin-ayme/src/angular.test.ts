@@ -46,7 +46,7 @@ async function bundle(platform: "browser" | "node", workspace = fixtures) {
     external: ["@ayme-dev/ayme", "@ayme-dev/ayme/internal"],
     plugins: [
       angularCompiler,
-      aymeAngularPlugin({ tsconfigPath: "tsconfig.json" }),
+      aymeAngularPlugin({ include: true, tsconfigPath: "tsconfig.json" }),
     ],
     logLevel: "silent",
   });
@@ -120,7 +120,7 @@ it("builds one Program per tsconfig project and build, and a rebuild starts afre
     external: ["@ayme-dev/ayme", "@ayme-dev/ayme/internal"],
     plugins: [
       angularCompiler,
-      aymeAngularPlugin({ tsconfigPath: "tsconfig.json" }),
+      aymeAngularPlugin({ include: true, tsconfigPath: "tsconfig.json" }),
     ],
     logLevel: "silent",
   });
@@ -137,7 +137,7 @@ it("builds one Program per tsconfig project and build, and a rebuild starts afre
   }
 }, 30_000);
 
-it("resolves the runtime to its absent entry and compiles stand-ins in a build without Ayme", async () => {
+it("resolves the runtime to its absent entry and compiles stand-ins in a build without Ayme, the default", async () => {
   const result = await build({
     absWorkingDir: fixtures,
     entryPoints: ["main.ts"],
@@ -149,7 +149,7 @@ it("resolves the runtime to its absent entry and compiles stand-ins in a build w
     external: ["@playwright/test"],
     plugins: [
       angularCompiler,
-      aymeAngularPlugin({ tsconfigPath: "tsconfig.json", remove: true }),
+      aymeAngularPlugin({ tsconfigPath: "tsconfig.json" }),
     ],
     logLevel: "silent",
   });
@@ -228,7 +228,7 @@ it.each([
     "has no option(s): browser, tsConfig. Referenced in angular.json as a plain string",
   ],
   [{ tsconfigPath: 1 }, "tsconfigPath must be a string"],
-  [{ remove: "yes" }, "remove must be a boolean"],
+  [{ include: "yes" }, "include must be a boolean"],
 ])("rejects the options %j", (options, message) => {
   const create = () => aymeAngularPlugin(options as AymeAngularOptions);
   expect(create).toThrow(TypeError);

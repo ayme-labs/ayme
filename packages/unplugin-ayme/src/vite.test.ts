@@ -41,7 +41,7 @@ describe("ayme Vite integration", () => {
     await expect(
       applyPluginConfig(
         { root: resolve(__dirname, "fixtures/playwright-default-projects") },
-        { playwright: { config: "playwright.config.ts" } }
+        { include: true, playwright: { config: "playwright.config.ts" } }
       )
     ).resolves.toEqual({
       define: {
@@ -51,7 +51,7 @@ describe("ayme Vite integration", () => {
     });
   });
   it("adds the Playwright test runner exclusion when no optimizer config exists", async () => {
-    await expect(applyPluginConfig({})).resolves.toEqual({
+    await expect(applyPluginConfig({}, { include: true })).resolves.toEqual({
       define: {
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"',
       },
@@ -61,9 +61,10 @@ describe("ayme Vite integration", () => {
 
   it("excludes the Playwright test runner from dependency optimization", async () => {
     await expect(
-      applyPluginConfig({
-        optimizeDeps: { exclude: ["existing-dependency"] },
-      })
+      applyPluginConfig(
+        { optimizeDeps: { exclude: ["existing-dependency"] } },
+        { include: true }
+      )
     ).resolves.toEqual({
       define: {
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"',
@@ -76,9 +77,10 @@ describe("ayme Vite integration", () => {
 
   it("does not duplicate an existing Playwright test exclusion", async () => {
     await expect(
-      applyPluginConfig({
-        optimizeDeps: { exclude: ["@playwright/test"] },
-      })
+      applyPluginConfig(
+        { optimizeDeps: { exclude: ["@playwright/test"] } },
+        { include: true }
+      )
     ).resolves.toEqual({
       define: {
         [TEST_ID_ATTRIBUTE_DEFINE]: '"data-testid"',
@@ -94,6 +96,7 @@ describe("ayme Vite integration", () => {
           root: resolve(__dirname, "fixtures/playwright-test-id"),
         },
         {
+          include: true,
           playwright: {
             config: resolve(
               __dirname,
@@ -112,8 +115,8 @@ describe("ayme Vite integration", () => {
     });
   });
 
-  it("resolves the runtime's entries to its absent one in a build without Ayme", async () => {
-    const config = await applyPluginConfig({}, { remove: true });
+  it("resolves the runtime's entries to its absent one in a build without Ayme, the default", async () => {
+    const config = await applyPluginConfig({});
     const aliases = (
       config as { resolve: { alias: { find: RegExp; replacement: string }[] } }
     ).resolve.alias;
@@ -127,8 +130,16 @@ describe("ayme Vite integration", () => {
     expect(find.test("@ayme-dev/vue")).toBe(false);
   });
 
-  it("aliases nothing otherwise", async () => {
-    expect(await applyPluginConfig({})).not.toHaveProperty("resolve");
+  it("aliases nothing once include is true", async () => {
+    expect(await applyPluginConfig({}, { include: true })).not.toHaveProperty(
+      "resolve"
+    );
+  });
+
+  it("rejects an include that is not a boolean", () => {
+    expect(() => ayme({ include: "yes" as unknown as boolean })).toThrow(
+      new TypeError("include must be a boolean")
+    );
   });
 
   it.each<[string, InlineConfig, unknown]>([

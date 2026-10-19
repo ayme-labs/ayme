@@ -1,7 +1,7 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 
-import { fieldLabel, listName } from "./removedPomLabels";
+import { fieldLabel, listName } from "./withoutAymePomLabels";
 
 export const ITEM_NAME = fieldLabel("Item name");
 

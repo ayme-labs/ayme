@@ -95,7 +95,7 @@ it("registers an undecorated subclass of a decorated base", () => {
   const fixturePath = fileURLToPath(
     new URL("./fixtures/decoratedBasePom.ts", import.meta.url)
   );
-  const code = createPomTransform()(
+  const code = createPomTransform({ include: true })(
     readFileSync(fixturePath, "utf8"),
     fixturePath
   )?.code;
@@ -126,7 +126,7 @@ describe("a subclass in a module without the decorator", () => {
     expect(source).not.toMatch(/@ayme\b(?!-)/);
     createPomProgram.mockClear();
 
-    const result = createPomTransform()(source, fixturePath);
+    const result = createPomTransform({ include: true })(source, fixturePath);
 
     expect(result).not.toBeNull();
     expect(createPomProgram).toHaveBeenCalledTimes(1);
@@ -139,7 +139,7 @@ describe("a subclass in a module without the decorator", () => {
     const { fixturePath, source } = fixture("barrelUserMenu");
     expect(source).not.toMatch(/@ayme\b(?!-)/);
 
-    const result = createPomTransform()(source, fixturePath);
+    const result = createPomTransform({ include: true })(source, fixturePath);
 
     expect(result).not.toBeNull();
     expect(result?.code).toContain("registerCompiledPom(BarrelUserMenu, {");
@@ -191,7 +191,10 @@ describe("a solution-style tsconfig", () => {
   const pomPath = join(project, "src/pom/projectsPage.ts");
 
   it("compiles the Page Object Model with the referenced project that includes it", () => {
-    const result = createPomTransform()(readFileSync(pomPath, "utf8"), pomPath);
+    const result = createPomTransform({ include: true })(
+      readFileSync(pomPath, "utf8"),
+      pomPath
+    );
 
     expect(result?.code).toContain(
       '"name":"kind","optional":false,"schema":{"type":"string","enum":["a","b"]}'
@@ -206,7 +209,10 @@ describe("a solution-style tsconfig", () => {
 
   it("names the tsconfig it compiled with when an input type is unsupported", () => {
     const nodeConfig = join(project, "tsconfig.node.json");
-    const transform = createPomTransform({ tsconfigPath: nodeConfig });
+    const transform = createPomTransform({
+      include: true,
+      tsconfigPath: nodeConfig,
+    });
 
     expect(() => transform(readFileSync(pomPath, "utf8"), pomPath)).toThrow(
       `ProjectsPage.probe(kind): Kind. Compiled with ${nodeConfig}.`
@@ -216,7 +222,10 @@ describe("a solution-style tsconfig", () => {
   it("names the tsconfig when the unsupported input type is on a Page Object Child's action", () => {
     const nodeConfig = join(project, "tsconfig.node.json");
     const dialogPath = join(project, "src/pom/projectsDialog.ts");
-    const transform = createPomTransform({ tsconfigPath: nodeConfig });
+    const transform = createPomTransform({
+      include: true,
+      tsconfigPath: nodeConfig,
+    });
 
     expect(() =>
       transform(readFileSync(dialogPath, "utf8"), dialogPath)
@@ -236,10 +245,11 @@ describe("a build without Ayme", () => {
     );
     return [readFileSync(fixturePath, "utf8"), fixturePath] as const;
   };
-  const transform = createPomTransform({ remove: true });
+  // Without `include: true`, every build is a build without Ayme.
+  const transform = createPomTransform();
 
   it("compiles each Page Object Model to a stand-in of its name, keeping the rest of the module", () => {
-    const code = transform(...fixture("removedPom"))?.code;
+    const code = transform(...fixture("withoutAymePom"))?.code;
 
     expect(code).toContain(
       "import { absentPageObject } from '@ayme-dev/ayme/absent';"
@@ -250,7 +260,9 @@ describe("a build without Ayme", () => {
     expect(code).toContain('export const ITEM_NAME = fieldLabel("Item name");');
     // The decorator import and the binding only the model used are gone;
     // the one the rest of the module uses stays.
-    expect(code).toContain('import { fieldLabel } from "./removedPomLabels";');
+    expect(code).toContain(
+      'import { fieldLabel } from "./withoutAymePomLabels";'
+    );
     expect(code).not.toContain("listName");
     expect(code).not.toContain('@ayme-dev/ayme"');
     expect(code).not.toContain("registerCompiledPom");
@@ -282,5 +294,21 @@ describe("a build without Ayme", () => {
 
   it("leaves a module without a Page Object Model alone", () => {
     expect(transform("export const x = 1;", "/app/x.ts")).toBeNull();
+  });
+
+  it("is the build with Ayme once include is true", () => {
+    const code = createPomTransform({ include: true })(
+      ...fixture("withoutAymePom")
+    )?.code;
+
+    expect(code).toContain("registerCompiledPom(ListPage, {");
+    expect(code).toContain("Add an item to the list.");
+    expect(code).not.toContain("@ayme-dev/ayme/absent");
+  });
+
+  it("rejects an include that is not a boolean", () => {
+    expect(() =>
+      createPomTransform({ include: "yes" as unknown as boolean })
+    ).toThrow(new TypeError("include must be a boolean"));
   });
 });

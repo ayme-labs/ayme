@@ -16,7 +16,7 @@ function loaderContext(fileName = resourcePath) {
     dependencies,
     context: {
       resourcePath: fileName,
-      getOptions: () => ({}),
+      getOptions: () => ({ include: true }),
       addDependency: (dependency: string) => dependencies.push(dependency),
     },
   };
@@ -103,10 +103,10 @@ it("reports invalid TypeScript instead of returning broken JavaScript", () => {
   ).toThrow("Could not transpile Ayme POM");
 });
 
-it("compiles a Page Object Model to a stand-in in a build without Ayme", () => {
+it("compiles a Page Object Model to a stand-in in a build without Ayme, the default", () => {
   const { context } = loaderContext();
   const code = turbopackLoader.call(
-    { ...context, getOptions: () => ({ remove: true }) },
+    { ...context, getOptions: () => ({}) },
     readFileSync(resourcePath, "utf8")
   );
   expect(code).toContain("from '@ayme-dev/ayme/absent'");
@@ -117,4 +117,17 @@ it("compiles a Page Object Model to a stand-in in a build without Ayme", () => {
   expect(code).not.toContain("Increment the counter.");
   expect(code).not.toContain("getByRole");
   expect(code).not.toContain('@ayme-dev/ayme"');
+});
+
+it("rejects an include that is not a boolean", () => {
+  const { context } = loaderContext();
+  expect(() =>
+    turbopackLoader.call(
+      {
+        ...context,
+        getOptions: () => ({ include: "yes" as unknown as boolean }),
+      },
+      readFileSync(resourcePath, "utf8")
+    )
+  ).toThrow(new TypeError("include must be a boolean"));
 });

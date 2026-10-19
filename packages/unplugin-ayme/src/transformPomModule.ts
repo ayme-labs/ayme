@@ -24,18 +24,31 @@ export const ABSENT_MODULE = "@ayme-dev/ayme/absent";
 
 export type PomTransformOptions = PomCompilerOptions & {
   /**
-   * Compiles each Page Object Model to a stand-in from the absent entry
-   * instead of its implementation, for a build without Ayme.
+   * Whether the build includes Ayme. Nothing else decides: without `true`,
+   * the build is a build without Ayme, in which each Page Object Model
+   * compiles to a stand-in from the absent entry instead of its
+   * implementation. Defaults to false.
    */
-  remove?: boolean;
+  include?: boolean;
 };
+
+/**
+ * The `include` option as a boolean. Every adapter validates it the same
+ * way, so a typo never silently picks the default.
+ */
+export function includeOption(value: unknown): boolean {
+  if (value === undefined) return false;
+  if (typeof value !== "boolean")
+    throw new TypeError("include must be a boolean");
+  return value;
+}
 
 /**
  * The bare specifier the transform adds to a Page Object module. Vite's
  * dependency scan reads sources untransformed, so it must be told about it.
  */
 export function injectedImport(options: PomTransformOptions) {
-  return options.remove ? ABSENT_MODULE : REGISTRATION_MODULE;
+  return includeOption(options.include) ? REGISTRATION_MODULE : ABSENT_MODULE;
 }
 
 /**
@@ -53,6 +66,7 @@ export function createPomTransform(
   onSkipped?: (fileName: string, methods: SkippedPomMethod[]) => void,
   programs?: PomPrograms
 ) {
+  const include = includeOption(options.include);
   return (
     code: string,
     id: string,
@@ -86,7 +100,7 @@ export function createPomTransform(
     if (manifests.length === 0) return null;
 
     const rewrittenCode = rewritePomImports(code, fileName, program);
-    if (options.remove)
+    if (!include)
       return {
         code: standInModule(rewrittenCode, fileName, manifests),
         map: null,
