@@ -80,5 +80,7 @@ function verifyBuildWithoutAyme(directory) {
 // publication on and off.
 verifyBrowserOutput(path.join(appRoot, "dist"), "production");
 // The build without Ayme (`vite build --mode without-ayme`) proves on a real
-// consumer what the build plugin promises for `include: false`.
+// consumer what the build plugin promises for `include: false`, and leaks
+// no server-only code either.
+verifyBrowserOutput(path.join(appRoot, "dist-without-ayme"), "without-ayme");
 verifyBuildWithoutAyme(path.join(appRoot, "dist-without-ayme"));
