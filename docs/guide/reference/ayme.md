@@ -36,7 +36,7 @@ Availability never adds or withdraws a tool. [`ayme.tools`](#aymetools) says how
 
 A subclass inherits the predicate of the nearest class in its chain that declares one, with or without a decorator of its own, and may declare its own; `root` and `present` are inherited separately, so a subclass overrides one and keeps the other. The predicate runs read-only with the runtime's observation of the page, never when a tool is called, so it must not scroll, click, focus or change the page. A locator member that resolves to the root's element is the root, not a child, so it is listed once, also when it is a getter that builds a fresh Locator on each read. A predicate that throws makes the Page Object absent, and a child's observation records what it threw. It never runs on the server, where registration is inert. The build plugin does not read the predicate; the decorator keeps it at runtime.
 
-Only the option anchors a model. A model whose class chain declares none is root-less, also when it has a member named `root`: a top-level one is present while it is registered, with no label in the page state and no reach measurement, and a child without one is absent.
+Only the option anchors a model. A model whose class chain declares none is root-less, also when it has a member named `root`: it has no label in the page state and no reach measurement, a top-level one is present while it is registered, and a single child while the Page Object it is reached through is. A collection item needs a root, since its `ref` is the root's element; a collection whose item class declares none fails the [build](build-plugin.md#errors).
 
 ### Page Object presence
 

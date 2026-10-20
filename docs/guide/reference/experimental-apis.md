@@ -15,7 +15,7 @@ An experimental API belongs to a feature Ayme keeps but whose shape is not settl
 
 - `root` in `@ayme-dev/ayme`: the `@ayme` option that names the element anchoring a Page Object, in [Page Object root](ayme.md#page-object-root).
 
-  Migration: a model that anchored on a member named `root` now declares it on the decorator of its class or of a base class, `@ayme({ root: (self) => self.root })`; the member's name alone anchors nothing. Without the option, the model is root-less: a top-level one has its tools listed while it is registered, with no label in the page state and no reach measurement behind its availability, and a child has its tools withdrawn.
+  Migration: a model that anchored on a member named `root` now declares it on the decorator of its class or of a base class, `@ayme({ root: (self) => self.root })`; the member's name alone anchors nothing. Without the option, the model is root-less: a top-level one has its tools listed while it is registered, with no label in the page state and no reach measurement behind its availability, a single child is present while the Page Object it is reached through is, and a collection whose item class declares none fails the build.
 
 - `present` in `@ayme-dev/ayme`: the `@ayme` option that says when a Page Object is on the page, in [Page Object presence](ayme.md#page-object-presence).
 
