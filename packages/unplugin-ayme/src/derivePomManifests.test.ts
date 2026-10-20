@@ -620,150 +620,19 @@ describe("derivePomManifests", () => {
     });
   });
 
-  describe("a collection item's root", () => {
-    it("refuses a collection whose item class declares no root in its chain, naming the class", () => {
-      expect(() => manifestFor("rootlessCollectionPom")).toThrow(
-        'Page Object Child "items" is a collection of RootlessItem, which declares no root; a collection item\'s ref needs one.'
-      );
-    });
+  it("builds a collection and a single child without checking a root", () => {
+    const manifest = manifestForClass(
+      "rootlessChildrenPom",
+      "RootlessChildrenPom"
+    );
 
-    it("reads the root key through a constant of the file, a computed string key, and an assertion", () => {
-      const manifest = manifestForClass(
-        "readableRootOptionsPom",
-        "ReadableRootOptionsPom"
-      );
-
-      expect(manifest?.members.map((member) => member.memberName)).toEqual([
-        "named",
-        "computed",
-        "aliased",
-      ]);
-      expect(
-        manifest?.components.map((component) => component.className)
-      ).toEqual(["NamedOptionsItem", "ComputedKeyItem", "AliasedOptionsItem"]);
-    });
-
-    it("leaves a root the compiler cannot read, through a spread, an import or a call, to the runtime", () => {
-      const manifest = manifestForClass(
-        "unreadableRootOptionsPom",
-        "UnreadableRootOptionsPom"
-      );
-
-      expect(
-        manifest?.components.map((component) => component.className)
-      ).toEqual(["SpreadItem", "ImportedItem", "CalledItem"]);
-    });
-
-    it("refuses a collection whose item class's options, read through a constant, declare no root", () => {
-      expect(() => manifestFor("resolvedRootlessCollectionPom")).toThrow(
-        'Page Object Child "items" is a collection of PlainItem, which declares no root; a collection item\'s ref needs one.'
-      );
-    });
-
-    it("still reads a constant that two decorators share and nothing else touches", () => {
-      expect(() => manifestFor("sharedRootlessOptionsPom")).toThrow(
-        'Page Object Child "first" is a collection of FirstItem, which declares no root; a collection item\'s ref needs one.'
-      );
-    });
-
-    it("still reads a constant shared with ayme's decorator imported under another name", () => {
-      expect(() => manifestFor("aliasedSharedOptionsPom")).toThrow(
-        'Page Object Child "second" is a collection of SecondItem, which declares no root; a collection item\'s ref needs one.'
-      );
-    });
-
-    it("still reads a constant shared with ayme's decorator reached through a namespace import", () => {
-      expect(() => manifestFor("namespacedSharedOptionsPom")).toThrow(
-        'Page Object Child "second" is a collection of SecondItem, which declares no root; a collection item\'s ref needs one.'
-      );
-    });
-
-    it("still reads a constant shared with ayme's decorator re-exported through a barrel", () => {
-      expect(() => manifestFor("barrelSharedOptionsPom")).toThrow(
-        'Page Object Child "second" is a collection of SecondItem, which declares no root; a collection item\'s ref needs one.'
-      );
-    });
-
-    it("reads a root declared through an aliased decorator on a base class", () => {
-      const manifest = manifestForClass(
-        "aliasedInheritedRootPom",
-        "AliasedInheritedRootPom"
-      );
-
-      expect(manifest?.members).toMatchObject([
-        { memberName: "rows", componentClassName: "Row", collection: true },
-      ]);
-    });
-
-    it("leaves the options to the runtime when another module's decorator imported as an alias receives them", () => {
-      const manifest = manifestForClass(
-        "foreignAliasOptionsPom",
-        "ForeignAliasOptionsPom"
-      );
-
-      expect(
-        manifest?.components.map((component) => component.className)
-      ).toEqual(["TaggedItem"]);
-    });
-
-    it("leaves the options to the runtime when an unresolvable namespace's ayme receives them", () => {
-      const manifest = manifestForClass(
-        "foreignNamespaceOptionsPom",
-        "ForeignNamespaceOptionsPom"
-      );
-
-      expect(
-        manifest?.components.map((component) => component.className)
-      ).toEqual(["HookedItem"]);
-    });
-
-    it("leaves the options to the runtime when ayme's import cannot be followed", () => {
-      const manifest = manifestForClass(
-        "unresolvedBarrelPom",
-        "UnresolvedBarrelPom"
-      );
-
-      expect(
-        manifest?.components.map((component) => component.className)
-      ).toEqual(["FirstItem", "SecondItem"]);
-    });
-
-    it("leaves the options to the runtime when a function merely named ayme receives them", () => {
-      const manifest = manifestForClass(
-        "shadowedAymeOptionsPom",
-        "ShadowedAymeOptionsPom"
-      );
-
-      expect(
-        manifest?.components.map((component) => component.className)
-      ).toEqual(["ShadowedItem"]);
-    });
-
-    it("leaves a root a constant gained after its initializer, through another decorator, or a literal inherits through __proto__, to the runtime", () => {
-      const manifest = manifestForClass(
-        "mutatedRootOptionsPom",
-        "MutatedRootOptionsPom"
-      );
-
-      expect(
-        manifest?.components.map((component) => component.className)
-      ).toEqual(["AssignedItem", "InheritedItem", "DecoratedItem"]);
-    });
-
-    it("builds a collection whose item class inherits its root, and a single child without one", () => {
-      const manifest = manifestForClass(
-        "rootlessChildrenPom",
-        "RootlessChildrenPom"
-      );
-
-      expect(manifest?.members).toMatchObject([
-        { memberName: "toolbar", componentClassName: "Toolbar" },
-        { memberName: "rows", componentClassName: "Row", collection: true },
-      ]);
-      expect(
-        manifest?.components.map((component) => component.className)
-      ).toEqual(["Toolbar", "Row"]);
-    });
+    expect(manifest?.members).toMatchObject([
+      { memberName: "toolbar", componentClassName: "Toolbar" },
+      { memberName: "rows", componentClassName: "Row", collection: true },
+    ]);
+    expect(
+      manifest?.components.map((component) => component.className)
+    ).toEqual(["Toolbar", "Row"]);
   });
 
   describe("parameter shapes", () => {
