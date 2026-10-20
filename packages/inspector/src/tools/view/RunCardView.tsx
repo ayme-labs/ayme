@@ -355,7 +355,7 @@ export function JsonEditor({
             {violations.map(({ path, message }) => (
               <li key={`${path} ${message}`}>
                 <span className="font-mono font-semibold">
-                  {path || "arguments"}
+                  {path === undefined ? "arguments" : path || '""'}
                 </span>
                 : {message}
               </li>
