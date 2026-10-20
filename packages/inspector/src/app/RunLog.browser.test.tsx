@@ -94,6 +94,7 @@ const editor: RegisteredPom = {
   },
   memberObservations: [],
   presentPaths: new Set([""]),
+  rootMemberPaths: new Set(),
   tools: [save],
 };
 

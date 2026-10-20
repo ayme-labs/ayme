@@ -147,14 +147,15 @@ export function buildPageModel(
   const instances = [...walk(objects)].filter(
     (node) => node.kind !== "collection" && node.live
   );
+  const rootMembers = rootMemberPaths(registrations, objects);
   const models = definitions.map((definition): PageObjectModel => ({
     className: definition.name,
     ...(definition.description === undefined
       ? {}
       : { description: definition.description }),
     members: definition.children
-      .filter((member) => !isRootMember(member))
-      .map((member) => modelMember(definition.name, member)),
+      .map((member) => modelMember(definition.name, member))
+      .filter((member) => !rootMembers.has(member.path)),
     actions: definition.actions.map((action) => {
       const toolNames = registrations.flatMap((registration) =>
         (registration.tools as readonly RegisteredTool[])
@@ -263,10 +264,11 @@ function objectParts(
   const children: UnkeyedNode[] = [];
   const pageName = context.registration.id;
   for (const member of model.members) {
-    if (isRootMember(member)) continue;
     const memberPath = path
       ? `${path}.${member.memberName}`
       : member.memberName;
+    // The member that resolved to the root is the root, not a child.
+    if (context.registration.rootMemberPaths.has(memberPath)) continue;
     const memberToolPath = toolPath
       ? `${toolPath}.${member.memberName}`
       : member.memberName;
@@ -409,8 +411,33 @@ function modelMember(
   };
 }
 
-function isRootMember(member: PomMemberManifest) {
-  return member.kind === "locator" && member.memberName === "root";
+/**
+ * The model paths, e.g. "ListItem.container", of the members the runtime
+ * found resolving to their Page Object's root on some instance: the root,
+ * which a model does not list among its members.
+ */
+function rootMemberPaths(
+  registrations: readonly RegisteredPom[],
+  objects: readonly PageObjectNode[]
+): ReadonlySet<string> {
+  const classNames = new Map(
+    [...walk(objects)].map((node) => [node.path, node.className])
+  );
+  return new Set(
+    registrations.flatMap((registration) =>
+      [...registration.rootMemberPaths].flatMap((memberPath) => {
+        const at = memberPath.lastIndexOf(".");
+        const objectPath =
+          at < 0
+            ? registration.id
+            : `${registration.id}.${memberPath.slice(0, at)}`;
+        const className = classNames.get(objectPath);
+        return className === undefined
+          ? []
+          : [`${className}.${memberPath.slice(at + 1)}`];
+      })
+    )
+  );
 }
 
 function isPresent(observation: PomMemberObservation | undefined) {

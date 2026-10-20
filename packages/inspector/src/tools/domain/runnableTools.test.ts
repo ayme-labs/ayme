@@ -44,6 +44,7 @@ const listPage: RegisteredPom = {
   manifest: { className: "ListPage", members: [], components: [], tools: [] },
   memberObservations: [],
   presentPaths: new Set([""]),
+  rootMemberPaths: new Set(),
   tools: [addItem, rename],
 };
 const markElement = {

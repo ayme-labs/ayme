@@ -104,6 +104,7 @@ const listPage: RegisteredPom = {
     "entries[0]",
     "entries[1]",
   ]),
+  rootMemberPaths: new Set(),
   tools: [],
 };
 

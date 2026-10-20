@@ -106,6 +106,7 @@ const listPage: RegisteredPom = {
     })),
   ],
   presentPaths: new Set(["", "items[0]", "items[1]"]),
+  rootMemberPaths: new Set(),
   tools: [archive],
 };
 

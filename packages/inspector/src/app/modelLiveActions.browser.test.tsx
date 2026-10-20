@@ -72,6 +72,7 @@ function editor(toolbarOnPage: boolean): RegisteredPom {
       },
     ],
     presentPaths: new Set(toolbarOnPage ? ["", "toolbar"] : [""]),
+    rootMemberPaths: new Set(),
     tools: [save],
   };
 }

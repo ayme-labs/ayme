@@ -80,6 +80,13 @@ export type RegisteredPom = {
    * or "items[1]" for a child. Empty until the first observation.
    */
   presentPaths: ReadonlySet<string>;
+  /**
+   * The paths from the page of the locator members the last observation
+   * found resolving to their Page Object's root element, e.g. "container"
+   * or "items[1].element": each is the root, not a child, so it is left out
+   * of the member observations. Empty until the first observation.
+   */
+  rootMemberPaths: ReadonlySet<string>;
   tools: readonly ScopedPomTool[];
 };
 
@@ -229,6 +236,7 @@ export function registerPageObject<T extends object>(
     manifest: compiledPom,
     memberObservations: [],
     presentPaths: new Set(),
+    rootMemberPaths: new Set(),
     instances: undefined,
     tools: [],
   };
@@ -441,7 +449,11 @@ async function probeRegistrations(lifetime: number): Promise<void> {
 /** Keeps `registration`'s new observation; whether it found anything new. */
 function commitObservation(
   registration: ObservedRegisteredPom,
-  { memberObservations, instances }: Awaited<ReturnType<typeof probePomMembers>>
+  {
+    memberObservations,
+    instances,
+    rootMemberPaths,
+  }: Awaited<ReturnType<typeof probePomMembers>>
 ): boolean {
   if (!registeredPoms.has(registration)) return false;
   const previous = registration.instances?.all;
@@ -457,6 +469,7 @@ function commitObservation(
   registration.presentPaths = new Set(
     instances.flatMap((instance) => (instance.present ? [instance.path] : []))
   );
+  registration.rootMemberPaths = rootMemberPaths;
   registration.instances = groupedInstances(instances);
   return true;
 }
@@ -1031,6 +1044,7 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
       manifest.components.map((component) => [component.className, component])
     ),
     instances: [],
+    rootMemberPaths: new Set(),
   };
   const place: Place = {
     path: "",
@@ -1051,7 +1065,11 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
       root: undefined,
       predicates: new Map(),
     });
-    return { memberObservations: [], instances: walk.instances };
+    return {
+      memberObservations: [],
+      instances: walk.instances,
+      rootMemberPaths: walk.rootMemberPaths,
+    };
   }
   // A rootless Page Object with no predicate is on every page.
   const root = declaresRoot(instance)
@@ -1074,7 +1092,11 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
     { ...place, present, rootElement: root?.element },
     new Set()
   );
-  return { memberObservations, instances: walk.instances };
+  return {
+    memberObservations,
+    instances: walk.instances,
+    rootMemberPaths: walk.rootMemberPaths,
+  };
 }
 
 /**
@@ -1103,6 +1125,8 @@ type Walk = {
   components: ReadonlyMap<string, PomComponentManifest>;
   /** Every instance the walk found, parents before their members. */
   instances: PomInstanceObservation[];
+  /** The paths of the locator members that resolved to their root. */
+  rootMemberPaths: Set<string>;
 };
 
 /** Where in the walk an instance's members are. */
@@ -1223,8 +1247,10 @@ async function probeMembers(
     try {
       const value = await readMember(instance, member);
       if (member.kind === "locator") {
-        if (isLocator(value) && resolvesToRoot(value, place.rootElement))
+        if (isLocator(value) && resolvesToRoot(value, place.rootElement)) {
+          walk.rootMemberPaths.add(memberPath);
           continue;
+        }
         observations.push(await observeLocator(value, member, memberPath));
       } else
         await probeComponentMember(
