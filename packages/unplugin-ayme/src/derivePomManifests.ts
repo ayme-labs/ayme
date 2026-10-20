@@ -166,6 +166,12 @@ function pomChild(
       ? componentCollectionDeclaration(checker, type, memberName)
       : componentDeclaration(checker, type, memberName);
   if (!declaration?.name) return undefined;
+  // A collection item's ref is its root's element, so an item class with no
+  // root in its chain has no ref to be called by.
+  if (access === "method" && !declaresRoot(checker, declaration))
+    throw new Error(
+      `Page Object Child "${memberName}" is a collection of ${declaration.name.text}, which declares no root; a collection item's ref needs one.`
+    );
   return {
     member: {
       memberName,
@@ -176,6 +182,23 @@ function pomChild(
     },
     declaration,
   };
+}
+
+/**
+ * Whether `declaration`, or an ancestor class, passes `root` to `@ayme`. The
+ * key alone decides; the predicate is the runtime's to read.
+ */
+function declaresRoot(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+): boolean {
+  const marker = findClassMarker(declaration);
+  return (
+    (marker !== undefined && hasDecoratorOption(marker, "root")) ||
+    baseClassDeclarations(checker, declaration).some((base) =>
+      declaresRoot(checker, base)
+    )
+  );
 }
 
 function skippedMethods(
@@ -597,11 +620,29 @@ function findClassMarker(declaration: ts.ClassDeclaration) {
   );
 }
 
-/** The literal `description` option of a decorator, if it has one. */
-function decoratorDescription(decorator: ts.Decorator) {
+/** The options object literal a decorator is called with, if it has one. */
+function decoratorOptions(decorator: ts.Decorator) {
   if (!ts.isCallExpression(decorator.expression)) return undefined;
   const options = decorator.expression.arguments[0];
-  if (!options || !ts.isObjectLiteralExpression(options)) return undefined;
+  return options && ts.isObjectLiteralExpression(options) ? options : undefined;
+}
+
+/** Whether the decorator's options literal has a property named `name`. */
+function hasDecoratorOption(decorator: ts.Decorator, name: string) {
+  return (
+    decoratorOptions(decorator)?.properties.some(
+      (property) =>
+        property.name !== undefined &&
+        (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
+        property.name.text === name
+    ) ?? false
+  );
+}
+
+/** The literal `description` option of a decorator, if it has one. */
+function decoratorDescription(decorator: ts.Decorator) {
+  const options = decoratorOptions(decorator);
+  if (!options) return undefined;
   for (const property of options.properties) {
     if (
       ts.isPropertyAssignment(property) &&
