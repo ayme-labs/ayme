@@ -32,7 +32,7 @@ The lifetime within one browser document during which Ayme maintains best-effort
 One stretch of a Page State Session between navigations: from document load, or from a same-document navigation, to the next. Interaction history is scoped by Visits.
 
 **Page Object Root**:
-The page element that anchors one Page Object instance in the observed structure.
+The element the model's `root` names: the one that anchors a Page Object instance in the observed structure.
 
 **Page Object Presence**:
 Whether a Page Object can be associated with rendered UI in the current layout's normally scroll-reachable area, independently of modal blocking or obstruction. A Page Object Model may declare its own presence predicate, which narrows the default.
