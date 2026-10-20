@@ -20,7 +20,7 @@ import SettingsPage from "./SettingsPage.vue";
 /**
  * A Custom Tool whose effect is not in the Structural Page State: it marks
  * the element with a data attribute and an outline, which change nothing in
- * the page tree. For the Goal Loop repro of issue 536.
+ * the page tree. For the bench goal whose end state the page never shows.
  */
 const highlightPageStateRef: CustomTool = {
   name: "highlight_page_state_ref",

@@ -64,7 +64,8 @@ function argumentAnswers(
       }
       const criteria = question.criteria ?? {};
       let choice: string | undefined;
-      if (id === "target") {
+      // A built-in operation's element is `target`; a Custom Tool's is `ref`.
+      if (id === "target" || id === "ref") {
         const refs = refsDescribed(criteria, step.target ?? "");
         choice = refs[step.nth ?? 0];
         if (choice === undefined)
