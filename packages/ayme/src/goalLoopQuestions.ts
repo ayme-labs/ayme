@@ -1354,7 +1354,63 @@ function candidateElements(
     for (const grandchild of child.children) visit(grandchild, child);
   };
   for (const root of tree.getRootNodes()) visit(root, null);
-  return elements;
+  return withItemTexts(tree, elements);
+}
+
+/**
+ * Adds `item_text` to each named candidate whose role and name another
+ * candidate shares: the text of the smallest ancestor that has text besides the
+ * candidate and holds none of the others, such as the row a "Rename" button
+ * sits in.
+ */
+function withItemTexts(
+  tree: StructuralTree,
+  elements: Record<string, unknown>[]
+): Record<string, unknown>[] {
+  const label = (element: Record<string, unknown>) =>
+    `${element.role} ${element.name}`;
+  return elements.map((element) => {
+    // An unnamed candidate is told apart by the text around it already.
+    const others = element.name
+      ? elements.filter(
+          (other) => other !== element && label(other) === label(element)
+        )
+      : [];
+    if (others.length === 0) return element;
+    const ref = element.ref as AriaRef;
+    // Another same-named candidate, or anything around one, is not this item.
+    const holdingOthers = new Set(
+      others.flatMap((other) => [
+        other.ref,
+        ...tree.getAncestorsOf(other.ref as AriaRef).map((node) => node.ref),
+      ])
+    );
+    let text = "";
+    for (const ancestor of tree.getAncestorsOf(ref)) {
+      if (holdingOthers.has(ancestor.ref)) break;
+      text = itemText(ancestor, ref);
+      if (text) break;
+    }
+    return text ? { ...element, item_text: clip(text) } : element;
+  });
+}
+
+/** The names and texts inside `item`, in document order, leaving out the candidate itself. */
+function itemText(item: StructuralNode, candidate: AriaRef): string {
+  const parts: string[] = [];
+  // A heading repeating its region's name, or a name repeated as text, once.
+  const add = (text: string) => {
+    if (text && text !== parts.at(-1)) parts.push(text);
+  };
+  const visit = (node: StructuralNode) => {
+    if (node.ref === candidate) return;
+    add(node.name);
+    for (const child of node.children)
+      if (typeof child === "string") add(child.trim());
+      else visit(child);
+  };
+  visit(item);
+  return parts.join(" · ");
 }
 
 function describeCandidate(
