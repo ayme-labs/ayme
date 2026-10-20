@@ -1,14 +1,26 @@
+import process from "node:process";
 import { fileURLToPath, URL } from "node:url";
 import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";
 
 // Certification fixture only. There is deliberately no webpack configuration or fallback.
 export default function nextConfig(phase) {
-  // Ayme stays in every build: the Playwright suite runs against the production build.
-  const include = true;
+  // `AYME_INCLUDE=false next build` is the one build without Ayme, written
+  // to its own distDir for scripts/verify-browser-output.mjs to check; every
+  // other build keeps Ayme, because the Playwright suite runs against the
+  // production build.
+  const include = process.env.AYME_INCLUDE !== "false";
   return {
     reactStrictMode: true,
-    // Keep the dev check from overwriting the production build under test.
-    distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
+    // Keep the dev check and the build without Ayme from overwriting the
+    // production build under test.
+    distDir:
+      phase === PHASE_DEVELOPMENT_SERVER
+        ? ".next-dev"
+        : include
+          ? ".next"
+          : ".next-without-ayme",
+    // The verify script reads the source maps of the build without Ayme.
+    productionBrowserSourceMaps: !include,
     turbopack: {
       root: fileURLToPath(new URL("../../", import.meta.url)),
       // A build without Ayme points the runtime's two entries and the
