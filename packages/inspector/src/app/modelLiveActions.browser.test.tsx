@@ -71,6 +71,7 @@ function editor(toolbarOnPage: boolean): RegisteredPom {
         count: toolbarOnPage ? 1 : 0,
       },
     ],
+    presentPaths: new Set(toolbarOnPage ? ["", "toolbar"] : [""]),
     tools: [save],
   };
 }

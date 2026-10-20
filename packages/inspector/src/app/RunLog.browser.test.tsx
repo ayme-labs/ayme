@@ -93,6 +93,7 @@ const editor: RegisteredPom = {
     ],
   },
   memberObservations: [],
+  presentPaths: new Set([""]),
   tools: [save],
 };
 

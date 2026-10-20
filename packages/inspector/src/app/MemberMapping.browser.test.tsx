@@ -97,6 +97,13 @@ const listPage: RegisteredPom = {
       })),
     ]),
   ],
+  presentPaths: new Set([
+    "",
+    "items[0]",
+    "items[1]",
+    "entries[0]",
+    "entries[1]",
+  ]),
   tools: [],
 };
 

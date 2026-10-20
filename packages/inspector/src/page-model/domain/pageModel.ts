@@ -226,13 +226,12 @@ function pageObject(
       ])
     ),
   };
-  const root = context.observations.get("root");
   return {
     path: manifest.className,
     name: manifest.className,
     kind: "page",
     className: manifest.className,
-    live: root === undefined || isPresent(root),
+    live: registration.presentPaths.has(""),
     ...objectParts(context, manifest, "", ""),
   };
 }
@@ -299,7 +298,7 @@ function objectParts(
           name: `[${index}]`,
           kind: "item" as const,
           className: member.componentClassName,
-          live: isPresent(context.observations.get(`${itemPath}.root`)),
+          live: context.registration.presentPaths.has(itemPath),
           ...childParts(itemPath, `${memberToolPath}[]`),
         };
       });
@@ -338,7 +337,7 @@ function objectParts(
       continue;
     }
 
-    const live = isPresent(context.observations.get(`${memberPath}.root`));
+    const live = context.registration.presentPaths.has(memberPath);
     const child: UnkeyedNode = {
       path: `${pageName}.${memberPath}`,
       name: member.memberName,

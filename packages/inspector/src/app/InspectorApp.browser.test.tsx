@@ -107,6 +107,7 @@ function editor(id: string, ...tools: RegisteredPomTool[]): RegisteredPom {
     memberObservations: [
       { memberName: "saveButton", kind: "locator", count: 1 },
     ],
+    presentPaths: new Set([""]),
     tools,
   };
 }

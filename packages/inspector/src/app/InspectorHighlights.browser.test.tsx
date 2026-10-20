@@ -95,6 +95,7 @@ const editor: RegisteredPom = {
     { memberName: "titleInput", kind: "locator", count: 1 },
     { memberName: "saveButton", kind: "locator", count: 1 },
   ],
+  presentPaths: new Set([""]),
   tools: [],
 };
 

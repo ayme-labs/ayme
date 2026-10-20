@@ -151,10 +151,21 @@ const probed: PomMemberObservation[] = [
   { memberName: "archiveDialog.confirmButton", kind: "locator", count: 0 },
 ];
 
+/** The paths of the Page Objects the probe found on the page. */
+const present = ["", "items[0]", "items[1]"];
+
 function registration(
-  memberObservations: PomMemberObservation[] = probed
+  memberObservations: PomMemberObservation[] = probed,
+  presentPaths: readonly string[] = memberObservations.length ? present : []
 ): RegisteredPom {
-  return { id: "TodoPage", instance: {}, manifest, memberObservations, tools };
+  return {
+    id: "TodoPage",
+    instance: {},
+    manifest,
+    memberObservations,
+    presentPaths: new Set(presentPaths),
+    tools,
+  };
 }
 
 // What snapshot describes for this page.
@@ -240,6 +251,36 @@ describe("the page model", () => {
         className: "ArchiveDialog",
         live: false,
       },
+    ]);
+  });
+
+  it("shows a Page Object as not live while the probe found it absent, whatever its members", () => {
+    const { objects } = buildPageModel(
+      [registration(probed, ["items[0]"])],
+      live,
+      definitions,
+      actionSignature
+    );
+
+    expect(
+      [...walk(objects)]
+        .filter(({ kind }) => kind !== "collection")
+        .map(({ path, live }) => ({ path, live }))
+    ).toEqual([
+      { path: "TodoPage", live: false },
+      { path: "TodoPage.items[0]", live: true },
+      { path: "TodoPage.items[1]", live: false },
+      { path: "TodoPage.archiveDialog", live: false },
+    ]);
+    expect(
+      objectAt(objects, "TodoPage").members.map(({ name, live }) => ({
+        name,
+        live,
+      }))
+    ).toEqual([
+      { name: "newItemInput", live: true },
+      { name: "items", live: true },
+      { name: "archiveDialog", live: false },
     ]);
   });
 

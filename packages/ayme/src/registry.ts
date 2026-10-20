@@ -74,6 +74,12 @@ export type RegisteredPom = {
   instance: object;
   manifest: PomManifest;
   memberObservations: readonly PomMemberObservation[];
+  /**
+   * The paths from the page of the Page Object instances the last
+   * observation found on the page: "" for the page itself, "archiveDialog"
+   * or "items[1]" for a child. Empty until the first observation.
+   */
+  presentPaths: ReadonlySet<string>;
   tools: readonly ScopedPomTool[];
 };
 
@@ -222,6 +228,7 @@ export function registerPageObject<T extends object>(
     instance,
     manifest: compiledPom,
     memberObservations: [],
+    presentPaths: new Set(),
     instances: undefined,
     tools: [],
   };
@@ -447,6 +454,9 @@ function commitObservation(
   )
     return false;
   registration.memberObservations = memberObservations;
+  registration.presentPaths = new Set(
+    instances.flatMap((instance) => (instance.present ? [instance.path] : []))
+  );
   registration.instances = groupedInstances(instances);
   return true;
 }

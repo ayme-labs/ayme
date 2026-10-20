@@ -105,6 +105,7 @@ const listPage: RegisteredPom = {
       count: 1,
     })),
   ],
+  presentPaths: new Set(["", "items[0]", "items[1]"]),
   tools: [archive],
 };
 
