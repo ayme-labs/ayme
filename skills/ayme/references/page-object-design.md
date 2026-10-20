@@ -32,7 +32,7 @@ so its tools are published, and return it from the opening action.
 
 ```ts
 // Rooted at the portaled content, a page-level locator rather than a descendant of the trigger.
-@ayme
+@ayme({ root: (self: ProfileMenuContent) => self.root })
 class ProfileMenuContent {
   readonly root: Locator;
 
