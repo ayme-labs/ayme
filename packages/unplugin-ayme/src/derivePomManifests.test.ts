@@ -668,14 +668,31 @@ describe("derivePomManifests", () => {
 
     it("still reads a constant shared with ayme's decorator imported under another name", () => {
       expect(() => manifestFor("aliasedSharedOptionsPom")).toThrow(
-        'Page Object Child "second" is a collection of SecondItem, which declares no root; a collection item\'s ref needs one.'
+        'Page Object Child "first" is a collection of FirstItem, which declares no root; a collection item\'s ref needs one.'
       );
     });
 
     it("still reads a constant shared with ayme's decorator reached through a namespace import", () => {
       expect(() => manifestFor("namespacedSharedOptionsPom")).toThrow(
-        'Page Object Child "second" is a collection of SecondItem, which declares no root; a collection item\'s ref needs one.'
+        'Page Object Child "first" is a collection of FirstItem, which declares no root; a collection item\'s ref needs one.'
       );
+    });
+
+    it("still reads a constant shared with ayme's decorator re-exported through a barrel", () => {
+      expect(() => manifestFor("barrelSharedOptionsPom")).toThrow(
+        'Page Object Child "first" is a collection of FirstItem, which declares no root; a collection item\'s ref needs one.'
+      );
+    });
+
+    it("reads a root declared through an aliased decorator on a base class", () => {
+      const manifest = manifestForClass(
+        "aliasedInheritedRootPom",
+        "AliasedInheritedRootPom"
+      );
+
+      expect(manifest?.members).toMatchObject([
+        { memberName: "rows", componentClassName: "Row", collection: true },
+      ]);
     });
 
     it("leaves the options to the runtime when a function merely named ayme receives them", () => {
