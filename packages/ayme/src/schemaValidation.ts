@@ -143,20 +143,28 @@ function objectViolations(
   return violations;
 }
 
+/** The most violations a ToolInputError spells out. */
+const MAX_LISTED_VIOLATIONS = 20;
+
 /**
- * Package-internal: throw every violation as one ToolInputError, a sentence
+ * Package-internal: throw the violations as one ToolInputError, a sentence
  * each, e.g. "Input property name is not supported. Input property title is
- * required."
+ * required." Past the first 20, one sentence counts the rest, so a large bad
+ * input doesn't yield a message of hundreds of KB.
  */
 export function throwViolations(violations: readonly SchemaViolation[]) {
   if (violations.length === 0) return;
-  throw new ToolInputError(
-    violations
-      .map(({ path, message }) =>
-        path ? `Input property ${path} ${message}.` : `Tool input ${message}.`
-      )
-      .join(" ")
-  );
+  const sentences = violations
+    .slice(0, MAX_LISTED_VIOLATIONS)
+    .map(({ path, message }) =>
+      path ? `Input property ${path} ${message}.` : `Tool input ${message}.`
+    );
+  const rest = violations.length - MAX_LISTED_VIOLATIONS;
+  if (rest > 0)
+    sentences.push(
+      `There ${rest === 1 ? "is" : "are"} ${counted(rest, "more problem", "more problems")} with the input.`
+    );
+  throw new ToolInputError(sentences.join(" "));
 }
 
 function hasType(value: unknown, type: NonNullable<JsonSchema["type"]>) {

@@ -235,4 +235,36 @@ describe("validatedToolInput", () => {
       )
     );
   });
+
+  it("lists at most 20 violations and counts the rest", () => {
+    const schema: JsonSchema = {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    };
+    const extra = (count: number) =>
+      Object.fromEntries(
+        Array.from({ length: count }, (_, i) => [`p${i}`, true])
+      );
+    const listed = Array.from(
+      { length: 20 },
+      (_, i) => `Input property p${i} is not supported.`
+    ).join(" ");
+    expect(() => validatedToolInput(schema, extra(20))).toThrow(
+      new ToolInputError(listed)
+    );
+    expect(() => validatedToolInput(schema, extra(21))).toThrow(
+      new ToolInputError(`${listed} There is 1 more problem with the input.`)
+    );
+    let message = "";
+    try {
+      validatedToolInput(schema, extra(10_000));
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toBe(
+      `${listed} There are 9980 more problems with the input.`
+    );
+    expect(message.length).toBeLessThan(5_000);
+  });
 });
