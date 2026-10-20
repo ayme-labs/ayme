@@ -195,9 +195,15 @@ describe("toolInputViolations", () => {
   });
 
   it("rejects input that isn't an object", () => {
-    expect(toolInputViolations(goalSchema, [])).toEqual([
-      { path: "", message: "must be an object" },
+    expect(toolInputViolations(goalSchema, [])).toStrictEqual([
+      { message: "must be an object" },
     ]);
+  });
+
+  it("names a property whose name is empty", () => {
+    expect(
+      toolInputViolations(goalSchema, { "": "x", goal: "x", maxSteps: 1 })
+    ).toStrictEqual([{ path: "", message: "is not supported" }]);
   });
 });
 
@@ -217,6 +223,12 @@ describe("validatedToolInput", () => {
     expect(() => validatedToolInput(goalSchema, "x")).toThrow(
       "Tool input must be an object."
     );
+  });
+
+  it("throws for a property whose name is empty as that property", () => {
+    expect(() =>
+      validatedToolInput(goalSchema, { "": "x", goal: "x", maxSteps: 1 })
+    ).toThrow(new ToolInputError('Input property "" is not supported.'));
   });
 
   it("throws every violation, a sentence each, in order", () => {
