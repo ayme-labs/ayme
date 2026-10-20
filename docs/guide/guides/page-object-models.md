@@ -68,14 +68,12 @@ export class ListPage {
   async items(): Promise<ListItem[]> {
     // several Page Object Children: a collection
     const rows = await this.itemRows.all();
-    return rows.map((row) => new ListItem(row, this.archiveDialog));
+    return rows.map((row) => new ListItem(row));
   }
 }
 
-@ayme
-export class ListItem {
-  readonly root: Locator; // the Page Object Root
-
+// Anchored at the row: AppComponent names the Page Object Root, below.
+export class ListItem extends AppComponent {
   @ayme.action({ description: "Archive this list item." })
   async archive() {
     // ...
@@ -110,7 +108,7 @@ export class ListItem extends AppComponent {
 }
 ```
 
-The root decides whether the Page Object is present, while the root is on the page, and whether it is available, while a click would also reach the root; the page state labels that element with the Page Object's name, and a collection item's `ref` is that element's. A child's tools are listed only while its root is on the page, so a child needs a root. A registered top-level model without one has tools that are listed as long as it is registered. `ListItem` needs no decorator of its own; a subclass that declares its own `root` overrides the base's. The member that holds the root locator, `container` here, is the root and not a child, so the page state does not list it twice. For now, a locator member named `root` anchors a model without the option the same way, as the `ListItem` of [Page Object Children](#page-object-children) does.
+The root decides whether the Page Object is present, while the root is on the page, and whether it is available, while a click would also reach the root; the page state labels that element with the Page Object's name, and a collection item's `ref` is that element's. A child's tools are listed only while its root is on the page, so a child needs a root. A registered top-level model without one has tools that are listed as long as it is registered. `ListItem` needs no decorator of its own; a subclass that declares its own `root` overrides the base's. The member that holds the root locator, `container` here, is the root and not a child, so the page state does not list it twice. Only the option anchors a model: a model whose class chain declares none is root-less, also when it has a member named `root`.
 
 Presence lists tools; availability says whether they would run. A present Page Object whose root a click would not reach, such as one under an open dialog, keeps its tools listed, flagged unavailable with a reason that names what is in the way, and a call is refused with that reason. [`ayme.tools`](../reference/ayme.md#aymetools) has the form of the reason.
 
@@ -123,10 +121,8 @@ const canRemove = async (self: SettingsPanel) =>
   (await self.removeButton.isVisible()) ||
   "This dashboard is built in or the last of its type";
 
-@ayme
-export class SettingsPanel {
-  readonly removeButton = this.root.getByTestId("removeButton");
-  constructor(readonly root: Locator) {}
+export class SettingsPanel extends AppComponent {
+  readonly removeButton = this.container.getByTestId("removeButton");
 
   @ayme.action({
     description: "Remove this dashboard. Needs a removable dashboard.",
