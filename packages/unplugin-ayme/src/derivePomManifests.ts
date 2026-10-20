@@ -12,7 +12,6 @@ import type {
   ToolManifest,
   ToolParameter,
 } from "@ayme-dev/ayme/internal";
-import { RUNTIME_MODULE } from "./transformPomModule";
 import { createPomProgram, type PomCompilerOptions } from "./pomProgram";
 
 export type { PomCompilerOptions } from "./pomProgram";
@@ -135,7 +134,7 @@ function memberRole(
   const memberName = member.name.text;
 
   if (ts.isMethodDeclaration(member)) {
-    const description = toolDescription(checker, member);
+    const description = toolDescription(member);
     if (description)
       return { role: "action", member, methodName: memberName, description };
     const child =
@@ -200,18 +199,67 @@ type RootDeclaration = "declared" | "undeclared" | "unreadable";
 
 function rootDeclaration(
   checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
+  declaration: ts.ClassDeclaration,
+  aymeSymbol = aymeSymbolOf(checker, declaration),
+  own = true
 ): RootDeclaration {
-  const marker = findClassMarker(checker, declaration);
-  const keys = marker === undefined ? new Set() : optionKeys(checker, marker);
+  const marker = own
+    ? findClassMarker(declaration)
+    : (ts.getDecorators(declaration) ?? []).find((decorator) =>
+        isAymeFor(checker, aymeSymbol, decorator)
+      );
+  const keys =
+    marker === undefined ? new Set() : optionKeys(checker, marker, aymeSymbol);
   let declared: RootDeclaration =
     keys === "unreadable" ? keys : keys.has("root") ? "declared" : "undeclared";
   for (const base of baseClassDeclarations(checker, declaration)) {
     if (declared === "declared") break;
-    const inherited = rootDeclaration(checker, base);
+    const inherited =
+      aymeSymbol === undefined
+        ? "unreadable"
+        : rootDeclaration(checker, base, aymeSymbol, false);
     if (inherited !== "undeclared") declared = inherited;
   }
   return declared;
+}
+
+/**
+ * The symbol a class's own `@ayme` marker resolves to, import aliases
+ * followed: what ayme is for that class. Undefined when it resolves to none.
+ */
+function aymeSymbolOf(
+  checker: ts.TypeChecker,
+  declaration: ts.ClassDeclaration
+) {
+  const marker = findClassMarker(declaration);
+  return marker && calleeSymbol(checker, decoratorTarget(marker));
+}
+
+function calleeSymbol(checker: ts.TypeChecker, callee: ts.Expression) {
+  const name = ts.isPropertyAccessExpression(callee) ? callee.name : callee;
+  let symbol = checker.getSymbolAtLocation(name);
+  while (symbol && symbol.flags & ts.SymbolFlags.Alias) {
+    const target = checker.getAliasedSymbol(symbol);
+    if (target === symbol) break;
+    symbol = target;
+  }
+  return symbol?.declarations?.length ? symbol : undefined;
+}
+
+/**
+ * Whether `decorator` is the decorator `aymeSymbol` names, by symbol and not
+ * by text: `ayme` imported under another name or through a namespace is, a
+ * function merely named `ayme` is not.
+ */
+function isAymeFor(
+  checker: ts.TypeChecker,
+  aymeSymbol: ts.Symbol | undefined,
+  decorator: ts.Decorator
+) {
+  return (
+    aymeSymbol !== undefined &&
+    calleeSymbol(checker, decoratorTarget(decorator)) === aymeSymbol
+  );
 }
 
 function skippedMethods(
@@ -290,7 +338,7 @@ function classManifest(
     manifest: {
       className,
       file: declaringFile(declaration),
-      ...classDescription(checker, declaration),
+      ...classDescription(declaration),
       members,
       tools,
     },
@@ -562,7 +610,7 @@ function isPomClass(
   declaration: ts.ClassDeclaration
 ): boolean {
   return (
-    findClassMarker(checker, declaration) !== undefined ||
+    findClassMarker(declaration) !== undefined ||
     baseClassDeclarations(checker, declaration).some((base) =>
       isPomClass(checker, base)
     )
@@ -612,118 +660,24 @@ function decoratorTarget(decorator: ts.Decorator) {
   return ts.isCallExpression(expression) ? expression.expression : expression;
 }
 
-/**
- * Whether `name` is ayme's own `ayme` export. It is decided by symbol, not by
- * text: the aliases an import or a re-export leaves are followed to the
- * declaration, which must live in the runtime package or be imported (a
- * project may stand in its own module for the runtime), so `ayme` imported
- * under another name, through a barrel, or as a namespace member counts, and
- * a function that is merely named `ayme` does not. A name that resolves to no
- * symbol at all falls back to its text, and an import chain the checker cannot
- * follow to the module it names.
- */
-function isAymeExport(checker: ts.TypeChecker, name: ts.Identifier) {
-  let symbol = checker.getSymbolAtLocation(name);
-  if (symbol === undefined) return name.text === "ayme";
-  const first = symbol.declarations?.[0];
-  const imported = (symbol.flags & ts.SymbolFlags.Alias) !== 0;
-  while (symbol.flags & ts.SymbolFlags.Alias) {
-    const target = checker.getAliasedSymbol(symbol);
-    if (target === symbol) break;
-    symbol = target;
-  }
-  const declaration = symbol.declarations?.[0];
-  if (declaration === undefined) {
-    return (
-      first !== undefined &&
-      ts.isImportSpecifier(first) &&
-      (first.propertyName ?? first.name).text === "ayme" &&
-      isRuntimeImport(first.parent.parent.parent)
-    );
-  }
-  return (
-    symbol.name === "ayme" &&
-    (imported ||
-      owningPackage(declaration.getSourceFile().fileName) === RUNTIME_MODULE)
-  );
+function isMarker(decorator: ts.Decorator, name: string) {
+  const target = decoratorTarget(decorator);
+  return ts.isIdentifier(target) && target.text === name;
 }
 
-const packageNames = new Map<string, string | undefined>();
-
-/** The name of the nearest package.json at or above `fileName`. */
-function owningPackage(fileName: string): string | undefined {
-  const directory = path.dirname(fileName);
-  if (packageNames.has(directory)) return packageNames.get(directory);
-  let name: string | undefined;
-  try {
-    name = JSON.parse(
-      fs.readFileSync(path.join(directory, "package.json"), "utf8")
-    ).name;
-  } catch {
-    const parent = path.dirname(directory);
-    name =
-      parent === directory ? undefined : owningPackage(path.join(parent, "_"));
-  }
-  packageNames.set(directory, name);
-  return name;
-}
-
-function isRuntimeImport(
-  declaration: ts.ImportDeclaration | ts.JSDocImportTag
-) {
-  return (
-    ts.isStringLiteral(declaration.moduleSpecifier) &&
-    declaration.moduleSpecifier.text === RUNTIME_MODULE
-  );
-}
-
-/** Whether `expression` names ayme's `ayme` export: bare, or as `ns.ayme`. */
-function isAymeReference(checker: ts.TypeChecker, expression: ts.Expression) {
-  if (ts.isIdentifier(expression)) return isAymeExport(checker, expression);
-  return (
-    ts.isPropertyAccessExpression(expression) &&
-    ts.isIdentifier(expression.name) &&
-    expression.name.text === "ayme" &&
-    ts.isIdentifier(expression.expression) &&
-    isNamespace(checker, expression.expression) &&
-    isAymeExport(checker, expression.name)
-  );
-}
-
-function isNamespace(checker: ts.TypeChecker, name: ts.Identifier) {
-  const symbol = checker.getSymbolAtLocation(name);
-  return (
-    symbol === undefined ||
-    (symbol.flags & ts.SymbolFlags.Alias) !== 0 ||
-    (symbol.flags & ts.SymbolFlags.Module) !== 0
-  );
-}
-
-/** Whether `decorator` is ayme's class decorator, `@ayme` or `@ayme({ ... })`. */
-function isAymeDecorator(checker: ts.TypeChecker, decorator: ts.Decorator) {
-  return isAymeReference(checker, decoratorTarget(decorator));
-}
-
-/** Whether `decorator` is `member` of ayme's decorator, such as `@ayme.action`. */
-function isMemberMarker(
-  checker: ts.TypeChecker,
-  decorator: ts.Decorator,
-  member: string
-) {
+function isMemberMarker(decorator: ts.Decorator, name: string, member: string) {
   const target = decoratorTarget(decorator);
   return (
     ts.isPropertyAccessExpression(target) &&
-    target.name.text === member &&
-    isAymeReference(checker, target.expression)
+    ts.isIdentifier(target.expression) &&
+    target.expression.text === name &&
+    target.name.text === member
   );
 }
 
-function findClassMarker(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
-) {
+function findClassMarker(declaration: ts.ClassDeclaration) {
   return (ts.getDecorators(declaration) ?? []).find((decorator) =>
-    isAymeDecorator(checker, decorator)
+    isMarker(decorator, "ayme")
   );
 }
 
@@ -744,12 +698,13 @@ function decoratorOptions(decorator: ts.Decorator) {
  */
 function optionKeys(
   checker: ts.TypeChecker,
-  decorator: ts.Decorator
+  decorator: ts.Decorator,
+  aymeSymbol: ts.Symbol | undefined
 ): ReadonlySet<string> | "unreadable" {
   if (!ts.isCallExpression(decorator.expression)) return new Set();
   const [argument] = decorator.expression.arguments;
   if (argument === undefined) return new Set();
-  const literal = optionsLiteral(checker, argument);
+  const literal = optionsLiteral(checker, aymeSymbol, argument);
   if (literal === undefined) return "unreadable";
   const keys = new Set<string>();
   for (const property of literal.properties) {
@@ -768,6 +723,7 @@ function optionKeys(
  */
 function optionsLiteral(
   checker: ts.TypeChecker,
+  aymeSymbol: ts.Symbol | undefined,
   expression: ts.Expression,
   verified = new Map<ts.VariableDeclaration, boolean>()
 ): ts.ObjectLiteralExpression | undefined {
@@ -777,10 +733,10 @@ function optionsLiteral(
   const declaration = constDeclarationOf(checker, value);
   if (
     declaration === undefined ||
-    !untouchedConst(checker, declaration, verified)
+    !untouchedConst(checker, aymeSymbol, declaration, verified)
   )
     return undefined;
-  return optionsLiteral(checker, declaration.initializer, verified);
+  return optionsLiteral(checker, aymeSymbol, declaration.initializer, verified);
 }
 
 /**
@@ -828,6 +784,7 @@ function isInitializedConst(
  */
 function untouchedConst(
   checker: ts.TypeChecker,
+  aymeSymbol: ts.Symbol | undefined,
   declaration: ts.VariableDeclaration,
   verified: Map<ts.VariableDeclaration, boolean>
 ): boolean {
@@ -844,7 +801,7 @@ function untouchedConst(
         if (
           ts.isCallExpression(use.parent) &&
           ts.isDecorator(use.parent.parent) &&
-          isAymeDecorator(checker, use.parent.parent) &&
+          isAymeFor(checker, aymeSymbol, use.parent.parent) &&
           use.parent.arguments[0] === use
         )
           return true;
@@ -852,7 +809,7 @@ function untouchedConst(
           ts.isVariableDeclaration(use.parent) &&
           use.parent.initializer === use &&
           isInitializedConst(use.parent, use.getSourceFile()) &&
-          untouchedConst(checker, use.parent, verified)
+          untouchedConst(checker, aymeSymbol, use.parent, verified)
         );
       }
     );
@@ -954,11 +911,8 @@ function decoratorDescription(decorator: ts.Decorator) {
   return undefined;
 }
 
-function classDescription(
-  checker: ts.TypeChecker,
-  declaration: ts.ClassDeclaration
-) {
-  const marker = findClassMarker(checker, declaration);
+function classDescription(declaration: ts.ClassDeclaration) {
+  const marker = findClassMarker(declaration);
   const description = marker && decoratorDescription(marker);
   return description === undefined ? {} : { description };
 }
@@ -966,11 +920,10 @@ function classDescription(
 type ToolDescription = { authored?: string };
 
 function toolDescription(
-  checker: ts.TypeChecker,
   declaration: ts.MethodDeclaration
 ): ToolDescription | undefined {
   const marker = (ts.getDecorators(declaration) ?? []).find((decorator) =>
-    isMemberMarker(checker, decorator, "action")
+    isMemberMarker(decorator, "ayme", "action")
   );
   if (!marker) return undefined;
   const authored = decoratorDescription(marker);
