@@ -66,9 +66,9 @@ not need a Page Object wrapper merely to click it.
 
 ## Choose locators
 
-Prefer, in order: a test id for a POM's root; role or label locators for its
-other members, scoped to the root; CSS or XPath when neither fits. Visible text
-changes with copy and locale, so match by it only when nothing else tells
+Prefer, in order: a test id; a role or label locator; CSS or XPath when
+neither fits. Scope a member's locator to the POM's root. Visible text changes
+with copy and locale, so match with `getByText` only when nothing else tells
 members apart.
 
 ## Name actions by user intent
