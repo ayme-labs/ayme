@@ -2117,6 +2117,38 @@ describe("Goal Loop goal in Chromium", () => {
     expect((returned as string).endsWith(CHANGES_CUT_MARKER)).toBe(true);
   });
 
+  it("keeps a copy of a short returned value, so that a tool mutating what it returned does not rewrite its history entry", async () => {
+    setupPageWithOneClickable();
+    const { decide } = recording(
+      scriptedDecisionFn([
+        {
+          operation: "highlight_element",
+          goal_met: 0.1,
+          arguments: { ref: 'heading "Task list"' },
+        },
+        { operation: "none", goal_met: 0.9 },
+      ])
+    );
+    // Live application state, returned as is and mutated after the step.
+    const state = { highlighted: "e1" };
+    const tool = await getPublishedPursueGoal(decide, [
+      {
+        name: "highlight_element",
+        description: "Highlight one element on the page.",
+        filter: (element) => element.tagName === "H1",
+        execute: async () => state,
+      },
+    ]);
+
+    const result = (await tool.execute({
+      goal: "highlight the title",
+      maxSteps: 5,
+    })) as { history: { returned?: unknown }[] };
+    state.highlighted = "x".repeat(MAX_STEP_RETURNED * 2);
+
+    expect(result.history[0]!.returned).toEqual({ highlighted: "e1" });
+  });
+
   it("offers a single-element tool without a filter every node that has a ref", async () => {
     setupPageWithOneClickable();
     const { requests, decide } = recording(

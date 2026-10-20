@@ -123,12 +123,14 @@ export const CHANGES_CUT_MARKER = "\n… (cut)";
 export const MAX_STEP_RETURNED = 200;
 
 /**
- * The value an action returned, bounded for the history entry: the value
- * itself when its JSON fits, else its JSON cut to `MAX_STEP_RETURNED`.
+ * The value an action returned, bounded for the history entry: a copy of the
+ * value when its JSON fits, else its JSON cut to `MAX_STEP_RETURNED`. A copy,
+ * so that a tool returning live application state cannot rewrite an earlier
+ * entry, or grow it past the bound, by mutating it later.
  */
 function boundedReturned(returned: JsonValue): JsonValue {
   const json = JSON.stringify(returned);
-  if (json.length <= MAX_STEP_RETURNED) return returned;
+  if (json.length <= MAX_STEP_RETURNED) return JSON.parse(json) as JsonValue;
   return `${json.slice(0, MAX_STEP_RETURNED - CHANGES_CUT_MARKER.length)}${CHANGES_CUT_MARKER}`;
 }
 

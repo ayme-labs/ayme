@@ -29,7 +29,10 @@ export const repro536Goals: BenchGoal[] = [
       { operation: "highlight_page_state_ref", target: 'button "Confirm"' },
     ],
     async outcome(page) {
-      await expect(page.getByRole("dialog")).toHaveCount(1);
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toHaveCount(1);
+      // The dialog of the Mobile app row, not the first row's.
+      await expect(dialog.getByLabel("Project name")).toHaveValue("Mobile app");
       await expect(
         page.getByRole("button", { name: "Confirm" })
       ).toHaveAttribute("data-highlighted", "true");
