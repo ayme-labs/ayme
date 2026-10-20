@@ -133,11 +133,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         const absent = absentEntryFor(source);
         if (absent === undefined) return null;
         if (resolveOptions?.ssr) return null;
-        // Vite before 6 has no environments; from 6, one per consumer.
-        const environment = this.environment as
-          { config: { consumer: string } } | undefined;
-        if (environment && environment.config.consumer !== "client")
-          return null;
+        if (this.environment.config.consumer !== "client") return null;
         return this.resolve(absent, importer, { skipSelf: true });
       },
       transform: {
@@ -145,11 +141,10 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         handler(code, id, transformOptions) {
           if (transformOptions?.ssr) return null;
           const transformed = transformPom(code, id);
-          // Vite before 6 has no environments and so no invalidation here.
-          const environment: object | undefined = this.environment;
-          if (!transformed || !environment) return transformed;
-          const dependantsByFile = viteDependants.get(environment) ?? new Map();
-          viteDependants.set(environment, dependantsByFile);
+          if (!transformed) return null;
+          const dependantsByFile =
+            viteDependants.get(this.environment) ?? new Map();
+          viteDependants.set(this.environment, dependantsByFile);
           for (const dependency of transformed.dependencies) {
             // A type-only import never joins Vite's module graph, so its file
             // is unwatched, and outside the root it is not watched by default.
@@ -164,9 +159,8 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
       perEnvironmentWatchChangeDuringDev: true,
       watchChange(file) {
         programs.clear();
-        const environment = this.environment as
-          typeof this.environment | undefined;
-        if (environment?.mode !== "dev") return;
+        const environment = this.environment;
+        if (environment.mode !== "dev") return;
         const moduleGraph = environment.moduleGraph;
         const dependantsByFile = viteDependants.get(environment);
         for (const id of dependantsByFile?.get(resolve(file)) ?? []) {

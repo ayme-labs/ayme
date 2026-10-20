@@ -16,7 +16,12 @@ it("only compiles Page Objects for the browser graph", async () => {
   const hook = plugin?.transform;
   if (!hook) throw new Error("Expected the Vite transform hook.");
   const transform = typeof hook === "function" ? hook : hook.handler;
-  const context = { meta: { viteVersion: "8.2.2" } };
+  // The client environment and the watch-file method Vite 7 and 8 give a hook.
+  const context = {
+    meta: { viteVersion: "8.2.2" },
+    environment: { config: { consumer: "client" } },
+    addWatchFile() {},
+  };
 
   expect(
     await Reflect.apply(transform, context, [source, fileName, { ssr: true }])

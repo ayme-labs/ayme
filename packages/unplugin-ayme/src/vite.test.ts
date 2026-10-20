@@ -124,6 +124,7 @@ describe("ayme Vite integration", () => {
         options?: AymeOptions;
       } = {}
     ) => {
+      const { consumer = "client" } = context;
       const plugin = ayme(context.options);
       if (Array.isArray(plugin)) throw new Error("Expected a single plugin");
       const hook = plugin.resolveId;
@@ -134,10 +135,7 @@ describe("ayme Vite integration", () => {
         hook,
         {
           resolve,
-          environment:
-            context.consumer === undefined
-              ? undefined
-              : { config: { consumer: context.consumer } },
+          environment: { config: { consumer } },
         },
         [specifier, "/app/main.ts", { ssr: context.ssr }]
       );
@@ -180,7 +178,7 @@ describe("ayme Vite integration", () => {
       }
     });
 
-    it("leaves a server module to Vite, on Vite 6 environments and the earlier ssr flag alike", async () => {
+    it("leaves a server module to Vite, whether its environment or the ssr flag says so", async () => {
       for (const context of [{ consumer: "server" }, { ssr: true }]) {
         const { resolved, resolve } = await resolveThrough(
           "@ayme-dev/ayme",
@@ -189,11 +187,6 @@ describe("ayme Vite integration", () => {
         expect(resolved).toBeNull();
         expect(resolve).not.toHaveBeenCalled();
       }
-    });
-
-    it("resolves without environments, as Vite before 6 calls it", async () => {
-      const { resolved } = await resolveThrough("@ayme-dev/ayme");
-      expect(resolved).toEqual({ id: "/resolved/@ayme-dev/ayme/absent" });
     });
 
     it("resolves nothing once include is true", async () => {
