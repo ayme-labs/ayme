@@ -97,7 +97,7 @@ const groceries: StructureTree = {
               name: "",
               members: ["ListPage.items[0]"],
               member: "ListPage.items[0]",
-              tag: "[·]",
+              tag: "items[0] · ListItem",
               memberLinks: [
                 {
                   member: "ListPage.items[0]",

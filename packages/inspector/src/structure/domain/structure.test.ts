@@ -225,7 +225,7 @@ it("tags each node with the Page Object member it maps to", () => {
     ref: "e74",
     members: ["ListPage.items[0]"],
     member: "ListPage.items[0]",
-    tag: "[·]",
+    tag: "items[0] · ListItem",
     owner: "ListPage.items[0]",
   });
   expect(main.children[2]).not.toHaveProperty("member");
@@ -398,7 +398,7 @@ describe("where each of a node's members leads", () => {
       )
     ).toMatchObject({
       member: "ListPage.items[0].nameButton",
-      tag: "[·].nameButton",
+      tag: ".nameButton",
       owner: "ListPage.items[0]",
     });
   });
@@ -422,31 +422,35 @@ describe("where each of a node's members leads", () => {
 describe("a member in a collection nested in a collection's items", () => {
   // Page.lists[].items[]: List components, each with a collection of Item
   // components, and a button on each item.
-  const node = nodeOf(
-    ["Page.lists[0].items[1].button"],
-    [
-      page("Page", {
-        children: [
-          collection("lists", "List", [
-            {
-              children: [
-                collection("items", "Item", [
-                  { locators: ["button"] },
-                  { locators: ["button"] },
-                ]),
-              ],
-            },
-          ]),
-        ],
-      }),
-    ]
-  );
+  const pages = [
+    page("Page", {
+      children: [
+        collection("lists", "List", [
+          {
+            children: [
+              collection("items", "Item", [
+                { locators: ["button"] },
+                { locators: ["button"] },
+              ]),
+            ],
+          },
+        ]),
+      ],
+    }),
+  ];
+  const node = nodeOf(["Page.lists[0].items[1].button"], pages);
 
   it("is owned by its item", () => {
     expect(node).toMatchObject({
       member: "Page.lists[0].items[1].button",
-      tag: "[·].items[1].button",
+      tag: ".button",
       owner: "Page.lists[0].items[1]",
+    });
+  });
+
+  it("tags its item's root by the item's path below the list it is in", () => {
+    expect(nodeOf(["Page.lists[0].items[1].root"], pages)).toMatchObject({
+      tag: "items[1] · Item",
     });
   });
 
@@ -502,6 +506,12 @@ describe("a component whose class is also a page on the page", () => {
       member: "Header",
       tag: "Header",
       owner: "Header",
+    });
+  });
+
+  it("tags a component's root with its name and class", () => {
+    expect(nodeOf(["ListPage.header.root"], pages)).toMatchObject({
+      tag: "header · Header",
     });
   });
 
