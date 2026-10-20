@@ -627,6 +627,39 @@ describe("derivePomManifests", () => {
       );
     });
 
+    it("reads the root key through a constant of the file, a computed string key, and an assertion", () => {
+      const manifest = manifestForClass(
+        "readableRootOptionsPom",
+        "ReadableRootOptionsPom"
+      );
+
+      expect(manifest?.members.map((member) => member.memberName)).toEqual([
+        "named",
+        "computed",
+        "aliased",
+      ]);
+      expect(
+        manifest?.components.map((component) => component.className)
+      ).toEqual(["NamedOptionsItem", "ComputedKeyItem", "AliasedOptionsItem"]);
+    });
+
+    it("leaves a root the compiler cannot read, through a spread, an import or a call, to the runtime", () => {
+      const manifest = manifestForClass(
+        "unreadableRootOptionsPom",
+        "UnreadableRootOptionsPom"
+      );
+
+      expect(
+        manifest?.components.map((component) => component.className)
+      ).toEqual(["SpreadItem", "ImportedItem", "CalledItem"]);
+    });
+
+    it("refuses a collection whose item class's options, read through a constant, declare no root", () => {
+      expect(() => manifestFor("resolvedRootlessCollectionPom")).toThrow(
+        'Page Object Child "items" is a collection of PlainItem, which declares no root; a collection item\'s ref needs one.'
+      );
+    });
+
     it("builds a collection whose item class inherits its root, and a single child without one", () => {
       const manifest = manifestForClass(
         "rootlessChildrenPom",

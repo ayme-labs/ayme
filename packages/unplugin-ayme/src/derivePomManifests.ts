@@ -167,8 +167,12 @@ function pomChild(
       : componentDeclaration(checker, type, memberName);
   if (!declaration?.name) return undefined;
   // A collection item's ref is its root's element, so an item class with no
-  // root in its chain has no ref to be called by.
-  if (access === "method" && !declaresRoot(checker, declaration))
+  // root in its chain has no ref to be called by. Options the compiler
+  // cannot read may declare one: the runtime decides then.
+  if (
+    access === "method" &&
+    rootDeclaration(checker, declaration) === "undeclared"
+  )
     throw new Error(
       `Page Object Child "${memberName}" is a collection of ${declaration.name.text}, which declares no root; a collection item's ref needs one.`
     );
@@ -185,20 +189,28 @@ function pomChild(
 }
 
 /**
- * Whether `declaration`, or an ancestor class, passes `root` to `@ayme`. The
- * key alone decides; the predicate is the runtime's to read.
+ * Whether `declaration`, or an ancestor class, passes `root` to `@ayme`:
+ * "declared" when a `root` key the compiler can read is in the chain,
+ * "unreadable" when none is but some options in the chain cannot be read
+ * statically, else "undeclared". The key alone decides; the predicate is the
+ * runtime's to read.
  */
-function declaresRoot(
+type RootDeclaration = "declared" | "undeclared" | "unreadable";
+
+function rootDeclaration(
   checker: ts.TypeChecker,
   declaration: ts.ClassDeclaration
-): boolean {
+): RootDeclaration {
   const marker = findClassMarker(declaration);
-  return (
-    (marker !== undefined && hasDecoratorOption(marker, "root")) ||
-    baseClassDeclarations(checker, declaration).some((base) =>
-      declaresRoot(checker, base)
-    )
-  );
+  const keys = marker === undefined ? new Set() : optionKeys(checker, marker);
+  let declared: RootDeclaration =
+    keys === "unreadable" ? keys : keys.has("root") ? "declared" : "undeclared";
+  for (const base of baseClassDeclarations(checker, declaration)) {
+    if (declared === "declared") break;
+    const inherited = rootDeclaration(checker, base);
+    if (inherited !== "undeclared") declared = inherited;
+  }
+  return declared;
 }
 
 function skippedMethods(
@@ -627,16 +639,80 @@ function decoratorOptions(decorator: ts.Decorator) {
   return options && ts.isObjectLiteralExpression(options) ? options : undefined;
 }
 
-/** Whether the decorator's options literal has a property named `name`. */
-function hasDecoratorOption(decorator: ts.Decorator, name: string) {
-  return (
-    decoratorOptions(decorator)?.properties.some(
-      (property) =>
-        property.name !== undefined &&
-        (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
-        property.name.text === name
-    ) ?? false
-  );
+/**
+ * The keys of the options a decorator is called with, read statically: from
+ * an object literal, inline or behind a constant of the same file, with
+ * identifier, string and computed string literal keys. "unreadable" when
+ * the options come from anywhere else, or hold a spread or a key the
+ * compiler cannot read.
+ */
+function optionKeys(
+  checker: ts.TypeChecker,
+  decorator: ts.Decorator
+): ReadonlySet<string> | "unreadable" {
+  if (!ts.isCallExpression(decorator.expression)) return new Set();
+  const [argument] = decorator.expression.arguments;
+  if (argument === undefined) return new Set();
+  const literal = optionsLiteral(checker, argument);
+  if (literal === undefined) return "unreadable";
+  const keys = new Set<string>();
+  for (const property of literal.properties) {
+    const key = propertyKey(property);
+    if (key === undefined) return "unreadable";
+    keys.add(key);
+  }
+  return keys;
+}
+
+/**
+ * The object literal `expression` is: itself, or the initializer of the
+ * constant of the same file it names, through an assertion, a parenthesis
+ * or another constant. Undefined when the compiler cannot see it.
+ */
+function optionsLiteral(
+  checker: ts.TypeChecker,
+  expression: ts.Expression
+): ts.ObjectLiteralExpression | undefined {
+  const value = unwrapped(expression);
+  if (ts.isObjectLiteralExpression(value)) return value;
+  if (!ts.isIdentifier(value)) return undefined;
+  const declaration = checker.getSymbolAtLocation(value)?.valueDeclaration;
+  if (
+    declaration === undefined ||
+    !ts.isVariableDeclaration(declaration) ||
+    declaration.initializer === undefined ||
+    !(ts.getCombinedNodeFlags(declaration) & ts.NodeFlags.Const) ||
+    declaration.getSourceFile() !== expression.getSourceFile()
+  )
+    return undefined;
+  return optionsLiteral(checker, declaration.initializer);
+}
+
+function unwrapped(expression: ts.Expression): ts.Expression {
+  let value = expression;
+  while (
+    ts.isParenthesizedExpression(value) ||
+    ts.isAsExpression(value) ||
+    ts.isSatisfiesExpression(value) ||
+    ts.isTypeAssertionExpression(value) ||
+    ts.isNonNullExpression(value)
+  )
+    value = value.expression;
+  return value;
+}
+
+/** The key an object literal property declares, when the compiler can read it. */
+function propertyKey(property: ts.ObjectLiteralElementLike) {
+  if (ts.isSpreadAssignment(property)) return undefined;
+  const { name } = property;
+  if (name === undefined) return undefined;
+  if (ts.isIdentifier(name) || ts.isStringLiteral(name)) return name.text;
+  if (
+    ts.isComputedPropertyName(name) &&
+    ts.isStringLiteralLike(name.expression)
+  )
+    return name.expression.text;
+  return undefined;
 }
 
 /** The literal `description` option of a decorator, if it has one. */
