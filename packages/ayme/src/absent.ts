@@ -106,8 +106,8 @@ export function markRenderSession(ayme: Ayme): void {
 /**
  * The base of the stand-in the build plugin compiles a Page Object Model to
  * in a build without Ayme: a class of the same name, whose actions reject
- * and whose Page Object Children, properties and methods alike, throw, each
- * naming what is missing. The class has no other member.
+ * and whose other properties and methods, Page Object Children included,
+ * throw, each naming what is missing. The class has no other member.
  */
 export function absentPageObject(
   className: string,

@@ -154,8 +154,9 @@ export function createPomTransform(
 
 /**
  * The module with each Page Object Model replaced by a stand-in of the same
- * name and export, whose actions and Page Object Children fail naming
- * themselves. Everything else in the module stays.
+ * name and export, whose every member fails naming itself: an action
+ * rejects, any other method throws and any property throws when read.
+ * Everything else in the module stays.
  */
 function standInModule(
   code: string,
@@ -196,21 +197,74 @@ function standInModule(
       )
       .map((modifier) => `${modifier.getText(sourceFile)} `)
       .join("");
-    const shape = {
-      actions: manifest.tools.map((tool) => tool.methodName),
-      properties: manifest.members
-        .filter((member) => member.access !== "method")
-        .map((member) => member.memberName),
-      methods: manifest.members
-        .filter((member) => member.access === "method")
-        .map((member) => member.memberName),
-    };
+    const shape = standInShape(declaration, manifest);
     result +=
       code.slice(cursor, declaration.getStart(sourceFile)) +
       `${modifiers}class ${manifest.className} extends absentPageObject(${JSON.stringify(manifest.className)}, ${JSON.stringify(shape)}) {}`;
     cursor = declaration.getEnd();
   }
   return `import { absentPageObject } from '${ABSENT_MODULE}';\n${withoutUnusedImports(result + code.slice(cursor), fileName)}`;
+}
+
+type StandInShape = {
+  actions: string[];
+  properties: string[];
+  methods: string[];
+};
+
+/**
+ * The members of a stand-in: the class's own instance members in
+ * declaration order, each an action when the manifest marks it as one, a
+ * method when it is declared as one or the manifest reads it as one, and a
+ * property otherwise, followed by the manifest's members the declaration
+ * does not spell out, such as the Page Object Children of a base class. The
+ * constructor, static members and `#private` names are no one's to name.
+ */
+function standInShape(
+  declaration: ts.ClassDeclaration,
+  manifest: PomManifest
+): StandInShape {
+  const actions = new Set(manifest.tools.map((tool) => tool.methodName));
+  const methods = new Set(
+    manifest.members
+      .filter((member) => member.access === "method")
+      .map((member) => member.memberName)
+  );
+  const shape: StandInShape = { actions: [], properties: [], methods: [] };
+  const named = new Set<string>();
+  const place = (name: string, kind: keyof StandInShape) => {
+    if (named.has(name)) return;
+    named.add(name);
+    shape[kind].push(name);
+  };
+  for (const member of declaration.members) {
+    if (ts.isConstructorDeclaration(member)) continue;
+    if (
+      !ts.canHaveModifiers(member) ||
+      ts
+        .getModifiers(member)
+        ?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
+    )
+      continue;
+    const name = member.name;
+    if (!name || !(ts.isIdentifier(name) || ts.isStringLiteral(name))) continue;
+    if (actions.has(name.text)) place(name.text, "actions");
+    else if (ts.isMethodDeclaration(member) || methods.has(name.text))
+      place(name.text, "methods");
+    else if (
+      ts.isPropertyDeclaration(member) ||
+      ts.isGetAccessorDeclaration(member) ||
+      ts.isSetAccessorDeclaration(member)
+    )
+      place(name.text, "properties");
+  }
+  for (const action of actions) place(action, "actions");
+  for (const member of manifest.members)
+    place(
+      member.memberName,
+      methods.has(member.memberName) ? "methods" : "properties"
+    );
+  return shape;
 }
 
 /**

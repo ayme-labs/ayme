@@ -259,7 +259,7 @@ describe("a build without Ayme", () => {
       "import { absentPageObject } from '@ayme-dev/ayme/absent';"
     );
     expect(code).toContain(
-      'export default class ListPage extends absentPageObject("ListPage", {"actions":["addItem"],"properties":["dialog"],"methods":[]}) {}'
+      'export default class ListPage extends absentPageObject("ListPage", {"actions":["addItem"],"properties":["page","dialog"],"methods":[]}) {}'
     );
     expect(code).toContain('export const ITEM_NAME = fieldLabel("Item name");');
     // The decorator import and the binding only the model used are gone;
@@ -305,8 +305,21 @@ describe("a build without Ayme", () => {
     const code = transform(...fixture("annotatedChildrenPom"))?.code;
 
     expect(code).toMatch(
-      /class AnnotatedChildrenPom extends absentPageObject\("AnnotatedChildrenPom", \{"actions":\[\],"properties":\["directField","directGetter",.*"methods":\["componentCollection",/
+      /class AnnotatedChildrenPom extends absentPageObject\("AnnotatedChildrenPom", \{"actions":\[\],"properties":\["directField","directGetter",.*"methods":\["ordinaryMethod","locatorMethod","componentCollection",/
     );
+  });
+
+  it("names every instance member of the class, not only its Page Object Children", () => {
+    const code = transform(...fixture("withoutAymeMembersPom"))?.code;
+
+    // A plain field, a getter, a setter and an unmarked method join the
+    // manifest's members in declaration order; the constructor, a static
+    // member and a #private name do not.
+    expect(code).toContain(
+      'export class OrdersPage extends absentPageObject("OrdersPage", {"actions":["refresh"],"properties":["page","title","heading","filter"],"methods":["reset"]}) {}'
+    );
+    expect(code).not.toContain("route");
+    expect(code).not.toContain("opened");
   });
 
   it("leaves a module without a Page Object Model alone", () => {
