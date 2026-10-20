@@ -777,14 +777,22 @@ type CallTarget = { instance: object; root: Locator | undefined };
 /**
  * The target of a call of the tool `toolName` on `observed`, as the last
  * observation read it: the call runs no root predicate of its own. Refused
- * when the observation found no instance, or its root has since left the
- * page or resolves to another element.
+ * when the observation found no instance, or its root, or the root of the
+ * collection item it lies in, has since left the page or resolves to
+ * another element: a root-less child acts through its item, whose locator
+ * may since address another item.
  */
 function callTarget(
   toolName: string,
   observed: PomInstanceObservation | undefined
 ): CallTarget {
-  if (!observed || !rootHolds(observed))
+  if (
+    !observed ||
+    !rootHolds(observed) ||
+    (observed.item !== undefined &&
+      observed.item !== observed &&
+      !rootHolds(observed.item))
+  )
     throw unavailableError(toolName, { present: false });
   return { instance: observed.instance, root: observed.rootLocator };
 }

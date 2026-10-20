@@ -10,6 +10,7 @@ import {
   listRegisteredPoms,
   probeRegisteredPomMembers,
   registerCompiledPom,
+  subscribeToRegisteredPoms,
 } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
 
@@ -593,5 +594,99 @@ describe("Page Object Root by option", () => {
     document.body.innerHTML = "<p>Changed</p>";
     await probeRegisteredPomMembers();
     expect(logged).toHaveBeenCalledOnce();
+  });
+
+  it("refuses a call on a root-less child of a collection item whose locator has since moved to another item", async () => {
+    document.body.innerHTML =
+      '<ul id="rows"><li id="first">First</li><li id="second">Second</li></ul>';
+    const deleted: string[] = [];
+    class Row {
+      readonly container: Locator;
+      readonly toolbar: Toolbar;
+      constructor(index: number) {
+        this.container = page.locator("#rows > li").nth(index);
+        this.toolbar = new Toolbar(this);
+      }
+    }
+    ayme({ root: (self: Row) => self.container })(Row);
+    // No root of its own: it acts through the row it belongs to.
+    class Toolbar {
+      constructor(private readonly row: Row) {}
+      async delete() {
+        deleted.push((await this.row.container.textContent()) ?? "");
+      }
+    }
+    class Table {
+      rows = [new Row(0), new Row(1)];
+    }
+    registerCompiledPom(Table, {
+      className: "Table",
+      members: [
+        {
+          memberName: "rows",
+          kind: "component",
+          access: "field",
+          componentClassName: "Row",
+          collection: true,
+        },
+      ],
+      tools: [],
+      components: [
+        {
+          className: "Row",
+          members: [
+            locator("container"),
+            {
+              memberName: "toolbar",
+              kind: "component",
+              access: "field",
+              componentClassName: "Toolbar",
+              collection: false,
+            },
+          ],
+          tools: [],
+        },
+        {
+          className: "Toolbar",
+          members: [],
+          tools: [action("delete", "Table.rows.toolbar.delete")],
+        },
+      ],
+    });
+    session.pom.register(Table);
+    await probeRegisteredPomMembers();
+    const { text } = await agent.getPageState();
+    const first = text.match(/(e\d+) Table\.rows\[0\]/)?.[1];
+    if (!first) throw new Error("Expected a ref for the first row.");
+    const tool = listAvailablePomTools().find(
+      ({ name }) => name === "Table.rows.toolbar.delete"
+    );
+    if (!tool)
+      throw new Error("Expected Table.rows.toolbar.delete to be available.");
+    const call = () => tool.execute({ ref: first, args: {} }, runContext());
+    await call();
+    expect(deleted).toEqual(["First"]);
+
+    // A page that reorders its rows on every change the registry announces.
+    // The call's capture observes the page and awaits one follow-up
+    // observation, which the reorder after the first makes it run and the
+    // reorder after the second leaves behind the page: the first row's ref
+    // still names its element, but the item locator that last observation
+    // saved now addresses the second row. A call that trusted the child
+    // alone would act on it.
+    const rows = document.getElementById("rows")!;
+    const reorder = () => rows.append(rows.firstElementChild!);
+    const unsubscribe = subscribeToRegisteredPoms(reorder);
+    reorder();
+    await expect(call()).rejects.toThrow(
+      "Table.rows.toolbar.delete is unavailable: its Page Object is not on the page."
+    );
+    expect(deleted).toEqual(["First"]);
+    unsubscribe();
+
+    // Observed again, the ref names the row the locator finds at its new place.
+    await probeRegisteredPomMembers();
+    await call();
+    expect(deleted).toEqual(["First", "First"]);
   });
 });
