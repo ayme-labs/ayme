@@ -84,6 +84,19 @@ In the browser, the standalone owner starts immediately in its Vue scope and pro
 
 ## Composables
 
+Register the app's pages once, in the root component's setup, beneath the owner or in the same setup as the standalone `useAyme`; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+
+```ts
+import { usePageObject } from "@ayme-dev/vue";
+import { ListPage } from "./playwright/pom/ListPage";
+import { SettingsPage } from "./playwright/pom/SettingsPage";
+
+usePageObject(ListPage);
+usePageObject(SettingsPage);
+```
+
+A component that calls an action gets the same instance from the same composable:
+
 ```ts
 import { useAyme, usePageObject } from "@ayme-dev/vue";
 import { ListPage } from "./playwright/pom/ListPage";
@@ -95,10 +108,9 @@ const { ayme } = useAyme();
 await pom.addItem("Write release notes");
 ```
 
-- `usePageObject(Model)` removes its registration with its Vue scope. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialize fields and compose locators; run actions later.
+- `usePageObject(Model)` removes its registration with its Vue scope, so a model registered only in a component is registered while the component lives; [Register Page Objects](../guides/publish-tools.md#register-page-objects) says when that is the right place. The session keeps one instance per class, so every component, and a remount, gets the same one; keep no per-component state in a Page Object's fields. Constructors should only initialize fields and compose locators; run actions later.
 - `useAyme()` returns the owner's session, `ayme`, and its WebMCP publication, `webMCP`.
 - Both need an active Vue effect scope.
-- Register each top-level Page Object in the component that owns its lifetime.
 
 ## Optional: publish with WebMCP
 

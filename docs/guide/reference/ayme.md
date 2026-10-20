@@ -46,7 +46,37 @@ Only the option anchors a model. A model whose class chain declares none is root
 
 A subclass inherits the predicate of the nearest class in its chain that declares one, with or without a decorator of its own, and may declare its own. Without `present`, a model with a [root](#page-object-root) is present while the root resolves to one rendered element, and a top-level model without one while it is registered; with both, the root must be on the page and the predicate narrows. The predicate runs read-only with the runtime's observation of the page, never when a tool is called, so it must not scroll, click, focus or change the page. It runs before the model's members are read, so an absent model costs one call per observation, and the observation also runs on same-document navigation, so a predicate that reads the URL follows the browser's history. A predicate that throws makes the Page Object absent and logs the error's text to the console, such as `TypeError: store is undefined`, once until the error changes. It never runs on the server, where registration is inert. The build plugin does not read the predicate; the decorator keeps it at runtime.
 
-Presence adds and withdraws tools; a present Page Object's availability is still measured at its root. [Page Object Models](../guides/page-object-models.md#page-presence) shows a page base class present by its URL.
+Presence adds and withdraws tools; a present Page Object's availability is still measured at its root. [Page Object Models](../guides/page-object-models.md#page-presence) shows a page base class present by its URL, and [Register Page Objects](../guides/publish-tools.md#register-page-objects) says where such a page is registered.
+
+#### Typed route parameters
+
+Optional. A page base class can type its route parameters from its `path`, so that an action reads `self.params().id` with the name checked. The predicate stays the same; the type is the consumer's:
+
+```ts
+type RouteParams<Path extends string> =
+  Path extends `${string}:${infer Name}/${infer Rest}`
+    ? { [Key in Name | keyof RouteParams<Rest>]: string }
+    : Path extends `${string}:${infer Name}`
+      ? { [Key in Name]: string }
+      : Record<never, string>;
+
+@ayme({ present: onPage })
+export abstract class AppPage<Path extends string = string> {
+  abstract readonly path: Path;
+  constructor(readonly page: Page) {}
+
+  params(): RouteParams<Path> | undefined {
+    const match = new URLPattern({ pathname: this.path }).exec(this.page.url());
+    return match?.pathname.groups as RouteParams<Path> | undefined;
+  }
+}
+
+export class ProjectPage extends AppPage<"/projects/:id"> {
+  readonly path = "/projects/:id";
+}
+```
+
+An app with a typed router calls the router's matcher from the predicate instead, with the same `self`.
 
 ## createAyme
 
