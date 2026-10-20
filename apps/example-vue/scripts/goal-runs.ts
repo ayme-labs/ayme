@@ -3,7 +3,7 @@
  * real Decision Endpoint and writes one JSON file per invocation, or
  * compares two such files. Run by hand only; see the README.
  *
- *   node scripts/goal-runs.ts --runs <N> [--goal-set <harness|live-lane|bench>]
+ *   node scripts/goal-runs.ts --runs <N> [--goal-set <harness|live-lane|bench|repro536>]
  *   node scripts/goal-runs.ts --runs <N> --live-lane
  *   node scripts/goal-runs.ts compare <runA.json> <runB.json>
  */
@@ -34,6 +34,7 @@ const goalSets = {
   harness: "playwright.harness.config.ts",
   "live-lane": "playwright.goals.config.ts",
   bench: "playwright.bench.config.ts",
+  repro536: "playwright.repro536.config.ts",
 } as const;
 type GoalSet = keyof typeof goalSets;
 

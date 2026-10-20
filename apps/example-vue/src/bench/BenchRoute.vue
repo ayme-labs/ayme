@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { decisionEndpoint } from "@ayme-dev/ayme";
+import { decisionEndpoint, type CustomTool } from "@ayme-dev/ayme";
 import { useAyme } from "@ayme-dev/vue";
 import { decisionEndpointPath } from "../../vite/decisionEndpointPath";
 import { benchPath } from "./benchRouter";
@@ -17,7 +17,24 @@ import SettingsPage from "./SettingsPage.vue";
  * app without Page Objects does, so the Goal Loop can only act through the
  * Browser Tools. The dev server serves them; the production build has none.
  */
+/**
+ * A Custom Tool whose effect is not in the Structural Page State: it marks
+ * the element with a data attribute and an outline, which change nothing in
+ * the page tree. For the Goal Loop repro of issue 536.
+ */
+const highlightPageStateRef: CustomTool = {
+  name: "highlight_page_state_ref",
+  description:
+    "Highlight one element on the page for the user by drawing an outline around it. The highlight is not visible in the page structure.",
+  async execute({ ref, element }) {
+    (element as HTMLElement).dataset.highlighted = "true";
+    (element as HTMLElement).style.outline = "3px solid orange";
+    return { highlighted: ref };
+  },
+};
+
 useAyme({
+  customTools: [highlightPageStateRef],
   // As in the playground: `goal` only when the dev server mounted a Decision
   // Endpoint, which it does only with a model key.
   goalLoop: import.meta.env.AYME_DECISION_ENDPOINT
