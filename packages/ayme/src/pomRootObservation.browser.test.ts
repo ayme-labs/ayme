@@ -142,6 +142,25 @@ describe("POM root reachability", () => {
     });
   });
 
+  // Playwright Lite reads a box-less element's visibility from its light
+  // children alone, so a root whose content is only in its shadow tree is not
+  // visible to the click; Ayme agrees rather than offering what cannot be acted on.
+  it("reads a display-contents root with only shadow content as absent, as the click does", async () => {
+    document.body.innerHTML =
+      '<section id="root" style="display:contents"></section>';
+    const root = document.querySelector("#root")!;
+    root.attachShadow({ mode: "open" }).innerHTML =
+      '<button style="position:fixed;left:20px;top:20px;width:120px;height:80px">Save</button>';
+    const locator = createPage().locator("#root");
+    expect(await locator.isVisible()).toBe(false);
+
+    await expect(observePomRoot(locator)).resolves.toEqual({
+      present: false,
+      available: false,
+      inTheWay: [],
+    });
+  });
+
   it("accepts nested scrolling without moving either scroll container", async () => {
     document.body.innerHTML =
       '<div id="outer" style="overflow:auto;width:300px;height:200px"><div style="height:600px"></div><div id="inner" style="overflow:auto;width:250px;height:150px"><div style="width:1200px;height:80px;display:flex;justify-content:flex-end"><section id="root" style="width:100px">Nested</section></div></div></div>';
