@@ -6,7 +6,7 @@ import {
 } from "./pageState";
 import { getPomDefinitions } from "./pomDefinitions";
 import { renderPomDefinitions } from "./pomDefinitionText";
-import { ToolInputError } from "./errors";
+import { throwViolations, toolInputViolations } from "./schemaValidation";
 import type { Cursor } from "./cursors";
 import type { RunContext } from "./run";
 
@@ -101,12 +101,8 @@ export function getPomDefinitionText(...names: readonly string[]): string {
 }
 
 function definitionNamesFrom(input: unknown): string[] {
-  if (input === undefined || input === null || typeof input !== "object")
-    return [];
-  if (!("names" in input) || input.names === undefined) return [];
-  if (!Array.isArray(input.names))
-    throw new ToolInputError("POM definition names must be an array.");
-  if (!input.names.every((name) => typeof name === "string"))
-    throw new ToolInputError("POM definition names must be strings.");
-  return input.names;
+  // Omitted input asks for every definition, as `{}` does.
+  if (input === undefined) return [];
+  throwViolations(toolInputViolations(getPageContextTool.inputSchema, input));
+  return (input as { names?: string[] }).names ?? [];
 }

@@ -148,9 +148,34 @@ describe("tool failures an agent gets, in Chromium", () => {
     ).toMatch(/^RefResolutionError: .*"e404"/);
   });
 
-  it("returns invalid snapshot input as a ToolInputError", async () => {
-    expect(
-      await agentCall("snapshot", { names: "x" }).catch(errorText)
-    ).toMatch(/^ToolInputError: .*names/);
+  it.each([
+    [
+      { names: "ListPage", full: true },
+      "ToolInputError: Input property names must be an array. Input property full is not supported.",
+    ],
+    [
+      { names: [1] },
+      "ToolInputError: Input property names[0] must be a string.",
+    ],
+    [
+      { names: ["ListPage"], full: true },
+      "ToolInputError: Input property full is not supported.",
+    ],
+    [{ depth: 2 }, "ToolInputError: Input property depth is not supported."],
+  ])(
+    "refuses the snapshot input %j, naming every problem",
+    async (input, error) => {
+      expect(await agentCall("snapshot", input).catch(errorText)).toBe(error);
+    }
+  );
+
+  it("runs snapshot with no input or a list of names", async () => {
+    for (const input of [
+      undefined,
+      {},
+      { names: [] },
+      { names: ["FailingPage"] },
+    ])
+      expect(await agentCall("snapshot", input)).toHaveProperty("structure");
   });
 });
