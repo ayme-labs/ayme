@@ -98,6 +98,56 @@ it("ships neither the runtime nor the Page Object Models in a build without Ayme
   }
 }, 30_000);
 
+// Integration on the built packages: the source map of a build without Ayme
+// carries the stand-in, not the Page Object Model it replaced. Rollup keeps
+// a module's loaded code as the leaf of its source-map chain, so a stand-in
+// made by a transform hook shipped the model in `sourcesContent` on Vite 7;
+// the plugin now compiles the stand-in while loading. Rolldown (Vite 8), which
+// runs here, did not leak through a transform either, so this is a regression
+// guard rather than the reproduction.
+it("maps a build without Ayme to the stand-in, not to the Page Object Model", async () => {
+  const root = fileURLToPath(
+    new URL("./__tests__/fixtures/withoutAyme/", import.meta.url)
+  );
+  const outDir = mkdtempSync(join(tmpdir(), "ayme-without-map-"));
+  try {
+    await build({
+      configFile: false,
+      logLevel: "silent",
+      root,
+      plugins: [ayme({ report: "none" })],
+      build: {
+        outDir,
+        sourcemap: "inline",
+        lib: { entry: join(root, "main.ts"), formats: ["es"], fileName: "app" },
+        rolldownOptions: { external: [/^@playwright\//] },
+      },
+    });
+    const code = readFileSync(join(outDir, "app.js"), "utf8");
+    const encoded = code.match(
+      /\/\/# sourceMappingURL=data:application\/json;(?:charset=utf-8;)?base64,([A-Za-z0-9+/=]+)/
+    )?.[1];
+    if (!encoded) throw new Error("Expected an inline source map.");
+    const map = JSON.parse(Buffer.from(encoded, "base64").toString("utf8")) as {
+      sources: string[];
+      sourcesContent?: (string | null)[];
+    };
+
+    const listPage = map.sources.findIndex((source) =>
+      source.endsWith("ListPage.ts")
+    );
+    expect(listPage).toBeGreaterThanOrEqual(0);
+    const contents = map.sourcesContent ?? [];
+    expect(contents[listPage]).toContain("absentPageObject");
+    for (const content of contents) {
+      expect(content ?? "").not.toContain("getByLabel");
+      expect(content ?? "").not.toContain("Add an item to the list.");
+    }
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+}, 30_000);
+
 // Integration on the built packages: a framework package leaves a build
 // without Ayme with the runtime, so none of its hook code ships. React is the
 // integration the plugin's tests can bundle with the fewest dependencies.

@@ -27,7 +27,7 @@ Enable `compilerOptions.experimentalDecorators` in your Page Object Models' tsco
 
 ## Production builds
 
-A build includes Ayme only when the plugin's `include` option is `true`. Without it, the runtime, the Inspector and WebMCP stay out of the output, and each Page Object Model compiles to a stand-in of the same name whose actions reject with an error naming them, so a production build ships none of Ayme unless its config says so. With `include: true`, the build carries the runtime and every Page Object Model the app imports, whether or not publication is on; set it for a build that publishes tools or drives Page Objects from your own code. The [build plugin reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/build-plugin.md#include-ayme-in-a-build) states what a build without Ayme guarantees, what it does not, and how to set the option per bundler.
+A build includes Ayme only when the plugin's `include` option is `true`. Without it, the runtime, the Inspector and WebMCP stay out of the output, and each Page Object Model compiles to a stand-in of the same name whose actions reject with an error naming them, so a production build ships none of Ayme unless its config says so, and its source maps carry the stand-in, not the model. With `include: true`, the build carries the runtime and every Page Object Model the app imports, whether or not publication is on; set it for a build that publishes tools or drives Page Objects from your own code. The [build plugin reference](https://github.com/ayme-labs/ayme/blob/main/docs/guide/reference/build-plugin.md#include-ayme-in-a-build) states what a build without Ayme guarantees, what it does not, and how to set the option per bundler.
 
 ## Documentation
 

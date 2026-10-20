@@ -79,6 +79,9 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         programs.clear();
       });
 
+      // The stand-in of a build without Ayme is what `onLoad` hands esbuild
+      // as the module's contents, and esbuild maps a module to the contents
+      // it loaded, so no source map carries the replaced model.
       const compile = async (fileName: string) => {
         const source = await readFile(fileName, "utf8");
         const transformed = transformPom(source, fileName);

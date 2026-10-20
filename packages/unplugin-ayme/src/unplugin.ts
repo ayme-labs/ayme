@@ -99,6 +99,22 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   // Upgrade: record only the manifest-relevant inputs.
   // Keyed by the Vite environment object (`this.environment`).
   const viteDependants = new WeakMap<object, Map<string, Set<string>>>();
+  const trackDependencies = (
+    context: { environment: object; addWatchFile(id: string): void },
+    id: string,
+    dependencies: readonly string[]
+  ) => {
+    const dependantsByFile =
+      viteDependants.get(context.environment) ?? new Map();
+    viteDependants.set(context.environment, dependantsByFile);
+    for (const dependency of dependencies) {
+      // A type-only import never joins Vite's module graph, so its file is
+      // unwatched, and outside the root it is not watched by default.
+      context.addWatchFile(dependency);
+      const dependants = dependantsByFile.get(dependency) ?? new Set();
+      dependantsByFile.set(dependency, dependants.add(id));
+    }
+  };
 
   return {
     name: "ayme",
@@ -126,7 +142,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
       },
       // A build without Ayme resolves the runtime's two entries and the
       // framework packages to their absent entries, in the client output
-      // only: a server bundle keeps Vite's own emit, as the transform below
+      // only: a server bundle keeps Vite's own emit, as the load hook below
       // leaves server modules alone.
       async resolveId(source, importer, resolveOptions) {
         if (include) return null;
@@ -136,22 +152,36 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         if (this.environment.config.consumer !== "client") return null;
         return this.resolve(absent, importer, { skipSelf: true });
       },
+      // A build without Ayme compiles each Page Object Model to its stand-in
+      // while loading, not while transforming: Rollup and Rolldown keep a
+      // module's loaded code as the source of its source map, so a stand-in
+      // made by a transform would ship the model it replaced, locators and
+      // descriptions included, in the map. Vite's own TypeScript transform
+      // runs on the stand-in afterwards, as on any other loaded module.
+      load: {
+        filter: { id: /\.ts$/ },
+        handler(id, loadOptions) {
+          if (include) return null;
+          if (loadOptions?.ssr) return null;
+          if (this.environment.config.consumer !== "client") return null;
+          const fileName = id.split("?")[0]!;
+          if (id.startsWith("\0") || !existsSync(fileName)) return null;
+          const transformed = transformPom(readFileSync(fileName, "utf8"), id);
+          if (!transformed) return null;
+          trackDependencies(this, id, transformed.dependencies);
+          return { code: transformed.code, map: null };
+        },
+      },
       transform: {
         filter: { id: /\.[cm]?[jt]sx?$/ },
         handler(code, id, transformOptions) {
+          // The stand-in loaded above carries no marker, and nothing else is
+          // compiled in a build without Ayme.
+          if (!include) return null;
           if (transformOptions?.ssr) return null;
           const transformed = transformPom(code, id);
           if (!transformed) return null;
-          const dependantsByFile =
-            viteDependants.get(this.environment) ?? new Map();
-          viteDependants.set(this.environment, dependantsByFile);
-          for (const dependency of transformed.dependencies) {
-            // A type-only import never joins Vite's module graph, so its file
-            // is unwatched, and outside the root it is not watched by default.
-            this.addWatchFile(dependency);
-            const dependants = dependantsByFile.get(dependency) ?? new Set();
-            dependantsByFile.set(dependency, dependants.add(id));
-          }
+          trackDependencies(this, id, transformed.dependencies);
           return transformed;
         },
       },
