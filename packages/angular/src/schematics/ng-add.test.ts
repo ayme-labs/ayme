@@ -306,6 +306,31 @@ it("adds its entry beside a plugin whose path only contains ayme.plugin.mjs", as
   ]);
 });
 
+it("carries the base options' other plugins into a development configuration without its own", async () => {
+  const before = await workspace({ ssr: false });
+  const json = architect(before);
+  const build = json.projects["app"]!.architect["build"]!;
+  build.options = {
+    ...build.options,
+    plugins: [{ path: "./other.plugin.mjs" }],
+  };
+  before.overwrite("angular.json", JSON.stringify(json, null, 2));
+
+  const { tree } = await ngAdd(before);
+
+  const after = architect(tree).projects["app"]!.architect["build"]!;
+  expect(after.options!["plugins"]).toEqual([
+    { path: "./other.plugin.mjs" },
+    buildEntry,
+  ]);
+  // The development array replaces the base one, so it repeats the other
+  // plugin, with Ayme's entry in the base entry's place.
+  expect(after.configurations!["development"]!["plugins"]).toEqual([
+    { path: "./other.plugin.mjs" },
+    developmentEntry,
+  ]);
+});
+
 it("adds the development entry to a workspace whose build target has no development configuration", async () => {
   const before = await workspace({ ssr: false });
   const json = architect(before);

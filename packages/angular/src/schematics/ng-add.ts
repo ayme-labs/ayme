@@ -33,7 +33,9 @@ const isAymePluginEntry = (plugin: unknown) => {
 // The build target's own entry has no `include`, so `ng build` is a Build
 // without Ayme; the development configuration's entry, which `ng serve` uses,
 // sets it. A configuration's array replaces the option's, so the development
-// entry repeats `tsconfigPath`.
+// entry repeats `tsconfigPath`, and a development array written from scratch
+// starts as a copy of the option's, so the other plugins there stay in
+// `ng serve`.
 const pluginEntry = (tsconfigPath: string, include?: true) => ({
   path: `./${pluginFile}`,
   options: include ? { tsconfigPath, include } : { tsconfigPath },
@@ -44,6 +46,17 @@ const withPluginEntry = (
 ) => {
   const plugins = Array.isArray(holder["plugins"]) ? holder["plugins"] : [];
   if (!plugins.some(isAymePluginEntry)) holder["plugins"] = [...plugins, entry];
+};
+const withDevelopmentEntry = (
+  development: Record<string, unknown>,
+  base: readonly unknown[],
+  entry: ReturnType<typeof pluginEntry>
+) => {
+  if (Array.isArray(development["plugins"]))
+    return withPluginEntry(development, entry);
+  development["plugins"] = base.map((plugin) =>
+    isAymePluginEntry(plugin) ? entry : plugin
+  );
 };
 const customEsbuild = {
   application: "@angular-builders/custom-esbuild:application",
@@ -145,10 +158,12 @@ export function ngAdd(options: NgAddOptions): Rule {
           const serve = targets.get("serve")!;
           build.builder = replaced[build.builder] ?? build.builder;
           serve.builder = replaced[serve.builder] ?? serve.builder;
-          withPluginEntry((build.options ??= {}), pluginEntry(tsconfigPath));
+          const options = (build.options ??= {});
+          withPluginEntry(options, pluginEntry(tsconfigPath));
           const configurations = (build.configurations ??= {});
-          withPluginEntry(
+          withDevelopmentEntry(
             (configurations["development"] ??= {}),
+            options["plugins"] as readonly unknown[],
             pluginEntry(tsconfigPath, true)
           );
         }),
