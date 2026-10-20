@@ -24,7 +24,8 @@ export default defineConfig({
   },
   // No `inspector: true`: startAyme mounts the Inspector itself, so the page
   // can report a mount that throws.
-  plugins: [ayme()],
+  // Ayme stays in every build: the e2e suite drives the fixture's tools.
+  plugins: [ayme({ include: true })],
   // The e2e config picks a free port and passes it with --port.
   server: { host: "127.0.0.1", strictPort: true },
 });

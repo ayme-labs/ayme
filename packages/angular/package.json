@@ -22,6 +22,11 @@
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
     },
+    "./absent": {
+      "types": "./dist/absent.d.mts",
+      "import": "./dist/absent.mjs",
+      "default": "./dist/absent.mjs"
+    },
     "./package.json": "./package.json"
   },
   "schematics": "./schematics/collection.json",

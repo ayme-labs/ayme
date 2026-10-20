@@ -1,20 +1,33 @@
 import path from "node:path";
 
-import type { PomCompilerOptions } from "./derivePomManifests";
-import { createPomTransform } from "./transformPomModule";
+import {
+  createPomTransform,
+  includeLine,
+  includeOption,
+  type PomTransformOptions,
+} from "./transformPomModule";
 import { transpilePomModule } from "./transpilePomModule";
 
 // Only the webpack loader methods used by this integration. No webpack dependency.
 type LoaderContext = {
   resourcePath: string;
-  getOptions(): PomCompilerOptions;
+  getOptions(): PomTransformOptions;
   addDependency?: (fileName: string) => void;
 };
+
+// The loader runs per module, so the line saying whether Ayme is in the
+// build is printed once per process.
+let announced = false;
 
 /** The .ts POM loader for Next.js. Configure it on Turbopack's browser graph only. */
 export default function turbopackLoader(this: LoaderContext, source: string) {
   const options = this.getOptions();
-  const transformed = createPomTransform(options)(
+  const include = includeOption(options.include);
+  if (!announced) {
+    console.info(includeLine(options.include));
+    announced = true;
+  }
+  const transformed = createPomTransform({ ...options, include })(
     source,
     this.resourcePath,
     (dependencies) => {

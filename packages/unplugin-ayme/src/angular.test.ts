@@ -46,7 +46,7 @@ async function bundle(platform: "browser" | "node", workspace = fixtures) {
     external: ["@ayme-dev/ayme", "@ayme-dev/ayme/internal"],
     plugins: [
       angularCompiler,
-      aymeAngularPlugin({ tsconfigPath: "tsconfig.json" }),
+      aymeAngularPlugin({ include: true, tsconfigPath: "tsconfig.json" }),
     ],
     logLevel: "silent",
   });
@@ -120,7 +120,7 @@ it("builds one Program per tsconfig project and build, and a rebuild starts afre
     external: ["@ayme-dev/ayme", "@ayme-dev/ayme/internal"],
     plugins: [
       angularCompiler,
-      aymeAngularPlugin({ tsconfigPath: "tsconfig.json" }),
+      aymeAngularPlugin({ include: true, tsconfigPath: "tsconfig.json" }),
     ],
     logLevel: "silent",
   });
@@ -136,6 +136,91 @@ it("builds one Program per tsconfig project and build, and a rebuild starts afre
     await builds.dispose();
   }
 }, 30_000);
+
+it("resolves the runtime to its absent entry and compiles stand-ins in a build without Ayme, the default", async () => {
+  const result = await build({
+    absWorkingDir: fixtures,
+    entryPoints: ["main.ts"],
+    bundle: true,
+    write: false,
+    metafile: true,
+    format: "esm",
+    platform: "browser",
+    external: ["@playwright/test"],
+    plugins: [
+      angularCompiler,
+      aymeAngularPlugin({ tsconfigPath: "tsconfig.json" }),
+    ],
+    logLevel: "silent",
+  });
+  const code = result.outputFiles[0]!.text;
+  const inputs = Object.keys(result.metafile.inputs);
+
+  expect(inputs.some((input) => input.endsWith("/dist/absent.mjs"))).toBe(true);
+  expect(inputs.some((input) => input.endsWith("/dist/index.mjs"))).toBe(false);
+  expect(code).toContain("Ayme was removed from this build.");
+  expect(code).toMatch(
+    /absentPageObject\("CounterPage", \{ "actions": \["increment", "setMode"\]/
+  );
+  expect(code).not.toContain("registerCompiledPom");
+  expect(code).not.toContain("Increment the counter.");
+  expect(code).not.toContain("Waiting for the WebMCP driver.");
+}, 30_000);
+
+it("resolves the framework packages to their absent entries in a build without Ayme", async () => {
+  const frameworks = ["vue", "react", "svelte", "angular"];
+  // Stand-ins for the installed packages: each entry names itself.
+  const root = await workspace({
+    "tsconfig.json": tsconfig,
+    "main.ts": frameworks
+      .map(
+        (framework) =>
+          `import { entry as ${framework} } from "@ayme-dev/${framework}";\nconsole.log(${framework});\n`
+      )
+      .join(""),
+    ...Object.fromEntries(
+      frameworks.flatMap((framework) => [
+        [
+          `node_modules/@ayme-dev/${framework}/package.json`,
+          JSON.stringify({
+            name: `@ayme-dev/${framework}`,
+            exports: { ".": "./index.js", "./absent": "./absent.js" },
+          }),
+        ],
+        [
+          `node_modules/@ayme-dev/${framework}/index.js`,
+          `export const entry = "${framework} index";\n`,
+        ],
+        [
+          `node_modules/@ayme-dev/${framework}/absent.js`,
+          `export const entry = "${framework} absent";\n`,
+        ],
+      ])
+    ),
+  });
+  try {
+    const result = await build({
+      absWorkingDir: root,
+      entryPoints: ["main.ts"],
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "browser",
+      plugins: [
+        angularCompiler,
+        aymeAngularPlugin({ tsconfigPath: "tsconfig.json" }),
+      ],
+      logLevel: "silent",
+    });
+    const code = result.outputFiles[0]!.text;
+    for (const framework of frameworks) {
+      expect(code).toContain(`"${framework} absent"`);
+      expect(code).not.toContain(`"${framework} index"`);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 it("leaves the server bundle to Angular", async () => {
   const { code, inputs } = await bundle("node");
@@ -198,8 +283,56 @@ it.each([
     "has no option(s): browser, tsConfig. Referenced in angular.json as a plain string",
   ],
   [{ tsconfigPath: 1 }, "tsconfigPath must be a string"],
+  [{ include: "yes" }, "include must be a boolean"],
 ])("rejects the options %j", (options, message) => {
   const create = () => aymeAngularPlugin(options as AymeAngularOptions);
   expect(create).toThrow(TypeError);
   expect(create).toThrow(message);
 });
+
+it.each([
+  [
+    "include unset",
+    {},
+    "[ayme] Ayme is not in this build: include is not set.",
+  ],
+  [
+    "include false",
+    { include: false },
+    "[ayme] Ayme is not in this build: include is false.",
+  ],
+  [
+    "include true",
+    { include: true },
+    "[ayme] Ayme is in this build: include is true.",
+  ],
+])(
+  "prints once per build whether Ayme is in it, with %s",
+  async (_, options, line) => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    try {
+      await build({
+        absWorkingDir: fixtures,
+        entryPoints: ["main.ts"],
+        bundle: true,
+        write: false,
+        format: "esm",
+        platform: "browser",
+        external: ["@ayme-dev/*", "@playwright/*"],
+        plugins: [
+          angularCompiler,
+          aymeAngularPlugin({ ...options, tsconfigPath: "tsconfig.json" }),
+        ],
+        logLevel: "silent",
+      });
+      expect(
+        info.mock.calls
+          .map(([message]) => String(message))
+          .filter((message) => message.startsWith("[ayme] Ayme"))
+      ).toEqual([line]);
+    } finally {
+      info.mockRestore();
+    }
+  },
+  30_000
+);

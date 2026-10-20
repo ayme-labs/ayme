@@ -15,7 +15,11 @@ vi.mock("./pomProgram", async (importOriginal) => {
   return { ...actual, createPomProgram };
 });
 
-import { createPomTransform, type PomPrograms } from "./transformPomModule";
+import {
+  absentEntryFor,
+  createPomTransform,
+  type PomPrograms,
+} from "./transformPomModule";
 
 it("builds one TypeScript program per POM transform", () => {
   const fixturePath = fileURLToPath(
@@ -95,7 +99,7 @@ it("registers an undecorated subclass of a decorated base", () => {
   const fixturePath = fileURLToPath(
     new URL("./fixtures/decoratedBasePom.ts", import.meta.url)
   );
-  const code = createPomTransform()(
+  const code = createPomTransform({ include: true })(
     readFileSync(fixturePath, "utf8"),
     fixturePath
   )?.code;
@@ -126,7 +130,7 @@ describe("a subclass in a module without the decorator", () => {
     expect(source).not.toMatch(/@ayme\b(?!-)/);
     createPomProgram.mockClear();
 
-    const result = createPomTransform()(source, fixturePath);
+    const result = createPomTransform({ include: true })(source, fixturePath);
 
     expect(result).not.toBeNull();
     expect(createPomProgram).toHaveBeenCalledTimes(1);
@@ -139,7 +143,7 @@ describe("a subclass in a module without the decorator", () => {
     const { fixturePath, source } = fixture("barrelUserMenu");
     expect(source).not.toMatch(/@ayme\b(?!-)/);
 
-    const result = createPomTransform()(source, fixturePath);
+    const result = createPomTransform({ include: true })(source, fixturePath);
 
     expect(result).not.toBeNull();
     expect(result?.code).toContain("registerCompiledPom(BarrelUserMenu, {");
@@ -191,7 +195,10 @@ describe("a solution-style tsconfig", () => {
   const pomPath = join(project, "src/pom/projectsPage.ts");
 
   it("compiles the Page Object Model with the referenced project that includes it", () => {
-    const result = createPomTransform()(readFileSync(pomPath, "utf8"), pomPath);
+    const result = createPomTransform({ include: true })(
+      readFileSync(pomPath, "utf8"),
+      pomPath
+    );
 
     expect(result?.code).toContain(
       '"name":"kind","optional":false,"schema":{"type":"string","enum":["a","b"]}'
@@ -206,7 +213,10 @@ describe("a solution-style tsconfig", () => {
 
   it("names the tsconfig it compiled with when an input type is unsupported", () => {
     const nodeConfig = join(project, "tsconfig.node.json");
-    const transform = createPomTransform({ tsconfigPath: nodeConfig });
+    const transform = createPomTransform({
+      include: true,
+      tsconfigPath: nodeConfig,
+    });
 
     expect(() => transform(readFileSync(pomPath, "utf8"), pomPath)).toThrow(
       `ProjectsPage.probe(kind): Kind. Compiled with ${nodeConfig}.`
@@ -216,7 +226,10 @@ describe("a solution-style tsconfig", () => {
   it("names the tsconfig when the unsupported input type is on a Page Object Child's action", () => {
     const nodeConfig = join(project, "tsconfig.node.json");
     const dialogPath = join(project, "src/pom/projectsDialog.ts");
-    const transform = createPomTransform({ tsconfigPath: nodeConfig });
+    const transform = createPomTransform({
+      include: true,
+      tsconfigPath: nodeConfig,
+    });
 
     expect(() =>
       transform(readFileSync(dialogPath, "utf8"), dialogPath)
@@ -226,5 +239,127 @@ describe("a solution-style tsconfig", () => {
         message: `Unsupported Page Object Tool input type for KindPicker.pick(kind): Kind. Compiled with ${nodeConfig}.`,
       })
     );
+  });
+});
+
+describe("a build without Ayme", () => {
+  const fixture = (name: string) => {
+    const fixturePath = fileURLToPath(
+      new URL(`./fixtures/${name}.ts`, import.meta.url)
+    );
+    return [readFileSync(fixturePath, "utf8"), fixturePath] as const;
+  };
+  // Without `include: true`, every build is a build without Ayme.
+  const transform = createPomTransform();
+
+  it("compiles each Page Object Model to a stand-in of its name, keeping the rest of the module", () => {
+    const code = transform(...fixture("withoutAymePom"))?.code;
+
+    expect(code).toContain(
+      "import { absentPageObject } from '@ayme-dev/ayme/absent';"
+    );
+    expect(code).toContain(
+      'export default class ListPage extends absentPageObject("ListPage", {"actions":["addItem"],"properties":["page","dialog"],"methods":[]}) {}'
+    );
+    expect(code).toContain('export const ITEM_NAME = fieldLabel("Item name");');
+    // The decorator import and the binding only the model used are gone;
+    // the one the rest of the module uses stays.
+    expect(code).toContain(
+      'import { fieldLabel } from "./withoutAymePomLabels";'
+    );
+    expect(code).not.toContain("listName");
+    expect(code).not.toContain('@ayme-dev/ayme"');
+    expect(code).not.toContain("registerCompiledPom");
+    expect(code).not.toContain("getByLabel");
+    expect(code).not.toContain("Add an item to the list.");
+    expect(code).not.toContain("@ayme.action");
+  });
+
+  it("keeps an import only when the rest of the module refers to its binding, not when it names a key or a member", () => {
+    const code = transform(...fixture("withoutAymeKeysPom"))?.code;
+
+    expect(code).toContain(
+      'import { title } from "./withoutAymeKeysPomLabels";'
+    );
+    expect(code).toContain(
+      'export const route = { page: "Home", title: title() };'
+    );
+    expect(code).toContain("place.page");
+    expect(code).not.toMatch(/import \{[^}]*\bpage\b/);
+  });
+
+  it("replaces every Page Object Model of a module, Children included", () => {
+    const code = transform(...fixture("twoPagesPom"))?.code;
+
+    expect(code).toContain(
+      'export class SearchPage extends absentPageObject("SearchPage", {"actions":["search"],"properties":["searchBox"],"methods":[]}) {}'
+    );
+    for (const name of ["SearchBox", "ResultsPage", "SettingsPage"])
+      expect(code).toContain(
+        `export class ${name} extends absentPageObject("${name}", {"actions":[],"properties":[],"methods":[]}) {}`
+      );
+    expect(code).not.toContain("new ResultsPage()");
+  });
+
+  it("lists a Child a method returns as a method", () => {
+    const code = transform(...fixture("annotatedChildrenPom"))?.code;
+
+    expect(code).toMatch(
+      /class AnnotatedChildrenPom extends absentPageObject\("AnnotatedChildrenPom", \{"actions":\[\],"properties":\["directField","directGetter",.*"methods":\["ordinaryMethod","locatorMethod","componentCollection",/
+    );
+  });
+
+  it("names every instance member of the class, not only its Page Object Children", () => {
+    const code = transform(...fixture("withoutAymeMembersPom"))?.code;
+
+    // A plain field, a getter, a setter and an unmarked method join the
+    // manifest's members in declaration order; the constructor, a static
+    // member and a #private name do not.
+    expect(code).toContain(
+      'export class OrdersPage extends absentPageObject("OrdersPage", {"actions":["refresh"],"properties":["page","title","heading","filter"],"methods":["reset"]}) {}'
+    );
+    expect(code).not.toContain("route");
+    expect(code).not.toContain("opened");
+  });
+
+  it("leaves a module without a Page Object Model alone", () => {
+    expect(transform("export const x = 1;", "/app/x.ts")).toBeNull();
+  });
+
+  it("is the build with Ayme once include is true", () => {
+    const code = createPomTransform({ include: true })(
+      ...fixture("withoutAymePom")
+    )?.code;
+
+    expect(code).toContain("registerCompiledPom(ListPage, {");
+    expect(code).toContain("Add an item to the list.");
+    expect(code).not.toContain("@ayme-dev/ayme/absent");
+  });
+});
+
+describe("the absent entry of a specifier", () => {
+  it("maps the runtime's root and internal entries and the framework packages' roots", () => {
+    expect(absentEntryFor("@ayme-dev/ayme")).toBe("@ayme-dev/ayme/absent");
+    expect(absentEntryFor("@ayme-dev/ayme/internal")).toBe(
+      "@ayme-dev/ayme/absent"
+    );
+    for (const framework of ["vue", "react", "svelte", "angular"])
+      expect(absentEntryFor(`@ayme-dev/${framework}`)).toBe(
+        `@ayme-dev/${framework}/absent`
+      );
+  });
+
+  it("maps nothing else", () => {
+    for (const untouched of [
+      "@ayme-dev/ayme/server",
+      "@ayme-dev/ayme/absent",
+      "@ayme-dev/ayme/internal/x",
+      "@ayme-dev/vue/absent",
+      "@ayme-dev/angular/package.json",
+      "@ayme-dev/webmcp",
+      "@ayme-dev/unplugin-ayme",
+      "./ListPage",
+    ])
+      expect(absentEntryFor(untouched)).toBeUndefined();
   });
 });

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build && node scripts/verify-browser-output.mjs",
+    "build": "vite build && vite build --mode without-ayme && node scripts/verify-browser-output.mjs",
     "dev": "vite --host 127.0.0.1 --port 4190 --strictPort",
     "goals:runs": "node scripts/goal-runs.ts",
     "lint": "eslint . --max-warnings 0",

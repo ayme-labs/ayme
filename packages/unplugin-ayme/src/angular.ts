@@ -3,7 +3,13 @@ import path from "node:path";
 
 import type { Plugin } from "esbuild";
 
-import { createPomTransform, type PomPrograms } from "./transformPomModule";
+import {
+  absentEntryFor,
+  createPomTransform,
+  includeLine,
+  includeOption,
+  type PomPrograms,
+} from "./transformPomModule";
 import { transpilePomModule } from "./transpilePomModule";
 
 export type AymeAngularOptions = {
@@ -12,6 +18,12 @@ export type AymeAngularOptions = {
    * Point it at the app's own tsconfig, which Angular's watcher also reads.
    */
   tsconfigPath?: string;
+  /**
+   * Whether the build includes Ayme. Defaults to false: the runtime's
+   * entries then resolve to its absent entry and each Page Object Model
+   * compiles to a stand-in.
+   */
+  include?: boolean;
 };
 
 const namespace = "ayme-pom";
@@ -24,7 +36,9 @@ type CompiledPom = { contents: string; watchFiles: readonly string[] };
  * reach through `@angular-builders/custom-esbuild`.
  */
 export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
-  const unknown = Object.keys(options).filter((key) => key !== "tsconfigPath");
+  const unknown = Object.keys(options).filter(
+    (key) => key !== "tsconfigPath" && key !== "include"
+  );
   if (unknown.length > 0)
     throw new TypeError(
       `Ayme's Angular plugin has no option(s): ${unknown.join(", ")}. Referenced in angular.json as a plain string, it receives the builder's options.`
@@ -34,6 +48,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
     typeof options.tsconfigPath !== "string"
   )
     throw new TypeError("tsconfigPath must be a string");
+  const include = includeOption(options.include);
   return {
     name: "ayme-angular",
     setup(build) {
@@ -46,6 +61,7 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
         {
           tsconfigPath:
             options.tsconfigPath && path.resolve(root, options.tsconfigPath),
+          include,
         },
         undefined,
         programs
@@ -56,11 +72,16 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
       build.onStart(() => {
         compiled = new Map();
         programs.clear();
+        // esbuild gives a plugin no logger, so the line goes to the console.
+        console.info(includeLine(options.include));
       });
       build.onEnd(() => {
         programs.clear();
       });
 
+      // The stand-in of a build without Ayme is what `onLoad` hands esbuild
+      // as the module's contents, and esbuild maps a module to the contents
+      // it loaded, so no source map carries the replaced model.
       const compile = async (fileName: string) => {
         const source = await readFile(fileName, "utf8");
         const transformed = transformPom(source, fileName);
@@ -70,6 +91,21 @@ export function aymeAngular(options: AymeAngularOptions = {}): Plugin {
           watchFiles: transformed.dependencies,
         };
       };
+
+      // A build without Ayme resolves the runtime's two entries and the
+      // framework packages to their absent entries, wherever they are
+      // imported from.
+      if (!include)
+        build.onResolve({ filter: /^@ayme-dev\// }, (args) => {
+          const absent = absentEntryFor(args.path);
+          if (absent === undefined) return;
+          return build.resolve(absent, {
+            kind: args.kind,
+            importer: args.importer,
+            resolveDir: args.resolveDir,
+            namespace: "file",
+          });
+        });
 
       // Angular's compiler plugin runs first and serves every program file
       // from its own `onLoad`, which has no namespace filter. So a Page Object

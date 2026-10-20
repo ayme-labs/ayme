@@ -27,6 +27,14 @@ pnpm --filter @ayme-dev/example-next dev
 Open http://127.0.0.1:4192. The counter supports a normal button click and a call
 through `usePageObject(CounterPage)`. It can be removed and remounted.
 
+`pnpm build` runs `next build` twice: the production build the Playwright suite
+uses, with Ayme, and `AYME_INCLUDE=false next build`, the one Build without
+Ayme, written to `.next-without-ayme` with browser source maps. The build
+script then runs `scripts/verify-browser-output.mjs`, which checks that the
+browser chunks of the build without Ayme carry none of Ayme's markers, that
+its source maps carry no Page Object Model body, and that the build with Ayme
+carries the markers, so the list proves something.
+
 ## How it works
 
 `@ayme-dev/unplugin-ayme/turbopack-loader` is an ESM loader using the webpack

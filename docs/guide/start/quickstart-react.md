@@ -17,10 +17,12 @@ import react from "@vitejs/plugin-react";
 import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 import { defineConfig } from "vite";
 
-export default defineConfig({
-  plugins: [react(), ayme()],
-});
+export default defineConfig(({ command }) => ({
+  plugins: [react(), ayme({ include: command === "serve" })],
+}));
 ```
+
+`include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
 Enable decorators in the tsconfig that covers your Page Object Models, `tsconfig.app.json` in Vite's templates:
 

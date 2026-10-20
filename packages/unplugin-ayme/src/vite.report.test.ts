@@ -18,7 +18,9 @@ async function buildReport(report?: AymeReport) {
   await build({
     configFile: false,
     logLevel: "silent",
-    plugins: [ayme(report === undefined ? {} : { report })],
+    plugins: [
+      ayme({ include: true, ...(report === undefined ? {} : { report }) }),
+    ],
     build: {
       write: false,
       rolldownOptions: {

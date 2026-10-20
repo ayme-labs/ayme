@@ -3,5 +3,6 @@ import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [sveltekit(), ayme()],
+  // Ayme stays in every build: the Playwright suite runs against the production build.
+  plugins: [sveltekit(), ayme({ include: true })],
 });

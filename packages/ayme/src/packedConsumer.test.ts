@@ -661,8 +661,9 @@ ${
   version
     ? `
 const sourcePath = resolve('consumer.ts');
-// Vite calls the hook with a plugin context; without an environment it only transforms.
-const transformed = await ayme().transform.handler.call({}, readFileSync(sourcePath, 'utf8'), sourcePath);
+// Vite calls the hook with a plugin context that carries the environment and the watch-file method.
+const context = { environment: { config: { consumer: 'client' } }, addWatchFile() {} };
+const transformed = await ayme({ include: true }).transform.handler.call(context, readFileSync(sourcePath, 'utf8'), sourcePath);
 assert.ok(transformed, 'Decorated POM must produce registration metadata');
 const registration = transformed.code.split('\\n').find(line => line.startsWith('registerCompiledPom(Pom, '));
 assert.ok(registration, 'Transformed POM must register its compiled manifest');
@@ -1194,7 +1195,7 @@ it(
 import react from '@vitejs/plugin-react';
 import { ayme } from '@ayme-dev/unplugin-ayme/vite';
 import { defineConfig } from 'vite';
-export default defineConfig({ plugins: [react(), ayme()] });
+export default defineConfig(({ command }) => ({ plugins: [react(), ayme({ include: command === 'serve' })] }));
 `,
       "index.html": `<!doctype html>
 <html><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>
@@ -1366,6 +1367,7 @@ export default {
           {
             loader: "@ayme-dev/unplugin-ayme/turbopack-loader",
             options: {
+              include: true,
               tsconfigPath: fileURLToPath(
                 new URL("./tsconfig.json", import.meta.url)
               ),

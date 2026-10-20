@@ -30,10 +30,34 @@ const isAymePluginEntry = (plugin: unknown) => {
       : (plugin as { path?: unknown } | null)?.path;
   return typeof path === "string" && path.replace(/^\.\//, "") === pluginFile;
 };
-const pluginEntry = (tsconfigPath: string) => ({
+// The build target's own entry has no `include`, so `ng build` is a Build
+// without Ayme; the development configuration's entry, which `ng serve` uses,
+// sets it. A configuration's array replaces the option's, so the development
+// entry repeats `tsconfigPath`, and a development array written from scratch
+// starts as a copy of the option's, so the other plugins there stay in
+// `ng serve`.
+const pluginEntry = (tsconfigPath: string, include?: true) => ({
   path: `./${pluginFile}`,
-  options: { tsconfigPath },
+  options: include ? { tsconfigPath, include } : { tsconfigPath },
 });
+const withPluginEntry = (
+  holder: Record<string, unknown>,
+  entry: ReturnType<typeof pluginEntry>
+) => {
+  const plugins = Array.isArray(holder["plugins"]) ? holder["plugins"] : [];
+  if (!plugins.some(isAymePluginEntry)) holder["plugins"] = [...plugins, entry];
+};
+const withDevelopmentEntry = (
+  development: Record<string, unknown>,
+  base: readonly unknown[],
+  entry: ReturnType<typeof pluginEntry>
+) => {
+  if (Array.isArray(development["plugins"]))
+    return withPluginEntry(development, entry);
+  development["plugins"] = base.map((plugin) =>
+    isAymePluginEntry(plugin) ? entry : plugin
+  );
+};
 const customEsbuild = {
   application: "@angular-builders/custom-esbuild:application",
   devServer: "@angular-builders/custom-esbuild:dev-server",
@@ -52,9 +76,9 @@ const replaceable = (builder: string | undefined) =>
 /**
  * `ng add @ayme-dev/angular`: installs Ayme's runtime and build integration
  * and the Playwright types Page Object Models use, switches the build and
- * serve targets to custom-esbuild with Ayme's plugin, and adds `provideAyme()`
- * to the application config. What it cannot change
- * safely, it leaves alone and lists as manual steps.
+ * serve targets to custom-esbuild with Ayme's plugin, kept in the development
+ * configuration only, and adds `provideAyme()` to the application config.
+ * What it cannot change safely, it leaves alone and lists as manual steps.
  */
 export function ngAdd(options: NgAddOptions): Rule {
   return async (tree) => {
@@ -134,12 +158,14 @@ export function ngAdd(options: NgAddOptions): Rule {
           const serve = targets.get("serve")!;
           build.builder = replaced[build.builder] ?? build.builder;
           serve.builder = replaced[serve.builder] ?? serve.builder;
-          const buildOptions = (build.options ??= {});
-          const plugins = Array.isArray(buildOptions["plugins"])
-            ? buildOptions["plugins"]
-            : [];
-          if (!plugins.some(isAymePluginEntry))
-            buildOptions["plugins"] = [...plugins, pluginEntry(tsconfigPath)];
+          const options = (build.options ??= {});
+          withPluginEntry(options, pluginEntry(tsconfigPath));
+          const configurations = (build.configurations ??= {});
+          withDevelopmentEntry(
+            (configurations["development"] ??= {}),
+            options["plugins"] as readonly unknown[],
+            pluginEntry(tsconfigPath, true)
+          );
         }),
         (tree) => {
           if (!tree.exists(pluginFile)) tree.create(pluginFile, pluginSource);
@@ -151,7 +177,7 @@ export function ngAdd(options: NgAddOptions): Rule {
           ? `ng add left angular.json and ${pluginFile} alone: ${pluginFile} already exists and does not re-export Ayme's plugin. Ayme's compiler needs an esbuild plugin:`
           : `ng add left angular.json alone: it switches only Angular's standard builders, on a build target with a tsConfig option ("${projectName}" has build: ${build?.builder ?? "none"}, serve: ${serve?.builder ?? "none"}, tsConfig: ${typeof tsconfigPath === "string" ? tsconfigPath : "none"}). Ayme's compiler needs an esbuild plugin:`,
         `  - Create a plugin file at the workspace root, such as ${pluginFile}: ${pluginSource.trim()}`,
-        `  - Add { "path": "./<plugin file>", "options": { "tsconfigPath": "<your app tsconfig>" } } to the build target's "plugins". With Angular's standard builders, first install @angular-builders/custom-esbuild for your Angular major and switch to ${customEsbuild.application} and ${customEsbuild.devServer}.`
+        `  - Add { "path": "./<plugin file>", "options": { "tsconfigPath": "<your app tsconfig>" } } to the build target's "plugins", and { "path": "./<plugin file>", "options": { "tsconfigPath": "<your app tsconfig>", "include": true } } to the development configuration's "plugins", so that ng serve has Ayme and ng build does not. With Angular's standard builders, first install @angular-builders/custom-esbuild for your Angular major and switch to ${customEsbuild.application} and ${customEsbuild.devServer}.`
       );
     }
 

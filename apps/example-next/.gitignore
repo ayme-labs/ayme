@@ -1,5 +1,6 @@
 .next/
 .next-dev/
+.next-without-ayme/
 next-env.d.ts
 *.tsbuildinfo
 # `next dev` generates these agent files.

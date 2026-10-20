@@ -9,7 +9,7 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 | `@ayme-dev/ayme`        | Your app: the decorators, `createAyme`, `createPage`, `decisionEndpoint`, the errors and their types. |
 | `@ayme-dev/ayme/server` | Your backend: `createDecisionEndpoint`, the Decision Endpoint handler.                                |
 
-`@ayme-dev/ayme/internal` serves Ayme's own packages and the code the build plugin generates. Applications do not import it, and it may change in any release.
+`@ayme-dev/ayme/internal` serves Ayme's own packages and the code the build plugin generates, and `@ayme-dev/ayme/absent` is what a build without Ayme resolves `@ayme-dev/ayme` and `@ayme-dev/ayme/internal` to, and its setup logs an error when `webMCP.enabled` is on, since such a build publishes nothing; see [Include Ayme in a build](build-plugin.md#include-ayme-in-a-build). Applications do not import either, and both may change in any release.
 
 ## Decorators
 

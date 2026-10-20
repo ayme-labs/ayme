@@ -17,10 +17,12 @@ import { sveltekit } from "@sveltejs/kit/vite";
 import { ayme } from "@ayme-dev/unplugin-ayme/vite";
 import { defineConfig } from "vite";
 
-export default defineConfig({
-  plugins: [sveltekit(), ayme()],
-});
+export default defineConfig(({ command }) => ({
+  plugins: [sveltekit(), ayme({ include: command === "serve" })],
+}));
 ```
+
+`include` keeps Ayme in the dev server and out of `vite build`; [Include Ayme in a build](../reference/build-plugin.md#include-ayme-in-a-build) covers the builds that keep it.
 
 Keep SvelteKit's generated tsconfig as the base and enable decorators:
 
