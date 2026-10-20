@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DecisionRequest } from "./decisionWire";
 import type { ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
-import { RuntimeStateError } from "./errors";
+import { RuntimeStateError, ToolInputError } from "./errors";
 import type { GoalLoopDecisionFunction } from "./goalLoop";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme, type AymeOptions } from "./runtime";
@@ -285,6 +285,26 @@ describe("Peek Tools", () => {
     await expect(ayme.tools.run("peek.list", {})).rejects.toThrow(
       RuntimeStateError
     );
+  });
+
+  it("refuses input, naming every property", async () => {
+    const ayme = started();
+    peek(ayme, () => 1, "counter");
+
+    await expect(
+      ayme.tools.run("peek.counter", { x: 1, y: 2 })
+    ).rejects.toThrow(
+      new ToolInputError(
+        "Input property x is not supported. Input property y is not supported."
+      )
+    );
+    await expect(ayme.tools.run("peek.counter", "x" as never)).rejects.toThrow(
+      "Tool input must be an object."
+    );
+    expect(await ayme.tools.run("peek.counter", undefined as never)).toEqual({
+      name: "counter",
+      instances: [{ values: 1 }],
+    });
   });
 
   it("keeps the tool when its last instance goes and comes back in one turn", async () => {
