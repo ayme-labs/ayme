@@ -17,6 +17,7 @@ import type { Ayme } from "@ayme-dev/ayme";
 import { createAyme } from "@ayme-dev/ayme/absent";
 import type { PageObjectConstructor } from "@ayme-dev/ayme/internal";
 import type { UseAymeOptions, UseAymeResult } from "./index";
+import { providerProps } from "./providerProps";
 
 export type {
   AymeWebMcpPublicationStatus,
@@ -38,11 +39,14 @@ function own(options?: UseAymeOptions) {
   return runtime;
 }
 
+// The same props as the index's provider, so a template's `:web-m-c-p`
+// reaches the absent runtime as `webMCP`, and its publication error is
+// logged as it would be with Ayme in the build.
 export const AymeProvider: DefineComponent<UseAymeOptions> = defineComponent({
   name: "AymeProvider",
-  inheritAttrs: false,
-  setup(_, { attrs, slots }) {
-    own(attrs as UseAymeOptions);
+  props: providerProps,
+  setup(props, { slots }) {
+    own({ ...props });
     return () => slots.default?.();
   },
 });

@@ -82,6 +82,21 @@ it("renders the provider's children with an inert session, a Page Object of the 
   for (const session of sessions) expect(session.peek).not.toHaveBeenCalled();
 });
 
+it("normalises the provider's props as the index does, so a kebab-case attribute reaches the absent runtime", () => {
+  const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+  const element = mount({
+    render: () =>
+      h(AymeProvider, { "web-m-c-p": { enabled: true } }, () =>
+        h("output", "rendered")
+      ),
+  });
+
+  expect(element.innerHTML).toBe("<output>rendered</output>");
+  expect(logged).toHaveBeenCalledWith(
+    "Ayme was removed from this build, but setup enables WebMCP publication."
+  );
+});
+
 it("passes a standalone owner's options to the absent runtime, which logs the publication error", () => {
   const logged = vi.spyOn(console, "error").mockImplementation(() => {});
   const Root = defineComponent({
