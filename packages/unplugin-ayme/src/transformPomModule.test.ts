@@ -275,6 +275,19 @@ describe("a build without Ayme", () => {
     expect(code).not.toContain("@ayme.action");
   });
 
+  it("keeps an import only when the rest of the module refers to its binding, not when it names a key or a member", () => {
+    const code = transform(...fixture("withoutAymeKeysPom"))?.code;
+
+    expect(code).toContain(
+      'import { title } from "./withoutAymeKeysPomLabels";'
+    );
+    expect(code).toContain(
+      'export const route = { page: "Home", title: title() };'
+    );
+    expect(code).toContain("place.page");
+    expect(code).not.toMatch(/import \{[^}]*\bpage\b/);
+  });
+
   it("replaces every Page Object Model of a module, Children included", () => {
     const code = transform(...fixture("twoPagesPom"))?.code;
 

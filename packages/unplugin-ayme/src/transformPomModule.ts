@@ -214,6 +214,30 @@ function standInModule(
 }
 
 /**
+ * Whether an identifier refers to a binding, rather than naming a property
+ * or a member: `x.page`, `{ page: 1 }` and `get page()` name no binding,
+ * while a shorthand `{ page }` does.
+ */
+function isBindingReference(node: ts.Identifier) {
+  const parent = node.parent;
+  if (ts.isPropertyAccessExpression(parent)) return parent.name !== node;
+  if (ts.isQualifiedName(parent)) return parent.right !== node;
+  if (ts.isBindingElement(parent)) return parent.propertyName !== node;
+  if (
+    ts.isPropertyAssignment(parent) ||
+    ts.isMethodDeclaration(parent) ||
+    ts.isMethodSignature(parent) ||
+    ts.isPropertyDeclaration(parent) ||
+    ts.isPropertySignature(parent) ||
+    ts.isGetAccessorDeclaration(parent) ||
+    ts.isSetAccessorDeclaration(parent) ||
+    ts.isEnumMember(parent)
+  )
+    return parent.name !== node;
+  return true;
+}
+
+/**
  * The module without the imports only its replaced Page Object Models used,
  * so what they imported for their implementation, Ayme's decorators
  * included, leaves the build with them. A bare import for its side effects
@@ -230,7 +254,8 @@ function withoutUnusedImports(code: string, fileName: string) {
   const referenced = new Set<string>();
   const collect = (node: ts.Node) => {
     if (ts.isImportDeclaration(node)) return;
-    if (ts.isIdentifier(node)) referenced.add(node.text);
+    if (ts.isIdentifier(node) && isBindingReference(node))
+      referenced.add(node.text);
     ts.forEachChild(node, collect);
   };
   collect(sourceFile);
