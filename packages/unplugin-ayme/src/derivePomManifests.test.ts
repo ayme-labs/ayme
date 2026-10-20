@@ -660,6 +660,23 @@ describe("derivePomManifests", () => {
       );
     });
 
+    it("still reads a constant that two decorators share and nothing else touches", () => {
+      expect(() => manifestFor("sharedRootlessOptionsPom")).toThrow(
+        'Page Object Child "first" is a collection of FirstItem, which declares no root; a collection item\'s ref needs one.'
+      );
+    });
+
+    it("leaves a root a constant gained after its initializer, or a literal inherits through __proto__, to the runtime", () => {
+      const manifest = manifestForClass(
+        "mutatedRootOptionsPom",
+        "MutatedRootOptionsPom"
+      );
+
+      expect(
+        manifest?.components.map((component) => component.className)
+      ).toEqual(["AssignedItem", "InheritedItem"]);
+    });
+
     it("builds a collection whose item class inherits its root, and a single child without one", () => {
       const manifest = manifestForClass(
         "rootlessChildrenPom",

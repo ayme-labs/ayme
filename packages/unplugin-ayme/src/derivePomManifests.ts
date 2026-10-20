@@ -641,10 +641,11 @@ function decoratorOptions(decorator: ts.Decorator) {
 
 /**
  * The keys of the options a decorator is called with, read statically: from
- * an object literal, inline or behind a constant of the same file, with
- * identifier, string and computed string literal keys. "unreadable" when
- * the options come from anywhere else, or hold a spread or a key the
- * compiler cannot read.
+ * an object literal, inline or behind a constant of the same file that
+ * nothing else reads, with identifier, string and computed string literal
+ * keys. "unreadable" when the options come from anywhere else, or hold a
+ * spread, a `__proto__` key, which inherits keys the literal does not show,
+ * or a key the compiler cannot read.
  */
 function optionKeys(
   checker: ts.TypeChecker,
@@ -658,7 +659,7 @@ function optionKeys(
   const keys = new Set<string>();
   for (const property of literal.properties) {
     const key = propertyKey(property);
-    if (key === undefined) return "unreadable";
+    if (key === undefined || key === "__proto__") return "unreadable";
     keys.add(key);
   }
   return keys;
@@ -667,38 +668,163 @@ function optionKeys(
 /**
  * The object literal `expression` is: itself, or the initializer of the
  * constant of the same file it names, through an assertion, a parenthesis
- * or another constant. Undefined when the compiler cannot see it.
+ * or another constant, when nothing in the file could change the object
+ * (see `untouchedConst`). Undefined when the compiler cannot see it.
  */
 function optionsLiteral(
   checker: ts.TypeChecker,
-  expression: ts.Expression
+  expression: ts.Expression,
+  verified = new Map<ts.VariableDeclaration, boolean>()
 ): ts.ObjectLiteralExpression | undefined {
   const value = unwrapped(expression);
   if (ts.isObjectLiteralExpression(value)) return value;
   if (!ts.isIdentifier(value)) return undefined;
-  const declaration = checker.getSymbolAtLocation(value)?.valueDeclaration;
+  const declaration = constDeclarationOf(checker, value);
   if (
     declaration === undefined ||
-    !ts.isVariableDeclaration(declaration) ||
-    declaration.initializer === undefined ||
-    !(ts.getCombinedNodeFlags(declaration) & ts.NodeFlags.Const) ||
-    declaration.getSourceFile() !== expression.getSourceFile()
+    !untouchedConst(checker, declaration, verified)
   )
     return undefined;
-  return optionsLiteral(checker, declaration.initializer);
+  return optionsLiteral(checker, declaration.initializer, verified);
+}
+
+/**
+ * The initialized `const` of its own file that `identifier` names. Not an
+ * exported one: another module may change its object.
+ */
+function constDeclarationOf(
+  checker: ts.TypeChecker,
+  identifier: ts.Identifier
+): InitializedConst | undefined {
+  const declaration = checker.getSymbolAtLocation(identifier)?.valueDeclaration;
+  return declaration !== undefined &&
+    ts.isVariableDeclaration(declaration) &&
+    isInitializedConst(declaration, identifier.getSourceFile())
+    ? declaration
+    : undefined;
+}
+
+type InitializedConst = ts.VariableDeclaration & {
+  initializer: ts.Expression;
+};
+
+function isInitializedConst(
+  declaration: ts.VariableDeclaration,
+  file: ts.SourceFile
+): declaration is InitializedConst {
+  return (
+    declaration.initializer !== undefined &&
+    (ts.getCombinedNodeFlags(declaration) & ts.NodeFlags.Const) !== 0 &&
+    (ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.Export) ===
+      0 &&
+    declaration.getSourceFile() === file
+  );
+}
+
+/**
+ * Whether every reference to the const `declaration` in its file is one
+ * that cannot change its object: its own name, a decorator's argument, or
+ * the initializer of another such const. Any other reference, a call it is
+ * passed to, a member read or written, a shorthand property, an export,
+ * may have changed the object the literal shows. A declaration `verified`
+ * still holds as pending is on a cycle of initializers, which changes no
+ * object.
+ */
+function untouchedConst(
+  checker: ts.TypeChecker,
+  declaration: ts.VariableDeclaration,
+  verified: Map<ts.VariableDeclaration, boolean>
+): boolean {
+  const known = verified.get(declaration);
+  if (known !== undefined) return known;
+  verified.set(declaration, true);
+  const symbol = checker.getSymbolAtLocation(declaration.name);
+  const untouched =
+    symbol !== undefined &&
+    referencesTo(checker, symbol, declaration.getSourceFile()).every(
+      (reference) => {
+        if (reference === declaration.name) return true;
+        const use = wrapping(reference);
+        if (
+          ts.isCallExpression(use.parent) &&
+          ts.isDecorator(use.parent.parent) &&
+          use.parent.arguments[0] === use
+        )
+          return true;
+        return (
+          ts.isVariableDeclaration(use.parent) &&
+          use.parent.initializer === use &&
+          isInitializedConst(use.parent, use.getSourceFile()) &&
+          untouchedConst(checker, use.parent, verified)
+        );
+      }
+    );
+  verified.set(declaration, untouched);
+  return untouched;
+}
+
+/** Every identifier in `file` that resolves to `symbol`, its declaration's name included. */
+function referencesTo(
+  checker: ts.TypeChecker,
+  symbol: ts.Symbol,
+  file: ts.SourceFile
+): ts.Identifier[] {
+  const references: ts.Identifier[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isIdentifier(node) && refersTo(checker, node, symbol))
+      references.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return references;
+}
+
+/**
+ * Whether `identifier` names `symbol`: directly, or as the shorthand
+ * property or the export specifier the checker resolves to its own symbol.
+ */
+function refersTo(
+  checker: ts.TypeChecker,
+  identifier: ts.Identifier,
+  symbol: ts.Symbol
+): boolean {
+  const { parent } = identifier;
+  if (ts.isShorthandPropertyAssignment(parent) && parent.name === identifier)
+    return checker.getShorthandAssignmentValueSymbol(parent) === symbol;
+  if (ts.isExportSpecifier(parent))
+    return checker.getExportSpecifierLocalTargetSymbol(parent) === symbol;
+  return checker.getSymbolAtLocation(identifier) === symbol;
 }
 
 function unwrapped(expression: ts.Expression): ts.Expression {
   let value = expression;
-  while (
-    ts.isParenthesizedExpression(value) ||
-    ts.isAsExpression(value) ||
-    ts.isSatisfiesExpression(value) ||
-    ts.isTypeAssertionExpression(value) ||
-    ts.isNonNullExpression(value)
-  )
-    value = value.expression;
+  while (isWrapper(value)) value = value.expression;
   return value;
+}
+
+/** The outermost assertion, parenthesis or non-null wrapper around `expression`. */
+function wrapping(expression: ts.Expression): ts.Expression {
+  let value = expression;
+  while (isWrapper(value.parent) && value.parent.expression === value)
+    value = value.parent;
+  return value;
+}
+
+function isWrapper(
+  node: ts.Node
+): node is
+  | ts.ParenthesizedExpression
+  | ts.AsExpression
+  | ts.SatisfiesExpression
+  | ts.TypeAssertion
+  | ts.NonNullExpression {
+  return (
+    ts.isParenthesizedExpression(node) ||
+    ts.isAsExpression(node) ||
+    ts.isSatisfiesExpression(node) ||
+    ts.isTypeAssertionExpression(node) ||
+    ts.isNonNullExpression(node)
+  );
 }
 
 /** The key an object literal property declares, when the compiler can read it. */
