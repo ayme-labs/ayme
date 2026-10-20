@@ -427,7 +427,8 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     `;
     const host = document.querySelector("ayme-inspector")!;
     host.attachShadow({ mode: "closed" }).innerHTML =
-      `<div style="position: fixed; inset: 0; pointer-events: auto; background: white"></div>`;
+      `<style>:host([data-ayme-hit-test-through]) * { pointer-events: none !important }</style>
+       <div style="position: fixed; inset: 0; pointer-events: auto; background: white"></div>`;
     const save = document.querySelector("#save")!;
     expect(document.elementFromPoint(20, 10)).toBe(host);
 
@@ -446,8 +447,11 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
       <ayme-inspector data-ayme-inspector-host style="position: fixed; inset: 0; pointer-events: none; z-index: 2147483647"></ayme-inspector>
     `;
     const host = document.querySelector("ayme-inspector")!;
+    // The Inspector's stylesheet lets the runtime's hit test through its
+    // panel while the host carries the mark.
     host.attachShadow({ mode: "closed" }).innerHTML =
-      `<div style="position: fixed; inset: 0; pointer-events: auto; background: white"></div>`;
+      `<style>:host([data-ayme-hit-test-through]) * { pointer-events: none !important }</style>
+       <div style="position: fixed; inset: 0; pointer-events: auto; background: white"></div>`;
     expect(document.elementFromPoint(20, 10)).toBe(host);
     const save = await refOf("button", "Save");
     const overlay = await refOf("dialog", "Saving");
@@ -460,7 +464,7 @@ describe("Browser Tools on elements a click would not reach, in Chromium", () =>
     expect(clicks).toEqual([]);
     expect(elapsed).toBeLessThan(ACTION_TIMEOUT / 2);
     // The host is back as it was.
-    expect((host as HTMLElement).style.visibility).toBe("");
+    expect(host.hasAttribute("data-ayme-hit-test-through")).toBe(false);
   });
 
   // The click lands at the centre of the whole box, which the clip takes

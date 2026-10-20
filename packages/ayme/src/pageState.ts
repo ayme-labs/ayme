@@ -110,6 +110,13 @@ const pageStateSessions = new WeakMap<Document, PageStateSession>();
  */
 export const INSPECTOR_DOGFOOD_ATTRIBUTE = "data-ayme-inspector-dogfood";
 
+/**
+ * Package-internal: the mark on the Inspector's host while the runtime
+ * hit-tests what a click would reach under the panel; the Inspector's own
+ * stylesheet then takes everything in it out of hit testing.
+ */
+export const INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE =
+  "data-ayme-hit-test-through";
 /** Package-internal: the Inspector's host, unless it is mounted for dogfooding. */
 export const INSPECTOR_HOST_SELECTOR = `[data-ayme-inspector-host]:not([${INSPECTOR_DOGFOOD_ATTRIBUTE}])`;
 

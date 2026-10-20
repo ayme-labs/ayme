@@ -57,9 +57,13 @@
 
 /*
  * While a runtime pointer action's target is under the panel, nothing in the
- * Inspector takes pointer events, so the action reaches the page.
+ * Inspector takes pointer events, so the action reaches the page. The runtime
+ * marks the host the same way while it hit-tests what a click would reach
+ * under the panel; the host's own styles cannot be overridden from the page,
+ * since `:host`'s `!important` outranks the page's.
  */
-[data-ayme-inspector-root][data-ayme-pass-through] * {
+[data-ayme-inspector-root][data-ayme-pass-through] *,
+:host([data-ayme-hit-test-through]) * {
   pointer-events: none !important;
 }
 

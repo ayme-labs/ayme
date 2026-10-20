@@ -7,7 +7,10 @@ import {
   containsThroughShadow as contains,
   parentElement,
 } from "./composedTree";
-import { INSPECTOR_HOST_SELECTOR } from "./pageState";
+import {
+  INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE,
+  INSPECTOR_HOST_SELECTOR,
+} from "./pageState";
 
 /**
  * Package-internal: what the layout shows of one element (ADR-0035,
@@ -242,20 +245,24 @@ function inTheWay(
   return hit ? { present: true, available: false, hit } : reached;
 }
 
-function inspectorHostOf(element: Element): HTMLElement | undefined {
+function inspectorHostOf(element: Element): Element | undefined {
   for (let node: Element | null = element; node; node = parentElement(node))
-    if (node.matches(INSPECTOR_HOST_SELECTOR)) return node as HTMLElement;
+    if (node.matches(INSPECTOR_HOST_SELECTOR)) return node;
   return undefined;
 }
 
-/** `measure()` with `host` hidden, as the screenshot hides it, then as it was. */
-function withoutHitTesting<R>(host: HTMLElement, measure: () => R): R {
-  const visibility = host.style.visibility;
-  host.style.visibility = "hidden";
+/**
+ * `measure()` while `host` carries the mark on which the Inspector's own
+ * stylesheet takes everything in it out of hit testing, then as it was. The
+ * mark is an attribute because the host's styles outrank the page's.
+ */
+function withoutHitTesting<R>(host: Element, measure: () => R): R {
+  const marked = host.hasAttribute(INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE);
+  host.setAttribute(INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE, "");
   try {
     return measure();
   } finally {
-    host.style.visibility = visibility;
+    if (!marked) host.removeAttribute(INSPECTOR_HIT_TEST_THROUGH_ATTRIBUTE);
   }
 }
 
