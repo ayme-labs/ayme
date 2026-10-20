@@ -43,9 +43,11 @@ export type StructureNode = {
    */
   member?: string;
   /**
-   * The member tag as a Structure row shows it, kept short: relative to the
-   * page, and a collection item as `[·]`, since the node's name tells items
-   * apart. So "ListPage.items[1].archiveButton" reads "[·].archiveButton".
+   * The member tag as a Structure row shows it, kept short, since the tree's
+   * nesting shows the rest: a locator by its name, so
+   * "ListPage.items[1].archiveButton" reads ".archiveButton", and a Page
+   * Object's root by its path below the Page Object it is in and its class,
+   * so "ListPage.items[1]" reads "items[1] · ListItem".
    */
   tag?: string;
   /**
@@ -250,19 +252,16 @@ function specificity({ owner, locator }: IndexedMember, index: MemberIndex) {
 }
 
 /**
- * A member tag kept short: its path below the page, with the page's own
- * collection item as `[·]`. A page's root is the page.
+ * A member tag kept short: a locator by its name, a Page Object's root by its
+ * path below the Page Object it is in and its class. A page's root is the
+ * page.
  */
 function shortTag(member: IndexedMember, index: MemberIndex) {
-  const nodes = [...index.ancestors(member.owner)].reverse().slice(1);
-  if (!nodes.length && !member.locator) return member.path;
-  const [first, second] = nodes;
-  const segments = nodes.map(({ kind, name }) =>
-    kind === "item" ? name : `.${name}`
-  );
-  // Stryker disable next-line ConditionalExpression,LogicalOperator,OptionalChaining: below a page, a collection always comes with an item after it, and an item only after a collection.
-  if (first?.kind === "collection" && second?.kind === "item")
-    segments.splice(0, 2, "[·]");
-  if (member.locator) segments.push(`.${member.locator.name}`);
-  return segments.join("");
+  if (member.locator) return `.${member.locator.name}`;
+  const { owner } = member;
+  if (owner.kind === "page") return member.path;
+  // An item is named by its collection: "items" and "[0]" make "items[0]".
+  const collection =
+    owner.kind === "item" ? index.ancestors(owner)[1] : undefined;
+  return `${collection?.name ?? ""}${owner.name} · ${owner.className}`;
 }
