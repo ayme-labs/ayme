@@ -19,6 +19,9 @@ For designing or restructuring Page Object Models, read
 [Page object design](references/page-object-design.md). Where it conflicts with
 the project's conventions, raise the conflict with the user.
 
+For mapping a user flow into a POM against the running app, read
+[Live mapping](references/live-mapping.md).
+
 For registering Page Objects, placing or configuring the runtime owner, or
 checking which tools are live, read
 [Runtime integration](references/runtime-integration.md).

@@ -64,7 +64,12 @@ readonly createButton = this.root.getByTestId("create-button");
 A picker with date-selection behavior can justify a helper; a single button does
 not need a Page Object wrapper merely to click it.
 
-Prefer test ids over visible text; text changes with copy and locale.
+## Choose locators
+
+Prefer, in order: a test id; a role or label locator; CSS or XPath when
+neither fits. Scope a member's locator to the POM's root. Visible text changes
+with copy and locale, so match with `getByText` only when nothing else tells
+members apart.
 
 ## Name actions by user intent
 
@@ -93,6 +98,13 @@ async title() {
   return this.heading.textContent();
 }
 ```
+
+## Finish in the target state
+
+An action ensures a state and returns once that state holds, observed on its
+own root and children. `openSettings()` clicks only when the panel isn't
+already open; a dialog's `save()` returns once the dialog has closed, not when
+Save was clicked.
 
 ## Declare when an action can run
 
