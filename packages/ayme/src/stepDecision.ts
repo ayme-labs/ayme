@@ -468,8 +468,12 @@ export async function decideStep({
   // an effect the page never shows.
   const nothingToRun = chosenKey === "none";
   const endStateVisible = goalMet.noul >= 0.5;
+  // A step that failed has not taken effect, so it stays outstanding
+  // whatever the model answers; only the page can show the goal met then.
+  const lastStep = history.at(-1);
+  const lastStepFailed = lastStep !== undefined && lastStep.result !== "ok";
   const nothingOutstanding =
-    goalRemaining !== undefined && goalRemaining.noul < 0.5;
+    !lastStepFailed && goalRemaining !== undefined && goalRemaining.noul < 0.5;
   if (nothingToRun && (endStateVisible || nothingOutstanding))
     return stop(
       "done",

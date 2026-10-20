@@ -323,6 +323,27 @@ describe("a Step Decision", () => {
       });
     });
 
+    it("with no_fitting_option, not done, when the last step failed and the model only judges no step outstanding", async () => {
+      const { decide } = scripted(stageOne("none", 0.1, 0.1));
+
+      const verdict = await step(decide, {
+        history: [
+          {
+            operation: "click",
+            chosen: {},
+            result: "action exploded",
+            page_changed: false,
+            did: "click()",
+          },
+        ],
+      });
+
+      expect(verdict).toMatchObject({
+        kind: "stop",
+        reason: "no_fitting_option",
+      });
+    });
+
     it("runs the chosen operation although the model judges the goal met: its effect may never show on the page", async () => {
       const { decide, requests } = scripted(stageOne("click", 0.8, 0.1), {
         answers: { ref: choice("e2") },
