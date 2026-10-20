@@ -88,20 +88,25 @@ function establishesContainingBlock(style: CSSStyleDeclaration): boolean {
   );
 }
 
+/** Whether `style` lays out no box of its own, so positions and clips nothing. */
+const isBoxless = (style: CSSStyleDeclaration) => style.display === "contents";
+
 /** The ancestors whose scrolling moves `element`, nearest first. */
 const layoutAncestors = (element: Element) =>
   inBatch(layoutAncestors, element, () => {
     const ancestors: Element[] = [];
     let node = element;
     while (true) {
-      const position = styleOf(node).position;
+      const style = styleOf(node);
+      const position = isBoxless(style) ? "static" : style.position;
       let parent = parentElement(node);
       if (position === "fixed" || position === "absolute") {
         while (parent && parent !== element.ownerDocument.documentElement) {
           const style = styleOf(parent);
           if (
-            establishesContainingBlock(style) ||
-            (position === "absolute" && style.position !== "static")
+            !isBoxless(style) &&
+            (establishesContainingBlock(style) ||
+              (position === "absolute" && style.position !== "static"))
           )
             break;
           parent = parentElement(parent);
@@ -304,7 +309,7 @@ function shownParts(element: Element, alignment: ScrollAlignment): Rect[] {
 function renderedBoxes(element: Element) {
   const own = [...element.getClientRects()];
   if (own.length) return own.map((box) => ({ source: element, box }));
-  if (styleOf(element).display !== "contents") return [];
+  if (!isBoxless(styleOf(element))) return [];
   const boxes: { source: Element; box: DOMRect }[] = [];
   const walker = element.ownerDocument.createTreeWalker(
     element,
@@ -513,6 +518,7 @@ function clip(
  * none of it.
  */
 function clippedBy(element: Element, rect: Rect): Rect | undefined {
+  if (isBoxless(styleOf(element))) return rect;
   const bounds = clipBounds(element);
   if (bounds === null) return undefined;
   return bounds ? clip(rect, bounds, true, true) : rect;

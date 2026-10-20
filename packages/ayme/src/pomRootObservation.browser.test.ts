@@ -161,6 +161,21 @@ describe("POM root reachability", () => {
     });
   });
 
+  // Positioning on a box-less element has no effect: its text stays in the
+  // flow of the clipping ancestor, which clips it.
+  it("reads a positioned display-contents root whose text is clipped away as absent", async () => {
+    document.body.innerHTML =
+      '<div style="overflow:hidden;height:10px"><div style="height:40px"></div><section id="root" style="display:contents;position:fixed">Ready</section></div>';
+
+    await expect(
+      observePomRoot(createPage().locator("#root"))
+    ).resolves.toEqual({
+      present: false,
+      available: false,
+      inTheWay: [],
+    });
+  });
+
   it("accepts nested scrolling without moving either scroll container", async () => {
     document.body.innerHTML =
       '<div id="outer" style="overflow:auto;width:300px;height:200px"><div style="height:600px"></div><div id="inner" style="overflow:auto;width:250px;height:150px"><div style="width:1200px;height:80px;display:flex;justify-content:flex-end"><section id="root" style="width:100px">Nested</section></div></div></div>';
