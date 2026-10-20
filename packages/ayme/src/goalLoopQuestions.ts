@@ -1359,48 +1359,63 @@ function candidateElements(
 
 /**
  * Adds `item_text` to each named candidate whose role and name another
- * candidate shares: the text of the smallest ancestor that has text besides the
- * candidate and holds none of the others, such as the row a "Rename" button
- * sits in.
+ * candidate shares: the text of the smallest ancestor that has text besides
+ * the candidate and its name and holds none of the others, such as the row a
+ * "Rename" button sits in.
  */
 function withItemTexts(
   tree: StructuralTree,
   elements: Record<string, unknown>[]
 ): Record<string, unknown>[] {
-  const label = (element: Record<string, unknown>) =>
-    `${element.role} ${element.name}`;
-  return elements.map((element) => {
-    // An unnamed candidate is told apart by the text around it already.
-    const others = element.name
-      ? elements.filter(
-          (other) => other !== element && label(other) === label(element)
-        )
-      : [];
-    if (others.length === 0) return element;
-    const ref = element.ref as AriaRef;
-    // Another same-named candidate, or anything around one, is not this item.
-    const holdingOthers = new Set(
-      others.flatMap((other) => [
-        other.ref,
-        ...tree.getAncestorsOf(other.ref as AriaRef).map((node) => node.ref),
-      ])
-    );
-    let text = "";
-    for (const ancestor of tree.getAncestorsOf(ref)) {
-      if (holdingOthers.has(ancestor.ref)) break;
-      text = itemText(ancestor, ref);
-      if (text) break;
+  const groups = new Map<string, AriaRef[]>();
+  // An unnamed candidate is told apart by the text around it already.
+  for (const element of elements)
+    if (element.name) {
+      const label = `${element.role} ${element.name}`;
+      const group = groups.get(label) ?? [];
+      group.push(element.ref as AriaRef);
+      groups.set(label, group);
     }
-    return text ? { ...element, item_text: clip(text) } : element;
+  const itemTexts = new Map<string, string>();
+  for (const refs of groups.values()) {
+    if (refs.length < 2) continue;
+    // How many of the group each node holds, itself included.
+    const held = new Map<string, number>();
+    for (const ref of refs)
+      for (const node of [ref, ...tree.getAncestorsOf(ref).map((a) => a.ref)])
+        held.set(node, (held.get(node) ?? 0) + 1);
+    for (const ref of refs) {
+      const name = tree.getNode(ref)!.name;
+      for (const ancestor of tree.getAncestorsOf(ref)) {
+        if (held.get(ancestor.ref)! > 1) break;
+        const text = itemText(ancestor, ref, name);
+        if (text) {
+          itemTexts.set(ref, clip(text));
+          break;
+        }
+      }
+    }
+  }
+  return elements.map((element) => {
+    const text = itemTexts.get(element.ref as string);
+    return text ? { ...element, item_text: text } : element;
   });
 }
 
-/** The names and texts inside `item`, in document order, leaving out the candidate itself. */
-function itemText(item: StructuralNode, candidate: AriaRef): string {
+/**
+ * The names and texts inside `item`, in document order, leaving out the
+ * candidate and its name.
+ */
+function itemText(
+  item: StructuralNode,
+  candidate: AriaRef,
+  candidateName: string
+): string {
   const parts: string[] = [];
   // A heading repeating its region's name, or a name repeated as text, once.
   const add = (text: string) => {
-    if (text && text !== parts.at(-1)) parts.push(text);
+    if (text && text !== candidateName && text !== parts.at(-1))
+      parts.push(text);
   };
   const visit = (node: StructuralNode) => {
     if (node.ref === candidate) return;

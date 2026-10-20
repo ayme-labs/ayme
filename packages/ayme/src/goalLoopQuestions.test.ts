@@ -1922,7 +1922,7 @@ describe("the state a request that only picks an element is sent", () => {
       )
     ).toEqual({
       e3: "Website redesign · Owner: Grace",
-      // The group holds only the button, so the row's text is used.
+      // The cell holds only the button and its name, so the row's text is used.
       e7: "Mobile app · Owner: Alan",
       e9: `${"x".repeat(119)}…`,
       // A unique role and name needs no item text.
