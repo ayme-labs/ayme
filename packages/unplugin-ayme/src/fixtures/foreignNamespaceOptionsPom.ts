@@ -2,7 +2,7 @@ import type { Locator } from "@playwright/test";
 
 import { ayme } from "@ayme-dev/ayme";
 // @ts-expect-error The module does not exist, so `hooks` has no types.
-import * as hooks from "untyped-foreign-hooks";
+import * as hooks from "./missingHooks";
 
 const shared = { description: "An item." };
 
