@@ -6,7 +6,11 @@ import { createPage } from "./browserPage";
 
 import { ayme } from "./decorators";
 import { rooted, rootOf } from "./pomRoot.testSupport";
-import { listRegisteredPomTargets, registerCompiledPom } from "./registry";
+import {
+  listRegisteredPomTargets,
+  registerCompiledPom,
+  rootTargetPath,
+} from "./registry";
 import { startSession, type TestSession } from "./session.testSupport";
 
 describe("registered Page Object targets", () => {
@@ -107,21 +111,55 @@ describe("registered Page Object targets", () => {
     const [milk, eggs] = document.querySelectorAll(".item");
 
     expect(targets.map(({ path }) => path)).toEqual([
-      "ListPage.root",
+      rootTargetPath("ListPage"),
       "ListPage.newItemInput",
-      "ListPage.header.root",
+      rootTargetPath("ListPage.header"),
       "ListPage.header.title",
-      "ListPage.items[0].root",
+      rootTargetPath("ListPage.items[0]"),
       "ListPage.items[0].nameButton",
-      "ListPage.items[0].tags[0].root",
-      "ListPage.items[1].root",
+      rootTargetPath("ListPage.items[0].tags[0]"),
+      rootTargetPath("ListPage.items[1]"),
       "ListPage.items[1].nameButton",
     ]);
     expect(
       targets
         .filter(({ element }) => element === milk || element === eggs)
         .map(({ path }) => path)
-    ).toEqual(["ListPage.items[0].root", "ListPage.items[1].root"]);
+    ).toEqual([
+      rootTargetPath("ListPage.items[0]"),
+      rootTargetPath("ListPage.items[1]"),
+    ]);
+  });
+
+  it("keeps the root target apart from a member named root that is not the root", async () => {
+    document.body.innerHTML = `
+      <section><p class="root">Intro</p></section>
+    `;
+    class Editor {
+      readonly container = page.locator("section");
+      readonly root = page.locator(".root");
+    }
+    ayme({ root: (self: Editor) => self.container })(Editor);
+    registerCompiledPom(Editor, {
+      className: "Editor",
+      tools: [],
+      members: [
+        { memberName: "container", kind: "locator", access: "field" },
+        { memberName: "root", kind: "locator", access: "field" },
+      ],
+      components: [],
+    });
+    session.register(Editor);
+
+    const targets = await listRegisteredPomTargets();
+
+    expect(rootTargetPath("Editor")).not.toBe("Editor.root");
+    expect(targets.map(({ path, element }) => [path, element.tagName])).toEqual(
+      [
+        [rootTargetPath("Editor"), "SECTION"],
+        ["Editor.root", "P"],
+      ]
+    );
   });
 
   it("names each target's member locator, as an Interaction on it names it", async () => {
@@ -162,7 +200,10 @@ describe("registered Page Object targets", () => {
         path: "ListPage.addItemButton",
         locator: "getByRole('button', { name: 'Milk' })",
       },
-      { path: "ListPage.items[0].root", locator: "locator('.item').first()" },
+      {
+        path: rootTargetPath("ListPage.items[0]"),
+        locator: "locator('.item').first()",
+      },
     ]);
   });
 });

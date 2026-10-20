@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { rootTargetPath } from "@ayme-dev/ayme/internal";
 
 import { indexMembers } from "../../page-model";
 import { page } from "../../page-model/test-utils/pageModel";
@@ -10,10 +11,13 @@ import { isStaleSelection } from "./staleSelection";
 // Unit tests: which selections the app sends back to the page. Fixtures
 // are hand-written.
 
-const index = indexMembers({
-  objects: [page("ListPage", { locators: ["newItemInput"] })],
-  models: [],
-});
+const index = indexMembers(
+  {
+    objects: [page("ListPage", { locators: ["newItemInput"] })],
+    models: [],
+  },
+  rootTargetPath
+);
 const structure = buildStructureTree(
   forest(node({ ref: "e1", role: "textbox", name: "New item" })),
   new Map([["e1", ["ListPage.newItemInput"]]]),

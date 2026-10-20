@@ -29,12 +29,14 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     toolInputViolations,
     elementsOf,
     kindOf,
+    rootTargetPath,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     // The Playwright call table, which demo feedback reads.
     elementsOf,
     kindOf,
     pageStateNodeEntry,
+    rootTargetPath,
     subscribeToAgentImageRuns: () => () => {},
     inputSchemaFor,
     renderActionParameters,
@@ -67,7 +69,7 @@ const unmounts: (() => void)[] = [];
 
 // The host page: an editor whose root holds a title field and a save button.
 const hostPage = `
-  <section data-ref="e1" data-path="Editor.root">
+  <section data-ref="e1" data-path="Editor.@root">
     <input data-ref="e2" data-path="Editor.titleInput" aria-label="Title" />
     <button data-ref="e3" data-path="Editor.saveButton">Save</button>
   </section>`;

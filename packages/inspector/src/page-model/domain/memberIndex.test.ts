@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { rootTargetPath } from "@ayme-dev/ayme/internal";
 
 import { indexMembers, pathBelowPage } from "./memberIndex";
 import { collection, component, model, page } from "../test-utils/pageModel";
@@ -7,55 +8,63 @@ import { collection, component, model, page } from "../test-utils/pageModel";
 // for on the page. The page model is hand-written: a list page with two
 // items, each with its tags, a header, and a Header page of its own.
 
-const index = indexMembers({
-  objects: [
-    page("ListPage", {
-      locators: ["newItemInput"],
-      children: [
-        component("header", "Header", { locators: ["title"] }),
-        collection(
-          "items",
-          "ListItem",
-          [
-            {
-              locators: ["nameButton"],
-              children: [
-                collection(
-                  "tags",
-                  "Tag",
-                  [{}, {}],
-                  ["ListPage.items.tags.remove"]
-                ),
-              ],
-            },
-            {
-              locators: ["nameButton"],
-              children: [
-                collection("tags", "Tag", [{}], ["ListPage.items.tags.remove"]),
-              ],
-            },
-          ],
-          ["ListPage.items.archive"]
-        ),
-      ],
-    }),
-    page("Header", { locators: ["title"] }),
-  ],
-  models: [
-    model("ListPage", ["newItemInput", "header", "items"]),
-    model("ListItem", ["nameButton", "tags"]),
-    model("Header", ["title"]),
-    model("Tag", []),
-  ],
-});
+const index = indexMembers(
+  {
+    objects: [
+      page("ListPage", {
+        locators: ["newItemInput"],
+        children: [
+          component("header", "Header", { locators: ["title"] }),
+          collection(
+            "items",
+            "ListItem",
+            [
+              {
+                locators: ["nameButton"],
+                children: [
+                  collection(
+                    "tags",
+                    "Tag",
+                    [{}, {}],
+                    ["ListPage.items.tags.remove"]
+                  ),
+                ],
+              },
+              {
+                locators: ["nameButton"],
+                children: [
+                  collection(
+                    "tags",
+                    "Tag",
+                    [{}],
+                    ["ListPage.items.tags.remove"]
+                  ),
+                ],
+              },
+            ],
+            ["ListPage.items.archive"]
+          ),
+        ],
+      }),
+      page("Header", { locators: ["title"] }),
+    ],
+    models: [
+      model("ListPage", ["newItemInput", "header", "items"]),
+      model("ListItem", ["nameButton", "tags"]),
+      model("Header", ["title"]),
+      model("Tag", []),
+    ],
+  },
+  rootTargetPath
+);
 
 describe("the member a registry target is", () => {
   it("is the Page Object for its root, owned by itself", () => {
-    expect(index.member("ListPage.items[1].root")).toMatchObject({
+    expect(index.member("ListPage.items[1].@root")).toMatchObject({
       path: "ListPage.items[1]",
       owner: { path: "ListPage.items[1]", kind: "item" },
     });
-    expect(index.member("ListPage.root")).toMatchObject({
+    expect(index.member("ListPage.@root")).toMatchObject({
       path: "ListPage",
       owner: { path: "ListPage", kind: "page" },
     });
@@ -70,7 +79,7 @@ describe("the member a registry target is", () => {
   });
 
   it("is unknown for a target the page model doesn't have", () => {
-    expect(index.member("ListPage.items[2].root")).toBeUndefined();
+    expect(index.member("ListPage.items[2].@root")).toBeUndefined();
     expect(index.member("ListPage.items")).toBeUndefined();
   });
 });
@@ -78,7 +87,7 @@ describe("the member a registry target is", () => {
 describe("the targets a path stands for", () => {
   it("are a Page Object's root, a locator's own path", () => {
     expect(index.targets("ListPage.header")).toEqual(
-      new Set(["ListPage.header.root"])
+      new Set(["ListPage.header.@root"])
     );
     expect(index.targets("ListPage.items[0].nameButton")).toEqual(
       new Set(["ListPage.items[0].nameButton"])
@@ -87,13 +96,13 @@ describe("the targets a path stands for", () => {
 
   it("are a collection's items' roots", () => {
     expect(index.targets("ListPage.items")).toEqual(
-      new Set(["ListPage.items[0].root", "ListPage.items[1].root"])
+      new Set(["ListPage.items[0].@root", "ListPage.items[1].@root"])
     );
   });
 
   it("are every instance's root for a Page Object Model, a page of it too", () => {
     expect(index.targets("Header")).toEqual(
-      new Set(["ListPage.header.root", "Header.root"])
+      new Set(["ListPage.header.@root", "Header.@root"])
     );
   });
 
@@ -103,9 +112,9 @@ describe("the targets a path stands for", () => {
     );
     expect(index.targets("ListItem.tags")).toEqual(
       new Set([
-        "ListPage.items[0].tags[0].root",
-        "ListPage.items[0].tags[1].root",
-        "ListPage.items[1].tags[0].root",
+        "ListPage.items[0].tags[0].@root",
+        "ListPage.items[0].tags[1].@root",
+        "ListPage.items[1].tags[0].@root",
       ])
     );
     expect(index.targets("Header.title")).toEqual(
@@ -147,15 +156,42 @@ describe("what a path covers", () => {
   });
 });
 
+it("keeps a Page Object's root apart from its member named root", () => {
+  const editor = page("Editor", { locators: ["root", "titleInput"] });
+  const anchored = indexMembers(
+    {
+      objects: [editor],
+      models: [model("Editor", ["root", "titleInput"])],
+    },
+    rootTargetPath
+  );
+
+  expect(anchored.member("Editor.root")).toMatchObject({
+    path: "Editor.root",
+    owner: editor,
+    locator: { name: "root" },
+  });
+  expect(anchored.member(rootTargetPath("Editor"))).toMatchObject({
+    path: "Editor",
+    owner: editor,
+  });
+  expect(anchored.targets("Editor")).toEqual(
+    new Set([rootTargetPath("Editor")])
+  );
+});
+
 it("gives a path shared by two registrations of one page class to the first", () => {
   const first = page("ListPage", { locators: ["newItemInput"] });
   const second = page("ListPage", { locators: ["newItemInput"] });
-  const twice = indexMembers({
-    objects: [first, second],
-    models: [model("ListPage", ["newItemInput"])],
-  });
+  const twice = indexMembers(
+    {
+      objects: [first, second],
+      models: [model("ListPage", ["newItemInput"])],
+    },
+    rootTargetPath
+  );
 
-  expect(twice.member("ListPage.root")?.owner).toBe(first);
+  expect(twice.member("ListPage.@root")?.owner).toBe(first);
   expect(twice.member("ListPage.newItemInput")?.owner).toBe(first);
   expect(twice.targets("ListPage.newItemInput")).toEqual(
     new Set(["ListPage.newItemInput"])

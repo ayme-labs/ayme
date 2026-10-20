@@ -99,8 +99,8 @@ export type RegisteredPomRoot = {
 
 /**
  * An element a Page Object member holds, at the member's concrete path, e.g.
- * "ListPage.items[0].nameButton", or "ListPage.items[0].root" for a
- * component's root.
+ * "ListPage.items[0].nameButton", or at `rootTargetPath` of a Page Object's
+ * path for its root.
  */
 export type RegisteredPomTarget = {
   path: string;
@@ -569,6 +569,15 @@ function isRootPresent<T extends ObservedPomRoot>(
   root: T
 ): root is T & { element: Element } {
   return root.present && root.element?.isConnected === true;
+}
+
+/**
+ * Package-internal: the path of the target that is the Page Object Root of
+ * the instance at `path`, e.g. "ListPage.items[0].@root". The segment is one
+ * no member is named, so a member named `root` never shares a path with it.
+ */
+export function rootTargetPath(path: string) {
+  return `${path}.@root`;
 }
 
 /**
@@ -1188,8 +1197,9 @@ async function collectPomTargets(
 }
 
 /**
- * Pushes the elements `instance`'s root resolves to as targets at
- * `${prefix}.root`, and answers the one element it resolved to, when it did.
+ * Pushes the elements `instance`'s root resolves to as targets at the root
+ * target path of `prefix`, and answers the one element it resolved to, when
+ * it did.
  */
 async function collectRootTargets(
   instance: object,
@@ -1200,8 +1210,8 @@ async function collectRootTargets(
   if (!root) return undefined;
   const elements = locatorElements(root);
   const locator = root.toString();
-  for (const element of elements)
-    targets.push({ path: `${prefix}.root`, element, locator });
+  const path = rootTargetPath(prefix);
+  for (const element of elements) targets.push({ path, element, locator });
   return elements.length === 1 ? elements[0] : undefined;
 }
 

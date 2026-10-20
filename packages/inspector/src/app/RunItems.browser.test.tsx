@@ -28,12 +28,14 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     toolInputViolations,
     elementsOf,
     kindOf,
+    rootTargetPath,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   return {
     // The Playwright call table, which demo feedback reads.
     elementsOf,
     kindOf,
     pageStateNodeEntry,
+    rootTargetPath,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,
@@ -147,12 +149,12 @@ beforeEach(() => {
   >);
   vi.mocked(listRegisteredPomTargets).mockResolvedValue([
     {
-      path: "ListPage.items[0].root",
+      path: "ListPage.items[0].@root",
       element: milk!,
       locator: "locator('li').first()",
     },
     {
-      path: "ListPage.items[1].root",
+      path: "ListPage.items[1].@root",
       element: eggs!,
       locator: "locator('li').nth(1)",
     },

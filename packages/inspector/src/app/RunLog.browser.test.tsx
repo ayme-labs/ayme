@@ -31,6 +31,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     toolInputViolations,
     elementsOf,
     kindOf,
+    rootTargetPath,
   } = await importOriginal<typeof import("@ayme-dev/ayme/internal")>();
   const { forest, node } = await import("../structure/test-utils/projected");
   return {
@@ -38,6 +39,7 @@ vi.mock("@ayme-dev/ayme/internal", async (importOriginal) => {
     elementsOf,
     kindOf,
     pageStateNodeEntry,
+    rootTargetPath,
     inputSchemaFor,
     renderActionParameters,
     renderSchema,

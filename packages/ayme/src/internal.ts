@@ -47,6 +47,7 @@ export {
   listRegisteredPoms,
   probeRegisteredPomMembers,
   registerCompiledPom,
+  rootTargetPath,
   subscribeToRegisteredPoms,
   requireAymeRuntimePage,
 } from "./registry";

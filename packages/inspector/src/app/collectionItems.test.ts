@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { rootTargetPath } from "@ayme-dev/ayme/internal";
 
 import { indexMembers } from "../page-model";
 import { collection, page } from "../page-model/test-utils/pageModel";
@@ -9,16 +10,19 @@ import { itemsOf } from "./collectionItems";
 // page model, the structure and the registry's verdicts are hand-written: a
 // list page with two items, the second one covered.
 
-const members = indexMembers({
-  objects: [
-    page("ListPage", {
-      children: [
-        collection("items", "ListItem", [{}, {}], ["ListPage.items.archive"]),
-      ],
-    }),
-  ],
-  models: [],
-});
+const members = indexMembers(
+  {
+    objects: [
+      page("ListPage", {
+        children: [
+          collection("items", "ListItem", [{}, {}], ["ListPage.items.archive"]),
+        ],
+      }),
+    ],
+    models: [],
+  },
+  rootTargetPath
+);
 
 const item = (ref: string, path: string, name: string): StructureNode => ({
   ref,

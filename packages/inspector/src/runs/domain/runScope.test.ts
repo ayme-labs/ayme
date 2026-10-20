@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { rootTargetPath } from "@ayme-dev/ayme/internal";
 
 import { indexMembers } from "../../page-model";
 import { collection, page } from "../../page-model/test-utils/pageModel";
@@ -22,15 +23,18 @@ const members = new Map([
   ["e10", ["ListPage.items[1]"]],
 ]);
 const memberOf = (ref: string) => members.get(ref) ?? [];
-const index = indexMembers({
-  objects: [
-    page("ListPage", {
-      locators: ["addItemButton", "newItemInput"],
-      children: [collection("items", "ListItem", [{}, {}])],
-    }),
-  ],
-  models: [],
-});
+const index = indexMembers(
+  {
+    objects: [
+      page("ListPage", {
+        locators: ["addItemButton", "newItemInput"],
+        children: [collection("items", "ListItem", [{}, {}])],
+      }),
+    ],
+    models: [],
+  },
+  rootTargetPath
+);
 const runScope = (
   selection: Parameters<typeof scopeOf>[0],
   membersOf: typeof memberOf

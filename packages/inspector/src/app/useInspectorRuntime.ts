@@ -14,6 +14,7 @@ import {
   buildPageModel,
   indexMembers,
   type MemberIndex,
+  rootTargetPath,
 } from "../page-model";
 import { buildStructureTree, emptyStructure } from "../structure";
 import { useHighlights } from "../navigation";
@@ -91,7 +92,10 @@ export function useInspectorRuntime({
       ),
     [registeredPoms, tools.live, pomDefinitions]
   );
-  const members = useMemo(() => indexMembers(pageModel), [pageModel]);
+  const members = useMemo(
+    () => indexMembers(pageModel, rootTargetPath),
+    [pageModel]
+  );
   useEffect(() => {
     latestMembers.current = members;
   }, [members]);
