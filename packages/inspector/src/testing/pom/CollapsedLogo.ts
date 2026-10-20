@@ -1,5 +1,4 @@
 import { ayme } from "@ayme-dev/ayme";
-import type { Locator } from "@playwright/test";
 
 import { PanelPart } from "./PanelPart";
 import { dragBy } from "./pointerDrag";
@@ -7,10 +6,6 @@ import { dragBy } from "./pointerDrag";
 /** The collapsed Inspector: the ayme logo, which opens the panel. */
 @ayme
 export class CollapsedLogo extends PanelPart {
-  constructor(root: Locator) {
-    super(root);
-  }
-
   @ayme.action({ description: "Opens the panel." })
   async open() {
     await this.root.click();

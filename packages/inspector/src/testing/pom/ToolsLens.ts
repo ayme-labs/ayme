@@ -25,10 +25,6 @@ const groupLabels: readonly ToolGroupLabel[] = [
 /** The Tools lens's tree: the live tools, grouped. */
 @ayme
 export class ToolsLens extends PanelPart {
-  constructor(navigator: Locator) {
-    super(navigator);
-  }
-
   /** One group's list. */
   group(label: ToolGroupLabel): Locator {
     return this.root.getByRole("list", { name: label, exact: true });

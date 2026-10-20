@@ -11,10 +11,6 @@ export type PanelCorner =
 /** The expanded panel's frame: where it sits and how it resizes. */
 @ayme
 export class PanelShell extends PanelPart {
-  constructor(root: Locator) {
-    super(root);
-  }
-
   /** The handle that resizes the panel from one of its edges or corners. */
   resizeHandle(handle: PanelEdge | PanelCorner): Locator {
     const kind = handle.includes("-") ? "corner" : "edge";
