@@ -289,7 +289,7 @@ describe("Peek Tools", () => {
 
   it("refuses input, naming every property", async () => {
     const ayme = started();
-    ayme.peek(() => 1, "counter");
+    peek(ayme, () => 1, "counter");
 
     await expect(
       ayme.tools.run("peek.counter", { x: 1, y: 2 })
