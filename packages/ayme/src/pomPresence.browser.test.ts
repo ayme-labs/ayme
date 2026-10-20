@@ -5,6 +5,7 @@ import { ayme as agent } from "./agentCalls.testSupport";
 import type { PomManifest, ToolManifest } from "./contracts";
 import { ayme } from "./decorators";
 import { createPage } from "./browserPage";
+import { rootOf } from "./pomRoot.testSupport";
 import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
 
@@ -215,7 +216,9 @@ describe("Page Object Presence by predicate", () => {
       isOpen = false;
       open() {}
     }
-    ayme({ present: (self: SideDrawer) => self.isOpen })(SideDrawer);
+    ayme({ root: rootOf, present: (self: SideDrawer) => self.isOpen })(
+      SideDrawer
+    );
     registerCompiledPom(SideDrawer, pageManifest("SideDrawer", [root]));
     const drawer = session.pom.register(SideDrawer);
     const listed = () =>
@@ -255,7 +258,7 @@ describe("Page Object Presence by predicate", () => {
       constructor(readonly root: Locator) {}
       close() {}
     }
-    ayme({ present: (self: Panel) => self.expanded })(Panel);
+    ayme({ root: rootOf, present: (self: Panel) => self.expanded })(Panel);
     class Shell {
       panel = new Panel(page.locator("#panel"));
     }

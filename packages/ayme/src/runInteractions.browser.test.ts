@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { expect as expectOnPage } from "@ayme-dev/playwright-lite";
 
 import type { PomManifest, ToolManifest } from "./contracts";
+import { ayme as model } from "./decorators";
 import {
   callers,
   createAyme,
@@ -11,6 +12,7 @@ import {
   type CustomTool,
   type Run,
 } from "./index";
+import { rootOf } from "./pomRoot.testSupport";
 import { operations } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 
@@ -54,6 +56,7 @@ class ListPage {
     await this.saveButton.click();
   }
 }
+model({ root: rootOf })(ListPage);
 
 registerCompiledPom(ListPage, {
   className: "ListPage",

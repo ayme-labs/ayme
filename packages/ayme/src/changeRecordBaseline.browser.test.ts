@@ -4,8 +4,10 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import type { PomManifest, ToolManifest } from "./contracts";
 import type { DecisionResponse } from "./decisionWire";
 import { createPage } from "./browserPage";
+import { ayme as model } from "./decorators";
 import { configureGoalLoop, type GoalLoopDecisionFunction } from "./goalLoop";
 import { getPageStateForElements } from "./pageState";
+import { rootOf } from "./pomRoot.testSupport";
 import { agentTools } from "./publication.testSupport";
 import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
@@ -49,6 +51,7 @@ describe("Change Record baseline in Chromium", () => {
       root = currentPage.locator("main");
       noop() {}
     }
+    model({ root: rootOf })(App);
     registerCompiledPom(App, manifest("App", [action("noop", "App.noop")]));
     startRuntime(goalLoop).pom.register(App);
     // Its tool is published once a probe finds the Page Object available.

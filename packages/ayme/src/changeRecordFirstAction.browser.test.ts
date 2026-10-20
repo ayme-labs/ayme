@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import type { PomManifest } from "./contracts";
 import { createPage } from "./browserPage";
+import { ayme as model } from "./decorators";
+import { rootOf } from "./pomRoot.testSupport";
 import { agentTools } from "./publication.testSupport";
 import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
@@ -35,6 +37,7 @@ describe("Change Record of the first action in Chromium", () => {
           );
       }
     }
+    model({ root: rootOf })(App);
     registerCompiledPom(App, manifest);
 
     const runtime = createAyme({ pageFactory: () => page });

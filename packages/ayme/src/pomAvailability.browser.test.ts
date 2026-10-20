@@ -2,6 +2,8 @@ import { AriaRefSchema } from "@ayme-dev/core/structural-observation";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createPage } from "./browserPage";
 import { ayme } from "./agentCalls.testSupport";
+import { ayme as model } from "./decorators";
+import { rootOf, rooted } from "./pomRoot.testSupport";
 import {
   listRegisteredPomRoots,
   listAvailablePomTools,
@@ -69,7 +71,7 @@ describe("live Page Object availability", () => {
     document.body.innerHTML =
       '<aside id="sidebar" style="display:none;width:240px;height:120px">Sidebar</aside>';
     class Shell {
-      sidebar = { root: page.locator("#sidebar"), close() {} };
+      sidebar = rooted(page.locator("#sidebar"), { close() {} });
       open() {}
     }
     registerCompiledPom(
@@ -124,7 +126,7 @@ describe("live Page Object availability", () => {
   it("refreshes direct page-state capture without publication", async () => {
     document.body.innerHTML = '<aside id="sidebar">Sidebar</aside>';
     class Shell {
-      sidebar = { root: page.locator("#sidebar"), close() {} };
+      sidebar = rooted(page.locator("#sidebar"), { close() {} });
     }
     registerCompiledPom(Shell, manifest("Shell", [child("sidebar")]));
     session.register(Shell);
@@ -150,6 +152,7 @@ describe("live Page Object availability", () => {
       root = page.locator("#sidebar");
       open() {}
     }
+    model({ root: rootOf })(Sidebar);
     registerCompiledPom(
       Sidebar,
       manifest("Sidebar", [root()], [action("open", "Sidebar.open")])
@@ -169,6 +172,7 @@ describe("live Page Object availability", () => {
       root = page.locator("#root");
       close() {}
     }
+    model({ root: rootOf })(Rooted);
     class Rootless {
       open() {}
     }
@@ -202,10 +206,11 @@ describe("live Page Object availability", () => {
     document.body.innerHTML =
       '<section id="first" hidden>First</section><section id="second">Second</section>';
     class Shell {
-      panels = ["first", "second"].map((id) => ({
-        root: page.locator(`#${id}`),
-        close() {},
-      }));
+      panels = ["first", "second"].map((id) =>
+        rooted(page.locator(`#${id}`), {
+          close() {},
+        })
+      );
     }
     registerCompiledPom(Shell, manifest("Shell", [child("panels", true)]));
     session.register(Shell);
@@ -224,7 +229,7 @@ describe("live Page Object availability", () => {
     document.body.innerHTML =
       '<style id="availability-style">#sidebar { visibility: visible; }</style><aside id="sidebar">Sidebar</aside>';
     class Shell {
-      sidebar = { root: page.locator("#sidebar"), close() {} };
+      sidebar = rooted(page.locator("#sidebar"), { close() {} });
     }
     registerCompiledPom(Shell, manifest("Shell", [child("sidebar")]));
     session.register(Shell);
@@ -252,7 +257,7 @@ describe("live Page Object availability", () => {
     class Shell {
       async panels() {
         await pending;
-        return [{ root: page.locator("#root"), close() {} }];
+        return [rooted(page.locator("#root"), { close() {} })];
       }
     }
     registerCompiledPom(
@@ -283,7 +288,7 @@ describe("live Page Object availability", () => {
       async panels() {
         started();
         await pending;
-        return [{ root: page.locator("#root"), close() {} }];
+        return [rooted(page.locator("#root"), { close() {} })];
       }
     }
     registerCompiledPom(
@@ -299,6 +304,7 @@ describe("live Page Object availability", () => {
       root = page.locator("#root");
       close() {}
     }
+    model({ root: rootOf })(FreshShell);
     registerCompiledPom(
       FreshShell,
       manifest("FreshShell", [root()], [action("close", "FreshShell.close")])
@@ -319,7 +325,7 @@ describe("live Page Object availability", () => {
     document.body.innerHTML =
       '<aside id="sidebar" style="width:240px;height:120px">SIDEBAR CONTENT <button>Sidebar action</button></aside><main>MAIN CONTENT</main>';
     class Shell {
-      sidebar = { root: page.locator("#sidebar"), close() {} };
+      sidebar = rooted(page.locator("#sidebar"), { close() {} });
     }
     registerCompiledPom(Shell, manifest("Shell", [child("sidebar")]));
     session.register(Shell);
@@ -349,9 +355,9 @@ describe("live Page Object availability", () => {
     document.body.innerHTML =
       '<section id="background">BACKGROUND CONTENT <button>Background action</button></section><dialog id="first"><button>Active confirmation</button></dialog><dialog id="second"><button>Earlier dialog</button></dialog>';
     class Shell {
-      background = { root: page.locator("#background"), close() {} };
-      first = { root: page.locator("#first"), close() {} };
-      second = { root: page.locator("#second"), close() {} };
+      background = rooted(page.locator("#background"), { close() {} });
+      first = rooted(page.locator("#first"), { close() {} });
+      second = rooted(page.locator("#second"), { close() {} });
     }
     registerCompiledPom(
       Shell,
@@ -385,6 +391,7 @@ describe("live Page Object availability", () => {
       root = page.locator("#root");
       close() {}
     }
+    model({ root: rootOf })(Clipped);
     registerCompiledPom(
       Clipped,
       manifest("Clipped", [root()], [action("close", "Clipped.close")])
@@ -404,6 +411,7 @@ describe("live Page Object availability", () => {
       root = page.locator("#root");
       close() {}
     }
+    model({ root: rootOf })(Clipped);
     registerCompiledPom(
       Clipped,
       manifest("Clipped", [root()], [action("close", "Clipped.close")])
@@ -421,7 +429,7 @@ describe("live Page Object availability", () => {
     class SlowShell {
       async panels() {
         await new Promise((resolve) => setTimeout(resolve, 30));
-        return [{ root: page.locator("#root"), close() {} }];
+        return [rooted(page.locator("#root"), { close() {} })];
       }
     }
     registerCompiledPom(
@@ -460,6 +468,7 @@ describe("live Page Object availability", () => {
       root = page.locator("#root");
       close() {}
     }
+    model({ root: rootOf })(BelowFold);
     registerCompiledPom(
       BelowFold,
       manifest("BelowFold", [root()], [action("close", "BelowFold.close")])
@@ -477,8 +486,9 @@ describe("live Page Object availability", () => {
       '<div id="wrapper" inert><dialog id="modal"><button>Confirm</button></dialog></div>';
     class Shell {
       root = page.locator("#wrapper");
-      dialog = { root: page.locator("#modal"), close() {} };
+      dialog = rooted(page.locator("#modal"), { close() {} });
     }
+    model({ root: rootOf })(Shell);
     registerCompiledPom(Shell, manifest("Shell", [child("dialog")]));
     session.register(Shell);
     document.querySelector<HTMLDialogElement>("#modal")!.showModal();

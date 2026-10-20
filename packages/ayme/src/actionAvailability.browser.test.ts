@@ -7,6 +7,7 @@ import { ayme } from "./decorators";
 import { createPage } from "./browserPage";
 import { buildToolOptions } from "./goalLoopOperations";
 import { configurePageStateIgnore } from "./pageState";
+import { rootOf, rooted } from "./pomRoot.testSupport";
 import { listTools } from "./publishedTools";
 import {
   listAvailablePomTools,
@@ -92,6 +93,7 @@ describe("Action Availability", () => {
         root = page.locator("#panel");
         remove() {}
       }
+      ayme({ root: rootOf })(Panel);
       withAvailability(Panel, "remove", predicate);
       registerCompiledPom(Panel, {
         className: "Panel",
@@ -133,6 +135,7 @@ describe("Action Availability", () => {
       root = page.locator("#toolbar");
       reset() {}
     }
+    ayme({ root: rootOf })(Toolbar);
     class Panel {
       root = page.locator("#panel");
       removed = 0;
@@ -141,6 +144,7 @@ describe("Action Availability", () => {
       }
       duplicate() {}
     }
+    ayme({ root: rootOf })(Panel);
     withAvailability(Panel, "remove", () => "No item is selected");
     withAvailability(Panel, "duplicate", () => true);
     registerCompiledPom(Toolbar, {
@@ -180,9 +184,10 @@ describe("Action Availability", () => {
       '<section id="shell">Shell <div id="panel">Panel</div></section>';
     class Shell {
       root = page.locator("#shell");
-      panel = { root: page.locator("#panel"), close() {} };
+      panel = rooted(page.locator("#panel"), { close() {} });
       archive() {}
     }
+    ayme({ root: rootOf })(Shell);
     withAvailability(Shell, "archive", () => "Nothing is selected");
     registerCompiledPom(Shell, {
       className: "Shell",
@@ -225,6 +230,7 @@ describe("Action Availability", () => {
       remove() {}
       duplicate() {}
     }
+    ayme({ root: rootOf })(Panel);
     const canRemove = async (self: Panel) => {
       seen.push(self);
       return (
@@ -271,6 +277,7 @@ describe("Action Availability", () => {
       root = page.locator("#toolbar");
       reset() {}
     }
+    ayme({ root: rootOf })(Toolbar);
     registerCompiledPom(Toolbar, {
       className: "Toolbar",
       members: [root],
@@ -284,6 +291,7 @@ describe("Action Availability", () => {
         document.querySelector("#sent")!.setAttribute("data-state", "recalled");
       }
     }
+    ayme({ root: rootOf })(Item);
     const judged: Item[] = [];
     const canRecall = async (self: Item) => {
       judged.push(self);
@@ -368,6 +376,7 @@ describe("Action Availability", () => {
       constructor(readonly root: ReturnType<Page["locator"]>) {}
       archive() {}
     }
+    ayme({ root: rootOf })(Row);
     class Inbox {
       rows = [
         new Row(page.locator("#open")),
@@ -433,6 +442,7 @@ describe("Action Availability", () => {
         document.querySelector("#dirty-save")!.removeAttribute("data-dirty");
       }
     }
+    ayme({ root: rootOf })(Editor);
     withAvailability(
       Editor,
       "save",
@@ -446,6 +456,7 @@ describe("Action Availability", () => {
         this.editor = new Editor(root.locator("button"));
       }
     }
+    ayme({ root: rootOf })(Item);
     class Outbox {
       items = [
         new Item(page.locator("#clean")),
@@ -524,10 +535,10 @@ describe("Action Availability", () => {
       <dialog id="modal" aria-label="Archive item"><button>Confirm</button></dialog>
       <div role="region" aria-label="Dialogs"><dialog id="quiet" aria-hidden="true"><button>Confirm</button></dialog></div>`;
     class Shell {
-      covered = { root: page.locator("#covered"), close() {} };
-      frozen = { root: page.locator("#frozen"), close() {} };
-      held = { root: page.locator("#held"), close() {} };
-      blocked = { root: page.locator("#blocked"), close() {} };
+      covered = rooted(page.locator("#covered"), { close() {} });
+      frozen = rooted(page.locator("#frozen"), { close() {} });
+      held = rooted(page.locator("#held"), { close() {} });
+      blocked = rooted(page.locator("#blocked"), { close() {} });
     }
     const child = (memberName: string) =>
       ({
@@ -623,6 +634,7 @@ describe("Action Availability", () => {
       root = page.locator("#panel");
       act() {}
     }
+    ayme({ root: rootOf })(Panel);
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
@@ -647,6 +659,7 @@ describe("Action Availability", () => {
       root = page.locator("#panel");
       act() {}
     }
+    ayme({ root: rootOf })(Panel);
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
@@ -670,6 +683,7 @@ describe("Action Availability", () => {
       root = page.locator("#panel");
       remove() {}
     }
+    ayme({ root: rootOf })(Panel);
     const predicate = vi.fn(() => true);
     withAvailability(Panel, "remove", predicate);
     registerCompiledPom(Panel, {
@@ -705,6 +719,7 @@ describe("Action Availability", () => {
         this.removed += 1;
       }
     }
+    ayme({ root: rootOf })(Panel);
     withAvailability(Panel, "remove", () => verdict);
     registerCompiledPom(Panel, {
       className: "Panel",
@@ -742,6 +757,7 @@ describe("Action Availability", () => {
       root = page.locator("#panel");
       remove() {}
     }
+    ayme({ root: rootOf })(Panel);
     withAvailability(Panel, "remove", () => {
       throw new TypeError("store is undefined");
     });
@@ -828,6 +844,7 @@ describe("Action Availability", () => {
         this.recalled = true;
       }
     }
+    ayme({ root: rootOf })(Message);
     withAvailability(
       Message,
       "recall",
@@ -837,6 +854,7 @@ describe("Action Availability", () => {
     class Preview {
       constructor(readonly root: ReturnType<Page["locator"]>) {}
     }
+    ayme({ root: rootOf })(Preview);
     class Outbox {
       // Declared before the items, and rooted at the first item's element.
       preview = new Preview(page.locator("#draft"));
@@ -901,6 +919,7 @@ describe("Action Availability", () => {
         acted();
       }
     }
+    ayme({ root: rootOf })(Panel);
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
@@ -932,6 +951,7 @@ describe("Action Availability", () => {
       root = page.locator("#panel");
       act() {}
     }
+    ayme({ root: rootOf })(Panel);
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],
@@ -972,6 +992,7 @@ describe("Action Availability", () => {
         acted();
       }
     }
+    ayme({ root: rootOf })(Panel);
     registerCompiledPom(Panel, {
       className: "Panel",
       members: [root],

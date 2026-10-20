@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { PomManifest, ToolManifest } from "./contracts";
 import { createPage } from "./browserPage";
+import { ayme as model } from "./decorators";
+import { rootOf } from "./pomRoot.testSupport";
 import { agentTools } from "./publication.testSupport";
 import { registerCompiledPom } from "./registry";
 import { startSession, type TestSession } from "./session.testSupport";
@@ -62,9 +64,11 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
         document.querySelector("ul")?.remove();
       }
     }
+    model({ root: rootOf })(ListPage);
     class Banner {
       root = currentPage.locator("aside");
     }
+    model({ root: rootOf })(Banner);
     registerCompiledPom(
       ListPage,
       manifest("ListPage", [
@@ -78,6 +82,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
       const Shared = class {
         root = currentPage.locator("main");
       };
+      model({ root: rootOf })(Shared);
       registerCompiledPom(Shared, manifest(name, []));
       return Shared;
     });
@@ -143,6 +148,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
     class Panel {
       root = currentPage.locator("aside");
     }
+    model({ root: rootOf })(Panel);
     registerCompiledPom(Panel, manifest("Panel", []));
     register(Panel);
 
@@ -162,6 +168,7 @@ describe("Page Object labels in a Change Record, in Chromium", () => {
         return currentPage.locator(target);
       }
     }
+    model({ root: rootOf })(Panel);
     registerCompiledPom(Panel, manifest("Panel", []));
     register(Panel);
     expect(await readStructure()).toMatch(/- e\d+ Panel "Shopping list"/);
