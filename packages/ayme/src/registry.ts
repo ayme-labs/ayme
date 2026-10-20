@@ -1032,7 +1032,12 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
     ),
     instances: [],
   };
-  const place: Place = { path: "", componentPath: "", item: undefined };
+  const place: Place = {
+    path: "",
+    componentPath: "",
+    item: undefined,
+    present: false,
+  };
   // Its presence predicate is asked before any member is read: an absent
   // Page Object costs one call, and its members are not walked.
   const presence = await askPresence(instance);
@@ -1066,7 +1071,7 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
     walk,
     instance,
     manifest.members,
-    { ...place, rootElement: root?.element },
+    { ...place, present, rootElement: root?.element },
     new Set()
   );
   return { memberObservations, instances: walk.instances };
@@ -1103,6 +1108,8 @@ type Walk = {
 /** Where in the walk an instance's members are. */
 type Place = Pick<PomInstanceObservation, "path" | "item"> & {
   componentPath: string;
+  /** Whether the instance is present: what a root-less single child follows. */
+  present: boolean;
   /**
    * The one element the instance's root locator resolved to, when it did: a
    * locator member resolving to that element alone is the root, not a child.
@@ -1295,8 +1302,8 @@ async function probeComponentMember(
     });
   for (const [index, component] of values.entries()) {
     const path = member.collection ? `${memberPath}[${index}]` : memberPath;
-    // A child is anchored by its root alone: without one it is absent, and
-    // the observation says why.
+    // A child whose root cannot be observed is absent, and the observation
+    // says why.
     const rootObservation = (error: string): PomMemberObservation => ({
       memberName: `${path}.root`,
       kind: "component-root",
@@ -1320,7 +1327,23 @@ async function probeComponentMember(
       );
       continue;
     }
-    if (!locator) {
+    let root: ObservedPomRoot | undefined;
+    // Whether the child can be present at all: a rooted one while its root
+    // is on the page, a root-less single child while the Page Object it is
+    // reached through is. A collection item needs a root for its ref, which
+    // the compiler refuses at build time; a model compiled before meets it
+    // here.
+    let anchored: boolean;
+    if (locator) {
+      const observation = await observePomRoot(locator);
+      root = observation.root;
+      anchored = root.present;
+      observations.push({
+        memberName: `${path}.root`,
+        kind: "component-root",
+        count: observation.count,
+      });
+    } else if (declaresRoot(component) || member.collection) {
       observations.push(
         rootObservation(
           declaresRoot(component)
@@ -1329,16 +1352,11 @@ async function probeComponentMember(
         )
       );
       continue;
-    }
-    const { count, root } = await observePomRoot(locator);
-    observations.push({
-      memberName: `${path}.root`,
-      kind: "component-root",
-      count,
-    });
+    } else anchored = place.present;
     // With a root and a predicate, the root must resolve and the predicate
-    // narrows.
-    const presence = root.present
+    // narrows; a root-less single child's predicate narrows its parent's
+    // presence.
+    const presence = anchored
       ? await askPresence(component)
       : { present: false };
     reportPresenceError(walk.registration, path, presence.error);
@@ -1360,7 +1378,13 @@ async function probeComponentMember(
         walk,
         component,
         manifest.members,
-        { path, componentPath, item: observed.item, rootElement: root.element },
+        {
+          path,
+          componentPath,
+          item: observed.item,
+          present: observed.present,
+          rootElement: root?.element,
+        },
         ancestors
       ))
     );
