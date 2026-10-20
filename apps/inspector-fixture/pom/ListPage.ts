@@ -1,6 +1,7 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 
+import { AppPage } from "./AppPage";
 import { ListItem } from "./ListItem";
 
 /**
@@ -10,13 +11,18 @@ import { ListItem } from "./ListItem";
  * Playwright to read the page.
  */
 @ayme
-export class ListPage {
+export class ListPage extends AppPage {
+  // The list app's pages: the fixture's root and the pages that mount the
+  // Inspector differently, each its own document.
+  readonly path =
+    "/{:page(index|react|unpublished|late|session|dogfood).html}?";
   readonly newItemInput: Locator;
   readonly addItemButton: Locator;
   readonly clearButton: Locator;
   readonly items: Locator;
 
   constructor(page: Page) {
+    super(page);
     this.newItemInput = page.getByRole("textbox", { name: "New item" });
     this.addItemButton = page.getByRole("button", { name: "Add item" });
     // The Inspector's Runs view has a "Clear" button too.

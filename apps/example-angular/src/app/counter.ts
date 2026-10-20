@@ -18,6 +18,8 @@ import { SubCounterPage } from "@pom/SubCounterPage";
 })
 export class Counter {
   protected readonly count = signal(0);
+  // Registered here, not at setup: the counter's presence is this component's
+  // lifetime, which no URL states (the certification unmounts it on its page).
   protected readonly pom = injectPageObject(CounterPage);
   // Publishes the inherited tools of an undecorated subclass.
   protected readonly subPom = injectPageObject(SubCounterPage);

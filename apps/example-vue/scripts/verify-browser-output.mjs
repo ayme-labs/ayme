@@ -15,6 +15,7 @@ const shownSources = [
   "ListItem.ts",
   "ArchiveDialog.ts",
   "AppComponent.ts",
+  "AppPage.ts",
 ].map((file) =>
   fs.readFileSync(path.join(appRoot, "playwright/pom", file), "utf8")
 );

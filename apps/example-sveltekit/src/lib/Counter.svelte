@@ -5,6 +5,8 @@
   import { SubCounterPage } from "$lib/pom/SubCounterPage";
 
   const { ayme } = useAyme();
+  // Registered here, not at setup: the counter's presence is this component's
+  // lifetime, which no URL states (the certification unmounts it on its page).
   const pom = usePageObject(CounterPage);
   usePageObject(SubCounterPage);
   let count = $state(0);

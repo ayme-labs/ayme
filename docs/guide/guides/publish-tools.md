@@ -23,6 +23,21 @@ const stop = ayme.start();
 
 One session owns the current document at a time. `start()` returns the function that stops it. The [`@ayme-dev/ayme` reference](../reference/ayme.md) lists every option.
 
+## Register Page Objects
+
+A Page Object's tools are listed while its class is registered and the Page Object is present, as [Pages and components](page-object-models.md#pages-and-components) describes. Register at app setup by default: a page states its own presence from the URL, so every page is registered once, in the app's root component with the framework hook, `usePageObject` or `injectPageObject`, or with `ayme.pom.register` in the entry point where `createAyme` runs. The pages are listed in one place, and each one's tools come and go with the browser's location.
+
+```ts
+const ayme = createAyme({ webMCP: { enabled: true } });
+ayme.pom.register(ProjectsPage);
+ayme.pom.register(SettingsPage);
+const stop = ayme.start();
+```
+
+Register at a component instead when the model's presence is the component's lifetime and no page expression states it, such as a panel that is mounted on several routes, or when the model belongs in a route's chunk and must not load with the app. The framework hook in that component registers the class while the component lives and removes the registration when it unmounts. A Page Object Child needs no registration of its own: it is reached through the registered Page Object.
+
+A registration counts, so a class registered at setup and in a component stays registered until both are gone. On the server, registration is inert; see [Server rendering](server-rendering.md).
+
 ## Turn publication on
 
 Publication lives in its own package. Install it beside `@ayme-dev/ayme`, which declares it as an optional peer dependency:
@@ -48,7 +63,7 @@ Chrome with the WebMCP flag supplies `document.modelContext` natively: open `chr
 
 ## What gets published
 
-With publication on, an agent sees `snapshot`, which returns the page state, the Browser Tools, your Custom Tools, the Page Object Tools of every registered Page Object on the page, and `goal` when the Goal Loop is configured. The set follows the page: a Page Object's tools appear when its class is registered and its root is on the page, and disappear when it leaves. A tool whose action cannot run now, because a click would not reach the root or its [availability predicate](page-object-models.md#action-availability) says so, stays published; a call is refused with its reason before anything runs, as an error result, as [Errors](../reference/errors.md#how-an-agent-sees-a-failure) shows.
+With publication on, an agent sees `snapshot`, which returns the page state, the Browser Tools, your Custom Tools, the Page Object Tools of every registered Page Object on the page, and `goal` when the Goal Loop is configured. The set follows the page: a Page Object's tools appear when its class is registered and it is present, by its URL or its root, and disappear when it leaves. A tool whose action cannot run now, because a click would not reach the root or its [availability predicate](page-object-models.md#action-availability) says so, stays published; a call is refused with its reason before anything runs, as an error result, as [Errors](../reference/errors.md#how-an-agent-sees-a-failure) shows.
 
 ## Publication status
 

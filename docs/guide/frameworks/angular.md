@@ -41,7 +41,27 @@ export const appConfig: ApplicationConfig = {
 
 Your coding agent then connects to the page as [Connect an agent](../guides/connect-an-agent.md) shows.
 
-In a component, `injectPageObject(Model)` returns the Page Object:
+Register the app's pages once, in the root component; each page is present by its URL, as [Pages and components](../guides/page-object-models.md#pages-and-components) shows:
+
+```ts
+import { Component } from "@angular/core";
+import { RouterOutlet } from "@angular/router";
+import { injectPageObject } from "@ayme-dev/angular";
+import { ProjectsPage } from "../../playwright/pom/ProjectsPage";
+import { SettingsPage } from "../../playwright/pom/SettingsPage";
+
+@Component({
+  selector: "app-root",
+  imports: [RouterOutlet],
+  template: `<router-outlet />`,
+})
+export class App {
+  private readonly projects = injectPageObject(ProjectsPage);
+  private readonly settings = injectPageObject(SettingsPage);
+}
+```
+
+A component that calls an action gets the same instance from `injectPageObject(Model)`:
 
 ```ts
 import { Component } from "@angular/core";
@@ -61,7 +81,7 @@ export class Projects {
 
 `provideAyme` takes the [`createAyme` options](../reference/ayme.md#createayme) and passes them through unchanged. For Playwright settings, pass `pageFactory: () => createPage({ testIdAttribute, actionTimeout, navigationTimeout })` from `@ayme-dev/ayme`.
 
-`injectAyme`, `injectPageObject` and `injectPeek` need an injection context, such as a field initializer or a constructor, and `provideAyme` in an ancestor injector; each throws when either is missing.
+`injectAyme`, `injectPageObject` and `injectPeek` need an injection context, such as a field initializer or a constructor, and `provideAyme` in an ancestor injector; each throws when either is missing. A model registered only in a component is registered while the component lives; [Register Page Objects](../guides/publish-tools.md#register-page-objects) says when that is the right place.
 
 ## Optional: publish with WebMCP
 

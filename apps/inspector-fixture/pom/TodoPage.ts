@@ -2,6 +2,7 @@ import { ayme } from "@ayme-dev/ayme";
 import type { Locator, Page } from "@playwright/test";
 
 import { AppComponent } from "./AppComponent";
+import { AppPage } from "./AppPage";
 
 /**
  * The model fixture's Page Object: a to-do list whose items are child Page
@@ -10,13 +11,15 @@ import { AppComponent } from "./AppComponent";
  * the Inspector's own text.
  */
 @ayme
-export class TodoPage {
+export class TodoPage extends AppPage {
+  readonly path = "/models.html";
   readonly newItemInput: Locator;
   readonly addItemButton: Locator;
   readonly archiveDialog: ArchiveDialog;
   private readonly rows: Locator;
 
   constructor(page: Page) {
+    super(page);
     this.newItemInput = page.locator("#todo-new");
     this.addItemButton = page.locator("#todo-add");
     this.rows = page.locator("#todo-items > li");
