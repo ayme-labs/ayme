@@ -4,8 +4,10 @@ import { ToolInputError } from "./errors";
 /**
  * Package-internal: where a value breaks its schema, as a path such as
  * `values.zip` or `tags[1]`, and how, e.g. "must be a string or a number".
+ * A violation of the value as a whole has no path; a property named `""`
+ * has the path `""`.
  */
-export type SchemaViolation = { path: string; message: string };
+export type SchemaViolation = { path?: string; message: string };
 
 /**
  * Package-internal: every way a tool's input breaks its object schema. A
@@ -16,7 +18,7 @@ export function toolInputViolations(
   schema: JsonSchema,
   input: unknown
 ): SchemaViolation[] {
-  if (!isRecord(input)) return [{ path: "", message: "must be an object" }];
+  if (!isRecord(input)) return [{ message: "must be an object" }];
   return schemaViolations(
     {
       ...schema,
@@ -34,7 +36,7 @@ export function toolInputViolations(
 export function schemaViolations(
   schema: JsonSchema,
   value: unknown,
-  path = ""
+  path?: string
 ): SchemaViolation[] {
   const at = (message: string): SchemaViolation[] => [{ path, message }];
 
@@ -60,7 +62,7 @@ export function schemaViolations(
 function anyOfViolations(
   schema: JsonSchema,
   value: unknown,
-  path: string
+  path: string | undefined
 ): SchemaViolation[] {
   if (!schema.anyOf?.length) return [];
   const results = schema.anyOf.map((variant) =>
@@ -82,13 +84,13 @@ function anyOfViolations(
 function arrayViolations(
   schema: JsonSchema,
   array: readonly unknown[],
-  path: string
+  path: string | undefined
 ): SchemaViolation[] {
   const prefix = schema.prefixItems ?? [];
   const violations = array.flatMap((item, index) => {
     const itemSchema = prefix[index] ?? schema.items;
     return itemSchema
-      ? schemaViolations(itemSchema, item, `${path}[${index}]`)
+      ? schemaViolations(itemSchema, item, `${path ?? ""}[${index}]`)
       : [];
   });
   if (schema.minItems !== undefined && array.length < schema.minItems)
@@ -107,9 +109,10 @@ function arrayViolations(
 function objectViolations(
   schema: JsonSchema,
   object: Record<string, unknown>,
-  path: string
+  path: string | undefined
 ): SchemaViolation[] {
-  const child = (name: string) => (path ? `${path}.${name}` : name);
+  const child = (name: string) =>
+    path === undefined ? name : `${path}.${name}`;
   const properties = schema.properties ?? {};
   const extra = schema.additionalProperties;
   const violations: SchemaViolation[] = [];
@@ -143,20 +146,30 @@ function objectViolations(
   return violations;
 }
 
+/** The most violations a ToolInputError spells out. */
+const MAX_LISTED_VIOLATIONS = 20;
+
 /**
- * Package-internal: throw every violation as one ToolInputError, a sentence
+ * Package-internal: throw the violations as one ToolInputError, a sentence
  * each, e.g. "Input property name is not supported. Input property title is
- * required."
+ * required." Past the first 20, one sentence counts the rest, so a large bad
+ * input doesn't yield a message of hundreds of KB.
  */
 export function throwViolations(violations: readonly SchemaViolation[]) {
   if (violations.length === 0) return;
-  throw new ToolInputError(
-    violations
-      .map(({ path, message }) =>
-        path ? `Input property ${path} ${message}.` : `Tool input ${message}.`
-      )
-      .join(" ")
-  );
+  const sentences = violations
+    .slice(0, MAX_LISTED_VIOLATIONS)
+    .map(({ path, message }) =>
+      path === undefined
+        ? `Tool input ${message}.`
+        : `Input property ${path || '""'} ${message}.`
+    );
+  const rest = violations.length - MAX_LISTED_VIOLATIONS;
+  if (rest > 0)
+    sentences.push(
+      `There ${rest === 1 ? "is" : "are"} ${counted(rest, "more problem", "more problems")} with the input.`
+    );
+  throw new ToolInputError(sentences.join(" "));
 }
 
 function hasType(value: unknown, type: NonNullable<JsonSchema["type"]>) {

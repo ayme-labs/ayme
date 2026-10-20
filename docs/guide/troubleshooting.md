@@ -6,7 +6,8 @@ The common reasons an Ayme setup fails, by what you see.
 
 - **`Unsupported Page Object Tool input type for …`**: an action takes a parameter type the compiler cannot describe, such as a function or a class instance. [Page Object Models](guides/page-object-models.md#tool-names-and-inputs) lists the supported types. When the type is an import, check that the tsconfig the message names resolves it, for example through its `paths`.
 - **`Could not find a tsconfig.json for POM source …`**: the Page Object Model is outside every tsconfig. Add one, or pass `tsconfigPath` to the [build plugin](reference/build-plugin.md).
-- **Angular's `maximumError` budget fails**: Ayme adds about 240 kB transferred to the initial chunk. Raise the `initial` budget; see [Angular](frameworks/angular.md#bundle-size).
+- **Angular's `maximumError` budget fails**, or **Vite warns about a chunk over 500 kB**: Ayme adds about 240 kB transferred to the initial chunk. Raise the `initial` budget; see [Angular](frameworks/angular.md#bundle-size). A build includes Ayme only with the plugin's `include: true`; see [Include Ayme in a build](reference/build-plugin.md#include-ayme-in-a-build).
+- **`Ayme was removed from this build. <Model>.<action> is not in it.`**: the app called a Page Object in a build without Ayme, one without the plugin's `include: true`. Set it for builds whose own code drives Page Objects; see [Include Ayme in a build](reference/build-plugin.md#include-ayme-in-a-build).
 - **`Unsupported Playwright config loader version …`**: loading a Playwright config through `playwright.config` needs `@playwright/test` 1.62 to 1.64. Remove `config` and pass `use` values directly, or upgrade.
 
 ## A Page Object has no tools
@@ -48,6 +49,7 @@ These are for [Peeks](reference/ayme.md#aymepeek), which reach a coding agent th
 These are for agents that run in the browser and read the tools Ayme publishes through WebMCP.
 
 - **The publication status is `disabled`**: pass `webMCP: { enabled: true }` where Ayme starts. See [Publish tools](guides/publish-tools.md).
+- **`Ayme was removed from this build, but setup enables WebMCP publication.`** in the console: setup passes `webMCP: { enabled: true }`, but the build left Ayme out, so the session is inert, its publication status stays `disabled` and no tool is published. Set the [build plugin](reference/build-plugin.md)'s `include: true` for the build that publishes tools.
 - **The status is `unavailable`**: no WebMCP driver appeared within two seconds. Load the polyfill or enable Chrome's flag before your app's entry module, as [Publish tools](guides/publish-tools.md#give-the-page-webmcp) shows, or call `retryPublication()` once it is there.
 - **The status is `failed`**: `@ayme-dev/webmcp` is not installed beside `@ayme-dev/ayme`, or the WebMCP driver rejected a registration. The message says which.
 - **The status is `active` but no tool is published**: two tools share a name, such as a Custom Tool named like a Page Object Tool, which leaves `ayme.tools.list()` empty. `ayme.tools.run` throws the error that names the tool.

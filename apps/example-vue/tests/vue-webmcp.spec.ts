@@ -461,7 +461,12 @@ test("demonstrates the list app and invokes the generated POM tools", async ({
       inputSchema: {
         type: "object",
         properties: {
-          names: { type: "array", items: { type: "string" } },
+          names: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Page Object class names whose definitions to include in pomDefinitions. Omitted or empty: every known one. The structure is always the whole page.",
+          },
         },
         required: [],
         additionalProperties: false,

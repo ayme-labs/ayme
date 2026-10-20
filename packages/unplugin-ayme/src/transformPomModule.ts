@@ -1,6 +1,8 @@
 import path from "node:path";
 
-import type ts from "typescript";
+import ts from "typescript";
+
+import type { PomManifest } from "@ayme-dev/ayme/internal";
 
 import {
   derivePomManifestsFromProgram,
@@ -16,13 +18,68 @@ import {
 } from "./pomProgram";
 import { rewritePomImports } from "./rewritePomImports";
 
+const RUNTIME_MODULE = "@ayme-dev/ayme";
 const REGISTRATION_MODULE = "@ayme-dev/ayme/internal";
+/** The entry a build without Ayme resolves `@ayme-dev/ayme` and its internal entry to. */
+export const ABSENT_MODULE = "@ayme-dev/ayme/absent";
+/**
+ * The framework packages, whose root entry a build without Ayme resolves to
+ * their own absent entry, `@ayme-dev/<framework>/absent`.
+ */
+const FRAMEWORK_MODULES = /^@ayme-dev\/(vue|react|svelte|angular)$/;
 
 /**
- * The bare specifiers the transform adds to a Page Object module. Vite's
- * dependency scan reads sources untransformed, so it must be told about them.
+ * The absent entry a build without Ayme resolves `specifier` to, or
+ * undefined when the specifier is not one of the entries that leave such a
+ * build: the runtime's root and internal entries and the four framework
+ * packages' root entries. Every bundler adapter maps through this one table.
  */
-export const INJECTED_IMPORTS = [REGISTRATION_MODULE];
+export function absentEntryFor(specifier: string): string | undefined {
+  if (specifier === RUNTIME_MODULE || specifier === REGISTRATION_MODULE)
+    return ABSENT_MODULE;
+  if (FRAMEWORK_MODULES.test(specifier)) return `${specifier}/absent`;
+  return undefined;
+}
+
+export type PomTransformOptions = PomCompilerOptions & {
+  /**
+   * Whether the build includes Ayme. Nothing else decides: without `true`,
+   * the build is a build without Ayme, in which each Page Object Model
+   * compiles to a stand-in from the absent entry instead of its
+   * implementation. Defaults to false.
+   */
+  include?: boolean;
+};
+
+/**
+ * The `include` option as a boolean. Each adapter validates it once, where
+ * it takes its options, so a typo never silently picks the default, and
+ * passes the boolean on from there.
+ */
+export function includeOption(value: unknown): boolean {
+  if (value === undefined) return false;
+  if (typeof value !== "boolean")
+    throw new TypeError("include must be a boolean");
+  return value;
+}
+
+/**
+ * The one line a build prints saying whether Ayme is in it and why, so a
+ * build log shows the decision before anything reaches users. Each adapter
+ * prints it once per build, with the option as given, once validated.
+ */
+export function includeLine(include: boolean | undefined): string {
+  if (include) return "[ayme] Ayme is in this build: include is true.";
+  return `[ayme] Ayme is not in this build: include is ${include === undefined ? "not set" : "false"}.`;
+}
+
+/**
+ * The bare specifier the transform adds to a Page Object module. Vite's
+ * dependency scan reads sources untransformed, so it must be told about it.
+ */
+export function injectedImport(include: boolean) {
+  return include ? REGISTRATION_MODULE : ABSENT_MODULE;
+}
 
 /**
  * Page Object compile Programs by tsconfig path. The bundler adapter that owns
@@ -32,13 +89,15 @@ export type PomPrograms = Map<string, ts.Program>;
 
 /**
  * The source transform shared by Vite, Angular and the Turbopack loader. With
- * `programs`, transforms of one tsconfig project share a Program.
+ * `programs`, transforms of one tsconfig project share a Program. The
+ * adapter has validated `include` before it gets here.
  */
 export function createPomTransform(
-  options: PomCompilerOptions = {},
+  options: PomTransformOptions = {},
   onSkipped?: (fileName: string, methods: SkippedPomMethod[]) => void,
   programs?: PomPrograms
 ) {
+  const include = options.include === true;
   return (
     code: string,
     id: string,
@@ -72,6 +131,12 @@ export function createPomTransform(
     if (manifests.length === 0) return null;
 
     const rewrittenCode = rewritePomImports(code, fileName, program);
+    if (!include)
+      return {
+        code: standInModule(rewrittenCode, fileName, manifests),
+        map: null,
+        dependencies,
+      };
     const registrations = manifests
       .map(
         (manifest) =>
@@ -85,6 +150,206 @@ export function createPomTransform(
       dependencies,
     };
   };
+}
+
+/**
+ * The module with each Page Object Model replaced by a stand-in of the same
+ * name and export, whose every member fails naming itself: an action
+ * rejects, any other method throws and any property throws when read.
+ * Everything else in the module stays.
+ */
+function standInModule(
+  code: string,
+  fileName: string,
+  manifests: readonly PomManifest[]
+) {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    code,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const byName = new Map(
+    manifests.map((manifest) => [manifest.className, manifest])
+  );
+  const classes = sourceFile.statements.filter(
+    (statement): statement is ts.ClassDeclaration & { name: ts.Identifier } =>
+      ts.isClassDeclaration(statement) &&
+      statement.name !== undefined &&
+      byName.has(statement.name.text)
+  );
+  for (const className of byName.keys())
+    if (!classes.some((declaration) => declaration.name.text === className))
+      throw new Error(
+        `Ayme could not remove Page Object Model ${className} from ${fileName}: it is not a top-level class.`
+      );
+
+  let result = "";
+  let cursor = 0;
+  for (const declaration of classes) {
+    const manifest = byName.get(declaration.name.text)!;
+    const modifiers = (declaration.modifiers ?? [])
+      .filter(
+        (modifier) =>
+          modifier.kind === ts.SyntaxKind.ExportKeyword ||
+          modifier.kind === ts.SyntaxKind.DefaultKeyword
+      )
+      .map((modifier) => `${modifier.getText(sourceFile)} `)
+      .join("");
+    const shape = standInShape(declaration, manifest);
+    result +=
+      code.slice(cursor, declaration.getStart(sourceFile)) +
+      `${modifiers}class ${manifest.className} extends absentPageObject(${JSON.stringify(manifest.className)}, ${JSON.stringify(shape)}) {}`;
+    cursor = declaration.getEnd();
+  }
+  return `import { absentPageObject } from '${ABSENT_MODULE}';\n${withoutUnusedImports(result + code.slice(cursor), fileName)}`;
+}
+
+type StandInShape = {
+  actions: string[];
+  properties: string[];
+  methods: string[];
+};
+
+/**
+ * The members of a stand-in: the class's own instance members in
+ * declaration order, each an action when the manifest marks it as one, a
+ * method when it is declared as one or the manifest reads it as one, and a
+ * property otherwise, followed by the manifest's members the declaration
+ * does not spell out, such as the Page Object Children of a base class. The
+ * constructor, static members and `#private` names are no one's to name.
+ */
+function standInShape(
+  declaration: ts.ClassDeclaration,
+  manifest: PomManifest
+): StandInShape {
+  const actions = new Set(manifest.tools.map((tool) => tool.methodName));
+  const methods = new Set(
+    manifest.members
+      .filter((member) => member.access === "method")
+      .map((member) => member.memberName)
+  );
+  const shape: StandInShape = { actions: [], properties: [], methods: [] };
+  const named = new Set<string>();
+  const place = (name: string, kind: keyof StandInShape) => {
+    if (named.has(name)) return;
+    named.add(name);
+    shape[kind].push(name);
+  };
+  for (const member of declaration.members) {
+    if (ts.isConstructorDeclaration(member)) continue;
+    if (
+      !ts.canHaveModifiers(member) ||
+      ts
+        .getModifiers(member)
+        ?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
+    )
+      continue;
+    const name = member.name;
+    if (!name || !(ts.isIdentifier(name) || ts.isStringLiteral(name))) continue;
+    if (actions.has(name.text)) place(name.text, "actions");
+    else if (ts.isMethodDeclaration(member) || methods.has(name.text))
+      place(name.text, "methods");
+    else if (
+      ts.isPropertyDeclaration(member) ||
+      ts.isGetAccessorDeclaration(member) ||
+      ts.isSetAccessorDeclaration(member)
+    )
+      place(name.text, "properties");
+  }
+  for (const action of actions) place(action, "actions");
+  for (const member of manifest.members)
+    place(
+      member.memberName,
+      methods.has(member.memberName) ? "methods" : "properties"
+    );
+  return shape;
+}
+
+/**
+ * Whether an identifier refers to a binding, rather than naming a property
+ * or a member: `x.page`, `{ page: 1 }` and `get page()` name no binding,
+ * while a shorthand `{ page }` does.
+ */
+function isBindingReference(node: ts.Identifier) {
+  const parent = node.parent;
+  if (ts.isPropertyAccessExpression(parent)) return parent.name !== node;
+  if (ts.isQualifiedName(parent)) return parent.right !== node;
+  if (ts.isBindingElement(parent)) return parent.propertyName !== node;
+  if (
+    ts.isPropertyAssignment(parent) ||
+    ts.isMethodDeclaration(parent) ||
+    ts.isMethodSignature(parent) ||
+    ts.isPropertyDeclaration(parent) ||
+    ts.isPropertySignature(parent) ||
+    ts.isGetAccessorDeclaration(parent) ||
+    ts.isSetAccessorDeclaration(parent) ||
+    ts.isEnumMember(parent)
+  )
+    return parent.name !== node;
+  return true;
+}
+
+/**
+ * The module without the imports only its replaced Page Object Models used,
+ * so what they imported for their implementation, Ayme's decorators
+ * included, leaves the build with them. A bare import for its side effects
+ * stays, as does every binding the rest of the module references.
+ */
+function withoutUnusedImports(code: string, fileName: string) {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    code,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const referenced = new Set<string>();
+  const collect = (node: ts.Node) => {
+    if (ts.isImportDeclaration(node)) return;
+    if (ts.isIdentifier(node) && isBindingReference(node))
+      referenced.add(node.text);
+    ts.forEachChild(node, collect);
+  };
+  collect(sourceFile);
+
+  let result = "";
+  let cursor = 0;
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !statement.importClause) continue;
+    const { name, namedBindings } = statement.importClause;
+    const defaultName = name && referenced.has(name.text) ? name.text : "";
+    const named =
+      namedBindings && ts.isNamedImports(namedBindings)
+        ? namedBindings.elements
+            .filter((element) => referenced.has(element.name.text))
+            .map((element) => element.getText(sourceFile))
+        : [];
+    const namespace =
+      namedBindings &&
+      ts.isNamespaceImport(namedBindings) &&
+      referenced.has(namedBindings.name.text)
+        ? namedBindings.getText(sourceFile)
+        : "";
+    const bindings = [
+      defaultName,
+      namespace,
+      named.length > 0 ? `{ ${named.join(", ")} }` : "",
+    ].filter(Boolean);
+    const unchanged =
+      (!name || defaultName) &&
+      (!namedBindings ||
+        namespace ||
+        (ts.isNamedImports(namedBindings) &&
+          named.length === namedBindings.elements.length));
+    if (unchanged) continue;
+    result += code.slice(cursor, statement.getStart(sourceFile));
+    if (bindings.length > 0)
+      result += `import ${statement.importClause.isTypeOnly ? "type " : ""}${bindings.join(", ")} from ${statement.moduleSpecifier.getText(sourceFile)};`;
+    cursor = statement.getEnd();
+  }
+  return result + code.slice(cursor);
 }
 
 function pomProgramFor(

@@ -1,4 +1,4 @@
-import type { PomCompilerOptions } from "./pomProgram";
+import type { PomTransformOptions } from "./transformPomModule";
 
 // Keep published declarations usable without the optional Playwright peer.
 // The type contract test checks this subset against Playwright's exported type.
@@ -20,7 +20,7 @@ export type AymePlaywrightOptions = {
  */
 export type AymeReport = "none" | "unsupported" | "all";
 
-export type AymeOptions = PomCompilerOptions & {
+export type AymeOptions = PomTransformOptions & {
   playwright?: AymePlaywrightOptions;
   report?: AymeReport;
 };

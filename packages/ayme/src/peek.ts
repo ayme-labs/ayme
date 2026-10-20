@@ -1,5 +1,6 @@
 import type { JsonValue } from "./contracts";
 import { RuntimeStateError } from "./errors";
+import { throwViolations, toolInputViolations } from "./schemaValidation";
 
 /** Reads a Peek's current values when an agent asks. It may be async. */
 export type PeekRead = () => unknown;
@@ -140,7 +141,14 @@ function notify() {
 }
 
 function createPeekTool(name: string): PeekTool {
-  const run = async (): Promise<JsonValue> => {
+  const inputSchema: PeekTool["inputSchema"] = {
+    type: "object",
+    properties: {},
+    additionalProperties: false,
+  };
+  const run = async (input: unknown): Promise<JsonValue> => {
+    if (input !== undefined)
+      throwViolations(toolInputViolations(inputSchema, input));
     const peek = registry.peeks.get(name);
     const instances = await Promise.all(
       [...(peek?.instances ?? [])].map(([id, { read }]) =>
@@ -153,11 +161,7 @@ function createPeekTool(name: string): PeekTool {
   return {
     name: peekToolName(name),
     description: `Read the current values of the Peek "${name}" from each live instance.`,
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+    inputSchema,
     execute: run,
   };
 }

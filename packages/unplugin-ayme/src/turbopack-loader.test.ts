@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
 import turbopackLoader from "./turbopack-loader";
 
@@ -16,7 +16,7 @@ function loaderContext(fileName = resourcePath) {
     dependencies,
     context: {
       resourcePath: fileName,
-      getOptions: () => ({}),
+      getOptions: () => ({ include: true }),
       addDependency: (dependency: string) => dependencies.push(dependency),
     },
   };
@@ -102,3 +102,72 @@ it("reports invalid TypeScript instead of returning broken JavaScript", () => {
     turbopackLoader.call(context, "export const broken: = ;")
   ).toThrow("Could not transpile Ayme POM");
 });
+
+it("compiles a Page Object Model to a stand-in in a build without Ayme, the default", () => {
+  const { context } = loaderContext();
+  const code = turbopackLoader.call(
+    { ...context, getOptions: () => ({}) },
+    readFileSync(resourcePath, "utf8")
+  );
+  expect(code).toContain("from '@ayme-dev/ayme/absent'");
+  expect(code).toMatch(
+    /class CounterPage extends absentPageObject\("CounterPage", \{ "actions": \["increment", "setMode"\]/
+  );
+  expect(code).not.toContain("registerCompiledPom");
+  expect(code).not.toContain("Increment the counter.");
+  expect(code).not.toContain("getByRole");
+  expect(code).not.toContain('@ayme-dev/ayme"');
+});
+
+it("rejects an include that is not a boolean", () => {
+  const { context } = loaderContext();
+  expect(() =>
+    turbopackLoader.call(
+      {
+        ...context,
+        getOptions: () => ({ include: "yes" as unknown as boolean }),
+      },
+      readFileSync(resourcePath, "utf8")
+    )
+  ).toThrow(new TypeError("include must be a boolean"));
+});
+
+it.each([
+  [
+    "include unset",
+    {},
+    "[ayme] Ayme is not in this build: include is not set.",
+  ],
+  [
+    "include false",
+    { include: false },
+    "[ayme] Ayme is not in this build: include is false.",
+  ],
+  [
+    "include true",
+    { include: true },
+    "[ayme] Ayme is in this build: include is true.",
+  ],
+])(
+  "prints once per process whether Ayme is in it, with %s",
+  async (_, options, line) => {
+    // The loader runs per module, so the line belongs to the process: a fresh
+    // module instance stands in for a fresh one.
+    vi.resetModules();
+    const { default: loader } = await import("./turbopack-loader");
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    try {
+      const { context } = loaderContext();
+      const source = readFileSync(resourcePath, "utf8");
+      loader.call({ ...context, getOptions: () => options }, source);
+      loader.call({ ...context, getOptions: () => options }, source);
+      expect(
+        info.mock.calls
+          .map(([message]) => String(message))
+          .filter((message) => message.startsWith("[ayme] Ayme"))
+      ).toEqual([line]);
+    } finally {
+      info.mockRestore();
+    }
+  }
+);

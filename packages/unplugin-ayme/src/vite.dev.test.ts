@@ -91,7 +91,7 @@ it("recompiles a decorated subclass after its base class file changes", async ()
     root: projectRoot,
     configFile: false,
     logLevel: "silent",
-    plugins: [ayme()],
+    plugins: [ayme({ include: true })],
     resolve: {
       alias: {
         "@ayme-dev/ayme/internal": join(projectRoot, "src/internalStub.ts"),
@@ -201,7 +201,7 @@ export class CounterPage {
     root: join(projectRoot, "app"),
     configFile: false,
     logLevel: "silent",
-    plugins: [ayme()],
+    plugins: [ayme({ include: true })],
     resolve: {
       alias: {
         "@ayme-dev/ayme/internal": join(projectRoot, "app/internalStub.ts"),

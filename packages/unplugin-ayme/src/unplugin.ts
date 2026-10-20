@@ -11,8 +11,11 @@ import playwrightRange from "../../../playwright-range.json";
 import type { SkippedPomMethod } from "./derivePomManifests";
 import type { AymeOptions, AymePlaywrightOptions, AymeReport } from "./options";
 import {
+  absentEntryFor,
   createPomTransform,
-  INJECTED_IMPORTS,
+  includeLine,
+  includeOption,
+  injectedImport,
   type PomPrograms,
 } from "./transformPomModule";
 
@@ -64,6 +67,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   options = {}
 ) => {
   const report = reportOption(options.report);
+  const include = includeOption(options.include);
   // The latest skipped methods of each transformed module, by file.
   const skipped = new Map<string, SkippedPomMethod[]>();
   let command: string | undefined;
@@ -75,7 +79,7 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   // Upgrade: also drop the Programs when a package manifest or lockfile changes.
   const programs: PomPrograms = new Map();
   const transformPom = createPomTransform(
-    options,
+    { ...options, include },
     report === "none"
       ? undefined
       : (fileName, methods) => {
@@ -95,6 +99,22 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
   // Upgrade: record only the manifest-relevant inputs.
   // Keyed by the Vite environment object (`this.environment`).
   const viteDependants = new WeakMap<object, Map<string, Set<string>>>();
+  const trackDependencies = (
+    context: { environment: object; addWatchFile(id: string): void },
+    id: string,
+    dependencies: readonly string[]
+  ) => {
+    const dependantsByFile =
+      viteDependants.get(context.environment) ?? new Map();
+    viteDependants.set(context.environment, dependantsByFile);
+    for (const dependency of dependencies) {
+      // A type-only import never joins Vite's module graph, so its file is
+      // unwatched, and outside the root it is not watched by default.
+      context.addWatchFile(dependency);
+      const dependants = dependantsByFile.get(dependency) ?? new Set();
+      dependantsByFile.set(dependency, dependants.add(id));
+    }
+  };
 
   return {
     name: "ayme",
@@ -115,24 +135,53 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
     vite: {
       configResolved(config) {
         command = config.command;
+        // Once per build, and once when a dev server starts. A SvelteKit or
+        // Nuxt `vite build` runs a client and a server build; the line
+        // belongs to the client one, which the option decides about.
+        if (!config.build.ssr) config.logger.info(includeLine(options.include));
+      },
+      // A build without Ayme resolves the runtime's two entries and the
+      // framework packages to their absent entries, in the client output
+      // only: a server bundle keeps Vite's own emit, as the load hook below
+      // leaves server modules alone.
+      async resolveId(source, importer, resolveOptions) {
+        if (include) return null;
+        const absent = absentEntryFor(source);
+        if (absent === undefined) return null;
+        if (resolveOptions?.ssr) return null;
+        if (this.environment.config.consumer !== "client") return null;
+        return this.resolve(absent, importer, { skipSelf: true });
+      },
+      // A build without Ayme compiles each Page Object Model to its stand-in
+      // while loading, not while transforming: Rollup and Rolldown keep a
+      // module's loaded code as the source of its source map, so a stand-in
+      // made by a transform would ship the model it replaced, locators and
+      // descriptions included, in the map. Vite's own TypeScript transform
+      // runs on the stand-in afterwards, as on any other loaded module.
+      load: {
+        filter: { id: /\.ts$/ },
+        handler(id, loadOptions) {
+          if (include) return null;
+          if (loadOptions?.ssr) return null;
+          if (this.environment.config.consumer !== "client") return null;
+          const fileName = id.split("?")[0]!;
+          if (id.startsWith("\0") || !existsSync(fileName)) return null;
+          const transformed = transformPom(readFileSync(fileName, "utf8"), id);
+          if (!transformed) return null;
+          trackDependencies(this, id, transformed.dependencies);
+          return { code: transformed.code, map: null };
+        },
       },
       transform: {
         filter: { id: /\.[cm]?[jt]sx?$/ },
         handler(code, id, transformOptions) {
+          // The stand-in loaded above carries no marker, and nothing else is
+          // compiled in a build without Ayme.
+          if (!include) return null;
           if (transformOptions?.ssr) return null;
           const transformed = transformPom(code, id);
-          // Vite before 6 has no environments and so no invalidation here.
-          const environment: object | undefined = this.environment;
-          if (!transformed || !environment) return transformed;
-          const dependantsByFile = viteDependants.get(environment) ?? new Map();
-          viteDependants.set(environment, dependantsByFile);
-          for (const dependency of transformed.dependencies) {
-            // A type-only import never joins Vite's module graph, so its file
-            // is unwatched, and outside the root it is not watched by default.
-            this.addWatchFile(dependency);
-            const dependants = dependantsByFile.get(dependency) ?? new Set();
-            dependantsByFile.set(dependency, dependants.add(id));
-          }
+          if (!transformed) return null;
+          trackDependencies(this, id, transformed.dependencies);
           return transformed;
         },
       },
@@ -140,9 +189,8 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
       perEnvironmentWatchChangeDuringDev: true,
       watchChange(file) {
         programs.clear();
-        const environment = this.environment as
-          typeof this.environment | undefined;
-        if (environment?.mode !== "dev") return;
+        const environment = this.environment;
+        if (environment.mode !== "dev") return;
         const moduleGraph = environment.moduleGraph;
         const dependantsByFile = viteDependants.get(environment);
         for (const id of dependantsByFile?.get(resolve(file)) ?? []) {
@@ -156,7 +204,9 @@ export const unpluginFactory: UnpluginFactory<AymeOptions | undefined> = (
         // The dependency scan misses the imports the transform injects, so
         // the first page load would find them late and reload.
         const injected =
-          env?.command === "serve" ? installedImports(root, exclude) : [];
+          env?.command === "serve"
+            ? installedImports(injectedImport(include), root, exclude)
+            : [];
         const settings = await resolvePlaywrightSettings(
           options.playwright,
           root
@@ -244,14 +294,18 @@ function reportLines(
 }
 
 /**
- * The injected imports that resolve from an installed package the consumer
- * has not excluded. Vite does not pre-bundle a linked or excluded package, and
- * forcing a subpath of one in would load a second copy of the runtime beside
- * the one its other imports get.
+ * The injected import when it resolves from an installed package the
+ * consumer has not excluded. Vite does not pre-bundle a linked or excluded
+ * package, and forcing a subpath of one in would load a second copy of the
+ * runtime beside the one its other imports get.
  */
-function installedImports(root: string, exclude: string[]): string[] {
+function installedImports(
+  specifier: string,
+  root: string,
+  exclude: string[]
+): string[] {
   const consumerRequire = createRequire(resolve(root, "package.json"));
-  return INJECTED_IMPORTS.filter((specifier) => {
+  return [specifier].filter((specifier) => {
     if (exclude.some((name) => specifier.startsWith(`${name}/`))) return false;
     try {
       const file = realpathSync(consumerRequire.resolve(specifier));
