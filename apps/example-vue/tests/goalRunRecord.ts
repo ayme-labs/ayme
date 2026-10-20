@@ -13,6 +13,7 @@ export type GoalRunStep = {
   /** The operation option stage one chose; `none` when nothing fits. */
   operation: string | null;
   goalMetScore: number | null;
+  goalRemainingScore?: number;
   /** Decision Endpoint calls the step made: stage one, stage two, run-offs. */
   modelCalls: number;
   /**
@@ -188,6 +189,8 @@ function stepsOf(
     const step = steps[index];
     if (!step) return;
     step.goalMetScore = score.goalMetScore;
+    if (score.goalRemainingScore !== undefined)
+      step.goalRemainingScore = score.goalRemainingScore;
     if (score.runOff) step.runOff = true;
     if ("chosen" in score) step.chosen = score.chosen;
     if (score.argumentChoices && Object.keys(score.argumentChoices).length > 0)

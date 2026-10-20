@@ -1554,6 +1554,7 @@ describe("Goal Values asked speculatively in stage one", () => {
     expect(Object.keys(request.questions)).toEqual([
       "operation",
       "goal_met",
+      "goal_remaining",
       "value:text",
     ]);
     expect(request.questions["value:text"]).toMatchObject({

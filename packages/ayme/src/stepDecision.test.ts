@@ -503,7 +503,12 @@ describe("a Step Decision", () => {
           ...stageOne("Project.rename").answers,
           ...Object.fromEntries(
             Object.keys(request.questions)
-              .filter((id) => id !== "operation" && id !== "goal_met")
+              .filter(
+                (id) =>
+                  id !== "operation" &&
+                  id !== "goal_met" &&
+                  id !== "goal_remaining"
+              )
               .map((id) => [id, choice("not_offered")])
           ),
         }),
