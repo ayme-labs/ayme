@@ -23,9 +23,14 @@ import {
 import type { Locator, Page } from "@playwright/test";
 import { assertRootReachable } from "./elementReach";
 import { observePomRoot, type ObservedPomRoot } from "./pomRootObservation";
-import { latestPageStateRef, onlyHitTestMarks } from "./pageState";
+import {
+  getInteractionHistory,
+  latestPageStateRef,
+  onlyHitTestMarks,
+} from "./pageState";
 import {
   askPredicates,
+  askPresence,
   assertAvailable,
   availabilityOf,
   combinedAvailability,
@@ -128,6 +133,7 @@ const registeredPoms = new Set<ObservedRegisteredPom>();
 const waitingPoms = new Set<ObservedRegisteredPom>();
 const subscribers = new Set<() => void>();
 let mutationObserver: MutationObserver | undefined;
+let stopWatchingNavigations: (() => void) | undefined;
 let probeTimer: ReturnType<typeof setTimeout> | undefined;
 let observedWindow: Window | null = null;
 let probeLifetime = 0;
@@ -349,6 +355,11 @@ function startObservingPage() {
   observedWindow = document.defaultView ?? null;
   for (const event of layoutEvents)
     observedWindow?.addEventListener(event, schedulePomMemberProbe, true);
+  // A same-document navigation changes no DOM by itself, but a presence
+  // predicate may read the URL: the Page State Session's Visit signal.
+  stopWatchingNavigations = getInteractionHistory(document).onNavigation(
+    schedulePomMemberProbe
+  );
   schedulePomMemberProbe();
 }
 
@@ -359,6 +370,8 @@ function stopObservingPage() {
   for (const event of layoutEvents)
     observedWindow?.removeEventListener(event, schedulePomMemberProbe, true);
   observedWindow = null;
+  stopWatchingNavigations?.();
+  stopWatchingNavigations = undefined;
   mutationObserver?.disconnect();
   mutationObserver = undefined;
   if (probeTimer !== undefined) clearTimeout(probeTimer);
@@ -975,41 +988,79 @@ async function resolveComponentByElementStep(
   return undefined;
 }
 
-async function probePomMembers(registration: RegisteredPom) {
+async function probePomMembers(registration: ObservedRegisteredPom) {
   const { instance, manifest } = registration;
   const walk: Walk = {
+    registration,
     components: new Map(
       manifest.components.map((component) => [component.className, component])
     ),
     instances: [],
   };
+  const place: Place = { path: "", componentPath: "", item: undefined };
+  // Its presence predicate is asked before any member is read: an absent
+  // Page Object costs one call, and its members are not walked.
+  const presence = await askPresence(instance);
+  reportPresenceError(registration, place.path, presence.error);
+  if (!presence.present) {
+    walk.instances.push({
+      ...place,
+      componentPath: undefined,
+      present: false,
+      presenceError: presence.error,
+      root: undefined,
+      predicates: new Map(),
+    });
+    return { memberObservations: [], instances: walk.instances };
+  }
   const rootMember = manifest.members.find(isRootMember);
-  // A rootless Page Object is on every page.
+  // A rootless Page Object with no predicate is on every page.
   const root = rootMember
     ? await observeDeclaredRoot(instance, rootMember)
     : undefined;
+  const present = root === undefined || root.present;
   walk.instances.push({
-    path: "",
+    ...place,
     componentPath: undefined,
-    item: undefined,
+    present,
     root,
-    predicates:
-      root === undefined || root.present
-        ? await askPredicates(instance, manifest.tools)
-        : new Map(),
+    predicates: present
+      ? await askPredicates(instance, manifest.tools)
+      : new Map(),
   });
   const memberObservations = await probeMembers(
     walk,
     instance,
     manifest.members,
-    { path: "", componentPath: "", item: undefined },
+    place,
     new Set()
   );
   return { memberObservations, instances: walk.instances };
 }
 
+/**
+ * Logs what the presence predicate of `registration`'s instance at `path`
+ * threw, once: again only when a later observation finds another error.
+ */
+function reportPresenceError(
+  registration: ObservedRegisteredPom,
+  path: string,
+  error: string | undefined
+) {
+  if (error === undefined) return;
+  const previous = registration.instances?.all.find(
+    (instance) => instance.path === path
+  );
+  if (previous?.presenceError === error) return;
+  const label = path ? `${registration.id}.${path}` : registration.id;
+  console.error(
+    `The Page Object "${label}" is absent: its present predicate threw ${error}.`
+  );
+}
+
 /** One walk over a registered Page Object's members. */
 type Walk = {
+  registration: ObservedRegisteredPom;
   components: ReadonlyMap<string, PomComponentManifest>;
   /** Every instance the walk found, parents before their members. */
   instances: PomInstanceObservation[];
@@ -1190,12 +1241,20 @@ async function probeComponentMember(
       kind: "component-root",
       count,
     });
+    // With a root and a predicate, the root must resolve and the predicate
+    // narrows.
+    const presence = root.present
+      ? await askPresence(component)
+      : { present: false };
+    reportPresenceError(walk.registration, path, presence.error);
     const observed: PomInstanceObservation = {
       path,
       componentPath,
       item: place.item,
+      present: presence.present,
+      presenceError: presence.error,
       root,
-      predicates: root.present
+      predicates: presence.present
         ? await askPredicates(component, manifest.tools)
         : new Map(),
     };

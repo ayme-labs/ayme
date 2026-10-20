@@ -15,7 +15,7 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 
 | Decorator                                                    | Marks                                                                                                                                                                      |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ayme` or `@ayme({ description })`                          | A class as a Page Object Model. Its subclasses are Page Object Models too.                                                                                                 |
+| `@ayme` or `@ayme({ description, present })`                 | A class as a Page Object Model. Its subclasses are Page Object Models too. `present` is the model's presence predicate; see below.                                         |
 | `@ayme.action` or `@ayme.action({ description, available })` | A method as a Page Object Action, published as a Page Object Tool. Without a description, one is generated. `available` is the action's availability predicate; see below. |
 
 [Page Object Models](../guides/page-object-models.md) covers naming, input schemas and Page Object Children.
@@ -27,6 +27,16 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 The predicate runs read-only with the runtime's observation of the page, the same probe that checks Page Object Roots, never when the action is called, so it must not scroll, click, focus or change the page. It runs once per present instance: on a collection action such as `ListPage.items.archive`, each item is judged on its own, so the tool is available while any item passes, carries the first failing item's reason when none does, and a call on an item that failed is refused with that item's reason. A predicate that throws makes the action unavailable with the error's text as the reason, such as `TypeError: store is undefined`. Without `available`, an action shares its Page Object's availability: its root is present and a click would reach it. The build plugin does not read the predicate; the decorator keeps it at runtime.
 
 Availability never adds or withdraws a tool. [`ayme.tools`](#aymetools) says how an unavailable tool is listed and refused, and [Page Object Models](../guides/page-object-models.md#action-availability) shows a predicate in use.
+
+### Page Object presence
+
+> **Experimental:** this may change in any release. See [Experimental APIs](experimental-apis.md).
+
+`present` is a presence predicate, `(self) => boolean | Promise<boolean>` (`PresencePredicate`), where `self` is the live Page Object instance. `true` means the Page Object is on the page now, so its tools are listed; `false` means it is not, so they are withdrawn. There is no reason string: an absent Page Object's tools are listed nowhere a reason could show. Declared as its own function, `const onPage = (self: AppPage) => …`, `self` is typed.
+
+A subclass inherits the predicate of the nearest class in its chain that declares one, with or without a decorator of its own, and may declare its own. Without `present`, a model with a `root` is present while the root resolves to one rendered element, and a top-level model without one while it is registered; with both, the root must be on the page and the predicate narrows. The predicate runs read-only with the runtime's observation of the page, never when a tool is called, so it must not scroll, click, focus or change the page. It runs before the model's members are read, so an absent model costs one call per observation, and the observation also runs on same-document navigation, so a predicate that reads the URL follows the browser's history. A predicate that throws makes the Page Object absent and logs the error's text to the console, such as `TypeError: store is undefined`, once until the error changes. It never runs on the server, where registration is inert. The build plugin does not read the predicate; the decorator keeps it at runtime.
+
+Presence adds and withdraws tools; a present Page Object's availability is still measured at its root. [Page Object Models](../guides/page-object-models.md#page-presence) shows a page base class present by its URL.
 
 ## createAyme
 
@@ -55,7 +65,7 @@ navigate: (url) => router.push(url.slice(location.origin.length)),
 
 ## ayme.tools
 
-`ayme.tools` (`AymeTools`) reaches every tool by its unprefixed name, whether or not WebMCP publishes it. It lists every tool of a present Page Object, available or not, flagged so. Only presence, the Page Object Root on the page, adds or withdraws Page Object Tools; availability says whether a listed tool would run. WebMCP publication and the Agent Connection publish every listed tool and refuse a call of an unavailable one, the Goal Loop offers only the available ones, and the Inspector shows an unavailable one dimmed with its reason.
+`ayme.tools` (`AymeTools`) reaches every tool by its unprefixed name, whether or not WebMCP publishes it. It lists every tool of a present Page Object, available or not, flagged so. Only presence, the Page Object on the page, adds or withdraws Page Object Tools; availability says whether a listed tool would run. WebMCP publication and the Agent Connection publish every listed tool and refuse a call of an unavailable one, the Goal Loop offers only the available ones, and the Inspector shows an unavailable one dimmed with its reason.
 
 | Member                      | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

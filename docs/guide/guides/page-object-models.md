@@ -120,4 +120,33 @@ export class SettingsPanel {
 - The predicate runs with the runtime's observation of the page, not with the call, so it reads the page and never changes it.
 - The [reference](../reference/ayme.md#action-availability) has the signature, how a collection and a predicate that throws are judged, and what an action without a predicate inherits.
 
+## Page presence
+
+A page whose tools should be listed only while the browser is on it declares when it is on the page with `present`: a presence predicate that gets the live Page Object and answers `true` or `false`. Write it once, on a page base class of your own, and every page extending it is present on its route:
+
+```ts
+const onPage = (self: AppPage) =>
+  new URLPattern({ pathname: self.path }).test(self.page.url());
+
+@ayme({ present: onPage })
+export abstract class AppPage {
+  abstract readonly path: string;
+  constructor(readonly page: Page) {}
+}
+
+export class ProjectPage extends AppPage {
+  readonly path = "/projects/:id";
+
+  @ayme.action({ description: "Archive the project." })
+  async archive() {
+    await this.page.getByRole("button", { name: "Archive" }).click();
+  }
+}
+```
+
+- `ProjectPage` needs no decorator of its own; a subclass that declares its own `present` overrides the base's.
+- The predicate runs with the runtime's observation of the page, also after `pushState`, `replaceState` and `popstate`, so the page's tools appear and disappear as the user moves through a single-page app. A call never runs it.
+- A model without `present` is present as before: while its `root` is on the page, or, without one, while it is registered. A present page under a dialog stays listed with its reason; a page the browser is not on is withdrawn.
+- The [reference](../reference/ayme.md#page-object-presence) has the signature, how a predicate that throws is judged, and what a rooted model with a predicate needs.
+
 Page Objects are registered by your framework package or by `ayme.pom`; [Publish tools](publish-tools.md) shows how Ayme starts.

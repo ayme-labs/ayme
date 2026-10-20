@@ -65,6 +65,7 @@ export class InteractionHistory {
   >();
 
   private readonly clock: MonotonicClock;
+  private readonly navigationListeners = new Set<() => void>();
 
   constructor(currentDocument: Document, clock: MonotonicClock) {
     this.clock = strictlyIncreasing(clock);
@@ -78,13 +79,25 @@ export class InteractionHistory {
     });
     const view = currentDocument.defaultView;
     if (view)
-      watchSameDocumentNavigations(view, () =>
+      watchSameDocumentNavigations(view, () => {
         this.observations.recordNavigation({
           pageId: this.pageId,
           url: currentDocument.URL,
           cause: "navigate",
-        })
-      );
+        });
+        for (const listener of this.navigationListeners) listener();
+      });
+  }
+
+  /**
+   * Calls `listener` after every same-document navigation of the document,
+   * once it is recorded. Returns the function that unsubscribes.
+   */
+  onNavigation(listener: () => void): () => void {
+    this.navigationListeners.add(listener);
+    return () => {
+      this.navigationListeners.delete(listener);
+    };
   }
 
   now(): MonotonicTimeMs {
