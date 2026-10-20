@@ -15,7 +15,7 @@ The decorators, `createAyme` and the session it returns, and the other exports o
 
 | Decorator                                                    | Marks                                                                                                                                                                      |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ayme` or `@ayme({ description, present })`                 | A class as a Page Object Model. Its subclasses are Page Object Models too. `present` is the model's presence predicate; see below.                                         |
+| `@ayme` or `@ayme({ description, root, present })`           | A class as a Page Object Model. Its subclasses are Page Object Models too. `root` is the model's root predicate and `present` its presence predicate; see below.           |
 | `@ayme.action` or `@ayme.action({ description, available })` | A method as a Page Object Action, published as a Page Object Tool. Without a description, one is generated. `available` is the action's availability predicate; see below. |
 
 [Page Object Models](../guides/page-object-models.md) covers naming, input schemas and Page Object Children.
@@ -28,13 +28,23 @@ The predicate runs read-only with the runtime's observation of the page, the sam
 
 Availability never adds or withdraws a tool. [`ayme.tools`](#aymetools) says how an unavailable tool is listed and refused, and [Page Object Models](../guides/page-object-models.md#action-availability) shows a predicate in use.
 
+### Page Object root
+
+> **Experimental:** this may change in any release. See [Experimental APIs](experimental-apis.md).
+
+`root` is a root predicate, `(self) => Locator | Promise<Locator>` (`RootPredicate`), where `self` is the live Page Object instance. The Locator it answers names the Page Object Root: the Page Object is present while the locator resolves to one rendered element, the page state labels that element with the Page Object's name, a collection item's `ref` is that element's Structural Ref, and availability is measured at it. Declared as its own function, `const rootOf = (self: AppComponent) => self.container`, `self` is typed.
+
+A subclass inherits the predicate of the nearest class in its chain that declares one, with or without a decorator of its own, and may declare its own; `root` and `present` are inherited separately, so a subclass overrides one and keeps the other. The predicate runs read-only with the runtime's observation of the page, never when a tool is called, so it must not scroll, click, focus or change the page. A locator member that resolves to the root's element is the root, not a child, so it is listed once, also when it is a getter that builds a fresh Locator on each read. A predicate that throws makes the Page Object absent, and a child's observation records what it threw. It never runs on the server, where registration is inert. The build plugin does not read the predicate; the decorator keeps it at runtime.
+
+For now, a locator member named `root` anchors a model with no `root` option the same way; with both, the option names the root.
+
 ### Page Object presence
 
 > **Experimental:** this may change in any release. See [Experimental APIs](experimental-apis.md).
 
 `present` is a presence predicate, `(self) => boolean | Promise<boolean>` (`PresencePredicate`), where `self` is the live Page Object instance. `true` means the Page Object is on the page now, so its tools are listed; `false` means it is not, so they are withdrawn. There is no reason string: an absent Page Object's tools are listed nowhere a reason could show. Declared as its own function, `const onPage = (self: AppPage) => …`, `self` is typed.
 
-A subclass inherits the predicate of the nearest class in its chain that declares one, with or without a decorator of its own, and may declare its own. Without `present`, a model with a `root` is present while the root resolves to one rendered element, and a top-level model without one while it is registered; with both, the root must be on the page and the predicate narrows. The predicate runs read-only with the runtime's observation of the page, never when a tool is called, so it must not scroll, click, focus or change the page. It runs before the model's members are read, so an absent model costs one call per observation, and the observation also runs on same-document navigation, so a predicate that reads the URL follows the browser's history. A predicate that throws makes the Page Object absent and logs the error's text to the console, such as `TypeError: store is undefined`, once until the error changes. It never runs on the server, where registration is inert. The build plugin does not read the predicate; the decorator keeps it at runtime.
+A subclass inherits the predicate of the nearest class in its chain that declares one, with or without a decorator of its own, and may declare its own. Without `present`, a model with a [root](#page-object-root) is present while the root resolves to one rendered element, and a top-level model without one while it is registered; with both, the root must be on the page and the predicate narrows. The predicate runs read-only with the runtime's observation of the page, never when a tool is called, so it must not scroll, click, focus or change the page. It runs before the model's members are read, so an absent model costs one call per observation, and the observation also runs on same-document navigation, so a predicate that reads the URL follows the browser's history. A predicate that throws makes the Page Object absent and logs the error's text to the console, such as `TypeError: store is undefined`, once until the error changes. It never runs on the server, where registration is inert. The build plugin does not read the predicate; the decorator keeps it at runtime.
 
 Presence adds and withdraws tools; a present Page Object's availability is still measured at its root. [Page Object Models](../guides/page-object-models.md#page-presence) shows a page base class present by its URL.
 

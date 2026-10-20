@@ -11,8 +11,9 @@ An experimental API belongs to a feature Ayme keeps but whose shape is not settl
 - `peek(read, name, id?)` in `@ayme-dev/svelte`: the [Svelte](../frameworks/svelte.md#api) composable.
 - `injectPeek(values, name, id?)` in `@ayme-dev/angular`: the [Angular](../frameworks/angular.md#api) function.
 
-## Page Object presence
+## Page Object root and presence
 
+- `root` in `@ayme-dev/ayme`: the `@ayme` option that names the element anchoring a Page Object, in [Page Object root](ayme.md#page-object-root).
 - `present` in `@ayme-dev/ayme`: the `@ayme` option that says when a Page Object is on the page, in [Page Object presence](ayme.md#page-object-presence).
 
 ## The Goal Loop

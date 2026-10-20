@@ -88,7 +88,29 @@ export class ListItem {
 
 ## The Page Object Root
 
-A `root` locator member is the model's Page Object Root: the element that anchors the instance in the page. It decides whether the Page Object is present, while the root is on the page, and whether it is available, while a click would also reach the root; the page state labels that element with the Page Object's name. A child's tools are listed only while its root is on the page, so a child needs a `root`. A registered top-level model without one has tools that are listed as long as it is registered.
+A model names its Page Object Root, the element that anchors the instance in the page, with `root`: a root predicate that gets the live Page Object and answers a Locator. Write it once, on a component base class of your own, and every component extending it is anchored at its container:
+
+```ts
+const rootOf = (self: AppComponent) => self.container;
+
+@ayme({ root: rootOf })
+export abstract class AppComponent {
+  constructor(readonly container: Locator) {}
+}
+
+export class ListItem extends AppComponent {
+  readonly archiveButton = this.container.getByRole("button", {
+    name: "Archive",
+  });
+
+  @ayme.action({ description: "Archive this list item." })
+  async archive() {
+    await this.archiveButton.click();
+  }
+}
+```
+
+The root decides whether the Page Object is present, while the root is on the page, and whether it is available, while a click would also reach the root; the page state labels that element with the Page Object's name, and a collection item's `ref` is that element's. A child's tools are listed only while its root is on the page, so a child needs a root. A registered top-level model without one has tools that are listed as long as it is registered. `ListItem` needs no decorator of its own; a subclass that declares its own `root` overrides the base's. The member that holds the root locator, `container` here, is the root and not a child, so the page state does not list it twice. For now, a locator member named `root` anchors a model without the option the same way, as the `ListItem` of [Page Object Children](#page-object-children) does.
 
 Presence lists tools; availability says whether they would run. A present Page Object whose root a click would not reach, such as one under an open dialog, keeps its tools listed, flagged unavailable with a reason that names what is in the way, and a call is refused with that reason. [`ayme.tools`](../reference/ayme.md#aymetools) has the form of the reason.
 
@@ -146,7 +168,7 @@ export class ProjectPage extends AppPage {
 
 - `ProjectPage` needs no decorator of its own; a subclass that declares its own `present` overrides the base's.
 - The predicate runs with the runtime's observation of the page, also after `pushState`, `replaceState` and `popstate`, so the page's tools appear and disappear as the user moves through a single-page app. A call never runs it.
-- A model without `present` is present as before: while its `root` is on the page, or, without one, while it is registered. A present page under a dialog stays listed with its reason; a page the browser is not on is withdrawn.
+- A model without `present` is present as before: while its [root](#the-page-object-root) is on the page, or, without one, while it is registered. A present page under a dialog stays listed with its reason; a page the browser is not on is withdrawn.
 - The [reference](../reference/ayme.md#page-object-presence) has the signature, how a predicate that throws is judged, and what a rooted model with a predicate needs.
 
 Page Objects are registered by your framework package or by `ayme.pom`; [Publish tools](publish-tools.md) shows how Ayme starts.

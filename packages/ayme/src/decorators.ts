@@ -1,7 +1,9 @@
+import type { Locator } from "@playwright/test";
+
 // The decorators mark a class or method; the build integration reads the
 // marks from source and generates the Page Object Tools. The decorators also
-// keep the predicates that only exist at runtime: `@ayme` a model's presence
-// predicate, `@ayme.action` an action's availability predicate.
+// keep the predicates that only exist at runtime: `@ayme` a model's root and
+// presence predicates, `@ayme.action` an action's availability predicate.
 
 /**
  * A Page Object Model's presence predicate (ADR-0042). It gets the live Page
@@ -13,8 +15,27 @@ export type PresencePredicate<Self = unknown> = (
   self: Self
 ) => boolean | Promise<boolean>;
 
+/**
+ * A Page Object Model's root predicate (ADR-0042). It gets the live Page
+ * Object as `self` and answers the locator of the element that anchors it,
+ * its Page Object Root. It runs read-only with the observation and never
+ * with a call, so it must not scroll, click, focus or change the page.
+ */
+export type RootPredicate<Self = unknown> = (
+  self: Self
+) => Locator | Promise<Locator>;
+
 export type AymeModelOptions<Self = unknown> = {
   description?: string;
+  /**
+   * The locator of the element that anchors the Page Object (its Page Object
+   * Root): the Page Object is present while the locator resolves to one
+   * rendered element, which the page state labels with its name and at
+   * which its availability is measured. A subclass inherits it and may
+   * declare its own.
+   * @experimental
+   */
+  root?: RootPredicate<Self>;
   /**
    * When the Page Object is on the page (Page Object Presence). Without it,
    * a model with a root is present while the root is, and a top-level model
@@ -66,9 +87,10 @@ export function availabilityPredicateOf(
   return availabilityPredicates.get(method as object);
 }
 
-// Each decorated class's presence predicate, by the class itself: read along
-// a class's own prototype chain, so a subclass inherits its base's and the
-// nearest declaring class wins.
+// Each decorated class's root and presence predicates, by the class itself:
+// each read along a class's own prototype chain, so a subclass inherits its
+// base's and the nearest class declaring that one wins.
+const rootPredicates = new WeakMap<object, RootPredicate<never>>();
 const presencePredicates = new WeakMap<object, PresencePredicate<never>>();
 
 /**
@@ -78,12 +100,29 @@ const presencePredicates = new WeakMap<object, PresencePredicate<never>>();
 export function presencePredicateOf(
   PomClass: unknown
 ): PresencePredicate<never> | undefined {
+  return inheritedPredicate(presencePredicates, PomClass);
+}
+
+/**
+ * Package-internal: the root predicate `@ayme` kept for `PomClass` or, when
+ * it declares none, for the nearest base class that does.
+ */
+export function rootPredicateOf(
+  PomClass: unknown
+): RootPredicate<never> | undefined {
+  return inheritedPredicate(rootPredicates, PomClass);
+}
+
+function inheritedPredicate<Predicate>(
+  predicates: WeakMap<object, Predicate>,
+  PomClass: unknown
+): Predicate | undefined {
   for (
     let Class: unknown = PomClass;
     typeof Class === "function";
     Class = Object.getPrototypeOf(Class)
   ) {
-    const predicate = presencePredicates.get(Class);
+    const predicate = predicates.get(Class);
     if (predicate) return predicate;
   }
   return undefined;
@@ -159,12 +198,13 @@ function keepingPredicate(
   }) as AymeActionDecorator;
 }
 
-/** A class decorator that keeps `predicate` for the class it is applied to. */
-function keepingPresence(
-  predicate: PresencePredicate<never>
+/** A class decorator that keeps `options`' predicates for the class it is applied to. */
+function keepingPredicates(
+  options: AymeModelOptions<never>
 ): AymeClassDecorator {
   return ((target: PageObjectClass) => {
-    presencePredicates.set(target, predicate);
+    if (options.root) rootPredicates.set(target, options.root);
+    if (options.present) presencePredicates.set(target, options.present);
   }) as AymeClassDecorator;
 }
 
@@ -178,8 +218,8 @@ function aymeClass(
   targetOrOptions?: PageObjectClass | AymeModelOptions<never>
 ) {
   if (typeof targetOrOptions === "function") return;
-  return targetOrOptions?.present
-    ? keepingPresence(targetOrOptions.present)
+  return targetOrOptions?.root || targetOrOptions?.present
+    ? keepingPredicates(targetOrOptions)
     : markClass;
 }
 
@@ -202,8 +242,8 @@ function action(...args: unknown[]) {
 }
 
 /**
- * Marks a Page Object Model and keeps its presence predicate when it has
- * one. `@ayme.action` marks a Page Object Action, which becomes a Page Object
- * Tool, and keeps its availability predicate when it has one.
+ * Marks a Page Object Model and keeps its root and presence predicates when
+ * it has them. `@ayme.action` marks a Page Object Action, which becomes a
+ * Page Object Tool, and keeps its availability predicate when it has one.
  */
 export const ayme = Object.assign(aymeClass, { action });
