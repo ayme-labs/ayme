@@ -1881,6 +1881,58 @@ describe("the state a request that only picks an element is sent", () => {
     ).toMatch(/Each option is an element of `elements` in the state/);
   });
 
+  it("tells candidates that share a role and name apart by the text of the item each sits in", () => {
+    const yaml = [
+      '- list "Projects" [ref=e1]:',
+      "  - listitem [ref=e2]:",
+      "    - text: Website redesign",
+      '    - text: "Owner: Grace"',
+      '    - button "Rename" [ref=e3]',
+      "  - listitem [ref=e4]:",
+      '    - heading "Mobile app" [level=3] [ref=e5]',
+      '    - text: "Owner: Alan"',
+      "    - group [ref=e6]:",
+      '      - button "Rename" [ref=e7]',
+      "  - listitem [ref=e8]:",
+      `    - text: ${"x".repeat(200)}`,
+      '    - button "Rename" [ref=e9]',
+      '- button "Add project" [ref=e10]',
+    ].join("\n");
+    const tree = StructuralTree.fromAriaSnapshotYaml(
+      yaml,
+      new SyntheticAriaRefFactory()
+    );
+    const elementsByRef = new Map<AriaRef, Element>();
+    for (const ref of ["e3", "e7", "e9", "e10"])
+      elementsByRef.set(
+        AriaRefSchema.parse(ref),
+        document.createElement("button")
+      );
+    const capture = { tree, elementsByRef };
+    const plan = planArguments(clickTool, capture);
+    if (plan.kind !== "ask") throw new Error(`Unexpected plan ${plan.kind}`);
+
+    const request = buildArgumentRequest(state, plan.questions, capture);
+
+    const elements = (request.state as { elements: Record<string, unknown>[] })
+      .elements;
+    expect(
+      Object.fromEntries(
+        elements.map((element) => [element.ref, element.item_text])
+      )
+    ).toEqual({
+      e3: "Website redesign · Owner: Grace",
+      // The cell holds only the button and its name, so the row's text is used.
+      e7: "Mobile app · Owner: Alan",
+      e9: `${"x".repeat(119)}…`,
+      // A unique role and name needs no item text.
+      e10: undefined,
+    });
+    expect(
+      elements.find((element) => element.ref === "e10")
+    ).not.toHaveProperty("item_text");
+  });
+
   it("keeps the page when the request asks anything besides the element", () => {
     const capture = surveyCapture();
     const plan = planArguments(clickWithForceTool, capture);
