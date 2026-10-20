@@ -1,13 +1,13 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
+import { AppComponent } from "./AppComponent";
 
 @ayme
-export class ArchiveDialog {
-  readonly root: Locator;
+export class ArchiveDialog extends AppComponent {
   readonly confirmArchiveButton: Locator;
 
   constructor(root: Locator) {
-    this.root = root;
+    super(root);
     this.confirmArchiveButton = root.getByRole("button", {
       name: "Confirm archive",
     });

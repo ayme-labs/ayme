@@ -10,8 +10,13 @@ const openRouterKeyPrefix = "sk-or-v1-";
 // text, so their source appears in the output verbatim, naming Playwright.
 // Only what is outside it counts: a Page Object that leaked as code would be
 // compiled, not verbatim.
-const shownSources = ["ListPage.ts", "ListItem.ts", "ArchiveDialog.ts"].map(
-  (file) => fs.readFileSync(path.join(appRoot, "playwright/pom", file), "utf8")
+const shownSources = [
+  "ListPage.ts",
+  "ListItem.ts",
+  "ArchiveDialog.ts",
+  "AppComponent.ts",
+].map((file) =>
+  fs.readFileSync(path.join(appRoot, "playwright/pom", file), "utf8")
 );
 
 // What a Build without Ayme leaves out: the runtime's own text, the compiled

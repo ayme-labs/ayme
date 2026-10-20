@@ -1,10 +1,10 @@
 import { ayme } from "@ayme-dev/ayme";
 import type { Locator } from "@playwright/test";
+import { AppComponent } from "./AppComponent";
 import type { ArchiveDialog } from "./ArchiveDialog";
 
 @ayme
-export class ListItem {
-  readonly root: Locator;
+export class ListItem extends AppComponent {
   readonly archiveButton: Locator;
   readonly nameButton: Locator;
   readonly nameInput: Locator;
@@ -13,7 +13,7 @@ export class ListItem {
     root: Locator,
     private readonly archiveDialog: ArchiveDialog
   ) {
-    this.root = root;
+    super(root);
     this.archiveButton = root.locator('[data-action="archive"]');
     this.nameButton = root.locator('[data-action="rename"]');
     this.nameInput = root.getByRole("textbox", { name: "Item name" });
