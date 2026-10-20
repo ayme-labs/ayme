@@ -1,9 +1,11 @@
 ---
 status: accepted
-amended-by: ADR-0035
+amended-by: ADR-0035, ADR-0042
 ---
 
 # Separate Page Object presence from availability
+
+The rule below against consumer configuration is amended by [ADR-0042](0042-page-objects-declare-their-own-root-and-presence.md), "Page Objects declare their own root and presence": it now holds for availability measurement only. Presence and availability stay separate as decided here.
 
 ## Context
 

@@ -35,10 +35,10 @@ One stretch of a Page State Session between navigations: from document load, or 
 The page element that anchors one Page Object instance in the observed structure.
 
 **Page Object Presence**:
-Whether a rooted Page Object can be associated with rendered UI in the current layout's normally scroll-reachable area, independently of modal blocking or obstruction.
+Whether a Page Object can be associated with rendered UI in the current layout's normally scroll-reachable area, independently of modal blocking or obstruction. A Page Object Model may declare its own presence predicate, which narrows the default.
 
 **Page Object Availability**:
-Whether a live Page Object is currently available for interaction through its root in the user-facing page. Rooted Page Objects must be present to be available. Page Objects without a root retain registration-driven availability. DOM presence alone does not imply either structural presence or availability.
+Whether a live Page Object is currently available for interaction through its root in the user-facing page. Rooted Page Objects must be present to be available. A root-less Page Object without a presence predicate is present while registered, and available while present. DOM presence alone does not imply either structural presence or availability.
 
 **Action Availability**:
 Whether a Page Object Action can run right now. An action is available when its Page Object is available and its availability predicate, if it declares one, holds. Actions without a predicate share their Page Object's availability. Availability never adds or removes a Page Object Tool; it says whether a listed tool would run. On a collection action, availability is judged once per present instance: the tool is available while any instance passes, and otherwise carries the first failing instance's Availability Reason.
