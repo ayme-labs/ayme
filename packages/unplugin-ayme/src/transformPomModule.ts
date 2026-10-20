@@ -18,7 +18,7 @@ import {
 } from "./pomProgram";
 import { rewritePomImports } from "./rewritePomImports";
 
-const RUNTIME_MODULE = "@ayme-dev/ayme";
+export const RUNTIME_MODULE = "@ayme-dev/ayme";
 const REGISTRATION_MODULE = "@ayme-dev/ayme/internal";
 /** The entry a build without Ayme resolves `@ayme-dev/ayme` and its internal entry to. */
 export const ABSENT_MODULE = "@ayme-dev/ayme/absent";

@@ -12,6 +12,7 @@ import type {
   ToolManifest,
   ToolParameter,
 } from "@ayme-dev/ayme/internal";
+import { RUNTIME_MODULE } from "./transformPomModule";
 import { createPomProgram, type PomCompilerOptions } from "./pomProgram";
 
 export type { PomCompilerOptions } from "./pomProgram";
@@ -616,6 +617,48 @@ function isMarker(decorator: ts.Decorator, name: string) {
   return ts.isIdentifier(target) && target.text === name;
 }
 
+/**
+ * Whether `decorator` is ayme's class decorator, by what its target resolves
+ * to rather than by its text: `ayme` imported under any name, or reached
+ * through a namespace import, from the runtime module. A function that is
+ * merely named `ayme` is not.
+ */
+function isAymeDecorator(checker: ts.TypeChecker, decorator: ts.Decorator) {
+  const target = decoratorTarget(decorator);
+  if (ts.isIdentifier(target)) {
+    const declaration = checker.getSymbolAtLocation(target)?.declarations?.[0];
+    return (
+      declaration !== undefined &&
+      ts.isImportSpecifier(declaration) &&
+      (declaration.propertyName ?? declaration.name).text === "ayme" &&
+      isRuntimeImport(declaration.parent.parent.parent)
+    );
+  }
+  if (
+    ts.isPropertyAccessExpression(target) &&
+    target.name.text === "ayme" &&
+    ts.isIdentifier(target.expression)
+  ) {
+    const declaration = checker.getSymbolAtLocation(target.expression)
+      ?.declarations?.[0];
+    return (
+      declaration !== undefined &&
+      ts.isNamespaceImport(declaration) &&
+      isRuntimeImport(declaration.parent.parent)
+    );
+  }
+  return false;
+}
+
+function isRuntimeImport(
+  declaration: ts.ImportDeclaration | ts.JSDocImportTag
+) {
+  return (
+    ts.isStringLiteral(declaration.moduleSpecifier) &&
+    declaration.moduleSpecifier.text === RUNTIME_MODULE
+  );
+}
+
 function isMemberMarker(decorator: ts.Decorator, name: string, member: string) {
   const target = decoratorTarget(decorator);
   return (
@@ -749,7 +792,7 @@ function untouchedConst(
         if (
           ts.isCallExpression(use.parent) &&
           ts.isDecorator(use.parent.parent) &&
-          isMarker(use.parent.parent, "ayme") &&
+          isAymeDecorator(checker, use.parent.parent) &&
           use.parent.arguments[0] === use
         )
           return true;

@@ -666,6 +666,29 @@ describe("derivePomManifests", () => {
       );
     });
 
+    it("still reads a constant shared with ayme's decorator imported under another name", () => {
+      expect(() => manifestFor("aliasedSharedOptionsPom")).toThrow(
+        'Page Object Child "second" is a collection of SecondItem, which declares no root; a collection item\'s ref needs one.'
+      );
+    });
+
+    it("still reads a constant shared with ayme's decorator reached through a namespace import", () => {
+      expect(() => manifestFor("namespacedSharedOptionsPom")).toThrow(
+        'Page Object Child "second" is a collection of SecondItem, which declares no root; a collection item\'s ref needs one.'
+      );
+    });
+
+    it("leaves the options to the runtime when a function merely named ayme receives them", () => {
+      const manifest = manifestForClass(
+        "shadowedAymeOptionsPom",
+        "ShadowedAymeOptionsPom"
+      );
+
+      expect(
+        manifest?.components.map((component) => component.className)
+      ).toEqual(["ShadowedItem"]);
+    });
+
     it("leaves a root a constant gained after its initializer, through another decorator, or a literal inherits through __proto__, to the runtime", () => {
       const manifest = manifestForClass(
         "mutatedRootOptionsPom",
