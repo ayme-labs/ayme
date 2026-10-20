@@ -97,7 +97,10 @@ const runResultStore: GoalLoopRunResultStore = ((
 // --- Action execution (delegates to the shared action sequence) ---
 
 /** What one executed step came to: its history fields and its Change Record. */
-type StepOutcome = Pick<GoalLoopStepRecord, "result" | "page_changed"> & {
+type StepOutcome = Pick<
+  GoalLoopStepRecord,
+  "result" | "page_changed" | "returned"
+> & {
   changes?: string;
   /** The URL the full page load the step started was for. */
   loading?: string;
@@ -112,6 +115,22 @@ export const MAX_STEP_CHANGES = 400;
 
 /** Marks a step's Change Record that was cut to `MAX_STEP_CHANGES`. */
 export const CHANGES_CUT_MARKER = "\n… (cut)";
+
+/**
+ * At most this many characters of a step's returned value, as JSON, go into
+ * its history entry; a longer one is sent as a cut string.
+ */
+export const MAX_STEP_RETURNED = 200;
+
+/**
+ * The value an action returned, bounded for the history entry: the value
+ * itself when its JSON fits, else its JSON cut to `MAX_STEP_RETURNED`.
+ */
+function boundedReturned(returned: JsonValue): JsonValue {
+  const json = JSON.stringify(returned);
+  if (json.length <= MAX_STEP_RETURNED) return returned;
+  return `${json.slice(0, MAX_STEP_RETURNED - CHANGES_CUT_MARKER.length)}${CHANGES_CUT_MARKER}`;
+}
 
 /**
  * A Change Record cut to `MAX_STEP_CHANGES` characters, the marker included:
@@ -138,6 +157,9 @@ function stepRecord(
     chosen,
     result: outcome.result,
     page_changed: outcome.page_changed,
+    ...(outcome.returned !== undefined
+      ? { returned: boundedReturned(outcome.returned) }
+      : {}),
     ...(outcome.changes ? { changes: cutChanges(outcome.changes) } : {}),
     did: `${operation}(${descriptions.join(", ")})`,
   };
@@ -159,6 +181,9 @@ async function executeToolAction(
   return {
     result: "ok",
     page_changed: action?.page_changed ?? false,
+    // A null return says nothing; an actual value is the step's only trace
+    // when its effect is not on the page.
+    ...(action?.result != null ? { returned: action.result } : {}),
     ...(action?.changes ? { changes: action.changes } : {}),
     ...(action?.loading ? { loading: action.loading } : {}),
   };
