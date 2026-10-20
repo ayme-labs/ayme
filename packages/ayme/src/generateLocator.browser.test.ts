@@ -9,6 +9,7 @@ import { buildToolOptions } from "./goalLoopOperations";
 import { getInteractionHistory } from "./pageState";
 import { shapeOf } from "./playwrightMcp.testSupport";
 import { agentTools } from "./publication.testSupport";
+import { rooted } from "./pomRoot.testSupport";
 import { registerCompiledPom } from "./registry";
 import { createAyme, type Ayme } from "./runtime";
 import type { ToolInput, ToolResult } from "./toolTypes";
@@ -37,7 +38,7 @@ const FIXTURE = `
 class AccountPage {
   readonly account;
   constructor(page: Page) {
-    this.account = { root: page.locator("#account") };
+    this.account = rooted(page.locator("#account"), {});
   }
 }
 

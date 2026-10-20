@@ -288,6 +288,82 @@ describe("Page Object Root by option", () => {
     expect(names()).toEqual([]);
   });
 
+  it("treats a model with a member named root and no option as root-less: tools listed while registered, no label, no reach measurement", async () => {
+    document.body.innerHTML =
+      '<aside id="drawer" style="width:200px;height:100px">Menu</aside>' +
+      '<div id="overlay" style="position:fixed;inset:0;z-index:10"></div>';
+    class SideDrawer {
+      root = page.locator("#drawer");
+      open() {}
+    }
+    registerCompiledPom(
+      SideDrawer,
+      pageManifest("SideDrawer", [locator("root")])
+    );
+    session.pom.register(SideDrawer);
+    await probeRegisteredPomMembers();
+    // The name anchors nothing: the element under the overlay is not a root
+    // a click must reach, and the page state does not label it.
+    expect(listed("SideDrawer.open")).toEqual(
+      expect.objectContaining({ available: true })
+    );
+    expect(listed("SideDrawer.open")).not.toHaveProperty("reason");
+    expect((await agent.getPageState()).text).not.toContain("SideDrawer");
+    // The member named root is an ordinary member.
+    expect(observedMembers()).toEqual(["root"]);
+
+    document.getElementById("drawer")!.remove();
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual(["SideDrawer.open"]);
+
+    session.pom.unregister(SideDrawer);
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual([]);
+  });
+
+  it("records that a child with a member named root and no option declares no root, and withdraws its tools", async () => {
+    document.body.innerHTML =
+      '<section id="shell"><div id="panel">Panel</div></section>';
+    class Panel {
+      root = page.locator("#panel");
+      close() {}
+    }
+    class Shell {
+      panel = new Panel();
+    }
+    registerCompiledPom(Shell, {
+      className: "Shell",
+      members: [
+        {
+          memberName: "panel",
+          kind: "component",
+          access: "field",
+          componentClassName: "Panel",
+          collection: false,
+        },
+      ],
+      tools: [],
+      components: [
+        {
+          className: "Panel",
+          members: [locator("root")],
+          tools: [action("close", "Shell.panel.close")],
+        },
+      ],
+    });
+    session.pom.register(Shell);
+    await probeRegisteredPomMembers();
+    expect(names()).toEqual([]);
+    expect(listRegisteredPoms()[0]!.memberObservations).toEqual([
+      {
+        memberName: "panel.root",
+        kind: "component-root",
+        count: 0,
+        error: "POM component panel declares no root.",
+      },
+    ]);
+  });
+
   it("records what a child's root predicate threw, and withdraws the child's tools", async () => {
     document.body.innerHTML =
       '<section id="shell"><div id="panel">Panel</div></section>';

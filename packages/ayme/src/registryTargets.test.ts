@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createPage } from "./browserPage";
 
+import { ayme } from "./decorators";
+import { rooted, rootOf } from "./pomRoot.testSupport";
 import { listRegisteredPomTargets, registerCompiledPom } from "./registry";
 import { startSession, type TestSession } from "./session.testSupport";
 
@@ -33,21 +35,20 @@ describe("registered Page Object targets", () => {
 
     const item = (index: number) => {
       const root = page.locator(".item").nth(index);
-      return {
-        root,
+      return rooted(root, {
         nameButton: root.locator("button"),
-        tags: index === 0 ? [{ root: root.locator(".tag") }] : [],
-      };
+        tags: index === 0 ? [rooted(root.locator(".tag"), {})] : [],
+      });
     };
     class ListPage {
       readonly root = page.locator("main");
       readonly newItemInput = page.locator(".new");
-      readonly header = {
-        root: page.locator("header"),
+      readonly header = rooted(page.locator("header"), {
         title: page.locator("h1"),
-      };
+      });
       readonly items = [item(0), item(1)];
     }
+    ayme({ root: rootOf })(ListPage);
     registerCompiledPom(ListPage, {
       className: "ListPage",
       tools: [],
@@ -129,7 +130,7 @@ describe("registered Page Object targets", () => {
     `;
     class ListPage {
       readonly addItemButton = page.getByRole("button", { name: "Milk" });
-      readonly items = [{ root: page.locator(".item").nth(0) }];
+      readonly items = [rooted(page.locator(".item").nth(0), {})];
     }
     registerCompiledPom(ListPage, {
       className: "ListPage",

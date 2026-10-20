@@ -729,7 +729,6 @@ function createRegisteredTool(
   instance: object,
   tool: ToolManifest
 ): CallerAwarePomTool {
-  const rootMember = manifest.members.find(isRootMember);
   return {
     pomId: manifest.className,
     methodName: tool.methodName,
@@ -743,59 +742,37 @@ function createRegisteredTool(
         tool,
         args,
         cursor,
-        declaresRoot(instance, rootMember)
-          ? await declaredRoot(instance, rootMember)
-          : undefined
+        await declaredRoot(instance)
       ),
   };
 }
 
 /**
- * Whether the page `instance` names a root: by the `root` option its class
- * declares or inherits, or by `rootMember`, its manifest's member named
- * `root`. A page with neither is on every page.
+ * Whether `instance` names a root: by the `root` option its class declares
+ * or inherits. A member's name never does; a page without the option is on
+ * every page.
  */
-function declaresRoot(
-  instance: object,
-  rootMember: PomMemberManifest | undefined
-): boolean {
-  return (
-    rootMember !== undefined ||
-    rootPredicateOf(instance.constructor) !== undefined
-  );
+function declaresRoot(instance: object): boolean {
+  return rootPredicateOf(instance.constructor) !== undefined;
 }
-
-/** The member named `root` of a component whose manifest lists none. */
-const rootProperty: PomMemberManifest = {
-  memberName: "root",
-  kind: "locator",
-  access: "field",
-};
 
 /**
  * The locator that anchors `instance`, its Page Object Root: what the `root`
- * option its class declares or inherits answers, else its member named
- * `root`, read as `rootMember` says. Undefined when that is not a locator; a
- * root predicate or member that throws, throws.
+ * option its class declares or inherits answers. Undefined without the
+ * option, or when the answer is not a locator; a root predicate that throws,
+ * throws.
  */
-async function readRoot(
-  instance: object,
-  rootMember: PomMemberManifest = rootProperty
-): Promise<Locator | undefined> {
+async function readRoot(instance: object): Promise<Locator | undefined> {
   const predicate = rootPredicateOf(instance.constructor);
-  const root = predicate
-    ? await predicate(instance as never)
-    : await readMember(instance, rootMember);
+  if (!predicate) return undefined;
+  const root = await predicate(instance as never);
   return isLocator(root) ? root : undefined;
 }
 
 /** `instance`'s root, or undefined when it cannot be read as a locator. */
-async function declaredRoot(
-  instance: object,
-  rootMember?: PomMemberManifest
-): Promise<Locator | undefined> {
+async function declaredRoot(instance: object): Promise<Locator | undefined> {
   try {
-    return await readRoot(instance, rootMember);
+    return await readRoot(instance);
   } catch {
     return undefined;
   }
@@ -1071,10 +1048,9 @@ async function probePomMembers(registration: ObservedRegisteredPom) {
     });
     return { memberObservations: [], instances: walk.instances };
   }
-  const rootMember = manifest.members.find(isRootMember);
   // A rootless Page Object with no predicate is on every page.
-  const root = declaresRoot(instance, rootMember)
-    ? await observeDeclaredRoot(instance, rootMember)
+  const root = declaresRoot(instance)
+    ? await observeDeclaredRoot(instance)
     : undefined;
   const present = root === undefined || root.present;
   walk.instances.push({
@@ -1138,12 +1114,9 @@ type Place = Pick<PomInstanceObservation, "path" | "item"> & {
  * Observes the page's declared root. A missing or invalid declared root
  * never falls back to rootless activation: it is absent.
  */
-async function observeDeclaredRoot(
-  instance: object,
-  rootMember: PomMemberManifest | undefined
-): Promise<ObservedPomRoot> {
+async function observeDeclaredRoot(instance: object): Promise<ObservedPomRoot> {
   try {
-    const root = await readRoot(instance, rootMember);
+    const root = await readRoot(instance);
     if (root) return (await observePomRoot(root)).root;
   } catch {
     // A root that cannot be read is not on the page.
@@ -1160,7 +1133,7 @@ const absentRoot: ObservedPomRoot = {
 
 /**
  * `instance`'s targets at `prefix`: its root's elements at `${prefix}.root`,
- * then its members', without the member that is the root.
+ * then its members', without the member that resolves to the root.
  */
 async function collectPomTargets(
   instance: object,
@@ -1170,14 +1143,8 @@ async function collectPomTargets(
   targets: RegisteredPomTarget[],
   componentClasses: ReadonlySet<string> = new Set()
 ): Promise<void> {
-  const rootElement = await collectRootTargets(
-    instance,
-    members.find(isRootMember),
-    prefix,
-    targets
-  );
+  const rootElement = await collectRootTargets(instance, prefix, targets);
   for (const member of members) {
-    if (isRootMember(member)) continue;
     const memberPath = `${prefix}.${member.memberName}`;
     try {
       const value = await readMember(instance, member);
@@ -1198,12 +1165,7 @@ async function collectPomTargets(
           ? `${memberPath}[${index}]`
           : memberPath;
         if (componentClasses.has(component.className)) {
-          await collectRootTargets(
-            candidate,
-            component.members.find(isRootMember),
-            componentPath,
-            targets
-          );
+          await collectRootTargets(candidate, componentPath, targets);
           continue;
         }
         await collectPomTargets(
@@ -1227,11 +1189,10 @@ async function collectPomTargets(
  */
 async function collectRootTargets(
   instance: object,
-  rootMember: PomMemberManifest | undefined,
   prefix: string,
   targets: RegisteredPomTarget[]
 ): Promise<Element | undefined> {
-  const root = await declaredRoot(instance, rootMember);
+  const root = await declaredRoot(instance);
   if (!root) return undefined;
   const elements = locatorElements(root);
   const locator = root.toString();
@@ -1334,27 +1295,39 @@ async function probeComponentMember(
     });
   for (const [index, component] of values.entries()) {
     const path = member.collection ? `${memberPath}[${index}]` : memberPath;
-    let locator: Locator | undefined;
-    try {
-      locator = isRecord(component)
-        ? await readRoot(component, manifest.members.find(isRootMember))
-        : undefined;
-    } catch (error) {
-      observations.push({
-        memberName: `${path}.root`,
-        kind: "component-root",
-        count: 0,
-        error: `POM component ${path}'s root could not be read: ${errorText(error)}.`,
-      });
+    // A child is anchored by its root alone: without one it is absent, and
+    // the observation says why.
+    const rootObservation = (error: string): PomMemberObservation => ({
+      memberName: `${path}.root`,
+      kind: "component-root",
+      count: 0,
+      error,
+    });
+    if (!isRecord(component)) {
+      observations.push(
+        rootObservation(`POM component ${path} is not an object.`)
+      );
       continue;
     }
-    if (!isRecord(component) || !locator) {
-      observations.push({
-        memberName: `${path}.root`,
-        kind: "component-root",
-        count: 0,
-        error: `POM component ${path} does not expose a browser locator root.`,
-      });
+    let locator: Locator | undefined;
+    try {
+      locator = await readRoot(component);
+    } catch (error) {
+      observations.push(
+        rootObservation(
+          `POM component ${path}'s root could not be read: ${errorText(error)}.`
+        )
+      );
+      continue;
+    }
+    if (!locator) {
+      observations.push(
+        rootObservation(
+          declaresRoot(component)
+            ? `POM component ${path}'s root is not a browser locator.`
+            : `POM component ${path} declares no root.`
+        )
+      );
       continue;
     }
     const { count, root } = await observePomRoot(locator);
@@ -1386,7 +1359,7 @@ async function probeComponentMember(
       ...(await probeMembers(
         walk,
         component,
-        manifest.members.filter((child) => !isRootMember(child)),
+        manifest.members,
         { path, componentPath, item: observed.item, rootElement: root.element },
         ancestors
       ))
@@ -1418,10 +1391,6 @@ function failedObservation(
 
 function joinPath(prefix: string, name: string) {
   return prefix ? `${prefix}.${name}` : name;
-}
-
-function isRootMember(member: PomMemberManifest) {
-  return member.kind === "locator" && member.memberName === "root";
 }
 
 async function readMember(instance: object, member: PomMemberManifest) {

@@ -5,6 +5,7 @@ import { createPage } from "./browserPage";
 import type { PomManifest } from "./contracts";
 import { errorText } from "./errors";
 import { agentTools, saveButtonRef } from "./publication.testSupport";
+import { rooted } from "./pomRoot.testSupport";
 import { probeRegisteredPomMembers, registerCompiledPom } from "./registry";
 import { createAyme } from "./runtime";
 
@@ -59,7 +60,7 @@ const failingManifest: PomManifest = {
 class FailingPage {
   readonly items;
   constructor(page: Page) {
-    this.items = [{ root: page.locator("#item"), archive() {} }];
+    this.items = [rooted(page.locator("#item"), { archive() {} })];
   }
   explode() {
     throw new Error("The page object action exploded.");
